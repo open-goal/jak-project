@@ -9984,7 +9984,7 @@
   :size-assert         #xd0
   :flag-assert         #xb000000d0
   (:methods
-    (minimap-trail-method-9 () none) ;; 9 ;; (get-distance-with-path (_type_ vector vector) float)
+    (get-distance-with-path (_type_ vector vector) float) ;; 9
     (minimap-trail-method-10 () none) ;; 10 ;; (reset (_type_) none)
     )
   )
@@ -10042,7 +10042,7 @@
   :flag-assert         #x1c00000658
   (:methods
     (minimap-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
-    (minimap-method-10 () none) ;; 10 ;; (get-trail-for-connection (_type_ connection-minimap symbol) minimap-trail)
+    (get-trail-for-connection (_type_ connection-minimap symbol) minimap-trail) ;; 10
     (minimap-method-11 () none) ;; 11 ;; (get-icon-draw-pos (_type_ connection-minimap minimap-trail vector float vector) symbol)
     (add-icon! (_type_ process uint int vector int) connection-minimap) ;; 12
     (minimap-method-13 () none) ;; 13 ;; (free-trail-by-connection (_type_ connection-minimap) none)
@@ -20332,7 +20332,7 @@
     (collide-shape-method-34 () none) ;; 34 ;; (find-prim-by-id-logtest (_type_ uint) collide-shape-prim)
     (detect-riders! (_type_) symbol) ;; 35
     (collide-shape-method-36 () none) ;; 36 ;; (build-bounding-box-for-shape (_type_ bounding-box float collide-spec) symbol)
-    (collide-shape-method-37 () none) ;; 37 ;; (integrate-and-collide! (_type_ vector) none)
+    (integrate-and-collide! (_type_ vector) none) ;; 37
     (find-collision-meshes (_type_) none) ;; 38
     (collide-shape-method-39 () none) ;; 39 ;; (on-platform (_type_ collide-shape collide-query) symbol)
     (find-overlapping-shapes (_type_ overlaps-others-params) symbol) ;; 40
@@ -20342,8 +20342,8 @@
     (pull-riders! (_type_) symbol) ;; 44
     (do-push-aways (_type_) collide-spec) ;; 45
     (update-transforms (_type_) none) ;; 46
-    (collide-shape-method-47 () none) ;; 47 ;; (set-collide-with! (_type_ collide-spec) none)
-    (collide-shape-method-48 () none) ;; 48 ;; (set-collide-as! (_type_ collide-spec) none)
+    (set-collide-with! (_type_ collide-spec) none) ;; 47
+    (set-collide-as! (_type_ collide-spec) none) ;; 48
     (collide-shape-method-49 () none) ;; 49 ;; (modify-collide-as! (_type_ int collide-spec collide-spec) none)
     (collide-shape-method-50 () none) ;; 50 ;; (send-shoves (_type_ process touching-shapes-entry float float float) symbol)
     (collide-shape-method-51 () none) ;; 51 ;; (above-ground? (_type_ collide-query vector collide-spec float float float) symbol)
@@ -20459,10 +20459,10 @@
     (collide-shape-moving-method-59 () none) ;; 59 ;; (move-above-ground (_type_ vector move-above-ground-params) none)
     (collide-shape-moving-method-60 () none) ;; 60 ;; (move-to-ground (_type_ float float symbol collide-spec) none)
     (collide-shape-moving-method-61 () none) ;; 61 ;; (move-to-ground-point (_type_ vector vector vector) none)
-    (collide-shape-moving-method-62 () none) ;; 62 ;; (compute-acc-due-to-gravity (_type_ vector float) vector)
+    (compute-acc-due-to-gravity (_type_ vector float) vector) ;; 62
     (collide-shape-moving-method-63 () none) ;; 63 ;; (collide-shape-moving-method-63 (_type_ rigid-body float) none)
     (collide-shape-moving-method-64 () none) ;; 64 ;; (try-snap-to-surface (_type_ vector float float float) symbol)
-    (collide-shape-moving-method-65 () none) ;; 65 ;; (fill-and-try-snap-to-surface (_type_ vector float float float collide-query) symbol)
+    (fill-and-try-snap-to-surface (_type_ vector float float float collide-query) symbol) ;; 65
     (collide-shape-moving-method-66 () none) ;; 66 ;; (step-collison! (_type_ vector vector float int) float)
     (collide-shape-moving-method-67 () none) ;; 67 ;; (collide-with-all-collide-cache-prims (_type_ matrix collide-query) none)
     )
@@ -20797,10 +20797,15 @@
 (defenum task-arrow-flags
   :type uint32
   :bitfield #t
-  (task-arrow-flag-00 0)
-  (task-arrow-flag-01 1)
-  (task-arrow-flag-02 2)
-  (task-arrow-flag-03 3)
+  (taf0 0)
+  (taf1 1)
+  (taf2 2)
+  (taf3 3)
+  (taf4 4)
+  (taf5 5)
+  (taf6 6)
+  (taf7 7)
+  (taf8 8)
   )
 ;; ---generic-obs-h:task-arrow-flags
 
@@ -21969,6 +21974,10 @@
 ;; ragdoll-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare-type ragdoll basic)
+(declare-type ragdoll-joint structure)
+(declare-type ragdoll-proc process)
+
 (deftype ragdoll-edit-info (structure)
   ((editing         symbol      :offset-assert 0)
    (current-func    uint64     :offset-assert 8)
@@ -21980,24 +21989,24 @@
    (skel-visible    uint64     :offset-assert 48)
    (current-joint   int8       :offset-assert 56)
    (auto-setup-now  basic      :offset-assert 60)
-   (child-stack     object  60 :offset-assert 64)
+   (child-stack     ragdoll-joint 60 :offset-assert 64)
    (child-stack-num int8       :offset-assert 304)
-   (last-frame      uint64     :offset-assert 312)
-   (last-frame-dur  uint64     :offset-assert 320)
+   (last-frame      time-frame :offset-assert 312)
+   (last-frame-dur  time-frame :offset-assert 320)
    )
   :method-count-assert 18
   :size-assert         #x148
   :flag-assert         #x1200000148
   (:methods
-    (ragdoll-edit-info-method-9 () none) ;; 9
-    (ragdoll-edit-info-method-10 () none) ;; 10
-    (ragdoll-edit-info-method-11 () none) ;; 11
-    (ragdoll-edit-info-method-12 () none) ;; 12
-    (ragdoll-edit-info-method-13 () none) ;; 13
-    (ragdoll-edit-info-method-14 () none) ;; 14
-    (ragdoll-edit-info-method-15 () none) ;; 15
-    (ragdoll-edit-info-method-16 () none) ;; 16
-    (ragdoll-edit-info-method-17 () none) ;; 17
+    (has-joint? (_type_ ragdoll-joint) symbol) ;; 9
+    (ragdoll-edit-info-method-10 (_type_ object ragdoll-joint) symbol) ;; 10
+    (fill-child-stack! "Fill the `child-stack` with the joints of the given ragdoll." (_type_ ragdoll) none) ;; 11
+    (ragdoll-edit-info-method-12 (_type_) none) ;; 12
+    (cycle-joints! "Cycle through joints based on controller input." (_type_ ragdoll) none) ;; 13
+    (ragdoll-edit-info-method-14 (_type_ matrix vector (inline-array ragdoll-joint) ragdoll process-drawable) vector) ;; 14
+    (ragdoll-edit-info-method-15 (_type_) none) ;; 15
+    (ragdoll-edit-info-method-16 (_type_ ragdoll process-drawable) none) ;; 16
+    (ragdoll-edit-info-method-17 (_type_ ragdoll process-drawable) none) ;; 17
     )
   )
 
@@ -22010,7 +22019,7 @@
    (axial-slop   float           :offset-assert 48)
    (max-angle    float           :offset-assert 52)
    (coll-rad     float           :offset-assert 56)
-   (hit-sound    uint128         :offset-assert 64)
+   (hit-sound    sound-name      :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -22021,12 +22030,35 @@
   ((orient-tform    vector :inline :offset-assert 0)
    (scale           vector :inline :offset-assert 16)
    (bg-collide-with collide-spec   :offset-assert 32)
-   (joint-setup     basic          :offset-assert 36)
+   (joint-setup     (array ragdoll-joint-setup) :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
+
+;; +++ragdoll-h:ragdoll-joint-flag
+(defenum ragdoll-joint-flag
+  :type uint32
+  :bitfield #t
+  (rjf0 0)
+  (rjf1 1)
+  (rjf2 2)
+  (rjf3 3)
+  (rjf4 4)
+  (rjf5 5)
+  (rjf6 6)
+  (rjf7 7)
+  (rjf8 8)
+  (rjf9 9)
+  (rjf10 10)
+  (rjf11 11)
+  (rjf12 12)
+  (rjf13 13)
+  (rjf14 14)
+  (rjf15 15)
+  )
+;; ---ragdoll-h:ragdoll-joint-flag
 
 (deftype ragdoll-joint (structure)
   ((quat                quaternion :inline :offset-assert 0)
@@ -22037,17 +22069,17 @@
    (pre-tform           vector     :inline :offset-assert 80)
    (geo-tform           vector     :inline :offset-assert 96)
    (axial-slop          float              :offset-assert 112)
-   (max-angle           float              :offset-assert 116)
+   (max-angle           degrees            :offset-assert 116)
    (joint-length        float              :offset-assert 120)
    (coll-rad            float              :offset-assert 124)
-   (ragdoll-joint-flags uint32             :offset-assert 128)
+   (ragdoll-joint-flags ragdoll-joint-flag :offset-assert 128)
    (joint-type          uint64             :offset-assert 136)
    (joint-index         int8               :offset-assert 144)
    (parent-joint        int8               :offset-assert 145)
    (parent-index        int8               :offset-assert 146)
    (num-children        int8               :offset-assert 147)
    (old-param0          basic              :offset-assert 148)
-   (hit-sound           uint128            :offset-assert 160)
+   (hit-sound           sound-name         :offset-assert 160)
    (ground-pat          uint32             :offset-assert 176)
    (user0               int32              :offset-assert 180)
    (original-speed      float              :offset-assert 184)
@@ -22057,8 +22089,31 @@
   :flag-assert         #x9000000bc
   )
 
+;; +++ragdoll-h:ragdoll-flag
+(defenum ragdoll-flag
+  :type uint32
+  :bitfield #t
+  (rf0 0)
+  (rf1 1)
+  (rf2 2)
+  (rf3 3)
+  (rf4 4)
+  (rf5 5)
+  (rf6 6)
+  (rf7 7)
+  (rf8 8)
+  (rf9 9)
+  (rf10 10)
+  (rf11 11)
+  (rf12 12)
+  (rf13 13)
+  (rf14 14)
+  (rf15 15)
+  )
+;; ---ragdoll-h:ragdoll-flag
+
 (deftype ragdoll (basic)
-  ((ragdoll-joints        ragdoll-joint    60  :inline    :offset-assert 16)
+  ((ragdoll-joints        ragdoll-joint    60  :inline :offset-assert 16)
    (num-joints            uint8              :offset-assert 11536)
    (mirror                matrix     :inline :offset-assert 11552)
    (gravity               vector     :inline :offset-assert 11616)
@@ -22071,17 +22126,17 @@
    (compress-vel-parallel float              :offset-assert 11692)
    (momentum              float              :offset-assert 11696)
    (maximum-stretch       float              :offset-assert 11700)
-   (turn-off-start        uint64             :offset-assert 11704)
-   (turn-off-duration     uint64             :offset-assert 11712)
-   (copy-velocity-start   uint64             :offset-assert 11720)
+   (turn-off-start        time-frame         :offset-assert 11704)
+   (turn-off-duration     time-frame         :offset-assert 11712)
+   (copy-velocity-start   time-frame         :offset-assert 11720)
    (root-offset           vector     :inline :offset-assert 11728)
    (rotate-vel            quaternion :inline :offset-assert 11744)
    (rotate-adj            quaternion :inline :offset-assert 11760)
    (rotate-adj-count      int8               :offset-assert 11776)
-   (ragdoll-flags         uint32             :offset-assert 11780)
+   (ragdoll-flags         ragdoll-flag       :offset-assert 11780)
    (flex-blend            float              :offset-assert 11784)
    (stable-joints         int8               :offset-assert 11788)
-   (ragdoll-joint-remap   uint8    100     :offset-assert 11789)
+   (ragdoll-joint-remap   uint8    100       :offset-assert 11789)
    (allow-destabilize     uint64             :offset-assert 11896)
    (bg-collide-with       uint32             :offset-assert 11904)
    (water-info            water-info :inline :offset-assert 11920)
@@ -22090,45 +22145,49 @@
   :size-assert         #x2ecc
   :flag-assert         #x1a00002ecc
   (:methods
-    (ragdoll-method-9 () none) ;; 9
-    (ragdoll-method-10 () none) ;; 10
-    (ragdoll-method-11 () none) ;; 11
-    (ragdoll-method-12 () none) ;; 12
-    (ragdoll-method-13 () none) ;; 13
-    (ragdoll-method-14 () none) ;; 14
-    (ragdoll-method-15 () none) ;; 15
-    (ragdoll-method-16 () none) ;; 16
-    (ragdoll-method-17 () none) ;; 17
-    (ragdoll-method-18 () none) ;; 18
-    (ragdoll-method-19 () none) ;; 19
-    (ragdoll-method-20 () none) ;; 20
-    (ragdoll-method-21 () none) ;; 21
-    (ragdoll-method-22 () none) ;; 22
-    (ragdoll-method-23 () none) ;; 23
-    (ragdoll-method-24 () none) ;; 24
-    (ragdoll-method-25 () none) ;; 25
+    (ragdoll-method-9 (_type_ matrix process-drawable) none) ;; 9
+    (ragdoll-method-10 (_type_ process-drawable symbol vector symbol) none) ;; 10
+    (turn-off-for-duration! (_type_ time-frame) none) ;; 11
+    (get-parent-joint (_type_ (inline-array ragdoll-joint)) ragdoll-joint) ;; 12
+    (ragdoll-method-13 (_type_ ragdoll-edit-info) none) ;; 13
+    (ragdoll-method-14 (_type_) none) ;; 14
+    (ragdoll-method-15 (_type_ process-drawable matrix) none) ;; 15
+    (ragdoll-setup! "Set up this ragdoll with the given [[ragdoll-setup]]." (_type_ process-drawable ragdoll-setup) none) ;; 16
+    (ragdoll-method-17 (_type_ process-drawable) none) ;; 17
+    (ragdoll-method-18 (_type_) none) ;; 18
+    (ragdoll-method-19 (_type_ vector int object vector) none) ;; 19
+    (ragdoll-method-20 (_type_ vector) none) ;; 20
+    (ragdoll-method-21 (_type_ vector vector float) vector) ;; 21
+    (get-max-angle-for-joint-idx (_type_ int) degrees) ;; 22
+    (ragdoll-method-23 (_type_ vector vector float symbol) none) ;; 23
+    (ragdoll-method-24 (_type_ vector int) none) ;; 24
+    (ragdoll-method-25 (_type_ process-drawable) none) ;; 25
     )
   )
 
 (deftype ragdoll-proc (process)
-  ((ragdoll        ragdoll :offset-assert 128)
+  ((parent         (pointer process-drawable) :override)
+   (ragdoll        ragdoll :offset-assert 128)
    (last-attack-id uint32  :offset-assert 132)
    )
   :method-count-assert 20
   :size-assert         #x88
   :flag-assert         #x1400100088
+  (:state-methods
+    idle ;; 14
+    )
   (:methods
-    (ragdoll-proc-method-14 () none) ;; 14
-    (ragdoll-proc-method-15 () none) ;; 15
-    (ragdoll-proc-method-16 () none) ;; 16
-    (ragdoll-proc-method-17 () none) ;; 17
-    (ragdoll-proc-method-18 () none) ;; 18
-    (ragdoll-proc-method-19 () none) ;; 19
+    (ragdoll-proc-method-15 (_type_ symbol vector symbol) none) ;; 15
+    (ragdoll-proc-method-16 (_type_ int) none) ;; 16
+    (ragdoll-proc-method-17 (_type_ matrix) none) ;; 17
+    (ragdoll-proc-method-18 (_type_ ragdoll-edit-info process) none) ;; 18
+    (ragdoll-proc-method-19 (_type_) none) ;; 19
     )
   )
 
+(declare-type wings process-drawable)
 (deftype wings-ragdoll-proc (ragdoll-proc)
-  ()
+  ((parent (pointer wings) :override))
   :method-count-assert 20
   :size-assert         #x88
   :flag-assert         #x1400100088
@@ -22140,13 +22199,49 @@
 ;; projectile-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++projectile-h:projectile-options
 (defenum projectile-options
   :bitfield #t
   :type uint64
+  (po0 0)
+  (po1 1)
+  (po2 2)
+  (po3 3)
+  (po4 4)
+  (po5 5)
+  (po6 6)
+  (po7 7)
+  (po8 8)
+  (po9 9)
+  (po10 10)
+  (po11 11)
+  (po12 12)
+  (po13 13)
+  (po14 14)
+  (po15 15)
+  (po16 16)
+  (po17 17)
+  (po18 18)
+  (po19 19)
+  (po20 20)
+  (po21 21)
+  (po22 22)
+  (po23 23)
+  (po24 24)
+  (po25 25)
+  (po26 26)
+  (po27 27)
+  (po28 28)
+  (po29 29)
+  (po30 30)
+  (po31 31)
   )
+;; ---projectile-h:projectile-options
 
 (deftype projectile (process-drawable)
-  ((starting-pos           vector                     :inline :offset-assert 208)
+  ((parent                 (pointer process-drawable)         :override)
+   (root                   collide-shape-moving               :override)
+   (starting-pos           vector                     :inline :offset-assert 208)
    (starting-dir           vector                     :inline :offset-assert 224)
    (target-pos             vector                     :inline :offset-assert 240)
    (base-target-pos        vector                     :inline :offset-assert 256)
@@ -22182,28 +22277,30 @@
   :method-count-assert 41
   :size-assert         #x200
   :flag-assert         #x2901800200
+  (:state-methods
+    die ;; 20
+    dissipate ;; 21
+    impact ;; 22
+    moving ;; 23
+    )
   (:methods
-    (projectile-method-20 () none) ;; 20 ;; (die () _type_ :state)
-    (projectile-method-21 () none) ;; 21 ;; (dissipate () _type_ :state)
-    (projectile-method-22 () none) ;; 22 ;; (impact () _type_ :state)
-    (projectile-method-23 () none) ;; 23 ;; (moving () _type_ :state)
-    (projectile-method-24 () none) ;; 24 ;; (draw-laser-sight (_type_) none)
-    (projectile-method-25 () none) ;; 25 ;; (spawn-impact-particles (_type_) none)
-    (projectile-method-26 () none) ;; 26 ;; (spawn-shell-particles (_type_) none)
-    (projectile-method-27 () none) ;; 27 ;; (unknown-particles (_type_) none)
-    (projectile-method-28 () none) ;; 28 ;; (play-impact-sound (_type_ projectile-options) none)
-    (projectile-method-29 () none) ;; 29 ;; (stop-sound! (_type_) none)
-    (projectile-method-30 () none) ;; 30 ;; (init-proj-collision! (_type_) none)
-    (projectile-method-31 () none) ;; 31 ;; (init-proj-settings! (_type_) none)
-    (projectile-method-32 () none) ;; 32 ;; (go-moving! (_type_) none)
-    (projectile-method-33 () none) ;; 33 ;; (go-sitting! (_type_) none)
-    (projectile-method-34 () none) ;; 34 ;; (kill-projectile! (_type_) symbol)
-    (projectile-method-35 () none) ;; 35 ;; (event-handler! (_type_ process int symbol event-message-block) object)
-    (projectile-method-36 () none) ;; 36 ;; (handle-proj-hit! (_type_ process event-message-block) object)
-    (projectile-method-37 () none) ;; 37 ;; (deal-damage! (_type_ process event-message-block) symbol)
-    (projectile-method-38 () none) ;; 38 ;; (made-impact? (_type_) symbol)
-    (projectile-method-39 () none) ;; 39 ;; (play-impact-sound! (_type_) none)
-    (projectile-method-40 () none) ;; 40
+    (projectile-method-24 (_type_) none) ;; 24 ;; (draw-laser-sight (_type_) none)
+    (projectile-method-25 (_type_) none) ;; 25 ;; (spawn-impact-particles (_type_) none)
+    (projectile-method-26 (_type_) none) ;; 26 ;; (spawn-shell-particles (_type_) none)
+    (projectile-method-27 (_type_) none) ;; 27 ;; (unknown-particles (_type_) none)
+    (play-impact-sound (_type_ projectile-options) none) ;; 28
+    (projectile-method-29 (_type_) none) ;; 29 ;; (stop-sound! (_type_) none)
+    (setup-collision! (_type_) none) ;; 30
+    (projectile-method-31 (_type_) none) ;; 31 ;; (init-proj-settings! (_type_) none)
+    (projectile-method-32 (_type_) none) ;; 32 ;; (go-moving! (_type_) none)
+    (go-impact! (_type_) none) ;; 33 ;; (go-sitting! (_type_) none)
+    (projectile-method-34 (_type_) none) ;; 34 ;; (kill-projectile! (_type_) symbol)
+    (event-handler! (_type_ process int symbol event-message-block) object) ;; 35
+    (handle-proj-hit! (_type_ process event-message-block) object) ;; 36
+    (deal-damage! (_type_ process event-message-block) symbol) ;; 37
+    (made-impact? (_type_) symbol) ;; 38
+    (projectile-method-39 (_type_) none) ;; 39 ;; (play-impact-sound! (_type_) none)
+    (projectile-method-40 (_type_) int) ;; 40
     )
   )
 
@@ -22237,10 +22334,12 @@
   :method-count-assert 44
   :size-assert         #x224
   :flag-assert         #x2c01b00224
+  (:state-methods
+    sitting ;; 41
+    )
   (:methods
-    (projectile-bounce-method-41 () none) ;; 41 ;; (noop (_type_) none)
-    (projectile-bounce-method-42 () none) ;; 42
-    (projectile-bounce-method-43 () none) ;; 43
+    (projectile-bounce-method-42 (_type_) none) ;; 42
+    (projectile-bounce-method-43 (_type_) none) ;; 43
     )
   )
 
@@ -22589,7 +22688,8 @@
   )
 
 (deftype sidekick (process-drawable)
-  ((control             control-info                       :offset 128 :score 1) ;; guessed by decompiler
+  ((parent              (pointer target)                   :override)
+   (control             control-info                       :offset 128 :score 1) ;; guessed by decompiler
    (anim-seed           uint64                             :offset 208)
    (shadow-in-movie?    symbol                             :offset-assert 216) ;; guessed by decompiler
    (special-anim-time   time-frame                         :offset-assert 224) ;; time-frame
@@ -23012,7 +23112,7 @@
     (fill-and-probe-using-line-sphere (_type_ collide-query) float) ;; 10
     (fill-and-probe-using-spheres (_type_ collide-query) symbol) ;; 11
     (collide-cache-method-12 () none) ;; 12 ;; (fill-using-bounding-box (_type_ collide-query) none)
-    (collide-cache-method-13 () none) ;; 13 ;; (fill-using-line-sphere (_type_ collide-query) none)
+    (fill-using-line-sphere (_type_ collide-query) none) ;; 13
     (collide-cache-method-14 () none) ;; 14 ;; (fill-using-spheres (_type_ collide-query) none)
     (collide-cache-method-15 () none) ;; 15 ;; (reset (_type_) none)
     (probe-using-line-sphere (_type_ collide-query) float) ;; 16
@@ -30416,7 +30516,7 @@
 ;; (define-extern spt-func-camera-facing-orbiter function)
 ;; (define-extern *particle-quat* object) ;; quaternion
 ;; (define-extern birth-func-set-quat function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern *particle-vel* object) ;; vector
+(define-extern *particle-vel* vector)
 ;; (define-extern birth-func-set-vel function) ;; (function object sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern birth-func-texture-group function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern rot-to-particle function)
@@ -31838,7 +31938,7 @@
 ;; (define-extern find-ground-point function) ;; (function control-info vector float float vector)
 ;; (define-extern target-attack-up function) ;; (function target symbol symbol none)
 (define-extern collide-shape-moving-angle-set! (function collide-shape-moving vector vector none))
-;; (define-extern cshape-reaction-update-state function) ;; (function control-info collide-query vector none)
+(define-extern cshape-reaction-update-state (function control-info collide-query vector none))
 (define-extern cshape-reaction-default (function control-info collide-query vector vector collide-status))
 ;; (define-extern cshape-reaction-just-move function) ;; (function control-info collide-query vector collide-status)
 ;; (define-extern collide-shape-draw-debug-marks function) ;; (function none)
@@ -32055,7 +32155,7 @@
 ;; (define-extern *cam-res-string* object) ;; string
 ;; (define-extern cam-slave-init-vars function) ;; (function none :behavior camera-slave)
 (define-extern cam-slave-go (function (state camera-slave) none :behavior camera-slave))
-;; (define-extern cam-slave-init function) ;; (function (state camera-slave) entity none :behavior camera-slave)
+(define-extern cam-slave-init (function (state camera-slave) entity none :behavior camera-slave))
 (define-extern cam-standard-event-handler (function process int symbol event-message-block object :behavior camera-slave))
 ;; (define-extern cam-curve-pos function) ;; (function vector vector curve symbol vector :behavior camera-slave)
 ;; (define-extern cam-curve-setup function) ;; (function vector none :behavior camera-slave)
@@ -34134,20 +34234,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype wings (process-drawable)
-  ((shadow-backup shadow-geo :offset 208)
-   (ragdoll-proc  handle     :offset-assert 216)
-   (lock?         symbol     :offset-assert 224)
-   (wing-part     object   2 :offset-assert 228)
+  ((parent        (pointer target) :override)
+   (shadow-backup shadow-geo      :offset 208)
+   (ragdoll-proc  handle          :offset-assert 216)
+   (lock?         symbol          :offset-assert 224)
+   (wing-part     sparticle-launch-control 2 :offset-assert 228)
    )
   :method-count-assert 24
   :size-assert         #xec
   :flag-assert         #x18007000ec
-  (:methods
-    (wings-method-20 () none) ;; 20
-    (wings-method-21 () none) ;; 21
-    (wings-method-22 () none) ;; 22
-    (wings-method-23 () none) ;; 23
+  (:state-methods
+    (idle symbol)
+    use
+    hidden
+    close
     )
+  ;; (:methods
+  ;;   (wings-method-20 () none) ;; 20
+  ;;   (wings-method-21 () none) ;; 21
+  ;;   (wings-method-22 () none) ;; 22
+  ;;   (wings-method-23 () none) ;; 23
+  ;;   )
   )
 
 (deftype lightjak-shield (process-drawable)
@@ -34970,53 +35077,49 @@
 ;; sidekick                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sidekick-remap* object) ;; pair
-;; (define-extern cspace<-cspace+transformq! function) ;; (function cspace cspace transformq matrix)
+(define-extern *sidekick-remap* pair)
+(define-extern cspace<-cspace+transformq! (function cspace cspace transformq matrix))
 (define-extern target-sidekick-setup (function symbol none :behavior target))
-;; (define-extern init-sidekick function) ;; (function none :behavior sidekick)
+(define-extern init-sidekick (function object :behavior sidekick))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; voicebox                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype camera-remote (camera-slave)
   ()
   :method-count-assert 14
   :size-assert         #xac0
   :flag-assert         #xe0a400ac0
   )
-|#
 
-#|
 (deftype remote (process-drawable)
-  ((base-trans    vector           :inline :offset-assert 208)
+  ((parent        (pointer camera-slave)   :override)
+   (base-trans    vector           :inline :offset-assert 208)
    (focus         focus            :inline :offset-assert 224)
    (seeker        cam-float-seeker :inline :offset-assert 236)
-   (start-time    uint64                   :offset-assert 264) ;; time-frame
+   (start-time    time-frame               :offset-assert 264) ;; time-frame
    (blend         float                    :offset-assert 272)
    (twist         float                    :offset-assert 276)
-   (speak-effect? basic                    :offset-assert 280)
+   (speak-effect? symbol                   :offset-assert 280)
    )
   :method-count-assert 26
   :size-assert         #x11c
   :flag-assert         #x1a00a0011c
-  (:methods
-    (remote-method-23 () none) ;; 23 ;; (init (_type_) none)
-    (remote-method-24 () none) ;; 24 ;; (get-track-pt-and-scale (_type_ vector) float)
-    (remote-method-25 () none) ;; 25 ;; (post-common (_type_) none)
-    )
   (:state-methods
-    exit ;; 22, old: (exit () _type_ :state)
-    idle ;; 21, old: (idle () _type_ :state)
     enter ;; 20, old: (enter () _type_ :state)
+    idle ;; 21, old: (idle () _type_ :state)
+    exit ;; 22, old: (exit () _type_ :state)
+    )
+  (:methods
+    (init (_type_) none) ;; 23
+    (get-track-pt-and-scale (_type_ vector) float) ;; 24
+    (post-common (_type_) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype voicebox (remote)
-  ((hint uint64  :offset-assert 288) ;; handle
+  ((hint handle  :offset-assert 288) ;; handle
    )
   :method-count-assert 26
   :size-assert         #x128
@@ -35025,35 +35128,33 @@
     exit ;; 22
     )
   )
-|#
 
-#|
 (deftype judge (remote)
-  ((total-time uint64  :offset-assert 288) ;; time-frame
-   (beep-time  uint64  :offset-assert 296) ;; time-frame
-   (hud-timer  uint64  :offset-assert 304) ;; handle
+  ((root       collide-shape :override)
+   (total-time time-frame :offset-assert 288) ;; time-frame
+   (beep-time  time-frame :offset-assert 296) ;; time-frame
+   (hud-timer  handle  :offset-assert 304) ;; handle
    (score      uint8   :offset-assert 312)
-   (timer?     basic   :offset-assert 316)
+   (timer?     symbol  :offset-assert 316)
    )
   :method-count-assert 28
   :size-assert         #x140
   :flag-assert         #x1c00c00140
-  (:methods
-    (judge-method-27 () none) ;; 27 ;; (setup-collision (_type_) none)
-    )
   (:state-methods
-    idle ;; 21
     enter ;; 20
+    idle ;; 21
     wait ;; 26, old: (wait () _type_ :state)
     )
+  (:methods
+    (setup-collision! (_type_) none) ;; 27
+    )
   )
-|#
 
-;; (define-extern remote-track function) ;; (function none :behavior remote)
-;; (define-extern voicebox-init-by-other function) ;; (function vector handle none :behavior voicebox)
+(define-extern remote-track (function none :behavior remote))
+(define-extern voicebox-init-by-other (function vector handle none :behavior voicebox))
 (define-extern voicebox-spawn (function process-drawable vector (pointer process)))
-;; (define-extern judge-init-by-other function) ;; (function vector uint none :behavior judge)
-;; (define-extern judge-spawn function) ;; (function process-tree vector uint (pointer judge))
+(define-extern judge-init-by-other (function vector uint symbol object :behavior judge))
+(define-extern judge-spawn (function process-tree vector uint object (pointer judge)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collectables-part              ;;
@@ -35103,7 +35204,14 @@
 ;; task-arrow                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(deftype cquery-with-vec (structure)
+  "task-arrow::23"
+  ((cquery collide-query :inline)
+   (vec0   vector        :inline)
+   (vec1   vector        :inline)
+   )
+  )
+
 (deftype task-arrow (process-drawable)
   ((pos              vector             :inline :offset-assert 208)
    (theta            float                      :offset-assert 224)
@@ -35114,73 +35222,71 @@
    (flags            task-arrow-flags           :offset-assert 244) ;; guessed by decompiler
    (map-icon         uint16                     :offset-assert 248)
    (minimap          connection-minimap         :offset-assert 252)
-   (hud-dist         uint64                     :offset-assert 256) ;; handle
+   (hud-dist         handle                     :offset-assert 256) ;; handle
    (base-quat        quaternion         :inline :offset-assert 272)
    (base-scale       float                      :offset-assert 288)
    (rod-of-god-scale float                      :offset-assert 292)
    (moving           symbol                     :offset-assert 296) ;; guessed by decompiler
-   (death-pending?   basic                      :offset-assert 300)
+   (death-pending?   symbol                     :offset-assert 300)
    (alpha            float                      :offset-assert 304)
-   (choir-sound      basic                      :offset-assert 308)
+   (choir-sound      ambient-sound              :offset-assert 308)
    (draw-back        basic                      :offset-assert 312)
    )
   :method-count-assert 25
   :size-assert         #x13c
   :flag-assert         #x1900c0013c
-  (:methods
-    (task-arrow-method-23 () none) ;; 23 ;; (task-arrow-method-23 (_type_ vector) none)
-    (task-arrow-method-24 () none) ;; 24 ;; (draw-arrow (_type_) none)
-    )
   (:state-methods
+    idle ;; 20, old: (idle () _type_ :state)
     die ;; 21, old: (die () _type_ :state)
     leave ;; 22, old: (leave () _type_ :state)
-    idle ;; 20, old: (idle () _type_ :state)
+    )
+  (:methods
+    (task-arrow-method-23 (_type_ vector) none) ;; 23
+    (draw-arrow (_type_) none) ;; 24
     )
   )
-|#
 
-;; (define-extern task-arrow-init-by-other function) ;; (function task-arrow-params task-arrow :behavior task-arrow)
-;; (define-extern task-arrow-spawn function) ;; (function task-arrow-params process-tree process)
+(define-extern task-arrow-init-by-other (function task-arrow-params object :behavior task-arrow))
+(define-extern task-arrow-spawn (function task-arrow-params process-tree process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; projectile                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cshape-reaction-projectile function) ;; (function control-info collide-query vector vector collide-status)
-;; (define-extern projectile-event-handler function) ;; (function process int symbol event-message-block projectile :behavior projectile)
-;; (define-extern projectile-move-fill-all-dirs function) ;; (function projectile none)
-;; (define-extern projectile-move-fill-line-sphere function) ;; (function projectile none)
-;; (define-extern projectile-update-velocity-add-gravity function) ;; (function projectile none)
-;; (define-extern projectile-update-velocity-space-wars function) ;; (function projectile none)
-(define-extern projectile-init-by-other (function projectile-init-by-other-params projectile :behavior projectile))
-;; (define-extern projectile-bounce-update-velocity function) ;; (function projectile-bounce none :behavior projectile)
-;; (define-extern projectile-bounce-falling-post function) ;; (function none :behavior projectile-bounce)
-;; (define-extern projectile-bounce-move function) ;; (function projectile-bounce none)
-;; (define-extern projectile-bounce-reaction function) ;; (function control-info collide-query vector vector collide-status)
+(define-extern cshape-reaction-projectile (function control-info collide-query vector vector collide-status))
+(define-extern projectile-event-handler (function process int symbol event-message-block projectile :behavior projectile))
+(define-extern projectile-move-fill-all-dirs (function projectile none))
+(define-extern projectile-move-fill-line-sphere (function projectile none))
+(define-extern projectile-update-velocity-add-gravity (function projectile none))
+(define-extern projectile-update-velocity-space-wars (function projectile none))
+(define-extern projectile-init-by-other (function projectile-init-by-other-params object :behavior projectile))
+(define-extern projectile-bounce-update-velocity (function projectile-bounce none :behavior projectile))
+(define-extern projectile-bounce-falling-post (function none :behavior projectile-bounce))
+(define-extern projectile-bounce-move (function projectile-bounce none))
+(define-extern projectile-bounce-reaction (function control-info collide-query vector vector collide-status))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ragdoll                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern ragdoll-matrix-interp function)
-;; (define-extern ragdoll-joint-callback function)
-;; (define-extern ragdoll-other-joint-callback function)
-;; (define-extern ragdoll-reflect-matrix function)
-;; (define-extern ragdoll-proc-init-by-other function)
+(define-extern ragdoll-matrix-interp function)
+(define-extern ragdoll-joint-callback function)
+(define-extern ragdoll-other-joint-callback function)
+(define-extern ragdoll-reflect-matrix (function matrix vector vector vector))
+(define-extern ragdoll-proc-init-by-other (function ragdoll-setup object :behavior ragdoll-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ragdoll-edit                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern matrix->axis-angle function)
-;; (define-extern show-maya-skeleton function)
-;; (define-extern ragdoll-print-default-joints function)
+(define-extern matrix->axis-angle (function vector matrix float))
+(define-extern show-maya-skeleton (function process-drawable int int none))
+(define-extern ragdoll-print-default-joints (function process-drawable none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightjak-wings                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wings-ragdoll (ragdoll)
   ((which-chain int8  :offset-assert 11980)
    (chain-pos   int8  :offset-assert 11981)
@@ -35189,12 +35295,11 @@
   :size-assert         #x2ece
   :flag-assert         #x1a00002ece
   )
-|#
 
-;; (define-extern *jchar-wings-ragdoll-setup* object)
-;; (define-extern wings-post function)
-;; (define-extern wings-init function)
-;; (define-extern wings-ragdoll-proc-init-by-other function)
+(define-extern *jchar-wings-ragdoll-setup* ragdoll-setup)
+(define-extern wings-post (function none :behavior wings))
+(define-extern wings-init (function symbol none :behavior wings))
+(define-extern wings-ragdoll-proc-init-by-other (function ragdoll-proc object :behavior wings-ragdoll-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-handler                 ;;
@@ -37267,10 +37372,10 @@
 ;; (define-extern part-water-splash-callback function) ;; (function part-tracker none)
 ;; (define-extern splash-spawn function) ;; (function float vector int none)
 ;; (define-extern rings-water-spawn function) ;; (function float vector vector float float none)
-;; (define-extern water-info<-region function) ;; (function water-info drawable-region-prim collide-shape collide-action water-info)
-;; (define-extern find-water-1 function)
-;; (define-extern find-water-2 function)
-;; (define-extern find-water-with-spheres function)
+(define-extern water-info<-region (function water-info drawable-region-prim collide-shape collide-action water-info))
+(define-extern find-water-1 (function water-sphere water-info water-info symbol))
+(define-extern find-water-2 (function (inline-array water-sphere) int water-info water-info symbol))
+(define-extern find-water-with-spheres (function (inline-array water-sphere) int water-info object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-flow                     ;;
@@ -37937,7 +38042,7 @@
 ;; (define-extern *hud-sprite-work* object) ;; hud-sprite-work
 ;; (define-extern hud-create-icon function) ;; (function hud int int (pointer manipy))
 ;; (define-extern hud-hidden-event-handler function)
-;; (define-extern hud-init-by-other function) ;; (function object :behavior hud)
+(define-extern hud-init-by-other (function object :behavior hud))
 (define-extern hide-hud (function symbol none))
 ;; (define-extern enable-hud function) ;; (function none)
 ;; (define-extern hide-hud-quick function) ;; (function symbol none)
