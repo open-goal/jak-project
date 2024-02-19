@@ -18198,7 +18198,7 @@
    (slope-up-traction     float                                                  :offset 88)
    (align-speed           float                                                  :offset 92)
    (slope-change-preserve float                                                  :offset 96)
-   (hook                  function                                            5  :offset-assert 128)
+   (hook                  function                                            5  :offset-assert 128 :score -1)
    (active-hook           (function none)                                        :offset 128)
    (touch-hook            (function none)                                        :offset 132)
    (impact-hook           (function control-info (pointer float) vector none)    :offset 136)
@@ -18699,8 +18699,8 @@
   :flag-assert         #xe00000134
   (:methods
     (new (symbol type process) _type_) ;; 0
-    (align-control-method-9 () none) ;; 9 ;; (compute-alignment! (_type_) transformq)
-    (align-control-method-10 () none) ;; 10 ;; (align! (_type_ align-opts float float float) trsqv)
+    (compute-alignment! (_type_) transformq) ;; 9
+    (align! (_type_ align-opts float float float) trsqv) ;; 10
     (align-control-method-11 () none) ;; 11 ;; (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv)
     (align-control-method-12 () none) ;; 12 ;; (first-transform (_type_) transform)
     (align-control-method-13 () none) ;; 13 ;; (second-transform (_type_) transform)
@@ -20895,7 +20895,7 @@
     (new (symbol type process-drawable int float collide-spec) _type_) ;; 0
     (initialize (_type_ process-drawable int float collide-spec) impact-control) ;; 9
     (impact-control-method-10 () none) ;; 10 ;; (update-from-cspace (_type_) none)
-    (impact-control-method-11 () none) ;; 11 ;; (impact-control-method-11 (_type_ collide-query process pat-surface) float)
+    (impact-control-method-11 (_type_ collide-query process pat-surface) float) ;; 11
     )
   )
 
@@ -20909,7 +20909,7 @@
     (new (symbol type vector vector) _type_) ;; 0
     (initialize (_type_ vector vector) point-tracker) ;; 9
     (point-tracker-method-10 () none) ;; 10 ;; (point-tracker-method-10 (_type_ vector vector vector float) vector)
-    (point-tracker-method-11 () none) ;; 11 ;; (point-tracker-method-11 (_type_ vector vector vector float) vector)
+    (point-tracker-method-11 (_type_ vector vector vector float) vector) ;; 11
     )
   )
 
@@ -20921,8 +20921,8 @@
   :size-assert         #x30
   :flag-assert         #xe00000030
   (:methods
-    (combo-tracker-method-12 () none) ;; 12 ;; (combo-tracker-method-12 (_type_ vector vector process time-frame) combo-tracker)
-    (combo-tracker-method-13 () none) ;; 13 ;; (combo-tracker-method-13 (_type_ handle vector float vector float) basic)
+    (combo-tracker-method-12 (_type_ vector vector process time-frame) combo-tracker) ;; 12
+    (combo-tracker-method-13 (_type_ handle vector float vector float) process-focusable) ;; 13
     )
   )
 
@@ -22567,6 +22567,12 @@
     (target-init! (_type_ continue-point symbol) none) ;; 29
     )
   (:states
+    ;; leftovers/undefined
+    target-ice-stance ;; jak 1
+    target-ice-walk ;; jak 1
+    target-yellow-jump-blast ;; jak 1
+    target-carry-pickup ;; not defined
+    target-demo ;; not defined
     ;; special states
     target-startup
     target-title ;; associated process guessed by decompiler, old: (state symbol target)
@@ -22591,27 +22597,27 @@
     target-walk
     target-attack
     target-running-attack
-    target-attack-air ;; associated process guessed by decompiler, old: (state symbol target)
-    target-attack-uppercut ;; associated process guessed by decompiler, old: (state float float target)
-    target-attack-uppercut-jump ;; associated process guessed by decompiler, old: (state float float target)
+    (target-attack-air symbol)
+    (target-attack-uppercut float float) ;; associated process guessed by decompiler, old: (state float float target)
+    (target-attack-uppercut-jump float float) ;; associated process guessed by decompiler, old: (state float float target)
     target-roll
-    target-roll-flip ;; associated process guessed by decompiler, old: (state float float target)
+    (target-roll-flip float float)
     target-turn-around
-    (target-jump float float surface) ;; associated process guessed by decompiler, old: (state float float surface target)
-    target-high-jump ;; associated process guessed by decompiler, old: (state float float object target)
-    target-double-jump ;; associated process guessed by decompiler, old: (state float float target)
+    (target-jump float float surface)
+    (target-jump-forward float float)
+    (target-high-jump float float object)
+    (target-double-jump float float)
     (target-falling symbol)
     target-slide-down
-    target-flop ;; associated process guessed by decompiler, old: (state float float float target)
-    target-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-hit-ground-hard ;; associated process guessed by decompiler, old: (state float target)
-    target-duck-stance ;; associated process guessed by decompiler, old: (state symbol target)
-    target-duck-walk ;; associated process guessed by decompiler, old: (state symbol target)
-    target-duck-high-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-duck-high-jump-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
-    target-flop-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-flop float float float object)
+    (target-hit-ground symbol)
+    (target-flop-hit-ground symbol)
+    (target-hit-ground-hard float)
+    (target-duck-stance symbol)
+    (target-duck-walk symbol)
+    (target-duck-high-jump float float symbol)
+    (target-duck-high-jump-jump float float symbol)
     (target-hit symbol attack-info) ;; associated process guessed by decompiler, old: (state symbol attack-info target)
-    target-jump-forward ;; associated process guessed by decompiler, old: (state float float target)
     target-slide-down-to-ground
     ;; gun
     target-gun-stance
@@ -22628,13 +22634,13 @@
     target-darkjak-bomb0
     (target-invisible-get-on handle)
     ;; lightjak
-    (target-eco-powerup object object)
+    (target-eco-powerup int float)
     (target-lightjak-get-on lightjak-stage)
     target-lightjak-get-off
-    target-lightjak-regen
+    (target-lightjak-regen int)
     target-lightjak-freeze
     target-lightjak-shield
-    target-lightjak-swoop
+    (target-lightjak-swoop float)
     target-lightjak-swoop-again
     target-lightjak-swoop-falling
     ;; board
@@ -22748,11 +22754,11 @@
     (target-swim-jump-jump float float surface)
     ;; pole
     (target-pole-cycle handle) ;; associated process guessed by decompiler, old: (state handle target)
-    target-pole-flip-up ;; associated process guessed by decompiler, old: (state object object float target)
-    target-pole-flip-up-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-pole-flip-forward ;; associated process guessed by decompiler, old: (state float float float target)
-    target-pole-flip-forward-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-launch ;; associated process guessed by decompiler, old: (state float symbol vector int target)
+    (target-pole-flip-up float float float)
+    (target-pole-flip-up-jump float float)
+    (target-pole-flip-forward float float float)
+    (target-pole-flip-forward-jump float float)
+    (target-launch float symbol vector int)
     ;; turret
     (target-turret-get-on handle)
     target-turret-get-off
@@ -22760,7 +22766,7 @@
     target-turret-stance-fire
     ;; edge grab
     target-edge-grab
-    target-edge-grab-jump ;; associated process guessed by decompiler, old: (state float float target)
+    (target-edge-grab-jump float float symbol)
     target-edge-grab-off
     ;; ladder
     (target-ladder-start handle)
@@ -32264,7 +32270,7 @@
 ;; (define-extern *camera-dummy-vector* object) ;; vector
 (define-extern camera-pos (function vector))
 (define-extern math-camera-pos (function vector))
-;; (define-extern camera-matrix function) ;; (function matrix)
+(define-extern camera-matrix (function matrix))
 (define-extern math-camera-matrix (function matrix))
 ;; (define-extern camera-angle function) ;; (function float)
 ;; (define-extern camera-teleport-to-entity function) ;; (function entity-actor symbol :behavior process)
@@ -35396,46 +35402,46 @@
 ;; target-anim                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern target-land-anim function) ;; (function art-element :behavior target)
-;; (define-extern target-stance-anim function) ;; (function none :behavior target)
-;; (define-extern target-stance-push function) ;; (function int none :behavior target)
-;; (define-extern target-falling-anim function) ;; (function int time-frame symbol :behavior target)
-;; (define-extern target-falling-anim-trans function) ;; (function none :behavior target)
-;; (define-extern target-walk-anim function) ;; (function int none :behavior target)
-;; (define-extern target-hit-ground-flop-anim function) ;; (function symbol symbol none :behavior target)
-;; (define-extern target-hit-ground-anim function) ;; (function symbol symbol none :behavior target)
-;; (define-extern target-attack-air-anim function) ;; (function none :behavior target)
-;; (define-extern target-edge-grab-anim function) ;; (function float none :behavior target)
+(define-extern target-land-anim (function art-element :behavior target))
+(define-extern target-stance-anim (function none :behavior target))
+(define-extern target-stance-push (function int none :behavior target))
+(define-extern target-falling-anim (function int time-frame symbol :behavior target))
+(define-extern target-falling-anim-trans (function none :behavior target))
+(define-extern target-walk-anim (function int none :behavior target))
+(define-extern target-hit-ground-flop-anim (function symbol symbol none :behavior target))
+(define-extern target-hit-ground-anim (function symbol symbol none :behavior target))
+(define-extern target-attack-air-anim (function none :behavior target))
+(define-extern target-edge-grab-anim (function float none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern target-falling-trans function) ;; (function symbol time-frame none :behavior target)
-;; (define-extern *slide-down-mods* surface) ;; surface
-;; (define-extern *slide-jump-mods* surface) ;; surface
-;; (define-extern init-var-jump function) ;; (function float float symbol symbol vector float vector :behavior target)
-;; (define-extern mod-var-jump function) ;; (function symbol symbol symbol vector vector :behavior target)
-;; (define-extern *duck-mods* surface) ;; surface
-;; (define-extern target-jump-top-anim function) ;; (function none :behavior target)
-;; (define-extern *attack-mods* surface) ;; surface
-;; (define-extern *attack-end-mods* object) ;; surface
-;; (define-extern *attack-find-mods* object)
-;; (define-extern *run-attack-mods* surface) ;; surface
-;; (define-extern *jump-attack-mods* surface) ;; surface
-;; (define-extern *uppercut-mods* object) ;; surface
-;; (define-extern *uppercut-jump-mods* surface) ;; surface
+(define-extern target-falling-trans (function symbol time-frame symbol none :behavior target))
+(define-extern *slide-down-mods* surface)
+(define-extern *slide-jump-mods* surface)
+(define-extern init-var-jump (function float float symbol symbol vector float vector :behavior target))
+(define-extern mod-var-jump (function symbol symbol symbol vector vector :behavior target))
+(define-extern *duck-mods* surface)
+(define-extern target-jump-top-anim (function none :behavior target))
+(define-extern *attack-mods* surface)
+(define-extern *attack-end-mods* surface)
+(define-extern *attack-find-mods* surface)
+(define-extern *run-attack-mods* surface)
+(define-extern *jump-attack-mods* surface)
+(define-extern *uppercut-mods* surface)
+(define-extern *uppercut-jump-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target2                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *trip-mods* object) ;; surface
-;; (define-extern *look-around-mods* object) ;; surface
-;; (define-extern *hit-ground-hard-mods* object) ;; surface
-;; (define-extern *hide-mods* surface) ;; surface
-;; (define-extern *float-mods* object) ;; surface
-;; (define-extern *blast-recover-mods* object)
+(define-extern *trip-mods* surface)
+(define-extern *look-around-mods* surface)
+(define-extern *hit-ground-hard-mods* surface)
+(define-extern *hide-mods* surface)
+(define-extern *float-mods* surface)
+(define-extern *blast-recover-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-swim                    ;;
@@ -35479,7 +35485,7 @@
 (define-extern target-darkjak-setup (function symbol none :behavior target))
 ;; (define-extern want-to-darkjak? function) ;; (function symbol :behavior target)
 ;; (define-extern *darkjak-trans-mods* object) ;; surface
-;; (define-extern target-darkjak-end-mode function) ;; (function none :behavior target)
+(define-extern target-darkjak-end-mode (function none :behavior target))
 ;; (define-extern target-darkjak-process function) ;; (function none :behavior target)
 ;; (define-extern target-darkjak-bomb-collide function) ;; (function float float none :behavior target)
 ;; (define-extern target-bomb1-fire-shot function) ;; (function (pointer handle) int int int none :behavior target)
@@ -35543,10 +35549,10 @@
 
 ;; (define-extern point-off-screen function)
 ;; (define-extern *lightjak-trans-mods* object)
-;; (define-extern want-to-powerjak? function)
+(define-extern want-to-powerjak? (function symbol :behavior target))
 (define-extern target-lightjak-setup (function symbol none :behavior target))
 ;; (define-extern want-to-lightjak? function)
-;; (define-extern target-lightjak-end-mode function)
+(define-extern target-lightjak-end-mode (function none :behavior target))
 ;; (define-extern target-lightjak-do-effect function)
 ;; (define-extern target-lightjak-process function)
 ;; (define-extern *lightjak-swoop-mods* surface)
@@ -35589,7 +35595,7 @@
   )
 |#
 
-;; (define-extern target-invisible-start function)
+(define-extern target-invisible-start (function none :behavior target))
 (define-extern target-invisible-stop (function none :behavior target))
 ;; (define-extern *invis-joint-list* array)
 ;; (define-extern target-invisible-process function)
@@ -37395,7 +37401,7 @@
 (define-extern *debug-effect-control* symbol)
 ;; (define-extern sound-name-with-material function) ;; (function string pat-surface string sound-name)
 (define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
-;; (define-extern target-land-effect function) ;; (function none :behavior target)
+(define-extern target-land-effect (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-part                     ;;
