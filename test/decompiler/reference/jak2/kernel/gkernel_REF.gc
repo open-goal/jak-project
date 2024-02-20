@@ -26,7 +26,7 @@
 (define *last-loado-debug-usage* 0)
 
 ;; definition for method 7 of type object
-(defmethod relocate ((this object) (arg0 int))
+(defmethod relocate ((this object) (offset int))
   this
   )
 
@@ -34,19 +34,26 @@
 (define *kernel-packages* '())
 
 ;; definition for function load-package
-(defun load-package ((arg0 string) (arg1 kheap))
-  (when (not (nmember arg0 *kernel-packages*))
-    (kmemopen global arg0)
-    (dgo-load arg0 arg1 (link-flag output-load-msg output-load-true-msg execute-login print-login) #x200000)
-    (set! *kernel-packages* (cons arg0 *kernel-packages*))
+(defun load-package ((package-name string) (heap kheap))
+  "If not already loaded, do a blocking dgo-load to load the given CGO."
+  (when (not (nmember package-name *kernel-packages*))
+    (kmemopen global package-name)
+    (dgo-load
+      package-name
+      heap
+      (link-flag output-load-msg output-load-true-msg execute-login print-login)
+      #x200000
+      )
+    (set! *kernel-packages* (cons package-name *kernel-packages*))
     (kmemclose)
     *kernel-packages*
     )
   )
 
 ;; definition for function unload-package
-(defun unload-package ((arg0 string))
-  (let ((v1-0 (nmember arg0 *kernel-packages*)))
+(defun unload-package ((package-name string))
+  "Mark a package as unloaded. Does not actually unload."
+  (let ((v1-0 (nmember package-name *kernel-packages*)))
     (if v1-0
         (set! *kernel-packages* (delete! (car v1-0) *kernel-packages*))
         )
@@ -101,17 +108,18 @@
 
 ;; definition for method 9 of type thread
 ;; WARN: Return type mismatch int vs none.
-(defmethod stack-size-set! ((this thread) (arg0 int))
+(defmethod stack-size-set! ((this thread) (size-bytes int))
+  "Adjust the size of the stack that can be stored during a suspend. Must be called before any process allocations."
   (let ((a2-0 (-> this process)))
     (cond
       ((!= this (-> a2-0 main-thread))
        (format 0 "ERROR: illegal attempt change stack size of ~A when the main-thread is not the top-thread.~%" a2-0)
        )
-      ((= (-> this stack-size) arg0)
+      ((= (-> this stack-size) size-bytes)
        )
       ((= (-> a2-0 heap-cur) (+ (+ (-> this stack-size) -4 (-> this type size)) (the-as int this)))
-       (set! (-> a2-0 heap-cur) (the-as pointer (+ (+ arg0 -4 (-> this type size)) (the-as int this))))
-       (set! (-> this stack-size) arg0)
+       (set! (-> a2-0 heap-cur) (the-as pointer (+ (+ size-bytes -4 (-> this type size)) (the-as int this))))
+       (set! (-> this stack-size) size-bytes)
        )
       (else
         (format 0 "ERROR: illegal attempt change stack size of ~A after more heap allocation has occured.~%" a2-0)
@@ -125,6 +133,7 @@
 ;; definition for method 0 of type cpu-thread
 ;; WARN: Return type mismatch pointer vs cpu-thread.
 (defmethod new cpu-thread ((allocation symbol) (type-to-make type) (arg0 process) (arg1 symbol) (arg2 int) (arg3 pointer))
+  "Allocate a thread. If there is already a top-thread for this process, assume this is a temporary thread, and allocate on the bottom of the stack."
   (let ((v0-0 (cond
                 ((-> arg0 top-thread)
                  (&+ arg3 -7164)
@@ -161,6 +170,8 @@
 ;; definition for function remove-exit
 ;; WARN: Return type mismatch int vs none.
 (defbehavior remove-exit process ()
+  "Remove the top stack frame. If you have no other stack frames, you can use this before a `go`
+to skip the `exit` of the state you are currently in."
   (if (-> self stack-frame-top)
       (set! (-> self stack-frame-top) (-> self stack-frame-top next))
       )
@@ -285,6 +296,7 @@
 
 ;; definition for method 0 of type process-tree
 (defmethod new process-tree ((allocation symbol) (type-to-make type) (arg0 string))
+  "Allocate a process-tree with the kernel clock."
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> v0-0 name) arg0)
     (set! (-> v0-0 mask) (process-mask process-tree))
@@ -315,6 +327,7 @@
 ;; definition for method 0 of type process
 ;; WARN: Return type mismatch object vs process.
 (defmethod new process ((allocation symbol) (type-to-make type) (arg0 string) (arg1 int))
+  "Allocate a process, set up process heap, self/ppointer, clock."
   (let ((v0-0 (if (logtest? (the-as int allocation) 1)
                   (object-new allocation type-to-make (the-as int (+ (-> process size) arg1)))
                   (+ (the-as int allocation) 4)
@@ -355,9 +368,10 @@
   )
 
 ;; definition for function inspect-process-heap
-(defun inspect-process-heap ((arg0 process))
-  (let ((s5-0 (the-as object (&+ (-> arg0 heap-base) 4))))
-    (while (< (the-as int s5-0) (the-as int (-> arg0 heap-cur)))
+(defun inspect-process-heap ((proc process))
+  "Call the inspect method on every object in the process heap."
+  (let ((s5-0 (the-as object (&+ (-> proc heap-base) 4))))
+    (while (< (the-as int s5-0) (the-as int (-> proc heap-cur)))
       (inspect (the-as basic s5-0))
       (set! s5-0 (&+ (the-as pointer s5-0) (logand -16 (+ (asize-of (the-as basic s5-0)) 15))))
       )
@@ -460,18 +474,19 @@
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
 ;; definition for method 0 of type dead-pool
-(defmethod new dead-pool ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 string))
+(defmethod new dead-pool ((allocation symbol) (type-to-make type) (num-proc int) (process-size int) (name string))
+  "Allocate a dead pool and set up dead processes"
   (let ((s3-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> s3-0 name) arg2)
+    (set! (-> s3-0 name) name)
     (set! (-> s3-0 mask) (process-mask process-tree))
     (set! (-> s3-0 parent) (the-as (pointer process-tree) #f))
     (set! (-> s3-0 brother) (the-as (pointer process-tree) #f))
     (set! (-> s3-0 child) (the-as (pointer process-tree) #f))
     (set! (-> s3-0 self) s3-0)
     (set! (-> s3-0 ppointer) (the-as (pointer process) (&-> s3-0 self)))
-    (dotimes (s2-1 arg0)
+    (dotimes (s2-1 num-proc)
       (let ((s1-0 (-> s3-0 child))
-            (v1-5 ((method-of-type process new) allocation process "dead" arg1))
+            (v1-5 ((method-of-type process new) allocation process "dead" process-size))
             )
         (set! (-> s3-0 child) (process->ppointer v1-5))
         (set! (-> v1-5 parent) (process->ppointer (the-as process s3-0)))
@@ -485,6 +500,7 @@
 
 ;; definition for method 14 of type dead-pool
 (defmethod get-process ((this dead-pool) (arg0 type) (arg1 int))
+  "Allocate a process from the pool, or #f if it fails."
   (let ((s4-0 (the-as object (-> this child))))
     (when (and (not (the-as (pointer process-tree) s4-0)) *debug-segment* (!= this *debug-dead-pool*))
       (set! s4-0 (get-process *debug-dead-pool* arg0 arg1))
@@ -519,31 +535,34 @@
 
 ;; definition for method 15 of type dead-pool
 ;; WARN: Return type mismatch int vs none.
-(defmethod return-process ((this dead-pool) (arg0 process))
-  (change-parent arg0 this)
+(defmethod return-process ((this dead-pool) (proc process))
+  "Return a process to the pool."
+  (change-parent proc this)
   0
   (none)
   )
 
 ;; definition for method 0 of type dead-pool-heap
-(defmethod new dead-pool-heap ((allocation symbol) (type-to-make type) (arg0 string) (arg1 int) (arg2 int))
-  (let ((s2-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 12 arg1))))))
-    (set! (-> s2-0 name) arg0)
+(defmethod new dead-pool-heap ((allocation symbol) (type-to-make type) (name string) (max-num-proc int) (heap-size int))
+  "Allocate and initialize a dead-pool-heap."
+  (let ((s2-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 12 max-num-proc))))))
+    (set! (-> s2-0 name) name)
     (set! (-> s2-0 mask) (process-mask process-tree))
-    (set! (-> s2-0 allocated-length) arg1)
+    (set! (-> s2-0 allocated-length) max-num-proc)
     (set! (-> s2-0 parent) (the-as (pointer process-tree) #f))
     (set! (-> s2-0 brother) (the-as (pointer process-tree) #f))
     (set! (-> s2-0 child) (the-as (pointer process-tree) #f))
     (set! (-> s2-0 self) s2-0)
     (set! (-> s2-0 ppointer) (the-as (pointer process) (&-> s2-0 self)))
-    (init s2-0 allocation arg2)
+    (init s2-0 allocation heap-size)
     s2-0
     )
   )
 
 ;; definition for method 16 of type dead-pool-heap
 ;; WARN: Return type mismatch dead-pool-heap vs none.
-(defmethod init ((this dead-pool-heap) (arg0 symbol) (arg1 int))
+(defmethod init ((this dead-pool-heap) (allocation symbol) (heap-size int))
+  "Allocate memory for processes and init records."
   (countdown (v1-0 (-> this allocated-length))
     (let ((a0-4 (-> this process-list v1-0)))
       (set! (-> a0-4 process) *null-process*)
@@ -559,7 +578,7 @@
   (set! (-> this first-gap) (-> this alive-list))
   (set! (-> this first-shrink) #f)
   (cond
-    ((zero? arg1)
+    ((zero? heap-size)
      (set! (-> this heap base) (the-as pointer 0))
      (set! (-> this heap current) (the-as pointer 0))
      (set! (-> this heap top) (the-as pointer 0))
@@ -567,9 +586,9 @@
      0
      )
     (else
-      (set! (-> this heap base) (malloc arg0 arg1))
+      (set! (-> this heap base) (malloc allocation heap-size))
       (set! (-> this heap current) (-> this heap base))
-      (set! (-> this heap top) (&+ (-> this heap base) arg1))
+      (set! (-> this heap top) (&+ (-> this heap base) heap-size))
       (set! (-> this heap top-base) (-> this heap top))
       )
     )
@@ -578,29 +597,34 @@
 
 ;; definition for method 25 of type dead-pool-heap
 ;; WARN: Return type mismatch object vs pointer.
-(defmethod gap-location ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
+(defmethod gap-location ((this dead-pool-heap) (rec dead-pool-heap-rec))
+  "Get pointer to gap (possibly zero size) after the given process"
   (the-as
     pointer
-    (if (-> arg0 process)
-        (+ (+ (-> arg0 process allocated-length) -4 (-> process size)) (the-as int (-> arg0 process)))
+    (if (-> rec process)
+        (+ (+ (-> rec process allocated-length) -4 (-> process size)) (the-as int (-> rec process)))
         (-> this heap base)
         )
     )
   )
 
 ;; definition for method 24 of type dead-pool-heap
-(defmethod gap-size ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
+(defmethod gap-size ((this dead-pool-heap) (first-rec dead-pool-heap-rec))
+  "Get the size of the gap (possibly zero) after the given process. Use #f for the gap at the start of the pool memory."
   (cond
-    ((-> arg0 process)
-     (let ((v1-3 (&+ (&+ (the-as pointer (-> arg0 process)) (-> process size)) (-> arg0 process allocated-length))))
-       (if (-> arg0 next)
-           (&- (the-as pointer (-> arg0 next process)) (the-as uint v1-3))
+    ((-> first-rec process)
+     (let ((v1-3
+             (&+ (&+ (the-as pointer (-> first-rec process)) (-> process size)) (-> first-rec process allocated-length))
+             )
+           )
+       (if (-> first-rec next)
+           (&- (the-as pointer (-> first-rec next process)) (the-as uint v1-3))
            (&- (-> this heap top) (the-as uint (&+ v1-3 4)))
            )
        )
      )
-    ((-> arg0 next)
-     (&- (the-as pointer (-> arg0 next process)) (the-as uint (&+ (-> this heap base) 4)))
+    ((-> first-rec next)
+     (&- (the-as pointer (-> first-rec next process)) (the-as uint (&+ (-> this heap base) 4)))
      )
     (else
       (&- (-> this heap top) (the-as uint (-> this heap base)))
@@ -609,11 +633,12 @@
   )
 
 ;; definition for method 26 of type dead-pool-heap
-(defmethod find-gap ((this dead-pool-heap) (arg0 dead-pool-heap-rec))
-  (while (and (-> arg0 next) (zero? (gap-size this arg0)))
-    (set! arg0 (-> arg0 next))
+(defmethod find-gap ((this dead-pool-heap) (first-rec dead-pool-heap-rec))
+  "Find the first process with a nonzero gap after it, after the given process."
+  (while (and (-> first-rec next) (zero? (gap-size this first-rec)))
+    (set! first-rec (-> first-rec next))
     )
-  arg0
+  first-rec
   )
 
 ;; definition for method 3 of type dead-pool-heap
@@ -672,6 +697,7 @@
 
 ;; definition for method 20 of type dead-pool-heap
 (defmethod memory-used ((this dead-pool-heap))
+  "Get the total memory used. Memory in between processes that is not used by a process is considered used."
   (if (-> this alive-list prev)
       (- (memory-total this) (gap-size this (-> this alive-list prev)))
       0
@@ -680,11 +706,13 @@
 
 ;; definition for method 21 of type dead-pool-heap
 (defmethod memory-total ((this dead-pool-heap))
+  "Get the total size of the heap for processes."
   (&- (-> this heap top) (the-as uint (-> this heap base)))
   )
 
 ;; definition for method 22 of type dead-pool-heap
 (defmethod memory-free ((this dead-pool-heap))
+  "Get the size of the unused part of the heap."
   (let ((v1-0 (-> this heap top)))
     (if (-> this alive-list prev)
         (gap-size this (-> this alive-list prev))
@@ -695,13 +723,15 @@
 
 ;; definition for method 23 of type dead-pool-heap
 (defmethod compact-time ((this dead-pool-heap))
+  "Get the compaction time (never set)."
   (-> this compact-time)
   )
 
 ;; definition for method 27 of type dead-pool-heap
-(defmethod find-gap-by-size ((this dead-pool-heap) (arg0 int))
+(defmethod find-gap-by-size ((this dead-pool-heap) (size int))
+  "Find the first gap with a size at least this big"
   (let ((gp-0 (-> this first-gap)))
-    (while (and gp-0 (< (gap-size this gp-0) arg0))
+    (while (and gp-0 (< (gap-size this gp-0) size))
       (set! gp-0 (-> gp-0 next))
       )
     gp-0
@@ -710,6 +740,7 @@
 
 ;; definition for method 14 of type dead-pool-heap
 (defmethod get-process ((this dead-pool-heap) (arg0 type) (arg1 int))
+  "Allocate a process from the pool, or #f if it fails."
   (let ((s4-0 (-> this dead-list next))
         (s3-0 (the-as process #f))
         )
@@ -769,13 +800,14 @@
 
 ;; definition for method 15 of type dead-pool-heap
 ;; WARN: Return type mismatch int vs none.
-(defmethod return-process ((this dead-pool-heap) (arg0 process))
-  (if (!= this (-> arg0 pool))
-      (format 0 "ERROR: process ~A does not belong to dead-pool-heap ~A.~%" arg0 this)
+(defmethod return-process ((this dead-pool-heap) (proc process))
+  "Return a process to the pool."
+  (if (!= this (-> proc pool))
+      (format 0 "ERROR: process ~A does not belong to dead-pool-heap ~A.~%" proc this)
       )
-  (change-parent arg0 this)
+  (change-parent proc this)
   (set! (-> this child) (the-as (pointer process-tree) #f))
-  (let ((s5-1 (-> arg0 ppointer)))
+  (let ((s5-1 (-> proc ppointer)))
     (if (or (= (-> this first-gap) s5-1) (< (the-as int (gap-location this (the-as dead-pool-heap-rec s5-1)))
                                             (the-as int (gap-location this (-> this first-gap)))
                                             )
@@ -802,19 +834,20 @@
   )
 
 ;; definition for method 18 of type dead-pool-heap
-(defmethod shrink-heap ((this dead-pool-heap) (arg0 process))
-  (when arg0
-    (let ((s5-0 (-> arg0 ppointer)))
-      (when (not (or (logtest? (-> arg0 mask) (process-mask heap-shrunk))
-                     (and (not (-> arg0 next-state)) (not (-> arg0 state)))
+(defmethod shrink-heap ((this dead-pool-heap) (proc process))
+  "Shrink the heap of a process, allowing the dead pool heap to later reclaim the memory during a compact."
+  (when proc
+    (let ((s5-0 (-> proc ppointer)))
+      (when (not (or (logtest? (-> proc mask) (process-mask heap-shrunk))
+                     (and (not (-> proc next-state)) (not (-> proc state)))
                      )
                  )
-        (set! (-> arg0 allocated-length) (&- (-> arg0 heap-cur) (the-as uint (-> arg0 stack))))
-        (set! (-> arg0 heap-top) (&-> arg0 stack (-> arg0 allocated-length)))
-        (if (< (the-as int arg0) (the-as int (gap-location this (-> this first-gap))))
+        (set! (-> proc allocated-length) (&- (-> proc heap-cur) (the-as uint (-> proc stack))))
+        (set! (-> proc heap-top) (&-> proc stack (-> proc allocated-length)))
+        (if (< (the-as int proc) (the-as int (gap-location this (-> this first-gap))))
             (set! (-> this first-gap) (find-gap this (the-as dead-pool-heap-rec s5-0)))
             )
-        (logior! (-> arg0 mask) (process-mask heap-shrunk))
+        (logior! (-> proc mask) (process-mask heap-shrunk))
         )
       (if (= (-> this first-shrink) s5-0)
           (set! (-> this first-shrink) (the-as dead-pool-heap-rec (-> s5-0 2)))
@@ -828,6 +861,7 @@
 ;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 17 dead-pool-heap) has a return type of none, but the expression builder found a return statement.
 (defmethod compact ((this dead-pool-heap) (arg0 int))
+  "Relocate process in memory to remove gaps, increasing free memory for this dead-pool-heap."
   (if (zero? (-> this heap base))
       (return 0)
       )
@@ -888,9 +922,10 @@
 
 ;; definition for method 19 of type dead-pool-heap
 ;; WARN: Return type mismatch int vs none.
-(defmethod churn ((this dead-pool-heap) (arg0 int))
-  (while (nonzero? arg0)
-    (+! arg0 -1)
+(defmethod churn ((this dead-pool-heap) (count int))
+  "Relocate process in memory, to trigger memory bugs related to process relocation."
+  (while (nonzero? count)
+    (+! count -1)
     (let ((s4-0 (-> this alive-list next)))
       (when s4-0
         (if (or (= (-> this first-gap) s4-0)
@@ -953,28 +988,31 @@
 (define *global-search-count* 0)
 
 ;; definition for function process-by-name
-(defun process-by-name ((arg0 string) (arg1 process-tree))
-  (set! *global-search-name* arg0)
+(defun process-by-name ((process-name string) (tree process-tree))
+  "Find the first process with the given name in the process-tree."
+  (set! *global-search-name* process-name)
   (search-process-tree
-    arg1
+    tree
     (lambda ((arg0 process)) (string= (-> arg0 name) (the-as string *global-search-name*)))
     )
   )
 
 ;; definition for function process-not-name
-(defun process-not-name ((arg0 string) (arg1 process-tree))
-  (set! *global-search-name* arg0)
+(defun process-not-name ((name string) (tree process-tree))
+  "Find the first process without the given name in the process-tree."
+  (set! *global-search-name* name)
   (search-process-tree
-    arg1
+    tree
     (lambda ((arg0 process)) (not (string= (-> arg0 name) (the-as string *global-search-name*))))
     )
   )
 
 ;; definition for function process-count
-(defun process-count ((arg0 process-tree))
+(defun process-count ((tree process-tree))
+  "Count the number of processes in the given process-tree."
   (set! *global-search-count* 0)
   (iterate-process-tree
-    arg0
+    tree
     (lambda ((arg0 process)) (set! *global-search-count* (+ *global-search-count* 1)) #t)
     *null-kernel-context*
     )
@@ -982,20 +1020,22 @@
   )
 
 ;; definition for function kill-by-name
-(defun kill-by-name ((arg0 string) (arg1 process-tree))
+(defun kill-by-name ((name string) (tree process-tree))
+  "Kill all processes with the given name."
   (local-vars (a0-1 process))
-  (while (begin (set! a0-1 (process-by-name arg0 arg1)) a0-1)
+  (while (begin (set! a0-1 (process-by-name name tree)) a0-1)
     (deactivate a0-1)
     )
   #f
   )
 
 ;; definition for function kill-by-type
-(defun kill-by-type ((arg0 type) (arg1 process-tree))
+(defun kill-by-type ((typ type) (tree process-tree))
+  "Kill all processes with the given type."
   (local-vars (a0-1 process))
-  (set! *global-search-name* arg0)
+  (set! *global-search-name* typ)
   (while (begin
-           (set! a0-1 (search-process-tree arg1 (lambda ((arg0 process)) (= (-> arg0 type) *global-search-name*))))
+           (set! a0-1 (search-process-tree tree (lambda ((arg0 process)) (= (-> arg0 type) *global-search-name*))))
            a0-1
            )
     (deactivate a0-1)
@@ -1004,20 +1044,22 @@
   )
 
 ;; definition for function kill-not-name
-(defun kill-not-name ((arg0 string) (arg1 process-tree))
+(defun kill-not-name ((name string) (tree process-tree))
+  "Kill all processes, except ones with the given name."
   (local-vars (a0-1 process))
-  (while (begin (set! a0-1 (process-not-name arg0 arg1)) a0-1)
+  (while (begin (set! a0-1 (process-not-name name tree)) a0-1)
     (deactivate a0-1)
     )
   #f
   )
 
 ;; definition for function kill-not-type
-(defun kill-not-type ((arg0 type) (arg1 process-tree))
+(defun kill-not-type ((typ type) (tree process-tree))
+  "Kill all processes, except ones with the exact type."
   (local-vars (a0-1 process))
-  (set! *global-search-name* arg0)
+  (set! *global-search-name* typ)
   (while (begin
-           (set! a0-1 (search-process-tree arg1 (lambda ((arg0 process)) (!= (-> arg0 type) *global-search-name*))))
+           (set! a0-1 (search-process-tree tree (lambda ((arg0 process)) (!= (-> arg0 type) *global-search-name*))))
            a0-1
            )
     (deactivate a0-1)
@@ -1027,20 +1069,22 @@
 
 ;; definition for method 12 of type process
 (defmethod run-logic? ((this process))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
 ;; definition for function iterate-process-tree
-(defun iterate-process-tree ((arg0 process-tree) (arg1 (function object object)) (arg2 kernel-context))
-  (let ((s4-0 (or (logtest? (-> arg0 mask) (process-mask process-tree)) (arg1 arg0))))
+(defun iterate-process-tree ((tree process-tree) (callback (function object object)) (context kernel-context))
+  "Call a function on each not-dead process in the tree."
+  (let ((s4-0 (or (logtest? (-> tree mask) (process-mask process-tree)) (callback tree))))
     (cond
       ((= s4-0 'dead)
        )
       (else
-        (let ((v1-4 (-> arg0 child)))
+        (let ((v1-4 (-> tree child)))
           (while v1-4
             (let ((s3-1 (-> v1-4 0 brother)))
-              (iterate-process-tree (-> v1-4 0) arg1 arg2)
+              (iterate-process-tree (-> v1-4 0) callback context)
               (set! v1-4 s3-1)
               )
             )
@@ -1052,11 +1096,12 @@
   )
 
 ;; definition for function execute-process-tree
-(defun execute-process-tree ((arg0 process-tree) (arg1 (function object object)) (arg2 kernel-context))
-  (logclear! (-> arg0 mask) (process-mask kernel-run))
-  (let ((s3-0 (or (logtest? (-> arg0 mask) (process-mask process-tree))
-                  (not (and (not (logtest? (-> arg2 prevent-from-run) (-> arg0 mask))) (run-logic? arg0)))
-                  (begin (logior! (-> arg0 mask) (process-mask kernel-run)) (arg1 arg0))
+(defun execute-process-tree ((tree process-tree) (callback (function object object)) (context kernel-context))
+  "Iterate over all process, calling the run callback on each, if they should run."
+  (logclear! (-> tree mask) (process-mask kernel-run))
+  (let ((s3-0 (or (logtest? (-> tree mask) (process-mask process-tree))
+                  (not (and (not (logtest? (-> context prevent-from-run) (-> tree mask))) (run-logic? tree)))
+                  (begin (logior! (-> tree mask) (process-mask kernel-run)) (callback tree))
                   )
               )
         )
@@ -1064,10 +1109,10 @@
       ((= s3-0 'dead)
        )
       (else
-        (let ((v1-12 (-> arg0 child)))
+        (let ((v1-12 (-> tree child)))
           (while v1-12
             (let ((s4-1 (-> v1-12 0 brother)))
-              (execute-process-tree (-> v1-12 0) arg1 arg2)
+              (execute-process-tree (-> v1-12 0) callback context)
               (set! v1-12 s4-1)
               )
             )
@@ -1080,16 +1125,17 @@
 
 ;; definition for function search-process-tree
 ;; WARN: Return type mismatch process-tree vs process.
-(defun search-process-tree ((arg0 process-tree) (arg1 (function process-tree object)))
-  (when (not (logtest? (-> arg0 mask) (process-mask process-tree)))
-    (if (arg1 arg0)
-        (return (the-as process arg0))
+(defun search-process-tree ((tree process-tree) (callback (function process-tree object)))
+  "Return the first function in the process-tree which the callback returns #t on."
+  (when (not (logtest? (-> tree mask) (process-mask process-tree)))
+    (if (callback tree)
+        (return (the-as process tree))
         )
     )
-  (let ((v1-5 (-> arg0 child)))
+  (let ((v1-5 (-> tree child)))
     (while v1-5
       (let ((s5-1 (-> v1-5 0 brother)))
-        (let ((v1-6 (search-process-tree (-> v1-5 0) arg1)))
+        (let ((v1-6 (search-process-tree (-> v1-5 0) callback)))
           (if v1-6
               (return v1-6)
               )
@@ -1103,6 +1149,7 @@
 
 ;; definition for function kernel-dispatcher
 (defun kernel-dispatcher ()
+  "Run the GOAL kernel! Runs the function from the listener (if there is one), then all processes"
   (when *listener-function*
     (set! *enable-method-set* (+ *enable-method-set* 1))
     (let ((t1-0 (reset-and-call (-> *listener-process* main-thread) *listener-function*)))
@@ -1178,6 +1225,7 @@
 ;; definition for function sync-dispatcher
 ;; WARN: Return type mismatch symbol vs object.
 (defun sync-dispatcher ()
+  "Run the REPL function."
   (let ((t9-0 *listener-function*))
     (when t9-0
       (set! *listener-function* #f)
@@ -1188,23 +1236,24 @@
   )
 
 ;; definition for function inspect-process-tree
-(defun inspect-process-tree ((arg0 process-tree) (arg1 int) (arg2 int) (arg3 symbol))
-  (print-tree-bitmask arg2 arg1)
+(defun inspect-process-tree ((tree process-tree) (depth int) (mask int) (detail symbol))
+  "Display a tree-view of a process-tree."
+  (print-tree-bitmask mask depth)
   (cond
-    (arg3
+    (detail
       (format #t "__________________~%")
       (format
         #t
         "~S~A~%"
-        (if (zero? arg1)
+        (if (zero? depth)
             ""
             "+---"
             )
-        arg0
+        tree
         )
       (let ((s2-0 *print-column*))
-        (set! *print-column* (the-as binteger (* (* arg1 4) 8)))
-        (inspect arg0)
+        (set! *print-column* (the-as binteger (* (* depth 4) 8)))
+        (inspect tree)
         (set! *print-column* s2-0)
         )
       )
@@ -1212,29 +1261,29 @@
       (format
         #t
         "~S~A~%"
-        (if (zero? arg1)
+        (if (zero? depth)
             ""
             "+---"
             )
-        arg0
+        tree
         )
       )
     )
-  (let ((s2-1 (-> arg0 child)))
+  (let ((s2-1 (-> tree child)))
     (while s2-1
       (inspect-process-tree
         (-> s2-1 0)
-        (+ arg1 1)
+        (+ depth 1)
         (if (not (-> s2-1 0 brother))
-            arg2
-            (logior arg2 (ash 1 (+ arg1 1)))
+            mask
+            (logior mask (ash 1 (+ depth 1)))
             )
-        arg3
+        detail
         )
       (set! s2-1 (-> s2-1 0 brother))
       )
     )
-  arg0
+  tree
   )
 
 ;; definition for method 0 of type catch-frame
@@ -1248,12 +1297,13 @@
 
 ;; definition for method 0 of type protect-frame
 ;; WARN: Return type mismatch int vs protect-frame.
-(defmethod new protect-frame ((allocation symbol) (type-to-make type) (arg0 (function object)))
+(defmethod new protect-frame ((stack-addr symbol) (type-to-make type) (exit-func (function object)))
+  "Allocate and set up a protect-frame. This _must_ be used on the stack."
   (with-pp
-    (let ((v0-0 (the-as object (+ (the-as int allocation) 4))))
+    (let ((v0-0 (the-as object (+ (the-as int stack-addr) 4))))
       (set! (-> (the-as protect-frame v0-0) type) type-to-make)
       (set! (-> (the-as protect-frame v0-0) name) 'protect-frame)
-      (set! (-> (the-as protect-frame v0-0) exit) arg0)
+      (set! (-> (the-as protect-frame v0-0) exit) exit-func)
       (set! (-> (the-as protect-frame v0-0) next) (-> pp stack-frame-top))
       (set! (-> pp stack-frame-top) (the-as protect-frame v0-0))
       (the-as protect-frame v0-0)
@@ -1263,15 +1313,16 @@
 
 ;; definition for function previous-brother
 ;; WARN: Return type mismatch (pointer process-tree) vs object.
-(defun previous-brother ((arg0 process-tree))
-  (let ((v1-0 (-> arg0 parent)))
+(defun previous-brother ((tree process-tree))
+  "Get the process before this one, at this level."
+  (let ((v1-0 (-> tree parent)))
     (when v1-0
       (let ((v1-2 (-> v1-0 0 child)))
-        (if (= v1-2 arg0)
+        (if (= v1-2 tree)
             (return (the-as object #f))
             )
         (while v1-2
-          (if (= (-> v1-2 0 brother) arg0)
+          (if (= (-> v1-2 0 brother) tree)
               (return (the-as object v1-2))
               )
           (set! v1-2 (-> v1-2 0 brother))
@@ -1283,35 +1334,37 @@
   )
 
 ;; definition for function change-parent
-(defun change-parent ((arg0 process-tree) (arg1 process-tree))
-  (let ((a2-0 (-> arg0 parent)))
+(defun change-parent ((proc-to-change process-tree) (new-parent process-tree))
+  "Reparent a process."
+  (let ((a2-0 (-> proc-to-change parent)))
     (when a2-0
       (let ((v1-2 (-> a2-0 0 child)))
         (cond
-          ((= (ppointer->process v1-2) arg0)
-           (set! (-> a2-0 0 child) (-> arg0 brother))
+          ((= (ppointer->process v1-2) proc-to-change)
+           (set! (-> a2-0 0 child) (-> proc-to-change brother))
            )
           (else
-            (while (!= (ppointer->process (-> v1-2 0 brother)) arg0)
+            (while (!= (ppointer->process (-> v1-2 0 brother)) proc-to-change)
               (nop!)
               (nop!)
               (nop!)
               (set! v1-2 (-> v1-2 0 brother))
               )
-            (set! (-> v1-2 0 brother) (-> arg0 brother))
+            (set! (-> v1-2 0 brother) (-> proc-to-change brother))
             )
           )
         )
       )
     )
-  (set! (-> arg0 parent) (-> arg1 ppointer))
-  (set! (-> arg0 brother) (-> arg1 child))
-  (set! (-> arg1 child) (-> arg0 ppointer))
-  arg0
+  (set! (-> proc-to-change parent) (-> new-parent ppointer))
+  (set! (-> proc-to-change brother) (-> new-parent child))
+  (set! (-> new-parent child) (-> proc-to-change ppointer))
+  proc-to-change
   )
 
 ;; definition for function change-brother
 (defun change-brother ((arg0 process-tree) (arg1 process-tree))
+  "Unused, and wrong."
   (when (and arg0 (!= (-> arg0 brother) arg1) (!= arg0 arg1))
     (let ((a2-1 (-> arg0 parent)))
       (when a2-1
@@ -1363,24 +1416,25 @@
   )
 
 ;; definition for function change-to-last-brother
-(defun change-to-last-brother ((arg0 process-tree))
-  (when (and (-> arg0 brother) (-> arg0 parent))
-    (let* ((a1-0 (-> arg0 parent))
+(defun change-to-last-brother ((proc process-tree))
+  "Move this process to the end of its brother list."
+  (when (and (-> proc brother) (-> proc parent))
+    (let* ((a1-0 (-> proc parent))
            (v1-4 (-> a1-0 0 child))
            )
       (cond
-        ((= (-> v1-4 0) arg0)
-         (set! (-> a1-0 0 child) (-> arg0 brother))
+        ((= (-> v1-4 0) proc)
+         (set! (-> a1-0 0 child) (-> proc brother))
          )
         (else
-          (while (!= (-> v1-4 0 brother 0) arg0)
+          (while (!= (-> v1-4 0 brother 0) proc)
             (nop!)
             (nop!)
             (nop!)
             (nop!)
             (set! v1-4 (-> v1-4 0 brother))
             )
-          (set! (-> v1-4 0 brother) (-> arg0 brother))
+          (set! (-> v1-4 0 brother) (-> proc brother))
           )
         )
       (while (-> v1-4 0 brother)
@@ -1390,15 +1444,16 @@
         (nop!)
         (set! v1-4 (-> v1-4 0 brother))
         )
-      (set! (-> v1-4 0 brother) (-> arg0 ppointer))
+      (set! (-> v1-4 0 brother) (-> proc ppointer))
       )
-    (set! (-> arg0 brother) (the-as (pointer process-tree) #f))
+    (set! (-> proc brother) (the-as (pointer process-tree) #f))
     )
-  arg0
+  proc
   )
 
 ;; definition for method 9 of type process
 (defmethod activate ((this process) (arg0 process-tree) (arg1 basic) (arg2 pointer))
+  "Move a process from dead to active, moving it to the given tree."
   (set! (-> this mask) (logclear (-> arg0 mask) (process-mask sleep sleep-code process-tree heap-shrunk)))
   (set! (-> this clock) (-> arg0 clock))
   (set! (-> this status) 'ready)
@@ -1472,6 +1527,7 @@
 ;; definition for method 10 of type process-tree
 ;; WARN: Return type mismatch int vs none.
 (defmethod deactivate ((this process-tree))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   0
   (none)
   )
@@ -1489,6 +1545,7 @@
 ;; ERROR: Unsupported inline assembly instruction kind - [lw ra, return-from-thread(s7)]
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
 (defmethod deactivate ((this process))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (local-vars (s7-0 none) (ra-0 int))
   (with-pp
     (when (!= (-> this status) 'dead)

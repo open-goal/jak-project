@@ -315,12 +315,12 @@
   )
 
 ;; WARN: Return type mismatch object vs none.
-(defmethod track-target! ((this fodder))
+(defmethod common-post ((this fodder))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((parent-method (method-of-type nav-enemy track-target!)))
+  (let ((parent-method (method-of-type nav-enemy common-post)))
     (parent-method this)
     )
   (let ((proc (the-as process-drawable #f)))
@@ -356,7 +356,7 @@
            )
          )
        )
-      ((logtest? (-> this enemy-flags) (enemy-flag lock-focus))
+      ((logtest? (-> this enemy-flags) (enemy-flag look-at-focus))
        (look-at-position! this (the-as vector #f))
        )
       )
@@ -384,10 +384,10 @@
           (func)
           )
       )
-    (logclear! (-> self enemy-flags) (enemy-flag spawn-gem chase-startup use-notice-distance))
+    (logclear! (-> self enemy-flags) (enemy-flag notice alert cam-attack-mode))
     )
   :code (behavior ()
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info walk-anim))
                     :num! (seek! max f30-0)
@@ -397,7 +397,7 @@
           (suspend)
           (ja :num! (seek! max f30-0))
           )
-        (when (enemy-method-123 self 0.8)
+        (when (rnd-go-idle? self 0.8)
           (let ((_self self))
             (set! (-> _self enemy-flags) (the-as enemy-flag (logclear (-> _self enemy-flags) (enemy-flag enemy-flag36))))
             (set! (-> _self nav callback-info) *nav-enemy-null-callback-info*)
@@ -454,7 +454,7 @@
   :virtual #t
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
           (gp-0 (new 'stack-no-clear 'vector))
           )
       (stop-looking-at-target! self)
@@ -513,9 +513,9 @@
         )
       )
     (label cfg-22)
-    (get-rand-float-range self 0.8 1.2)
+    (rnd-float-range self 0.8 1.2)
     (new 'stack-no-clear 'vector)
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     (stop-looking-at-target! self)
     (if (nonzero? (-> self left-eye))
         (shut-down (-> self left-eye))
@@ -580,16 +580,20 @@
     0
     )
   :exit (behavior ()
-    (let ((v1-0 (-> self nav)))
-      (set! (-> v1-0 target-speed) (-> self enemy-info run-travel-speed))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-0 (-> self nav)))
+        (set! (-> v1-0 target-speed) (-> self enemy-info run-travel-speed))
+        ))
     0
-    (let ((v1-2 (-> self nav)))
-      (set! (-> v1-2 turning-acceleration) (-> self enemy-info run-turning-acceleration))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-2 (-> self nav)))
+        (set! (-> v1-2 turning-acceleration) (-> self enemy-info run-turning-acceleration))
+        ))
     0
     (fodder-method-181 self #f)
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -619,7 +623,7 @@
               (ja-channel-push! 1 (seconds 0.08))
               (ja :group! (-> self draw art-group data (-> self enemy-info idle-anim)))
               (ja :num-func num-func-identity :frame-num 0.0)
-              (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+              (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
                   (logior! (-> self focus-status) (focus-status dangerous))
                   (logclear! (-> self focus-status) (focus-status dangerous))
                   )
@@ -758,7 +762,7 @@
     )
   :code (behavior ()
     (fodder-method-182 self)
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (until #f
         (suspend)
         (ja :num! (loop! f30-0))
@@ -828,8 +832,8 @@
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (let ((s5-0 (get-rand-int self 8))
-              (f30-0 (get-rand-float-range self 0.9 1.1))
+        (let ((s5-0 (rnd-int-count self 8))
+              (f30-0 (rnd-float-range self 0.9 1.1))
               )
           (while (nonzero? s5-0)
             (+! s5-0 -1)
@@ -857,7 +861,7 @@
               (ja-channel-push! 1 (seconds 0.1))
               )
           )
-        (let ((f30-2 (get-rand-float-range self 0.9 1.1)))
+        (let ((f30-2 (rnd-float-range self 0.9 1.1)))
           (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info victory-anim))
                       :num! (seek! max f30-2)
                       :frame-num 0.0
@@ -873,11 +877,11 @@
     )
   )
 
-(defmethod enemy-method-77 ((this fodder) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this fodder) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      (let* ((a2-0 (ash 1 (-> *fodder-global-info* prev-blue-hit)))
-            (v1-3 (enemy-method-120 this 3 a2-0))
+            (v1-3 (rnd-bit this 3 a2-0))
             (s5-1 (-> this draw art-group data (-> *fodder-global-info* blue-hit-anim v1-3 anim-index)))
             )
        (set! (-> *fodder-global-info* prev-blue-hit) v1-3)
@@ -906,7 +910,7 @@
         (let ((a0-20 (-> this skel root-channel 0)))
           (set! (-> a0-20 frame-group) (the-as art-joint-anim s4-0))
           (set! (-> a0-20 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
-          (set! (-> a0-20 param 1) (-> arg0 0))
+          (set! (-> a0-20 param 1) (-> arg0 anim-speed))
           (set! (-> a0-20 frame-num) 0.0)
           (joint-control-channel-group! a0-20 (the-as art-joint-anim s4-0) num-func-seek!)
           )
@@ -916,7 +920,7 @@
   #t
   )
 
-(defmethod enemy-method-78 ((this fodder) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this fodder) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-6))
      #f
@@ -927,7 +931,7 @@
             )
         (set! (-> a0-3 frame-group) (the-as art-joint-anim v1-5))
         (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim v1-5) frames num-frames) -1)))
-        (set! (-> a0-3 param 1) (-> arg0 0))
+        (set! (-> a0-3 param 1) (-> arg0 anim-speed))
         (set! (-> a0-3 frame-num) 0.0)
         (joint-control-channel-group! a0-3 (the-as art-joint-anim v1-5) num-func-seek!)
         )

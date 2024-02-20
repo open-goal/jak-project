@@ -31,7 +31,7 @@ void LoadSoundBank(const char* bank_name, SoundBank* bank) {
   SleepThread();  // wait for finish.
 }
 
-void LoadMusic(const char* music_name, s32* bank) {
+void LoadMusic(const char* music_name, snd::BankHandle* bank) {
   ASSERT(strlen(music_name) < 16);
   MusicLoadCommand cmd;
   cmd.cmd_id = LOAD_MUSIC;

@@ -450,7 +450,7 @@
     (until #f
       (mammoth-walk-check-end)
       (set-nav-destination)
-      (let ((v1-20 (if (rng-hit? self 0.5)
+      (let ((v1-20 (if (rnd-percent? self 0.5)
                        6
                        7
                        )
@@ -507,9 +507,9 @@
   :trans (behavior ()
     (when (and (not (time-elapsed? (-> self lightning-timer) (seconds 3))) (< (-> self spawn-timer) (current-time)))
       (let ((s5-0 *mammoth-lightning-joint-tbl*))
-        (mammoth-method-185 self (-> self root trans) (-> s5-0 (get-rand-int self (-> s5-0 length))))
+        (mammoth-method-185 self (-> self root trans) (-> s5-0 (rnd-int-count self (-> s5-0 length))))
         )
-      (set! (-> self spawn-timer) (+ (current-time) (the int (* 300.0 (get-rand-float-range self 0.0 0.1)))))
+      (set! (-> self spawn-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range self 0.0 0.1)))))
       )
     )
   :code (behavior ()
@@ -688,15 +688,15 @@
     (('hit)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      )
@@ -791,7 +791,7 @@
   )
 
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 ((this mammoth) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod ground-pat-set! ((this mammoth) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
@@ -1331,13 +1331,13 @@
     )
   )
 
-(defmethod track-target! ((this mammoth))
+(defmethod common-post ((this mammoth))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
   (local-vars (sv-752 lightning-spec) (sv-768 int) (sv-784 symbol) (sv-800 mammoth))
-  (let ((t9-0 (method-of-type nav-enemy track-target!)))
+  (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
   (mammoth-update-ik)
@@ -1448,7 +1448,7 @@
                     (set! sv-768 600)
                     (set! sv-784 (the-as symbol #f))
                     (set! sv-800 this)
-                    (let ((t2-0 (-> (the-as (pointer int32) (&+ s4-2 (* (get-rand-int this s3-2) 4)))))
+                    (let ((t2-0 (-> (the-as (pointer int32) (&+ s4-2 (* (rnd-int-count this s3-2) 4)))))
                           (t3-0 6)
                           )
                       ((the-as (function object object object object object object object object none) s5-3)
@@ -1468,7 +1468,7 @@
                 )
               )
             (set! (-> this lightning-attack-timer)
-                  (+ (current-time) (the int (* 300.0 (get-rand-float-range this 0.067 0.1))))
+                  (+ (current-time) (the int (* 300.0 (rnd-float-range this 0.067 0.1))))
                   )
             )
           )
@@ -1679,7 +1679,7 @@
   (set! (-> this lightning-timer) 0)
   (set! (-> this lightning-attack-timer) 0)
   (set-time! (-> this feet-ik-init-timer))
-  (logclear! (-> this enemy-flags) (enemy-flag check-water-backup))
+  (logclear! (-> this enemy-flags) (enemy-flag trackable))
   0
   (none)
   )

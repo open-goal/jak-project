@@ -64,7 +64,7 @@ void QueueVAGStream(VagStrListNode* param_1) {
   cmd.header.cmd_kind = 0x400;
   cmd.header.mbx_to_reply = 0;
   cmd.header.thread_id = 0;
-  if (param_1->unk_72 == 0) {
+  if (param_1->sound_handler == 0) {
     EEVagAndVagwad(param_1->name, &cmd);
     cmd.vol_multiplier = 0x400;
   } else {
@@ -96,7 +96,7 @@ void QueueVAGStream(VagStrListNode* param_1) {
     cmd.unk_176 = param_1->unk_100;
   }
   strncpy(cmd.name, param_1->name, 0x30);
-  cmd.unk_136 = param_1->unk_72;
+  cmd.sound_handler = param_1->sound_handler;
   cmd.id = param_1->id;
   cmd.plugin_id = param_1->unk_68;
   cmd.priority = param_1->prio;
@@ -218,7 +218,7 @@ void LoadSoundBank(char* param_1, SoundBank* param_2) {
   SleepThread();
 }
 
-void LoadMusic(char* param_1, s32* param_2) {
+void LoadMusic(char* param_1, snd::BankHandle* param_2) {
   CmdLoadMusic auStack88;
 
   auStack88.header.cmd_kind = 0x380;
@@ -239,7 +239,7 @@ void LoadMusic(char* param_1, s32* param_2) {
   gMusicTweak = 0x80;
 }
 
-void UnLoadMusic(s32* param_1) {
+void UnLoadMusic(snd::BankHandle* param_1) {
   gMusicFadeDir = -1;
   if (gMusicFade != 0) {
     do {

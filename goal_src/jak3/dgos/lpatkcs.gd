@@ -1,0 +1,9 @@
+("LPATKCS.DGO"
+ ("tpage-2205.o"
+  "tpage-1987.go"
+  "tpage-2359.go"
+  "daxter-highres-ag.go"
+  "cty-dax-missile-launcher-ag.go"
+  "particleman-ag.go"
+  "lpatkcs.o"
+ ))

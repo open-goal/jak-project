@@ -21,9 +21,14 @@
     ((-> this get-item-index-fn))
     0))
 
-(defmethod call-on-confirm ((this menu-generic-carousel-option) (val int))
-  (when (and (nonzero? (-> this on-confirm)) (!= (-> this on-confirm) #f))
-    ((-> this on-confirm) val))
+(defmethod call-on-confirm ((this menu-generic-carousel-option) (val int) (the-progress progress))
+  (when (and (nonzero? (-> this on-confirm)) (-> this on-confirm))
+    ((-> this on-confirm) val the-progress))
+  (none))
+
+(defmethod call-on-confirm ((this menu-generic-button-option) (the-progress progress))
+  (when (and (nonzero? (-> this on-confirm)) (-> this on-confirm))
+    ((-> this on-confirm) the-progress))
   (none))
 
 (defmethod call-on-confirm ((this menu-generic-confirm-option))
@@ -59,11 +64,13 @@
     (if (has-history? this)
       (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
         (set! (-> stack-entry hover-index) (-> this current-menu-hover-index))
+        (set! (-> stack-entry scroll-index) (the int (-> this current-menu-scroll-index)))
         (set! (-> stack-entry progress-id) (-> progress current)))
       (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
         (set! (-> stack-entry ref) (-> progress current-options))
         (set! (-> stack-entry on-load) on-load)
         (set! (-> stack-entry hover-index) (-> this current-menu-hover-index))
+        (set! (-> stack-entry scroll-index) (the int (-> this current-menu-scroll-index)))
         (set! (-> stack-entry progress-id) (-> progress current))))
     ;; push the target history entry now
     (inc! (-> this history-stack-index))
@@ -95,6 +102,7 @@
     (set! (-> this history-stack-index) 0)
     (set! (-> this clear-screen?) #f)
     (set! (-> this current-menu-hover-index) 0)
+    (set! (-> this current-menu-scroll-index) 0.0)
     (let ((stack-entry (-> this history-stack (-> this history-stack-index))))
       (set! (-> stack-entry hover-index) 0)
       (set! (-> stack-entry ref) #f)
@@ -106,6 +114,7 @@
   (set! (-> this history-stack-index) 0)
   (set! (-> this clear-screen?) #t)
   (set! (-> this current-menu-hover-index) 0)
+  (set! (-> this current-menu-scroll-index) 0.0)
   (none))
 
 (defmethod on-mount! ((this menu-generic-option))
@@ -168,7 +177,7 @@
   (mc-get-slot-info 0 *progress-save-info*)
   ;; ND originally did this...called this every frame in the game options, looked like a hack
   ;; there's probably a way to consistently do it synchronously
-  (load-level-text-files (the-as int (-> *setting-control* user-current language)))
+  (load-level-text-files (the-as int (-> *pc-settings* text-language)))
   (when (-> this current-options)
     (let ((option-array (-> this current-options options))
           (has-generic-history? (has-history? *progress-pc-generic-store*)))
@@ -265,19 +274,19 @@
     (if (= (-> this selected-option-index) -1)
       (cond
         ((or (cpad-pressed? 0 down l-analog-down)
-            (and (cpad-hold? 0 down l-analog-down)
-                  (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.5))))
-        (set! (-> this last-move) (current-time))
-        (cond
-          ((< (-> *progress-pc-generic-store* current-menu-hover-index) (dec (-> this menu-options length)))
-            (+! (-> *progress-pc-generic-store* current-menu-hover-index) 1)
-            (sound-play "roll-over"))
-          (else
-            (set! (-> *progress-pc-generic-store* current-menu-hover-index) 0)
-            (sound-play "roll-over"))))
+             (and (cpad-hold? 0 down l-analog-down)
+                  (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.2))))
+          (set! (-> this last-move) (current-time))
+          (cond
+            ((< (-> *progress-pc-generic-store* current-menu-hover-index) (dec (-> this menu-options length)))
+              (+! (-> *progress-pc-generic-store* current-menu-hover-index) 1)
+              (sound-play "roll-over"))
+            (else
+              (set! (-> *progress-pc-generic-store* current-menu-hover-index) 0)
+              (sound-play "roll-over"))))
         ((or (cpad-pressed? 0 up l-analog-up)
-              (and (cpad-hold? 0 up l-analog-up)
-                  (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.5))))
+             (and (cpad-hold? 0 up l-analog-up)
+                  (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.2))))
           (set! (-> this last-move) (current-time))
           (+! (-> *progress-pc-generic-store* current-menu-hover-index) -1)
           (sound-play "roll-over")
@@ -288,16 +297,18 @@
            (let ((menu-option (-> this menu-options (-> *progress-pc-generic-store* current-menu-hover-index))))
              ;; if the option is disabled, return early
              (when (and (type? menu-option menu-generic-option)
-                       (nonzero? (-> (the-as menu-generic-option menu-option) should-disable?))
-                       (!= (-> (the-as menu-generic-option menu-option) should-disable?) #f)
-                       ((-> (the-as menu-generic-option menu-option) should-disable?)))
+                        (nonzero? (-> (the-as menu-generic-option menu-option) should-disable?))
+                        (!= (-> (the-as menu-generic-option menu-option) should-disable?) #f)
+                        ((-> (the-as menu-generic-option menu-option) should-disable?)))
                (sound-play "roll-over")
-               (logclear! (-> *cpad-list* cpads 0 button0-abs 0) (pad-buttons confirm))
-               (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons confirm))
+               (cpad-clear! 0 confirm)
                (return 0))
              ;; ignore confirm if it's a link
              (cond
-               ((type? menu-option menu-generic-link-option)
+               ;; TODO the condition for menu-generic-to-resolutions-option shouldn't be required if it
+               ;; followed the existing pattern of being a page that contains options, instead of a single option that is a page
+               ;; There are already components that do a similar thing (see menu-generic-details-page)
+               ((or (type? menu-option menu-generic-link-option) (type? menu-option menu-generic-to-resolutions-option))
                 (set! selected-item? #t))
                (else
                 (set! (-> this selected-option-index) (-> *progress-pc-generic-store* current-menu-hover-index))
@@ -306,7 +317,7 @@
         ;; we are in a sub-page, time to go back
         (when (has-history? *progress-pc-generic-store*)
           (back! *progress-pc-generic-store* progress)
-          (sound-play "score-slide"))))
+          (sound-play "generic-beep"))))
       ;; menu option already selected
       (cond
         ((cpad-pressed? 0 confirm)
@@ -350,7 +361,7 @@
         (set! (-> this item-index) 0))
        (sound-play "generic-beep"))
       ((cpad-pressed? 0 confirm)
-       (call-on-confirm this (-> this item-index))
+       (call-on-confirm this (-> this item-index) progress)
        (sound-play "generic-beep")))
     (cond
       ((cpad-pressed? 0 confirm)
@@ -363,7 +374,15 @@
   (when (and selected? (cpad-pressed? 0 confirm))
     (navigate! *progress-pc-generic-store* progress (-> this target) (-> this on-load))
     (set! (-> progress selected-option) #f)
-    (sound-play "score-slide"))
+    (sound-play "generic-beep"))
+  0)
+
+(defmethod respond-progress ((this menu-generic-button-option) (progress progress) (selected? symbol))
+  (cond
+    ((cpad-pressed? 0 confirm)
+      (cpad-clear! 0 confirm)
+      (call-on-confirm this progress)
+      (sound-play "generic-beep")))
   0)
 
 (defmethod respond-progress ((this menu-generic-confirm-option) (progress progress) (selected? symbol))
@@ -414,7 +433,7 @@
     (cond
       ((or (cpad-pressed? 0 down l-analog-down)
            (and (cpad-hold? 0 down l-analog-down)
-                (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.5))))
+                (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.2))))
        (set! (-> this last-move) (current-time))
        (cond
          ((< (-> *progress-pc-generic-store* current-menu-hover-index) (dec (-> this entries length)))
@@ -425,7 +444,7 @@
            (sound-play "roll-over"))))
       ((or (cpad-pressed? 0 up l-analog-up)
             (and (cpad-hold? 0 up l-analog-up)
-                 (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.5))))
+                 (>= (- (current-time) (the-as int (-> this last-move))) (seconds 0.2))))
        (set! (-> this last-move) (current-time))
        (+! (-> *progress-pc-generic-store* current-menu-hover-index) -1)
        (sound-play "roll-over")

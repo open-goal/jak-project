@@ -5,5 +5,141 @@
 ;; name in dgo: profile-h
 ;; dgos: GAME
 
+(declare-type dma-buffer structure)
+(define-extern *display-profile* symbol)
+(define-extern *stats-profile-bars* symbol)
+(define-extern *display-capture-mode* symbol)
+
 ;; DECOMP BEGINS
 
+(deftype profile-segment (structure)
+  "Confusingly, this has two uses. Either a single event, or a summary of all events within a category."
+  ((name        symbol)
+   (start-time  int16)
+   (end-time    int16)
+   (count       uint8)
+   (vu-count    uint8)
+   (depth       uint16)
+   (color       rgba)
+   (code-time   uint16  :overlay-at start-time)
+   (vu-time     uint16  :overlay-at end-time)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype profile-collapse (structure)
+  "An array of 'summaries'. Each entry in data is a summary of all events within a category."
+  ((count  int32)
+   (data   profile-segment  48 :inline)
+   )
+  )
+
+
+(deftype profile-segment-array (basic)
+  "All profiling data for a frame, stored as a tree of events. There is one for the VU, and one for the EE."
+  ((count      int16)
+   (depth      int8)
+   (max-depth  int8)
+   (base-time  int16)
+   (segment    profile-segment  9)
+   (data       profile-segment  1024 :inline)
+   )
+  (:methods
+    (get-total-time (_type_) int)
+    (start-frame! (_type_) none)
+    (start-segment! (_type_ symbol rgba) none)
+    (end-segment! (_type_) none)
+    )
+  )
+
+
+(deftype profile-array (structure)
+  "The EE and VU profilers, and the drawing code."
+  ((data  profile-segment-array  2)
+   )
+  (:methods
+    (postprocess-data! (_type_) none)
+    (draw-bars! (_type_ dma-buffer int) none)
+    (draw-text! (_type_) none)
+    )
+  )
+
+
+(defmethod get-total-time ((this profile-segment-array))
+  "Get the duration of the top-level event (typically, the whole frame)"
+  (- (-> this data 0 end-time) (-> this data 0 start-time))
+  )
+
+(deftype profile-spec (structure)
+  "Specification for a profile category."
+  ((name   symbol)
+   (color  rgba)
+   )
+  )
+
+
+(define *profile-gap-color* (new 'static 'rgba :r #x30 :g #x30 :b #x30 :a #x80))
+
+(define *profile-all-color* (new 'static 'rgba :r #x55 :g #x55 :b #x55 :a #x80))
+
+(define *profile-blit-color* (new 'static 'rgba :r #x20 :g #x20 :b #x80 :a #x80))
+
+(define *profile-sky-color* (new 'static 'rgba :r #x20 :g #x80 :b #x20 :a #x80))
+
+(define *profile-ocean-color* (new 'static 'rgba :r #x20 :g #x80 :b #x80 :a #x80))
+
+(define *profile-hfrag-color* (new 'static 'rgba :r #x80 :g #x20 :b #x20 :a #x80))
+
+(define *profile-tfrag-color* (new 'static 'rgba :r #x80 :g #x20 :b #x80 :a #x80))
+
+(define *profile-texture-color* (new 'static 'rgba :r #x80 :g #x80 :b #x20 :a #x80))
+
+(define *profile-tie-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+(define *profile-generic-color* (new 'static 'rgba :r #x70 :g #x70 :a #x80))
+
+(define *profile-merc-color* (new 'static 'rgba :r #x70 :b #x70 :a #x80))
+
+(define *profile-shrubbery-color* (new 'static 'rgba :r #x70 :a #x80))
+
+(define *profile-particle-color* (new 'static 'rgba :g #x70 :b #x70 :a #x80))
+
+(define *profile-debug-color* (new 'static 'rgba :g #x70 :a #x80))
+
+(define *profile-other-color* (new 'static 'rgba :g #x70 :b #x70 :a #x80))
+
+(define *profile-joints-color* (new 'static 'rgba :r #x70 :g #x70 :b #x20 :a #x80))
+
+(define *profile-draw-hook-color* (new 'static 'rgba :r #x20 :g #x70 :b #x70 :a #x80))
+
+(define *profile-background-color* (new 'static 'rgba :r #x60 :g #x60 :b #x40 :a #x80))
+
+(define *profile-foreground-color* (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80))
+
+(define *profile-bones-color* (new 'static 'rgba :r #x20 :g #x80 :b #x60 :a #x80))
+
+(define *profile-actors-color* (new 'static 'rgba :r #x80 :g #x10 :b #x70 :a #x80))
+
+(define *profile-collide-color* (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80))
+
+(define *profile-nav-color* (new 'static 'rgba :r #x38 :g #x48 :b #x80 :a #x80))
+
+(define *profile-camera-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+(define *profile-gs-sync-color* (new 'static 'rgba :r #x70 :g #x70 :b #x70 :a #x80))
+
+(when *debug-segment*
+(define *profile-array* (new 'debug 'profile-array))
+
+(set! (-> *profile-array* data 0) (new 'debug 'profile-segment-array))
+
+(set! (-> *profile-array* data 1) (new 'debug 'profile-segment-array))
+
+(define *profile-collapse* (new 'debug 'profile-collapse))
+
+(define *profile-interrupt-segment* (-> *profile-array* data 1))
+
+(define *profile-interrupt-start* #f)
+
+)

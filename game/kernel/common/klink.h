@@ -60,22 +60,41 @@ struct link_control {
 
   bool m_opengoal;
   bool m_busy;  // only in jak2, but doesn't hurt to set it in jak 1.
-  void begin(Ptr<uint8_t> object_file,
-             const char* name,
-             int32_t size,
-             Ptr<kheapinfo> heap,
-             uint32_t flags);
+
+  // jak 3 new stuff
+  bool m_on_global_heap = false;
+  LinkHeaderV5Core* m_link_hdr = nullptr;
+  bool m_moved_link_block = false;
+
+  void jak1_jak2_begin(Ptr<uint8_t> object_file,
+                       const char* name,
+                       int32_t size,
+                       Ptr<kheapinfo> heap,
+                       uint32_t flags);
+
+  void jak3_begin(Ptr<uint8_t> object_file,
+                  const char* name,
+                  int32_t size,
+                  Ptr<kheapinfo> heap,
+                  uint32_t flags);
 
   // was originally "work"
   uint32_t jak1_work();
   uint32_t jak2_work();
+  uint32_t jak3_work();
 
   uint32_t jak1_work_v3();
   uint32_t jak1_work_v2();
+
   uint32_t jak2_work_v3();
   uint32_t jak2_work_v2();
+
+  uint32_t jak3_work_v5();
+  uint32_t jak3_work_opengoal();
+
   void jak1_finish(bool jump_from_c_to_goal);
   void jak2_finish(bool jump_from_c_to_goal);
+  void jak3_finish(bool jump_from_c_to_goal);
 
   void reset() {
     m_object_data.offset = 0;

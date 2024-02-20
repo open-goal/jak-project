@@ -3,6 +3,7 @@
 #include "common/goal_constants.h"
 
 #include "goalc/compiler/Env.h"
+#include "goalc/compiler/IR.h"
 
 #include "third-party/fmt/core.h"
 

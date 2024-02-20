@@ -69,13 +69,18 @@ size_t generate_inline_array_actors(DataObjectGenerator& gen,
 
 void add_actors_from_json(const nlohmann::json& json,
                           std::vector<EntityActor>& actor_list,
-                          u32 base_aid) {
+                          u32 base_aid,
+                          decompiler::DecompilerTypeSystem& dts) {
   for (const auto& actor_json : json) {
     auto& actor = actor_list.emplace_back();
     actor.aid = actor_json.value("aid", base_aid + actor_list.size());
     actor.trans = vectorm3_from_json(actor_json.at("trans"));
     actor.etype = actor_json.at("etype").get<std::string>();
-    actor.game_task = actor_json.value("game_task", 0);
+    if (actor_json.contains("game_task") && actor_json.at("game_task").is_string()) {
+      actor.game_task = get_enum_val(actor_json.at("game_task").get<std::string>(), dts);
+    } else {
+      actor.game_task = actor_json.value("game_task", 0);
+    }
     actor.vis_id = actor_json.value("vis_id", 0);
     actor.quat = math::Vector4f(0, 0, 0, 1);
     if (actor_json.find("quat") != actor_json.end()) {
@@ -98,7 +103,7 @@ void add_actors_from_json(const nlohmann::json& json,
         }
 
         if (value.is_array()) {
-          actor.res_lump.add_res(res_from_json_array(key, value));
+          actor.res_lump.add_res(res_from_json_array(key, value, dts));
         }
       }
     }
@@ -159,7 +164,8 @@ size_t generate_inline_array_ambients(DataObjectGenerator& gen,
 
 void add_ambients_from_json(const nlohmann::json& json,
                             std::vector<EntityAmbient>& ambient_list,
-                            u32 base_aid) {
+                            u32 base_aid,
+                            decompiler::DecompilerTypeSystem& dts) {
   for (const auto& ambient_json : json) {
     auto& ambient = ambient_list.emplace_back();
     ambient.aid = ambient_json.value("aid", base_aid + ambient_list.size());
@@ -180,7 +186,7 @@ void add_ambients_from_json(const nlohmann::json& json,
           continue;
         }
         if (value.is_array()) {
-          ambient.res_lump.add_res(res_from_json_array(key, value));
+          ambient.res_lump.add_res(res_from_json_array(key, value, dts));
         }
       }
     }

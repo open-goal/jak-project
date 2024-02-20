@@ -31,6 +31,7 @@ fs::path get_user_home_dir();
 fs::path get_user_config_dir();
 fs::path get_user_settings_dir(GameVersion game_version);
 fs::path get_user_memcard_dir(GameVersion game_version);
+fs::path get_user_screenshots_dir(GameVersion game_version);
 fs::path get_user_misc_dir(GameVersion game_version);
 fs::path get_jak_project_dir();
 
@@ -69,4 +70,5 @@ std::vector<fs::path> sort_filepaths(const std::vector<fs::path>& paths, const b
 /// Will overwrite the destination if it exists
 void copy_file(const fs::path& src, const fs::path& dst);
 std::string make_screenshot_filepath(const GameVersion game_version, const std::string& name = "");
+std::string get_majority_file_line_endings(const std::string& file_contents);
 }  // namespace file_util

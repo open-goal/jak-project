@@ -11,7 +11,7 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) {
+DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) : m_version(version) {
   ts.add_builtin_types(version);
 }
 
@@ -106,6 +106,29 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         // so far, enums are never runtime types so there's no symbol for them.
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
+      }
+    } catch (std::exception& e) {
+      auto info = m_reader.db.get_info_for(o);
+      lg::error("{} when parsing decompiler type file:{}", e.what(), info);
+      throw;
+    }
+  });
+}
+
+void DecompilerTypeSystem::parse_enum_defs(const std::vector<std::string>& file_path) {
+  auto read = m_reader.read_from_file(file_path);
+  auto& data = cdr(read);
+
+  for_each_in_list(data, [&](goos::Object& o) {
+    try {
+      if (car(o).as_symbol() == "defenum") {
+        auto symbol_metadata = DefinitionMetadata();
+        parse_defenum(cdr(o), &ts, &symbol_metadata);
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        auto* rest = &cdr(o);
+        const auto& enum_name = car(*rest).as_symbol();
+        symbol_metadata_map[enum_name.name_ptr] = symbol_metadata;
+        // so far, enums are never runtime types so there's no symbol for them.
       }
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);

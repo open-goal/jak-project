@@ -206,7 +206,7 @@ goos::Object MakeSystem::handle_basename(const goos::Object& form,
   va_check(form, args, {goos::ObjectType::STRING}, {});
   fs::path input(args.unnamed.at(0).as_string()->data);
 
-  return goos::StringObject::make_new(input.filename().u8string());
+  return goos::StringObject::make_new(input.filename().string());
 }
 
 goos::Object MakeSystem::handle_stem(const goos::Object& form,
@@ -216,7 +216,7 @@ goos::Object MakeSystem::handle_stem(const goos::Object& form,
   va_check(form, args, {goos::ObjectType::STRING}, {});
   fs::path input(args.unnamed.at(0).as_string()->data);
 
-  return goos::StringObject::make_new(input.stem().u8string());
+  return goos::StringObject::make_new(input.stem().string());
 }
 
 goos::Object MakeSystem::handle_get_gsrc_path(const goos::Object& form,
@@ -276,7 +276,7 @@ goos::Object MakeSystem::handle_set_gsrc_folder(
   auto src_files = file_util::find_files_recursively(folder_scan, std::regex(".*\\.gc"));
 
   for (const auto& path : src_files) {
-    auto name = file_util::base_name_no_ext(path.u8string());
+    auto name = file_util::base_name_no_ext(path.string());
     auto gsrc_path =
         file_util::convert_to_unix_path_separators(file_util::split_path_at(path, m_gsrc_folder));
     // TODO - this is only "safe" because the current OpenGOAL system requires globally unique

@@ -8,8 +8,7 @@
 #include "common/common_types.h"
 #include "common/versions/versions.h"
 
-// TODO: jak 3 stub
-constexpr PerGameVersion<int> RAMDISK_RPC_ID(0xdeb3, 0xfab2, 0x0);
+constexpr PerGameVersion<int> RAMDISK_RPC_ID(0xdeb3, 0xfab2, 0xfab2);
 constexpr int RAMDISK_RPC_CHANNEL = 2;
 constexpr int RAMDISK_GET_DATA_FNO = 0;
 constexpr int RAMDISK_RESET_AND_LOAD_FNO = 1;

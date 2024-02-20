@@ -140,13 +140,13 @@
   (cond
     ((zero? arg0)
      (let ((t9-0 (method-of-type bot stop-speech)))
-       (t9-0 this (-> this channel) arg1)
+       (t9-0 this (the-as uint (-> this channel)) arg1)
        )
      (countdown (s4-0 3)
        (let ((v1-4 (handle->process (-> this slave-handle s4-0))))
          (when v1-4
            (let ((t9-1 (method-of-type bot stop-speech)))
-             (t9-1 (the-as bot v1-4) (-> v1-4 stack 580) arg1)
+             (t9-1 (the-as bot v1-4) (the-as uint (-> (the-as bot v1-4) channel)) arg1)
              )
            )
          )
@@ -173,7 +173,7 @@
                 (a1-11 (add-process
                          *gui-control*
                          a2-2
-                         (the-as gui-channel (-> a2-2 stack 580))
+                         (-> (the-as bot a2-2) channel)
                          (gui-action play)
                          (-> v1-2 name)
                          -99.0
@@ -188,7 +188,7 @@
           (let ((a1-14 (add-process
                          *gui-control*
                          this
-                         (the-as gui-channel (-> this channel))
+                         (-> this channel)
                          (gui-action play)
                          (-> v1-2 name)
                          -99.0
@@ -205,10 +205,10 @@
   (none)
   )
 
-(defmethod channel-active? ((this hal) (arg0 uint))
+(defmethod channel-active? ((this hal) (arg0 gui-channel))
   "Is the given [[gui-channel]] active?"
   (cond
-    ((zero? arg0)
+    ((= arg0 (gui-channel none))
      (let ((t9-0 (method-of-type bot channel-active?)))
        (if (t9-0 this (-> this channel))
            (return #t)
@@ -218,7 +218,7 @@
        (let ((v1-7 (handle->process (-> this slave-handle s5-0))))
          (when v1-7
            (let ((t9-1 (method-of-type bot channel-active?)))
-             (if (t9-1 (the-as bot v1-7) (-> v1-7 stack 580))
+             (if (t9-1 (the-as bot v1-7) (-> (the-as bot v1-7) channel))
                  (return #t)
                  )
              )
@@ -323,7 +323,7 @@
   (let ((t9-4 (method-of-type bot init-enemy!)))
     (t9-4 this)
     )
-  (set! (-> this channel) (the-as uint 28))
+  (set! (-> this channel) (gui-channel hal))
   (set! (-> this spot-color) (the-as uint #x5000ffff))
   (set! (-> this notice-enemy-dist) 0.0)
   (logior! (-> this focus-status) (focus-status disable))
@@ -504,7 +504,7 @@
   (when (and (not (logtest? (-> self bot-flags) (bot-flags too-far-fail bf09))) (bot-check-too-far self))
     (let ((gp-0 0))
       (countdown (s5-0 3)
-        (let ((s4-0 (enemy-method-120 self 3 gp-0)))
+        (let ((s4-0 (rnd-bit self 3 gp-0)))
           (let ((a0-4 (handle->process (-> self slave-handle s4-0))))
             (if (send-event a0-4 'request 'too-far-fail)
                 (goto cfg-24)

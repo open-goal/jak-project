@@ -16,8 +16,6 @@ void extract_all_levels(const ObjectFileDB& db,
                         const std::vector<std::string>& dgo_names,
                         const std::string& common_name,
                         const Config& config,
-                        bool debug_dump_level,
-                        bool extract_collision,
                         const fs::path& path);
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,

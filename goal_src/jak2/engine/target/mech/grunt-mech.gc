@@ -179,12 +179,12 @@
   )
 
 
-(defmethod track-target! ((this grunt-mech))
+(defmethod common-post ((this grunt-mech))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  ((method-of-type grunt track-target!) this)
+  ((method-of-type grunt common-post) this)
   0
   (none)
   )
@@ -240,7 +240,7 @@
       (when (!= gp-0 -1)
         (let ((s3-1 (-> s4-0 holds gp-0 lower-hold)))
           (when (!= s3-1 -1)
-            (if (and (or (zero? (get-rand-int this 2))
+            (if (and (or (zero? (rnd-int-count this 2))
                          (>= 14336.0 (vector-vector-xz-distance-squared (-> this root trans) (target-pos 0)))
                          )
                      (grunt-mech-info-method-9 s4-0 s3-1 this #t)
@@ -332,7 +332,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((v1-2 self))
       (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag enemy-flag37))))
       )
@@ -347,7 +347,7 @@
     (logclear! (-> self root nav-flags) (nav-flags has-root-sphere))
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
     )
   :trans (behavior ()
@@ -490,8 +490,8 @@
         (vector-normalize! s5-1 1.0)
         (countdown (s4-0 3)
           (let ((s3-0 (new 'stack-no-clear 'vector)))
-            (vector-rotate-around-y! s3-0 s5-1 (get-rand-float-range this -10922.667 10922.667))
-            (when (grunt-mech-method-195 this s3-0 (the-as vector (get-rand-float-range this 16384.0 24576.0)) s5-1)
+            (vector-rotate-around-y! s3-0 s5-1 (rnd-float-range this -10922.667 10922.667))
+            (when (grunt-mech-method-195 this s3-0 (the-as vector (rnd-float-range this 16384.0 24576.0)) s5-1)
               #t
               (goto cfg-16)
               )
@@ -532,14 +532,14 @@
   :event enemy-event-handler
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self root root-prim prim-core collide-as) (collide-spec))
     (stop-looking-at-target! self)
-    (set! (-> self state-timeout) (+ (current-time) (get-rand-int-range self 450 900)))
+    (set! (-> self state-timeout) (+ (current-time) (rnd-int-range self 450 900)))
     (logclear! (-> self root nav-flags) (nav-flags has-root-sphere))
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((v1-3 (-> self root root-prim)))
       (set! (-> v1-3 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-3 prim-core collide-with) (-> self root backup-collide-with))
@@ -561,12 +561,12 @@
     (let ((gp-0 0))
       0
       (until #f
-        (set! gp-0 (enemy-method-120 self 3 (ash 1 gp-0)))
+        (set! gp-0 (rnd-bit self 3 (ash 1 gp-0)))
         (let ((v1-30 gp-0))
           (cond
             ((zero? v1-30)
              (ja-channel-push! 1 (seconds 0.13))
-             (countdown (s5-0 (get-rand-int-range self 1 2))
+             (countdown (s5-0 (rnd-int-range self 1 2))
                (let ((s4-0 #t))
                  (ja-no-eval :group! grunt-mech-head-butt-ja :num! (seek! (ja-aframe 17.0 0) 0.222) :frame-num 0.0)
                  (until (ja-done? 0)
@@ -588,7 +588,7 @@
              )
             ((= v1-30 1)
              (ja-channel-push! 1 (seconds 0.13))
-             (countdown (s5-1 (get-rand-int-range self 1 3))
+             (countdown (s5-1 (rnd-int-range self 1 3))
                (let ((s4-1 #t))
                  (ja-no-eval :group! grunt-mech-punch-left-ja :num! (seek! (ja-aframe 24.0 0) 0.568) :frame-num 0.0)
                  (until (ja-done? 0)
@@ -613,7 +613,7 @@
              )
             (else
               (ja-channel-push! 1 (seconds 0.13))
-              (countdown (s5-2 (get-rand-int-range self 1 3))
+              (countdown (s5-2 (rnd-int-range self 1 3))
                 (let ((s4-2 #t))
                   (ja-no-eval :group! grunt-mech-double-pound-ja :num! (seek! (ja-aframe 30.0 0) 0.111) :frame-num 0.0)
                   (until (ja-done? 0)
@@ -638,7 +638,7 @@
               )
             )
           )
-        (when (= (get-rand-int self 4) 3)
+        (when (= (rnd-int-count self 4) 3)
           (ja-channel-push! 1 (seconds 0.13))
           (ja-no-eval :group! grunt-mech-idle0-ja :num! (seek! max 0.090909) :frame-num 0.0)
           (until (ja-done? 0)
@@ -683,9 +683,11 @@
       (set! (-> v1-1 prim-core collide-as) (-> self root backup-collide-as))
       (set! (-> v1-1 prim-core collide-with) (-> self root backup-collide-with))
       )
-    (let ((v1-2 (-> self nav)))
-      (logclear! (-> v1-2 shape nav-flags) (nav-flags has-extra-sphere))
-      )
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-2 (-> self nav)))
+        (logclear! (-> v1-2 shape nav-flags) (nav-flags has-extra-sphere))
+        ))
     0
     (logior! (-> self root nav-flags) (nav-flags has-root-sphere))
     )
@@ -742,7 +744,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type grunt circling) enter))
-    (set! (-> self state-timeout) (+ (current-time) (get-rand-int-range self 750 1200)))
+    (set! (-> self state-timeout) (+ (current-time) (rnd-int-range self 750 1200)))
     )
   :trans (behavior ()
     (let ((a0-1 (handle->process (-> self focus handle))))
@@ -800,7 +802,7 @@
   :event enemy-event-handler
   :enter (behavior ()
     ((-> (method-of-type grunt-mech mech-post-circling) enter))
-    (set! (-> self state-timeout) (+ (current-time) (get-rand-int-range self 900 1800)))
+    (set! (-> self state-timeout) (+ (current-time) (rnd-int-range self 900 1800)))
     )
   :trans (-> (method-of-type grunt-mech mech-post-circling) trans)
   :code (-> (method-of-type grunt-mech mech-post-circling) code)

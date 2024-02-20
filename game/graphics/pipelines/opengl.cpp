@@ -130,8 +130,9 @@ static int gl_init(GfxGlobalSettings& settings) {
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     }
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+#ifndef __APPLE__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#ifdef __APPLE__
+#else
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 #endif
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -400,8 +401,11 @@ void render_game_frame(int game_width,
     }
     if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
+      options.internal_res_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
       options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.window_framebuffer_width = options.game_res_w;
+      options.window_framebuffer_height = options.game_res_h;
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;

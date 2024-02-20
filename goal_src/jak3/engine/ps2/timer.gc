@@ -7,3 +7,265 @@
 
 ;; DECOMP BEGINS
 
+(defun timer-count ((arg0 timer-bank))
+  "Return a timer's counter value."
+  (#when PC_PORT
+    (when (= arg0 TIMER1_BANK)
+      (return (- (get-bus-clock/256) *timer-reset-value*))
+      )
+    (format 0 "Unknown timer #x~X requested.~%" arg0)
+    )
+  (.sync.l)
+  (let ((v0-0 (-> arg0 count)))
+    (.sync.l)
+    v0-0
+    )
+  )
+
+(defmacro timer1-time ()
+  `(timer-count TIMER1_BANK)
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Interrupt Control
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; cop0 status register "interrupt enable" flag
+;; if cop0 status is needed anywhere else, move this elsewhere
+(defconstant COP0_STATUS_IE (the-as uint #x1))
+
+(defun disable-irq ()
+  "Disable all interrupts. Has no effect on PC Port."
+  (rlet ((status :class gpr :type uint))
+    (let ((status-mask (lognot COP0_STATUS_IE)))
+      (.mfc0 status Status)
+      (logand! status status-mask) ;; should status-mask be replaced directly?
+      (.mtc0 Status status)
+      (.sync.p)
+      )
+    )
+  )
+
+(defun enable-irq ()
+  "Enable all interrupts. Has no effect on PC Port."
+  (rlet ((status :class gpr :type uint))
+    (.mfc0 status Status)
+    (logior! status COP0_STATUS_IE)
+    (.mtc0 Status status)
+    (.sync.p)
+    )
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Stopwatch (CPU clock cycle counting)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun stopwatch-init ((this stopwatch))
+  "Init a stopwatch."
+  (set! (-> this begin-level) 0)
+  (set! (-> this prev-time-elapsed) 0)
+  )
+
+
+(defun stopwatch-reset ((this stopwatch))
+  "Restart a stopwatch's times."
+  (set! (-> this prev-time-elapsed) 0)
+  (when (> (-> this begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> this start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-start ((this stopwatch))
+  "Start a stopwatch from scratch."
+  (when (zero? (-> this begin-level))
+    (set! (-> this begin-level) 1)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> this start-time) count)
+      )
+    )
+  )
+
+(defun stopwatch-stop ((this stopwatch))
+  "Fully stop a stopwatch and save its elapsed time."
+  (when (> (-> this begin-level) 0)
+    (set! (-> this begin-level) 0)
+    (let ((count 0))
+      (let ((count 0))
+        (.mfc0 count Count) ;; wrong register? a typo in a rlet? who knows.
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+        (+! (-> this prev-time-elapsed) (- count (-> this start-time)))
+        )
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-begin ((this stopwatch))
+  "Begin a stopwatch level, and starts it if it hasn't yet."
+  (when (zero? (-> this begin-level))
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+      (set! (-> this start-time) count)
+      )
+    )
+  (+! (-> this begin-level) 1)
+  )
+
+
+(defun stopwatch-end ((this stopwatch))
+  "End a stopwatch level. Stops the stopwatch if it's back to level zero.
+   There is no guard against ending a stopwatch too many times, and a negative level
+   will cause errors!"
+  (+! (-> this begin-level) -1)
+  (when (zero? (-> this begin-level))
+    (set! (-> this begin-level) 0)
+    (let ((count 0))
+      (.mfc0 count Count)
+      (#when PC_PORT
+        (set! count (the int (get-cpu-clock)))
+        )
+
+      (+! (-> this prev-time-elapsed) (- count (-> this start-time)))
+      )
+    )
+  (none)
+  )
+
+(defun stopwatch-elapsed-ticks ((this stopwatch))
+  "Returns the elapsed time so far (in clock cycles) of a stopwatch."
+  (let ((elapsed (-> this prev-time-elapsed)))
+    (when (> (-> this begin-level) 0)
+      (let ((count 0))
+        (.mfc0 count Count)
+        (#when PC_PORT
+          (set! count (the int (get-cpu-clock)))
+          )
+
+        (+! elapsed (- count (-> this start-time)))
+        (set! count elapsed) ;; ??
+        )
+      )
+    elapsed
+    )
+  )
+
+(defglobalconstant EE_SECONDS_PER_TICK (/ 1.0 300000000)) ;; 300MHz is a "decent enough" estimate
+(defmacro cpu-ticks-to-seconds (ticks)
+  `(* ,EE_SECONDS_PER_TICK ,ticks)
+  )
+(defun stopwatch-elapsed-seconds ((this stopwatch))
+  "Returns the elapsed time so far (in seconds) of a stopwatch"
+  (cpu-ticks-to-seconds (stopwatch-elapsed-ticks this))
+  )
+
+(defmethod update-rates! ((this clock) (rate float))
+  "Recompute all clock values for the given clock ratio (arg0)."
+  (set! (-> this clock-ratio) rate)
+  (let ((f0-6 (if (nonzero? *display*)
+                  (* (-> *display* time-factor) (-> *display* dog-ratio) rate)
+                  (* 5.0 rate)
+                  )
+              )
+        )
+    (set! (-> this time-adjust-ratio) (* 0.2 f0-6))
+    )
+  (set! (-> this seconds-per-frame) (* 0.016666668 (-> this time-adjust-ratio)))
+  (set! (-> this frames-per-second) (if (= (-> this time-adjust-ratio) 0.0)
+                                        0.0
+                                        (* 60.0 (/ 1.0 (-> this time-adjust-ratio)))
+                                        )
+        )
+  ;; og:preserve-this removed number cast
+  (let* ((v1-12 (- (-> this frame-counter) (-> this old-frame-counter)))
+         (f0-14 (the-as float v1-12))
+         (f1-9 (* 0.2 (the float v1-12)))
+         )
+    (set-vector! (-> this sparticle-data) f0-14 (* 5.0 f1-9) f1-9 f1-9)
+    )
+  rate
+  )
+
+(defmethod advance-by! ((this clock) (arg0 float))
+  "Advance the clock by arg0 timeframes (as a float).
+   Both counters keep a separate fractional and integer counter."
+  (the int (+ arg0 (-> this accum)))
+  (+! (-> this integral-accum) arg0)
+  (set! (-> this old-integral-frame-counter) (-> this integral-frame-counter))
+  (while (>= (-> this integral-accum) (-> *display* time-factor))
+    (+! (-> this integral-frame-counter) 1)
+    (set! (-> this integral-accum) (- (-> this integral-accum) (-> *display* time-factor)))
+    )
+  (let ((v1-7 (the int (+ arg0 (-> this accum)))))
+    (set! (-> this accum) (- (+ arg0 (-> this accum)) (the float v1-7)))
+    (set! (-> this old-frame-counter) (-> this frame-counter))
+    (+! (-> this frame-counter) v1-7)
+    )
+  (update-rates! this (-> this clock-ratio))
+  this
+  )
+
+(defmethod tick! ((this clock))
+  "Per-game-frame clock tick forward."
+  (if (not (logtest? (-> this mask) (-> *kernel-context* prevent-from-run)))
+      (advance-by! this (* (-> *display* time-factor) (-> *display* dog-ratio) (-> this clock-ratio)))
+      (set! (-> this sparticle-data x) 0.0)
+      )
+  this
+  )
+
+(defmethod reset! ((this clock))
+  "Reset a clock to 1000s, rate of 1."
+  (set! (-> this frame-counter) (seconds 1000))
+  (set! (-> this integral-frame-counter) (seconds 1000))
+  (set! (-> this accum) 0.0)
+  (set! (-> this old-frame-counter) (+ (-> this frame-counter) -1))
+  (set! (-> this old-integral-frame-counter) (+ (-> this integral-frame-counter) -1))
+  (update-rates! this 1.0)
+  0
+  (none)
+  )
+
+(defmethod save! ((this clock) (arg0 (pointer uint64)))
+  "Save a clock's state to a buffer, return bytes used."
+  (set! (-> arg0 0) (the-as uint (-> this frame-counter)))
+  (set! (-> arg0 1) (the-as uint (-> this integral-frame-counter)))
+  16
+  )
+
+(defmethod load! ((this clock) (arg0 (pointer uint64)))
+  "Load a clock's state from a buffer, return bytes used."
+  (set! (-> this frame-counter) (the-as time-frame (-> arg0 0)))
+  (set! (-> this integral-frame-counter) (the-as time-frame (-> arg0 1)))
+  (set! (-> this accum) 0.0)
+  (set! (-> this integral-accum) 0.0)
+  (set! (-> this old-frame-counter) (-> this frame-counter))
+  (set! (-> this old-integral-frame-counter) (-> this integral-frame-counter))
+  16
+  )
+
+(defmethod copy! ((this clock) (arg0 clock))
+  "Copy the frame counters and ratio from arg0."
+  (set! (-> this frame-counter) (-> arg0 frame-counter))
+  (set! (-> this integral-frame-counter) (-> arg0 integral-frame-counter))
+  (set! (-> this accum) (-> arg0 accum))
+  (set! (-> this integral-accum) (-> arg0 integral-accum))
+  (set! (-> this old-frame-counter) (-> arg0 old-frame-counter))
+  (set! (-> this old-integral-frame-counter) (-> arg0 old-integral-frame-counter))
+  (set! (-> this clock-ratio) (-> arg0 clock-ratio))
+  this
+  )

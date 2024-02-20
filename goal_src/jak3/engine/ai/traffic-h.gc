@@ -5,5 +5,127 @@
 ;; name in dgo: traffic-h
 ;; dgos: GAME
 
+(declare-type traffic-manager process)
+(declare-type vehicle-manager process)
+(declare-type nav-mesh basic)
+(declare-type nav-branch structure)
+
+;; +++traffic-h:traffic-spawn-flags
+(defenum traffic-spawn-flags
+  :type uint32
+  :bitfield #t
+  )
+;; ---traffic-h:traffic-spawn-flags
+
+;; +++traffic-h:traffic-type
+(defenum traffic-type
+  :type uint8
+  (tt17 17)
+  (tt18 18)
+  (tt19 19)
+  (tt20 20)
+  (tt21 21)
+  (tt22 22)
+  (tt23 23)
+  (tt25 25)
+  (tt27 27)
+  (tt28 28)
+  (invalid #xffffffff)
+  )
+;; ---traffic-h:traffic-type
+
 ;; DECOMP BEGINS
 
+(define *traffic-manager* (the-as traffic-manager #f))
+
+(define *vehicle-manager* (the-as vehicle-manager #f))
+
+(deftype traffic-danger-info (structure)
+  ((sphere         sphere  :inline)
+   (velocity       vector  :inline)
+   (handle         handle)
+   (notify-radius  float)
+   (danger-level   float)
+   (decay-rate     float)
+   (flags          uint8)
+   (danger-type    uint8)
+   )
+  )
+
+
+(deftype traffic-suppression-params (structure)
+  ((bbox      bounding-box  :inline)
+   (duration  time-frame)
+   (id        int8)
+   )
+  (:methods
+    (try-creating-new-suppression-box (_type_) symbol)
+    (create-or-update-suppression-box (_type_) symbol)
+    (has-valid-id? (_type_) symbol)
+    (kill-suppression-box (_type_) none)
+    )
+  )
+
+
+(defmethod has-valid-id? ((this traffic-suppression-params))
+  (!= (-> this id) -1)
+  )
+
+(deftype traffic-object-spawn-params (structure)
+  ((object-type    uint8)
+   (behavior       uint64)
+   (id             uint32)
+   (nav-mesh       nav-mesh)
+   (nav-branch     nav-branch)
+   (position       vector      :inline)
+   (rotation       quaternion  :inline)
+   (velocity       vector      :inline)
+   (handle         handle)
+   (handle-parent  uint64)
+   (guard-type     uint8)
+   (user-data      uint32)
+   (entity         basic)
+   (flags          traffic-spawn-flags)
+   (proc           process)
+   )
+  )
+
+
+(deftype traffic-info (structure)
+  ((ctywide-level                          basic)
+   (vehicle-level                          basic)
+   (race-vehicle-level                     basic)
+   (traffic-object-levels                  level         29)
+   (vehicle-levels                         level         44)
+   (traffic-object-type-from-vehicle-type  traffic-type  44)
+   (restore-speech-callback                basic)
+   )
+  )
+
+
+(define *traffic-info* (new 'static 'traffic-info
+                         :ctywide-level #f
+                         :vehicle-level #f
+                         :race-vehicle-level #f
+                         :restore-speech-callback #f
+                         )
+        )
+
+(let ((v1-5 *traffic-info*))
+  (dotimes (a0-9 29)
+    (set! (-> v1-5 traffic-object-levels a0-9) #f)
+    )
+  (dotimes (a0-12 44)
+    (set! (-> v1-5 vehicle-levels a0-12) #f)
+    (set! (-> v1-5 traffic-object-type-from-vehicle-type a0-12) (traffic-type invalid))
+    )
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 0) (traffic-type tt17))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 1) (traffic-type tt18))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 2) (traffic-type tt19))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 3) (traffic-type tt20))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 4) (traffic-type tt21))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 5) (traffic-type tt22))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 6) (traffic-type tt28))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 7) (traffic-type tt25))
+  (set! (-> v1-5 traffic-object-type-from-vehicle-type 11) (traffic-type tt27))
+  )

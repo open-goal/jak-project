@@ -1,0 +1,227 @@
+
+(defun target-function ((a0 uint) (a1 uint) (a2 uint) (a3 uint) (a4 uint) (a5 uint))
+  (format #t "TARGET FUNCTION ~D ~D ~D~%" a0 a1 a2)
+  (format #t "~D ~D ~D~%" a3 a4 a5)
+
+  (let ((stack-arr (new 'stack-no-clear 'array 'uint8 12)))
+    (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
+    )
+
+  (dotimes (i 10)
+    (format #t "proc1: ~D~%" i)
+    (when (> i 4)
+      (format #t "DEACTIVATE PROC 1~%")
+      (process-deactivate)
+      )
+    (suspend)
+    )
+  )
+
+(define-extern recurse (function int (pointer int32) int))
+(defun recurse ((i int) (ptr (pointer int32)))
+  (if (> i 0)
+      (recurse (- i 1) ptr)
+      (suspend)
+      )
+  (set! (-> ptr) (+ (-> ptr) 1))
+  1
+  )
+
+(defun target-function-2 ()
+  (let ((stack-var (new 'stack-no-clear 'array 'int32 1)))
+    (set! (-> stack-var) 0)
+    (countdown (i 10)
+      (format #t "proc2: ~D~%" (-> stack-var))
+      (recurse 5 stack-var)
+      )
+    )
+
+  )
+
+(defun kernel-test ()
+  (define test-process (get-process *nk-dead-pool* process 1024 #f))
+
+  (activate test-process *active-pool* "test-proc" *kernel-dram-stack*)
+
+
+  (set-to-run (-> test-process main-thread)
+              target-function
+              1 2 3 4 5 6
+              )
+
+  (define test-process-2 (get-process *nk-dead-pool* process 1024 #f))
+  ;; test that the kernel fakes having process stacks on the scratchpad.
+  (activate test-process-2 *active-pool* "test-2" (the pointer #x70004000))
+  (set-to-run (-> test-process-2 main-thread)
+              target-function-2
+              0 0 0 0 0 0)
+  0
+  )
+
+(defun check-current-proc-catch-rbx ()
+  ;; (format 0 "last rbx = ~X~%" *last-rbx*)
+  (with-pp
+    (format 0 "PP = ~X~%" pp)
+    (let ((frame (-> pp stack-frame-top)))
+      (format 0 "FRAME0: ~A~%" frame)
+
+      (while frame
+        (format 0 "FRAME: ~A~%" frame)
+        (when (= (-> frame type) catch-frame)
+          (format 0 "found upcoming protect frame! ~A: ~X~%"
+                  (-> (the catch-frame frame) name)
+                  (-> (the catch-frame frame) rreg 0)
+                  )
+          )
+        (set! frame (-> frame next))
+        )
+      )
+    )
+  )
+
+(defun init-child-proc (a0 a1 a2 a3 a4 a5)
+  (format #t "Args: ~D ~D ~D~%" a0 a1 a2)
+  (format #t "~D ~D ~D~%" a3 a4 a5)
+  (let ((stack-arr (new 'stack-no-clear 'array 'uint8 12)))
+    (format #t "Stack Alignemnt ~D/16~%" (logand 15 (the uint stack-arr)))
+    )
+  (when (eq? a0 (the int 0))
+    (format 0 "doing child proc deactivate~%")
+    (check-current-proc-catch-rbx)
+    (process-deactivate)
+    )
+  'init-child-proc-result
+  )
+
+
+(defun initializer-process-function (a0)
+  (format 0 "ipf: ~D~%" a0)
+  (let ((child-proc (get-process *nk-dead-pool* process 1024 #f)))
+    ;; let's go
+    (activate child-proc *active-pool* "child-proc" *kernel-dram-stack*)
+    (format 0 "child-proc activated...~%")
+    (let ((result (run-function-in-process child-proc init-child-proc a0 2 3 4 5 6)))
+      (format 0 "child-proc reuslt: ~D~%" result)
+      (format #t "run-function-in-process result: ~A~%" result)
+      )
+    )
+
+  (format 0 "proc-deactivate ~D~%" a0)
+  (rlet ((pp :reg r13 :reset-here #t :type process))
+        ;; (deactivate pp)
+        (format 0 "  proc is: #x~X~%" pp)
+        )
+  (check-current-proc-catch-rbx)
+  (process-deactivate)
+  (format 0 "proc-deactivate end?~%")
+
+  )
+
+(defun kernel-test-2 ()
+  (define initalizer-process (get-process *nk-dead-pool* process 1024 #f))
+  (activate initalizer-process *active-pool* "initializer-proc" *kernel-dram-stack*)
+  (set-to-run (-> initalizer-process main-thread)
+              initializer-process-function
+              0 0 0 0 0 0
+              )
+  (define initalizer-process-2 (get-process *nk-dead-pool* process 1024 #f))
+  (activate initalizer-process-2 *active-pool* "initializer-proc-2" *kernel-dram-stack*)
+  (set-to-run (-> initalizer-process-2 main-thread)
+              initializer-process-function
+              1 0 0 0 0 0
+              )
+  (format 0 "kt2 return~%")
+  0
+  )
+
+
+(defstate die-state (process)
+    :enter (lambda () (format #t "enter die~%") (none))
+    :exit (lambda () (format #t "exit die~%") (none))
+    :code (lambda ()
+            (format #t "time to die!~%")
+            (process-deactivate)
+            (format #t "don't see me~%")
+            )
+    )
+
+(defun xmm-check-code (ax ay az aw)
+  "This function relies on saved xmm register being backed up on a context switch"
+  ;; (declare (print-asm))
+  ;; compiler will put these in xmm8 and xmm9 to keep them from being clobbered
+  (let ((x 12.34)
+        (y 45.63))
+    (dotimes (i 3)
+      (format #t "run xmm-check ~f ~f ~D ~D ~D ~D~%" x y ax ay az aw)
+      ;; should preserve xmm8 and xmm9
+      (suspend)
+      )
+    ;; get the wreck process and make it go to die state.
+    (go-process (process-by-name "wreck-proc" *active-pool*) die-state)
+    (go die-state)
+    (format #t "unreachable~%")
+    )
+  )
+
+(defun xmm-wreck-code (ax ay az aw)
+  "This function intentionally overwrites xmm8 and xmm9 and suspends"
+  (while #t
+    (rlet ((x :class fpr :type float :reg xmm8)
+           (y :class fpr :type float :reg xmm9))
+      (set! x 99.0)
+      (set! y 101.0)
+      (format #t "wreck: ~D ~D ~D ~D~%" ax ay az aw)
+      (suspend)
+      (set! x (+ x 1.0))
+      (set! y (+ y 1.0))
+      )
+    )
+  )
+
+;; a state.
+(defstate xmm-check-state (process)
+    :enter (lambda (x y z w) (format #t "enter check: ~D ~D ~D ~D~%" x y z w) (none))
+    :exit (lambda () (format #t "exit check~%") (none))
+    :code xmm-check-code
+    )
+
+(defstate xmm-wreck-state (process)
+    :enter (lambda (x y z w) (format #t "enter wreck: ~D ~D ~D ~D~%" x y z w) (none))
+    :exit (lambda () (format #t "exit wreck~%") (none))
+    :code xmm-wreck-code
+    )
+
+(defun state-test ()
+  (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
+    (activate proc *active-pool* "check-proc" *kernel-dram-stack*)
+    (run-now-in-process proc (lambda (x y z w) (go xmm-check-state x y z w))
+                        9 8 7 6)
+    )
+
+  (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
+    (activate proc *active-pool* "wreck-proc" *kernel-dram-stack*)
+    (run-next-time-in-process proc (lambda (x y z w) (go xmm-wreck-state x y z w))
+                              3 4 5 6)
+    )
+  0
+  )
+
+(defun throw-backup-test ()
+  (rlet ((x :reg xmm10 :class fpr :type float))
+    (set! x 10.10)
+    (let ((proc (get-process *nk-dead-pool* process 1024 #f)))
+      (activate proc *active-pool* "asdf" *kernel-dram-stack*)
+      (format #t "value now is ~f~%" x)
+      (run-now-in-process proc (lambda ()
+                                 (rlet ((x2 :reg xmm10 :class fpr :type float))
+                                   (set! x2 -1.0)
+                                   )
+                                 ;; this will throw back.
+                                 (process-deactivate)
+                                 )
+                          )
+      (format #t "now its ~f~%" x)
+
+      )
+    )
+  )

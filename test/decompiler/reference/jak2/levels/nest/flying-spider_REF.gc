@@ -206,16 +206,16 @@
 (defstate ambush (flying-spider)
   :virtual #t
   :enter (behavior ()
-    (when (logtest? (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
-      (logclear! (-> self enemy-flags) (enemy-flag auto-reset-penetrate))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-notice))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-notice))
       (let ((gp-0 (-> self on-notice)))
         (if gp-0
             (script-eval gp-0 :vector (-> self root trans))
             )
         )
       )
-    (logclear! (-> self enemy-flags) (enemy-flag lock-focus death-start))
-    (set! (-> self path-du) (get-rand-float-range self 0.2 0.5))
+    (logclear! (-> self enemy-flags) (enemy-flag look-at-focus look-at-move-dest))
+    (set! (-> self path-du) (rnd-float-range self 0.2 0.5))
     (set-vector! (-> self root scale) 0.0 0.0 0.0 0.0)
     )
   :trans (behavior ()
@@ -286,7 +286,7 @@
     )
   :post (behavior ()
     (let ((a1-0 (new 'stack-no-clear 'collide-query)))
-      (enemy-method-125 self a1-0 (-> self root root-prim prim-core collide-with) 8192.0 81920.0 1024.0)
+      (ground-pat-set! self a1-0 (-> self root root-prim prim-core collide-with) 8192.0 81920.0 1024.0)
       )
     (flying-spider-method-182 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
     (nav-enemy-falling-post)
@@ -536,14 +536,14 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (dispose! self)
+    (dying self)
     (set-time! (-> self state-time))
     (set! (-> self hit-points) 0)
     (enemy-method-103 self)
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.075))
-    (let ((f30-0 (get-rand-float-range self 0.8 1.2)))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
       (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -575,15 +575,15 @@
     (('hit 'hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (cond
@@ -596,7 +596,7 @@
                                                    )
                             )
                        )
-                  (zero? (get-rand-int this 3))
+                  (zero? (rnd-int-count this 3))
                   (let ((f0-0 (vector-vector-distance-squared (-> this root trans) (target-pos 0)))
                         (f1-0 32768.0)
                         )
@@ -636,19 +636,19 @@
   )
 
 ;; definition for method 55 of type flying-spider
-(defmethod track-target! ((this flying-spider))
+(defmethod common-post ((this flying-spider))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  ((method-of-type nav-enemy track-target!) this)
+  ((method-of-type nav-enemy common-post) this)
   (none)
   )
 
 ;; definition for method 125 of type flying-spider
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs pat-surface.
-(defmethod enemy-method-125 ((this flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
+(defmethod ground-pat-set! ((this flying-spider) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
   (the-as
     pat-surface
     (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
