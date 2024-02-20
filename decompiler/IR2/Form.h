@@ -1661,6 +1661,7 @@ class DefstateElement : public FormElement {
   };
   DefstateElement(const std::string& process_type,
                   const std::string& state_name,
+                  const std::string& parent_name,
                   const std::vector<Entry>& entries,
                   bool is_virtual,
                   bool is_override);
@@ -1680,6 +1681,7 @@ class DefstateElement : public FormElement {
  private:
   std::string m_process_type;
   std::string m_state_name;
+  std::string m_parent_name;
   std::vector<Entry> m_entries;
   bool m_is_virtual = false;
   bool m_is_override = false;
