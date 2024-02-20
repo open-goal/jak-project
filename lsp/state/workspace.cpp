@@ -408,32 +408,12 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
 void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
                                            const std::string& line,
                                            const bool in_opengoal_block) {
-  std::regex unnamed_variables_regex(
-      "(?:(?:arg\\d+)|(?:f\\d+|at|v[0-1]|a[0-3]|t[0-9]|s[0-7]|k[0-1]|gp|sp|sv|fp|ra)\\-\\d+)");
   std::regex info_regex(";; INFO: (.*)");
   std::regex warn_regex(";; WARN: (.*)");
   std::regex error_regex(";; ERROR: (.*)");
   std::smatch info_matches;
   std::smatch warn_matches;
   std::smatch error_matches;
-
-  if (in_opengoal_block) {
-    for (auto regex_iterator =
-             std::sregex_iterator(line.begin(), line.end(), unnamed_variables_regex);
-         regex_iterator != std::sregex_iterator(); ++regex_iterator) {
-      std::smatch match = *regex_iterator;
-      LSPSpec::Diagnostic new_diag;
-      new_diag.m_severity = LSPSpec::DiagnosticSeverity::Warning;
-      new_diag.m_message = fmt::format("{} - Unnamed variable", match.str());
-      LSPSpec::Range diag_range;
-      diag_range.m_start = {line_num_zero_based, (u32)match.position(0)};
-      diag_range.m_end = {line_num_zero_based,
-                          diag_range.m_start.m_character + (u32)match.length()};
-      new_diag.m_range = diag_range;
-      new_diag.m_source = "OpenGOAL LSP";
-      m_diagnostics.push_back(new_diag);
-    }
-  }
 
   LSPSpec::Range diag_range;
   diag_range.m_start = {line_num_zero_based, 0};
