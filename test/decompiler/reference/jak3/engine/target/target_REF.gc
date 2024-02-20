@@ -1961,11 +1961,11 @@
         (delete-back-vel)
         )
     (set! (-> self control mod-surface) *walk-mods*)
-    (let ((s5-0 (method-of-object (-> self water) water-control-method-11)))
+    (start-bobbing!
+      (-> self water)
       (lerp-scale 0.0 4096.0 (-> self control ground-impact-vel) 40960.0 102400.0)
       600
       1500
-      (s5-0)
       )
     (when (and (using-gun? self) (let ((v1-35 (-> self water flags)))
                                    (and (not (and (logtest? (water-flag touch-water) v1-35)
@@ -2691,17 +2691,18 @@
             (-> *TARGET-bank* attack-jump-height-max)
             )
           )
-      (when (and (logtest? (water-flag touch-water) (-> self water flags))
-                 (zero? (mod (- (current-time) (-> self state-time)) 21))
-                 )
-        (let ((s5-0 (method-of-object (-> self water) water-control-method-13)))
-          #x3f19999a
-          (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg neckB))
-          0
-          (-> self control transv)
-          (s5-0)
+      (if (and (logtest? (water-flag touch-water) (-> self water flags))
+               (zero? (mod (- (current-time) (-> self state-time)) 21))
+               )
+          (spawn-ripples
+            (-> self water)
+            0.6
+            (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node jakb-lod0-jg neckB))
+            0
+            (-> self control transv)
+            #f
+            )
           )
-        )
       (when (and (= (-> self fact eco-type) 2) (>= (-> self fact eco-level) 1.0))
         (do-effect (-> self skel effect) (the-as symbol "group-red-eco-spinkick") (ja-frame-num 0) 28)
         (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 153 (seconds 0.1))
