@@ -22,6 +22,16 @@ InputManager::InputManager()
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("input_manager::init");
+    {
+      auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
+      // initializing the controllers on startup can sometimes take a very long time
+      // so we isolate that to here instead
+      if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
+        sdl_util::log_error(
+            "Could not initialize SDL Controller support, controllers will not work!");
+      }
+    }
+
     // Update to latest controller DB file
     std::string mapping_path =
         (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
