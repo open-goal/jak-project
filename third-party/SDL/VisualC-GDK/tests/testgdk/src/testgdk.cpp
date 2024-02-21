@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -383,7 +383,7 @@ main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO | SDL_INIT_AUDIO);
-    if (state == NULL) {
+    if (!state) {
         return 1;
     }
 
@@ -446,7 +446,7 @@ main(int argc, char *argv[])
     /* Create the windows, initialize the renderers, and load the textures */
     sprites =
         (SDL_Texture **) SDL_malloc(state->num_windows * sizeof(*sprites));
-    if (sprites == NULL) {
+    if (!sprites) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory!\n");
         quit(2);
     }
@@ -461,7 +461,7 @@ main(int argc, char *argv[])
 
     soundname = GetResourceFilename(argc > 1 ? argv[1] : NULL, "sample.wav");
 
-    if (soundname == NULL) {
+    if (!soundname) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s\n", SDL_GetError());
         quit(1);
     }

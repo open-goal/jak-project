@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_EMSCRIPTEN
+#ifdef SDL_VIDEO_DRIVER_EMSCRIPTEN
 
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
@@ -48,7 +48,7 @@ static SDL_Cursor *Emscripten_CreateCursorFromString(const char *cursor_str, SDL
     cursor = SDL_calloc(1, sizeof(SDL_Cursor));
     if (cursor) {
         curdata = (Emscripten_CursorData *)SDL_calloc(1, sizeof(*curdata));
-        if (curdata == NULL) {
+        if (!curdata) {
             SDL_OutOfMemory();
             SDL_free(cursor);
             return NULL;
@@ -78,7 +78,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
 
     conv_surf = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_ABGR8888, 0);
 
-    if (conv_surf == NULL) {
+    if (!conv_surf) {
         return NULL;
     }
 
@@ -194,7 +194,7 @@ static void Emscripten_FreeCursor(SDL_Cursor *cursor)
     if (cursor) {
         curdata = (Emscripten_CursorData *)cursor->driverdata;
 
-        if (curdata != NULL) {
+        if (curdata) {
             if (curdata->is_custom) {
                 SDL_free((char *)curdata->system_cursor);
             }
@@ -247,7 +247,7 @@ static int Emscripten_SetRelativeMouseMode(SDL_bool enabled)
     /* TODO: pointer lock isn't actually enabled yet */
     if (enabled) {
         window = SDL_GetMouseFocus();
-        if (window == NULL) {
+        if (!window) {
             return -1;
         }
 

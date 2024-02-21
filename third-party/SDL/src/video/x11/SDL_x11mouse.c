@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_X11
+#ifdef SDL_VIDEO_DRIVER_X11
 
 #include <X11/cursorfont.h>
 #include "SDL_x11video.h"
@@ -80,7 +80,7 @@ static SDL_Cursor *X11_CreateDefaultCursor()
     return cursor;
 }
 
-#if SDL_VIDEO_DRIVER_X11_XCURSOR
+#ifdef SDL_VIDEO_DRIVER_X11_XCURSOR
 static Cursor X11_CreateXCursorCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
     Display *display = GetDisplay();
@@ -88,7 +88,7 @@ static Cursor X11_CreateXCursorCursor(SDL_Surface *surface, int hot_x, int hot_y
     XcursorImage *image;
 
     image = X11_XcursorImageCreate(surface->w, surface->h);
-    if (image == NULL) {
+    if (!image) {
         SDL_OutOfMemory();
         return None;
     }
@@ -121,13 +121,13 @@ static Cursor X11_CreatePixmapCursor(SDL_Surface *surface, int hot_x, int hot_y)
     size_t width_bytes = ((surface->w + 7) & ~((size_t)7)) / 8;
 
     data_bits = SDL_calloc(1, surface->h * width_bytes);
-    if (data_bits == NULL) {
+    if (!data_bits) {
         SDL_OutOfMemory();
         return None;
     }
 
     mask_bits = SDL_calloc(1, surface->h * width_bytes);
-    if (mask_bits == NULL) {
+    if (!mask_bits) {
         SDL_free(data_bits);
         SDL_OutOfMemory();
         return None;
@@ -204,7 +204,7 @@ static SDL_Cursor *X11_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
     if (cursor) {
         Cursor x11_cursor = None;
 
-#if SDL_VIDEO_DRIVER_X11_XCURSOR
+#ifdef SDL_VIDEO_DRIVER_X11_XCURSOR
         if (SDL_X11_HAVE_XCURSOR) {
             x11_cursor = X11_CreateXCursorCursor(surface, hot_x, hot_y);
         }
@@ -328,7 +328,7 @@ static void WarpMouseInternal(Window xwindow, const int x, const int y)
 {
     SDL_VideoData *videodata = (SDL_VideoData *)SDL_GetVideoDevice()->driverdata;
     Display *display = videodata->display;
-#if SDL_VIDEO_DRIVER_X11_XINPUT2
+#ifdef SDL_VIDEO_DRIVER_X11_XINPUT2
     int deviceid = 0;
     if (X11_Xinput2IsInitialized()) {
         /* It seems XIWarpPointer() doesn't work correctly on multi-head setups:
@@ -354,7 +354,7 @@ static void X11_WarpMouse(SDL_Window *window, int x, int y)
 {
     SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
 
-#if SDL_VIDEO_DRIVER_X11_XFIXES
+#ifdef SDL_VIDEO_DRIVER_X11_XFIXES
     /* If we have no barrier, we need to warp */
     if (data->pointer_barrier_active == SDL_FALSE) {
         WarpMouseInternal(data->xwindow, x, y);
@@ -419,7 +419,7 @@ static Uint32 X11_GetGlobalMouseState(int *x, int *y)
     if (videodata->global_mouse_changed) {
         for (i = 0; i < num_screens; i++) {
             SDL_DisplayData *data = (SDL_DisplayData *)SDL_GetDisplayDriverData(i);
-            if (data != NULL) {
+            if (data) {
                 Window root, child;
                 int rootx, rooty, winx, winy;
                 unsigned int mask;
@@ -476,7 +476,7 @@ void X11_QuitMouse(_THIS)
     SDL_XInput2DeviceInfo *i;
     SDL_XInput2DeviceInfo *next;
 
-    for (i = data->mouse_device_info; i != NULL; i = next) {
+    for (i = data->mouse_device_info; i; i = next) {
         next = i->next;
         SDL_free(i);
     }

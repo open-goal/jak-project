@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,7 @@
 #include "SDL_events_c.h"
 #include "../SDL_hints_c.h"
 #include "../timer/SDL_timer_c.h"
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
 #include "../joystick/SDL_joystick_c.h"
 #endif
 #include "../video/SDL_sysvideo.h"
@@ -98,7 +98,7 @@ static struct
     SDL_SysWMEntry *wmmsg_free;
 } SDL_EventQ = { NULL, SDL_FALSE, { 0 }, 0, NULL, NULL, NULL, NULL, NULL };
 
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
 
 static SDL_bool SDL_update_joysticks = SDL_TRUE;
 
@@ -119,7 +119,7 @@ static void SDLCALL SDL_AutoUpdateJoysticksChanged(void *userdata, const char *n
 
 #endif /* !SDL_JOYSTICK_DISABLED */
 
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
 
 static SDL_bool SDL_update_sensors = SDL_TRUE;
 
@@ -425,6 +425,9 @@ static void SDL_LogEvent(const SDL_Event *event)
         SDL_EVENT_CASE(SDL_CONTROLLERDEVICEREMAPPED)
         PRINT_CONTROLLERDEV_EVENT(event);
         break;
+        SDL_EVENT_CASE(SDL_CONTROLLERSTEAMHANDLEUPDATED)
+        PRINT_CONTROLLERDEV_EVENT(event);
+        break;
 #undef PRINT_CONTROLLERDEV_EVENT
 
 #define PRINT_CTOUCHPAD_EVENT(event)                                                                                     \
@@ -621,7 +624,7 @@ int SDL_StartEventLoop(void)
      */
 
     /* Create the lock and set ourselves active */
-#if !SDL_THREADS_DISABLED
+#ifndef SDL_THREADS_DISABLED
     if (!SDL_EventQ.lock) {
         SDL_EventQ.lock = SDL_CreateMutex();
         if (SDL_EventQ.lock == NULL) {
@@ -737,7 +740,7 @@ static void SDL_CutEvent(SDL_EventEntry *entry)
     SDL_AtomicAdd(&SDL_EventQ.count, -1);
 }
 
-static int SDL_SendWakeupEvent()
+static int SDL_SendWakeupEvent(void)
 {
     SDL_VideoDevice *_this = SDL_GetVideoDevice();
     if (_this == NULL || !_this->SendWakeupEvent) {
@@ -922,14 +925,14 @@ static void SDL_PumpEventsInternal(SDL_bool push_sentinel)
         _this->PumpEvents(_this);
     }
 
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
     /* Check for joystick state change */
     if (SDL_update_joysticks) {
         SDL_JoystickUpdate();
     }
 #endif
 
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
     /* Check for sensor state change */
     if (SDL_update_sensors) {
         SDL_SensorUpdate();
@@ -952,7 +955,7 @@ static void SDL_PumpEventsInternal(SDL_bool push_sentinel)
     }
 }
 
-void SDL_PumpEvents()
+void SDL_PumpEvents(void)
 {
     SDL_PumpEventsInternal(SDL_FALSE);
 }
@@ -964,16 +967,16 @@ int SDL_PollEvent(SDL_Event *event)
     return SDL_WaitEventTimeout(event, 0);
 }
 
-static SDL_bool SDL_events_need_periodic_poll()
+static SDL_bool SDL_events_need_periodic_poll(void)
 {
     SDL_bool need_periodic_poll = SDL_FALSE;
 
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
     need_periodic_poll =
         SDL_WasInit(SDL_INIT_JOYSTICK) && SDL_update_joysticks;
 #endif
 
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
     need_periodic_poll = need_periodic_poll ||
                          (SDL_WasInit(SDL_INIT_SENSOR) && SDL_update_sensors);
 #endif
@@ -1049,18 +1052,18 @@ static int SDL_WaitEventTimeout_Device(_THIS, SDL_Window *wakeup_window, SDL_Eve
     return 0;
 }
 
-static SDL_bool SDL_events_need_polling()
+static SDL_bool SDL_events_need_polling(void)
 {
     SDL_bool need_polling = SDL_FALSE;
 
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
     need_polling =
         SDL_WasInit(SDL_INIT_JOYSTICK) &&
         SDL_update_joysticks &&
         (SDL_NumJoysticks() > 0);
 #endif
 
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
     need_polling = need_polling ||
                    (SDL_WasInit(SDL_INIT_SENSOR) && SDL_update_sensors && (SDL_NumSensors() > 0));
 #endif
@@ -1342,10 +1345,10 @@ Uint8 SDL_EventState(Uint32 type, int state)
             SDL_disabled_events[hi]->bits[lo / 32] &= ~(1 << (lo & 31));
         }
 
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
         SDL_CalculateShouldUpdateJoysticks(SDL_GetHintBoolean(SDL_HINT_AUTO_UPDATE_JOYSTICKS, SDL_TRUE));
 #endif
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
         SDL_CalculateShouldUpdateSensors(SDL_GetHintBoolean(SDL_HINT_AUTO_UPDATE_SENSORS, SDL_TRUE));
 #endif
     }
@@ -1413,10 +1416,10 @@ int SDL_SendLocaleChangedEvent(void)
 
 int SDL_EventsInit(void)
 {
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
     SDL_AddHintCallback(SDL_HINT_AUTO_UPDATE_JOYSTICKS, SDL_AutoUpdateJoysticksChanged, NULL);
 #endif
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
     SDL_AddHintCallback(SDL_HINT_AUTO_UPDATE_SENSORS, SDL_AutoUpdateSensorsChanged, NULL);
 #endif
     SDL_AddHintCallback(SDL_HINT_EVENT_LOGGING, SDL_EventLoggingChanged, NULL);
@@ -1437,10 +1440,10 @@ void SDL_EventsQuit(void)
     SDL_StopEventLoop();
     SDL_DelHintCallback(SDL_HINT_POLL_SENTINEL, SDL_PollSentinelChanged, NULL);
     SDL_DelHintCallback(SDL_HINT_EVENT_LOGGING, SDL_EventLoggingChanged, NULL);
-#if !SDL_JOYSTICK_DISABLED
+#ifndef SDL_JOYSTICK_DISABLED
     SDL_DelHintCallback(SDL_HINT_AUTO_UPDATE_JOYSTICKS, SDL_AutoUpdateJoysticksChanged, NULL);
 #endif
-#if !SDL_SENSOR_DISABLED
+#ifndef SDL_SENSOR_DISABLED
     SDL_DelHintCallback(SDL_HINT_AUTO_UPDATE_SENSORS, SDL_AutoUpdateSensorsChanged, NULL);
 #endif
 }

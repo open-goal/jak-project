@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1152,7 +1152,7 @@ int SDL_vsscanf(const char *text, const char *fmt, va_list ap)
 {
     int retval = 0;
 
-    if (text == NULL || !*text) {
+    if (!text || !*text) {
         return -1;
     }
 
@@ -1544,7 +1544,7 @@ static size_t SDL_PrintString(char *text, size_t maxlen, SDL_FormatInfo *info, c
     size_t length = 0;
     size_t slen, sz;
 
-    if (string == NULL) {
+    if (!string) {
         string = "(null)";
     }
 
@@ -1604,7 +1604,7 @@ static void SDL_IntPrecisionAdjust(char *num, size_t maxlen, SDL_FormatInfo *inf
 { /* left-pad num with zeroes. */
     size_t sz, pad, have_sign;
 
-    if (info == NULL) {
+    if (!info) {
         return;
     }
 
@@ -1733,6 +1733,20 @@ static size_t SDL_PrintFloat(char *text, size_t maxlen, SDL_FormatInfo *info, do
     }
 
     return length;
+}
+
+static size_t SDL_PrintPointer(char *text, size_t maxlen, SDL_FormatInfo *info, const void *value)
+{
+    char num[130];
+    size_t length;
+
+    if (!value) {
+        return SDL_PrintString(text, maxlen, info, NULL);
+    }
+
+    SDL_ulltoa((unsigned long long)(uintptr_t)value, num, 16);
+    length = SDL_PrintString(text, maxlen, info, "0x");
+    return length + SDL_PrintString(TEXT_AND_LEN_ARGS, info, num);
 }
 
 /* NOLINTNEXTLINE(readability-non-const-parameter) */
@@ -1867,6 +1881,10 @@ int SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, const char *f
                     done = SDL_TRUE;
                     break;
                 case 'p':
+                    info.force_case = SDL_CASE_LOWER;
+                    length += SDL_PrintPointer(TEXT_AND_LEN_ARGS, &info, va_arg(ap, void *));
+                    done = SDL_TRUE;
+                    break;
                 case 'x':
                     info.force_case = SDL_CASE_LOWER;
                     SDL_FALLTHROUGH;
@@ -1876,9 +1894,6 @@ int SDL_vsnprintf(SDL_OUT_Z_CAP(maxlen) char *text, size_t maxlen, const char *f
                     }
                     if (info.radix == 10) {
                         info.radix = 16;
-                    }
-                    if (*fmt == 'p') {
-                        inttype = DO_LONG;
                     }
                     SDL_FALLTHROUGH;
                 case 'o':
@@ -1977,7 +1992,7 @@ int SDL_vasprintf(char **strp, const char *fmt, va_list ap)
     *strp = NULL;
 
     p = (char *)SDL_malloc(size);
-    if (p == NULL) {
+    if (!p) {
         return -1;
     }
 
@@ -1989,6 +2004,7 @@ int SDL_vasprintf(char **strp, const char *fmt, va_list ap)
 
         /* Check error code */
         if (retval < 0) {
+            SDL_free(p);
             return retval;
         }
 
@@ -2002,7 +2018,7 @@ int SDL_vasprintf(char **strp, const char *fmt, va_list ap)
         size = retval + 1; /* Precisely what is needed */
 
         np = (char *)SDL_realloc(p, size);
-        if (np == NULL) {
+        if (!np) {
             SDL_free(p);
             return -1;
         } else {
@@ -2010,5 +2026,3 @@ int SDL_vasprintf(char **strp, const char *fmt, va_list ap)
         }
     }
 }
-
-/* vi: set ts=4 sw=4 expandtab: */

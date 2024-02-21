@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_PREREQ([2.63])
+AC_PREREQ([2.65])
 AC_INIT
 AC_CONFIG_SRCDIR([src/SDL.c])
 AC_CONFIG_HEADERS([include/SDL_config.h])
@@ -12,8 +12,8 @@ orig_CFLAGS="$CFLAGS"
 dnl Set various version strings - taken gratefully from the GTk sources
 # See docs/release_checklist.md
 SDL_MAJOR_VERSION=2
-SDL_MINOR_VERSION=28
-SDL_MICRO_VERSION=5
+SDL_MINOR_VERSION=30
+SDL_MICRO_VERSION=0
 SDL_VERSION=$SDL_MAJOR_VERSION.$SDL_MINOR_VERSION.$SDL_MICRO_VERSION
 
 SDL_BINARY_AGE=`expr $SDL_MINOR_VERSION \* 100 + $SDL_MICRO_VERSION`
@@ -319,10 +319,20 @@ AC_ARG_ENABLE(libc,
 [AS_HELP_STRING([--enable-libc], [Use the system C library [default=yes]])],
               , enable_libc=yes)
 
-dnl See whether we are allowed to use libiconv
+dnl See whether we are allowed to use system iconv
+enable_system_iconv_default=yes
+case "$host" in
+  *-*-cygwin*|*-*-mingw*)
+    enable_system_iconv_default=no
+    ;;
+esac
 AC_ARG_ENABLE(system-iconv,
-[AS_HELP_STRING([--enable-system-iconv], [Use iconv() from system-installed libraries [default=yes]])],
-              , enable_system_iconv=yes)
+[AS_HELP_STRING([--enable-system-iconv], [Use iconv() from system-installed libraries [default=no for windows, yes for others]])],
+              , enable_system_iconv=$enable_system_iconv_default)
+dnl See whether we prefer libiconv over libc
+AC_ARG_ENABLE(libiconv,
+[AS_HELP_STRING([--enable-libiconv], [Prefer iconv() from libiconv, if available, over libc version [default=no]])],
+              , enable_libiconv=no)
 
 if test x$enable_libc = xyes; then
     AC_DEFINE(HAVE_LIBC, 1, [ ])
@@ -330,7 +340,7 @@ if test x$enable_libc = xyes; then
 dnl Check for C library headers
 dnl AC_CHECK_INCLUDES_DEFAULT is an autoconf-2.7x thing where AC_HEADER_STDC is deprecated.
     m4_ifdef([AC_CHECK_INCLUDES_DEFAULT], [AC_CHECK_INCLUDES_DEFAULT], [AC_HEADER_STDC])
-    AC_CHECK_HEADERS(sys/types.h stdio.h stdlib.h stddef.h stdarg.h malloc.h memory.h string.h strings.h wchar.h inttypes.h stdint.h limits.h ctype.h math.h float.h iconv.h signal.h linux/input.h)
+    AC_CHECK_HEADERS(sys/types.h stdio.h stdlib.h stddef.h stdarg.h malloc.h memory.h string.h strings.h wchar.h inttypes.h stdint.h limits.h ctype.h math.h float.h iconv.h signal.h)
 
 dnl Check for typedefs, structures, etc.
     AC_TYPE_SIZE_T
@@ -355,8 +365,46 @@ dnl Checks for library functions.
     AC_CHECK_FUNCS(acos acosf asin asinf atan atanf atan2 atan2f ceil ceilf copysign copysignf cos cosf exp expf fabs fabsf floor floorf trunc truncf fmod fmodf log logf log10 log10f lround lroundf pow powf round roundf scalbn scalbnf sin sinf sqrt sqrtf tan tanf)
 
     if test x$enable_system_iconv = xyes; then
-        AC_CHECK_LIB(iconv, iconv_open, [LIBS="$LIBS -liconv"; EXTRA_LDFLAGS="$EXTRA_LDFLAGS -liconv"])
-        AC_CHECK_FUNCS(iconv)
+        AC_MSG_CHECKING(for iconv in libc)
+        AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+         #define LIBICONV_PLUG 1 /* in case libiconv header is in include path */
+         #include <stddef.h>
+         #include <iconv.h>
+        ]],[[
+         iconv_open(NULL,NULL);
+        ]])], [have_libc_iconv=yes],[have_libc_iconv=no])
+        AC_MSG_RESULT($have_libc_iconv)
+
+        AC_MSG_CHECKING(for iconv in libiconv)
+        save_LIBS="$LIBS"
+        LIBS="$LIBS -liconv"
+        AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+         #include <stddef.h>
+         #include <iconv.h>
+        ]],[[
+         iconv_open(NULL,NULL);
+        ]])], [have_libiconv=yes],[have_libiconv=no])
+        LIBS="$save_LIBS"
+        AC_MSG_RESULT($have_libiconv)
+
+        if test x$have_libc_iconv = xyes || test x$have_libiconv = xyes; then
+           AC_DEFINE(HAVE_ICONV,1,[ ])
+
+           if test x$have_libiconv = xyes; then
+              if test x$have_libc_iconv != xyes; then
+                 use_libiconv=yes
+              elif test x$enable_libiconv = xyes; then
+                 use_libiconv=yes
+              fi
+           fi
+           if test x$use_libiconv = xyes; then
+              AC_DEFINE(SDL_USE_LIBICONV,1,[ ])
+              EXTRA_LDFLAGS="$EXTRA_LDFLAGS -liconv"
+              echo "-- Using iconv from libiconv"
+           else
+              echo "-- Using iconv from libc"
+           fi
+        fi
     fi
 
     AC_CHECK_MEMBER(struct sigaction.sa_sigaction,[AC_DEFINE([HAVE_SA_SIGACTION], 1, [ ])], ,[#include <signal.h>])
@@ -1122,13 +1170,13 @@ CheckPulseAudio()
 [AS_HELP_STRING([--enable-pulseaudio], [use PulseAudio [default=yes]])],
                   , enable_pulseaudio=yes)
     if test x$enable_audio = xyes -a x$enable_pulseaudio = xyes; then
-        PKG_CHECK_MODULES([PULSEAUDIO], [libpulse-simple >= 0.9], audio_pulseaudio=yes, audio_pulseaudio=no)
+        PKG_CHECK_MODULES([PULSEAUDIO], [libpulse >= 0.9.15], audio_pulseaudio=yes, audio_pulseaudio=no)
 
         if test x$audio_pulseaudio = xyes; then
             AC_ARG_ENABLE(pulseaudio-shared,
 [AS_HELP_STRING([--enable-pulseaudio-shared], [dynamically load PulseAudio support [default=yes]])],
                           , enable_pulseaudio_shared=yes)
-            pulseaudio_lib=[`find_lib "libpulse-simple.so.*" "$PULSEAUDIO_LIBS" | sed 's/.*\/\(.*\)/\1/; q'`]
+            pulseaudio_lib=[`find_lib "libpulse.so.*" "$PULSEAUDIO_LIBS" | sed 's/.*\/\(.*\)/\1/; q'`]
 
             AC_DEFINE(SDL_AUDIO_DRIVER_PULSEAUDIO, 1, [ ])
             SOURCES="$SOURCES $srcdir/src/audio/pulseaudio/*.c"
@@ -1139,7 +1187,7 @@ CheckPulseAudio()
             fi
             if test x$have_loadso = xyes && \
                test x$enable_pulseaudio_shared = xyes && test x$pulseaudio_lib != x; then
-                echo "-- dynamic libpulse-simple -> $pulseaudio_lib"
+                echo "-- dynamic libpulse -> $pulseaudio_lib"
                 AC_DEFINE_UNQUOTED(SDL_AUDIO_DRIVER_PULSEAUDIO_DYNAMIC, "$pulseaudio_lib", [ ])
                 SUMMARY_audio="${SUMMARY_audio} pulse(dynamic)"
 
@@ -2758,6 +2806,8 @@ dnl See if we can use the new unified event interface in Linux 2.4
 CheckInputEvents()
 {
 dnl Check for Linux 2.4 unified input event interface support
+        AC_CHECK_HEADERS(linux/input.h)
+
         AC_MSG_CHECKING(for Linux 2.4 unified input interface)
         use_input_events=no
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
@@ -3367,32 +3417,9 @@ asdf
 [AS_HELP_STRING([--enable-xinput], [use Xinput for Windows [default=yes]])],
                                 , enable_xinput=yes)
     if test x$enable_xinput = xyes; then
-        have_xinput_gamepadex=no
-        have_xinput_stateex=no
         AC_CHECK_HEADER(xinput.h, have_xinput=yes)
-        AC_MSG_CHECKING(for struct XINPUT_GAMEPAD_EX)
-        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <windows.h>
-#include <xinput.h>
-XINPUT_GAMEPAD_EX x1;
-            ]],[])], [have_xinput_gamepadex=yes],[])
-        AC_MSG_RESULT($have_xinput_gamepadex)
-        AC_MSG_CHECKING(for struct XINPUT_STATE_EX)
-        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <windows.h>
-#include <xinput.h>
-XINPUT_STATE_EX s1;
-            ]],[])], [have_xinput_stateex=yes],[])
-        AC_MSG_RESULT($have_xinput_stateex)
-
         if test x$have_xinput = xyes; then
             AC_DEFINE(HAVE_XINPUT_H, 1, [ ])
-        fi
-        if test x$have_xinput_gamepadex = xyes; then
-            AC_DEFINE(HAVE_XINPUT_GAMEPAD_EX, 1, [ ])
-        fi
-        if test x$have_xinput_stateex = xyes; then
-            AC_DEFINE(HAVE_XINPUT_STATE_EX, 1, [ ])
         fi
     fi
 

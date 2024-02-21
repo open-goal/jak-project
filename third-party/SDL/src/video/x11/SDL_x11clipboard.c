@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_X11
+#ifdef SDL_VIDEO_DRIVER_X11
 
 #include <limits.h> /* For INT_MAX */
 
@@ -206,7 +206,7 @@ static char *GetSlectionText(_THIS, Atom selection_type)
         X11_XFree(src);
     }
 
-    if (text == NULL) {
+    if (!text) {
         text = SDL_strdup("");
     }
 

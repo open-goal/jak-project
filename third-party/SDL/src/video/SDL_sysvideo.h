@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -433,11 +433,11 @@ struct SDL_VideoDevice
     void *driverdata;
     struct SDL_GLDriverData *gl_data;
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
     struct SDL_EGL_VideoData *egl_data;
 #endif
 
-#if SDL_VIDEO_OPENGL_ES || SDL_VIDEO_OPENGL_ES2
+#if defined(SDL_VIDEO_OPENGL_ES) || defined(SDL_VIDEO_OPENGL_ES2)
     struct SDL_PrivateGLESData *gles_data;
 #endif
 
@@ -451,6 +451,7 @@ typedef struct VideoBootStrap
     const char *name;
     const char *desc;
     SDL_VideoDevice *(*create)(void);
+    int (*ShowMessageBox)(const SDL_MessageBoxData *messageboxdata, int *buttonid);  /* can be done without initializing backend! */
 } VideoBootStrap;
 
 /* Not all of these are available in a given build. Use #ifdefs, etc. */

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -408,6 +408,11 @@ static const char *OS2_JoystickGetDevicePath(int device_index)
     return NULL;
 }
 
+static int OS2_JoystickGetDeviceSteamVirtualGamepadSlot(int device_index)
+{
+    return -1;
+}
+
 static int OS2_JoystickGetDevicePlayerIndex(int device_index)
 {
     return -1;
@@ -731,7 +736,7 @@ static int joyGetEnv(struct _joycfg * joydata)
     char tempnumber[5]; /* Temporary place to put numeric texts */
 
     joyenv = SDL_getenv("SDL_OS2_JOYSTICK");
-    if (joyenv == NULL) {
+    if (!joyenv) {
         return 0;
     }
 
@@ -817,6 +822,7 @@ SDL_JoystickDriver SDL_OS2_JoystickDriver = {
     OS2_JoystickDetect,
     OS2_JoystickGetDeviceName,
     OS2_JoystickGetDevicePath,
+    OS2_JoystickGetDeviceSteamVirtualGamepadSlot,
     OS2_JoystickGetDevicePlayerIndex,
     OS2_JoystickSetDevicePlayerIndex,
     OS2_JoystickGetDeviceGUID,
