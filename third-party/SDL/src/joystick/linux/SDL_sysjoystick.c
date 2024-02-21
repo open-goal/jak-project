@@ -1041,7 +1041,7 @@ static void ConfigJoystick(SDL_Joystick *joystick, int fd)
         }
         for (i = 0; i < ABS_MAX; ++i) {
             /* Skip digital hats */
-            if (joystick->hwdata->has_hat[(i - ABS_HAT0X) / 2]) {
+            if (i >= ABS_HAT0X && i <= ABS_HAT3Y && joystick->hwdata->has_hat[(i - ABS_HAT0X) / 2]) {
                 continue;
             }
             if (test_bit(i, absbit)) {
@@ -1752,11 +1752,11 @@ static SDL_bool LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMap
     /* We temporarily open the device to check how it's configured. Make
        a fake SDL_Joystick object to do so. */
     joystick = (SDL_Joystick *)SDL_calloc(sizeof(*joystick), 1);
-    joystick->magic = &SDL_joystick_magic;
     if (joystick == NULL) {
         SDL_OutOfMemory();
         return SDL_FALSE;
     }
+    joystick->magic = &SDL_joystick_magic;
     SDL_memcpy(&joystick->guid, &item->guid, sizeof(item->guid));
 
     joystick->hwdata = (struct joystick_hwdata *)
@@ -2026,7 +2026,7 @@ static SDL_bool LINUX_JoystickGetGamepadMapping(int device_index, SDL_GamepadMap
 #endif
     }
 
-    if (!(mapped & MAPPED_TRIGGER_LEFT) && joystick->hwdata->has_key[BTN_TR2]) {
+    if (!(mapped & MAPPED_TRIGGER_RIGHT) && joystick->hwdata->has_key[BTN_TR2]) {
         out->righttrigger.kind = EMappingKind_Button;
         out->righttrigger.target = joystick->hwdata->key_map[BTN_TR2];
         mapped |= MAPPED_TRIGGER_RIGHT;

@@ -1008,6 +1008,15 @@ extern "C" {
 #define SDL_HINT_JOYSTICK_THREAD "SDL_JOYSTICK_THREAD"
 
 /**
+  *  \brief  A variable controlling whether Windows.Gaming.Input should be used for controller handling.
+  *
+  *  This variable can be set to the following values:
+  *    "0"       - WGI is not used
+  *    "1"       - WGI is used (the default)
+  */
+#define SDL_HINT_JOYSTICK_WGI "SDL_JOYSTICK_WGI"
+
+/**
  * \brief Determines whether SDL enforces that DRM master is required in order
  *        to initialize the KMSDRM video backend.
  *
@@ -1464,6 +1473,17 @@ extern "C" {
  *  By default SDL does not sync screen surface updates with vertical refresh.
  */
 #define SDL_HINT_RENDER_VSYNC               "SDL_RENDER_VSYNC"
+
+/**
+ *  \brief  A variable controlling whether the Metal render driver select low power device over default one
+ *
+ *  This variable can be set to the following values:
+ *    "0"       - Use the prefered OS device
+ *    "1"       - Select a low power one
+ *
+ *  By default the prefered OS device is used.
+ */
+#define SDL_HINT_RENDER_METAL_PREFER_LOW_POWER_DEVICE "SDL_RENDER_METAL_PREFER_LOW_POWER_DEVICE"
 
 /**
  *  \brief  A variable controlling if VSYNC is automatically disable if doesn't reach the enough FPS

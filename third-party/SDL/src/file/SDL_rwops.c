@@ -277,8 +277,9 @@ windows_file_write(SDL_RWops *context, const void *ptr, size_t size,
 
     /* if in append mode, we must go to the EOF before write */
     if (context->hidden.windowsio.append) {
-        if (SetFilePointer(context->hidden.windowsio.h, 0L, NULL, FILE_END) ==
-            INVALID_SET_FILE_POINTER) {
+        LARGE_INTEGER windowsoffset;
+        windowsoffset.QuadPart = 0;
+        if (!SetFilePointerEx(context->hidden.windowsio.h, windowsoffset, &windowsoffset, FILE_END)) {
             SDL_Error(SDL_EFWRITE);
             return 0;
         }
@@ -647,7 +648,7 @@ SDL_RWops *SDL_RWFromMem(void *mem, int size)
         SDL_InvalidParamError("mem");
         return rwops;
     }
-    if (!size) {
+    if (size <= 0) {
         SDL_InvalidParamError("size");
         return rwops;
     }
@@ -674,7 +675,7 @@ SDL_RWops *SDL_RWFromConstMem(const void *mem, int size)
         SDL_InvalidParamError("mem");
         return rwops;
     }
-    if (!size) {
+    if (size <= 0) {
         SDL_InvalidParamError("size");
         return rwops;
     }

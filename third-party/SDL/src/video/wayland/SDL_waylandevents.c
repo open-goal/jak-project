@@ -2534,6 +2534,10 @@ static void lock_pointer_to_window(SDL_Window *window,
     SDL_VideoData *d = input->display;
     struct zwp_locked_pointer_v1 *locked_pointer;
 
+    if (!d->pointer_constraints || !input->pointer) {
+        return;
+    }
+
     if (w->locked_pointer) {
         return;
     }
@@ -2621,8 +2625,10 @@ int Wayland_input_unlock_pointer(struct SDL_WaylandInput *input)
         w->locked_pointer = NULL;
     }
 
-    zwp_relative_pointer_v1_destroy(input->relative_pointer);
-    input->relative_pointer = NULL;
+    if (input->relative_pointer) {
+        zwp_relative_pointer_v1_destroy(input->relative_pointer);
+        input->relative_pointer = NULL;
+    }
 
     d->relative_mouse_mode = 0;
 

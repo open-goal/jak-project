@@ -31,6 +31,15 @@
 
 #include "../../events/SDL_mouse_c.h"
 
+/* older Emscriptens don't have this, but we need to for wasm64 compatibility. */
+#ifndef MAIN_THREAD_EM_ASM_PTR
+    #ifdef __wasm64__
+        #error You need to upgrade your Emscripten compiler to support wasm64
+    #else
+        #define MAIN_THREAD_EM_ASM_PTR MAIN_THREAD_EM_ASM_INT
+    #endif
+#endif
+
 static SDL_Cursor *Emscripten_CreateCursorFromString(const char *cursor_str, SDL_bool is_custom)
 {
     SDL_Cursor *cursor;
@@ -60,6 +69,8 @@ static SDL_Cursor *Emscripten_CreateDefaultCursor()
     return Emscripten_CreateCursorFromString("default", SDL_FALSE);
 }
 
+EM_JS_DEPS(sdlmouse, "$stringToUTF8,$UTF8ToString");
+
 static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int hot_y)
 {
     const char *cursor_url = NULL;
@@ -72,7 +83,7 @@ static SDL_Cursor *Emscripten_CreateCursor(SDL_Surface *surface, int hot_x, int 
     }
 
     /* *INDENT-OFF* */ /* clang-format off */
-    cursor_url = (const char *)MAIN_THREAD_EM_ASM_INT({
+    cursor_url = (const char *)MAIN_THREAD_EM_ASM_PTR({
         var w = $0;
         var h = $1;
         var hot_x = $2;

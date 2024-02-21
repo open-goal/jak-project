@@ -2,6 +2,9 @@ if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_BINARY_DIR})
   message(FATAL_ERROR "Prevented in-tree build. Please create a build directory outside of the SDL source code and run \"cmake -S ${CMAKE_SOURCE_DIR} -B .\" from there")
 endif()
 
+# MSVC runtime library flags are selected by an abstraction.
+set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
+
 cmake_minimum_required(VERSION 3.0.0...3.5)
 project(SDL2 C CXX)
 
@@ -84,7 +87,7 @@ endif()
 # See docs/release_checklist.md
 set(SDL_MAJOR_VERSION 2)
 set(SDL_MINOR_VERSION 28)
-set(SDL_MICRO_VERSION 0)
+set(SDL_MICRO_VERSION 5)
 set(SDL_VERSION "${SDL_MAJOR_VERSION}.${SDL_MINOR_VERSION}.${SDL_MICRO_VERSION}")
 
 # Set defaults preventing destination file conflicts
@@ -224,11 +227,13 @@ elseif(MSVC_VERSION GREATER 1400) # VisualStudio 8.0+
 elseif(CMAKE_C_COMPILER_ID MATCHES "^Intel$")
   set(OPT_DEF_ASM TRUE)
   set(USE_INTELCC TRUE)
+elseif(CMAKE_C_COMPILER_ID MATCHES "QCC")
+  set(USE_QCC TRUE)
 else()
   set(OPT_DEF_ASM FALSE)
 endif()
 
-if(USE_GCC OR USE_CLANG OR USE_INTELCC)
+if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
   set(OPT_DEF_GCC_ATOMICS ON)
 endif()
 
@@ -253,6 +258,9 @@ endif()
 if(MSVC)
   option(SDL_FORCE_STATIC_VCRT "Force /MT for static VC runtimes" OFF)
   if(SDL_FORCE_STATIC_VCRT)
+    if(NOT DEFINED CMAKE_MSVC_RUNTIME_LIBRARY)
+      set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
     foreach(flag_var
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
@@ -563,7 +571,7 @@ if(NOT SDL_FOREGROUNDING_SIGNAL STREQUAL "OFF")
 endif()
 
 # Compiler option evaluation
-if(USE_GCC OR USE_CLANG OR USE_INTELCC)
+if(USE_GCC OR USE_CLANG OR USE_INTELCC OR USE_QCC)
   # Check for -Wall first, so later things can override pieces of it.
   # Note: clang-cl treats -Wall as -Weverything (which is very loud),
   #       /W3 as -Wall, and /W4 as -Wall -Wextra.  So: /W3 is enough.
@@ -619,11 +627,6 @@ if(USE_GCC OR USE_CLANG OR USE_INTELCC)
           return 0; }" HAVE_GCC_SYNC_LOCK_TEST_AND_SET)
     endif()
   endif()
-
-  set(CMAKE_REQUIRED_FLAGS "-mpreferred-stack-boundary=2")
-  check_c_source_compiles("int x = 0; int main(int argc, char **argv) { return 0; }"
-    HAVE_GCC_PREFERRED_STACK_BOUNDARY)
-  set(CMAKE_REQUIRED_FLAGS ${ORIG_CMAKE_REQUIRED_FLAGS})
 
   set(CMAKE_REQUIRED_FLAGS "-fvisibility=hidden -Werror")
   check_c_source_compiles("
@@ -1427,6 +1430,12 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
         file(GLOB AIX_AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/paudio/*.c)
         list(APPEND SOURCE_FILES ${AIX_AUDIO_SOURCES})
         set(HAVE_SDL_AUDIO TRUE)
+    elseif(QNX)
+        set(SDL_AUDIO_DRIVER_QSA 1)
+        file(GLOB QSA_AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/qsa/*.c)
+        list(APPEND SOURCE_FILES ${QSA_AUDIO_SOURCES})
+        list(APPEND EXTRA_LIBS asound)
+        set(HAVE_SDL_AUDIO TRUE)
     endif()
     CheckOSS()
     CheckALSA()
@@ -1458,6 +1467,7 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
       set(SDL_VIDEO_VULKAN 1)
       set(HAVE_VULKAN TRUE)
     endif()
+    CheckQNXScreen()
   endif()
 
   if(UNIX)
@@ -1708,6 +1718,13 @@ elseif(UNIX AND NOT APPLE AND NOT RISCOS AND NOT HAIKU)
     set(HAVE_RPATH TRUE)
   endif()
 
+  if(QNX)
+    # QNX's *printf() family generates a SIGSEGV if NULL is passed for a string
+    # specifier (on purpose), but SDL expects "(null)". Use the built-in
+    # implementation.
+    set(HAVE_VSNPRINTF 0)
+    set(USE_POSIX_SPAWN 1)
+  endif()
 elseif(WINDOWS)
   find_program(WINDRES windres)
 
@@ -1766,7 +1783,7 @@ elseif(WINDOWS)
     check_include_file(ddraw.h HAVE_DDRAW_H)
     check_include_file(dsound.h HAVE_DSOUND_H)
     check_include_file(dinput.h HAVE_DINPUT_H)
-    if(WINDOWS_STORE OR CMAKE_GENERATOR_PLATFORM STREQUAL "ARM")
+    if(WINDOWS_STORE OR SDL_CPU_ARM32)
       set(HAVE_DINPUT_H 0)
     endif()
     check_include_file(dxgi.h HAVE_DXGI_H)
@@ -1926,7 +1943,7 @@ elseif(WINDOWS)
 
   # Libraries for Win32 native and MinGW
   if(NOT WINDOWS_STORE)
-    list(APPEND EXTRA_LIBS user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32)
+    list(APPEND EXTRA_LIBS kernel32 user32 gdi32 winmm imm32 ole32 oleaut32 version uuid advapi32 setupapi shell32)
   endif()
 
   if(WINDOWS_STORE)
@@ -3066,9 +3083,17 @@ else()
   set(sdl_static_libname "SDL2")
 endif()
 
-set(prefix ${CMAKE_INSTALL_PREFIX})
+# CMAKE_PREFIX_PATH and CMAKE_INSTALL_FULL_BINDIR can be a non-absolute path
+# when a master-project does e.g. `set(CMAKE_INSTALL_PREFIX "libs/SDL2" CACHE PATH "prefix" FORCE)`.
+if(NOT IS_ABSOLUTE "${CMAKE_INSTALL_PREFIX}")
+  set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}")
+endif()
+if(NOT IS_ABSOLUTE "${CMAKE_INSTALL_FULL_BINDIR}")
+  set(CMAKE_INSTALL_FULL_BINDIR "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_FULL_BINDIR}")
+endif()
 file(RELATIVE_PATH bin_prefix_relpath "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_PREFIX}")
 
+set(prefix ${CMAKE_INSTALL_PREFIX})
 set(exec_prefix "\${prefix}")
 set(libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
 set(bindir "\${exec_prefix}/${CMAKE_INSTALL_BINDIR}")
@@ -3187,7 +3212,7 @@ if (SDL_ASAN)
 endif()
 
 if(SDL_CCACHE AND NOT CMAKE_VERSION VERSION_LESS 3.4)
-  cmake_minimum_required(VERSION 3.4)
+  cmake_minimum_required(VERSION 3.4...3.5)
   find_program(CCACHE_BINARY ccache)
   if(CCACHE_BINARY)
     set(CMAKE_C_COMPILER_LAUNCHER ${CCACHE_BINARY})
@@ -3312,6 +3337,12 @@ if(ANDROID)
 endif()
 
 if(APPLE)
+  cmake_push_check_state(RESET)
+  check_c_compiler_flag(-fobjc-arc COMPILER_SUPPORTS_FOBJC_ARC)
+  cmake_pop_check_state()
+  if(NOT COMPILER_SUPPORTS_FOBJC_ARC)
+    message(FATAL_ERROR "Compiler does not support -fobjc-arc: this is required on Apple platforms")
+  endif()
   target_compile_options(sdl-build-options INTERFACE "-fobjc-arc")
 endif()
 
@@ -3334,6 +3365,7 @@ if(SDL_SHARED)
   # alias target for in-tree builds
   add_library(SDL2::SDL2 ALIAS SDL2)
   set_target_properties(SDL2 PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+  set_target_properties(SDL2 PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS FALSE)
   if(NOT SDL_LIBC)
     if(SDL_CPU_X86)
       # FIXME: should be added for all architectures (missing symbols for ARM)
@@ -3368,7 +3400,7 @@ if(SDL_SHARED)
       OUTPUT_NAME "SDL2")
   endif()
   # Note: The clang toolset for Visual Studio does not support /NODEFAULTLIB.
-  if(MSVC AND NOT SDL_LIBC AND NOT MSVC_CLANG AND NOT CMAKE_GENERATOR_PLATFORM STREQUAL "ARM")
+  if(MSVC AND NOT SDL_LIBC AND NOT MSVC_CLANG AND NOT SDL_CPU_ARM32)
     # Don't try to link with the default set of libraries.
     if(NOT WINDOWS_STORE)
       set_property(TARGET SDL2 APPEND_STRING PROPERTY LINK_FLAGS " /NODEFAULTLIB")
