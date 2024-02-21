@@ -23,7 +23,7 @@
 #ifndef SDL_windowswindow_h_
 #define SDL_windowswindow_h_
 
-#if SDL_VIDEO_OPENGL_EGL   
+#if SDL_VIDEO_OPENGL_EGL
 #include "../SDL_egl_c.h"
 #else
 #include "../SDL_sysvideo.h"
@@ -64,7 +64,7 @@ typedef struct
     SDL_bool mouse_tracked;
     WCHAR *ICMFileName;
     struct SDL_VideoData *videodata;
-#if SDL_VIDEO_OPENGL_EGL  
+#if SDL_VIDEO_OPENGL_EGL
     EGLSurface egl_surface;
 #endif
     /**
@@ -106,10 +106,10 @@ extern SDL_bool WIN_GetWindowWMInfo(_THIS, SDL_Window * window,
 extern void WIN_OnWindowEnter(_THIS, SDL_Window * window);
 extern void WIN_UpdateClipCursor(SDL_Window *window);
 extern int WIN_SetWindowHitTest(SDL_Window *window, SDL_bool enabled);
-extern void WIN_ClientPointToSDL(const SDL_Window *window, int *w, int *h);
-extern void WIN_ClientPointFromSDL(const SDL_Window *window, int *w, int *h);
-extern void WIN_AcceptDragAndDrop(SDL_Window * window, SDL_bool accept);
-extern int WIN_FlashWindow(_THIS, SDL_Window * window, SDL_FlashOperation operation);
+extern void WIN_ClientPointToSDL(const SDL_Window *window, int *x, int *y);
+extern void WIN_ClientPointFromSDL(const SDL_Window *window, int *x, int *y);
+extern void WIN_AcceptDragAndDrop(SDL_Window *window, SDL_bool accept);
+extern int WIN_FlashWindow(_THIS, SDL_Window *window, SDL_FlashOperation operation);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

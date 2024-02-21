@@ -38,7 +38,7 @@
 #define SDL_JOYSTICK_HIDAPI_PS4
 #define SDL_JOYSTICK_HIDAPI_PS5
 #define SDL_JOYSTICK_HIDAPI_STADIA
-#define SDL_JOYSTICK_HIDAPI_STEAM   /* Simple support for BLE Steam Controller, hint is disabled by default */
+#define SDL_JOYSTICK_HIDAPI_STEAM /* Simple support for BLE Steam Controller, hint is disabled by default */
 #define SDL_JOYSTICK_HIDAPI_SWITCH
 #define SDL_JOYSTICK_HIDAPI_WII
 #define SDL_JOYSTICK_HIDAPI_XBOX360
@@ -46,16 +46,17 @@
 #define SDL_JOYSTICK_HIDAPI_SHIELD
 
 /* Whether HIDAPI is enabled by default */
-#define SDL_HIDAPI_DEFAULT  SDL_TRUE
+#define SDL_HIDAPI_DEFAULT SDL_TRUE
 
 /* The maximum size of a USB packet for HID devices */
-#define USB_PACKET_LENGTH   64
+#define USB_PACKET_LENGTH 64
 
 /* Forward declaration */
 struct _SDL_HIDAPI_DeviceDriver;
 
 typedef struct _SDL_HIDAPI_Device
 {
+    const void *magic;
     char *name;
     char *path;
     Uint16 vendor_id;
@@ -63,7 +64,7 @@ typedef struct _SDL_HIDAPI_Device
     Uint16 version;
     char *serial;
     SDL_JoystickGUID guid;
-    int interface_number;   /* Available on Windows and Linux */
+    int interface_number; /* Available on Windows and Linux */
     int interface_class;
     int interface_subclass;
     int interface_protocol;
@@ -118,7 +119,6 @@ typedef struct _SDL_HIDAPI_DeviceDriver
 
 } SDL_HIDAPI_DeviceDriver;
 
-
 /* HIDAPI device support */
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverCombined;
 extern SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverGameCube;
@@ -152,7 +152,7 @@ extern SDL_GameControllerType HIDAPI_GetGameControllerTypeFromGUID(SDL_JoystickG
 
 extern void HIDAPI_UpdateDevices(void);
 extern void HIDAPI_SetDeviceName(SDL_HIDAPI_Device *device, const char *name);
-extern void HIDAPI_SetDeviceProduct(SDL_HIDAPI_Device *device, Uint16 product_id);
+extern void HIDAPI_SetDeviceProduct(SDL_HIDAPI_Device *device, Uint16 vendor_id, Uint16 product_id);
 extern void HIDAPI_SetDeviceSerial(SDL_HIDAPI_Device *device, const char *serial);
 extern SDL_bool HIDAPI_HasConnectedUSBDevice(const char *serial);
 extern void HIDAPI_DisconnectBluetoothDevice(const char *serial);
@@ -160,6 +160,8 @@ extern SDL_bool HIDAPI_JoystickConnected(SDL_HIDAPI_Device *device, SDL_Joystick
 extern void HIDAPI_JoystickDisconnected(SDL_HIDAPI_Device *device, SDL_JoystickID joystickID);
 
 extern void HIDAPI_DumpPacket(const char *prefix, const Uint8 *data, int size);
+
+extern SDL_bool HIDAPI_SupportsPlaystationDetection(Uint16 vendor, Uint16 product);
 
 extern float HIDAPI_RemapVal(float val, float val_min, float val_max, float output_min, float output_max);
 

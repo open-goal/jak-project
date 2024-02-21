@@ -30,9 +30,10 @@
 #define MOOSEPIC_W 64
 #define MOOSEPIC_H 88
 
-#define MOOSEFRAME_SIZE (MOOSEPIC_W * MOOSEPIC_H)
+#define MOOSEFRAME_SIZE   (MOOSEPIC_W * MOOSEPIC_H)
 #define MOOSEFRAMES_COUNT 10
 
+/* *INDENT-OFF* */ /* clang-format off */
 SDL_Color MooseColors[84] = {
     {49, 49, 49, SDL_ALPHA_OPAQUE}
     , {66, 24, 0, SDL_ALPHA_OPAQUE}
@@ -139,8 +140,9 @@ SDL_Color MooseColors[84] = {
     , {231, 231, 231, SDL_ALPHA_OPAQUE}
     , {239, 206, 173, SDL_ALPHA_OPAQUE}
 };
+/* *INDENT-ON* */ /* clang-format on */
 
-Uint8 MooseFrame[MOOSEFRAMES_COUNT][MOOSEFRAME_SIZE*2];
+Uint8 MooseFrame[MOOSEFRAMES_COUNT][MOOSEFRAME_SIZE * 2];
 SDL_Texture *MooseTexture;
 SDL_Rect displayrect;
 int window_w;
@@ -176,8 +178,7 @@ PrintUsage(char *argv0)
     SDL_Log("\n");
 }
 
-void
-loop()
+void loop()
 {
     SDL_Event event;
 
@@ -208,6 +209,7 @@ loop()
             if (event.key.keysym.sym != SDLK_ESCAPE) {
                 break;
             }
+            SDL_FALLTHROUGH;
         case SDL_QUIT:
             done = SDL_TRUE;
             break;
@@ -234,8 +236,7 @@ loop()
 #endif
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     Uint8 *RawMooseData;
     SDL_RWops *handle;
@@ -260,19 +261,19 @@ main(int argc, char **argv)
                 fps = SDL_atoi(argv[2]);
                 if (fps == 0) {
                     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                            "The -fps option requires an argument [from 1 to 1000], default is 12.\n");
+                                 "The -fps option requires an argument [from 1 to 1000], default is 12.\n");
                     quit(10);
                 }
                 if ((fps < 0) || (fps > 1000)) {
                     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                            "The -fps option must be in range from 1 to 1000, default is 12.\n");
+                                 "The -fps option must be in range from 1 to 1000, default is 12.\n");
                     quit(10);
                 }
                 argv += 2;
                 argc -= 2;
             } else {
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                        "The -fps option requires an argument [from 1 to 1000], default is 12.\n");
+                             "The -fps option requires an argument [from 1 to 1000], default is 12.\n");
                 quit(10);
             }
         } else if (SDL_strcmp(argv[1], "-nodelay") == 0) {
@@ -284,23 +285,22 @@ main(int argc, char **argv)
                 scale = SDL_atoi(argv[2]);
                 if (scale == 0) {
                     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                            "The -scale option requires an argument [from 1 to 50], default is 5.\n");
+                                 "The -scale option requires an argument [from 1 to 50], default is 5.\n");
                     quit(10);
                 }
                 if ((scale < 0) || (scale > 50)) {
                     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                            "The -scale option must be in range from 1 to 50, default is 5.\n");
+                                 "The -scale option must be in range from 1 to 50, default is 5.\n");
                     quit(10);
                 }
                 argv += 2;
                 argc -= 2;
             } else {
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION,
-                        "The -fps option requires an argument [from 1 to 1000], default is 12.\n");
+                             "The -fps option requires an argument [from 1 to 1000], default is 12.\n");
                 quit(10);
             }
-        } else if ((SDL_strcmp(argv[1], "-help") == 0)
-                   || (SDL_strcmp(argv[1], "-h") == 0)) {
+        } else if ((SDL_strcmp(argv[1], "-help") == 0) || (SDL_strcmp(argv[1], "-h") == 0)) {
             PrintUsage(argv[0]);
             quit(0);
         } else {
@@ -310,7 +310,7 @@ main(int argc, char **argv)
         break;
     }
 
-    RawMooseData = (Uint8 *) SDL_malloc(MOOSEFRAME_SIZE * MOOSEFRAMES_COUNT);
+    RawMooseData = (Uint8 *)SDL_malloc(MOOSEFRAME_SIZE * MOOSEFRAMES_COUNT);
     if (RawMooseData == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't allocate memory for movie !\n");
         quit(1);
@@ -320,6 +320,7 @@ main(int argc, char **argv)
     filename = GetResourceFilename(NULL, "moose.dat");
     if (filename == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory\n");
+        SDL_free(RawMooseData);
         return -1;
     }
     handle = SDL_RWFromFile(filename, "rb");
@@ -342,21 +343,21 @@ main(int argc, char **argv)
                               SDL_WINDOWPOS_UNDEFINED,
                               window_w, window_h,
                               SDL_WINDOW_RESIZABLE);
-    if (!window) {
+    if (window == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create window: %s\n", SDL_GetError());
         SDL_free(RawMooseData);
         quit(4);
     }
 
     renderer = SDL_CreateRenderer(window, -1, 0);
-    if (!renderer) {
+    if (renderer == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
         SDL_free(RawMooseData);
         quit(4);
     }
 
     MooseTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, MOOSEPIC_W, MOOSEPIC_H);
-    if (!MooseTexture) {
+    if (MooseTexture == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create texture: %s\n", SDL_GetError());
         SDL_free(RawMooseData);
         quit(5);
@@ -365,7 +366,7 @@ main(int argc, char **argv)
     /* SDL_SetTextureColorMod(MooseTexture, 0xff, 0x80, 0x80); */
 
     for (i = 0; i < MOOSEFRAMES_COUNT; i++) {
-        Uint8 MooseFrameRGB[MOOSEFRAME_SIZE*3];
+        Uint8 MooseFrameRGB[MOOSEFRAME_SIZE * 3];
         Uint8 *rgb;
         Uint8 *frame;
 
@@ -377,9 +378,9 @@ main(int argc, char **argv)
             rgb[2] = MooseColors[frame[j]].b;
             rgb += 3;
         }
-        ConvertRGBtoYUV(SDL_PIXELFORMAT_YV12, MooseFrameRGB, MOOSEPIC_W*3, MooseFrame[i], MOOSEPIC_W, MOOSEPIC_H,
-            SDL_GetYUVConversionModeForResolution(MOOSEPIC_W, MOOSEPIC_H),
-            0, 100);
+        ConvertRGBtoYUV(SDL_PIXELFORMAT_YV12, MooseFrameRGB, MOOSEPIC_W * 3, MooseFrame[i], MOOSEPIC_W, MOOSEPIC_H,
+                        SDL_GetYUVConversionModeForResolution(MOOSEPIC_W, MOOSEPIC_H),
+                        0, 100);
     }
 
     SDL_free(RawMooseData);
@@ -406,7 +407,7 @@ main(int argc, char **argv)
 #else
     while (!done) {
         loop();
-            }
+    }
 #endif
 
     SDL_DestroyRenderer(renderer);

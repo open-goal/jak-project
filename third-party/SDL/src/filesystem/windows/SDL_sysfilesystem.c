@@ -32,8 +32,7 @@
 #include "SDL_stdinc.h"
 #include "SDL_filesystem.h"
 
-char *
-SDL_GetBasePath(void)
+char *SDL_GetBasePath(void)
 {
     DWORD buflen = 128;
     WCHAR *path = NULL;
@@ -42,14 +41,14 @@ SDL_GetBasePath(void)
     int i;
 
     while (SDL_TRUE) {
-        void *ptr = SDL_realloc(path, buflen * sizeof (WCHAR));
-        if (!ptr) {
+        void *ptr = SDL_realloc(path, buflen * sizeof(WCHAR));
+        if (ptr == NULL) {
             SDL_free(path);
             SDL_OutOfMemory();
             return NULL;
         }
 
-        path = (WCHAR *) ptr;
+        path = (WCHAR *)ptr;
 
         len = GetModuleFileNameW(NULL, path, buflen);
         /* if it truncated, then len >= buflen - 1 */
@@ -68,14 +67,14 @@ SDL_GetBasePath(void)
         return NULL;
     }
 
-    for (i = len-1; i > 0; i--) {
+    for (i = len - 1; i > 0; i--) {
         if (path[i] == '\\') {
             break;
         }
     }
 
-    SDL_assert(i > 0); /* Should have been an absolute path. */
-    path[i+1] = '\0';  /* chop off filename. */
+    SDL_assert(i > 0);  /* Should have been an absolute path. */
+    path[i + 1] = '\0'; /* chop off filename. */
 
     retval = WIN_StringToUTF8W(path);
     SDL_free(path);
@@ -83,8 +82,7 @@ SDL_GetBasePath(void)
     return retval;
 }
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_GetPrefPath(const char *org, const char *app)
 {
     /*
      * Vista and later has a new API for this, but SHGetFolderPath works there,
@@ -96,16 +94,16 @@ SDL_GetPrefPath(const char *org, const char *app)
 
     WCHAR path[MAX_PATH];
     char *retval = NULL;
-    WCHAR* worg = NULL;
-    WCHAR* wapp = NULL;
+    WCHAR *worg = NULL;
+    WCHAR *wapp = NULL;
     size_t new_wpath_len = 0;
     BOOL api_result = FALSE;
 
-    if (!app) {
+    if (app == NULL) {
         SDL_InvalidParamError("app");
         return NULL;
     }
-    if (!org) {
+    if (org == NULL) {
         org = "";
     }
 
@@ -175,20 +173,17 @@ SDL_GetPrefPath(const char *org, const char *app)
 #ifdef SDL_FILESYSTEM_XBOX
 #include "SDL_filesystem.h"
 #include "SDL_error.h"
-char *
-SDL_GetBasePath(void)
+char *SDL_GetBasePath(void)
 {
     SDL_Unsupported();
     return NULL;
 }
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_GetPrefPath(const char *org, const char *app)
 {
     SDL_Unsupported();
     return NULL;
 }
 #endif /* SDL_FILESYSTEM_XBOX */
-
 
 /* vi: set ts=4 sw=4 expandtab: */

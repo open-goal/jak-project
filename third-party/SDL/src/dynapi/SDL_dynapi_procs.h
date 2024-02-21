@@ -90,9 +90,9 @@ SDL_DYNAPI_PROC(int,SDL_InitSubSystem,(Uint32 a),(a),return)
 SDL_DYNAPI_PROC(void,SDL_QuitSubSystem,(Uint32 a),(a),)
 SDL_DYNAPI_PROC(Uint32,SDL_WasInit,(Uint32 a),(a),return)
 SDL_DYNAPI_PROC(void,SDL_Quit,(void),(),)
-SDL_DYNAPI_PROC(SDL_assert_state,SDL_ReportAssertion,(SDL_assert_data *a, const char *b, const char *c, int d),(a,b,c,d),return)
+SDL_DYNAPI_PROC(SDL_AssertState,SDL_ReportAssertion,(SDL_AssertData *a, const char *b, const char *c, int d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(void,SDL_SetAssertionHandler,(SDL_AssertionHandler a, void *b),(a,b),)
-SDL_DYNAPI_PROC(const SDL_assert_data*,SDL_GetAssertionReport,(void),(),return)
+SDL_DYNAPI_PROC(const SDL_AssertData*,SDL_GetAssertionReport,(void),(),return)
 SDL_DYNAPI_PROC(void,SDL_ResetAssertionReport,(void),(),)
 SDL_DYNAPI_PROC(SDL_bool,SDL_AtomicTryLock,(SDL_SpinLock *a),(a),return)
 SDL_DYNAPI_PROC(void,SDL_AtomicLock,(SDL_SpinLock *a),(a),)
@@ -607,7 +607,7 @@ SDL_DYNAPI_PROC(SDL_bool,SDL_DXGIGetOutputInfo,(int a,int *b, int *c),(a,b,c),re
 #endif
 SDL_DYNAPI_PROC(SDL_bool,SDL_RenderIsClipEnabled,(SDL_Renderer *a),(a),return)
 #ifdef __WINRT__
-SDL_DYNAPI_PROC(int,SDL_WinRTRunApp,(int a, char **b, void *c),(a,b,c),return)
+SDL_DYNAPI_PROC(int,SDL_WinRTRunApp,(SDL_main_func a, void *b),(a,b),return)
 SDL_DYNAPI_PROC(const wchar_t*,SDL_WinRTGetFSPathUNICODE,(SDL_WinRT_Path a),(a),return)
 SDL_DYNAPI_PROC(const char*,SDL_WinRTGetFSPathUTF8,(SDL_WinRT_Path a),(a),return)
 #endif
@@ -771,7 +771,7 @@ SDL_DYNAPI_PROC(int,SDL_RenderCopyF,(SDL_Renderer *a, SDL_Texture *b, const SDL_
 SDL_DYNAPI_PROC(int,SDL_RenderCopyExF,(SDL_Renderer *a, SDL_Texture *b, const SDL_Rect *c, const SDL_FRect *d, const double e, const SDL_FPoint *f, const SDL_RendererFlip g),(a,b,c,d,e,f,g),return)
 SDL_DYNAPI_PROC(SDL_TouchDeviceType,SDL_GetTouchDeviceType,(SDL_TouchID a),(a),return)
 #ifdef __IPHONEOS__
-SDL_DYNAPI_PROC(int,SDL_UIKitRunApp,(int a, char *b, SDL_main_func c),(a,b,c),return)
+SDL_DYNAPI_PROC(int,SDL_UIKitRunApp,(int a, char *b[], SDL_main_func c),(a,b,c),return)
 #endif
 SDL_DYNAPI_PROC(size_t,SDL_SIMDGetAlignment,(void),(),return)
 SDL_DYNAPI_PROC(void*,SDL_SIMDAlloc,(const size_t a),(a),return)
@@ -976,3 +976,8 @@ SDL_DYNAPI_PROC(int,SDL_GameControllerGetSensorDataWithTimestamp,(SDL_GameContro
 SDL_DYNAPI_PROC(int,SDL_SensorGetDataWithTimestamp,(SDL_Sensor *a, Uint64 *b, float *c, int d),(a,b,c,d),return)
 SDL_DYNAPI_PROC(void,SDL_ResetHints,(void),(),)
 SDL_DYNAPI_PROC(char*,SDL_strcasestr,(const char *a, const char *b),(a,b),return)
+#if defined(__GDK__)
+SDL_DYNAPI_PROC(void,SDL_GDKSuspendComplete,(void),(),)
+#endif
+SDL_DYNAPI_PROC(SDL_bool,SDL_HasWindowSurface,(SDL_Window *a),(a),return)
+SDL_DYNAPI_PROC(int,SDL_DestroyWindowSurface,(SDL_Window *a),(a),return)

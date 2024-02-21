@@ -36,85 +36,67 @@ extern "C" {
 
 static int object_count;
 
-static int
-RunThread(TAny* data)
+static int RunThread(TAny *data)
 {
-    SDL_RunThread((SDL_Thread*)data);
-    return(0);
+    SDL_RunThread((SDL_Thread *)data);
+    return 0;
 }
 
-static TInt
-NewThread(const TDesC& aName, TAny* aPtr1, TAny* aPtr2)
+static TInt NewThread(const TDesC &aName, TAny *aPtr1, TAny *aPtr2)
 {
-    return ((RThread*)(aPtr1))->Create
-        (aName,
-         RunThread,
-         KDefaultStackSize,
-         NULL,
-         aPtr2);
+    return ((RThread *)(aPtr1))->Create(aName, RunThread, KDefaultStackSize, NULL, aPtr2);
 }
 
-int
-CreateUnique(TInt (*aFunc)(const TDesC& aName, TAny*, TAny*), TAny* aPtr1, TAny* aPtr2)
+int CreateUnique(TInt (*aFunc)(const TDesC &aName, TAny *, TAny *), TAny *aPtr1, TAny *aPtr2)
 {
     TBuf<16> name;
-    TInt     status = KErrNone;
-    do
-    {
+    TInt status = KErrNone;
+    do {
         object_count++;
         name.Format(_L("SDL_%x"), object_count);
         status = aFunc(name, aPtr1, aPtr2);
-    }
-    while(status == KErrAlreadyExists);
+    } while (status == KErrAlreadyExists);
     return status;
 }
 
-int
-SDL_SYS_CreateThread(SDL_Thread *thread)
+int SDL_SYS_CreateThread(SDL_Thread *thread)
 {
     RThread rthread;
 
     TInt status = CreateUnique(NewThread, &rthread, thread);
-    if (status != KErrNone)
-    {
-        delete(((RThread*)(thread->handle)));
+    if (status != KErrNone) {
+        delete (RThread *)thread->handle;
         thread->handle = NULL;
-        SDL_SetError("Not enough resources to create thread");
-        return(-1);
+        return SDL_SetError("Not enough resources to create thread");
     }
 
     rthread.Resume();
     thread->handle = rthread.Handle();
-    return(0);
+    return 0;
 }
 
-void
-SDL_SYS_SetupThread(const char *name)
+void SDL_SYS_SetupThread(const char *name)
 {
     return;
 }
 
-SDL_threadID
-SDL_ThreadID(void)
+SDL_threadID SDL_ThreadID(void)
 {
-    RThread   current;
+    RThread current;
     TThreadId id = current.Id();
     return id;
 }
 
-int
-SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
+int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
-    return (0);
+    return 0;
 }
 
-void
-SDL_SYS_WaitThread(SDL_Thread * thread)
+void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
     RThread t;
     t.Open(thread->threadid);
-    if(t.ExitReason() == EExitPending)
-    {
+    if (t.ExitReason() == EExitPending) {
         TRequestStatus status;
         t.Logon(status);
         User::WaitForRequest(status);
@@ -122,8 +104,7 @@ SDL_SYS_WaitThread(SDL_Thread * thread)
     t.Close();
 }
 
-void
-SDL_SYS_DetachThread(SDL_Thread * thread)
+void SDL_SYS_DetachThread(SDL_Thread *thread)
 {
     return;
 }

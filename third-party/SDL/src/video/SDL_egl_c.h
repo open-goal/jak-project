@@ -29,7 +29,7 @@
 
 #include "SDL_sysvideo.h"
 
-#define SDL_EGL_MAX_DEVICES     8
+#define SDL_EGL_MAX_DEVICES 8
 
 typedef struct SDL_EGL_VideoData
 {
@@ -119,7 +119,8 @@ typedef struct SDL_EGL_VideoData
 } SDL_EGL_VideoData;
 
 /* OpenGLES functions */
-typedef enum SDL_EGL_ExtensionType {
+typedef enum SDL_EGL_ExtensionType
+{
     SDL_EGL_DISPLAY_EXTENSION,
     SDL_EGL_CLIENT_EXTENSION
 } SDL_EGL_ExtensionType;
@@ -152,28 +153,31 @@ extern int SDL_EGL_MakeCurrent(_THIS, EGLSurface egl_surface, SDL_GLContext cont
 extern int SDL_EGL_SwapBuffers(_THIS, EGLSurface egl_surface);
 
 /* SDL Error-reporting */
-extern int SDL_EGL_SetErrorEx(const char * message, const char * eglFunctionName, EGLint eglErrorCode);
+extern int SDL_EGL_SetErrorEx(const char *message, const char *eglFunctionName, EGLint eglErrorCode);
 #define SDL_EGL_SetError(message, eglFunctionName) SDL_EGL_SetErrorEx(message, eglFunctionName, _this->egl_data->eglGetError())
 
 /* A few of useful macros */
 
-#define SDL_EGL_SwapWindow_impl(BACKEND) int \
-BACKEND ## _GLES_SwapWindow(_THIS, SDL_Window * window) \
-{\
-    return SDL_EGL_SwapBuffers(_this, ((SDL_WindowData *) window->driverdata)->egl_surface);\
-}
+#define SDL_EGL_SwapWindow_impl(BACKEND)                                                        \
+    int                                                                                         \
+        BACKEND##_GLES_SwapWindow(_THIS, SDL_Window *window)                                    \
+    {                                                                                           \
+        return SDL_EGL_SwapBuffers(_this, ((SDL_WindowData *)window->driverdata)->egl_surface); \
+    }
 
-#define SDL_EGL_MakeCurrent_impl(BACKEND) int \
-BACKEND ## _GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context) \
-{\
-    return SDL_EGL_MakeCurrent(_this, window ? ((SDL_WindowData *) window->driverdata)->egl_surface : EGL_NO_SURFACE, context);\
-}
+#define SDL_EGL_MakeCurrent_impl(BACKEND)                                                                                          \
+    int                                                                                                                            \
+        BACKEND##_GLES_MakeCurrent(_THIS, SDL_Window *window, SDL_GLContext context)                                               \
+    {                                                                                                                              \
+        return SDL_EGL_MakeCurrent(_this, window ? ((SDL_WindowData *)window->driverdata)->egl_surface : EGL_NO_SURFACE, context); \
+    }
 
-#define SDL_EGL_CreateContext_impl(BACKEND) SDL_GLContext \
-BACKEND ## _GLES_CreateContext(_THIS, SDL_Window * window) \
-{\
-    return SDL_EGL_CreateContext(_this, ((SDL_WindowData *) window->driverdata)->egl_surface);\
-}
+#define SDL_EGL_CreateContext_impl(BACKEND)                                                       \
+    SDL_GLContext                                                                                 \
+        BACKEND##_GLES_CreateContext(_THIS, SDL_Window *window)                                   \
+    {                                                                                             \
+        return SDL_EGL_CreateContext(_this, ((SDL_WindowData *)window->driverdata)->egl_surface); \
+    }
 
 #endif /* SDL_VIDEO_OPENGL_EGL */
 

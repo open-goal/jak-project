@@ -26,9 +26,7 @@
 #include "SDL_events_c.h"
 #include "SDL_clipboardevents_c.h"
 
-
-int
-SDL_SendClipboardUpdate(void)
+int SDL_SendClipboardUpdate(void)
 {
     int posted;
 
@@ -40,7 +38,7 @@ SDL_SendClipboardUpdate(void)
 
         posted = (SDL_PushEvent(&event) > 0);
     }
-    return (posted);
+    return posted;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

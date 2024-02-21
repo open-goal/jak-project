@@ -231,7 +231,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-                        if ((event.buttonMask & SDL_BUTTON(i)) != 0) {
+                        if (event.buttonMask & SDL_BUTTON(i)) {
                             Uint8 button;
 
                             switch (i) {
@@ -286,7 +286,7 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
                     int i;
 
                     for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-                        if ((event.buttonMask & SDL_BUTTON(i)) != 0) {
+                        if (event.buttonMask & SDL_BUTTON(i)) {
                             Uint8 button;
 
                             switch (i) {
@@ -412,7 +412,6 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             SDL_SendKeyboardKey(SDL_PRESSED, scancode);
         }
     }
-    [super pressesBegan:presses withEvent:event];
 }
 
 - (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
@@ -423,7 +422,6 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             SDL_SendKeyboardKey(SDL_RELEASED, scancode);
         }
     }
-    [super pressesEnded:presses withEvent:event];
 }
 
 - (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
@@ -434,13 +432,11 @@ extern int SDL_AppleTVRemoteOpenedAsJoystick;
             SDL_SendKeyboardKey(SDL_RELEASED, scancode);
         }
     }
-    [super pressesCancelled:presses withEvent:event];
 }
 
 - (void)pressesChanged:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 {
     /* This is only called when the force of a press changes. */
-    [super pressesChanged:presses withEvent:event];
 }
 
 #endif /* TARGET_OS_TV || defined(__IPHONE_9_1) */

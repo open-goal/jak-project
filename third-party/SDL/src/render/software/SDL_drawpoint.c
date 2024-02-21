@@ -25,11 +25,9 @@
 #include "SDL_draw.h"
 #include "SDL_drawpoint.h"
 
-
-int
-SDL_DrawPoint(SDL_Surface * dst, int x, int y, Uint32 color)
+int SDL_DrawPoint(SDL_Surface *dst, int x, int y, Uint32 color)
 {
-    if (!dst) {
+    if (dst == NULL) {
         return SDL_InvalidParamError("SDL_DrawPoint(): dst");
     }
 
@@ -61,16 +59,15 @@ SDL_DrawPoint(SDL_Surface * dst, int x, int y, Uint32 color)
     return 0;
 }
 
-int
-SDL_DrawPoints(SDL_Surface * dst, const SDL_Point * points, int count,
-               Uint32 color)
+int SDL_DrawPoints(SDL_Surface *dst, const SDL_Point *points, int count,
+                   Uint32 color)
 {
     int minx, miny;
     int maxx, maxy;
     int i;
     int x, y;
 
-    if (!dst) {
+    if (dst == NULL) {
         return SDL_InvalidParamError("SDL_DrawPoints(): dst");
     }
 

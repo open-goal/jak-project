@@ -263,6 +263,13 @@ extern DECLSPEC int SDLCALL SDL_UIKitRunApp(int argc, char *argv[], SDL_main_fun
  */
 extern DECLSPEC int SDLCALL SDL_GDKRunApp(SDL_main_func mainFunction, void *reserved);
 
+/**
+ * Callback from the application to let the suspend continue.
+ *
+ * \since This function is available since SDL 2.28.0.
+ */
+extern DECLSPEC void SDLCALL SDL_GDKSuspendComplete(void);
+
 #endif /* __GDK__ */
 
 #ifdef __cplusplus

@@ -34,8 +34,7 @@
 #include "SDL_stdinc.h"
 #include "SDL_filesystem.h"
 
-char *
-SDL_GetBasePath(void)
+char *SDL_GetBasePath(void)
 {
     image_info info;
     int32 cookie = 0;
@@ -57,7 +56,7 @@ SDL_GetBasePath(void)
 
     const size_t len = SDL_strlen(str);
     char *retval = (char *) SDL_malloc(len + 2);
-    if (!retval) {
+    if (retval == NULL) {
         SDL_OutOfMemory();
         return NULL;
     }
@@ -69,19 +68,18 @@ SDL_GetBasePath(void)
 }
 
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_GetPrefPath(const char *org, const char *app)
 {
     // !!! FIXME: is there a better way to do this?
     const char *home = SDL_getenv("HOME");
     const char *append = "/config/settings/";
     size_t len = SDL_strlen(home);
 
-    if (!app) {
+    if (app == NULL) {
         SDL_InvalidParamError("app");
         return NULL;
     }
-    if (!org) {
+    if (org == NULL) {
         org = "";
     }
 
@@ -90,7 +88,7 @@ SDL_GetPrefPath(const char *org, const char *app)
     }
     len += SDL_strlen(append) + SDL_strlen(org) + SDL_strlen(app) + 3;
     char *retval = (char *) SDL_malloc(len);
-    if (!retval) {
+    if (retval == NULL) {
         SDL_OutOfMemory();
     } else {
         if (*org) {

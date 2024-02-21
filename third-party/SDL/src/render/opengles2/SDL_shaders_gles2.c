@@ -28,6 +28,8 @@
 #include "SDL_shaders_gles2.h"
 #include "SDL_stdinc.h"
 
+/* *INDENT-OFF* */ /* clang-format off */
+
 /*************************************************************************************************
  * Vertex/fragment shader source                                                                 *
  *************************************************************************************************/
@@ -346,6 +348,7 @@ static const char GLES2_Fragment_TextureExternalOES[] =         \
 "}\n"                                                           \
 ;
 
+/* *INDENT-ON* */ /* clang-format on */
 
 /*************************************************************************************************
  * Shader selector                                                                               *
@@ -382,12 +385,15 @@ GLES2_ShaderIncludeType GLES2_GetTexCoordPrecisionEnumFromHint()
     const char *texcoord_hint = SDL_GetHint("SDL_RENDER_OPENGLES2_TEXCOORD_PRECISION");
     GLES2_ShaderIncludeType value = GLES2_SHADER_FRAGMENT_INCLUDE_BEST_TEXCOORD_PRECISION;
     if (texcoord_hint) {
-        if (SDL_strcmp(texcoord_hint, "undefined") == 0)
+        if (SDL_strcmp(texcoord_hint, "undefined") == 0) {
             return GLES2_SHADER_FRAGMENT_INCLUDE_UNDEF_PRECISION;
-        if (SDL_strcmp(texcoord_hint, "high") == 0)
+        }
+        if (SDL_strcmp(texcoord_hint, "high") == 0) {
             return GLES2_SHADER_FRAGMENT_INCLUDE_HIGH_TEXCOORD_PRECISION;
-        if (SDL_strcmp(texcoord_hint, "medium") == 0)
+        }
+        if (SDL_strcmp(texcoord_hint, "medium") == 0) {
             return GLES2_SHADER_FRAGMENT_INCLUDE_MEDIUM_TEXCOORD_PRECISION;
+        }
     }
     return value;
 }
@@ -441,4 +447,3 @@ const char *GLES2_GetShader(GLES2_ShaderType type)
 #endif /* SDL_VIDEO_RENDER_OGL_ES2 && !SDL_RENDER_DISABLED */
 
 /* vi: set ts=4 sw=4 expandtab: */
-

@@ -25,8 +25,7 @@
 #include <psp2/apputil.h>
 #include <psp2/system_param.h>
 
-void
-SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
+void SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 {
     const char *vita_locales[] = {
         "ja_JP",
@@ -59,8 +58,9 @@ SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
     sceAppUtilInit(&initParam, &bootParam);
     sceAppUtilSystemParamGetInt(SCE_SYSTEM_PARAM_ID_LANG, &language);
 
-    if (language < 0 || language > SCE_SYSTEM_PARAM_LANG_TURKISH)
+    if (language < 0 || language > SCE_SYSTEM_PARAM_LANG_TURKISH) {
         language = SCE_SYSTEM_PARAM_LANG_ENGLISH_US; // default to english
+    }
 
     SDL_strlcpy(buf, vita_locales[language], buflen);
 
@@ -68,4 +68,3 @@ SDL_SYS_GetPreferredLocales(char *buf, size_t buflen)
 }
 
 /* vi: set ts=4 sw=4 expandtab: */
-

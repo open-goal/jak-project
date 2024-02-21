@@ -24,7 +24,8 @@
 
 static SDLTest_CommonState *state;
 
-typedef struct {
+typedef struct
+{
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *background;
@@ -137,7 +138,7 @@ Draw(DrawState *s)
     SDL_RenderGetViewport(s->renderer, &viewport);
 
     target = SDL_CreateTexture(s->renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, viewport.w, viewport.h);
-    if (!target) {
+    if (target == NULL) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't create render target texture: %s\n", SDL_GetError());
         return SDL_FALSE;
     }
@@ -172,8 +173,7 @@ Draw(DrawState *s)
     return SDL_TRUE;
 }
 
-void
-loop()
+void loop()
 {
     int i;
     SDL_Event event;
@@ -183,12 +183,17 @@ loop()
         SDLTest_CommonEvent(state, &event, &done);
     }
     for (i = 0; i < state->num_windows; ++i) {
-        if (state->windows[i] == NULL)
+        if (state->windows[i] == NULL) {
             continue;
+        }
         if (test_composite) {
-            if (!DrawComposite(&drawstates[i])) done = 1;
+            if (!DrawComposite(&drawstates[i])) {
+                done = 1;
+            }
         } else {
-            if (!Draw(&drawstates[i])) done = 1;
+            if (!Draw(&drawstates[i])) {
+                done = 1;
+            }
         }
     }
 #ifdef __EMSCRIPTEN__
@@ -198,8 +203,7 @@ loop()
 #endif
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int i;
     int frames;
@@ -210,7 +214,7 @@ main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    if (!state) {
+    if (state == NULL) {
         return 1;
     }
     for (i = 1; i < argc;) {
@@ -272,7 +276,7 @@ main(int argc, char *argv[])
     /* Print out some timing information */
     now = SDL_GetTicks();
     if (now > then) {
-        double fps = ((double) frames * 1000) / (now - then);
+        double fps = ((double)frames * 1000) / (now - then);
         SDL_Log("%2.2f frames per second\n", fps);
     }
 

@@ -12,8 +12,8 @@ orig_CFLAGS="$CFLAGS"
 dnl Set various version strings - taken gratefully from the GTk sources
 # See docs/release_checklist.md
 SDL_MAJOR_VERSION=2
-SDL_MINOR_VERSION=26
-SDL_MICRO_VERSION=5
+SDL_MINOR_VERSION=28
+SDL_MICRO_VERSION=0
 SDL_VERSION=$SDL_MAJOR_VERSION.$SDL_MINOR_VERSION.$SDL_MICRO_VERSION
 
 SDL_BINARY_AGE=`expr $SDL_MINOR_VERSION \* 100 + $SDL_MICRO_VERSION`
@@ -62,6 +62,7 @@ AC_PROG_AWK
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_EGREP
+AC_PROG_FGREP
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
@@ -180,8 +181,8 @@ base_libdir=`echo \${libdir} | sed 's/.*\/\(.*\)/\1/; q'`
 dnl Function to find a library in the compiler search path
 find_lib()
 {
-    gcc_bin_path=[`$CC -print-search-dirs 2>/dev/null | fgrep programs: | sed 's/[^=]*=\(.*\)/\1/' | sed 's/:/ /g'`]
-    gcc_lib_path=[`$CC -print-search-dirs 2>/dev/null | fgrep libraries: | sed 's/[^=]*=\(.*\)/\1/' | sed 's/:/ /g'`]
+    gcc_bin_path=[`$CC -print-search-dirs 2>/dev/null | $FGREP programs: | sed 's/[^=]*=\(.*\)/\1/' | sed 's/:/ /g'`]
+    gcc_lib_path=[`$CC -print-search-dirs 2>/dev/null | $FGREP libraries: | sed 's/[^=]*=\(.*\)/\1/' | sed 's/:/ /g'`]
     env_lib_path=[`echo $LIBS $LDFLAGS $* | sed 's/-L[ ]*//g'`]
     if test "$cross_compiling" = yes; then
         host_lib_path=""
@@ -1673,6 +1674,27 @@ dnl Haiku headers use multicharacter constants all over the place. Ignore these 
     fi
 }
 
+dnl See if GCC's -Wunused-local-typedefs is supported and disable it
+dnl  because it triggers on gcc 4.8.4 for compile time asserts inside
+dnl  of functions.
+CheckUnusedLocalTypedefs()
+{
+    AC_MSG_CHECKING(for GCC -Wunused-local-typedefs option)
+    have_gcc_unused_local_typedefs=no
+
+    save_CFLAGS="$CFLAGS"
+    CFLAGS="$save_CFLAGS -Wunused-local-typedefs"
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+    int x = 0;
+    ]],[])], [have_gcc_unused_local_typedefs=yes],[])
+    AC_MSG_RESULT($have_gcc_unused_local_typedefs)
+    CFLAGS="$save_CFLAGS"
+
+    if test x$have_gcc_unused_local_typedefs = xyes; then
+        EXTRA_CFLAGS="$EXTRA_CFLAGS -Wno-unused-local-typedefs"
+    fi
+}
+
 dnl Check for Wayland
 CheckWayland()
 {
@@ -1786,6 +1808,14 @@ dnl See if libdecor is available
                     else
                         EXTRA_LDFLAGS="$EXTRA_LDFLAGS $DECOR_LIBS"
                     fi
+
+                    saved_cflags=$CFLAGS
+                    CFLAGS="$CFLAGS $DECOR_CFLAGS"
+                    AC_CHECK_DECLS([libdecor_frame_get_min_content_size, libdecor_frame_get_max_content_size], [libdecor_get_min_max=yes], [ ], [[#include <libdecor.h>]])
+                    if test x$libdecor_get_min_max = xyes; then
+                        AC_DEFINE(SDL_HAVE_LIBDECOR_GET_MIN_MAX, 1, [ ])
+                    fi
+                    CFLAGS="$saved_cflags"
                 fi
             fi
         fi
@@ -3672,15 +3702,14 @@ CheckClockGettime()
 [AS_HELP_STRING([--enable-clock_gettime], [use clock_gettime() instead of gettimeofday() on UNIX [default=yes]])],
                   , enable_clock_gettime=yes)
     if test x$enable_clock_gettime = xyes; then
-        AC_CHECK_LIB(rt, clock_gettime, have_clock_gettime=yes)
+        AC_CHECK_LIB(c, clock_gettime, have_clock_gettime=yes)
         if test x$have_clock_gettime = xyes; then
-            AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [ ])
-            EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lrt"
+           AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [ ])
         else
-            AC_CHECK_LIB(c, clock_gettime, have_clock_gettime=yes)
+            AC_CHECK_LIB(rt, clock_gettime, have_clock_gettime=yes)
             if test x$have_clock_gettime = xyes; then
-               AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [ ])
-               EXTRA_LDFLAGS="$EXTRA_LDFLAGS"
+                EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lrt"
+                AC_DEFINE(HAVE_CLOCK_GETTIME, 1, [ ])
             fi
         fi
     fi
@@ -3738,6 +3767,7 @@ CheckVirtualJoystick()
 
 dnl Do this on all platforms, before everything else (other things might want to override it).
 CheckWarnAll
+CheckUnusedLocalTypedefs
 CheckNoStrictAliasing
 
 dnl Do this for every platform, but for some it doesn't mean anything, but better to catch it here anyhow.
@@ -4860,6 +4890,8 @@ AC_SUBST(SDL_CFLAGS)
 AC_SUBST(SDL_LIBS)
 AC_SUBST(SDL_STATIC_LIBS)
 AC_SUBST(SDL_RLD_FLAGS)
+PKGCONFIG_DEPENDS=""
+AC_SUBST(PKGCONFIG_DEPENDS)
 if test x$enable_shared = xyes; then
     PKGCONFIG_LIBS_PRIV="
 Libs.private:"
