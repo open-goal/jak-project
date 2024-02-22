@@ -3532,10 +3532,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
           }
           auto elt_group = arg_forms.at(5)->try_as_element<GenericElement>();
           if (elt_group && elt_group->op().is_func() &&
-              elt_group->op().func()->to_form(env).is_symbol("sound-group") &&
-              elt_group->elts().size() == 1) {
+              elt_group->op().func()->to_form(env).is_symbol("sound-group")) {
             Form* so_group_f = nullptr;
-            if (!elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
+            if (elt_group->elts().size() == 1 &&
+                !elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
               so_group_f = pool.form<ConstantTokenElement>(
                   elt_group->elts().at(0)->to_form(env).as_symbol().name_ptr);
             }
