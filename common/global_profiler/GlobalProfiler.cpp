@@ -42,8 +42,17 @@ void GlobalProfiler::set_max_events(size_t event_count) {
   m_nodes.resize(event_count);
 }
 
+void GlobalProfiler::set_waiting_for_event(const std::string& event_name) {
+  if (!event_name.empty()) {
+    m_waiting_for_event = event_name;
+  }
+}
+
 void GlobalProfiler::event(const char* name, ProfNode::Kind kind) {
-  if (!m_enabled) {
+  if (m_waiting_for_event && m_waiting_for_event.value() == name) {
+    m_ignore_events = true;
+  }
+  if (!m_enabled || m_ignore_events) {
     return;
   }
   size_t my_idx = (m_next_idx++ % m_nodes.size());
@@ -68,7 +77,7 @@ void GlobalProfiler::begin_event(const char* name) {
 }
 
 void GlobalProfiler::end_event() {
-  if (!m_enabled) {
+  if (!m_enabled || m_ignore_events) {
     return;
   }
   size_t my_idx = (m_next_idx++ % m_nodes.size());

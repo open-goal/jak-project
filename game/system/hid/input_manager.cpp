@@ -6,6 +6,7 @@
 #include "input_manager.h"
 #include "sdl_util.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
@@ -18,94 +19,118 @@
 InputManager::InputManager()
     // Load user settings
     : m_settings(std::make_shared<game_settings::InputSettings>(game_settings::InputSettings())) {
-  // Update to latest controller DB file
-  std::string mapping_path =
-      (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
-  if (file_util::file_exists(mapping_path)) {
-    SDL_GameControllerAddMappingsFromFile(mapping_path.c_str());
-  } else {
-    lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
-  }
-  // Initialize atleast 2 ports, because that's normal for Jak
-  // more will be allocated if more controllers are found
-  m_data[0] = std::make_shared<PadData>();
-  m_data[1] = std::make_shared<PadData>();
-  m_keyboard = KeyboardDevice(m_settings);
-  m_mouse = MouseDevice(m_settings);
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("input_manager::init");
+    {
+      auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
+      // initializing the controllers on startup can sometimes take a very long time
+      // so we isolate that to here instead
+      if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0) {
+        sdl_util::log_error(
+            "Could not initialize SDL Controller support, controllers will not work!");
+      }
+    }
 
-  if (m_data.find(m_keyboard_and_mouse_port) == m_data.end()) {
-    m_data[m_keyboard_and_mouse_port] = std::make_shared<PadData>();
+    // Update to latest controller DB file
+    std::string mapping_path =
+        (file_util::get_jak_project_dir() / "game" / "assets" / "sdl_controller_db.txt").string();
+    if (file_util::file_exists(mapping_path)) {
+      SDL_GameControllerAddMappingsFromFile(mapping_path.c_str());
+    } else {
+      lg::error("Could not find SDL Controller DB at path `{}`", mapping_path);
+    }
+    // Initialize atleast 2 ports, because that's normal for Jak
+    // more will be allocated if more controllers are found
+    m_data[0] = std::make_shared<PadData>();
+    m_data[1] = std::make_shared<PadData>();
+    m_keyboard = KeyboardDevice(m_settings);
+    m_mouse = MouseDevice(m_settings);
+
+    if (m_data.find(m_keyboard_and_mouse_port) == m_data.end()) {
+      m_data[m_keyboard_and_mouse_port] = std::make_shared<PadData>();
+    }
+    m_command_binds = CommandBindingGroups();
+    refresh_device_list();
+    ignore_background_controller_events(false);
+    hide_cursor(m_auto_hide_mouse);
   }
-  m_command_binds = CommandBindingGroups();
-  refresh_device_list();
-  ignore_background_controller_events(false);
-  hide_cursor(m_auto_hide_mouse);
 }
 
 InputManager::~InputManager() {
-  for (auto& device : m_available_controllers) {
-    device->close_device();
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("input_manager::destroy");
+    for (auto& device : m_available_controllers) {
+      device->close_device();
+    }
+    m_settings->save_settings();
   }
-  m_settings->save_settings();
 }
 
 void InputManager::refresh_device_list() {
-  m_available_controllers.clear();
-  m_controller_port_mapping.clear();
-  // Enumerate devices
-  // TODO - if this was done on a separate thread, there would be no hitch in the game thread
-  // but of course, that presents other synchronization challenges.
-  const auto num_joysticks = SDL_NumJoysticks();
-  if (num_joysticks > 0) {
-    for (int i = 0; i < num_joysticks; i++) {
-      if (!SDL_IsGameController(i)) {
-        lg::error("Controller with device id {} is not avaiable via the GameController API", i);
-        continue;
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("input_manager::refresh_device_list");
+    m_available_controllers.clear();
+    m_controller_port_mapping.clear();
+    // Enumerate devices
+    // TODO - if this was done on a separate thread, there would be no hitch in the game thread
+    // but of course, that presents other synchronization challenges.
+    const auto num_joysticks = SDL_NumJoysticks();
+    if (num_joysticks > 0) {
+      for (int i = 0; i < num_joysticks; i++) {
+        if (!SDL_IsGameController(i)) {
+          lg::error("Controller with device id {} is not avaiable via the GameController API", i);
+          continue;
+        }
+        auto controller = std::make_shared<GameController>(i, m_settings);
+        if (!controller->is_loaded()) {
+          lg::error("Unable to successfully connect to GameController with id {}, skipping", i);
+          continue;
+        }
+        m_available_controllers.push_back(controller);
+        // By default, controller port mapping is on a first-come-first-served basis
+        //
+        // However, we will use previously saved controller port mappings to take precedence
+        // For example, if you previous set your PS5 controller to be port 0, then even
+        // if another controller is detected first, the PS5 controller should be assigned as
+        // expected.
+        if (m_settings->controller_port_mapping.find(controller->get_guid()) !=
+            m_settings->controller_port_mapping.end()) {
+          // Though it's possible for a user to assign multiple controllers to the same port, so the
+          // last one wins
+          m_controller_port_mapping[m_settings->controller_port_mapping.at(
+              controller->get_guid())] = i;
+        } else {
+          m_controller_port_mapping[m_available_controllers.size() - 1] = i;
+          m_settings->controller_port_mapping[controller->get_guid()] =
+              m_available_controllers.size() - 1;
+        }
+        // Allocate a PadData if this is a new port
+        if (m_data.find(i) == m_data.end()) {
+          m_data[i] = std::make_shared<PadData>();
+        }
       }
-      auto controller = std::make_shared<GameController>(i, m_settings);
-      if (!controller->is_loaded()) {
-        lg::error("Unable to successfully connect to GameController with id {}, skipping", i);
-        continue;
-      }
-      m_available_controllers.push_back(controller);
-      // By default, controller port mapping is on a first-come-first-served basis
-      //
-      // However, we will use previously saved controller port mappings to take precedence
-      // For example, if you previous set your PS5 controller to be port 0, then even
-      // if another controller is detected first, the PS5 controller should be assigned as expected.
-      if (m_settings->controller_port_mapping.find(controller->get_guid()) !=
-          m_settings->controller_port_mapping.end()) {
-        // Though it's possible for a user to assign multiple controllers to the same port, so the
-        // last one wins
-        m_controller_port_mapping[m_settings->controller_port_mapping.at(controller->get_guid())] =
-            i;
-      } else {
-        m_controller_port_mapping[m_available_controllers.size() - 1] = i;
-        m_settings->controller_port_mapping[controller->get_guid()] =
-            m_available_controllers.size() - 1;
-      }
-      // Allocate a PadData if this is a new port
-      if (m_data.find(i) == m_data.end()) {
-        m_data[i] = std::make_shared<PadData>();
-      }
-    }
-    // If the controller that was last selected to be port 0 is around, prioritize it
-    if (!m_settings->last_selected_controller_guid.empty()) {
-      for (size_t i = 0; i < m_available_controllers.size(); i++) {
-        const auto& controller_guid = m_available_controllers.at(i)->get_guid();
-        if (controller_guid == m_settings->last_selected_controller_guid) {
-          m_controller_port_mapping[0] = i;
-          m_settings->controller_port_mapping[controller_guid] = 0;
-          break;
+      // If the controller that was last selected to be port 0 is around, prioritize it
+      if (!m_settings->last_selected_controller_guid.empty()) {
+        for (size_t i = 0; i < m_available_controllers.size(); i++) {
+          const auto& controller_guid = m_available_controllers.at(i)->get_guid();
+          if (controller_guid == m_settings->last_selected_controller_guid) {
+            m_controller_port_mapping[0] = i;
+            m_settings->controller_port_mapping[controller_guid] = 0;
+            break;
+          }
         }
       }
     }
-  }
-  if (m_available_controllers.empty()) {
-    lg::warn(
-        "No active game controllers could be found or loaded successfully - inputs will not work!");
-  } else {
-    lg::info("Found {} controllers", m_available_controllers.size());
+    if (m_available_controllers.empty()) {
+      lg::warn(
+          "No active game controllers could be found or loaded successfully - inputs will not "
+          "work!");
+    } else {
+      lg::info("Found {} controllers", m_available_controllers.size());
+    }
   }
 }
 
