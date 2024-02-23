@@ -5,16 +5,16 @@
 
 #include "kscheme.h"
 
-#include <common/symbols.h>
-#include <common/util/FontUtils.h>
+#include "common/symbols.h"
+#include "common/util/FontUtils.h"
 
+#include "game/external/discord.h"
+#include "game/external/discord_jak1.h"
+#include "game/external/discord_jak2.h"
 #include "game/kernel/common/Symbol4.h"
-#include <game/external/discord.h>
-#include <game/external/discord_jak1.h>
-#include <game/external/discord_jak2.h>
-#include <game/kernel/common/kmachine.h>
-#include <game/kernel/common/kscheme.h>
-#include <game/overlord/jak2/iso.h>
+#include "game/kernel/common/kmachine.h"
+#include "game/kernel/common/kscheme.h"
+#include "game/overlord/jak2/iso.h"
 
 namespace kmachine_extras {
 using namespace jak2;

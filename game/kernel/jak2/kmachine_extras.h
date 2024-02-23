@@ -2,8 +2,8 @@
 #include <optional>
 #include <string>
 
+#include "common/common_types.h"
 #include "common/util/json_util.h"
-#include <common/common_types.h>
 
 namespace kmachine_extras {
 void update_discord_rpc(u32 discord_info);
