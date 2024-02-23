@@ -57,6 +57,8 @@
   (giant)
   (no-anim)
   (disable-force-on)
+  (ds8 8)
+  (ds9 9)
   )
 ;; ---darkjak-stage
 
@@ -114,7 +116,7 @@
 
 ;; target
 (define-extern want-to-powerjak? (function symbol :behavior target))
-(define-extern target-invisible-start (function none :behavior target))
+(define-extern target-invisible-start (function time-frame none :behavior target))
 (define-extern target-top-anim-base-mode (function int none :behavior target))
 (define-extern target-land-effect (function none :behavior target))
 (define-extern *attack-find-mods* surface)
@@ -122,12 +124,11 @@
 (define-extern *uppercut-jump-mods* surface)
 
 ;; target2
-
 (define-extern *trip-mods* surface)
 (define-extern *look-around-mods* surface)
 (define-extern target-gun-check (function none :behavior target))
-(define-extern target-darkjak-end-mode (function none :behavior target))
-(define-extern target-lightjak-end-mode (function none :behavior target))
+(define-extern target-darkjak-end-mode (function symbol none :behavior target))
+(define-extern target-lightjak-end-mode (function symbol none :behavior target))
 (define-extern want-to-gun? (function target symbol symbol :behavior process))
 (define-extern *hit-ground-hard-mods* surface)
 (define-extern *float-mods* surface)
@@ -140,9 +141,9 @@
   (ls0 0)
   (ls1 1)
   (ls2 2)
-  (ls3 3)
-  (ls4 4)
-  (ls5 5)
+  (regen 3)
+  (swoop 4)
+  (freeze 5)
   (ls6 6)
   (ls7 7)
   (ls8 8)
@@ -207,7 +208,7 @@
    (notify                       handle)
    (death-resetter               resetter-spec     :inline)
    (mode-cache                   basic)
-   (mode-param1                  uint64)
+   (mode-param1                  handle)
    (mode-param2                  uint64)
    (mode-param3                  uint64)
    (major-mode-exit-hook         basic)
@@ -255,7 +256,7 @@
    (invisible-shadow-dir-backup  vector            :inline)
    )
   (:methods
-    (target-method-28 (_type_) none)
+    (target-method-28 (_type_ collide-cache collide-edge-spec) none)
     (target-init! (_type_ continue-point symbol) none)
     )
   (:states
@@ -289,7 +290,7 @@
     target-carry-pickup
     (target-clone-anim handle)
     (target-continue continue-point)
-    target-credits
+    (target-credits int)
     target-darkjak-bomb0
     target-darkjak-bomb1
     target-darkjak-get-off
@@ -297,7 +298,7 @@
     target-darkjak-running-attack
     target-darkjak-smack
     target-darkjak-smack-charge
-    target-death
+    (target-death symbol)
     target-demo
     (target-double-jump float float)
     (target-duck-high-jump float float symbol)
@@ -358,7 +359,7 @@
     (target-indax-start handle object)
     target-indax-trip
     target-indax-walk
-    (target-invisible-get-on handle)
+    (target-invisible-get-on handle time-frame)
     (target-jump float float surface)
     (target-jump-forward float float)
     target-ladder
@@ -371,8 +372,8 @@
     (target-lightjak-regen int)
     target-lightjak-shield
     (target-lightjak-swoop float)
-    target-lightjak-swoop-again
-    target-lightjak-swoop-falling
+    (target-lightjak-swoop-again float)
+    (target-lightjak-swoop-falling symbol)
     target-load-wait
     target-look-around
     target-mech-carry-drag
@@ -445,7 +446,7 @@
     target-wade-stance
     target-wade-walk
     target-walk
-    target-warp-in
+    (target-warp-in vector vector)
     target-warp-out
     target-yellow-jump-blast
     tobot-stance
