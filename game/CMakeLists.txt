@@ -1,6 +1,3 @@
-# We define our own compilation flags here.
-set(CMAKE_CXX_STANDARD 17)
-
 # Set a more convenient ARM flag
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     set(ARM64_ARCH TRUE)

@@ -1,7 +1,7 @@
 # Top Level CMakeLists.txt
 cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 project(jak)
 include(CTest)
 
@@ -39,7 +39,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         -fcxx-exceptions \
         -fexceptions \
         -fdiagnostics-color=always \
-        -std=c++17 \
         -mavx \
         -Wall \
         -Wno-c++11-narrowing \
@@ -217,7 +216,6 @@ build_third_party_lib(sqlite3 sqlite3)
 
 # build tree-sitter parser
 include_directories(third-party/tree-sitter/tree-sitter/lib/include)
-include_directories(third-party/tree-sitter/tree-sitter-opengoal/include)
 build_third_party_lib(tree-sitter tree-sitter)
 
 # native OS dialogs for error messages

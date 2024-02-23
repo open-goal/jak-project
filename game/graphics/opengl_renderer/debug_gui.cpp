@@ -5,6 +5,7 @@
 
 #include "common/global_profiler/GlobalProfiler.h"
 
+#include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
 #include "game/system/hid/sdl_util.h"
 
@@ -151,6 +152,12 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
         ImGui::TreePop();
       }
       ImGui::Checkbox("Treat Pad0 as Pad1", &Gfx::g_debug_settings.treat_pad0_as_pad1);
+      auto is_keyboard_enabled =
+          Display::GetMainDisplay()->get_input_manager()->is_keyboard_enabled();
+      if (ImGui::Checkbox("Enable Keyboard (forced on if no controllers detected)",
+                          &is_keyboard_enabled)) {
+        Display::GetMainDisplay()->get_input_manager()->enable_keyboard(is_keyboard_enabled);
+      }
       ImGui::EndMenu();
     }
 

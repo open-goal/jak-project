@@ -39,7 +39,7 @@ class Matcher {
   static Matcher var_name(const std::string& name);
   static Matcher any_label(int match_id = -1);
   static Matcher reg(Register reg);
-  static inline Matcher s6() { return Matcher::reg(Register(Reg::GPR, Reg::S6)); }
+  static Matcher s6();
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
   static Matcher func(const Matcher& match, const std::vector<Matcher>& args);
   static Matcher func(const std::string& name, const std::vector<Matcher>& args);

@@ -3,6 +3,8 @@
 
 namespace jak2 {
 #define VOICE_BIT(voice) (1 << ((voice) >> 1))
+// Our CI is on an ancient version of clang-format, manually format this
+// so we don't have to worry about the version locally
 // clang-format off
 #define CORE_BIT(voice) ((voice)&1)
 // clang-format on

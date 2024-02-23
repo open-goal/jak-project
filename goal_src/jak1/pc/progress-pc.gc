@@ -245,7 +245,7 @@
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-controller) :scale #t :param3 (game-option-menu controller-binds)
     :option-disabled-func (lambda () (<= (pc-get-controller-count) 0)))
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-keyboard) :scale #t :param3 (game-option-menu keyboard-binds)
-    :option-disabled-func (lambda () (not (-> *pc-settings* keyboard-enabled?))))
+    :option-disabled-func (lambda () (not (pc-get-keyboard-enabled?))))
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-mouse) :scale #t :param3 (game-option-menu mouse-binds)
     :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
@@ -257,7 +257,8 @@
   (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-enable-kb) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
-                  (set-enable-keyboard! *pc-settings* val-sym)
+                  (pc-set-keyboard-enabled! val-sym)
+                  (set! (-> *pc-settings* keyboard-enabled?) val-sym)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-enable-mouse) :scale #t
     :on-change (lambda ((val object))
@@ -277,7 +278,7 @@
   (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
     :on-confirm (lambda ()
                  (reset-input *pc-settings* 'input #t)
-                 (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
+                 (pc-set-keyboard-enabled! (-> *pc-settings* keyboard-enabled?))
                  (update-mouse-controls! *pc-settings*)
                  (none)))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))

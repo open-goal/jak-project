@@ -375,12 +375,6 @@
   (pc-ignore-background-controller-events! val)
   (none))
 
-(defmethod set-enable-keyboard! pc-settings ((obj pc-settings) (val symbol))
-  "sets whether to ignore keyboard input events"
-  (set! (-> obj keyboard-enabled?) val)
-  (pc-set-keyboard-enabled! val)
-  (none))
-
 (defmethod update-mouse-controls! pc-settings ((obj pc-settings))
   "Uses whatever is set on the [[pc-settings]] to update the runtime on how it should interpret mouse events"
   (pc-set-mouse-options! (-> obj mouse-enabled?) (-> obj mouse-camera?) (-> obj mouse-movement?))
@@ -668,7 +662,9 @@
     (("controller-eco-led?") (set! (-> obj controller-led-eco?) (file-stream-read-symbol file)))
     (("controller-heat-led?") (set! (-> obj controller-led-heat?) (file-stream-read-symbol file)))
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
-    (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
+    ;; TODO - remove this eventually, setting moved into json input-settings
+    ;; has to stay here or the settings parsing code explodes
+    (("keyboard-enabled?") (file-stream-read-symbol file))
     (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
     (("mouse-camera?") (set! (-> obj mouse-camera?) (file-stream-read-symbol file)))
     (("mouse-xsens") (set! (-> obj mouse-xsens) (file-stream-read-float file)))
@@ -754,7 +750,6 @@
   (format file "  (controller-led-min-brightness ~f)~%" (-> obj controller-led-min-brightness))
   (format file "  (controller-led-max-brightness ~f)~%" (-> obj controller-led-max-brightness))
   (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
-  (format file "  (keyboard-enabled? ~A)~%" (-> obj keyboard-enabled?))
   (format file "  (mouse-enabled? ~A)~%" (-> obj mouse-enabled?))
   (format file "  (mouse-camera? ~A)~%" (-> obj mouse-camera?))
   (format file "  (mouse-xsens ~f)~%" (-> obj mouse-xsens))
@@ -834,6 +829,7 @@
   ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
   (load-settings obj)
   ;; any post-operations that need to be done after loading
+  (set! (-> obj keyboard-enabled?) (pc-get-keyboard-enabled?))
   (update-mouse-controls! obj)
   obj)
 

@@ -61,13 +61,13 @@ void log(level log_level, const std::string& format, Args&&... args) {
 #else
   now.tim = time(nullptr);
 #endif
-  std::string formatted_message = fmt::format(format, std::forward<Args>(args)...);
+  std::string formatted_message = fmt::format(fmt::runtime(format), std::forward<Args>(args)...);
   internal::log_message(log_level, now, formatted_message.c_str());
 }
 
 template <typename... Args>
 void print(const std::string& format, Args&&... args) {
-  std::string formatted_message = fmt::format(format, std::forward<Args>(args)...);
+  std::string formatted_message = fmt::format(fmt::runtime(format), std::forward<Args>(args)...);
   internal::log_print(formatted_message.c_str());
 }
 template <typename... Args>
