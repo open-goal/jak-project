@@ -14861,7 +14861,7 @@
    (num-strips  uint32                   :offset 76)
    (num-dps     uint32                   :offset 92)
    (kick-offset uint32                   :offset 108)
-   (shader      gcf-shader      :dynamic :offset-assert 112) ;; guessed by decompiler
+   (shader      gcf-shader    :inline :dynamic :offset-assert 112) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x70
@@ -20343,7 +20343,7 @@
     (move-by-vector! (_type_ vector) none) ;; 28
     (move-to-point! (_type_ vector) none) ;; 29
     (collide-shape-method-30 () none) ;; 30 ;; (debug-draw (_type_) none)
-    (collide-shape-method-31 () none) ;; 31 ;; (fill-cache-for-shape (_type_ float collide-query) none)
+    (fill-cache-for-shape (_type_ float collide-query) none) ;; 31
     (fill-cache-integrate-and-collide (_type_ vector collide-query meters) none) ;; 32
     (collide-shape-method-33 () none) ;; 33 ;; (find-prim-by-id (_type_ uint) collide-shape-prim)
     (collide-shape-method-34 () none) ;; 34 ;; (find-prim-by-id-logtest (_type_ uint) collide-shape-prim)
@@ -20602,7 +20602,7 @@
    (group     sparticle-launch-group         :offset-assert 16)
    (callback  (function none)                :offset-assert 20)
    (target    process-drawable               :offset-assert 24)
-   (mat-joint matrix                         :offset-assert 28)
+   (mat-joint object                         :offset-assert 28) ;; can be *launch-matrix* or joint idx
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -20616,7 +20616,7 @@
    (group         sparticle-launch-group :offset-assert 16)
    (callback      (function none) :offset-assert 20)
    (target        process-drawable :offset-assert 24)
-   (mat-joint     matrix  :offset-assert 28)
+   (mat-joint     object  :offset-assert 28) ;; can be *launch-matrix* or joint idx
    (subsample-num float   :offset-assert 32)
    )
   :method-count-assert 9
@@ -21136,6 +21136,7 @@
    (sliding-start-time                             time-frame                             :offset 5712)
    (unknown-time-frame18                           time-frame                             :offset 5720)
    (unknown-sound-id00                             sound-id                               :offset 5776)
+   (lightjak-sound-id                              sound-id                               :offset 5780)
    (unknown-handle02                               handle                                 :offset 5792)
    (impact-ctrl                                    impact-control             :inline     :offset 5824)
    (unknown-word06                                 int32                                  :offset 5832)
@@ -22422,6 +22423,8 @@
   (giant)
   (no-anim)
   (disable-force-on)
+  (ds8 8)
+  (ds9 9)
   )
 ;; ---target-h:darkjak-stage
 
@@ -22432,9 +22435,9 @@
   (ls0 0)
   (ls1 1)
   (ls2 2)
-  (ls3 3)
-  (ls4 4)
-  (ls5 5)
+  (regen 3)
+  (swoop 4)
+  (freeze 5)
   (ls6 6)
   (ls7 7)
   (ls8 8)
@@ -22511,7 +22514,7 @@
    (notify                      handle                                   :offset-assert 2288) ;; handle
    (death-resetter              resetter-spec                    :inline :offset-assert 2296)
    (mode-cache                  basic                                    :offset-assert 2312)
-   (mode-param1                 uint64                                   :offset-assert 2320) ;; handle
+   (mode-param1                 handle                                   :offset-assert 2320) ;; handle
    (mode-param2                 uint64                                   :offset-assert 2328)
    (mode-param3                 uint64                                   :offset-assert 2336)
    (major-mode-exit-hook        basic                                    :offset-assert 2344)
@@ -22563,7 +22566,7 @@
   :flag-assert         #x1e09800a00
   ;; field mode-param2 uses ~A with a 64-bit load. field mode-param3 uses ~A with a 64-bit load.
   (:methods
-    (target-method-28 (_type_) none) ;; 28
+    (target-method-28 (_type_ collide-cache collide-edge-spec) none) ;; 28
     (target-init! (_type_ continue-point symbol) none) ;; 29
     )
   (:states
@@ -22576,7 +22579,7 @@
     ;; special states
     target-startup
     target-title ;; associated process guessed by decompiler, old: (state symbol target)
-    target-credits
+    (target-credits int)
     target-load-wait
     target-hide
     target-float
@@ -22585,10 +22588,10 @@
     (target-clone-anim handle) ;; associated process guessed by decompiler, old: (state handle target)
     (target-continue continue-point) ;; associated process guessed by decompiler, old: (state continue-point target)
     (target-blast-recover rigid-body-impact)
-    target-warp-in ;; associated process guessed by decompiler, old: (state vector vector target target)
+    (target-warp-in vector vector) ;; associated process guessed by decompiler, old: (state vector vector target target)
     target-warp-out ;; associated process guessed by decompiler, old: (state vector vector target target)
     target-launch-dir
-    target-death ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-death symbol) ;; associated process guessed by decompiler, old: (state symbol target)
     ;; general states
     target-stance
     target-stance-ambient
@@ -22632,7 +22635,7 @@
     target-darkjak-smack
     target-darkjak-bomb1 ;; associated process guessed by decompiler, old: (state float float target)
     target-darkjak-bomb0
-    (target-invisible-get-on handle)
+    (target-invisible-get-on handle time-frame)
     ;; lightjak
     (target-eco-powerup int float)
     (target-lightjak-get-on lightjak-stage)
@@ -22641,8 +22644,8 @@
     target-lightjak-freeze
     target-lightjak-shield
     (target-lightjak-swoop float)
-    target-lightjak-swoop-again
-    target-lightjak-swoop-falling
+    (target-lightjak-swoop-again float)
+    (target-lightjak-swoop-falling symbol)
     ;; board
     (target-board-start handle)
     target-board-get-on
@@ -32916,8 +32919,8 @@
 ;; cam-start                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cam-stop function) ;; (function symbol)
-;; (define-extern cam-start function) ;; (function symbol none)
+(define-extern cam-stop (function symbol))
+(define-extern cam-start (function symbol none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cloth-h                        ;;
@@ -33224,69 +33227,58 @@
 ;; curves                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype float-pair (structure)
   ((first  float  :offset-assert 0)
    (second float  :offset-assert 4)
-   (x      float  :offset-assert 0)
-   (y      float  :offset-assert 4)
+   (x      float  :offset 0)
+   (y      float  :offset 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype float-pair-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data float-pair :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype curve2d (basic)
   ()
   :method-count-assert 10
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (curve2d-method-9 () none) ;; 9
+    (curve2d-method-9 (_type_ float int) float) ;; 9
     )
   )
-|#
 
-#|
 (deftype curve-color (basic)
   ()
   :method-count-assert 10
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (curve-color-method-9 () none) ;; 9
+    (curve-color-method-9 (_type_ float rgbaf int) rgbaf) ;; 9
     )
   )
-|#
 
-#|
 (deftype curve2d-piecewise (curve2d)
-  ((pts                   basic   :offset-assert 4)
+  ((pts                   float-pair-array :offset-assert 4)
    (default-loop-behavior uint64  :offset-assert 8)
    )
   :method-count-assert 12
   :size-assert         #x10
   :flag-assert         #xc00000010
   (:methods
-    (curve2d-piecewise-method-10 () none) ;; 10
-    (curve2d-piecewise-method-11 () none) ;; 11
+    (curve2d-piecewise-method-10 (_type_ int symbol uint) none) ;; 10
+    (curve2d-piecewise-method-11 (_type_) none) ;; 11
     )
   )
-|#
 
-#|
 (deftype curve2d-fast (curve2d)
   ((xs                vector :inline :offset-assert 16)
    (ys                vector :inline :offset-assert 32)
@@ -33296,69 +33288,60 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   )
-|#
 
-#|
 (deftype curve-color-fast (curve-color)
   ((xs                vector  :inline :offset-assert 16)
-   (ys                UNKNOWN 4       :offset-assert 32)
+   (ys                vector 4 :inline :offset-assert 32)
    (one-over-x-deltas vector  :inline :offset-assert 96)
    )
   :method-count-assert 10
   :size-assert         #x70
   :flag-assert         #xa00000070
   )
-|#
 
-#|
 (deftype color-pair (structure)
   ((first  float         :offset-assert 0)
    (second rgbaf :inline :offset-assert 16)
-   (x      float         :offset-assert 0)
-   (y      rgbaf :inline :offset-assert 16)
+   (x      float         :offset 0)
+   (y      rgbaf :inline :offset 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype color-pair-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data color-pair :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype curve-color-piecewise (curve-color)
-  ((pts                   basic   :offset-assert 4)
+  ((pts                   color-pair-array :offset-assert 4)
    (default-loop-behavior uint64  :offset-assert 8)
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (curve-color-piecewise-method-10 () none) ;; 10
+    (curve-color-piecewise-method-10 (_type_ int symbol uint) none) ;; 10
     )
   )
-|#
 
-;; (define-extern rgbaf-lerp! function)
-;; (define-extern evaluate-curve-fast function)
-;; (define-extern evaluate-color-curve-fast function)
-;; (define-extern rgba<-rgbaf function)
-;; (define-extern *curve-unity* curve2d-fast)
-;; (define-extern *curve-linear-up* curve2d-fast)
-;; (define-extern *curve-linear-down* curve2d-fast)
-;; (define-extern *curve-linear-up-hold* object)
-;; (define-extern *curve-linear-up-down* curve2d-fast)
-;; (define-extern *trail-color-curve-white* curve-color-fast)
-;; (define-extern particle-color-curve-white* curve-color-fast)
-;; (define-extern *trail-color-curve-red* curve-color-fast)
+(define-extern rgbaf-lerp! (function rgbaf rgbaf rgbaf float rgbaf))
+(define-extern evaluate-curve-fast (function curve2d-fast rgbaf rgbaf float))
+(define-extern evaluate-color-curve-fast (function curve-color-fast rgbaf rgbaf rgbaf))
+(define-extern rgba<-rgbaf (function rgba rgbaf int))
+(define-extern *curve-unity* curve2d-fast)
+(define-extern *curve-linear-up* curve2d-fast)
+(define-extern *curve-linear-down* curve2d-fast)
+(define-extern *curve-linear-up-hold* curve2d-piecewise)
+(define-extern *curve-linear-up-down* curve2d-fast)
+(define-extern *trail-color-curve-white* curve-color-fast)
+(define-extern particle-color-curve-white* curve-color-fast)
+(define-extern *trail-color-curve-red* curve-color-fast)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ambient                        ;;
@@ -33657,9 +33640,9 @@
 (define-extern swingpole-init (function int object :behavior swingpole))
 (define-extern manipy-post (function none :behavior manipy))
 (define-extern manipy-init (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
-(define-extern part-tracker-init-base (function sparticle-launch-group time-frame (function none) uint process-drawable matrix none :behavior part-tracker))
-(define-extern part-tracker-subsampler-init (function part-tracker-subsampler-init-params time-frame (function none) uint64 process-drawable matrix none :behavior part-tracker-subsampler))
-(define-extern part-tracker-init (function part-tracker-init-params time-frame (function part-tracker none) (pointer process-drawable) process matrix none :behavior part-tracker))
+(define-extern part-tracker-init-base (function sparticle-launch-group time-frame (function none) uint process-drawable object none :behavior part-tracker))
+(define-extern part-tracker-subsampler-init (function part-tracker-subsampler-init-params object :behavior part-tracker-subsampler))
+(define-extern part-tracker-init (function part-tracker-init-params object :behavior part-tracker))
 (define-extern part-tracker-track-root (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern part-tracker-move-to-target (function part-tracker vector))
 (define-extern part-tracker-track-target (function part-tracker vector))
@@ -33688,7 +33671,6 @@
 ;; lightning                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lightning-globals (structure)
   ((gcf-buf uint16  :offset-assert 0)
    (vtx-buf uint16  :offset-assert 2)
@@ -33697,42 +33679,38 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
 (define-extern *lightning-spec-id-table* (array lightning-spec))
-;; (define-extern *lightning-gcf* object) ;; gcf-control
-;; (define-extern lightning-fractal-gen function) ;; (function (inline-array vector) int int float lightning-spec none)
-;; (define-extern lightning-uniform-gen function) ;; (function (inline-array vector) int int float lightning-spec none)
-;; (define-extern lightning-trail-uniform-gen function) ;; (function (inline-array vector) (inline-array vector) float int symbol)
-;; (define-extern lightning-trail-fractal-gen function) ;; (function (inline-array vector) (inline-array vector) int int float lightning-spec none)
-;; (define-extern gs-packed-rgba-lerp! function) ;; (function gs-packed-rgba rgba rgba float gs-packed-rgba)
-;; (define-extern lightning-fade function) ;; (function lightning-control int :behavior process)
-;; (define-extern lightning-update function) ;; (function lightning-control symbol)
-;; (define-extern lightning-draw function) ;; (function dma-buffer lightning-control lightning-globals symbol)
-;; (define-extern lightning-start function) ;; (function float float (pointer process))
-;; (define-extern *lightning-globals* object) ;; lightning-globals
-;; (define-extern *lightning* object) ;; symbol
-;; (define-extern lightning-draw-all function) ;; (function none)
-;; (define-extern unlink-lightning-spec-by-heap function) ;; (function kheap none)
+(define-extern *lightning-gcf* gcf-control)
+(define-extern lightning-fractal-gen (function (inline-array vector) int int float lightning-spec none))
+(define-extern lightning-uniform-gen (function (inline-array vector) int int float lightning-spec none))
+(define-extern lightning-trail-uniform-gen (function (inline-array vector) (inline-array vector) float int symbol))
+(define-extern lightning-trail-fractal-gen (function (inline-array vector) (inline-array vector) int int float lightning-spec none))
+(define-extern gs-packed-rgba-lerp! (function gs-packed-rgba rgba rgba float gs-packed-rgba))
+(define-extern lightning-fade (function lightning-control int :behavior process))
+(define-extern lightning-update (function lightning-control symbol))
+(define-extern lightning-draw (function dma-buffer lightning-control lightning-globals symbol))
+(define-extern lightning-start (function float float (pointer process)))
+(define-extern *lightning-globals* lightning-globals)
+(define-extern *lightning* symbol)
+(define-extern lightning-draw-all (function none))
+(define-extern unlink-lightning-spec-by-heap (function kheap none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; light-trails-h                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype color-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data rgbaf :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype light-trail-composition (structure)
   ((color-mode        uint64         :offset-assert 0)
-   (color-curve       basic          :offset-assert 8)
+   (color-curve       curve-color-fast    :offset-assert 8)
    (color-repeat-dist float          :offset-assert 12)
    (alpha-1-mode      uint64         :offset-assert 16)
    (alpha-2-mode      uint64         :offset-assert 24)
@@ -33746,12 +33724,12 @@
    (width-repeat-dist float          :offset-assert 64)
    (uv-mode           uint64         :offset-assert 72)
    (uv-repeat-dist    float          :offset-assert 80)
-   (max-age           uint64         :offset-assert 88)
+   (max-age           time-frame     :offset-assert 88)
    (tex-id            uint32         :offset-assert 96)
    (lie-mode          uint64         :offset-assert 104)
    (lie-vector        vector :inline :offset-assert 112)
-   (zbuffer?          basic          :offset-assert 128)
-   (use-tape-mode?    basic          :offset-assert 132)
+   (zbuffer?          symbol         :offset-assert 128)
+   (use-tape-mode?    symbol         :offset-assert 132)
    (blend-mode        uint64         :offset-assert 136)
    (frame-stagger     uint8          :offset-assert 144)
    )
@@ -33759,30 +33737,25 @@
   :size-assert         #x91
   :flag-assert         #x900000091
   )
-|#
 
-#|
 (deftype light-trail-breadcrumb (structure)
   ((pos        vector :inline :offset-assert 0)
-   (birth-time uint32         :offset-assert 12)
+   (birth-time uint32         :offset 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype breadcrumb-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data light-trail-breadcrumb :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype light-trail (basic)
   ((crumb-array             basic                     :offset-assert 4)
    (crumb-size              uint8                     :offset-assert 8)
@@ -33793,32 +33766,30 @@
    (end-marker              uint64                    :offset-assert 32)
    (decision                uint64                    :offset-assert 40)
    (total-distance-traveled float                     :offset-assert 48)
-   (strip                   basic                     :offset-assert 52)
-   (strip2                  basic                     :offset-assert 56)
-   (cache-vector            UNKNOWN                 4 :offset-assert 64)
+   (strip                   prim-strip                :offset-assert 52)
+   (strip2                  prim-strip                :offset-assert 56)
+   (cache-vector            vector          4 :inline :offset-assert 64)
    )
   :method-count-assert 22
   :size-assert         #x80
   :flag-assert         #x1600000080
   (:methods
-    (light-trail-method-9 () none) ;; 9
-    (light-trail-method-10 () none) ;; 10
-    (light-trail-method-11 () none) ;; 11
-    (light-trail-method-12 () none) ;; 12
-    (light-trail-method-13 () none) ;; 13
-    (light-trail-method-14 () none) ;; 14
-    (light-trail-method-15 () none) ;; 15
-    (light-trail-method-16 () none) ;; 16
-    (light-trail-method-17 () none) ;; 17
-    (light-trail-method-18 () none) ;; 18
-    (light-trail-method-19 () none) ;; 19
-    (light-trail-method-20 () none) ;; 20
-    (light-trail-method-21 () none) ;; 21
+    (light-trail-method-9 (_type_ light-trail-composition int) none) ;; 9
+    (light-trail-method-10 (_type_) none) ;; 10
+    (light-trail-method-11 (_type_ vector int) none) ;; 11
+    (light-trail-method-12 (_type_) none) ;; 12
+    (light-trail-method-13 (_type_) int) ;; 13
+    (light-trail-method-14 (_type_) none) ;; 14
+    (light-trail-method-15 (_type_) none) ;; 15
+    (light-trail-method-16 (_type_) none) ;; 16
+    (light-trail-method-17 (_type_) none) ;; 17
+    (light-trail-method-18 (_type_) none) ;; 18
+    (light-trail-method-19 (_type_) none) ;; 19
+    (reset-crumbs! (_type_) none) ;; 20
+    (light-trail-method-21 (_type_) none) ;; 21
     )
   )
-|#
 
-#|
 (deftype weapon-trail-crumb (light-trail-breadcrumb)
   ((offset vector :inline :offset-assert 16)
    )
@@ -33826,9 +33797,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype weapon-trail (light-trail)
   ()
   :method-count-assert 24
@@ -33839,9 +33808,7 @@
     (weapon-trail-method-23 () none) ;; 23
     )
   )
-|#
 
-#|
 (deftype tread-trail-crumb (light-trail-breadcrumb)
   ((normal vector :inline :offset-assert 16)
    )
@@ -33849,9 +33816,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype tread-trail (light-trail)
   ()
   :method-count-assert 24
@@ -33862,9 +33827,7 @@
     (tread-trail-method-23 () none) ;; 23
     )
   )
-|#
 
-#|
 (deftype light-trail-tracker-spawn-params (structure)
   ((appearance         light-trail-composition  :offset-assert 0)
    (max-num-crumbs     int32                    :offset-assert 4)
@@ -33875,9 +33838,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype weapon-trail-tracker-spawn-params (light-trail-tracker-spawn-params)
   ((joint0 int16  :offset-assert 20)
    (joint1 int16  :offset-assert 22)
@@ -33886,81 +33847,75 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype light-trail-tracker (process)
-  ((trail                basic   :offset-assert 128)
-   (tracked-object       uint64  :offset-assert 136)
-   (offscreen?           basic   :offset-assert 144)
-   (offscreen-start-time uint64  :offset-assert 152)
-   (next-line-check-time uint64  :offset-assert 160)
+  ((trail                light-trail :offset-assert 128)
+   (tracked-object       handle  :offset-assert 136)
+   (offscreen?           symbol  :offset-assert 144)
+   (offscreen-start-time time-frame :offset-assert 152)
+   (next-line-check-time time-frame :offset-assert 160)
    (last-add-frame-val   uint32  :offset-assert 168)
    )
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
+  (:state-methods
+    tracking ;; 14
+    die ;; 15
+    )
   (:methods
-    (light-trail-tracker-method-14 () none) ;; 14
-    (light-trail-tracker-method-15 () none) ;; 15
-    (light-trail-tracker-method-16 () none) ;; 16
-    (light-trail-tracker-method-17 () none) ;; 17
-    (light-trail-tracker-method-18 () none) ;; 18
-    (light-trail-tracker-method-19 () none) ;; 19
-    (light-trail-tracker-method-20 () none) ;; 20
+    (light-trail-tracker-method-16 (_type_) none) ;; 16
+    (light-trail-tracker-method-17 (_type_) none) ;; 17
+    (light-trail-tracker-method-18 (_type_) none) ;; 18
+    (light-trail-tracker-method-19 (_type_) none) ;; 19
+    (light-trail-tracker-method-20 (_type_ vector) none) ;; 20
     )
   )
-|#
 
-#|
 (deftype weapon-trail-tracker (light-trail-tracker)
   ((joint0     int16   :offset-assert 172)
    (joint1     int16   :offset-assert 174)
-   (state-time uint64  :offset-assert 176)
+   (state-time time-frame :offset-assert 176)
    )
   :method-count-assert 22
   :size-assert         #xb8
   :flag-assert         #x16004000b8
-  (:methods
-    (weapon-trail-tracker-method-21 () none) ;; 21
+  (:state-methods
+    hang-on ;; 21
     )
   )
-|#
 
-#|
 (deftype tread-trail-tracker (light-trail-tracker)
   ()
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
   )
-|#
 
-#|
 (deftype light-trail-tracker-water (light-trail-tracker)
   ()
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
   )
-|#
 
-#|
 (deftype light-trail-tracker-projectile (light-trail-tracker)
-  ((state-time uint64  :offset-assert 176)
+  ((state-time time-frame :offset-assert 176)
    )
   :method-count-assert 22
   :size-assert         #xb8
   :flag-assert         #x16004000b8
+  (:state-methods
+    hang-on ;; 21
+    )
   (:methods
-    (light-trail-tracker-projectile-method-21 () none) ;; 21
+    ;; (light-trail-tracker-projectile-method-21 () none) ;; 21
     )
   )
-|#
 
-;; (define-extern light-trail-tracker-init-by-other function)
-;; (define-extern weapon-trail-tracker-init-by-other function)
-;; (define-extern tread-trail-tracker-init-by-other function)
+(define-extern light-trail-tracker-init-by-other (function object :behavior light-trail-tracker))
+(define-extern weapon-trail-tracker-init-by-other (function object :behavior weapon-trail-tracker))
+(define-extern tread-trail-tracker-init-by-other (function object :behavior tread-trail-tracker))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightning-new-h                ;;
@@ -34174,8 +34129,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern compute-trail-scaled-t function)
-;; (define-extern *dist-cache-array* object)
-;; (define-extern *total-length* object)
+(define-extern *dist-cache-array* pointer)
+(define-extern *total-length* float)
 ;; (define-extern light-trail-tracker-common-post function)
 ;; (define-extern estimate-light-trail-mem-usage function)
 
@@ -34341,25 +34296,20 @@
     hidden
     close
     )
-  ;; (:methods
-  ;;   (wings-method-20 () none) ;; 20
-  ;;   (wings-method-21 () none) ;; 21
-  ;;   (wings-method-22 () none) ;; 22
-  ;;   (wings-method-23 () none) ;; 23
-  ;;   )
   )
 
 (deftype lightjak-shield (process-drawable)
-  ((fade float   :offset-assert 200)
+  ((parent (pointer target) :override)
+   (fade float   :offset-assert 200)
    (tone rgba    :offset-assert 204)
    )
   :method-count-assert 23
   :size-assert         #xd0
   :flag-assert         #x17005000d0
-  (:methods
-    (lightjak-shield-method-20 () none) ;; 20
-    (lightjak-shield-method-21 () none) ;; 21
-    (lightjak-shield-method-22 () none) ;; 22
+  (:state-methods
+    open
+    close
+    hit
     )
   )
 
@@ -35016,7 +34966,7 @@
 ;; (define-extern spt-birth-func-part-droppings-for function)
 ;; (define-extern spt-birth-func-part-slide-droppings-for function)
 ;; (define-extern spt-birth-func-part-jump-droppings-for function)
-;; (define-extern process-drawable-burn-effect function) ;; (function time-frame rgbaf :behavior target)
+(define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target))
 (define-extern lightning-probe-callback (function lightning-tracker none))
 ;; (define-extern process-drawable-shock-effect-replace function)
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object))
@@ -35453,77 +35403,72 @@
 ;; target-darkjak                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype darkjak-ball (projectile)
-  ((impact?            basic           :offset-assert 512)
+  ((impact?            symbol          :offset-assert 512)
    (fire-point         vector  :inline :offset-assert 528)
    (explode-sound      uint32          :offset-assert 544)
    (bolts              basic           :offset-assert 548)
-   (ball-pos           UNKNOWN 2       :offset-assert 560)
-   (trail              basic           :offset-assert 592)
-   (ball1              basic           :offset-assert 596)
+   (ball-pos           vector 2 :inline :offset-assert 560)
+   (trail              sparticle-launch-control :offset-assert 592)
+   (ball1              sparticle-launch-control :offset-assert 596)
    (last-ground-height float           :offset-assert 600)
-   (fire-sound         uint32          :offset-assert 604)
+   (fire-sound         sound-id        :offset-assert 604)
    )
   :method-count-assert 42
   :size-assert         #x260
   :flag-assert         #x2a01e00260
-  (:methods
-    (darkjak-ball-method-41 () none) ;; 41
-    )
   (:state-methods
     impact ;; 22
     )
+  (:methods
+    (darkjak-ball-method-41 () none) ;; 41
+    )
   )
-|#
 
-;; (define-extern darkjak-ball-slide-reaction function)
-;; (define-extern darkjak-ball-move function)
-;; (define-extern *darkjak-ball-lightning* object)
-;; (define-extern *darkjak-ball-lightning-colors* array)
-;; (define-extern sparticle-track-hadouken function)
+(define-extern darkjak-ball-slide-reaction (function none :behavior darkjak-ball))
+(define-extern darkjak-ball-move (function none :behavior darkjak-ball))
+(define-extern *darkjak-ball-lightning* lightning-spec)
+(define-extern *darkjak-ball-lightning-colors* (array rgba))
+(define-extern sparticle-track-hadouken (function none))
 (define-extern target-darkjak-setup (function symbol none :behavior target))
-;; (define-extern want-to-darkjak? function) ;; (function symbol :behavior target)
-;; (define-extern *darkjak-trans-mods* object) ;; surface
-(define-extern target-darkjak-end-mode (function none :behavior target))
-;; (define-extern target-darkjak-process function) ;; (function none :behavior target)
-;; (define-extern target-darkjak-bomb-collide function) ;; (function float float none :behavior target)
-;; (define-extern target-bomb1-fire-shot function) ;; (function (pointer handle) int int int none :behavior target)
+(define-extern want-to-darkjak? (function symbol :behavior target))
+(define-extern *darkjak-trans-mods* surface)
+(define-extern target-darkjak-end-mode (function symbol none :behavior target))
+(define-extern target-darkjak-process (function none :behavior target))
+(define-extern target-darkjak-bomb-collide (function float float none :behavior target))
+(define-extern target-bomb1-fire-shot (function (pointer handle) int int int none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-lightjak                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype freeze-screen (process-drawable)
   ((anim-frame float   :offset-assert 200)
    (transition float   :offset-assert 204)
-   (gui-id-1   uint32  :offset-assert 208)
-   (gui-id-2   uint32  :offset-assert 212)
+   (gui-id-1   sound-id :offset-assert 208)
+   (gui-id-2   sound-id :offset-assert 212)
    )
   :method-count-assert 25
   :size-assert         #xd8
   :flag-assert         #x19006000d8
-  (:methods
-    (freeze-screen-method-24 () none) ;; 24
-    )
   (:state-methods
-    die ;; 23
-    deactive ;; 22
-    active ;; 21
     idle ;; 20
+    active ;; 21
+    (deactive symbol) ;; 22
+    die ;; 23
+    )
+  (:methods
+    (freeze-screen-method-24 (_type_) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype freeze-control (process)
-  ((clock-pos     float   :offset-assert 128)
-   (freeze-screen uint64  :offset-assert 136)
-   (sound-id      uint32  :offset-assert 144)
-   (tick-time     uint64  :offset-assert 152)
-   (abort?        basic   :offset-assert 160)
-   (freeze-id     uint32  :offset-assert 164)
+  ((clock-pos     float      :offset-assert 128)
+   (freeze-screen handle     :offset-assert 136)
+   (sound-id      sound-id   :offset-assert 144)
+   (tick-time     time-frame :offset-assert 152)
+   (abort?        symbol     :offset-assert 160)
+   (freeze-id     sound-id   :offset-assert 164)
    )
   :method-count-assert 15
   :size-assert         #xa8
@@ -35532,73 +35477,67 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype freeze-watcher (process)
-  ((old-clock basic  :offset-assert 128)
+  ((old-clock clock :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
   :flag-assert         #xf00100084
   (:state-methods
-    active ;; 14
+    (active clock) ;; 14
     )
   )
-|#
 
-;; (define-extern point-off-screen function)
-;; (define-extern *lightjak-trans-mods* object)
+(define-extern point-off-screen (function vector vector))
+(define-extern *lightjak-trans-mods* surface)
 (define-extern want-to-powerjak? (function symbol :behavior target))
 (define-extern target-lightjak-setup (function symbol none :behavior target))
-;; (define-extern want-to-lightjak? function)
-(define-extern target-lightjak-end-mode (function none :behavior target))
-;; (define-extern target-lightjak-do-effect function)
-;; (define-extern target-lightjak-process function)
-;; (define-extern *lightjak-swoop-mods* surface)
-;; (define-extern freeze-screen-init function)
-;; (define-extern freeze-control-init function)
-;; (define-extern freeze-watcher-init function)
-;; (define-extern freeze-hit-begin function)
-;; (define-extern freeze-hit-end function)
-;; (define-extern *heal-mods* object)
-;; (define-extern lightjak-shield-init function)
+(define-extern want-to-lightjak? (function symbol :behavior target))
+(define-extern target-lightjak-end-mode (function symbol none :behavior target))
+(define-extern target-lightjak-do-effect (function none :behavior target))
+(define-extern target-lightjak-process (function none :behavior target))
+(define-extern *lightjak-swoop-mods* surface)
+(define-extern freeze-screen-init (function vector quaternion entity object :behavior freeze-screen))
+(define-extern freeze-control-init (function sound-id object :behavior freeze-control))
+(define-extern freeze-watcher-init (function clock object :behavior freeze-watcher))
+(define-extern freeze-hit-begin (function none :behavior process))
+(define-extern freeze-hit-end (function none :behavior process))
+(define-extern *heal-mods* surface)
+(define-extern lightjak-shield-init (function none :behavior lightjak-shield))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-invisible               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype invis-particle-joint (structure)
   ((joint    int16  :offset-assert 0)
    (distance float  :offset-assert 4)
    (size     float  :offset-assert 8)
-   (spawn?   basic  :offset-assert 12)
+   (spawn?   symbol :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype dark-maker-idol (process-drawable)
-  ((humming-sound basic  :offset-assert 200)
+  ((root collide-shape :override)
+   (humming-sound ambient-sound  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
   (:state-methods
-    active ;; 21
     idle ;; 20
+    active ;; 21
     )
   )
-|#
 
-(define-extern target-invisible-start (function none :behavior target))
+(define-extern target-invisible-start (function time-frame none :behavior target))
 (define-extern target-invisible-stop (function none :behavior target))
-;; (define-extern *invis-joint-list* array)
-;; (define-extern target-invisible-process function)
+(define-extern *invis-joint-list* (array invis-particle-joint))
+(define-extern target-invisible-process (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-launch                  ;;
@@ -35609,7 +35548,12 @@
 ;; target-death                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(define-extern warp-gate type)
+(define-extern htorpedo type)
+(define-extern target-turret type)
+(define-extern scorpion-gun-manager type)
+(define-extern bt-gun-manager type)
+
 (deftype kill-nearby-enemies-info (basic)
   ((dist float          :offset-assert 4)
    (pos  vector :inline :offset-assert 16)
@@ -35618,29 +35562,28 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *auto-continue* object) ;; symbol
-;; (define-extern next-continue function) ;; (function continue-point continue-point)
-;; (define-extern arrive-at-continue function)
-;; (define-extern apply-pos-from-entity function)
-;; (define-extern target-continue-init-art function)
-;; (define-extern *smack-mods* surface) ;; surface
-;; (define-extern *smack-up-mods* surface) ;; surface
-;; (define-extern velocity-set-to-target! function) ;; (function vector float attack-info vector :behavior target)
-;; (define-extern target-hit-effect function) ;; (function attack-info none :behavior target)
-;; (define-extern target-hit-push function) ;; (function vector matrix float float attack-info symbol :behavior target)
-;; (define-extern target-hit-orient function) ;; (function attack-info vector symbol :behavior target)
-;; (define-extern target-hit-setup-anim function) ;; (function attack-info none :behavior target)
-;; (define-extern target-hit-move function) ;; (function attack-info symbol (function none :behavior target) float none :behavior target)
-;; (define-extern *death-spool-array* array) ;; (array spool-anim)
-;; (define-extern death-movie-remap function) ;; (function int int int)
-;; (define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info) ;; kill-nearby-enemies-info
-;; (define-extern kill-nearby-enemies function) ;; (function vector float object)
-;; (define-extern target-death-anim-trans function) ;; (function none :behavior target)
-;; (define-extern target-death-anim function) ;; (function spool-anim none :behavior target)
-;; (define-extern target-death-main function) ;; (function symbol none :behavior target)
-;; (define-extern target-death-reset function) ;; (function symbol symbol none :behavior target)
+(define-extern *auto-continue* symbol)
+(define-extern next-continue (function continue-point continue-point))
+(define-extern arrive-at-continue (function continue-point none :behavior target))
+(define-extern apply-pos-from-entity (function continue-point none :behavior target))
+(define-extern target-continue-init-art (function none :behavior target))
+(define-extern *smack-mods* surface)
+(define-extern *smack-up-mods* surface)
+(define-extern velocity-set-to-target! (function vector float attack-info vector :behavior target))
+(define-extern target-hit-effect (function attack-info none :behavior target))
+(define-extern target-hit-push (function vector matrix float float attack-info symbol :behavior target))
+(define-extern target-hit-orient (function attack-info vector symbol :behavior target))
+(define-extern target-hit-setup-anim (function attack-info none :behavior target))
+(define-extern target-hit-move (function attack-info symbol (function none :behavior target) float none :behavior target))
+(define-extern *death-spool-array* (array spool-anim))
+(define-extern death-movie-remap (function int int int))
+(define-extern *kill-nearby-enemies-info* kill-nearby-enemies-info)
+(define-extern kill-nearby-enemies (function vector float object))
+(define-extern target-death-anim-trans (function none :behavior target))
+(define-extern target-death-anim (function spool-anim none :behavior target))
+(define-extern target-death-main (function symbol none :behavior target))
+(define-extern target-death-reset (function symbol symbol none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-gun                     ;;
@@ -36920,7 +36863,7 @@
 ;; (define-extern sphere-cull function) ;; (function vector symbol)
 ;; (define-extern guard-band-cull function) ;; (function vector symbol)
 (define-extern sphere-in-view-frustum? (function sphere symbol))
-;; (define-extern line-in-view-frustum? function) ;; (function vector vector symbol)
+(define-extern line-in-view-frustum? (function vector vector symbol))
 ;; (define-extern vis-cull function) ;; (function int symbol)
 ;; (define-extern vis-cull-debug function) ;; (function work-area int symbol)
 ;; (define-extern error-sphere function) ;; (function drawable-error string none)
@@ -37024,7 +36967,7 @@
 (define-extern set-master-mode (function symbol none))
 ;; (define-extern pause-allowed? function) ;; (function symbol)
 ;; (define-extern toggle-pause function) ;; (function int)
-;; (define-extern *screen-filter* screen-filter) ;; screen-filter
+(define-extern *screen-filter* screen-filter)
 ;; (define-extern *cheat-temp* object) ;; (pointer int32)
 (define-extern *master-exit* symbol)
 ;; (define-extern *progress-cheat* object) ;; symbol
@@ -37206,11 +37149,11 @@
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 (define-extern reset-actors (function symbol none))
 ;; (define-extern reset-cameras function) ;; (function none)
-;; (define-extern entity-birth-no-kill function) ;; (function entity process)
+(define-extern entity-birth-no-kill (function entity process))
 ;; (define-extern entity-task-complete-on function) ;; (function entity none)
 ;; (define-extern entity-task-complete-off function) ;; (function entity none)
 (define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status))
-;; (define-extern find-nearest-entity function) ;; (function vector type entity)
+(define-extern find-nearest-entity (function vector type entity))
 ;; (define-extern entity-speed-test function) ;; (function string entity)
 ;; (define-extern dump-entity-remap function) ;; (function object object none)
 
@@ -38118,7 +38061,7 @@
 (define-extern hide-hud (function symbol none))
 ;; (define-extern enable-hud function) ;; (function none)
 ;; (define-extern hide-hud-quick function) ;; (function symbol none)
-;; (define-extern show-hud function) ;; (function object none)
+(define-extern show-hud (function object none))
 (define-extern ready-hud (function symbol int none))
 ;; (define-extern hud-hidden? function) ;; (function symbol)
 ;; (define-extern set-hud-piece-position! function) ;; (function hud-sprite int int none)
@@ -57313,7 +57256,7 @@
 |#
 
 ;; (define-extern have-earned-vehicle-v-type? function)
-;; (define-extern have-vehicle-v-type? function)
+(define-extern have-vehicle-v-type? (function int symbol))
 ;; (define-extern kill-player-process-init-by-other function)
 ;; (define-extern kill-player-process-spawn function)
 
