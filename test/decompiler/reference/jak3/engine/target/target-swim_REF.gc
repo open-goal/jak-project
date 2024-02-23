@@ -48,7 +48,7 @@
         (target-jump-go)
         )
     (when (and (cpad-pressed? (-> self control cpad number) circle) (can-feet? #t))
-      (sound-play-by-name (static-sound-name "swim-stroke") (new-sound-id) 1024 0 0 (sound-group) #t)
+      (sound-play "swim-stroke")
       (spawn-ripples (-> self water) 1.4 (-> self control trans) 0 (-> self control transv) #f)
       (go target-attack)
       )
@@ -104,7 +104,7 @@
         (target-jump-go)
         )
     (when (and (cpad-pressed? (-> self control cpad number) circle) (can-feet? #t))
-      (sound-play-by-name (static-sound-name "swim-stroke") (new-sound-id) 1024 0 0 (sound-group) #t)
+      (sound-play "swim-stroke")
       (spawn-ripples (-> self water) 1.4 (-> self control trans) 0 (-> self control transv) #f)
       (go target-attack)
       )
@@ -451,15 +451,7 @@
         (go target-swim-walk)
         )
     (target-swim-tilt 0.0 2.0 0.0 1.0)
-    (sound-play-by-name
-      (static-sound-name "swim-bubbles")
-      (-> self control board-jump-and-swim-sound)
-      1024
-      0
-      0
-      (sound-group)
-      #t
-      )
+    (sound-play "swim-bubbles" :id (-> self control board-jump-and-swim-sound))
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -576,15 +568,7 @@
         )
       )
     (target-swim-tilt 0.0 2.0 0.0 1.0)
-    (sound-play-by-name
-      (static-sound-name "swim-bubbles")
-      (-> self control board-jump-and-swim-sound)
-      1024
-      0
-      0
-      (sound-group)
-      #t
-      )
+    (sound-play "swim-bubbles" :id (-> self control board-jump-and-swim-sound))
     )
   :code (behavior ()
     (let ((v1-2 (ja-group)))
@@ -774,7 +758,7 @@
                      (when (and (>= (ja-aframe-num 0) 73.0) (not s4-0))
                        (set! s4-0 #t)
                        (when (or (= (-> self prev-state name) 'target-swim-stance) (= (-> self prev-state name) 'target-swim-walk))
-                         (sound-play-by-name (static-sound-name "swim-dive") (new-sound-id) 1024 0 0 (sound-group) #t)
+                         (sound-play "swim-dive")
                          (spawn-ripples (-> self water) 0.7 (-> self control trans) 1 *null-vector* #f)
                          )
                        )
@@ -829,15 +813,7 @@
               )
           )
         (if (time-elapsed? (-> self state-time) (seconds 0.5))
-            (sound-play-by-name
-              (static-sound-name "water-bubbles")
-              (-> self control bubbles-sound)
-              1024
-              0
-              0
-              (sound-group)
-              #t
-              )
+            (sound-play "water-bubbles" :id (-> self control bubbles-sound))
             )
         (let ((s4-4 (new-stack-vector0))
               (f0-13 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -887,20 +863,14 @@
     (if (and (time-elapsed? (-> self state-time) (seconds 10))
              (< (target-move-dist (-> *TARGET-bank* stuck-time)) (-> *TARGET-bank* stuck-distance))
              )
-        (send-event
-          self
-          'attack
-          #f
-          (static-attack-info
-            :mask (vehicle-impulse-factor)
-            ((id (new-attack-id))
-             (damage 2.0)
-             (vehicle-damage-factor 1.0)
-             (vehicle-impulse-factor 1.0)
-             (mode 'drown-death)
-             )
-            )
-          )
+        (send-event self 'attack #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                        (damage 2.0)
+                                                                                        (vehicle-damage-factor 1.0)
+                                                                                        (vehicle-impulse-factor 1.0)
+                                                                                        (mode 'drown-death)
+                                                                                        )
+                                                        )
+                    )
         )
     (if (and (cpad-pressed? (-> self control cpad number) circle square)
              (-> *setting-control* user-current dive)
@@ -913,15 +883,7 @@
              )
         (go target-swim-down)
         )
-    (sound-play-by-name
-      (static-sound-name "water-bubbles")
-      (-> self control bubbles-sound)
-      1024
-      0
-      0
-      (sound-group)
-      #t
-      )
+    (sound-play "water-bubbles" :id (-> self control bubbles-sound))
     ((-> target-swim-down trans))
     )
   :code (behavior ()
@@ -945,7 +907,7 @@
                      (or (>= (ja-aframe-num 0) 240.0) (not (logtest? (water-flag head-under-water) (-> self water flags))))
                      )
             (set! gp-0 #t)
-            (sound-play-by-name (static-sound-name "swim-surface") (new-sound-id) 1024 0 0 (sound-group) #t)
+            (sound-play "swim-surface")
             (spawn-ripples (-> self water) 0.2 (-> self control trans) 1 (-> self control transv) #t)
             )
           (if (and (not (logtest? (-> self water flags) (water-flag under-water)))
@@ -1073,7 +1035,3 @@
     )
   :post target-post
   )
-
-
-
-
