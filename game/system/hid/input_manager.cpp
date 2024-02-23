@@ -128,8 +128,10 @@ void InputManager::refresh_device_list() {
       lg::warn(
           "No active game controllers could be found or loaded successfully - inputs will not "
           "work!");
+      m_settings->keyboard_temp_enabled = true;
     } else {
       lg::info("Found {} controllers", m_available_controllers.size());
+      m_settings->keyboard_temp_enabled = false;
     }
   }
 }
@@ -203,7 +205,7 @@ void InputManager::process_sdl_event(const SDL_Event& event) {
 }
 
 void InputManager::poll_keyboard_data() {
-  if (m_keyboard_enabled && m_skip_polling_for_n_frames <= 0 && !m_waiting_for_bind) {
+  if (is_keyboard_enabled() && m_skip_polling_for_n_frames <= 0 && !m_waiting_for_bind) {
     if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
       m_keyboard.poll_state(m_data.at(m_keyboard_and_mouse_port));
     }
@@ -211,7 +213,7 @@ void InputManager::poll_keyboard_data() {
 }
 
 void InputManager::clear_keyboard_actions() {
-  if (m_keyboard_enabled) {
+  if (is_keyboard_enabled()) {
     if (m_data.find(m_keyboard_and_mouse_port) != m_data.end()) {
       m_keyboard.clear_actions(m_data.at(m_keyboard_and_mouse_port));
     }
@@ -427,8 +429,8 @@ int InputManager::update_rumble(int port, u8 low_intensity, u8 high_intensity) {
 }
 
 void InputManager::enable_keyboard(const bool enabled) {
-  m_keyboard_enabled = enabled;
-  if (!m_keyboard_enabled) {
+  m_settings->keyboard_enabled = enabled;
+  if (!m_settings->keyboard_enabled) {
     // Reset inputs as this device won't be able to be read from again!
     clear_inputs();
   }

@@ -60,7 +60,7 @@
       (when (= (get-base-height *ocean-map*) -216498.17)
         (set! (-> *pc-cheat-state* sewer-valve-start-time) (get-current-time))
         )
-      
+
       ;; no cheating!
       (cond
         ((task-node-open? (game-task-node sewer-board-drain))
@@ -85,7 +85,7 @@
     (else
       (let (
         (time-taken (- (-> *pc-cheat-state* sewer-valve-end-time) (-> *pc-cheat-state* sewer-valve-start-time))))
-          
+
           (and  (< 0 time-taken)
                 (< time-taken (seconds (-> *pc-cheat-state* sewer-valve-target-seconds)))
                 (= #b111 (-> *pc-cheat-state* sewer-valve-on)))
@@ -236,7 +236,7 @@
 
 (defmethod enable ((this led-fader-state) (start-from vector))
   "begin transition."
-  
+
   (when (-> this enable?)
     (disable this))
 
@@ -247,7 +247,7 @@
 
 (defmethod disable ((this led-fader-state))
   "disable transition."
-  
+
   (set! (-> this amount) 0.0)
   (update this 0.0 0.1)
   (false! (-> this enable?))
@@ -291,7 +291,7 @@
 
 (defmethod update ((this led-fader-state) (to float) (duration float))
   "disable transition."
-  
+
   (when (-> this enable?)
     (seek! (-> this amount) to (/ (-> *target* clock seconds-per-frame) duration))
     (vector4-lerp! (-> this cur-color) (-> this start-color) (-> this end-color) (-> this amount))
@@ -363,7 +363,7 @@
   "Set the default misc settings"
 
   ((method-of-type pc-settings update) obj)
-  
+
   (set! *hires-sky* (-> obj hires-clouds?))
 
   (when (not (led-enabled? obj))
@@ -448,7 +448,7 @@
 
 (defmethod update-led ((obj pc-settings-jak2))
   "set the controller led color by modifying the controller-led-color vector"
-  
+
   ;; default color is just blue.
   (set-vector-xyz! (-> obj controller-led-color) 0.0 0.0 1.0)
 
@@ -533,7 +533,7 @@
               (set-vector-xyz! (-> obj controller-led-color) 0.6875 0.6 0.78125))
             )
           )
-        
+
         ;; darkjak
         ((and (nonzero? (-> *target* darkjak)) (focus-test? *target* dark))
           (vector-copy! (-> *led-fader-state* end-color) *led-darkjak-color*)
@@ -545,23 +545,23 @@
               (update *led-fader-state* 1.0 0.3))
           (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
           )
-        
+
         ;; indax
         ((focus-test? *target* indax)
           (set-vector-xyz! (-> obj controller-led-color) 1.0 0.5 0.0)
           )
-        
+
         ;; mech
         ((focus-test? *target* mech)
           (set-vector-xyz! (-> obj controller-led-color) 1.0 1.0 0.0)
           )
-        
+
         ;; board
         ((focus-test? *target* board)
           (set-vector-xyz! (-> obj controller-led-color) 0.0 1.0 1.0)
           )
         )
-      
+
       ;; wanted flash
       (awhen (the hud-map (process-by-name "hud-map" *active-pool*))
         (when (not (hidden? it))
@@ -641,7 +641,7 @@
   ;; check unlocked cheats
   ;;;;;;;;;;;;;;;;;;;;;;;;
   (dotimes (i (-> *pc-cheats-list* length))
-    
+
     ;; reveals cheats if they have been purchased, purchases cheats if they have been unlocked, unlocks cheats if they have been enabled.
     ;; the cheat process requires the steps to be filled in this order, see sequential checking below
     (logior! (-> *pc-settings* cheats-revealed) (logior! (-> *pc-settings* cheats-purchased) (logior! (-> *pc-settings* cheats-unlocked) (-> *pc-settings* cheats))))
@@ -649,7 +649,7 @@
     (let* ((cheat (-> *pc-cheats-list* i))
           (cost (-> cheat skill))
           (unlock-func (the (function symbol) (-> cheat unlock-func value))))
-        
+
         (when (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                   (task-node-closed? (-> cheat avail-after-hero))
                   (task-node-closed? (-> cheat avail-after)))
@@ -657,7 +657,7 @@
 
             (when (>= (-> *game-info* skill-total) cost)
                 (logior! (-> obj cheats-purchased) (-> cheat flag))
-                
+
                 (when (or (zero? unlock-func)
                           (not unlock-func)
                           (unlock-func))
