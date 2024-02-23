@@ -1,6 +1,3 @@
-# We define our own compilation flags here.
-set(CMAKE_CXX_STANDARD 17)
-
 # Set a more convenient ARM flag
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
     set(ARM64_ARCH TRUE)
@@ -121,6 +118,19 @@ set(RUNTIME_SOURCE
         kernel/jak2/kprint.cpp
         kernel/jak2/kscheme.cpp
         kernel/jak2/ksound.cpp
+        kernel/jak3/fileio.cpp
+        kernel/jak3/kboot.cpp
+        kernel/jak3/kdgo.cpp
+        kernel/jak3/kdsnetm.cpp
+        kernel/jak3/klink.cpp
+        kernel/jak3/klisten.cpp
+        kernel/jak3/kmachine.cpp
+        kernel/jak3/kmalloc.cpp
+        kernel/jak3/kmemcard.cpp
+        kernel/jak3/kprint.cpp
+        kernel/jak3/kscheme.cpp
+        kernel/jak3/ksocket.cpp
+        kernel/jak3/ksound.cpp
         mips2c/jak1_functions/bones.cpp
         mips2c/jak1_functions/collide_cache.cpp
         mips2c/jak1_functions/collide_edge_grab.cpp
@@ -173,6 +183,8 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/squid.cpp
         mips2c/jak2_functions/texture.cpp
         mips2c/jak2_functions/vortex.cpp
+        mips2c/jak3_functions/collide_func.cpp
+        mips2c/jak3_functions/lights.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp
@@ -234,8 +246,6 @@ set(RUNTIME_SOURCE
         system/IOP_Kernel.cpp
         system/iop_thread.cpp
         system/SystemThread.cpp
-        system/vm/dmac.cpp
-        system/vm/vm.cpp
         tools/filter_menu/filter_menu.cpp
         tools/subtitle_editor/subtitle_editor_db.cpp
         tools/subtitle_editor/subtitle_editor_repl_client.cpp

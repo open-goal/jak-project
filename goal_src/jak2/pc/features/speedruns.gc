@@ -151,32 +151,52 @@
     (none)))
 
 (defmethod draw! ((this speedrun-menu))
-  ;; handle opening and closing the menu
-  ;; allow the menu to be toggled again once one of the current buttons are released
-  (when (and (-> this ignore-menu-toggle?)
-             (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
-             (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)))
-                 (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
-    (set! (-> this ignore-menu-toggle?) #f))
-  (when (and (cpad-hold? 0 l1) (cpad-hold? 0 r1) (or (cpad-hold? 0 select) (cpad-hold? 0 start))
-             (not (-> this ignore-menu-toggle?)))
-    (cond
-      ((= *master-mode* 'game)
-       (set-master-mode 'menu)
-       (set! (-> this draw-menu?) #t))
-      ((= *master-mode* 'menu)
-       (set-master-mode 'game)
-       (set! (-> this draw-menu?) #f)))
-    (cpad-clear! 0 l1 r1)
-    ;; Track whether or not the menu was opened with start or select...
-    (cond
-      ((cpad-hold? 0 select)
-       (cpad-clear! 0 select)
-       (set! (-> this opened-with-start?) #f))
-      ((cpad-hold? 0 start)
-       (cpad-clear! 0 start)
-       (set! (-> this opened-with-start?) #t)))
-    (set! (-> this ignore-menu-toggle?) #t))
+  (cond
+    ((!= (-> *pc-settings* speedrunner-mode-custom-bind) 0)
+     ;; the user has let go of the keybind completely or partially, allow the bind to trigger again
+     (when (and (-> this ignore-menu-toggle?)
+                (!= (cpad-hold 0)
+                    (logior (cpad-hold 0) (-> *pc-settings* speedrunner-mode-custom-bind))))
+      (set! (-> this ignore-menu-toggle?) #f))
+     ;; bind handler
+     (when (and (not (-> this ignore-menu-toggle?))
+                (= (cpad-hold 0)
+                   (logior (cpad-hold 0) (-> *pc-settings* speedrunner-mode-custom-bind))))
+      (cond
+        ((= *master-mode* 'game)
+         (set-master-mode 'menu)
+         (set! (-> this draw-menu?) #t))
+        ((= *master-mode* 'menu)
+         (set-master-mode 'game)
+         (set! (-> this draw-menu?) #f)))
+      (logclear! (cpad-hold 0) (-> *pc-settings* speedrunner-mode-custom-bind))
+      (logclear! (cpad-pressed 0) (-> *pc-settings* speedrunner-mode-custom-bind))
+      (set! (-> this ignore-menu-toggle?) #t)))
+    (else
+     (when (and (-> this ignore-menu-toggle?)
+            (or (not (cpad-hold? 0 l1)) (not (cpad-hold? 0 r1)))
+            (or (and (-> this opened-with-start?) (not (cpad-hold? 0 start)))
+                (and (not (-> this opened-with-start?)) (not (cpad-hold? 0 select)))))
+       (set! (-> this ignore-menu-toggle?) #f))
+     (when (and (cpad-hold? 0 l1) (cpad-hold? 0 r1) (or (cpad-hold? 0 select) (cpad-hold? 0 start))
+               (not (-> this ignore-menu-toggle?)))
+       (cond
+         ((= *master-mode* 'game)
+          (set-master-mode 'menu)
+          (set! (-> this draw-menu?) #t))
+         ((= *master-mode* 'menu)
+          (set-master-mode 'game)
+          (set! (-> this draw-menu?) #f)))
+       (cpad-clear! 0 l1 r1)
+       (cond
+         ((cpad-hold? 0 select)
+          (cpad-clear! 0 select)
+          (set! (-> this opened-with-start?) #f))
+         ((cpad-hold? 0 start)
+          (cpad-clear! 0 start)
+          (set! (-> this opened-with-start?) #t)))
+       (set! (-> this ignore-menu-toggle?) #t))))
+  ;; render the menu
   (when (-> this draw-menu?)
     ;; handle any inputs for within the menu
     (cond

@@ -5,5 +5,625 @@
 ;; name in dgo: vector-h
 ;; dgos: GAME
 
+(define-extern vector-identity! (function vector vector))
+(define-extern vector-cross! (function vector vector vector vector))
+(define-extern vector-float*! (function vector vector float vector))
+(define-extern vector+float*! (function vector vector vector float vector))
+(define-extern vector-negate! (function vector vector vector))
+(define-extern vector-normalize! (function vector float vector))
+(define-extern vector-normalize-copy! (function vector vector float vector))
+(define-extern vector-normalize-ret-len! (function vector float float))
+(define-extern vector-xz-normalize! (function vector float vector))
+(define-extern vector-get-unique! (function vector vector vector))
+(define-extern vector-get-closest-perpendicular! (function vector vector vector vector))
+(define-extern vector-vector-distance (function vector vector float))
+(define-extern vector-vector-distance-squared (function vector vector float))
+(define-extern vector-length (function vector float))
+(define-extern vector-length-squared (function vector float))
+(define-extern vector-xz-length (function vector float))
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+(defmacro set-vector-xyz! (v xv yv zv)
+  "Set xyz fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       ,vec
+       ))
+     )
+
 ;; DECOMP BEGINS
 
+(deftype bit-array (basic)
+  ((length            int32)
+   (allocated-length  int32)
+   (_pad              uint8)
+   (bytes             uint8  :dynamic :overlay-at _pad)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (get-bit (_type_ int) symbol)
+    (clear-bit (_type_ int) int)
+    (set-bit (_type_ int) int)
+    (clear-all! (_type_) _type_)
+    )
+  )
+
+
+(defmethod new bit-array ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a new bit-array with room arg0 bits."
+  (let ((v0-0 (object-new allocation type-to-make (+ (/ (logand -8 (+ arg0 7)) 8) -1 (-> type-to-make size)))))
+    (set! (-> v0-0 length) arg0)
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+(defmethod length ((this bit-array))
+  (-> this length)
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this bit-array))
+  (the-as int (+ (-> this type size) (/ (logand -8 (+ (-> this allocated-length) 7)) 8)))
+  )
+
+(defmethod get-bit ((this bit-array) (arg0 int))
+  "Get the nth bit as a boolean."
+  (let ((v1-2 (-> this bytes (/ arg0 8))))
+    (logtest? v1-2 (ash 1 (logand arg0 7)))
+    )
+  )
+
+(defmethod clear-bit ((this bit-array) (arg0 int))
+  "Set the nth bit to 0."
+  (logclear! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+(defmethod set-bit ((this bit-array) (arg0 int))
+  "Set the nth bit to 1."
+  (logior! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+(defmethod clear-all! ((this bit-array))
+  "Set all bits to 0."
+  (countdown (v1-2 (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
+    (nop!)
+    (nop!)
+    (set! (-> this bytes v1-2) (the-as uint 0))
+    )
+  this
+  )
+
+(deftype vector16ub (structure)
+  ((data  uint8    16)
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector4ub (structure)
+  ((data  uint8   4)
+   (x     uint8   :overlay-at (-> data 0))
+   (y     uint8   :overlay-at (-> data 1))
+   (z     uint8   :overlay-at (-> data 2))
+   (w     uint8   :overlay-at (-> data 3))
+   (clr   uint32  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+
+(deftype vector4b (structure)
+  ((data  int8   4)
+   (x     int8   :overlay-at (-> data 0))
+   (y     int8   :overlay-at (-> data 1))
+   (z     int8   :overlay-at (-> data 2))
+   (w     int8   :overlay-at (-> data 3))
+   (clr   int32  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+
+(deftype vector2ub (structure)
+  ((data  uint8   2)
+   (x     uint8   :overlay-at (-> data 0))
+   (y     uint8   :overlay-at (-> data 1))
+   (clr   uint16  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+
+(deftype vector2b (structure)
+  ((data  int8   2)
+   (x     int8   :overlay-at (-> data 0))
+   (y     int8   :overlay-at (-> data 1))
+   (clr   int16  :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector2h (structure)
+  ((data  int16  2)
+   (x     int16  :overlay-at (-> data 0))
+   (y     int16  :overlay-at (-> data 1))
+   )
+  :pack-me
+  )
+
+
+(deftype vector2uh (structure)
+  ((data  uint16  2)
+   (x     uint16  :overlay-at (-> data 0))
+   (y     uint16  :overlay-at (-> data 1))
+   (val   uint32  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+
+(deftype vector3h (structure)
+  ((data  int16  3)
+   (x     int16  :overlay-at (-> data 0))
+   (y     int16  :overlay-at (-> data 1))
+   (z     int16  :overlay-at (-> data 2))
+   )
+  )
+
+
+(deftype vector3uh (structure)
+  ((data  uint16  3)
+   (x     uint16  :overlay-at (-> data 0))
+   (y     uint16  :overlay-at (-> data 1))
+   (z     uint16  :overlay-at (-> data 2))
+   )
+  )
+
+
+(deftype vector2w (structure)
+  ((data  int32  2)
+   (x     int32  :overlay-at (-> data 0))
+   (y     int32  :overlay-at (-> data 1))
+   )
+  )
+
+
+(deftype vector3w (structure)
+  ((data  int32  3)
+   (x     int32  :overlay-at (-> data 0))
+   (y     int32  :overlay-at (-> data 1))
+   (z     int32  :overlay-at (-> data 2))
+   )
+  )
+
+
+(deftype vector4w (structure)
+  ((data   int32    4)
+   (x      int32      :overlay-at (-> data 0))
+   (y      int32      :overlay-at (-> data 1))
+   (z      int32      :overlay-at (-> data 2))
+   (w      int32      :overlay-at (-> data 3))
+   (dword  uint64   2 :overlay-at (-> data 0))
+   (quad   uint128    :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector2 (structure)
+  ((data  float  2)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   )
+  :allow-misaligned
+  )
+
+
+(deftype vector3 (structure)
+  ((data  float  3)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   (z     float  :overlay-at (-> data 2))
+   )
+  )
+
+
+(deftype vector4 (structure)
+  ((data   float    4)
+   (x      float      :overlay-at (-> data 0))
+   (y      float      :overlay-at (-> data 1))
+   (z      float      :overlay-at (-> data 2))
+   (w      float      :overlay-at (-> data 3))
+   (dword  uint64   2 :overlay-at (-> data 0))
+   (quad   uint128    :overlay-at (-> data 0))
+   )
+  )
+
+
+(defmethod print ((this vector4w))
+  (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
+  this
+  )
+
+(deftype vector4w-2 (structure)
+  ((data    int32     8)
+   (quad    uint128   2         :overlay-at (-> data 0))
+   (vector  vector4w  2 :inline :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector4w-3 (structure)
+  ((data    int32     12)
+   (quad    uint128   3         :overlay-at (-> data 0))
+   (vector  vector4w  3 :inline :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector4w-4 (structure)
+  ((data    int32     16)
+   (quad    uint128   4         :overlay-at (-> data 0))
+   (vector  vector4w  4 :inline :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector4h (structure)
+  ((data  int16   4)
+   (x     int16   :overlay-at (-> data 0))
+   (y     int16   :overlay-at (-> data 1))
+   (z     int16   :overlay-at (-> data 2))
+   (w     int16   :overlay-at (-> data 3))
+   (long  uint64  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+
+(deftype vector8h (structure)
+  ((data  int16    8)
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector16b (structure)
+  ((data  int8     16)
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+
+
+(defmethod print ((this vector))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
+  this
+  )
+
+(define *null-vector* (new 'static 'vector :w 1.0))
+
+(define *identity-vector* (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+
+(define *x-vector* (new 'static 'vector :x 1.0 :w 1.0))
+
+(define *y-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+(define *z-vector* (new 'static 'vector :z 1.0 :w 1.0))
+
+(define *up-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+(deftype vector4s-3 (structure)
+  ((data    float    12)
+   (quad    uint128  3         :overlay-at (-> data 0))
+   (vector  vector   3 :inline :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector-array (inline-array-class)
+  ((data  vector  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> vector-array heap-base) (the-as uint 16))
+
+(deftype rgbaf (vector)
+  ((r  float  :overlay-at (-> data 0))
+   (g  float  :overlay-at (-> data 1))
+   (b  float  :overlay-at (-> data 2))
+   (a  float  :overlay-at (-> data 3))
+   )
+  )
+
+
+(deftype plane (vector)
+  ((a  float  :overlay-at (-> data 0))
+   (b  float  :overlay-at (-> data 1))
+   (c  float  :overlay-at (-> data 2))
+   (d  float  :overlay-at (-> data 3))
+   )
+  )
+
+
+(deftype sphere (vector)
+  ((r  float  :overlay-at (-> data 3))
+   )
+  )
+
+
+(deftype isphere (vec4s)
+  ()
+  )
+
+(defmacro static-vector (x y z w)
+  "Creates a static vector."
+  `(new 'static 'vector :x ,x :y ,y :z ,z :w ,w)
+  )
+(defmacro static-vectorm (x y z)
+  "Creates a static vector using meters. `w` is set to 1.0"
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w 1.0)
+  )
+(defmacro static-spherem (x y z r)
+  "Creates a static vector using meters where the w component is used as sphere radius. For a 'real' sphere, use [[static-bspherem]]."
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+(defmacro static-bspherem (x y z r)
+  "Creates a static sphere using meters."
+  `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+(deftype box8s (structure)
+  ((data    float    8)
+   (quad    uint128  2       :overlay-at (-> data 0))
+   (vector  vector   2       :overlay-at (-> data 0))
+   (min     vector   :inline :overlay-at (-> data 0))
+   (max     vector   :inline :overlay-at (-> data 4))
+   )
+  )
+
+
+(deftype box8s-array (inline-array-class)
+  ((data  box8s  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> box8s-array heap-base) (the-as uint 32))
+
+(deftype vertical-planes (structure)
+  ((data  uint128  4)
+   )
+  )
+
+
+(deftype vertical-planes-array (basic)
+  ((length  uint32)
+   (data    vertical-planes  :inline :dynamic)
+   )
+  )
+
+
+(deftype qword (structure)
+  ((data      uint32    4)
+   (byte      uint8     16      :overlay-at (-> data 0))
+   (hword     uint16    8       :overlay-at (-> data 0))
+   (word      uint32    4       :overlay-at (-> data 0))
+   (dword     uint64    2       :overlay-at (-> data 0))
+   (quad      uint128           :overlay-at (-> data 0))
+   (vector    vector    :inline :overlay-at (-> data 0))
+   (vector4w  vector4w  :inline :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype vector3s (structure)
+  ((data  float  3)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   (z     float  :overlay-at (-> data 2))
+   )
+  :pack-me
+  )
+
+(defun vector-dot ((a vector) (b vector))
+  "Take the dot product of two vectors.
+Only does the x, y, z compoments.
+Originally handwritten assembly to space out loads and use FPU accumulator"
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    result
+    )
+  )
+
+(defun vector-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyz only). Using VU0."
+  (local-vars (v0-0 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+(defun vector4-dot ((a vector) (b vector))
+  "Take the dot product of two vectors.
+Does the x, y, z, and w compoments"
+  (declare (inline))
+  (let ((result 0.))
+    (+! result (* (-> a x) (-> b x)))
+    (+! result (* (-> a y) (-> b y)))
+    (+! result (* (-> a z) (-> b z)))
+    (+! result (* (-> a w) (-> b w)))
+    result
+    )
+  )
+
+(defun vector4-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyzw). Using VU0."
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.w.vf vf3 vf0 vf0 :mask #b1)
+    (.mul.x.vf acc vf3 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.z.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.w.vf vf1 vf3 vf1 acc :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+(defmacro print-vf (vf &key (name #f))
+  "Print out a vf register as a vector."
+  `(let ((temp (new 'stack 'vector)))
+     (.svf temp ,vf)
+     ,(if name
+          `(format #t "~A: ~`vector`P~%" (quote ,name) temp)
+          `(format #t "~`vector`P~%" temp)
+          )
+     )
+  )
+
+(defmacro print-vf-hex (vf)
+  "Print out a vf register as 4x 32-bit hexadecimal integers"
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t "~`vector4w`P~%" temp)
+     )
+  )
+
+(defmacro print-vf-dec (vf)
+  "Print out a vf register as 4x 32-bit base-10 integers"
+  `(let ((temp (new 'stack 'vector4w)))
+     (.svf temp ,vf)
+     (format #t " ~d ~d ~d ~d~%" (-> temp data 0) (-> temp data 1) (-> temp data 2) (-> temp data 3))
+     )
+  )
+
+(defun vector+! ((dst vector) (a vector) (b vector))
+  "Set dst = a + b. The w component of dst is set to 0."
+  (declare (inline))
+  (rlet ((vf0 :class vf :reset-here #t)
+         (vf1 :class vf :reset-here #t)
+         (vf2 :class vf :reset-here #t)
+         (vf3 :class vf :reset-here #t))
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    (init-vf0-vector)
+    ;; add
+    (.add.vf vf1 vf2 vf3)
+    ;; set w = 1
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
+  dst
+  )
+
+(defun vector-! ((dst vector) (a vector) (b vector))
+  "Set dst = a - b. The w componenent of dst is set to 0."
+  (declare (inline))
+  (rlet ((vf0 :class vf :reset-here #t)
+         (vf1 :class vf :reset-here #t)
+         (vf2 :class vf :reset-here #t)
+         (vf3 :class vf :reset-here #t))
+    ;; load vectors
+    (.lvf vf2 a)
+    (.lvf vf3 b)
+    (init-vf0-vector)
+    ;; subtract
+    (.sub.vf vf1 vf2 vf3)
+    ;; set w = 1
+    (.blend.vf vf1 vf1 vf0 :mask #b1000)
+    ;; store
+    (.svf dst vf1)
+    )
+  dst
+  )
+
+(defun vector-zero! ((dst vector))
+  "Set xyzw to 0."
+  (declare (inline))
+  (rlet ((vf1 :class vf :reset-here #t))
+    ;; set vf1 = 0
+    (.xor.vf vf1 vf1 vf1)
+    ;; store the 0
+    (.svf dst vf1)
+    )
+  dst
+  )
+
+(defun vector-reset! ((dst vector))
+  "Set vector to <0,0,0,1>."
+  (declare (inline))
+  (vector-zero! dst)
+  (set! (-> dst w) 1.0)
+  dst
+  )
+
+(defun vector-copy! ((arg0 vector) (arg1 vector))
+  "Copy arg1 to arg0."
+  (declare (inline))
+  (set! (-> arg0 quad) (-> arg1 quad))
+  arg0
+  )
+
+(defun vector-length< ((arg0 vector) (arg1 float))
+  (let ((f0-0 (vector-length-squared arg0))
+        (f1-0 arg1)
+        )
+    (< f0-0 (* f1-0 f1-0))
+    )
+  )
+
+(defun vector-length> ((arg0 vector) (arg1 float))
+  (< (* arg1 arg1) (vector-length-squared arg0))
+  )
+
+(define *zero-vector* (new 'static 'vector))
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )

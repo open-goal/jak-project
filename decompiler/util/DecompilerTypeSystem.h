@@ -56,6 +56,7 @@ class DecompilerTypeSystem {
                   const TypeSpec& type_spec,
                   const DefinitionMetadata& symbol_metadata);
   void parse_type_defs(const std::vector<std::string>& file_path);
+  void parse_enum_defs(const std::vector<std::string>& file_path);
   TypeSpec parse_type_spec(const std::string& str) const;
   void add_type_flags(const std::string& name, u64 flags);
   void add_type_parent(const std::string& child, const std::string& parent);
@@ -94,7 +95,10 @@ class DecompilerTypeSystem {
     void reset() { current_method_type.clear(); }
   } type_prop_settings;
 
+  GameVersion version() const { return m_version; }
+
  private:
+  GameVersion m_version;
   mutable goos::Reader m_reader;
 };
 }  // namespace decompiler

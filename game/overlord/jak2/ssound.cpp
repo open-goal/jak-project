@@ -49,10 +49,10 @@ void InitSound_overlord() {
   StreamVoice[3] = SD_VOICE(0, 3);
 
   for (int i = 0; i < 91; i++) {
-    s16 opposing_front = static_cast<s16>(((i * 0x33ff) / 0x5a) + 0xc00);
+    s16 opposing_front = static_cast<s16>(((i * 0x33ff) / 90) + 0xc00);
 
-    s16 rear_right = static_cast<s16>(((i * -0x2800) / 0x5a) + 0x3400);
-    s16 rear_left = static_cast<s16>(((i * -0xbff) / 0x5a) + 0x3fff);
+    s16 rear_right = static_cast<s16>(((i * -0x2800) / 90) + 0x3400);
+    s16 rear_left = static_cast<s16>(((i * -0xbff) / 90) + 0x3fff);
 
     gPanTable[90 - i].left = 0x3FFF;
     gPanTable[180 - i].left = opposing_front;

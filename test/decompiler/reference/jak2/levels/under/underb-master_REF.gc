@@ -205,6 +205,7 @@
 
 ;; definition for method 10 of type underb-master
 (defmethod deactivate ((this underb-master))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this ambient-sound-id))
   (send-event (handle->process (-> this warp-handle)) 'die-fast)
   (set! *underb-master* (the-as (pointer underb-master) #f))
@@ -697,15 +698,16 @@
 
 ;; definition for method 7 of type under-locking
 ;; WARN: Return type mismatch process-drawable vs under-locking.
-(defmethod relocate ((this under-locking) (arg0 int))
+(defmethod relocate ((this under-locking) (offset int))
   (if (nonzero? (-> this draining-part))
-      (&+! (-> this draining-part) arg0)
+      (&+! (-> this draining-part) offset)
       )
-  (the-as under-locking ((method-of-type process-drawable relocate) this arg0))
+  (the-as under-locking ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition for method 10 of type under-locking
 (defmethod deactivate ((this under-locking))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this draining-part))
       (kill-and-free-particles (-> this draining-part))
       )

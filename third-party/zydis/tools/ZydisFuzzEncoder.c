@@ -61,7 +61,7 @@ void ZydisCompareRequestToInstruction(const ZydisEncoderRequest *request,
 
     // Handle possible KNC overlap
     ZydisDecodedInstruction knc_insn;
-    ZydisDecodedOperand knc_operands[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+    ZydisDecodedOperand knc_operands[ZYDIS_MAX_OPERAND_COUNT];
     if (request->mnemonic != insn->mnemonic)
     {
         ZydisDecoder decoder;
@@ -77,7 +77,7 @@ void ZydisCompareRequestToInstruction(const ZydisEncoderRequest *request,
             abort();
         }
         if (!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, insn_bytes, insn->length, &knc_insn,
-            knc_operands, ZYDIS_MAX_OPERAND_COUNT_VISIBLE, ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY)))
+            knc_operands)))
         {
             fputs("Failed to decode instruction\n", ZYAN_STDERR);
             abort();
@@ -220,9 +220,9 @@ int ZydisFuzzTarget(ZydisStreamRead read_fn, void *stream_ctx)
     ZYDIS_SANITIZE_ENUM(request.branch_type, ZydisBranchType, ZYDIS_BRANCH_TYPE_MAX_VALUE);
     ZYDIS_SANITIZE_ENUM(request.branch_width, ZydisBranchWidth, ZYDIS_BRANCH_WIDTH_MAX_VALUE);
     ZYDIS_SANITIZE_ENUM(request.address_size_hint, ZydisAddressSizeHint,
-        ZYDIS_ADDRESS_SIZE_MAX_VALUE);
+        ZYDIS_ADDRESS_SIZE_HINT_MAX_VALUE);
     ZYDIS_SANITIZE_ENUM(request.operand_size_hint, ZydisOperandSizeHint,
-        ZYDIS_OPERAND_SIZE_MAX_VALUE);
+        ZYDIS_OPERAND_SIZE_HINT_MAX_VALUE);
     ZYDIS_SANITIZE_ENUM(request.evex.broadcast, ZydisBroadcastMode, ZYDIS_BROADCAST_MODE_MAX_VALUE);
     ZYDIS_SANITIZE_ENUM(request.evex.rounding, ZydisRoundingMode, ZYDIS_ROUNDING_MODE_MAX_VALUE);
     ZYDIS_SANITIZE_ENUM(request.mvex.broadcast, ZydisBroadcastMode, ZYDIS_BROADCAST_MODE_MAX_VALUE);
@@ -289,8 +289,8 @@ int ZydisFuzzTarget(ZydisStreamRead read_fn, void *stream_ctx)
 
     ZydisDecodedInstruction insn1;
     ZydisDecodedOperand operands1[ZYDIS_MAX_OPERAND_COUNT];
-    status = ZydisDecoderDecodeFull(&decoder, encoded_instruction, encoded_length, &insn1, 
-        operands1, ZYDIS_MAX_OPERAND_COUNT, 0);
+    status = ZydisDecoderDecodeFull(&decoder, encoded_instruction, encoded_length, &insn1,
+        operands1);
     if (!ZYAN_SUCCESS(status))
     {
         fputs("Failed to decode instruction\n", ZYAN_STDERR);

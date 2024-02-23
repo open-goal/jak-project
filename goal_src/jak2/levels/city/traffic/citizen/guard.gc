@@ -358,7 +358,7 @@
           (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))
           (set! (-> s0-0 quad) (-> this root trans quad))
           (cond
-            ((logtest? (enemy-flag dislike-combo) (-> this enemy-flags))
+            ((logtest? (enemy-flag drawn-mirrored) (-> this enemy-flags))
              (let ((a1-6 s0-0))
                (let ((v1-14 s0-0))
                  (let ((a0-9 s4-0))
@@ -451,12 +451,12 @@
 
 (define *guard-min-id-hack* 255)
 
-(defmethod track-target! ((this crimson-guard))
+(defmethod common-post ((this crimson-guard))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
 @TODO Not extremely well understood yet"
-  (let ((t9-0 (method-of-type citizen track-target!)))
+  (let ((t9-0 (method-of-type citizen common-post)))
     (t9-0 this)
     )
   (update-transforms (-> this root))
@@ -527,7 +527,7 @@
      )
     (('combo)
      (and (not (and (-> this next-state) (= (-> this next-state name) 'inactive)))
-          (and (not (logtest? (enemy-flag multi-focus) (-> this enemy-flags))) (nonzero? (-> this hit-points)))
+          (and (not (logtest? (enemy-flag dislike-combo) (-> this enemy-flags))) (nonzero? (-> this hit-points)))
           )
      )
     (('avoid)
@@ -741,7 +741,7 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -802,7 +802,7 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -857,7 +857,7 @@
     )
   )
 
-(defmethod enemy-method-77 ((this crimson-guard) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this crimson-guard) (arg0 enemy-knocked-info))
   (cond
     ((logtest? (-> this flags) (citizen-flag knocked-out-car))
      (ja-channel-push! 1 (seconds 0.1))
@@ -866,7 +866,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 42)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 42)) num-func-seek!)
        )
@@ -879,7 +879,7 @@
        (set! (-> a0-5 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 43)) frames num-frames) -1))
              )
-       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 param 1) (-> arg0 anim-speed))
        (set! (-> a0-5 frame-num) 0.0)
        (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 43)) num-func-seek!)
        )
@@ -905,7 +905,7 @@
            )
        (set! (-> a0-11 frame-group) (the-as art-joint-anim a1-6))
        (set! (-> a0-11 param 0) (the float (+ (-> (the-as art-joint-anim a1-6) frames num-frames) -1)))
-       (set! (-> a0-11 param 1) (-> arg0 0))
+       (set! (-> a0-11 param 1) (-> arg0 anim-speed))
        (set! (-> a0-11 frame-num) 0.0)
        (joint-control-channel-group! a0-11 (the-as art-joint-anim a1-6) num-func-seek!)
        )
@@ -916,7 +916,7 @@
          (ja-channel-push! 1 (seconds 0.01))
          (cond
            ((= (-> this small-hit) 1)
-            (set! (-> this yellow-anim) (the-as uint (get-rand-int this 2)))
+            (set! (-> this yellow-anim) (the-as uint (rnd-int-count this 2)))
             (let ((a1-12 (-> this
                              draw
                              art-group
@@ -935,7 +935,7 @@
                   )
               (set! (-> a0-23 frame-group) (the-as art-joint-anim a1-12))
               (set! (-> a0-23 param 0) (the float (+ (-> (the-as art-joint-anim a1-12) frames num-frames) -1)))
-              (set! (-> a0-23 param 1) (-> arg0 0))
+              (set! (-> a0-23 param 1) (-> arg0 anim-speed))
               (set! (-> a0-23 frame-num) 0.0)
               (joint-control-channel-group! a0-23 (the-as art-joint-anim a1-12) num-func-seek!)
               )
@@ -946,7 +946,7 @@
                    )
                (set! (-> a0-27 frame-group) (the-as art-joint-anim a1-13))
                (set! (-> a0-27 param 0) (the float (+ (-> (the-as art-joint-anim a1-13) frames num-frames) -1)))
-               (set! (-> a0-27 param 1) (-> arg0 0))
+               (set! (-> a0-27 param 1) (-> arg0 anim-speed))
                (set! (-> a0-27 frame-num) 0.0)
                (joint-control-channel-group! a0-27 (the-as art-joint-anim a1-13) num-func-seek!)
                )
@@ -960,7 +960,7 @@
            (set! (-> a0-30 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 10)) frames num-frames) -1))
                  )
-           (set! (-> a0-30 param 1) (-> arg0 0))
+           (set! (-> a0-30 param 1) (-> arg0 anim-speed))
            (set! (-> a0-30 frame-num) 0.0)
            (joint-control-channel-group! a0-30 (the-as art-joint-anim (-> this draw art-group data 10)) num-func-seek!)
            )
@@ -968,11 +968,11 @@
         (((knocked-type knocked-type-2))
          (ja-channel-push! 1 (seconds 0.1))
          (let ((a1-17 (-> this draw art-group data (-> this info knocked (-> this hit-face)))))
-           (set! (-> arg0 0) (* 0.5 (-> arg0 0)))
+           (set! (-> arg0 anim-speed) (* 0.5 (-> arg0 anim-speed)))
            (let ((a0-36 (-> this skel root-channel 0)))
              (set! (-> a0-36 frame-group) (the-as art-joint-anim a1-17))
              (set! (-> a0-36 param 0) (the float (+ (-> (the-as art-joint-anim a1-17) frames num-frames) -1)))
-             (set! (-> a0-36 param 1) (-> arg0 0))
+             (set! (-> a0-36 param 1) (-> arg0 anim-speed))
              (set! (-> a0-36 frame-num) 0.0)
              (joint-control-channel-group! a0-36 (the-as art-joint-anim a1-17) num-func-seek!)
              )
@@ -985,7 +985,7 @@
                 )
             (set! (-> a0-41 frame-group) (the-as art-joint-anim a1-19))
             (set! (-> a0-41 param 0) (the float (+ (-> (the-as art-joint-anim a1-19) frames num-frames) -1)))
-            (set! (-> a0-41 param 1) (-> arg0 0))
+            (set! (-> a0-41 param 1) (-> arg0 anim-speed))
             (set! (-> a0-41 frame-num) 0.0)
             (joint-control-channel-group! a0-41 (the-as art-joint-anim a1-19) num-func-seek!)
             )
@@ -996,7 +996,7 @@
   #t
   )
 
-(defmethod enemy-method-78 ((this crimson-guard) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this crimson-guard) (arg0 enemy-knocked-info))
   (cond
     ((<= (-> this hit-points) 0)
      (ja-channel-push! 1 (seconds 0.1))
@@ -1005,7 +1005,7 @@
            )
        (set! (-> a0-5 frame-group) (the-as art-joint-anim a1-2))
        (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim a1-2) frames num-frames) -1)))
-       (set! (-> a0-5 param 1) (-> arg0 0))
+       (set! (-> a0-5 param 1) (-> arg0 anim-speed))
        (set! (-> a0-5 frame-num) 0.0)
        (joint-control-channel-group! a0-5 (the-as art-joint-anim a1-2) num-func-seek!)
        )
@@ -1036,7 +1036,7 @@
                   )
               (set! (-> a0-16 frame-group) (the-as art-joint-anim a1-7))
               (set! (-> a0-16 param 0) (the float (+ (-> (the-as art-joint-anim a1-7) frames num-frames) -1)))
-              (set! (-> a0-16 param 1) (-> arg0 0))
+              (set! (-> a0-16 param 1) (-> arg0 anim-speed))
               (set! (-> a0-16 frame-num) 0.0)
               (joint-control-channel-group! a0-16 (the-as art-joint-anim a1-7) num-func-seek!)
               )
@@ -1049,7 +1049,7 @@
                    )
                (set! (-> a0-20 frame-group) (the-as art-joint-anim a1-8))
                (set! (-> a0-20 param 0) (the float (+ (-> (the-as art-joint-anim a1-8) frames num-frames) -1)))
-               (set! (-> a0-20 param 1) (-> arg0 0))
+               (set! (-> a0-20 param 1) (-> arg0 anim-speed))
                (set! (-> a0-20 frame-num) 0.0)
                (joint-control-channel-group! a0-20 (the-as art-joint-anim a1-8) num-func-seek!)
                )
@@ -1064,7 +1064,7 @@
            (set! (-> a0-23 param 0)
                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 11)) frames num-frames) -1))
                  )
-           (set! (-> a0-23 param 1) (-> arg0 0))
+           (set! (-> a0-23 param 1) (-> arg0 anim-speed))
            (set! (-> a0-23 frame-num) 0.0)
            (joint-control-channel-group! a0-23 (the-as art-joint-anim (-> this draw art-group data 11)) num-func-seek!)
            )
@@ -1074,11 +1074,11 @@
         (else
           (ja-channel-push! 1 (seconds 0.1))
           (let ((a1-12 (-> this draw art-group data (-> this info knocked-land (-> this hit-face)))))
-            (set! (-> arg0 0) 1.0)
+            (set! (-> arg0 anim-speed) 1.0)
             (let ((a0-28 (-> this skel root-channel 0)))
               (set! (-> a0-28 frame-group) (the-as art-joint-anim a1-12))
               (set! (-> a0-28 param 0) (the float (+ (-> (the-as art-joint-anim a1-12) frames num-frames) -1)))
-              (set! (-> a0-28 param 1) (-> arg0 0))
+              (set! (-> a0-28 param 1) (-> arg0 anim-speed))
               (set! (-> a0-28 frame-num) 0.0)
               (joint-control-channel-group! a0-28 (the-as art-joint-anim a1-12) num-func-seek!)
               )
@@ -1302,7 +1302,7 @@
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
       (logclear! (-> v1-3 prim-core action) (collide-action deadly))
       )
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -1469,8 +1469,8 @@
     (init-vf0-vector)
     (cond
       ((logtest? (-> this controller traffic alert-state flags) (traffic-alert-flag guard-multi-focus))
-       (logior! (-> this enemy-flags) (enemy-flag trackable))
-       (when (not (logtest? (enemy-flag actor-pause-backup) (-> this enemy-flags)))
+       (logior! (-> this enemy-flags) (enemy-flag multi-focus))
+       (when (not (logtest? (enemy-flag lock-focus) (-> this enemy-flags)))
          (let ((a0-4 (find-closest-to-with-collide-lists (-> this controller traffic) this (-> this focus collide-with))))
            (if a0-4
                (set! (-> this traffic-target-status handle) (process->handle a0-4))
@@ -1480,8 +1480,8 @@
          )
        )
       (else
-        (when (logtest? (enemy-flag trackable) (-> this enemy-flags))
-          (logclear! (-> this enemy-flags) (enemy-flag trackable))
+        (when (logtest? (enemy-flag multi-focus) (-> this enemy-flags))
+          (logclear! (-> this enemy-flags) (enemy-flag multi-focus))
           (let* ((s5-0 (handle->process (-> this traffic-target-status handle)))
                  (v1-21 (if (type? s5-0 process-focusable)
                             s5-0
@@ -1872,7 +1872,7 @@
                      (when (and (< (-> self target-self-xz-dist) 163840.0)
                                 (or (< 40960.0 (-> self target-self-xz-dist)) (>= 2 (the-as int (-> self focus aware))))
                                 )
-                       (if (and (time-elapsed? (-> self state-time) (the int (* 300.0 (get-rand-float-range self 1.0 3.0))))
+                       (if (and (time-elapsed? (-> self state-time) (the int (* 300.0 (rnd-float-range self 1.0 3.0))))
                                 (logtest? (-> self flags) (citizen-flag target-in-sight))
                                 )
                            (go-virtual gun-shoot)
@@ -1972,7 +1972,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-4 self))
       (if (not (logtest? (enemy-flag enemy-flag36) (-> v1-4 enemy-flags)))
@@ -2001,8 +2001,8 @@
     (let ((v1-3 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 3)))
       (logclear! (-> v1-3 prim-core action) (collide-action deadly))
       )
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -2036,7 +2036,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self other-side) (if (< (rand-vu) 0.5)
                                    #t
                                    #f
@@ -2077,7 +2077,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
@@ -2113,7 +2113,7 @@
     (local-vars (v1-35 object))
     (speech-control-method-12 *speech-control* self (speech-type speech-type-9))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 0 anim-index))
                   :num! (seek! max f30-0)
                   :frame-num 0.0
@@ -2180,7 +2180,7 @@
       #f
       )
     (label cfg-40)
-    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-1 (rnd-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! (-> self draw art-group data (-> self anim-shoot 2 anim-index))
                   :num! (seek! max f30-1)
@@ -2277,7 +2277,7 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 6.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
          (let ((a0-20 (handle->process (-> self focus handle))))
@@ -2318,7 +2318,7 @@
       )
     0
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-right-ja :num! (seek! (ja-aframe 11.0 0)) :frame-num (ja-aframe 6.0 0))
        (until (ja-done? 0)
          (suspend)
@@ -2376,7 +2376,7 @@
     0
     (ja-channel-push! 1 (seconds 0.1))
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 9.0 0)) :frame-num (ja-aframe 0.0 0))
        (until (ja-done? 0)
          (let ((a0-20 (handle->process (-> self focus handle))))
@@ -2417,7 +2417,7 @@
       )
     0
     (cond
-      ((logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+      ((logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
        (ja-no-eval :group! crimson-guard-jump-left-ja :num! (seek! (ja-aframe 11.0 0)) :frame-num (ja-aframe 9.0 0))
        (until (ja-done? 0)
          (suspend)
@@ -2441,7 +2441,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (nav-enemy-method-167 self)
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
@@ -2468,7 +2468,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
@@ -2477,7 +2477,7 @@
   :code (behavior ()
     (speech-control-method-12 *speech-control* self (speech-type speech-type-13))
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! crimson-guard-idle-to-stab-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (seek-toward-heading-vec! (-> self root) (-> self target-self-xz) 65536.0 (seconds 0.02))
@@ -2500,7 +2500,7 @@
       )
     #f
     (label cfg-17)
-    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-1 (rnd-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! crimson-guard-stab-idle-to-idle-ja :num! (seek! max f30-1) :frame-num 0.0)
       (until (ja-done? 0)
@@ -2521,7 +2521,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (nav-enemy-method-167 self)
     (let ((v1-4 self))
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag enemy-flag36))))
@@ -2547,7 +2547,7 @@
     )
   :exit (behavior ()
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :trans (behavior ()
     (crimson-guard-method-220 self)
@@ -2557,7 +2557,7 @@
     )
   :code (behavior ()
     (ja-channel-push! 1 (seconds 0.2))
-    (let ((f30-0 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
       (ja-no-eval :group! crimson-guard-idle-to-stab-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
       (until (ja-done? 0)
         (suspend)
@@ -2571,7 +2571,7 @@
         (ja :num! (seek!))
         )
       )
-    (let ((f30-1 (get-rand-float-range self 0.9 1.1)))
+    (let ((f30-1 (rnd-float-range self 0.9 1.1)))
       (ja-channel-push! 1 (seconds 0.2))
       (ja-no-eval :group! crimson-guard-stab-idle-to-idle-ja :num! (seek! max f30-1) :frame-num 0.0)
       (until (ja-done? 0)
@@ -2980,7 +2980,7 @@
   :virtual #t
   :event enemy-event-handler
   :enter (behavior ()
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     (set! (-> self joint-enable) #t)
     (logior! (-> self focus-status) (focus-status dangerous))
     (let ((v1-5 self))
@@ -3024,8 +3024,8 @@
       (set! (-> v1-5 state mode) (the-as lightning-mode a0-2))
       )
     (set! (-> self joint-enable) #f)
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
-    (if (logtest? (-> self enemy-flags) (enemy-flag check-water))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
         (logior! (-> self focus-status) (focus-status dangerous))
         (logclear! (-> self focus-status) (focus-status dangerous))
         )
@@ -3072,7 +3072,7 @@
                  (if (< (the-as degrees f0-6) 0.0)
                      (set! f30-0 (- f30-0))
                      )
-                 (if (logtest? (enemy-flag dislike-combo) (-> self enemy-flags))
+                 (if (logtest? (enemy-flag drawn-mirrored) (-> self enemy-flags))
                      (set! f0-6 (- (the-as degrees f0-6)))
                      )
                  (cond
@@ -3586,7 +3586,9 @@
         (ja :num! (loop! f30-0))
         )
       )
-    (set! (-> self enemy-flags) (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag vulnerable))))
+    (set! (-> self enemy-flags)
+          (the-as enemy-flag (logclear (-> self enemy-flags) (enemy-flag jump-check-blocked)))
+          )
     (send-event self 'jump 0 (-> self event-param-point))
     (until #f
       (suspend)
@@ -3794,7 +3796,7 @@
   (set! (-> this fact pickup-amount) 10.0)
   (set! (-> this fact pickup-spawn-amount) 1.0)
   (set! (-> this traffic-target-status handle) (the-as handle #f))
-  (let ((v1-24 (get-rand-int this 2)))
+  (let ((v1-24 (rnd-int-count this 2)))
     (cond
       ((zero? v1-24)
        (set! (-> this anim-shoot 0 anim-index) 19)

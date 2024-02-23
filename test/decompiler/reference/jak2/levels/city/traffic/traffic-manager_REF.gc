@@ -397,16 +397,17 @@
 
 ;; definition for method 7 of type traffic-manager
 ;; WARN: Return type mismatch process vs traffic-manager.
-(defmethod relocate ((this traffic-manager) (arg0 int))
+(defmethod relocate ((this traffic-manager) (offset int))
   (set! *traffic-manager* this)
   (if *traffic-manager*
-      (set! *traffic-manager* (&+ *traffic-manager* arg0))
+      (set! *traffic-manager* (&+ *traffic-manager* offset))
       )
-  (the-as traffic-manager ((method-of-type process relocate) this arg0))
+  (the-as traffic-manager ((method-of-type process relocate) this offset))
   )
 
 ;; definition for method 10 of type traffic-manager
 (defmethod deactivate ((this traffic-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (stop-alarm-sound (-> this traffic-engine))
   (set! *traffic-manager* #f)
   (remove-setting *setting-control* this 'task-mask)

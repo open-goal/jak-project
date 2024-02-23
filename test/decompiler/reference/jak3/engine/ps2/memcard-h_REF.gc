@@ -1,0 +1,168 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mc-handle
+(deftype mc-handle (int32)
+  ()
+  )
+
+;; definition of type mc-file-info
+(deftype mc-file-info (structure)
+  "Data stored in a save file."
+  ((present                int32)
+   (blind-data             float   16)
+   (blind-data-int8        int8    64 :overlay-at (-> blind-data 0))
+   (level-index            int32      :overlay-at (-> blind-data 0))
+   (gem-count              float      :overlay-at (-> blind-data 1))
+   (skill-count            float      :overlay-at (-> blind-data 2))
+   (completion-percentage  float      :overlay-at (-> blind-data 3))
+   (minute                 uint8      :overlay-at (-> blind-data 5))
+   (hour                   uint8      :overlay-at (-> blind-data-int8 21))
+   (week                   uint8      :overlay-at (-> blind-data-int8 22))
+   (day                    uint8      :overlay-at (-> blind-data-int8 23))
+   (month                  uint8      :overlay-at (-> blind-data 6))
+   (year                   uint8      :overlay-at (-> blind-data-int8 25))
+   (language               uint8      :overlay-at (-> blind-data-int8 26))
+   (game-time0             uint32     :overlay-at (-> blind-data 8))
+   (game-time1             uint32     :overlay-at (-> blind-data 9))
+   (purchase-secrets       uint32     :overlay-at (-> blind-data 10))
+   (secrets                uint32     :overlay-at (-> blind-data 12))
+   (features               uint32     :overlay-at (-> blind-data 14))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type mc-file-info
+(defmethod inspect ((this mc-file-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'mc-file-info)
+  (format #t "~1Tpresent: ~D~%" (-> this present))
+  (format #t "~1Tblind-data[16] @ #x~X~%" (-> this blind-data))
+  (format #t "~1Tblind-data-int8[64] @ #x~X~%" (-> this blind-data))
+  (format #t "~1Tlevel-index: ~D~%" (-> this level-index))
+  (format #t "~1Tgem-count: ~f~%" (-> this gem-count))
+  (format #t "~1Tskill-count: ~f~%" (-> this skill-count))
+  (format #t "~1Tcompletion-percentage: ~f~%" (-> this completion-percentage))
+  (format #t "~1Tminute: #x~X~%" (-> this minute))
+  (format #t "~1Thour: #x~X~%" (-> this hour))
+  (format #t "~1Tweek: #x~X~%" (-> this week))
+  (format #t "~1Tday: #x~X~%" (-> this day))
+  (format #t "~1Tmonth: #x~X~%" (-> this month))
+  (format #t "~1Tyear: #x~X~%" (-> this year))
+  (format #t "~1Tlanguage: ~D~%" (-> this language))
+  (format #t "~1Tgame-time0: ~D~%" (-> this game-time0))
+  (format #t "~1Tgame-time1: ~D~%" (-> this game-time1))
+  (format #t "~1Tpurchase-secrets: #x~X~%" (&-> this purchase-secrets))
+  (format #t "~1Tsecrets: #x~X~%" (&-> this secrets))
+  (format #t "~1Tfeatures: #x~X~%" (&-> this features))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type mc-slot-info
+(deftype mc-slot-info (structure)
+  "Data about a memory card slot."
+  ((handle        mc-handle)
+   (known         int32)
+   (formatted     int32)
+   (inited        int32)
+   (last-file     int32)
+   (mem-required  int32)
+   (mem-actual    int32)
+   (file          mc-file-info  4 :inline)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type mc-slot-info
+(defmethod inspect ((this mc-slot-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'mc-slot-info)
+  (format #t "~1Thandle: ~D~%" (-> this handle))
+  (format #t "~1Tknown: ~D~%" (-> this known))
+  (format #t "~1Tformatted: ~D~%" (-> this formatted))
+  (format #t "~1Tinited: ~D~%" (-> this inited))
+  (format #t "~1Tlast-file: ~D~%" (-> this last-file))
+  (format #t "~1Tmem-required: ~D~%" (-> this mem-required))
+  (format #t "~1Tmem-actual: ~D~%" (-> this mem-actual))
+  (format #t "~1Tfile[4] @ #x~X~%" (-> this file))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function mc-sync
+(defun mc-sync ()
+  "Synchronize the memory card state."
+  (let ((v0-0 0))
+    (while (zero? v0-0)
+      (mc-run)
+      (set! v0-0 (the-as int (mc-check-result)))
+      )
+    v0-0
+    )
+  )
+
+;; definition for function show-mc-info
+;; WARN: Return type mismatch int vs none.
+(defun show-mc-info ((buf dma-buffer))
+  "Display the memory card debug text."
+  (let ((slot (new 'stack-no-clear 'mc-slot-info)))
+    (dotimes (slot-idx 2)
+      (mc-get-slot-info slot-idx slot)
+      (cond
+        ((zero? (-> slot known))
+         (format (clear *temp-string*) "SLOT ~D: EXAMINING SLOT~%" slot-idx)
+         *temp-string*
+         )
+        ((zero? (-> slot handle))
+         (format (clear *temp-string*) "SLOT ~D: NO CARD~%" slot-idx)
+         *temp-string*
+         )
+        ((zero? (-> slot formatted))
+         (format (clear *temp-string*) "SLOT ~D: CARD [~D] : NOT FORMATTED~%" slot-idx (-> slot handle))
+         *temp-string*
+         )
+        ((zero? (-> slot inited))
+         (format
+           (clear *temp-string*)
+           "SLOT ~D: CARD [~D] : NO FILE [~D/~D]~%"
+           slot-idx
+           (-> slot handle)
+           (-> slot mem-required)
+           (-> slot mem-actual)
+           )
+         *temp-string*
+         )
+        (else
+          (format (clear *temp-string*) "SLOT ~D: CARD [~D] : " slot-idx (-> slot handle))
+          *temp-string*
+          (format
+            *temp-string*
+            "SAVES ~D ~D ~D ~D : LAST ~D~%"
+            (-> slot file 0 present)
+            (-> slot file 1 present)
+            (-> slot file 2 present)
+            (-> slot file 3 present)
+            (-> slot last-file)
+            )
+          )
+        )
+      (draw-string-xy *temp-string* buf 32 (+ (* 12 slot-idx) 8) (font-color red) (font-flags shadow))
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

@@ -1034,6 +1034,15 @@
     )
   )
 
+(defmacro string->enum (enum input default)
+  "return the value of an enum name"
+
+  `(case-str ,input
+      ,@(apply (lambda (x) `((,(symbol->string (car x))) (,enum ,(car x)))) (get-enum-vals enum))
+      (else ,default)
+      )
+  )
+
 (defmacro doenum (bindings &rest body)
   "run body while iterating through an enum.
    WARNING: enums are NOT A RUNTIME TYPE! There is an UNWOUND loop with body in it!! Use with caution."
@@ -1042,11 +1051,12 @@
   `(begin ,@(apply (lambda (x)
                       ;; (fmt #t "{}\n" x)
                       `(let (
-                            (,(first bindings) ,(symbol->string (car x))) ;; name
-                            (,(second bindings) ,(cdr x)) ;; value
+                            (,(car bindings) ,(symbol->string (car x))) ;; name
+                            (,(cadr bindings) ,(cdr x)) ;; value
                             )
                         ,@body
-                        )) (get-enum-vals (third bindings))))
+                        )) (get-enum-vals (caddr bindings)))
+                    ,@(cdddr bindings))
 
   )
 
@@ -1182,5 +1192,9 @@
   ((eq? GAME_VERSION 'jak2)
    (asm-file "goal_src/jak2/compiler-setup.gc")
    (seval (fmt #t "Jak 2 Mode\n"))
+   )
+  ((eq? GAME_VERSION 'jak3)
+   (asm-file "goal_src/jak3/compiler-setup.gc")
+   (seval (fmt #t "Jak 3 Mode\n"))
    )
   )

@@ -36,13 +36,9 @@
 # - there are likely ways to make this more efficient
 
 import argparse
-import os
 from code_retention.all_types_retention import update_alltypes_named_blocks
 from code_retention.code_retention import is_line_start_of_form, has_form_ended
 from utils import get_gsrc_path_from_filename
-import shutil
-from pathlib import Path
-import subprocess
 
 parser = argparse.ArgumentParser("update-from-decomp")
 parser.add_argument("--game", help="The name of the game", type=str)
@@ -64,7 +60,6 @@ comments = []
 debug_lines = []
 decomp_ignore_forms = ["defmethod inspect"]
 decomp_ignore_errors = False
-update_with_merge = False
 
 with open(gsrc_path) as f:
     lines_temp = f.readlines()
@@ -78,25 +73,7 @@ with open(gsrc_path) as f:
             decomp_ignore_errors = True
         if "og:ignore-form" in line:
             decomp_ignore_forms.append(line.partition("ignore-form:")[2].strip())
-        if "og:update-with-merge" in line:
-            update_with_merge = True
         lines.append(line)
-
-# If we are going to `update_with_merge` then make a backup of the file, and
-# an empty file to use as the common ancestor.
-#
-# This means that all changes will be flagged as a conflict and will not be able to be
-# merged into the repo without being explicitly resolved
-if update_with_merge:
-    subprocess.run(
-        [
-            "git",
-            "restore",
-            gsrc_path
-        ]
-    )
-    shutil.copyfile(gsrc_path, gsrc_path.replace(".gc", ".before.gc"))
-    Path(gsrc_path.replace(".gc", ".empty.gc")).touch()
 
 if args.debug:
     with open(gsrc_path, "w") as f:
@@ -207,29 +184,3 @@ with open(gsrc_path, "w") as f:
     while i + lines_to_ignore < len(final_lines):
         f.write(final_lines[i])
         i = i + 1
-
-# If we need to merge, now is the time!
-if update_with_merge:
-    shutil.move(gsrc_path, gsrc_path.replace(".gc", ".after.gc"))
-    shutil.move(gsrc_path.replace(".gc", ".before.gc"), gsrc_path)
-    subprocess.run(
-        [
-            "git",
-            "merge-file",
-            gsrc_path,
-            gsrc_path.replace(".gc", ".empty.gc"),
-            gsrc_path.replace(".gc", ".after.gc"),
-            "-L",
-            "Before Updating",
-            "-L",
-            "ignored",
-            "-L",
-            "After Updating",
-        ]
-    )
-    if os.path.exists(gsrc_path.replace(".gc", ".empty.gc")):
-        os.remove(gsrc_path.replace(".gc", ".empty.gc"))
-    if os.path.exists(gsrc_path.replace(".gc", ".before.gc")):
-        os.remove(gsrc_path.replace(".gc", ".before.gc"))
-    if os.path.exists(gsrc_path.replace(".gc", ".after.gc")):
-        os.remove(gsrc_path.replace(".gc", ".after.gc"))

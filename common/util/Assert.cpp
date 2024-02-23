@@ -16,12 +16,12 @@ void private_assert_failed(const char* expr,
   if (!msg || msg[0] == '\0') {
     std::string log = fmt::format("Assertion failed: '{}'\n\tSource: {}:{}\n\tFunction: {}\n", expr,
                                   file, line, function);
-    lg::die(log);
+    lg::die("{}", log);
   } else {
     std::string log =
         fmt::format("Assertion failed: '{}'\n\tMessage: {}\n\tSource: {}:{}\n\tFunction: {}\n",
                     expr, msg, file, line, function);
-    lg::die(log);
+    lg::die("{}", log);
   }
   abort();
 }

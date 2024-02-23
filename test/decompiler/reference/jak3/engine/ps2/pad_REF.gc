@@ -1,0 +1,734 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type scf-time
+(deftype scf-time (structure)
+  ((stat    uint8)
+   (second  uint8)
+   (minute  uint8)
+   (hour    uint8)
+   (week    uint8)
+   (day     uint8)
+   (month   uint8)
+   (year    uint8)
+   )
+  )
+
+;; definition for method 3 of type scf-time
+(defmethod inspect ((this scf-time))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'scf-time)
+  (format #t "~1Tstat: ~D~%" (-> this stat))
+  (format #t "~1Tsecond: #x~X~%" (-> this second))
+  (format #t "~1Tminute: #x~X~%" (-> this minute))
+  (format #t "~1Thour: #x~X~%" (-> this hour))
+  (format #t "~1Tweek: #x~X~%" (-> this week))
+  (format #t "~1Tday: #x~X~%" (-> this day))
+  (format #t "~1Tmonth: #x~X~%" (-> this month))
+  (format #t "~1Tyear: #x~X~%" (-> this year))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *cheat-mode*, type symbol
+(define *cheat-mode* #t)
+
+;; definition of type hw-cpad
+(deftype hw-cpad (basic)
+  "Data that comes directly from hardware.
+It's 32 bytes + type tag (ignored by C kernel)."
+  ((valid    uint8)
+   (status   uint8)
+   (button0  uint16)
+   (rightx   uint8)
+   (righty   uint8)
+   (leftx    uint8)
+   (lefty    uint8)
+   (abutton  uint8  12)
+   (dummy    uint8  12)
+   )
+  )
+
+;; definition for method 3 of type hw-cpad
+(defmethod inspect ((this hw-cpad))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tvalid: #x~X~%" (-> this valid))
+  (format #t "~1Tstatus: #x~X~%" (-> this status))
+  (format #t "~1Tbutton0: #x~X~%" (-> this button0))
+  (format #t "~1Trightx: ~D~%" (-> this rightx))
+  (format #t "~1Trighty: ~D~%" (-> this righty))
+  (format #t "~1Tleftx: ~D~%" (-> this leftx))
+  (format #t "~1Tlefty: ~D~%" (-> this lefty))
+  (format #t "~1Tabutton[12] @ #x~X~%" (-> this abutton))
+  (format #t "~1Tdummy[12] @ #x~X~%" (-> this dummy))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type cpad-info
+(deftype cpad-info (hw-cpad)
+  "Data from hardware + additional info calculated here."
+  ((number              int32)
+   (cpad-file           int32)
+   (button0-abs         pad-buttons  3)
+   (button0-shadow-abs  pad-buttons  1)
+   (button0-rel         pad-buttons  3)
+   (stick0-dir          float)
+   (stick0-speed        float)
+   (new-pad             int32)
+   (state               int32)
+   (align               uint8        6)
+   (direct              uint8        6)
+   (buzz-val            uint8        2)
+   (buzz-pause-val      uint8        1)
+   (buzz-pause-time     uint8)
+   (buzz-time           time-frame   2)
+   (buzz                symbol)
+   (buzz-act            int32)
+   (change-time         time-frame)
+   (real-change-time    time-frame)
+   (old-rightx          uint8        2)
+   (old-righty          uint8        2)
+   (old-leftx           uint8        2)
+   (old-lefty           uint8        2)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (adjust-to-screen-flip (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type cpad-info
+(defmethod inspect ((this cpad-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tvalid: #x~X~%" (-> this valid))
+  (format #t "~1Tstatus: #x~X~%" (-> this status))
+  (format #t "~1Tbutton0: #x~X~%" (-> this button0))
+  (format #t "~1Trightx: ~D~%" (-> this rightx))
+  (format #t "~1Trighty: ~D~%" (-> this righty))
+  (format #t "~1Tleftx: ~D~%" (-> this leftx))
+  (format #t "~1Tlefty: ~D~%" (-> this lefty))
+  (format #t "~1Tabutton[12] @ #x~X~%" (-> this abutton))
+  (format #t "~1Tdummy[12] @ #x~X~%" (-> this dummy))
+  (format #t "~1Tnumber: ~D~%" (-> this number))
+  (format #t "~1Tcpad-file: ~D~%" (-> this cpad-file))
+  (format #t "~1Tbutton0-abs[3] @ #x~X~%" (-> this button0-abs))
+  (format #t "~1Tbutton0-shadow-abs[1] @ #x~X~%" (-> this button0-shadow-abs))
+  (format #t "~1Tbutton0-rel[3] @ #x~X~%" (-> this button0-rel))
+  (format #t "~1Tstick0-dir: ~f~%" (-> this stick0-dir))
+  (format #t "~1Tstick0-speed: ~f~%" (-> this stick0-speed))
+  (format #t "~1Tnew-pad: ~D~%" (-> this new-pad))
+  (format #t "~1Tstate: ~D~%" (-> this state))
+  (format #t "~1Talign[6] @ #x~X~%" (-> this align))
+  (format #t "~1Tdirect[6] @ #x~X~%" (-> this direct))
+  (format #t "~1Tbuzz-val[2] @ #x~X~%" (-> this buzz-val))
+  (format #t "~1Tbuzz-pause-val[1] @ #x~X~%" (-> this buzz-pause-val))
+  (format #t "~1Tbuzz-pause-time: ~D~%" (-> this buzz-pause-time))
+  (format #t "~1Tbuzz-time[2] @ #x~X~%" (-> this buzz-time))
+  (format #t "~1Tbuzz: ~A~%" (-> this buzz))
+  (format #t "~1Tbuzz-act: ~D~%" (-> this buzz-act))
+  (format #t "~1Tchange-time: ~D~%" (-> this change-time))
+  (format #t "~1Treal-change-time: ~D~%" (-> this real-change-time))
+  (format #t "~1Told-rightx[2] @ #x~X~%" (-> this old-rightx))
+  (format #t "~1Told-righty[2] @ #x~X~%" (-> this old-righty))
+  (format #t "~1Told-leftx[2] @ #x~X~%" (-> this old-leftx))
+  (format #t "~1Told-lefty[2] @ #x~X~%" (-> this old-lefty))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function cpad-invalid!
+(defun cpad-invalid! ((arg0 cpad-info))
+  "Reset all data in a [[cpad-info]]."
+  (logior! (-> arg0 valid) 128)
+  (set! (-> arg0 button0) (the-as uint 0))
+  (set! (-> arg0 button0-abs 0) (pad-buttons))
+  (set! (-> arg0 button0-shadow-abs 0) (pad-buttons))
+  (set! (-> arg0 button0-rel 0) (pad-buttons))
+  (dotimes (v1-2 12)
+    (nop!)
+    (set! (-> arg0 abutton v1-2) (the-as uint 0))
+    )
+  (set! (-> arg0 stick0-dir) 0.0)
+  (set! (-> arg0 stick0-speed) 0.0)
+  (set! (-> arg0 rightx) (the-as uint 128))
+  (set! (-> arg0 righty) (the-as uint 128))
+  (set! (-> arg0 leftx) (the-as uint 128))
+  (set! (-> arg0 lefty) (the-as uint 128))
+  (set! (-> arg0 align 0) (the-as uint 0))
+  (set! (-> arg0 align 1) (the-as uint 1))
+  (set! (-> arg0 align 2) (the-as uint 255))
+  (set! (-> arg0 align 3) (the-as uint 255))
+  (set! (-> arg0 align 4) (the-as uint 255))
+  (set! (-> arg0 align 5) (the-as uint 255))
+  (dotimes (v1-14 6)
+    (nop!)
+    (set! (-> arg0 direct v1-14) (the-as uint 0))
+    )
+  (dotimes (v1-17 2)
+    (nop!)
+    (set! (-> arg0 buzz-val v1-17) (the-as uint 0))
+    (set! (-> arg0 buzz-time v1-17) 0)
+    )
+  (set! (-> arg0 buzz-pause-val 0) (the-as uint 0))
+  (set! (-> arg0 buzz-time 0) 0)
+  arg0
+  )
+
+;; definition for method 0 of type cpad-info
+(defmethod new cpad-info ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a new cpad-info and open the pad itself through the kernel."
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s5-0 number) arg0)
+    (set! (-> s5-0 buzz) #f)
+    (cpad-open s5-0 arg0)
+    (cpad-invalid! s5-0)
+    )
+  )
+
+;; definition of type cpad-list
+(deftype cpad-list (basic)
+  "List of controllers. It always has two controllers."
+  ((num-cpads  int32)
+   (cpads      cpad-info  2)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+;; definition for method 3 of type cpad-list
+(defmethod inspect ((this cpad-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnum-cpads: ~D~%" (-> this num-cpads))
+  (format #t "~1Tcpads[2] @ #x~X~%" (-> this cpads))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type cpad-list
+(defmethod new cpad-list ((allocation symbol) (type-to-make type))
+  "Create a cpad-list for 2 controllers. It's fine to do this even if one or both controllers
+   aren't connected yet."
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 num-cpads) 2)
+    (set! (-> gp-0 cpads 0) (new 'global 'cpad-info 0))
+    (set! (-> gp-0 cpads 1) (new 'global 'cpad-info 1))
+    gp-0
+    )
+  )
+
+;; definition for function analog-input
+(defun analog-input ((arg0 int) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Convert integer input from pad into a float between -out-range and +out-range.
+   The offset is applied directly to the input.
+   The center val is the expected value for 0, after applying offset.
+   The max val is the expected value with the stick pushed all the way."
+  (let* ((f1-1 (- (the float arg0) arg1))
+         (f0-3 (- (fabs f1-1) arg2))
+         (v1-0 (- arg3 arg2))
+         )
+    (if (< f1-1 0.0)
+        (set! arg4 (- arg4))
+        )
+    (cond
+      ((>= 0.0 f0-3)
+       0.0
+       )
+      ((>= f0-3 v1-0)
+       arg4
+       )
+      (else
+        (/ (* f0-3 arg4) v1-0)
+        )
+      )
+    )
+  )
+
+;; definition for function cpad-set-buzz!
+;; WARN: Return type mismatch int vs none.
+(defun cpad-set-buzz! ((arg0 cpad-info) (arg1 int) (arg2 int) (arg3 time-frame))
+  "Turn on vibration motor `buzz-idx` for duration, at magnitude `buzz-amount`."
+  (cond
+    ((zero? arg2)
+     (set! (-> arg0 buzz-val arg1) (the-as uint 0))
+     0
+     )
+    ((= arg2 (-> arg0 buzz-val arg1))
+     (set! (-> arg0 buzz-time arg1) (the-as time-frame (max (-> arg0 buzz-time arg1) (+ (get-current-time) arg3))))
+     )
+    ((< (-> arg0 buzz-val arg1) (the-as uint arg2))
+     (set! (-> arg0 buzz-val arg1) (the-as uint arg2))
+     (set! (-> arg0 buzz-time arg1) (+ (get-current-time) arg3))
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *cpad-list*, type cpad-list
+(define *cpad-list* (new 'global 'cpad-list))
+
+;; definition for symbol *cpad-debug*, type symbol
+(define *cpad-debug* #f)
+
+;; definition for function service-cpads
+(defun service-cpads ()
+  "Read from cpads and update vibration."
+  (let ((pads *cpad-list*))
+    (dotimes (pad-idx (-> pads num-cpads))
+      (let ((pad (-> *cpad-list* cpads pad-idx)))
+        (set! (-> pad old-leftx 1) (-> pad old-leftx 0))
+        (set! (-> pad old-leftx 0) (-> pad leftx))
+        (set! (-> pad old-lefty 1) (-> pad old-lefty 0))
+        (set! (-> pad old-lefty 0) (-> pad lefty))
+        (set! (-> pad old-rightx 1) (-> pad old-rightx 0))
+        (set! (-> pad old-rightx 0) (-> pad rightx))
+        (set! (-> pad old-righty 1) (-> pad old-righty 0))
+        (set! (-> pad old-righty 0) (-> pad righty))
+        (cpad-get-data pad)
+        (adjust-to-screen-flip pad)
+        (cond
+          ((not (logtest? (-> pad valid) 128))
+           (dotimes (motor-idx 2)
+             (cond
+               ((and (-> pad buzz) (< (get-current-time) (-> pad buzz-time motor-idx)) (= *master-mode* 'game))
+                (let ((v1-20 motor-idx))
+                  (cond
+                    ((zero? v1-20)
+                     (set! (-> pad direct motor-idx)
+                           (logand (ash (-> pad buzz-val motor-idx) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
+                           )
+                     )
+                    ((= v1-20 1)
+                     (set! (-> pad direct motor-idx) (-> pad buzz-val motor-idx))
+                     )
+                    )
+                  )
+                )
+               ((and (zero? motor-idx) (> (-> pad buzz-pause-time) 0))
+                (set! (-> pad direct motor-idx)
+                      (logand (ash (-> pad buzz-pause-val motor-idx) (- (the-as int (logand (get-integral-current-time) 7)))) 1)
+                      )
+                (+! (-> pad buzz-pause-time) -1)
+                )
+               (else
+                 (set! (-> pad buzz-val motor-idx) (the-as uint 0))
+                 (set! (-> pad direct motor-idx) (the-as uint 0))
+                 (when (zero? motor-idx)
+                   (set! (-> pad buzz-pause-time) (the-as uint 0))
+                   0
+                   )
+                 )
+               )
+             )
+           (when (< (the-as uint 192) (-> pad direct 1))
+             (set! (-> pad direct 0) (the-as uint 0))
+             0
+             )
+           (set! (-> pad button0-abs 2) (-> pad button0-abs 1))
+           (set! (-> pad button0-abs 1) (-> pad button0-shadow-abs 0))
+           (set! (-> pad button0-rel 2) (-> pad button0-rel 1))
+           (set! (-> pad button0-rel 1) (-> pad button0-rel 0))
+           (when (= (-> pad status) 115)
+             (set! (-> pad abutton 0) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons right))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 1) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons left))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 2) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons up))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 3) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons down))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 6) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons x))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 5) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons circle))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 4) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons triangle))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 7) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons square))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 8) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l1))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 10) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons l2))
+                                                        255
+                                                        0
+                                                        )
+                                               )
+                   )
+             (set! (-> pad abutton 9) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r1))
+                                                       255
+                                                       0
+                                                       )
+                                              )
+                   )
+             (set! (-> pad abutton 11) (the-as uint (if (logtest? (-> pad button0-abs 0) (pad-buttons r2))
+                                                        255
+                                                        0
+                                                        )
+                                               )
+                   )
+             )
+           (let ((buttons-pressed (the-as pad-buttons (-> pad button0))))
+             (cond
+               ((< (-> pad lefty) (the-as uint 30))
+                (set! buttons-pressed (logior (pad-buttons l-analog-up) buttons-pressed))
+                )
+               ((< (the-as uint 225) (-> pad lefty))
+                (set! buttons-pressed (logior (pad-buttons l-analog-down) buttons-pressed))
+                )
+               )
+             (cond
+               ((< (-> pad leftx) (the-as uint 30))
+                (set! buttons-pressed (logior (pad-buttons l-analog-left) buttons-pressed))
+                )
+               ((< (the-as uint 225) (-> pad leftx))
+                (set! buttons-pressed (logior (pad-buttons l-analog-right) buttons-pressed))
+                )
+               )
+             (cond
+               ((< (-> pad righty) (the-as uint 30))
+                (set! buttons-pressed (logior (pad-buttons r-analog-up) buttons-pressed))
+                )
+               ((< (the-as uint 225) (-> pad righty))
+                (set! buttons-pressed (logior (pad-buttons r-analog-down) buttons-pressed))
+                )
+               )
+             (cond
+               ((< (-> pad rightx) (the-as uint 30))
+                (set! buttons-pressed (logior (pad-buttons r-analog-left) buttons-pressed))
+                )
+               ((< (the-as uint 225) (-> pad rightx))
+                (set! buttons-pressed (logior (pad-buttons r-analog-right) buttons-pressed))
+                )
+               )
+             (let ((lang (get-current-language)))
+               (cond
+                 ((or (= lang (language-enum japanese)) (= lang (language-enum korean)))
+                  (case (scf-get-territory)
+                    ((2 3)
+                     (if (logtest? buttons-pressed (pad-buttons circle))
+                         (set! buttons-pressed (logior (pad-buttons confirm) buttons-pressed))
+                         )
+                     )
+                    (else
+                      (if (logtest? buttons-pressed (pad-buttons circle x))
+                          (set! buttons-pressed (logior (pad-buttons confirm) buttons-pressed))
+                          )
+                      )
+                    )
+                  )
+                 ((let ((territory (scf-get-territory)))
+                    (or (= territory 2) (= territory 3))
+                    )
+                  (if (logtest? buttons-pressed (pad-buttons circle x))
+                      (set! buttons-pressed (logior (pad-buttons confirm) buttons-pressed))
+                      )
+                  )
+                 (else
+                   (if (logtest? buttons-pressed (pad-buttons x))
+                       (set! buttons-pressed (logior (pad-buttons confirm) buttons-pressed))
+                       )
+                   )
+                 )
+               )
+             (set! (-> pad button0-shadow-abs 0) buttons-pressed)
+             (set! (-> pad button0-abs 0) buttons-pressed)
+             )
+           (set! (-> pad button0-rel 0) (logclear (-> pad button0-abs 0) (-> pad button0-abs 1)))
+           (when *cpad-debug*
+             (set! (-> pad leftx) (the-as uint 255))
+             (set! (-> pad rightx) (the-as uint 255))
+             )
+           (set! (-> pad stick0-speed) 1.0)
+           (cond
+             ((= (shr (-> pad status) 4) 7)
+              (let ((f30-0 (* 0.0078125 (the float (+ (-> pad leftx) -128))))
+                    (f28-0 (* 0.0078125 (the float (- 127 (the-as int (-> pad lefty))))))
+                    )
+                (set! (-> pad stick0-dir) (atan (- f30-0) f28-0))
+                (set! (-> pad stick0-speed) (fmin 1.0 (sqrtf (+ (* f30-0 f30-0) (* f28-0 f28-0)))))
+                )
+              (if (< (-> pad stick0-speed) 0.3)
+                  (set! (-> pad stick0-speed) 0.0)
+                  )
+              )
+             (else
+               (set! (-> pad leftx) (the-as uint 128))
+               (set! (-> pad lefty) (the-as uint 128))
+               (set! (-> pad rightx) (the-as uint 128))
+               (set! (-> pad righty) (the-as uint 128))
+               (set! (-> pad stick0-dir) 0.0)
+               (set! (-> pad stick0-speed) 0.0)
+               )
+             )
+           (when (or (!= (-> pad button0-abs 0) (-> pad button0-abs 1))
+                     (or (< 0.3 (-> pad stick0-speed)) (zero? (-> pad change-time)))
+                     )
+             (set! (-> pad change-time) (get-current-time))
+             (set! (-> pad real-change-time) (get-real-current-time))
+             )
+           )
+          (else
+            (cpad-invalid! pad)
+            )
+          )
+        )
+      )
+    )
+  *cpad-list*
+  )
+
+;; definition for function buzz-stop!
+;; WARN: Return type mismatch int vs none.
+(defun buzz-stop! ((arg0 int))
+  "Set the buzz to 0 on both vibration motors of the given cpad."
+  (cpad-set-buzz! (-> *cpad-list* cpads arg0) 0 0 0)
+  (cpad-set-buzz! (-> *cpad-list* cpads arg0) 1 0 0)
+  0
+  (none)
+  )
+
+;; definition of type mouse-info
+(deftype mouse-info (basic)
+  ((active              symbol)
+   (cursor              symbol)
+   (valid               symbol)
+   (id                  uint8)
+   (status              uint16)
+   (button0             uint16)
+   (deltax              int8)
+   (deltay              int8)
+   (wheel               uint8)
+   (change-time         time-frame)
+   (button0-abs         mouse-buttons  3)
+   (button0-shadow-abs  mouse-buttons  1)
+   (button0-rel         mouse-buttons  3)
+   (pos                 vector         2 :inline)
+   (posx                float          :overlay-at (-> pos 0 data 0))
+   (posy                float          :overlay-at (-> pos 0 data 1))
+   (oldposx             float          :offset  96)
+   (oldposy             float          :offset 100)
+   (speedx              float          :overlay-at (-> pos 0 data 3))
+   (speedy              float          :offset 108)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+;; definition for method 3 of type mouse-info
+(defmethod inspect ((this mouse-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tactive: ~A~%" (-> this active))
+  (format #t "~1Tcursor: ~A~%" (-> this cursor))
+  (format #t "~1Tvalid: ~A~%" (-> this valid))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tstatus: #x~X~%" (-> this status))
+  (format #t "~1Tbutton0: #x~X~%" (-> this button0))
+  (format #t "~1Tdeltax: ~D~%" (-> this deltax))
+  (format #t "~1Tdeltay: ~D~%" (-> this deltay))
+  (format #t "~1Twheel: ~D~%" (-> this wheel))
+  (format #t "~1Tchange-time: ~D~%" (-> this change-time))
+  (format #t "~1Tbutton0-abs[3] @ #x~X~%" (-> this button0-abs))
+  (format #t "~1Tbutton0-shadow-abs[1] @ #x~X~%" (-> this button0-shadow-abs))
+  (format #t "~1Tbutton0-rel[3] @ #x~X~%" (-> this button0-rel))
+  (format #t "~1Tpos[2] @ #x~X~%" (-> this pos))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~1Tpos: ~`vector`P~%" s5-0 (-> this pos s5-0))
+    )
+  (format #t "~1Tposx: ~f~%" (-> this posx))
+  (format #t "~1Tposy: ~f~%" (-> this posy))
+  (format #t "~1Toldposx: ~f~%" (-> this pos 1 x))
+  (format #t "~1Toldposy: ~f~%" (-> this oldposy))
+  (format #t "~1Tspeedx: ~f~%" (-> this speedx))
+  (format #t "~1Tspeedy: ~f~%" (-> this speedy))
+  (label cfg-7)
+  this
+  )
+
+;; definition for method 0 of type mouse-info
+(defmethod new mouse-info ((allocation symbol) (type-to-make type))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 active) #f)
+    (set! (-> v0-0 valid) #f)
+    (set! (-> v0-0 cursor) #f)
+    v0-0
+    )
+  )
+
+;; definition for symbol *mouse*, type mouse-info
+(define *mouse* (new 'global 'mouse-info))
+
+;; definition for function service-mouse
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch mouse-info vs none.
+(defun service-mouse ()
+  "Update the mouse, and draw the cursor."
+  (let ((mouse *mouse*))
+    (mouse-get-data mouse)
+    (set! (-> mouse pos 1 quad) (-> mouse pos 0 quad))
+    (set! (-> mouse button0-abs 2) (-> mouse button0-abs 1))
+    (set! (-> mouse button0-abs 1) (-> mouse button0-shadow-abs 0))
+    (set! (-> mouse button0-rel 2) (-> mouse button0-rel 1))
+    (set! (-> mouse button0-rel 1) (-> mouse button0-rel 0))
+    (set! (-> mouse button0-rel 0) (mouse-buttons))
+    (set! (-> mouse speedx) 0.0)
+    (set! (-> mouse speedy) 0.0)
+    (cond
+      ((or (not (-> mouse valid)) (not (-> mouse active)))
+       (set! (-> mouse valid) #f)
+       (set! (-> mouse status) (the-as uint 0))
+       (set! (-> mouse pos 0 quad) (the-as uint128 0))
+       (set! (-> mouse pos 1 quad) (the-as uint128 0))
+       )
+      ((logtest? (-> mouse status) 1)
+       (set! (-> mouse change-time) (get-current-time))
+       (set! (-> mouse speedx)
+             (* (sign (the float (-> mouse deltax))) (pow (fabs (the float (-> mouse deltax))) 1.3))
+             )
+       (set! (-> mouse speedy)
+             (* (sign (the float (-> mouse deltay))) (pow (fabs (the float (-> mouse deltay))) 1.3))
+             )
+       (set! (-> mouse posx) (fmax -256.0 (fmin 256.0 (+ (-> mouse posx) (-> mouse speedx)))))
+       (set! (-> mouse posy) (fmax -208.0 (fmin 208.0 (+ (-> mouse posy) (-> mouse speedy)))))
+       (let ((v1-22 (-> mouse button0)))
+         (set! (-> mouse button0-shadow-abs 0) (the-as mouse-buttons v1-22))
+         (set! (-> mouse button0-abs 0) (the-as mouse-buttons v1-22))
+         )
+       (set! (-> mouse button0-rel 0) (logclear (-> mouse button0-abs 0) (-> mouse button0-abs 1)))
+       )
+      )
+    (if (and (-> mouse active) (-> mouse valid) (-> mouse cursor))
+        (add-debug-cursor
+          #t
+          (bucket-id debug-no-zbuf2)
+          (+ (the int (-> mouse posx)) 256)
+          (+ (the int (-> mouse posy)) 208)
+          (-> mouse button0-abs 0)
+          )
+        )
+    )
+  (none)
+  )
+
+;; definition of type keybd-info
+(deftype keybd-info (basic)
+  ((active  symbol)
+   (valid   symbol)
+   (kdata   uint8  16)
+   (keys    uint8  256)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+;; definition for method 3 of type keybd-info
+(defmethod inspect ((this keybd-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tactive: ~A~%" (-> this active))
+  (format #t "~1Tvalid: ~A~%" (-> this valid))
+  (format #t "~1Tkdata[16] @ #x~X~%" (-> this kdata))
+  (format #t "~1Tkeys[256] @ #x~X~%" (-> this keys))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type keybd-info
+(defmethod new keybd-info ((allocation symbol) (type-to-make type))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 active) #f)
+    (set! (-> v0-0 valid) #f)
+    v0-0
+    )
+  )
+
+;; definition for symbol *keybd*, type keybd-info
+(define *keybd* (new 'global 'keybd-info))
+
+;; definition for function service-keybd
+;; WARN: Return type mismatch keybd-info vs none.
+(defun service-keybd ()
+  (let ((keyboard *keybd*))
+    (keybd-get-data keyboard)
+    (dotimes (key-idx 256)
+      (cond
+        ((= (-> keyboard keys key-idx) 1)
+         (set! (-> keyboard keys key-idx) (the-as uint 2))
+         )
+        ((= (-> keyboard keys key-idx) 2)
+         (set! (-> keyboard keys key-idx) (the-as uint 0))
+         0
+         )
+        )
+      )
+    (dotimes (v1-3 (the-as int (+ (-> keyboard kdata 1) -2)))
+      (if (and (nonzero? (-> keyboard kdata (+ v1-3 4))) (!= (-> keyboard kdata (+ v1-3 4)) 1))
+          (set! (-> keyboard keys (-> keyboard kdata (+ v1-3 4))) (the-as uint 1))
+          )
+      )
+    (if (nonzero? (-> keyboard kdata 1))
+        (set! (-> keyboard keys 0) (-> keyboard kdata 2))
+        )
+    )
+  (none)
+  )

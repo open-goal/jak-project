@@ -238,9 +238,14 @@ Object Reader::read_from_string(const std::string& str,
  * Read a file
  */
 Object Reader::read_from_file(const std::vector<std::string>& file_path, bool check_encoding) {
-  std::string joined_path = fmt::format("{}", fmt::join(file_path, "/"));
+  std::string file_descriptor = fmt::format("{}", fmt::join(file_path, "/"));
+  const auto joined_file_path = file_util::get_file_path(file_path);
 
-  auto textFrag = std::make_shared<FileText>(file_util::get_file_path(file_path), joined_path);
+  if (!fs::exists(joined_file_path)) {
+    throw std::runtime_error(fmt::format("Cannot read {}, file doesn't exist", joined_file_path));
+  }
+
+  auto textFrag = std::make_shared<FileText>(joined_file_path, file_descriptor);
   db.insert(textFrag);
 
   auto result = internal_read(textFrag, check_encoding);

@@ -23,7 +23,7 @@ const std::unordered_map<int, std::string> game_iso_territory_map = {
 
 std::string get_territory_name(int territory) {
   ASSERT_MSG(game_iso_territory_map.count(territory),
-             fmt::format("territory {} not found in territory name map"));
+             fmt::format("territory {} not found in territory name map", territory));
   return game_iso_territory_map.at(territory);
 }
 

@@ -1,0 +1,127 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type transformq
+(deftype transformq (transform)
+  ((quat  quaternion  :inline :overlay-at (-> rot data 0))
+   )
+  )
+
+;; definition for method 3 of type transformq
+(defmethod inspect ((this transformq))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'transformq)
+  (format #t "~1Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~1Trot: ~`vector`P~%" (-> this quat))
+  (format #t "~1Tscale: ~`vector`P~%" (-> this scale))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> this quat))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type trsq
+(deftype trsq (trs)
+  ((quat  quaternion  :inline :overlay-at (-> rot data 0))
+   )
+  )
+
+;; definition for method 3 of type trsq
+(defmethod inspect ((this trsq))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~1Trot: ~`vector`P~%" (-> this quat))
+  (format #t "~1Tscale: ~`vector`P~%" (-> this scale))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> this quat))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type trsqv
+(deftype trsqv (trsq)
+  "A transform with:
+- type information (child of [[basic]])
+- rotation stored as quaternion
+- velocity information.
+This is a very commonly used type to represent the position of an in-game object.
+The `root` of a process-drawable (the parent 'in-game object' type) is a [[trsqv]].
+Additionally, the collision system uses [[trsqv]] as the parent type for foreground
+collision objects ([[collide-shape]], [[collide-shape-moving]]).
+As a result, this type has a lot of weird methods and extra stuff hidden in it."
+  ((pause-adjust-distance  meters      :offset   4)
+   (nav-radius             meters      :offset   8)
+   (transv                 vector      :inline)
+   (rotv                   vector      :inline)
+   (scalev                 vector      :inline)
+   (dir-targ               quaternion  :inline)
+   (angle-change-time      time-frame)
+   (old-y-angle-diff       float)
+   )
+  (:methods
+    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
+    (set-heading-vec! (_type_ vector) quaternion)
+    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
+    (point-toward-point! (_type_ vector) quaternion)
+    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
+    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
+    (set-roll-to-grav! (_type_ float) quaternion)
+    (set-roll-to-grav-2! (_type_ float) quaternion)
+    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion)
+    (set-quaternion! (_type_ quaternion) quaternion)
+    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
+    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
+    (rot->dir-targ! (_type_) quaternion)
+    (y-angle (_type_) float)
+    (global-y-angle-to-point (_type_ vector) float)
+    (relative-y-angle-to-point (_type_ vector) float)
+    (roll-relative-to-gravity (_type_) float)
+    (set-and-limit-velocity (_type_ int vector float) trsqv)
+    (get-quaternion (_type_) quaternion)
+    )
+  )
+
+;; definition for method 3 of type trsqv
+(defmethod inspect ((this trsqv))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~1Trot: ~`vector`P~%" (-> this quat))
+  (format #t "~1Tscale: ~`vector`P~%" (-> this scale))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> this quat))
+  (format #t "~1Tpause-adjust-distance: (meters ~m)~%" (-> this pause-adjust-distance))
+  (format #t "~1Tnav-radius: (meters ~m)~%" (-> this nav-radius))
+  (format #t "~1Ttransv: ~`vector`P~%" (-> this transv))
+  (format #t "~1Trotv: ~`vector`P~%" (-> this rotv))
+  (format #t "~1Tscalev: ~`vector`P~%" (-> this scalev))
+  (format #t "~1Tdir-targ: #<quaternion @ #x~X>~%" (-> this dir-targ))
+  (format #t "~1Tangle-change-time: ~D~%" (-> this angle-change-time))
+  (format #t "~1Told-y-angle-diff: ~f~%" (-> this old-y-angle-diff))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 23 of type trsqv
+(defmethod global-y-angle-to-point ((this trsqv) (arg0 vector))
+  "Get the angle in the xz plane from the position of this trsqv to the point arg0
+   (ignores our current yaw)."
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))
+  )
+
+;; definition for method 24 of type trsqv
+(defmethod relative-y-angle-to-point ((this trsqv) (arg0 vector))
+  "Get the y angle between the current orientation and arg0
+   (how much we'd have to yaw to point at arg0)."
+  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
+  )
+
+;; failed to figure out what this is:
+0

@@ -22,7 +22,8 @@
 const std::unordered_map<std::string, GameTextVersion> sTextVerEnumMap = {
     {"jak1-v1", GameTextVersion::JAK1_V1},
     {"jak1-v2", GameTextVersion::JAK1_V2},
-    {"jak2", GameTextVersion::JAK2}};
+    {"jak2", GameTextVersion::JAK2},
+    {"jak3", GameTextVersion::JAK3}};
 
 const std::string& get_text_version_name(GameTextVersion version) {
   for (auto& [name, ver] : sTextVerEnumMap) {
@@ -261,7 +262,8 @@ bool GameTextFontBank::valid_char_range(const char in) const {
     return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') ||
             m_passthrus->find(in) != m_passthrus->end()) &&
            in != '\\';
-  } else if (m_version == GameTextVersion::JAK2) {
+  } else if (m_version == GameTextVersion::JAK2 || m_version == GameTextVersion::JAK3 ||
+             m_version == GameTextVersion::JAKX) {
     return ((in >= '0' && in <= '9') || (in >= 'A' && in <= 'Z') || (in >= 'a' && in <= 'z') ||
             m_passthrus->find(in) != m_passthrus->end()) &&
            in != '\\';
@@ -913,7 +915,9 @@ GameTextFontBank g_font_bank_jak1_v2(GameTextVersion::JAK1_V2,
  * GAME TEXT FONT BANK - JAK 2
  * ================================
  * This font is used in:
- * - Jak 2 - NTSC - v1
+ * - Jak II
+ * - Jak II: Renegade
+ * - ジャックＸダクスター2
  */
 
 static std::unordered_set<char> s_passthrus_jak2 = {'~', ' ', ',', '.', '-', '+', '(', ')',
@@ -1905,6 +1909,21 @@ GameTextFontBank g_font_bank_jak2(GameTextVersion::JAK2,
                                   &s_passthrus_jak2);
 
 /*!
+ * ================================
+ * GAME TEXT FONT BANK - JAK 3
+ * ================================
+ * This font is used in:
+ * - Jak 3
+ */
+
+// TODO cyrillic
+
+GameTextFontBank g_font_bank_jak3(GameTextVersion::JAK3,
+                                  &s_encode_info_jak2,
+                                  &s_replace_info_jak2,
+                                  &s_passthrus_jak2);
+
+/*!
  * ========================
  * GAME TEXT FONT BANK LIST
  * ========================
@@ -1914,7 +1933,8 @@ GameTextFontBank g_font_bank_jak2(GameTextVersion::JAK2,
 std::map<GameTextVersion, GameTextFontBank*> g_font_banks = {
     {GameTextVersion::JAK1_V1, &g_font_bank_jak1_v1},
     {GameTextVersion::JAK1_V2, &g_font_bank_jak1_v2},
-    {GameTextVersion::JAK2, &g_font_bank_jak2}};
+    {GameTextVersion::JAK2, &g_font_bank_jak2},
+    {GameTextVersion::JAK3, &g_font_bank_jak3}};
 
 const GameTextFontBank* get_font_bank(GameTextVersion version) {
   return g_font_banks.at(version);
@@ -1927,6 +1947,8 @@ const GameTextFontBank* get_font_bank_from_game_version(GameVersion version) {
       return get_font_bank(GameTextVersion::JAK1_V2);
     case GameVersion::Jak2:
       return get_font_bank(GameTextVersion::JAK2);
+    case GameVersion::Jak3:
+      return get_font_bank(GameTextVersion::JAK3);
     default:
       ASSERT_MSG(false, "Unsupported game for get_font_bank_from_game_version");
   }

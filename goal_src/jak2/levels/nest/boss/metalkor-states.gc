@@ -523,19 +523,22 @@
   (none)
   )
 
-;; WARN: Return type mismatch process vs none.
+;; WARN: Return type mismatch process vs gem-tracker.
+;; WARN: disable def twice: 9. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 26. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defbehavior metalkor-get-gem-tracker metalkor ((arg0 process-focusable))
-  (cond
-    ((type? arg0 metalkor-wasp)
-     (handle->process (-> self wasp-gem-tracker))
-     )
-    ((type? arg0 metalkor-flitter)
-     (handle->process (-> self flitter-gem-tracker))
-     )
-    (else
-      )
-    )
-  (none)
+  (the-as gem-tracker (cond
+                        ((type? arg0 metalkor-wasp)
+                         (handle->process (-> self wasp-gem-tracker))
+                         )
+                        ((type? arg0 metalkor-flitter)
+                         (handle->process (-> self flitter-gem-tracker))
+                         )
+                        (else
+                          (the-as process #f)
+                          )
+                        )
+          )
   )
 
 (defbehavior metalkor-handler metalkor ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
@@ -600,7 +603,7 @@
        (set! (-> s4-0 param 3) (-> arg3 param 3))
        (set! (-> s4-0 param 4) (-> arg3 param 4))
        (set! (-> s4-0 param 5) (-> arg3 param 5))
-       (send-event-function (the-as process-tree (metalkor-get-gem-tracker (the-as process-focusable arg0))) s4-0)
+       (send-event-function (metalkor-get-gem-tracker (the-as process-focusable arg0)) s4-0)
        )
      )
     (('setup-flitter-gem)

@@ -228,7 +228,17 @@ struct Mips2C_Output {
     result += "void link() {\n";
     // lookup all symbols
     for (auto& sym : symbol_cache) {
-      result += fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
+      switch (version) {
+        case GameVersion::Jak1:
+        case GameVersion::Jak2:
+          result +=
+              fmt::format("  cache.{} = intern_from_c(\"{}\").c();\n", goal_to_c_name(sym), sym);
+          break;
+        case GameVersion::Jak3:
+          result += fmt::format("  cache.{} = intern_from_c(-1, 0, \"{}\").c();\n",
+                                goal_to_c_name(sym), sym);
+          break;
+      }
     }
     // this adds us to a table for lookup later, and also allocates our trampoline.
     result += fmt::format("  gLinkedFunctionTable.reg(\"{}\", execute, PUT_STACK_SIZE_HERE);\n",

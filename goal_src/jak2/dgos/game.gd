@@ -29,6 +29,7 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
+  "statistics-h.o" ;; added
   "pckernel-h.o" ;; added
   "pckernel-impl.o" ;; added
   "pc-debug-common.o" ;; added
@@ -434,6 +435,7 @@
   "nav-enemy-h.o"
   "rigid-body-h.o"
   "damage-number.o" ;; added
+  "statistics.o" ;; added
   "enemy.o"
   "nav-enemy.o"
   "base-plat.o"

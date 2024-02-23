@@ -88,6 +88,11 @@ fs::path get_user_memcard_dir(GameVersion game_version) {
   return get_user_config_dir() / game_version_name / "saves";
 }
 
+fs::path get_user_screenshots_dir(GameVersion game_version) {
+  auto game_version_name = game_version_names[game_version];
+  return get_user_config_dir() / game_version_name / "screenshots";
+}
+
 fs::path get_user_misc_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
   return get_user_config_dir() / game_version_name / "misc";
@@ -381,7 +386,7 @@ std::string split_path_at(const fs::path& path, const std::vector<std::string>& 
     split_str += folder + "/";
 #endif
   }
-  const auto& path_str = path.u8string();
+  const auto& path_str = path.string();
   return path_str.substr(path_str.find(split_str) + split_str.length());
 }
 
@@ -636,6 +641,9 @@ std::vector<fs::path> find_files_in_dir(const fs::path& dir, const std::regex& p
 
 std::vector<fs::path> find_files_recursively(const fs::path& base_dir, const std::regex& pattern) {
   std::vector<fs::path> files = {};
+  if (!fs::exists(base_dir)) {
+    return files;
+  }
   for (auto& p : fs::recursive_directory_iterator(base_dir)) {
     if (p.is_regular_file()) {
       if (std::regex_match(p.path().filename().string(), pattern)) {
@@ -692,15 +700,33 @@ void copy_file(const fs::path& src, const fs::path& dst) {
 std::string make_screenshot_filepath(const GameVersion game_version, const std::string& name) {
   std::string file_name;
   if (name.empty()) {
-    file_name = fmt::format("{}_{}.png", version_to_game_name(game_version),
-                            str_util::current_local_timestamp_no_colons());
+    file_name = fmt::format("{}.png", str_util::current_local_timestamp_no_colons());
   } else {
-    file_name = fmt::format("{}_{}_{}.png", version_to_game_name(game_version), name,
-                            str_util::current_local_timestamp_no_colons());
+    file_name = fmt::format("{}.png", name);
   }
-  const auto file_path = file_util::get_file_path({"screenshots", file_name});
+  const auto file_path = get_user_screenshots_dir(game_version) / file_name;
   file_util::create_dir_if_needed_for_file(file_path);
-  return file_path;
+  return file_path.string();
+}
+
+std::string get_majority_file_line_endings(const std::string& file_contents) {
+  size_t lf_count = 0;
+  size_t crlf_count = 0;
+
+  for (size_t i = 0; i < file_contents.size(); ++i) {
+    if (file_contents[i] == '\n') {
+      if (i > 0 && file_contents[i - 1] == '\r') {
+        crlf_count++;
+      } else {
+        lf_count++;
+      }
+    }
+  }
+
+  if (crlf_count > lf_count) {
+    return "\r\n";
+  }
+  return "\n";
 }
 
 }  // namespace file_util

@@ -3,6 +3,7 @@
 
 ;; definition of type profile-segment
 (deftype profile-segment (structure)
+  "Confusingly, this has two uses. Either a single event, or a summary of all events within a category."
   ((name        symbol)
    (start-time  int16)
    (end-time    int16)
@@ -38,6 +39,7 @@
 
 ;; definition of type profile-collapse
 (deftype profile-collapse (structure)
+  "An array of 'summaries'. Each entry in data is a summary of all events within a category."
   ((count  int32)
    (data   profile-segment  48 :inline)
    )
@@ -58,6 +60,7 @@
 
 ;; definition of type profile-segment-array
 (deftype profile-segment-array (basic)
+  "All profiling data for a frame, stored as a tree of events. There is one for the VU, and one for the EE."
   ((count      int16)
    (depth      int8)
    (max-depth  int8)
@@ -92,10 +95,11 @@
 
 ;; definition of type profile-array
 (deftype profile-array (structure)
+  "The EE and VU profilers, and the drawing code."
   ((data  profile-segment-array  2)
    )
   (:methods
-    (setup-categories! (_type_) none)
+    (postprocess-data! (_type_) none)
     (draw-bars! (_type_ dma-buffer int) none)
     (draw-text! (_type_) none)
     )
@@ -115,6 +119,7 @@
 
 ;; definition for method 9 of type profile-segment-array
 (defmethod get-total-time ((this profile-segment-array))
+  "Get the duration of the top-level event (typically, the whole frame)"
   (- (-> this data 0 end-time) (-> this data 0 start-time))
   )
 
