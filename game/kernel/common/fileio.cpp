@@ -333,6 +333,7 @@ s32 FileSave(char* name, u8* data, s32 size) {
   }
 
   if (size != 0) {
+    // in jak 3, this became a loop over smaller writes for some reason.
     s32 written = sceWrite(fd, data, size);
     if (written != size) {
       MsgErr("dkernel: can't write full file '%s'\n", name);

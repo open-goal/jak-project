@@ -51,6 +51,7 @@ void runtime_no_kernel_jak1();
 void runtime_no_kernel_jak2();
 void runtime_with_kernel_jak1();
 void runtime_with_kernel_jak2();
+void runtime_with_kernel_jak3();
 void runtime_with_kernel_no_debug_segment();
 
 void createDirIfAbsent(const std::string& path);

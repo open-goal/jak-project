@@ -3,6 +3,7 @@
 
 ;; definition of type rpc-buffer
 (deftype rpc-buffer (basic)
+  "Buffer for storing input/output data for a remote procedure call to the overlord driver on the IOP."
   ((elt-size   uint32)
    (elt-count  uint32)
    (elt-used   uint32)
@@ -48,6 +49,8 @@
 
 ;; definition of type rpc-buffer-pair
 (deftype rpc-buffer-pair (basic)
+  "A double buffer of RPC buffers. This is used to let the game queue up data in one buffer while
+the other is being read/written by overlord."
   ((buffer            rpc-buffer  2)
    (current           rpc-buffer)
    (last-recv-buffer  pointer)
@@ -93,6 +96,7 @@
 
 ;; definition for method 12 of type rpc-buffer-pair
 (defmethod sync ((this rpc-buffer-pair) (arg0 symbol))
+  "Wait for an in-progress rpc to finish."
   (let ((s5-0 (if (= (-> this current) (-> this buffer 0))
                   (-> this buffer 1)
                   (-> this buffer 0)
@@ -125,6 +129,7 @@
 
 ;; definition for method 13 of type rpc-buffer-pair
 (defmethod check-busy ((this rpc-buffer-pair))
+  "Check to see if an rpc is in progress."
   (let ((gp-0 (if (= (-> this current) (-> this buffer 0))
                   (-> this buffer 1)
                   (-> this buffer 0)
@@ -145,6 +150,7 @@
 
 ;; definition for method 9 of type rpc-buffer-pair
 (defmethod call ((this rpc-buffer-pair) (arg0 uint) (arg1 pointer) (arg2 uint))
+  "Start an async RPC call. If there is already one in progress, stall and wait for it to finish."
   (when (nonzero? (-> this current elt-used))
     (let ((s2-0 (if (= (-> this current) (-> this buffer 0))
                     (-> this buffer 1)
@@ -191,6 +197,7 @@
 
 ;; definition for method 14 of type rpc-buffer-pair
 (defmethod pop-last-received ((this rpc-buffer-pair))
+  "Pop the response from the most recently completed rpc call."
   (let ((v0-0 (-> this last-recv-buffer)))
     (set! (-> this last-recv-buffer) (the-as pointer #f))
     v0-0
@@ -199,6 +206,7 @@
 
 ;; definition for method 10 of type rpc-buffer-pair
 (defmethod add-element ((this rpc-buffer-pair))
+  "Add an element. If the buffer is full, flush it!"
   (let ((v1-0 (-> this current)))
     (when (= (-> v1-0 elt-used) (-> v1-0 elt-count))
       (if (zero? (-> this rpc-port))
@@ -216,6 +224,7 @@
 
 ;; definition for method 11 of type rpc-buffer-pair
 (defmethod decrement-elt-used ((this rpc-buffer-pair))
+  "Remove the most recently queued element."
   (if (> (-> this current elt-used) 0)
       (+! (-> this current elt-used) -1)
       )

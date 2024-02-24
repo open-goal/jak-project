@@ -1,0 +1,10 @@
+("LMECH.DGO"
+ ("jak-mech+0-ag.o"
+  "mech-part.o"
+  "mech.o"
+  "target-mech.o"
+  "mech-states.o"
+  "tpage-2955.go"
+  "mech-ag.go"
+  "lmech.o"
+ ))

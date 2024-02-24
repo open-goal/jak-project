@@ -370,6 +370,7 @@
 
 ;; definition for method 10 of type fort-roboscreen
 (defmethod deactivate ((this fort-roboscreen))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (disable *screen-filter*)
   (set-roboscreen-alpha! 0.0)
   (call-parent-method this)
@@ -602,19 +603,19 @@
 
 ;; definition for method 7 of type fort-robotank-reticle
 ;; WARN: Return type mismatch process-drawable vs fort-robotank-reticle.
-(defmethod relocate ((this fort-robotank-reticle) (arg0 int))
+(defmethod relocate ((this fort-robotank-reticle) (offset int))
   (if (nonzero? (-> this shadow-jmod))
-      (&+! (-> this shadow-jmod) arg0)
+      (&+! (-> this shadow-jmod) offset)
       )
   (if (nonzero? (-> this sight-jmod))
-      (&+! (-> this sight-jmod) arg0)
+      (&+! (-> this sight-jmod) offset)
       )
   (dotimes (v1-8 3)
     (if (nonzero? (-> this ring-jmod v1-8))
-        (&+! (-> this ring-jmod v1-8) arg0)
+        (&+! (-> this ring-jmod v1-8) offset)
         )
     )
-  (the-as fort-robotank-reticle ((method-of-type process-drawable relocate) this arg0))
+  (the-as fort-robotank-reticle ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition for function fort-robotank-reticle-init-by-other
@@ -1536,6 +1537,7 @@
 
 ;; definition for method 10 of type fort-robotank-turret
 (defmethod deactivate ((this fort-robotank-turret))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (logclear! (-> this flags) (robotank-turret-flags rotflags-6))
   (sound-stop (-> this turn-sound-id))
   (let ((a0-4 (handle->process (-> this screen))))
@@ -1549,11 +1551,11 @@
 
 ;; definition for method 7 of type fort-robotank-turret
 ;; WARN: Return type mismatch process-focusable vs fort-robotank-turret.
-(defmethod relocate ((this fort-robotank-turret) (arg0 int))
+(defmethod relocate ((this fort-robotank-turret) (offset int))
   (if (nonzero? (-> this gun-elev-jmod))
-      (&+! (-> this gun-elev-jmod) arg0)
+      (&+! (-> this gun-elev-jmod) offset)
       )
-  (the-as fort-robotank-turret ((method-of-type process-focusable relocate) this arg0))
+  (the-as fort-robotank-turret ((method-of-type process-focusable relocate) this offset))
   )
 
 ;; definition for function fort-robotank-turret-init-by-other

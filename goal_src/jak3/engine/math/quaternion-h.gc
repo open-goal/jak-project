@@ -5,5 +5,33 @@
 ;; name in dgo: quaternion-h
 ;; dgos: GAME
 
+(defmacro new-stack-quaternion0 ()
+  "Get a stack quaternion that's set to 0.
+   This is more efficient than (new 'stack 'quaternion) because
+   this doesn't call the constructor."
+  `(let ((q (new 'stack-no-clear 'quaternion)))
+     (set! (-> q quad) (the-as uint128 0))
+     q
+     )
+  )
+
 ;; DECOMP BEGINS
 
+(deftype quaternion (structure)
+  "Quaternion. Stored in xyzw order."
+  ((data  float    4)
+   (x     float            :overlay-at (-> data 0))
+   (y     float            :overlay-at (-> data 1))
+   (z     float            :overlay-at (-> data 2))
+   (w     float            :overlay-at (-> data 3))
+   (vec   vector   :inline :overlay-at (-> data 0))
+   (quad  uint128          :overlay-at (-> data 0))
+   )
+  )
+
+(define-extern quaternion-normalize! (function quaternion quaternion))
+(define-extern vector-y-angle (function vector float))
+(define-extern matrix->quaternion (function quaternion matrix quaternion))
+(define-extern quaternion->matrix (function matrix quaternion matrix))
+
+(define *unity-quaternion* (new 'static 'quaternion :w 1.0))

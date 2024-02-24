@@ -1,0 +1,335 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type tr-stat
+(deftype tr-stat (structure)
+  "triangle stats for a renderer. This can apply to a lot of different renderer types."
+  ((groups     uint16)
+   (fragments  uint16)
+   (tris       uint32)
+   (dverts     uint32)
+   (instances  uint16)
+   (pad        uint16)
+   )
+  )
+
+;; definition for method 3 of type tr-stat
+(defmethod inspect ((this tr-stat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tr-stat)
+  (format #t "~1Tgroups: ~D~%" (-> this groups))
+  (format #t "~1Tfragments: ~D~%" (-> this fragments))
+  (format #t "~1Ttris: ~D~%" (-> this tris))
+  (format #t "~1Tdverts: ~D~%" (-> this dverts))
+  (format #t "~1Tinstances: ~D~%" (-> this instances))
+  (format #t "~1Tpad: ~D~%" (-> this pad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type merc-global-stats
+(deftype merc-global-stats (structure)
+  "Triangle stats for all merc renderers."
+  ((merc       tr-stat  :inline)
+   (emerc      tr-stat  :inline)
+   (mercneric  tr-stat  :inline)
+   )
+  )
+
+;; definition for method 3 of type merc-global-stats
+(defmethod inspect ((this merc-global-stats))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'merc-global-stats)
+  (format #t "~1Tmerc: #<tr-stat @ #x~X>~%" (-> this merc))
+  (format #t "~1Temerc: #<tr-stat @ #x~X>~%" (-> this emerc))
+  (format #t "~1Tmercneric: #<tr-stat @ #x~X>~%" (-> this mercneric))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type perf-stat
+(deftype perf-stat (structure)
+  "Performance statistics for a single 'bucket' or category. Unlike the more general profile-bars,
+this records statistics like cache hits/instruction counts."
+  ((frame-number    uint32)
+   (count           uint32)
+   (cycles          uint32)
+   (instructions    uint32)
+   (icache          uint32)
+   (dcache          uint32)
+   (select          uint32)
+   (ctrl            uint32)
+   (accum0          uint32)
+   (accum1          uint32)
+   (to-vu0-waits    uint32)
+   (to-spr-waits    uint32)
+   (from-spr-waits  uint32)
+   )
+  :pack-me
+  (:methods
+    (perf-stat-method-9 () none)
+    (print-to-stream (_type_ string basic) none)
+    (start-profiling! (_type_) none)
+    (stop-profiling! (_type_) none)
+    (update-wait-stats (_type_ uint uint uint) none)
+    )
+  )
+
+;; definition for method 3 of type perf-stat
+(defmethod inspect ((this perf-stat))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'perf-stat)
+  (format #t "~1Tframe-number: ~D~%" (-> this frame-number))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tcycles: ~D~%" (-> this cycles))
+  (format #t "~1Tinstructions: ~D~%" (-> this instructions))
+  (format #t "~1Ticache: ~D~%" (-> this icache))
+  (format #t "~1Tdcache: ~D~%" (-> this dcache))
+  (format #t "~1Tselect: ~D~%" (-> this select))
+  (format #t "~1Tctrl: ~D~%" (-> this ctrl))
+  (format #t "~1Taccum0: ~D~%" (-> this accum0))
+  (format #t "~1Taccum1: ~D~%" (-> this accum1))
+  (format #t "~1Tto-vu0-waits: ~D~%" (-> this to-vu0-waits))
+  (format #t "~1Tto-spr-waits: ~D~%" (-> this to-spr-waits))
+  (format #t "~1Tfrom-spr-waits: ~D~%" (-> this from-spr-waits))
+  (label cfg-4)
+  this
+  )
+
+;; definition (debug) for function perf-stat-bucket->string
+(defun-debug perf-stat-bucket->string ((arg0 perf-stat-bucket))
+  (case arg0
+    (((perf-stat-bucket collide-fill))
+     "collide-fill"
+     )
+    (((perf-stat-bucket nav))
+     "nav"
+     )
+    (((perf-stat-bucket bones))
+     "bones"
+     )
+    (((perf-stat-bucket foreground))
+     "foreground"
+     )
+    (((perf-stat-bucket inst-tie))
+     "inst-tie"
+     )
+    (((perf-stat-bucket common-post))
+     "common-post"
+     )
+    (((perf-stat-bucket nav-dma-write))
+     "nav-dma-write"
+     )
+    (((perf-stat-bucket collide-list))
+     "collide-list"
+     )
+    (((perf-stat-bucket clamp-vector-to-mesh))
+     "clamp-vector-to-mesh"
+     )
+    (((perf-stat-bucket nav-part3))
+     "nav-part3"
+     )
+    (((perf-stat-bucket mercneric))
+     "mercneric"
+     )
+    (((perf-stat-bucket apply-velocity))
+     "apply-velocity"
+     )
+    (((perf-stat-bucket tfrag-scissor))
+     "tfrag-scissor"
+     )
+    (((perf-stat-bucket hover-update))
+     "hover-update"
+     )
+    (((perf-stat-bucket misc))
+     "misc"
+     )
+    (((perf-stat-bucket find-nearest-poly))
+     "find-nearest-poly"
+     )
+    (((perf-stat-bucket nav-part6))
+     "nav-part6"
+     )
+    (((perf-stat-bucket nav-part2))
+     "nav-part2"
+     )
+    (((perf-stat-bucket generate-velocity))
+     "generate-velocity"
+     )
+    (((perf-stat-bucket inst-shrub))
+     "inst-shrub"
+     )
+    (((perf-stat-bucket hover-path))
+     "hover-path"
+     )
+    (((perf-stat-bucket avoid-spheres))
+     "avoid-spheres"
+     )
+    (((perf-stat-bucket proto-shrub))
+     "proto-shrub"
+     )
+    (((perf-stat-bucket drawable))
+     "drawable"
+     )
+    (((perf-stat-bucket nav-part9))
+     "nav-part9"
+     )
+    (((perf-stat-bucket all-code))
+     "all-code"
+     )
+    (((perf-stat-bucket actor-hash))
+     "actor-hash"
+     )
+    (((perf-stat-bucket nav-dma-all))
+     "nav-dma-all"
+     )
+    (((perf-stat-bucket travel-post))
+     "travel-post"
+     )
+    (((perf-stat-bucket travel-around-spheres))
+     "travel-around-spheres"
+     )
+    (((perf-stat-bucket nav-part10))
+     "nav-part10"
+     )
+    (((perf-stat-bucket nav-dma-work))
+     "nav-dma-work"
+     )
+    (((perf-stat-bucket update-los))
+     "update-los"
+     )
+    (((perf-stat-bucket proto-tie))
+     "proto-tie"
+     )
+    (((perf-stat-bucket hover-move))
+     "hover-move"
+     )
+    (((perf-stat-bucket nav-part4))
+     "nav-part4"
+     )
+    (((perf-stat-bucket ray-step))
+     "ray-step"
+     )
+    (((perf-stat-bucket hover-find-closest))
+     "hover-find-closest"
+     )
+    (((perf-stat-bucket spatial-hash-search))
+     "spatial-hash-search"
+     )
+    (((perf-stat-bucket apply-rotation))
+     "apply-rotation"
+     )
+    (((perf-stat-bucket find-containing-poly))
+     "find-containing-poly"
+     )
+    (((perf-stat-bucket update-spheres))
+     "update-spheres"
+     )
+    (((perf-stat-bucket nav-part7))
+     "nav-part7"
+     )
+    (((perf-stat-bucket tfrag))
+     "tfrag"
+     )
+    (((perf-stat-bucket collide))
+     "collide"
+     )
+    (((perf-stat-bucket update-current-poly))
+     "update-current-poly"
+     )
+    (((perf-stat-bucket nav-dma-read))
+     "nav-dma-read"
+     )
+    (((perf-stat-bucket spatial-hash-build))
+     "spatial-hash-build"
+     )
+    (((perf-stat-bucket tie-generic))
+     "tie-generic"
+     )
+    (((perf-stat-bucket camera))
+     "camera"
+     )
+    (((perf-stat-bucket background))
+     "background"
+     )
+    (((perf-stat-bucket nav-part5))
+     "nav-part5"
+     )
+    (((perf-stat-bucket nav-part1))
+     "nav-part1"
+     )
+    (((perf-stat-bucket hover-spheres))
+     "hover-spheres"
+     )
+    (((perf-stat-bucket check-vector-collision-with-nav-spheres))
+     "check-vector-collision-with-nav-spheres"
+     )
+    (((perf-stat-bucket add-to-translation))
+     "add-to-translation"
+     )
+    (((perf-stat-bucket nav-part8))
+     "nav-part8"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition of type perf-stat-array
+(deftype perf-stat-array (inline-array-class)
+  "Array of all stats for all buckets."
+  ((data  perf-stat  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type perf-stat-array
+(defmethod inspect ((this perf-stat-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> perf-stat-array heap-base) (the-as uint 52))
+
+;; definition for method 11 of type perf-stat
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 12 of type perf-stat
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 13 of type perf-stat
+;; WARN: Return type mismatch int vs none.
+(defmethod update-wait-stats ((this perf-stat) (arg0 uint) (arg1 uint) (arg2 uint))
+  (when (nonzero? (-> this ctrl))
+    (+! (-> this to-vu0-waits) arg0)
+    (+! (-> this to-spr-waits) arg1)
+    (+! (-> this from-spr-waits) arg2)
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(when (not *debug-segment*)
+  (set! (-> perf-stat method-table 11) nothing)
+  (set! (-> perf-stat method-table 12) nothing)
+  (set! (-> perf-stat method-table 13) nothing)
+  )

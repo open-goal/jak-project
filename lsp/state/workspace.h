@@ -53,7 +53,9 @@ class WorkspaceIRFile {
   /// Make any relevant diagnostics on the IR line.
   /// It's assumed each line in an IR can have atmost one diagnostic, and they are contained to just
   /// that line!
-  void identify_diagnostics(const uint32_t line_num_zero_based, const std::string& line);
+  void identify_diagnostics(const uint32_t line_num_zero_based,
+                            const std::string& line,
+                            const bool in_opengoal_block);
 };
 
 class WorkspaceAllTypesFile {

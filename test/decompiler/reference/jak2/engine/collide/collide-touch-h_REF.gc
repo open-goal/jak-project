@@ -3,6 +3,8 @@
 
 ;; definition of type touching-prim
 (deftype touching-prim (structure)
+  "A collide primitive that's touching another.
+Potentially also stores the triangle that is involved."
   ((cprim     collide-shape-prim)
    (has-tri?  symbol)
    (tri       collide-tri-result  :inline)
@@ -25,6 +27,7 @@
 
 ;; definition of type touching-prims-entry
 (deftype touching-prims-entry (structure)
+  "A record of two primitives touching."
   ((next        touching-prims-entry)
    (prev        touching-prims-entry)
    (allocated?  symbol)
@@ -58,6 +61,7 @@
 
 ;; definition of type touching-prims-entry-pool
 (deftype touching-prims-entry-pool (structure)
+  "A pool of up to 64 touching prim records."
   ((head   touching-prims-entry)
    (nodes  touching-prims-entry  64 :inline)
    )
@@ -86,20 +90,20 @@
 ;; definition for method 11 of type touching-prims-entry-pool
 ;; WARN: Return type mismatch int vs none.
 (defmethod init-list! ((this touching-prims-entry-pool))
-  (let ((v1-0 (the-as touching-prims-entry #f)))
-    (let ((a1-0 (the-as touching-prims-entry (-> this nodes))))
-      (set! (-> this head) a1-0)
+  (let ((prev (the-as touching-prims-entry #f)))
+    (let ((current (the-as touching-prims-entry (-> this nodes))))
+      (set! (-> this head) current)
       (countdown (a0-1 64)
-        (set! (-> a1-0 prev) v1-0)
-        (let ((a2-0 (&+ a1-0 240)))
-          (set! (-> a1-0 next) (the-as touching-prims-entry a2-0))
-          (set! (-> a1-0 allocated?) #f)
-          (set! v1-0 a1-0)
-          (set! a1-0 (the-as touching-prims-entry a2-0))
+        (set! (-> current prev) prev)
+        (let ((next (&+ current 240)))
+          (set! (-> current next) (the-as touching-prims-entry next))
+          (set! (-> current allocated?) #f)
+          (set! prev current)
+          (set! current (the-as touching-prims-entry next))
           )
         )
       )
-    (set! (-> v1-0 next) #f)
+    (set! (-> prev next) #f)
     )
   0
   (none)
@@ -121,6 +125,8 @@
 
 ;; definition of type touching-shapes-entry
 (deftype touching-shapes-entry (structure)
+  "A record of two collide shapes touching,
+storing a record of the primitives involved."
   ((cshape1    collide-shape)
    (cshape2    collide-shape)
    (resolve-u  int8)
@@ -158,6 +164,7 @@
 
 ;; definition of type touching-list
 (deftype touching-list (structure)
+  "Contains a record of touching collide shape pairs."
   ((num-touching-shapes  int32)
    (resolve-u            int8)
    (touching-shapes      touching-shapes-entry  32 :inline)

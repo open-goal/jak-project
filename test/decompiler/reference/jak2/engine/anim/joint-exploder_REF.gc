@@ -246,8 +246,8 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defun joint-exploder-joint-callback ((arg0 draw-control) (arg1 cspace-array) (arg2 joint-control))
-  (let ((s4-0 (-> arg0 process)))
-    (let ((s3-0 (-> (the-as joint-exploder s4-0) joints)))
+  (let ((exploder (the-as joint-exploder (-> arg0 process))))
+    (let ((s3-0 (-> exploder joints)))
       (countdown (s2-0 (-> s3-0 num-joints))
         (let* ((v1-3 (-> s3-0 joint s2-0))
                (a0-5 (-> arg1 data (-> v1-3 joint-index) bone transform))
@@ -256,10 +256,10 @@
           )
         )
       )
-    (let ((s4-1 (&-> s4-0 stack 96)))
+    (let ((s4-1 (-> exploder scale-vector)))
       (countdown (s3-1 (-> arg1 length))
         (let ((a2-2 (-> arg1 data s3-1 bone transform)))
-          (scale-matrix! a2-2 (the-as vector s4-1) a2-2)
+          (scale-matrix! a2-2 s4-1 a2-2)
           )
         )
       )
@@ -823,11 +823,11 @@
 
 ;; definition for method 7 of type joint-exploder
 ;; WARN: Return type mismatch process-drawable vs joint-exploder.
-(defmethod relocate ((this joint-exploder) (arg0 int))
+(defmethod relocate ((this joint-exploder) (offset int))
   (if (nonzero? (-> this joints))
-      (&+! (-> this joints) arg0)
+      (&+! (-> this joints) offset)
       )
-  (the-as joint-exploder ((method-of-type process-drawable relocate) this arg0))
+  (the-as joint-exploder ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition for function joint-exploder-init-by-other

@@ -605,31 +605,31 @@ Fbo make_fbo(int w, int h, int msaa, bool make_zbuf_and_stencil) {
   auto status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 
   if (status != GL_FRAMEBUFFER_COMPLETE) {
-    lg::error("Failed to setup framebuffer: {} {} {} {}\n", w, h, msaa, make_zbuf_and_stencil);
+    lg::error("Failed to setup framebuffer: {} {} {} {} ", w, h, msaa, make_zbuf_and_stencil);
     switch (status) {
       case GL_FRAMEBUFFER_UNDEFINED:
-        printf("GL_FRAMEBUFFER_UNDEFINED\n");
+        lg::print("GL_FRAMEBUFFER_UNDEFINED\n");
         break;
       case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
+        lg::print("GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT\n");
         break;
       case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
+        lg::print("GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT\n");
         break;
       case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
+        lg::print("GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER\n");
         break;
       case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
+        lg::print("GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER\n");
         break;
       case GL_FRAMEBUFFER_UNSUPPORTED:
-        printf("GL_FRAMEBUFFER_UNSUPPORTED\n");
+        lg::print("GL_FRAMEBUFFER_UNSUPPORTED\n");
         break;
       case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
+        lg::print("GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE\n");
         break;
       case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
-        printf("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
+        lg::print("GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS\n");
         break;
     }
     ASSERT(false);
@@ -883,8 +883,8 @@ void OpenGLRenderer::setup_frame(const RenderOptions& settings) {
     m_fbo_state.render_fbo = &m_fbo_state.resources.render_buffer;
 
     if (settings.msaa_samples != 1) {
-      lg::info("FBO Setup: using second temporary buffer: res: {}x{} {}x{}", window_fb.width,
-               window_fb.height, settings.game_res_w, settings.game_res_h);
+      lg::info("FBO Setup: using second temporary buffer: res: {}x{}", settings.game_res_w,
+               settings.game_res_h);
 
       // we'll need a temporary fbo to do the msaa resolve step
       // non-multisampled, and doesn't need z/stencil

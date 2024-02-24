@@ -63,4 +63,10 @@ u64 call_goal_function_by_name(const char* name);
 u64 alloc_heap_memory(u32 heap, u32 size);
 u64 alloc_heap_object(u32 heap, u32 type, u32 size, u32 pp);
 u32 u32_in_fixed_sym(u32 offset);
+
+template <typename T>
+const char* symbol_name_cstr(const Symbol4<T>& sym) {
+  return (const char*)(g_ee_main_mem + 4 +
+                       *reinterpret_cast<const u32*>(&sym.foo + jak2::SYM_TO_STRING_OFFSET));
+}
 }  // namespace jak2

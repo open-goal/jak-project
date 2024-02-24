@@ -97,6 +97,9 @@ Config make_config_via_json(nlohmann::json& json) {
   if (json.contains("read_spools")) {
     config.read_spools = json.at("read_spools").get<bool>();
   }
+  if (json.contains("ignore_var_name_casts")) {
+    config.ignore_var_name_casts = json.at("ignore_var_name_casts").get<bool>();
+  }
   if (json.contains("old_all_types_file")) {
     config.old_all_types_file = json.at("old_all_types_file").get<std::string>();
   }
@@ -156,29 +159,31 @@ Config make_config_via_json(nlohmann::json& json) {
       config.anon_function_types_by_obj_by_id[obj_file_name][id] = type_name;
     }
   }
-  auto var_names_json = read_json_file_from_config(json, "var_names_file");
-  for (auto& kv : var_names_json.items()) {
-    auto& function_name = kv.key();
-    auto arg = kv.value().find("args");
-    if (arg != kv.value().end()) {
-      for (auto& x : arg.value()) {
-        config.function_arg_names[function_name].push_back(x);
-      }
-    }
-
-    auto var = kv.value().find("vars");
-    if (var != kv.value().end()) {
-      for (auto& vkv : var->get<std::unordered_map<std::string, nlohmann::json>>()) {
-        LocalVarOverride override;
-        if (vkv.second.is_string()) {
-          override.name = vkv.second.get<std::string>();
-        } else if (vkv.second.is_array()) {
-          override.name = vkv.second[0].get<std::string>();
-          override.type = vkv.second[1].get<std::string>();
-        } else {
-          throw std::runtime_error("Invalid function var override.");
+  if (!config.ignore_var_name_casts) {
+    auto var_names_json = read_json_file_from_config(json, "var_names_file");
+    for (auto& kv : var_names_json.items()) {
+      auto& function_name = kv.key();
+      auto arg = kv.value().find("args");
+      if (arg != kv.value().end()) {
+        for (auto& x : arg.value()) {
+          config.function_arg_names[function_name].push_back(x);
         }
-        config.function_var_overrides[function_name][vkv.first] = override;
+      }
+
+      auto var = kv.value().find("vars");
+      if (var != kv.value().end()) {
+        for (auto& vkv : var->get<std::unordered_map<std::string, nlohmann::json>>()) {
+          LocalVarOverride override;
+          if (vkv.second.is_string()) {
+            override.name = vkv.second.get<std::string>();
+          } else if (vkv.second.is_array()) {
+            override.name = vkv.second[0].get<std::string>();
+            override.type = vkv.second[1].get<std::string>();
+          } else {
+            throw std::runtime_error("Invalid function var override.");
+          }
+          config.function_var_overrides[function_name][vkv.first] = override;
+        }
       }
     }
   }
@@ -308,6 +313,10 @@ Config make_config_via_json(nlohmann::json& json) {
   auto import_deps = read_json_file_from_config(json, "import_deps_file");
   config.import_deps_by_file =
       import_deps.get<std::unordered_map<std::string, std::vector<std::string>>>();
+
+  if (json.contains("rip_collision")) {
+    config.rip_collision = json.at("rip_collision").get<bool>();
+  }
 
   config.write_patches = json.at("write_patches").get<bool>();
   config.apply_patches = json.at("apply_patches").get<bool>();

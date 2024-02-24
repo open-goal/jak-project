@@ -1676,6 +1676,7 @@
 
 ;; definition for method 10 of type atoll-tank
 (defmethod deactivate ((this atoll-tank))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this aftermath-part))
       (kill-and-free-particles (-> this aftermath-part))
       )
@@ -1685,15 +1686,16 @@
 
 ;; definition for method 7 of type atoll-tank
 ;; WARN: Return type mismatch process-focusable vs atoll-tank.
-(defmethod relocate ((this atoll-tank) (arg0 int))
+(defmethod relocate ((this atoll-tank) (offset int))
   (if (nonzero? (-> this aftermath-part))
-      (&+! (-> this aftermath-part) arg0)
+      (&+! (-> this aftermath-part) offset)
       )
-  (the-as atoll-tank ((method-of-type process-focusable relocate) this arg0))
+  (the-as atoll-tank ((method-of-type process-focusable relocate) this offset))
   )
 
 ;; definition for method 12 of type atoll-tank
 (defmethod run-logic? ((this atoll-tank))
+  "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
