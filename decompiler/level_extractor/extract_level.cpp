@@ -142,7 +142,7 @@ std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
   }
-  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
+  std::string level_name = bsp_rec->name;
 
   lg::info("Processing level {} ({})", dgo_name, level_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
@@ -167,7 +167,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
   }
-  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
+  std::string level_name = bsp_rec->name;
 
   lg::info("Processing level {} ({})", dgo_name, level_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
