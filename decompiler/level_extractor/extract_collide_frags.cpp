@@ -1,5 +1,6 @@
 #include "extract_collide_frags.h"
 
+#include "common/log/log.h"
 #include "common/util/FileUtil.h"
 
 namespace decompiler {
@@ -230,9 +231,9 @@ void set_vertices_for_tri(tfrag3::CollisionMesh::Vertex* out, const math::Vector
 
 void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
+                           const Config& config,
                            const std::string& debug_name,
-                           tfrag3::Level& out,
-                           bool dump_level) {
+                           tfrag3::Level& out) {
   // in-game, the broad-phase collision builds a list of fragments, then unpacks them with:
   /*
    *(dotimes (i (-> *collide-list* num-items))
@@ -258,10 +259,10 @@ void extract_collide_frags(const level_tools::DrawableTreeCollideFragment* tree,
     total_faces += frag.unpacked.faces.size();
   }
 
-  if (dump_level) {
+  if (config.rip_collision) {
     auto debug_out = debug_dump_to_obj(all_frags);
-    auto file_path =
-        file_util::get_file_path({"debug_out", fmt::format("collide-{}.obj", debug_name)});
+    auto file_path = file_util::get_file_path(
+        {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
     file_util::create_dir_if_needed_for_file(file_path);
     file_util::write_text_file(file_path, debug_out);
   }
@@ -408,8 +409,37 @@ void handle_collide_fragment(const TypedRef& collide_fragment,
   }
 }
 
+std::string debug_dump_to_obj(const std::vector<tfrag3::CollisionMesh::Vertex>& verts_in) {
+  std::vector<math::Vector4f> verts;
+  std::vector<math::Vector<u32, 3>> faces;
+
+  for (auto& v : verts_in) {
+    verts.emplace_back(v.x / 4096.0, v.y / 4096.0, v.z / 4096.0, 1.0);
+
+    u32 v_len = verts.size();
+    if (v_len % 3 == 0) {
+      // add face from last 3 vertices
+      faces.emplace_back(v_len - 2, v_len - 1, v_len);
+    }
+  }
+
+  std::string result;
+  for (auto& vert : verts) {
+    result += fmt::format("v {} {} {}\n", vert.x(), vert.y(), vert.z());
+  }
+
+  for (auto& face : faces) {
+    result += fmt::format("f {}/{} {}/{} {}/{}\n", face.x(), face.x(), face.y(), face.y(), face.z(),
+                          face.z());
+  }
+
+  return result;
+}
+
 void extract_collide_frags(const level_tools::CollideHash& chash,
                            const std::vector<const level_tools::DrawableTreeInstanceTie*>& ties,
+                           const Config& config,
+                           const std::string& debug_name,
                            const decompiler::DecompilerTypeSystem& dts,
                            tfrag3::Level& out) {
   // We need to find all collide-hash-fragments, but we can't just scan through the entire file.
@@ -473,6 +503,16 @@ void extract_collide_frags(const level_tools::CollideHash& chash,
         handle_collide_fragment(typed_ref_from_basic(frag, dts), dts, mat, &out.collision.vertices);
       }
     }
+  }
+
+  if (config.rip_collision) {
+    // out.collision.vertices every 3 vertices make a face, so it duplicates vertices in many cases
+    // for now debug_dump_to_obj isn't smart and doesn't hash these to save space or anything
+    auto debug_out = debug_dump_to_obj(out.collision.vertices);
+    auto file_path = file_util::get_file_path(
+        {fmt::format("debug_out/{}", config.game_name), fmt::format("collide-{}.obj", debug_name)});
+    file_util::create_dir_if_needed_for_file(file_path);
+    file_util::write_text_file(file_path, debug_out);
   }
 }
 }  // namespace decompiler

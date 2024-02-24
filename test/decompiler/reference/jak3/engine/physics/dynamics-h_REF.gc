@@ -1,0 +1,82 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dynamics
+(deftype dynamics (basic)
+  ((name            symbol)
+   (gravity-max     meters)
+   (gravity-length  meters)
+   (gravity         vector  :inline)
+   (gravity-normal  vector  :inline)
+   (walk-distance   meters)
+   (run-distance    meters)
+   )
+  (:methods
+    (set-gravity-length (_type_ float) none)
+    )
+  )
+
+;; definition for method 3 of type dynamics
+(defmethod inspect ((this dynamics))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tgravity-max: (meters ~m)~%" (-> this gravity-max))
+  (format #t "~1Tgravity-length: (meters ~m)~%" (-> this gravity-length))
+  (format #t "~1Tgravity: ~`vector`P~%" (-> this gravity))
+  (format #t "~1Tgravity-normal: ~`vector`P~%" (-> this gravity-normal))
+  (format #t "~1Twalk-distance: (meters ~m)~%" (-> this walk-distance))
+  (format #t "~1Trun-distance: (meters ~m)~%" (-> this run-distance))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type dynamics
+;; WARN: Return type mismatch int vs none.
+(defmethod set-gravity-length ((this dynamics) (arg0 float))
+  (set! (-> this gravity-length) arg0)
+  (vector-float*! (-> this gravity) (-> this gravity-normal) arg0)
+  0
+  (none)
+  )
+
+;; definition for function time-to-apex
+(defun time-to-apex ((arg0 float) (arg1 float))
+  (the int (/ arg0 (- (* 0.0033333334 arg1))))
+  )
+
+;; definition for function time-to-ground
+(defun time-to-ground ((arg0 float) (arg1 float) (arg2 float))
+  (let ((f0-0 0.0)
+        (v0-0 0)
+        )
+    (while (< (- arg2) f0-0)
+      (set! arg0 (- arg0 (* 0.0033333334 arg1)))
+      (+! f0-0 (* 0.0033333334 arg0))
+      (+! v0-0 1)
+      )
+    v0-0
+    )
+  )
+
+;; definition for symbol *standard-dynamics*, type dynamics
+(define *standard-dynamics* (new 'static 'dynamics
+                              :name 'standard
+                              :gravity-max (meters 40)
+                              :gravity-length (meters 60)
+                              :gravity (new 'static 'vector :y 245760.0 :w 1.0)
+                              :gravity-normal (new 'static 'vector :y 1.0 :w 1.0)
+                              :walk-distance (meters 2)
+                              :run-distance (meters 5)
+                              )
+        )
+
+;; failed to figure out what this is:
+0
+
+
+
+

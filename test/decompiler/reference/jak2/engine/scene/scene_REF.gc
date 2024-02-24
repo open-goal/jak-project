@@ -372,6 +372,7 @@
 
 ;; definition for method 10 of type scene-player
 (defmethod deactivate ((this scene-player))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (set! *scene-player* (the-as (pointer scene-player) #f))
   (kill-persister *setting-control* (the-as engine-pers 'blackout) 'bg-a-force)
   ((method-of-type process-drawable deactivate) this)
@@ -380,23 +381,23 @@
 
 ;; definition for method 7 of type scene-player
 ;; WARN: Return type mismatch process-drawable vs scene-player.
-(defmethod relocate ((this scene-player) (arg0 int))
+(defmethod relocate ((this scene-player) (offset int))
   (let ((v1-0 *kernel-context*))
     (set! (-> v1-0 relocating-process) this)
     (set! (-> v1-0 relocating-min) (the-as int (&-> this type)))
     (set! (-> v1-0 relocating-max)
           (the-as int (+ (+ (-> this allocated-length) -4 (-> process size)) (the-as int this)))
           )
-    (set! (-> v1-0 relocating-offset) arg0)
+    (set! (-> v1-0 relocating-offset) offset)
     )
   (let ((v1-2 (-> this scene-list)))
     (if (and (>= (the-as int v1-2) (-> *kernel-context* relocating-min))
              (< (the-as int v1-2) (-> *kernel-context* relocating-max))
              )
-        (&+! (-> this scene-list) arg0)
+        (&+! (-> this scene-list) offset)
         )
     )
-  (the-as scene-player ((method-of-type process-drawable relocate) this arg0))
+  (the-as scene-player ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition for method 25 of type scene-player

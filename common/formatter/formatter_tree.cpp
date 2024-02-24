@@ -78,16 +78,24 @@ FormatterTree::FormatterTree(const std::string& source, const TSNode& root_node)
   construct_formatter_tree_recursive(source, root_node, root);
 }
 
+const std::unordered_map<std::string, std::vector<std::string>> node_type_ignorable_contents = {
+    {"list_lit", {"(", ")"}},
+    {"quoting_lit", {"'"}},
+    {"unquoting_lit", {","}},
+    {"quasi_quoting_lit", {"`"}}};
+
 // TODO make an imperative version eventually
 void FormatterTree::construct_formatter_tree_recursive(const std::string& source,
                                                        TSNode curr_node,
-                                                       FormatterTreeNode& tree_node) {
+                                                       FormatterTreeNode& tree_node,
+                                                       std::optional<std::string> node_prefix) {
   if (ts_node_child_count(curr_node) == 0) {
     tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
     return;
   }
   const std::string curr_node_type = ts_node_type(curr_node);
   FormatterTreeNode list_node;
+  std::optional<std::string> next_node_prefix;
   if (curr_node_type == "list_lit") {
     list_node = FormatterTreeNode();
   } else if (curr_node_type == "str_lit") {
@@ -97,22 +105,40 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
     tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
     return;
   } else if (curr_node_type == "quoting_lit") {
-    // same story for quoted symbols
-    // TODO - expect to have to add more here
-    tree_node.refs.push_back(FormatterTreeNode(source, curr_node));
-    return;
+    next_node_prefix = "'";
+  } else if (curr_node_type == "unquoting_lit") {
+    next_node_prefix = ",";
+  } else if (curr_node_type == "quasi_quoting_lit") {
+    next_node_prefix = "`";
+  }
+  std::vector<std::string> skippable_nodes = {};
+  if (node_type_ignorable_contents.find(curr_node_type) != node_type_ignorable_contents.end()) {
+    skippable_nodes = node_type_ignorable_contents.at(curr_node_type);
   }
   for (size_t i = 0; i < ts_node_child_count(curr_node); i++) {
     const auto child_node = ts_node_child(curr_node, i);
-    // We skip parens
     const auto contents = get_source_code(source, child_node);
-    if (contents == "(" || contents == ")") {
+    bool skip_node = false;
+    for (const auto& skippable_content : skippable_nodes) {
+      if (skippable_content == contents) {
+        skip_node = true;
+        break;
+      }
+    }
+    if (skip_node) {
       continue;
     }
     if (curr_node_type == "list_lit") {
-      construct_formatter_tree_recursive(source, child_node, list_node);
+      construct_formatter_tree_recursive(source, child_node, list_node, next_node_prefix);
+      if (node_prefix) {
+        list_node.node_prefix = node_prefix;
+      }
     } else {
-      construct_formatter_tree_recursive(source, child_node, tree_node);
+      construct_formatter_tree_recursive(source, child_node, tree_node, next_node_prefix);
+      // TODO - im not sure if this is correct
+      if (node_prefix && !tree_node.refs.empty()) {
+        tree_node.refs.at(tree_node.refs.size() - 1).node_prefix = node_prefix;
+      }
     }
   }
   if (curr_node_type == "list_lit") {

@@ -24,7 +24,8 @@ VagCmdPriListEntry VagCmdsPriList[11];
 int VagCmdsPriCounter[11];
 int ActiveVagStreams;
 
-void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out);
+void CalculateVAGVolumes(VagCmd* cmd, u32* l_out, u32* r_out);
+void StopVAG(VagCmd* cmd, int /*param_2*/);
 
 enum VolumeCategory {
   DIALOGUE = 2,  // VAG streams. Copied "dialogue" name from jak 1.
@@ -101,7 +102,7 @@ void InitVagCmds() {
     cmd.unk_256_pitch2 = 0;       // puVar5[-9] = 0;
     cmd.id = 0;                   // puVar5[-4] = 0;
     cmd.plugin_id = 0;            // puVar5[-3] = 0;
-    cmd.unk_136 = 0;              // puVar5[-0x27] = 0;
+    cmd.sound_handler = 0;        // puVar5[-0x27] = 0;
     cmd.unk_176 = 0;              // puVar5[-0x1d] = 0;
     cmd.priority = 0;             // puVar5[-2] = 0;
     cmd.unk_288 = 0;              // puVar5[-1] = 0;
@@ -188,190 +189,35 @@ VagCmd* SmartAllocVagCmd(VagCmd* cmd) {
   return selected;
 }
 
-void TerminateVAG(VagCmd* cmd, int param_2) {
-  [[maybe_unused]] int* piVar1;
-  int iVar2;
-  u32 uVar3;
-  VagCmd* pRVar4;
-  VagCmd* pRVar5;
+void TerminateVAG(VagCmd* cmd, int /*param_2*/) {
   VagStrListNode vag_node;
   LfoListNode lfo_node;
   // undefined4 auStack32 [2];
 
-  if (param_2 == 1) {
-    // CpuSuspendIntr(auStack32);
-  }
-  pRVar4 = cmd->stereo_sibling;
+  // if (param_2 == 1) {
+  //  CpuSuspendIntr(auStack32);
+  //}
+
+  auto* sibling = cmd->stereo_sibling;
   strncpy(vag_node.name, cmd->name, 0x30);
   vag_node.id = cmd->id;
   cmd->sb_scanned = '\0';
+
   if (cmd->status_bytes[BYTE5] != '\0') {
-    pRVar5 = cmd->stereo_sibling;
-    PauseVAG(cmd, 0);
-    if (cmd->status_bytes[BYTE5] != '\0') {
-      uVar3 = 1 << (cmd->voice >> 1 & 0x1fU);
-      if (pRVar5 != 0x0) {
-        uVar3 = uVar3 | 1 << (pRVar5->voice >> 1 & 0x1fU);
-      }
-      // sceSdSetSwitch(*(u16*)&cmd->voice & 1 | 0x1600, uVar3);
-      sceSdkey_off_jak2_voice(cmd->voice);
-      if (cmd->stereo_sibling) {
-        sceSdkey_off_jak2_voice(cmd->stereo_sibling->voice);
-      }
-    }
-    //    iVar2 = 0x18;
-    //    piVar1 = &(cmd->header).unk_24;
-    //    do {
-    //      *(undefined *)(piVar1 + 0x34) = 0;
-    //      iVar2 = iVar2 + -1;
-    //      piVar1 = (int *)((int)piVar1 + -1);
-    //    } while (-1 < iVar2);
-    for (auto& x : cmd->status_bytes) {
-      x = 0;
-    }
-    cmd->vol_multiplier = 0;
-    cmd->unk_256_pitch2 = 0;
-    cmd->id = 0;
-    cmd->plugin_id = 0;
-    (cmd->header).ready_for_data = 0;
-    cmd->unk_136 = 0;
-    cmd->unk_140 = 0;
-    cmd->pitch1 = 0;
-    (cmd->header).callback = NullCallback;
-    cmd->unk_180 = 0;
-    cmd->unk_184 = 0;
-    cmd->unk_188 = 0;
-    cmd->unk_192 = 0;
+    StopVAG(cmd, 0);
   }
+
   ReleaseMessage(&cmd->header, 0);
-  VagCmdsPriList[cmd->priority].cmds[cmd->idx_in_cmd_arr] = 0x0;
-  if (VagCmdsPriCounter[cmd->priority] < 1) {
-    printf("IOP: ======================================================================\n");
-    printf("IOP: vag RemoveVagCmd: VagCmdsPriCounter[%d] is zero\n", cmd->priority);
-    printf("IOP: ======================================================================\n");
-  } else {
-    VagCmdsPriCounter[cmd->priority] = VagCmdsPriCounter[cmd->priority] + -1;
+  RemoveVagCmd(cmd, 0);
+  FreeVagCmd(cmd, 0);
+
+  if (sibling != nullptr) {
+    sibling->sb_scanned = '\0';
+    RemoveVagCmd(sibling, 0);
+    FreeVagCmd(sibling, 0);
   }
-  //  iVar2 = 0x18;
-  //  piVar1 = &(cmd->header).unk_24;
-  VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
-  for (auto& x : cmd->status_bytes) {
-    x = 0;
-  }
-  //  do {
-  //    *(undefined*)(piVar1 + 0x34) = 0;
-  //    iVar2 = iVar2 + -1;
-  //    piVar1 = (int*)((int)piVar1 + -1);
-  //  } while (-1 < iVar2);
-  cmd->sb_playing = '\0';
-  cmd->sb_paused = '\x01';
-  cmd->sb_scanned = '\0';
-  cmd->unk_180 = 0;
-  cmd->unk_184 = 0;
-  cmd->unk_188 = 0;
-  cmd->unk_192 = 0;
-  SetVagStreamName(cmd, 0, 0);
-  cmd->name[0] = '\0';
-  iVar2 = ActiveVagStreams;
-  cmd->safe_to_change_dma_fields = 1;
-  cmd->unk_264 = 0x4000;
-  (cmd->header).callback = NullCallback;
-  cmd->unk_140 = 0;
-  cmd->pitch1 = 0;
-  cmd->file_record = nullptr;
-  cmd->vag_dir_entry = nullptr;
-  cmd->unk_196 = 0;
-  cmd->unk_200 = 0;
-  cmd->unk_204 = 0;
-  cmd->num_processed_chunks = 0;
-  cmd->xfer_size = 0;
-  cmd->sample_rate = 0;
-  cmd->unk_260 = 0;
-  cmd->unk_268 = 0;
-  cmd->vol_multiplier = 0;
-  cmd->unk_256_pitch2 = 0;
-  cmd->id = 0;
-  cmd->plugin_id = 0;
-  cmd->unk_136 = 0;
-  cmd->priority = 0;
-  cmd->unk_288 = 0;
-  cmd->unk_292 = 0;
-  cmd->unk_296 = 0;
-  (cmd->header).callback_buffer = (Buffer*)0x0;
-  (cmd->header).ready_for_data = 0;
-  (cmd->header).lse = (LoadStackEntry*)0x0;
-  cmd->dma_iop_mem_ptr = (uint8_t*)0x0;
-  cmd->dma_chan = -1;
-  cmd->unk_236 = 0;
-  if (0 < iVar2) {
-    ActiveVagStreams = iVar2 + -1;
-  }
-  if (pRVar4 != 0x0) {
-    pRVar4->sb_scanned = '\0';
-    VagCmdsPriList[pRVar4->priority].cmds[pRVar4->idx_in_cmd_arr] = 0x0;
-    if (VagCmdsPriCounter[pRVar4->priority] < 1) {
-      printf("IOP: ======================================================================\n");
-      printf("IOP: vag RemoveVagCmd: VagCmdsPriCounter[%d] is zero\n", pRVar4->priority);
-      printf("IOP: ======================================================================\n");
-    } else {
-      VagCmdsPriCounter[pRVar4->priority] = VagCmdsPriCounter[pRVar4->priority] + -1;
-    }
-    iVar2 = 0x18;
-    piVar1 = &(pRVar4->header).ready_for_data;
-    VagCmdsPriCounter[0] = VagCmdsPriCounter[0] + 1;
-    for (auto& x : cmd->status_bytes) {
-      x = 0;
-    }
-    //    do {
-    //      *(undefined*)(piVar1 + 0x34) = 0;
-    //      iVar2 = iVar2 + -1;
-    //      piVar1 = (int*)((int)piVar1 + -1);
-    //    } while (-1 < iVar2);
-    pRVar4->sb_playing = '\0';
-    pRVar4->sb_paused = '\x01';
-    pRVar4->sb_scanned = '\0';
-    pRVar4->unk_180 = 0;
-    pRVar4->unk_184 = 0;
-    pRVar4->unk_188 = 0;
-    pRVar4->unk_192 = 0;
-    SetVagStreamName(pRVar4, 0, 0);
-    pRVar4->name[0] = '\0';
-    iVar2 = ActiveVagStreams;
-    pRVar4->safe_to_change_dma_fields = 1;
-    pRVar4->unk_264 = 0x4000;
-    (pRVar4->header).callback = NullCallback;
-    pRVar4->unk_140 = 0;
-    pRVar4->pitch1 = 0;
-    pRVar4->file_record = nullptr;
-    pRVar4->vag_dir_entry = nullptr;
-    pRVar4->unk_196 = 0;
-    pRVar4->unk_200 = 0;
-    pRVar4->unk_204 = 0;
-    pRVar4->num_processed_chunks = 0;
-    pRVar4->xfer_size = 0;
-    pRVar4->sample_rate = 0;
-    pRVar4->unk_260 = 0;
-    pRVar4->unk_268 = 0;
-    pRVar4->vol_multiplier = 0;
-    pRVar4->unk_256_pitch2 = 0;
-    pRVar4->id = 0;
-    pRVar4->plugin_id = 0;
-    pRVar4->unk_136 = 0;
-    pRVar4->priority = 0;
-    pRVar4->unk_288 = 0;
-    pRVar4->unk_292 = 0;
-    pRVar4->unk_296 = 0;
-    (pRVar4->header).callback_buffer = (Buffer*)0x0;
-    (pRVar4->header).ready_for_data = 0;
-    (pRVar4->header).lse = (LoadStackEntry*)0x0;
-    pRVar4->dma_iop_mem_ptr = (uint8_t*)0x0;
-    pRVar4->dma_chan = -1;
-    pRVar4->unk_236 = 0;
-    if (0 < iVar2) {
-      ActiveVagStreams = iVar2 + -1;
-    }
-  }
-  if (cmd->unk_136) {
+
+  if (cmd->sound_handler) {
     RemoveVagStreamFromList(&vag_node, &PluginStreamsList);
     lfo_node.id = cmd->id;
     lfo_node.plugin_id = cmd->plugin_id;
@@ -380,10 +226,9 @@ void TerminateVAG(VagCmd* cmd, int param_2) {
   // printf("termina removing %s (2)\n", vag_node.name);
 
   RemoveVagStreamFromList(&vag_node, &EEPlayList);
-  if (param_2 == 1) {
-    // CpuResumeIntr(auStack32[0]);
-  }
-  // return;
+  // if (param_2 == 1) {
+  //  CpuResumeIntr(auStack32[0]);
+  //}
 }
 
 void PauseVAG(VagCmd* cmd, int /*param_2*/) {
@@ -395,13 +240,11 @@ void PauseVAG(VagCmd* cmd, int /*param_2*/) {
       auto* stereo_cmd = cmd->stereo_sibling;
       if (!stereo_cmd) {
         if (cmd->sb_playing != '\0') {
-          sceSdSetParam((u16)cmd->voice | SD_VP_VOLL, 0);
-          sceSdSetParam(((u16)cmd->voice) | SD_VP_VOLR, 0);
+          sceSdSetParam(SD_VP_VOLL | cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | cmd->voice, 0);
         }
-        sceSdSetParam(((u16)cmd->voice) | SD_VP_PITCH, 0);
-        // TODO: ignored, whatever this is
-        // sceSdSetSwitch((((s16)cmd->voice) & 1) | 0x1600, 1 << (cmd->voice >> 1 & 0x1fU));
-        sceSdkey_off_jak2_voice(cmd->voice);
+        sceSdSetParam(SD_VP_PITCH | cmd->voice, 0);
+        sceSdSetSwitch(SD_S_KOFF | CORE_BIT(cmd->voice), VOICE_BIT(cmd->voice));
         if (cmd->status_bytes[BYTE5] == '\0') {
           cmd->spu_addr_to_start_playing = 0;
         } else {
@@ -410,23 +253,21 @@ void PauseVAG(VagCmd* cmd, int /*param_2*/) {
         cmd->sb_paused = 1;
       } else {
         if (cmd->sb_playing != '\0') {
-          sceSdSetParam(((u16)cmd->voice) | SD_VP_VOLL, 0);
-          sceSdSetParam(((u16)cmd->voice) | SD_VP_VOLR, 0);
-          sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_VOLL, 0);
-          sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_VOLR, 0);
+          sceSdSetParam(SD_VP_VOLL | cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLL | stereo_cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | stereo_cmd->voice, 0);
         }
-        sceSdSetParam(((u16)stereo_cmd->voice) | SD_VP_PITCH, 0);
-        sceSdSetParam(((u16)cmd->voice) | SD_VP_PITCH, 0);
-        // sceSdSetSwitch(((u16)cmd->voice & 1) | 0x1600,
-        //            1 << (cmd->voice >> 1 & 0x1fU) | 1 << (stereo_cmd->voice >> 1 & 0x1fU));
-        sceSdkey_off_jak2_voice(cmd->voice);
-        sceSdkey_off_jak2_voice(stereo_cmd->voice);
+        sceSdSetParam(SD_VP_PITCH | stereo_cmd->voice, 0);
+        sceSdSetParam(SD_VP_PITCH | cmd->voice, 0);
+        sceSdSetSwitch(SD_S_KOFF | CORE_BIT(cmd->voice),
+                       VOICE_BIT(cmd->voice) | VOICE_BIT(stereo_cmd->voice));
 
         if (cmd->status_bytes[BYTE5] == '\0') {
           cmd->spu_addr_to_start_playing = 0;
           stereo_cmd->spu_addr_to_start_playing = 0;
         } else {
-          int ram_addr = GetSpuRamAddress(cmd);
+          u32 ram_addr = GetSpuRamAddress(cmd);
           cmd->spu_addr_to_start_playing = ram_addr & 0xfffffff8;
           stereo_cmd->spu_addr_to_start_playing =
               ((ram_addr & 0xfffffff8) - cmd->spu_stream_dma_mem_addr) +
@@ -449,38 +290,35 @@ void UnPauseVAG(VagCmd* param_1, int /*param_2*/) {
     //}
     if (param_1->status_bytes[BYTE11] == '\0') {
       auto* stereo_cmd = param_1->stereo_sibling;
-      int pitch_reuslt = CalculateVAGPitch(param_1->pitch1, param_1->unk_256_pitch2);
-      int vol_l, vol_r;
+      int pitch = CalculateVAGPitch(param_1->pitch1, param_1->unk_256_pitch2);
+      u32 vol_l, vol_r;
       CalculateVAGVolumes(param_1, &vol_l, &vol_r);
       if (!stereo_cmd) {
         if (param_1->sb_playing != '\0') {
-          sceSdSetParam(((u16)param_1->voice) | 0x200, pitch_reuslt);
+          sceSdSetParam(SD_VP_PITCH | param_1->voice, pitch);
           if (param_1->spu_addr_to_start_playing != 0) {
-            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_addr_to_start_playing);
+            sceSdSetAddr(SD_VA_SSA | param_1->voice, param_1->spu_addr_to_start_playing);
           }
-          // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, 1 << (voice >> 1 & 0x1fU));
-          sceSdkey_on_jak2_voice(param_1->voice);
-          sceSdSetParam(((u16)param_1->voice), vol_l);
-          sceSdSetParam(((u16)param_1->voice) | 0x100, vol_r);
+          sceSdSetSwitch(SD_S_KON | CORE_BIT(param_1->voice), VOICE_BIT(param_1->voice));
+          sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+          sceSdSetParam(SD_VP_VOLR | param_1->voice, vol_r);
         }
         param_1->sb_paused = 0;
       } else {
         if (param_1->sb_playing != '\0') {
-          sceSdSetParam(((u16)param_1->voice) | 0x200, pitch_reuslt);
-          sceSdSetParam(((u16)stereo_cmd->voice) | 0x200, pitch_reuslt);
+          sceSdSetParam(SD_VP_PITCH | param_1->voice, pitch);
+          sceSdSetParam(SD_VP_PITCH | stereo_cmd->voice, pitch);
           if (param_1->spu_addr_to_start_playing != 0) {
-            sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_addr_to_start_playing);
-            sceSdSetAddr(((u16)stereo_cmd->voice) | 0x2040, stereo_cmd->spu_addr_to_start_playing);
+            sceSdSetAddr(SD_VA_SSA | param_1->voice, param_1->spu_addr_to_start_playing);
+            sceSdSetAddr(SD_VA_SSA | stereo_cmd->voice, stereo_cmd->spu_addr_to_start_playing);
           }
-          sceSdkey_on_jak2_voice(param_1->voice);
-          sceSdkey_on_jak2_voice(stereo_cmd->voice);
 
-          //          sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500,
-          //                         1 << (voice >> 1 & 0x1fU) | 1 << (stereo_voice >> 1 & 0x1fU));
-          sceSdSetParam(((u16)param_1->voice), vol_l);
-          sceSdSetParam(((u16)stereo_cmd->voice), 0);
-          sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
-          sceSdSetParam(((u16)stereo_cmd->voice) | 0x100, vol_r);
+          sceSdSetSwitch(SD_S_KON | CORE_BIT(param_1->voice),
+                         VOICE_BIT(param_1->voice) | VOICE_BIT(stereo_cmd->voice));
+          sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+          sceSdSetParam(SD_VP_VOLL | stereo_cmd->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | param_1->voice, 0);
+          sceSdSetParam(SD_VP_VOLR | stereo_cmd->voice, vol_r);
         }
         param_1->sb_paused = 0;
         stereo_cmd->sb_paused = 0;
@@ -505,82 +343,54 @@ void RestartVag(VagCmd* param_1, int param_2, int /*param_3*/) {
   // if (param_3 == 1) {
   // CpuSuspendIntr(&local_30);
   //}
-  int vol_l, vol_r;
+  u32 vol_l, vol_r;
   CalculateVAGVolumes(param_1, &vol_l, &vol_r);
   if (param_1->status_bytes[BYTE11] == '\0') {
-    int voice = 1 << (param_1->voice >> 1 & 0x1fU);
     auto* stereo_sibling = param_1->stereo_sibling;
     int sram_offset = param_2 ? 0x2000 : 0;
-    if (stereo_sibling) {
-      voice = voice | 1 << (stereo_sibling->voice >> 1 & 0x1fU);
-    }
-    // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1600, voice);
-    sceSdkey_off_jak2_voice(param_1->voice);
-    if (stereo_sibling) {
-      sceSdkey_off_jak2_voice(stereo_sibling->voice);
-    }
-    sceSdSetParam(((u16)param_1->voice), 0);
-    sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
 
-    int other_voice;
-    int sram_addr;
-    if (!stereo_sibling) {
-      other_voice = *(u16*)&param_1->voice;
-      sram_addr = param_1->spu_stream_dma_mem_addr;
-    } else {
-      sceSdSetParam(((u16)stereo_sibling->voice), 0);
-      sceSdSetParam(((u16)stereo_sibling->voice) | 0x100, 0);
-      sceSdSetAddr(((u16)param_1->voice) | 0x2040, param_1->spu_stream_dma_mem_addr + sram_offset);
-      other_voice = ((u16)stereo_sibling->voice);
-      sram_addr = stereo_sibling->spu_stream_dma_mem_addr;
-    }
-    sceSdSetAddr(other_voice | 0x2040, sram_addr + sram_offset);
-    // sceSdSetSwitch(((u16)param_1->voice & 1) | 0x1500, voice);
-    sceSdkey_on_jak2_voice(param_1->voice);
+    int voices = VOICE_BIT(param_1->voice);
     if (stereo_sibling) {
-      sceSdkey_on_jak2_voice(stereo_sibling->voice);
+      voices |= VOICE_BIT(stereo_sibling->voice);
     }
 
-    if (!stereo_sibling) {
-      sceSdSetParam(((u16)param_1->voice), vol_l);
-      other_voice = ((u16)param_1->voice);
-    } else {
-      sceSdSetParam(((u16)param_1->voice), vol_l);
-      sceSdSetParam(((u16)stereo_sibling->voice), 0);
-      sceSdSetParam(((u16)param_1->voice) | 0x100, 0);
-      other_voice = ((u16)stereo_sibling->voice);
+    sceSdSetSwitch(SD_S_KOFF | CORE_BIT(param_1->voice), voices);
+
+    sceSdSetParam(SD_VP_VOLL | param_1->voice, 0);
+    sceSdSetParam(SD_VP_VOLR | param_1->voice, 0);
+    if (stereo_sibling) {
+      sceSdSetParam(SD_VP_VOLL | stereo_sibling->voice, 0);
+      sceSdSetParam(SD_VP_VOLR | stereo_sibling->voice, 0);
     }
-    sceSdSetParam(other_voice | 0x100, vol_r);
+
+    sceSdSetAddr(SD_VA_SSA | param_1->voice, param_1->spu_stream_dma_mem_addr + sram_offset);
+    if (stereo_sibling) {
+      sceSdSetAddr(SD_VA_SSA | stereo_sibling->voice,
+                   stereo_sibling->spu_stream_dma_mem_addr + sram_offset);
+    }
+
+    sceSdSetSwitch(SD_S_KON | CORE_BIT(param_1->voice), voices);
+
+    if (!stereo_sibling) {
+      sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+      sceSdSetParam(SD_VP_VOLR | param_1->voice, vol_r);
+    } else {
+      sceSdSetParam(SD_VP_VOLL | param_1->voice, vol_l);
+      sceSdSetParam(SD_VP_VOLL | stereo_sibling->voice, 0);
+      sceSdSetParam(SD_VP_VOLR | param_1->voice, 0);
+      sceSdSetParam(SD_VP_VOLR | stereo_sibling->voice, vol_r);
+    }
   }
   // if (param_3 == 1) {
   // CpuResumeIntr(local_30);
   //}
 }
 
-struct sceSdBatch {
-  u32 entry;
-  u32 value;
-  u32 func;
-};
-
-void sceSdProcBatch(sceSdBatch* b, int, int n) {
-  for (int i = 0; i < n; i++) {
-    sceSdSetParam(b[i].entry, b[i].value);
-  }
-}
-
-void SetVAGVol(VagCmd* cmd, int param_2) {
-  u32 uVar1;
-  u32 uVar3;
-  int iVar4;
-  int iVar5;
+void SetVAGVol(VagCmd* cmd, int /*param_2*/) {
   VagCmd* stereo_cmd;
-  sceSdBatch batch[6];
-  u32 local_28;
-  u32 local_24;
-  // undefined4 local_20 [2];
+  u32 lvol, rvol;
 
-  if (cmd == 0x0) {
+  if (cmd == nullptr) {
     return;
   }
   if (cmd->byte4 == '\0') {
@@ -592,105 +402,43 @@ void SetVAGVol(VagCmd* cmd, int param_2) {
   if (cmd->byte11 != '\0') {
     return;
   }
-  auto pvVar2 = cmd->unk_136;
-  stereo_cmd = cmd->stereo_sibling;
-  if (pvVar2 == 0) {
-    if (cmd->unk_296 == 0) {
-      local_28 = (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 6;
-      local_24 = local_28;
-      if (0x3fff < local_28) {
-        local_28 = 0x3fff;
-        local_24 = local_28;
-      }
-      goto LAB_0000a258;
-    }
-    iVar4 = CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
-                                  cmd->fo_curve, cmd->fo_min, cmd->fo_max);
-    iVar5 = CalculateAngle(&cmd->vec3);
-    uVar3 = 0x276 - iVar5;
-    uVar1 = (uVar3 >> 3) / 0x2d;
-    local_28 = ((s16*)gPanTable)[uVar1 * -0x2d0 + uVar3 * 2] * iVar4;
-    local_24 = ((s16*)gPanTable)[uVar1 * -0x2d0 + uVar3 * 2 + 1] * iVar4;
+
+  if (!cmd->sound_handler) {
+    CalculateVAGVolumes(cmd, &lvol, &rvol);
   } else {
     ASSERT_NOT_REACHED();
-    //    uVar3 = cmd->unk_176 + 0x5a;
-    //    uVar1 = (uVar3 >> 3) / 0x2d;
-    //    local_24 = (((u32)(cmd->vol_multiplier * MasterVolume[*(char *)((int)pvVar2 + 0x17)]) >>
-    //    10) *
-    //                (int)*(short *)((int)pvVar2 + 0x10) >> 10) * 0x3fff >> 10;
-    //    local_28 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2] * local_24;
-    //    local_24 = (int)gPanTable[uVar1 * -0x2d0 + uVar3 * 2 + 1] * local_24;
+    // TODO vag 989snd plugin
+    // SoundHandler* hnd = cmd->sound_handler;
+    // u32 vol =
+    //    0x3fff *
+    //    ((((cmd->vol_multiplier * MasterVolume[hnd->VolGroup]) >> 10) * hnd->Current_Vol) >> 10)
+    //    >> 10;
+    // lvol = (vol * gPanTable[(cmd->unk_176 + 90) % 360].left) >> 10;
+    // lvol = (vol * gPanTable[(cmd->unk_176 + 90) % 360].right) >> 10;
+    // if (lvol >= 0x4000) {
+    //  lvol = 0x3fff;
+    //}
+    // if (rvol >= 0x4000) {
+    //  rvol = 0x3fff;
+    //}
   }
-  local_28 = local_28 >> 10;
-  local_24 = local_24 >> 10;
-  if (0x3fff < local_28) {
-    local_28 = 0x3fff;
-  }
-  if (0x3fff < local_24) {
-    local_24 = 0x3fff;
-  }
-LAB_0000a258:
-  if (stereo_cmd == (VagCmd*)0x0) {
-    batch[0].entry = *(uint16_t*)&cmd->voice;
-    iVar4 = 2;
-    batch[1].entry = *(u16*)&cmd->voice | 0x100;
-    batch[2].entry = *(u16*)&cmd->voice | 0x200;
-    iVar5 = cmd->unk_256_pitch2;
-    uVar1 = cmd->pitch1;
-    // printf("cmd's pitch is %d, %d\n", cmd->pitch1, cmd->unk_256_pitch2);
-    batch[1].value = local_24;
+
+  // Originally used ProcBatch, buts this is easier to read.
+  stereo_cmd = cmd->stereo_sibling;
+  if (stereo_cmd) {
+    sceSdSetParam(SD_VP_VOLL | cmd->voice, lvol);
+    sceSdSetParam(SD_VP_VOLR | cmd->voice, 0);
+
+    sceSdSetParam(SD_VP_VOLL | stereo_cmd->voice, 0);
+    sceSdSetParam(SD_VP_VOLR | stereo_cmd->voice, rvol);
+
+    sceSdSetParam(SD_VP_PITCH | cmd->voice, CalculateVAGPitch(cmd->pitch1, cmd->unk_256_pitch2));
+    sceSdSetParam(SD_VP_PITCH | stereo_cmd->voice,
+                  CalculateVAGPitch(cmd->pitch1, cmd->unk_256_pitch2));
   } else {
-    batch[0].entry = *(uint16_t*)&cmd->voice;
-    batch[1].entry = *(uint16_t*)&stereo_cmd->voice;
-    batch[1].value = 0;
-    batch[2].value = 0;
-    batch[2].entry = *(u16*)&cmd->voice | 0x100;
-    batch[3].func = 1;
-    batch[3].entry = *(u16*)&stereo_cmd->voice | 0x100;
-    batch[4].func = 1;
-    batch[4].entry = *(u16*)&cmd->voice | 0x200;
-    iVar4 = cmd->unk_256_pitch2;
-    batch[4].value = cmd->pitch1;
-    if (iVar4 != 0) {
-      if (iVar4 < 1) {
-        batch[4].value = (u32)(batch[4].value * 0x5f4) / (0x5f4U - iVar4);
-        if (0x5f4U - iVar4 == 0) {
-          ASSERT_NOT_REACHED();
-          // trap(0x1c00);
-        }
-      } else {
-        batch[4].value = (u32)(batch[4].value * (iVar4 + 0x5f4)) / 0x5f4;
-      }
-    }
-    iVar4 = 5;
-    batch[5].func = 1;
-    batch[5].entry = *(u16*)&stereo_cmd->voice | 0x200;
-    iVar5 = cmd->unk_256_pitch2;
-    uVar1 = cmd->pitch1;
-    batch[3].value = local_24;
-  }
-  if (iVar5 != 0) {
-    if (iVar5 < 1) {
-      uVar1 = (uVar1 * 0x5f4) / (0x5f4U - iVar5);
-      if (0x5f4U - iVar5 == 0) {
-        ASSERT_NOT_REACHED();
-        // trap(0x1c00);
-      }
-    } else {
-      uVar1 = (uVar1 * (iVar5 + 0x5f4)) / 0x5f4;
-    }
-  }
-  batch[2].func = 1;
-  batch[1].func = 1;
-  batch[0].value = local_28;
-  batch[0].func = 1;
-  batch[iVar4].value = uVar1;
-  if (param_2 == 1) {
-    // CpuSuspendIntr(local_20);
-    sceSdProcBatch(batch, 0, iVar4 + 1);
-    // CpuResumeIntr(local_20[0]);
-  } else {
-    sceSdProcBatch(batch, 0, iVar4 + 1);
+    sceSdSetParam(SD_VP_VOLL | cmd->voice, lvol);
+    sceSdSetParam(SD_VP_VOLR | cmd->voice, rvol);
+    sceSdSetParam(SD_VP_PITCH | cmd->voice, CalculateVAGPitch(cmd->pitch1, cmd->unk_256_pitch2));
   }
 }
 
@@ -866,6 +614,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->unk_188 = 0;
   cmd->unk_192 = 0;
   SetVagStreamName(cmd, 0, 0);
+
   cmd->name[0] = '\0';
   cmd->unk_264 = 0x4000;
   (cmd->header).callback = NullCallback;
@@ -886,7 +635,7 @@ void FreeVagCmd(VagCmd* cmd, int /*param_2*/) {
   cmd->unk_256_pitch2 = 0;
   cmd->id = 0;
   cmd->plugin_id = 0;
-  cmd->unk_136 = 0;
+  cmd->sound_handler = 0;
   cmd->priority = 0;
   cmd->unk_288 = 0;
   cmd->unk_292 = 0;
@@ -948,15 +697,11 @@ void StopVAG(VagCmd* cmd, int /*param_2*/) {
   auto& sibling = cmd->stereo_sibling;
   PauseVAG(cmd, 0);
   if (cmd->status_bytes[BYTE5] != '\0') {
-    int val = 1 << (cmd->voice >> 1 & 0x1fU);
+    int val = VOICE_BIT(cmd->voice);
     if (sibling) {
-      val = val | 1 << (sibling->voice >> 1 & 0x1fU);
+      val = val | VOICE_BIT(sibling->voice);
     }
-    // sceSdSetSwitch(u16(cmd->voice) & 1 | 0x1600, val);
-    sceSdkey_off_jak2_voice(cmd->voice);
-    if (sibling) {
-      sceSdkey_off_jak2_voice(sibling->voice);
-    }
+    sceSdSetSwitch(SD_S_KOFF | CORE_BIT(cmd->voice), val);
   }
   for (auto& x : cmd->status_bytes) {
     x = 0;
@@ -967,7 +712,7 @@ void StopVAG(VagCmd* cmd, int /*param_2*/) {
   cmd->id = 0;
   cmd->plugin_id = 0;
   (cmd->header).ready_for_data = 0;
-  cmd->unk_136 = 0;
+  cmd->sound_handler = 0;
   cmd->unk_140 = 0;
   cmd->pitch1 = 0;
   cmd->unk_180 = 0;
@@ -989,16 +734,14 @@ void VAG_MarkLoopStart(int8_t* param_1) {
 }
 
 int CalculateVAGPitch(int param_1, int param_2) {
-  if (param_2 != 0) {
-    if (param_2 < 1) {
-      param_1 = (param_1 * 0x5f4) / (0x5f4U - param_2);
-      if (0x5f4U - param_2 == 0) {
-        ASSERT_NOT_REACHED();
-      }
+  if (param_2) {
+    if (param_2 <= 0) {
+      return 0x5f4 * param_1 / (0x5f4 - param_2);
     } else {
-      param_1 = (param_1 * (param_2 + 0x5f4)) / 0x5f4;
+      return param_1 * (param_2 + 0x5f4) / 0x5f4;
     }
   }
+
   return param_1;
 }
 
@@ -1018,61 +761,42 @@ void UnPauseVagStreams() {
   }
 }
 
-void SetAllVagsVol(int param_1)
-
-{
-  int iVar1;
-  VagCmd* cmd;
-
-  cmd = VagCmds;
-  if (param_1 < 0) {
-    iVar1 = 0;
-    do {
-      SetVAGVol(cmd, 1);
-      iVar1 = iVar1 + 1;
-      cmd = cmd + 1;
-    } while (iVar1 < 4);
-  } else {
-    iVar1 = 0;
-    do {
-      if (cmd->unk_136) {
+void SetAllVagsVol(int param_1) {
+  if (param_1 >= 0) {
+    for (auto& VagCmd : VagCmds) {
+      if (VagCmd.sound_handler /* && VagCmd.sound_handler->VolGroup == param_1 */) {
         ASSERT_NOT_REACHED();
-        //        if (*(char *)((int)cmd->unk_136 + 0x17) == param_1) {
-        //          SetVAGVol(cmd,1);
-        //        }
-        cmd = cmd + 1;
+        SetVAGVol(&VagCmd, 1);
       }
-      iVar1 = iVar1 + 1;
-    } while (iVar1 < 4);
+    }
+  } else {
+    for (auto& VagCmd : VagCmds) {
+      SetVAGVol(&VagCmd, 1);
+    }
   }
 }
 
-void CalculateVAGVolumes(VagCmd* cmd, int* l_out, int* r_out) {
-  // int iVar1;
-  //  int iVar2;
-  // u32 uVar3;
-
+void CalculateVAGVolumes(VagCmd* cmd, u32* l_out, u32* r_out) {
   if (cmd->unk_296 == 0) {
     u32 vol = (u32)(cmd->vol_multiplier * MasterVolume[VolumeCategory::DIALOGUE]) >> 6;
-    if (0x3fff < vol) {
+    if (vol >= 0x4000) {
       vol = 0x3fff;
     }
     *l_out = vol;
     *r_out = vol;
   } else {
     int fo_vol =
-        CalculateFallofVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
-                              cmd->fo_curve, cmd->fo_min, cmd->fo_max);
-    int angle = CalculateAngle(&cmd->vec3);
-    int uVar4 = 0x276 - angle;
-    int uVar3 = (uVar4 >> 3) / 0x2d;
-    auto* pan = (s16*)gPanTable;
-    *l_out = (u32)(pan[uVar3 * -0x2d0 + uVar4 * 2] * fo_vol) >> 10;
-    *r_out = (u32)(pan[uVar3 * -0x2d0 + uVar4 * 2 + 1] * fo_vol) >> 10;
-    if (0x3fff < *l_out) {
+        CalculateFalloffVolume(&cmd->vec3, (u32)(cmd->vol_multiplier * MasterVolume[2]) >> 10,
+                               cmd->fo_curve, cmd->fo_min, cmd->fo_max);
+
+    auto* pan = &gPanTable[(630 - CalculateAngle(&cmd->vec3)) % 360];
+    *l_out = (pan->left * fo_vol) >> 10;
+    *r_out = (pan->right * fo_vol) >> 10;
+
+    if (*l_out >= 0x4000) {
       *l_out = 0x3fff;
     }
-    if (0x3fff < *r_out) {
+    if (*r_out >= 0x4000) {
       *r_out = 0x3fff;
     }
   }

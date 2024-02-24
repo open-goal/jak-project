@@ -7,3 +7,83 @@
 
 ;; DECOMP BEGINS
 
+(deftype joint (basic)
+  "A joint from an animated skeleton. This defines the graph of the skeleton, and also the bind pose
+used for the mesh data. The joints are shared between all instances of the same model."
+  ((name       basic)
+   (number     int32)
+   (parent     joint)
+   (bind-pose  matrix  :inline)
+   )
+  )
+
+
+(deftype bone-cache (structure)
+  "Unused type. Existed in Jak 1, but wasn't used there."
+  ((bone-matrix    uint32)
+   (parent-matrix  uint32)
+   (dummy          uint32)
+   (frame          uint32)
+   )
+  )
+
+
+(deftype bone (structure)
+  "The location and scale of a bone in an animated skeleton. Each instance of a skeleton
+has its own copy of the bones. This data is used for collision checking or other gameplay math,
+but, despite the name, isn't directly used in rendering."
+  ((transform  matrix  :inline)
+   (position   vector  :inline :overlay-at (-> transform data 12))
+   (scale      vector  :inline)
+   )
+  )
+
+
+(deftype skeleton (inline-array-class)
+  "Skeleton is made of bones."
+  ((bones  bone  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> skeleton heap-base) (the-as uint 80))
+
+(deftype cspace (structure)
+  "A cspace describes how to control a bone. It contains a reference to the joint, bone, and a callback function.
+The callback function is used to take the joint transforms out of the joint animation, then update the bone."
+  ((parent     cspace)
+   (joint      joint)
+   (joint-num  int16)
+   (geo        drawable)
+   (bone       bone)
+   (param0     (function cspace transformq none))
+   (param1     basic)
+   (param2     basic)
+   )
+  (:methods
+    (new (symbol type drawable) _type_)
+    (reset-and-assign-geo! (_type_ drawable) _type_)
+    )
+  )
+
+
+(deftype cspace-array (inline-array-class)
+  ((data  cspace  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> cspace-array heap-base) (the-as uint 32))
+
+(defmethod print ((this cspace))
+  (format
+    #t
+    "#<cspace ~S @ #x~X>"
+    (if (-> this joint)
+        (-> this joint name)
+        "nojoint"
+        )
+    this
+    )
+  this
+  )

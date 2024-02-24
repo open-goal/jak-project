@@ -11,8 +11,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-                                            ;; version: 0.1.7.0
-(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 1 7 0))
+                                            ;; version: 0.2.0.0
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 2 0 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -20,7 +20,6 @@
 
 
 ;; cheats
-(defconstant PC_CHEAT_MAX 20) ;; number of cheats
 (defenum pc-cheats
   :bitfield #t
   :type uint64
@@ -81,7 +80,8 @@
    (cheats            pc-cheats)
    (cheats-revealed   pc-cheats)
    (cheats-purchased  pc-cheats)
-   (cheats-backup     pc-cheats) ;; backup for 'cheats', persisted to disk to be restored when disabling speedrunner mode
+   (cheats-unlocked   pc-cheats)
+   (cheats-mask       pc-cheats)
    ;; music
    (music-unlocked  bit-array)
    (flava-unlocked  symbol 6)
@@ -91,17 +91,17 @@
    (fast-elevator? symbol)
    (fast-progress? symbol)
 
+   (stats   statistics)
+
    ;; gfx
    (smooth-minimap?   symbol)
    (hires-clouds?     symbol)
 
    ;; other
    (controller-led-status?    symbol)
+   (speedrunner-mode-custom-bind uint32)
 
    (text-language pc-language) ;; language for game text
-
-   ;; debug
-   (jetboard-trick-text? symbol) ;; enable rendering jetboard trick combo during minigame
 	 )
 
   (:methods
@@ -138,14 +138,14 @@
   "Set the default misc settings"
 
   ((method-of-type pc-settings reset-misc) obj call-handlers)
-  (true! (-> obj jetboard-trick-text?))
 
   (true! (-> obj fast-airlock?))
   (true! (-> obj fast-elevator?))
   (false! (-> obj fast-progress?))
   (true! (-> obj smooth-minimap?))
   (false! (-> obj hires-clouds?))
-  
+  (set! (-> obj speedrunner-mode-custom-bind) 0)
+
   (cond
     ((and (= *default-territory* GAME_TERRITORY_SCEE) (= (-> obj text-language) (pc-language english)))
       (set! (-> obj text-language) (pc-language uk-english))
@@ -168,10 +168,13 @@
   (set! (-> obj cheats) (pc-cheats))
   (set! (-> obj cheats-revealed) (pc-cheats))
   (set! (-> obj cheats-purchased) (pc-cheats))
+  (set! (-> obj cheats-unlocked) (pc-cheats))
 
   (clear-all! (-> obj music-unlocked))
   (dotimes (i 6)
     (set! (-> obj flava-unlocked i) #f))
+
+  (set! (-> obj stats) *statistics*)
   0)
 
 (defmethod reset-input ((obj pc-settings-jak2) (device symbol) (call-handlers symbol))
@@ -244,6 +247,14 @@
    (turbo-board-speed     float)
    (hijack-speech-chance  float)
    (flags   pc-cheat-state-flag)
+
+   (sewer-valve-start-time  time-frame)
+   (sewer-valve-end-time    time-frame)
+   (sewer-valve-target-seconds  int8)
+   (sewer-valve-on              int8)
+
+   (kill-civvie-target  int16)
+   (kill-car-target     int16)
    )
   )
 
@@ -253,6 +264,11 @@
                               :airlock-close-speed 1.75
                               :turbo-board-speed 1.5
                               :hijack-speech-chance 0.45
+
+                              :sewer-valve-target-seconds 75
+
+                              :kill-civvie-target 40
+                              :kill-car-target 20
                               ))
 
 (defmacro cheat-state-flag? (&rest flags)
@@ -270,16 +286,15 @@
 (defmacro give-cheat! (&rest cheats)
   `(begin
     (logior! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
-    (logior! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
-    (logior! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
     )
   )
 
 (defmacro lock-cheat! (&rest cheats)
   `(begin
     (logclear! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
     (logclear! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-unlocked) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
     )
   )
 

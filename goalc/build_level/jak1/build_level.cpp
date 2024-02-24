@@ -45,12 +45,20 @@ bool run_build_level(const std::string& input_file,
   // vis infos
   // actors
   std::vector<EntityActor> actors;
-  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234));
+  auto dts = decompiler::DecompilerTypeSystem(GameVersion::Jak1);
+  dts.parse_enum_defs({"decompiler", "config", "jak1", "all-types.gc"});
+  add_actors_from_json(level_json.at("actors"), actors, level_json.value("base_id", 1234), dts);
+  std::sort(actors.begin(), actors.end(), [](auto& a, auto& b) { return a.aid < b.aid; });
+  auto duplicates = std::adjacent_find(actors.begin(), actors.end(),
+                                       [](auto& a, auto& b) { return a.aid == b.aid; });
+  ASSERT_MSG(duplicates == actors.end(),
+             fmt::format("Actor IDs must be unique. Found at least two actors with ID {}",
+                         duplicates->aid));
   file.actors = std::move(actors);
   // ambients
   std::vector<EntityAmbient> ambients;
   jak1::add_ambients_from_json(level_json.at("ambients"), ambients,
-                               level_json.value("base_id", 12345));
+                               level_json.value("base_id", 12345), dts);
   file.ambients = std::move(ambients);
   auto& ambient_drawable_tree = file.drawable_trees.ambients.emplace_back();
   (void)ambient_drawable_tree;

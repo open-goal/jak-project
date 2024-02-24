@@ -365,7 +365,7 @@ void Loader::update_blocking(TexturePool& tex_pool) {
 }
 
 const std::string* Loader::get_most_unloadable_level() {
-  for (const auto& [name, lev] : m_loaded_tfrag3_levels) {
+  for (auto& [name, lev] : m_loaded_tfrag3_levels) {
     if (lev->frames_since_last_used > 180 &&
         std::find(m_desired_levels.begin(), m_desired_levels.end(), name) ==
             m_desired_levels.end()) {
@@ -511,7 +511,7 @@ void Loader::update(TexturePool& texture_pool) {
     }
 
     if (unload_timer.getMs() > 5.f) {
-      fmt::print("Unload took {:.2f}\n", unload_timer.getMs());
+      fmt::print("Unload took {:.2f}ms\n", unload_timer.getMs());
     }
 
     if (!m_garbage_buffers.empty()) {

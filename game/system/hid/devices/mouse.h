@@ -56,5 +56,10 @@ class MouseDevice : public InputDevice {
   float m_xsens = -15.0;
   float m_ysens = 10.0;
 
+  // Tracking motion
+  int m_last_xcoord = 0;
+  int m_last_ycoord = 0;
+  int m_frame_counter = 0;
+
   bool is_action_already_active(const u32 sdl_keycode, const bool player_movement);
 };

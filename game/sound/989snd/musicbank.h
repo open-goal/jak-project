@@ -1,10 +1,9 @@
 #pragma once
+#include <span>
 #include <variant>
 #include <vector>
 
 #include "soundbank.h"
-
-#include "third-party/span.hpp"
 
 namespace snd {
 
@@ -63,9 +62,9 @@ class MusicBank : public SoundBank {
   std::unique_ptr<u8[]> SeqData;
   std::variant<Midi, MultiMidi> MidiData;
 
-  static MusicBank* ReadBank(nonstd::span<u8> bank_data,
-                             nonstd::span<u8> samples,
-                             nonstd::span<u8> midi_data);
+  static MusicBank* ReadBank(std::span<u8> bank_data,
+                             std::span<u8> samples,
+                             std::span<u8> midi_data);
 
   std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
                                                            u32 sound_id,

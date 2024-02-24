@@ -150,7 +150,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_analog_binds(PadData::A
       InputBindingInfo new_info;
       switch (device_type) {
         case KEYBOARD:
-          new_info = InputBindingInfo(bind, device_type, sdl_code);
+          new_info = InputBindingInfo(bind, device_type, sdl_code, false);
           break;
         default:
           new_info.host_name = "TODO - NON-KB ANALOG BIND LOOKUP";
@@ -176,7 +176,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       if (bind.pad_data_index != idx) {
         continue;
       }
-      InputBindingInfo new_info(bind, device_type, sdl_code);
+      InputBindingInfo new_info(bind, device_type, sdl_code, false);
       entry.push_back(new_info);
     }
   }
@@ -185,7 +185,7 @@ std::vector<InputBindingInfo> InputBindingGroups::lookup_button_binds(PadData::B
       if (bind.pad_data_index != idx) {
         continue;
       }
-      InputBindingInfo new_info(bind, device_type, sdl_code);
+      InputBindingInfo new_info(bind, device_type, sdl_code, true);
       entry.push_back(new_info);
     }
   }
@@ -309,8 +309,24 @@ void InputBindingGroups::assign_button_bind(u32 sdl_idx,
   // unmapped
   const auto current_button_binds = lookup_button_binds((PadData::ButtonIndex)bind_meta.pad_idx);
   const auto current_analog_bind = find_analog_bind_from_sdl_idx(sdl_idx, modifiers);
-  if (buttons.find(sdl_idx) != buttons.end()) {
+  if (!analog_button && buttons.find(sdl_idx) != buttons.end()) {
     const auto existing_binds = buttons.at(sdl_idx);
+    if (analog_button) {
+      button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    } else {
+      buttons[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
+    }
+    // there already a bind, so swap (as long as it's not the same key)
+    if (!current_button_binds.empty() && current_button_binds.front().sdl_idx != (s32)sdl_idx) {
+      if (current_button_binds.front().analog_button) {
+        button_axii[current_button_binds.front().sdl_idx] = existing_binds;
+      } else {
+        buttons[current_button_binds.front().sdl_idx] = existing_binds;
+      }
+    }
+  } else if (analog_button && button_axii.find(sdl_idx) != button_axii.end()) {
+    // TODO - cleanup this duplication
+    const auto existing_binds = button_axii.at(sdl_idx);
     if (analog_button) {
       button_axii[sdl_idx] = {InputBinding((PadData::ButtonIndex)bind_meta.pad_idx, modifiers)};
     } else {
@@ -357,12 +373,19 @@ void InputBindingGroups::set_bindings(const InputBindingGroups& binds) {
 
 InputBindingInfo::InputBindingInfo(const InputBinding bind,
                                    const InputDeviceType device_type,
-                                   const s32 sdl_code)
-    : sdl_idx(sdl_code), pad_idx(bind.pad_data_index), modifiers(bind.modifiers) {
-  analog_button = false;
+                                   const s32 sdl_code,
+                                   const bool _analog_button)
+    : sdl_idx(sdl_code),
+      pad_idx(bind.pad_data_index),
+      analog_button(_analog_button),
+      modifiers(bind.modifiers) {
   switch (device_type) {
     case CONTROLLER:
-      host_name = sdl_util::get_controller_button_name(sdl_code);
+      if (analog_button) {
+        host_name = sdl_util::get_controller_axis_name(sdl_code);
+      } else {
+        host_name = sdl_util::get_controller_button_name(sdl_code);
+      }
       break;
     case KEYBOARD:
       host_name = sdl_util::get_keyboard_button_name(sdl_code, modifiers);

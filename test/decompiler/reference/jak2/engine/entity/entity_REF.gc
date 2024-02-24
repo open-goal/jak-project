@@ -12,30 +12,30 @@
 
 ;; definition for method 8 of type drawable-actor
 ;; WARN: Return type mismatch int vs drawable-actor.
-(defmethod mem-usage ((this drawable-actor) (arg0 memory-usage-block) (arg1 int))
-  (set! (-> arg0 length) (max 44 (-> arg0 length)))
-  (set! (-> arg0 data 43 name) "entity")
-  (+! (-> arg0 data 43 count) 1)
+(defmethod mem-usage ((this drawable-actor) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 44 (-> usage length)))
+  (set! (-> usage data 43 name) "entity")
+  (+! (-> usage data 43 count) 1)
   (let ((v1-6 (asize-of this)))
-    (+! (-> arg0 data 43 used) v1-6)
-    (+! (-> arg0 data 43 total) (logand -16 (+ v1-6 15)))
+    (+! (-> usage data 43 used) v1-6)
+    (+! (-> usage data 43 total) (logand -16 (+ v1-6 15)))
     )
-  (mem-usage (-> this actor) arg0 (logior arg1 64))
+  (mem-usage (-> this actor) usage (logior flags 64))
   (the-as drawable-actor 0)
   )
 
 ;; definition for method 8 of type drawable-inline-array-actor
 ;; WARN: Return type mismatch int vs drawable-inline-array-actor.
-(defmethod mem-usage ((this drawable-inline-array-actor) (arg0 memory-usage-block) (arg1 int))
-  (set! (-> arg0 length) (max 1 (-> arg0 length)))
-  (set! (-> arg0 data 0 name) (symbol->string 'drawable-group))
-  (+! (-> arg0 data 0 count) 1)
+(defmethod mem-usage ((this drawable-inline-array-actor) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) (symbol->string 'drawable-group))
+  (+! (-> usage data 0 count) 1)
   (let ((v1-7 32))
-    (+! (-> arg0 data 0 used) v1-7)
-    (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
+    (+! (-> usage data 0 used) v1-7)
+    (+! (-> usage data 0 total) (logand -16 (+ v1-7 15)))
     )
   (dotimes (s3-0 (-> this length))
-    (mem-usage (-> this data s3-0) arg0 arg1)
+    (mem-usage (-> this data s3-0) usage flags)
     )
   (the-as drawable-inline-array-actor 0)
   )
@@ -2283,6 +2283,7 @@
 
 ;; definition for method 12 of type process-drawable
 (defmethod run-logic? ((this process-drawable))
+  "Should this process be run? Checked by execute-process-tree."
   (or (not (logtest? (-> this mask) (process-mask actor-pause)))
       (or (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
               (vector-vector-distance (-> this root trans) (math-camera-pos))

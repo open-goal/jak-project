@@ -204,7 +204,7 @@ std::string OpenGOALAsm::full_function_name() {
   if (func.allows_modifier(MOD::BROADCAST)) {
     if (m_instr.cop2_bc != 0xff) {
       std::string bc = std::string(1, m_instr.cop2_bc_to_char());
-      func_name = fmt::format(func_name, bc);
+      func_name = fmt::format(fmt::runtime(func_name), bc);
     }
   }
   return func_name;

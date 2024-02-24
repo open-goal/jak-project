@@ -3,6 +3,7 @@
 
 ;; definition of type focus
 (deftype focus (structure)
+  "A structure that keeps a handle to a [[process-focusable]]."
   ((handle        handle)
    (collide-with  collide-spec)
    )
@@ -29,31 +30,35 @@
 
 ;; definition for method 11 of type focus
 ;; WARN: Return type mismatch int vs none.
-(defmethod reset-to-collide-spec ((this focus) (arg0 collide-spec))
-  (set! (-> this collide-with) arg0)
+(defmethod reset-to-collide-spec ((this focus) (cspec collide-spec))
+  "Reset this focus with the given [[collide-spec]]."
+  (set! (-> this collide-with) cspec)
   (set! (-> this handle) (the-as handle #f))
   0
   (none)
   )
 
 ;; definition for method 10 of type focus
-(defmethod collide-check? ((this focus) (arg0 process-focusable))
-  (when (and arg0 (not (logtest? (-> arg0 focus-status) (focus-status disable dead))))
-    (let* ((s5-0 (-> arg0 root))
-           (v1-2 (if (type? s5-0 collide-shape)
-                     s5-0
-                     )
-                 )
+(defmethod collide-check? ((this focus) (proc process-focusable))
+  "If the focused process is not dead,
+check that the [[collide-spec]] of the focus and the process match."
+  (when (and proc (not (logtest? (-> proc focus-status) (focus-status disable dead))))
+    (let* ((root (-> proc root))
+           (cshape (if (type? root collide-shape)
+                       root
+                       )
+                   )
            )
-      (and v1-2 (logtest? (-> this collide-with) (-> v1-2 root-prim prim-core collide-as)))
+      (and cshape (logtest? (-> this collide-with) (-> cshape root-prim prim-core collide-as)))
       )
     )
   )
 
 ;; definition for method 12 of type focus
-(defmethod try-update-focus ((this focus) (arg0 process-focusable))
-  (when (!= (handle->process (-> this handle)) arg0)
-    (set! (-> this handle) (process->handle arg0))
+(defmethod try-update-focus ((this focus) (proc process-focusable))
+  "Try to set the `handle` of this focus to the given process."
+  (when (!= (handle->process (-> this handle)) proc)
+    (set! (-> this handle) (process->handle proc))
     #t
     )
   )
@@ -61,6 +66,7 @@
 ;; definition for method 9 of type focus
 ;; WARN: Return type mismatch int vs none.
 (defmethod clear-focused ((this focus))
+  "Reset the focus' handle."
   (set! (-> this handle) (the-as handle #f))
   0
   (none)

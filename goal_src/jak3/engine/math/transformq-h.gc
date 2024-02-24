@@ -5,5 +5,78 @@
 ;; name in dgo: transformq-h
 ;; dgos: GAME
 
+(declare-type transformq structure)
+(define-extern matrix<-transformq! (function matrix transformq matrix))
+(define-extern matrix<-parented-transformq! (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+trans! (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+world-trans! (function matrix transformq vector matrix))
+(define-extern matrix<-transformq+rot-offset! (function matrix transformq vector matrix))
+
 ;; DECOMP BEGINS
 
+(deftype transformq (transform)
+  ((quat  quaternion  :inline :overlay-at (-> rot data 0))
+   )
+  )
+
+
+(deftype trsq (trs)
+  ((quat  quaternion  :inline :overlay-at (-> rot data 0))
+   )
+  )
+
+
+(deftype trsqv (trsq)
+  "A transform with:
+- type information (child of [[basic]])
+- rotation stored as quaternion
+- velocity information.
+This is a very commonly used type to represent the position of an in-game object.
+The `root` of a process-drawable (the parent 'in-game object' type) is a [[trsqv]].
+Additionally, the collision system uses [[trsqv]] as the parent type for foreground
+collision objects ([[collide-shape]], [[collide-shape-moving]]).
+As a result, this type has a lot of weird methods and extra stuff hidden in it."
+  ((pause-adjust-distance  meters      :offset   4)
+   (nav-radius             meters      :offset   8)
+   (transv                 vector      :inline)
+   (rotv                   vector      :inline)
+   (scalev                 vector      :inline)
+   (dir-targ               quaternion  :inline)
+   (angle-change-time      time-frame)
+   (old-y-angle-diff       float)
+   )
+  (:methods
+    (seek-toward-heading-vec! (_type_ vector float time-frame) quaternion)
+    (set-heading-vec! (_type_ vector) quaternion)
+    (seek-to-point-toward-point! (_type_ vector float time-frame) quaternion)
+    (point-toward-point! (_type_ vector) quaternion)
+    (seek-toward-yaw-angle! (_type_ float float time-frame) quaternion)
+    (set-yaw-angle-clear-roll-pitch! (_type_ float) quaternion)
+    (set-roll-to-grav! (_type_ float) quaternion)
+    (set-roll-to-grav-2! (_type_ float) quaternion)
+    (rotate-toward-orientation! (_type_ quaternion float float int int float) quaternion)
+    (set-quaternion! (_type_ quaternion) quaternion)
+    (set-heading-vec-clear-roll-pitch! (_type_ vector) quaternion)
+    (point-toward-point-clear-roll-pitch! (_type_ vector) quaternion)
+    (rot->dir-targ! (_type_) quaternion)
+    (y-angle (_type_) float)
+    (global-y-angle-to-point (_type_ vector) float)
+    (relative-y-angle-to-point (_type_ vector) float)
+    (roll-relative-to-gravity (_type_) float)
+    (set-and-limit-velocity (_type_ int vector float) trsqv)
+    (get-quaternion (_type_) quaternion)
+    )
+  )
+
+
+(defmethod global-y-angle-to-point ((this trsqv) (arg0 vector))
+  "Get the angle in the xz plane from the position of this trsqv to the point arg0
+(ignores our current yaw)."
+  (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans)))
+  )
+
+(defmethod relative-y-angle-to-point ((this trsqv) (arg0 vector))
+  "Get the y angle between the current orientation and arg0
+(how much we'd have to yaw to point at arg0)."
+  (deg-diff (y-angle this) (vector-y-angle (vector-! (new 'stack-no-clear 'vector) arg0 (-> this trans))))
+  )

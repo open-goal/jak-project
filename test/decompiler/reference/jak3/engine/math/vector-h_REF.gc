@@ -1,0 +1,1035 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type bit-array
+(deftype bit-array (basic)
+  ((length            int32)
+   (allocated-length  int32)
+   (_pad              uint8)
+   (bytes             uint8  :dynamic :overlay-at _pad)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (get-bit (_type_ int) symbol)
+    (clear-bit (_type_ int) int)
+    (set-bit (_type_ int) int)
+    (clear-all! (_type_) _type_)
+    )
+  )
+
+;; definition for method 3 of type bit-array
+(defmethod inspect ((this bit-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type bit-array
+(defmethod new bit-array ((allocation symbol) (type-to-make type) (arg0 int))
+  "Allocate a new bit-array with room arg0 bits."
+  (let ((v0-0 (object-new allocation type-to-make (+ (/ (logand -8 (+ arg0 7)) 8) -1 (-> type-to-make size)))))
+    (set! (-> v0-0 length) arg0)
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 4 of type bit-array
+(defmethod length ((this bit-array))
+  (-> this length)
+  )
+
+;; definition for method 5 of type bit-array
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this bit-array))
+  (the-as int (+ (-> this type size) (/ (logand -8 (+ (-> this allocated-length) 7)) 8)))
+  )
+
+;; definition for method 9 of type bit-array
+(defmethod get-bit ((this bit-array) (arg0 int))
+  "Get the nth bit as a boolean."
+  (let ((v1-2 (-> this bytes (/ arg0 8))))
+    (logtest? v1-2 (ash 1 (logand arg0 7)))
+    )
+  )
+
+;; definition for method 10 of type bit-array
+(defmethod clear-bit ((this bit-array) (arg0 int))
+  "Set the nth bit to 0."
+  (logclear! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+;; definition for method 11 of type bit-array
+(defmethod set-bit ((this bit-array) (arg0 int))
+  "Set the nth bit to 1."
+  (logior! (-> this bytes (/ arg0 8)) (ash 1 (logand arg0 7)))
+  0
+  )
+
+;; definition for method 12 of type bit-array
+(defmethod clear-all! ((this bit-array))
+  "Set all bits to 0."
+  (countdown (v1-2 (/ (logand -8 (+ (-> this allocated-length) 7)) 8))
+    (nop!)
+    (nop!)
+    (set! (-> this bytes v1-2) (the-as uint 0))
+    )
+  this
+  )
+
+;; definition of type vector16ub
+(deftype vector16ub (structure)
+  ((data  uint8    16)
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector16ub
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector16ub))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector16ub)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> this data))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4ub
+(deftype vector4ub (structure)
+  ((data  uint8   4)
+   (x     uint8   :overlay-at (-> data 0))
+   (y     uint8   :overlay-at (-> data 1))
+   (z     uint8   :overlay-at (-> data 2))
+   (w     uint8   :overlay-at (-> data 3))
+   (clr   uint32  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector4ub
+(defmethod inspect ((this vector4ub))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4ub)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (format #t "~1Tw: ~D~%" (-> this w))
+  (format #t "~1Tclr: ~D~%" (-> this clr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4b
+(deftype vector4b (structure)
+  ((data  int8   4)
+   (x     int8   :overlay-at (-> data 0))
+   (y     int8   :overlay-at (-> data 1))
+   (z     int8   :overlay-at (-> data 2))
+   (w     int8   :overlay-at (-> data 3))
+   (clr   int32  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector4b
+(defmethod inspect ((this vector4b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4b)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (format #t "~1Tw: ~D~%" (-> this w))
+  (format #t "~1Tclr: ~D~%" (-> this clr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector2ub
+(deftype vector2ub (structure)
+  ((data  uint8   2)
+   (x     uint8   :overlay-at (-> data 0))
+   (y     uint8   :overlay-at (-> data 1))
+   (clr   uint16  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector2ub
+(defmethod inspect ((this vector2ub))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector2ub)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tclr: ~D~%" (-> this clr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector2b
+(deftype vector2b (structure)
+  ((data  int8   2)
+   (x     int8   :overlay-at (-> data 0))
+   (y     int8   :overlay-at (-> data 1))
+   (clr   int16  :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector2b
+(defmethod inspect ((this vector2b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector2b)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tclr: ~D~%" (-> this clr))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector2h
+(deftype vector2h (structure)
+  ((data  int16  2)
+   (x     int16  :overlay-at (-> data 0))
+   (y     int16  :overlay-at (-> data 1))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector2h
+(defmethod inspect ((this vector2h))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector2h)
+  (format #t "~1Tdata[2] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector2uh
+(deftype vector2uh (structure)
+  ((data  uint16  2)
+   (x     uint16  :overlay-at (-> data 0))
+   (y     uint16  :overlay-at (-> data 1))
+   (val   uint32  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector2uh
+(defmethod inspect ((this vector2uh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector2uh)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tval: ~D~%" (-> this val))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector3h
+(deftype vector3h (structure)
+  ((data  int16  3)
+   (x     int16  :overlay-at (-> data 0))
+   (y     int16  :overlay-at (-> data 1))
+   (z     int16  :overlay-at (-> data 2))
+   )
+  )
+
+;; definition for method 3 of type vector3h
+(defmethod inspect ((this vector3h))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector3h)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector3uh
+(deftype vector3uh (structure)
+  ((data  uint16  3)
+   (x     uint16  :overlay-at (-> data 0))
+   (y     uint16  :overlay-at (-> data 1))
+   (z     uint16  :overlay-at (-> data 2))
+   )
+  )
+
+;; definition for method 3 of type vector3uh
+(defmethod inspect ((this vector3uh))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector3uh)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector2w
+(deftype vector2w (structure)
+  ((data  int32  2)
+   (x     int32  :overlay-at (-> data 0))
+   (y     int32  :overlay-at (-> data 1))
+   )
+  )
+
+;; definition for method 3 of type vector2w
+(defmethod inspect ((this vector2w))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector2w)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector3w
+(deftype vector3w (structure)
+  ((data  int32  3)
+   (x     int32  :overlay-at (-> data 0))
+   (y     int32  :overlay-at (-> data 1))
+   (z     int32  :overlay-at (-> data 2))
+   )
+  )
+
+;; definition for method 3 of type vector3w
+(defmethod inspect ((this vector3w))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector3w)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4w
+(deftype vector4w (structure)
+  ((data   int32    4)
+   (x      int32      :overlay-at (-> data 0))
+   (y      int32      :overlay-at (-> data 1))
+   (z      int32      :overlay-at (-> data 2))
+   (w      int32      :overlay-at (-> data 3))
+   (dword  uint64   2 :overlay-at (-> data 0))
+   (quad   uint128    :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector4w
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector4w))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4w)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (format #t "~1Tw: ~D~%" (-> this w))
+  (format #t "~1Tdword[2] @ #x~X~%" (&-> this x))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector2
+(deftype vector2 (structure)
+  ((data  float  2)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type vector2
+(defmethod inspect ((this vector2))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector2)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector3
+(deftype vector3 (structure)
+  ((data  float  3)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   (z     float  :overlay-at (-> data 2))
+   )
+  )
+
+;; definition for method 3 of type vector3
+(defmethod inspect ((this vector3))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector3)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4
+(deftype vector4 (structure)
+  ((data   float    4)
+   (x      float      :overlay-at (-> data 0))
+   (y      float      :overlay-at (-> data 1))
+   (z      float      :overlay-at (-> data 2))
+   (w      float      :overlay-at (-> data 3))
+   (dword  uint64   2 :overlay-at (-> data 0))
+   (quad   uint128    :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector4
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector4))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tdword[2] @ #x~X~%" (&-> this x))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 2 of type vector4w
+(defmethod print ((this vector4w))
+  (format #t "#<vector4w ~D ~D ~D ~D @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
+  this
+  )
+
+;; definition of type vector4w-2
+(deftype vector4w-2 (structure)
+  ((data    int32     8)
+   (quad    uint128   2         :overlay-at (-> data 0))
+   (vector  vector4w  2 :inline :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector4w-2
+(defmethod inspect ((this vector4w-2))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4w-2)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> this vector))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> this vector))
+  (format #t "~1Tvector[2] @ #x~X~%" (-> this vector))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4w-3
+(deftype vector4w-3 (structure)
+  ((data    int32     12)
+   (quad    uint128   3         :overlay-at (-> data 0))
+   (vector  vector4w  3 :inline :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector4w-3
+(defmethod inspect ((this vector4w-3))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4w-3)
+  (format #t "~1Tdata[12] @ #x~X~%" (-> this vector))
+  (format #t "~1Tquad[3] @ #x~X~%" (-> this vector))
+  (format #t "~1Tvector[3] @ #x~X~%" (-> this vector))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4w-4
+(deftype vector4w-4 (structure)
+  ((data    int32     16)
+   (quad    uint128   4         :overlay-at (-> data 0))
+   (vector  vector4w  4 :inline :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector4w-4
+(defmethod inspect ((this vector4w-4))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4w-4)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> this vector))
+  (format #t "~1Tquad[4] @ #x~X~%" (-> this vector))
+  (format #t "~1Tvector[4] @ #x~X~%" (-> this vector))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector4h
+(deftype vector4h (structure)
+  ((data  int16   4)
+   (x     int16   :overlay-at (-> data 0))
+   (y     int16   :overlay-at (-> data 1))
+   (z     int16   :overlay-at (-> data 2))
+   (w     int16   :overlay-at (-> data 3))
+   (long  uint64  :overlay-at (-> data 0))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector4h
+(defmethod inspect ((this vector4h))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4h)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~D~%" (-> this x))
+  (format #t "~1Ty: ~D~%" (-> this y))
+  (format #t "~1Tz: ~D~%" (-> this z))
+  (format #t "~1Tw: ~D~%" (-> this w))
+  (format #t "~1Tlong: ~D~%" (-> this long))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector8h
+(deftype vector8h (structure)
+  ((data  int16    8)
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector8h
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector8h))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector8h)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> this data))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector16b
+(deftype vector16b (structure)
+  ((data  int8     16)
+   (quad  uint128  :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector16b
+;; INFO: Used lq/sq
+(defmethod inspect ((this vector16b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector16b)
+  (format #t "~1Tdata[16] @ #x~X~%" (-> this data))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 3 of type vector
+(defmethod inspect ((this vector))
+  (format #t "[~8x] vector~%" this)
+  (format #t "~T[~F] [~F] [~F] [~F]~%" (-> this x) (-> this y) (-> this z) (-> this w))
+  (format #t "~T(static-vectorm ~M ~M ~M)~%" (-> this x) (-> this y) (-> this z))
+  this
+  )
+
+;; definition for method 2 of type vector
+(defmethod print ((this vector))
+  (format #t "#<vector ~F ~F ~F ~F @ #x~X>" (-> this x) (-> this y) (-> this z) (-> this w) this)
+  this
+  )
+
+;; definition for symbol *null-vector*, type vector
+(define *null-vector* (new 'static 'vector :w 1.0))
+
+;; definition for symbol *identity-vector*, type vector
+(define *identity-vector* (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+
+;; definition for symbol *x-vector*, type vector
+(define *x-vector* (new 'static 'vector :x 1.0 :w 1.0))
+
+;; definition for symbol *y-vector*, type vector
+(define *y-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+;; definition for symbol *z-vector*, type vector
+(define *z-vector* (new 'static 'vector :z 1.0 :w 1.0))
+
+;; definition for symbol *up-vector*, type vector
+(define *up-vector* (new 'static 'vector :y 1.0 :w 1.0))
+
+;; definition of type vector4s-3
+(deftype vector4s-3 (structure)
+  ((data    float    12)
+   (quad    uint128  3         :overlay-at (-> data 0))
+   (vector  vector   3 :inline :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type vector4s-3
+(defmethod inspect ((this vector4s-3))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector4s-3)
+  (format #t "~1Tdata[12] @ #x~X~%" (-> this data))
+  (format #t "~1Tquad[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tvector[3] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector-array
+(deftype vector-array (inline-array-class)
+  ((data  vector  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type vector-array
+(defmethod inspect ((this vector-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> vector-array heap-base) (the-as uint 16))
+
+;; definition of type rgbaf
+(deftype rgbaf (vector)
+  ((r  float  :overlay-at (-> data 0))
+   (g  float  :overlay-at (-> data 1))
+   (b  float  :overlay-at (-> data 2))
+   (a  float  :overlay-at (-> data 3))
+   )
+  )
+
+;; definition for method 3 of type rgbaf
+;; INFO: Used lq/sq
+(defmethod inspect ((this rgbaf))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'rgbaf)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (format #t "~1Tr: ~f~%" (-> this x))
+  (format #t "~1Tg: ~f~%" (-> this y))
+  (format #t "~1Tb: ~f~%" (-> this z))
+  (format #t "~1Ta: ~f~%" (-> this w))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type plane
+(deftype plane (vector)
+  ((a  float  :overlay-at (-> data 0))
+   (b  float  :overlay-at (-> data 1))
+   (c  float  :overlay-at (-> data 2))
+   (d  float  :overlay-at (-> data 3))
+   )
+  )
+
+;; definition for method 3 of type plane
+;; INFO: Used lq/sq
+(defmethod inspect ((this plane))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'plane)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this w))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (format #t "~1Ta: ~f~%" (-> this x))
+  (format #t "~1Tb: ~f~%" (-> this y))
+  (format #t "~1Tc: ~f~%" (-> this z))
+  (format #t "~1Td: ~f~%" (-> this w))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type sphere
+(deftype sphere (vector)
+  ((r  float  :overlay-at (-> data 3))
+   )
+  )
+
+;; definition for method 3 of type sphere
+;; INFO: Used lq/sq
+(defmethod inspect ((this sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'sphere)
+  (format #t "~1Tdata[4] @ #x~X~%" (&-> this x))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (format #t "~1Tw: ~f~%" (-> this r))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (format #t "~1Tr: ~f~%" (-> this r))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type isphere
+(deftype isphere (vec4s)
+  ()
+  )
+
+;; definition of type box8s
+(deftype box8s (structure)
+  ((data    float    8)
+   (quad    uint128  2       :overlay-at (-> data 0))
+   (vector  vector   2       :overlay-at (-> data 0))
+   (min     vector   :inline :overlay-at (-> data 0))
+   (max     vector   :inline :overlay-at (-> data 4))
+   )
+  )
+
+;; definition for method 3 of type box8s
+(defmethod inspect ((this box8s))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'box8s)
+  (format #t "~1Tdata[8] @ #x~X~%" (-> this data))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tvector[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tmin: #<vector @ #x~X>~%" (-> this data))
+  (format #t "~1Tmax: #<vector @ #x~X>~%" (-> this max))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type box8s-array
+(deftype box8s-array (inline-array-class)
+  ((data  box8s  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type box8s-array
+(defmethod inspect ((this box8s-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> box8s-array heap-base) (the-as uint 32))
+
+;; definition of type vertical-planes
+(deftype vertical-planes (structure)
+  ((data  uint128  4)
+   )
+  )
+
+;; definition for method 3 of type vertical-planes
+(defmethod inspect ((this vertical-planes))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vertical-planes)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vertical-planes-array
+(deftype vertical-planes-array (basic)
+  ((length  uint32)
+   (data    vertical-planes  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type vertical-planes-array
+(defmethod inspect ((this vertical-planes-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type qword
+(deftype qword (structure)
+  ((data      uint32    4)
+   (byte      uint8     16      :overlay-at (-> data 0))
+   (hword     uint16    8       :overlay-at (-> data 0))
+   (word      uint32    4       :overlay-at (-> data 0))
+   (dword     uint64    2       :overlay-at (-> data 0))
+   (quad      uint128           :overlay-at (-> data 0))
+   (vector    vector    :inline :overlay-at (-> data 0))
+   (vector4w  vector4w  :inline :overlay-at (-> data 0))
+   )
+  )
+
+;; definition for method 3 of type qword
+;; INFO: Used lq/sq
+(defmethod inspect ((this qword))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'qword)
+  (format #t "~1Tdata[4] @ #x~X~%" (-> this data))
+  (format #t "~1Tbyte[16] @ #x~X~%" (-> this data))
+  (format #t "~1Thword[8] @ #x~X~%" (-> this data))
+  (format #t "~1Tword[4] @ #x~X~%" (-> this data))
+  (format #t "~1Tdword[2] @ #x~X~%" (-> this data))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (format #t "~1Tvector: #<vector @ #x~X>~%" (-> this data))
+  (format #t "~1Tvector4w: #<vector4w @ #x~X>~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type vector3s
+(deftype vector3s (structure)
+  ((data  float  3)
+   (x     float  :overlay-at (-> data 0))
+   (y     float  :overlay-at (-> data 1))
+   (z     float  :overlay-at (-> data 2))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type vector3s
+(defmethod inspect ((this vector3s))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'vector3s)
+  (format #t "~1Tdata[3] @ #x~X~%" (-> this data))
+  (format #t "~1Tx: ~f~%" (-> this x))
+  (format #t "~1Ty: ~f~%" (-> this y))
+  (format #t "~1Tz: ~f~%" (-> this z))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function vector-dot
+(defun vector-dot ((arg0 vector) (arg1 vector))
+  "Take the dot product of two vectors.
+   Only does the x, y, z compoments.
+   Originally handwritten assembly to space out loads and use FPU accumulator"
+  (vector-dot arg0 arg1)
+  )
+
+;; definition for function vector-dot-vu
+(defun vector-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyz only). Using VU0."
+  (local-vars (v0-0 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.y.vf vf1 vf1 vf1 :mask #b1)
+    (.add.z.vf vf1 vf1 vf1 :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector4-dot
+(defun vector4-dot ((arg0 vector) (arg1 vector))
+  "Take the dot product of two vectors.
+   Does the x, y, z, and w compoments"
+  (vector4-dot arg0 arg1)
+  )
+
+;; definition for function vector4-dot-vu
+(defun vector4-dot-vu ((arg0 vector) (arg1 vector))
+  "Take the dot product (xyzw). Using VU0."
+  (local-vars (v0-0 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.lvf vf1 (&-> arg0 quad))
+    (.lvf vf2 (&-> arg1 quad))
+    (.mul.vf vf1 vf1 vf2)
+    (.add.w.vf vf3 vf0 vf0 :mask #b1)
+    (.mul.x.vf acc vf3 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.z.vf acc vf3 vf1 acc :mask #b1)
+    (.add.mul.w.vf vf1 vf3 vf1 acc :mask #b1)
+    (.mov v0-0 vf1)
+    v0-0
+    )
+  )
+
+;; definition for function vector+!
+(defun vector+! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Set dst = a + b. The w component of dst is set to 0."
+  (vector+! arg0 arg1 arg2)
+  )
+
+;; definition for function vector-!
+(defun vector-! ((arg0 vector) (arg1 vector) (arg2 vector))
+  "Set dst = a - b. The w componenent of dst is set to 0."
+  (vector-! arg0 arg1 arg2)
+  )
+
+;; definition for function vector-zero!
+;; INFO: Used lq/sq
+(defun vector-zero! ((arg0 vector))
+  "Set xyzw to 0."
+  (set! (-> arg0 quad) (the-as uint128 0))
+  arg0
+  )
+
+;; definition for function vector-reset!
+(defun vector-reset! ((arg0 vector))
+  "Set vector to <0,0,0,1>."
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (.svf (&-> arg0 quad) vf0)
+    arg0
+    )
+  )
+
+;; definition for function vector-copy!
+;; INFO: Used lq/sq
+(defun vector-copy! ((arg0 vector) (arg1 vector))
+  "Copy arg1 to arg0."
+  (set! (-> arg0 quad) (-> arg1 quad))
+  arg0
+  )
+
+;; definition for function vector-length<
+(defun vector-length< ((arg0 vector) (arg1 float))
+  (let ((f0-0 (vector-length-squared arg0))
+        (f1-0 arg1)
+        )
+    (< f0-0 (* f1-0 f1-0))
+    )
+  )
+
+;; definition for function vector-length>
+(defun vector-length> ((arg0 vector) (arg1 float))
+  (< (* arg1 arg1) (vector-length-squared arg0))
+  )
+
+;; definition for symbol *zero-vector*, type vector
+(define *zero-vector* (new 'static 'vector))
+
+;; failed to figure out what this is:
+0

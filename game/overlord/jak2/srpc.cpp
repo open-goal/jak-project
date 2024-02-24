@@ -176,7 +176,6 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             PauseVAG(vs, 1);
           }
         }
-        // TODO vag
       } break;
       case Jak2SoundCommand::stop_sound: {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
@@ -188,7 +187,6 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             StopVagStream(vs, 1);
           }
         }
-        // TODO vag
       } break;
       case Jak2SoundCommand::continue_sound: {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
@@ -200,7 +198,6 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             UnPauseVAG(vs, 1);
           }
         }
-        // TODO vag
       } break;
       case Jak2SoundCommand::set_param: {
         Sound* sound = LookupSound(cmd->sound_id.sound_id);
@@ -271,9 +268,24 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
             if (mask & 0x2) {
               SetVAGStreamPitch(cmd->param.sound_id, cmd->param.parms.pitch_mod);
             }
+            if (mask & 0x20) {
+              vs->vec3 = cmd->param.parms.trans;
+              vs->unk_296 = 1;
+            }
+            if (mask & 0x40) {
+              vs->fo_min = cmd->param.parms.fo_min;
+            }
+            if (mask & 0x80) {
+              vs->fo_max = cmd->param.parms.fo_max;
+            }
+            if (mask & 0x100) {
+              vs->fo_curve = cmd->param.parms.fo_curve;
+            }
+            if (mask & 0x1) {
+              vs->vol_multiplier = cmd->param.parms.volume;
+            }
           }
         }
-        // TODO vag
       } break;
       case Jak2SoundCommand::set_master_volume: {
         u32 group = cmd->master_volume.group.group;
@@ -312,7 +324,7 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
           local_178.header.thread_id = 0;
           local_178.vag_dir_entry = nullptr;
           local_178.name[0] = '\0';
-          local_178.unk_136 = 0;
+          local_178.sound_handler = 0;
           local_178.id = 0;
           local_178.priority = 0;
           StopVagStream(&local_178, 1);

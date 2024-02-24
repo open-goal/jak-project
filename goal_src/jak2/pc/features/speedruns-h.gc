@@ -1,6 +1,81 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+;; TEST - safe with malformed entries
+
+(deftype speedrun-timer (process)
+  ((draw? symbol)
+   (started? symbol)
+   (stopped? symbol)
+   (start-time time-frame)
+   (end-time time-frame)
+   (recorded-time float))
+  (:methods
+    (draw-timer (_type_) none :behavior speedrun-timer)
+    (start! (_type_) none :behavior speedrun-timer)
+    (reset! (_type_) none :behavior speedrun-timer)
+    (stop! (_type_) float :behavior speedrun-timer))
+  (:state-methods
+    idle))
+
+(defbehavior speedrun-timer-init speedrun-timer ()
+  (set! (-> self draw?) #f)
+  (set! (-> self started?) #f)
+  (set! (-> self start-time) 0)
+  (set! (-> self end-time) 0)
+  (set! (-> self recorded-time) 0.0)
+  (go-virtual idle)
+  (none))
+
+(defstate idle (speedrun-timer)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (when (-> self draw?) (draw-timer self))
+      (suspend))
+    (none)))
+
+;; TODO - put in util
+(deftype objective-zone (process)
+  ((start? symbol)
+   (v1 vector :inline)
+   (v2 vector :inline)
+   (on-enter (function none))
+   (on-exit (function none)))
+  (:methods
+    (draw-zone (_type_) none))
+  (:state-methods
+    waiting-for-player
+    player-inside))
+
+(deftype objective-zone-init-params (structure)
+  ((v1 vector :inline)
+   (v2 vector :inline)))
+
+(defenum speedrun-practice-flags
+  :type uint64
+  (none 0))
+
+;; reset method
+(deftype speedrun-practice-objective (structure)
+  ((index int32 :offset-assert 0)
+   (flags speedrun-practice-flags :offset-assert 8)
+   (completed-task game-task :offset-assert 16)
+   (features game-feature :offset-assert 24)
+   (secrets game-secrets :offset-assert 32)
+   (starting-position vector :offset-assert 36)
+   (starting-rotation vector :offset-assert 40)
+   (starting-camera-position vector :offset-assert 44)
+   (starting-camera-rotation matrix :offset-assert 48)
+   (end-task game-task :offset-assert 52)
+   (start-zone-init-params objective-zone-init-params :offset-assert 56)
+   (start-zone (pointer objective-zone) :offset-assert 60)
+   (end-zone-init-params objective-zone-init-params :offset-assert 64)
+   (end-zone (pointer objective-zone) :offset-assert 68))
+  (:methods
+   (draw-info (_type_) none)
+   (reset! (_type_) none)))
+
 
 (defenum speedrun-category
   :type uint32
@@ -13,18 +88,31 @@
   ;; ie. removing mars tomb skip if you pick "all missions"
   ;; Random one for experimentation
   (all-cheats-allowed 999)
-  )
+  (custom 9999))
+
+(deftype speedrun-custom-category (structure)
+  ((index int32 :offset-assert 0)
+   (secrets game-secrets :offset-assert 4)
+   (features game-feature :offset-assert 8)
+   (forbidden-features game-feature :offset-assert 16)
+   (pc-cheats pc-cheats :offset-assert 24)
+   (completed-task game-task :offset-assert 32)))
 
 (deftype speedrun-info (structure)
   ((category speedrun-category)
-   (display-run-info? symbol))
+   (active-custom-category speedrun-custom-category)
+   (dump-custom-category speedrun-custom-category)
+   (display-run-info? symbol)
+   (practicing? symbol)
+   (active-practice-objective speedrun-practice-objective)
+   (waiting-to-record-practice-attempt? symbol)
+   (run-started-at time-frame))
   (:methods
     (set-category! (_type_ speedrun-category) none)
     (start-run! (_type_) none)
     (enforce-settings! (_type_) none)
-    (hide-run-info! (_type_) none)
     (update! (_type_) none)
-    (draw-run-info! (_type_) none)))
+    (draw-run-info (_type_) none)))
 
 (define-extern *speedrun-info* speedrun-info)
 
@@ -33,16 +121,14 @@
   (reset 0)
   (exit 1))
 
-(deftype speedrun-menu (process-drawable)
-  ((popup-menu popup-menu)
-   (draw-menu? symbol)
+(deftype speedrun-manager (process)
+  ((popup-menu (pointer popup-menu))
    (ignore-menu-toggle? symbol)
-   (opened-with-start? symbol))
+   (opened-with-start? symbol)
+   (timer (pointer speedrun-timer)))
   (:methods
-    (draw! (_type_) none))
-  (:states
+    (draw-menu (_type_) none))
+  (:state-methods
     idle))
 
-(define-extern *speedrun-popup-menu* popup-menu)
-(define-extern *speedrun-menu* (pointer speedrun-menu))
-(define-extern speedrun-menu-init (function none :behavior speedrun-menu))
+(define-extern *speedrun-manager* (pointer speedrun-manager))

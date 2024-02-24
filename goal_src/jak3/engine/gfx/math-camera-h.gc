@@ -5,5 +5,115 @@
 ;; name in dgo: math-camera-h
 ;; dgos: GAME
 
+#|@file
+The "math-camera" is responsible for computing the projection matrix used in the renderer
+from the position of the in-game camera. It also computes some other common camera info.
+See cam-update.gc for how the game camera updates the math-camera.
+
+It also contains some GIF stuff, but these seem to be wrong/unused.
+Some of the code here may be extremely old and unused, but this does compute the camera projection
+matrix used almost everywhere.
+|#
+
 ;; DECOMP BEGINS
 
+(deftype vis-gif-tag (structure)
+  "Unused."
+  ((fog0   uint32)
+   (strip  uint32)
+   (regs   uint32)
+   (fan    uint32)
+   )
+  )
+
+
+(deftype cull-info (structure)
+  "Also seems unused."
+  ((x-fact       float)
+   (y-fact       float)
+   (z-fact       float)
+   (cam-radius   float)
+   (cam-x        float)
+   (cam-y        float)
+   (xz-dir-ax    float)
+   (xz-dir-az    float)
+   (xz-dir-bx    float)
+   (xz-dir-bz    float)
+   (xz-cross-ab  float)
+   (yz-dir-ay    float)
+   (yz-dir-az    float)
+   (yz-dir-by    float)
+   (yz-dir-bz    float)
+   (yz-cross-ab  float)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype math-camera (basic)
+  ((d                           meters)
+   (f                           meters)
+   (fov                         degrees)
+   (x-ratio                     float)
+   (y-ratio                     float)
+   (x-pix                       float)
+   (x-clip                      float)
+   (x-clip-ratio-in             float)
+   (x-clip-ratio-over           float)
+   (y-pix                       float)
+   (y-clip                      float)
+   (y-clip-ratio-in             float)
+   (y-clip-ratio-over           float)
+   (cull-info                   cull-info    :inline)
+   (fog-start                   meters)
+   (fog-end                     meters)
+   (fog-max                     float)
+   (fog-min                     float)
+   (reset                       int32)
+   (smooth-step                 float)
+   (smooth-t                    float)
+   (perspective                 matrix       :inline)
+   (isometric                   matrix       :inline)
+   (sprite-2d                   matrix       :inline)
+   (sprite-2d-hvdf              vector       :inline)
+   (camera-rot                  matrix       :inline)
+   (inv-camera-rot              matrix       :inline)
+   (inv-camera-rot-smooth       matrix       :inline)
+   (inv-camera-rot-smooth-from  quaternion   :inline)
+   (camera-temp                 matrix       :inline)
+   (prev-camera-temp            matrix       :inline)
+   (prev-inv-camera-rot         matrix       :inline)
+   (prev-trans                  vector       :inline)
+   (hmge-scale                  vector       :inline)
+   (inv-hmge-scale              vector       :inline)
+   (hvdf-off                    vector       :inline)
+   (guard                       vector       :inline)
+   (vis-gifs                    vis-gif-tag  4)
+   (giftex                      uint128      :overlay-at (-> vis-gifs 0))
+   (gifgr                       uint128      :offset 864)
+   (giftex-trans                uint128      :offset 880)
+   (gifgr-trans                 uint128      :offset 896)
+   (pfog0                       float)
+   (pfog1                       float)
+   (trans                       vector       :inline)
+   (plane                       plane        4 :inline)
+   (guard-plane                 plane        4 :inline)
+   (shrub-mat                   matrix       :inline)
+   (quat-other                  quaternion   :inline)
+   (trans-other                 vector       :inline)
+   (shrub-mat-other             matrix       :inline)
+   (camera-temp-other           matrix       :inline)
+   (camera-rot-other            matrix       :inline)
+   (camera-rot-other-sky        matrix       :inline)
+   (camera-rot-other-sprite     matrix       :inline)
+   (inv-camera-rot-other        matrix       :inline)
+   (plane-other                 plane        4 :inline)
+   (guard-plane-other           plane        4 :inline)
+   (mirror-trans                vector       :inline)
+   (mirror-normal               vector       :inline)
+   (fov-correction-factor       float)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )

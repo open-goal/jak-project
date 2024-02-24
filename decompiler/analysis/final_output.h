@@ -18,7 +18,7 @@ std::string write_from_top_level(const Function& top_level,
                                  const std::unordered_set<std::string>& skip_functions);
 
 goos::Object get_arg_list_for_function(const Function& func, const Env& env);
-goos::Object final_output_lambda(const Function& function);
+goos::Object final_output_lambda(const Function& function, GameVersion version);
 goos::Object final_output_defstate_anonymous_behavior(const Function& func,
                                                       const DecompilerTypeSystem& dts);
 }  // namespace decompiler

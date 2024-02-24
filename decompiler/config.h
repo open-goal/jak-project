@@ -121,6 +121,7 @@ struct Config {
   bool extract_collision = false;
   bool find_functions = false;
   bool read_spools = false;
+  bool ignore_var_name_casts = false;
 
   bool write_hex_near_instructions = false;
   bool hexdump_code = false;
@@ -178,6 +179,8 @@ struct Config {
   std::unordered_map<std::string, std::string> joint_node_hacks;
 
   std::unordered_map<std::string, std::vector<std::string>> import_deps_by_file;
+
+  bool rip_collision = false;
 };
 
 Config read_config_file(const fs::path& path_to_config_file,

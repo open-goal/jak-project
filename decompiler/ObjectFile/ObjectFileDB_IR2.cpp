@@ -10,6 +10,7 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
+#include "common/util/string_util.h"
 
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/analyze_inspect_method.h"
@@ -319,7 +320,11 @@ void ObjectFileDB::ir2_top_level_pass(const Config& config) {
 void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
                                          const std::optional<std::string>& previous_game_types,
                                          const std::unordered_set<std::string>& bad_types) {
-  std::vector<PerObjectAllTypeInfo> per_object;
+  auto is_code_file = [](ObjectFileData& data) {
+    return (data.obj_version == 3 ||
+            (data.obj_version == 5 && data.linked_data.has_any_functions()));
+  };
+  std::unordered_map<std::string, PerObjectAllTypeInfo> per_object;
 
   DecompilerTypeSystem previous_game_ts(GameVersion::Jak2);  // version here doesn't matter.
   if (previous_game_types) {
@@ -328,16 +333,66 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
 
   TypeInspectorCache ti_cache;
 
+  // Do a first pass to initialize all types and symbols
   for_each_obj([&](ObjectFileData& data) {
-    if (data.obj_version == 3 || (data.obj_version == 5 && data.linked_data.has_any_functions())) {
-      auto& object_result = per_object.emplace_back();
-      object_result.object_name = data.to_unique_name();
-
+    if (is_code_file(data)) {
+      per_object[data.to_unique_name()] = PerObjectAllTypeInfo();
       // Go through the top-level segment first to identify the type names associated with each
       // symbol def
       for_each_function_in_seg_in_obj(TOP_LEVEL_SEGMENT, data, [&](Function& f) {
-        inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts, object_result);
+        inspect_top_level_for_metadata(f, data.linked_data, dts, previous_game_ts,
+                                       per_object.at(data.to_unique_name()));
       });
+    }
+  });
+
+  // Guess at non-virtual state type's:
+  //
+  // Collect all type names, since the DTS doesn't know the actual type tree (all-types is empty!)
+  // we can't filter by what is actually a process type (with existing code).
+  std::unordered_map<std::string, std::vector<std::string>> all_type_names;
+  for (auto& [obj_name, obj_info] : per_object) {
+    for (const auto& type_name : obj_info.type_names_in_order) {
+      if (all_type_names.find(obj_name) == all_type_names.end()) {
+        all_type_names[obj_name] = {};
+      }
+      all_type_names[obj_name].push_back(type_name);
+    }
+  }
+
+  std::unordered_map<std::string, std::string> state_to_type_map;
+  for (auto& [obj_name, obj_info] : per_object) {
+    for (const auto& [sym_name, sym_type] : obj_info.symbol_types) {
+      if (sym_type == "state") {
+        int longest_match_length = 0;
+        std::string longest_match = "";
+        std::string longest_match_object_name = "";
+        // Make a best effort guess by finding the longest prefix match
+        for (const auto& [obj_name, type_names] : all_type_names) {
+          for (const auto& type_name : type_names) {
+            if (str_util::starts_with(sym_name, type_name) &&
+                (int)type_name.length() > longest_match_length) {
+              longest_match_length = type_name.length();
+              longest_match = type_name;
+              longest_match_object_name = obj_name;
+            }
+          }
+        }
+        if (longest_match != "") {
+          if (per_object.find(longest_match_object_name) != per_object.end()) {
+            per_object.at(longest_match_object_name).non_virtual_state_guesses[sym_name] =
+                longest_match;
+            obj_info.already_seen_symbols.insert(sym_name);
+          }
+        }
+      }
+    }
+  }
+
+  // Then another to actually setup the definitions
+  for_each_obj([&](ObjectFileData& data) {
+    if (is_code_file(data)) {
+      auto& object_result = per_object.at(data.to_unique_name());
 
       // Handle the top level last, which is fine as all symbol_defs are always written after
       // typedefs
@@ -368,21 +423,27 @@ void ObjectFileDB::ir2_analyze_all_types(const fs::path& output_file,
     }
   });
 
+  // Output result
+
   std::string result;
   result += ";; All Types\n\n";
 
-  for (auto& obj : per_object) {
-    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
-    result += fmt::format(";; {:30s} ;;\n", obj.object_name);
-    result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
-    for (const auto& type_name : obj.type_names_in_order) {
-      auto& info = obj.type_info.at(type_name);
-      result += info.type_definition;
+  for_each_obj([&](ObjectFileData& data) {
+    if (is_code_file(data)) {
+      auto& obj = per_object.at(data.to_unique_name());
+
+      result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+      result += fmt::format(";; {:30s} ;;\n", data.name_in_dgo);
+      result += fmt::format(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n\n");
+      for (const auto& type_name : obj.type_names_in_order) {
+        auto& info = obj.type_info.at(type_name);
+        result += info.type_definition;
+        result += "\n";
+      }
+      result += obj.symbol_defs;
       result += "\n";
     }
-    result += obj.symbol_defs;
-    result += "\n";
-  }
+  });
 
   file_util::write_text_file(output_file, result);
 }
@@ -594,8 +655,8 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         }
 
         constexpr bool kForceNewTypes = false;
-        if (config.game_version == GameVersion::Jak2 || kForceNewTypes) {
-          // use new types for jak 2 always
+        if (config.game_version != GameVersion::Jak1 || kForceNewTypes) {
+          // use new types for jak 2/3 always
           types2::Input in;
           types2::Output out;
           in.func = &func;
@@ -749,7 +810,7 @@ void ObjectFileDB::ir2_insert_lets(int seg, ObjectFileData& data) {
             "Error while inserting lets: {}. Make sure that the return type is not "
             "none if something is actually returned.",
             e.what());
-        lg::warn(err);
+        lg::warn("{}", err);
         func.warnings.error(err);
       }
     }

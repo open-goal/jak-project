@@ -60,9 +60,9 @@ void mc_print(const std::string& str, Args&&... args) {
   if (memcard_debug) {
     fmt::print("[MC] ");
     if (!str.empty() && str.back() == '\n') {
-      fmt::print(str, std::forward<Args>(args)...);
+      fmt::print(fmt::runtime(str), std::forward<Args>(args)...);
     } else {
-      fmt::print(str + '\n', std::forward<Args>(args)...);
+      fmt::print(fmt::runtime(str + '\n'), std::forward<Args>(args)...);
     }
   }
 }

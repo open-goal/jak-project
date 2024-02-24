@@ -36,6 +36,10 @@ Matcher Matcher::reg(Register reg) {
   return m;
 }
 
+Matcher Matcher::s6() {
+  return Matcher::reg(Register(Reg::GPR, Reg::S6));
+}
+
 Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;

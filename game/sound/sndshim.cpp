@@ -214,7 +214,7 @@ snd::BankHandle snd_BankLoadEx(const char* filename,
   if (player) {
     // TODO put the load on the thread pool?
     auto file_buf = file_util::read_binary_file(std::string(filename));
-    return player->LoadBank(nonstd::span(file_buf).subspan(offset));
+    return player->LoadBank(std::span(file_buf).subspan(offset));
   } else {
     return 0;
   }
