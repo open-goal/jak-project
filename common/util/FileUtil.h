@@ -33,6 +33,7 @@ fs::path get_user_settings_dir(GameVersion game_version);
 fs::path get_user_memcard_dir(GameVersion game_version);
 fs::path get_user_screenshots_dir(GameVersion game_version);
 fs::path get_user_misc_dir(GameVersion game_version);
+fs::path get_user_features_dir(GameVersion game_version);
 fs::path get_jak_project_dir();
 
 bool create_dir_if_needed(const fs::path& path);

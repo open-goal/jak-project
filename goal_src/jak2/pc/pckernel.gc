@@ -739,7 +739,7 @@
     (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
-    (("cheats-backup") (set! (-> obj cheats-backup) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
@@ -790,7 +790,6 @@
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
-  (format file "  (cheats-backup #x~x)~%" (-> obj cheats-backup))
 
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
@@ -836,7 +835,7 @@
 
 (defun draw-build-revision ()
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
-                               (bucket-id debug-no-zbuf1))
+                               (bucket-id debug-no-zbuf2))
     ;; reset bucket settings prior to drawing - font won't do this for us, and
     ;; draw-raw-image can sometimes mess them up.
     (dma-buffer-add-gs-set-flusha buf
@@ -846,8 +845,8 @@
     (clear *temp-string*)
     (format *temp-string* "<COLOR_WHITE>~S" *pc-settings-built-sha*)
     (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
-    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 2 403 0.0 (font-color default) (font-flags shadow kerning large))))
-        (set! (-> font-ctx scale) 0.325)
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 2 406 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.25)
         (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
 
 

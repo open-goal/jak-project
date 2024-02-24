@@ -114,6 +114,7 @@ set(RUNTIME_SOURCE
         kernel/jak2/klink.cpp
         kernel/jak2/klisten.cpp
         kernel/jak2/kmachine.cpp
+        kernel/jak2/kmachine_extras.cpp
         kernel/jak2/kmalloc.cpp
         kernel/jak2/kprint.cpp
         kernel/jak2/kscheme.cpp

@@ -250,7 +250,9 @@
        )
      )
     (('menu)
-     (set-master-mode (cond
+     ;; og:preserve-this Let the popup menu code handle inputs instead of the code written for the original debug menu
+     (when (not *popup-menu-open*)
+      (set-master-mode (cond
                         ((and *debug-segment* (cpad-hold? 0 l3) (cpad-pressed? 0 select start))
                          'menu
                          )
@@ -270,7 +272,7 @@
                           *master-mode*
                           )
                         )
-                      )
+                      ))
      (set! *pause-lock* #f)
      )
     (('pause)
@@ -922,9 +924,11 @@
 
     ;; draw and update menus
     (with-profiler 'menu-hook *profile-menu-hook-color*
-      (*menu-hook*)
-      (when *speedrun-menu*
-        (draw! (-> *speedrun-menu* 0)))
+      ;; og:preserve-this Let the popup menu code handle inputs instead of the code written for the original debug menu
+      (when (not *popup-menu-open*)
+        (*menu-hook*))
+      (when *speedrun-manager*
+        (draw-menu (-> *speedrun-manager* 0)))
       )
 
     ;; load text files as needed from the menu update
