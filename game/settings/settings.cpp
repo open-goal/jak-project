@@ -40,7 +40,7 @@ DebugSettings::DebugSettings() {
     if (!file_util::file_exists(file_path)) {
       return;
     }
-    lg::info("Loading display settings at {}", file_path);
+    lg::info("Loading debug settings at {}", file_path);
     auto raw = file_util::read_text_file(file_path);
     from_json(parse_commented_json(raw, "debug-settings.json"), *this);
   } catch (std::exception& e) {
@@ -123,7 +123,7 @@ InputSettings::InputSettings() {
     if (!file_util::file_exists(file_path)) {
       return;
     }
-    lg::info("Loading display settings at {}", file_path);
+    lg::info("Loading input settings at {}", file_path);
     auto raw = file_util::read_text_file(file_path);
     from_json(parse_commented_json(raw, "input-settings.json"), *this);
   } catch (std::exception& e) {
