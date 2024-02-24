@@ -18,10 +18,10 @@
               )
 
 (defskelgroup skel-jchar-normal jakb jakb-lod0-jg -1
-              ((3 (meters 999999)))
+              ((jak-ext-geo-c+0-jakclod0-skirt-cg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
-              :shadow 4
+              :shadow jak-ext-geo-c+0-jakclod0-sash-cg
               :texture-level 10
               :origin-joint-index 3
               :shadow-joint-index 3
@@ -29,7 +29,7 @@
               )
 
 (defskelgroup skel-jchar-old jakb jakb-lod0-jg -1
-              ((6 (meters 999999)))
+              ((jakb-old-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :texture-level 10
@@ -39,10 +39,10 @@
               )
 
 (defskelgroup skel-jchar-c jakb jakb-lod0-jg -1
-              ((8 (meters 999999)))
+              ((jakb-c-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
-              :shadow 9
+              :shadow jakb-c-shadow-mg
               :texture-level 10
               :origin-joint-index 3
               :shadow-joint-index 3
@@ -101,8 +101,8 @@
                )
               )
 
-(defskelgroup skel-jchar-wings jakb 537 -1
-              ((538 (meters 999999)))
+(defskelgroup skel-jchar-wings jakb jakb-wings-wings-lod0-jg -1
+              ((jakb-wings-wings-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :shadow jakb-walk-down-ja
@@ -113,8 +113,8 @@
               :light-index 4
               )
 
-(defskelgroup skel-jchar-shield jakb 548 -1
-              ((549 (meters 999999)))
+(defskelgroup skel-jchar-shield jakb jakb-shield-shield-lod0-jg -1
+              ((jakb-shield-shield-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :texture-level 10
@@ -149,7 +149,7 @@
               :shadow jakc-highres-shadow-mg
               :origin-joint-index 3
               :shadow-joint-index 3
-              :clothing (((mesh 3)
+              :clothing (((mesh jakc-highres-jakcfma0-skirt-cg)
                 (gravity-constant (meters 16))
                 (wind-constant 0.5)
                 (cloth-width 13)
@@ -164,7 +164,7 @@
                 (num-iterations 1)
                 (timestep-frequency 7)
                 )
-               ((mesh 4)
+               ((mesh jakc-highres-jakcfma0-sash-cg)
                 (gravity-constant (meters 32))
                 (wind-constant 0.75)
                 (cloth-width 6)
@@ -179,7 +179,7 @@
                 (num-iterations 1)
                 (timestep-frequency 7)
                 )
-               ((mesh 5)
+               ((mesh jakc-highres-jakcfma0-scarf-cg)
                 (gravity-constant (meters 16))
                 (wind-constant 1.25)
                 (cloth-width 6)
@@ -1146,30 +1146,28 @@
 
 ;; WARN: Return type mismatch art-group vs skeleton-group.
 (defun target-skel-group ()
-  (the-as
-    skeleton-group
-    (cond
-      (*target*
-        (case (-> *target* ext-geo)
-          ((4)
-           (art-group-get-by-name *level* "skel-jchar-normal" (the-as (pointer uint32) #f))
-           )
-          ((5)
-           (art-group-get-by-name *level* "skel-jchar-old" (the-as (pointer uint32) #f))
-           )
-          ((6)
-           (art-group-get-by-name *level* "skel-jchar-c" (the-as (pointer uint32) #f))
-           )
-          (else
-            (art-group-get-by-name *level* "skel-jchar" (the-as (pointer uint32) #f))
-            )
+  (the-as skeleton-group (cond
+                           (*target*
+                             (case (-> *target* ext-geo)
+                               (((target-geo jakb))
+                                (art-group-get-by-name *level* "skel-jchar-normal" (the-as (pointer level) #f))
+                                )
+                               (((target-geo jakb-old))
+                                (art-group-get-by-name *level* "skel-jchar-old" (the-as (pointer level) #f))
+                                )
+                               (((target-geo jakc))
+                                (art-group-get-by-name *level* "skel-jchar-c" (the-as (pointer level) #f))
+                                )
+                               (else
+                                 (art-group-get-by-name *level* "skel-jchar" (the-as (pointer level) #f))
+                                 )
+                               )
+                             )
+                           (else
+                             (art-group-get-by-name *level* "skel-jchar" (the-as (pointer level) #f))
+                             )
+                           )
           )
-        )
-      (else
-        (art-group-get-by-name *level* "skel-jchar" (the-as (pointer uint32) #f))
-        )
-      )
-    )
   )
 
 (defbehavior debounce-speed target ((arg0 float) (arg1 float) (arg2 vector) (arg3 vector))
@@ -1289,7 +1287,7 @@
        (not (-> *setting-control* user-current hint))
        (not (focus-test? self dead hit grabbed))
        (logtest? (game-feature sidekick) (-> self game features))
-       (zero? (-> self ext-anim))
+       (= (-> self ext-anim) (target-anim default))
        (case *kernel-boot-message*
          (('kiosk)
           (set! (-> self control cpad change-time) (-> *display* base-clock frame-counter))
@@ -1460,8 +1458,8 @@
        (not (and (focus-test? self light) (nonzero? (-> self lightjak))))
        (let ((v1-23 (ja-group)))
          (and (not (and v1-23 (or (= v1-23 (-> self draw art-group data 476)) (= v1-23 (-> self draw art-group data 477)))))
-              (or (zero? (-> self ext-anim))
-                  (and (= (-> self ext-anim) 2) (focus-test? self dark) (nonzero? (-> self darkjak)))
+              (or (= (-> self ext-anim) (target-anim default))
+                  (and (= (-> self ext-anim) (target-anim dark)) (focus-test? self dark) (nonzero? (-> self darkjak)))
                   )
               )
          )
