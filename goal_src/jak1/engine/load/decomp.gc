@@ -117,7 +117,7 @@
   "Update the vis-bits for the level with the given vis info.
    arg1 unused. if the vis-file flag isn't set, will use arg2 as vis data."
   (local-vars (t0-3 uint128) (vis-buffer object))
-  
+
   (let* ((cam-leaf-idx (-> vis-info from-bsp current-leaf-idx))   ;; current bsp leaf of camera
          (curr-vis-str (-> vis-info current-vis-string))          ;; currently loaded vis-string.
          (desired-vis-str (-> vis-info vis-string cam-leaf-idx))  ;; vis-string offset for bsp leaf.
@@ -126,7 +126,7 @@
     0
     (+ 16 #x70000000)
     (+ 2064 #x70000000)
-    
+
     ;; this is the same string we asked for last time.
     (when (= curr-vis-str desired-vis-str)
       (cond
@@ -147,7 +147,7 @@
           )
         )
       )
-    
+
     ;; wait for any pending load to finish before trying to change things.
     (when (logtest? (vis-info-flag waiting-for-iop-to-ee) (-> vis-info flags))
       (when (check-busy *ramdisk-rpc*)
@@ -155,7 +155,7 @@
           )
       (logclear! (-> vis-info flags) (vis-info-flag waiting-for-iop-to-ee))
       )
-    
+
     ;; ok, we can now change the current string and request from iop.
     (set! (-> vis-info current-vis-string) desired-vis-str)
     ;; this branch picks between .VIS file ramdisk and BSP file visibility data.
@@ -165,12 +165,12 @@
     (set! vis-buffer (the-as (pointer uint8) (+ arg2 desired-vis-str)))
     (b! #t cfg-27 :delay (nop!))
     (label cfg-15)
-    
+
     ;; start a ramdisk load.  This should have already been done as part of level loading anyway.
     ;; so this will just get the ramdisk file ID.
     (let ((vis-load-result (vis-load this)))
       (b! (nonzero? vis-load-result) cfg-21)
-      
+
       ;; ramdisk failed, make everything visible.
       (let* ((dest-bits (-> vis-info vis-bits))
              (len (-> this bsp visible-list-length))
@@ -212,8 +212,8 @@
           )
         (set! result #f)                ;; this takes time, so quit and report that we failed.
         (b! #t cfg-55 :delay (nop!))
-        
-        
+
+
         ;; we'll get here once the compressed vis data is in vis-buffer
         ;; this can come from IOP->EE or from the BSP file directly
         (label cfg-27)
@@ -233,9 +233,9 @@
             ;; but then copy the vis buffer directly.
             (mem-copy! (the-as pointer spad-start) (the-as pointer vis-buffer) list-len)
             )
-          
+
           (while (nonzero? lower-flag-bits)
-            (case (logand lower-flag-bits 7) 
+            (case (logand lower-flag-bits 7)
                   ((1) ;; decomp type 1: this unpacks data that exploits the BVH tree structure.
                        ;; it omits 0's for children of invisible parents. But to unpack, we need
                        ;; to know all the BVHs in the level.
@@ -277,7 +277,7 @@
             (set! spad-end (the-as int vis-buffer))
             (.sra lower-flag-bits lower-flag-bits 3)
             )
-          
+
           ;; now vis-buffer points to the uncompressed data.
           ;; if things went well, we shouldn't have any bits set for drawables that don't exist.
           ;; we can check this by anding with the all visible list, and confirming it doesn't
@@ -315,7 +315,7 @@
               0
               )
             )
-          
+
           ;; just in case we failed the above check, and with the all visible list anyway.
           ;; also copy from vis-buffer (may be spad) to the final vis-bits output
           (let ((v1-71 (the-as object vis-buffer))

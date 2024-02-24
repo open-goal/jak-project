@@ -131,7 +131,7 @@
   "Get a touching-shapes-entry for the two shapes. If one exists, it will be returned. Otherwise a new one will be made."
   (let ((v0-0 (the-as touching-shapes-entry (-> this touching-shapes)))) ;; the candidate
     (let ((v1-0 (the-as touching-shapes-entry #f)))                     ;; a good one
-      
+
       ;; loop over all touching shapes
       (countdown (a3-0 (-> this num-touching-shapes))
         (let ((t0-0 (-> v0-0 cshape1)))
@@ -154,7 +154,7 @@
           )
         (&+! v0-0 16)
         )
-      
+
       ;; done looping.
       (cond
         (v1-0 ;; did we find an unused slot? if so return it
@@ -172,7 +172,7 @@
           )
         )
       )
-    
+
     ;; if we're doing a new one, set it up.
     (set! (-> v0-0 cshape1) arg0)
     (set! (-> v0-0 cshape2) arg1)
@@ -204,7 +204,7 @@
 ;; "I moved forward 0.3, so I now have 0.7 left to move (but potentially in a different direction because I bounced off of B)"
 ;; "What happens if I move forward 0.7 timesteps?"
 ;;  .. repeat ..
-  
+
 
 
 
@@ -220,12 +220,12 @@
    You can provide triangles if you want, but you don't have to.
    The logic for calling this twice for the same prims in between calls to update-from-step-size is a little weird
    so I suspect this never happens (and it's probably cheaper to avoid this duplication in the actual prim collision code)."
-  
+
   ;; I don't know why they made this type, but I'm guessing it's to avoid the compiler spilling to the stack
   (let ((gp-0 (new 'stack-no-clear 'add-prims-touching-work)))
     (set! (-> gp-0 tri1) arg3)
     (set! (-> gp-0 tri2) arg4)
-    
+
     ;; first, grab the entry for the collide-shapes involved.
     (let ((s2-0 (get-shapes-entry this (-> arg0 cshape) (-> arg1 cshape))))
       (when s2-0
@@ -281,7 +281,7 @@
             (set! s0-0 (-> s0-0 next))
             )
           )
-        
+
         ;; nope, didn't find an entry, so make a new one.
         (let ((s0-1 (alloc-node *touching-prims-entry-pool*)))
           ;; allocate a new node, link it.
@@ -300,7 +300,7 @@
               ;; if we're >0, we have to move (which we haven't done yet) to actually collide.
               ;; flag us as resolve-u (meaning our u is from the resolve function, which looks at what _would_
               ;; happen if we did it all at once.)
-              
+
               ;; if we're <0, we started in collision (possible, if we didnt' converge on the last frame)
               ;; we should still add, but we don't need to bother with the "did we go far enough" checks.
               (set! (-> s2-0 resolve-u) 1)
@@ -349,7 +349,7 @@
   (when (nonzero? (-> this resolve-u))
     ;; remember we did it
     (set! (-> this resolve-u) 0)
-    
+
     ;; loop through touching-shape-entries
     (let ((s5-0 (the-as touching-shapes-entry (-> this touching-shapes))))
       (countdown (s4-0 (-> this num-touching-shapes))
@@ -363,7 +363,7 @@
             (let ((s3-0 (-> s5-0 head)))
               (while s3-0
                 (let ((f0-0 (-> s3-0 u)))
-                  (set! s3-0 
+                  (set! s3-0
                         (cond
                           ((>= f0-0 0.0)
                            ;; we'd have to take a step to hit this one!
@@ -432,22 +432,22 @@
   ;; the touching list will run its logic on it regardless.
   ;; this is fixed here by creating a really large list of 2 handles per collide shape and storing all collided
   ;; process handles there. (process->handle) is then safe to use.
-  
+
   ; (* 2 TOUCHING_LIST_LENGTH) -> 64
   (let ((handles (new 'stack-no-clear 'array 'handle 64)))
-  
+
   (let ((entry (the-as touching-shapes-entry (-> this touching-shapes))))
     (countdown (i (-> this num-touching-shapes))
       (let ((c1 (-> entry cshape1)))
         (when c1
           (let ((c2 (-> entry cshape2)))
-            
+
             ;; not quite sure why, but we make it look like cshape1 (s4) is target always.
             ;; I guess this makes it so the target/enemy events are always sent in the same order.
             (when (= (-> c2 process type) target)
               (swap! c1 c2)
               )
-              
+
             (set! (-> handles (+ 0 (* 2 i))) (process->handle (-> c1 process)))
             (set! (-> handles (+ 1 (* 2 i))) (process->handle (-> c2 process)))
             )
@@ -456,19 +456,19 @@
       (set! entry (-> (the-as (inline-array touching-shapes-entry) entry) 1))
       )
     )
-  
+
   (let ((entry (the-as touching-shapes-entry (-> this touching-shapes))))
     (countdown (i (-> this num-touching-shapes))
       (let ((c1 (-> entry cshape1)))
         (when c1
           (let ((c2 (-> entry cshape2)))
-            
+
             ;; not quite sure why, but we make it look like cshape1 (s4) is target always.
             ;; I guess this makes it so the target/enemy events are always sent in the same order.
             (when (= (-> c2 process type) target)
               (swap! c1 c2)
               )
-            
+
             ;; send events!
             (let (
                   (c1-proc (handle->process (-> handles (+ 0 (* 2 i)))))
@@ -501,7 +501,7 @@
       (set! entry (-> (the-as (inline-array touching-shapes-entry) entry) 1))
       )
     )
-    
+
     )
   0
   (none)
@@ -627,7 +627,7 @@
    that is inside of both spheres, and get the midpoint of that."
   (let* ((s4-0 (-> this prim1 cprim))
          (s3-0 (-> this prim2 cprim))
-         
+
          ;; compute the offset between the prim cores.
          (gp-1 (vector-!
                  (new 'stack-no-clear 'vector)
@@ -636,7 +636,7 @@
                  )
                )
          )
-    
+
     ;; subtract off the two radius. this is now the offset between the "closest" points (and is negative)
     (let ((f1-2 (- (- (vector-length gp-1) (-> s3-0 prim-core world-sphere w)) (-> s4-0 prim-core world-sphere w))))
       ;; this offset is the radius, minus half the overlap distance

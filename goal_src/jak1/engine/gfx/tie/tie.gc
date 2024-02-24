@@ -29,7 +29,7 @@
 
 (defmethod login ((this tie-fragment))
   "Initialize the shaders for a tie-fragment"
-  
+
   ;; the gif data is just adgif shaders, each are 5 qw's
   (let ((s5-0 (-> this gif-ref))
         (s4-0 (/ (-> this tex-count) (the-as uint 5)))
@@ -103,12 +103,12 @@ this
     (+! (-> arg0 data 0 used) v1-7)
     (+! (-> arg0 data 0 total) (logand -16 (+ v1-7 15)))
     )
-  
+
   ;; do our drawables
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this data s3-0) arg0 arg1)
     )
-  
+
   ;; do our prototypes, but with a flag set!
   (mem-usage (-> this prototypes prototype-array-tie) arg0 (logior arg1 1))
   this
@@ -141,7 +141,7 @@ this
     (set! this this)
     (goto cfg-13)
     )
-  
+
   ;; not an instance, count the memory of the prototype.
   (set! (-> arg0 length) (max 18 (-> arg0 length)))
   (set! (-> arg0 data 9 name) "tie-fragment")
@@ -209,12 +209,12 @@ this
     (let ((s3-0 (-> this bucket-ptr)))
       ;; unused
       (+ (-> arg0 data 19 used) (-> arg0 data 20 used) (-> arg0 data 21 used) (-> arg0 data 22 used))
-      
+
       ;; loop over all 4 possible geometries
       (dotimes (s2-0 4)
         (let ((a0-10 (-> s3-0 geometry-override s2-0)))
           (when (nonzero? a0-10) ;; only if we actually have it.
-            (mem-usage a0-10 arg0 
+            (mem-usage a0-10 arg0
                        (logior (logior (cond ;; based on which geom we are, pick the right color bucket.
                                          ((= s2-0 1) 4)
                                          ((= s2-0 2) 8)
@@ -300,11 +300,11 @@ this
 ;; INFO: Return type mismatch int vs none.
 (defun tie-init-consts ((arg0 tie-consts) (arg1 int))
   "Initialize TIE constants. arg1 enables alpha blending"
-  
+
   ;; set the adgif shader tag (just 5x a+d's)
   (set! (-> arg0 adgif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
   (set! (-> arg0 adgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
-  
+
   ;; based on the menu drawing mode, create the template tag for geometry.
   (cond
     ((zero? *subdivide-draw-mode*) ;; normal textured
@@ -344,12 +344,12 @@ this
            )
      )
     )
-  
+
   ;; the main drawing tag: st, rgbaq, xyzf per vertex (same in all draws modes)
   (set! (-> arg0 strgif regs)
         (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
         )
-  
+
   ;; some magic constants
   (let ((f1-0 8388894.0)
         (f2-0 8389078.0)
@@ -367,14 +367,14 @@ this
   (set! (-> arg0 clrbufs vector4w y) 242)
   (set! (-> arg0 clrbufs vector4w z) 198)
   (set! (-> arg0 clrbufs vector4w w) 242)
-  
+
   ;; looks like tie can toggle on and off alpha testing during the draw
   ;; tra = transparent, def = default?
   (set! (-> arg0 atestgif tag) (new 'static 'gif-tag64 :nloop #x1 :eop #x1 :nreg #x1))
   (set! (-> arg0 atestgif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
   (set! (-> arg0 atest-tra cmd) (gs-reg test-1))
   (set! (-> arg0 atest-tra data)
-        (the uint 
+        (the uint
              (new 'static 'gs-test
                   :ate #x1
                   :atst (gs-atest greater-equal)
@@ -388,7 +388,7 @@ this
   (set! (-> arg0 atest-def data)
         (the uint (new 'static 'gs-test :atst (gs-atest not-equal) :zte #x1 :ztst (gs-ztest greater-equal)))
         )
-  
+
   ;; more magic constants
   (set! (-> arg0 misc vector4w x) 0)
   (set! (-> arg0 misc vector4w y) -1)
@@ -400,7 +400,7 @@ this
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tie))
     ;; add the tie code
     (dma-buffer-add-vu-function arg0 tie-vu1-block 1)
-    
+
     ;; set up the given gs-test register
     (let* ((v1-3 arg0)
            (a0-2 (the-as object (-> v1-3 base)))
@@ -450,7 +450,7 @@ this
       (set! (-> (the-as dma-packet a0-12) vif1) (new 'static 'vif-tag :cmd (vif-cmd flusha) :msk #x1))
       (set! (-> v1-9 base) (&+ (the-as pointer a0-12) 16))
       )
-    
+
     ;; initialize the VIF's ROW register
     (let* ((v1-10 arg0)
            (a0-14 (the-as object (-> v1-10 base)))
@@ -507,7 +507,7 @@ this
       (set! (-> (the-as (pointer gs-reg64) a1-4) 1) (gs-reg64 test-1))
       (set! (-> v1-5 base) (&+ a1-4 16))
       )
-    
+
     ;; restore the stmask register
     (let* ((v1-6 arg0)
            (a1-6 (the-as object (-> v1-6 base)))
@@ -517,7 +517,7 @@ this
       (set! (-> (the-as dma-packet a1-6) vif1) (new 'static 'vif-tag))
       (set! (-> v1-6 base) (&+ (the-as pointer a1-6) 16))
       )
-    
+
     ;; this calls a TIE program that... does nothing?
     (let* ((v1-7 arg0)
            (a0-1 (-> v1-7 base))
