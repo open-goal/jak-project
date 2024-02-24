@@ -3442,6 +3442,15 @@ void FunctionCallElement::update_from_stack(const Env& env,
                   }
                 }
               }
+            } else if (env.func->process_stack_size > 0 && head_obj.is_symbol("stack-size-set!")) {
+              // override process stack size
+              auto old_size = arg_forms.at(1)->to_form(env);
+              if (old_size.is_int()) {
+                arg_forms.at(1) = pool.alloc_single_element_form<ConstantTokenElement>(
+                    arg_forms.at(1)->parent_element, std::to_string(env.func->process_stack_size));
+                env.func->warnings.info("Process stack size was changed from {} to {}",
+                                        old_size.as_int(), env.func->process_stack_size);
+              }
             }
           }
 
