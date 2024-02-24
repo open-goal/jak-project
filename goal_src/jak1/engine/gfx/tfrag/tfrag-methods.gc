@@ -47,22 +47,22 @@
 (defun draw-drawable-tree-tfrag ((arg0 drawable-tree-tfrag) (lev level))
   "Draw the normal tfrag tree! Added the lev argument for time-of-day integer times"
   (local-vars (r0-0 none) (a0-20 int) (a0-22 int) (a0-38 int) (a0-40 int) (sv-16 (pointer uint8)))
-  
-  
+
+
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask tfrag))
-    
+
     ;; first, do draw node culling.
     ;; the culling is done in batches, doing all nodes at one depth before going to the enxt.
     ;; only arrays of draw nodes can be culled - tfragments themselves can't (they are the wrong size)
-    
-    
+
+
     (let ((s5-0 (+ (-> arg0 length) -1))) ;; get the number of trees with draw-nodes (see doc, the last one is always tfragments)
-      
+
       ;; TODO
       #|
       (when (nonzero? s5-0) ;; only if we have draw-nodes (levels like INT have only like 2 tfrags)
         (dotimes (s4-0 s5-0) ;; loop over tree depths
-          
+
           ;; not sure of the details yet, but we take two levels as inputs
           (let* ((v1-7 (-> arg0 arrays s4-0))
                  (a0-4 (-> arg0 arrays (+ s4-0 1)))
@@ -81,16 +81,16 @@
           )
         )
         |#
-      
+
       ;; draw, using the full list of all tfrags (not tree format)
       (let* ((v1-13 (the-as drawable-inline-array-tfrag (-> arg0 arrays s5-0)))
              (s4-1 (-> v1-13 data))
              (s3-0 (-> v1-13 length))
              )
-        
+
         ;; pointer to vis data for the first tfrag
         (set! sv-16 (&-> (scratchpad-object terrain-context) work background vis-list (/ (-> s4-1 0 id) 8)))
-        
+
         ;; all DMA
         (let ((s5-1 (-> *display* frames (-> *display* on-screen) frame global-buf base)))
           ;; (format *stdcon* " #x~X~%" s5-1)
@@ -98,31 +98,31 @@
           (let* ((s1-0 (-> *display* frames (-> *display* on-screen) frame global-buf))
                  (s2-0 (-> s1-0 base))
                  )
-            
+
             ;; clear stats
             (set! (-> *tfrag-work* wait-to-spr) (the-as uint 0))
             (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
-            
+
             ;; initialize dma buffer
-            (tfrag-init-buffer 
+            (tfrag-init-buffer
               s1-0
               (new 'static 'gs-test :ate #x1 :atst (gs-atest greater-equal) :aref #x26 :zte #x1 :ztst (gs-ztest greater-equal))
               0
               lev
               )
-            
+
             ;; do the draw!
             (reset! (-> *perf-stats* data 5))
             ;;(format 0 "DRAW: ~D~%" s3-0)
             ;; (draw-inline-array-tfrag sv-16 (the-as drawable-inline-array s4-1) s3-0 s1-0)
             (read! (-> *perf-stats* data 5))
-            
+
             ;; update stats for the draw
             (update-wait-stats (-> *perf-stats* data 5) (the-as uint 0) (-> *tfrag-work* wait-to-spr) (-> *tfrag-work* wait-from-spr))
-            
+
             ;; finish dma buffer
             (tfrag-end-buffer s1-0)
-            
+
             ;; close dma packet
             (let ((a3-3 (-> s1-0 base)))
               (let ((v1-38 (the-as object (-> s1-0 base))))
@@ -142,8 +142,8 @@
                                      )
               )
             )
-          
-          
+
+
           ;; (format *stdcon* " #x~X~%" (-> *display* frames (-> *display* on-screen) frame global-buf base))
           ;; DMA for TFRAG NEAR
           ; (let* ((s1-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
@@ -180,7 +180,7 @@
           ;       )
           ;     )
           ;   )
-          
+
           ;; DMA memory stats
           (let ((v1-69 *dma-mem-usage*))
             (when (nonzero? v1-69)
@@ -264,7 +264,7 @@
         (set! (-> (the-as dma-packet v1-34) vif1) (new 'static 'vif-tag))
         (set! (-> s2-0 base) (&+ (the-as pointer v1-34) 16))
         )
-       
+
        (dma-bucket-insert-tag
         (-> *display* frames (-> *display* on-screen) frame bucket-group)
         (the-as
@@ -378,7 +378,7 @@
    )
   (when (logtest? *vu1-enable-user* (vu1-renderer-mask trans-tfrag))
    (let ((s5-0 (+ (-> arg0 length) -1)))
-    #| TODO 
+    #| TODO
     (when (nonzero? s5-0)
      (dotimes (s4-0 s5-0)
       (let* ((v1-7 (-> arg0 arrays s4-0))
@@ -413,7 +413,7 @@
        )
       )
      )|#
-    
+
     (let* ((v1-13 (-> arg0 arrays s5-0))
            (s5-1 (&+ v1-13 32))
            (s4-1 (-> v1-13 length))
@@ -426,7 +426,7 @@
         (set! (-> *tfrag-work* wait-from-spr) (the-as uint 0))
         (tfrag-init-buffer s2-0 (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal)) 1 lev)
         (reset! (-> *perf-stats* data 5))
-        
+
         ;; (draw-inline-array-tfrag sv-16 s5-1 s4-1 s2-0)
         (update-wait-stats
           (-> *perf-stats* data 5)
@@ -456,7 +456,7 @@
                                  )
           )
         )
-      
+
       #|
      (let*
       ((s2-1 (-> *display* frames (-> *display* on-screen) frame global-buf))
@@ -999,7 +999,7 @@
 (defmethod debug-draw ((this tfragment) (arg0 drawable) (arg1 display-frame))
   (-> arg1 global-buf)
   (edge-debug-lines (-> this debug-data debug-lines))
-  
+
   (add-debug-sphere #t (bucket-id debug) (-> this bsphere) (-> this bsphere w) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
   ;;(add-debug-x #t (bucket-id debug) (-> this bsphere) (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80))
   (none)

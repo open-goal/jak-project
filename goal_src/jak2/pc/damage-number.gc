@@ -55,7 +55,7 @@
     (-! (-> self font origin x) (/ (-> self font width) 2))
     ;; now move it up
     (-! (-> self font origin y) (-> self y-ofs)))
-  
+
   :code (behavior ()
     (let ((state-time (current-time)))
         ;; move up for a bit
@@ -68,7 +68,7 @@
           (suspend))
         )
     )
-  
+
   :post (behavior ()
     (when (and (-> self on-screen?) ;; text is onscreen
                (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
@@ -89,7 +89,7 @@
 
   (if (zero? (-> self font))
       (set! (-> self font) (new 'process 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))))
-  
+
   (set-scale! (-> self font) (lerp-scale 0.45 0.8 (the float (-> self damage)) 1.0 15.0))
   (set-flags! (-> self font) (font-flags shadow kerning large middle))
   (set-width! (-> self font) 100)
@@ -99,7 +99,7 @@
 
 (defbehavior damage-number-init-by-other damage-number ((dmg int) (pos vector) (parent-mask process-mask))
   "initialize a damage-number"
-  
+
   ;; copy params
   (set! (-> self damage) dmg)
   (set! (-> self parent-mask) parent-mask)
@@ -127,7 +127,7 @@
 
 (defstate active (damage-number-metalkor)
   :virtual #t
-  
+
   :post (behavior ()
     (if *debug-segment*
         (add-debug-x #t (bucket-id debug-no-zbuf2) (-> self trans) *color-cyan*))
@@ -155,7 +155,7 @@
 
 (defbehavior damage-number-metalkor-init-by-other damage-number-metalkor ((dmg float) (pos vector) (parent-mask process-mask))
   "initialize a damage-number-metalkor"
-  
+
   ;; copy params
   (set! (-> self damage-metalkor) dmg)
   (set! (-> self damage) (/ (the int (* (-> self damage-metalkor) 10000)) 4))
@@ -176,7 +176,7 @@
 
 (defun draw-health-bar ((x int) (y int) (width int) (height int) (hit-points float) (hit-points-max float) (bucket bucket-id))
   "Draw a rectangular health bar at the given location. color fades from green to yellow to red."
-  
+
   (let* ((color (static-rgba 0 0 0 #x80))
         (bar-w (the int (* (/ hit-points hit-points-max) (max 0 (+ width -4)))))
         (x2 (+ x width))
@@ -229,7 +229,7 @@
 
 (deftype health-bar (process)
   ((ppointer (pointer health-bar) :override)
-   
+
    (trans-2d        vector4w  :inline)
    (width           float)
    (height          float)
@@ -237,7 +237,7 @@
    (font            font-context)
    (hit-points-max  float)
    (hit-points      float)
-   
+
    ;; who this bar is for
    (owner     handle)
 
@@ -273,7 +273,7 @@
   )
 
 (defmethod new health-bar-manager ((allocation symbol) (type-to-make type))
-  
+
   (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
     (set! (-> this head) #f)
     (set! (-> this tail) #f)
@@ -295,7 +295,7 @@
       )
     )
   (set! (-> this tail) bar-ptr)
-  
+
   bar-ptr)
 
 (defmethod remove-from-list ((this health-bar-manager) (bar-ptr (pointer health-bar)))
@@ -359,12 +359,12 @@
     (set-depth! (-> self font) (/ (-> self trans-2d z) 16))
     ;; now center (we could do this earlier but it's fine)
     (-! (-> self font origin x) (/ (-> self width) 2)))
-  
+
   :code (behavior ()
     (while (and (handle->process (-> self owner)) (not (case (-> (handle->process (-> self owner)) next-state name) (('inactive 'hidden) #t))))
       (suspend))
     )
-  
+
   :post (behavior ()
     (when (and (-> self on-screen?) ;; text is onscreen
                (pc-cheats? (-> *pc-settings* cheats) health-bars) ;; cheat enabled
@@ -390,7 +390,7 @@
 
 (defbehavior health-bar-init-by-other health-bar ((hit-points int) (hit-points-max int) (owner handle))
   "initialize a health-bar"
-  
+
   ;; copy params
   (set! (-> self hit-points-max) (the float hit-points-max))
   (set! (-> self hit-points) (the float hit-points))
@@ -437,7 +437,7 @@
 
 (defmethod set-proc-bar-hit-points ((this health-bar-manager) (proc process-drawable) (hit-points int))
   "simply set the hit points (not max hit points) of a process's health bar"
-  
+
   (let ((the-bar (get-bar-for-process this proc)))
     (send-event (ppointer->process the-bar) 'set-hit-points hit-points)
     the-bar)

@@ -10,7 +10,7 @@
 
 (defun ocean-mid-setup-constants ((arg0 ocean-mid-constants))
   "Generate the ocean VU1 renderer constants in-place."
-  
+
   ;; the usual camera math
   (let ((v1-0 *math-camera*))
     (set! (-> arg0 hmge-scale quad) (-> v1-0 hmge-scale quad))
@@ -18,12 +18,12 @@
     (set! (-> arg0 hvdf-offset quad) (-> v1-0 hvdf-off quad))
     (set-vector! (-> arg0 fog) (-> v1-0 pfog0) (-> v1-0 fog-min) (-> v1-0 fog-max) 3072.0)
     )
-  
+
   ;; is this 393216 the size of a triangle? (96 meters)
   (set-vector! (-> arg0 constants) 0.5 0.5 0.0 393216.0)
   (set-vector! (-> arg0 constants2) 0.5 0.5 1.0 0.0)
 
-  
+
   (let ((v1-3 *ocean-subdivide-draw-mode*))
     (cond
       ((zero? v1-3)
@@ -266,7 +266,7 @@
   (set-vector! (-> arg0 index-table 6) 9 12 12 0)
   (set-vector! (-> arg0 index-table 7) 0 0 3 0)
 
-  
+
   (set-vector! (-> arg0 pos0) 0.0 0.0 0.0 1.0)
   (set-vector! (-> arg0 pos1) 393216.0 0.0 0.0 1.0)
   (set-vector! (-> arg0 pos2) 0.0 0.0 393216.0 1.0)
@@ -520,7 +520,7 @@
 
 (defun ocean-mid-add-upload ((arg0 dma-buffer) (arg1 int) (arg2 int) (arg3 int) (arg4 int) (arg5 float))
   "Add DMA data to upload data needed to draw an ocean tile."
-  
+
   ;; calculate the location of the tile.
   (let ((gp-0 (new-stack-vector0)))
     (let ((v1-1 (-> *ocean-map* start-corner)))
@@ -529,10 +529,10 @@
       (set! (-> gp-0 z) (+ (-> v1-1 z) (* 3145728.0 (the float arg1))))
       )
     (set! (-> gp-0 w) 1.0)
-    
+
     ;; compute combined matrix
     (ocean-mid-add-matrices arg0 gp-0)
-    
+
     ;; upload color.
     (let ((v1-4 (+ (the-as uint (-> *ocean-map* ocean-colors)) (* (+ (* 416 arg1) (* arg2 8)) 4))))
       (dotimes (a0-6 9)
@@ -1008,7 +1008,7 @@
 
 (defun sphere-cull-for-ocean ((arg0 vector))
   "NOTE: added in PC port"
-  
+
   (local-vars (v1-0 uint128) (v1-1 uint128) (v1-2 uint128))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1027,7 +1027,7 @@
           (.lvf vf18 (&-> v1-5 plane 2 quad))
           (.lvf vf19 (&-> v1-5 plane 3 quad))
           )
-        
+
         (.lvf vf10 (&-> arg0 quad))
         (.mul.x.vf acc vf16 vf10)
         (.add.mul.y.vf acc vf17 vf10 acc)
@@ -1106,28 +1106,28 @@
          )
     (+! (-> p0 x) x0)
     (+! (-> p0 z) y0)
-    
+
     (+! (-> p1 x) (+ x0 3145728.0))
     (+! (-> p1 z) y0)
-    
+
     (+! (-> p2 x) x0)
     (+! (-> p2 z) (+ y0 3145728.0))
-    
+
     (+! (-> p1s x) (+ x0 314572.0))
     (+! (-> p1s z) y0)
-    
+
     (+! (-> p2s x) x0)
     (+! (-> p2s z) (+ y0 314572.0))
-    
+
     (+! (-> p3 x) (+ x0 3145728.0))
     (+! (-> p3 z) (+ y0 3145728.0))
-    
+
     (add-debug-flat-triangle #t (bucket-id debug-no-zbuf) p0 p1s p2s color0)
     ;; (add-debug-flat-triangle #t (bucket-id debug-no-zbuf) p3 p1 p2 color0)
     (add-debug-outline-triangle #t (bucket-id debug-no-zbuf) p0 p1 p2 color1)
     (add-debug-outline-triangle #t (bucket-id debug-no-zbuf) p3 p1 p2 color1)
     (format (clear *temp-string*) "o: ~d ~d ~d ~b" x y (+ (* 6 y) x) masks)
-    
+
     (add-debug-text-3d
       #t
       (bucket-id debug-no-zbuf)
@@ -1161,7 +1161,7 @@
       )
     ;; upload VU1 program
     (dma-buffer-add-vu-function arg0 ocean-mid-block 1)
-    
+
     ;; set up base+offset for the VU1 program uploads
     (let* ((v1-3 arg0)
            (a0-6 (the-as object (-> v1-3 base)))
@@ -1177,7 +1177,7 @@
 
     ;; run program to initialize VU1 renderer
     (ocean-mid-add-call arg0 0)
-    
+
     ;; set up VF registers for sphere culling.
     (let ((v1-5 *math-camera*))
       (.lvf vf16 (&-> v1-5 plane 0 quad))
@@ -1190,7 +1190,7 @@
       (.lvf vf23 (&-> v1-5 guard-plane 3 quad))
       )
     (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-    
+
     ;; draw tiles!
     (let ((s5-0 (-> *math-camera* trans)))
       (dotimes (s4-0 6)   ;; x?
@@ -1231,8 +1231,8 @@
           )
         )
       )
-    
-    
+
+
     ;; for now, skip seams.
     ;; when it's both on and cam is low
     (when (not (or *ocean-near-off* (< 196608.0 (fabs (-> *math-camera* trans y)))))
