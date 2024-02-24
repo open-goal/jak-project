@@ -622,6 +622,11 @@ void ObjectFileDB::ir2_type_analysis_pass(int seg, const Config& config, ObjectF
         func.ir2.env.set_stack_structure_hints(
             try_lookup(config.stack_structure_hints_by_function, func_name));
 
+        if (config.process_stack_size_overrides.find(func_name) !=
+            config.process_stack_size_overrides.end()) {
+          func.process_stack_size = config.process_stack_size_overrides.at(func_name);
+        }
+
         if (func.guessed_name.kind == FunctionName::FunctionKind::V_STATE) {
           if (config.art_group_type_remap.find(func.guessed_name.type_name) !=
               config.art_group_type_remap.end()) {
