@@ -7708,7 +7708,7 @@
     (level-group-method-19 () none) ;; 19 ;; (level-update (_type_) none)
     (level-get-target-inside (_type_) level) ;; 20
     (level-group-method-21 () none) ;; 21 ;; (alloc-levels-if-needed (_type_ symbol) none)
-    (art-group-get-by-name (_type_ string (pointer uint32)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
+    (art-group-get-by-name (_type_ string (pointer level)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
     (level-group-method-23 () none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
     (level-group-method-24 () none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
     (level-group-method-25 () none) ;; 25 ;; (update-vis-volumes (_type_) none)
@@ -16299,7 +16299,7 @@
   (title 12)
   (title-movie 13)
   (continue-flag-14 14)
-  (continue-flag-15 15)
+  (copy-entity-pos 15)
   (continue-flag-16 16)
   (test 17)
   (record-path 18)
@@ -19521,8 +19521,8 @@
 ;; pov-camera-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; +++pov-camera-h:pov-camera-flags
-(defenum pov-camera-flags
+;; +++pov-camera-h:pov-camera-flag
+(defenum pov-camera-flag
   :bitfield #t
   :type int32
   (notify-of-abort 0)
@@ -19530,10 +19530,10 @@
   (inherit-orientation 2)
   (pcf3 3)
   )
-;; ---pov-camera-h:pov-camera-flags
+;; ---pov-camera-h:pov-camera-flag
 
 (deftype pov-camera (process-drawable)
-  ((flags               pov-camera-flags :offset-assert 200) ;; pov-camera-flag
+  ((flags               pov-camera-flag :offset-assert 200) ;; pov-camera-flag
    (debounce-start-time time-frame    :offset-assert 208) ;; time-frame
    (notify-handle       handle        :offset-assert 216) ;; handle
    (anim-name           string        :offset-assert 224) ;; guessed by decompiler
@@ -22451,6 +22451,28 @@
   )
 ;; ---target-h:lightjak-stage
 
+;; +++target-h:target-geo
+(defenum target-geo
+  :type int32
+  (uninitialized -2)
+  (none -1)
+  (jakb 4) ;; jak 2 model
+  (jakb-old 5) ;; weird broken jak 2 model
+  (jakc 6) ;; jak 3 model
+  )
+;; ---target-h:target-geo
+
+;; +++target-h:target-anim
+(defenum target-anim
+  :type int32
+  (uninitialized -2)
+  (default 0)
+  (ta1 1)
+  (dark 2)
+  (light 3)
+  )
+;; ---target-h:target-anim
+
 (declare-type sidekick process-drawable)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -22521,11 +22543,11 @@
    (major-mode-event-hook       basic                                    :offset-assert 2348)
    (sub-mode-exit-hook          basic                                    :offset-assert 2352)
    (ext-geo-control             external-art-buffer                      :offset-assert 2356)
-   (pending-ext-geo             int32                                    :offset-assert 2360)
-   (ext-geo                     int32                                    :offset-assert 2364)
+   (pending-ext-geo             target-geo                               :offset-assert 2360)
+   (ext-geo                     target-geo                               :offset-assert 2364)
    (ext-anim-control            external-art-buffer                      :offset-assert 2368)
-   (pending-ext-anim            int32                                    :offset-assert 2372)
-   (ext-anim                    int32                                    :offset-assert 2376)
+   (pending-ext-anim            target-anim                              :offset-assert 2372)
+   (ext-anim                    target-anim                              :offset-assert 2376)
    (tobot-state                 state                                    :offset-assert 2380) ;; guessed by decompiler
    (tobot?                      symbol                                   :offset-assert 2384) ;; guessed by decompiler
    (tobot-recorder              basic                                    :offset-assert 2388)
@@ -37914,7 +37936,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern pov-camera-play-and-reposition function) ;; (function art-joint-anim vector float none :behavior pov-camera)
-;; (define-extern pov-camera-init-by-other function) ;; (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera)
+(define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera))
 ;; (define-extern othercam-calc function) ;; (function float float)
 (define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam))
 
