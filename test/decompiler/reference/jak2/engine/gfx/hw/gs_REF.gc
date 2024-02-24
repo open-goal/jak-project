@@ -23,6 +23,7 @@
 
 ;; definition for function psm-size
 (defun psm-size ((arg0 gs-psm))
+  "Convert texture format to some type of size."
   (cond
     ((= arg0 (gs-psm mt8))
      64
@@ -41,6 +42,7 @@
 
 ;; definition for function psm-page-height
 (defun psm-page-height ((arg0 gs-psm))
+  "Convert texture format to some type of page height."
   (cond
     ((= arg0 (gs-psm mt8))
      64
@@ -59,6 +61,7 @@
 
 ;; definition for function psm->string
 (defun psm->string ((arg0 gs-psm))
+  "Get the name of a texture format."
   (case arg0
     (((gs-psm ct24))
      "ct24"
@@ -163,6 +166,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-bank
 (deftype gs-bank (structure)
+  "Memory layout of the GS's privileged registers (mapped to EE memory).
+It is missing the SIGLBLID/LABELID register at 4224 (useless anyway?)"
   ((pmode     gs-pmode)
    (smode2    gs-smode2      :offset  32)
    (dspfb1    gs-display-fb  :offset 112)
@@ -214,6 +219,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-zbuf
 (deftype gs-zbuf (uint64)
+  "The GS's ZBUF registers make various settings regarding Z buffer."
   ((zbp  uint16 :offset   0 :size   9)
    (psm  gs-psm :offset  24 :size   4)
    (zmsk uint8  :offset  32 :size   1)
@@ -222,6 +228,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-xy-offset
 (deftype gs-xy-offset (uint64)
+  "The GS's XYOFFSET registers set the offset value for converting from the primitive coordinate
+system to the window coordinate system."
   ((ofx uint16 :offset   0 :size  16)
    (ofy uint16 :offset  32 :size  16)
    )
@@ -229,6 +237,9 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-scissor
 (deftype gs-scissor (uint64)
+  "The GS's SCISSOR registers specify the scissoring area. The coordinate values for
+the upper-left/lower-right points of the enabled drawing area are specified by the window
+coordinate system."
   ((scax0 uint16 :offset   0 :size  11)
    (scax1 uint16 :offset  16 :size  11)
    (scay0 uint16 :offset  32 :size  11)
@@ -238,24 +249,30 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-prmode-cont
 (deftype gs-prmode-cont (uint64)
+  "The GS's PRMODECONT register sets whether to use primitive attributes (IIP, TME, FGE, ABE,
+AA1, FST, CTXT, FIX) specified by the PRMODE register or the PRIM register."
   ((ac uint8 :offset   0 :size   1)
    )
   )
 
 ;; definition of type gs-color-clamp
 (deftype gs-color-clamp (uint64)
+  "The GS's COLCLAMP register stores settings as to whether clamping for the RGB value of the
+pixel is performed."
   ((clamp uint8 :offset   0 :size   1)
    )
   )
 
 ;; definition of type gs-dthe
 (deftype gs-dthe (uint64)
+  "The GS's DTHE register stores settings for dithering (performed/not performed)."
   ((dthe uint8 :offset   0 :size   1)
    )
   )
 
 ;; definition of type gs-test
 (deftype gs-test (uint64)
+  "The GS's TEST register performs settings related to the pixel test."
   ((ate   uint8    :offset   0 :size   1)
    (atst  gs-atest :offset   1 :size   3)
    (aref  uint8    :offset   4 :size   8)
@@ -283,6 +300,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-rgbaq
 (deftype gs-rgbaq (uint64)
+  "The GS's RGBAQ register sets the RGBA value of the vertex and the Q value of the normalized
+texture coordinates."
   ((r uint8 :offset   0 :size   8)
    (g uint8 :offset   8 :size   8)
    (b uint8 :offset  16 :size   8)
@@ -301,6 +320,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-uv
 (deftype gs-uv (uint64)
+  "The GS's UV register specifies the texel coordinate (UV) values of the vertex."
   ((u uint16 :offset   0 :size  16)
    (v uint16 :offset  16 :size  16)
    )
@@ -308,6 +328,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-st
 (deftype gs-st (uint64)
+  "The GS's ST register sets the S and T values of the vertex texture coordinates.
+The value Q is specified by the RGBAQ register."
   ((s float :offset   0 :size  32)
    (t float :offset  32 :size  32)
    )
@@ -359,6 +381,9 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-trxpos
 (deftype gs-trxpos (uint64)
+  "The GS's TRXPOS register specifies the position and
+scanning direction of the rectangular area
+in each buffer where buffer transmission is performed."
   ((ssax uint16 :offset   0 :size  11)
    (ssay uint16 :offset  16 :size  11)
    (dsax uint16 :offset  32 :size  11)
@@ -369,6 +394,9 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-trxreg
 (deftype gs-trxreg (uint64)
+  "The GS's TRXREG register specifies the size of the rectangular area, where the transmission
+between buffers is implemented, in units of pixels.
+The pixel mode must be the one set by the BITBLTBUF register."
   ((rrw uint16 :offset   0 :size  12)
    (rrh uint16 :offset  32 :size  12)
    )
@@ -376,12 +404,18 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-trxdir
 (deftype gs-trxdir (uint64)
+  "The GS's TRXDIR register specifies the transmission direction in the transmission between
+buffers, and activates transmission.
+Appropriate settings must be made by the BITBLTBUF/TRXPOS/TRXREG before activating
+the transmission."
   ((xdir uint8 :offset   0 :size   2)
    )
   )
 
 ;; definition of type gs-bitbltbuf
 (deftype gs-bitbltbuf (uint64)
+  "The GS's BITBLTBUF register stores buffer-related settings for transmission source and
+destination during transmission between buffers."
   ((sbp  uint16 :offset   0 :size  14)
    (sbw  uint8  :offset  16 :size   6)
    (spsm uint8  :offset  24 :size   6)
@@ -393,6 +427,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-tex0
 (deftype gs-tex0 (uint64)
+  "The GS's TEX0 registers set various kinds of information regarding the textures to be used."
   ((tbp0 uint16 :offset   0 :size  14)
    (tbw  uint8  :offset  14 :size   6)
    (psm  uint8  :offset  20 :size   6)
@@ -410,6 +445,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-tex1
 (deftype gs-tex1 (uint64)
+  "The GS's TEX1 registers set information on the sampling method of the textures."
   ((lcm  uint8 :offset   0 :size   1)
    (mxl  uint8 :offset   2 :size   3)
    (mmag uint8 :offset   5 :size   1)
@@ -422,6 +458,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-texa
 (deftype gs-texa (uint64)
+  "The GS's TEXA register sets the Alpha value to be referred to when the Alpha value of the
+texture is not an 8-bit value."
   ((ta0 uint8 :offset   0 :size   8)
    (aem uint8 :offset  15 :size   1)
    (ta1 uint8 :offset  32 :size   8)
@@ -430,6 +468,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-texclut
 (deftype gs-texclut (uint64)
+  "The GS's TEXCLUT register specifies the CLUT position in the buffer when the CLUT storage mode
+is CSM=1 (CSM2 mode)."
   ((cbw uint8  :offset   0 :size   6)
    (cou uint8  :offset   6 :size   6)
    (cov uint16 :offset  12 :size  10)
@@ -438,6 +478,8 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gs-miptbp
 (deftype gs-miptbp (uint64)
+  "the GS's MIPTBP registers set the buffer pointer and buffer width of textures when performing
+MIPMAP. MIPTBP1 sets levels 1 to 3, MIPTBP2 sets levels 4 to 6."
   ((tbp1 uint16 :offset   0 :size  14)
    (tbw1 uint8  :offset  14 :size   6)
    (tbp2 uint16 :offset  20 :size  14)
@@ -729,6 +771,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition of type gif-packet
 (deftype gif-packet (basic)
+  "Unused type for building a dynamically sized gif packet."
   ((reg-count  int32)
    (gif-tag    gs-gif-tag  :inline)
    (gif-tag0   uint128     :overlay-at (-> gif-tag qword))
@@ -761,6 +804,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition for function open-gif-packet
 (defun open-gif-packet ((arg0 gif-packet))
+  "Initialize an existing gif-packet for 0 registers."
   (set! (-> arg0 reg-count) 0)
   (set! (-> arg0 gif-tag regs) (new 'static 'gif-tag-regs))
   arg0
@@ -769,6 +813,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 ;; definition for function add-reg-gif-packet
 ;; WARN: Return type mismatch gif-packet vs none.
 (defun add-reg-gif-packet ((arg0 gif-packet) (arg1 int) (arg2 int))
+  "Add a register + value to the packet."
   (let ((v1-0 (-> arg0 gif-tag)))
     (logior! (-> v1-0 regs) (ash arg1 (* (-> arg0 reg-count) 4)))
     )
@@ -779,6 +824,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 
 ;; definition for function close-gif-packet
 (defun close-gif-packet ((arg0 gif-packet) (arg1 int))
+  "Finish adding registers."
   (set! (-> arg0 gif-tag tag)
         (new 'static 'gif-tag64 :nloop #x1 :flg (gif-flag reg-list) :eop arg1 :nreg (-> arg0 reg-count))
         )
@@ -832,6 +878,7 @@ bits 5 and 6 (0x20 and 0x40) should be zero"
 ;; definition for function draw-context-set-xy
 ;; WARN: Return type mismatch int vs none.
 (defun draw-context-set-xy ((arg0 draw-context) (arg1 int) (arg2 int))
+  "Set the origin of the draw context."
   (set! (-> arg0 orgx) arg1)
   (set! (-> arg0 orgy) arg2)
   (none)

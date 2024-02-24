@@ -81,7 +81,7 @@
    (cheats-revealed   pc-cheats)
    (cheats-purchased  pc-cheats)
    (cheats-unlocked   pc-cheats)
-   (cheats-backup     pc-cheats) ;; backup for 'cheats', persisted to disk to be restored when disabling speedrunner mode
+   (cheats-mask       pc-cheats)
    ;; music
    (music-unlocked  bit-array)
    (flava-unlocked  symbol 6)
@@ -91,12 +91,15 @@
    (fast-elevator? symbol)
    (fast-progress? symbol)
 
+   (stats   statistics)
+
    ;; gfx
    (smooth-minimap?   symbol)
    (hires-clouds?     symbol)
 
    ;; other
    (controller-led-status?    symbol)
+   (speedrunner-mode-custom-bind uint32)
 
    (text-language pc-language) ;; language for game text
 	 )
@@ -141,7 +144,8 @@
   (false! (-> obj fast-progress?))
   (true! (-> obj smooth-minimap?))
   (false! (-> obj hires-clouds?))
-  
+  (set! (-> obj speedrunner-mode-custom-bind) 0)
+
   (cond
     ((and (= *default-territory* GAME_TERRITORY_SCEE) (= (-> obj text-language) (pc-language english)))
       (set! (-> obj text-language) (pc-language uk-english))
@@ -169,6 +173,8 @@
   (clear-all! (-> obj music-unlocked))
   (dotimes (i 6)
     (set! (-> obj flava-unlocked i) #f))
+
+  (set! (-> obj stats) *statistics*)
   0)
 
 (defmethod reset-input ((obj pc-settings-jak2) (device symbol) (call-handlers symbol))
@@ -260,7 +266,7 @@
                               :hijack-speech-chance 0.45
 
                               :sewer-valve-target-seconds 75
-                              
+
                               :kill-civvie-target 40
                               :kill-car-target 20
                               ))
@@ -286,9 +292,9 @@
 (defmacro lock-cheat! (&rest cheats)
   `(begin
     (logclear! (-> *pc-settings* cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* purchased-cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* unlocked-cheats) (pc-cheats ,@cheats))
-    (logclear! (-> *pc-settings* revealed-cheats) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-purchased) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-unlocked) (pc-cheats ,@cheats))
+    (logclear! (-> *pc-settings* cheats-revealed) (pc-cheats ,@cheats))
     )
   )
 

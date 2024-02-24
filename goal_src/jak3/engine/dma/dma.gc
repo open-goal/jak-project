@@ -7,3 +7,157 @@
 
 ;; DECOMP BEGINS
 
+
+(defun dma-sync-hang ((bank dma-bank))
+  "Hang here until the dma transfer is completed.
+  This is worse than the dma-sync-fast because it ends
+  up spamming the DMA bank register more often, and reduces
+  the speed of the DMA transfer.
+  This function is unused."
+  (crash!)
+  (none)
+  )
+
+(defun dma-sync-crash ((arg0 dma-bank))
+  "Wait for DMA to finish for a while, then crash if we can't.
+  This function is unused."
+  (crash!)
+  (none)
+  )
+
+(defun dma-send ((arg0 dma-bank) (madr uint) (qwc uint))
+  "Send DMA given an address and a quadword count.
+  The madr can be in main memory or scratchpad.
+  This is appropriate for VIF0/GIF transfers.
+  It can be used for VIF1, but will do VIF -> madr, which is probably
+  not what you want."
+  (crash!)
+  (none)
+  )
+
+(defun dma-send-chain ((arg0 dma-bank-source) (tadr uint))
+  "Send DMA! tadr should be a tag address, possibly in spad ram.
+  This is useful for sending to VIF.
+  Tag transfer is enabled, and DIR is set so a VIF1 transfer
+  goes from tadr -> VIF."
+  (crash!)
+  (none)
+  )
+
+(defun dma-send-chain-no-tte ((arg0 dma-bank-source) (arg1 uint))
+  "Send DMA chain! TTE bit is not set, don't transfer tags.
+   This is never used."
+   (crash!)
+   (none)
+   )
+
+(defun dma-send-chain-no-flush ((arg0 dma-bank-source) (arg1 uint))
+  "Send DMA chain! But don't flush the cache, so be careful here. TTE enable."
+  (crash!)
+  (none)
+  )
+
+(defun dma-send-to-spr ((sadr uint) (madr uint) (qwc uint) (sync symbol))
+  "Transfer data to spr"
+  (crash!)
+  (none)
+  )
+
+(defun dma-send-to-spr-no-flush ((sadr uint) (madr uint) (qwc uint) (sync symbol))
+  "Transfer to spr. Doesn't flush the cache first, so be careful."
+  (crash!)
+  (none)
+  )
+
+(defun dma-send-from-spr ((madr uint) (sadr uint) (qwc uint) (sync symbol))
+  "Transfer from spr."
+  (crash!)
+  (none)
+  )
+
+(defun dma-send-from-spr-no-flush ((madr uint) (sadr uint) (qwc uint) (sync symbol))
+  "Transfer from spr, don't flush the cache."
+  (crash!)
+  (none)
+  )
+
+(defun dma-initialize ()
+  "Due to a bug in the PS2 hardware, you must always disable the DMAtag mismatch
+  error. This is done here."
+
+  (#when PC_PORT
+    (return 0)
+    )
+
+  (set! (-> (the-as vif-bank #x10003800) err me0) 1)
+  (set! (-> (the-as vif-bank #x10003c00) err me0) 1)
+  (none)
+  )
+
+(defun clear-vu0-mem ()
+  "Set the vu0 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory.
+  Will crash on PC Port."
+  (crash!)
+  (none)
+  )
+
+(defun clear-vu1-mem ()
+  "Set the vu1 data memory to 0xabadbeef. This uses the slow EE mapping of VU memory.
+  Will crash on PC Port."
+  (crash!)
+  (none)
+  )
+
+(defun dump-vu1-mem ()
+  "Print VU1 memory to runtime stdout.
+  Will crash on PC Port."
+  (crash!)
+  (none)
+  )
+
+(defun dump-vu1-range ((start uint) (total-count uint))
+  "Print part of VU1 memory to runtime stdout.
+  Will crash on PC Port."
+  (crash!)
+  #f
+  )
+
+(defun reset-vif1-path ()
+  "When things go wrong, totally reset vif1."
+  (#unless PC_PORT
+           ;; changed for jak 3! now prints to 0.
+     (format 0 "~`dma-bank-vif`I~`vif-bank`I" #x10009000 #x10003c00)
+    )
+  (reset-path)
+  (set-graphics-mode)
+  (format 0 "gkernel: vif1 path reset!~%")
+  (none)
+  )
+
+(defun ultimate-memcpy ((dst pointer) (src pointer) (size-bytes uint))
+  "The Fastest Memory Copy, for larger transfers.
+  Memory is copied in ascending order, in 4 kB blocks.
+  The size should be a multiple of 16 bytes."
+  ;; on PC Port, just call C mem-move, it's the fastest.
+  (__mem-move dst src size-bytes)
+  (none)
+  )
+
+(defun symlink2 ()
+  "symlink2 is a handwritten assembly version of the v2 linking routine.
+   it is not ported because the OpenGOAL linker has its own implementation already."
+  (crash!)
+  (none)
+  )
+
+(defun symlink3 ()
+  "symlink3 is a handwritten assembly version of the v3 linking routine.
+   OpenGOAL uses a different format for v3, customized for x86-64, so this is not
+   needed. The C++ implementation is plenty fast enough"
+  (crash!)
+  (none)
+  )
+
+;; configuration required to work around hardware bug on the PS2.
+;; doesn't do anything important
+(dma-initialize)

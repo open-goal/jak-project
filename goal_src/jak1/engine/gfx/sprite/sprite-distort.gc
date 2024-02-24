@@ -35,7 +35,8 @@
           (cam-aspy (- (-> *math-camera* perspective vector 1 y)))
           )
       ;; regenerate if aspect ratio changed
-      (when (or (!= cam-aspx (-> tables aspx)) (!= cam-aspy (-> tables aspy)))
+      ;; og:preserve-this Fix intermittent crash on start up due to a race with the DMA
+      (when #t
         (set! (-> tables aspx) cam-aspx)
         (set! (-> tables aspy) cam-aspy)
         (while (< iterations 12)
@@ -114,7 +115,7 @@
 (defun sprite-init-distorter ((dma-buff dma-buffer) (frame-base-pointer uint))
   "Set up DMA for setting up the sprite-distorter renderer"
   ;;(format #t "distorter: ~d~%" (-> *sprite-aux-list* entry))
-  
+
   ;; set up GS registers
   (dma-buffer-add-gs-set dma-buff
     ;; dont update zbuffer
@@ -146,8 +147,8 @@
       (&+! (-> dma-buff base) 16)
       )
     (let ((aspect-vec (the-as vector (-> dma-buff base))))
-      (set-vector! aspect-vec 
-                   (-> *sprite-distorter-sine-tables* aspx) 
+      (set-vector! aspect-vec
+                   (-> *sprite-distorter-sine-tables* aspx)
                    (-> *sprite-distorter-sine-tables* aspy)
                    0.0
                    0.0
@@ -382,3 +383,6 @@
     (none)
     )
   )
+
+;; og:preserve-this Fix intermittent crash on start up due to a race with the DMA
+(sprite-distorter-generate-tables)

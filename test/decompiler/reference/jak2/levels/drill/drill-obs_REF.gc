@@ -520,6 +520,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type drill-elevator
 (defmethod deactivate ((this drill-elevator))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -689,6 +690,7 @@ do so.
 
 ;; definition for method 10 of type drill-mech-elevator
 (defmethod deactivate ((this drill-mech-elevator))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this running-sound-id))
       (sound-stop (-> this running-sound-id))
       )
@@ -928,15 +930,16 @@ For example for an elevator pre-compute the distance between the first and last 
   )
 
 ;; definition for method 7 of type fire-floor
-(defmethod relocate ((this fire-floor) (arg0 int))
+(defmethod relocate ((this fire-floor) (offset int))
   (if (nonzero? (-> this part-off))
-      (&+! (-> this part-off) arg0)
+      (&+! (-> this part-off) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; definition for method 10 of type fire-floor
 (defmethod deactivate ((this fire-floor))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (if (nonzero? (-> this part-off))
       (kill-and-free-particles (-> this part-off))
@@ -1164,15 +1167,16 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type drill-switch
 ;; WARN: Return type mismatch basebutton vs drill-switch.
-(defmethod relocate ((this drill-switch) (arg0 int))
+(defmethod relocate ((this drill-switch) (offset int))
   (if (nonzero? (-> this green-part))
-      (&+! (-> this green-part) arg0)
+      (&+! (-> this green-part) offset)
       )
-  (the-as drill-switch ((method-of-type basebutton relocate) this arg0))
+  (the-as drill-switch ((method-of-type basebutton relocate) this offset))
   )
 
 ;; definition for method 10 of type drill-switch
 (defmethod deactivate ((this drill-switch))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this green-part))
       (kill-and-free-particles (-> this green-part))
       )
@@ -1558,6 +1562,7 @@ This commonly includes things such as:
 
 ;; definition for method 10 of type drill-laser
 (defmethod deactivate ((this drill-laser))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this hit-sound-id))
   ((method-of-type process-drawable deactivate) this)
   (none)

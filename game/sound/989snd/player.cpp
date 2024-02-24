@@ -233,7 +233,7 @@ void Player::SetMasterVolume(u32 group, s32 volume) {
   }
 }
 
-BankHandle Player::LoadBank(nonstd::span<u8> bank) {
+BankHandle Player::LoadBank(std::span<u8> bank) {
   std::scoped_lock lock(mTickLock);
   return mLoader.BankLoad(bank);
 }

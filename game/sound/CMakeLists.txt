@@ -1,5 +1,3 @@
-set(CMAKE_CXX_STANDARD 17)
-
 set(SOUND_SOURCES
   989snd/player.cpp
   989snd/midi_handler.cpp

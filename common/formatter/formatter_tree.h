@@ -18,8 +18,9 @@
 // we really care about is:
 // - getting all the text tokens for the source code
 // - having them in a proper, nested format
-// The treesitter format is complicated and highly nested, leading to some very hard to understand
-// code. So my solution is a 2-pass format.
+//
+// TLDR - The treesitter format is complicated and highly nested, leading to some very hard to
+// understand code. So my solution is atleast a 2-pass format.
 //
 // Pass 1 - convert the AST into a simplified FormatterTree
 // Pass 2 - use the simplified tree to output the final code
@@ -37,8 +38,9 @@ class FormatterTreeNode {
   std::vector<FormatterTreeNode> refs;
   Metadata metadata;
   // The token is optional because list nodes do not contain a token, they just contain a bunch of
-  // eventually token node refs
+  // eventually-containing token node refs
   std::optional<std::string> token;
+  std::optional<std::string> node_prefix;
 
   formatter_rules::config::FormFormattingConfig formatting_config;
 
@@ -47,6 +49,15 @@ class FormatterTreeNode {
   FormatterTreeNode(const Metadata& _metadata) : metadata(_metadata){};
 
   bool is_list() const { return !token.has_value(); }
+  std::string token_str() const {
+    if (node_prefix && token) {
+      return node_prefix.value() + token.value();
+    }
+    if (token) {
+      return token.value();
+    }
+    return "";
+  }
 };
 
 // A FormatterTree has a very simple and crude tree structure where:
@@ -62,5 +73,6 @@ class FormatterTree {
  private:
   void construct_formatter_tree_recursive(const std::string& source,
                                           TSNode curr_node,
-                                          FormatterTreeNode& tree_node);
+                                          FormatterTreeNode& tree_node,
+                                          std::optional<std::string> node_prefix = {});
 };

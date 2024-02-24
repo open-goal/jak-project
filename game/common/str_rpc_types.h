@@ -5,8 +5,7 @@
 
 #include "game/common/overlord_common.h"
 
-// TODO: jak 3 stub
-constexpr PerGameVersion<int> STR_RPC_ID(0xdeb5, 0xfab4, 0x0);
+constexpr PerGameVersion<int> STR_RPC_ID(0xdeb5, 0xfab4, 0xfab4);
 constexpr int STR_RPC_CHANNEL = 4;
 
 /*

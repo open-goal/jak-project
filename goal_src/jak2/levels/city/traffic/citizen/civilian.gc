@@ -124,13 +124,13 @@
       (set! (-> this hit-points) (-> this enemy-info default-hit-points))
       (set! (-> this hit-points) (rand-vu-int-range 1 4))
       (set! (-> this fated-time) 0)
-      (logior! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+      (logior! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
       (logior! (-> this focus-status) (focus-status dangerous))
-      (logior! (-> this enemy-flags) (enemy-flag check-water))
-      (logior! (-> this enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+      (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+      (logior! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
       (logclear! (-> this focus-status) (focus-status dead))
       (logior! (-> this mask) (process-mask collectable))
-      (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+      (logior! (-> this enemy-flags) (enemy-flag attackable-backup))
       (if (zero? (-> this hit-face))
           (go (method-of-object this get-up-front))
           (go (method-of-object this get-up-back))
@@ -183,7 +183,7 @@
     )
   )
 
-(defmethod enemy-method-108 ((this civilian) (arg0 enemy) (arg1 event-message-block))
+(defmethod enemy-method-108 ((this civilian) (arg0 process-drawable) (arg1 event-message-block))
   0
   )
 
@@ -460,7 +460,7 @@
       )
     )
   (when (< (-> self cp-next-time) (current-time))
-    (set! (-> self cp-next-time) (+ (current-time) (get-rand-int-range self 600 1200)))
+    (set! (-> self cp-next-time) (+ (current-time) (rnd-int-range self 600 1200)))
     (citizen-method-190 self (-> self cp-force))
     )
   (add-offset-to-target! (-> self nav state) (-> self cp-force))
@@ -722,7 +722,7 @@
       (set! (-> v1-9 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
       )
     0
-    (set! (-> self next-time) (+ (current-time) (get-rand-int-range self 300 600)))
+    (set! (-> self next-time) (+ (current-time) (rnd-int-range self 300 600)))
     (set! (-> self last-second-pos quad) (-> self root trans quad))
     (set! (-> self last-distance)
           (vector-vector-xz-distance (-> self controller turn-exit-point) (-> self root trans))
@@ -847,7 +847,7 @@
   (citizen-method-192 self)
   (when (< (-> self cp-next-time) (current-time))
     (citizen-method-190 self (-> self cp-force))
-    (set! (-> self cp-next-time) (+ (current-time) (get-rand-int-range self 1200 2400)))
+    (set! (-> self cp-next-time) (+ (current-time) (rnd-int-range self 1200 2400)))
     )
   (let ((gp-1 (new 'stack-no-clear 'vector)))
     (citizen-method-188 self gp-1)
@@ -899,7 +899,7 @@
       (set! (-> v1-9 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
       )
     0
-    (set! (-> self cp-next-time) (+ (current-time) (get-rand-int-range self 1200 2400)))
+    (set! (-> self cp-next-time) (+ (current-time) (rnd-int-range self 1200 2400)))
     (set! (-> self cp-force quad) (the-as uint128 0))
     (if *citizen-debug*
         (set-vector! (-> self draw color-mult) 0.0 1.0 0.0 1.0)
@@ -1129,7 +1129,7 @@
       )
     0
     (if (-> self dive-finished?)
-        (track-target! self)
+        (common-post self)
         (nav-enemy-method-176 self)
         )
     )
@@ -1225,7 +1225,7 @@
       (set! (-> a0-0 travel quad) (-> v1-1 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1276,7 +1276,7 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1327,12 +1327,12 @@
       (set! (-> a0-1 travel quad) (-> v1-3 quad))
       )
     0
-    (track-target! self)
+    (common-post self)
     )
   )
 
 (defbehavior civilian-falling-post civilian ()
-  (logior! (-> self enemy-flags) (enemy-flag directed))
+  (logior! (-> self enemy-flags) (enemy-flag recover-applied-velocity))
   (let ((gp-0 (-> self root)))
     (cond
       ((focus-test? self under-water)
@@ -1354,7 +1354,7 @@
       )
     )
   (enemy-method-111 self)
-  (track-target! self)
+  (common-post self)
   (none)
   )
 
@@ -1803,7 +1803,7 @@
     (go-virtual ride)
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -1873,7 +1873,7 @@
     #f
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 
@@ -2022,7 +2022,7 @@
     (go-virtual active)
     )
   :post (behavior ()
-    (track-target! self)
+    (common-post self)
     )
   )
 

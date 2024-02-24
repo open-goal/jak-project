@@ -20,7 +20,7 @@ bool CompilerTool::needs_run(const ToolInput& task, const PathMap& path_map) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
 
-  if (!m_compiler->knows_object_file(fs::path(task.input.at(0)).stem().u8string())) {
+  if (!m_compiler->knows_object_file(fs::path(task.input.at(0)).stem().string())) {
     return true;
   }
   return Tool::needs_run(task, path_map);

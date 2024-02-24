@@ -162,7 +162,7 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
 
   std::string err;
   if (!goos::get_va(rest, &err, &args)) {
-    throw_compiler_error(form, err);
+    throw_compiler_error(form, "{}", err);
   }
   return args;
 }
@@ -189,7 +189,7 @@ void Compiler::va_check(
         named) {
   std::string err;
   if (!goos::va_check(args, unnamed, named, &err)) {
-    throw_compiler_error(form, err);
+    throw_compiler_error(form, "{}", err);
   }
 }
 

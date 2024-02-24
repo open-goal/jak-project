@@ -10,7 +10,7 @@ struct VagStrListNode {
   int unk_60;
   int id;
   int unk_68;
-  int unk_72;
+  int sound_handler;  // 989snd handler that owns this stream
   int unk_76;
   int unk_80;
   int prio;

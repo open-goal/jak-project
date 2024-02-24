@@ -7,6 +7,7 @@
 
 #include "common/cross_os_debug/xdbg.h"
 #include "common/listener_common.h"
+#include "common/log/log.h"
 
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/fileio.h"
@@ -67,6 +68,9 @@ void init_output() {
       break;
     case GameVersion::Jak2:
       use_debug = MasterDebug && DebugSegment;
+      break;
+    case GameVersion::Jak3:
+      use_debug = MasterDebug || DebugSegment;
       break;
     default:
       ASSERT(false);
@@ -183,37 +187,37 @@ void cprintf(const char* format, ...) {
 /*!
  * Print directly to the C stdout
  * The "k" parameter is ignored, so this is just like printf
- * DONE, EXACT
+ * DONE, changed vprintf to lg::printstd
  */
 void Msg(s32 k, const char* format, ...) {
   (void)k;
   va_list args;
   va_start(args, format);
-  vprintf(format, args);
+  lg::printstd(format, args);
   va_end(args);
 }
 
 /*!
  * Print directly to the C stdout
  * This is idential to Msg
- * DONE, EXACT
+ * DONE, changed vprintf to lg::printstd
  */
 void MsgWarn(const char* format, ...) {
   va_list args;
   va_start(args, format);
-  vprintf(format, args);
+  lg::printstd(format, args);
   va_end(args);
 }
 
 /*!
  * Print directly to the C stdout
  * This is idential to Msg
- * DONE, EXACT
+ * DONE, changed vprintf to lg::printstd
  */
 void MsgErr(const char* format, ...) {
   va_list args;
   va_start(args, format);
-  vprintf(format, args);
+  lg::printstd(format, args);
   va_end(args);
 }
 

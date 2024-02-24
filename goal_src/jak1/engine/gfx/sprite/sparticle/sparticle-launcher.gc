@@ -37,7 +37,7 @@
   (let ((s5-0 0))
     (while (!= (-> this init-specs s5-0 field) (sp-field-id spt-end))
       (let ((init-spec (-> this init-specs s5-0)))
-        (format #t "~T~S : ~F / #x~X / ~D~%" 
+        (format #t "~T~S : ~F / #x~X / ~D~%"
                 (enum->string sp-field-id (-> init-spec field))
                 (-> init-spec initial-valuef)
                 (-> init-spec initial-valuef)
@@ -231,7 +231,7 @@
 
 (defun particle-setup-adgif ((arg0 adgif-shader) (arg1 texture-id))
   "Set up the adgif for a particle and the given texture."
-  
+
   ;; grab the texture
   (let ((a1-1 (lookup-texture-by-id arg1)))
     ;; set up some texture stuff
@@ -242,18 +242,18 @@
         (adgif-shader<-texture! arg0 a1-1)
         )
     )
-  
+
   ;; we'll use the usual tex0/tex1/miptbp1
   (set! (-> arg0 prims 1) (gs-reg64 tex0-1))
   (set! (-> arg0 prims 3) (gs-reg64 tex1-1))
   (set! (-> arg0 prims 5) (gs-reg64 miptbp1-1))
-  
+
   ;; clamp will use something weird
   (set! (-> arg0 clamp-reg) (gs-reg64 zbuf-1))
   ;; this is sometimes "gs-miptbp" instead.
   (set! (-> arg0 prims 9) (gs-reg64 alpha-1))
   (set! (-> arg0 alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
-  
+
   ;; og:preserve-this clamp is actually zbuf for sparticles, not gs-clamp.
   (set! (-> arg0 clamp) (the gs-clamp (new 'static 'gs-zbuf :zbp #x1c0 :psm (gs-psm ct24) :zmsk #x1)))
   0
@@ -283,14 +283,14 @@
 (defun sp-queue-launch ((arg0 sparticle-system) (arg1 sparticle-launcher) (arg2 vector))
   "Queue a launch from the given launcher, at the given position."
   (let ((v1-0 *sp-launch-queue*))
-    
+
     ;; og:preserve-this constant
     ;; make sure we have room in the queue
     (when (= (-> v1-0 in-use) SPARTICLE_QUEUE_SIZE)
       (format 0 "ERROR: sp-launch-particles called during processing, and queue is full~%")
       (return 0)
       )
-    
+
     ;; make a new entry in the queue
     (let ((a3-5 (-> v1-0 queue (-> v1-0 in-use))))
       (set! (-> a3-5 sp-system) arg0)
@@ -310,7 +310,7 @@
     (let ((s2-0 (new 'stack-no-clear 'matrix))
           (s3-0 (new 'stack-no-clear 'vector))
           )
-      
+
       ;; use the field-init-spec to create a totally new launchinfo.
       (sp-init-fields!
         (the-as (pointer float) (-> s5-0 launchrot))
@@ -319,13 +319,13 @@
         (sp-field-id launch-fields-end)
         #t
         )
-      
-      ;; rotate vel to include the launchrot and conerot 
+
+      ;; rotate vel to include the launchrot and conerot
       (matrix-rotate-xyz! s2-0 (-> s5-0 launchrot))
       (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s2-0)
       (matrix-rotate-xyz! s2-0 (-> s5-0 conerot))
       (vector3s-matrix*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s2-0)
-      
+
       ;; cone axis (pre-rotation to local, y is default, but there's a flag for z)
       (if (logtest? (sp-cpuinfo-flag launch-along-z) (-> arg1 flags))
           (set-vector! s3-0 0.0 0.0 (-> s5-0 coneradius) 1.0)
@@ -338,7 +338,7 @@
       (+! (-> arg0 launchrot y) (-> s3-0 y))
       (+! (-> arg0 launchrot z) (-> s3-0 z))
       )
-    
+
 
     ;; if desired, apply addition y rotation.
     (when (!= (-> s5-0 rotate-y) 0.0)
@@ -346,7 +346,7 @@
         (matrix-rotate-y! s3-1 (-> s5-0 rotate-y))
         (vector3s-rotate*! (the-as vector3s (-> arg0 launchrot)) (the-as vector3s (-> arg0 launchrot)) s3-1)
         (vector3s-rotate*! (the-as vector3s (-> arg1 vel-sxvel)) (the-as vector3s (-> arg1 vel-sxvel)) s3-1)
-        
+
         ;; optionally rotate acc.
         (if (not (logtest? (sp-cpuinfo-flag use-global-acc) (-> arg1 flags)))
             (vector3s-rotate*! (the-as vector3s (-> arg1 acc)) (the-as vector3s (-> arg1 acc)) s3-1)
@@ -372,7 +372,7 @@
         (let ((a1-1 (new 'stack-no-clear 'vector))
               (s5-0 (new 'stack-no-clear 'quaternion))
               )
-          
+
           ;; convert conerot to a quaternion
           (set-vector!
             a1-1
@@ -400,7 +400,7 @@
               )
             )
           )
-        
+
         ;; scale the rate of rot-syvel (it's multiplied by a rate already)
         (cond
           (*sp-60-hz*
@@ -459,7 +459,7 @@
 
 ;; for whatever reason the enemy death launch stuff is defined here.
 ;; it doesn't use the adgif cache.
-;; but it's a nice example for how to set the 
+;; but it's a nice example for how to set the
 
 (define *death-adgif* (the-as adgif-shader #f))
 
@@ -480,7 +480,7 @@
    (let ((v1-0 #x437f0000))
     (.mov vf31 v1-0)
     )
-   
+
    (let ((s5-0 (new 'stack-no-clear 'sprite-vec-data-2d))
          ;; get a particle, from the particle system
          ;; this gets us a "cpuinfo", which is the state of a particle.
@@ -490,7 +490,7 @@
         ;; if it fails, give up.
      (return 0)
      )
-    
+
     (let* ((a1-2 (-> arg1 init-specs 0))
            ;; initialize the sprite fields. this is done to a temporary structure on the stack
            ;; the death particle effect has some special initialization stuff below that will
@@ -504,7 +504,7 @@
                    )
                  )
            )
-      
+
       ;; initialize the cpu fields, this is the initial particle state.
       (sp-init-fields!
         (&-> gp-0 omega)
@@ -514,11 +514,11 @@
         #t
         )
       )
-    
+
     ;; convert rotations
     (set! (-> s5-0 matrix) 0)
     (set! (-> s5-0 rot) (the float (sar (shl (the int (-> s5-0 rot)) 48) 48)))
-    
+
     ;; convert color/position.
     (.lvf vf4 (&-> s5-0 color quad))
     (.lvf vf5 (&-> s5-0 x-y-z-sx quad))
@@ -526,14 +526,14 @@
     (.add.vf vf5 vf5 vf30 :mask #b111)
     (.svf (&-> s5-0 color quad) vf4)
     (.svf (&-> s5-0 x-y-z-sx quad) vf5)
-    
+
     (when (not *death-adgif*)
       ;; first time we get here, set up the adgif shader.
       (set! *death-adgif* (new 'static 'adgif-shader))
       (particle-adgif *death-adgif* (new 'static 'texture-id :index #x18 :page #x2))
       (set! (-> *death-adgif* alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
       )
-    
+
     ;; copy the death-adgif to the adgif of our particle
     (let ((v1-14 (-> *death-adgif* quad 0 quad)))
      (set! (-> gp-0 adgif quad 0 quad) v1-14)
@@ -550,7 +550,7 @@
     (let ((v1-22 (-> *death-adgif* quad 4 quad)))
      (set! (-> gp-0 adgif quad 4 quad) v1-22)
      )
-    
+
     ;; set up some color stuff.
     (.lvf vf4 (&-> (-> *time-of-day-context* current-prt-color) quad))
     (.lvf vf5 (&-> s5-0 color quad))
@@ -559,11 +559,11 @@
     (.mul.vf vf6 vf6 vf4 :mask #b111)
     (.svf (&-> s5-0 color quad) vf5)
     (.svf (&-> gp-0 fade quad) vf6)
-    
-    ;; 
+
+    ;;
     (set! (-> gp-0 key) (the-as sparticle-launch-control 0))
     (set! (-> gp-0 binding) #f)
-    
+
     ;; copy the sprite data
     (let ((v1-26 (-> gp-0 sprite)))
      (.lvf vf1 (&-> s5-0 x-y-z-sx quad))
@@ -574,11 +574,11 @@
      (.sub.w.vf vf3 vf0 vf0 :mask #b1000)
      (.svf (&-> v1-26 color quad) vf3)
      )
-    
+
     ;; we're done!
     (logior! (-> gp-0 flags) (sp-cpuinfo-flag ready-to-launch))
     (set! (-> gp-0 cache-alpha) (-> s5-0 a))
-    
+
     ;; I'm not really sure how the particles get launched from here yet.
     )
    0
@@ -707,7 +707,7 @@
 
 (defun sp-relaunch-particle-3d ((arg0 object) (arg1 sparticle-launcher) (arg2 sparticle-cpuinfo) (arg3 sprite-vec-data-3d))
   "relaunch a 3d particle"
-  
+
   ;; do all the 3d-specific stuff here, the general relaunch only does 2d fields.
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
@@ -797,7 +797,7 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 ;; a launch-control is an instance of a particle effect group. it holds the definition and the state.
-;; the launch-controls are always associated with a process. this allows the memory to be reclaimed once the 
+;; the launch-controls are always associated with a process. this allows the memory to be reclaimed once the
 ;; particles are despawned.
 
 (defmethod initialize ((this sparticle-launch-control) (arg0 sparticle-launch-group) (arg1 process))
@@ -811,10 +811,10 @@
     (set! (-> this matrix) 0)
     (set! (-> this last-spawn-frame) (the-as int (+ (-> *display* real-actual-frame-counter) (seconds -0.007))))
     (set! (-> this last-spawn-time) 0)
-    
+
     ;; iterate through the effects in the group
     (dotimes (s3-0 (-> arg0 length))
-      
+
       (let* ((a0-2 (-> arg0 launcher s3-0)) ;; the group-item (definition of the effect)
              (a1-2 (-> *part-id-table* (-> a0-2 launcher))) ;; the actual effect for the group item
              (v1-9 (-> this data s5-0)) ;; our state for this particular instance of this effect within the group.
@@ -873,7 +873,7 @@
 
 (defmethod kill-and-free-particles ((this sparticle-launch-control))
   "kill all the particles"
-  
+
   ;; clear the flag.
   (countdown (v1-0 (-> this length))
     (let ((a0-3 (-> this data v1-0)))
@@ -882,7 +882,7 @@
     )
   (set! (-> this local-clock) 0)
   (set! (-> this fade) 1.0)
-  
+
   ;; kill the particles (let them go back to the sparticle system.)
   (kill-all-particles-with-key this)
   ;; release matrices
@@ -916,7 +916,7 @@
       ;; sphere with offset
      (let ((gp-1 (vector+! (new 'stack-no-clear 'vector) arg0 (the-as vector (-> v1-0 bounds)))))
       (set! (-> gp-1 w) f0-0)
-      
+
       ;; debug draw sphere
       (if (and *display-actor-vis*
                (or (not *display-actor-anim*)
@@ -931,7 +931,7 @@
             (new 'static 'rgba :g #xff :a #x80)
             )
           )
-      
+
       ;; og:preserve-this can we see it?
       (#if (not PC_PORT)
           (sphere-in-view-frustum? (the-as sphere gp-1))
@@ -950,7 +950,7 @@
 
 (defmethod spawn ((this sparticle-launch-control) (arg0 vector))
   (set! (-> this center quad) (-> arg0 quad))
-  
+
   ;; og:preserve-this
   ;; check if we are visible (remove this check to force particles to be drawn.)
   (if (not (or (is-visible? this arg0)
@@ -962,7 +962,7 @@
   (let ((s4-0 *particle-300hz-timer*)
         (s5-0 (-> this last-spawn-time))
         )
-    
+
     ;; weird stuff for frame counting
     (let ((v1-8 (-> *display* real-actual-frame-counter)))
       (if (!= v1-8 (+ (-> this last-spawn-frame) 1))
@@ -976,7 +976,7 @@
       (+! (-> this local-clock) (logand (the-as int (-> *sp-frame-time* x)) 255))
       (set! s4-0 (-> this local-clock))
       )
-    
+
     (let ((f30-0 (vector-vector-distance arg0 (math-camera-pos)))
           ;; hour mask
           (s3-1 (ash 1 (if *time-of-day-proc*
@@ -989,12 +989,12 @@
       (if (nonzero? (-> this matrix)) ;; if we have an additional matrix, say we're at the camera so we always draw.
           (set! f30-0 0.0)
           )
-      
+
       ;; og:preserve-this if we have ps2 particles off, say we're at the camera
       (with-pc
         (if (not (-> *pc-settings* ps2-parts?))
             (set! f30-0 0.0)))
-      
+
       ;; loop over particles in the group.
       (let ((s2-1 (-> this length)))
         (while (begin (label cfg-79) (nonzero? s2-1))
@@ -1012,18 +1012,18 @@
                 (if (!= (-> v1-29 falloff-to) 0.0)
                     (set! f0-2 (- 1.0 (/ f30-0 (-> v1-29 falloff-to))))
                     )
-                
+
                 ;; reject if bad type
                 (let ((a0-26 sparticle-launcher))
                   (b! (!= (-> a1-4 type) a0-26) cfg-78 :delay (nop!))
                   )
-                
+
                 ;; og:preserve-this PAL patch here
                 ;; ??
                 (b! (zero? (logand (-> v1-29 flags) (sp-group-item-flag launch-asap bit6)))
                     cfg-36 :delay (nop!)
                     )
-                
+
                 (when (or (zero? (logand (-> a3-0 flags) (sp-launch-state-flags particles-active)))
                           (logtest? (-> v1-29 flags) (sp-group-item-flag bit6))
                           )
@@ -1045,10 +1045,10 @@
                       )
                   )
                 (b! #t cfg-77 :delay (nop!))
-                
-                
+
+
                 (label cfg-36)
-                
+
                 ;; reject if bad time of day
                 (when (logtest? s3-1 (-> v1-29 hour-mask))
                   0

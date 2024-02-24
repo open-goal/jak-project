@@ -22,7 +22,6 @@
 #include "game/sce/libpad.h"
 #include "game/sce/libscf.h"
 #include "game/sce/sif_ee.h"
-#include "game/system/vm/vm.h"
 
 /*!
  * Where does OVERLORD load its data from?
@@ -230,7 +229,7 @@ void InstallHandler(u32 handler_idx, u32 handler_func) {
       vif1_interrupt_handler = handler_func;
       break;
     default:
-      printf("unknown handler: %d\n", handler_idx);
+      lg::error("unknown handler: {}\n", handler_idx);
       ASSERT(false);
   }
 }
@@ -512,13 +511,13 @@ void pc_get_active_display_size(u32 w_ptr, u32 h_ptr) {
     return;
   }
   if (w_ptr) {
-    auto w_out = Ptr<u32>(w_ptr).c();
+    auto w_out = Ptr<s64>(w_ptr).c();
     if (w_out) {
       *w_out = Display::GetMainDisplay()->get_display_manager()->get_screen_width();
     }
   }
   if (h_ptr) {
-    auto h_out = Ptr<u32>(h_ptr).c();
+    auto h_out = Ptr<s64>(h_ptr).c();
     if (h_out) {
       *h_out = Display::GetMainDisplay()->get_display_manager()->get_screen_height();
     }
@@ -537,13 +536,13 @@ void pc_get_window_size(u32 w_ptr, u32 h_ptr) {
     return;
   }
   if (w_ptr) {
-    auto w = Ptr<u32>(w_ptr).c();
+    auto w = Ptr<s64>(w_ptr).c();
     if (w) {
       *w = Display::GetMainDisplay()->get_display_manager()->get_window_width();
     }
   }
   if (h_ptr) {
-    auto h = Ptr<u32>(h_ptr).c();
+    auto h = Ptr<s64>(h_ptr).c();
     if (h) {
       *h = Display::GetMainDisplay()->get_display_manager()->get_window_height();
     }
@@ -590,11 +589,11 @@ s64 pc_get_num_resolutions() {
 void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
   if (Display::GetMainDisplay()) {
     auto res = Display::GetMainDisplay()->get_display_manager()->get_resolution(id);
-    auto w = Ptr<u32>(w_ptr).c();
+    auto w = Ptr<s64>(w_ptr).c();
     if (w) {
       *w = res.width;
     }
-    auto h = Ptr<u32>(h_ptr).c();
+    auto h = Ptr<s64>(h_ptr).c();
     if (h) {
       *h = res.height;
     }
@@ -675,6 +674,13 @@ void pc_set_controller(u32 controller_id, u32 port) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->get_input_manager()->set_controller_for_port(controller_id, port);
   }
+}
+
+u32 pc_get_keyboard_enabled() {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(Display::GetMainDisplay()->get_input_manager()->is_keyboard_enabled());
+  }
+  return bool_to_symbol(false);
 }
 
 void pc_set_keyboard_enabled(u32 sym_val) {
@@ -922,6 +928,7 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-get-controller-count", (void*)pc_get_controller_count);
   make_func_symbol_func("pc-get-controller-index", (void*)pc_get_controller_index);
   make_func_symbol_func("pc-set-controller!", (void*)pc_set_controller);
+  make_func_symbol_func("pc-get-keyboard-enabled?", (void*)pc_get_keyboard_enabled);
   make_func_symbol_func("pc-set-keyboard-enabled!", (void*)pc_set_keyboard_enabled);
   make_func_symbol_func("pc-set-mouse-options!", (void*)pc_set_mouse_options);
   make_func_symbol_func("pc-set-mouse-camera-sens!", (void*)pc_set_mouse_camera_sens);
@@ -973,10 +980,4 @@ void init_common_pc_port_functions(
 
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
-
-  // init ps2 VM
-  if (VM::use) {
-    make_func_symbol_func("vm-ptr", (void*)VM::get_vm_ptr);
-    VM::vm_init();
-  }
 }

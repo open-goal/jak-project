@@ -3,6 +3,8 @@
 
 ;; definition of type collide-puss-sphere
 (deftype collide-puss-sphere (structure)
+  "A query sphere from the user for the porbe-using-spheres query.
+This is used internally by the collide-cache implementation."
   ((bsphere  sphere          :inline)
    (bbox4w   bounding-box4w  :inline)
    )
@@ -23,6 +25,7 @@
 
 ;; definition of type collide-puss-work
 (deftype collide-puss-work (structure)
+  "Scratchpad memory map for probe-using-spheres query."
   ((closest-pt      vector               :inline)
    (tri-normal      vector               :inline)
    (tri-bbox4w      bounding-box4w       :inline)
@@ -53,6 +56,8 @@
 
 ;; definition of type collide-cache-tri
 (deftype collide-cache-tri (structure)
+  "A single triangle inside the collision cache.
+Contains a reference back to the source object (like a collide-shape or water-control), and the prim itself."
   ((vertex       vector       3 :inline)
    (extra-quad   uint8        16)
    (pat          pat-surface  :overlay-at (-> extra-quad 0))
@@ -84,6 +89,8 @@
 
 ;; definition of type collide-cache-prim
 (deftype collide-cache-prim (structure)
+  "A primitive inside the collide-cache.
+This can represent a sphere, a triangle mesh, or a group of other primitives within a bounding sphere."
   ((prim-core     collide-prim-core   :inline)
    (extra-quad    uint8               16)
    (ccache        collide-cache               :overlay-at (-> extra-quad 0))
@@ -126,6 +133,12 @@
 
 ;; definition of type collide-cache
 (deftype collide-cache (basic)
+  "The collide-cache is a structure to accelerate collision queries.
+In particular, it helps with queries where you don't know what you might hit.
+It can detect collision with the background geometry, foreground dynamic collision shapes (spheres and meshes), and water.
+To use it, it must first be 'filled' with geometry. Then you can manually inspect the geometry, or use one of the queries.
+The supported queries are 'line-sphere' (raycast) and 'spheres' (check if intersecting anything).
+It is not useful for ollision queries against a specific foreground object, like 'am I on top of platform X right now?'."
   ((num-tris          int32)
    (num-tris-u32      uint32              :overlay-at num-tris)
    (num-prims         int32)
@@ -183,6 +196,8 @@
 
 ;; definition of type collide-list-item
 (deftype collide-list-item (structure)
+  "Entry on the broad-phase collision list.
+Can represent instanced collision, as a TIE instance, or a single non-instanced mesh fragment."
   ((mesh  instance-tie)
    (inst  basic)
    )
@@ -204,6 +219,7 @@
 
 ;; definition of type collide-list
 (deftype collide-list (structure)
+  "List of items returned by the broad-phase collision query."
   ((num-items  int32)
    (items      collide-list-item  256 :inline :offset  16)
    )

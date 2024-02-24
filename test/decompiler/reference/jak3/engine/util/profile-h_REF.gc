@@ -1,0 +1,245 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type profile-segment
+(deftype profile-segment (structure)
+  "Confusingly, this has two uses. Either a single event, or a summary of all events within a category."
+  ((name        symbol)
+   (start-time  int16)
+   (end-time    int16)
+   (count       uint8)
+   (vu-count    uint8)
+   (depth       uint16)
+   (color       rgba)
+   (code-time   uint16  :overlay-at start-time)
+   (vu-time     uint16  :overlay-at end-time)
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type profile-segment
+(defmethod inspect ((this profile-segment))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'profile-segment)
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~1Tend-time: ~D~%" (-> this end-time))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tvu-count: ~D~%" (-> this vu-count))
+  (format #t "~1Tdepth: ~D~%" (-> this depth))
+  (format #t "~1Tcolor: #x~X~%" (-> this color))
+  (format #t "~1Tcode-time: ~D~%" (-> this code-time))
+  (format #t "~1Tvu-time: ~D~%" (-> this vu-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type profile-collapse
+(deftype profile-collapse (structure)
+  "An array of 'summaries'. Each entry in data is a summary of all events within a category."
+  ((count  int32)
+   (data   profile-segment  48 :inline)
+   )
+  )
+
+;; definition for method 3 of type profile-collapse
+(defmethod inspect ((this profile-collapse))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'profile-collapse)
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tdata[48] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type profile-segment-array
+(deftype profile-segment-array (basic)
+  "All profiling data for a frame, stored as a tree of events. There is one for the VU, and one for the EE."
+  ((count      int16)
+   (depth      int8)
+   (max-depth  int8)
+   (base-time  int16)
+   (segment    profile-segment  9)
+   (data       profile-segment  1024 :inline)
+   )
+  (:methods
+    (get-total-time (_type_) int)
+    (start-frame! (_type_) none)
+    (start-segment! (_type_ symbol rgba) none)
+    (end-segment! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type profile-segment-array
+(defmethod inspect ((this profile-segment-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tdepth: ~D~%" (-> this depth))
+  (format #t "~1Tmax-depth: ~D~%" (-> this max-depth))
+  (format #t "~1Tbase-time: ~D~%" (-> this base-time))
+  (format #t "~1Tsegment[9] @ #x~X~%" (-> this segment))
+  (format #t "~1Tdata[1024] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type profile-array
+(deftype profile-array (structure)
+  "The EE and VU profilers, and the drawing code."
+  ((data  profile-segment-array  2)
+   )
+  (:methods
+    (postprocess-data! (_type_) none)
+    (draw-bars! (_type_ dma-buffer int) none)
+    (draw-text! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type profile-array
+(defmethod inspect ((this profile-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'profile-array)
+  (format #t "~1Tdata[2] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type profile-segment-array
+(defmethod get-total-time ((this profile-segment-array))
+  "Get the duration of the top-level event (typically, the whole frame)"
+  (- (-> this data 0 end-time) (-> this data 0 start-time))
+  )
+
+;; definition of type profile-spec
+(deftype profile-spec (structure)
+  "Specification for a profile category."
+  ((name   symbol)
+   (color  rgba)
+   )
+  )
+
+;; definition for method 3 of type profile-spec
+(defmethod inspect ((this profile-spec))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'profile-spec)
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *profile-gap-color*, type rgba
+(define *profile-gap-color* (new 'static 'rgba :r #x30 :g #x30 :b #x30 :a #x80))
+
+;; definition for symbol *profile-all-color*, type rgba
+(define *profile-all-color* (new 'static 'rgba :r #x55 :g #x55 :b #x55 :a #x80))
+
+;; definition for symbol *profile-blit-color*, type rgba
+(define *profile-blit-color* (new 'static 'rgba :r #x20 :g #x20 :b #x80 :a #x80))
+
+;; definition for symbol *profile-sky-color*, type rgba
+(define *profile-sky-color* (new 'static 'rgba :r #x20 :g #x80 :b #x20 :a #x80))
+
+;; definition for symbol *profile-ocean-color*, type rgba
+(define *profile-ocean-color* (new 'static 'rgba :r #x20 :g #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-hfrag-color*, type rgba
+(define *profile-hfrag-color* (new 'static 'rgba :r #x80 :g #x20 :b #x20 :a #x80))
+
+;; definition for symbol *profile-tfrag-color*, type rgba
+(define *profile-tfrag-color* (new 'static 'rgba :r #x80 :g #x20 :b #x80 :a #x80))
+
+;; definition for symbol *profile-texture-color*, type rgba
+(define *profile-texture-color* (new 'static 'rgba :r #x80 :g #x80 :b #x20 :a #x80))
+
+;; definition for symbol *profile-tie-color*, type rgba
+(define *profile-tie-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-generic-color*, type rgba
+(define *profile-generic-color* (new 'static 'rgba :r #x70 :g #x70 :a #x80))
+
+;; definition for symbol *profile-merc-color*, type rgba
+(define *profile-merc-color* (new 'static 'rgba :r #x70 :b #x70 :a #x80))
+
+;; definition for symbol *profile-shrubbery-color*, type rgba
+(define *profile-shrubbery-color* (new 'static 'rgba :r #x70 :a #x80))
+
+;; definition for symbol *profile-particle-color*, type rgba
+(define *profile-particle-color* (new 'static 'rgba :g #x70 :b #x70 :a #x80))
+
+;; definition for symbol *profile-debug-color*, type rgba
+(define *profile-debug-color* (new 'static 'rgba :g #x70 :a #x80))
+
+;; definition for symbol *profile-other-color*, type rgba
+(define *profile-other-color* (new 'static 'rgba :g #x70 :b #x70 :a #x80))
+
+;; definition for symbol *profile-joints-color*, type rgba
+(define *profile-joints-color* (new 'static 'rgba :r #x70 :g #x70 :b #x20 :a #x80))
+
+;; definition for symbol *profile-draw-hook-color*, type rgba
+(define *profile-draw-hook-color* (new 'static 'rgba :r #x20 :g #x70 :b #x70 :a #x80))
+
+;; definition for symbol *profile-background-color*, type rgba
+(define *profile-background-color* (new 'static 'rgba :r #x60 :g #x60 :b #x40 :a #x80))
+
+;; definition for symbol *profile-foreground-color*, type rgba
+(define *profile-foreground-color* (new 'static 'rgba :r #x40 :g #x60 :b #x60 :a #x80))
+
+;; definition for symbol *profile-bones-color*, type rgba
+(define *profile-bones-color* (new 'static 'rgba :r #x20 :g #x80 :b #x60 :a #x80))
+
+;; definition for symbol *profile-actors-color*, type rgba
+(define *profile-actors-color* (new 'static 'rgba :r #x80 :g #x10 :b #x70 :a #x80))
+
+;; definition for symbol *profile-collide-color*, type rgba
+(define *profile-collide-color* (new 'static 'rgba :r #x80 :g #x40 :b #x80 :a #x80))
+
+;; definition for symbol *profile-nav-color*, type rgba
+(define *profile-nav-color* (new 'static 'rgba :r #x38 :g #x48 :b #x80 :a #x80))
+
+;; definition for symbol *profile-camera-color*, type rgba
+(define *profile-camera-color* (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80))
+
+;; definition for symbol *profile-gs-sync-color*, type rgba
+(define *profile-gs-sync-color* (new 'static 'rgba :r #x70 :g #x70 :b #x70 :a #x80))
+
+;; this part is debug only
+(when *debug-segment*
+;; definition for symbol *profile-array*, type profile-array
+(define *profile-array* (new 'debug 'profile-array))
+
+;; failed to figure out what this is:
+(set! (-> *profile-array* data 0) (new 'debug 'profile-segment-array))
+
+;; failed to figure out what this is:
+(set! (-> *profile-array* data 1) (new 'debug 'profile-segment-array))
+
+;; definition for symbol *profile-collapse*, type profile-collapse
+(define *profile-collapse* (new 'debug 'profile-collapse))
+
+;; definition for symbol *profile-interrupt-segment*, type profile-segment-array
+(define *profile-interrupt-segment* (-> *profile-array* data 1))
+
+;; definition for symbol *profile-interrupt-start*, type symbol
+(define *profile-interrupt-start* #f)
+
+)
+
+
+

@@ -38,7 +38,7 @@ const COMMENT =
   token(/(;)[^\n]*/);
 
 const BLOCK_COMMENT =
-  token(seq('#|', repeat1(/[^#|]/), '|#'));
+  token(seq('#|', repeat(choice(/[^|#]/, seq('#', /[^|]/), seq('|', /[^#]/))), '|#'));
 
 const DIGIT =
   /[0-9]/;
@@ -202,10 +202,11 @@ module.exports = grammar({
       /[\[\]]/,
       /[<>]/,
       ';',
+      '`',
       seq(field('numberOfArgs', $._format_token), '*'),
       '?',
       "Newline",
-      seq(repeat(choice($._format_token, ',')), /[$rRbBdDgGxXeEoOsStTfF]/),
+      seq(repeat(choice($._format_token, ',')), /[$mrRbBdDgGxXeEoOsStTfF]/),
     ),
     format_specifier: $ =>
       prec.left(seq(

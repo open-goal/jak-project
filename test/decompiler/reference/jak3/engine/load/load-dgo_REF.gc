@@ -1,0 +1,450 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type load-dgo-msg
+(deftype load-dgo-msg (structure)
+  "IOP RPC message for loading a dgo."
+  ((rsvd     uint16)
+   (result   load-msg-result)
+   (b1       pointer)
+   (b2       pointer)
+   (bt       pointer)
+   (name     uint128)
+   (address  uint32  :overlay-at b1)
+   (id       uint128)
+   (pad      uint32  7)
+   )
+  )
+
+;; definition for method 3 of type load-dgo-msg
+;; INFO: Used lq/sq
+(defmethod inspect ((this load-dgo-msg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'load-dgo-msg)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (format #t "~1Tb1: #x~X~%" (-> this b1))
+  (format #t "~1Tb2: #x~X~%" (-> this b2))
+  (format #t "~1Tbt: #x~X~%" (-> this bt))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Taddress: ~D~%" (-> this b1))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type load-chunk-msg
+(deftype load-chunk-msg (structure)
+  "IOP RPC message for loading a chunk of a chunked animation"
+  ((rsvd      uint16)
+   (result    load-msg-result)
+   (address   pointer)
+   (section   uint32)
+   (maxlen    uint32)
+   (dummy     uint32             4)
+   (basename  sound-stream-name  :inline)
+   )
+  )
+
+;; definition for method 3 of type load-chunk-msg
+(defmethod inspect ((this load-chunk-msg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'load-chunk-msg)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (format #t "~1Taddress: ~D~%" (-> this address))
+  (format #t "~1Tsection: ~D~%" (-> this section))
+  (format #t "~1Tmaxlen: ~D~%" (-> this maxlen))
+  (format #t "~1Tdummy[4] @ #x~X~%" (-> this dummy))
+  (format #t "~1Tbasename: #<sound-stream-name @ #x~X>~%" (-> this basename))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type play-chunk-msg
+(deftype play-chunk-msg (structure)
+  "IOP RPC message for playing some streamed audio."
+  ((rsvd      uint16)
+   (result    uint16)
+   (address   pointer)
+   (section   uint32)
+   (volume    int32              :overlay-at section)
+   (maxlen    uint32)
+   (group     uint8              :overlay-at maxlen)
+   (id        uint32             4)
+   (basename  sound-stream-name  4 :inline)
+   )
+  )
+
+;; definition for method 3 of type play-chunk-msg
+(defmethod inspect ((this play-chunk-msg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'play-chunk-msg)
+  (format #t "~1Trsvd: ~D~%" (-> this rsvd))
+  (format #t "~1Tresult: ~D~%" (-> this result))
+  (format #t "~1Taddress: ~D~%" (-> this address))
+  (format #t "~1Tsection: ~D~%" (-> this section))
+  (format #t "~1Tvolume: ~D~%" (-> this volume))
+  (format #t "~1Tmaxlen: ~D~%" (-> this maxlen))
+  (format #t "~1Tgroup: ~D~%" (-> this group))
+  (format #t "~1Tid[4] @ #x~X~%" (-> this id))
+  (format #t "~1Tbasename[4] @ #x~X~%" (-> this basename))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(when (zero? *load-dgo-rpc*)
+  (set! *load-dgo-rpc* (new 'global 'rpc-buffer-pair (the-as uint 64) (the-as uint 1) 3))
+  (set! *load-str-rpc* (new 'global 'rpc-buffer-pair (the-as uint 80) (the-as uint 1) 4))
+  (set! *play-str-rpc* (new 'global 'rpc-buffer-pair (the-as uint 256) (the-as uint 4) 5))
+  (set! *load-str-lock* #f)
+  (set! *que-str-lock* #f)
+  (set! *dgo-name* (new 'global 'string 64 (the-as string #f)))
+  )
+
+;; definition for function str-load
+(defun str-load ((name string) (chunk-idx int) (dest-addr pointer) (max-len int))
+  "Send a message to the IOP to start loading a chunk of a .STR file to the EE."
+  (if (or (check-busy *load-str-rpc*) *load-str-lock*)
+      (return #f)
+      )
+  (let ((s2-0 (the-as load-chunk-msg (add-element *load-str-rpc*))))
+    (set! (-> s2-0 result) (load-msg-result invalid))
+    (set! (-> s2-0 address) dest-addr)
+    (set! (-> s2-0 section) (the-as uint chunk-idx))
+    (set! (-> s2-0 maxlen) (the-as uint max-len))
+    (copyn-charp<-string (the-as (pointer uint8) (-> s2-0 basename)) name 48)
+    (call *load-str-rpc* (the-as uint 0) (the-as pointer s2-0) (the-as uint 32))
+    )
+  (set! *load-str-lock* #t)
+  (set! *que-str-lock* #t)
+  #t
+  )
+
+;; definition for function str-load-status
+(defun str-load-status ((maxlen-out (pointer int32)))
+  "Get the status of the most recent load.
+   Return 'busy if in progress, 'error if failed, or 'complete.
+   If 'complete, returns the maxlen value from the IOP."
+  (if (check-busy *load-str-rpc*)
+      (return 'busy)
+      )
+  (set! *load-str-lock* #f)
+  (set! *que-str-lock* #t)
+  (let ((v1-7 (the-as load-chunk-msg (pop-last-received *load-str-rpc*))))
+    (if (= (-> v1-7 result) (load-msg-result error))
+        (return 'error)
+        )
+    (set! (-> maxlen-out 0) (the-as int (-> v1-7 maxlen)))
+    )
+  'complete
+  )
+
+;; definition for function str-load-cancel
+;; WARN: Return type mismatch int vs none.
+(defun str-load-cancel ()
+  "Cancel a streaming load. Note that this does not actually stop the transfer, so the IOP may continue writing to the buffer."
+  (set! *load-str-lock* #f)
+  (set! *que-str-lock* #t)
+  0
+  (none)
+  )
+
+;; definition for function str-play-async
+;; WARN: Return type mismatch int vs none.
+(defun str-play-async ((name string) (id sound-id) (volume int) (group int))
+  "Start playing a streaming audio."
+  (set! *que-str-lock* #t)
+  (let ((s2-0 (the-as play-chunk-msg (add-element *play-str-rpc*))))
+    (copyn-charp<-string (the-as (pointer uint8) (-> s2-0 basename)) name 48)
+    (copyn-charp<-string (the-as (pointer uint8) (-> s2-0 basename 1)) "" 48)
+    (copyn-charp<-string (the-as (pointer uint8) (-> s2-0 basename 2)) "" 48)
+    (copyn-charp<-string (the-as (pointer uint8) (-> s2-0 basename 3)) "" 48)
+    (set! (-> s2-0 id 0) (the-as uint id))
+    (set! (-> s2-0 id 1) (the-as uint 0))
+    (set! (-> s2-0 id 2) (the-as uint 0))
+    (set! (-> s2-0 id 3) (the-as uint 0))
+    (set! (-> s2-0 section) (the-as uint volume))
+    (set! (-> s2-0 maxlen) (the-as uint 0))
+    (set! (-> s2-0 group) (the-as uint group))
+    (set! (-> s2-0 result) (the-as uint 0))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for function str-play-stop
+;; WARN: Return type mismatch int vs none.
+(defun str-play-stop ((name string) (id sound-id))
+  "Stop playing streaming audio."
+  (set! *que-str-lock* #t)
+  (let ((s4-0 (the-as play-chunk-msg (add-element *play-str-rpc*))))
+    (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename)) name 48)
+    (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 1)) "" 48)
+    (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 2)) "" 48)
+    (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 3)) "" 48)
+    (set! (-> s4-0 id 0) (the-as uint id))
+    (set! (-> s4-0 id 1) (the-as uint 0))
+    (set! (-> s4-0 id 2) (the-as uint 0))
+    (set! (-> s4-0 id 3) (the-as uint 0))
+    (set! (-> s4-0 result) (the-as uint 1))
+    )
+  0
+  (none)
+  )
+
+;; definition for function str-play-queue
+;; WARN: Return type mismatch int vs none.
+(defun str-play-queue ((name0 string) (name1 string) (name2 string) (name3 string) (ids (pointer uint32)) (mask pointer))
+  "Queue up streaming data, allowing it to start playing without delay."
+  (when (and (not (check-busy *play-str-rpc*)) (not *que-str-lock*))
+    (let ((s4-0 (the-as play-chunk-msg (add-element *play-str-rpc*))))
+      (if name0
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename)) name0 48)
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename)) "" 48)
+          )
+      (if name1
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 1)) name1 48)
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 1)) "" 48)
+          )
+      (if name2
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 2)) name2 48)
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 2)) "" 48)
+          )
+      (if name3
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 3)) name3 48)
+          (copyn-charp<-string (the-as (pointer uint8) (-> s4-0 basename 3)) "" 48)
+          )
+      (dotimes (v1-14 4)
+        (set! (-> s4-0 id v1-14) (-> ids v1-14))
+        )
+      (set! (-> s4-0 address) mask)
+      (set! (-> s4-0 result) (the-as uint 2))
+      )
+    )
+  (set! *que-str-lock* #f)
+  0
+  (none)
+  )
+
+;; definition for function str-ambient-play
+;; WARN: Return type mismatch int vs none.
+(defun str-ambient-play ((name string))
+  "Start playing ambient (unused?)."
+  (set! *que-str-lock* #t)
+  (let ((s5-0 (the-as play-chunk-msg (add-element *play-str-rpc*))))
+    (set! (-> s5-0 basename 0 name 0) (the-as uint 36))
+    (copyn-charp<-string (&-> s5-0 basename 0 name 1) name 48)
+    (set! (-> s5-0 result) (the-as uint 0))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for function str-ambient-stop
+;; WARN: Return type mismatch int vs none.
+(defun str-ambient-stop ((name string))
+  "Stop playing ambient (unused?)."
+  (set! *que-str-lock* #t)
+  (let ((s5-0 (the-as play-chunk-msg (add-element *play-str-rpc*))))
+    (set! (-> s5-0 basename 0 name 0) (the-as uint 36))
+    (copyn-charp<-string (&-> s5-0 basename 0 name 1) name 48)
+    (set! (-> s5-0 result) (the-as uint 1))
+    )
+  0
+  (none)
+  )
+
+;; definition for function str-play-kick
+;; WARN: Return type mismatch int vs none.
+(defun str-play-kick ()
+  "Do an empty RPC on play so the IOP code runs and can update buffers."
+  (cond
+    ((check-busy *play-str-rpc*)
+     )
+    (else
+      (call *play-str-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *dgo-time*, type time-frame
+(define *dgo-time* (the-as time-frame 0))
+
+;; definition for function dgo-load-begin
+;; INFO: Used lq/sq
+(defun dgo-load-begin ((name string) (buffer1 uint128) (buffer2 pointer) (buffer-top pointer) (arg4 pointer))
+  "Start a DGO load!"
+  (set! *dgo-time* (-> *display* real-clock integral-frame-counter))
+  (format 0 "Starting level load clock~%")
+  (sync *load-dgo-rpc* #t)
+  (let ((s1-0 (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
+    (set! (-> s1-0 result) (load-msg-result invalid))
+    (set! (-> s1-0 b1) buffer2)
+    (set! (-> s1-0 b2) buffer-top)
+    (set! (-> s1-0 bt) arg4)
+    (set! (-> s1-0 name) (string->sound-name name))
+    (set! (-> s1-0 id) buffer1)
+    (call *load-dgo-rpc* (the-as uint 0) (the-as pointer s1-0) (the-as uint 32))
+    s1-0
+    )
+  )
+
+;; definition for function dgo-load-get-next
+(defun dgo-load-get-next ((done-out (pointer symbol)))
+  "Get the address of the most recently loaded object. #f is there is none. Returns if this is the last by arg0."
+  (set! (-> done-out 0) #f)
+  (let ((gp-0 (the-as pointer #f)))
+    (when (not (check-busy *load-dgo-rpc*))
+      (let ((v1-4 (the-as load-dgo-msg (pop-last-received *load-dgo-rpc*))))
+        (when v1-4
+          (when (or (= (-> v1-4 result) (load-msg-result done)) (= (-> v1-4 result) (load-msg-result more)))
+            (set! gp-0 (-> v1-4 b1))
+            (set! (-> done-out 0) #t)
+            )
+          (if (= (-> v1-4 result) (load-msg-result more))
+              (set! (-> done-out 0) #f)
+              )
+          (if (= (-> v1-4 result) (load-msg-result done))
+              (format
+                0
+                "Elapsed time for level = ~Fs~%"
+                (* 0.016666668 (the float (- (-> *display* real-clock integral-frame-counter) *dgo-time*)))
+                )
+              )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for function dgo-load-continue
+;; INFO: Used lq/sq
+(defun dgo-load-continue ((buffer1 pointer) (buffer2 pointer) (buffer-top pointer))
+  "Inform the IOP that it is safe to start loading the next object."
+  (let ((gp-0 (the-as load-dgo-msg (add-element *load-dgo-rpc*))))
+    (set! (-> gp-0 result) (load-msg-result invalid))
+    (set! (-> gp-0 b1) buffer1)
+    (set! (-> gp-0 b2) buffer2)
+    (set! (-> gp-0 bt) buffer-top)
+    (set! (-> gp-0 name) (the-as uint128 0))
+    (call *load-dgo-rpc* (the-as uint 1) (the-as pointer gp-0) (the-as uint 32))
+    gp-0
+    )
+  )
+
+;; definition for function dgo-load-cancel
+;; WARN: Return type mismatch int vs none.
+(defun dgo-load-cancel ((arg0 int))
+  "Abort a DGO load."
+  (let ((v1-0 (the-as sound-rpc-cancel-dgo (get-sound-buffer-entry))))
+    (set! (-> v1-0 command) (sound-command cancel-dgo))
+    (set! (-> v1-0 id) (the-as uint arg0))
+    )
+  0
+  (none)
+  )
+
+;; definition for function find-temp-buffer
+(defun find-temp-buffer ((size int))
+  "Unused function to find some temporary leftover space in DMA buffer.
+   Unused since jak 1, and checks the same buffer twice??"
+  (let ((gp-0 (+ (/ size 16) 2)))
+    (cond
+      ((< (the-as uint gp-0)
+          (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) global-buf)))
+          )
+       (logand -16 (&+ (-> *display* frames (-> *display* on-screen) global-buf base) 15))
+       )
+      ((< (the-as uint gp-0)
+          (the-as uint (dma-buffer-free (-> *display* frames (-> *display* on-screen) global-buf)))
+          )
+       (logand -16 (&+ (-> *display* frames (-> *display* on-screen) global-buf base) 15))
+       )
+      )
+    )
+  )
+
+;; definition for function dgo-load-link
+(defun dgo-load-link ((object-file dgo-header) (heap kheap) (end-of-buffer uint) (print-login symbol) (loaded-from-top symbol))
+  "Start the async linker on a GOAL object file that was just loaded."
+  (let ((s4-0 (the-as object (&+ object-file 64))))
+    (let ((v1-0 end-of-buffer))
+      (cond
+        ((>= (the-as int (+ (the-as uint s4-0) (-> object-file length))) (the-as int (-> heap top-base)))
+         (format
+           0
+           "ERROR: -----> dgo file header ~g #x~X has overrun heap #x~X by ~D bytes.  This is very bad!~%"
+           (-> object-file rootname)
+           object-file
+           heap
+           (- (+ (the-as uint s4-0) (-> object-file length)) (the-as uint (-> heap top-base)))
+           )
+         )
+        ((and (< (the-as int object-file) (the-as int v1-0))
+              (>= (the-as int (+ (the-as uint s4-0) (-> object-file length))) (the-as int v1-0))
+              )
+         (format
+           0
+           "ERROR: -----> dgo file header ~g #x~X has overrun heap #x~X by ~D bytes.  This is very bad!~%"
+           (-> object-file rootname)
+           object-file
+           heap
+           (- (+ (the-as uint s4-0) (-> object-file length)) v1-0)
+           )
+         )
+        )
+      )
+    (if loaded-from-top
+        (format
+          0
+          "NOTICE: loaded ~g, ~D bytes (~f K) at top ~D at #x~X - #x~X~%"
+          (-> object-file rootname)
+          (-> object-file length)
+          (* 0.0009765625 (the float (-> object-file length)))
+          (- (+ (the-as uint s4-0) (-> object-file length)) (the-as uint (-> heap base)))
+          object-file
+          (&+ (the-as pointer s4-0) (-> object-file length))
+          )
+        )
+    (string<-charp (clear *dgo-name*) (-> object-file rootname))
+    (nonzero? (link-begin
+                (the-as pointer s4-0)
+                (-> *dgo-name* data)
+                (the-as int (-> object-file length))
+                heap
+                (if print-login
+                    (link-flag output-load-msg output-load-true-msg execute-login print-login fast-link)
+                    (link-flag output-load-msg output-load-true-msg execute-login fast-link)
+                    )
+                )
+              )
+    )
+  )
+
+;; definition for function destroy-mem
+;; WARN: Return type mismatch int vs none.
+(defun destroy-mem ((start (pointer uint32)) (end (pointer uint32)))
+  "Overwrite memory with #xffffffff for debugging."
+  (while (< (the-as int start) (the-as int end))
+    (set! (-> start 0) (the-as uint #xffffffff))
+    (set! start (&-> start 1))
+    )
+  0
+  (none)
+  )

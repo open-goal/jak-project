@@ -52,7 +52,7 @@
   (logclear! (-> this focus-status) (focus-status disable dead inactive hit))
   (logclear! (-> this flags) (citizen-flag persistent in-pursuit hostile))
   (clear-focused (-> this focus))
-  (set! (-> this enemy-flags) (the-as enemy-flag (logand (enemy-flag dislike-combo) (-> this enemy-flags))))
+  (set! (-> this enemy-flags) (the-as enemy-flag (logand (enemy-flag drawn-mirrored) (-> this enemy-flags))))
   (logclear! (-> this draw status) (draw-control-status no-draw lod-set))
   (set! (-> this draw death-timer) (the-as uint 0))
   (logior! (-> this root nav-flags) (nav-flags has-root-sphere))
@@ -78,12 +78,12 @@
                                        dark-giant
                                        )
         )
-  (logior! (-> this enemy-flags) (enemy-flag enable-on-active checking-water))
+  (logior! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
   (logior! (-> this focus-status) (focus-status dangerous))
-  (logior! (-> this enemy-flags) (enemy-flag check-water))
-  (logior! (-> this enemy-flags) (enemy-flag check-water-backup no-initial-move-to-ground))
+  (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+  (logior! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
   (logior! (-> this mask) (process-mask collectable))
-  (logior! (-> this enemy-flags) (enemy-flag look-at-move-dest))
+  (logior! (-> this enemy-flags) (enemy-flag attackable-backup))
   (set! (-> this hit-points) (-> this enemy-info default-hit-points))
   (set! (-> this fated-time) 0)
   (set! (-> this hit-by-player-count) 0)
@@ -355,7 +355,7 @@
   (none)
   )
 
-(defmethod track-target! ((this citizen))
+(defmethod common-post ((this citizen))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -370,7 +370,7 @@
                 (set! (-> s5-0 quad) (-> this danger-pos quad))
                 )
             (when (< (vector-vector-distance s5-0 (-> this root trans)) 122880.0)
-              (look-at-target! this (enemy-flag lock-focus))
+              (look-at-target! this (enemy-flag look-at-focus))
               (target-set! (-> this neck) s5-0)
               )
             )
@@ -378,18 +378,18 @@
         )
       (when (< (-> this stop-time-look-at) (current-time))
         (shut-down (-> this neck))
-        (set! (-> this next-time-look-at) (+ (current-time) (the int (* 300.0 (get-rand-float-range this 0.0 20.0)))))
+        (set! (-> this next-time-look-at) (+ (current-time) (the int (* 300.0 (rnd-float-range this 0.0 20.0)))))
         (set! (-> this stop-time-look-at)
-              (+ (-> this next-time-look-at) (the int (* 300.0 (get-rand-float-range this 5.0 10.0))))
+              (+ (-> this next-time-look-at) (the int (* 300.0 (rnd-float-range this 5.0 10.0))))
               )
         )
       )
     )
   (let ((a0-18 (-> this enemy-flags)))
-    (when (and (logtest? a0-18 (enemy-flag attackable-backup))
+    (when (and (logtest? a0-18 (enemy-flag auto-reset-penetrate))
                (time-elapsed? (-> this auto-reset-penetrate-time) (seconds 0.1))
                )
-      (set! (-> this enemy-flags) (logclear a0-18 (enemy-flag attackable-backup)))
+      (set! (-> this enemy-flags) (logclear a0-18 (enemy-flag auto-reset-penetrate)))
       (set! (-> this root penetrated-by) (get-penetrate-info this))
       (let ((v1-50 0))
         (if (logtest? (penetrate knocked) (-> this root penetrate-using))
@@ -428,7 +428,7 @@
         )
       )
     )
-  (when (logtest? (enemy-flag trackable-backup directed-ready) (-> this enemy-flags))
+  (when (logtest? (enemy-flag check-water checking-water) (-> this enemy-flags))
     (enemy-method-54 this)
     (when (and (focus-test? this touch-water) (< (-> this root trans y) (+ -11468.8 (-> this water-surface-height))))
       (set! (-> this root trans y) (+ -11468.8 (-> this water-surface-height)))
@@ -582,6 +582,7 @@
           )
       ;; og:preserve-this modified for PC, see comment near definition in collide-shape-h.gc
       (normalized-heading-to-quaternion! gp-0 s3-0)
+      (quaternion-normalize! gp-0)
       (quaternion-pseudo-seek
         s5-1
         s5-1
@@ -611,7 +612,7 @@
         )
       )
     )
-  (track-target! this)
+  (common-post this)
   (update-transforms (-> this root))
   0
   (none)
@@ -629,9 +630,9 @@
   (let ((t9-0 (method-of-type nav-enemy init-enemy-behaviour-and-stats!)))
     (t9-0 this arg0)
     )
-  (set! (-> this speed-scale) (get-rand-float-range this 0.9 1.1))
+  (set! (-> this speed-scale) (rnd-float-range this 0.9 1.1))
   (logclear! (-> this mask) (process-mask actor-pause))
-  (logclear! (-> this enemy-flags) (enemy-flag notice))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
   (vehicle-controller-method-9 (-> this controller))
   (citizen-init! this)
   (if (zero? (-> this draw light-index))
@@ -1232,7 +1233,12 @@ This commonly includes things such as:
         (vector-normalize! s5-1 32768.0)
         (set! (-> s5-1 y) 71680.0)
         (vector+! s5-1 s5-1 (-> (the-as vehicle s4-0) root transv))
-        (send-event this 'attack #f (static-attack-info ((id (new-attack-id)) (vector s5-1) (knock (the-as uint 7)))))
+        (send-event
+          this
+          'attack
+          #f
+          (static-attack-info ((id (new-attack-id)) (vector s5-1) (knock (knocked-type knocked-type-7))))
+          )
         )
       )
     )
@@ -1254,7 +1260,7 @@ This commonly includes things such as:
       (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag enemy-flag37))))
       )
     0
-    (set! (-> self wait-time) (the-as time-frame (get-rand-int-range self 300 1500)))
+    (set! (-> self wait-time) (the-as time-frame (rnd-int-range self 300 1500)))
     (if (= (-> self water-anim) -1)
         (go-inactive self)
         )
@@ -1389,7 +1395,7 @@ This commonly includes things such as:
       (set! (-> v1-16 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
       )
     0
-    (set! (-> self wait-time) (the-as time-frame (get-rand-int-range self 1200 9000)))
+    (set! (-> self wait-time) (the-as time-frame (rnd-int-range self 1200 9000)))
     (when (zero? (-> self controller branch))
       (format 0 "citizen has no branch in active enter state~%")
       (citizen-method-195 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
@@ -1412,7 +1418,7 @@ This commonly includes things such as:
       0
       (when (= (-> self nav state speed) 0.0)
         (set! (-> self wait-return-state) (the-as (state citizen) (-> self state)))
-        (set! (-> self wait-time) (the-as time-frame (get-rand-int-range self 300 1500)))
+        (set! (-> self wait-time) (the-as time-frame (rnd-int-range self 300 1500)))
         (go-virtual wait)
         )
       )

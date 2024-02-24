@@ -100,7 +100,7 @@ static int gl_init(GfxGlobalSettings& settings) {
     auto p = scoped_prof("startup::sdl::init_sdl");
     // remove SDL garbage from hooking signal handler.
     SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
       sdl_util::log_error("Could not initialize SDL, exiting");
       dialogs::create_error_message_dialog("Critical Error Encountered",
                                            "Could not initialize SDL, exiting");
@@ -130,8 +130,9 @@ static int gl_init(GfxGlobalSettings& settings) {
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     }
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+#ifndef __APPLE__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#ifdef __APPLE__
+#else
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 #endif
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -400,8 +401,11 @@ void render_game_frame(int game_width,
     }
     if (g_gfx_data->debug_gui.get_screenshot_flag()) {
       options.save_screenshot = true;
+      options.internal_res_screenshot = true;
       options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
       options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.window_framebuffer_width = options.game_res_w;
+      options.window_framebuffer_height = options.game_res_h;
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
       options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
@@ -488,8 +492,8 @@ void GLDisplay::render() {
   // Before we process the current frames SDL events we for keyboard/mouse button inputs.
   //
   // This technically means that keyboard/mouse button inputs will be a frame behind but the
-  // event-based code is buggy and frankly not worth stressing over.  Leaving this as a note incase
-  // someone complains. Binding handling is still taken care of by the event code though.
+  // event-based code is limiting (there aren't enough events to achieve a totally stateless
+  // approach). Binding handling is still taken care of by the event code though.
   {
     auto p = scoped_prof("sdl-input-monitor-poll-for-kb-mouse");
     ImGuiIO& io = ImGui::GetIO();

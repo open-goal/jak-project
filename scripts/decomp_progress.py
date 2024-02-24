@@ -1,10 +1,12 @@
 import os
+# change working dir to script location
+os.chdir(os.path.dirname(__file__))
 import glob
 import argparse
 
 
 ### Script to track decompilation progress.
-### Example usage: python3 scripts/decomp_progress.py ~/jak-project/goal_src/jak2
+### Example usage: python3 scripts/decomp_progress.py jak2
 
 def get_goal_files(root_dir, ext = "*.gc"):
     """Get all GOAL source files under root_dir."""
@@ -19,7 +21,7 @@ def lines_in_file(file_path):
         return lines
 
 
-def print_table(stats, total_gc_files):
+def print_table(game, stats, total_gc_files):
     total_lines = 0
     print("| {: <24} | {: <6} |".format("file name", "lines"))
     print("-------------------------------------")
@@ -29,7 +31,11 @@ def print_table(stats, total_gc_files):
     print("-------------------------------------")
     print("| {: <24} | {: >6} |".format("TOTAL", total_lines))
     print("-------------------------------------")
-    estimated_lines = 1000000
+    estimated_lines = 500000
+    if game == "jak2":
+      estimated_lines = 1000000
+    elif game == "jak3":
+      estimated_lines = 1200000
     print("Progress: {}/{} lines ({:.2f}%)".format(total_lines, estimated_lines, 100. * total_lines / estimated_lines))
     print("{}/{} files modified from template ({:.2f}%)".format(len(stats), total_gc_files,
                                                                 100. * len(stats) / total_gc_files))
@@ -37,19 +43,23 @@ def print_table(stats, total_gc_files):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(dest='goal_src', help='the goal_src folder')
+    parser.add_argument(dest='game', help='game name')
     args = parser.parse_args()
-    all_files = get_goal_files(args.goal_src)
+    gsrc_path = "../goal_src/" + args.game
+    all_files = get_goal_files(gsrc_path)
 
-    ref_files = get_goal_files(args.goal_src + "/../../test/decompiler/reference/jak2", "*_REF.gc")
+    ref_files = get_goal_files("../test/decompiler/reference/" + args.game, "*_REF.gc")
     ref_files_no_ext = [os.path.basename(fn)[:-7] for fn in ref_files]
-
-
 
     file_stats = []
     total_gc_files = 0
     excluded_files = {"game_dgos.gc", "all_files.gc", "goal-lib.gc", "ocean-trans-tables.gc", "ocean-frames.gc",
-                      "ocean-tables.gc"}
+                      "ocean-tables.gc", "art-elts.gc", "joint-nodes.gc", "compiler-setup.gc", "kernel-defs.gc"}
+    excluded_paths = {"pc", "examples", "old"}
+    for path in excluded_paths:
+        files = get_goal_files(gsrc_path + "/" + path)
+        for fn in files:
+            excluded_files.add(os.path.basename(fn))
     modified = set()
 
     for fn in all_files:
@@ -76,10 +86,7 @@ def main():
     print("Missing ref files:")
     for fn in missing_ref_files:
         print(" {}".format(fn))
-
-
-    print_table(file_stats, total_gc_files)
-
+    print_table(args.game, file_stats, total_gc_files)
 
 if __name__ == "__main__":
     main()

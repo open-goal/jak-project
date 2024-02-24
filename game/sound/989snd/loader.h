@@ -3,14 +3,13 @@
 #pragma once
 
 #include <memory>
+#include <span>
 #include <vector>
 
 #include "soundbank.h"
 
 #include "common/common_types.h"
 #include "common/util/BinaryReader.h"
-
-#include "third-party/span.hpp"
 
 namespace snd {
 
@@ -37,7 +36,7 @@ class Loader {
 
   void UnloadBank(BankHandle id);
 
-  BankHandle BankLoad(nonstd::span<u8> bank);
+  BankHandle BankLoad(std::span<u8> bank);
 
  private:
   std::vector<std::unique_ptr<SoundBank>> mBanks;

@@ -2,30 +2,41 @@
 
 #include "sdl_util.h"
 
+#include "common/global_profiler/GlobalProfiler.h"
+
 #include "third-party/fmt/core.h"
 #include "third-party/fmt/format.h"
 
 DisplayManager::DisplayManager(SDL_Window* window)
     : m_window(window), m_selected_fullscreen_display_id(0) {
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("display_manager::init");
 #ifdef _WIN32
-  // Windows hint to disable OS level forced scaling and allow native resolution at non 100% scales
-  SetProcessDPIAware();
+    // Windows hint to disable OS level forced scaling and allow native resolution at non 100%
+    // scales
+    SetProcessDPIAware();
 #endif
-  update_curr_display_info();
-  update_video_modes();
-  // Load display settings from a file
-  m_display_settings = game_settings::DisplaySettings();
-  // Adjust window / monitor position
-  initialize_window_position_from_settings();
+    update_curr_display_info();
+    update_video_modes();
+    // Load display settings from a file
+    m_display_settings = game_settings::DisplaySettings();
+    // Adjust window / monitor position
+    initialize_window_position_from_settings();
+  }
 }
 
 DisplayManager::~DisplayManager() {
-  if (m_window_display_mode == WindowDisplayMode::Windowed) {
-    m_display_settings.display_id = m_active_display_id;
-    m_display_settings.window_xpos = m_window_xpos;
-    m_display_settings.window_ypos = m_window_ypos;
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("display_manager::destroy");
+    if (m_window_display_mode == WindowDisplayMode::Windowed) {
+      m_display_settings.display_id = m_active_display_id;
+      m_display_settings.window_xpos = m_window_xpos;
+      m_display_settings.window_ypos = m_window_ypos;
+    }
+    m_display_settings.save_settings();
   }
-  m_display_settings.save_settings();
 }
 
 void DisplayManager::initialize_window_position_from_settings() {

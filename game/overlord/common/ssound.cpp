@@ -11,7 +11,7 @@ Sound gSounds[64];
 Vec3w gEarTrans[2];
 Vec3w gCamTrans;
 s32 gMusicFadeDir = 0;
-Curve gCurve[16];
+Curve gCurves[16];
 s32 gCamAngle;
 u8 gMirrorMode = 0;
 u32 sLastTick = 0;
@@ -134,10 +134,12 @@ s32 CalculateAngle(Vec3w* trans) {
       } else {
         angle = angle + 90;
       }
-    } else if (diffZ >= 0) {
-      angle = angle + 270;
     } else {
-      angle = 270 - angle;
+      if (diffZ >= 0) {
+        angle = angle + 270;
+      } else {
+        angle = 270 - angle;
+      }
     }
   }
 
@@ -154,7 +156,7 @@ s32 GetPan(Sound* sound) {
   return CalculateAngle(&sound->params.trans);
 }
 
-s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
+s32 CalculateFalloffVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 fo_max) {
   s32 xdiff = 0;
   s32 ydiff = 0;
   s32 zdiff = 0;
@@ -170,30 +172,18 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   } else {
     if (fo_curve == 1) {
       return volume;
-    }
-
-    if (fo_curve < 9) {
-      xdiff = gEarTrans[0].x - pos->x;
-      ydiff = gEarTrans[0].y - pos->y;
-      zdiff = gEarTrans[0].z - pos->z;
-    }
-
-    if (fo_curve == 9) {
+    } else if (fo_curve == 9 || fo_curve == 11) {
       xdiff = gEarTrans[1].x - pos->x;
       ydiff = gEarTrans[1].y - pos->y;
       zdiff = gEarTrans[1].z - pos->z;
-    }
-
-    if (fo_curve == 10) {
+    } else if (fo_curve == 10) {
       xdiff = 0;
       ydiff = gEarTrans[0].y - pos->y;
       zdiff = 0;
-    }
-
-    if (fo_curve == 11) {
-      xdiff = gEarTrans[1].x - pos->x;
-      ydiff = gEarTrans[1].y - pos->y;
-      zdiff = gEarTrans[1].z - pos->z;
+    } else {
+      xdiff = gEarTrans[0].x - pos->x;
+      ydiff = gEarTrans[0].y - pos->y;
+      zdiff = gEarTrans[0].z - pos->z;
     }
   }
 
@@ -210,72 +200,61 @@ s32 CalculateFallofVolume(Vec3w* pos, s32 volume, s32 fo_curve, s32 fo_min, s32 
   s32 min = fo_min << 8;
   s32 max = fo_max << 8;
 
-  if (max < xdiff || max < ydiff || max < zdiff) {
-    return 0;
-  }
-
-  while (max > 0x7FFF) {
-    max >>= 1;
-    min >>= 1;
-    xdiff >>= 1;
-    ydiff >>= 1;
-    zdiff >>= 1;
-  }
-
-  u32 distance = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
-  if (distance != 0) {
-    s32 steps = 0;
-    while ((distance & 0xc0000000) == 0) {
-      distance <<= 2;
-      steps++;
+  s32 new_vol = 0;
+  if (xdiff <= max && ydiff <= max && zdiff <= max) {
+    while (max > 0x7fff) {
+      max >>= 1;
+      min >>= 1;
+      xdiff >>= 1;
+      ydiff >>= 1;
+      zdiff >>= 1;
     }
-
-    distance = sqrt_table[distance >> 24] >> steps;
-  } else {
-    distance = 0;
+    u32 dist_squared = xdiff * xdiff + ydiff * ydiff + zdiff * zdiff;
+    s32 dist_steps = 0;
+    if (dist_squared != 0) {
+      while ((dist_squared & 0xc0000000) == 0) {
+        ++dist_steps;
+        dist_squared <<= 2;
+      }
+      dist_steps = sqrt_table[dist_squared >> 24] >> (dist_steps & 0x1f);
+    }
+    new_vol = volume;
+    if (min < dist_steps) {
+      u32 voldiff = dist_steps - min;
+      if (dist_steps < max) {
+        dist_steps = max - min;
+        while (voldiff > 0xffff) {
+          dist_steps >>= 1;
+          voldiff >>= 1;
+        }
+        voldiff = (voldiff << 0x10) / dist_steps;
+        if (voldiff != 0x10000) {
+          new_vol = (voldiff * voldiff) >> 0x10;
+          new_vol = (gCurves[fo_curve].unk4 * 0x10000 + gCurves[fo_curve].unk3 * voldiff +
+                     gCurves[fo_curve].unk2 * new_vol +
+                     gCurves[fo_curve].unk1 * ((new_vol * voldiff) >> 0x10)) >>
+                    0xc;
+          if (new_vol < 0) {
+            new_vol = 0;
+          } else if (0x10000 < new_vol) {
+            new_vol = 0x10000;
+          }
+          new_vol = (new_vol * volume) >> 0x10;
+        }
+      } else {
+        new_vol = 0;
+      }
+    }
   }
-
-  if (distance <= (u32)min) {
-    return volume;
+  if (fo_curve == 11 && new_vol < 0x180) {
+    new_vol = 0x180;
   }
-
-  if (distance >= (u32)max) {
-    return 0;
-  }
-
-  s32 start = distance - min;
-  s32 end = max - min;
-
-  while (start > 0xFFFF) {
-    start >>= 1;
-    end >>= 1;
-  }
-
-  s32 v13 = (start << 16) / end;
-  if (v13 == 0x10000) {
-    return volume;
-  }
-
-  s32 factor = ((gCurve[fo_curve].unk4 << 16) + gCurve[fo_curve].unk3 * v13 +
-                gCurve[fo_curve].unk2 * ((v13 * v13) >> 16) +
-                gCurve[fo_curve].unk1 * (((((v13 * v13) >> 16) * v13) >> 16) >> 16)) >>
-               12;
-
-  if (factor > 0x10000) {
-    factor = 0x10000;
-  }
-
-  s32 ret = (factor * volume) >> 16;
-  if (fo_curve == 11 && ret < 0x180) {
-    ret = 0x180;
-  }
-
-  return ret;
+  return new_vol;
 }
 
 s32 GetVolume(Sound* sound) {
-  return CalculateFallofVolume(&sound->params.trans, sound->params.volume, sound->params.fo_curve,
-                               sound->params.fo_min, sound->params.fo_max);
+  return CalculateFalloffVolume(&sound->params.trans, sound->params.volume, sound->params.fo_curve,
+                                sound->params.fo_min, sound->params.fo_max);
 }
 
 void UpdateVolume(Sound* sound) {
@@ -319,32 +298,6 @@ void KillSoundsInGroup(u8 group) {
         s.id = 0;
       }
     }
-  }
-}
-
-void UpdateLocation(Sound* sound) {
-  if (sound->id == 0) {
-    return;
-  }
-
-  if (g_game_version == GameVersion::Jak1) {
-    if ((sound->bank_entry->fallof_params >> 28) == 0) {
-      return;
-    }
-  }
-
-  s32 id = snd_SoundIsStillPlaying(sound->sound_handle);
-  if (id == 0) {
-    sound->id = 0;
-    return;
-  }
-
-  s32 volume = GetVolume(sound);
-  if (volume == 0) {
-    snd_StopSound(sound->sound_handle);
-  } else {
-    s32 pan = GetPan(sound);
-    snd_SetSoundVolPan(id, volume, pan);
   }
 }
 
@@ -417,8 +370,8 @@ void PrintActiveSounds() {
 }
 
 void SetCurve(s32 curve, s32 falloff, s32 ease) {
-  gCurve[curve].unk1 = ease * 2;
-  gCurve[curve].unk2 = falloff - 3 * ease;
-  gCurve[curve].unk3 = ease - falloff - 0x1000;
-  gCurve[curve].unk4 = 0x1000;
+  gCurves[curve].unk1 = ease * 2;
+  gCurves[curve].unk2 = falloff - 3 * ease;
+  gCurves[curve].unk3 = ease - falloff - 0x1000;
+  gCurves[curve].unk4 = 0x1000;
 }
