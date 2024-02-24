@@ -657,7 +657,7 @@
                  (and (< 0.7 (-> self control pad-magnitude)) (time-elapsed? (-> self control time-of-last-lc) (seconds 0.3)))
                  )
             (and (>= (the-as uint (- (current-time) (-> v1-7 0))) (the-as uint 300))
-                 (zero? (-> self ext-anim))
+                 (= (-> self ext-anim) (target-anim default))
                  (< f0-1 0.0)
                  (< (* 0.8 (-> self control current-surface target-speed)) f1-1)
                  (< 0.7 (-> self control pad-magnitude))
@@ -675,7 +675,7 @@
 ;; definition for function wall-hide?
 ;; INFO: Used lq/sq
 (defbehavior wall-hide? target ()
-  (when (and (zero? (-> self ext-anim))
+  (when (and (= (-> self ext-anim) (target-anim default))
              (< 0.7 (-> self control pad-magnitude))
              (< 0.7 (-> self control blocked-factor))
              (and (< (-> self control ctrl-xz-vel) 8192.0)
@@ -2917,6 +2917,7 @@
 ;; definition for method 29 of type target
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
+;; INFO: Process stack size was changed from 1024 to 2048
 (defmethod target-init! ((this target) (arg0 continue-point) (arg1 symbol))
   (local-vars (s1-0 int) (s2-0 int) (s3-0 int) (s4-0 int) (sv-16 collide-shape-prim-group))
   (set! (-> *setting-control* user-default kg-primary-target) (process->handle this))
@@ -2937,14 +2938,14 @@
         (if (and (logtest? (game-feature feature56) (-> this game features))
                  (not (logtest? (game-secrets gs38) (-> *game-info* secrets)))
                  )
-            6
-            4
+            (target-geo jakc)
+            (target-geo jakb)
             )
         )
-  (set! (-> this ext-geo) -2)
+  (set! (-> this ext-geo) (target-geo uninitialized))
   (set! (-> this ext-anim-control) *target-anim-control*)
-  (set! (-> this pending-ext-anim) 0)
-  (set! (-> this ext-anim) -2)
+  (set! (-> this pending-ext-anim) (target-anim default))
+  (set! (-> this ext-anim) (target-anim uninitialized))
   (set-setting! 'allow-pause #f 0.0 0)
   (set-setting! 'allow-progress #f 0.0 0)
   (set! (-> *setting-control* cam-default mode-name) 'cam-string)
@@ -2953,7 +2954,7 @@
       (set! arg0 (get-current-continue-forced *game-info*))
       )
   (set-continue! *game-info* arg0 #f)
-  (stack-size-set! (-> this main-thread) 1024)
+  (stack-size-set! (-> this main-thread) 2048)
   (logior! (-> this mask) (process-mask target))
   (set! (-> this state-hook) (the-as (function none :behavior target) nothing))
   (set! (-> this scarf-interp-old) -1.0)
@@ -3075,7 +3076,7 @@
   (set! (-> this mirror) (the-as (pointer process-drawable) #f))
   (initialize-skeleton
     this
-    (the-as skeleton-group (art-group-get-by-name *level* "skel-jchar" (the-as (pointer uint32) #f)))
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-jchar" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
   (logior! (-> this skel effect flags) (effect-control-flag ecf0 ecf1))

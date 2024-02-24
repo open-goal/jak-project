@@ -1014,9 +1014,12 @@
   `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
   )
 
-(defmacro static-cloth-params (args)
+(defmacro static-cloth-params (ag-name args)
  `(let ((parms (new 'static 'cloth-params)))
-    ,@(apply (lambda (x) `(set! (-> parms ,(car x)) ,(cadr x))) args)
+    ,@(apply (lambda (x) (if (and (eq? (car x) 'mesh) (not (integer? (cadr x))))
+                           `(set! (-> parms ,(car x)) ,(art-elt-index ag-name (cadr x)))
+                           `(set! (-> parms ,(car x)) ,(cadr x))
+                           )) args)
     parms
     )
   )
@@ -1059,7 +1062,8 @@
         ;; set cloth params array if present
         (when ,(neq? clothing '())
           (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
-          ,@(apply-i (lambda (x i) `(set! (-> skel clothing ,i) (static-cloth-params ,x))) clothing)
+          ,@(apply-i (lambda (x i)
+            `(set! (-> skel clothing ,i) (static-cloth-params ,(string->symbol-format "{}-ag" ag-name) ,x))) clothing)
           (set! (-> skel clothing length) ,(length clothing))
           )
 
