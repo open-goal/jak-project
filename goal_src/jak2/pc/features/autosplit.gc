@@ -19,7 +19,8 @@
 (defmethod update! ((this autosplit-info))
   ;; general statistics
      ;; when we are blacked out in loads the value of these are temporarily 0, and that messes with the auto splitter.
-  (when (not (> (-> *game-info* blackout-time) (current-time)))
+  (let ((in-blackout? (>= (-> *game-info* blackout-time) (current-time))))
+  (when (not in-blackout?)
     (set! (-> this num-orbs) (the int (-> *game-info* skill-total)))
     (set! (-> this num-skullgems) (the int (-> *game-info* gem-total)))
     ;; ending conditions
@@ -29,7 +30,7 @@
     (set! (-> this all-collectables-acquired?)
           (if (and (logtest? (-> *game-info* features) (game-feature darkjak-giant))
                   (>= (-> this num-orbs) 286))
-            1 0))
+            1 0)))
   )
   ;; loading/cutscene related flags
   (set! (-> this in-cutscene?) (if (movie?) 1 0))
