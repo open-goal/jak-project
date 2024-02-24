@@ -3077,19 +3077,15 @@ goos::Object DefskelgroupElement::ClothParams::to_list(const std::string& ag_nam
                                                        const Env& env) const {
   std::vector<goos::Object> result;
   if (mesh != 0) {
-    // TODO use art element name for mesh
-    (void)ag_name;
-    // const auto& art = env.dts->art_group_info;
-    // if (art.find(ag_name) != art.end() && art.at(ag_name).find(mesh) != art.at(ag_name).end()) {
-    //   auto name = art.at(ag_name).at(mesh);
-    //   result.push_back(pretty_print::build_list(
-    //       {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(name)}));
-    // } else {
-    //   result.push_back(pretty_print::build_list(
-    //       {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
-    // }
-    result.push_back(pretty_print::build_list(
-        {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
+    const auto& art = env.dts->art_group_info;
+    if (art.find(ag_name) != art.end() && art.at(ag_name).find(mesh) != art.at(ag_name).end()) {
+      auto name = art.at(ag_name).at(mesh);
+      result.push_back(pretty_print::build_list(
+          {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(name)}));
+    } else {
+      result.push_back(pretty_print::build_list(
+          {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
+    }
   }
   if (gravity != 0.0f) {
     result.push_back(pretty_print::build_list(
