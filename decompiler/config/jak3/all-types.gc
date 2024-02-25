@@ -21501,6 +21501,32 @@
 ;; process-focusable              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++process-focusable:search-info-flag
+(defenum search-info-flag
+  :type uint32
+  :bitfield #t
+  (abort 0)
+  (crate 1)
+  (guard 2)
+  (attackable 3)
+  (enemy 4)
+  (attackable-priority 5)
+  (high-priority 6)
+  (on-screen 7)
+  (prefer-dist 8)
+  (prefer-angle 9)
+  (prefer-xz 10)
+  (cull-angle 11)
+  (cull-angle-simple 12)
+  (cull-xz 13)
+  (back-point 14)
+  (combo 15)
+  (probe 16)
+  (probe-camera 17)
+  (prefer-center 18)
+  )
+;; ---process-focusable:search-info-flag
+
 ;; +++process-focusable:focus-status
 (defenum focus-status
   :type uint64
@@ -21551,7 +21577,7 @@
   :size-assert         #xd0
   :flag-assert         #x1c005000d0
   (:methods
-    (process-focusable-method-20 (_type_) int) ;; 20
+    (process-mask->search-info-flag (_type_) search-info-flag) ;; 20
     (get-trans "Get the `trans` for this process." (_type_ int) vector) ;; 21
     (get-quat "Get the quaternion for this process." (_type_ int) quaternion) ;; 22
     (get-transv "Get the `transv` for this process." (_type_) vector) ;; 23
@@ -30631,7 +30657,7 @@
 ;; (define-extern birth-func-set-parent-pntr function)
 ;; (define-extern birth-func-get-parent-quat function)
 ;; (define-extern spt-func-camera-facing-orbiter function)
-;; (define-extern *particle-quat* object) ;; quaternion
+(define-extern *particle-quat* quaternion)
 ;; (define-extern birth-func-set-quat function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
 (define-extern *particle-vel* vector)
 ;; (define-extern birth-func-set-vel function) ;; (function object sparticle-cpuinfo sparticle-launchinfo none)
@@ -33762,9 +33788,8 @@
 
 (deftype light-trail-breadcrumb (structure)
   ((pos        vector :inline :offset-assert 0)
-   (birth-time uint32         :offset 12)
+   (birth-time uint32         :offset 12 :decomp-as time-frame)
    )
-  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -33779,7 +33804,7 @@
   )
 
 (deftype light-trail (basic)
-  ((crumb-array             basic                     :offset-assert 4)
+  ((crumb-array             breadcrumb-array          :offset-assert 4)
    (crumb-size              uint8                     :offset-assert 8)
    (crumb-count             int16                     :offset-assert 10)
    (max-crumb-count         int16                     :offset-assert 12)
@@ -33853,8 +33878,8 @@
 (deftype light-trail-tracker-spawn-params (structure)
   ((appearance         light-trail-composition  :offset-assert 0)
    (max-num-crumbs     int32                    :offset-assert 4)
-   (tracked-obj        uint64                   :offset-assert 8)
-   (track-immediately? basic                    :offset-assert 16)
+   (tracked-obj        handle                   :offset-assert 8)
+   (track-immediately? symbol                   :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -33886,8 +33911,8 @@
     die ;; 15
     )
   (:methods
-    (light-trail-tracker-method-16 (_type_) none) ;; 16
-    (light-trail-tracker-method-17 (_type_) none) ;; 17
+    (light-trail-tracker-method-16 (_type_) vector) ;; 16
+    (light-trail-tracker-method-17 (_type_ process) none) ;; 17
     (light-trail-tracker-method-18 (_type_) none) ;; 18
     (light-trail-tracker-method-19 (_type_) none) ;; 19
     (light-trail-tracker-method-20 (_type_ vector) none) ;; 20
@@ -33895,7 +33920,8 @@
   )
 
 (deftype weapon-trail-tracker (light-trail-tracker)
-  ((joint0     int16   :offset-assert 172)
+  ((trail      weapon-trail :override)
+   (joint0     int16   :offset-assert 172)
    (joint1     int16   :offset-assert 174)
    (state-time time-frame :offset-assert 176)
    )
@@ -33908,7 +33934,8 @@
   )
 
 (deftype tread-trail-tracker (light-trail-tracker)
-  ()
+  ((trail tread-trail :override)
+   )
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
@@ -33930,14 +33957,11 @@
   (:state-methods
     hang-on ;; 21
     )
-  (:methods
-    ;; (light-trail-tracker-projectile-method-21 () none) ;; 21
-    )
   )
 
-(define-extern light-trail-tracker-init-by-other (function object :behavior light-trail-tracker))
-(define-extern weapon-trail-tracker-init-by-other (function object :behavior weapon-trail-tracker))
-(define-extern tread-trail-tracker-init-by-other (function object :behavior tread-trail-tracker))
+(define-extern light-trail-tracker-init-by-other (function light-trail-tracker-spawn-params object :behavior light-trail-tracker))
+(define-extern weapon-trail-tracker-init-by-other (function weapon-trail-tracker-spawn-params object :behavior weapon-trail-tracker))
+(define-extern tread-trail-tracker-init-by-other (function light-trail-tracker-spawn-params object :behavior tread-trail-tracker))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightning-new-h                ;;
@@ -34150,11 +34174,11 @@
 ;; light-trails                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern compute-trail-scaled-t function)
+(define-extern compute-trail-scaled-t (function none))
 (define-extern *dist-cache-array* pointer)
 (define-extern *total-length* float)
-;; (define-extern light-trail-tracker-common-post function)
-;; (define-extern estimate-light-trail-mem-usage function)
+(define-extern light-trail-tracker-common-post (function object :behavior light-trail-tracker))
+(define-extern estimate-light-trail-mem-usage (function light-trail none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lightning-new                  ;;
@@ -34371,14 +34395,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gun (process-drawable)
-  ((control       control-info   :offset 128) ;; guessed by decompiler
+  ((parent        (pointer target) :override)
+   (control       control-info   :offset 128) ;; guessed by decompiler
    (shadow-backup shadow-geo     :offset 208) ;; guessed by decompiler
-   (read-scale    basic          :offset-assert 212)
+   (read-scale    symbol         :offset-assert 212)
    (gun-type      pickup-type    :offset-assert 216) ;; pickup-type
    (barrel        joint-mod    2 :offset-assert 220) ;; guessed by decompiler
    (mag           joint-mod    4 :offset-assert 228) ;; guessed by decompiler
    (mag-scale     float        4 :offset-assert 244) ;; guessed by decompiler
-   (extra         uint64         :offset-assert 264)
+   (extra         handle         :offset-assert 264)
    )
   :method-count-assert 24
   :size-assert         #x110
@@ -34436,6 +34461,7 @@
    (uv-slide               float                    :offset-assert 212)
    (fire-dir-rot           degrees                  :offset-assert 216) ;; degrees
    (fire-dir               vector           :inline :offset-assert 224)
+   (unk-vec                vector           :inline :offset-assert 240)
    (fire-point             vector           :inline :offset 256)
    (fire-dir-backup        vector           :inline :offset-assert 272)
    (fire-dir-out           vector           :inline :offset-assert 288)
@@ -34450,6 +34476,7 @@
    (laser-active?          symbol                   :offset-assert 348) ;; guessed by decompiler
    (laser-point            vector           :inline :offset-assert 352)
    (laser-dir              vector           :inline :offset-assert 368)
+   (unk-vec00              vector           :inline :offset-assert 384)
    (laser-hit-point        vector           :inline :offset 400)
    (track?                 gun-track-flags          :offset-assert 416) ;; gun-track-flags
    (track-tilt             degrees                  :offset-assert 420) ;; degrees
@@ -34498,7 +34525,7 @@
   :size-assert         #x308
   :flag-assert         #xa00000308
   (:methods
-    (gun-info-method-9 () none) ;; 9 ;; (gun-info-method-9 (_type_) (inline-array vector))
+    (gun-info-method-9 (_type_) vector) ;; 9
     )
   )
 
@@ -34512,8 +34539,8 @@
 
 (define-extern using-gun? (function target symbol))
 (define-extern enabled-gun? (function target symbol))
-(define-extern gun->ammo (function pickup-type int))
-(define-extern gun->eco (function pickup-type int))
+(define-extern gun->ammo (function pickup-type pickup-type))
+(define-extern gun->eco (function pickup-type pickup-type))
 (define-extern *gun-shadow-control* shadow-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -35225,12 +35252,11 @@
 ;; find-nearest                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype search-info (structure)
   ((point        vector           :inline :offset-assert 0)
    (best-point   vector           :inline :offset-assert 16)
-   (match-handle uint64                   :offset-assert 32) ;; handle
-   (match        basic                    :offset-assert 40)
+   (match-handle handle                   :offset-assert 32) ;; handle
+   (match        process-focusable        :offset-assert 40)
    (best         float                    :offset-assert 44)
    (radius       float                    :offset-assert 48)
    (rating       search-info-flag         :offset-assert 52)
@@ -35244,10 +35270,9 @@
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-;; (define-extern *search-info* object) ;; search-info
-;; (define-extern find-nearest-focusable function) ;; (function (array collide-shape) vector float search-info-flag search-info-flag vector vector float basic)
+(define-extern *search-info* search-info)
+(define-extern find-nearest-focusable (function (array collide-shape) vector float search-info-flag search-info-flag vector vector float process-focusable))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; task-arrow                     ;;
@@ -35640,76 +35665,64 @@
 ;; gun-util                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-eject (projectile-bounce)
   ()
   :method-count-assert 44
   :size-assert         #x224
   :flag-assert         #x2c01b00224
   )
-|#
 
-#|
 (deftype gun-mag-yellow (projectile-bounce)
   ()
   :method-count-assert 44
   :size-assert         #x224
   :flag-assert         #x2c01b00224
   )
-|#
 
-#|
 (deftype gun-mag-red (projectile-bounce)
   ()
   :method-count-assert 44
   :size-assert         #x224
   :flag-assert         #x2c01b00224
   )
-|#
 
-#|
 (deftype gun-mag-blue (projectile-bounce)
   ()
   :method-count-assert 44
   :size-assert         #x224
   :flag-assert         #x2c01b00224
   )
-|#
 
-#|
 (deftype gun-mag-dark (projectile-bounce)
   ()
   :method-count-assert 44
   :size-assert         #x224
   :flag-assert         #x2c01b00224
   )
-|#
 
-#|
 (deftype last-gun-fire-time (structure)
-  ((last-fire-times UNKNOWN 12 :offset-assert 0)
+  ((last-fire-times time-frame 12 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-;; (define-extern *beam-info* object) ;; beam-info
-;; (define-extern birth-func-setup-beam function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern birth-func-laser-pointer function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern draw-beam function) ;; (function sparticle-launcher vector vector symbol symbol none)
-;; (define-extern gun-post function) ;; (function none :behavior gun)
-;; (define-extern gun-init function) ;; (function none :behavior gun)
-;; (define-extern do-fire-backcheck function)
-;; (define-extern get-remaining-player-ammo function)
-;; (define-extern adjust-player-ammo function)
-;; (define-extern adjust-player-ammo-over-time function)
-;; (define-extern truncate-player-ammo function)
-;; (define-extern *last-gun-fire-time* object)
-;; (define-extern compute-gun-fire-time-index function)
-;; (define-extern get-last-fire-time function)
-;; (define-extern set-last-fire-time function)
+(define-extern *beam-info* beam-info)
+(define-extern birth-func-setup-beam (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-laser-pointer (function int sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern draw-beam (function sparticle-launcher vector vector symbol none))
+(define-extern gun-post (function none :behavior gun))
+(define-extern gun-init (function none :behavior gun))
+(define-extern do-fire-backcheck (function vector vector symbol))
+(define-extern get-remaining-player-ammo (function pickup-type float))
+(define-extern adjust-player-ammo (function int pickup-type float))
+(define-extern adjust-player-ammo-over-time (function int float pickup-type float float))
+(define-extern truncate-player-ammo (function pickup-type none))
+(define-extern *last-gun-fire-time* last-gun-fire-time)
+(define-extern compute-gun-fire-time-index (function int int))
+(define-extern get-last-fire-time (function int time-frame))
+(define-extern set-last-fire-time (function int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-blue-shot                  ;;
@@ -35930,9 +35943,9 @@
 ;; (define-extern *lightning-pts-cache* object)
 ;; (define-extern gun-fire-blue-2 function)
 ;; (define-extern gun-fire-blue-2-old function)
-;; (define-extern target-gun-can-fire-blue? function)
+(define-extern target-gun-can-fire-blue? (function pickup-type symbol :behavior target))
 ;; (define-extern *last-fire-blue-time* object)
-;; (define-extern target-gun-fire-blue function) ;; (function (pointer process) :behavior target)
+(define-extern target-gun-fire-blue (function pickup-type (pointer process) :behavior target))
 ;; (define-extern gun-blue-shot-move function) ;; (function gun-blue-shot none)
 ;; (define-extern cshape-reaction-blue-shot function) ;; (function control-info collide-query vector vector collide-status)
 
@@ -36086,8 +36099,8 @@
 ;; (define-extern gun-fire-yellow-3 function)
 ;; (define-extern gun-fire-yellow-2 function)
 ;; (define-extern gun-fire-yellow-1 function)
-;; (define-extern target-gun-can-fire-yellow? function)
-;; (define-extern target-gun-fire-yellow function) ;; (function (pointer process) :behavior target)
+(define-extern target-gun-can-fire-yellow? (function pickup-type symbol :behavior target))
+(define-extern target-gun-fire-yellow (function pickup-type (pointer process) :behavior target))
 ;; (define-extern someone-fire-yellow function) ;; (function process-drawable vector vector (pointer process))
 ;; (define-extern gun-yellow-shot-move function) ;; (function gun-yellow-shot none)
 ;; (define-extern *last-hit-deflect-target-handle* object)
@@ -36326,8 +36339,8 @@
 ;; (define-extern red-3-sphere-init-by-other function)
 ;; (define-extern gun-fire-red-3 function)
 ;; (define-extern gun-fire-red-1 function)
-;; (define-extern target-gun-can-fire-red? function)
-;; (define-extern target-gun-fire-red function) ;; (function (pointer gun-red-shot) :behavior target)
+(define-extern target-gun-can-fire-red? (function pickup-type symbol :behavior target))
+(define-extern target-gun-fire-red (function pickup-type (pointer process) :behavior target))
 ;; (define-extern gun-red-shot-event-handler function) ;; (function process-drawable int symbol event-message-block object :behavior gun-red-shot)
 ;; (define-extern gun-red-shot-init-by-other function) ;; (function vector vector gun-red-shot :behavior gun-red-shot)
 
@@ -36560,7 +36573,7 @@
 ;; (define-extern *last-active-nuke* object)
 ;; (define-extern gun-dark-reaction function)
 ;; (define-extern nuke-move function)
-;; (define-extern target-gun-can-fire-dark? function)
+(define-extern target-gun-can-fire-dark? (function pickup-type symbol :behavior target))
 ;; (define-extern gun-fire-dark-3 function)
 ;; (define-extern process-drawable-shock-effect-bullseye function) ;; (function process-focusable process-focusable matrix int sparticle-launcher sparticle-launcher sparticle-launcher none)
 ;; (define-extern gun-dark-shot-init-fizzle function) ;; (function vector none :behavior gun-dark-shot)
@@ -36572,7 +36585,7 @@
 ;; (define-extern gravity-ring-init-by-other function)
 ;; (define-extern gun-gravity-init-by-other function)
 ;; (define-extern gun-fire-dark-2 function)
-;; (define-extern target-gun-fire-dark function) ;; (function (pointer process) :behavior target)
+(define-extern target-gun-fire-dark (function pickup-type (pointer process) :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-states                     ;;
