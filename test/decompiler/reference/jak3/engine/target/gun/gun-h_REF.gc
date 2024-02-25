@@ -3,14 +3,15 @@
 
 ;; definition of type gun
 (deftype gun (process-drawable)
-  ((control        control-info  :overlay-at root)
-   (shadow-backup  shadow-geo    :offset 208)
-   (read-scale     basic)
+  ((parent         (pointer target) :override)
+   (control        control-info      :overlay-at root)
+   (shadow-backup  shadow-geo        :offset 208)
+   (read-scale     symbol)
    (gun-type       pickup-type)
-   (barrel         joint-mod     2)
-   (mag            joint-mod     4)
-   (mag-scale      float         4)
-   (extra          uint64)
+   (barrel         joint-mod         2)
+   (mag            joint-mod         4)
+   (mag-scale      float             4)
+   (extra          handle)
    )
   (:state-methods
     idle
@@ -76,6 +77,7 @@
    (uv-slide                float)
    (fire-dir-rot            degrees)
    (fire-dir                vector         :inline)
+   (unk-vec                 vector         :inline)
    (fire-point              vector         :inline :offset 256)
    (fire-dir-backup         vector         :inline)
    (fire-dir-out            vector         :inline)
@@ -90,6 +92,7 @@
    (laser-active?           symbol)
    (laser-point             vector         :inline)
    (laser-dir               vector         :inline)
+   (unk-vec00               vector         :inline)
    (laser-hit-point         vector         :inline :offset 400)
    (track?                  gun-track-flags)
    (track-tilt              degrees)
@@ -135,7 +138,7 @@
    (ammo-required           float)
    )
   (:methods
-    (gun-info-method-9 () none)
+    (gun-info-method-9 (_type_) vector)
     )
   )
 
@@ -258,51 +261,91 @@
   )
 
 ;; definition for function gun->ammo
+;; WARN: Return type mismatch int vs pickup-type.
 (defun gun->ammo ((arg0 pickup-type))
-  (case arg0
-    (((pickup-type eco-yellow) (pickup-type gun-yellow-1) (pickup-type gun-yellow-2) (pickup-type gun-yellow-3))
-     15
-     )
-    (((pickup-type eco-red) (pickup-type gun-red-1) (pickup-type gun-red-2) (pickup-type gun-red-3))
-     16
-     )
-    (((pickup-type eco-blue) (pickup-type gun-blue-1) (pickup-type gun-blue-2) (pickup-type gun-blue-3))
-     17
-     )
-    (((pickup-type eco-dark) (pickup-type gun-dark-1) (pickup-type gun-dark-2) (pickup-type gun-dark-3))
-     18
-     )
-    (else
-      0
-      )
+  (let ((v1-0 arg0))
+    (the-as pickup-type (cond
+                          ((or (= v1-0 (pickup-type eco-yellow))
+                               (= v1-0 (pickup-type gun-yellow-1))
+                               (= v1-0 (pickup-type gun-yellow-2))
+                               (= v1-0 (pickup-type gun-yellow-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-yellow))
+                           )
+                          ((or (= v1-0 (pickup-type eco-red))
+                               (= v1-0 (pickup-type gun-red-1))
+                               (= v1-0 (pickup-type gun-red-2))
+                               (= v1-0 (pickup-type gun-red-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-red))
+                           )
+                          ((or (= v1-0 (pickup-type eco-blue))
+                               (= v1-0 (pickup-type gun-blue-1))
+                               (= v1-0 (pickup-type gun-blue-2))
+                               (= v1-0 (pickup-type gun-blue-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-blue))
+                           )
+                          ((or (= v1-0 (pickup-type eco-dark))
+                               (= v1-0 (pickup-type gun-dark-1))
+                               (= v1-0 (pickup-type gun-dark-2))
+                               (= v1-0 (pickup-type gun-dark-3))
+                               )
+                           (the-as pickup-type (pickup-type ammo-dark))
+                           )
+                          (else
+                            (the-as pickup-type (pickup-type none))
+                            )
+                          )
+            )
     )
   )
 
 ;; definition for function gun->eco
+;; WARN: Return type mismatch int vs pickup-type.
 (defun gun->eco ((arg0 pickup-type))
-  (case arg0
-    (((pickup-type eco-yellow) (pickup-type gun-yellow-1) (pickup-type gun-yellow-2) (pickup-type gun-yellow-3))
-     1
-     )
-    (((pickup-type eco-red) (pickup-type gun-red-1) (pickup-type gun-red-2) (pickup-type gun-red-3))
-     2
-     )
-    (((pickup-type eco-blue) (pickup-type gun-blue-1) (pickup-type gun-blue-2) (pickup-type gun-blue-3))
-     3
-     )
-    (((pickup-type eco-dark) (pickup-type gun-dark-1) (pickup-type gun-dark-2) (pickup-type gun-dark-3))
-     4
-     )
-    (else
-      0
-      )
+  (let ((v1-0 arg0))
+    (the-as pickup-type (cond
+                          ((or (= v1-0 (pickup-type eco-yellow))
+                               (= v1-0 (pickup-type gun-yellow-1))
+                               (= v1-0 (pickup-type gun-yellow-2))
+                               (= v1-0 (pickup-type gun-yellow-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-yellow))
+                           )
+                          ((or (= v1-0 (pickup-type eco-red))
+                               (= v1-0 (pickup-type gun-red-1))
+                               (= v1-0 (pickup-type gun-red-2))
+                               (= v1-0 (pickup-type gun-red-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-red))
+                           )
+                          ((or (= v1-0 (pickup-type eco-blue))
+                               (= v1-0 (pickup-type gun-blue-1))
+                               (= v1-0 (pickup-type gun-blue-2))
+                               (= v1-0 (pickup-type gun-blue-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-blue))
+                           )
+                          ((or (= v1-0 (pickup-type eco-dark))
+                               (= v1-0 (pickup-type gun-dark-1))
+                               (= v1-0 (pickup-type gun-dark-2))
+                               (= v1-0 (pickup-type gun-dark-3))
+                               )
+                           (the-as pickup-type (pickup-type eco-dark))
+                           )
+                          (else
+                            (the-as pickup-type (pickup-type none))
+                            )
+                          )
+            )
     )
   )
 
 ;; definition for method 12 of type fact-info-target
 (defmethod get-gun-ammo ((this fact-info-target))
   (let ((v1-2 (gun->ammo (-> this process gun gun-type))))
-    (if (zero? v1-2)
+    (if (= v1-2 (pickup-type none))
         0.0
         (-> this process game gun-ammo (+ v1-2 -15))
         )
@@ -385,7 +428,3 @@
               :bounds (static-spherem 0 0 0 1)
               :texture-level 10
               )
-
-
-
-
