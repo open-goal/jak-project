@@ -794,58 +794,59 @@
     )
   )
 
-(define *duck-mods* (new 'static 'surface
-                      :name 'duck
-                      :turnv 131072.0
-                      :turnvf 30.0
-                      :turnvv 524288.0
-                      :turnvvf 30.0
-                      :tiltv 65536.0
-                      :tiltvf 150.0
-                      :tiltvv 262144.0
-                      :tiltvvf 15.0
-                      :transv-max 16384.0
-                      :target-speed 16384.0
-                      :seek0 1.0
-                      :seek90 1.0
-                      :seek180 1.0
-                      :fric 1.0
-                      :nonlin-fric-dist 1.0
-                      :slip-factor 1.0
-                      :slide-factor 1.0
-                      :slope-up-factor 1.0
-                      :slope-down-factor 1.0
-                      :slope-slip-angle 1.0
-                      :impact-fric 1.0
-                      :bend-factor 1.0
-                      :bend-speed 1.0
-                      :alignv 1.0
-                      :slope-up-traction 1.0
-                      :align-speed 1.0
-                      :mult-hook (lambda :behavior target
-                        ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
-                        (surface-clamp-speed arg0 arg1 arg2 arg3)
-                        (when (= arg3 1)
-                          (cond
-                            ((or (and (focus-test? self dark) (nonzero? (-> self darkjak)))
-                                 (and (using-gun? self) (= (gun->eco (-> self gun gun-type)) 3))
-                                 )
-                             (set! (-> arg0 target-speed) 0.0)
-                             (set! (-> arg0 seek0) 0.0)
-                             (set! (-> arg0 seek90) 0.0)
-                             (set! (-> arg0 seek180) 0.0)
-                             (set! (-> arg0 turnv) 0.0)
-                             (set! (-> arg0 turnvv) 0.0)
-                             )
-                            (else
-                              (set! (-> arg0 target-speed) 16384.0)
-                              )
-                            )
-                          )
-                        )
-                      :flags (surface-flag duck)
-                      )
+(define *duck-mods*
+  (new 'static 'surface
+    :name 'duck
+    :turnv 131072.0
+    :turnvf 30.0
+    :turnvv 524288.0
+    :turnvvf 30.0
+    :tiltv 65536.0
+    :tiltvf 150.0
+    :tiltvv 262144.0
+    :tiltvvf 15.0
+    :transv-max 16384.0
+    :target-speed 16384.0
+    :seek0 1.0
+    :seek90 1.0
+    :seek180 1.0
+    :fric 1.0
+    :nonlin-fric-dist 1.0
+    :slip-factor 1.0
+    :slide-factor 1.0
+    :slope-up-factor 1.0
+    :slope-down-factor 1.0
+    :slope-slip-angle 1.0
+    :impact-fric 1.0
+    :bend-factor 1.0
+    :bend-speed 1.0
+    :alignv 1.0
+    :slope-up-traction 1.0
+    :align-speed 1.0
+    :mult-hook (lambda :behavior target
+      ((arg0 surface) (arg1 surface) (arg2 surface) (arg3 int))
+      (surface-clamp-speed arg0 arg1 arg2 arg3)
+      (when (= arg3 1)
+        (cond
+          ((or (and (focus-test? self dark) (nonzero? (-> self darkjak)))
+               (and (using-gun? self) (= (gun->eco (-> self gun gun-type)) (pickup-type eco-blue)))
+               )
+           (set! (-> arg0 target-speed) 0.0)
+           (set! (-> arg0 seek0) 0.0)
+           (set! (-> arg0 seek90) 0.0)
+           (set! (-> arg0 seek180) 0.0)
+           (set! (-> arg0 turnv) 0.0)
+           (set! (-> arg0 turnvv) 0.0)
+           )
+          (else
+            (set! (-> arg0 target-speed) 16384.0)
+            )
+          )
         )
+      )
+    :flags (surface-flag duck)
+    )
+  )
 
 (defstate target-duck-stance (target)
   :event target-standard-event-handler
@@ -1283,7 +1284,7 @@
       (when (and (using-gun? self) (not (-> self gun charge-active?)))
         (set! (-> self gun top-anim-low-high) 0.0)
         (case (gun->eco (-> self gun gun-type))
-          ((3)
+          (((pickup-type eco-blue))
            (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 0.0 30 30 1.0 0.0 #f)
            )
           (else
@@ -1394,7 +1395,7 @@
     (when (and (using-gun? self) (not (-> self gun charge-active?)))
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (gun->eco (-> self gun gun-type))
-        ((3)
+        (((pickup-type eco-blue))
          (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 3.0 30 30 1.0 0.0 #f)
          )
         (else
@@ -1519,7 +1520,7 @@
     (when (and (using-gun? self) (not (-> self gun charge-active?)))
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (gun->eco (-> self gun gun-type))
-        ((3)
+        (((pickup-type eco-blue))
          (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 7.0 30 30 1.0 0.0 #f)
          )
         (else
@@ -1754,7 +1755,7 @@
     (when (and (using-gun? self) (not (-> self gun charge-active?)))
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (gun->eco (-> self gun gun-type))
-        ((3)
+        (((pickup-type eco-blue))
          (push-anim-to-targ (-> self skel top-anim) (the-as art-joint-anim jakb-gun-side-jump-ja) 0.0 30 30 1.0 0.0 #f)
          )
         (else
@@ -1947,7 +1948,7 @@
                )
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (gun->eco (-> self gun gun-type))
-        ((3)
+        (((pickup-type eco-blue))
          (push-anim-to-targ
            (-> self skel top-anim)
            (the-as art-joint-anim jakb-gun-side-jump-land-ja)
@@ -1959,7 +1960,7 @@
            #f
            )
          )
-        ((2 4)
+        (((pickup-type eco-red) (pickup-type eco-dark))
          (push-anim-to-targ
            (-> self skel top-anim)
            (the-as art-joint-anim jakb-gun-front-jump-land-ja)
@@ -2260,7 +2261,7 @@
         ((using-gun? self)
          (set! (-> self gun top-anim-low-high) 0.0)
          (case (gun->eco (-> self gun gun-type))
-           ((1)
+           (((pickup-type eco-yellow))
             (push-anim-to-targ
               (-> self skel top-anim)
               (the-as art-joint-anim jakb-gun-attack-from-stance-ja)
@@ -2275,7 +2276,7 @@
             (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) -3276.8)
             (set! (-> self control unknown-sound-id01) (sound-play "spin-kick"))
             )
-           ((3)
+           (((pickup-type eco-blue))
             (push-anim-to-targ
               (-> self skel top-anim)
               (the-as art-joint-anim jakb-gun-attack-from-stance-blue-ja)
@@ -2380,7 +2381,7 @@
       ((using-gun? self)
        (when (zero? (-> self gun track-target-hold-time))
          (case (gun->eco (-> self gun gun-type))
-           ((3)
+           (((pickup-type eco-blue))
             (push-anim-to-targ
               (-> self skel top-anim)
               (the-as art-joint-anim jakb-gun-attack-from-stance-blue-end-ja)
@@ -2393,7 +2394,7 @@
               )
             (quaternion-rotate-y! (-> self control quat-for-control) (-> self control quat-for-control) -3640.889)
             )
-           ((1)
+           (((pickup-type eco-yellow))
             (push-anim-to-targ
               (-> self skel top-anim)
               (the-as art-joint-anim jakb-gun-attack-from-stance-end-ja)
@@ -2670,7 +2671,7 @@
       (when (using-gun? self)
         (set! (-> self gun top-anim-low-high) 0.0)
         (case (gun->eco (-> self gun gun-type))
-          ((1)
+          (((pickup-type eco-yellow))
            (push-anim-to-targ
              (-> self skel top-anim)
              (the-as art-joint-anim jakb-gun-attack-butt-ja)
@@ -2683,7 +2684,7 @@
              )
            (set! gp-1 jakb-gun-attack-butt-blue-ja)
            )
-          ((3)
+          (((pickup-type eco-blue))
            (push-anim-to-targ
              (-> self skel top-anim)
              (the-as art-joint-anim jakb-gun-attack-butt-blue-ja)
@@ -2905,11 +2906,13 @@
              )
         (go target-falling #f)
         )
-    (when (and (using-gun? self) (or (< (-> self control pad-magnitude) 0.7) (= (gun->eco (-> self gun gun-type)) 3)))
+    (when (and (using-gun? self)
+               (or (< (-> self control pad-magnitude) 0.7) (= (gun->eco (-> self gun gun-type)) (pickup-type eco-blue)))
+               )
       (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.5)))
       (when (zero? (-> self gun track-target-hold-time))
         (case (gun->eco (-> self gun gun-type))
-          ((3)
+          (((pickup-type eco-blue))
            (push-anim-to-targ
              (-> self skel top-anim)
              (the-as art-joint-anim jakb-gun-attack-butt-blue-end-ja)
@@ -3120,14 +3123,14 @@
                (!= (-> self gun gun-type) 31)
                )
       (case (gun->eco (-> self gun gun-type))
-        ((1)
+        (((pickup-type eco-yellow))
          (+! (-> self gun fire-pending) 5)
          )
-        ((3)
+        (((pickup-type eco-blue))
          (+! (-> self gun fire-pending) 5)
          (set! (-> self gun fire-spinv) 218453.33)
          )
-        ((2)
+        (((pickup-type eco-red))
          (+! (-> self gun fire-pending) 2)
          )
         )
@@ -3246,7 +3249,7 @@
         ((using-gun? self)
          (set! (-> self gun top-anim-low-high) 0.0)
          (case (gun->eco (-> self gun gun-type))
-           ((3)
+           (((pickup-type eco-blue))
             (push-anim-to-targ
               (-> self skel top-anim)
               (the-as art-joint-anim jakb-gun-attack-upperbutt-blue-ja)
