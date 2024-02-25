@@ -1,0 +1,238 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 7 of type board
+;; WARN: Return type mismatch process-drawable vs board.
+(defmethod relocate ((this board) (offset int))
+  (if (nonzero? (-> this main))
+      (&+! (-> this main) offset)
+      )
+  (the-as board ((method-of-type process-drawable relocate) this offset))
+  )
+
+;; definition for function board-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior board-post board ()
+  (let ((v1-0 (ppointer->process (-> self parent))))
+    (set! (-> self root trans quad) (-> (the-as target v1-0) board board-trans quad))
+    (let ((a0-4 (-> (the-as target v1-0) board board-quat quad)))
+      (set! (-> self root quat quad) a0-4)
+      )
+    (set! (-> self root scale quad) (-> (the-as target v1-0) board board-scale quad))
+    (set! (-> self draw light-index) (-> (the-as target v1-0) draw light-index))
+    (let ((a0-10 (-> (the-as target v1-0) draw color-mult quad)))
+      (set! (-> self draw color-mult quad) a0-10)
+      )
+    (let ((a0-12 (-> (the-as target v1-0) draw color-emissive quad)))
+      (set! (-> self draw color-emissive quad) a0-12)
+      )
+    (set! (-> self draw force-fade) (-> (the-as target v1-0) draw force-fade))
+    (set! (-> self draw global-effect) (-> (the-as target v1-0) draw global-effect))
+    (set! (-> self draw death-vertex-skip) (-> self parent 0 draw death-vertex-skip))
+    (set! (-> self draw death-effect) (-> self parent 0 draw death-effect))
+    (set! (-> self draw death-timer) (-> self parent 0 draw death-timer))
+    (set! (-> self draw death-timer-org) (-> self parent 0 draw death-timer-org))
+    (set! (-> self draw death-draw-overlap) (-> self parent 0 draw death-draw-overlap))
+    (let ((a0-39 (-> (the-as target v1-0) draw shadow-ctrl settings shadow-dir quad)))
+      (set! (-> self draw shadow-ctrl settings shadow-dir quad) a0-39)
+      )
+    (cond
+      ((logtest? (-> (the-as target v1-0) draw shadow-ctrl settings flags) (shadow-flags disable-draw))
+       (let ((a0-45 (-> self draw shadow-ctrl)))
+         (logior! (-> a0-45 settings flags) (shadow-flags disable-draw))
+         )
+       0
+       )
+      (else
+        (let ((a0-48 (-> self draw shadow-ctrl)))
+          (logclear! (-> a0-48 settings flags) (shadow-flags disable-draw))
+          )
+        0
+        )
+      )
+    (if (or (logtest? (-> (the-as target v1-0) draw status)
+                      (draw-control-status no-draw no-draw-temp no-draw-bounds no-draw-bounds2)
+                      )
+            (or (logtest? (-> (the-as target v1-0) target-effect) 1)
+                (zero? (-> (the-as target v1-0) skel active-channels))
+                )
+            )
+        (logior! (-> self draw status) (draw-control-status no-draw))
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        )
+    (if (logtest? (-> (the-as target v1-0) draw status) (draw-control-status force-fade))
+        (logior! (-> self draw status) (draw-control-status force-fade))
+        (logclear! (-> self draw status) (draw-control-status force-fade))
+        )
+    (if (logtest? (-> (the-as target v1-0) target-effect) 7)
+        (logior! (-> self draw global-effect) (draw-control-global-effect no-textures))
+        (logclear! (-> self draw global-effect) (draw-control-global-effect no-textures))
+        )
+    (if (logtest? (-> (the-as target v1-0) target-effect) 56)
+        (logior! (-> self draw global-effect) (draw-control-global-effect rim-lights))
+        (logclear! (-> self draw global-effect) (draw-control-global-effect rim-lights))
+        )
+    )
+  (ja-post)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate hidden (board)
+  :virtual #t
+  :trans (behavior ()
+    (let ((v1-0 (-> self parent)))
+      (if (not (focus-test?
+                 (the-as target (if v1-0
+                                    (the-as target (-> v1-0 0 self))
+                                    )
+                         )
+                 in-head
+                 )
+               )
+          (go-virtual idle #t)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-set! 0)
+    (ja-post)
+    (logior! (-> self mask) (process-mask sleep-code))
+    (suspend)
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (board)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('open)
+       (go-virtual use)
+       )
+      )
+    )
+  :trans (behavior ()
+    (let ((v1-0 (-> self parent)))
+      (cond
+        ((focus-test?
+           (the-as target (if v1-0
+                              (the-as target (-> v1-0 0 self))
+                              )
+                   )
+           in-head
+           )
+         (+! (-> self in-head-time) (- (current-time) (-> self clock old-frame-counter)))
+         (if (< (seconds 0.1) (-> self in-head-time))
+             (go-virtual hidden)
+             )
+         )
+        (else
+          (set! (-> self in-head-time) 0)
+          0
+          )
+        )
+      )
+    )
+  :code (behavior ((arg0 symbol))
+    (ja-channel-push! 1 (seconds 0.1))
+    (cond
+      (arg0
+        (ja :group! board-close-ja :num! max)
+        )
+      (else
+        (ja-no-eval :group! board-close-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (set! (-> self draw shadow) #f)
+    (sleep-code)
+    )
+  :post board-post
+  )
+
+;; failed to figure out what this is:
+(defstate use (board)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('close)
+       (go-virtual idle #f)
+       )
+      )
+    )
+  :trans (behavior ()
+    (let ((v1-0 (-> self parent)))
+      (if v1-0
+          (-> v1-0 0 self)
+          )
+      )
+    (let ((v1-2 (-> self parent)))
+      (cond
+        ((focus-test?
+           (the-as target (if v1-2
+                              (the-as target (-> v1-2 0 self))
+                              )
+                   )
+           in-head
+           )
+         (go-virtual hidden)
+         )
+        ((let ((v1-9 #x40000)
+               (a0-3 (-> self parent))
+               )
+           (not (logtest? (the-as focus-status v1-9) (-> (the-as target (if a0-3
+                                                                            (the-as target (-> a0-3 0 self))
+                                                                            )
+                                                                 )
+                                                         focus-status
+                                                         )
+                          )
+                )
+           )
+         (go-virtual idle #f)
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (set! (-> self draw shadow) (-> self shadow-backup))
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! board-open-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (sleep-code)
+    )
+  :post board-post
+  )
+
+;; definition for function board-init
+;; INFO: Used lq/sq
+(defbehavior board-init board ()
+  (set! (-> self root) (new 'process 'trsqv))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-board" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-5 (-> *target-shadow-control* settings shadow-dir quad)))
+    (set! (-> *board-shadow-control* settings shadow-dir quad) v1-5)
+    )
+  (set! (-> self draw shadow-ctrl) *board-shadow-control*)
+  (set! (-> self shadow-backup) (-> self draw shadow))
+  (set! (-> self main) (new 'process 'joint-mod (joint-mod-mode flex-blend) self 3))
+  (ja-channel-set! 0)
+  (go-virtual idle #t)
+  )
+
+
+
+
