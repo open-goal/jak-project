@@ -1497,7 +1497,13 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
-  auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  bool arg0_constant = !m_expr.get_arg(0).is_var();
+  bool arg0_u;
+  if (!arg0_constant) {
+    arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  } else {
+    arg0_u = m_expr.get_arg(0).is_int();
+  }
   bool arg1_u = true;
   bool arg1_reg = m_expr.get_arg(1).is_var();
   if (arg1_reg) {
@@ -1507,12 +1513,17 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
   }
 
   std::vector<Form*> args;
-  if (arg1_reg) {
-    args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                        allow_side_effects);
+  if (arg0_constant) {
+    args = pop_to_forms({m_expr.get_arg(1).var()}, env, pool, stack, allow_side_effects);
+    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(0)));
   } else {
-    args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    if (arg1_reg) {
+      args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                          allow_side_effects);
+    } else {
+      args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
+      args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    }
   }
 
   if (!arg0_u) {
