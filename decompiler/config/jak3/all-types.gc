@@ -18501,7 +18501,7 @@
   ;; field actor-option is likely a value type.
   (:methods
     (new (symbol type process pickup-type float) _type_) ;; 0
-    (fact-info-method-9 () none) ;; 9 ;; (drop-pickup (_type_ symbol process-tree fact-info int) (pointer process))
+    (drop-pickup (_type_ symbol process-tree fact-info int symbol) (pointer process)) ;; 9
     (reset! (_type_ symbol) none) ;; 10
     (pickup-collectable! (_type_ pickup-type float handle) float) ;; 11
     )
@@ -20600,7 +20600,7 @@
   ((userdata  uint64                         :offset-assert 0)
    (duration  time-frame                     :offset-assert 8)
    (group     sparticle-launch-group         :offset-assert 16)
-   (callback  (function none)                :offset-assert 20)
+   (callback  (function part-tracker vector) :offset-assert 20)
    (target    process-drawable               :offset-assert 24)
    (mat-joint object                         :offset-assert 28) ;; can be *launch-matrix* or joint idx
    )
@@ -20614,7 +20614,7 @@
   ((userdata      uint64  :offset-assert 0)
    (duration      time-frame :offset-assert 8)
    (group         sparticle-launch-group :offset-assert 16)
-   (callback      (function none) :offset-assert 20)
+   (callback      (function part-tracker vector) :offset-assert 20)
    (target        process-drawable :offset-assert 24)
    (mat-joint     object  :offset-assert 28) ;; can be *launch-matrix* or joint idx
    (subsample-num float   :offset-assert 32)
@@ -33689,7 +33689,7 @@
 (define-extern swingpole-init (function int object :behavior swingpole))
 (define-extern manipy-post (function none :behavior manipy))
 (define-extern manipy-init (function vector entity-actor skeleton-group vector manipy-options none :behavior manipy))
-(define-extern part-tracker-init-base (function sparticle-launch-group time-frame (function none) uint process-drawable object none :behavior part-tracker))
+(define-extern part-tracker-init-base (function sparticle-launch-group time-frame (function part-tracker vector) uint process-drawable object none :behavior part-tracker))
 (define-extern part-tracker-subsampler-init (function part-tracker-subsampler-init-params object :behavior part-tracker-subsampler))
 (define-extern part-tracker-init (function part-tracker-init-params object :behavior part-tracker))
 (define-extern part-tracker-track-root (function sparticle-system sparticle-cpuinfo vector none))
@@ -35191,7 +35191,7 @@
 (define-extern add-gravity (function vector :behavior target))
 (define-extern target-compute-slopes (function vector int :behavior target))
 (define-extern do-rotations1 (function quaternion :behavior target))
-(define-extern *strafe-mode* object)
+(define-extern *strafe-mode* symbol)
 (define-extern do-rotations2 (function int :behavior target))
 (define-extern leg-ik-callback (function joint-mod-ik object object vector none))
 (define-extern target-update-ik (function none :behavior target))
@@ -37514,126 +37514,123 @@
 ;; gem-pool                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern get-gem-pool-size function)
-;; (define-extern compare-gems function)
-;; (define-extern gems-available? function)
-;; (define-extern notify-gem-pickup function)
+(define-extern get-gem-pool-size (function int float))
+(define-extern compare-gems (function object (pointer float) none))
+(define-extern gems-available? (function int symbol))
+(define-extern notify-gem-pickup (function uint symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collectables                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++collectables:collectable-flag
+(defenum collectable-flag
+  :type uint32
+  :bitfield #t
+  (bounce      0) ;; 1
+  (fadeout     1) ;; 2
+  (pickup      2) ;; 4
+  (do-fadeout  3)  ;; 8
+  (suck-in     4) ;; 16
+  (no-eco-blue 5) ;; 32
+  (no-bob      6) ;; 64
+  (no-distance-check-fadeout 7) ;; 128
+  )
+;; ---collectables:collectable-flag
+
 (deftype collectable (process-drawable)
-  ((pickup-type     int32                    :offset-assert 196) ;; pickup-type
-   (pickup-amount   float                    :offset-assert 200)
-   (notify          uint64                   :offset-assert 204) ;; handle
-   (old-base        vector           :inline :offset-assert 220)
-   (base            vector           :inline :offset-assert 236)
-   (extra-trans     vector           :inline :offset-assert 252)
-   (jump-pos        vector           :inline :offset-assert 268)
-   (flags           collectable-flag         :offset-assert 284)
-   (birth-time      uint64                   :offset-assert 292) ;; seconds
-   (collect-timeout uint64                   :offset-assert 300) ;; seconds
-   (fadeout-timeout uint64                   :offset-assert 308) ;; seconds
-   (bob-offset      uint64                   :offset-assert 316) ;; seconds
-   (bob-amount      float                    :offset-assert 324)
-   (pickup-handle   uint64                   :offset-assert 332) ;; handle
-   (actor-pause     symbol                   :offset-assert 340) ;; guessed by decompiler
-   (collect-effect  basic                    :offset-assert 344)
-   (collect-effect2 basic                    :offset-assert 348)
-   (target          uint64                   :offset-assert 356) ;; handle
-   (suck-time       uint64                   :offset-assert 364) ;; seconds
-   (suck-y-offset   float                    :offset-assert 372)
-   (speed           vector           :inline :offset-assert 380)
-   (movie-pos-index int32                    :offset-assert 396)
+  ((root            collide-shape-moving     :override)
+   (pickup-type     pickup-type              :offset-assert 200) ;; pickup-type
+   (pickup-amount   float                    :offset-assert 204)
+   (notify          handle                   :offset-assert 208) ;; handle
+   (old-base        vector           :inline :offset-assert 224)
+   (base            vector           :inline :offset-assert 240)
+   (extra-trans     vector           :inline :offset-assert 256)
+   (jump-pos        vector           :inline :offset-assert 272)
+   (flags           collectable-flag         :offset-assert 288)
+   (birth-time      time-frame               :offset-assert 296) ;; seconds
+   (collect-timeout time-frame               :offset-assert 304) ;; seconds
+   (fadeout-timeout time-frame               :offset-assert 312) ;; seconds
+   (bob-offset      uint64                   :offset-assert 320) ;; seconds
+   (bob-amount      float                    :offset-assert 328)
+   (pickup-handle   handle                   :offset-assert 336) ;; handle
+   (actor-pause     symbol                   :offset-assert 344) ;; guessed by decompiler
+   (collect-effect  sparticle-launch-group   :offset-assert 348)
+   (collect-effect2 sparticle-launch-group   :offset-assert 352)
+   (target          handle                   :offset-assert 360) ;; handle
+   (suck-time       time-frame               :offset-assert 368) ;; seconds
+   (suck-y-offset   float                    :offset-assert 376)
+   (speed           vector           :inline :offset-assert 384)
+   (movie-pos-index int32                    :offset-assert 400)
    )
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
-  (:methods
-    (collectable-method-29 () none) ;; 29 ;; (init-common (_type_ entity-actor pickup-type float) none)
-    (collectable-method-30 () none) ;; 30 ;; (initialize-effects (_type_ pickup-type) none)
-    (collectable-method-31 () none) ;; 31 ;; (go-to-initial-state (_type_) none)
-    (collectable-method-32 () none) ;; 32 ;; (initialize-options (_type_ int float fact-info) collectable)
-    (collectable-method-33 () none) ;; 33 ;; (initialize-allocations (_type_) none)
-    (collectable-method-34 () none) ;; 34 ;; (common-post (_type_) none)
-    (collectable-method-35 () none) ;; 35 ;; (do-pickup (_type_ handle) none)
-    )
   (:state-methods
-    die ;; 27, old: (die () _type_ :state)
-    pickup ;; 26, old: (pickup (symbol handle) _type_ :state)
-    notice-blue ;; 28, old: (notice-blue (handle) _type_ :state)
-    fade ;; 25, old: (fade () _type_ :state)
-    wait ;; 21, old: (wait () _type_ :state)
-    suck ;; 23, old: (suck (handle) _type_ :state)
-    deploy ;; 22, old: (deploy () _type_ :state)
-    jump ;; 24, old: (jump () _type_ :state)
-    blocked ;; 20, old: (blocked () _type_ :state)
+    blocked ;; 20
+    wait ;; 21
+    deploy ;; 22
+    (suck handle) ;; 23
+    jump ;; 24
+    fade ;; 25
+    (pickup symbol handle) ;; 26
+    die ;; 27
+    (notice-blue handle) ;; 28
+    )
+  (:methods
+    (init-common (_type_ entity-actor pickup-type float) none) ;; 29
+    (initialize-effects (_type_ pickup-type) none) ;; 30
+    (go-to-initial-state (_type_) none) ;; 31
+    (initialize-options (_type_ int float fact-info) collectable) ;; 32
+    (initialize-allocations (_type_) none) ;; 33
+    (common-post (_type_) none) ;; 34
+    (do-pickup (_type_ handle) none) ;; 35
     )
   )
-|#
 
-#|
 (deftype eco (collectable)
-  ((respawn-delay uint64  :offset-assert 408)
+  ((respawn-delay time-frame :offset-assert 408)
    )
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
-  (:state-methods
-    pickup ;; 26
-    die ;; 27
-    )
   )
-|#
 
-#|
 (deftype eco-yellow (eco)
   ()
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
   )
-|#
 
-#|
 (deftype eco-red (eco)
   ()
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
   )
-|#
 
-#|
 (deftype eco-blue (eco)
   ()
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
   )
-|#
 
-#|
 (deftype eco-green (eco)
   ()
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
   )
-|#
 
-#|
 (deftype health (collectable)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
   )
-|#
 
-#|
 (deftype eco-pill (collectable)
   ()
   :method-count-assert 36
@@ -37643,77 +37640,53 @@
     wait ;; 21
     )
   )
-|#
 
-#|
 (deftype money (collectable)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
-  (:state-methods
-    pickup ;; 26
-    notice-blue ;; 28
-    )
   )
-|#
 
-#|
 (deftype gem (money)
-  ((roty-speed  deg     :offset-assert 404) ;; degrees
-   (bounce-time uint64  :offset-assert 408) ;; seconds
-   (gem-pool    uint8   :offset-assert 416)
+  ((roty-speed  degrees    :offset-assert 404) ;; degrees
+   (bounce-time time-frame :offset-assert 408) ;; seconds
+   (gem-pool    uint8      :offset-assert 416)
    )
   :method-count-assert 36
   :size-assert         #x1a1
   :flag-assert         #x24013001a1
-  (:state-methods
-    deploy ;; 22
-    suck ;; 23
-    )
   )
-|#
 
-#|
 (deftype skill (money)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
-  (:state-methods
-    wait ;; 21
-    )
   )
-|#
 
-#|
+
 (deftype fuel-cell (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
   )
-|#
 
-#|
 (deftype trick-point (collectable)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
   )
-|#
 
-#|
 (deftype skate-point (trick-point)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
   )
-|#
 
-#|
 (deftype ammo-collectable (collectable)
   ((ammo-effect basic  :offset-assert 404)
    )
@@ -37724,51 +37697,44 @@
     die ;; 27
     )
   )
-|#
 
-#|
 (deftype ammo (ammo-collectable)
   ()
   :method-count-assert 36
   :size-assert         #x198
   :flag-assert         #x2401200198
   )
-|#
 
-#|
 (deftype shield (ammo-collectable)
   ()
   :method-count-assert 36
   :size-assert         #x198
   :flag-assert         #x2401200198
   )
-|#
 
-#|
 (deftype upgrade-collectable (ammo-collectable)
   ()
   :method-count-assert 36
   :size-assert         #x198
   :flag-assert         #x2401200198
   )
-|#
 
-;; (define-extern initialize-eco-by-other function) ;; (function vector vector fact-info none :behavior eco)
-;; (define-extern add-blue-shake function) ;; (function vector vector vector vector)
-;; (define-extern check-blue-suck function) ;; (function process-drawable symbol :behavior eco)
-;; (define-extern add-blue-motion function) ;; (function symbol symbol symbol symbol symbol :behavior eco)
-;; (define-extern collectable-standard-event-handler function) ;; (function process int symbol event-message-block object :behavior collectable)
-;; (define-extern money-init-by-other function) ;; (function vector vector fact-info entity-actor none :behavior money)
-;; (define-extern money-init-by-other-no-bob function) ;; (function vector vector fact-info float entity-actor none :behavior money)
-;; (define-extern *collectable-dummy-shadow-control* shadow-control) ;; shadow-control
-;; (define-extern initialize-ammo-by-other function) ;; (function vector vector fact-info none :behavior ammo)
-;; (define-extern initialize-upgrade-by-other function) ;; (function vector vector fact-info entity-actor none :behavior upgrade-collectable)
-;; (define-extern verify-pickup-type function)
+(define-extern initialize-eco-by-other (function vector vector fact-info object :behavior eco))
+(define-extern add-blue-shake (function vector vector vector vector))
+(define-extern check-blue-suck (function process-drawable symbol :behavior eco))
+(define-extern add-blue-motion (function symbol symbol symbol symbol symbol :behavior eco))
+(define-extern collectable-standard-event-handler (function process int symbol event-message-block object :behavior collectable))
+(define-extern money-init-by-other (function vector vector fact-info entity-actor time-frame object :behavior money))
+(define-extern money-init-by-other-no-bob (function vector vector fact-info float entity-actor object :behavior money))
+(define-extern *collectable-dummy-shadow-control* shadow-control)
+(define-extern initialize-ammo-by-other (function vector vector fact-info object :behavior ammo))
+(define-extern initialize-upgrade-by-other (function vector vector fact-info entity-actor object :behavior upgrade-collectable))
+(define-extern verify-pickup-type (function pickup-type pickup-type))
 (define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
-;; (define-extern pickup-dark-set! function)
-;; (define-extern pickup-light-set! function)
-;; (define-extern pickup-ammo-set! function)
-;; (define-extern gun-pickup-type->game-feature function)
+(define-extern pickup-dark-set! (function fact-info (pointer pickup-type) (pointer float) int pickup-type))
+(define-extern pickup-light-set! (function fact-info (pointer pickup-type) (pointer float) int pickup-type))
+(define-extern pickup-ammo-set! (function fact-info (pointer pickup-type) (pointer float) int pickup-type))
+(define-extern gun-pickup-type->game-feature (function pickup-type game-feature))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vent                           ;;
