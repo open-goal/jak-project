@@ -10,7 +10,6 @@
 namespace formatter_rules {
 namespace config {
 struct FormFormattingConfig {
-  // new
   bool hang_forms = true;  // TODO - remove this eventually, it's only involved in setting the
                            // indentation width, which we can do via the indentation_width function
   int indentation_width =

@@ -5,24 +5,18 @@
 namespace formatter_rules {
 namespace config {
 
-// TODO - this could be greatly simplified with C++20's designated initialization
-FormFormattingConfig new_permissive_flow_rule() {
-  FormFormattingConfig cfg;
-  cfg.hang_forms = false;
-  cfg.combine_first_two_lines = true;
-  return cfg;
+static FormFormattingConfig new_permissive_flow_rule() {
+  return {.hang_forms = false, .combine_first_two_lines = true};
 }
 
-FormFormattingConfig new_flow_rule(int start_index) {
-  FormFormattingConfig cfg;
-  cfg.hang_forms = false;
-  cfg.inline_until_index = [start_index](const std::vector<std::string>& /*curr_lines*/) {
-    return start_index;
-  };
-  return cfg;
+static FormFormattingConfig new_flow_rule(int start_index) {
+  return {.hang_forms = false,
+          .inline_until_index = [start_index](const std::vector<std::string>& /*curr_lines*/) {
+            return start_index;
+          }};
 }
 
-FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
+static FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
     int start_index,
     const std::vector<int>& inlining_preventation_indices) {
   FormFormattingConfig cfg;
@@ -43,7 +37,7 @@ FormFormattingConfig new_flow_rule_prevent_inlining_indexes(
   return cfg;
 }
 
-FormFormattingConfig new_binding_rule(int form_head_width) {
+static FormFormattingConfig new_binding_rule(int form_head_width) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
   cfg.combine_first_two_lines = true;
@@ -70,7 +64,7 @@ FormFormattingConfig new_binding_rule(int form_head_width) {
   return cfg;
 }
 
-FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
+static FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
   FormFormattingConfig cfg;
   cfg.hang_forms = false;
   cfg.prevent_inlining = true;
@@ -86,7 +80,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"case", new_pair_rule(true)},
     {"cond", new_pair_rule(false)},
     {"defmethod", new_flow_rule(3)},
-    {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5})},
+    {"deftype", new_flow_rule_prevent_inlining_indexes(3, {3, 4, 5, 6})},
     {"defun", new_flow_rule(3)},
     {"defun-debug", new_flow_rule(3)},
     {"defbehavior", new_flow_rule(4)},
@@ -98,6 +92,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"let", new_binding_rule(4)},
     {"rlet", new_binding_rule(5)},
     {"when", new_flow_rule(2)},
+    {"begin", new_flow_rule(0)},
     {"with-dma-buffer-add-bucket", new_flow_rule(2)}};
 }  // namespace config
 }  // namespace formatter_rules
