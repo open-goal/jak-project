@@ -392,7 +392,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   return form_lines;
 }
 
-std::string join_formatted_lines(const std::vector<std::string> lines,
+std::string join_formatted_lines(const std::vector<std::string>& lines,
                                  const std::string& line_ending) {
   return fmt::format("{}", fmt::join(lines, line_ending));
 }
