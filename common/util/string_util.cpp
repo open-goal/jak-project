@@ -245,4 +245,13 @@ std::string titlize(const std::string& str) {
   }
   return new_str;
 }
+
+std::string pad_right(const std::string& input, const int width, const char padding_char) {
+  if (input.length() >= width) {
+    return input;  // No need to pad if input length is already greater or equal to width
+  } else {
+    int padding_width = width - input.length();
+    return input + std::string(padding_width, padding_char);
+  }
+}
 }  // namespace str_util

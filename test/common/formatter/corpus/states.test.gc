@@ -1,0 +1,52 @@
+===
+TODO - Basic State
+===
+
+(defstate active (enemy)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logclear! (-> self enemy-flags) (enemy-flag cam-attack-mode))
+    (when (logtest? (-> self enemy-flags) (enemy-flag enable-on-active))
+      (logclear! (-> self enemy-flags) (enemy-flag enable-on-active))
+      (let ((gp-0 (-> self on-active)))
+        (if gp-0
+            (script-eval gp-0 :vector (-> self root trans))
+            )
+        )
+      )
+    (when (not (logtest? (enemy-flag chase-startup) (-> self enemy-flags)))
+      (if (logtest? (-> self enemy-flags) (enemy-flag actor-pause-backup))
+          (logior! (-> self mask) (process-mask actor-pause))
+          (logclear! (-> self mask) (process-mask actor-pause))
+          )
+      )
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
+      (let ((v1-3 (-> self focus aware)))
+        (cond
+          ((< (the-as int v1-3) 1)
+           (go-virtual idle)
+           )
+          ((< 1 (the-as int v1-3))
+           (go-virtual notice)
+           )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (sleep-code)
+    )
+  :post (behavior ()
+    (idle-control-method-10 (-> self idle-anim-player) self)
+    (enemy-simple-post)
+    )
+  )
+
+---
+
+TODO
