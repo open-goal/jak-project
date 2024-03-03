@@ -2576,7 +2576,7 @@ void CallOp::propagate_types2(types2::Instruction& instr,
 
     if (can_use_call_parent) {
       out_types[Register(Reg::GPR, Reg::V0)]->type = TP_Type::make_from_ts(call_parent_result_type);
-      printf("used special %s\n", call_parent_result_type.print().c_str());
+      lg::print("used special {}\n", call_parent_result_type.print());
       use_normal_last_arg = false;
     }
   }
