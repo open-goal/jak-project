@@ -367,6 +367,7 @@ FormElement* rewrite_as_send_event(LetElement* in,
             Matcher::any(1));
         break;
       case GameVersion::Jak2:
+      case GameVersion::Jak3:
         set_from_form_matcher = Matcher::set(
             Matcher::deref(Matcher::any_reg(0), false, {DerefTokenMatcher::string("from")}),
             Matcher::op_fixed(FixedOperatorKind::PROCESS_TO_PPOINTER, {Matcher::any(1)}));
@@ -1718,7 +1719,7 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
   const auto& words = env.file->words_by_seg.at(label.target_segment);
   // offset of `mask` field in `attack-info`
   int mask_field_offset = 64;
-  if (env.version == GameVersion::Jak2) {
+  if (env.version >= GameVersion::Jak2) {
     mask_field_offset = 88;
   }
   u32 mask = words.at((label.offset + mask_field_offset) / 4).data;
@@ -1754,9 +1755,36 @@ FormElement* rewrite_attack_info(LetElement* in, const Env& env, FormPool& pool)
       {"knock", {21, DEFAULT}},
       {"test", {22, DEFAULT}},
   };
+  const static std::map<std::string, std::pair<int, AttackInfoFieldKind>> possible_args_jak3 = {
+      {"vector", {1, VECTOR}},
+      {"intersection", {2, VECTOR}},
+      {"attacker", {3, DEFAULT}},
+      {"invinc-time", {5, DEFAULT}},
+      {"mode", {6, DEFAULT}},
+      {"shove-back", {7, DEFAULT}},
+      {"shove-up", {8, DEFAULT}},
+      {"speed", {9, DEFAULT}},
+      {"control", {11, DEFAULT}},
+      {"angle", {12, DEFAULT}},
+      {"id", {15, DEFAULT}},
+      {"count", {16, DEFAULT}},
+      {"penetrate-using", {17, DEFAULT}},
+      {"attacker-velocity", {18, VECTOR}},
+      {"damage", {19, DEFAULT}},
+      {"shield-damage", {20, DEFAULT}},
+      {"vehicle-damage-factor", {21, DEFAULT}},
+      {"vehicle-impulse-factor", {21, DEFAULT}},
+      {"knock", {23, DEFAULT}},
+      {"test", {24, DEFAULT}},
+  };
 
-  const auto& possible_args =
-      env.version == GameVersion::Jak1 ? possible_args_jak1 : possible_args_jak2;
+  auto possible_args = possible_args_jak1;
+  if (env.version == GameVersion::Jak2) {
+    possible_args = possible_args_jak2;
+  }
+  if (env.version == GameVersion::Jak3) {
+    possible_args = possible_args_jak3;
+  }
 
   std::vector<std::pair<std::string, Form*>> args_in_info;
   for (int i = 0; i < in->body()->size() - 1; ++i) {

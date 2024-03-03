@@ -329,6 +329,10 @@ Config make_config_via_json(nlohmann::json& json) {
     config.object_patches.insert({obj, new_pch});
   }
 
+  auto process_stack_size_json = read_json_file_from_config(json, "process_stack_size_file");
+  config.process_stack_size_overrides =
+      process_stack_size_json.get<std::unordered_map<std::string, int>>();
+
   return config;
 }
 }  // namespace

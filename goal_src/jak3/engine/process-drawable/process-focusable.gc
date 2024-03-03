@@ -26,7 +26,7 @@
   (pilot-riding 14)
   (flut 15)
   (tube 16)
-  (ice 17)
+  (light 17)
   (board 18)
   (gun 19)
   (pilot 20) ;; also racer?
@@ -40,13 +40,43 @@
   (indax 28)
   (arrestable 29)
   (teleporting 30)
-  (fs31 31)
+  (invulnerable 31)
+  (turret 32)
+  (no-gravity 33)
+  (gun-no-target 34)
   )
 ;; ---focus-status
 
 
 (defmacro focus-test? (pfoc &rest status)
   `(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
+
+;; +++search-info-flag
+(defenum search-info-flag
+  :type uint32
+  :bitfield #t
+  (abort 0)
+  (crate 1)
+  (guard 2)
+  (attackable 3)
+  (enemy 4)
+  (attackable-priority 5)
+  (high-priority 6)
+  (on-screen 7)
+  (prefer-dist 8)
+  (prefer-angle 9)
+  (prefer-xz 10)
+  (cull-angle 11)
+  (cull-angle-simple 12)
+  (cull-xz 13)
+  (back-point 14)
+  (combo 15)
+  (probe 16)
+  (probe-camera 17)
+  (prefer-center 18)
+  )
+;; ---search-info-flag
+
 
 ;; DECOMP BEGINS
 
@@ -55,9 +85,9 @@
    (focus-status  focus-status)
    )
   (:methods
-    (process-focusable-method-20 (_type_) int)
+    (process-mask->search-info-flag (_type_) search-info-flag)
     (get-trans (_type_ int) vector)
-    (get-quat (_type_) quaternion)
+    (get-quat (_type_ int) quaternion)
     (get-transv (_type_) vector)
     (time-to-apex-or-ground (_type_ int) int)
     (get-water-height (_type_) meters)
@@ -67,20 +97,21 @@
   )
 
 
-(defmethod process-focusable-method-20 ((this process-focusable))
-  (let ((v0-0 0))
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this process-focusable))
+  (let ((search-flag (search-info-flag)))
     (let ((mask (-> this mask)))
       (if (logtest? (process-mask crate) mask)
-          (set! v0-0 (logior v0-0 2))
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag crate))))
           )
       (if (logtest? (process-mask guard) mask)
-          (set! v0-0 (logior v0-0 4))
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag guard))))
           )
       (if (logtest? (process-mask enemy) mask)
-          (set! v0-0 (logior v0-0 16))
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag enemy))))
           )
       )
-    v0-0
+    (the-as search-info-flag search-flag)
     )
   )
 
@@ -111,7 +142,7 @@
   (-> this root transv)
   )
 
-(defmethod get-quat ((this process-focusable))
+(defmethod get-quat ((this process-focusable) (arg0 int))
   "Get the quaternion for this process."
   (-> this root quat)
   )

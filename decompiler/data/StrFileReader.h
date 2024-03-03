@@ -33,6 +33,8 @@ class StrFileReader {
         return "/src/next/data/art-group6/";
       case GameVersion::Jak2:
         return "/src/jak2/final/art-group7/";
+      case GameVersion::Jak3:
+        return "/src/jak3/final/art-group8/";
       default:
         ASSERT_MSG(false, "NYI get_file_info_string version");
         break;
@@ -42,6 +44,7 @@ class StrFileReader {
   std::string get_texture_page_file_info_string() const {
     switch (m_version) {
       case GameVersion::Jak2:
+      case GameVersion::Jak3:
         return "/src/jak2/final/texture-page8/";
       default:
         ASSERT_MSG(false, "NYI get_file_info_string version");

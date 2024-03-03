@@ -18,7 +18,7 @@
    (new-post-hook         (function none))
    (cur-post-hook         (function none))
    (clone-copy-trans      symbol)
-   (shadow-backup         basic)
+   (shadow-backup         shadow-geo)
    (draw?                 symbol)
    (userdata              uint64)
    (prefix                basic)
@@ -72,9 +72,9 @@
   "A process that spawns a specified particle group."
   ((root           trsqv)
    (part           sparticle-launch-control)
-   (path           basic)
+   (path           path-control)
    (sound          ambient-sound)
-   (sound-extra    basic)
+   (sound-extra    ambient-sound)
    (mode           (pointer sparticle-launch-group))
    (enable         symbol)
    (path-pos       float)
@@ -87,7 +87,7 @@
     active
     )
   (:methods
-    (part-spawner-method-15 () none)
+    (is-in-view? (_type_) symbol)
     )
   )
 
@@ -134,11 +134,13 @@
    (target           handle)
    (target-joint     int32)
    )
+  (:state-methods
+    active
+    linger
+    die
+    )
   (:methods
-    (part-tracker-method-14 () none)
-    (part-tracker-method-15 () none)
-    (part-tracker-method-16 () none)
-    (part-tracker-method-17 () none)
+    (notify-parent-of-death (_type_) none)
     )
   )
 
@@ -176,8 +178,8 @@
    (duration   time-frame)
    (group      sparticle-launch-group)
    (callback   (function part-tracker vector))
-   (target     basic)
-   (mat-joint  basic)
+   (target     process-drawable)
+   (mat-joint  object)
    )
   )
 
@@ -204,8 +206,8 @@
    (duration       time-frame)
    (group          sparticle-launch-group)
    (callback       (function part-tracker vector))
-   (target         basic)
-   (mat-joint      basic)
+   (target         process-drawable)
+   (mat-joint      object)
    (subsample-num  float)
    )
   )
@@ -230,7 +232,7 @@
 
 ;; definition of type part-tracker-subsampler
 (deftype part-tracker-subsampler (part-tracker)
-  ((subsampler  basic)
+  ((subsampler  sparticle-subsampler)
    )
   )
 
@@ -267,10 +269,12 @@
    (user-vector    vector      :inline)
    (user-handle    handle      2 :offset 288)
    )
+  (:state-methods
+    active
+    )
   (:methods
-    (lightning-tracker-method-14 () none)
-    (lightning-tracker-method-15 () none)
-    (lightning-tracker-method-16 () none)
+    (notify-parent-of-death (_type_) none)
+    (update (_type_) none)
     )
   )
 
@@ -310,10 +314,10 @@
    (event         symbol)
    (run-function  (function object))
    (callback      (function touch-tracker none))
-   (event-mode    basic)
+   (event-mode    symbol)
    )
-  (:methods
-    (touch-tracker-method-20 () none)
+  (:state-methods
+    active
     )
   )
 
@@ -345,12 +349,14 @@
    (dir          vector      :inline)
    (sync         sync-eased  :inline)
    )
+  (:state-methods
+    idle
+    (active handle)
+    )
   (:methods
-    (swingpole-method-20 () none)
-    (swingpole-method-21 () none)
-    (swingpole-method-22 () none)
-    (swingpole-method-23 () none)
-    (swingpole-method-24 () none)
+    (swingpole-method-22 (_type_) none)
+    (init-collision! (_type_) none)
+    (get-trans (_type_) vector)
     )
   )
 
@@ -464,7 +470,7 @@
    (damage-scale            float)
    (vehicle-damage-factor   float)
    (vehicle-impulse-factor  float)
-   (ignore-proc             uint64)
+   (ignore-proc             handle)
    )
   )
 
@@ -499,10 +505,12 @@
    (mat              matrix                 :inline)
    (params           explosion-init-params  :inline)
    )
+  (:state-methods
+    explode
+    )
   (:methods
-    (explosion-method-20 () none)
     (explosion-method-21 () none)
-    (explosion-method-22 () none)
+    (explosion-method-22 (_type_) none)
     )
   )
 
@@ -677,13 +685,15 @@
 (deftype simple-prim (process-drawable)
   ((strip  prim-strip)
    )
+  (:state-methods
+    active
+    )
   (:methods
-    (simple-prim-method-20 () none)
-    (simple-prim-method-21 () none)
-    (simple-prim-method-22 () none)
-    (simple-prim-method-23 () none)
-    (simple-prim-method-24 () none)
-    (simple-prim-method-25 () none)
+    (init-strip! (_type_) none)
+    (strip-setup (_type_) none)
+    (get-alpha (_type_) int)
+    (allocate-trans-and-strip! (_type_) prim-strip)
+    (get-color (_type_) rgba)
     )
   )
 
@@ -701,14 +711,14 @@
   this
   )
 
-;; definition for symbol *simple-prim-additive*, type int
-(define *simple-prim-additive* 72)
+;; definition for symbol *simple-prim-additive*, type gs-alpha
+(define *simple-prim-additive* (new 'static 'gs-alpha :b #x2 :d #x1))
 
-;; definition for symbol *simple-prim-alpha-blend*, type int
-(define *simple-prim-alpha-blend* 68)
+;; definition for symbol *simple-prim-alpha-blend*, type gs-alpha
+(define *simple-prim-alpha-blend* (new 'static 'gs-alpha :b #x1 :d #x1))
 
-;; definition for symbol *simple-prim-subtractive*, type int
-(define *simple-prim-subtractive* 66)
+;; definition for symbol *simple-prim-subtractive*, type gs-alpha
+(define *simple-prim-subtractive* (new 'static 'gs-alpha :a #x2 :d #x1))
 
 ;; definition of type task-arrow-params
 (deftype task-arrow-params (structure)
@@ -739,8 +749,8 @@
   ((pause-time  time-frame)
    (blur        symbol)
    )
-  (:methods
-    (external-camera-controller-method-14 () none)
+  (:state-methods
+    active
     )
   )
 
@@ -761,7 +771,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

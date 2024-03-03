@@ -408,6 +408,23 @@ Each process-drawable has a draw-control."
       )
   )
 
+(defmacro joint-node-index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
+  )
+
 (defmacro defskelgroup (name ag-name joint-geom joint-anim lods
                         &key (shadow 0)
                         &key bounds
@@ -444,7 +461,8 @@ Each process-drawable has a draw-control."
         ;; set cloth params array if present
         (when ,(neq? clothing '())
           (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
-          ,@(apply-i (lambda (x i) `(set! (-> skel clothing ,i) (static-cloth-params ,x))) clothing)
+          ,@(apply-i (lambda (x i)
+            `(set! (-> skel clothing ,i) (static-cloth-params ,(string->symbol-format "{}-ag" ag-name) ,x))) clothing)
           (set! (-> skel clothing length) ,(length clothing))
           )
 

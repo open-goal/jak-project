@@ -7,9 +7,9 @@
    (focus-status  focus-status)
    )
   (:methods
-    (process-focusable-method-20 (_type_) int)
+    (process-mask->search-info-flag (_type_) search-info-flag)
     (get-trans (_type_ int) vector)
-    (get-quat (_type_) quaternion)
+    (get-quat (_type_ int) quaternion)
     (get-transv (_type_) vector)
     (time-to-apex-or-ground (_type_ int) int)
     (get-water-height (_type_) meters)
@@ -33,20 +33,21 @@
   )
 
 ;; definition for method 20 of type process-focusable
-(defmethod process-focusable-method-20 ((this process-focusable))
-  (let ((v0-0 0))
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this process-focusable))
+  (let ((search-flag (search-info-flag)))
     (let ((mask (-> this mask)))
       (if (logtest? (process-mask crate) mask)
-          (set! v0-0 (logior v0-0 2))
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag crate))))
           )
       (if (logtest? (process-mask guard) mask)
-          (set! v0-0 (logior v0-0 4))
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag guard))))
           )
       (if (logtest? (process-mask enemy) mask)
-          (set! v0-0 (logior v0-0 16))
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag enemy))))
           )
       )
-    v0-0
+    (the-as search-info-flag search-flag)
     )
   )
 
@@ -80,7 +81,7 @@
   )
 
 ;; definition for method 22 of type process-focusable
-(defmethod get-quat ((this process-focusable))
+(defmethod get-quat ((this process-focusable) (arg0 int))
   "Get the quaternion for this process."
   (-> this root quat)
   )
@@ -109,7 +110,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

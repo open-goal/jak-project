@@ -3,20 +3,21 @@
 
 ;; definition of type target
 (deftype target (process-focusable)
-  ((control                      control-info   :overlay-at root)
+  ((fact                         fact-info-target :override)
+   (control                      control-info      :overlay-at root)
    (skel2                        joint-control)
    (shadow-backup                shadow-geo)
-   (target-flags                 target-flags   :overlay-at state-flags)
+   (target-flags                 target-flags      :overlay-at state-flags)
    (game                         game-info)
    (neck                         joint-mod)
    (head                         joint-mod)
    (upper-body                   joint-mod)
    (horns                        joint-mod)
-   (hair                         joint-mod      2)
-   (arm-ik                       joint-mod-ik   2)
-   (leg-ik                       joint-mod-ik   2)
-   (foot                         joint-mod      2)
-   (cloth                        basic)
+   (hair                         joint-mod         2)
+   (arm-ik                       joint-mod-ik      2)
+   (leg-ik                       joint-mod-ik      2)
+   (foot                         joint-mod         2)
+   (cloth                        symbol)
    (init-time                    time-frame)
    (teleport-time                time-frame)
    (state-hook-time              time-frame)
@@ -25,15 +26,15 @@
    (sidekick                     (pointer sidekick))
    (manipy                       (pointer manipy))
    (mirror                       (pointer process-drawable))
-   (attack-info                  attack-info    :inline)
-   (attack-info-rec              attack-info    :inline)
-   (attack-info-old              attack-info    8 :inline)
+   (attack-info                  attack-info       :inline)
+   (attack-info-rec              attack-info       :inline)
+   (attack-info-old              attack-info       8 :inline)
    (anim-seed                    uint64)
-   (alt-cam-pos                  vector         :inline)
+   (alt-cam-pos                  vector            :inline)
    (current-level                level)
-   (saved-pos                    transformq     :inline)
+   (saved-pos                    transformq        :inline)
    (saved-owner                  handle)
-   (alt-neck-pos                 vector         :inline)
+   (alt-neck-pos                 vector            :inline)
    (focus-search                 (array collide-shape))
    (handle-search                (array handle))
    (excitement                   float)
@@ -47,20 +48,20 @@
    (burn-proc                    handle)
    (pre-joint-hook               (function none :behavior target))
    (notify                       handle)
-   (death-resetter               resetter-spec  :inline)
+   (death-resetter               resetter-spec     :inline)
    (mode-cache                   basic)
-   (mode-param1                  uint64)
+   (mode-param1                  handle)
    (mode-param2                  uint64)
    (mode-param3                  uint64)
    (major-mode-exit-hook         basic)
    (major-mode-event-hook        basic)
    (sub-mode-exit-hook           basic)
-   (ext-geo-control              basic)
-   (pending-ext-geo              int32)
-   (ext-geo                      int32)
-   (ext-anim-control             basic)
-   (pending-ext-anim             int32)
-   (ext-anim                     int32)
+   (ext-geo-control              external-art-buffer)
+   (pending-ext-geo              target-geo)
+   (ext-geo                      target-geo)
+   (ext-anim-control             external-art-buffer)
+   (pending-ext-anim             target-anim)
+   (ext-anim                     target-anim)
    (tobot-state                  state)
    (tobot?                       symbol)
    (tobot-recorder               basic)
@@ -94,64 +95,66 @@
    (invisible-interp             float)
    (invisible-start-time         time-frame)
    (invisible-duration           time-frame)
-   (invisible-shadow-dir-backup  vector         :inline)
+   (invisible-shadow-dir-backup  vector            :inline)
    )
   (:methods
-    (target-method-28 () none)
-    (target-method-29 () none)
+    (target-method-28 (_type_ collide-cache collide-edge-spec) none)
+    (target-init! (_type_ continue-point symbol) none)
     )
   (:states
     target-attack
-    target-attack-air
-    target-attack-uppercut
-    target-attack-uppercut-jump
-    target-blast-recover
-    target-board-clone-anim
+    (target-attack-air symbol)
+    (target-attack-uppercut float float)
+    (target-attack-uppercut-jump float float)
+    (target-blast-recover rigid-body-impact)
+    (target-board-clone-anim handle)
     target-board-duck-stance
     target-board-falling
-    target-board-flip
-    target-board-get-off
+    (target-board-flip float float symbol)
+    (target-board-get-off handle symbol)
     target-board-get-on
-    target-board-grab
-    target-board-grenade
+    (target-board-grab symbol)
+    (target-board-grenade handle)
     target-board-halfpipe
-    target-board-hit
+    (target-board-hit symbol attack-info)
     target-board-hit-ground
-    target-board-hold
-    target-board-jump
+    (target-board-hold float float symbol)
+    (target-board-jump meters meters symbol)
     target-board-jump-kick
-    target-board-ride-edge
+    (target-board-ride-edge symbol)
     target-board-stance
-    target-board-start
-    target-board-trickx
-    target-board-tricky
+    (target-board-start handle)
+    (target-board-trickx float float symbol)
+    (target-board-tricky float float symbol)
     target-board-turn-around
-    target-board-turn-to
-    target-board-wall-kick
-    target-clone-anim
-    target-continue
-    target-credits
+    (target-board-turn-to vector time-frame)
+    (target-board-wall-kick vector float)
+    target-carry-pickup
+    (target-clone-anim handle)
+    (target-continue continue-point)
+    (target-credits int)
     target-darkjak-bomb0
     target-darkjak-bomb1
     target-darkjak-get-off
-    target-darkjak-get-on
+    (target-darkjak-get-on darkjak-stage)
     target-darkjak-running-attack
     target-darkjak-smack
     target-darkjak-smack-charge
-    target-death
-    target-double-jump
-    target-duck-high-jump
-    target-duck-high-jump-jump
-    target-duck-stance
-    target-duck-walk
-    target-eco-powerup
+    (target-death symbol)
+    target-demo
+    (target-double-jump float float)
+    (target-duck-high-jump float float symbol)
+    (target-duck-high-jump-jump float float symbol)
+    (target-duck-stance symbol)
+    (target-duck-walk symbol)
+    (target-eco-powerup int float)
     target-edge-grab
-    target-edge-grab-jump
+    (target-edge-grab-jump float float symbol)
     target-edge-grab-off
-    target-falling
+    (target-falling symbol)
     target-float
-    target-flop
-    target-flop-hit-ground
+    (target-flop float float float object)
+    (target-flop-hit-ground symbol)
     target-flut-air-attack
     target-flut-air-attack-hit-ground
     target-flut-clone-anim
@@ -169,17 +172,19 @@
     target-flut-kanga-catch
     target-flut-running-attack
     target-flut-stance
-    target-flut-start
+    (target-flut-start handle symbol int)
     target-flut-walk
-    target-grab
-    target-grab-ride
+    (target-grab symbol)
+    (target-grab-ride handle)
     target-gun-stance
     target-gun-walk
     target-hide
-    target-high-jump
-    target-hit
-    target-hit-ground
-    target-hit-ground-hard
+    (target-high-jump float float object)
+    (target-hit symbol attack-info)
+    (target-hit-ground symbol)
+    (target-hit-ground-hard float)
+    target-ice-stance
+    target-ice-walk
     target-indax-attack
     target-indax-attack-air
     target-indax-death
@@ -193,23 +198,24 @@
     target-indax-jump
     target-indax-running-attack
     target-indax-stance
-    target-indax-start
+    (target-indax-start handle object)
     target-indax-trip
     target-indax-walk
-    target-invisible-get-on
-    target-jump
-    target-jump-forward
+    (target-invisible-get-on handle time-frame)
+    (target-jump float float surface)
+    (target-jump-forward float float)
     target-ladder
-    target-launch
+    (target-ladder-start handle)
+    (target-launch float symbol vector int)
     target-launch-dir
     target-lightjak-freeze
     target-lightjak-get-off
-    target-lightjak-get-on
-    target-lightjak-regen
+    (target-lightjak-get-on lightjak-stage)
+    (target-lightjak-regen int)
     target-lightjak-shield
-    target-lightjak-swoop
-    target-lightjak-swoop-again
-    target-lightjak-swoop-falling
+    (target-lightjak-swoop float)
+    (target-lightjak-swoop-again float)
+    (target-lightjak-swoop-falling symbol)
     target-load-wait
     target-look-around
     target-mech-carry-drag
@@ -234,44 +240,58 @@
     target-mech-punch
     target-mech-shield
     target-mech-stance
-    target-mech-start
+    (target-mech-start handle float symbol)
     target-mech-walk
     target-pilot-clone-anim
     target-pilot-daxter-perch
     target-pilot-death
-    target-pilot-edge-grab
+    (target-pilot-edge-grab pilot-edge-grab-info)
     target-pilot-get-off
     target-pilot-get-on
     target-pilot-grab
     target-pilot-hit
     target-pilot-impact
     target-pilot-stance
-    target-pilot-start
-    target-play-anim
-    target-pole-cycle
-    target-pole-flip-forward
-    target-pole-flip-forward-jump
-    target-pole-flip-up
-    target-pole-flip-up-jump
+    (target-pilot-start handle symbol symbol)
+    (target-play-anim string handle)
+    (target-pole-cycle handle)
+    (target-pole-flip-forward float float float)
+    (target-pole-flip-forward-jump float float)
+    (target-pole-flip-up float float float)
+    (target-pole-flip-up-jump float float)
     target-powerjak-get-on
+    (target-racing-start handle)
     target-roll
-    target-roll-flip
+    (target-roll-flip float float)
     target-running-attack
     target-slide-down
     target-slide-down-to-ground
     target-stance
     target-stance-ambient
     target-stance-look-around
+    target-startup
     target-swim
-    target-swim-jump
+    target-swim-down
+    (target-swim-jump float float)
+    (target-swim-jump-jump float float surface)
+    target-swim-stance
+    target-swim-up
+    target-swim-walk
     target-title
     target-tube
+    (target-tube-start handle)
     target-turn-around
+    target-turret-get-off
+    (target-turret-get-on handle)
+    (target-turret-stance handle)
+    target-turret-stance-fire
     target-wade-stance
     target-wade-walk
     target-walk
-    target-warp-in
+    (target-warp-in vector vector)
     target-warp-out
+    target-yellow-jump-blast
+    tobot-stance
     )
   )
 
@@ -385,16 +405,17 @@
 
 ;; definition of type sidekick
 (deftype sidekick (process-drawable)
-  ((control              control-info  :overlay-at root)
-   (anim-seed            uint64        :offset 208)
+  ((parent               (pointer target) :override)
+   (control              control-info      :overlay-at root)
+   (anim-seed            uint64            :offset 208)
    (shadow-in-movie?     symbol)
    (special-anim-time    time-frame)
    (special-anim-interp  float)
    (special-anim-frame   float)
-   (offset               transformq    :inline)
+   (offset               transformq        :inline)
    (mirror               (pointer process-drawable))
-   (ear                  joint-mod     2)
-   (flap                 joint-mod     2)
+   (ear                  joint-mod         2)
+   (flap                 joint-mod         2)
    )
   (:states
     sidekick-clone
@@ -430,7 +451,3 @@
 
 ;; failed to figure out what this is:
 0
-
-
-
-

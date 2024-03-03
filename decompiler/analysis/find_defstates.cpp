@@ -227,7 +227,7 @@ FormElement* rewrite_nonvirtual_defstate(
       get_defstate_entries(elt->body(), body_index, env, info.first, elt->entries().at(0).dest,
                            info.second, pool, {}, skip_states);
 
-  return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first,
+  return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first, "",
                                              entries, false, false);
 }
 
@@ -389,10 +389,10 @@ FormElement* rewrite_virtual_defstate(
   if (method_info.type.base_type() != "state" ||
       method_info.type.last_arg().base_type() != "_type_") {
     env.func->warnings.error_and_throw(
-        "Virtual defstate is defining a virtual state in method {} of {}, but the type "
+        "Virtual defstate is defining a virtual state \"{}\" in method {} of {}, but the type "
         "of this method is {}, which is not a valid virtual state type (must be "
         "\"(state ... _type_)\")",
-        method_info.name, type_name, method_info.type.print());
+        expected_state_name, method_info.name, type_name, method_info.type.print());
   }
 
   bool state_override = false;
@@ -449,12 +449,85 @@ FormElement* rewrite_virtual_defstate(
       elt->body(), body_idx + 1, env, expected_state_name, elt->entries().at(0).dest,
       method_info.type.substitute_for_method_call(type_name), pool, type_name, skip_states);
 
-  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, entries, true,
+  return pool.alloc_element<DefstateElement>(type_name, expected_state_name, "", entries, true,
                                              state_override);
+}
+
+FormElement* rewrite_nonvirtual_defstate_with_inherit(
+    LetElement* elt,
+    const Env& env,
+    const std::string& expected_state_name,
+    FormPool& pool,
+    const std::unordered_map<std::string, std::unordered_set<std::string>>& skip_states = {}) {
+  // (let ((gp-1 (new 'static 'state
+  //             :name 'target-swim-walk
+  //             :next #f
+  //             :exit #f
+  //             :parent #f
+  //             :code #f
+  //             :trans #f
+  //             :post #f
+  //             :enter #f
+  //             :event #f
+  //             )
+  //           )
+  //     )
+  //   (inherit-state gp-1 target-swim)
+  //   (set! (-> gp-1 parent) target-swim)
+  //   (set! target-swim-walk (the-as (state target) gp-1))
+  //   (set! (-> gp-1 enter) L120)
+  //   (set! (-> gp-1 exit) (-> target-swim-stance exit))
+  //   (set! (-> gp-1 trans) (the-as (function object) L107))
+  //   (set! (-> gp-1 code) L95)
+  //   )
+  env.func->warnings.warning("Encountered non-virtual defstate {} with inherit.",
+                             expected_state_name);
+  ASSERT(elt->body()->size() > 0);
+  int body_index = 0;
+
+  // the setup
+  auto first_in_body = elt->body()->at(body_index);
+  auto inherit = dynamic_cast<GenericElement*>(first_in_body);
+  std::string parent_state;
+  if (inherit) {
+    parent_state = inherit->elts().at(1)->to_string(env);
+  }
+  // advance to state set
+  body_index += 2;
+  auto info = get_state_info(elt->body()->at(body_index), env);
+  if (info.first != expected_state_name) {
+    env.func->warnings.error_and_throw(
+        "Inconsistent defstate name. code has {}, static state has {}", info.first,
+        expected_state_name);
+  }
+  if (debug_defstates) {
+    lg::debug("State: {} Type: {}", info.first, info.second.print());
+  }
+  body_index++;
+
+  auto entries =
+      get_defstate_entries(elt->body(), body_index, env, info.first, elt->entries().at(0).dest,
+                           info.second, pool, {}, skip_states);
+
+  return pool.alloc_element<DefstateElement>(info.second.last_arg().base_type(), info.first,
+                                             parent_state, entries, false, false);
 }
 
 bool is_nonvirtual_state(LetElement* elt) {
   return dynamic_cast<SetFormFormElement*>(elt->body()->at(0));
+}
+
+bool is_nonvirtual_state_with_inherit(LetElement* elt) {
+  auto inherit = dynamic_cast<GenericElement*>(elt->body()->at(0));
+  if (inherit) {
+    auto inherit_matcher = Matcher::op(GenericOpMatcher::func(Matcher::symbol("inherit-state")),
+                                       {Matcher::any_reg(0), Matcher::any_symbol(1)});
+    auto mr = match(inherit_matcher, inherit);
+    if (mr.matched) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -492,6 +565,12 @@ void run_defstate(
           if (is_nonvirtual_state(as_let)) {
             auto rewritten =
                 rewrite_nonvirtual_defstate(as_let, env, expected_state_name, pool, skip_states);
+            if (rewritten) {
+              fe = rewritten;
+            }
+          } else if (is_nonvirtual_state_with_inherit(as_let)) {
+            auto rewritten = rewrite_nonvirtual_defstate_with_inherit(
+                as_let, env, expected_state_name, pool, skip_states);
             if (rewritten) {
               fe = rewritten;
             }

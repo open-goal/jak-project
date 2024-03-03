@@ -1,0 +1,1743 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-crate-krimson crate crate-krimson-lod0-jg crate-idle-ja
+              ((crate-krimson-lod0-mg (meters 20)) (crate-krimson-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :texture-level 10
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-crate-cty-blue ctycrate ctycrate-blue-lod0-jg ctycrate-idle-ja
+              ((ctycrate-blue-lod0-mg (meters 20)) (ctycrate-blue-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-crate-cty-metal ctycrate ctycrate-metal-lod0-jg ctycrate-idle-ja
+              ((ctycrate-metal-lod0-mg (meters 20)) (ctycrate-metal-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-crate-urn-a urn-a urn-a-lod0-jg urn-a-idle-ja
+              ((urn-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-crate-urn-b urn-b urn-b-lod0-jg urn-b-idle-ja
+              ((urn-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-crate-urn-c urn-c urn-c-lod0-jg urn-c-idle-ja
+              ((urn-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; definition of type crate-bank
+(deftype crate-bank (basic)
+  ((COLLIDE_YOFF            float)
+   (COLLIDE_RADIUS          float)
+   (DARKECO_EXPLODE_RADIUS  float)
+   )
+  )
+
+;; definition for method 3 of type crate-bank
+(defmethod inspect ((this crate-bank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1TCOLLIDE_YOFF: ~f~%" (-> this COLLIDE_YOFF))
+  (format #t "~1TCOLLIDE_RADIUS: ~f~%" (-> this COLLIDE_RADIUS))
+  (format #t "~1TDARKECO_EXPLODE_RADIUS: ~f~%" (-> this DARKECO_EXPLODE_RADIUS))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *CRATE-bank*, type crate-bank
+(define *CRATE-bank*
+  (new 'static 'crate-bank :COLLIDE_YOFF 4096.0 :COLLIDE_RADIUS 6963.2 :DARKECO_EXPLODE_RADIUS 16384.0)
+  )
+
+;; definition of type crate
+(deftype crate (process-focusable)
+  ((root                collide-shape-moving :override)
+   (fact                fact-info-crate      :override)
+   (smush               smush-control         :inline)
+   (base                vector                :inline)
+   (look                symbol)
+   (defense             symbol)
+   (incoming-attack-id  uint32)
+   (target              handle)
+   (child-count         int32)
+   (victory-anim        spool-anim)
+   )
+  (:state-methods
+    hide
+    idle
+    (die symbol int)
+    special-contents-die
+    bounce-on
+    (notice-blue handle)
+    carry
+    fall
+    )
+  (:methods
+    (init! (_type_ entity-actor) none)
+    (init-skel! (_type_) none)
+    (init-collision! (_type_) none)
+    (params-set! (_type_ symbol symbol) none)
+    (go-initial-state (_type_) none)
+    (smush-update! (_type_) none)
+    (should-hide? (_type_) symbol)
+    )
+  )
+
+;; definition for method 3 of type crate
+(defmethod inspect ((this crate))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tsmush: #<smush-control @ #x~X>~%" (-> this smush))
+  (format #t "~2Tbase: ~`vector`P~%" (-> this base))
+  (format #t "~2Tlook: ~A~%" (-> this look))
+  (format #t "~2Tdefense: ~A~%" (-> this defense))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> this incoming-attack-id))
+  (format #t "~2Ttarget: ~D~%" (-> this target))
+  (format #t "~2Tchild-count: ~D~%" (-> this child-count))
+  (format #t "~2Tvictory-anim: ~A~%" (-> this victory-anim))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(method-set! crate 12 (method-of-type process run-logic?))
+
+;; definition for function collectable-count
+(defbehavior collectable-count crate ((arg0 process-tree))
+  (set! *global-search-count* 0)
+  (iterate-process-tree
+    arg0
+    (lambda ((arg0 process))
+      (if (type? arg0 collectable)
+          (set! *global-search-count* (+ *global-search-count* 1))
+          )
+      #t
+      )
+    *null-kernel-context*
+    )
+  *global-search-count*
+  )
+
+;; definition for function crate-post
+(defbehavior crate-post crate ()
+  (rider-trans)
+  (smush-update! self)
+  (rider-post)
+  (carry-info-method-9 (-> self carry))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpart 810
+  :init-specs ((:texture (new 'static 'texture-id :page #x4))
+    (:num 16.0)
+    (:y (meters 0.5) (meters 1))
+    (:scale-x (meters 1.5) (meters 1.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0 32.0)
+    (:g 128.0 32.0)
+    (:b 128.0 32.0)
+    (:a 32.0 16.0)
+    (:vel-y (meters 0.016666668) (meters 0.033333335))
+    (:rotvel-z (degrees -1.2) (degrees 1.2))
+    (:accel-y (meters 0.00066666666))
+    (:timer (seconds 0.4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 sp-cpuinfo-flag-14 set-conerot))
+    (:next-time (seconds 0.1) (seconds 0.197))
+    (:next-launcher 811)
+    (:conerot-x (degrees 70) (degrees 20))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 811
+  :init-specs ((:fade-a -1.0666667))
+  )
+
+;; failed to figure out what this is:
+(defpart 812
+  :init-specs ((:texture (new 'static 'texture-id :index #x3e :page #x4))
+    (:num 4.0)
+    (:y (meters 0.75))
+    (:scale-x (meters 6))
+    (:rot-x 4)
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3) (meters 1))
+    (:r 192.0)
+    (:g 192.0)
+    (:b 64.0 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters 0.009765625))
+    (:rotvel-z (degrees -0.15) (degrees 0.3))
+    (:scalevel-y (meters 0.009765625))
+    (:fade-a 2.1333334)
+    (:timer (seconds 0.1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 set-conerot))
+    (:next-time (seconds 0.05))
+    (:next-launcher 813)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 813
+  :init-specs ((:fade-a -2.1333334))
+  )
+
+;; failed to figure out what this is:
+(defpart 814
+  :init-specs ((:texture (new 'static 'texture-id :index #x4b :page #x4))
+    (:num 1.0)
+    (:y (meters 1))
+    (:scale-x (meters 8))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 196.0)
+    (:g 196.0)
+    (:b 196.0)
+    (:a 28.0)
+    (:timer (seconds 0.035))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 set-conerot))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 815
+  :init-specs ((:texture (new 'static 'texture-id :index #x6 :page #x4))
+    (:num 5.0)
+    (:x (meters -0.5) (meters 1))
+    (:y (meters 0.25) (meters 1.5))
+    (:z (meters -0.5) (meters 1))
+    (:scale-x (meters 0.6) 2.0 (meters 0.6))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3))
+    (:r 160.0)
+    (:g 160.0)
+    (:b 160.0)
+    (:a 128.0)
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:rotvel-x (degrees 1.2))
+    (:rotvel-y (degrees 2.4))
+    (:rotvel-z (degrees 0) 2 (degrees 2.4))
+    (:accel-y (meters -0.0033333334))
+    (:friction 0.97)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 sp-cpuinfo-flag-14 set-conerot))
+    (:next-time (seconds 0.25))
+    (:next-launcher 816)
+    (:conerot-x (degrees 40) (degrees 30))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 816
+  :init-specs ((:scalevel-x (meters -0.0033333334)) (:scalevel-y :copy scalevel-x) (:fade-a -3.4))
+  )
+
+;; failed to figure out what this is:
+(defpart 817
+  :init-specs ((:texture (new 'static 'texture-id :index #x5 :page #x4))
+    (:num 4.5)
+    (:x (meters -0.5) (meters 1))
+    (:y (meters 0.25) (meters 1.5))
+    (:z (meters -0.5) (meters 1))
+    (:scale-x (meters 0.3) 1 (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3))
+    (:r 100.0)
+    (:g 100.0)
+    (:b 100.0)
+    (:a 128.0)
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:rotvel-x (degrees 1.2))
+    (:rotvel-y (degrees 2.4))
+    (:rotvel-z (degrees 0) 3 (degrees 2.4))
+    (:accel-y (meters -0.0033333334))
+    (:friction 0.97)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 sp-cpuinfo-flag-14 set-conerot))
+    (:next-time (seconds 0.25))
+    (:next-launcher 816)
+    (:conerot-x (degrees 40) (degrees 30))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-crate-explode
+  :id 195
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 810 :flags (sp7))
+    (sp-item 812 :flags (sp7))
+    (sp-item 814 :flags (sp7))
+    (sp-item 815 :flags (sp7))
+    (sp-item 817 :flags (sp7))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-crate-steel-explode
+  :id 196
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 810) (sp-item 812) (sp-item 814) (sp-item 817) (sp-item 817) (sp-item 817))
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-dark-eco-box-explosion
+  :id 197
+  :duration (seconds 2)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 145 :fade-after (meters 100) :period (seconds 2) :length (seconds 0.017) :binding 143)
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 143 :flags (sp2 sp3) :binding 144)
+    (sp-item 144 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp2))
+    (sp-item 818 :fade-after (meters 160) :period (seconds 2) :length (seconds 0.017))
+    (sp-item 146 :period (seconds 2) :length (seconds 0.017))
+    (sp-item 147 :fade-after (meters 80) :falloff-to (meters 80) :period (seconds 2) :length (seconds 0.135))
+    (sp-item 148 :period (seconds 2) :length (seconds 0.067))
+    (sp-item 819 :fade-after (meters 120) :falloff-to (meters 120) :period (seconds 2) :length (seconds 0.067))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 147
+  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+    (:num 6.0)
+    (:scale-x (meters 0.2) (meters 0.4))
+    (:scale-y :copy scale-x)
+    (:r 64.0 128.0)
+    (:g 0.0 32.0)
+    (:b 96.0 64.0)
+    (:a 32.0 96.0)
+    (:vel-y (meters 0.026666667) (meters 0.10666667))
+    (:scalevel-x (meters -0.0016666667))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.00016666666) (meters -0.00016666666))
+    (:friction 0.9)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-14))
+    (:next-time (seconds 0.1) (seconds 0.097))
+    (:next-launcher 820)
+    (:conerot-x (degrees 0) (degrees 140))
+    (:conerot-y (degrees 0) (degrees 360))
+    (:conerot-radius (meters 2) (meters 4))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 820
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0) (:fade-a -1.4222223))
+  )
+
+;; failed to figure out what this is:
+(defpart 819
+  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+    (:num 3.0)
+    (:scale-x (meters 0.2))
+    (:rot-z (degrees 0) (degrees 180))
+    (:scale-y (meters 8))
+    (:r 64.0 192.0)
+    (:g 0.0 32.0)
+    (:b 128.0 64.0)
+    (:a 32.0 64.0)
+    (:scalevel-y (meters 0.42666668))
+    (:fade-a -1.6)
+    (:timer (seconds 0.2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 146
+  :init-specs ((:texture (new 'static 'texture-id :index #x4b :page #x4))
+    (:num 1.0)
+    (:scale-x (meters 16))
+    (:scale-y :copy scale-x)
+    (:r 64.0 192.0)
+    (:g 0.0 32.0)
+    (:b 128.0 64.0)
+    (:a 96.0)
+    (:fade-a -1.7454545)
+    (:timer (seconds 0.18))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 148
+  :init-specs ((:texture (new 'static 'texture-id :page #x4))
+    (:num 4.0)
+    (:scale-x (meters 2.5) (meters 1.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 0.0 96.0)
+    (:g 0.0 32.0)
+    (:b 64.0 32.0)
+    (:a 64.0 64.0)
+    (:vel-y (meters 0.053333335) (meters 0.013333334))
+    (:scalevel-x (meters 0.013333334))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.42666668)
+    (:accel-y (meters 0.00016666666) (meters 0.00016666666))
+    (:friction 0.8)
+    (:timer (seconds 1.7))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-14))
+    (:conerot-x (degrees 0) (degrees 110))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 145
+  :init-specs ((:texture (new 'static 'texture-id :index #x4b :page #x4))
+    (:num 16.0)
+    (:y (meters 1))
+    (:scale-x (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:a 0.0)
+    (:vel-y (meters 0.053333335) (meters 0.026666667))
+    (:accel-y (meters -0.00033333333))
+    (:friction 0.94)
+    (:timer (seconds 0.8))
+    (:flags (sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:conerot-x (degrees 0) (degrees 140))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 143
+  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+    (:num 1.0)
+    (:y (meters 0) (meters 16))
+    (:z (meters 0.3) (meters 0.3))
+    (:scale-x (meters 0.3) (meters 0.3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 0.0 96.0)
+    (:g 0.0 32.0)
+    (:b 64.0 32.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 0) (degrees 360))
+    (:vel-x (meters 0.026666667) (meters 0.10666667))
+    (:scalevel-x (meters -0.000909091))
+    (:rotvel-z (degrees -0.3) 1 (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.26666668)
+    (:fade-a -0.19393939)
+    (:timer (seconds 0.3) (seconds 0.497))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 ready-to-launch sp-cpuinfo-flag-14))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 144
+  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+    (:num 1.0)
+    (:scale-x (meters 0.3) (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:r 32.0 96.0)
+    (:g 0.0 32.0)
+    (:b 64.0 32.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters -0.0006190476))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.01904762)
+    (:accel-y (meters -0.000100000005) (meters -0.00015))
+    (:timer (seconds 0.1) (seconds 0.997))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:next-time (seconds 0.8))
+    (:next-launcher 599)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 818
+  :init-specs ((:texture (new 'static 'texture-id :index #x5 :page #x4))
+    (:num 8.0 16.0)
+    (:x (meters -0.5) (meters 1))
+    (:y (meters 0.25) (meters 1.5))
+    (:z (meters -0.5) (meters 1))
+    (:scale-x (meters 0.3) 1 (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3))
+    (:r 128.0)
+    (:g 64.0 1 32.0)
+    (:b 32.0)
+    (:a 128.0)
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:rotvel-x (degrees 1.2))
+    (:rotvel-y (degrees 2.4))
+    (:rotvel-z (degrees 0) 3 (degrees 2.4))
+    (:accel-y (meters -0.0033333334))
+    (:friction 0.97)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 sp-cpuinfo-flag-14))
+    (:next-time (seconds 0.25))
+    (:next-launcher 821)
+    (:conerot-x (degrees 40) (degrees 30))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 821
+  :init-specs ((:scalevel-x (meters -0.0033333334)) (:scalevel-y :copy scalevel-x) (:fade-a -3.4))
+  )
+
+;; definition for method 20 of type crate
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this crate))
+  (the-as search-info-flag (if (logtest? (actor-option no-track) (-> this fact options))
+                               0
+                               2
+                               )
+          )
+  )
+
+;; definition for function crate-standard-event-handler
+;; INFO: Used lq/sq
+(defbehavior crate-standard-event-handler crate ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('attack)
+     (let* ((v1-1 (the-as attack-info (-> arg3 param 1)))
+            (s4-0 (-> v1-1 id))
+            (s5-0 (-> v1-1 count))
+            )
+       (case (-> self defense)
+         (('iron)
+          (case (-> v1-1 mode)
+            (('flop 'uppercut 'explode 'eco-yellow 'racer 'board 'tube 'flut-bonk 'flut-attack 'darkjak 'mech-punch)
+             (if (and (logtest? (-> self fact options) (actor-option racer-only))
+                      (= (-> arg0 type) target)
+                      (not (logtest? (focus-status pilot) (-> (the-as process-focusable arg0) focus-status)))
+                      )
+                 (return #f)
+                 )
+             (send-event arg0 'get-attack-count 1)
+             (process-contact-action arg0)
+             (set! (-> self target) (process->handle arg0))
+             (go-virtual die #f (the-as int s5-0))
+             )
+            (else
+              (when (and (!= s4-0 (-> self incoming-attack-id)) (= (-> self root trans y) (-> self base y)))
+                (talker-spawn-func (-> *talker-speech* 39) *entity-pool* (target-pos 0) (the-as region #f))
+                (set! (-> self incoming-attack-id) s4-0)
+                (if (not (!= (-> self smush amp) 0.0))
+                    (sound-play "icrate-nobreak")
+                    )
+                (activate! (-> self smush) 0.1 90 150 1.0 1.0 (-> self clock))
+                (go-virtual bounce-on)
+                )
+              #f
+              )
+            )
+          )
+         (('steel)
+          (case (-> v1-1 mode)
+            (('explode 'eco-yellow 'tube 'flut-bonk 'flut-attack 'racer 'board 'darkjak 'mech-punch)
+             (send-event arg0 'get-attack-count 1)
+             (when (logtest? (-> self draw status) (draw-control-status on-screen))
+               (talker-spawn-func (-> *talker-speech* 40) *entity-pool* (target-pos 0) (the-as region #f))
+               (talker-spawn-func (-> *talker-speech* 41) *entity-pool* (target-pos 0) (the-as region #f))
+               )
+             (process-contact-action arg0)
+             (set! (-> self target) (process->handle arg0))
+             (go-virtual die #f (the-as int s5-0))
+             )
+            (else
+              (when (and (!= s4-0 (-> self incoming-attack-id)) (= (-> self root trans y) (-> self base y)))
+                (talker-spawn-func (-> *talker-speech* 42) *entity-pool* (target-pos 0) (the-as region #f))
+                (set! (-> self incoming-attack-id) s4-0)
+                (if (not (!= (-> self smush amp) 0.0))
+                    (sound-play "scrate-nobreak")
+                    )
+                (activate! (-> self smush) 0.1 90 150 1.0 1.0 (-> self clock))
+                (go-virtual bounce-on)
+                )
+              #f
+              )
+            )
+          )
+         (('darkeco)
+          (send-event
+            arg0
+            'attack
+            (-> arg3 param 0)
+            (static-attack-info
+              :mask (vehicle-impulse-factor)
+              ((id (new-attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'darkeco))
+              )
+            )
+          (when (= (-> arg0 type) target)
+            (talker-spawn-func (-> *talker-speech* 43) *entity-pool* (target-pos 0) (the-as region #f))
+            (talker-spawn-func (-> *talker-speech* 38) *entity-pool* (target-pos 0) (the-as region #f))
+            )
+          (process-contact-action arg0)
+          (set! (-> self target) (process->handle arg0))
+          (go-virtual die #f (the-as int s5-0))
+          )
+         (else
+           (-> v1-1 mode)
+           (send-event arg0 'get-attack-count 1)
+           (process-contact-action arg0)
+           (set! (-> self target) (process->handle arg0))
+           (go-virtual die #f (the-as int s5-0))
+           )
+         )
+       )
+     )
+    (('touch)
+     (case (-> self defense)
+       (('darkeco)
+        (send-event
+          arg0
+          'attack
+          (-> arg3 param 0)
+          (static-attack-info
+            :mask (vehicle-impulse-factor)
+            ((id (new-attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'darkeco))
+            )
+          )
+        (process-contact-action arg0)
+        (set! (-> self target) (process->handle arg0))
+        (go-virtual die #f 0)
+        )
+       )
+     )
+    (('bonk)
+     (when (= (-> self root trans y) (-> self base y))
+       (activate! (-> self smush) -0.1 75 150 1.0 1.0 (-> self clock))
+       (go-virtual bounce-on)
+       )
+     )
+    (('impact-impulse)
+     (let ((v1-115 (the-as object (-> arg3 param 0))))
+       (when (< 122880.0 (-> (the-as impact-control v1-115) trans 1 x))
+         (logior! (-> self root penetrated-by) (penetrate vehicle))
+         (go-virtual die #f 0)
+         #t
+         )
+       )
+     )
+    (('wake)
+     (let ((v0-0 (the-as object (logclear (-> self mask) (process-mask sleep)))))
+       (set! (-> self mask) (the-as process-mask v0-0))
+       v0-0
+       )
+     )
+    (('hide)
+     (go-virtual hide)
+     )
+    (('die)
+     (go-virtual die #f 0)
+     )
+    (('eco-blue)
+     (if (not (or (= (-> self defense) 'darkeco)
+                  (and (-> self next-state) (let ((v1-131 (-> self next-state name)))
+                                              (or (= v1-131 'notice-blue) (= v1-131 'die))
+                                              )
+                       )
+                  (!= (-> self root trans y) (-> self base y))
+                  )
+              )
+         (go-virtual notice-blue (process->handle arg0))
+         )
+     )
+    (('fall)
+     (when (not (and (-> self next-state) (= (-> self next-state name) 'fall)))
+       (set! (-> self root transv quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       (go-virtual fall)
+       )
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hide (crate)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status dead) #f)
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (vector+! (-> self draw origin) (-> self root trans) (-> self draw bounds))
+    (set! (-> self draw origin w) (-> self draw bounds w))
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (let ((v1-9 (-> self root root-prim)))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec))
+      )
+    0
+    (ja-post)
+    (while (or (should-hide? self)
+               (and (sphere-in-view-frustum? (the-as sphere (-> self draw origin)))
+                    (< (vector-vector-distance (camera-pos) (-> self root trans)) 327680.0)
+                    )
+               (and *target* (and (>= 40960.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                  (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                  )
+                    )
+               )
+      (suspend)
+      )
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (let ((v1-29 (-> self root root-prim)))
+      (set! (-> v1-29 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-29 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (go-virtual idle)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (crate)
+  :virtual #t
+  :event crate-standard-event-handler
+  :trans (behavior ()
+    (if (-> *setting-control* user-current hide-crates?)
+        (go-virtual hide)
+        )
+    )
+  :code (behavior ()
+    (suspend)
+    (update-transforms (-> self root))
+    (carry-info-method-9 (-> self carry))
+    (logior! (-> self mask) (process-mask sleep))
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate carry (crate)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('carry? 'carry-info)
+       (-> self carry)
+       )
+      (('drop)
+       (set! (-> self root transv quad) (-> (the-as vector (-> block param 1)) quad))
+       (go-virtual fall)
+       )
+      )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (ja-post)
+    (carry-info-method-9 (-> self carry))
+    (carry-info-method-13 (-> self carry))
+    (update-transforms (-> self root))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate fall (crate)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('carry-info)
+       (-> self carry)
+       )
+      (('carry? 'pickup)
+       (the-as carry-info #f)
+       )
+      )
+    )
+  :enter (behavior ()
+    (if (handle->process (-> self carry other))
+        (drop-impl!
+          (the-as carry-info (send-event (handle->process (-> self carry other)) 'carry-info))
+          (-> self carry)
+          )
+        )
+    (set! (-> self root status) (collide-status))
+    (set! (-> self root root-prim local-sphere w) (-> self carry carry-radius))
+    (logior!
+      (-> self root root-prim prim-core collide-with)
+      (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+      )
+    )
+  :trans (behavior ()
+    (when (and (logtest? (-> self root status) (collide-status on-surface)) (< 0.8 (-> self root surface-angle)))
+      (vector-reset! (-> self root transv))
+      (when (= (vector-length (-> self root transv)) 0.0)
+        (set! (-> self root root-prim local-sphere w) (-> self carry backup-radius))
+        (set! (-> self base quad) (-> self root trans quad))
+        (let ((v1-16 (-> self root root-prim)))
+          (set! (-> v1-16 prim-core collide-as) (-> self root backup-collide-as))
+          (set! (-> v1-16 prim-core collide-with) (-> self root backup-collide-with))
+          )
+        (go-virtual idle)
+        )
+      )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
+    (if (< (-> self root dynam gravity-max) (vector-length (-> self root transv)))
+        (vector-normalize! (-> self root transv) (-> self root dynam gravity-max))
+        )
+    (let ((gp-1 (-> self root)))
+      (let ((a2-1 (new 'stack-no-clear 'collide-query)))
+        (set! (-> gp-1 root-prim type) collide-shape-prim-sphere)
+        (set! (-> a2-1 collide-with) (collide-spec backgnd crate obstacle pusher))
+        (set! (-> a2-1 ignore-process0) self)
+        (set! (-> a2-1 ignore-process1) #f)
+        (set! (-> a2-1 ignore-pat) (-> gp-1 pat-ignore-mask))
+        (set! (-> a2-1 action-mask) (collide-action solid))
+        (fill-cache-integrate-and-collide gp-1 (-> gp-1 transv) a2-1 (meters 0))
+        )
+      (set! (-> gp-1 root-prim type) collide-shape-prim-mesh)
+      )
+    (crate-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate bounce-on (crate)
+  :virtual #t
+  :event crate-standard-event-handler
+  :code (behavior ()
+    (while (!= (-> self smush amp) 0.0)
+      (suspend)
+      )
+    (go-virtual idle)
+    )
+  :post crate-post
+  )
+
+;; failed to figure out what this is:
+(defstate notice-blue (crate)
+  :virtual #t
+  :event crate-standard-event-handler
+  :trans (behavior ()
+    (cond
+      ((not (send-event *target* 'query 'powerup (pickup-type eco-blue)))
+       (logior! (-> self mask) (process-mask sleep-code))
+       (if (not (!= (-> self smush amp) 0.0))
+           (go-virtual idle)
+           )
+       )
+      (else
+        (logclear! (-> self mask) (process-mask sleep-code))
+        )
+      )
+    )
+  :code (behavior ((arg0 handle))
+    (set! (-> self target) arg0)
+    (until #f
+      (let* ((gp-0 (handle->process (-> self target)))
+             (v1-3 (if (type? gp-0 process-drawable)
+                       gp-0
+                       )
+                   )
+             )
+        (when v1-3
+          (let* ((gp-1 (-> (the-as process-drawable v1-3) root))
+                 (v1-4 (if (type? gp-1 collide-shape)
+                           gp-1
+                           )
+                       )
+                 )
+            (when v1-4
+              (let* ((gp-2 (-> self root root-prim prim-core))
+                     (a1-3 (-> (the-as collide-shape v1-4) root-prim prim-core))
+                     (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3)))
+                     )
+                (when (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (!= (-> self defense) 'steel))
+                  (logior! (-> self fact options) (actor-option suck-in))
+                  (process-contact-action (handle->process (-> self target)))
+                  (go-virtual die #f 0)
+                  )
+                (when (rand-vu-percent? 0.5)
+                  (let ((s5-0 (new 'stack-no-clear 'vector)))
+                    (set! (-> s5-0 quad) (the-as uint128 (the-as vector (-> gp-2 world-sphere quad))))
+                    (dotimes (gp-3 3)
+                      (+! (-> s5-0 data gp-3) (rand-vu-float-range -5324.8 5324.8))
+                      )
+                    (eco-blue-glow s5-0)
+                    )
+                  )
+                (activate!
+                  (-> self smush)
+                  (lerp-scale
+                    (rand-vu-float-range 0.1 0.3)
+                    (rand-vu-float-range 0.0 0.02)
+                    f30-0
+                    (-> *FACT-bank* suck-suck-dist)
+                    (-> *FACT-bank* suck-bounce-dist)
+                    )
+                  60
+                  60
+                  1.0
+                  1.0
+                  (-> self clock)
+                  )
+                )
+              )
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post crate-post
+  )
+
+;; failed to figure out what this is:
+(defstate die (crate)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (case (-> self defense)
+         (('darkeco)
+          (send-event
+            proc
+            'attack
+            (-> block param 0)
+            (static-attack-info
+              :mask (vehicle-impulse-factor)
+              ((id (new-attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'darkeco))
+              )
+            )
+          )
+         )
+       )
+      )
+    )
+  :code (behavior ((arg0 symbol) (arg1 int))
+    (+! (-> *game-info* crates-opened) 1.0)
+    (logior! (-> self focus-status) (focus-status dead))
+    (let ((v1-6 (-> self root root-prim)))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec))
+      )
+    0
+    (if (nonzero? (-> self sound))
+        (stop! (-> self sound))
+        )
+    (let ((v1-13 (handle->process (-> self target))))
+      (if (and (and v1-13 (= (-> v1-13 type) target) (focus-test? (the-as process-focusable v1-13) flut tube board pilot))
+               (and (!= (-> self fact pickup-type) 11) (not arg0))
+               )
+          (logior! (-> self fact options) (actor-option suck-in))
+          )
+      )
+    (when (not arg0)
+      (let ((s5-1 (current-time)))
+        (until (time-elapsed? s5-1 (seconds 0.04))
+          (suspend)
+          )
+        )
+      (case (-> self look)
+        (('iron)
+         (sound-play "icrate-break")
+         )
+        (('steel)
+         (sound-play "scrate-break")
+         )
+        (('darkeco)
+         (sound-play "dcrate-break")
+         )
+        (('urn-a 'urn-b 'urn-c)
+         (sound-play "vase-smash")
+         )
+        (else
+          (sound-play "wcrate-break")
+          )
+        )
+      (case (-> self defense)
+        (('darkeco)
+         (let ((f0-2 (lerp-scale 1.0 0.0 (vector-vector-distance (-> self root trans) (target-pos 0)) 8192.0 40960.0)))
+           (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 (the int (* 255.0 f0-2)) (seconds 0.3))
+           )
+         (process-spawn
+           touch-tracker
+           :init touch-tracker-init
+           (-> self root trans)
+           (-> *CRATE-bank* DARKECO_EXPLODE_RADIUS)
+           30
+           :name "touch-tracker"
+           :to self
+           )
+         )
+        )
+      (let ((v1-55 (-> self look)))
+        (cond
+          ((= v1-55 'darkeco)
+           (cond
+             ((logtest? (-> *part-group-id-table* 197 flags) (sp-group-flag sp13))
+              (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+              (let ((s5-9 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
+                (when s5-9
+                  (let ((t9-19 (method-of-type part-tracker-subsampler activate)))
+                    (t9-19 (the-as part-tracker-subsampler s5-9) self "part-tracker-subsampler" (the-as pointer #x70004000))
+                    )
+                  (let ((t9-20 run-function-in-process)
+                        (a0-41 s5-9)
+                        (a1-20 part-tracker-subsampler-init)
+                        )
+                    (set! (-> *part-tracker-subsampler-params-default* group) (-> *part-group-id-table* 197))
+                    (set! (-> *part-tracker-subsampler-params-default* duration) 0)
+                    (set! (-> *part-tracker-subsampler-params-default* callback) #f)
+                    (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
+                    (set! (-> *part-tracker-subsampler-params-default* target) #f)
+                    (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
+                    (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
+                    ((the-as (function object object object none) t9-20) a0-41 a1-20 *part-tracker-subsampler-params-default*)
+                    )
+                  (-> s5-9 ppointer)
+                  )
+                )
+              )
+             (else
+               (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+               (let ((s5-10 (get-process *default-dead-pool* part-tracker #x4000 0)))
+                 (when s5-10
+                   (let ((t9-22 (method-of-type part-tracker activate)))
+                     (t9-22 (the-as part-tracker s5-10) self "part-tracker" (the-as pointer #x70004000))
+                     )
+                   (let ((t9-23 run-function-in-process)
+                         (a0-47 s5-10)
+                         (a1-23 part-tracker-init)
+                         )
+                     (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 197))
+                     (set! (-> *part-tracker-params-default* duration) 0)
+                     (set! (-> *part-tracker-params-default* callback) #f)
+                     (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+                     (set! (-> *part-tracker-params-default* target) #f)
+                     (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+                     ((the-as (function object object object none) t9-23) a0-47 a1-23 *part-tracker-params-default*)
+                     )
+                   (-> s5-10 ppointer)
+                   )
+                 )
+               )
+             )
+           )
+          ((or (= v1-55 'steel) (= v1-55 'iron))
+           (cond
+             ((logtest? (-> *part-group-id-table* 196 flags) (sp-group-flag sp13))
+              (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+              (let ((s5-11 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
+                (when s5-11
+                  (let ((t9-25 (method-of-type part-tracker-subsampler activate)))
+                    (t9-25 (the-as part-tracker-subsampler s5-11) self "part-tracker-subsampler" (the-as pointer #x70004000))
+                    )
+                  (let ((t9-26 run-function-in-process)
+                        (a0-55 s5-11)
+                        (a1-27 part-tracker-subsampler-init)
+                        )
+                    (set! (-> *part-tracker-subsampler-params-default* group) (-> *part-group-id-table* 196))
+                    (set! (-> *part-tracker-subsampler-params-default* duration) 0)
+                    (set! (-> *part-tracker-subsampler-params-default* callback) #f)
+                    (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
+                    (set! (-> *part-tracker-subsampler-params-default* target) #f)
+                    (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
+                    (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
+                    ((the-as (function object object object none) t9-26) a0-55 a1-27 *part-tracker-subsampler-params-default*)
+                    )
+                  (-> s5-11 ppointer)
+                  )
+                )
+              )
+             (else
+               (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+               (let ((s5-12 (get-process *default-dead-pool* part-tracker #x4000 0)))
+                 (when s5-12
+                   (let ((t9-28 (method-of-type part-tracker activate)))
+                     (t9-28 (the-as part-tracker s5-12) self "part-tracker" (the-as pointer #x70004000))
+                     )
+                   (let ((t9-29 run-function-in-process)
+                         (a0-61 s5-12)
+                         (a1-30 part-tracker-init)
+                         )
+                     (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 196))
+                     (set! (-> *part-tracker-params-default* duration) 0)
+                     (set! (-> *part-tracker-params-default* callback) #f)
+                     (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+                     (set! (-> *part-tracker-params-default* target) #f)
+                     (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+                     ((the-as (function object object object none) t9-29) a0-61 a1-30 *part-tracker-params-default*)
+                     )
+                   (-> s5-12 ppointer)
+                   )
+                 )
+               )
+             )
+           )
+          ((logtest? (-> *part-group-id-table* 195 flags) (sp-group-flag sp13))
+           (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+           (let ((s5-13 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
+             (when s5-13
+               (let ((t9-31 (method-of-type part-tracker-subsampler activate)))
+                 (t9-31 (the-as part-tracker-subsampler s5-13) self "part-tracker-subsampler" (the-as pointer #x70004000))
+                 )
+               (let ((t9-32 run-function-in-process)
+                     (a0-67 s5-13)
+                     (a1-33 part-tracker-subsampler-init)
+                     )
+                 (set! (-> *part-tracker-subsampler-params-default* group) (-> *part-group-id-table* 195))
+                 (set! (-> *part-tracker-subsampler-params-default* duration) 0)
+                 (set! (-> *part-tracker-subsampler-params-default* callback) #f)
+                 (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
+                 (set! (-> *part-tracker-subsampler-params-default* target) #f)
+                 (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
+                 (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
+                 ((the-as (function object object object none) t9-32) a0-67 a1-33 *part-tracker-subsampler-params-default*)
+                 )
+               (-> s5-13 ppointer)
+               )
+             )
+           )
+          (else
+            (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+            (let ((s5-14 (get-process *default-dead-pool* part-tracker #x4000 0)))
+              (when s5-14
+                (let ((t9-34 (method-of-type part-tracker activate)))
+                  (t9-34 (the-as part-tracker s5-14) self "part-tracker" (the-as pointer #x70004000))
+                  )
+                (let ((t9-35 run-function-in-process)
+                      (a0-73 s5-14)
+                      (a1-36 part-tracker-init)
+                      )
+                  (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 195))
+                  (set! (-> *part-tracker-params-default* duration) 0)
+                  (set! (-> *part-tracker-params-default* callback) #f)
+                  (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+                  (set! (-> *part-tracker-params-default* target) #f)
+                  (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+                  ((the-as (function object object object none) t9-35) a0-73 a1-36 *part-tracker-params-default*)
+                  )
+                (-> s5-14 ppointer)
+                )
+              )
+            )
+          )
+        )
+      )
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (ja-post)
+    (case (-> self fact pickup-type)
+      (((pickup-type money)
+        (pickup-type buzzer)
+        (pickup-type eco-blue)
+        (pickup-type eco-yellow)
+        (pickup-type eco-red)
+        (pickup-type fuel-cell)
+        (pickup-type gem)
+        (pickup-type skill)
+        )
+       (go-virtual special-contents-die)
+       )
+      (((pickup-type health))
+       (talker-spawn-func (-> *talker-speech* 5) *entity-pool* (target-pos 0) (the-as region #f))
+       )
+      )
+    (drop-pickup (-> self fact) #t *entity-pool* (the-as fact-info #f) arg1 #t)
+    (process-entity-status! self (entity-perm-status dead) #t)
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 5))
+        (suspend)
+        )
+      )
+    (when (logtest? (actor-option cond-respawn) (-> self fact options))
+      (let ((gp-2 (current-time)))
+        (until (time-elapsed? gp-2 (seconds 15))
+          (suspend)
+          )
+        )
+      (go-virtual hide)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate special-contents-die (crate)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('notify)
+       (case (-> block param 0)
+         (('pickup)
+          (let ((gp-0 (-> self entity extra perm)))
+            (logior! (-> gp-0 status) (entity-perm-status bit-5))
+            (set! (-> gp-0 user-int8 1) (min 127 (+ (-> gp-0 user-int8 1) 1)))
+            (+! (-> self child-count) -1)
+            (when (<= (-> self child-count) 0)
+              (if (or (= (-> self defense) 'iron) (= (-> self defense) 'steel))
+                  (process-entity-status! self (entity-perm-status bit-4) #f)
+                  )
+              (process-entity-status! self (entity-perm-status dead) #t)
+              (process-entity-status! self (entity-perm-status subtask-complete) #t)
+              (process-entity-status! self (entity-perm-status bit-15) #f)
+              (set! (-> gp-0 user-int8 0) 2)
+              (let ((v0-0 (logclear (-> self mask) (process-mask sleep))))
+                (set! (-> self mask) v0-0)
+                v0-0
+                )
+              )
+            )
+          )
+         )
+       )
+      )
+    )
+  :trans (-> (method-of-type crate die) trans)
+  :code (behavior ()
+    (logior! (-> self focus-status) (focus-status dead))
+    (when (or (= (-> self fact pickup-type) (pickup-type money))
+              (= (-> self fact pickup-type) (pickup-type gem))
+              (= (-> self fact pickup-type) (pickup-type skill))
+              (= (-> self defense) 'iron)
+              (= (-> self defense) 'steel)
+              )
+      (let ((a0-6 (-> self entity)))
+        (if (when a0-6
+              (let ((a0-7 (-> a0-6 extra perm task)))
+                (if a0-7
+                    (= a0-7 (game-task none))
+                    )
+                )
+              )
+            (set! (-> self entity extra perm task) (game-task complete))
+            )
+        )
+      )
+    (let ((v1-20 (-> self root root-prim)))
+      (set! (-> v1-20 prim-core collide-as) (collide-spec))
+      (set! (-> v1-20 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (drop-pickup (-> self fact) #t self (the-as fact-info #f) 0 #t)
+    (set! (-> self child-count) (collectable-count self))
+    (process-entity-status! self (entity-perm-status bit-4) #t)
+    (process-entity-status! self (entity-perm-status bit-15) #t)
+    (when (-> self entity)
+      (let ((v1-31 (-> self entity extra perm)))
+        (logior! (-> v1-31 status) (entity-perm-status bit-5))
+        (set! (-> v1-31 user-int8 0) 1)
+        )
+      )
+    (when (-> self child)
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      (while (-> self child)
+        (suspend)
+        )
+      )
+    )
+  )
+
+;; definition for function crate-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defbehavior crate-init-by-other crate ((arg0 entity) (arg1 vector) (arg2 symbol) (arg3 fact-info-crate))
+  (process-entity-set! self arg0)
+  (init! self (the-as entity-actor arg0))
+  (set! (-> self root trans quad) (-> arg1 quad))
+  (set! (-> self look) arg2)
+  (set! (-> self defense) arg2)
+  (init-skel! self)
+  (when arg3
+    (set! (-> self fact pickup-type) (-> arg3 pickup-type))
+    (set! (-> self fact pickup-amount) (-> arg3 pickup-spawn-amount))
+    (set! (-> self fact options) (-> arg3 options))
+    )
+  (set! (-> self draw light-index) (the-as uint 10))
+  (go-initial-state self)
+  )
+
+;; definition for method 11 of type crate
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this crate) (arg0 entity-actor))
+  (init! this arg0)
+  (init-skel! this)
+  (set! (-> this draw light-index) (the-as uint 10))
+  (go-initial-state this)
+  )
+
+;; definition for method 38 of type crate
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this crate))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec crate notice-blue-eco-powerup))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-6 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 3072.0 0.0 (-> *CRATE-bank* COLLIDE_RADIUS))
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech
+                                    mech-punch
+                                    dark-skin
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    knocked
+                                    )
+          )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 36 of type crate
+;; WARN: Return type mismatch crate vs none.
+(defmethod init! ((this crate) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 128)
+  (logior! (-> this mask) (process-mask crate))
+  (init-collision! this)
+  (set! (-> this fact)
+        (new 'process 'fact-info-crate this (pickup-type eco-pill-random) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (when (-> this entity)
+    (let ((v1-12 (-> this entity extra perm)))
+      (set! (-> this fact pickup-amount)
+            (fmax 0.0 (- (-> this fact pickup-amount) (the float (-> v1-12 user-int8 1))))
+            )
+      )
+    )
+  (when (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+    (set! (-> this fact pickup-type) (pickup-type eco-pill-random))
+    (set! (-> this fact pickup-amount) 0.0)
+    )
+  (when arg0
+    (process-drawable-from-entity! this arg0)
+    (logclear! (-> this mask) (process-mask actor-pause))
+    )
+  (let ((v1-27
+          ((method-of-type res-lump get-property-struct)
+           (-> this entity)
+           'crate-type
+           'interp
+           -1000000000.0
+           (the-as structure 'wood)
+           (the-as (pointer res-tag) #f)
+           *res-static-buf*
+           )
+          )
+        )
+    (set! (-> this look) (the-as symbol v1-27))
+    (set! (-> this defense) (the-as symbol v1-27))
+    )
+  (set! (-> this carry)
+        (new 'process 'carry-info this 3 (new 'static 'vector :w 1.0) (new 'static 'vector :y 1.0 :w 1.0) 0.0)
+        )
+  (set! (-> this carry max-pull) 3686.4)
+  (set! (-> this carry carry-radius) 3276.8)
+  (set! (-> this target) (the-as handle #f))
+  (none)
+  )
+
+;; definition for method 37 of type crate
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch crate vs none.
+(defmethod init-skel! ((this crate))
+  (case (-> this look)
+    (('iron)
+     (set! (-> this root penetrated-by) (penetrate flop uppercut tube vehicle flut-attack board dark-skin explode))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-krimson" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (('steel)
+     (set! (-> this root penetrated-by) (penetrate tube vehicle flut-attack board dark-skin explode))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-krimson" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (('blue)
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-cty-blue" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (('metal)
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-cty-metal" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (('darkeco)
+     (when (= (-> this fact pickup-type) (pickup-type eco-pill-random))
+       (set! (-> this fact pickup-type) (pickup-type none))
+       (set! (-> this fact pickup-amount) 0.0)
+       )
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-krimson" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this draw color-mult) 0.8 0.8 0.8 1.0)
+     (set-vector! (-> this draw color-emissive) 0.2 0.2 0.2 1.0)
+     )
+    (('none)
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-krimson" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (logior! (-> this draw status) (draw-control-status no-draw))
+     )
+    (('urn-a)
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-urn-a" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (('urn-b)
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-urn-b" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (('urn-c)
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-urn-c" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     )
+    (else
+      (initialize-skeleton
+        this
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-crate-krimson" (the-as (pointer level) #f)))
+        (the-as pair 0)
+        )
+      )
+    )
+  (set! (-> this base quad) (-> this root trans quad))
+  (crate-post)
+  (nav-mesh-connect-from-ent this)
+  (none)
+  )
+
+;; definition for method 39 of type crate
+;; WARN: Return type mismatch crate vs none.
+(defmethod params-set! ((this crate) (arg0 symbol) (arg1 symbol))
+  (if arg0
+      (set! (-> this look) arg0)
+      )
+  (if arg1
+      (set! (-> this defense) arg1)
+      )
+  (none)
+  )
+
+;; definition for method 40 of type crate
+;; WARN: Return type mismatch int vs none.
+(defmethod go-initial-state ((this crate))
+  (if (-> *setting-control* user-current hide-crates?)
+      (go (method-of-object this hide))
+      )
+  (when (-> this entity)
+    (if (and (>= (-> this entity extra perm user-int8 0) 1)
+             (-> this entity)
+             (logtest? (-> this entity extra perm status) (entity-perm-status bit-15))
+             )
+        (go (method-of-object this die) #t 0)
+        )
+    )
+  (cond
+    ((logtest? (actor-option cond-hide) (-> this fact options))
+     (go (method-of-object this hide))
+     )
+    ((logtest? (actor-option fall) (-> this fact options))
+     (go (method-of-object this fall))
+     )
+    (else
+      (go (method-of-object this idle))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 41 of type crate
+;; WARN: Return type mismatch int vs none.
+(defmethod smush-update! ((this crate))
+  (let ((f0-0 (update! (-> this smush))))
+    (set! (-> this root scale x) (+ 1.0 (* -0.5 f0-0)))
+    (set! (-> this root scale y) (+ 1.0 f0-0))
+    (set! (-> this root scale z) (+ 1.0 (* -0.5 f0-0)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 42 of type crate
+;; WARN: disable def twice: 62. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod should-hide? ((this crate))
+  (with-pp
+    (cond
+      ((or (and (> (-> this fact suck-count) 0) (< (you-suck-stage *game-info* #f 0) (-> this fact suck-count)))
+           (-> *setting-control* user-current hide-crates?)
+           )
+       #t
+       )
+      ((logtest? (actor-option cond-low-ammo) (-> this fact options))
+       (case (-> this fact pickup-type)
+         (((pickup-type ammo-yellow) (pickup-type ammo-red) (pickup-type ammo-blue) (pickup-type ammo-dark))
+          (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-4 from) (process->ppointer pp))
+            (set! (-> a1-4 num-params) 1)
+            (set! (-> a1-4 message) 'test-pickup)
+            (set! (-> a1-4 param 0) (the-as uint (-> this fact pickup-type)))
+            (let ((v1-17 (the-as float (send-event-function *target* a1-4))))
+              (or (not v1-17) (< 10.0 v1-17))
+              )
+            )
+          )
+         (else
+           #f
+           )
+         )
+       )
+      (else
+        #f
+        )
+      )
+    )
+  )
+
+;; definition of type pickup-spawner
+(deftype pickup-spawner (crate)
+  ((blocker  entity-actor)
+   )
+  )
+
+;; definition for method 3 of type pickup-spawner
+(defmethod inspect ((this pickup-spawner))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type crate inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tblocker: ~A~%" (-> this blocker))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 36 of type pickup-spawner
+;; WARN: Return type mismatch pickup-spawner vs none.
+(defmethod init! ((this pickup-spawner) (arg0 entity-actor))
+  (let ((t9-0 (method-of-type crate init!)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this look) 'none)
+  (set! (-> this blocker) #f)
+  (if (logtest? (-> this fact options) (actor-option blocked))
+      (set! (-> this blocker) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+      )
+  (none)
+  )
+
+;; definition for method 40 of type pickup-spawner
+;; WARN: Return type mismatch int vs none.
+(defmethod go-initial-state ((this pickup-spawner))
+  (go (method-of-object this idle))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (pickup-spawner)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (if (or (not (-> self blocker))
+              (logtest? (-> self blocker extra perm status) (entity-perm-status subtask-complete))
+              )
+          (go-virtual die #t 0)
+          )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition of type urn-a
+(deftype urn-a (crate)
+  ()
+  )
+
+;; definition for method 3 of type urn-a
+(defmethod inspect ((this urn-a))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type crate inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 36 of type urn-a
+;; WARN: Return type mismatch urn-a vs none.
+(defmethod init! ((this urn-a) (arg0 entity-actor))
+  (let ((t9-0 (method-of-type crate init!)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this look) 'urn-a)
+  (none)
+  )
+
+;; definition of type urn-b
+(deftype urn-b (crate)
+  ()
+  )
+
+;; definition for method 3 of type urn-b
+(defmethod inspect ((this urn-b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type crate inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 36 of type urn-b
+;; WARN: Return type mismatch urn-b vs none.
+(defmethod init! ((this urn-b) (arg0 entity-actor))
+  (let ((t9-0 (method-of-type crate init!)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this look) 'urn-b)
+  (none)
+  )
+
+;; definition of type urn-c
+(deftype urn-c (crate)
+  ()
+  )
+
+;; definition for method 3 of type urn-c
+(defmethod inspect ((this urn-c))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type crate inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 36 of type urn-c
+;; WARN: Return type mismatch urn-c vs none.
+(defmethod init! ((this urn-c) (arg0 entity-actor))
+  (let ((t9-0 (method-of-type crate init!)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this look) 'urn-c)
+  (none)
+  )

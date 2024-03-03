@@ -470,7 +470,7 @@
     (('game 'boot)
      (+! (-> this task-counter) 1)
      (reset! (-> *display* total-game-clock))
-     (set! (-> this features) (game-feature feature20 feature40 darkjak-bomb0 darkjak-bomb1))
+     (set! (-> this features) (game-feature sidekick darkjak darkjak-bomb0 darkjak-bomb1))
      (set! (-> this debug-features) (game-feature))
      (set! (-> this old-features) (game-feature))
      (set! (-> this items) (game-items))
@@ -929,7 +929,7 @@
           (if (or (!= (handle->process pickup-handle) (handle->process (-> this eco-source)))
                   (>= (- (-> *display* game-clock frame-counter) (-> this eco-source-time)) (seconds 0.5))
                   )
-              (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+              (sound-play "get-green-eco")
               )
           (send-event (-> this process) 'color-effect 'health (seconds 0.2))
           (when (handle->process pickup-handle)
@@ -993,7 +993,7 @@
        ((< 0.0 amount)
         (set! (-> this eco-green-pickup-time) (-> *display* game-clock frame-counter))
         (seek! (-> this eco-green) (-> this eco-green-max) amount)
-        (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+        (sound-play "get-green-eco")
         (send-event (-> this process) 'color-effect 'eco-green (seconds 0.2))
         )
        (else
@@ -1005,7 +1005,7 @@
     (((pickup-type eco-pill-dark))
      (when (< 0.0 amount)
        (if (>= (- (-> *display* game-clock frame-counter) (-> this eco-pill-dark-pickup-time)) (seconds 0.05))
-           (sound-play-by-name (static-sound-name "get-dark-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+           (sound-play "get-dark-eco")
            )
        (send-event (-> this process) 'color-effect 'eco-pill-dark (seconds 0.2))
        (cond
@@ -1055,7 +1055,7 @@
                )
              )
            )
-         (sound-play-by-name (static-sound-name "get-light-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+         (sound-play "get-light-eco")
          )
        (if (< (-> this process game eco-pill-light) (* 0.95 (-> *FACT-bank* eco-pill-light-max-default)))
            (send-event (-> this process) 'color-effect 'eco-pill-light (seconds 0.2))
@@ -1079,7 +1079,7 @@
              (fmax 0.0 (fmin (+ (-> this trick-point) amount) (-> *FACT-bank* trick-point-max)))
              )
        (when (!= amount 0.0)
-         (sound-play-by-name (static-sound-name "get-trick-point") (new-sound-id) 1024 0 0 (sound-group) #t)
+         (sound-play "get-trick-point")
          (process-spawn-function
            process
            (lambda :behavior process
@@ -1142,7 +1142,7 @@
     (((pickup-type money))
      (when (< 0.0 amount)
        (if (>= (- (-> *display* game-clock frame-counter) (-> this money-pickup-time)) (seconds 0.05))
-           (sound-play-by-name (static-sound-name "money-pickup") (new-sound-id) 1024 0 0 (sound-group) #t)
+           (sound-play "money-pickup")
            )
        (set! (-> this money-pickup-time) (-> *display* game-clock frame-counter))
        )
@@ -1151,7 +1151,7 @@
     (((pickup-type gem))
      (when (< 0.0 amount)
        (if (>= (- (-> *display* game-clock frame-counter) (-> this gem-pickup-time)) (seconds 0.05))
-           (sound-play-by-name (static-sound-name "gem-pickup") (new-sound-id) 1024 0 0 (sound-group) #t)
+           (sound-play "gem-pickup")
            )
        (set! (-> this gem-pickup-time) (-> *display* game-clock frame-counter))
        )
@@ -1161,7 +1161,7 @@
     (((pickup-type skill))
      (when (< 0.0 amount)
        (if (>= (- (-> *display* game-clock frame-counter) (-> this skill-pickup-time)) (seconds 0.05))
-           (sound-play-by-name (static-sound-name "skill-pickup") (new-sound-id) 1024 0 0 (sound-group) #t)
+           (sound-play "skill-pickup")
            )
        (set! (-> this skill-pickup-time) (-> *display* game-clock frame-counter))
        )
@@ -1337,16 +1337,16 @@
        (let ((v1-285 pickup))
          (cond
            ((= v1-285 (pickup-type eco-blue))
-            (sound-play-by-name (static-sound-name "get-blue-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+            (sound-play "get-blue-eco")
             )
            ((or (= v1-285 (pickup-type eco-green)) (= v1-285 (pickup-type health)))
-            (sound-play-by-name (static-sound-name "get-green-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+            (sound-play "get-green-eco")
             )
            ((= v1-285 (pickup-type eco-yellow))
-            (sound-play-by-name (static-sound-name "get-yellow-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+            (sound-play "get-yellow-eco")
             )
            ((= v1-285 (pickup-type eco-red))
-            (sound-play-by-name (static-sound-name "get-red-eco") (new-sound-id) 1024 0 0 (sound-group) #t)
+            (sound-play "get-red-eco")
             )
            )
          )
@@ -1900,7 +1900,7 @@
   (if (and (not (paused?)) (zero? (-> this number)) (-> *setting-control* user-current player-control-override))
       (override-player-controls)
       )
-  (when (logtest? (-> *game-info* secrets) (game-secrets screen-flip))
+  (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
     (set! (-> this leftx) (- 255 (the-as int (-> this leftx))))
     (set! (-> this rightx) (- 255 (the-as int (-> this rightx))))
     )
@@ -2124,7 +2124,7 @@
   (set! (-> gp-0 pov-camera-handle) (the-as handle #f))
   (set! (-> gp-0 other-camera-handle) (the-as handle #f))
   (set! (-> gp-0 features) (game-feature
-                             feature5
+                             gun
                              gun-red-1
                              gun-red-2
                              gun-red-3
@@ -2138,16 +2138,16 @@
                              gun-dark-2
                              gun-dark-3
                              board
-                             feature20
-                             feature37
+                             sidekick
+                             board-launch
                              feature39
-                             feature40
+                             darkjak
                              darkjak-smack
                              darkjak-bomb0
                              darkjak-bomb1
                              feature44
                              feature45
-                             feature46
+                             lightjak
                              lightjak-regen
                              lightjak-swoop
                              lightjak-freeze
