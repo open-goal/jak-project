@@ -640,6 +640,11 @@
 
   ;; check unlocked cheats
   ;;;;;;;;;;;;;;;;;;;;;;;;
+  (let ((old (-> *pc-settings* cheats))
+        (old-unlocked (-> *pc-settings* cheats-unlocked))
+        (old-purchased (-> *pc-settings* cheats-purchased))
+        (old-revealed (-> *pc-settings* cheats-revealed)))
+
   (dotimes (i (-> *pc-cheats-list* length))
 
     ;; reveals cheats if they have been purchased, purchases cheats if they have been unlocked, unlocks cheats if they have been enabled.
@@ -668,6 +673,13 @@
               (logior! (-> obj cheats) (-> cheat flag)))
             )
           )))
+
+  (when (or (!= old (-> *pc-settings* cheats))
+            (!= old-unlocked (-> *pc-settings* cheats-unlocked))
+            (!= old-purchased (-> *pc-settings* cheats-purchased))
+            (!= old-revealed (-> *pc-settings* cheats-revealed)))
+    ;; save pc-settings if we made new progress
+    (pc-settings-save)))
 
   0)
 
@@ -807,12 +819,12 @@
   (format file "    (kill-stats~%")
   (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
   (when (-> obj stats kill-stats enemies i name)
-  (format file "      (~A~%" (-> obj stats kill-stats enemies i name))
-  (dotimes (ii KILL_STATS_MAX_SOURCE)
-  (when (nonzero? (-> obj stats kill-stats enemies i sources ii))
-  (format file "        (~A ~D)~%" (string->symbol (kill-source->string (the kill-stats-source ii))) (-> obj stats kill-stats enemies i sources ii))
-    ))
-  (format file "        )~%")
+    (format file "      (~A~%" (-> obj stats kill-stats enemies i name))
+    (dotimes (ii KILL_STATS_MAX_SOURCE)
+      (when (nonzero? (-> obj stats kill-stats enemies i sources ii))
+        (format file "        (~A ~D)~%" (string->symbol (kill-source->string (the kill-stats-source ii))) (-> obj stats kill-stats enemies i sources ii))
+        ))
+    (format file "        )~%")
     ))
   (format file "      )~%")
   (format file "    )~%")
