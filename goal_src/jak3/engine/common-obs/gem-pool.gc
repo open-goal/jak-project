@@ -7,3 +7,85 @@
 
 ;; DECOMP BEGINS
 
+(defun get-gem-pool-size ((arg0 int))
+  (case arg0
+    ((1)
+     (cond
+       ((task-node-closed? (game-task-node city-power-game-resolution))
+        1000.0
+        )
+       ((task-node-closed? (game-task-node city-port-assault-resolution))
+        120.0
+        )
+       ((task-node-closed? (game-task-node city-port-assault-introduction))
+        90.0
+        )
+       (else
+         60.0
+         )
+       )
+     )
+    ((2)
+     10.0
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+(defun compare-gems ((arg0 int) (arg1 (pointer float)))
+  (< (-> arg1 0) (get-gem-pool-size arg0))
+  )
+
+(defun gems-available? ((arg0 int))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       #t
+       )
+      ((= v1-0 1)
+       (let ((a1-1 (task-perm-by-index *game-info* 6)))
+         (compare-gems arg0 (the-as (pointer float) a1-1))
+         )
+       )
+      ((= v1-0 2)
+       (let ((a1-3 (task-perm-by-index *game-info* 41)))
+         (compare-gems arg0 (the-as (pointer float) a1-3))
+         )
+       )
+      (else
+        #f
+        )
+      )
+    )
+  )
+
+(defun notify-gem-pickup ((arg0 uint))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       #f
+       )
+      ((= v1-0 1)
+       (let ((v1-2 (task-perm-by-index *game-info* 6)))
+         (logior! (-> v1-2 status) (entity-perm-status bit-5))
+         (set! (-> v1-2 user-object 0) (+ 1.0 (the-as float (-> v1-2 user-object 0))))
+         (logior! (-> v1-2 status) (entity-perm-status bit-14))
+         )
+       #t
+       )
+      ((= v1-0 2)
+       (let ((v1-4 (task-perm-by-index *game-info* 41)))
+         (logior! (-> v1-4 status) (entity-perm-status bit-5))
+         (set! (-> v1-4 user-object 0) (+ 1.0 (the-as float (-> v1-4 user-object 0))))
+         (logior! (-> v1-4 status) (entity-perm-status bit-14))
+         )
+       #t
+       )
+      (else
+        #f
+        )
+      )
+    )
+  )

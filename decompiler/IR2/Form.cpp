@@ -2900,11 +2900,13 @@ void GetSymbolStringPointer::get_modified_regs(RegSet& regs) const {
 
 DefstateElement::DefstateElement(const std::string& process_type,
                                  const std::string& state_name,
+                                 const std::string& parent_name,
                                  const std::vector<Entry>& entries,
                                  bool is_virtual,
                                  bool is_override)
     : m_process_type(process_type),
       m_state_name(state_name),
+      m_parent_name(parent_name),
       m_entries(entries),
       m_is_virtual(is_virtual),
       m_is_override(is_override) {
@@ -2952,6 +2954,10 @@ goos::Object DefstateElement::to_form_internal(const Env& env) const {
     } else {
       forms.push_back(pretty_print::to_symbol(":virtual override"));
     }
+  }
+
+  if (!m_parent_name.empty()) {
+    forms.push_back(pretty_print::to_symbol(fmt::format(":parent {}", m_parent_name)));
   }
 
   for (const auto& e : m_entries) {
@@ -3071,19 +3077,15 @@ goos::Object DefskelgroupElement::ClothParams::to_list(const std::string& ag_nam
                                                        const Env& env) const {
   std::vector<goos::Object> result;
   if (mesh != 0) {
-    // TODO use art element name for mesh
-    (void)ag_name;
-    // const auto& art = env.dts->art_group_info;
-    // if (art.find(ag_name) != art.end() && art.at(ag_name).find(mesh) != art.at(ag_name).end()) {
-    //   auto name = art.at(ag_name).at(mesh);
-    //   result.push_back(pretty_print::build_list(
-    //       {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(name)}));
-    // } else {
-    //   result.push_back(pretty_print::build_list(
-    //       {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
-    // }
-    result.push_back(pretty_print::build_list(
-        {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
+    const auto& art = env.dts->art_group_info;
+    if (art.find(ag_name) != art.end() && art.at(ag_name).find(mesh) != art.at(ag_name).end()) {
+      auto name = art.at(ag_name).at(mesh);
+      result.push_back(pretty_print::build_list(
+          {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(name)}));
+    } else {
+      result.push_back(pretty_print::build_list(
+          {pretty_print::to_symbol("mesh"), pretty_print::to_symbol(std::to_string(mesh))}));
+    }
   }
   if (gravity != 0.0f) {
     result.push_back(pretty_print::build_list(

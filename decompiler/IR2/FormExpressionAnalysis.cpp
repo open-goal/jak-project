@@ -1497,7 +1497,13 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
                                                            FormStack& stack,
                                                            std::vector<FormElement*>* result,
                                                            bool allow_side_effects) {
-  auto arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  bool arg0_constant = !m_expr.get_arg(0).is_var();
+  bool arg0_u;
+  if (!arg0_constant) {
+    arg0_u = is_uint_type(env, m_my_idx, m_expr.get_arg(0).var());
+  } else {
+    arg0_u = m_expr.get_arg(0).is_int();
+  }
   bool arg1_u = true;
   bool arg1_reg = m_expr.get_arg(1).is_var();
   if (arg1_reg) {
@@ -1507,12 +1513,17 @@ void SimpleExpressionElement::update_from_stack_force_ui_2(const Env& env,
   }
 
   std::vector<Form*> args;
-  if (arg1_reg) {
-    args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
-                        allow_side_effects);
+  if (arg0_constant) {
+    args = pop_to_forms({m_expr.get_arg(1).var()}, env, pool, stack, allow_side_effects);
+    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(0)));
   } else {
-    args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
-    args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    if (arg1_reg) {
+      args = pop_to_forms({m_expr.get_arg(0).var(), m_expr.get_arg(1).var()}, env, pool, stack,
+                          allow_side_effects);
+    } else {
+      args = pop_to_forms({m_expr.get_arg(0).var()}, env, pool, stack, allow_side_effects);
+      args.push_back(pool.form<SimpleAtomElement>(m_expr.get_arg(1)));
+    }
   }
 
   if (!arg0_u) {
@@ -3442,6 +3453,15 @@ void FunctionCallElement::update_from_stack(const Env& env,
                   }
                 }
               }
+            } else if (env.func->process_stack_size > 0 && head_obj.is_symbol("stack-size-set!")) {
+              // override process stack size
+              auto old_size = arg_forms.at(1)->to_form(env);
+              if (old_size.is_int()) {
+                arg_forms.at(1) = pool.alloc_single_element_form<ConstantTokenElement>(
+                    arg_forms.at(1)->parent_element, std::to_string(env.func->process_stack_size));
+                env.func->warnings.info("Process stack size was changed from {} to {}",
+                                        old_size.as_int(), env.func->process_stack_size);
+              }
             }
           }
 
@@ -3532,10 +3552,10 @@ void FunctionCallElement::update_from_stack(const Env& env,
           }
           auto elt_group = arg_forms.at(5)->try_as_element<GenericElement>();
           if (elt_group && elt_group->op().is_func() &&
-              elt_group->op().func()->to_form(env).is_symbol("sound-group") &&
-              elt_group->elts().size() == 1) {
+              elt_group->op().func()->to_form(env).is_symbol("sound-group")) {
             Form* so_group_f = nullptr;
-            if (!elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
+            if (elt_group->elts().size() == 1 &&
+                !elt_group->elts().at(0)->to_form(env).is_symbol("sfx")) {
               so_group_f = pool.form<ConstantTokenElement>(
                   elt_group->elts().at(0)->to_form(env).as_symbol().name_ptr);
             }

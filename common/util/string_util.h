@@ -35,4 +35,5 @@ std::string to_lower(const std::string& str);
 /// Is this a valid character for a hex number?
 bool hex_char(char c);
 std::string titlize(const std::string& str);
+std::string pad_right(const std::string& input, const int width, const char padding_char);
 }  // namespace str_util

@@ -133,9 +133,12 @@
    )
   )
 
-(defmacro static-cloth-params (args)
+(defmacro static-cloth-params (ag-name args)
  `(let ((parms (new 'static 'cloth-params)))
-    ,@(apply (lambda (x) `(set! (-> parms ,(car x)) ,(cadr x))) args)
+    ,@(apply (lambda (x) (if (and (eq? (car x) 'mesh) (not (integer? (cadr x))))
+                           `(set! (-> parms ,(car x)) ,(art-elt-index ag-name (cadr x)))
+                           `(set! (-> parms ,(car x)) ,(cadr x))
+                           )) args)
     parms
     )
   )

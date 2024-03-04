@@ -1661,6 +1661,7 @@ class DefstateElement : public FormElement {
   };
   DefstateElement(const std::string& process_type,
                   const std::string& state_name,
+                  const std::string& parent_name,
                   const std::vector<Entry>& entries,
                   bool is_virtual,
                   bool is_override);
@@ -1680,6 +1681,7 @@ class DefstateElement : public FormElement {
  private:
   std::string m_process_type;
   std::string m_state_name;
+  std::string m_parent_name;
   std::vector<Entry> m_entries;
   bool m_is_virtual = false;
   bool m_is_override = false;
@@ -1817,6 +1819,7 @@ class DefpartElement : public FormElement {
           case GameVersion::Jak1:
             return field_id == 67;
           case GameVersion::Jak2:
+          case GameVersion::Jak3:
             return field_id == 72;
           default:
             ASSERT_MSG(false, fmt::format("unknown version for is_sp_end"));

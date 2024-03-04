@@ -30,7 +30,19 @@ int hang_indentation_width(const FormatterTreeNode& curr_node) {
   return 1 + hang_indentation_width(first_elt);
 }
 
-// TODO - compute length of each node and store it
+// TODO - this doesn't account for paren's width contribution!
+int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
+  if (curr_node.token) {
+    return curr_node.token->length();
+  }
+  int width = 1;
+  for (const auto& ref : curr_node.refs) {
+    width += get_total_form_inlined_width(ref);
+  }
+  return width + 1;
+}
+
+// TODO - compute length of each node and store it AOT
 void apply_formatting_config(
     FormatterTreeNode& curr_node,
     std::optional<std::shared_ptr<formatter_rules::config::FormFormattingConfig>>
@@ -51,6 +63,7 @@ void apply_formatting_config(
       curr_node.formatting_config = predefined_config.value();
     }
   } else if (config_from_parent) {
+    // TODO - doesn't merge just replaces, a bit inflexible
     predefined_config = *config_from_parent.value();
     curr_node.formatting_config = predefined_config.value();
   }
@@ -70,7 +83,7 @@ void apply_formatting_config(
   // NOTE - any modifications here to child elements could be superseeded later in the recursion!
   // In order to maintain your sanity, only modify things here that _arent_ touched by default
   // configurations.  These are explicitly prepended with `parent_mutable_`
-  if (!predefined_config) {
+  if (!predefined_config && !curr_node.formatting_config.config_set) {
     if (curr_node.metadata.is_top_level) {
       curr_node.formatting_config.indentation_width = 0;
       curr_node.formatting_config.hang_forms = false;
@@ -123,18 +136,37 @@ void apply_formatting_config(
       }
     }
   }
-}
-
-// TODO - this doesn't account for paren's width contribution!
-int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
-  if (curr_node.token) {
-    return curr_node.token->length();
+  // Precompute the column widths for things like deftype fields
+  if (curr_node.formatting_config.determine_column_widths_for_list_elements) {
+    // iterate through each ref and find the max length of each index (may be a token, may not be!)
+    // then store that info in each list element's `list_element_column_widths` to be used when
+    // printing out the tokens (pad width)
+    // Find the maximum number of columns
+    int max_columns = 0;
+    for (const auto& field : curr_node.refs) {
+      if (field.refs.size() > max_columns) {
+        max_columns = field.refs.size();
+      }
+    }
+    // Now find the column max widths
+    std::vector<int> column_max_widths = {};
+    for (int col = 0; col < max_columns; col++) {
+      column_max_widths.push_back(0);
+      for (const auto& field : curr_node.refs) {
+        if (field.refs.size() > col) {
+          const auto width = get_total_form_inlined_width(field.refs.at(col));
+          if (width > column_max_widths.at(col)) {
+            column_max_widths[col] = width;
+          }
+        }
+      }
+    }
+    // Apply column info to every list
+    for (auto& field : curr_node.refs) {
+      field.formatting_config.list_element_column_widths = column_max_widths;
+      field.formatting_config.config_set = true;
+    }
   }
-  int width = 1;
-  for (const auto& ref : curr_node.refs) {
-    width += get_total_form_inlined_width(ref);
-  }
-  return width + 1;
 }
 
 bool form_contains_comment(const FormatterTreeNode& curr_node) {
@@ -166,6 +198,9 @@ bool form_contains_node_that_prevents_inlining(const FormatterTreeNode& curr_nod
 
 bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
   using namespace formatter_rules;
+  if (curr_node.formatting_config.force_inline) {
+    return true;
+  }
   // First off, we cannot inline the top level
   if (curr_node.metadata.is_top_level) {
     return false;
@@ -314,6 +349,17 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     form_lines = new_form_lines;
   }
 
+  // Add any column padding
+  if (!curr_node.formatting_config.list_element_column_widths.empty()) {
+    for (int i = 0; i < form_lines.size(); i++) {
+      const auto& token = form_lines.at(i);
+      if (i < form_lines.size() - 1) {
+        form_lines[i] = str_util::pad_right(
+            token, curr_node.formatting_config.list_element_column_widths.at(i), ' ');
+      }
+    }
+  }
+
   // Apply necessary indentation to each line and add parens
   if (!curr_node.metadata.is_top_level) {
     std::string form_surround_start = "(";
@@ -346,9 +392,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   return form_lines;
 }
 
-std::string join_formatted_lines(const std::vector<std::string> lines) {
-  // TODO - respect original file line endings
-  return fmt::format("{}", fmt::join(lines, "\n"));
+std::string join_formatted_lines(const std::vector<std::string>& lines,
+                                 const std::string& line_ending) {
+  return fmt::format("{}", fmt::join(lines, line_ending));
 }
 
 std::optional<std::string> formatter::format_code(const std::string& source) {
@@ -388,7 +434,8 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
     const auto formatted_lines = apply_formatting(formatting_tree.root);
     // 4. Now we joint he lines together, it's easier when formatting to leave all lines independent
     // so adding indentation is easier
-    const auto formatted_source = join_formatted_lines(formatted_lines);
+    const auto formatted_source =
+        join_formatted_lines(formatted_lines, file_util::get_majority_file_line_endings(source));
     return formatted_source;
   } catch (std::exception& e) {
     lg::error("Unable to format code - {}", e.what());

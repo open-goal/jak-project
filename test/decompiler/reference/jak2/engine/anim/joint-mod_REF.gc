@@ -285,10 +285,10 @@
   )
 
 ;; definition for method 0 of type joint-mod-ik
-(defmethod new joint-mod-ik ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 float))
+(defmethod new joint-mod-ik ((allocation symbol) (type-to-make type) (proc process-drawable) (joint-id int) (hand-dist float))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 process) arg0)
-    (set! (-> v0-0 hand-dist) arg2)
+    (set! (-> v0-0 process) proc)
+    (set! (-> v0-0 hand-dist) hand-dist)
     (set! (-> v0-0 elbow-pole-vector-axis) (the-as uint 0))
     (logclear! (-> v0-0 flags) (joint-mod-ik-flags elbow-trans-neg))
     (set! (-> v0-0 elbow-rotation-axis) (the-as uint 2))
@@ -296,10 +296,10 @@
     (set! (-> v0-0 callback) #f)
     (set! (-> v0-0 blend) 0.0)
     (logclear! (-> v0-0 flags) (joint-mod-ik-flags enable))
-    (let ((a0-5 (-> arg0 node-list data arg1)))
+    (let ((a0-5 (-> proc node-list data joint-id)))
       (set! (-> a0-5 param0) joint-mod-ik-callback)
       (set! (-> a0-5 param1) v0-0)
-      (set! (-> a0-5 param2) (the-as basic arg1))
+      (set! (-> a0-5 param2) (the-as basic joint-id))
       )
     v0-0
     )
@@ -316,8 +316,8 @@
 
 ;; definition for method 10 of type joint-mod-ik
 ;; WARN: Return type mismatch int vs none.
-(defmethod enable-set! ((this joint-mod-ik) (arg0 symbol))
-  (if arg0
+(defmethod enable-set! ((this joint-mod-ik) (enable symbol))
+  (if enable
       (logior! (-> this flags) (joint-mod-ik-flags enable))
       (logclear! (-> this flags) (joint-mod-ik-flags enable))
       )
@@ -700,15 +700,15 @@
   )
 
 ;; definition for method 13 of type joint-mod
-(defmethod twist-set! ((this joint-mod) (arg0 float) (arg1 float) (arg2 float))
-  (if arg0
-      (set! (-> this twist x) arg0)
+(defmethod twist-set! ((this joint-mod) (x float) (y float) (z float))
+  (if x
+      (set! (-> this twist x) x)
       )
-  (if arg1
-      (set! (-> this twist y) arg1)
+  (if y
+      (set! (-> this twist y) y)
       )
-  (if arg2
-      (set! (-> this twist z) arg2)
+  (if z
+      (set! (-> this twist z) z)
       )
   (-> this twist)
   )
@@ -716,15 +716,15 @@
 ;; definition for method 14 of type joint-mod
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod trs-set! ((this joint-mod) (arg0 vector) (arg1 quaternion) (arg2 vector))
-  (if arg0
-      (set! (-> this trans quad) (-> arg0 quad))
+(defmethod trs-set! ((this joint-mod) (trans vector) (quat quaternion) (scale vector))
+  (if trans
+      (set! (-> this trans quad) (-> trans quad))
       )
-  (if arg1
-      (quaternion-copy! (-> this quat) arg1)
+  (if quat
+      (quaternion-copy! (-> this quat) quat)
       )
-  (if arg2
-      (set! (-> this scale quad) (-> arg2 quad))
+  (if scale
+      (set! (-> this scale quad) (-> scale quad))
       )
   0
   (none)
@@ -733,13 +733,13 @@
 ;; definition for method 10 of type joint-mod
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
-(defmethod target-set! ((this joint-mod) (arg0 vector))
+(defmethod target-set! ((this joint-mod) (pos vector))
   (if (= (-> this mode) (joint-mod-mode reset))
       (mode-set! this (joint-mod-mode look-at))
       )
-  (let ((f0-0 (vector-vector-distance (-> this process root trans) arg0)))
+  (let ((f0-0 (vector-vector-distance (-> this process root trans) pos)))
     (set! (-> this shutting-down?) #f)
-    (set! (-> this target quad) (-> arg0 quad))
+    (set! (-> this target quad) (-> pos quad))
     (if (< f0-0 (-> this max-dist))
         (set! (-> this blend) 1.0)
         (set! (-> this blend) 0.0)

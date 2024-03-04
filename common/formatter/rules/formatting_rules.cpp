@@ -2,8 +2,6 @@
 
 #include <set>
 
-#include "rule_config.h"
-
 #include "common/util/string_util.h"
 
 #include "third-party/fmt/core.h"

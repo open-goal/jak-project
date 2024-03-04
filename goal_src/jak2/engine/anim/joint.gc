@@ -270,6 +270,12 @@
 (defconstant QUAT_SCALE 0.000030517578125)
 (defconstant SCALE_SCALE 0.000244140625)
 
+(defun add-scaled-matrix! ((dest matrix) (src matrix) (scale float))
+  (dotimes (i 16)
+    (+! (-> dest data i) (* scale (-> src data i)))
+    )
+  )
+
 (defun decomp-fixed ((output-frame joint-anim-frame) (num-joints int) (anim joint-anim-compressed-fixed) (amount float))
   "Decompress the fixed part."
 
@@ -283,13 +289,13 @@
     ;; process matrix:
     (when (zero? (logand mbits 1))
       ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 0) (the matrix data64))
+      (add-scaled-matrix! (-> output-frame matrices 0) (the matrix data64) amount)
       (&+! data64 64)
       )
 
     (when (zero? (logand mbits 2))
       ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 1) (the matrix data64))
+      (add-scaled-matrix! (-> output-frame matrices 1) (the matrix data64) amount)
       (&+! data64 64)
       )
 
@@ -378,13 +384,13 @@
     ;; process matrix:
     (when (nonzero? (logand mbits 1))
       ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 0) (the matrix data64))
+      (add-scaled-matrix! (-> output-frame matrices 0) (the matrix data64) amount)
       (&+! data64 64)
       )
 
     (when (nonzero? (logand mbits 2))
       ;; matrix comes from fixed data
-      (matrix-copy! (-> output-frame matrices 1) (the matrix data64))
+      (add-scaled-matrix! (-> output-frame matrices 1) (the matrix data64) amount)
       (&+! data64 64)
       )
 
