@@ -2,7 +2,7 @@
 
 #include "game/system/hid/sdl_util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 GameController::GameController(int sdl_device_id,
                                std::shared_ptr<game_settings::InputSettings> settings)

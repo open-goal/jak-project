@@ -7,7 +7,7 @@
 #include "common/util/Assert.h"
 #include "common/util/BitUtils.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace listener {
 std::string LoadEntry::print() const {

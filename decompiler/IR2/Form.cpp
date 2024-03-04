@@ -12,7 +12,7 @@
 #include "decompiler/util/data_decompile.h"
 #include "decompiler/util/sparticle_decompile.h"
 
-#include "third-party/fmt/ranges.h"
+#include "fmt/ranges.h"
 
 namespace decompiler {
 

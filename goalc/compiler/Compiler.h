@@ -19,8 +19,8 @@
 #include "goalc/listener/Listener.h"
 #include "goalc/make/MakeSystem.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 enum MathMode { MATH_INT, MATH_BINT, MATH_FLOAT, MATH_INVALID };
 

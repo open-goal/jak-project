@@ -12,9 +12,9 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "test/offline/config/config.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/ranges.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
+#include "fmt/ranges.h"
 
 OfflineTestThreadManager g_offline_test_thread_manager;
 

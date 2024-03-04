@@ -8,7 +8,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/util/goal_data_reader.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 constexpr GameVersion kGameVersion = GameVersion::Jak1;
 

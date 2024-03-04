@@ -21,7 +21,7 @@
 
 #include "goalc/debugger/DebugInfo.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace emitter {
 

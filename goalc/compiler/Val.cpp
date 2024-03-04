@@ -3,7 +3,7 @@
 #include "Env.h"
 #include "IR.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 /*!
  * Fallback to_gpr if a more optimized one is not provided.

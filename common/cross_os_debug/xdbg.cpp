@@ -11,7 +11,7 @@
 #include "common/goal_constants.h"
 #include "common/util/Timer.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 #ifdef __linux
 #include <fcntl.h>

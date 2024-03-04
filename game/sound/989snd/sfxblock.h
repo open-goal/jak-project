@@ -1,6 +1,7 @@
 #pragma once
 #include <span>
 #include <vector>
+#include <string_view>
 
 #include "sfxgrain.h"
 #include "soundbank.h"

@@ -5,7 +5,7 @@
 #include "decompiler/util/DataParser.h"
 #include "gtest/gtest.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 using namespace decompiler;
 

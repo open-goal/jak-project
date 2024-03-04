@@ -5,7 +5,7 @@
 #include "decompiler/IR2/Env.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
 #include "reg_usage.h"
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "variable_naming.h"
 
 namespace decompiler {

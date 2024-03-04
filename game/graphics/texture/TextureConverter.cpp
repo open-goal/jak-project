@@ -4,7 +4,7 @@
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 TextureConverter::TextureConverter() {
   m_vram.resize(4 * 1024 * 1024);

@@ -14,7 +14,7 @@
 #include "decompiler/util/DecompilerTypeSystem.h"
 
 #include "third-party/CLI11.hpp"
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 struct Ram {

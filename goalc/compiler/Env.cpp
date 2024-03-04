@@ -7,7 +7,7 @@
 #include "common/goos/Reader.h"
 #include "common/log/log.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 ///////////////////
 // Env

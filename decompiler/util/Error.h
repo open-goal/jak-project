@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 class Error : public std::runtime_error {
  public:

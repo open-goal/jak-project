@@ -7,7 +7,7 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 InstructionParser::InstructionParser() {

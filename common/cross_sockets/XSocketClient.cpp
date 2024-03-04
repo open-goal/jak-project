@@ -15,7 +15,7 @@
 #endif
 #include "common/repl/nrepl/ReplServer.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 // clang-format on
 
 XSocketClient::XSocketClient(int _tcp_port) {

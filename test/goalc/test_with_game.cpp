@@ -12,7 +12,7 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 class WithGameTests : public ::testing::Test {
  public:

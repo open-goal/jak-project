@@ -8,7 +8,7 @@
 #include "decompiler/Function/Warnings.h"
 #include "decompiler/util/TP_Type.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 enum class AccessMode : u8 {

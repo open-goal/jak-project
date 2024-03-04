@@ -11,7 +11,7 @@
 #include "game/graphics/texture/jak1_tpage_dir.h"
 #include "game/graphics/texture/jak2_tpage_dir.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
 namespace {

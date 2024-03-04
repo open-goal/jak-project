@@ -12,7 +12,7 @@
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 LSPRoute::LSPRoute() : m_route_type(LSPRouteType::NOOP) {}
 

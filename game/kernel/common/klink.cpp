@@ -6,7 +6,7 @@
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kscheme.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace {
 // turn on printf's for debugging linking issues.

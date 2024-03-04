@@ -6,7 +6,7 @@
 #include "common/log/log.h"
 #include "common/util/json_util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 std::vector<OfflineTestSourceFile> find_source_files(const std::string& game_name,
                                                      const std::vector<std::string>& dgos,

@@ -1,4 +1,4 @@
-// Copyright: 2021 - 2022, Ziemas
+// Copyright: 2021 - 2024, Ziemas
 // SPDX-License-Identifier: ISC
 
 #include "envelope.h"

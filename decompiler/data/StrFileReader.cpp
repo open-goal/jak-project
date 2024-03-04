@@ -13,7 +13,7 @@
 #include "game/common/overlord_common.h"
 #include "game/common/str_rpc_types.h"
 
-#include "third-party/fmt/format.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 StrFileReader::StrFileReader(const fs::path& file_path, GameVersion version) : m_version(version) {
