@@ -13,9 +13,9 @@
 
 #include "goalc/compiler/Compiler.h"
 
-#include "third-party/CLI11.hpp"
 #include "fmt/color.h"
 #include "fmt/core.h"
+#include "third-party/CLI11.hpp"
 
 void setup_logging(const bool disable_ansi_colors) {
   lg::set_file("compiler");

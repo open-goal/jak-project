@@ -1,6 +1,8 @@
 #include "inline_asm_rewrite.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/FormStack.h"

@@ -10,8 +10,8 @@
 #include "framework/file_management.h"
 #include "framework/orchestration.h"
 
-#include "third-party/CLI11.hpp"
 #include "fmt/format.h"
+#include "third-party/CLI11.hpp"
 
 int main(int argc, char* argv[]) {
   ArgumentGuard u8_guard(argc, argv);

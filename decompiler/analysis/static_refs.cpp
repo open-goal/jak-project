@@ -1,6 +1,8 @@
 #include "static_refs.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"

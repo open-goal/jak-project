@@ -1,5 +1,7 @@
 #include "final_output.h"
+
 #include "common/goos/PrettyPrinter.h"
+
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

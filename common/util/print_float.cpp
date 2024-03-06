@@ -5,8 +5,8 @@
 #include "common/goal_constants.h"
 #include "common/util/Assert.h"
 
-#include "third-party/dragonbox.h"
 #include "fmt/core.h"
+#include "third-party/dragonbox.h"
 
 /*!
  * Convert a float to a string. The string is _always_ in this format:

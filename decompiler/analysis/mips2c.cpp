@@ -1,10 +1,11 @@
-#include <set>
-
 #include "mips2c.h"
+
+#include <set>
 
 #include "common/log/log.h"
 #include "common/symbols.h"
 #include "common/util/print_float.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

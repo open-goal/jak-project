@@ -1,7 +1,9 @@
+#include "stack_spill.h"
+
 #include <stdexcept>
 
 #include "decompiler/Disasm/DecompilerLabel.h"
-#include "stack_spill.h"
+
 #include "fmt/core.h"
 
 namespace decompiler {
