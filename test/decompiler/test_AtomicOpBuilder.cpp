@@ -6,8 +6,8 @@
 #include "decompiler/analysis/atomic_op_builder.h"
 #include "gtest/gtest.h"
 
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/format.h"
+#include "fmt/core.h"
+#include "fmt/format.h"
 
 using namespace decompiler;
 

@@ -6,8 +6,8 @@
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   std::string result;

@@ -8,7 +8,7 @@
 
 #include "tree_sitter/api.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 // Declare the `tree_sitter_opengoal` function, which is
 // implemented by the `tree-sitter-opengoal` library.

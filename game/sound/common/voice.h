@@ -1,4 +1,4 @@
-// Copyright: 2021 - 2022, Ziemas
+// Copyright: 2021 - 2024, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
 #include "bitfield.h"
@@ -7,8 +7,6 @@
 #include "sound_types.h"
 
 #include "common/common_types.h"
-
-#include "third-party/fmt/core.h"
 
 namespace snd {
 

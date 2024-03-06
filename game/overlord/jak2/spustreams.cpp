@@ -1,5 +1,7 @@
 #include "spustreams.h"
 
+#include <cstring>
+
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 

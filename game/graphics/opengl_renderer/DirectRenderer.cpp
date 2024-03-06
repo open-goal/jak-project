@@ -6,7 +6,7 @@
 
 #include "game/graphics/pipelines/opengl.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
 DirectRenderer::ScissorState DirectRenderer::m_scissor;

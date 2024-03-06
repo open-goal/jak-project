@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <mutex>
 
-#include "third-party/fmt/color.h"
+#include "fmt/color.h"
 #ifdef _WIN32  // see lg::initialize
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN

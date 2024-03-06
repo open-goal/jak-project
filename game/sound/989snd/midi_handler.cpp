@@ -1,4 +1,4 @@
-// Copyright: 2021 - 2022, Ziemas
+// Copyright: 2021 - 2024, Ziemas
 // SPDX-License-Identifier: ISC
 #include "midi_handler.h"
 
@@ -8,7 +8,7 @@
 
 #include "game/sound/989snd/util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace snd {
 /*

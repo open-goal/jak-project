@@ -1,3 +1,5 @@
+#include "insert_lets.h"
+
 #include <algorithm>
 #include <array>
 #include <limits>
@@ -7,10 +9,10 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/print_float.h"
+
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/IR2/bitfields.h"
 #include "decompiler/util/DecompilerTypeSystem.h"
-#include "insert_lets.h"
 
 namespace decompiler {
 

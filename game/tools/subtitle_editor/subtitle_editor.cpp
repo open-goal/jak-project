@@ -10,7 +10,7 @@
 
 #include "game/runtime.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_stdlib.h"
 

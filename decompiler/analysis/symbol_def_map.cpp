@@ -1,7 +1,10 @@
 #include "symbol_def_map.h"
+
 #include "common/link_types.h"
 #include "common/log/log.h"
+
 #include "decompiler/ObjectFile/ObjectFileDB.h"
+
 #include "third-party/json.hpp"
 
 namespace decompiler {

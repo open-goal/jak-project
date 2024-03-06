@@ -29,8 +29,8 @@
 #include "game/system/hid/input_manager.h"
 #include "game/system/hid/sdl_util.h"
 
+#include "fmt/core.h"
 #include "third-party/SDL/include/SDL.h"
-#include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
 #include "third-party/imgui/imgui_impl_sdl.h"

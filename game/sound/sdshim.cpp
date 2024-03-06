@@ -7,7 +7,7 @@
 
 #include "game/sound/common/voice.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 std::shared_ptr<snd::Voice> voices[4];
 u8 spu_memory[0x15160 * 10];

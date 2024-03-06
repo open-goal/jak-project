@@ -3,8 +3,8 @@
 #include "common/common_types.h"
 #include "common/util/Assert.h"
 
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/format.h"
+#include "fmt/core.h"
+#include "fmt/format.h"
 
 namespace pretty_print {
 

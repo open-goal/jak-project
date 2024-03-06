@@ -5,7 +5,7 @@
 
 #include "common/util/Assert.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/zstd/lib/zstd.h"
 
 namespace compression {

@@ -5,7 +5,7 @@
 
 #include "game/runtime.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 void Jak1SubtitleEditorDB::update() {
   if (g_game_version != GameVersion::Jak1) {

@@ -11,7 +11,7 @@
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 CompilerTool::CompilerTool(Compiler* compiler) : Tool("goalc"), m_compiler(compiler) {}
 

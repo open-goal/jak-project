@@ -11,7 +11,7 @@
 #include "game/kernel/jak3/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace {
 bool is_opengoal_object(void* data) {

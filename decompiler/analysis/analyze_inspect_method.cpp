@@ -1,5 +1,7 @@
 #include "analyze_inspect_method.h"
+
 #include "common/log/log.h"
+
 #include "decompiler/Disasm/InstructionMatching.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 

@@ -16,7 +16,7 @@
 #include "decompiler/Disasm/InstructionDecode.h"
 #include "decompiler/config.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 namespace decompiler {

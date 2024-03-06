@@ -9,7 +9,7 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 class WithMinimalGameTests : public ::testing::Test {

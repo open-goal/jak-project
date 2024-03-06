@@ -6,7 +6,7 @@
 
 #include "decompiler/util/data_decompile.h"
 
-#include "third-party/fmt/format.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 // sparticle fields.

@@ -2,7 +2,7 @@
 
 #include "common/goos/PrettyPrinter2.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 namespace decompiler {

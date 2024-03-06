@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <optional>
+#include <string_view>
 
 #include "sound_handler.h"
 #include "vagvoice.h"

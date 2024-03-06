@@ -10,7 +10,7 @@
 #include "decompiler/util/TP_Type.h"
 #include "decompiler/util/type_utils.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 

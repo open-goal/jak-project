@@ -221,6 +221,10 @@ build_third_party_lib(tree-sitter tree-sitter)
 # native OS dialogs for error messages
 build_third_party_lib(libtinyfiledialogs libtinyfiledialogs)
 
+# build format library
+include_directories(third-party/fmt/include)
+build_third_party_lib(fmt fmt)
+
 # build common library
 add_subdirectory(common)
 
@@ -272,9 +276,6 @@ include(test/CMakeLists.txt)
 
 # build lzokay library
 build_third_party_lib(lzokay lzokay)
-
-# build format library
-build_third_party_lib(fmt fmt)
 
 build_third_party_lib(stb_image stb_image)
 build_third_party_lib(tiny_gltf tiny_gltf)

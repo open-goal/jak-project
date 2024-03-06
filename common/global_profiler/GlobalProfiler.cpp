@@ -9,7 +9,7 @@
 #include "common/util/FileUtil.h"
 #include "common/common_types.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 #ifdef OS_POSIX
@@ -175,7 +175,7 @@ void GlobalProfiler::dump_to_json(const std::string& path) {
       lg::debug("out of order: {} {} {} ms", event.ts / 1000.f, info.debug / 1000.f,
                 (info.debug - event.ts) / 1000000.f);
       lg::debug("  idx: {}, range {} {}", event_idx, info.lowest_at_target, info.highest_at_target);
-      lg::debug("  now: {}", m_next_idx);
+      lg::debug("  now: {}", m_next_idx.load());
     }
     info.debug = event.ts;
   }

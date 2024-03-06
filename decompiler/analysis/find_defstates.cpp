@@ -1,9 +1,11 @@
 
 
 #include "find_defstates.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
 #include "common/type_system/state.h"
+
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
