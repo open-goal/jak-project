@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,30 +36,27 @@ extern "C" {
 #include <Windows.h>
 #endif
 
-static void
-RunThread(void *args)
+static void RunThread(void *args)
 {
-    SDL_RunThread((SDL_Thread *) args);
+    SDL_RunThread((SDL_Thread *)args);
 }
 
-extern "C"
-int
-SDL_SYS_CreateThread(SDL_Thread * thread)
+extern "C" int
+SDL_SYS_CreateThread(SDL_Thread *thread)
 {
     try {
         // !!! FIXME: no way to set a thread stack size here.
         std::thread cpp_thread(RunThread, thread);
-        thread->handle = (void *) new std::thread(std::move(cpp_thread));
+        thread->handle = (void *)new std::thread(std::move(cpp_thread));
         return 0;
-    } catch (std::system_error & ex) {
+    } catch (std::system_error &ex) {
         return SDL_SetError("unable to start a C++ thread: code=%d; %s", ex.code(), ex.what());
     } catch (std::bad_alloc &) {
         return SDL_OutOfMemory();
     }
 }
 
-extern "C"
-void
+extern "C" void
 SDL_SYS_SetupThread(const char *name)
 {
     // Make sure a thread ID gets assigned ASAP, for debugging purposes:
@@ -67,8 +64,7 @@ SDL_SYS_SetupThread(const char *name)
     return;
 }
 
-extern "C"
-SDL_threadID
+extern "C" SDL_threadID
 SDL_ThreadID(void)
 {
 #ifdef __WINRT__
@@ -89,8 +85,7 @@ SDL_ThreadID(void)
 #endif
 }
 
-extern "C"
-int
+extern "C" int
 SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
 #ifdef __WINRT__
@@ -98,16 +93,13 @@ SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 
     if (priority == SDL_THREAD_PRIORITY_LOW) {
         value = THREAD_PRIORITY_LOWEST;
-    }
-    else if (priority == SDL_THREAD_PRIORITY_HIGH) {
+    } else if (priority == SDL_THREAD_PRIORITY_HIGH) {
         value = THREAD_PRIORITY_HIGHEST;
-    }
-    else if (priority == SDL_THREAD_PRIORITY_TIME_CRITICAL) {
+    } else if (priority == SDL_THREAD_PRIORITY_TIME_CRITICAL) {
         // FIXME: WinRT does not support TIME_CRITICAL! -flibit
         SDL_LogWarn(SDL_LOG_CATEGORY_SYSTEM, "TIME_CRITICAL unsupported, falling back to HIGHEST");
         value = THREAD_PRIORITY_HIGHEST;
-    }
-    else {
+    } else {
         value = THREAD_PRIORITY_NORMAL;
     }
     if (!SetThreadPriority(GetCurrentThread(), value)) {
@@ -119,16 +111,15 @@ SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 #endif
 }
 
-extern "C"
-void
-SDL_SYS_WaitThread(SDL_Thread * thread)
+extern "C" void
+SDL_SYS_WaitThread(SDL_Thread *thread)
 {
-    if ( ! thread) {
+    if (!thread) {
         return;
     }
 
     try {
-        std::thread * cpp_thread = (std::thread *) thread->handle;
+        std::thread *cpp_thread = (std::thread *)thread->handle;
         if (cpp_thread->joinable()) {
             cpp_thread->join();
         }
@@ -139,16 +130,15 @@ SDL_SYS_WaitThread(SDL_Thread * thread)
     }
 }
 
-extern "C"
-void
-SDL_SYS_DetachThread(SDL_Thread * thread)
+extern "C" void
+SDL_SYS_DetachThread(SDL_Thread *thread)
 {
-    if ( ! thread) {
+    if (!thread) {
         return;
     }
 
     try {
-        std::thread * cpp_thread = (std::thread *) thread->handle;
+        std::thread *cpp_thread = (std::thread *)thread->handle;
         if (cpp_thread->joinable()) {
             cpp_thread->detach();
         }
@@ -159,15 +149,13 @@ SDL_SYS_DetachThread(SDL_Thread * thread)
     }
 }
 
-extern "C"
-SDL_TLSData *
+extern "C" SDL_TLSData *
 SDL_SYS_GetTLSData(void)
 {
     return SDL_Generic_GetTLSData();
 }
 
-extern "C"
-int
+extern "C" int
 SDL_SYS_SetTLSData(SDL_TLSData *data)
 {
     return SDL_Generic_SetTLSData(data);

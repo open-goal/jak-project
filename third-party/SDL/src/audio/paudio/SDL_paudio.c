@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_AUDIO_DRIVER_PAUDIO
+#ifdef SDL_AUDIO_DRIVER_PAUDIO
 
 /* Allow access to a raw mixing buffer */
 
@@ -69,8 +69,7 @@ static char devsettings[][3] = {
     {'\0', '\0', '\0'}
 };
 
-static int
-OpenUserDefinedDevice(char *path, int maxlen, int flags)
+static int OpenUserDefinedDevice(char *path, int maxlen, int flags)
 {
     const char *audiodev;
     int fd;
@@ -79,19 +78,18 @@ OpenUserDefinedDevice(char *path, int maxlen, int flags)
     if ((audiodev = SDL_getenv("SDL_PATH_DSP")) == NULL) {
         audiodev = SDL_getenv("AUDIODEV");
     }
-    if (audiodev == NULL) {
+    if (!audiodev) {
         return -1;
     }
     fd = open(audiodev, flags, 0);
-    if (path != NULL) {
+    if (path) {
         SDL_strlcpy(path, audiodev, maxlen);
         path[maxlen - 1] = '\0';
     }
     return fd;
 }
 
-static int
-OpenAudioPath(char *path, int maxlen, int flags, int classic)
+static int OpenAudioPath(char *path, int maxlen, int flags, int classic)
 {
     struct stat sb;
     int cycle = 0;
@@ -112,7 +110,7 @@ OpenAudioPath(char *path, int maxlen, int flags, int classic)
         if (stat(audiopath, &sb) == 0) {
             fd = open(audiopath, flags, 0);
             if (fd >= 0) {
-                if (path != NULL) {
+                if (path) {
                     SDL_strlcpy(path, audiopath, maxlen);
                 }
                 return fd;
@@ -123,8 +121,7 @@ OpenAudioPath(char *path, int maxlen, int flags, int classic)
 }
 
 /* This function waits until it is possible to write a full sound buffer */
-static void
-PAUDIO_WaitDevice(_THIS)
+static void PAUDIO_WaitDevice(_THIS)
 {
     fd_set fdset;
 
@@ -176,8 +173,7 @@ PAUDIO_WaitDevice(_THIS)
     }
 }
 
-static void
-PAUDIO_PlayDevice(_THIS)
+static void PAUDIO_PlayDevice(_THIS)
 {
     int written = 0;
     const Uint8 *mixbuf = this->hidden->mixbuf;
@@ -206,14 +202,12 @@ PAUDIO_PlayDevice(_THIS)
 #endif
 }
 
-static Uint8 *
-PAUDIO_GetDeviceBuf(_THIS)
+static Uint8 *PAUDIO_GetDeviceBuf(_THIS)
 {
     return this->hidden->mixbuf;
 }
 
-static void
-PAUDIO_CloseDevice(_THIS)
+static void PAUDIO_CloseDevice(_THIS)
 {
     if (this->hidden->audio_fd >= 0) {
         close(this->hidden->audio_fd);
@@ -222,8 +216,7 @@ PAUDIO_CloseDevice(_THIS)
     SDL_free(this->hidden);
 }
 
-static int
-PAUDIO_OpenDevice(_THIS, const char *devname)
+static int PAUDIO_OpenDevice(_THIS, const char *devname)
 {
     const char *workaround = SDL_getenv("SDL_DSP_NOSELECT");
     char audiodev[1024];
@@ -238,9 +231,8 @@ PAUDIO_OpenDevice(_THIS, const char *devname)
     int fd = -1;
 
     /* Initialize all variables that we clean on shutdown */
-    this->hidden = (struct SDL_PrivateAudioData *)
-        SDL_malloc((sizeof *this->hidden));
-    if (this->hidden == NULL) {
+    this->hidden = (struct SDL_PrivateAudioData *)SDL_malloc(sizeof(*this->hidden));
+    if (!this->hidden) {
         return SDL_OutOfMemory();
     }
     SDL_zerop(this->hidden);
@@ -411,7 +403,7 @@ PAUDIO_OpenDevice(_THIS, const char *devname)
     /* Allocate mixing buffer */
     this->hidden->mixlen = this->spec.size;
     this->hidden->mixbuf = (Uint8 *) SDL_malloc(this->hidden->mixlen);
-    if (this->hidden->mixbuf == NULL) {
+    if (!this->hidden->mixbuf) {
         return SDL_OutOfMemory();
     }
     SDL_memset(this->hidden->mixbuf, this->spec.silence, this->spec.size);
@@ -453,7 +445,7 @@ PAUDIO_OpenDevice(_THIS, const char *devname)
     }
 
     /* Check to see if we need to use SDL_IOReady() workaround */
-    if (workaround != NULL) {
+    if (workaround) {
         this->hidden->frame_ticks = (float) (this->spec.samples * 1000) /
             this->spec.freq;
         this->hidden->next_frame = SDL_GetTicks() + this->hidden->frame_ticks;
@@ -463,8 +455,7 @@ PAUDIO_OpenDevice(_THIS, const char *devname)
     return 0;
 }
 
-static SDL_bool
-PAUDIO_Init(SDL_AudioDriverImpl * impl)
+static SDL_bool PAUDIO_Init(SDL_AudioDriverImpl * impl)
 {
     /* !!! FIXME: not right for device enum? */
     int fd = OpenAudioPath(NULL, 0, OPEN_FLAGS, 0);

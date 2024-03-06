@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_RISCOS
+#ifdef SDL_VIDEO_DRIVER_RISCOS
 
 #include "SDL_video.h"
 #include "SDL_mouse.h"
@@ -34,6 +34,7 @@
 #include "SDL_riscosmouse.h"
 #include "SDL_riscosmodes.h"
 #include "SDL_riscoswindow.h"
+#include "SDL_riscosmessagebox.h"
 
 #define RISCOSVID_DRIVER_NAME "riscos"
 
@@ -43,29 +44,27 @@ static void RISCOS_VideoQuit(_THIS);
 
 /* RISC OS driver bootstrap functions */
 
-static void
-RISCOS_DeleteDevice(SDL_VideoDevice * device)
+static void RISCOS_DeleteDevice(SDL_VideoDevice *device)
 {
     SDL_free(device->driverdata);
     SDL_free(device);
 }
 
-static SDL_VideoDevice *
-RISCOS_CreateDevice(void)
+static SDL_VideoDevice *RISCOS_CreateDevice(void)
 {
     SDL_VideoDevice *device;
     SDL_VideoData *phdata;
 
     /* Initialize all variables that we clean on shutdown */
-    device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
+    device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
         SDL_OutOfMemory();
-        return (0);
+        return 0;
     }
 
     /* Initialize internal data */
-    phdata = (SDL_VideoData *) SDL_calloc(1, sizeof(SDL_VideoData));
-    if (phdata == NULL) {
+    phdata = (SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
+    if (!phdata) {
         SDL_OutOfMemory();
         SDL_free(device);
         return NULL;
@@ -96,11 +95,11 @@ RISCOS_CreateDevice(void)
 
 VideoBootStrap RISCOS_bootstrap = {
     RISCOSVID_DRIVER_NAME, "SDL RISC OS video driver",
-    RISCOS_CreateDevice
+    RISCOS_CreateDevice,
+    RISCOS_ShowMessageBox
 };
 
-static int
-RISCOS_VideoInit(_THIS)
+static int RISCOS_VideoInit(_THIS)
 {
     if (RISCOS_InitEvents(_this) < 0) {
         return -1;
@@ -118,8 +117,7 @@ RISCOS_VideoInit(_THIS)
     return 0;
 }
 
-static void
-RISCOS_VideoQuit(_THIS)
+static void RISCOS_VideoQuit(_THIS)
 {
     RISCOS_QuitEvents(_this);
 }

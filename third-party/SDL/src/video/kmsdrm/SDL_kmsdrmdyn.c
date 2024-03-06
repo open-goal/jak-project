@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_KMSDRM
+#ifdef SDL_VIDEO_DRIVER_KMSDRM
 
 #define DEBUG_DYNAMIC_KMSDRM 0
 
@@ -38,40 +38,38 @@ typedef struct
     const char *libname;
 } kmsdrmdynlib;
 
-#ifndef SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC
-#define SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC NULL
-#endif
 #ifndef SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC_GBM
 #define SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC_GBM NULL
 #endif
 
 static kmsdrmdynlib kmsdrmlibs[] = {
-    {NULL, SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC_GBM},
-    {NULL, SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC}
+    { NULL, SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC_GBM },
+    { NULL, SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC }
 };
 
-static void *
-KMSDRM_GetSym(const char *fnname, int *pHasModule)
+static void *KMSDRM_GetSym(const char *fnname, int *pHasModule)
 {
     int i;
     void *fn = NULL;
     for (i = 0; i < SDL_TABLESIZE(kmsdrmlibs); i++) {
-        if (kmsdrmlibs[i].lib != NULL) {
+        if (kmsdrmlibs[i].lib) {
             fn = SDL_LoadFunction(kmsdrmlibs[i].lib, fnname);
-            if (fn != NULL)
+            if (fn) {
                 break;
+            }
         }
     }
 
 #if DEBUG_DYNAMIC_KMSDRM
-    if (fn != NULL)
+    if (fn)
         SDL_Log("KMSDRM: Found '%s' in %s (%p)\n", fnname, kmsdrmlibs[i].libname, fn);
     else
         SDL_Log("KMSDRM: Symbol '%s' NOT FOUND!\n", fnname);
 #endif
 
-    if (fn == NULL)
-        *pHasModule = 0;  /* kill this module. */
+    if (!fn) {
+        *pHasModule = 0; /* kill this module. */
+    }
 
     return fn;
 }
@@ -79,15 +77,14 @@ KMSDRM_GetSym(const char *fnname, int *pHasModule)
 #endif /* SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC */
 
 /* Define all the function pointers and wrappers... */
-#define SDL_KMSDRM_MODULE(modname) int SDL_KMSDRM_HAVE_##modname = 0;
-#define SDL_KMSDRM_SYM(rc,fn,params) SDL_DYNKMSDRMFN_##fn KMSDRM_##fn = NULL;
-#define SDL_KMSDRM_SYM_CONST(type,name) SDL_DYNKMSDRMCONST_##name KMSDRM_##name = NULL;
+#define SDL_KMSDRM_MODULE(modname)       int SDL_KMSDRM_HAVE_##modname = 0;
+#define SDL_KMSDRM_SYM(rc, fn, params)   SDL_DYNKMSDRMFN_##fn KMSDRM_##fn = NULL;
+#define SDL_KMSDRM_SYM_CONST(type, name) SDL_DYNKMSDRMCONST_##name KMSDRM_##name = NULL;
 #include "SDL_kmsdrmsym.h"
 
 static int kmsdrm_load_refcount = 0;
 
-void
-SDL_KMSDRM_UnloadSymbols(void)
+void SDL_KMSDRM_UnloadSymbols(void)
 {
     /* Don't actually unload if more than one module is using the libs... */
     if (kmsdrm_load_refcount > 0) {
@@ -97,15 +94,14 @@ SDL_KMSDRM_UnloadSymbols(void)
 #endif
 
             /* set all the function pointers to NULL. */
-#define SDL_KMSDRM_MODULE(modname) SDL_KMSDRM_HAVE_##modname = 0;
-#define SDL_KMSDRM_SYM(rc,fn,params) KMSDRM_##fn = NULL;
-#define SDL_KMSDRM_SYM_CONST(type,name) KMSDRM_##name = NULL;
+#define SDL_KMSDRM_MODULE(modname)       SDL_KMSDRM_HAVE_##modname = 0;
+#define SDL_KMSDRM_SYM(rc, fn, params)   KMSDRM_##fn = NULL;
+#define SDL_KMSDRM_SYM_CONST(type, name) KMSDRM_##name = NULL;
 #include "SDL_kmsdrmsym.h"
-
 
 #ifdef SDL_VIDEO_DRIVER_KMSDRM_DYNAMIC
             for (i = 0; i < SDL_TABLESIZE(kmsdrmlibs); i++) {
-                if (kmsdrmlibs[i].lib != NULL) {
+                if (kmsdrmlibs[i].lib) {
                     SDL_UnloadObject(kmsdrmlibs[i].lib);
                     kmsdrmlibs[i].lib = NULL;
                 }
@@ -116,10 +112,9 @@ SDL_KMSDRM_UnloadSymbols(void)
 }
 
 /* returns non-zero if all needed symbols were loaded. */
-int
-SDL_KMSDRM_LoadSymbols(void)
+int SDL_KMSDRM_LoadSymbols(void)
 {
-    int rc = 1;                 /* always succeed if not using Dynamic KMSDRM stuff. */
+    int rc = 1; /* always succeed if not using Dynamic KMSDRM stuff. */
 
     /* deal with multiple modules needing these symbols... */
     if (kmsdrm_load_refcount++ == 0) {
@@ -127,7 +122,7 @@ SDL_KMSDRM_LoadSymbols(void)
         int i;
         int *thismod = NULL;
         for (i = 0; i < SDL_TABLESIZE(kmsdrmlibs); i++) {
-            if (kmsdrmlibs[i].libname != NULL) {
+            if (kmsdrmlibs[i].libname) {
                 kmsdrmlibs[i].lib = SDL_LoadObject(kmsdrmlibs[i].libname);
             }
         }
@@ -135,9 +130,9 @@ SDL_KMSDRM_LoadSymbols(void)
 #define SDL_KMSDRM_MODULE(modname) SDL_KMSDRM_HAVE_##modname = 1; /* default yes */
 #include "SDL_kmsdrmsym.h"
 
-#define SDL_KMSDRM_MODULE(modname) thismod = &SDL_KMSDRM_HAVE_##modname;
-#define SDL_KMSDRM_SYM(rc,fn,params) KMSDRM_##fn = (SDL_DYNKMSDRMFN_##fn) KMSDRM_GetSym(#fn,thismod);
-#define SDL_KMSDRM_SYM_CONST(type,name) KMSDRM_##name = *(SDL_DYNKMSDRMCONST_##name*) KMSDRM_GetSym(#name,thismod);
+#define SDL_KMSDRM_MODULE(modname)       thismod = &SDL_KMSDRM_HAVE_##modname;
+#define SDL_KMSDRM_SYM(rc, fn, params)   KMSDRM_##fn = (SDL_DYNKMSDRMFN_##fn)KMSDRM_GetSym(#fn, thismod);
+#define SDL_KMSDRM_SYM_CONST(type, name) KMSDRM_##name = *(SDL_DYNKMSDRMCONST_##name *)KMSDRM_GetSym(#name, thismod);
 #include "SDL_kmsdrmsym.h"
 
         if ((SDL_KMSDRM_HAVE_LIBDRM) && (SDL_KMSDRM_HAVE_GBM)) {
@@ -149,11 +144,11 @@ SDL_KMSDRM_LoadSymbols(void)
             rc = 0;
         }
 
-#else  /* no dynamic KMSDRM */
+#else /* no dynamic KMSDRM */
 
-#define SDL_KMSDRM_MODULE(modname) SDL_KMSDRM_HAVE_##modname = 1; /* default yes */
-#define SDL_KMSDRM_SYM(rc,fn,params) KMSDRM_##fn = fn;
-#define SDL_KMSDRM_SYM_CONST(type,name) KMSDRM_##name = name;
+#define SDL_KMSDRM_MODULE(modname)       SDL_KMSDRM_HAVE_##modname = 1; /* default yes */
+#define SDL_KMSDRM_SYM(rc, fn, params)   KMSDRM_##fn = fn;
+#define SDL_KMSDRM_SYM_CONST(type, name) KMSDRM_##name = name;
 #include "SDL_kmsdrmsym.h"
 
 #endif

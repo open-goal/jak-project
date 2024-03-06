@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -66,10 +66,9 @@ extern "C"
         /* Search for attached joysticks */
         nports = joystick.CountDevices();
         numjoysticks = 0;
-        SDL_memset(SDL_joyport, 0, (sizeof SDL_joyport));
-        SDL_memset(SDL_joyname, 0, (sizeof SDL_joyname));
-        for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i)
-        {
+        SDL_memset(SDL_joyport, 0, sizeof(SDL_joyport));
+        SDL_memset(SDL_joyname, 0, sizeof(SDL_joyname));
+        for (i = 0; (numjoysticks < MAX_JOYSTICKS) && (i < nports); ++i) {
             if (joystick.GetDeviceName(i, name) == B_OK) {
                 if (joystick.Open(name) != B_ERROR) {
                       BString stick_name;
@@ -101,6 +100,11 @@ extern "C"
     static const char *HAIKU_JoystickGetDevicePath(int device_index)
     {
         return SDL_joyport[device_index];
+    }
+
+    static int HAIKU_JoystickGetDeviceSteamVirtualGamepadSlot(int device_index)
+    {
+        return -1;
     }
 
     static int HAIKU_JoystickGetDevicePlayerIndex(int device_index)
@@ -300,6 +304,7 @@ extern "C"
         HAIKU_JoystickDetect,
         HAIKU_JoystickGetDeviceName,
         HAIKU_JoystickGetDevicePath,
+        HAIKU_JoystickGetDeviceSteamVirtualGamepadSlot,
         HAIKU_JoystickGetDevicePlayerIndex,
         HAIKU_JoystickSetDevicePlayerIndex,
         HAIKU_JoystickGetDeviceGUID,

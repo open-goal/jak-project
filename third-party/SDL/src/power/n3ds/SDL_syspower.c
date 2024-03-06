@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,8 +35,7 @@ SDL_FORCE_INLINE int GetBatteryPercentage(void);
 #define BATTERY_PERCENT_REG      0xB
 #define BATTERY_PERCENT_REG_SIZE 2
 
-SDL_bool
-SDL_GetPowerInfo_N3DS(SDL_PowerState *state, int *seconds, int *percent)
+SDL_bool SDL_GetPowerInfo_N3DS(SDL_PowerState *state, int *seconds, int *percent)
 {
     *state = GetPowerState();
     *percent = GetBatteryPercentage();
@@ -45,8 +44,7 @@ SDL_GetPowerInfo_N3DS(SDL_PowerState *state, int *seconds, int *percent)
     return SDL_TRUE;
 }
 
-SDL_FORCE_INLINE SDL_PowerState
-GetPowerState(void)
+static SDL_PowerState GetPowerState(void)
 {
     bool is_plugged;
     u8 is_charging;
@@ -66,8 +64,7 @@ GetPowerState(void)
     return SDL_POWERSTATE_ON_BATTERY;
 }
 
-SDL_FORCE_INLINE int
-ReadStateFromPTMU(bool *is_plugged, u8 *is_charging)
+static int ReadStateFromPTMU(bool *is_plugged, u8 *is_charging)
 {
     if (R_FAILED(ptmuInit())) {
         return SDL_SetError("Failed to initialise PTMU service");
@@ -103,7 +100,7 @@ GetBatteryPercentage(void)
 
     mcuHwcExit();
 
-    return (int) SDL_round(data[0] + data[1] / 256.0);
+    return (int)SDL_round(data[0] + data[1] / 256.0);
 }
 
 #endif /* !SDL_POWER_DISABLED && SDL_POWER_N3DS */

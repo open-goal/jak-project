@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_THREAD_PS2
+#ifdef SDL_THREAD_PS2
 
 /* PS2 thread management routines for SDL */
 
@@ -33,7 +33,8 @@
 #include "../SDL_thread_c.h"
 #include <kernel.h>
 
-static void FinishThread(SDL_Thread *thread) {
+static void FinishThread(SDL_Thread *thread)
+{
     ee_thread_status_t info;
     int res;
 
@@ -69,18 +70,17 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
         priority = status.current_priority;
     }
 
-    stack_size = thread->stacksize ? ((int) thread->stacksize) : 0x1800;
-
+    stack_size = thread->stacksize ? ((int)thread->stacksize) : 0x1800;
 
     /* Create EE Thread */
-	eethread.attr = 0;
-	eethread.option = 0;
-	eethread.func = &childThread;
-	eethread.stack = SDL_malloc(stack_size);
-	eethread.stack_size = stack_size;
-	eethread.gp_reg = &_gp;
-	eethread.initial_priority = priority;
-	thread->handle = CreateThread(&eethread);
+    eethread.attr = 0;
+    eethread.option = 0;
+    eethread.func = &childThread;
+    eethread.stack = SDL_malloc(stack_size);
+    eethread.stack_size = stack_size;
+    eethread.gp_reg = &_gp;
+    eethread.initial_priority = priority;
+    thread->handle = CreateThread(&eethread);
 
     if (thread->handle < 0) {
         return SDL_SetError("CreateThread() failed");
@@ -88,8 +88,8 @@ int SDL_SYS_CreateThread(SDL_Thread *thread)
 
     // Prepare el semaphore for the ending function
     sema.init_count = 0;
-	sema.max_count = 1;
-	sema.option = 0;
+    sema.max_count = 1;
+    sema.option = 0;
     thread->endfunc = (void *)CreateSema(&sema);
 
     return StartThread(thread->handle, thread);
@@ -102,7 +102,7 @@ void SDL_SYS_SetupThread(const char *name)
 
 SDL_threadID SDL_ThreadID(void)
 {
-    return (SDL_threadID) GetThreadId();
+    return (SDL_threadID)GetThreadId();
 }
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
@@ -131,7 +131,7 @@ int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
         value = 50;
     }
 
-    return ChangeThreadPriority(GetThreadId(),value);
+    return ChangeThreadPriority(GetThreadId(), value);
 }
 
 #endif /* SDL_THREAD_PS2 */

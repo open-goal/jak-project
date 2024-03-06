@@ -5,36 +5,56 @@
 #include "SDL.h"
 #include "SDL_test.h"
 
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
 /* ================= Test Case Implementation ================== */
 
 /* Helper functions */
 
 #define NUM_TEST_GUIDS 5
 
-static struct {
+#ifndef UINT64_C
+#ifdef _MSC_VER
+#define UINT64_C(x) x##ui64
+#elif defined(_LP64)
+#define UINT64_C(x) x##UL
+#else
+#define UINT64_C(x) x##ULL
+#endif
+#endif
+
+static struct
+{
     char *str;
     Uint64 upper, lower;
 } test_guids[NUM_TEST_GUIDS] = {
-    { "0000000000000000"    "ffffffffffffffff",
-     0x0000000000000000,   0xfffffffffffffffflu },
-    { "0011223344556677"    "8091a2b3c4d5e6f0",
-     0x0011223344556677lu, 0x8091a2b3c4d5e6f0lu },
-    { "a011223344556677"    "8091a2b3c4d5e6f0",
-     0xa011223344556677lu, 0x8091a2b3c4d5e6f0lu },
-    { "a011223344556677"    "8091a2b3c4d5e6f1",
-     0xa011223344556677lu, 0x8091a2b3c4d5e6f1lu },
-    { "a011223344556677"    "8191a2b3c4d5e6f0",
-     0xa011223344556677lu, 0x8191a2b3c4d5e6f0lu },
+    { "0000000000000000"
+      "ffffffffffffffff",
+      UINT64_C(0x0000000000000000), UINT64_C(0xffffffffffffffff) },
+    { "0011223344556677"
+      "8091a2b3c4d5e6f0",
+      UINT64_C(0x0011223344556677), UINT64_C(0x8091a2b3c4d5e6f0) },
+    { "a011223344556677"
+      "8091a2b3c4d5e6f0",
+      UINT64_C(0xa011223344556677), UINT64_C(0x8091a2b3c4d5e6f0) },
+    { "a011223344556677"
+      "8091a2b3c4d5e6f1",
+      UINT64_C(0xa011223344556677), UINT64_C(0x8091a2b3c4d5e6f1) },
+    { "a011223344556677"
+      "8191a2b3c4d5e6f0",
+      UINT64_C(0xa011223344556677), UINT64_C(0x8191a2b3c4d5e6f0) },
 };
 
 static void
-upper_lower_to_bytestring(Uint8* out, Uint64 upper, Uint64 lower)
+upper_lower_to_bytestring(Uint8 *out, Uint64 upper, Uint64 lower)
 {
     Uint64 values[2];
     int i, k;
 
     values[0] = upper;
-    values [1] = lower;
+    values[1] = lower;
 
     for (i = 0; i < 2; ++i) {
         Uint64 v = values[i];
@@ -45,7 +65,6 @@ upper_lower_to_bytestring(Uint8* out, Uint64 upper, Uint64 lower)
         }
     }
 }
-
 
 /* Test case functions */
 
@@ -106,7 +125,7 @@ TestGuidToString(void *arg)
             SDL_GUIDToString(guid, guid_str, size);
 
             /* Check bytes before guid_str_buf */
-            expected_prefix = fill_char | (fill_char << 8) | (fill_char << 16) | (fill_char << 24);
+            expected_prefix = fill_char | (fill_char << 8) | (fill_char << 16) | (((Uint32)fill_char) << 24);
             SDL_memcpy(&actual_prefix, guid_str_buf, 4);
             SDLTest_AssertCheck(expected_prefix == actual_prefix, "String buffer memory before output untouched, expected: %" SDL_PRIu32 ", got: %" SDL_PRIu32 ", at size=%d", expected_prefix, actual_prefix, size);
 
@@ -128,14 +147,16 @@ TestGuidToString(void *arg)
 /* ================= Test References ================== */
 
 /* GUID routine test cases */
-static const SDLTest_TestCaseReference guidTest1 =
-        { (SDLTest_TestCaseFp)TestGuidFromString, "TestGuidFromString", "Call to SDL_GUIDFromString", TEST_ENABLED };
+static const SDLTest_TestCaseReference guidTest1 = {
+    (SDLTest_TestCaseFp)TestGuidFromString, "TestGuidFromString", "Call to SDL_GUIDFromString", TEST_ENABLED
+};
 
-static const SDLTest_TestCaseReference guidTest2 =
-        { (SDLTest_TestCaseFp)TestGuidToString, "TestGuidToString", "Call to SDL_GUIDToString", TEST_ENABLED };
+static const SDLTest_TestCaseReference guidTest2 = {
+    (SDLTest_TestCaseFp)TestGuidToString, "TestGuidToString", "Call to SDL_GUIDToString", TEST_ENABLED
+};
 
 /* Sequence of GUID routine test cases */
-static const SDLTest_TestCaseReference *guidTests[] =  {
+static const SDLTest_TestCaseReference *guidTests[] = {
     &guidTest1,
     &guidTest2,
     NULL

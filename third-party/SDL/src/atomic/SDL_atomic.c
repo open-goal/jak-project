@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,19 +37,20 @@
 
 /* The __atomic_load_n() intrinsic showed up in different times for different compilers. */
 #if defined(__clang__)
-#  if __has_builtin(__atomic_load_n) || defined(HAVE_GCC_ATOMICS)
-     /* !!! FIXME: this advertises as available in the NDK but uses an external symbol we don't have.
-        It might be in a later NDK or we might need an extra library? --ryan. */
-#    if !defined(__ANDROID__)
-#      define HAVE_ATOMIC_LOAD_N 1
-#    endif
-#  endif
+#if __has_builtin(__atomic_load_n) || defined(HAVE_GCC_ATOMICS)
+/* !!! FIXME: this advertises as available in the NDK but uses an external symbol we don't have.
+   It might be in a later NDK or we might need an extra library? --ryan. */
+#if !defined(__ANDROID__)
+#define HAVE_ATOMIC_LOAD_N 1
+#endif
+#endif
 #elif defined(__GNUC__)
-#   if (__GNUC__ >= 5)
-#     define HAVE_ATOMIC_LOAD_N 1
-#   endif
+#if (__GNUC__ >= 5)
+#define HAVE_ATOMIC_LOAD_N 1
+#endif
 #endif
 
+/* *INDENT-OFF* */ /* clang-format off */
 #if defined(__WATCOMC__) && defined(__386__)
 SDL_COMPILE_TIME_ASSERT(intsize, 4==sizeof(int));
 #define HAVE_WATCOM_ATOMICS
@@ -74,7 +75,9 @@ extern __inline int _SDL_xadd_watcom(volatile int *a, int v);
   parm [ecx] [eax] \
   value [eax] \
   modify exact [eax];
+
 #endif /* __WATCOMC__ && __386__ */
+/* *INDENT-ON* */ /* clang-format on */
 
 /*
   If any of the operations are not provided then we must emulate some
@@ -100,22 +103,20 @@ extern __inline int _SDL_xadd_watcom(volatile int *a, int v);
 */
 
 #if !defined(HAVE_MSC_ATOMICS) && !defined(HAVE_GCC_ATOMICS) && !defined(__MACOSX__) && !defined(__SOLARIS__) && !defined(HAVE_WATCOM_ATOMICS)
-#define EMULATE_CAS 1
+#define EMULATE_CAS
 #endif
 
-#if EMULATE_CAS
+#ifdef EMULATE_CAS
 static SDL_SpinLock locks[32];
 
-static SDL_INLINE void
-enterLock(void *a)
+static SDL_INLINE void enterLock(void *a)
 {
     uintptr_t index = ((((uintptr_t)a) >> 3) & 0x1f);
 
     SDL_AtomicLock(&locks[index]);
 }
 
-static SDL_INLINE void
-leaveLock(void *a)
+static SDL_INLINE void leaveLock(void *a)
 {
     uintptr_t index = ((((uintptr_t)a) >> 3) & 0x1f);
 
@@ -123,22 +124,20 @@ leaveLock(void *a)
 }
 #endif
 
-
-SDL_bool
-SDL_AtomicCAS(SDL_atomic_t *a, int oldval, int newval)
+SDL_bool SDL_AtomicCAS(SDL_atomic_t *a, int oldval, int newval)
 {
 #ifdef HAVE_MSC_ATOMICS
     SDL_COMPILE_TIME_ASSERT(atomic_cas, sizeof(long) == sizeof(a->value));
-    return (_InterlockedCompareExchange((long*)&a->value, (long)newval, (long)oldval) == (long)oldval);
+    return _InterlockedCompareExchange((long *)&a->value, (long)newval, (long)oldval) == (long)oldval;
 #elif defined(HAVE_WATCOM_ATOMICS)
-    return (SDL_bool) _SDL_cmpxchg_watcom(&a->value, newval, oldval);
+    return (SDL_bool)_SDL_cmpxchg_watcom(&a->value, newval, oldval);
 #elif defined(HAVE_GCC_ATOMICS)
     return (SDL_bool) __sync_bool_compare_and_swap(&a->value, oldval, newval);
 #elif defined(__MACOSX__)  /* this is deprecated in 10.12 sdk; favor gcc atomics. */
     return (SDL_bool) OSAtomicCompareAndSwap32Barrier(oldval, newval, &a->value);
 #elif defined(__SOLARIS__)
-    return (SDL_bool) ((int) atomic_cas_uint((volatile uint_t*)&a->value, (uint_t)oldval, (uint_t)newval) == oldval);
-#elif EMULATE_CAS
+    return (SDL_bool)((int)atomic_cas_uint((volatile uint_t *)&a->value, (uint_t)oldval, (uint_t)newval) == oldval);
+#elif defined(EMULATE_CAS)
     SDL_bool retval = SDL_FALSE;
 
     enterLock(a);
@@ -150,17 +149,16 @@ SDL_AtomicCAS(SDL_atomic_t *a, int oldval, int newval)
 
     return retval;
 #else
-    #error Please define your platform.
+#error Please define your platform.
 #endif
 }
 
-SDL_bool
-SDL_AtomicCASPtr(void **a, void *oldval, void *newval)
+SDL_bool SDL_AtomicCASPtr(void **a, void *oldval, void *newval)
 {
 #if defined(HAVE_MSC_ATOMICS)
-    return (_InterlockedCompareExchangePointer(a, newval, oldval) == oldval);
+    return _InterlockedCompareExchangePointer(a, newval, oldval) == oldval;
 #elif defined(HAVE_WATCOM_ATOMICS)
-    return (SDL_bool) _SDL_cmpxchg_watcom((int *)a, (long)newval, (long)oldval);
+    return (SDL_bool)_SDL_cmpxchg_watcom((int *)a, (long)newval, (long)oldval);
 #elif defined(HAVE_GCC_ATOMICS)
     return __sync_bool_compare_and_swap(a, oldval, newval);
 #elif defined(__MACOSX__) && defined(__LP64__)  /* this is deprecated in 10.12 sdk; favor gcc atomics. */
@@ -168,8 +166,8 @@ SDL_AtomicCASPtr(void **a, void *oldval, void *newval)
 #elif defined(__MACOSX__) && !defined(__LP64__)  /* this is deprecated in 10.12 sdk; favor gcc atomics. */
     return (SDL_bool) OSAtomicCompareAndSwap32Barrier((int32_t)oldval, (int32_t)newval, (int32_t*) a);
 #elif defined(__SOLARIS__)
-    return (SDL_bool) (atomic_cas_ptr(a, oldval, newval) == oldval);
-#elif EMULATE_CAS
+    return (SDL_bool)(atomic_cas_ptr(a, oldval, newval) == oldval);
+#elif defined(EMULATE_CAS)
     SDL_bool retval = SDL_FALSE;
 
     enterLock(a);
@@ -181,22 +179,21 @@ SDL_AtomicCASPtr(void **a, void *oldval, void *newval)
 
     return retval;
 #else
-    #error Please define your platform.
+#error Please define your platform.
 #endif
 }
 
-int
-SDL_AtomicSet(SDL_atomic_t *a, int v)
+int SDL_AtomicSet(SDL_atomic_t *a, int v)
 {
 #ifdef HAVE_MSC_ATOMICS
     SDL_COMPILE_TIME_ASSERT(atomic_set, sizeof(long) == sizeof(a->value));
-    return _InterlockedExchange((long*)&a->value, v);
+    return _InterlockedExchange((long *)&a->value, v);
 #elif defined(HAVE_WATCOM_ATOMICS)
     return _SDL_xchg_watcom(&a->value, v);
 #elif defined(HAVE_GCC_ATOMICS)
     return __sync_lock_test_and_set(&a->value, v);
 #elif defined(__SOLARIS__)
-    return (int) atomic_swap_uint((volatile uint_t*)&a->value, v);
+    return (int)atomic_swap_uint((volatile uint_t *)&a->value, v);
 #else
     int value;
     do {
@@ -206,13 +203,12 @@ SDL_AtomicSet(SDL_atomic_t *a, int v)
 #endif
 }
 
-void*
-SDL_AtomicSetPtr(void **a, void *v)
+void *SDL_AtomicSetPtr(void **a, void *v)
 {
 #if defined(HAVE_MSC_ATOMICS)
     return _InterlockedExchangePointer(a, v);
 #elif defined(HAVE_WATCOM_ATOMICS)
-    return (void *) _SDL_xchg_watcom((int *)a, (long)v);
+    return (void *)_SDL_xchg_watcom((int *)a, (long)v);
 #elif defined(HAVE_GCC_ATOMICS)
     return __sync_lock_test_and_set(a, v);
 #elif defined(__SOLARIS__)
@@ -226,12 +222,11 @@ SDL_AtomicSetPtr(void **a, void *v)
 #endif
 }
 
-int
-SDL_AtomicAdd(SDL_atomic_t *a, int v)
+int SDL_AtomicAdd(SDL_atomic_t *a, int v)
 {
 #ifdef HAVE_MSC_ATOMICS
     SDL_COMPILE_TIME_ASSERT(atomic_add, sizeof(long) == sizeof(a->value));
-    return _InterlockedExchangeAdd((long*)&a->value, v);
+    return _InterlockedExchangeAdd((long *)&a->value, v);
 #elif defined(HAVE_WATCOM_ATOMICS)
     return _SDL_xadd_watcom(&a->value, v);
 #elif defined(HAVE_GCC_ATOMICS)
@@ -239,7 +234,7 @@ SDL_AtomicAdd(SDL_atomic_t *a, int v)
 #elif defined(__SOLARIS__)
     int pv = a->value;
     membar_consumer();
-    atomic_add_int((volatile uint_t*)&a->value, v);
+    atomic_add_int((volatile uint_t *)&a->value, v);
     return pv;
 #else
     int value;
@@ -250,8 +245,7 @@ SDL_AtomicAdd(SDL_atomic_t *a, int v)
 #endif
 }
 
-int
-SDL_AtomicGet(SDL_atomic_t *a)
+int SDL_AtomicGet(SDL_atomic_t *a)
 {
 #ifdef HAVE_ATOMIC_LOAD_N
     return __atomic_load_n(&a->value, __ATOMIC_SEQ_CST);
@@ -275,8 +269,7 @@ SDL_AtomicGet(SDL_atomic_t *a)
 #endif
 }
 
-void *
-SDL_AtomicGetPtr(void **a)
+void *SDL_AtomicGetPtr(void **a)
 {
 #ifdef HAVE_ATOMIC_LOAD_N
     return __atomic_load_n(a, __ATOMIC_SEQ_CST);
@@ -299,14 +292,12 @@ SDL_AtomicGetPtr(void **a)
 #error This file should be built in arm mode so the mcr instruction is available for memory barriers
 #endif
 
-void
-SDL_MemoryBarrierReleaseFunction(void)
+void SDL_MemoryBarrierReleaseFunction(void)
 {
     SDL_MemoryBarrierRelease();
 }
 
-void
-SDL_MemoryBarrierAcquireFunction(void)
+void SDL_MemoryBarrierAcquireFunction(void)
 {
     SDL_MemoryBarrierAcquire();
 }

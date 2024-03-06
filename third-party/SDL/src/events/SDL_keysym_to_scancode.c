@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 
 #include "../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_WAYLAND || SDL_VIDEO_DRIVER_X11
+#if defined(SDL_VIDEO_DRIVER_WAYLAND) || defined(SDL_VIDEO_DRIVER_X11)
 
 #include "SDL_keyboard_c.h"
 #include "SDL_scancode_tables_c.h"
@@ -316,11 +316,11 @@ function process_line
 {
     sym=$(echo "$1" | awk '{print $3}')
     code=$(echo "$1" | sed 's,.*_EVDEVK(\(0x[0-9A-Fa-f]*\)).*,\1,')
-    value=$(egrep "#define ${sym}\s" -R /usr/include/X11 | awk '{print $3}')
+    value=$(grep -E "#define ${sym}\s" -R /usr/include/X11 | awk '{print $3}')
     printf "    { 0x%.8X, 0x%.3x },    /* $sym */\n" $value $code
 }
 
-fgrep "/* Use: " /usr/include/xkbcommon/xkbcommon-keysyms.h | fgrep _EVDEVK | while read line; do
+grep -F "/* Use: " /usr/include/xkbcommon/xkbcommon-keysyms.h | grep -F _EVDEVK | while read line; do
     process_line "$line"
 done
 #endif
@@ -387,8 +387,7 @@ static const struct {
 };
 /* *INDENT-ON* */ /* clang-format on */
 
-SDL_Scancode
-SDL_GetScancodeFromKeySym(Uint32 keysym, Uint32 keycode)
+SDL_Scancode SDL_GetScancodeFromKeySym(Uint32 keysym, Uint32 keycode)
 {
     int i;
     Uint32 linux_keycode = 0;

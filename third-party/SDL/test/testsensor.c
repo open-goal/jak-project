@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,8 +18,7 @@ static const char *GetSensorTypeString(SDL_SensorType type)
 {
     static char unknown_type[64];
 
-    switch (type)
-    {
+    switch (type) {
     case SDL_SENSOR_INVALID:
         return "SDL_SENSOR_INVALID";
     case SDL_SENSOR_UNKNOWN:
@@ -29,7 +28,7 @@ static const char *GetSensorTypeString(SDL_SensorType type)
     case SDL_SENSOR_GYRO:
         return "SDL_SENSOR_GYRO";
     default:
-        SDL_snprintf(unknown_type, sizeof(unknown_type), "UNKNOWN (%d)", type);
+        (void)SDL_snprintf(unknown_type, sizeof(unknown_type), "UNKNOWN (%d)", type);
         return unknown_type;
     }
 }
@@ -55,8 +54,7 @@ static void HandleSensorEvent(SDL_SensorEvent *event)
     }
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     int i;
     int num_sensors, num_opened;
@@ -64,7 +62,7 @@ main(int argc, char **argv)
     /* Load the SDL library */
     if (SDL_Init(SDL_INIT_SENSOR) < 0) {
         SDL_Log("Couldn't initialize SDL: %s\n", SDL_GetError());
-        return (1);
+        return 1;
     }
 
     num_sensors = SDL_NumSensors();
@@ -80,7 +78,7 @@ main(int argc, char **argv)
 
         if (SDL_SensorGetDeviceType(i) != SDL_SENSOR_UNKNOWN) {
             SDL_Sensor *sensor = SDL_SensorOpen(i);
-            if (sensor == NULL) {
+            if (!sensor) {
                 SDL_Log("Couldn't open sensor %" SDL_PRIs32 ": %s\n", SDL_SensorGetDeviceInstanceID(i), SDL_GetError());
             } else {
                 ++num_opened;
@@ -117,5 +115,5 @@ main(int argc, char **argv)
     }
 
     SDL_Quit();
-    return (0);
+    return 0;
 }

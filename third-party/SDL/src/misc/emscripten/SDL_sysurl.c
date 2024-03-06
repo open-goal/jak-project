@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,15 +23,12 @@
 
 #include <emscripten/emscripten.h>
 
-int
-SDL_SYS_OpenURL(const char *url)
-{
-    EM_ASM({
-        window.open(UTF8ToString($0), "_blank");
-    }, url);
+EM_JS_DEPS(sdlsysurl, "$UTF8ToString");
 
+int SDL_SYS_OpenURL(const char *url)
+{
+    EM_ASM(window.open(UTF8ToString($0), "_blank"), url);
     return 0;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */
-

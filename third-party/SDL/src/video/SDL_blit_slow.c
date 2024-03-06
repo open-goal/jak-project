@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,12 +24,13 @@
 #include "SDL_blit.h"
 #include "SDL_blit_slow.h"
 
-#define FORMAT_ALPHA      0
-#define FORMAT_NO_ALPHA  -1
-#define FORMAT_2101010    1
-#define FORMAT_HAS_ALPHA(format)        format == 0
-#define FORMAT_HAS_NO_ALPHA(format)     format < 0
-static int SDL_INLINE detect_format(SDL_PixelFormat *pf) {
+#define FORMAT_ALPHA                0
+#define FORMAT_NO_ALPHA             -1
+#define FORMAT_2101010              1
+#define FORMAT_HAS_ALPHA(format)    format == 0
+#define FORMAT_HAS_NO_ALPHA(format) format < 0
+static int SDL_INLINE detect_format(SDL_PixelFormat *pf)
+{
     if (pf->format == SDL_PIXELFORMAT_ARGB2101010) {
         return FORMAT_2101010;
     } else if (pf->Amask) {
@@ -42,8 +43,7 @@ static int SDL_INLINE detect_format(SDL_PixelFormat *pf) {
 /* The ONE TRUE BLITTER
  * This puppy has to handle all the unoptimized cases - yes, it's slow.
  */
-void
-SDL_Blit_Slow(SDL_BlitInfo * info)
+void SDL_Blit_Slow(SDL_BlitInfo *info)
 {
     const int flags = info->flags;
     const Uint32 modulateR = info->r;
@@ -54,9 +54,9 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
     Uint32 srcR, srcG, srcB, srcA;
     Uint32 dstpixel;
     Uint32 dstR, dstG, dstB, dstA;
-    int srcy, srcx;
-    Uint32 posy, posx;
-    int incy, incx;
+    Uint64 srcy, srcx;
+    Uint64 posy, posx;
+    Uint64 incy, incx;
     SDL_PixelFormat *src_fmt = info->src_fmt;
     SDL_PixelFormat *dst_fmt = info->dst_fmt;
     int srcbpp = src_fmt->BytesPerPixel;
@@ -69,8 +69,8 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
     srcfmt_val = detect_format(src_fmt);
     dstfmt_val = detect_format(dst_fmt);
 
-    incy = (info->src_h << 16) / info->dst_h;
-    incx = (info->src_w << 16) / info->dst_w;
+    incy = ((Uint64)info->src_h << 16) / info->dst_h;
+    incx = ((Uint64)info->src_w << 16) / info->dst_w;
     posy = incy / 2; /* start at the middle of pixel */
 
     while (info->dst_h--) {
@@ -98,7 +98,7 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                 /* srcpixel isn't set for 24 bpp */
                 if (srcbpp == 3) {
                     srcpixel = (srcR << src_fmt->Rshift) |
-                        (srcG << src_fmt->Gshift) | (srcB << src_fmt->Bshift);
+                               (srcG << src_fmt->Gshift) | (srcB << src_fmt->Bshift);
                 }
                 if ((srcpixel & rgbmask) == ckey) {
                     posx += incx;
@@ -106,15 +106,20 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                     continue;
                 }
             }
-            if (FORMAT_HAS_ALPHA(dstfmt_val)) {
-                DISEMBLE_RGBA(dst, dstbpp, dst_fmt, dstpixel, dstR, dstG, dstB, dstA);
-            } else if (FORMAT_HAS_NO_ALPHA(dstfmt_val)) {
-                DISEMBLE_RGB(dst, dstbpp, dst_fmt, dstpixel, dstR, dstG, dstB);
-                dstA = 0xFF;
+            if ((flags & (SDL_COPY_BLEND | SDL_COPY_ADD | SDL_COPY_MOD | SDL_COPY_MUL))) {
+                if (FORMAT_HAS_ALPHA(dstfmt_val)) {
+                    DISEMBLE_RGBA(dst, dstbpp, dst_fmt, dstpixel, dstR, dstG, dstB, dstA);
+                } else if (FORMAT_HAS_NO_ALPHA(dstfmt_val)) {
+                    DISEMBLE_RGB(dst, dstbpp, dst_fmt, dstpixel, dstR, dstG, dstB);
+                    dstA = 0xFF;
+                } else {
+                    /* SDL_PIXELFORMAT_ARGB2101010 */
+                    dstpixel = *((Uint32 *) (dst));
+                    RGBA_FROM_ARGB2101010(dstpixel, dstR, dstG, dstB, dstA);
+                }
             } else {
-                /* SDL_PIXELFORMAT_ARGB2101010 */
-                dstpixel = *((Uint32 *)(dst));
-                RGBA_FROM_ARGB2101010(dstpixel, dstR, dstG, dstB, dstA);
+                /* don't care */
+                dstR = dstG = dstB = dstA = 0;
             }
 
             if (flags & SDL_COPY_MODULATE_COLOR) {
@@ -148,14 +153,17 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                 break;
             case SDL_COPY_ADD:
                 dstR = srcR + dstR;
-                if (dstR > 255)
+                if (dstR > 255) {
                     dstR = 255;
+                }
                 dstG = srcG + dstG;
-                if (dstG > 255)
+                if (dstG > 255) {
                     dstG = 255;
+                }
                 dstB = srcB + dstB;
-                if (dstB > 255)
+                if (dstB > 255) {
                     dstB = 255;
+                }
                 break;
             case SDL_COPY_MOD:
                 dstR = (srcR * dstR) / 255;
@@ -164,17 +172,17 @@ SDL_Blit_Slow(SDL_BlitInfo * info)
                 break;
             case SDL_COPY_MUL:
                 dstR = ((srcR * dstR) + (dstR * (255 - srcA))) / 255;
-                if (dstR > 255)
+                if (dstR > 255) {
                     dstR = 255;
+                }
                 dstG = ((srcG * dstG) + (dstG * (255 - srcA))) / 255;
-                if (dstG > 255)
+                if (dstG > 255) {
                     dstG = 255;
+                }
                 dstB = ((srcB * dstB) + (dstB * (255 - srcA))) / 255;
-                if (dstB > 255)
+                if (dstB > 255) {
                     dstB = 255;
-                dstA = ((srcA * dstA) + (dstA * (255 - srcA))) / 255;
-                if (dstA > 255)
-                    dstA = 255;
+                }
                 break;
             }
             if (FORMAT_HAS_ALPHA(dstfmt_val)) {

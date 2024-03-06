@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_AUDIO_DRIVER_VITA
+#ifdef SDL_AUDIO_DRIVER_VITA
 
 #include <stdio.h>
 #include <string.h>
@@ -39,11 +39,10 @@
 #include <psp2/audioout.h>
 #include <psp2/audioin.h>
 
-#define SCE_AUDIO_SAMPLE_ALIGN(s)   (((s) + 63) & ~63)
-#define SCE_AUDIO_MAX_VOLUME    0x8000
+#define SCE_AUDIO_SAMPLE_ALIGN(s) (((s) + 63) & ~63)
+#define SCE_AUDIO_MAX_VOLUME      0x8000
 
-static int
-VITAAUD_OpenCaptureDevice(_THIS)
+static int VITAAUD_OpenCaptureDevice(_THIS)
 {
     this->spec.freq = 16000;
     this->spec.samples = 512;
@@ -51,7 +50,7 @@ VITAAUD_OpenCaptureDevice(_THIS)
 
     SDL_CalculateAudioSpec(&this->spec);
 
-    this->hidden->port = sceAudioInOpenPort(SCE_AUDIO_IN_PORT_TYPE_VOICE , 512, 16000, SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO);
+    this->hidden->port = sceAudioInOpenPort(SCE_AUDIO_IN_PORT_TYPE_VOICE, 512, 16000, SCE_AUDIO_IN_PARAM_FORMAT_S16_MONO);
 
     if (this->hidden->port < 0) {
         return SDL_SetError("Couldn't open audio in port: %x", this->hidden->port);
@@ -60,16 +59,15 @@ VITAAUD_OpenCaptureDevice(_THIS)
     return 0;
 }
 
-static int
-VITAAUD_OpenDevice(_THIS, const char *devname)
+static int VITAAUD_OpenDevice(_THIS, const char *devname)
 {
     int format, mixlen, i, port = SCE_AUDIO_OUT_PORT_TYPE_MAIN;
-    int vols[2] = {SCE_AUDIO_MAX_VOLUME, SCE_AUDIO_MAX_VOLUME};
+    int vols[2] = { SCE_AUDIO_MAX_VOLUME, SCE_AUDIO_MAX_VOLUME };
     SDL_AudioFormat test_format;
 
     this->hidden = (struct SDL_PrivateAudioData *)
         SDL_malloc(sizeof(*this->hidden));
-    if (this->hidden == NULL) {
+    if (!this->hidden) {
         return SDL_OutOfMemory();
     }
     SDL_memset(this->hidden, 0, sizeof(*this->hidden));
@@ -81,7 +79,7 @@ VITAAUD_OpenDevice(_THIS, const char *devname)
         }
     }
 
-    if(!test_format) {
+    if (!test_format) {
         return SDL_SetError("Unsupported audio format");
     }
 
@@ -99,8 +97,8 @@ VITAAUD_OpenDevice(_THIS, const char *devname)
        be a multiple of 64 bytes.  Our sample count is already a multiple of
        64, so spec->size should be a multiple of 64 as well. */
     mixlen = this->spec.size * NUM_BUFFERS;
-    this->hidden->rawbuf = (Uint8 *) memalign(64, mixlen);
-    if (this->hidden->rawbuf == NULL) {
+    this->hidden->rawbuf = (Uint8 *)memalign(64, mixlen);
+    if (!this->hidden->rawbuf) {
         return SDL_SetError("Couldn't allocate mixing buffer");
     }
 
@@ -111,7 +109,7 @@ VITAAUD_OpenDevice(_THIS, const char *devname)
         format = SCE_AUDIO_OUT_MODE_STEREO;
     }
 
-    if(this->spec.freq < 48000) {
+    if (this->spec.freq < 48000) {
         port = SCE_AUDIO_OUT_PORT_TYPE_BGM;
     }
 
@@ -122,7 +120,7 @@ VITAAUD_OpenDevice(_THIS, const char *devname)
         return SDL_SetError("Couldn't open audio out port: %x", this->hidden->port);
     }
 
-    sceAudioOutSetVolume(this->hidden->port, SCE_AUDIO_VOLUME_FLAG_L_CH|SCE_AUDIO_VOLUME_FLAG_R_CH, vols);
+    sceAudioOutSetVolume(this->hidden->port, SCE_AUDIO_VOLUME_FLAG_L_CH | SCE_AUDIO_VOLUME_FLAG_R_CH, vols);
 
     SDL_memset(this->hidden->rawbuf, 0, mixlen);
     for (i = 0; i < NUM_BUFFERS; i++) {
@@ -164,8 +162,8 @@ static void VITAAUD_CloseDevice(_THIS)
         this->hidden->port = -1;
     }
 
-    if (!this->iscapture && this->hidden->rawbuf != NULL) {
-        free(this->hidden->rawbuf);         /* this uses memalign(), not SDL_malloc(). */
+    if (!this->iscapture && this->hidden->rawbuf) {
+        free(this->hidden->rawbuf); /* this uses memalign(), not SDL_malloc(). */
         this->hidden->rawbuf = NULL;
     }
 }
@@ -194,8 +192,7 @@ static void VITAAUD_ThreadInit(_THIS)
     }
 }
 
-static SDL_bool
-VITAAUD_Init(SDL_AudioDriverImpl * impl)
+static SDL_bool VITAAUD_Init(SDL_AudioDriverImpl *impl)
 {
     /* Set the function pointers */
     impl->OpenDevice = VITAAUD_OpenDevice;
@@ -212,7 +209,7 @@ VITAAUD_Init(SDL_AudioDriverImpl * impl)
     impl->OnlyHasDefaultOutputDevice = SDL_TRUE;
     impl->OnlyHasDefaultCaptureDevice = SDL_TRUE;
 
-    return SDL_TRUE;   /* this audio target is available. */
+    return SDL_TRUE; /* this audio target is available. */
 }
 
 AudioBootStrap VITAAUD_bootstrap = {

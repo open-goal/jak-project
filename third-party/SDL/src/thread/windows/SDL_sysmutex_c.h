@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -39,21 +39,24 @@ typedef enum
 
 typedef struct SDL_mutex_impl_t
 {
-    pfnSDL_CreateMutex  Create;
+    pfnSDL_CreateMutex Create;
     pfnSDL_DestroyMutex Destroy;
-    pfnSDL_LockMutex    Lock;
+    pfnSDL_LockMutex Lock;
     pfnSDL_TryLockMutex TryLock;
-    pfnSDL_UnlockMutex  Unlock;
+    pfnSDL_UnlockMutex Unlock;
     /* Needed by SDL_cond: */
-    SDL_MutexType       Type;
+    SDL_MutexType Type;
 } SDL_mutex_impl_t;
 
 extern SDL_mutex_impl_t SDL_mutex_impl_active;
 
-
 #ifndef SRWLOCK_INIT
-#define SRWLOCK_INIT {0}
-typedef struct _SRWLOCK {
+#define SRWLOCK_INIT \
+    {                \
+        0            \
+    }
+typedef struct _SRWLOCK
+{
     PVOID Ptr;
 } SRWLOCK, *PSRWLOCK;
 #endif

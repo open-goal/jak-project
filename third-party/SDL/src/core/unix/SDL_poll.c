@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,17 +32,14 @@
 #endif
 #include <errno.h>
 
-
-int
-SDL_IOReady(int fd, int flags, int timeoutMS)
+int SDL_IOReady(int fd, int flags, int timeoutMS)
 {
     int result;
 
     SDL_assert(flags & (SDL_IOR_READ | SDL_IOR_WRITE));
 
     /* Note: We don't bother to account for elapsed time if we get EINTR */
-    do
-    {
+    do {
 #ifdef HAVE_POLL
         struct pollfd info;
 
@@ -83,7 +80,7 @@ SDL_IOReady(int fd, int flags, int timeoutMS)
         result = select(fd + 1, rfdp, wfdp, NULL, tvp);
 #endif /* HAVE_POLL */
 
-    } while ( result < 0 && errno == EINTR && !(flags & SDL_IOR_NO_RETRY));
+    } while (result < 0 && errno == EINTR && !(flags & SDL_IOR_NO_RETRY));
 
     return result;
 }

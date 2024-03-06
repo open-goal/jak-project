@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -42,14 +42,16 @@ struct qt_surface_extension;
 struct qt_windowmanager;
 #endif /* SDL_VIDEO_DRIVER_WAYLAND_QT_TOUCH */
 
-typedef struct {
+typedef struct
+{
     struct wl_cursor_theme *theme;
     int size;
 } SDL_WaylandCursorTheme;
 
 typedef struct SDL_WaylandOutputData SDL_WaylandOutputData;
 
-typedef struct {
+typedef struct
+{
     SDL_bool initializing;
     struct wl_display *display;
     int display_disconnected;
@@ -59,7 +61,8 @@ typedef struct {
     SDL_WaylandCursorTheme *cursor_themes;
     int num_cursor_themes;
     struct wl_pointer *pointer;
-    struct {
+    struct
+    {
         struct xdg_wm_base *xdg;
 #ifdef HAVE_LIBDECOR_H
         struct libdecor *libdecor;
@@ -76,6 +79,7 @@ typedef struct {
     struct zwp_text_input_manager_v3 *text_input_manager;
     struct zxdg_output_manager_v1 *xdg_output_manager;
     struct wp_viewporter *viewporter;
+    struct wp_fractional_scale_manager_v1 *fractional_scale_manager;
 
     EGLDisplay edpy;
     EGLContext context;
@@ -98,7 +102,8 @@ typedef struct {
     SDL_bool egl_transparency_enabled;
 } SDL_VideoData;
 
-struct SDL_WaylandOutputData {
+struct SDL_WaylandOutputData
+{
     SDL_VideoData *videodata;
     struct wl_output *output;
     struct zxdg_output_v1 *xdg_output;

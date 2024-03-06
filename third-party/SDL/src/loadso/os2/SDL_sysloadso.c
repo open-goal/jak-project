@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,8 +32,7 @@
 #define INCL_DOSERRORS
 #include <os2.h>
 
-void *
-SDL_LoadObject(const char *sofile)
+void *SDL_LoadObject(const char *sofile)
 {
     ULONG   ulRC;
     HMODULE hModule;
@@ -65,8 +64,7 @@ SDL_LoadObject(const char *sofile)
     return (void *)hModule;
 }
 
-void *
-SDL_LoadFunction(void *handle, const char *name)
+void *SDL_LoadFunction(void *handle, const char *name)
 {
     ULONG   ulRC;
     PFN     pFN;
@@ -90,10 +88,9 @@ SDL_LoadFunction(void *handle, const char *name)
     return (void *)pFN;
 }
 
-void
-SDL_UnloadObject(void *handle)
+void SDL_UnloadObject(void *handle)
 {
-    if (handle != NULL) {
+    if (handle) {
         DosFreeModule((HMODULE)handle);
     }
 }

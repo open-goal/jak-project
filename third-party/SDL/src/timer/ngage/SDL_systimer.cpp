@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,42 +28,37 @@
 #include "SDL_timer.h"
 
 static SDL_bool ticks_started = SDL_FALSE;
-static TUint    start         = 0;
-static TInt     tickPeriodMilliSeconds;
+static TUint start = 0;
+static TInt tickPeriodMilliSeconds;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void
-SDL_TicksInit(void)
+void SDL_TicksInit(void)
 {
-    if (ticks_started)
-    {
+    if (ticks_started) {
         return;
     }
     ticks_started = SDL_TRUE;
-    start         = User::TickCount();
+    start = User::TickCount();
 
     TTimeIntervalMicroSeconds32 period;
-    TInt                        tmp = UserHal::TickPeriod(period);
+    TInt tmp = UserHal::TickPeriod(period);
 
     (void)tmp; /* Suppress redundant warning. */
 
     tickPeriodMilliSeconds = period.Int() / 1000;
 }
 
-void
-SDL_TicksQuit(void)
+void SDL_TicksQuit(void)
 {
     ticks_started = SDL_FALSE;
 }
 
-Uint64
-SDL_GetTicks64(void)
+Uint64 SDL_GetTicks64(void)
 {
-    if (! ticks_started)
-    {
+    if (!ticks_started) {
         SDL_TicksInit();
     }
 
@@ -73,20 +68,17 @@ SDL_GetTicks64(void)
     return (Uint64)(deltaTics * tickPeriodMilliSeconds);
 }
 
-Uint64
-SDL_GetPerformanceCounter(void)
+Uint64 SDL_GetPerformanceCounter(void)
 {
     return (Uint64)User::TickCount();
 }
 
-Uint64
-SDL_GetPerformanceFrequency(void)
+Uint64 SDL_GetPerformanceFrequency(void)
 {
     return 1000000;
 }
 
-void
-SDL_Delay(Uint32 ms)
+void SDL_Delay(Uint32 ms)
 {
     User::After(TTimeIntervalMicroSeconds32(ms * 1000));
 }

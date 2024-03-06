@@ -118,7 +118,7 @@ initializeTextures(SDL_Renderer *renderer)
 
     /* load the ship */
     bmp_surface = SDL_LoadBMP("ship.bmp");
-    if (bmp_surface == NULL) {
+    if (!bmp_surface) {
         fatalError("could not ship.bmp");
     }
     /* set blue to transparent on the ship */
@@ -140,7 +140,7 @@ initializeTextures(SDL_Renderer *renderer)
 
     /* load the space background */
     bmp_surface = SDL_LoadBMP("space.bmp");
-    if (bmp_surface == NULL) {
+    if (!bmp_surface) {
         fatalError("could not load space.bmp");
     }
     /* create space texture from surface */
@@ -179,7 +179,7 @@ main(int argc, char *argv[])
     printf("There are %d joysticks available\n", SDL_NumJoysticks());
     printf("Default joystick (index 0) is %s\n", SDL_JoystickName(0));
     accelerometer = SDL_JoystickOpen(0);
-    if (accelerometer == NULL) {
+    if (!accelerometer) {
         fatalError("Could not open joystick (accelerometer)");
     }
     printf("joystick number of axis = %d\n",

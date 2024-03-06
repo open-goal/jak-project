@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_THREAD_OS2
+#ifdef SDL_THREAD_OS2
 
 /* An implementation of mutexes for OS/2 */
 
@@ -37,8 +37,7 @@ struct SDL_mutex {
 };
 
 /* Create a mutex */
-SDL_mutex *
-SDL_CreateMutex(void)
+SDL_mutex *SDL_CreateMutex(void)
 {
     ULONG ulRC;
     HMTX  hMtx;
@@ -53,8 +52,7 @@ SDL_CreateMutex(void)
 }
 
 /* Free the mutex */
-void
-SDL_DestroyMutex(SDL_mutex * mutex)
+void SDL_DestroyMutex(SDL_mutex * mutex)
 {
     HMTX  hMtx = (HMTX)mutex;
     if (hMtx != NULLHANDLE) {
@@ -66,14 +64,13 @@ SDL_DestroyMutex(SDL_mutex * mutex)
 }
 
 /* Lock the mutex */
-int
-SDL_LockMutex(SDL_mutex * mutex)
+int SDL_LockMutex(SDL_mutex * mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
 {
     ULONG ulRC;
     HMTX  hMtx = (HMTX)mutex;
 
     if (hMtx == NULLHANDLE)
-        return SDL_InvalidParamError("mutex");
+        return 0;
 
     ulRC = DosRequestMutexSem(hMtx, SEM_INDEFINITE_WAIT);
     if (ulRC != NO_ERROR) {
@@ -85,14 +82,13 @@ SDL_LockMutex(SDL_mutex * mutex)
 }
 
 /* try Lock the mutex */
-int
-SDL_TryLockMutex(SDL_mutex * mutex)
+int SDL_TryLockMutex(SDL_mutex * mutex)
 {
     ULONG ulRC;
     HMTX  hMtx = (HMTX)mutex;
 
     if (hMtx == NULLHANDLE)
-        return SDL_InvalidParamError("mutex");
+        return 0;
 
     ulRC = DosRequestMutexSem(hMtx, SEM_IMMEDIATE_RETURN);
 
@@ -108,14 +104,13 @@ SDL_TryLockMutex(SDL_mutex * mutex)
 }
 
 /* Unlock the mutex */
-int
-SDL_UnlockMutex(SDL_mutex * mutex)
+int SDL_UnlockMutex(SDL_mutex * mutex) SDL_NO_THREAD_SAFETY_ANALYSIS /* clang doesn't know about NULL mutexes */
 {
     ULONG ulRC;
     HMTX  hMtx = (HMTX)mutex;
 
     if (hMtx == NULLHANDLE)
-        return SDL_InvalidParamError("mutex");
+        return 0;
 
     ulRC = DosReleaseMutexSem(hMtx);
     if (ulRC != NO_ERROR)

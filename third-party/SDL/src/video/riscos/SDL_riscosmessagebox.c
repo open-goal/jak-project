@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_RISCOS
+#ifdef SDL_VIDEO_DRIVER_RISCOS
 
 #include "SDL_messagebox.h"
 #include "SDL_riscosmessagebox.h"
@@ -28,8 +28,7 @@
 #include <kernel.h>
 #include <swis.h>
 
-int
-RISCOS_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
+int RISCOS_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
 {
     _kernel_swi_regs regs;
     _kernel_oserror error;
@@ -41,19 +40,22 @@ RISCOS_ShowMessageBox(const SDL_MessageBoxData *messageboxdata, int *buttonid)
     regs.r[0] = (unsigned int)&error;
 
     regs.r[1] = (1 << 8) | (1 << 4);
-    if (messageboxdata->flags == SDL_MESSAGEBOX_INFORMATION)
+    if (messageboxdata->flags == SDL_MESSAGEBOX_INFORMATION) {
         regs.r[1] |= (1 << 9);
-    else if (messageboxdata->flags == SDL_MESSAGEBOX_WARNING)
+    } else if (messageboxdata->flags == SDL_MESSAGEBOX_WARNING) {
         regs.r[1] |= (2 << 9);
+    }
+
     regs.r[2] = (unsigned int)messageboxdata->title;
     regs.r[3] = 0;
     regs.r[4] = 0;
 
-    SDL_strlcpy(buttonstring, "" , 1024);
+    SDL_strlcpy(buttonstring, "", 1024);
     for (i = 0; i < messageboxdata->numbuttons; i++) {
         SDL_strlcat(buttonstring, messageboxdata->buttons[i].text, 1024);
-        if (i + 1 < messageboxdata->numbuttons)
+        if (i + 1 < messageboxdata->numbuttons) {
             SDL_strlcat(buttonstring, ",", 1024);
+        }
     }
     regs.r[5] = (unsigned int)buttonstring;
 

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,7 @@
 #include "../../SDL_internal.h"
 #include "../../main/haiku/SDL_BApp.h"
 
-#if SDL_VIDEO_DRIVER_HAIKU
+#ifdef SDL_VIDEO_DRIVER_HAIKU
 
 #include "SDL_BWin.h"
 #include <Url.h>
@@ -39,9 +39,10 @@ extern "C" {
 #include "SDL_bmodes.h"
 #include "SDL_bframebuffer.h"
 #include "SDL_bevents.h"
+#include "SDL_bmessagebox.h"
 
 static SDL_INLINE SDL_BWin *_ToBeWin(SDL_Window *window) {
-    return ((SDL_BWin*)(window->driverdata));
+    return (SDL_BWin *)(window->driverdata);
 }
 
 /* FIXME: Undefined functions */
@@ -54,8 +55,7 @@ static SDL_INLINE SDL_BWin *_ToBeWin(SDL_Window *window) {
 
 /* End undefined functions */
 
-static SDL_VideoDevice *
-HAIKU_CreateDevice(void)
+static SDL_VideoDevice * HAIKU_CreateDevice(void)
 {
     SDL_VideoDevice *device;
     /*SDL_VideoData *data;*/
@@ -105,7 +105,7 @@ HAIKU_CreateDevice(void)
     device->shape_driver.SetWindowShape = NULL;
     device->shape_driver.ResizeWindowShape = NULL;
 
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
     device->GL_LoadLibrary = HAIKU_GL_LoadLibrary;
     device->GL_GetProcAddress = HAIKU_GL_GetProcAddress;
     device->GL_UnloadLibrary = HAIKU_GL_UnloadLibrary;
@@ -132,7 +132,8 @@ HAIKU_CreateDevice(void)
 
 VideoBootStrap HAIKU_bootstrap = {
     "haiku", "Haiku graphics",
-    HAIKU_CreateDevice
+    HAIKU_CreateDevice,
+    HAIKU_ShowMessageBox
 };
 
 void HAIKU_DeleteDevice(SDL_VideoDevice * device)
@@ -141,8 +142,7 @@ void HAIKU_DeleteDevice(SDL_VideoDevice * device)
     SDL_free(device);
 }
 
-static SDL_Cursor *
-HAIKU_CreateSystemCursor(SDL_SystemCursor id)
+static SDL_Cursor * HAIKU_CreateSystemCursor(SDL_SystemCursor id)
 {
     SDL_Cursor *cursor;
     BCursorID cursorId = B_CURSOR_ID_SYSTEM_DEFAULT;
@@ -176,14 +176,12 @@ HAIKU_CreateSystemCursor(SDL_SystemCursor id)
     return cursor;
 }
 
-static SDL_Cursor *
-HAIKU_CreateDefaultCursor()
+static SDL_Cursor * HAIKU_CreateDefaultCursor()
 {
     return HAIKU_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 }
 
-static void
-HAIKU_FreeCursor(SDL_Cursor * cursor)
+static void HAIKU_FreeCursor(SDL_Cursor * cursor)
 {
     if (cursor->driverdata) {
         delete (BCursor*) cursor->driverdata;
@@ -191,8 +189,7 @@ HAIKU_FreeCursor(SDL_Cursor * cursor)
     SDL_free(cursor);
 }
 
-static SDL_Cursor *
-HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
+static SDL_Cursor * HAIKU_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 {
     SDL_Cursor *cursor;
     SDL_Surface *converted;
@@ -220,8 +217,9 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
 
-	if (!mouse)
+	if (!mouse) {
 		return 0;
+	}
 
 	if (cursor) {
 		BCursor *hCursor = (BCursor*)cursor->driverdata;
@@ -235,8 +233,7 @@ static int HAIKU_ShowCursor(SDL_Cursor *cursor)
 	return 0;
 }
 
-static int
-HAIKU_SetRelativeMouseMode(SDL_bool enabled)
+static int HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 {
     SDL_Window *window = SDL_GetMouseFocus();
     if (!window) {
@@ -259,8 +256,9 @@ HAIKU_SetRelativeMouseMode(SDL_bool enabled)
 static void HAIKU_MouseInit(_THIS)
 {
 	SDL_Mouse *mouse = SDL_GetMouse();
-	if (!mouse)
+	if (!mouse) {
 		return;
+	}
 	mouse->CreateCursor = HAIKU_CreateCursor;
 	mouse->CreateSystemCursor = HAIKU_CreateSystemCursor;
 	mouse->ShowCursor = HAIKU_ShowCursor;
@@ -285,14 +283,14 @@ int HAIKU_VideoInit(_THIS)
 
     HAIKU_MouseInit(_this);
 
-#if SDL_VIDEO_OPENGL
+#ifdef SDL_VIDEO_OPENGL
         /* testgl application doesn't load library, just tries to load symbols */
         /* is it correct? if so we have to load library here */
     HAIKU_GL_LoadLibrary(_this, NULL);
 #endif
 
     /* We're done! */
-    return (0);
+    return 0;
 }
 
 void HAIKU_VideoQuit(_THIS)
@@ -309,7 +307,7 @@ int HAIKU_OpenURL(const char *url)
 {
     BUrl burl(url);
     const status_t rc = burl.OpenWithPreferredApplication(false);
-    return (rc == B_NO_ERROR) ? 0 : SDL_SetError("URL open failed (err=%d)", (int) rc);
+    return (rc == B_NO_ERROR) ? 0 : SDL_SetError("URL open failed (err=%d)", (int)rc);
 }
 
 #ifdef __cplusplus

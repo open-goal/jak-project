@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,19 +25,20 @@
 #include "../SDL_sysaudio.h"
 
 /* Hidden "this" pointer for the audio functions */
-#define _THIS   SDL_AudioDevice *this
+#define _THIS SDL_AudioDevice *this
 
 #define NUM_BUFFERS 2
 
-struct SDL_PrivateAudioData {
+struct SDL_PrivateAudioData
+{
     /* The hardware input/output port. */
-    int     port;
+    int port;
     /* The raw allocated mixing buffer. */
-    Uint8   *rawbuf;
+    Uint8 *rawbuf;
     /* Individual mixing buffers. */
-    Uint8   *mixbufs[NUM_BUFFERS];
+    Uint8 *mixbufs[NUM_BUFFERS];
     /* Index of the next available mixing buffer. */
-    int     next_buffer;
+    int next_buffer;
 };
 
 #endif /* _SDL_vitaaudio_h */

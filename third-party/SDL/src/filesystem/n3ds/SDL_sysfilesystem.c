@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,24 +35,22 @@
 SDL_FORCE_INLINE char *MakePrefPath(const char *app);
 SDL_FORCE_INLINE int CreatePrefPathDir(const char *pref);
 
-char *
-SDL_GetBasePath(void)
+char *SDL_GetBasePath(void)
 {
     char *base_path = SDL_strdup("romfs:/");
     return base_path;
 }
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_GetPrefPath(const char *org, const char *app)
 {
     char *pref_path = NULL;
-    if (app == NULL) {
+    if (!app) {
         SDL_InvalidParamError("app");
         return NULL;
     }
 
     pref_path = MakePrefPath(app);
-    if (pref_path == NULL) {
+    if (!pref_path) {
         return NULL;
     }
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,8 +29,7 @@ quit(int rc)
     exit(rc);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int result;
     int testIterations = 1;
@@ -46,6 +45,9 @@ main(int argc, char *argv[])
         return 1;
     }
 
+    /* No need of windows (or update testautomation_mouse.c:mouse_getMouseFocus() */
+    state->num_windows = 0;
+
     /* Parse commandline */
     for (i = 1; i < argc;) {
         int consumed;
@@ -56,23 +58,22 @@ main(int argc, char *argv[])
             if (SDL_strcasecmp(argv[i], "--iterations") == 0) {
                 if (argv[i + 1]) {
                     testIterations = SDL_atoi(argv[i + 1]);
-                    if (testIterations < 1) testIterations = 1;
+                    if (testIterations < 1) {
+                        testIterations = 1;
+                    }
                     consumed = 2;
                 }
-            }
-            else if (SDL_strcasecmp(argv[i], "--execKey") == 0) {
+            } else if (SDL_strcasecmp(argv[i], "--execKey") == 0) {
                 if (argv[i + 1]) {
-                    SDL_sscanf(argv[i + 1], "%"SDL_PRIu64, &userExecKey);
+                    (void)SDL_sscanf(argv[i + 1], "%" SDL_PRIu64, &userExecKey);
                     consumed = 2;
                 }
-            }
-            else if (SDL_strcasecmp(argv[i], "--seed") == 0) {
+            } else if (SDL_strcasecmp(argv[i], "--seed") == 0) {
                 if (argv[i + 1]) {
                     userRunSeed = SDL_strdup(argv[i + 1]);
                     consumed = 2;
                 }
-            }
-            else if (SDL_strcasecmp(argv[i], "--filter") == 0) {
+            } else if (SDL_strcasecmp(argv[i], "--filter") == 0) {
                 if (argv[i + 1]) {
                     filter = SDL_strdup(argv[i + 1]);
                     consumed = 2;
@@ -105,11 +106,11 @@ main(int argc, char *argv[])
 
     /* Empty event queue */
     done = 0;
-    for (i=0; i<100; i++)  {
-      while (SDL_PollEvent(&event)) {
-        SDLTest_CommonEvent(state, &event, &done);
-      }
-      SDL_Delay(10);
+    for (i = 0; i < 100; i++) {
+        while (SDL_PollEvent(&event)) {
+            SDLTest_CommonEvent(state, &event, &done);
+        }
+        SDL_Delay(10);
     }
 
     /* Clean up */
@@ -118,7 +119,7 @@ main(int argc, char *argv[])
 
     /* Shutdown everything */
     quit(result);
-    return(result);
+    return result;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

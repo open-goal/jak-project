@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,9 +28,10 @@
 #define MOOSEPIC_W 64
 #define MOOSEPIC_H 88
 
-#define MOOSEFRAME_SIZE (MOOSEPIC_W * MOOSEPIC_H)
+#define MOOSEFRAME_SIZE   (MOOSEPIC_W * MOOSEPIC_H)
 #define MOOSEFRAMES_COUNT 10
 
+/* *INDENT-OFF* */ /* clang-format off */
 SDL_Color MooseColors[84] = {
     {49, 49, 49, 255}, {66, 24, 0, 255}, {66, 33, 0, 255}, {66, 66, 66, 255},
     {66, 115, 49, 255}, {74, 33, 0, 255}, {74, 41, 16, 255}, {82, 33, 8, 255},
@@ -54,6 +55,7 @@ SDL_Color MooseColors[84] = {
     {214, 173, 140, 255}, {222, 181, 148, 255}, {222, 189, 132, 255}, {222, 189, 156, 255},
     {222, 222, 222, 255}, {231, 198, 165, 255}, {231, 231, 231, 255}, {239, 206, 173, 255}
 };
+/* *INDENT-ON* */ /* clang-format on */
 
 Uint8 MooseFrames[MOOSEFRAMES_COUNT][MOOSEFRAME_SIZE];
 
@@ -83,17 +85,16 @@ void UpdateTexture(SDL_Texture *texture)
     }
     src = MooseFrames[frame];
     for (row = 0; row < MOOSEPIC_H; ++row) {
-        dst = (Uint32*)((Uint8*)pixels + row * pitch);
+        dst = (Uint32 *)((Uint8 *)pixels + row * pitch);
         for (col = 0; col < MOOSEPIC_W; ++col) {
             color = &MooseColors[*src++];
-            *dst++ = (0xFF000000|(color->r<<16)|(color->g<<8)|color->b);
+            *dst++ = (0xFF000000 | (color->r << 16) | (color->g << 8) | color->b);
         }
     }
     SDL_UnlockTexture(texture);
 }
 
-void
-loop()
+void loop()
 {
     SDL_Event event;
 
@@ -124,8 +125,7 @@ loop()
 #endif
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
     SDL_Window *window;
     SDL_RWops *handle;
@@ -141,25 +141,24 @@ main(int argc, char **argv)
 
     /* load the moose images */
     filename = GetResourceFilename(NULL, "moose.dat");
-    if (filename == NULL) {
+    if (!filename) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Out of memory\n");
         return -1;
     }
     handle = SDL_RWFromFile(filename, "rb");
     SDL_free(filename);
-    if (handle == NULL) {
+    if (!handle) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Can't find the file moose.dat !\n");
         quit(2);
     }
     SDL_RWread(handle, MooseFrames, MOOSEFRAME_SIZE, MOOSEFRAMES_COUNT);
     SDL_RWclose(handle);
 
-
     /* Create the window and renderer */
     window = SDL_CreateWindow("Happy Moose",
                               SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED,
-                              MOOSEPIC_W*4, MOOSEPIC_H*4,
+                              MOOSEPIC_W * 4, MOOSEPIC_H * 4,
                               SDL_WINDOW_RESIZABLE);
     if (!window) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create window: %s\n", SDL_GetError());
@@ -186,7 +185,7 @@ main(int argc, char **argv)
 #else
     while (!done) {
         loop();
-        }
+    }
 #endif
 
     SDL_DestroyRenderer(renderer);

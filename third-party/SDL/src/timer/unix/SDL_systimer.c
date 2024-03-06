@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,7 +46,7 @@
    Also added OS X Monotonic clock support
    Based on work in https://github.com/ThomasHabets/monotonic_clock
  */
-#if HAVE_NANOSLEEP || HAVE_CLOCK_GETTIME
+#if defined(HAVE_NANOSLEEP) || defined(HAVE_CLOCK_GETTIME)
 #include <time.h>
 #endif
 #ifdef __APPLE__
@@ -54,7 +54,7 @@
 #endif
 
 /* Use CLOCK_MONOTONIC_RAW, if available, which is not subject to adjustment by NTP */
-#if HAVE_CLOCK_GETTIME
+#ifdef HAVE_CLOCK_GETTIME
 #ifdef CLOCK_MONOTONIC_RAW
 #define SDL_MONOTONIC_CLOCK CLOCK_MONOTONIC_RAW
 #else
@@ -63,7 +63,7 @@
 #endif
 
 /* The first ticks value of the application */
-#if HAVE_CLOCK_GETTIME
+#ifdef HAVE_CLOCK_GETTIME
 static struct timespec start_ts;
 #elif defined(__APPLE__)
 static uint64_t start_mach;
@@ -73,8 +73,7 @@ static SDL_bool has_monotonic_time = SDL_FALSE;
 static struct timeval start_tv;
 static SDL_bool ticks_started = SDL_FALSE;
 
-void
-SDL_TicksInit(void)
+void SDL_TicksInit(void)
 {
     if (ticks_started) {
         return;
@@ -82,7 +81,7 @@ SDL_TicksInit(void)
     ticks_started = SDL_TRUE;
 
     /* Set first ticks value */
-#if HAVE_CLOCK_GETTIME
+#ifdef HAVE_CLOCK_GETTIME
     if (clock_gettime(SDL_MONOTONIC_CLOCK, &start_ts) == 0) {
         has_monotonic_time = SDL_TRUE;
     } else
@@ -97,27 +96,25 @@ SDL_TicksInit(void)
     }
 }
 
-void
-SDL_TicksQuit(void)
+void SDL_TicksQuit(void)
 {
     ticks_started = SDL_FALSE;
 }
 
-Uint64
-SDL_GetTicks64(void)
+Uint64 SDL_GetTicks64(void)
 {
     if (!ticks_started) {
         SDL_TicksInit();
     }
 
     if (has_monotonic_time) {
-#if HAVE_CLOCK_GETTIME
+#ifdef HAVE_CLOCK_GETTIME
         struct timespec now;
         clock_gettime(SDL_MONOTONIC_CLOCK, &now);
         return (Uint64)(((Sint64)(now.tv_sec - start_ts.tv_sec) * 1000) + ((now.tv_nsec - start_ts.tv_nsec) / 1000000));
 #elif defined(__APPLE__)
         const uint64_t now = mach_absolute_time();
-        return ((((now - start_mach) * mach_base_info.numer) / mach_base_info.denom) / 1000000);
+        return (((now - start_mach) * mach_base_info.numer) / mach_base_info.denom) / 1000000;
 #else
         SDL_assert(SDL_FALSE);
         return 0;
@@ -129,8 +126,7 @@ SDL_GetTicks64(void)
     }
 }
 
-Uint64
-SDL_GetPerformanceCounter(void)
+Uint64 SDL_GetPerformanceCounter(void)
 {
     Uint64 ticks;
     if (!ticks_started) {
@@ -138,7 +134,7 @@ SDL_GetPerformanceCounter(void)
     }
 
     if (has_monotonic_time) {
-#if HAVE_CLOCK_GETTIME
+#ifdef HAVE_CLOCK_GETTIME
         struct timespec now;
 
         clock_gettime(SDL_MONOTONIC_CLOCK, &now);
@@ -159,18 +155,17 @@ SDL_GetPerformanceCounter(void)
         ticks *= 1000000;
         ticks += now.tv_usec;
     }
-    return (ticks);
+    return ticks;
 }
 
-Uint64
-SDL_GetPerformanceFrequency(void)
+Uint64 SDL_GetPerformanceFrequency(void)
 {
     if (!ticks_started) {
         SDL_TicksInit();
     }
 
     if (has_monotonic_time) {
-#if HAVE_CLOCK_GETTIME
+#ifdef HAVE_CLOCK_GETTIME
         return 1000000000;
 #elif defined(__APPLE__)
         Uint64 freq = mach_base_info.denom;
@@ -178,17 +173,16 @@ SDL_GetPerformanceFrequency(void)
         freq /= mach_base_info.numer;
         return freq;
 #endif
-    } 
-        
+    }
+
     return 1000000;
 }
 
-void
-SDL_Delay(Uint32 ms)
+void SDL_Delay(Uint32 ms)
 {
     int was_error;
 
-#if HAVE_NANOSLEEP
+#ifdef HAVE_NANOSLEEP
     struct timespec elapsed, tv;
 #else
     struct timeval tv;
@@ -204,7 +198,7 @@ SDL_Delay(Uint32 ms)
 #endif
 
     /* Set the timeout interval */
-#if HAVE_NANOSLEEP
+#ifdef HAVE_NANOSLEEP
     elapsed.tv_sec = ms / 1000;
     elapsed.tv_nsec = (ms % 1000) * 1000000;
 #else
@@ -213,7 +207,7 @@ SDL_Delay(Uint32 ms)
     do {
         errno = 0;
 
-#if HAVE_NANOSLEEP
+#ifdef HAVE_NANOSLEEP
         tv.tv_sec = elapsed.tv_sec;
         tv.tv_nsec = elapsed.tv_nsec;
         was_error = nanosleep(&tv, &elapsed);

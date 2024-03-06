@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,9 +21,10 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_KMSDRM
+#ifdef SDL_VIDEO_DRIVER_KMSDRM
 
 #include "SDL_log.h"
+#include "SDL_timer.h"
 
 #include "SDL_kmsdrmvideo.h"
 #include "SDL_kmsdrmopengles.h"
@@ -36,20 +37,19 @@
 
 /* EGL implementation of SDL OpenGL support */
 
-void
-KMSDRM_GLES_DefaultProfileConfig(_THIS, int *mask, int *major, int *minor)
+void KMSDRM_GLES_DefaultProfileConfig(_THIS, int *mask, int *major, int *minor)
 {
     /* if SDL was _also_ built with the Raspberry Pi driver (so we're
        definitely a Pi device), default to GLES2. */
-#if SDL_VIDEO_DRIVER_RPI
+#ifdef SDL_VIDEO_DRIVER_RPI
     *mask = SDL_GL_CONTEXT_PROFILE_ES;
     *major = 2;
     *minor = 0;
 #endif
 }
 
-int
-KMSDRM_GLES_LoadLibrary(_THIS, const char *path) {
+int KMSDRM_GLES_LoadLibrary(_THIS, const char *path)
+{
     /* Just pretend you do this here, but don't do it until KMSDRM_CreateWindow(),
        where we do the same library load we would normally do here.
        because this gets called by SDL_CreateWindow() before KMSDR_CreateWindow(),
@@ -62,15 +62,16 @@ KMSDRM_GLES_LoadLibrary(_THIS, const char *path) {
     return 0;
 }
 
-void
-KMSDRM_GLES_UnloadLibrary(_THIS) {
+void KMSDRM_GLES_UnloadLibrary(_THIS)
+{
     /* As with KMSDRM_GLES_LoadLibrary(), we define our own "dummy" unloading function
        so we manually unload the library whenever we want. */
 }
 
 SDL_EGL_CreateContext_impl(KMSDRM)
 
-int KMSDRM_GLES_SetSwapInterval(_THIS, int interval) {
+    int KMSDRM_GLES_SetSwapInterval(_THIS, int interval)
+{
 
     if (!_this->egl_data) {
         return SDL_SetError("EGL not initialized");
@@ -85,10 +86,10 @@ int KMSDRM_GLES_SetSwapInterval(_THIS, int interval) {
     return 0;
 }
 
-int
-KMSDRM_GLES_SwapWindow(_THIS, SDL_Window * window) {
-    SDL_WindowData *windata = ((SDL_WindowData *) window->driverdata);
-    SDL_DisplayData *dispdata = (SDL_DisplayData *) SDL_GetDisplayForWindow(window)->driverdata;
+int KMSDRM_GLES_SwapWindow(_THIS, SDL_Window *window)
+{
+    SDL_WindowData *windata = ((SDL_WindowData *)window->driverdata);
+    SDL_DisplayData *dispdata = (SDL_DisplayData *)SDL_GetDisplayForWindow(window)->driverdata;
     SDL_VideoData *viddata = ((SDL_VideoData *)_this->driverdata);
     KMSDRM_FBInfo *fb_info;
     int ret = 0;
@@ -96,6 +97,13 @@ KMSDRM_GLES_SwapWindow(_THIS, SDL_Window * window) {
     /* Always wait for the previous issued flip before issuing a new one,
        even if you do async flips. */
     uint32_t flip_flags = DRM_MODE_PAGE_FLIP_EVENT;
+
+    /* Skip the swap if we've switched away to another VT */
+    if (windata->egl_surface == EGL_NO_SURFACE) {
+        /* Wait a bit, throttling to ~100 FPS */
+        SDL_Delay(10);
+        return 0;
+    }
 
     /* Recreate the GBM / EGL surfaces if the display mode has changed */
     if (windata->egl_surface_dirty) {
@@ -117,10 +125,10 @@ KMSDRM_GLES_SwapWindow(_THIS, SDL_Window * window) {
 
     windata->bo = windata->next_bo;
 
-    /* Mark a buffer to becume the next front buffer.
+    /* Mark a buffer to become the next front buffer.
        This won't happen until pagelip completes. */
     if (!(_this->egl_data->eglSwapBuffers(_this->egl_data->egl_display,
-                                           windata->egl_surface))) {
+                                          windata->egl_surface))) {
         SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "eglSwapBuffers failed");
         return 0;
     }
@@ -146,8 +154,8 @@ KMSDRM_GLES_SwapWindow(_THIS, SDL_Window * window) {
            drmModePageFlip can be used the CRTC has to be configured to use
            the current connector and mode with drmModeSetCrtc */
         ret = KMSDRM_drmModeSetCrtc(viddata->drm_fd,
-          dispdata->crtc->crtc_id, fb_info->fb_id, 0, 0,
-          &dispdata->connector->connector_id, 1, &dispdata->mode);
+                                    dispdata->crtc->crtc_id, fb_info->fb_id, 0, 0,
+                                    &dispdata->connector->connector_id, 1, &dispdata->mode);
 
         if (ret) {
             SDL_LogError(SDL_LOG_CATEGORY_VIDEO, "Could not set videomode on CRTC.");
@@ -171,7 +179,7 @@ KMSDRM_GLES_SwapWindow(_THIS, SDL_Window * window) {
         }
 
         ret = KMSDRM_drmModePageFlip(viddata->drm_fd, dispdata->crtc->crtc_id,
-                 fb_info->fb_id, flip_flags, &windata->waiting_for_flip);
+                                     fb_info->fb_id, flip_flags, &windata->waiting_for_flip);
 
         if (ret == 0) {
             windata->waiting_for_flip = SDL_TRUE;
@@ -203,4 +211,4 @@ SDL_EGL_MakeCurrent_impl(KMSDRM)
 
 #endif /* SDL_VIDEO_DRIVER_KMSDRM */
 
-/* vi: set ts=4 sw=4 expandtab: */
+    /* vi: set ts=4 sw=4 expandtab: */

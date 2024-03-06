@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,12 +23,13 @@
 #ifndef SDL_x11clipboard_h_
 #define SDL_x11clipboard_h_
 
-enum ESDLX11ClipboardMimeType {
+enum ESDLX11ClipboardMimeType
+{
     SDL_X11_CLIPBOARD_MIME_TYPE_STRING,
     SDL_X11_CLIPBOARD_MIME_TYPE_TEXT_PLAIN,
-    #ifdef X_HAVE_UTF8_STRING
+#ifdef X_HAVE_UTF8_STRING
     SDL_X11_CLIPBOARD_MIME_TYPE_TEXT_PLAIN_UTF8,
-    #endif
+#endif
     SDL_X11_CLIPBOARD_MIME_TYPE_TEXT,
     SDL_X11_CLIPBOARD_MIME_TYPE_MAX
 };

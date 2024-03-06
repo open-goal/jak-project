@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -48,6 +48,7 @@
 #include <libkern/OSAtomic.h>
 #endif
 
+/* *INDENT-OFF* */ /* clang-format off */
 #if defined(__WATCOMC__) && defined(__386__)
 SDL_COMPILE_TIME_ASSERT(locksize, 4==sizeof(SDL_SpinLock));
 extern __inline int _SDL_xchg_watcom(volatile int *a, int v);
@@ -57,12 +58,12 @@ extern __inline int _SDL_xchg_watcom(volatile int *a, int v);
   value [eax] \
   modify exact [eax];
 #endif /* __WATCOMC__ && __386__ */
+/* *INDENT-ON* */ /* clang-format on */
 
 /* This function is where all the magic happens... */
-SDL_bool
-SDL_AtomicTryLock(SDL_SpinLock *lock)
+SDL_bool SDL_AtomicTryLock(SDL_SpinLock *lock)
 {
-#if SDL_ATOMIC_DISABLED
+#ifdef SDL_ATOMIC_DISABLED
     /* Terrible terrible damage */
     static SDL_mutex *_spinlock_mutex;
 
@@ -80,53 +81,61 @@ SDL_AtomicTryLock(SDL_SpinLock *lock)
         return SDL_FALSE;
     }
 
-#elif HAVE_GCC_ATOMICS || HAVE_GCC_SYNC_LOCK_TEST_AND_SET
-    return (__sync_lock_test_and_set(lock, 1) == 0);
+#elif defined(HAVE_GCC_ATOMICS) || defined(HAVE_GCC_SYNC_LOCK_TEST_AND_SET)
+    return __sync_lock_test_and_set(lock, 1) == 0;
 
 #elif defined(_MSC_VER) && (defined(_M_ARM) || defined(_M_ARM64))
-    return (_InterlockedExchange_acq(lock, 1) == 0);
+    return _InterlockedExchange_acq(lock, 1) == 0;
 
 #elif defined(_MSC_VER)
     SDL_COMPILE_TIME_ASSERT(locksize, sizeof(*lock) == sizeof(long));
-    return (InterlockedExchange((long*)lock, 1) == 0);
+    return InterlockedExchange((long *)lock, 1) == 0;
 
 #elif defined(__WATCOMC__) && defined(__386__)
     return _SDL_xchg_watcom(lock, 1) == 0;
 
-#elif defined(__GNUC__) && defined(__arm__) && \
-        (defined(__ARM_ARCH_3__) || defined(__ARM_ARCH_3M__) || \
-         defined(__ARM_ARCH_4__) || defined(__ARM_ARCH_4T__) || \
-         defined(__ARM_ARCH_5__) || defined(__ARM_ARCH_5TE__) || \
-         defined(__ARM_ARCH_5TEJ__))
+#elif defined(__GNUC__) && defined(__arm__) &&               \
+    (defined(__ARM_ARCH_3__) || defined(__ARM_ARCH_3M__) ||  \
+     defined(__ARM_ARCH_4__) || defined(__ARM_ARCH_4T__) ||  \
+     defined(__ARM_ARCH_5__) || defined(__ARM_ARCH_5TE__) || \
+     defined(__ARM_ARCH_5TEJ__))
     int result;
 
 #if defined(__RISCOS__)
     if (__cpucap_have_rex()) {
-        __asm__ __volatile__ (
+        __asm__ __volatile__(
             "ldrex %0, [%2]\nteq   %0, #0\nstrexeq %0, %1, [%2]"
-            : "=&r" (result) : "r" (1), "r" (lock) : "cc", "memory");
-        return (result == 0);
+            : "=&r"(result)
+            : "r"(1), "r"(lock)
+            : "cc", "memory");
+        return result == 0;
     }
 #endif
 
-    __asm__ __volatile__ (
+    __asm__ __volatile__(
         "swp %0, %1, [%2]\n"
-        : "=&r,&r" (result) : "r,0" (1), "r,r" (lock) : "memory");
-    return (result == 0);
+        : "=&r,&r"(result)
+        : "r,0"(1), "r,r"(lock)
+        : "memory");
+    return result == 0;
 
 #elif defined(__GNUC__) && defined(__arm__)
     int result;
-    __asm__ __volatile__ (
+    __asm__ __volatile__(
         "ldrex %0, [%2]\nteq   %0, #0\nstrexeq %0, %1, [%2]"
-        : "=&r" (result) : "r" (1), "r" (lock) : "cc", "memory");
-    return (result == 0);
+        : "=&r"(result)
+        : "r"(1), "r"(lock)
+        : "cc", "memory");
+    return result == 0;
 
 #elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     int result;
     __asm__ __volatile__(
         "lock ; xchgl %0, (%1)\n"
-        : "=r" (result) : "r" (lock), "0" (1) : "cc", "memory");
-    return (result == 0);
+        : "=r"(result)
+        : "r"(lock), "0"(1)
+        : "cc", "memory");
+    return result == 0;
 
 #elif defined(__MACOSX__) || defined(__IPHONEOS__)
     /* Maybe used for PowerPC, but the Intel asm or gcc atomics are favored. */
@@ -134,11 +143,11 @@ SDL_AtomicTryLock(SDL_SpinLock *lock)
 
 #elif defined(__SOLARIS__) && defined(_LP64)
     /* Used for Solaris with non-gcc compilers. */
-    return (SDL_bool) ((int) atomic_cas_64((volatile uint64_t*)lock, 0, 1) == 0);
+    return (SDL_bool)((int)atomic_cas_64((volatile uint64_t *)lock, 0, 1) == 0);
 
 #elif defined(__SOLARIS__) && !defined(_LP64)
     /* Used for Solaris with non-gcc compilers. */
-    return (SDL_bool) ((int) atomic_cas_32((volatile uint32_t*)lock, 0, 1) == 0);
+    return (SDL_bool)((int)atomic_cas_32((volatile uint32_t *)lock, 0, 1) == 0);
 #elif defined(PS2)
     uint32_t oldintr;
     SDL_bool res = SDL_FALSE;
@@ -150,7 +159,9 @@ SDL_AtomicTryLock(SDL_SpinLock *lock)
         res = SDL_TRUE;
     }
     // enable interuption
-    if(oldintr) { EIntr(); }
+    if (oldintr) {
+        EIntr();
+    }
     return res;
 #else
 #error Please implement for your platform.
@@ -158,8 +169,7 @@ SDL_AtomicTryLock(SDL_SpinLock *lock)
 #endif
 }
 
-void
-SDL_AtomicLock(SDL_SpinLock *lock)
+void SDL_AtomicLock(SDL_SpinLock *lock)
 {
     int iterations = 0;
     /* FIXME: Should we have an eventual timeout? */
@@ -174,10 +184,9 @@ SDL_AtomicLock(SDL_SpinLock *lock)
     }
 }
 
-void
-SDL_AtomicUnlock(SDL_SpinLock *lock)
+void SDL_AtomicUnlock(SDL_SpinLock *lock)
 {
-#if HAVE_GCC_ATOMICS || HAVE_GCC_SYNC_LOCK_TEST_AND_SET
+#if defined(HAVE_GCC_ATOMICS) || defined(HAVE_GCC_SYNC_LOCK_TEST_AND_SET)
     __sync_lock_release(lock);
 
 #elif defined(_MSC_VER) && (defined(_M_ARM) || defined(_M_ARM64))
@@ -188,7 +197,7 @@ SDL_AtomicUnlock(SDL_SpinLock *lock)
     *lock = 0;
 
 #elif defined(__WATCOMC__) && defined(__386__)
-    SDL_CompilerBarrier ();
+    SDL_CompilerBarrier();
     *lock = 0;
 
 #elif defined(__SOLARIS__)

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,13 +30,13 @@
 extern int SDL_KeyboardInit(void);
 
 /* Get the default keymap */
-extern void SDL_GetDefaultKeymap(SDL_Keycode * keymap);
+extern void SDL_GetDefaultKeymap(SDL_Keycode *keymap);
 
 /* Get the default key code for a scancode */
 extern SDL_Keycode SDL_GetDefaultKeyFromScancode(SDL_Scancode scancode);
 
 /* Set the mapping of scancode to key codes */
-extern void SDL_SetKeymap(int start, const SDL_Keycode * keys, int length, SDL_bool send_event);
+extern void SDL_SetKeymap(int start, const SDL_Keycode *keys, int length, SDL_bool send_event);
 
 /* Set a platform-dependent key name, overriding the default platform-agnostic
    name. Encoded as UTF-8. The string is not copied, thus the pointer given to
@@ -45,12 +45,15 @@ extern void SDL_SetKeymap(int start, const SDL_Keycode * keys, int length, SDL_b
 extern void SDL_SetScancodeName(SDL_Scancode scancode, const char *name);
 
 /* Set the keyboard focus window */
-extern void SDL_SetKeyboardFocus(SDL_Window * window);
+extern void SDL_SetKeyboardFocus(SDL_Window *window);
 
 /* Send a character from an on-screen keyboard as scancode and modifier key events,
    currently assuming ASCII characters on a US keyboard layout
  */
 extern int SDL_SendKeyboardUnicodeKey(Uint32 ch);
+
+/* Send a key from a virtual key source, like an on-screen keyboard */
+extern int SDL_SendVirtualKeyboardKey(Uint8 state, SDL_Scancode scancode);
 
 /* Send a keyboard key event */
 extern int SDL_SendKeyboardKey(Uint8 state, SDL_Scancode scancode);
@@ -70,7 +73,7 @@ extern SDL_bool SDL_HardwareKeyboardKeyPressed(void);
 extern int SDL_SendKeyboardText(const char *text);
 
 /* Send editing text for selected range from start to end */
-extern int SDL_SendEditingText(const char *text, int start, int end);
+extern int SDL_SendEditingText(const char *text, int start, int length);
 
 /* Shutdown the keyboard subsystem */
 extern void SDL_KeyboardQuit(void);

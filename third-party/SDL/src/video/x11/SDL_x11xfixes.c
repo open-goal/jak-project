@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_X11 && SDL_VIDEO_DRIVER_X11_XFIXES
+#if defined(SDL_VIDEO_DRIVER_X11) && defined(SDL_VIDEO_DRIVER_X11_XFIXES)
 
 #include "SDL_x11video.h"
 #include "SDL_x11xfixes.h"
@@ -29,34 +29,41 @@
 #include "../../events/SDL_touch_c.h"
 
 static int xfixes_initialized = 0;
+static int xfixes_selection_notify_event = 0;
 
-static int
-query_xfixes_version(Display *display, int major, int minor)
+static int query_xfixes_version(Display *display, int major, int minor)
 {
     /* We don't care if this fails, so long as it sets major/minor on it's way out the door. */
     X11_XFixesQueryVersion(display, &major, &minor);
-    return ((major * 1000) + minor);
+    return (major * 1000) + minor;
 }
 
-static SDL_bool
-xfixes_version_atleast(const int version, const int wantmajor, const int wantminor)
+static SDL_bool xfixes_version_atleast(const int version, const int wantmajor, const int wantminor)
 {
-    return (version >= ((wantmajor * 1000) + wantminor));
+    return version >= ((wantmajor * 1000) + wantminor);
 }
 
-void
-X11_InitXfixes(_THIS)
+void X11_InitXfixes(_THIS)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
 
     int version = 0;
     int event, error;
     int fixes_opcode;
 
+    Atom XA_CLIPBOARD = X11_XInternAtom(data->display, "CLIPBOARD", 0);
+
     if (!SDL_X11_HAVE_XFIXES ||
         !X11_XQueryExtension(data->display, "XFIXES", &fixes_opcode, &event, &error)) {
         return;
     }
+
+    /* Selection tracking is available in all versions of XFixes */
+    xfixes_selection_notify_event = event + XFixesSelectionNotify;
+    X11_XFixesSelectSelectionInput(data->display, DefaultRootWindow(data->display),
+            XA_CLIPBOARD, XFixesSetSelectionOwnerNotifyMask);
+    X11_XFixesSelectSelectionInput(data->display, DefaultRootWindow(data->display),
+            XA_PRIMARY, XFixesSetSelectionOwnerNotifyMask);
 
     /* We need at least 5.0 for barriers. */
     version = query_xfixes_version(data->display, 5, 0);
@@ -67,14 +74,17 @@ X11_InitXfixes(_THIS)
     xfixes_initialized = 1;
 }
 
-int
-X11_XfixesIsInitialized()
+int X11_XfixesIsInitialized()
 {
     return xfixes_initialized;
 }
 
-void
-X11_SetWindowMouseRect(_THIS, SDL_Window * window)
+int X11_GetXFixesSelectionNotifyEvent()
+{
+    return xfixes_selection_notify_event;
+}
+
+void X11_SetWindowMouseRect(_THIS, SDL_Window *window)
 {
     if (SDL_RectEmpty(&window->mouse_rect)) {
         X11_ConfineCursorWithFlags(_this, window, NULL, 0);
@@ -83,7 +93,7 @@ X11_SetWindowMouseRect(_THIS, SDL_Window * window)
             X11_ConfineCursorWithFlags(_this, window, &window->mouse_rect, 0);
         } else {
             /* Save the state for when we get focus again */
-            SDL_WindowData *wdata = (SDL_WindowData *) window->driverdata;
+            SDL_WindowData *wdata = (SDL_WindowData *)window->driverdata;
 
             SDL_memcpy(&wdata->barrier_rect, &window->mouse_rect, sizeof(wdata->barrier_rect));
 
@@ -92,14 +102,13 @@ X11_SetWindowMouseRect(_THIS, SDL_Window * window)
     }
 }
 
-int
-X11_ConfineCursorWithFlags(_THIS, SDL_Window * window, const SDL_Rect * rect, int flags)
+int X11_ConfineCursorWithFlags(_THIS, SDL_Window *window, const SDL_Rect *rect, int flags)
 {
     /* Yaakuro: For some reason Xfixes when confining inside a rect where the
      * edges exactly match, a rectangle the cursor 'slips' out of the barrier.
      * To prevent that the lines for the barriers will span the whole screen.
      */
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
     SDL_WindowData *wdata;
 
     if (!X11_XfixesIsInitialized()) {
@@ -108,11 +117,11 @@ X11_ConfineCursorWithFlags(_THIS, SDL_Window * window, const SDL_Rect * rect, in
 
     /* If there is already a set of barriers active, disable them. */
     if (data->active_cursor_confined_window) {
-         X11_DestroyPointerBarrier(_this, data->active_cursor_confined_window);
+        X11_DestroyPointerBarrier(_this, data->active_cursor_confined_window);
     }
 
     SDL_assert(window != NULL);
-    wdata = (SDL_WindowData *) window->driverdata;
+    wdata = (SDL_WindowData *)window->driverdata;
 
     /* If user did not specify an area to confine, destroy the barrier that was/is assigned to
      * this window it was assigned */
@@ -140,28 +149,28 @@ X11_ConfineCursorWithFlags(_THIS, SDL_Window * window, const SDL_Rect * rect, in
 
         /** Create the left barrier */
         wdata->barrier[0] = X11_XFixesCreatePointerBarrier(data->display, wdata->xwindow,
-                                             x1, bounds.y,
-                                             x1, bounds.y + bounds.h,
-                                             BarrierPositiveX,
-                                             0, NULL);
+                                                           x1, bounds.y,
+                                                           x1, bounds.y + bounds.h,
+                                                           BarrierPositiveX,
+                                                           0, NULL);
         /** Create the right barrier */
         wdata->barrier[1] = X11_XFixesCreatePointerBarrier(data->display, wdata->xwindow,
-                                             x2, bounds.y,
-                                             x2, bounds.y + bounds.h,
-                                             BarrierNegativeX,
-                                             0, NULL);
+                                                           x2, bounds.y,
+                                                           x2, bounds.y + bounds.h,
+                                                           BarrierNegativeX,
+                                                           0, NULL);
         /** Create the top barrier */
         wdata->barrier[2] = X11_XFixesCreatePointerBarrier(data->display, wdata->xwindow,
-                                             bounds.x, y1,
-                                             bounds.x + bounds.w, y1,
-                                             BarrierPositiveY,
-                                             0, NULL);
+                                                           bounds.x, y1,
+                                                           bounds.x + bounds.w, y1,
+                                                           BarrierPositiveY,
+                                                           0, NULL);
         /** Create the bottom barrier */
         wdata->barrier[3] = X11_XFixesCreatePointerBarrier(data->display, wdata->xwindow,
-                                             bounds.x, y2,
-                                             bounds.x + bounds.w, y2,
-                                             BarrierNegativeY,
-                                             0, NULL);
+                                                           bounds.x, y2,
+                                                           bounds.x + bounds.w, y2,
+                                                           BarrierNegativeY,
+                                                           0, NULL);
 
         X11_XFlush(data->display);
 
@@ -182,13 +191,12 @@ X11_ConfineCursorWithFlags(_THIS, SDL_Window * window, const SDL_Rect * rect, in
     return 0;
 }
 
-void
-X11_DestroyPointerBarrier(_THIS, SDL_Window * window)
+void X11_DestroyPointerBarrier(_THIS, SDL_Window *window)
 {
     int i;
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
     if (window) {
-        SDL_WindowData *wdata = (SDL_WindowData *) window->driverdata;
+        SDL_WindowData *wdata = (SDL_WindowData *)window->driverdata;
 
         for (i = 0; i < 4; i++) {
             if (wdata->barrier[i] > 0) {

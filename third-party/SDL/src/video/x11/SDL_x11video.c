@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_X11
+#ifdef SDL_VIDEO_DRIVER_X11
 
 #include <unistd.h> /* For getpid() and readlink() */
 
@@ -37,8 +37,9 @@
 #include "SDL_x11touch.h"
 #include "SDL_x11xinput2.h"
 #include "SDL_x11xfixes.h"
+#include "SDL_x11messagebox.h"
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
 #include "SDL_x11opengles.h"
 #endif
 
@@ -49,8 +50,7 @@ static int X11_VideoInit(_THIS);
 static void X11_VideoQuit(_THIS);
 
 /* Find out what class name we should use */
-static char *
-get_classname()
+static char *get_classname()
 {
     char *spot;
 #if defined(__LINUX__) || defined(__FREEBSD__)
@@ -68,10 +68,9 @@ get_classname()
     /* Next look at the application's executable name */
 #if defined(__LINUX__) || defined(__FREEBSD__)
 #if defined(__LINUX__)
-    SDL_snprintf(procfile, SDL_arraysize(procfile), "/proc/%d/exe", getpid());
+    (void)SDL_snprintf(procfile, SDL_arraysize(procfile), "/proc/%d/exe", getpid());
 #elif defined(__FREEBSD__)
-    SDL_snprintf(procfile, SDL_arraysize(procfile), "/proc/%d/file",
-                 getpid());
+    (void)SDL_snprintf(procfile, SDL_arraysize(procfile), "/proc/%d/file", getpid());
 #else
 #error Where can we find the executable name?
 #endif
@@ -93,12 +92,11 @@ get_classname()
 
 /* X11 driver bootstrap functions */
 
-static int (*orig_x11_errhandler) (Display *, XErrorEvent *) = NULL;
+static int (*orig_x11_errhandler)(Display *, XErrorEvent *) = NULL;
 
-static void
-X11_DeleteDevice(SDL_VideoDevice * device)
+static void X11_DeleteDevice(SDL_VideoDevice *device)
 {
-    SDL_VideoData *data = (SDL_VideoData *) device->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)device->driverdata;
     if (device->vulkan_config.loader_handle) {
         device->Vulkan_UnloadLibrary(device);
     }
@@ -121,35 +119,33 @@ X11_DeleteDevice(SDL_VideoDevice * device)
 
 /* An error handler to reset the vidmode and then call the default handler. */
 static SDL_bool safety_net_triggered = SDL_FALSE;
-static int
-X11_SafetyNetErrHandler(Display * d, XErrorEvent * e)
+static int X11_SafetyNetErrHandler(Display *d, XErrorEvent *e)
 {
     SDL_VideoDevice *device = NULL;
     /* if we trigger an error in our error handler, don't try again. */
     if (!safety_net_triggered) {
         safety_net_triggered = SDL_TRUE;
         device = SDL_GetVideoDevice();
-        if (device != NULL) {
+        if (device) {
             int i;
             for (i = 0; i < device->num_displays; i++) {
                 SDL_VideoDisplay *display = &device->displays[i];
                 if (SDL_memcmp(&display->current_mode, &display->desktop_mode,
-                               sizeof (SDL_DisplayMode)) != 0) {
+                               sizeof(SDL_DisplayMode)) != 0) {
                     X11_SetDisplayMode(device, display, &display->desktop_mode);
                 }
             }
         }
     }
 
-    if (orig_x11_errhandler != NULL) {
-        return orig_x11_errhandler(d, e);  /* probably terminate. */
+    if (orig_x11_errhandler) {
+        return orig_x11_errhandler(d, e); /* probably terminate. */
     }
 
     return 0;
 }
 
-static SDL_VideoDevice *
-X11_CreateDevice(void)
+static SDL_VideoDevice *X11_CreateDevice(void)
 {
     SDL_VideoDevice *device;
     SDL_VideoData *data;
@@ -173,12 +169,12 @@ X11_CreateDevice(void)
     }
 
     /* Initialize all variables that we clean on shutdown */
-    device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
+    device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
         SDL_OutOfMemory();
         return NULL;
     }
-    data = (struct SDL_VideoData *) SDL_calloc(1, sizeof(SDL_VideoData));
+    data = (struct SDL_VideoData *)SDL_calloc(1, sizeof(SDL_VideoData));
     if (!data) {
         SDL_free(device);
         SDL_OutOfMemory();
@@ -188,13 +184,13 @@ X11_CreateDevice(void)
 
     data->global_mouse_changed = SDL_TRUE;
 
-#if SDL_VIDEO_DRIVER_X11_XFIXES
+#ifdef SDL_VIDEO_DRIVER_X11_XFIXES
     data->active_cursor_confined_window = NULL;
 #endif /* SDL_VIDEO_DRIVER_X11_XFIXES */
 
     data->display = x11_display;
     data->request_display = X11_XOpenDisplay(display);
-    if (data->request_display == NULL) {
+    if (!data->request_display) {
         X11_XCloseDisplay(data->display);
         SDL_free(device->driverdata);
         SDL_free(device);
@@ -266,7 +262,7 @@ X11_CreateDevice(void)
     device->AcceptDragAndDrop = X11_AcceptDragAndDrop;
     device->FlashWindow = X11_FlashWindow;
 
-#if SDL_VIDEO_DRIVER_X11_XFIXES
+#ifdef SDL_VIDEO_DRIVER_X11_XFIXES
     device->SetWindowMouseRect = X11_SetWindowMouseRect;
 #endif /* SDL_VIDEO_DRIVER_X11_XFIXES */
 
@@ -274,7 +270,7 @@ X11_CreateDevice(void)
     device->shape_driver.SetWindowShape = X11_SetWindowShape;
     device->shape_driver.ResizeWindowShape = X11_ResizeWindowShape;
 
-#if SDL_VIDEO_OPENGL_GLX
+#ifdef SDL_VIDEO_OPENGL_GLX
     device->GL_LoadLibrary = X11_GL_LoadLibrary;
     device->GL_GetProcAddress = X11_GL_GetProcAddress;
     device->GL_UnloadLibrary = X11_GL_UnloadLibrary;
@@ -285,8 +281,8 @@ X11_CreateDevice(void)
     device->GL_SwapWindow = X11_GL_SwapWindow;
     device->GL_DeleteContext = X11_GL_DeleteContext;
 #endif
-#if SDL_VIDEO_OPENGL_EGL
-#if SDL_VIDEO_OPENGL_GLX
+#ifdef SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_GLX
     if (SDL_GetHintBoolean(SDL_HINT_VIDEO_X11_FORCE_EGL, SDL_FALSE)) {
 #endif
         device->GL_LoadLibrary = X11_GLES_LoadLibrary;
@@ -298,7 +294,7 @@ X11_CreateDevice(void)
         device->GL_GetSwapInterval = X11_GLES_GetSwapInterval;
         device->GL_SwapWindow = X11_GLES_SwapWindow;
         device->GL_DeleteContext = X11_GLES_DeleteContext;
-#if SDL_VIDEO_OPENGL_GLX
+#ifdef SDL_VIDEO_OPENGL_GLX
     }
 #endif
 #endif
@@ -319,7 +315,7 @@ X11_CreateDevice(void)
 
     device->free = X11_DeleteDevice;
 
-#if SDL_VIDEO_VULKAN
+#ifdef SDL_VIDEO_VULKAN
     device->Vulkan_LoadLibrary = X11_Vulkan_LoadLibrary;
     device->Vulkan_UnloadLibrary = X11_Vulkan_UnloadLibrary;
     device->Vulkan_GetInstanceExtensions = X11_Vulkan_GetInstanceExtensions;
@@ -331,24 +327,23 @@ X11_CreateDevice(void)
 
 VideoBootStrap X11_bootstrap = {
     "x11", "SDL X11 video driver",
-    X11_CreateDevice
+    X11_CreateDevice,
+    X11_ShowMessageBox
 };
 
-static int (*handler) (Display *, XErrorEvent *) = NULL;
-static int
-X11_CheckWindowManagerErrorHandler(Display * d, XErrorEvent * e)
+static int (*handler)(Display *, XErrorEvent *) = NULL;
+static int X11_CheckWindowManagerErrorHandler(Display *d, XErrorEvent *e)
 {
     if (e->error_code == BadWindow) {
-        return (0);
+        return 0;
     } else {
-        return (handler(d, e));
+        return handler(d, e);
     }
 }
 
-static void
-X11_CheckWindowManager(_THIS)
+static void X11_CheckWindowManager(_THIS)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
     Display *display = data->display;
     Atom _NET_SUPPORTING_WM_CHECK;
     int status, real_format;
@@ -368,7 +363,7 @@ X11_CheckWindowManager(_THIS)
     status = X11_XGetWindowProperty(display, DefaultRootWindow(display), _NET_SUPPORTING_WM_CHECK, 0L, 1L, False, XA_WINDOW, &real_type, &real_format, &items_read, &items_left, &propdata);
     if (status == Success) {
         if (items_read) {
-            wm_window = ((Window*)propdata)[0];
+            wm_window = ((Window *)propdata)[0];
         }
         if (propdata) {
             X11_XFree(propdata);
@@ -378,7 +373,7 @@ X11_CheckWindowManager(_THIS)
 
     if (wm_window) {
         status = X11_XGetWindowProperty(display, wm_window, _NET_SUPPORTING_WM_CHECK, 0L, 1L, False, XA_WINDOW, &real_type, &real_format, &items_read, &items_left, &propdata);
-        if (status != Success || !items_read || wm_window != ((Window*)propdata)[0]) {
+        if (status != Success || !items_read || wm_window != ((Window *)propdata)[0]) {
             wm_window = None;
         }
         if (status == Success && propdata) {
@@ -406,11 +401,9 @@ X11_CheckWindowManager(_THIS)
 #endif
 }
 
-
-int
-X11_VideoInit(_THIS)
+int X11_VideoInit(_THIS)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
 
     /* Get the window class name, usually the name of the application */
     data->classname = get_classname();
@@ -419,7 +412,7 @@ X11_VideoInit(_THIS)
     data->pid = getpid();
 
     /* I have no idea how random this actually is, or has to be. */
-    data->window_group = (XID) (((size_t) data->pid) ^ ((size_t) _this));
+    data->window_group = (XID)(((size_t)data->pid) ^ ((size_t)_this));
 
     /* Look up some useful Atoms */
 #define GET_ATOM(X) data->X = X11_XInternAtom(data->display, #X, False)
@@ -486,10 +479,9 @@ X11_VideoInit(_THIS)
     return 0;
 }
 
-void
-X11_VideoQuit(_THIS)
+void X11_VideoQuit(_THIS)
 {
-    SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
+    SDL_VideoData *data = (SDL_VideoData *)_this->driverdata;
 
     if (data->clipboard_window) {
         X11_XDestroyWindow(data->display, data->clipboard_window);
@@ -508,8 +500,7 @@ X11_VideoQuit(_THIS)
     X11_QuitTouch(_this);
 }
 
-SDL_bool
-X11_UseDirectColorVisuals(void)
+SDL_bool X11_UseDirectColorVisuals(void)
 {
     return SDL_getenv("SDL_VIDEO_X11_NODIRECTCOLOR") ? SDL_FALSE : SDL_TRUE;
 }
