@@ -202,6 +202,7 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
     case WindowDisplayMode::Windowed:
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
+        lg::info("windowed mode - resizing window to {}x{}", m_window_width, m_window_height);
         SDL_SetWindowSize(m_window, m_window_width, m_window_height);
       } else {
         sdl_util::log_error("unable to change window to windowed mode");
@@ -219,6 +220,8 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
                                           m_selected_fullscreen_display_id));
         } else {
           // 2. move it to the right monitor
+          lg::info("preparing fullscreen - moving window to {},{} on display id {}",
+                   display_bounds.x + 50, display_bounds.y + 50, m_selected_fullscreen_display_id);
           SDL_SetWindowPosition(m_window, display_bounds.x + 50, display_bounds.y + 50);
           if (mode == WindowDisplayMode::Fullscreen) {
             update_video_modes();
@@ -227,6 +230,8 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
             // Some people are weird and don't use the monitor's maximum supported resolution
             // in which case, we use what the user actually has selected.
             const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
+            lg::info("preparing fullscreen - setting window resolution to {}x{}",
+                     display_res.screen_width, display_res.screen_height);
             set_window_size(display_res.screen_width, display_res.screen_height);
           }
           // 3. fullscreen it!

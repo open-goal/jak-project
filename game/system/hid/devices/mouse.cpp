@@ -39,11 +39,13 @@ void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
       int curr_mouse_relx;
       int curr_mouse_rely;
       const auto mouse_state_rel = SDL_GetRelativeMouseState(&curr_mouse_relx, &curr_mouse_rely);
-      if (m_last_xcoord == curr_mouse_x && curr_mouse_relx == 0) {
+      if (m_mouse_moved_x && m_last_xcoord == curr_mouse_x && curr_mouse_relx == 0) {
         data->analog_data.at(2) = 127;
+        m_mouse_moved_x = false;
       }
-      if (m_last_ycoord == curr_mouse_y && curr_mouse_rely == 0) {
+      if (m_mouse_moved_y && m_last_ycoord == curr_mouse_y && curr_mouse_rely == 0) {
         data->analog_data.at(3) = 127;
+        m_mouse_moved_y = false;
       }
       m_last_xcoord = curr_mouse_x;
       m_last_ycoord = curr_mouse_y;
@@ -139,9 +141,15 @@ void MouseDevice::process_event(const SDL_Event& event,
     if (m_control_camera) {
       const auto xrel_amount = float(event.motion.xrel);
       const auto xadjust = std::clamp(127 + int(xrel_amount * m_xsens), 0, 255);
+      if (xadjust > 0) {
+        m_mouse_moved_x = true;
+      }
       data->analog_data.at(2) = xadjust;
       const auto yrel_amount = float(event.motion.yrel);
       const auto yadjust = std::clamp(127 + int(yrel_amount * m_ysens), 0, 255);
+      if (yadjust > 0) {
+        m_mouse_moved_y = true;
+      }
       data->analog_data.at(3) = yadjust;
     }
   } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {
