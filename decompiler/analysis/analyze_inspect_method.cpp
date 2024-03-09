@@ -1522,10 +1522,9 @@ std::string TypeInspectorResult::print_as_deftype(
       continue;
     }
     if (old_game_type) {
-      Field old_field;
-      if (old_game_type->lookup_field(field.name(), &old_field) &&
-          field.type() != old_field.type()) {
-        field.type() = old_field.type();
+      const Field* old_field = old_game_type->lookup_field(field.name());
+      if (old_field && field.type() != old_field->type()) {
+        field.type() = old_field->type();
         was_guess.push_back(true);
       } else {
         was_guess.push_back(false);
@@ -1608,17 +1607,17 @@ std::string TypeInspectorResult::print_as_deftype(
     result.append(std::to_string(field.offset()));
     result.append(")");
     if (old_game_type) {
-      Field old_field;
-      if (old_game_type->lookup_field(field.name(), &old_field)) {
-        if (old_field.type() != field.type()) {
-          result += fmt::format(" ;; {}", old_field.type().print());
-          if (old_field.is_array() && !old_field.is_dynamic()) {
-            result += fmt::format(" {}", old_field.array_size());
+      const Field* old_field = old_game_type->lookup_field(field.name());
+      if (old_field) {
+        if (old_field->type() != field.type()) {
+          result += fmt::format(" ;; {}", old_field->type().print());
+          if (old_field->is_array() && !old_field->is_dynamic()) {
+            result += fmt::format(" {}", old_field->array_size());
           }
-          if (old_field.is_inline()) {
+          if (old_field->is_inline()) {
             result += " :inline";
           }
-          if (old_field.is_dynamic()) {
+          if (old_field->is_dynamic()) {
             result += " :dynamic";
           }
         }

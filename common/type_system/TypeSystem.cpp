@@ -952,42 +952,42 @@ void TypeSystem::assert_method_id(const std::string& type_name,
 FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
                                               const std::string& field_name) const {
   FieldLookupInfo info;
-  info.field = lookup_field(type_name, field_name);
+  info.field = &lookup_field(type_name, field_name);
 
   // get array size, for bounds checking (when possible)
-  if (info.field.is_array() && !info.field.is_dynamic()) {
-    info.array_size = info.field.array_size();
+  if (info.field->is_array() && !info.field->is_dynamic()) {
+    info.array_size = info.field->array_size();
   }
 
-  auto base_type = lookup_type_allow_partial_def(info.field.type());
+  auto base_type = lookup_type_allow_partial_def(info.field->type());
   if (base_type->is_reference()) {
-    if (info.field.is_inline()) {
-      if (info.field.is_array()) {
+    if (info.field->is_inline()) {
+      if (info.field->is_array()) {
         // inline array of reference types
         info.needs_deref = false;
-        info.type = make_inline_array_typespec(info.field.type());
+        info.type = make_inline_array_typespec(info.field->type());
       } else {
         // inline object
         info.needs_deref = false;
-        info.type = info.field.type();
+        info.type = info.field->type();
       }
     } else {
-      if (info.field.is_array()) {
+      if (info.field->is_array()) {
         info.needs_deref = false;
-        info.type = make_pointer_typespec(info.field.type());
+        info.type = make_pointer_typespec(info.field->type());
       } else {
         info.needs_deref = true;
-        info.type = info.field.type();
+        info.type = info.field->type();
       }
     }
   } else {
-    if (info.field.is_array()) {
+    if (info.field->is_array()) {
       info.needs_deref = false;
-      info.type = make_pointer_typespec(info.field.type());
+      info.type = make_pointer_typespec(info.field->type());
     } else {
       // not array
       info.needs_deref = true;
-      info.type = info.field.type();
+      info.type = info.field->type();
     }
   }
   return info;
@@ -999,7 +999,7 @@ FieldLookupInfo TypeSystem::lookup_field_info(const std::string& type_name,
 void TypeSystem::assert_field_offset(const std::string& type_name,
                                      const std::string& field_name,
                                      int offset) {
-  Field field = lookup_field(type_name, field_name);
+  const Field& field = lookup_field(type_name, field_name);
   if (field.offset() != offset) {
     throw_typesystem_error("assert_field_offset({}, {}, {}) failed - got {}\n", type_name,
                            field_name, offset);
@@ -1020,7 +1020,7 @@ int TypeSystem::add_field_to_type(StructureType* type,
                                   bool skip_in_static_decomp,
                                   double score,
                                   const std::optional<TypeSpec> decomp_as_ts) {
-  if (type->lookup_field(field_name, nullptr)) {
+  if (type->lookup_field(field_name)) {
     throw_typesystem_error("Type {} already has a field named {}\n", type->get_name(), field_name);
   }
 
@@ -1304,13 +1304,14 @@ int TypeSystem::get_next_method_id(const Type* type) const {
 /*!
  * Lookup a field of a type by name
  */
-Field TypeSystem::lookup_field(const std::string& type_name, const std::string& field_name) const {
+const Field& TypeSystem::lookup_field(const std::string& type_name,
+                                      const std::string& field_name) const {
   auto type = get_type_of_type<StructureType>(type_name);
-  Field field;
-  if (!type->lookup_field(field_name, &field)) {
+  auto field = type->lookup_field(field_name);
+  if (!field) {
     throw_typesystem_error("Type {} has no field named {}\n", type_name, field_name);
   }
-  return field;
+  return *field;
 }
 
 /*!
@@ -1876,16 +1877,16 @@ bool TypeSystem::is_bitfield_type(const std::string& type_name) const {
 BitfieldLookupInfo TypeSystem::lookup_bitfield_info(const std::string& type_name,
                                                     const std::string& field_name) const {
   auto type = get_type_of_type<BitFieldType>(type_name);
-  BitField f;
-  if (!type->lookup_field(field_name, &f)) {
+  const BitField* f = type->lookup_field(field_name);
+  if (!f) {
     throw_typesystem_error("Type {} has no bitfield named {}\n", type_name, field_name);
   }
 
   BitfieldLookupInfo result;
-  result.result_type = f.type();
-  result.offset = f.offset();
+  result.result_type = f->type();
+  result.offset = f->offset();
   result.sign_extend = lookup_type(result.result_type)->get_load_signed();
-  result.size = f.size();
+  result.size = f->size();
   return result;
 }
 

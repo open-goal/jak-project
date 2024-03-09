@@ -305,7 +305,7 @@ class StructureType : public ReferenceType {
   int get_in_memory_alignment() const override;
   int get_inline_array_stride_alignment() const override;
   int get_inline_array_start_alignment() const override;
-  bool lookup_field(const std::string& name, Field* out);
+  const Field* lookup_field(const std::string& name) const;
   bool is_dynamic() const { return m_dynamic; }
   ~StructureType() = default;
   void set_pack(bool pack) { m_pack = pack; }
@@ -384,7 +384,7 @@ class BitField {
 class BitFieldType : public ValueType {
  public:
   BitFieldType(std::string parent, std::string name, int size, bool sign_extend);
-  bool lookup_field(const std::string& name, BitField* out) const;
+  const BitField* lookup_field(const std::string& name) const;
   std::string print() const override;
   bool operator==(const Type& other) const override;
   const std::vector<BitField>& fields() const { return m_fields; }

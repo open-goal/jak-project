@@ -825,15 +825,15 @@ std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldT
         return std::nullopt;
       }
 
-      BitField field_info;
-      if (!type_info->lookup_field(maybe_field->field_name, &field_info)) {
+      const BitField* field_info = type_info->lookup_field(maybe_field->field_name);
+      if (!field_info) {
         ASSERT(false);
       }
-      if (field_info.type() == TypeSpec("symbol") || field_info.type() == TypeSpec("type")) {
+      if (field_info->type() == TypeSpec("symbol") || field_info->type() == TypeSpec("type")) {
         maybe_field->value = strip_int_or_uint_cast(maybe_field->value);
       }
 
-      if (field_info.type() == TypeSpec("float")) {
+      if (field_info->type() == TypeSpec("float")) {
         auto stripped = strip_int_or_uint_cast(maybe_field->value);
         auto integer = get_goal_integer_constant(stripped, env);
         if (integer) {
@@ -845,9 +845,9 @@ std::optional<std::vector<BitFieldDef>> get_field_defs_from_expr(const BitFieldT
       }
 
       auto field_type_as_bitfield =
-          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(field_info.type()));
+          dynamic_cast<BitFieldType*>(env.dts->ts.lookup_type(field_info->type()));
       if (field_type_as_bitfield) {
-        maybe_field->value = cast_to_bitfield(field_type_as_bitfield, field_info.type(), pool, env,
+        maybe_field->value = cast_to_bitfield(field_type_as_bitfield, field_info->type(), pool, env,
                                               maybe_field->value);
       }
 

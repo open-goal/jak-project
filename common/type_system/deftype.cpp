@@ -106,8 +106,7 @@ void add_field(
   double score = 0;
   bool skip_in_decomp = false;
   std::optional<TypeSpec> decomp_as_ts = std::nullopt;
-  Field override_field;
-  bool override = false;
+  const Field* override_field = nullptr;
 
   if (!rest->is_empty_list()) {
     if (car(rest).is_int()) {
@@ -131,21 +130,22 @@ void add_field(
         offset_override = get_int(car(rest));
         rest = cdr(rest);
       } else if (opt_name == ":override") {
-        override = true;
-        if (!structure->lookup_field(name, &override_field)) {
+        override_field = structure->lookup_field(name);
+        if (!override_field) {
           throw std::runtime_error(fmt::format("Field {} not found to override", name));
         }
       } else if (opt_name == ":overlay-at") {
         const auto& param = car(rest);
         rest = cdr(rest);
-        Field overlay_field;
+        const Field* overlay_field = nullptr;
         if (param.is_symbol()) {
           auto field_name = symbol_string(param);
-          if (!structure->lookup_field(field_name, &overlay_field)) {
+          overlay_field = structure->lookup_field(field_name);
+          if (!overlay_field) {
             throw std::runtime_error(
-                fmt::format("Field {} not found to overlay for {}", field_name, name));
+                fmt::format("Field {} not found to overlay for {} (1)", field_name, name));
           }
-          offset_override = overlay_field.offset();
+          offset_override = overlay_field->offset();
         } else if (param.is_pair() && car(&param).is_symbol("->")) {
           auto name_it = cdr(&param);
           if (name_it->is_empty_list()) {
@@ -157,17 +157,17 @@ void add_field(
           while (!name_it->is_empty_list()) {
             const auto& deref_field = car(name_it);
             if (deref_field.is_int()) {
-              auto ref_array_field = !type_to_use && !overlay_field.is_inline()
-                                         ? ts->lookup_type_allow_partial_def(overlay_field.type())
+              auto ref_array_field = !type_to_use && !overlay_field->is_inline()
+                                         ? ts->lookup_type_allow_partial_def(overlay_field->type())
                                          : nullptr;
               if (ref_array_field) {
                 // we can have an array of references (non-inline) to a forward-declared type
                 offset_override += ref_array_field->get_load_size() * deref_field.as_int();
               } else {
-                auto type_to_deref = type_to_use && overlay_field.is_inline()
+                auto type_to_deref = type_to_use && overlay_field->is_inline()
                                          ? TypeSpec("inline-array")
                                          : TypeSpec("pointer");
-                type_to_deref.add_arg(overlay_field.type());
+                type_to_deref.add_arg(overlay_field->type());
                 auto deref_info = ts->get_deref_info(type_to_deref);
                 if (!deref_info.can_deref) {
                   throw std::runtime_error(
@@ -180,16 +180,17 @@ void add_field(
               if (!type_to_use) {
                 throw std::runtime_error(
                     fmt::format("Field {} not inside a structure for overlay-at in {}",
-                                overlay_field.name(), name));
+                                overlay_field->name(), name));
               }
               auto field_name = symbol_string(car(name_it));
-              if (!type_to_use->lookup_field(field_name, &overlay_field)) {
+              overlay_field = type_to_use->lookup_field(field_name);
+              if (!overlay_field) {
                 throw std::runtime_error(
-                    fmt::format("Field {} not found to overlay for {}", field_name, name));
+                    fmt::format("Field {} not found to overlay for {} (2)", field_name, name));
               }
               type_to_use =
-                  dynamic_cast<StructureType*>(ts->lookup_type_no_throw(overlay_field.type()));
-              offset_override += overlay_field.offset();
+                  dynamic_cast<StructureType*>(ts->lookup_type_no_throw(overlay_field->type()));
+              offset_override += overlay_field->offset();
             }
             name_it = cdr(name_it);
           }
@@ -216,21 +217,21 @@ void add_field(
     }
   }
 
-  if (override && name == override_field.name()) {
+  if (override_field && name == override_field->name()) {
     // override field, e.g. (root collide-shape :overlay-at root)
     // does not add new field, merely rewrites inherited one
-    if (!ts->tc(override_field.type(), type)) {
+    if (!ts->tc(override_field->type(), type)) {
       throw std::runtime_error(
           fmt::format("Wanted to override field {}, but type {} isn't child of {}",
-                      override_field.name(), type.print(), override_field.type().print()));
+                      override_field->name(), type.print(), override_field->type().print()));
     }
-    if (override_field.is_inline() != is_inline || override_field.is_dynamic() != is_dynamic ||
-        (array_size != -1 && override_field.array_size() != array_size)) {
+    if (override_field->is_inline() != is_inline || override_field->is_dynamic() != is_dynamic ||
+        (array_size != -1 && override_field->array_size() != array_size)) {
       throw std::runtime_error(
           fmt::format("Wanted to override field {}, but some parameters were different",
-                      override_field.name()));
+                      override_field->name()));
     }
-    structure->override_field_type(override_field.name(), type);
+    structure->override_field_type(override_field->name(), type);
   } else {
     // new unique field
     int actual_offset =

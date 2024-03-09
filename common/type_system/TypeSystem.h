@@ -17,6 +17,7 @@
 
 #include "Type.h"
 #include "TypeSpec.h"
+#include "common/util/StringHashTable.h"
 
 struct TypeFlags {
   union {
@@ -31,7 +32,7 @@ struct TypeFlags {
 };
 
 struct FieldLookupInfo {
-  Field field;
+  const Field* field = nullptr;
   TypeSpec type;
   bool needs_deref = true;
   int array_size = -1;
@@ -303,7 +304,7 @@ class TypeSystem {
                             const std::string& actual,
                             bool allow_alias) const;
   int get_alignment_in_type(const Field& field);
-  Field lookup_field(const std::string& type_name, const std::string& field_name) const;
+  const Field& lookup_field(const std::string& type_name, const std::string& field_name) const;
   StructureType* add_builtin_structure(const std::string& parent,
                                        const std::string& type_name,
                                        bool boxed = false);

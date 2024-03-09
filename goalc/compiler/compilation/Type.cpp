@@ -658,7 +658,7 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
   if (field.needs_deref) {
     TypeSpec loc_type = m_ts.make_pointer_typespec(field.type);
     auto loc =
-        fe->alloc_val<MemoryOffsetConstantVal>(loc_type, object, field.field.offset() + offset);
+        fe->alloc_val<MemoryOffsetConstantVal>(loc_type, object, field.field->offset() + offset);
     auto di = m_ts.get_deref_info(loc_type);
     ASSERT(di.can_deref);
     ASSERT(di.mem_deref);
@@ -669,7 +669,7 @@ Val* Compiler::get_field_of_structure(const StructureType* type,
         field.type.base_type() == "inline-array" ? field.type.get_single_arg() : field.type;
     auto field_type_info = m_ts.lookup_type(type_for_offset);
     result = fe->alloc_val<MemoryOffsetConstantVal>(
-        field.type, object, field.field.offset() + offset + field_type_info->get_offset());
+        field.type, object, field.field->offset() + offset + field_type_info->get_offset());
     result->mark_as_settable();
   }
   return result;

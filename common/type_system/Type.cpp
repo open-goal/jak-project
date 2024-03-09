@@ -901,18 +901,14 @@ int StructureType::get_inline_array_start_alignment() const {
   }
 }
 
-bool StructureType::lookup_field(const std::string& name, Field* out) {
+const Field* StructureType::lookup_field(const std::string& name) const {
   for (auto& x : m_fields) {
     if (x.name() == name) {
-      if (out) {
-        *out = x;
-      }
-
-      return true;
+      return &x;
     }
   }
 
-  return false;
+  return nullptr;
 }
 
 void StructureType::override_field_type(const std::string& field_name, const TypeSpec& new_type) {
@@ -1045,16 +1041,13 @@ std::string BitField::diff(const BitField& other) const {
 BitFieldType::BitFieldType(std::string parent, std::string name, int size, bool sign_extend)
     : ValueType(std::move(parent), std::move(name), false, size, sign_extend, RegClass::GPR_64) {}
 
-bool BitFieldType::lookup_field(const std::string& name, BitField* out) const {
+const BitField* BitFieldType::lookup_field(const std::string& name) const {
   for (auto& field : m_fields) {
     if (field.name() == name) {
-      if (out) {
-        *out = field;
-      }
-      return true;
+      return &field;
     }
   }
-  return false;
+  return nullptr;
 }
 
 std::string BitField::print() const {

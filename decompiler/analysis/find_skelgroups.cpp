@@ -571,7 +571,7 @@ void inspect_cloth_data_jak3(LetElement* let, DefskelgroupElement::StaticInfo& i
         if (array_set) {
           // get elements
           auto elts = when_body->elts().size() - 2;
-          for (int i = 0; i < elts; i++) {
+          for (size_t i = 0; i < elts; i++) {
             auto parms_form = dynamic_cast<SetFormFormElement*>(when_body->at(i + 1));
             if (parms_form) {
               auto parms_data = dynamic_cast<DecompiledDataElement*>(parms_form->src()->at(0));

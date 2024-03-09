@@ -352,7 +352,7 @@ TEST(TypeSystem, FieldLookup) {
   TypeSystem ts;
   ts.add_builtin_types(GameVersion::Jak1);
 
-  EXPECT_EQ(ts.lookup_field_info("type", "parent").field.offset(), 8);
+  EXPECT_EQ(ts.lookup_field_info("type", "parent").field->offset(), 8);
   EXPECT_EQ(ts.lookup_field_info("string", "data").type.print(), "(pointer uint8)");
 
   EXPECT_ANY_THROW(ts.lookup_field_info("type", "not-a-real-field"));

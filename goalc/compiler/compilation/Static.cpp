@@ -46,10 +46,10 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     field_name_def = field_name_def.substr(1);
     auto field_info = m_ts.lookup_field_info(type_info->get_name(), field_name_def);
 
-    auto field_offset = field_info.field.offset() + offset;
+    auto field_offset = field_info.field->offset() + offset;
 
-    if (field_info.field.is_array()) {
-      bool is_inline = field_info.field.is_inline();
+    if (field_info.field->is_array()) {
+      bool is_inline = field_info.field->is_inline();
 
       // for an array field, we only accept (new 'static 'array <type> ...)
       if (!field_value.is_list()) {
@@ -85,20 +85,21 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       auto array_content_type = parse_typespec(new_form.at(3), env);
 
       if (is_inline) {
-        if (field_info.field.type() != array_content_type) {
+        if (field_info.field->type() != array_content_type) {
           throw_compiler_error(field_value, "Inline array field must have the correct type");
         }
       } else {
         // allow more specific types.
         // TODO make this better.
-        m_ts.typecheck_and_throw(field_info.field.type(), array_content_type, "Array content type");
+        m_ts.typecheck_and_throw(field_info.field->type(), array_content_type,
+                                 "Array content type");
       }
 
       s64 elt_array_len = get_constant_integer_or_error(new_form.at(4), env);
 
-      if (!field_info.field.is_dynamic() && elt_array_len != field_info.field.array_size()) {
+      if (!field_info.field->is_dynamic() && elt_array_len != field_info.field->array_size()) {
         throw_compiler_error(field_value, "Array field had an expected size of {} but got {}",
-                             field_info.field.array_size(), elt_array_len);
+                             field_info.field->array_size(), elt_array_len);
       }
 
       auto arg_list = get_list_as_vector(field_value.as_pair()->cdr);
@@ -107,14 +108,14 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       }
 
       if (is_inline) {
-        if (field_info.field.is_dynamic()) {
+        if (field_info.field->is_dynamic()) {
           throw_compiler_error(form, "Dynamic fields are not supported for inline");
         }
-        fill_static_inline_array_inline(field_value, field_info.field.type(), arg_list, structure,
+        fill_static_inline_array_inline(field_value, field_info.field->type(), arg_list, structure,
                                         field_offset, env);
       } else {
         int num_elts = arg_list.size() - 4;
-        if (field_info.field.is_dynamic()) {
+        if (field_info.field->is_dynamic()) {
           // need to resize data
           // first, expected original size
           int expected_data_size = type_info->get_size_in_memory();
@@ -124,7 +125,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
           int increase_by = stride * num_elts;
           structure->data.resize(expected_data_size + increase_by);
         }
-        fill_static_array_inline(field_value, field_info.field.type(), arg_list.data() + 4,
+        fill_static_array_inline(field_value, field_info.field->type(), arg_list.data() + 4,
                                  num_elts, structure, field_offset, env);
       }
 
@@ -132,7 +133,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       ASSERT(field_info.needs_deref);  // for now...
       auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
       ASSERT(field_offset + deref_info.load_size <= int(structure->data.size()));
-      ASSERT(!field_info.field.is_inline());
+      ASSERT(!field_info.field->is_inline());
       auto sr = compile_static(field_value, env);
       if (!sr.is_constant_data()) {
         throw_compiler_error(form, "Could not use {} for an integer field", field_value.print());
@@ -153,10 +154,10 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
     } else if (is_structure(field_info.type) || is_pair(field_info.type) ||
                is_symbol(field_info.type) || field_info.type == TypeSpec("object")) {
       if (is_pair(field_info.type)) {
-        ASSERT(!field_info.field.is_inline());
+        ASSERT(!field_info.field->is_inline());
       }
 
-      if (field_info.field.is_inline()) {
+      if (field_info.field->is_inline()) {
         // for an inline field, we only accept (new 'static '<type> ...)
         if (!field_value.is_list()) {
           throw_compiler_error(field_value, "Inline field was not properly specified");
@@ -200,7 +201,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         if (sr.is_symbol()) {
           if (sr.symbol_name() != "#f" && sr.symbol_name() != "_empty_") {
             typecheck(form, field_info.type, sr.typespec(),
-                      fmt::format("Field {}, containing symbol {}", field_info.field.name(),
+                      fmt::format("Field {}, containing symbol {}", field_info.field->name(),
                                   sr.symbol_name()));
           }
           structure->add_symbol_record(sr.symbol_name(), field_offset);
@@ -232,7 +233,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
       auto deref_info = m_ts.get_deref_info(m_ts.make_pointer_typespec(field_info.type));
       auto field_size = deref_info.load_size;
       ASSERT(field_offset + field_size <= int(structure->data.size()));
-      ASSERT(!field_info.field.is_inline());
+      ASSERT(!field_info.field->is_inline());
       auto sr = compile_static(field_value, env);
       if (!sr.is_constant_data()) {
         throw_compiler_error(form, "Could not use {} for a float field", field_value.print());
@@ -254,7 +255,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         u32 linker_val = 0xffffffff;
         memcpy(structure->data.data() + field_offset, &linker_val, 4);
       } else if (!sr.is_reference()) {
-        throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+        throw_compiler_error(form, "Invalid definition of field {}", field_info.field->name());
       } else {
         typecheck(form, field_info.type, sr.typespec());
         ASSERT(sr.reference()->get_addr_offset() == 0);
@@ -276,7 +277,7 @@ void Compiler::compile_static_structure_inline(const goos::Object& form,
         memcpy(structure->data.data() + field_offset, &linker_val, 4);
       } else {
         if (!sr.is_reference()) {
-          throw_compiler_error(form, "Invalid definition of field {}", field_info.field.name());
+          throw_compiler_error(form, "Invalid definition of field {}", field_info.field->name());
         }
         typecheck(form, field_info.type, sr.typespec());
         ASSERT(sr.reference()->get_addr_offset() == 0);

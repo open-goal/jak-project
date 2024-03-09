@@ -11,8 +11,8 @@ void read_plain_data_field(const TypedRef& object,
                            u8* out) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
 
-  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
-      field_info.field.is_inline()) {
+  if (field_info.field->is_dynamic() || field_info.field->is_array() ||
+      field_info.field->is_inline()) {
     throw Error("Field {} is dynamic/array/inline and can't be used with read_plain_data_field",
                 field_name);
   }
@@ -36,7 +36,7 @@ void read_plain_data_field(const TypedRef& object,
 
   const auto& words = object.ref.data->words_by_seg.at(object.ref.seg);
   for (int byte = 0; byte < size_bytes; byte++) {
-    int byte_in_words = byte + object.ref.byte_offset + field_info.field.offset();
+    int byte_in_words = byte + object.ref.byte_offset + field_info.field->offset();
 
     int word_idx = byte_in_words / 4;
     int byte_in_word = byte_in_words % 4;
@@ -80,13 +80,13 @@ decompiler::LinkedWord::Kind get_word_kind_for_field(const TypedRef& object,
                                                      const decompiler::DecompilerTypeSystem& dts) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
 
-  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
-      field_info.field.is_inline()) {
+  if (field_info.field->is_dynamic() || field_info.field->is_array() ||
+      field_info.field->is_inline()) {
     throw Error("Field {} is dynamic/array/inline and can't be used with get_word_kind_for_field",
                 field_name);
   }
 
-  int byte_in_words = object.ref.byte_offset + field_info.field.offset();
+  int byte_in_words = object.ref.byte_offset + field_info.field->offset();
   if ((byte_in_words % 4) != 0) {
     throw Error("Field {} was misaligned.", field_name);
   }
@@ -100,8 +100,8 @@ TypedRef get_and_check_ref_to_basic(const TypedRef& object,
                                     const decompiler::DecompilerTypeSystem& dts) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
 
-  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
-      field_info.field.is_inline()) {
+  if (field_info.field->is_dynamic() || field_info.field->is_array() ||
+      field_info.field->is_inline()) {
     throw Error(
         "Field {} is dynamic/array/inline and can't be used with get_and_check_ref_to_basic",
         field_name);
@@ -113,7 +113,7 @@ TypedRef get_and_check_ref_to_basic(const TypedRef& object,
     throw Error("Field {} is not a basic and can't be used with read_plain_data_field", field_name);
   }
 
-  int byte_in_words = object.ref.byte_offset + field_info.field.offset();
+  int byte_in_words = object.ref.byte_offset + field_info.field->offset();
   if ((byte_in_words % 4) != 0) {
     throw Error("Field {} was misaligned.", field_name);
   }
@@ -156,8 +156,8 @@ std::string read_symbol_field(const TypedRef& object,
                               const decompiler::DecompilerTypeSystem& dts) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
 
-  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
-      field_info.field.is_inline()) {
+  if (field_info.field->is_dynamic() || field_info.field->is_array() ||
+      field_info.field->is_inline()) {
     throw Error("Field {} is dynamic/array/inline and can't be used with read_symbol_field",
                 field_name);
   }
@@ -167,7 +167,7 @@ std::string read_symbol_field(const TypedRef& object,
                 field_info.type.print());
   }
 
-  int byte_in_words = object.ref.byte_offset + field_info.field.offset();
+  int byte_in_words = object.ref.byte_offset + field_info.field->offset();
   if ((byte_in_words % 4) != 0) {
     throw Error("Field {} was misaligned.", field_name);
   }
@@ -187,8 +187,8 @@ std::string read_type_field(const TypedRef& object,
                             bool ignore_field_type) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
 
-  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
-      field_info.field.is_inline()) {
+  if (field_info.field->is_dynamic() || field_info.field->is_array() ||
+      field_info.field->is_inline()) {
     throw Error("Field {} is dynamic/array/inline and can't be used with read_type_field",
                 field_name);
   }
@@ -198,7 +198,7 @@ std::string read_type_field(const TypedRef& object,
                 field_info.type.print());
   }
 
-  int byte_in_words = object.ref.byte_offset + field_info.field.offset();
+  int byte_in_words = object.ref.byte_offset + field_info.field->offset();
   if ((byte_in_words % 4) != 0) {
     throw Error("Field {} was misaligned.", field_name);
   }
@@ -243,8 +243,8 @@ std::string read_string_field(const TypedRef& object,
                               bool ignore_field_type) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
 
-  if (field_info.field.is_dynamic() || field_info.field.is_array() ||
-      field_info.field.is_inline()) {
+  if (field_info.field->is_dynamic() || field_info.field->is_array() ||
+      field_info.field->is_inline()) {
     throw Error("Field {} is dynamic/array/inline and can't be used with read_string_field",
                 field_name);
   }
@@ -254,7 +254,7 @@ std::string read_string_field(const TypedRef& object,
                 field_info.type.print());
   }
 
-  int byte_in_words = object.ref.byte_offset + field_info.field.offset();
+  int byte_in_words = object.ref.byte_offset + field_info.field->offset();
   if ((byte_in_words % 4) != 0) {
     throw Error("Field {} was misaligned.", field_name);
   }
@@ -273,7 +273,7 @@ Ref get_field_ref(const TypedRef& object,
                   const decompiler::DecompilerTypeSystem& dts) {
   FieldLookupInfo field_info = dts.ts.lookup_field_info(object.type->get_name(), field_name);
   Ref result = object.ref;
-  result.byte_offset += field_info.field.offset();
+  result.byte_offset += field_info.field->offset();
   return result;
 }
 
