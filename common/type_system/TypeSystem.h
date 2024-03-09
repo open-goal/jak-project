@@ -228,7 +228,6 @@ class TypeSystem {
 
   void add_builtin_types(GameVersion version);
 
-  std::string print_all_type_information() const;
   bool typecheck_and_throw(const TypeSpec& expected,
                            const TypeSpec& actual,
                            const std::string& error_source_name = "",
@@ -317,11 +316,12 @@ class TypeSystem {
                                     RegClass reg = RegClass::GPR_64);
   void builtin_structure_inherit(StructureType* st);
 
-  std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
+  StringHashTable<std::shared_ptr<Type>> m_types;
+  //std::unordered_map<std::string, std::unique_ptr<Type>> m_types;
   std::unordered_map<std::string, std::string> m_forward_declared_types;
   std::unordered_map<std::string, int> m_forward_declared_method_counts;
 
-  std::vector<std::unique_ptr<Type>> m_old_types;
+  std::vector<std::shared_ptr<Type>> m_old_types;
 
   std::vector<std::string> m_types_allowed_to_be_redefined;
   bool m_allow_redefinition = false;

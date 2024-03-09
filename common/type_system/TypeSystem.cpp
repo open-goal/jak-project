@@ -54,19 +54,19 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
     }
   }
 
-  auto kv = m_types.find(name);
-  if (kv != m_types.end()) {
+  auto existing = lookup_type_no_throw(name);
+  if (existing) {
     // exists already
 
-    if (*kv->second != *type) {
+    if (*existing != *type) {
       // exists, and we are trying to change it!
 
       // Check if the type is allowed to be redefined
       if (m_allow_redefinition ||
           std::find(m_types_allowed_to_be_redefined.begin(), m_types_allowed_to_be_redefined.end(),
-                    kv->second->get_name()) != m_types_allowed_to_be_redefined.end()) {
+                    existing->get_name()) != m_types_allowed_to_be_redefined.end()) {
         lg::print("[TypeSystem] Type {} was originally\n{}\nand is redefined as\n{}\n",
-                  kv->second->get_name(), kv->second->print(), type->print());
+                  existing->get_name(), existing->print(), type->print());
         // extra dangerous, we have allowed type redefinition!
 
         // keep the unique_ptr around, just in case somebody references this old type pointer.
@@ -78,7 +78,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
         throw_typesystem_error(
             "Inconsistent type definition. Type {} was originally\n{}\nand is redefined "
             "as\n{}\nDiff:\n{}\n",
-            kv->second->get_name(), kv->second->print(), type->print(), kv->second->diff(*type));
+            existing->get_name(), existing->print(), type->print(), existing->diff(*type));
       }
     }
   } else {
@@ -92,7 +92,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
             type->get_name(), type->get_parent());
       }
 
-      if (m_types.find(type->get_parent()) == m_types.end()) {
+      if (!m_types.find(type->get_parent())) {
         throw_typesystem_error("Cannot create new type {}. The parent type {} is not defined.\n",
                                type->get_name(), type->get_parent());
       }
@@ -119,8 +119,7 @@ Type* TypeSystem::add_type(const std::string& name, std::unique_ptr<Type> type) 
  * information, or know the exact size.
  */
 void TypeSystem::forward_declare_type_as_type(const std::string& name) {
-  auto type_it = m_types.find(name);
-  if (type_it != m_types.end()) {
+  if (m_types.find(name)) {
     return;
   }
 
@@ -141,10 +140,8 @@ void TypeSystem::forward_declare_type_as_type(const std::string& name) {
  */
 void TypeSystem::forward_declare_type_as(const std::string& new_type,
                                          const std::string& parent_type) {
-  auto type_it = m_types.find(new_type);
-  if (type_it != m_types.end()) {
-    auto parent_it = m_types.find(parent_type);
-    if (parent_it == m_types.end()) {
+  if (m_types.find(new_type)) {
+    if (!m_types.find(parent_type)) {
       throw_typesystem_error(
           "Got a forward declaration for known type {} where the parent {} is unknown", new_type,
           parent_type);
@@ -166,13 +163,13 @@ void TypeSystem::forward_declare_type_as(const std::string& new_type,
     m_forward_declared_types[new_type] = parent_type;
   } else {
     if (fwd_it->second != parent_type) {
-      auto old_parent_it = m_types.find(fwd_it->second);
-      auto new_parent_it = m_types.find(parent_type);
+      auto old_parent_it = lookup_type_no_throw(fwd_it->second);
+      auto new_parent_it = lookup_type_no_throw(parent_type);
 
       auto old_ts = TypeSpec(fwd_it->second);
 
-      if (old_parent_it != m_types.end() && new_parent_it != m_types.end()) {
-        auto new_ts = TypeSpec(new_parent_it->second->get_name());
+      if (old_parent_it && new_parent_it) {
+        auto new_ts = TypeSpec(new_parent_it->get_name());
         if (tc(old_ts, new_ts)) {
           // new is more specific or equal to old:
           m_forward_declared_types[new_type] = new_ts.base_type();
@@ -206,9 +203,9 @@ void TypeSystem::forward_declare_type_method_count(const std::string& name, int 
         name, existing_fwd->second, num_methods);
   }
 
-  auto existing_type = m_types.find(name);
-  if (existing_type != m_types.end()) {
-    int existing_count = get_next_method_id(existing_type->second.get());
+  auto existing_type = lookup_type_no_throw(name);
+  if (existing_type) {
+    int existing_count = get_next_method_id(existing_type);
     if (existing_count != num_methods) {
       throw_typesystem_error(
           "Type {} was defined with {} methods and is now being forward declared with {} methods",
@@ -234,9 +231,9 @@ void TypeSystem::forward_declare_type_method_count_multiple_of_4(const std::stri
         name, existing_fwd->second, num_methods);
   }
 
-  auto existing_type = m_types.find(name);
-  if (existing_type != m_types.end()) {
-    int existing_count = get_next_method_id(existing_type->second.get());
+  auto existing_type = lookup_type_no_throw(name);
+  if (existing_type) {
+    int existing_count = get_next_method_id(existing_type);
     if (existing_count + 3 < num_methods) {
       throw_typesystem_error(
           "Type {} was defined with {} methods and is now being forward declared with {} methods",
@@ -258,9 +255,9 @@ int TypeSystem::get_type_method_count(const std::string& name) const {
 }
 
 std::optional<int> TypeSystem::try_get_type_method_count(const std::string& name) const {
-  auto type_it = m_types.find(name);
-  if (type_it != m_types.end()) {
-    return get_next_method_id(type_it->second.get());
+  auto type_it = lookup_type_no_throw(name);
+  if (type_it) {
+    return get_next_method_id(type_it);
   }
 
   auto fwd_it = m_forward_declared_method_counts.find(name);
@@ -350,8 +347,7 @@ DerefInfo TypeSystem::get_deref_info(const TypeSpec& ts) const {
  * If you really need a TypeSpec which refers to a non-existent type, just construct your own.
  */
 TypeSpec TypeSystem::make_typespec(const std::string& name) const {
-  if (m_types.find(name) != m_types.end() ||
-      m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
+  if (m_types.find(name) || m_forward_declared_types.find(name) != m_forward_declared_types.end()) {
     return TypeSpec(name);
   } else {
     throw_typesystem_error("Type {} is unknown\n", name);
@@ -359,7 +355,7 @@ TypeSpec TypeSystem::make_typespec(const std::string& name) const {
 }
 
 bool TypeSystem::fully_defined_type_exists(const std::string& name) const {
-  return m_types.find(name) != m_types.end();
+  return m_types.find(name) != nullptr;
 }
 
 bool TypeSystem::fully_defined_type_exists(const TypeSpec& type) const {
@@ -424,9 +420,9 @@ TypeSpec TypeSystem::make_inline_array_typespec(const TypeSpec& type) const {
  * lookup_type to find the most up-to-date type information.
  */
 Type* TypeSystem::lookup_type(const std::string& name) const {
-  auto kv = m_types.find(name);
-  if (kv != m_types.end()) {
-    return kv->second.get();
+  auto ret = lookup_type_no_throw(name);
+  if (ret) {
+    return ret;
   }
 
   auto fd = m_forward_declared_types.find(name);
@@ -455,9 +451,9 @@ Type* TypeSystem::lookup_type(const TypeSpec& ts) const {
  * Same as lookup_type, but returns null instead of throwing.
  */
 Type* TypeSystem::lookup_type_no_throw(const std::string& name) const {
-  auto kv = m_types.find(name);
-  if (kv != m_types.end()) {
-    return kv->second.get();
+  auto ret = m_types.find(name);
+  if (ret) {
+    return ret->get();
   }
 
   return nullptr;
@@ -484,9 +480,9 @@ Type* TypeSystem::lookup_type_allow_partial_def(const TypeSpec& ts) const {
  */
 Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
   // look up fully defined types first:
-  auto kv = m_types.find(name);
-  if (kv != m_types.end()) {
-    return kv->second.get();
+  auto kv = lookup_type_no_throw(name);
+  if (kv) {
+    return kv;
   }
 
   Type* result = nullptr;
@@ -504,9 +500,9 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
     }
     current_name = fwd_dec->second;
 
-    auto type_lookup = m_types.find(current_name);
-    if (type_lookup != m_types.end()) {
-      result = type_lookup->second.get();
+    auto type_lookup = lookup_type_no_throw(current_name);
+    if (type_lookup) {
+      result = type_lookup;
     }
   }
 
@@ -520,9 +516,9 @@ Type* TypeSystem::lookup_type_allow_partial_def(const std::string& name) const {
  * This should be safe to use to load a value from a field.
  */
 int TypeSystem::get_load_size_allow_partial_def(const TypeSpec& ts) const {
-  auto fully_defined_it = m_types.find(ts.base_type());
-  if (fully_defined_it != m_types.end()) {
-    return fully_defined_it->second->get_load_size();
+  auto fully_defined_it = lookup_type_no_throw(ts.base_type());
+  if (fully_defined_it) {
+    return fully_defined_it->get_load_size();
   }
 
   auto partial_def = lookup_type_allow_partial_def(ts);
@@ -798,8 +794,8 @@ MethodInfo TypeSystem::lookup_method(const std::string& type_name,
 bool TypeSystem::try_lookup_method(const std::string& type_name,
                                    const std::string& method_name,
                                    MethodInfo* info) const {
-  auto kv = m_types.find(type_name);
-  if (kv == m_types.end()) {
+  auto kv = lookup_type_no_throw(type_name);
+  if (!kv) {
     // try to look up a forward declared type.
     auto fwd_dec_type = lookup_type_allow_partial_def(type_name);
     if (tc(TypeSpec("basic"), TypeSpec(fwd_dec_type->get_name()))) {
@@ -809,7 +805,7 @@ bool TypeSystem::try_lookup_method(const std::string& type_name,
     return false;
   }
 
-  return try_lookup_method(kv->second.get(), method_name, info);
+  return try_lookup_method(kv, method_name, info);
 }
 
 /*!
@@ -818,12 +814,12 @@ bool TypeSystem::try_lookup_method(const std::string& type_name,
 bool TypeSystem::try_lookup_method(const std::string& type_name,
                                    int method_id,
                                    MethodInfo* info) const {
-  auto kv = m_types.find(type_name);
-  if (kv == m_types.end()) {
+  auto kv = lookup_type_no_throw(type_name);
+  if (!kv) {
     return false;
   }
 
-  auto* iter_type = kv->second.get();
+  auto* iter_type = kv;
   // look up the method
   while (true) {
     if (method_id == GOAL_NEW_METHOD) {
@@ -1270,17 +1266,6 @@ void TypeSystem::add_builtin_types(GameVersion version) {
 }
 
 /*!
- * Debugging function to print out all types, and their methods and fields.
- */
-std::string TypeSystem::print_all_type_information() const {
-  std::string result;
-  for (auto& kv : m_types) {
-    result += kv.second->print() + "\n";
-  }
-  return result;
-}
-
-/*!
  * Get the next free method ID of a type.
  */
 int TypeSystem::get_next_method_id(const Type* type) const {
@@ -1410,7 +1395,7 @@ int TypeSystem::get_size_in_type(const Field& field) const {
 
 std::vector<std::string> TypeSystem::get_all_type_names() {
   std::vector<std::string> results = {};
-  for (const auto& [type_name, type_info] : m_types) {
+  for (const auto& [type_name, type_info] : m_types.extract()) {
     results.push_back(type_name);
   }
   return results;
@@ -1429,7 +1414,7 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
       }
     }
   } else {
-    for (const auto& [type_name, type_info] : m_types) {
+    for (const auto& [type_name, type_info] : m_types.extract()) {
       // Only NullType's have no parent
       if (!type_info->has_parent()) {
         continue;
@@ -1456,7 +1441,7 @@ std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
       }
     }
   } else {
-    for (const auto& [type_name, type_info] : m_types) {
+    for (const auto& [type_name, type_info] : m_types.extract()) {
       if (get_type_method_count(type_name) - 1 >= minimum_method_id) {
         results.push_back(type_name);
       }
@@ -1482,7 +1467,7 @@ std::vector<std::string> TypeSystem::search_types_by_size(
       }
     }
   } else {
-    for (const auto& [type_name, type_info] : m_types) {
+    for (const auto& [type_name, type_info] : m_types.extract()) {
       if (dynamic_cast<NullType*>(type_info.get())) {
         continue;
       }
@@ -1532,7 +1517,7 @@ std::vector<std::string> TypeSystem::search_types_by_fields(
       }
     }
   } else {
-    for (const auto& [type_name, type_info] : m_types) {
+    for (const auto& [type_name, type_info] : m_types.extract()) {
       // For each type, look at it's fields
       if (dynamic_cast<StructureType*>(type_info.get()) != nullptr) {
         bool type_valid = true;
@@ -1746,9 +1731,9 @@ bool TypeSystem::typecheck_base_types(const std::string& input_expected,
 }
 
 EnumType* TypeSystem::try_enum_lookup(const std::string& type_name) const {
-  auto it = m_types.find(type_name);
-  if (it != m_types.end()) {
-    return dynamic_cast<EnumType*>(it->second.get());
+  auto it = lookup_type_no_throw(type_name);
+  if (it) {
+    return dynamic_cast<EnumType*>(it);
   }
   return nullptr;
 }
@@ -2417,10 +2402,10 @@ bool TypeSystem::should_use_virtual_methods(const Type* type, int method_id) con
 }
 
 bool TypeSystem::should_use_virtual_methods(const TypeSpec& type, int method_id) const {
-  auto it = m_types.find(type.base_type());
-  if (it != m_types.end()) {
+  auto it = lookup_type_no_throw(type.base_type());
+  if (it) {
     // it's a fully defined type
-    return should_use_virtual_methods(it->second.get(), method_id);
+    return should_use_virtual_methods(it, method_id);
   } else {
     // it's a partially defined type.
     // for now, we will prohibit calling a method on something that's defined only as a structure
