@@ -830,6 +830,15 @@ void Sprite3::do_block_common(SpriteMode mode,
 
     auto& vert1 = m_vertices_3d.at(start_vtx_id + 0);
 
+    if (render_state->version == GameVersion::Jak3) {
+      auto flag = m_vec_data_2d[sprite_idx].flag();
+      if ((flag & 0x10) || (flag & 0x20)) {
+        // these flags mean we need to swap vertex order around - not yet implemented since it's too
+        // hard to get right without this code running.
+        ASSERT_NOT_REACHED();
+      }
+    }
+
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
     vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
