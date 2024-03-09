@@ -37,7 +37,7 @@ TEST(Jak2TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
   compiler.run_test_no_load("decompiler/config/jak2/all-types.gc");
 }
 
-TEST(Jak3TypeConsistency, MANUAL_TEST_TypeConsistencyWithBuildFirst) {
+TEST(Jak3TypeConsistency, TypeConsistencyWithBuildFirst) {
   Compiler compiler(GameVersion::Jak3);
   compiler.enable_throw_on_redefines();
   add_common_expected_type_mismatches(compiler);
