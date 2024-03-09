@@ -2236,6 +2236,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
   if (!mr_buf_base.matched) {
     return nullptr;
   }
+
   if (!var_equal(env, buf_dst, mr_buf_base.maps.regs.at(0))) {
     lg::print("dma buf bad name\n");
     return nullptr;
@@ -2251,16 +2252,59 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
 
   last_part = dynamic_cast<LetElement*>(in->body()->at(in->body()->size() - 1));
   if (!last_part) {
-    // lg::error("NO LAST PART AHH wtf!!");
     return nullptr;
   }
 
-  if (last_part->entries().size() != 1 || last_part->body()->size() != 2) {
+  // New for Jak 3: they check to see if nothing was added, and skip adding an empty DMA transfer
+  // if so. This means the usual 2 ending let body forms are now wrapped in a `when`.
+  const int expected_last_let_body_size = env.version == GameVersion::Jak3 ? 1 : 2;
+  if (last_part->entries().size() != 1 ||
+      last_part->body()->size() != expected_last_let_body_size) {
     return nullptr;
   }
   auto buf_end_dst = last_part->entries().at(0).dest;
 
-  auto dmatag_let = dynamic_cast<LetElement*>(last_part->body()->at(0));
+  LetElement* dmatag_let;
+  FormElement* insert_tag_call;
+
+  if (env.version == GameVersion::Jak3) {
+    // check for the when:
+    auto outer_when = dynamic_cast<CondNoElseElement*>(last_part->body()->at(0));
+    if (!outer_when) {
+      // lg::error(" P no cond-no-else:\n{}\n", last_part->body()->at(0)->to_string(env));
+      return nullptr;
+    }
+    if (outer_when->entries.size() != 1) {
+      // lg::error(" P cond-no-else bad entry count");
+      return nullptr;
+    }
+    auto& entry = outer_when->entries.at(0);
+    auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::NEQ),
+                               {Matcher::any_reg(0), Matcher::any_reg(1)});
+    auto mr = match(matcher, entry.condition);
+    if (!mr.matched) {
+      // lg::error(" P no match: {}\n", entry.condition->to_string(env));
+      return nullptr;
+    }
+
+    if (!var_equal(env, bucket_dst, mr.maps.regs.at(0)) ||
+        !var_equal(env, buf_end_dst, mr.maps.regs.at(1))) {
+      // lg::error(" P bad vars");
+      return nullptr;
+    }
+
+    auto body = entry.body;
+    if (body->size() != 2) {
+      // lg::error(" P bad inner body size");
+      return nullptr;
+    }
+
+    dmatag_let = dynamic_cast<LetElement*>(body->at(0));
+    insert_tag_call = body->at(1);
+  } else {
+    dmatag_let = dynamic_cast<LetElement*>(last_part->body()->at(0));
+    insert_tag_call = last_part->body()->at(1);
+  }
 
   if (!dmatag_let || dmatag_let->entries().size() != 1 || dmatag_let->body()->size() != 4) {
     return nullptr;
@@ -2334,7 +2378,7 @@ FormElement* rewrite_with_dma_buf_add_bucket(LetElement* in, const Env& env, For
                            DerefTokenMatcher::string("bucket-group")}),
            Matcher::any(1), Matcher::any_reg(2),
            Matcher::cast("(pointer dma-tag)", Matcher::any_reg(3))}),
-      last_part->body()->at(1));
+      insert_tag_call);
   if (!mr_bucket_add_tag_func.matched ||
       !var_equal(env, bucket_dst, mr_bucket_add_tag_func.maps.regs.at(2)) ||
       !var_equal(env, buf_end_dst, mr_bucket_add_tag_func.maps.regs.at(3))) {

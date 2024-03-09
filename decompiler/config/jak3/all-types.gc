@@ -4085,7 +4085,7 @@
   (bucket567 567)
   (bucket568 568)
   (bucket569 569)
-  (bucket570 570)
+  (particles 570)
   (bucket571 571)
   (shadow2 572)
   (shadow3 573)
@@ -25028,6 +25028,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype sprite-vec-data-2d (structure)
+  "Per-particle data needed for rendering. This is sent to VU1."
   ((x-y-z-sx    vector   :inline :offset-assert 0)
    (flag-rot-sy vector   :inline :offset-assert 16)
    (r-g-b-a     vector   :inline :offset-assert 32)
@@ -25055,6 +25056,7 @@
   )
 
 (deftype sprite-array-2d (basic)
+  "Array of sprite data for all 2D sprites. There are two groups: normal and HUD."
   ((num-sprites int32                       2 :offset-assert 4) ;; guessed by decompiler
    (num-valid   int32                       2 :offset-assert 12) ;; guessed by decompiler
    (vec-data    pointer                       :offset-assert 20) ;; guessed by decompiler
@@ -25062,12 +25064,16 @@
    (pad         uint128                     4 :offset-assert 32) ;; guessed by decompiler
    (data        uint128                     1 :offset-assert 96) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type int int) _type_) ;; 0
+    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
 
 (deftype sprite-vec-data-3d (structure)
+  "Per-particle data needed for rendering. This is sent to VU1."
   ((x-y-z-sx    vector   :inline :offset-assert 0)
    (qx-qy-qz-sy vector   :inline :offset-assert 16)
    (r-g-b-a     vector   :inline :offset-assert 32)
@@ -25094,12 +25100,16 @@
   )
 
 (deftype sprite-array-3d (basic)
+  "Array of sprite data for all 3D sprites. There are two groups, but only the first is used."
   ((num-sprites int32                       2 :offset-assert 4) ;; guessed by decompiler
    (num-valid   int32                       2 :offset-assert 12) ;; guessed by decompiler
    (vec-data    pointer                       :offset-assert 20) ;; guessed by decompiler
    (adgif-data  (inline-array adgif-shader)   :offset-assert 24) ;; guessed by decompiler
    (data        uint128                     1 :offset-assert 32) ;; guessed by decompiler
    )
+  (:methods
+    (new (symbol type int int) _type_) ;; 0
+    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
@@ -25140,7 +25150,7 @@
   :flag-assert         #xc00000008
   (:methods
     (simple-sprite-system-method-9 () none) ;; 9 ;; (add! (_type_ sprite-glow-data) none)
-    (simple-sprite-system-method-10 () none) ;; 10 ;; (draw-all-sprites! (_type_ dma-buffer) none)
+    (draw-all-sprites! (_type_ dma-buffer) none) ;; 10
     (simple-sprite-system-method-11 () none) ;; 11 ;; (clear! (_type_) none)
     )
   )
@@ -28983,80 +28993,89 @@
 ;; sprite                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-header (structure)
-  ((header      qword 1 :offset-assert 0) ;; guessed by decompiler
-   (num-sprites int32   :offset-assert 0)
+  "Header for the data sent to VU1 renderer."
+  ((header      qword 1 :inline :offset-assert 0) ;; guessed by decompiler
+   (num-sprites int32   :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sprite-hvdf-data (structure)
-  ((data qword 76 :offset-assert 0) ;; guessed by decompiler
+  "Table of HVDF offsets. The first one is the normal one produced by math-camera.
+   The remaining 75 can be allocated by the user.
+   This is only used by Jak 1's weird HUD drawing system, to position HUD elements."
+  ((data qword 76 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4c0
   :flag-assert         #x9000004c0
   )
-|#
 
-#|
 (deftype sprite-hvdf-control (structure)
+  "Table of flags indicating if the HVDF control is allocated or not."
   ((alloc int8 76 :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
+(defenum sprite-aux-type
+  :bitfield #f
+  :type uint32
+  (distort 0)
+  (glow 1)
+  )
+
 (deftype sprite-aux-elem (structure)
+  "Entry for a sprite which should be drawn by a renderer other than the usual sprite."
   ((aux-type sprite-aux-type      :offset-assert 0) ;; guessed by decompiler
-   (data     vector             3 :offset-assert 4) ;; guessed by decompiler
-   (vec-data sprite-vec-data-2d   :offset-assert 4)
-   (gif-data adgif-shader         :offset-assert 8)
-   (aux-data sparticle-cpuinfo    :offset-assert 12)
+   (data     vector             3 :offset-assert 4 :score -1) ;; guessed by decompiler
+   (vec-data sprite-vec-data-2d   :offset 4)
+   (gif-data adgif-shader         :offset 8)
+   (aux-data sparticle-cpuinfo    :offset 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sprite-aux-list (basic)
+  "List of sprites that can't be drawn by the normal sprite renderer.
+   The glow and distort renderers will pull sprites from here."
   ((num-entries int32    :offset-assert 4)
    (entry       int32    :offset-assert 8)
-   (UNKNOWN     UNKNOWN  :offset-assert -1) ;; field could not be read.
+   (data        sprite-aux-elem :dynamic :inline :offset-assert 12)
    )
+  (:methods
+    (new (symbol type int) _type_)
+    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype sprite-frame-data (structure)
-  ((data               UNKNOWN      42      :offset-assert 0)
-   (cdata              vector       16      :offset-assert 0) ;; guessed by decompiler
-   (fdata              UNKNOWN      26      :offset-assert 256)
-   (xy-array           vector       8       :offset-assert 0) ;; guessed by decompiler
-   (st-array           vector       4       :offset-assert 128) ;; guessed by decompiler
-   (xyz-array          vector       4       :offset-assert 192) ;; guessed by decompiler
-   (hmge-scale         vector       :inline :offset-assert 256)
-   (consts             vector       :inline :offset-assert 272)
-   (pfog0              float                :offset-assert 272)
-   (deg-to-rad         float                :offset-assert 276)
-   (min-scale          float                :offset-assert 280)
-   (inv-area           float                :offset-assert 284)
-   (adgif-giftag       qword        :inline :offset-assert 288) ;; gs-gif-tag :inline
-   (sprite-2d-giftag   qword        :inline :offset-assert 304) ;; gs-gif-tag :inline
-   (sprite-2d-giftag-2 qword        :inline :offset-assert 320) ;; gs-gif-tag :inline
+  "Data sent to VU1 which is constant over a frame, like giftag templates, camera/fog constants..."
+  (;;(data               UNKNOWN      42      :offset-assert 0)
+   (cdata              vector       16 :inline  :offset-assert 0) ;; guessed by decompiler
+   ;(fdata              UNKNOWN      26      :offset-assert 256)
+   (xy-array           vector       8  :inline     :offset 0) ;; guessed by decompiler
+   (st-array           vector       4  :inline     :offset 128) ;; guessed by decompiler
+   (xyz-array          vector       4  :inline     :offset 192) ;; guessed by decompiler
+   (hmge-scale         vector       :inline :offset 256)
+   (consts             vector       :inline :offset 272)
+   (pfog0              float                :offset 272)
+   (deg-to-rad         float                :offset 276)
+   (min-scale          float                :offset 280)
+   (inv-area           float                :offset 284)
+   (adgif-giftag       gs-gif-tag        :inline :offset-assert 288) ;; gs-gif-tag :inline
+   (sprite-2d-giftag   gs-gif-tag        :inline :offset-assert 304) ;; gs-gif-tag :inline
+   (sprite-2d-giftag-2 gs-gif-tag        :inline :offset-assert 320) ;; gs-gif-tag :inline
    (sincos-01          vector       :inline :offset-assert 336)
    (sincos-23          vector       :inline :offset-assert 352)
    (sincos-45          vector       :inline :offset-assert 368)
@@ -29064,47 +29083,77 @@
    (sincos-89          vector       :inline :offset-assert 400)
    (basis-x            vector       :inline :offset-assert 416)
    (basis-y            vector       :inline :offset-assert 432)
-   (sprite-3d-giftag   qword        :inline :offset-assert 448) ;; gs-gif-tag :inline
-   (sprite-3d-giftag-2 qword        :inline :offset-assert 464) ;; gs-gif-tag :inline
+   (sprite-3d-giftag   gs-gif-tag        :inline :offset-assert 448) ;; gs-gif-tag :inline
+   (sprite-3d-giftag-2 gs-gif-tag        :inline :offset-assert 464) ;; gs-gif-tag :inline
    (screen-shader      adgif-shader :inline :offset-assert 480)
-   (inv-hmge-scale     vector       :inline :offset-assert 576)
+   (inv-hmge-scale     vector       :inline :offset 576)
    (stq-offset         vector       :inline :offset-assert 592)
    (stq-scale          vector       :inline :offset-assert 608)
    (rgba-plain         qword        :inline :offset-assert 624)
-   (warp-giftag        qword        :inline :offset-assert 640) ;; gs-gif-tag :inline
+   (warp-giftag        gs-gif-tag        :inline :offset-assert 640) ;; gs-gif-tag :inline
    (fog-clamp          vector       :inline :offset-assert 656)
-   (fog-min            float                :offset-assert 656)
-   (fog-max            float                :offset-assert 660)
-   (max-scale          float                :offset-assert 664)
+   (fog-min            float                :offset 656 :score 1)
+   (fog-max            float                :offset 660 :score 1)
+   (max-scale          float                :offset 664 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x2a0
   :flag-assert         #x9000002a0
   )
-|#
 
-;; (define-extern sprite-setup-header function) ;; (function sprite-header int none)
-;; (define-extern clear-sprite-aux-list function) ;; (function none)
-;; (define-extern add-to-sprite-aux-list function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none)
-;; (define-extern sprite-setup-frame-data function) ;; (function sprite-frame-data uint none)
-;; (define-extern sprite-vu1-block object) ;; vu-function
-;; (define-extern sprite-set-3d-quaternion! function) ;; (function sprite-vec-data-3d quaternion quaternion)
-;; (define-extern sprite-get-3d-quaternion! function) ;; (function quaternion sprite-vec-data-3d quaternion)
-;; (define-extern sprite-add-matrix-data function) ;; (function dma-buffer uint none)
-;; (define-extern sprite-add-frame-data function) ;; (function dma-buffer uint none)
-;; (define-extern sprite-add-2d-chunk function) ;; (function sprite-array-2d int int dma-buffer int none)
-;; (define-extern sprite-add-2d-all function) ;; (function sprite-array-2d dma-buffer int none)
-;; (define-extern sprite-add-3d-chunk function) ;; (function sprite-array-3d int int dma-buffer none)
-;; (define-extern sprite-add-3d-all function) ;; (function sprite-array-3d dma-buffer int none)
-;; (define-extern sprite-draw function) ;; (function display none)
-;; (define-extern sprite-allocate-user-hvdf function) ;; (function int)
-(define-extern sprite-release-user-hvdf (function int none))
-;; (define-extern sprite-get-user-hvdf function) ;; (function int vector)
-;; (define-extern *sprite-hvdf-data* object) ;; sprite-hvdf-data
-;; (define-extern *sprite-hvdf-control* object) ;; sprite-hvdf-control
-;; (define-extern *sprite-aux-list* object) ;; sprite-aux-list
-;; (define-extern *sprite-array-2d* object) ;; sprite-array-2d
-;; (define-extern *sprite-array-3d* object) ;; sprite-array-3d
+(define-extern sprite-setup-header
+               "Initialize VU1 data header with number of sprites."
+               (function sprite-header int none))
+(define-extern clear-sprite-aux-list
+               "Reset all pending sprites in the aux-list."
+               (function none))
+(define-extern add-to-sprite-aux-list (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d uint none))
+(define-extern sprite-setup-frame-data (function sprite-frame-data uint none))
+(define-extern sprite-vu1-block vu-function)
+(define-extern sprite-set-3d-quaternion!
+               "Set the quaternion of the vec-data."
+               (function sprite-vec-data-3d quaternion quaternion))
+(define-extern sprite-get-3d-quaternion!
+               "Get the quaternion from the vec data."
+               (function quaternion sprite-vec-data-3d quaternion))
+(define-extern sprite-add-matrix-data
+               "Set up matrix data DMA to VU1.
+                This changes per sprite mode, but remains constant for all sprites in that mode."
+               (function dma-buffer uint none))
+(define-extern sprite-add-frame-data
+               "Set up frame data DMA to VU1."
+               (function dma-buffer uint none))
+(define-extern sprite-add-2d-chunk
+               "Set up DMA for a single chunk of 2D sprites."
+               (function sprite-array-2d int int dma-buffer int none))
+(define-extern sprite-add-2d-all
+               "Generate DMA for all chunks."
+               (function sprite-array-2d dma-buffer int none))
+(define-extern sprite-add-3d-chunk
+               "Generate DMA for a single chunk of 3D sprites."
+               (function sprite-array-3d int int dma-buffer none))
+(define-extern sprite-add-3d-all
+               "Generate DMA for all chunks of 3D sprites."
+               (function sprite-array-3d dma-buffer int none))
+(define-extern sprite-draw
+               "Top-level sprite DMA generation function.
+                Takes the sprites from sparticle, and draws them with
+                normal sprite, sprite-distort, sprite-glow, and simple-sprite-system"
+               (function display none))
+(define-extern sprite-allocate-user-hvdf
+               "Allocate an HVDF entry. Returns the index in the hvdf-data array."
+               (function int))
+(define-extern sprite-release-user-hvdf
+               "Free an HVDF entry."
+               (function int none))
+(define-extern sprite-get-user-hvdf
+               "Get the HVDF vector."
+               (function int vector))
+(define-extern *sprite-hvdf-data* sprite-hvdf-data)
+(define-extern *sprite-hvdf-control* sprite-hvdf-control)
+(define-extern *sprite-aux-list* sprite-aux-list)
+(define-extern *sprite-array-2d* sprite-array-2d)
+(define-extern *sprite-array-3d* sprite-array-3d)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite-distort                 ;;
@@ -29128,8 +29177,8 @@
 ;; (define-extern *sprite-distorter-sine-tables* object) ;; sprite-distorter-sine-tables
 (define-extern sprite-distorter-generate-tables (function none))
 ;; (define-extern sprite-distort-vu1-block object) ;; vu-function
-;; (define-extern sprite-init-distorter function) ;; (function dma-buffer none)
-;; (define-extern sprite-draw-distorters function) ;; (function dma-buffer none)
+(define-extern sprite-init-distorter (function dma-buffer none))
+(define-extern sprite-draw-distorters (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite-glow                    ;;
@@ -29258,13 +29307,13 @@
 ;; (define-extern *sprite-glow-template* object) ;; sprite-glow-template
 ;; (define-extern sprite-glow-vu1-block object) ;; vu-function
 ;; (define-extern sprite-glow-init-consts function) ;; (function sprite-glow-consts none)
-;; (define-extern sprite-glow-init-engine function) ;; (function dma-buffer none)
+(define-extern sprite-glow-init-engine (function dma-buffer none))
 ;; (define-extern *sprite-glow-dma-packet-data* object) ;; sprite-glow-dma-packet-data
 ;; (define-extern sprite-glow-add-sprite function) ;; (function dma-buffer sprite-vec-data-2d float float float adgif-shader none)
 ;; (define-extern sprite-glow-add-simple-sprite function) ;; (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer none)
-;; (define-extern sprite-glow-draw function) ;; (function dma-buffer none)
+(define-extern sprite-glow-draw (function dma-buffer none))
 ;; (define-extern add-shader-to-dma function) ;; (function dma-buffer adgif-shader)
-;; (define-extern *simple-sprite-system* object) ;; simple-sprite-system
+(define-extern *simple-sprite-system* simple-sprite-system)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug-sphere                   ;;

@@ -280,39 +280,42 @@
 
 (defmacro with-dma-bucket (bindings &rest body)
   "Start a new dma-bucket in body that will be finished at the end.
-   The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
+  The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
 
   (let ((buf (first bindings))
         (bucket (second bindings))
         (bucket-id (third bindings))
         )
 
-      (with-gensyms (buf-start bucket-edge pkt)
-        `(let ((,buf-start (-> ,buf base)))
+    (with-gensyms (buf-start bucket-edge pkt)
+      `(let ((,buf-start (-> ,buf base)))
 
-            ,@body
+         ,@body
 
-            ;; we end the chain with a next.  The bucket system will patch the next chain to this,
-            ;; and then patch all the buckets togehter before sending the DMA.
-            (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
-                (let ((,pkt (the-as dma-packet (-> ,buf base))))
+         ;; we end the chain with a next.  The bucket system will patch the next chain to this,
+         ;; and then patch all the buckets togehter before sending the DMA.
+         (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
 
-                  (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
-                  (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
-                  (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+           ;; if nothing was added, skip the tag entirely.
+           (when (!= ,bucket-edge ,buf-start)
+             (let ((,pkt (the-as dma-packet (-> ,buf base))))
 
-                  (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
+               (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+               (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+               (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
 
-                  )
-                (dma-bucket-insert-tag ,bucket ,bucket-id
-                      ,buf-start ;; the first thing in this chain, bucket will patch previous to this
-                      ,bucket-edge ;; end of this chain (ptr to next tag)
-                      )
-                )
-            )
-        )
+               (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
 
+               )
+             (dma-bucket-insert-tag ,bucket ,bucket-id
+                                    ,buf-start ;; the first thing in this chain, bucket will patch previous to this
+                                    ,bucket-edge ;; end of this chain (ptr to next tag)
+                                    )
+             )
+           )
+         )
       )
+    )
   )
 
 (defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (-> (current-frame) bucket-group)) &rest body)
