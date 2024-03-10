@@ -35,6 +35,8 @@ fs::path get_user_screenshots_dir(GameVersion game_version);
 fs::path get_user_misc_dir(GameVersion game_version);
 fs::path get_user_features_dir(GameVersion game_version);
 fs::path get_jak_project_dir();
+fs::path get_iso_dir_for_game(GameVersion game_version);
+void set_iso_data_dir(const fs::path& directory);
 
 bool create_dir_if_needed(const fs::path& path);
 bool create_dir_if_needed_for_file(const std::string& path);
