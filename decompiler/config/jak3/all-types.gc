@@ -29363,40 +29363,60 @@
 
 ;; debug-vertex-stats is already defined!
 
-(define-extern transform-float-point "Transform a point, using the cached matrix in VU0 registers, set from init-for-transform." (function vector vector4w vector4w))
+(define-extern transform-float-point
+               "Transform a point, using the cached matrix in VU0 registers, set from init-for-transform.
+                The argument order is backward - be careful!
+                After transformation, point is constrained to be within some region, but this is not proper clipping,
+                so you should do this yourself."
+               (function vector vector4w vector4w))
 (define-extern add-debug-point "Draw a point." (function symbol bucket-id vector symbol))
 (define-extern debug-line-clip? (function vector vector vector vector symbol))
-(define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba symbol))
-(define-extern internal-draw-debug-text-3d (function bucket-id string vector font-color vector2h pointer))
-(define-extern add-debug-outline-triangle (function symbol bucket-id vector vector vector rgba symbol))
-(define-extern add-debug-triangle-normal (function symbol bucket-id vector vector vector rgba symbol))
-(define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern internal-draw-debug-line "Implementation of line drawing DMA." (function bucket-id vector vector rgba symbol rgba symbol))
+(define-extern internal-draw-debug-text-3d "Implementation of 3D text drawing." (function bucket-id string vector font-color vector2h pointer))
+(define-extern add-debug-outline-triangle "Draw a wireframe triangle." (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-triangle-normal "Draw the normal of a triangle." (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-flat-triangle "Draw a shaded triangle." (function symbol bucket-id vector vector vector rgba symbol))
 (define-extern *debug-lines* (inline-array debug-line))
 (define-extern *debug-lines-trk* debug-tracking-thang)
 (define-extern *debug-text-3ds* (inline-array debug-text-3d))
 (define-extern *debug-text-3d-trk* debug-tracking-thang)
-(define-extern get-debug-line (function debug-line))
-(define-extern get-debug-text-3d (function debug-text-3d))
-(define-extern debug-reset-buffers (function symbol))
-(define-extern debug-draw-buffers (function symbol))
-(define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
-(define-extern add-debug-line2d (function symbol bucket-id vector4w vector4w vector4w symbol))
-(define-extern add-debug-box (function symbol bucket-id vector vector rgba symbol))
-(define-extern add-debug-box-with-transform (function symbol bucket-id bounding-box matrix rgba symbol))
-(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
-(define-extern add-debug-cross (function symbol bucket-id vector float symbol))
-(define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
-(define-extern add-debug-sphere-with-transform (function symbol bucket-id vector meters matrix rgba symbol))
-(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
-(define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
-(define-extern add-debug-spheres (function symbol bucket-id (inline-array vector) int rgba symbol))
-(define-extern add-debug-line-sphere (function symbol bucket-id vector vector float rgba none))
-(define-extern add-debug-circle (function symbol bucket-id vector float rgba matrix symbol))
-(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
-(define-extern add-debug-matrix (function symbol bucket-id matrix meters matrix))
-(define-extern add-debug-rot-matrix (function symbol bucket-id matrix vector matrix))
-(define-extern add-debug-quaternion (function symbol bucket-id vector quaternion none))
-(define-extern add-debug-cspace (function symbol bucket-id cspace cspace))
+(define-extern get-debug-line "Allocate a record for a debug line.
+                              This is used to persist debug drawing for paused objects."
+                              (function debug-line))
+(define-extern get-debug-text-3d "Allocate a record for a debug 3d text.
+                              This is used to persist debug drawing for paused objects." (function debug-text-3d))
+(define-extern debug-reset-buffers
+               "Reset buffered debug drawing."
+               (function symbol))
+(define-extern debug-draw-buffers
+               "Draw all buffered debug drawing."
+               (function symbol))
+(define-extern add-debug-line
+               "Draw a line."
+               (function symbol bucket-id vector vector rgba symbol rgba symbol))
+(define-extern add-debug-line2d
+               "Draw a screen-space line."
+               (function symbol bucket-id vector4w vector4w vector4w symbol))
+(define-extern add-debug-box
+               "Draw an axis-aligned box."
+               (function symbol bucket-id vector vector rgba symbol))
+(define-extern add-debug-box-with-transform
+               "Draw a box with arbitrary transform."
+               (function symbol bucket-id bounding-box matrix rgba symbol))
+(define-extern add-debug-x "Draw an X." (function symbol bucket-id vector rgba symbol))
+(define-extern add-debug-cross "Draw a cross." (function symbol bucket-id vector float symbol))
+(define-extern add-debug-text-3d "Draw debug text." (function symbol bucket-id string vector font-color vector2h symbol))
+(define-extern add-debug-sphere-with-transform "Draw a debug sphere, applying a transform to the given point first." (function symbol bucket-id vector meters matrix rgba symbol))
+(define-extern add-debug-sphere "Draw a debug sphere." (function symbol bucket-id vector meters rgba symbol))
+(define-extern add-debug-text-sphere "Draw a debug sphere with a text label." (function symbol bucket-id vector meters string rgba symbol))
+(define-extern add-debug-spheres "Draw from an array of spheres. The radius is stored in w." (function symbol bucket-id (inline-array vector) int rgba symbol))
+(define-extern add-debug-line-sphere "Draw a capsule as a cylinder." (function symbol bucket-id vector vector float rgba none))
+(define-extern add-debug-circle "Draw a circle." (function symbol bucket-id vector float rgba matrix symbol))
+(define-extern add-debug-vector "Draw a vector." (function symbol bucket-id vector vector meters rgba symbol))
+(define-extern add-debug-matrix "Draw a matrix as a coordinate frame." (function symbol bucket-id matrix meters matrix))
+(define-extern add-debug-rot-matrix "Draw a matrix as a coordinate frame, but use the given origin instead of the trans from the matrix." (function symbol bucket-id matrix vector matrix))
+(define-extern add-debug-quaternion "Draw a quaternion as a coordinate frame." (function symbol bucket-id vector quaternion none))
+(define-extern add-debug-cspace "Draw a cspace as a matrix." (function symbol bucket-id cspace cspace))
 (define-extern add-debug-yrot-vector (function symbol bucket-id vector float float rgba symbol))
 (define-extern add-debug-arc (function symbol bucket-id vector float float float rgba matrix symbol))
 (define-extern add-debug-curve (function symbol bucket-id (inline-array vector) int (pointer float) int rgba symbol))

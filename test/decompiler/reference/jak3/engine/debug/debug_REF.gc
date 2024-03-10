@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: debug.gc
-;; name in dgo: debug
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for function transform-float-point
 ;; ERROR: Bad vector register dependency: vf1
 ;; ERROR: Bad vector register dependency: vf2
 ;; ERROR: Bad vector register dependency: vf3
@@ -49,6 +44,8 @@
     )
   )
 
+;; definition (debug) for function add-debug-point
+;; INFO: Used lq/sq
 (defun-debug add-debug-point ((enable symbol) (bucket bucket-id) (pt vector))
   "Draw a point."
   (if (not (or enable *display-capture-mode*))
@@ -158,8 +155,12 @@
   #f
   )
 
+;; definition (debug) for function debug-line-clip?
+;; INFO: function output is handled by mips2c
 (def-mips2c debug-line-clip? (function vector vector vector vector symbol))
 
+;; definition (debug) for function internal-draw-debug-line
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs symbol.
 (defun-debug internal-draw-debug-line ((bucket bucket-id) (p0 vector) (p1 vector) (color rgba) (mode symbol) (color2 rgba))
   "Implementation of line drawing DMA."
@@ -293,6 +294,8 @@
     )
   )
 
+;; definition (debug) for function internal-draw-debug-text-3d
+;; INFO: Used lq/sq
 (defun-debug internal-draw-debug-text-3d ((bucket bucket-id) (text string) (pos vector) (color font-color) (offset vector2h))
   "Implementation of 3D text drawing."
   (let ((s2-0 (new 'stack-no-clear 'vector4w)))
@@ -324,6 +327,7 @@
     )
   )
 
+;; definition (debug) for function add-debug-outline-triangle
 (defun-debug add-debug-outline-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   "Draw a wireframe triangle."
   (when (and enable (not *display-capture-mode*))
@@ -334,6 +338,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-triangle-normal
 (defun-debug add-debug-triangle-normal ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   "Draw the normal of a triangle."
   (when (and enable (not *display-capture-mode*))
@@ -351,6 +356,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-flat-triangle
+;; INFO: Used lq/sq
 (defun-debug add-debug-flat-triangle ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (p2 vector) (color rgba))
   "Draw a shaded triangle."
   (local-vars (sv-160 vector) (sv-176 vector))
@@ -449,7 +456,9 @@
   #f
   )
 
+;; this part is debug only
 (when *debug-segment*
+;; definition of type debug-line
 (deftype debug-line (structure)
   ((flags   int32)
    (bucket  bucket-id)
@@ -461,7 +470,25 @@
    )
   )
 
+;; definition for method 3 of type debug-line
+(defmethod inspect ((this debug-line))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'debug-line)
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tbucket: ~D~%" (-> this bucket))
+  (format #t "~1Tv1: #<vector @ #x~X>~%" (-> this v1))
+  (format #t "~1Tv2: #<vector @ #x~X>~%" (-> this v2))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Tmode: ~A~%" (-> this mode))
+  (format #t "~1Tcolor2: ~D~%" (-> this color2))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type debug-text-3d
 (deftype debug-text-3d (structure)
   ((flags   int32)
    (bucket  bucket-id)
@@ -472,31 +499,68 @@
    )
   )
 
+;; definition for method 3 of type debug-text-3d
+(defmethod inspect ((this debug-text-3d))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'debug-text-3d)
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tbucket: ~D~%" (-> this bucket))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tcolor: ~D~%" (-> this color))
+  (format #t "~1Toffset: #<vector2h @ #x~X>~%" (-> this offset))
+  (format #t "~1Tstr: ~A~%" (-> this str))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type debug-tracking-thang
 (deftype debug-tracking-thang (basic)
   ((length            int32)
    (allocated-length  int32)
    )
   )
 
+;; definition for method 3 of type debug-tracking-thang
+(defmethod inspect ((this debug-tracking-thang))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (label cfg-4)
+  this
+  )
 
+;; definition for symbol *debug-lines*, type (inline-array debug-line)
 (define *debug-lines* (the-as (inline-array debug-line) (malloc 'debug #x100000)))
 
+;; definition for symbol *debug-lines-trk*, type debug-tracking-thang
 (define *debug-lines-trk* (new 'debug 'debug-tracking-thang))
 
+;; failed to figure out what this is:
 (set! (-> *debug-lines-trk* allocated-length) #x4000)
 
+;; definition for symbol *debug-text-3ds*, type (inline-array debug-text-3d)
 (define *debug-text-3ds* (the-as (inline-array debug-text-3d) (malloc 'debug #x6000)))
 
+;; definition for symbol *debug-text-3d-trk*, type debug-tracking-thang
 (define *debug-text-3d-trk* (new 'debug 'debug-tracking-thang))
 
+;; failed to figure out what this is:
 (set! (-> *debug-text-3d-trk* allocated-length) 512)
 
+;; failed to figure out what this is:
 (dotimes (gp-0 (-> *debug-text-3d-trk* allocated-length))
   (set! (-> *debug-text-3ds* gp-0 str) (new 'debug 'string 80 (the-as string #f)))
   )
 
 )
+;; definition (debug) for function get-debug-line
 (defun-debug get-debug-line ()
   "Allocate a record for a debug line.
    This is used to persist debug drawing for paused objects."
@@ -511,6 +575,7 @@
     )
   )
 
+;; definition (debug) for function get-debug-text-3d
 (defun-debug get-debug-text-3d ()
   "Allocate a record for a debug 3d text.
    This is used to persist debug drawing for paused objects."
@@ -525,6 +590,7 @@
     )
   )
 
+;; definition (debug) for function debug-reset-buffers
 (defun-debug debug-reset-buffers ()
   "Reset buffered debug drawing."
   (set! (-> *debug-lines-trk* length) 0)
@@ -533,6 +599,7 @@
   #f
   )
 
+;; definition (debug) for function debug-draw-buffers
 (defun-debug debug-draw-buffers ()
   "Draw all buffered debug drawing."
   (dotimes (gp-0 (-> *debug-lines-trk* length))
@@ -555,6 +622,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-line
+;; INFO: Used lq/sq
 (defun-debug add-debug-line ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (color rgba) (mode symbol) (color2 rgba))
   "Draw a line."
   (when (and enable (not *display-capture-mode*))
@@ -579,6 +648,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-line2d
+;; INFO: Used lq/sq
 (defun-debug add-debug-line2d ((enable symbol) (bucket bucket-id) (p0 vector4w) (p1 vector4w) (color vector4w))
   "Draw a screen-space line."
   (if (not (or enable *display-capture-mode*))
@@ -658,6 +729,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-box
+;; INFO: Used lq/sq
 (defun-debug add-debug-box ((enable symbol) (bucket bucket-id) (p0 vector) (p1 vector) (color rgba))
   "Draw an axis-aligned box."
   (let ((s5-0 (new-stack-vector0)))
@@ -707,6 +780,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-box-with-transform
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs symbol.
 (defun-debug add-debug-box-with-transform ((enable symbol) (bucket bucket-id) (box bounding-box) (mat matrix) (color rgba))
   "Draw a box with arbitrary transform."
@@ -744,6 +819,8 @@
   (the-as symbol 0)
   )
 
+;; definition (debug) for function add-debug-x
+;; INFO: Used lq/sq
 (defun-debug add-debug-x ((enable symbol) (bucket bucket-id) (pos vector) (color rgba))
   "Draw an X."
   (if (not (or enable *display-capture-mode*))
@@ -762,6 +839,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-cross
+;; INFO: Used lq/sq
 (defun-debug add-debug-cross ((enable symbol) (bucket bucket-id) (pos vector) (len float))
   "Draw a cross."
   (if (not (or enable *display-capture-mode*))
@@ -836,6 +915,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-text-3d
+;; INFO: Used lq/sq
 (defun-debug add-debug-text-3d ((enable symbol) (bucket bucket-id) (text string) (pos vector) (color font-color) (offset vector2h))
   "Draw debug text."
   (when (and enable (not *display-capture-mode*))
@@ -891,6 +972,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-sphere-with-transform
 (defun-debug add-debug-sphere-with-transform ((enable symbol) (bucket bucket-id) (pos vector) (radius meters) (mat matrix) (color rgba))
   "Draw a debug sphere, applying a transform to the given point first."
   (rlet ((acc :class vf)
@@ -921,6 +1003,7 @@
     )
   )
 
+;; definition (debug) for function add-debug-sphere
 (defun-debug add-debug-sphere ((enable symbol) (bucket bucket-id) (pos vector) (radius meters) (color rgba))
   "Draw a debug sphere."
   (if (and enable (not *display-capture-mode*))
@@ -929,6 +1012,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-text-sphere
 (defun-debug add-debug-text-sphere ((enable symbol) (bucket bucket-id) (pos vector) (radius meters) (text string) (color rgba))
   "Draw a debug sphere with a text label."
   (add-debug-sphere enable bucket pos radius color)
@@ -936,6 +1020,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-spheres
 (defun-debug add-debug-spheres ((enable symbol) (bucket bucket-id) (spheres (inline-array vector)) (count int) (color rgba))
   "Draw from an array of spheres. The radius is stored in w."
   (when (and enable (not *display-capture-mode*))
@@ -949,6 +1034,9 @@
   #f
   )
 
+;; definition (debug) for function add-debug-line-sphere
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-line-sphere ((enable symbol) (bucket bucket-id) (base vector) (dir vector) (rad float) (color rgba))
   "Draw a capsule as a cylinder."
   (local-vars
@@ -1025,6 +1113,8 @@
   (none)
   )
 
+;; definition (debug) for function add-debug-circle
+;; INFO: Used lq/sq
 (defun-debug add-debug-circle ((enable symbol) (bucket bucket-id) (origin vector) (radius float) (color rgba) (mat matrix))
   "Draw a circle."
   (local-vars (sv-48 int) (sv-64 vector) (sv-80 vector))
@@ -1062,6 +1152,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-vector
+;; INFO: Used lq/sq
 (defun-debug add-debug-vector ((enable symbol) (bucket bucket-id) (base vector) (dir vector) (len-scale meters) (color rgba))
   "Draw a vector."
   (if (not (or enable *display-capture-mode*))
@@ -1076,6 +1168,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-matrix
 (defun-debug add-debug-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (len meters))
   "Draw a matrix as a coordinate frame."
   (add-debug-vector enable bucket (-> mat trans) (-> mat rvec) len (new 'static 'rgba :r #xff :a #x80))
@@ -1084,6 +1177,7 @@
   mat
   )
 
+;; definition (debug) for function add-debug-rot-matrix
 (defun-debug add-debug-rot-matrix ((enable symbol) (bucket bucket-id) (mat matrix) (len vector))
   "Draw a matrix as a coordinate frame, but use the given origin instead of the trans from the matrix."
   (add-debug-vector enable bucket len (-> mat rvec) (meters 2) (new 'static 'rgba :r #xff :a #x80))
@@ -1092,6 +1186,8 @@
   mat
   )
 
+;; definition (debug) for function add-debug-quaternion
+;; WARN: Return type mismatch int vs none.
 (defun-debug add-debug-quaternion ((enable symbol) (bucket bucket-id) (trans vector) (quat quaternion))
   "Draw a quaternion as a coordinate frame."
   (when (and enable (not *display-capture-mode*))
@@ -1103,14 +1199,20 @@
   (none)
   )
 
+;; definition (debug) for function add-debug-cspace
 (defun-debug add-debug-cspace ((enable symbol) (bucket bucket-id) (cs cspace))
   "Draw a cspace as a matrix."
   (add-debug-matrix enable bucket (-> cs bone transform) (meters 2))
   cs
   )
 
+;; definition (debug) for function add-debug-yrot-vector
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 32 signed mismatch
 ;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot offset 32 signed mismatch
 ;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
+;; WARN: Stack slot offset 32 signed mismatch
 ;; ERROR: Stack slot load at 32 mismatch: defined as size 4, got size 16
 (defun-debug add-debug-yrot-vector ((arg0 symbol) (arg1 bucket-id) (arg2 vector) (arg3 float) (arg4 float) (arg5 rgba))
   (local-vars (sv-32 float))
@@ -1129,6 +1231,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-arc
+;; INFO: Used lq/sq
 (defun-debug add-debug-arc ((arg0 symbol)
                   (arg1 bucket-id)
                   (arg2 vector)
@@ -1182,6 +1286,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-curve
+;; INFO: Used lq/sq
 (defun-debug add-debug-curve ((arg0 symbol)
                     (arg1 bucket-id)
                     (arg2 (inline-array vector))
@@ -1210,6 +1316,7 @@
   #f
   )
 
+;; definition (debug) for function add-debug-curve2
 (defun-debug add-debug-curve2 ((arg0 symbol) (arg1 bucket-id) (arg2 curve) (arg3 rgba) (arg4 symbol))
   (if (and arg0 (not *display-capture-mode*))
       (add-debug-curve #t arg1 (-> arg2 cverts) (-> arg2 num-cverts) (-> arg2 knots) (-> arg2 num-knots) arg3)
@@ -1217,6 +1324,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-points
+;; INFO: Used lq/sq
 (defun-debug add-debug-points ((arg0 symbol) (arg1 bucket-id) (arg2 (inline-array vector)) (arg3 int) (arg4 rgba) (arg5 float) (arg6 int))
   (local-vars
     (sv-32 (function symbol bucket-id string vector font-color vector2h symbol))
@@ -1266,6 +1375,10 @@
   #f
   )
 
+;; definition (debug) for function debug-percent-bar
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 32 signed mismatch
+;; WARN: Stack slot offset 32 signed mismatch
 (defun-debug debug-percent-bar ((arg0 symbol) (arg1 bucket-id) (arg2 int) (arg3 int) (arg4 float) (arg5 rgba) (arg6 int) (arg7 int))
   (local-vars (sv-16 int) (sv-32 float))
   (set! sv-16 arg3)
@@ -1287,6 +1400,8 @@
   #f
   )
 
+;; definition (debug) for function debug-pad-display
+;; INFO: Used lq/sq
 (defun-debug debug-pad-display ((arg0 cpad-info))
   (let ((gp-0 (new 'static 'inline-array vector 32
                 (new 'static 'vector)
@@ -1350,6 +1465,8 @@
   #f
   )
 
+;; definition (debug) for function add-debug-light
+;; INFO: Used lq/sq
 (defun-debug add-debug-light ((arg0 symbol) (arg1 bucket-id) (arg2 light) (arg3 vector) (arg4 string))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -1403,6 +1520,7 @@
     )
   )
 
+;; definition (debug) for function add-debug-lights
 (defun-debug add-debug-lights ((arg0 symbol) (arg1 bucket-id) (arg2 (inline-array light)) (arg3 vector))
   (if (not (or arg0 *display-capture-mode*))
       (return #f)
@@ -1414,6 +1532,7 @@
   #f
   )
 
+;; definition (debug) for function drawable-frag-count
 (defun-debug drawable-frag-count ((arg0 drawable))
   (let ((gp-0 0))
     (cond
@@ -1432,13 +1551,46 @@
     )
   )
 
+;; definition for method 3 of type debug-vertex-stats
+(defmethod inspect ((this debug-vertex-stats))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tpos-count: ~D~%" (-> this pos-count))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> this length) (-> this vertex))
+  (dotimes (s5-0 (-> this length))
+    (let ((s4-0 (-> this vertex s5-0)))
+      (format
+        #t
+        "  ~D : trans: ~D ~D ~D ~D"
+        s5-0
+        (-> s4-0 trans x)
+        (-> s4-0 trans y)
+        (-> s4-0 trans z)
+        (-> s4-0 trans w)
+        )
+      (format #t "   st: ~D ~D~%" (-> s4-0 st x) (-> s4-0 st y))
+      (format
+        #t
+        "       col: ~X   norm: ~D ~D ~D~%"
+        (-> s4-0 color)
+        (-> s4-0 normal x)
+        (-> s4-0 normal y)
+        (-> s4-0 normal z)
+        )
+      )
+    )
+  this
+  )
 
+;; definition (debug) for function history-init
 (defun-debug history-init ((arg0 pos-history) (arg1 int))
   (set! (-> arg0 num-points) arg1)
   (set! (-> arg0 points) (the-as (inline-array vector) #f))
   arg0
   )
 
+;; definition (debug) for function history-draw-and-update
+;; INFO: Used lq/sq
 (defun-debug history-draw-and-update ((arg0 pos-history) (arg1 symbol) (arg2 vector))
   (if (and arg1 (not (-> arg0 points)))
       (set! (-> arg0 points) (the-as (inline-array vector) (malloc 'debug (* (-> arg0 num-points) 16))))
@@ -1469,6 +1621,8 @@
   #f
   )
 
+;; definition (debug) for function dma-timeout-cam
+;; INFO: Used lq/sq
 (defun-debug dma-timeout-cam ()
   (let ((a0-0 (new-stack-vector0))
         (a1-0 (new 'stack-no-clear 'matrix))
@@ -1501,6 +1655,7 @@
     )
   )
 
+;; definition (debug) for function display-file-info
 (defun-debug display-file-info ()
   (when (and *display-file-info* (!= *master-mode* 'menu))
     (dotimes (gp-0 (-> *level* length))
@@ -1520,6 +1675,8 @@
   0
   )
 
+;; definition (debug) for function add-debug-cursor
+;; INFO: Used lq/sq
 (defun-debug add-debug-cursor ((arg0 symbol) (arg1 bucket-id) (arg2 int) (arg3 int) (arg4 mouse-buttons))
   (when (and arg0 (not *display-capture-mode*))
     (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -1554,12 +1711,17 @@
   0
   )
 
+;; this part is debug only
 (when *debug-segment*
+;; definition for symbol *boundary-polygon*, type (inline-array sky-vertex)
 (define *boundary-polygon* (the-as (inline-array sky-vertex) (malloc 'debug 768)))
 
 )
+;; definition (debug) for function init-boundary-regs
+;; INFO: function output is handled by mips2c
 (def-mips2c init-boundary-regs (function none))
 
+;; definition (debug) for function add-boundary-shader
 ;; WARN: Return type mismatch pointer vs none.
 (defun-debug add-boundary-shader ((arg0 texture-id) (arg1 dma-buffer))
   (let ((a1-1 (lookup-texture-by-id arg0)))
@@ -1592,18 +1754,20 @@
   (none)
   )
 
+;; definition (debug) for function draw-boundary-polygon
+;; INFO: function output is handled by mips2c
 (def-mips2c draw-boundary-polygon function)
 
+;; definition (debug) for function render-boundary-quad
+;; INFO: function output is handled by mips2c
 (def-mips2c render-boundary-quad function)
 
+;; definition (debug) for function render-boundary-tri
+;; INFO: function output is handled by mips2c
 (def-mips2c render-boundary-tri (function sky-vertex dma-buffer none))
 
-;; add-debug-bound-internal sneaks an extra value in vf27 - so this set-sky-vf27 function
-;; was added so we can pass this value down to c++.
-;; og:preserve-this
-(def-mips2c set-sky-vf27 (function object none))
-
-
+;; definition (debug) for function add-debug-bound-internal
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defun-debug add-debug-bound-internal ((arg0 dma-buffer) (arg1 (inline-array vector)) (arg2 int) (arg3 rgba) (arg4 rgba) (arg5 int))
   (rlet ((vf27 :class vf))
@@ -1642,9 +1806,7 @@
         )
       )
     (init-boundary-regs)
-    ;(.lvf vf27 (&-> *sky-work* giftag-roof quad))
-    ;; og:preserve-this
-    (set-sky-vf27 (&-> *sky-work* giftag-roof quad))
+    (.lvf vf27 (&-> *sky-work* giftag-roof quad))
     (let ((s3-0 0)
           (s2-0 (new 'static 'inline-array vector 4
                   (new 'static 'vector :x 1.0 :y 8.0 :z 1.0 :w 1.0)
@@ -1679,6 +1841,9 @@
     )
   )
 
+;; definition (debug) for function add-debug-bound
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function add-debug-bound has a return type of none, but the expression builder found a return statement.
 (defun-debug add-debug-bound ((arg0 bucket-id) (arg1 (inline-array vector)) (arg2 int) (arg3 rgba) (arg4 rgba) (arg5 int))
   (local-vars (sv-16 dma-packet) (sv-32 rgba) (sv-48 int) (sv-64 int) (sv-80 int))
@@ -1750,30 +1915,37 @@
   (none)
   )
 
+;; definition (debug) for function cpu-delay
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition (debug) for function qword-read-time
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
-; (defun-debug bugfix? ()
-;   (let ((s5-0 (the-as int #xffffffff))
-;         (gp-0 (the-as int #xffffffff))
-;         (s4-0 (logior #x20000000 (logand (the-as uint #xffffffc0) (the int #f))))
-;         )
-;     0
-;     (let ((s3-0 (+ #x2000000 s4-0)))
-;       (dotimes (s2-0 100)
-;         (set! s5-0 (min s5-0 (qword-read-time (the-as (array uint128) s4-0) 128)))
-;         (set! gp-0 (min gp-0 (qword-read-time (the-as (array uint128) s3-0) 128)))
-;         )
-;       (let ((f30-0 (/ (the float gp-0) (the float s5-0))))
-;         (format #t "qword read times:  hi #x~x ~d, lo #x~x ~d~%" s3-0 gp-0 s4-0 s5-0)
-;         (format #t "hi/lo memory bank uncached read speed ratio is ~f~%" f30-0)
-;         (format
-;           #t
-;           "If the workaround for the EE memory controller bug is turned on, this ratio should be about 1.3, otherwise about 1.0.~%"
-;           )
-;         (< 1.15 f30-0)
-;         )
-;       )
-;     )
-;   )
+;; definition (debug) for function bugfix?
+(defun-debug bugfix? ()
+  (let ((s5-0 (the-as int #xffffffff))
+        (gp-0 (the-as int #xffffffff))
+        (s4-0 (logior #x20000000 (logand (the-as uint #xffffffc0) #f)))
+        )
+    0
+    (let ((s3-0 (+ #x2000000 s4-0)))
+      (dotimes (s2-0 100)
+        (set! s5-0 (min s5-0 (qword-read-time (the-as (array uint128) s4-0) 128)))
+        (set! gp-0 (min gp-0 (qword-read-time (the-as (array uint128) s3-0) 128)))
+        )
+      (let ((f30-0 (/ (the float gp-0) (the float s5-0))))
+        (format #t "qword read times:  hi #x~x ~d, lo #x~x ~d~%" s3-0 gp-0 s4-0 s5-0)
+        (format #t "hi/lo memory bank uncached read speed ratio is ~f~%" f30-0)
+        (format
+          #t
+          "If the workaround for the EE memory controller bug is turned on, this ratio should be about 1.3, otherwise about 1.0.~%"
+          )
+        (< 1.15 f30-0)
+        )
+      )
+    )
+  )
+
+
+
+
