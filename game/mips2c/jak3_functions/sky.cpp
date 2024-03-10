@@ -39,3 +39,16 @@ void link() {
 
 }  // namespace set_sky_vf23_value
 }  // namespace Mips2C::jak3
+
+namespace Mips2C::jak3 {
+namespace clip_polygon_against_positive_hyperplane {
+u64 execute(void*) {
+  ASSERT_NOT_REACHED();
+}
+}  // namespace clip_polygon_against_positive_hyperplane
+namespace clip_polygon_against_negative_hyperplane {
+u64 execute(void*) {
+  ASSERT_NOT_REACHED();
+}
+}  // namespace clip_polygon_against_negative_hyperplane
+}  // namespace Mips2C::jak3

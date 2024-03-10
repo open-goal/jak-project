@@ -11,4 +11,4 @@ extern u64 execute(void* ctxt);
 namespace clip_polygon_against_negative_hyperplane {
 extern u64 execute(void* ctxt);
 }
-}  // namespace Mips2C::jak2
+}  // namespace Mips2C::jak3
