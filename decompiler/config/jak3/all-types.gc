@@ -8105,7 +8105,7 @@
   :size-assert         #xbec
   :flag-assert         #xa00000bec
   (:methods
-    (font-work-method-9 () none) ;; 9
+    (set-context! (_type_ object) none) ;; 9
     )
   )
 
@@ -29317,18 +29317,17 @@
 ;; debug-sphere                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern make-debug-sphere-table function) ;; (function vector-array float float vector-array)
-;; (define-extern *debug-sphere-table* object) ;; (array vector-array)
-;; (define-extern add-debug-sphere-from-table function) ;; (function bucket-id vector meters rgba int none)
+(define-extern make-debug-sphere-table "Create a table of lines on a sphere." (function vector-array float float vector-array))
+(define-extern *debug-sphere-table* (array vector-array))
+(define-extern add-debug-sphere-from-table "Draw a sphere out of debug lines, using the precomputed table of lines." (function bucket-id vector meters rgba int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype debug-line (structure)
   ((flags  int32          :offset-assert 0)
-   (bucket int32          :offset-assert 4) ;; bucket-id
+   (bucket bucket-id      :offset-assert 4) ;;
    (v1     vector :inline :offset-assert 16)
    (v2     vector :inline :offset-assert 32)
    (color  rgba           :offset-assert 48) ;; guessed by decompiler
@@ -29339,12 +29338,10 @@
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype debug-text-3d (structure)
   ((flags  int32              :offset-assert 0)
-   (bucket int32              :offset-assert 4) ;; bucket-id
+   (bucket bucket-id          :offset-assert 4) ;;
    (pos    vector     :inline :offset-assert 16)
    (color  font-color         :offset-assert 32) ;; guessed by decompiler
    (offset vector2h   :inline :offset-assert 36)
@@ -29354,9 +29351,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype debug-tracking-thang (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
@@ -29365,74 +29360,73 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 ;; debug-vertex-stats is already defined!
 
-;; (define-extern transform-float-point function) ;; (function vector vector4w vector4w)
-;; (define-extern add-debug-point function) ;; (function symbol bucket-id vector symbol)
-;; (define-extern debug-line-clip? function) ;; (function vector vector vector vector symbol)
-;; (define-extern internal-draw-debug-line function) ;; (function bucket-id vector vector rgba symbol rgba pointer)
-;; (define-extern internal-draw-debug-text-3d function) ;; (function bucket-id string vector font-color vector2h pointer)
-;; (define-extern add-debug-outline-triangle function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-;; (define-extern add-debug-triangle-normal function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-;; (define-extern add-debug-flat-triangle function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-;; (define-extern *debug-lines* object) ;; (inline-array debug-line)
-;; (define-extern *debug-lines-trk* object) ;; debug-tracking-thang
-;; (define-extern *debug-text-3ds* object) ;; (inline-array debug-text-3d)
-;; (define-extern *debug-text-3d-trk* object) ;; debug-tracking-thang
-;; (define-extern get-debug-line function) ;; (function debug-line)
-;; (define-extern get-debug-text-3d function) ;; (function debug-text-3d)
-;; (define-extern debug-reset-buffers function) ;; (function symbol)
-;; (define-extern debug-draw-buffers function) ;; (function symbol)
+(define-extern transform-float-point "Transform a point, using the cached matrix in VU0 registers, set from init-for-transform." (function vector vector4w vector4w))
+(define-extern add-debug-point "Draw a point." (function symbol bucket-id vector symbol))
+(define-extern debug-line-clip? (function vector vector vector vector symbol))
+(define-extern internal-draw-debug-line (function bucket-id vector vector rgba symbol rgba symbol))
+(define-extern internal-draw-debug-text-3d (function bucket-id string vector font-color vector2h pointer))
+(define-extern add-debug-outline-triangle (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-triangle-normal (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-flat-triangle (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern *debug-lines* (inline-array debug-line))
+(define-extern *debug-lines-trk* debug-tracking-thang)
+(define-extern *debug-text-3ds* (inline-array debug-text-3d))
+(define-extern *debug-text-3d-trk* debug-tracking-thang)
+(define-extern get-debug-line (function debug-line))
+(define-extern get-debug-text-3d (function debug-text-3d))
+(define-extern debug-reset-buffers (function symbol))
+(define-extern debug-draw-buffers (function symbol))
 (define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
-;; (define-extern add-debug-line2d function) ;; (function symbol bucket-id vector4w vector4w vector4w symbol)
-;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
-;; (define-extern add-debug-box-with-transform function) ;; (function symbol bucket-id bounding-box matrix rgba symbol)
+(define-extern add-debug-line2d (function symbol bucket-id vector4w vector4w vector4w symbol))
+(define-extern add-debug-box (function symbol bucket-id vector vector rgba symbol))
+(define-extern add-debug-box-with-transform (function symbol bucket-id bounding-box matrix rgba symbol))
 (define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
-;; (define-extern add-debug-cross function) ;; (function symbol bucket-id vector float symbol)
+(define-extern add-debug-cross (function symbol bucket-id vector float symbol))
 (define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
-;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
+(define-extern add-debug-sphere-with-transform (function symbol bucket-id vector meters matrix rgba symbol))
 (define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
 (define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
-;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
-;; (define-extern add-debug-line-sphere function) ;; (function symbol bucket-id vector vector float rgba none)
-;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
+(define-extern add-debug-spheres (function symbol bucket-id (inline-array vector) int rgba symbol))
+(define-extern add-debug-line-sphere (function symbol bucket-id vector vector float rgba none))
+(define-extern add-debug-circle (function symbol bucket-id vector float rgba matrix symbol))
 (define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
 (define-extern add-debug-matrix (function symbol bucket-id matrix meters matrix))
-;; (define-extern add-debug-rot-matrix function) ;; (function symbol bucket-id matrix vector matrix)
+(define-extern add-debug-rot-matrix (function symbol bucket-id matrix vector matrix))
 (define-extern add-debug-quaternion (function symbol bucket-id vector quaternion none))
-;; (define-extern add-debug-cspace function) ;; (function symbol bucket-id cspace cspace)
-;; (define-extern add-debug-yrot-vector function) ;; (function symbol bucket-id vector float float rgba symbol)
-;; (define-extern add-debug-arc function) ;; (function symbol bucket-id vector float float float rgba matrix symbol)
-;; (define-extern add-debug-curve function) ;; (function symbol bucket-id (inline-array vector) int (pointer float) int rgba symbol)
-;; (define-extern add-debug-curve2 function) ;; (function symbol bucket-id curve rgba symbol symbol)
-;; (define-extern add-debug-points function) ;; (function symbol bucket-id (inline-array vector) int rgba float int symbol)
-;; (define-extern debug-percent-bar function) ;; (function symbol bucket-id int int float rgba int int symbol)
-;; (define-extern debug-pad-display function) ;; (function cpad-info symbol)
-;; (define-extern add-debug-light function) ;; (function symbol bucket-id light vector string symbol)
-;; (define-extern add-debug-lights function) ;; (function symbol bucket-id (inline-array light) vector symbol)
+(define-extern add-debug-cspace (function symbol bucket-id cspace cspace))
+(define-extern add-debug-yrot-vector (function symbol bucket-id vector float float rgba symbol))
+(define-extern add-debug-arc (function symbol bucket-id vector float float float rgba matrix symbol))
+(define-extern add-debug-curve (function symbol bucket-id (inline-array vector) int (pointer float) int rgba symbol))
+(define-extern add-debug-curve2 (function symbol bucket-id curve rgba symbol symbol))
+(define-extern add-debug-points (function symbol bucket-id (inline-array vector) int rgba float int symbol))
+(define-extern debug-percent-bar (function symbol bucket-id int int float rgba int int symbol))
+(define-extern debug-pad-display (function cpad-info symbol))
+(define-extern add-debug-light (function symbol bucket-id light vector string symbol))
+(define-extern add-debug-lights (function symbol bucket-id (inline-array light) vector symbol))
 (define-extern drawable-frag-count (function drawable int))
 
 (define-extern drawable-tri-count (function drawable int)) ;; NOTE - defined in kernel?
 (define-extern drawable-vertex-ratio (function drawable debug-vertex-stats int)) ;; NOTE - defined in kernel?
 
-;; (define-extern history-init function) ;; (function pos-history int pos-history)
-;; (define-extern history-draw-and-update function) ;; (function pos-history symbol vector symbol)
-;; (define-extern dma-timeout-cam function) ;; (function vector)
-;; (define-extern display-file-info function) ;; (function int)
+(define-extern history-init (function pos-history int pos-history))
+(define-extern history-draw-and-update (function pos-history symbol vector symbol))
+(define-extern dma-timeout-cam (function vector))
+(define-extern display-file-info (function int))
 (define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
-;; (define-extern *boundary-polygon* object) ;; (inline-array sky-vertex)
-;; (define-extern init-boundary-regs function) ;; (function none)
-;; (define-extern add-boundary-shader function) ;; (function texture-id dma-buffer none)
+(define-extern *boundary-polygon* (inline-array sky-vertex))
+(define-extern init-boundary-regs (function none))
+(define-extern add-boundary-shader (function texture-id dma-buffer none))
 ;; (define-extern draw-boundary-polygon function)
 ;; (define-extern render-boundary-quad function)
-;; (define-extern render-boundary-tri function) ;; (function sky-vertex dma-buffer none)
-;; (define-extern add-debug-bound-internal function) ;; (function dma-buffer (inline-array vector) int rgba rgba int none)
+(define-extern render-boundary-tri (function sky-vertex dma-buffer none))
+(define-extern add-debug-bound-internal (function dma-buffer (inline-array vector) int rgba rgba int none))
 (define-extern add-debug-bound (function bucket-id (inline-array vector) int rgba rgba int none))
 ;; (define-extern cpu-delay function) ;; (function int none)
-;; (define-extern qword-read-time function) ;; (function (array uint128) int int)
-;; (define-extern bugfix? function) ;; (function symbol)
+(define-extern qword-read-time (function (array uint128) int int))
+(define-extern bugfix? (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; history                        ;;
@@ -30077,7 +30071,7 @@
   )
 
 ;; (define-extern draw-string-asm function) ;; (function string dma-buffer font-context draw-string-result)
-;; (define-extern draw-string function) ;; (function string dma-buffer font-context draw-string-result)
+(define-extern draw-string (function string dma-buffer font-context draw-string-result))
 ;; (define-extern get-string-length function) ;; (function string font-context draw-string-result)
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
 ;; (define-extern draw-string-adv function) ;; (function string dma-buffer font-context none)
@@ -31586,7 +31580,7 @@
 ;; sky-data                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sky-work* object) ;; sky-work
+(define-extern *sky-work* sky-work)
 ;; (define-extern sky-base-polygons object) ;; (inline-array sky-vertex)
 ;; (define-extern sky-roof-polygons object) ;; (inline-array sky-vertex)
 ;; (define-extern *cloud-vert-array* object) ;; cloud-vert-array
@@ -31608,7 +31602,7 @@
 ;; (define-extern clip-polygon-against-negative-hyperplane function)
 ;; (define-extern render-sky-quad function) ;; (function (inline-array sky-vertex) dma-buffer none)
 ;; (define-extern render-sky-tri function) ;; (function (inline-array sky-vertex) dma-buffer none)
-;; (define-extern close-sky-buffer function) ;; (function dma-buffer none)
+(define-extern close-sky-buffer (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load-state                     ;;
@@ -33007,7 +33001,7 @@
 ;; (define-extern cam-collision-record-step function) ;; (function int none)
 ;; (define-extern cam-collision-record-draw function) ;; (function none)
 ;; (define-extern camera-master-debug function) ;; (function camera-master none)
-;; (define-extern debug-set-camera-pos-rot! function) ;; (function vector matrix vector)
+(define-extern debug-set-camera-pos-rot! (function vector matrix vector))
 ;; (define-extern cam-restore function) ;; (function none)
 ;; (define-extern cam-restore-generic-bug function)
 
