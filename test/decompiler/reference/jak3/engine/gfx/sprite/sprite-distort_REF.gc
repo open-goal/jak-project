@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: sprite-distort.gc
-;; name in dgo: sprite-distort
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition of type sprite-distorter-sine-tables
 (deftype sprite-distorter-sine-tables (basic)
   "Table of precomputed sine data for the sprite distorter renderer."
   ((aspx    float)
@@ -18,13 +13,34 @@
    )
   )
 
+;; definition for method 3 of type sprite-distorter-sine-tables
+(defmethod inspect ((this sprite-distorter-sine-tables))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Taspx: ~f~%" (-> this aspx))
+  (format #t "~1Taspy: ~f~%" (-> this aspy))
+  (format #t "~1Tentry[128] @ #x~X~%" (-> this entry))
+  (format #t "~1Tientry[9] @ #x~X~%" (-> this ientry))
+  (format #t "~1Tgiftag: #<qword @ #x~X>~%" (-> this giftag))
+  (format #t "~1Tcolor: #<qword @ #x~X>~%" (-> this color))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (kmemopen global "sprite-distort-tables")
 
+;; definition for symbol *sprite-distorter-sine-tables*, type sprite-distorter-sine-tables
 (define *sprite-distorter-sine-tables* (new 'global 'sprite-distorter-sine-tables))
 
+;; failed to figure out what this is:
 (kmemclose)
 
+;; definition for function sprite-distorter-generate-tables
+;; WARN: Return type mismatch int vs none.
 (defun sprite-distorter-generate-tables ()
   "Regenerate the sprite-distorter-sine-tables for the current camera settings."
   (let ((gp-0 *sprite-distorter-sine-tables*))
@@ -93,8 +109,11 @@
   (none)
   )
 
+;; definition for symbol sprite-distort-vu1-block, type vu-function
 (define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
 
+;; definition for function sprite-init-distorter
+;; WARN: Return type mismatch int vs none.
 (defun sprite-init-distorter ((arg0 dma-buffer))
   "Generate DMA to initialize the distort renderer."
   (dma-buffer-add-gs-set arg0
@@ -129,6 +148,9 @@
   (none)
   )
 
+;; definition for function sprite-draw-distorters
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun sprite-draw-distorters ((arg0 dma-buffer))
@@ -198,13 +220,12 @@
                 (.add.mul.z.vf vf1 vf5 vf1 acc)
                 (.mul.vf vf10 vf1 vf8)
                 (.div.vf Q vf0 vf10 :fsf #b11 :ftf #b11)
-                ;; (TODO.VCLIP vf10 vf10) og:preserve-this
+                (TODO.VCLIP vf10 vf10)
                 (b! (zero? (-> sv-16 flag-rot-sy x)) cfg-22 :delay (nop!))
                 (.wait.vf)
                 (.mul.vf vf1 vf1 Q :mask #b111)
                 (.mul.vf vf2 vf2 Q :mask #b111)
-                (set! v1-26 (vu-clip vf10 0)) ;; safe to just drop the higher bits. og:preserve-this
-                ;; (.cfc2.i v1-26 Clipping)
+                (.cfc2.i v1-26 Clipping)
                 (b! (logtest? v1-26 63) cfg-22 :delay (.add.vf vf1 vf1 vf9))
                 (.max.x.vf vf1 vf1 vf0 :mask #b1000)
                 (.svf (&-> (the-as vector a0-3) quad) vf1)
@@ -351,3 +372,7 @@
     (none)
     )
   )
+
+
+
+

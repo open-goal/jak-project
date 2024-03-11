@@ -988,6 +988,8 @@ const std::unordered_map<
               {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
              {"sparticle-launch-group",
               {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+             {"simple-sprite-system",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("sprite-glow-data"), 64)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

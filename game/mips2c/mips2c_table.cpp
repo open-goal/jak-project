@@ -262,7 +262,12 @@ namespace jak3 {
   namespace add_light_sphere_to_light_group { extern void link(); }
   namespace light_hash_count_items { extern void link(); }
   namespace light_hash_add_items { extern void link(); }
-  
+  namespace debug_line_clip { extern void link(); }
+  namespace init_boundary_regs { extern void link(); }
+  namespace draw_boundary_polygon { extern void link(); }
+  namespace render_boundary_quad { extern void link(); }
+  namespace render_boundary_tri { extern void link(); }
+  namespace set_sky_vf27 { extern void link(); }
 }
 // clang-format on
 
@@ -434,7 +439,11 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
     /////////// JAK 3
     {{"lights",
       {jak3::light_hash_get_bucket_index::link, jak3::add_light_sphere_to_light_group::link,
-       jak3::light_hash_count_items::link, jak3::light_hash_add_items::link}}}};
+       jak3::light_hash_count_items::link, jak3::light_hash_add_items::link}},
+     {"debug",
+      {jak3::debug_line_clip::link, jak3::init_boundary_regs::link,
+       jak3::draw_boundary_polygon::link, jak3::render_boundary_quad::link,
+       jak3::render_boundary_tri::link, jak3::set_sky_vf27::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

@@ -8105,7 +8105,7 @@
   :size-assert         #xbec
   :flag-assert         #xa00000bec
   (:methods
-    (font-work-method-9 () none) ;; 9
+    (set-context! (_type_ object) none) ;; 9
     )
   )
 
@@ -25131,6 +25131,7 @@
    (fade-b     float              :offset-assert 52)
    (tex-id     texture-id         :offset-assert 56) ;; guessed by decompiler
    (dummy      uint32             :offset-assert 60)
+   (quads      vector 4 :inline :offset 0)
    )
   :method-count-assert 10
   :size-assert         #x40
@@ -25149,9 +25150,9 @@
   :size-assert         #x8
   :flag-assert         #xc00000008
   (:methods
-    (simple-sprite-system-method-9 () none) ;; 9 ;; (add! (_type_ sprite-glow-data) none)
-    (draw-all-sprites! (_type_ dma-buffer) none) ;; 10
-    (simple-sprite-system-method-11 () none) ;; 11 ;; (clear! (_type_) none)
+    (add! "Add a sprite to the list, to be drawn later." (_type_ sprite-glow-data) none) ;; 9
+    (draw-all-sprites! "Submit all sprites to the sprite-glow renderer" (_type_ dma-buffer) none) ;; 10
+    (clear! "Reset the list." (_type_) none) ;; 11
     )
   )
 
@@ -25970,7 +25971,7 @@
    (flags         sp-cpuinfo-flag                                                                    :offset-assert 104) ;; guessed by decompiler
    (user-int32    int32                                                                              :offset-assert 108)
    (user-uint32   uint32                                                                             :offset 108)
-   (user-float    float                                                                              :offset 108)
+   (user-float    float                                                                              :offset 108 :score 1)
    (user-pntr     uint32                                                                             :offset 108)
    (user-object   basic                                                                              :offset 108)
    (user-sprite   sprite-vec-data-2d                                                                 :offset 108)
@@ -29159,42 +29160,41 @@
 ;; sprite-distort                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-distorter-sine-tables (basic)
+  "Table of precomputed sine data for the sprite distorter renderer."
   ((aspx   float          :offset-assert 4)
    (aspy   float          :offset-assert 8)
-   (entry  vector 128     :offset-assert 16) ;; guessed by decompiler
-   (ientry qword  9       :offset-assert 2064) ;; guessed by decompiler
-   (giftag qword  :inline :offset-assert 2208) ;; gs-gif-tag :inline
+   (entry  vector 128 :inline    :offset-assert 16) ;; guessed by decompiler
+   (ientry qword  9   :inline    :offset-assert 2064) ;; guessed by decompiler
+   (giftag gs-gif-tag  :inline :offset-assert 2208) ;; :inline
    (color  qword  :inline :offset-assert 2224)
    )
   :method-count-assert 9
   :size-assert         #x8c0
   :flag-assert         #x9000008c0
   )
-|#
 
-;; (define-extern *sprite-distorter-sine-tables* object) ;; sprite-distorter-sine-tables
-(define-extern sprite-distorter-generate-tables (function none))
-;; (define-extern sprite-distort-vu1-block object) ;; vu-function
-(define-extern sprite-init-distorter (function dma-buffer none))
-(define-extern sprite-draw-distorters (function dma-buffer none))
+(define-extern *sprite-distorter-sine-tables* sprite-distorter-sine-tables)
+(define-extern sprite-distorter-generate-tables "Regenerate the sprite-distorter-sine-tables for the current camera settings." (function none))
+(define-extern sprite-distort-vu1-block vu-function)
+(define-extern sprite-init-distorter "Generate DMA to initialize the distort renderer." (function dma-buffer none))
+(define-extern sprite-draw-distorters "Generate DMA to draw all distort sprites." (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sprite-glow                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sprite-glow-template (structure)
+  "Sprite glow GS data templates sent to VU1."
   ((clear-init-giftag   gs-gif-tag     :inline :offset-assert 0)
-   (clear-init-adcmds   gs-adcmd       5       :offset-assert 16) ;; guessed by decompiler
+   (clear-init-adcmds   gs-adcmd       5 :inline       :offset-assert 16) ;; guessed by decompiler
    (clear-draw-giftag   gs-gif-tag     :inline :offset-assert 96)
    (clear-draw-clr-0    gs-packed-rgba :inline :offset-assert 112)
-   (clear-draw-xyz-0    gs-packed-xyzw 2       :offset-assert 128) ;; guessed by decompiler
+   (clear-draw-xyz-0    gs-packed-xyzw 2 :inline       :offset-assert 128) ;; guessed by decompiler
    (clear-draw-clr-1    gs-packed-rgba :inline :offset-assert 160)
-   (clear-draw-xyz-1    vector         2       :offset-assert 176) ;; guessed by decompiler
+   (clear-draw-xyz-1    vector         2 :inline       :offset-assert 176) ;; guessed by decompiler
    (offscr-setup-giftag gs-gif-tag     :inline :offset-assert 208)
-   (offscr-setup-adcmds gs-adcmd       8       :offset-assert 224) ;; guessed by decompiler
+   (offscr-setup-adcmds gs-adcmd       8 :inline       :offset-assert 224) ;; guessed by decompiler
    (offscr-first-giftag gs-gif-tag     :inline :offset-assert 352)
    (offscr-first-clr    gs-packed-rgba :inline :offset-assert 368)
    (offscr-first-uv-0   gs-packed-uv   :inline :offset-assert 384)
@@ -29202,7 +29202,7 @@
    (offscr-first-uv-1   gs-packed-uv   :inline :offset-assert 416)
    (offscr-first-xyzw-1 gs-packed-xyzw :inline :offset-assert 432)
    (repeat-draw-giftag  gs-gif-tag     :inline :offset-assert 448)
-   (repeat-draw-adcmds  gs-adcmd       29      :offset-assert 464) ;; guessed by decompiler
+   (repeat-draw-adcmds  gs-adcmd       29 :inline      :offset-assert 464) ;; guessed by decompiler
    (flare-alpha-giftag  gs-gif-tag     :inline :offset-assert 928)
    (flare-alpha-clr     gs-packed-rgba :inline :offset-assert 944)
    (flare-alpha-uv      gs-packed-uv   :inline :offset-assert 960)
@@ -29211,7 +29211,7 @@
    (flare-alpha-xyzw-2  gs-packed-xyzw :inline :offset-assert 1008)
    (flare-alpha-xyzw-3  gs-packed-xyzw :inline :offset-assert 1024)
    (flare-init-giftag   gs-gif-tag     :inline :offset-assert 1040)
-   (flare-init-adcmds   gs-adcmd       8       :offset-assert 1056) ;; guessed by decompiler
+   (flare-init-adcmds   gs-adcmd       8 :inline       :offset-assert 1056) ;; guessed by decompiler
    (flare-draw-giftag   gs-gif-tag     :inline :offset-assert 1184)
    (flare-draw-clr      gs-packed-rgba :inline :offset-assert 1200)
    (flare-draw-stq-0    gs-packed-stq  :inline :offset-assert 1216)
@@ -29227,19 +29227,18 @@
   :size-assert         #x540
   :flag-assert         #x900000540
   )
-|#
 
-#|
 (deftype sprite-glow-consts (structure)
+  "Per-frame constants for sprite-glow VU1."
   ((camera      matrix :inline :offset-assert 0)
    (perspective matrix :inline :offset-assert 64)
    (hvdf-offset vector :inline :offset-assert 128)
    (hmge-scale  vector :inline :offset-assert 144)
    (consts      vector :inline :offset-assert 160)
-   (pfog0       float          :offset-assert 160)
-   (deg-to-rad  float          :offset-assert 164)
-   (min-scale   float          :offset-assert 168)
-   (inv-area    float          :offset-assert 172)
+   (pfog0       float          :offset 160)
+   (deg-to-rad  float          :offset 164)
+   (min-scale   float          :offset 168)
+   (inv-area    float          :offset 172)
    (sincos-01   vector :inline :offset-assert 176)
    (sincos-23   vector :inline :offset-assert 192)
    (sincos-45   vector :inline :offset-assert 208)
@@ -29247,7 +29246,7 @@
    (sincos-89   vector :inline :offset-assert 240)
    (basis-x     vector :inline :offset-assert 256)
    (basis-y     vector :inline :offset-assert 272)
-   (xy-array    vector 4       :offset-assert 288) ;; guessed by decompiler
+   (xy-array    vector 4 :inline      :offset-assert 288) ;; guessed by decompiler
    (clamp-min   vector :inline :offset-assert 352)
    (clamp-max   vector :inline :offset-assert 368)
    )
@@ -29255,10 +29254,9 @@
   :size-assert         #x180
   :flag-assert         #x900000180
   )
-|#
 
-#|
 (deftype sprite-glow-dma-packet-data (structure)
+  "DMA templates for generating DMA to VU1."
   ((control-packet    dma-packet :inline :offset-assert 0)
    (vecdata-packet    dma-packet :inline :offset-assert 16)
    (shader-cnt-packet dma-packet :inline :offset-assert 32)
@@ -29269,10 +29267,9 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype sprite-glow-cnt-template (structure)
+  "DMA layout for sending a sprite to VU1, with inline shader."
   ((control-packet dma-packet       :inline :offset-assert 0)
    (num-sprites    uint32                   :offset-assert 16)
    (dummys         uint32           3       :offset-assert 20) ;; guessed by decompiler
@@ -29281,56 +29278,56 @@
    (shader-packet  dma-packet       :inline :offset-assert 112)
    (shader         adgif-shader     :inline :offset-assert 128)
    (mscal-packet   dma-packet       :inline :offset-assert 208)
+   (quads          vector 10 :inline :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #xe0
   :flag-assert         #x9000000e0
   )
-|#
 
-#|
 (deftype sprite-glow-ref-template (structure)
+  "DMA layout for sending a sprite to VU1, with reference to shader."
   ((control-packet dma-packet       :inline :offset-assert 0)
    (num-sprites    uint32                   :offset-assert 16)
    (dummys         uint32           3       :offset-assert 20) ;; guessed by decompiler
+   (num-sprites-quad uint128                :offset 16)
    (vecdata-packet dma-packet       :inline :offset-assert 32)
    (vecdata        sprite-glow-data :inline :offset-assert 48)
    (shader-packet  dma-packet       :inline :offset-assert 112)
+   (shader-packet-ptr pointer               :offset 116) ;; pointer to adgif shader to upload.
    (mscal-packet   dma-packet       :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-;; (define-extern *sprite-glow-template* object) ;; sprite-glow-template
-;; (define-extern sprite-glow-vu1-block object) ;; vu-function
-;; (define-extern sprite-glow-init-consts function) ;; (function sprite-glow-consts none)
-(define-extern sprite-glow-init-engine (function dma-buffer none))
-;; (define-extern *sprite-glow-dma-packet-data* object) ;; sprite-glow-dma-packet-data
-;; (define-extern sprite-glow-add-sprite function) ;; (function dma-buffer sprite-vec-data-2d float float float adgif-shader none)
-;; (define-extern sprite-glow-add-simple-sprite function) ;; (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer none)
-(define-extern sprite-glow-draw (function dma-buffer none))
-;; (define-extern add-shader-to-dma function) ;; (function dma-buffer adgif-shader)
+(define-extern *sprite-glow-template* sprite-glow-template)
+(define-extern sprite-glow-vu1-block vu-function)
+(define-extern sprite-glow-init-consts "Fill out sprite-glow-consts to be sent to VU1." (function sprite-glow-consts none))
+(define-extern sprite-glow-init-engine "Generate DMA to initialize sprite-glow VU1." (function dma-buffer none))
+(define-extern *sprite-glow-dma-packet-data* sprite-glow-dma-packet-data)
+(define-extern sprite-glow-add-sprite "Generate DMA to draw a single sprite from the aux-list." (function dma-buffer sprite-vec-data-2d float float float adgif-shader none))
+(define-extern sprite-glow-add-simple-sprite "Generate DMA to draw a single sprite from the simple sprite system." (function dma-buffer sprite-glow-dma-packet-data sprite-glow-data pointer none))
+(define-extern sprite-glow-draw "Generate DMA for all glow sprites in the aux-list (from sparticle system)" (function dma-buffer none))
+(define-extern add-shader-to-dma (function dma-buffer adgif-shader))
 (define-extern *simple-sprite-system* simple-sprite-system)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug-sphere                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern make-debug-sphere-table function) ;; (function vector-array float float vector-array)
-;; (define-extern *debug-sphere-table* object) ;; (array vector-array)
-;; (define-extern add-debug-sphere-from-table function) ;; (function bucket-id vector meters rgba int none)
+(define-extern make-debug-sphere-table "Create a table of lines on a sphere." (function vector-array float float vector-array))
+(define-extern *debug-sphere-table* (array vector-array))
+(define-extern add-debug-sphere-from-table "Draw a sphere out of debug lines, using the precomputed table of lines." (function bucket-id vector meters rgba int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; debug                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype debug-line (structure)
   ((flags  int32          :offset-assert 0)
-   (bucket int32          :offset-assert 4) ;; bucket-id
+   (bucket bucket-id      :offset-assert 4) ;;
    (v1     vector :inline :offset-assert 16)
    (v2     vector :inline :offset-assert 32)
    (color  rgba           :offset-assert 48) ;; guessed by decompiler
@@ -29341,12 +29338,10 @@
   :size-assert         #x3c
   :flag-assert         #x90000003c
   )
-|#
 
-#|
 (deftype debug-text-3d (structure)
   ((flags  int32              :offset-assert 0)
-   (bucket int32              :offset-assert 4) ;; bucket-id
+   (bucket bucket-id          :offset-assert 4) ;;
    (pos    vector     :inline :offset-assert 16)
    (color  font-color         :offset-assert 32) ;; guessed by decompiler
    (offset vector2h   :inline :offset-assert 36)
@@ -29356,9 +29351,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype debug-tracking-thang (basic)
   ((length           int32  :offset-assert 4)
    (allocated-length int32  :offset-assert 8)
@@ -29367,74 +29360,93 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 ;; debug-vertex-stats is already defined!
 
-;; (define-extern transform-float-point function) ;; (function vector vector4w vector4w)
-;; (define-extern add-debug-point function) ;; (function symbol bucket-id vector symbol)
-;; (define-extern debug-line-clip? function) ;; (function vector vector vector vector symbol)
-;; (define-extern internal-draw-debug-line function) ;; (function bucket-id vector vector rgba symbol rgba pointer)
-;; (define-extern internal-draw-debug-text-3d function) ;; (function bucket-id string vector font-color vector2h pointer)
-;; (define-extern add-debug-outline-triangle function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-;; (define-extern add-debug-triangle-normal function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-;; (define-extern add-debug-flat-triangle function) ;; (function symbol bucket-id vector vector vector rgba symbol)
-;; (define-extern *debug-lines* object) ;; (inline-array debug-line)
-;; (define-extern *debug-lines-trk* object) ;; debug-tracking-thang
-;; (define-extern *debug-text-3ds* object) ;; (inline-array debug-text-3d)
-;; (define-extern *debug-text-3d-trk* object) ;; debug-tracking-thang
-;; (define-extern get-debug-line function) ;; (function debug-line)
-;; (define-extern get-debug-text-3d function) ;; (function debug-text-3d)
-;; (define-extern debug-reset-buffers function) ;; (function symbol)
-;; (define-extern debug-draw-buffers function) ;; (function symbol)
-(define-extern add-debug-line (function symbol bucket-id vector vector rgba symbol rgba symbol))
-;; (define-extern add-debug-line2d function) ;; (function symbol bucket-id vector4w vector4w vector4w symbol)
-;; (define-extern add-debug-box function) ;; (function symbol bucket-id vector vector rgba symbol)
-;; (define-extern add-debug-box-with-transform function) ;; (function symbol bucket-id bounding-box matrix rgba symbol)
-(define-extern add-debug-x (function symbol bucket-id vector rgba symbol))
-;; (define-extern add-debug-cross function) ;; (function symbol bucket-id vector float symbol)
-(define-extern add-debug-text-3d (function symbol bucket-id string vector font-color vector2h symbol))
-;; (define-extern add-debug-sphere-with-transform function) ;; (function symbol bucket-id vector meters matrix rgba symbol)
-(define-extern add-debug-sphere (function symbol bucket-id vector meters rgba symbol))
-(define-extern add-debug-text-sphere (function symbol bucket-id vector meters string rgba symbol))
-;; (define-extern add-debug-spheres function) ;; (function symbol bucket-id (inline-array vector) int rgba symbol)
-;; (define-extern add-debug-line-sphere function) ;; (function symbol bucket-id vector vector float rgba none)
-;; (define-extern add-debug-circle function) ;; (function symbol bucket-id vector float rgba matrix symbol)
-(define-extern add-debug-vector (function symbol bucket-id vector vector meters rgba symbol))
-(define-extern add-debug-matrix (function symbol bucket-id matrix meters matrix))
-;; (define-extern add-debug-rot-matrix function) ;; (function symbol bucket-id matrix vector matrix)
-(define-extern add-debug-quaternion (function symbol bucket-id vector quaternion none))
-;; (define-extern add-debug-cspace function) ;; (function symbol bucket-id cspace cspace)
-;; (define-extern add-debug-yrot-vector function) ;; (function symbol bucket-id vector float float rgba symbol)
-;; (define-extern add-debug-arc function) ;; (function symbol bucket-id vector float float float rgba matrix symbol)
-;; (define-extern add-debug-curve function) ;; (function symbol bucket-id (inline-array vector) int (pointer float) int rgba symbol)
-;; (define-extern add-debug-curve2 function) ;; (function symbol bucket-id curve rgba symbol symbol)
-;; (define-extern add-debug-points function) ;; (function symbol bucket-id (inline-array vector) int rgba float int symbol)
-;; (define-extern debug-percent-bar function) ;; (function symbol bucket-id int int float rgba int int symbol)
-;; (define-extern debug-pad-display function) ;; (function cpad-info symbol)
-;; (define-extern add-debug-light function) ;; (function symbol bucket-id light vector string symbol)
-;; (define-extern add-debug-lights function) ;; (function symbol bucket-id (inline-array light) vector symbol)
+(define-extern transform-float-point
+               "Transform a point, using the cached matrix in VU0 registers, set from init-for-transform.
+                The argument order is backward - be careful!
+                After transformation, point is constrained to be within some region, but this is not proper clipping,
+                so you should do this yourself."
+               (function vector vector4w vector4w))
+(define-extern add-debug-point "Draw a point." (function symbol bucket-id vector symbol))
+(define-extern debug-line-clip? (function vector vector vector vector symbol))
+(define-extern internal-draw-debug-line "Implementation of line drawing DMA." (function bucket-id vector vector rgba symbol rgba symbol))
+(define-extern internal-draw-debug-text-3d "Implementation of 3D text drawing." (function bucket-id string vector font-color vector2h pointer))
+(define-extern add-debug-outline-triangle "Draw a wireframe triangle." (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-triangle-normal "Draw the normal of a triangle." (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern add-debug-flat-triangle "Draw a shaded triangle." (function symbol bucket-id vector vector vector rgba symbol))
+(define-extern *debug-lines* (inline-array debug-line))
+(define-extern *debug-lines-trk* debug-tracking-thang)
+(define-extern *debug-text-3ds* (inline-array debug-text-3d))
+(define-extern *debug-text-3d-trk* debug-tracking-thang)
+(define-extern get-debug-line "Allocate a record for a debug line.
+                              This is used to persist debug drawing for paused objects."
+                              (function debug-line))
+(define-extern get-debug-text-3d "Allocate a record for a debug 3d text.
+                              This is used to persist debug drawing for paused objects." (function debug-text-3d))
+(define-extern debug-reset-buffers
+               "Reset buffered debug drawing."
+               (function symbol))
+(define-extern debug-draw-buffers
+               "Draw all buffered debug drawing."
+               (function symbol))
+(define-extern add-debug-line
+               "Draw a line."
+               (function symbol bucket-id vector vector rgba symbol rgba symbol))
+(define-extern add-debug-line2d
+               "Draw a screen-space line."
+               (function symbol bucket-id vector4w vector4w vector4w symbol))
+(define-extern add-debug-box
+               "Draw an axis-aligned box."
+               (function symbol bucket-id vector vector rgba symbol))
+(define-extern add-debug-box-with-transform
+               "Draw a box with arbitrary transform."
+               (function symbol bucket-id bounding-box matrix rgba symbol))
+(define-extern add-debug-x "Draw an X." (function symbol bucket-id vector rgba symbol))
+(define-extern add-debug-cross "Draw a cross." (function symbol bucket-id vector float symbol))
+(define-extern add-debug-text-3d "Draw debug text." (function symbol bucket-id string vector font-color vector2h symbol))
+(define-extern add-debug-sphere-with-transform "Draw a debug sphere, applying a transform to the given point first." (function symbol bucket-id vector meters matrix rgba symbol))
+(define-extern add-debug-sphere "Draw a debug sphere." (function symbol bucket-id vector meters rgba symbol))
+(define-extern add-debug-text-sphere "Draw a debug sphere with a text label." (function symbol bucket-id vector meters string rgba symbol))
+(define-extern add-debug-spheres "Draw from an array of spheres. The radius is stored in w." (function symbol bucket-id (inline-array vector) int rgba symbol))
+(define-extern add-debug-line-sphere "Draw a capsule as a cylinder." (function symbol bucket-id vector vector float rgba none))
+(define-extern add-debug-circle "Draw a circle." (function symbol bucket-id vector float rgba matrix symbol))
+(define-extern add-debug-vector "Draw a vector." (function symbol bucket-id vector vector meters rgba symbol))
+(define-extern add-debug-matrix "Draw a matrix as a coordinate frame." (function symbol bucket-id matrix meters matrix))
+(define-extern add-debug-rot-matrix "Draw a matrix as a coordinate frame, but use the given origin instead of the trans from the matrix." (function symbol bucket-id matrix vector matrix))
+(define-extern add-debug-quaternion "Draw a quaternion as a coordinate frame." (function symbol bucket-id vector quaternion none))
+(define-extern add-debug-cspace "Draw a cspace as a matrix." (function symbol bucket-id cspace cspace))
+(define-extern add-debug-yrot-vector (function symbol bucket-id vector float float rgba symbol))
+(define-extern add-debug-arc (function symbol bucket-id vector float float float rgba matrix symbol))
+(define-extern add-debug-curve (function symbol bucket-id (inline-array vector) int (pointer float) int rgba symbol))
+(define-extern add-debug-curve2 (function symbol bucket-id curve rgba symbol symbol))
+(define-extern add-debug-points (function symbol bucket-id (inline-array vector) int rgba float int symbol))
+(define-extern debug-percent-bar (function symbol bucket-id int int float rgba int int symbol))
+(define-extern debug-pad-display (function cpad-info symbol))
+(define-extern add-debug-light (function symbol bucket-id light vector string symbol))
+(define-extern add-debug-lights (function symbol bucket-id (inline-array light) vector symbol))
 (define-extern drawable-frag-count (function drawable int))
 
 (define-extern drawable-tri-count (function drawable int)) ;; NOTE - defined in kernel?
 (define-extern drawable-vertex-ratio (function drawable debug-vertex-stats int)) ;; NOTE - defined in kernel?
 
-;; (define-extern history-init function) ;; (function pos-history int pos-history)
-;; (define-extern history-draw-and-update function) ;; (function pos-history symbol vector symbol)
-;; (define-extern dma-timeout-cam function) ;; (function vector)
-;; (define-extern display-file-info function) ;; (function int)
+(define-extern history-init (function pos-history int pos-history))
+(define-extern history-draw-and-update (function pos-history symbol vector symbol))
+(define-extern dma-timeout-cam (function vector))
+(define-extern display-file-info (function int))
 (define-extern add-debug-cursor (function symbol bucket-id int int mouse-buttons int))
-;; (define-extern *boundary-polygon* object) ;; (inline-array sky-vertex)
-;; (define-extern init-boundary-regs function) ;; (function none)
-;; (define-extern add-boundary-shader function) ;; (function texture-id dma-buffer none)
+(define-extern *boundary-polygon* (inline-array sky-vertex))
+(define-extern init-boundary-regs (function none))
+(define-extern add-boundary-shader (function texture-id dma-buffer none))
 ;; (define-extern draw-boundary-polygon function)
 ;; (define-extern render-boundary-quad function)
-;; (define-extern render-boundary-tri function) ;; (function sky-vertex dma-buffer none)
-;; (define-extern add-debug-bound-internal function) ;; (function dma-buffer (inline-array vector) int rgba rgba int none)
+(define-extern render-boundary-tri (function sky-vertex dma-buffer none))
+(define-extern add-debug-bound-internal (function dma-buffer (inline-array vector) int rgba rgba int none))
 (define-extern add-debug-bound (function bucket-id (inline-array vector) int rgba rgba int none))
 ;; (define-extern cpu-delay function) ;; (function int none)
-;; (define-extern qword-read-time function) ;; (function (array uint128) int int)
-;; (define-extern bugfix? function) ;; (function symbol)
+(define-extern qword-read-time (function (array uint128) int int))
+(define-extern bugfix? (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; history                        ;;
@@ -30079,7 +30091,7 @@
   )
 
 ;; (define-extern draw-string-asm function) ;; (function string dma-buffer font-context draw-string-result)
-;; (define-extern draw-string function) ;; (function string dma-buffer font-context draw-string-result)
+(define-extern draw-string (function string dma-buffer font-context draw-string-result))
 ;; (define-extern get-string-length function) ;; (function string font-context draw-string-result)
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
 ;; (define-extern draw-string-adv function) ;; (function string dma-buffer font-context none)
@@ -31588,7 +31600,7 @@
 ;; sky-data                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sky-work* object) ;; sky-work
+(define-extern *sky-work* sky-work)
 ;; (define-extern sky-base-polygons object) ;; (inline-array sky-vertex)
 ;; (define-extern sky-roof-polygons object) ;; (inline-array sky-vertex)
 ;; (define-extern *cloud-vert-array* object) ;; cloud-vert-array
@@ -31610,7 +31622,7 @@
 ;; (define-extern clip-polygon-against-negative-hyperplane function)
 ;; (define-extern render-sky-quad function) ;; (function (inline-array sky-vertex) dma-buffer none)
 ;; (define-extern render-sky-tri function) ;; (function (inline-array sky-vertex) dma-buffer none)
-;; (define-extern close-sky-buffer function) ;; (function dma-buffer none)
+(define-extern close-sky-buffer (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load-state                     ;;
@@ -33009,7 +33021,7 @@
 ;; (define-extern cam-collision-record-step function) ;; (function int none)
 ;; (define-extern cam-collision-record-draw function) ;; (function none)
 ;; (define-extern camera-master-debug function) ;; (function camera-master none)
-;; (define-extern debug-set-camera-pos-rot! function) ;; (function vector matrix vector)
+(define-extern debug-set-camera-pos-rot! (function vector matrix vector))
 ;; (define-extern cam-restore function) ;; (function none)
 ;; (define-extern cam-restore-generic-bug function)
 
