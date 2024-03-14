@@ -9,8 +9,8 @@
 (defenum cam-index-options
   :type uint32
   :bitfield #t
-  (RADIAL)
   (SPHERICAL)
+  (RADIAL)
   )
 ;; ---cam-index-options
 
@@ -66,6 +66,36 @@
 (define-extern cam-stop (function symbol))
 (define-extern cam-start (function symbol none))
 
+(declare-type camera-slave process)
+(declare-type cam-rotation-tracker structure)
+(declare-type camera-master process)
+
+;; camera
+(define-extern camera-line-rel-len (function vector vector float vector4w none))
+(define-extern camera-slave-debug (function camera-slave none))
+(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
+(define-extern slave-set-rotation! (function cam-rotation-tracker vector cam-slave-options-u32 float symbol none))
+(define-extern cam-master-effect (function none :behavior camera-master))
+(define-extern camera-master-debug (function camera-master none))
+
+;; cam-master
+(define-extern group-rain-screend-drop sparticle-launch-group)
+
+;; cam-states
+(define-extern cam-debug-reset-coll-tri (function none))
+(define-extern cam-debug-add-los-tri (function (inline-array collide-cache-tri) vector vector none))
+(define-extern cam-collision-record-save (function vector vector int symbol camera-slave none))
+(define-extern slave-los-state->string (function slave-los-state string))
+
+;; cam-layout
+(define-extern camera-line-setup (function vector4w none))
+(define-extern camera-line-draw (function vector vector none))
+(define-extern camera-line (function vector vector vector4w none))
+(define-extern camera-cross (function vector vector vector vector4w meters none))
+(define-extern camera-fov-frame (function matrix vector float float float vector4w symbol))
+(define-extern cam-slave-options->string (function cam-slave-options object string))
+(define-extern cam-index-options->string (function cam-index-options object string))
+
 ;; DECOMP BEGINS
 
 (deftype cam-index (structure)
@@ -73,8 +103,8 @@
    (vec    vector  2 :inline)
    )
   (:methods
-    (cam-index-method-9 () none)
-    (cam-index-method-10 () none)
+    (cam-index-method-9 (_type_ symbol entity vector curve) symbol)
+    (cam-index-method-10 (_type_ vector) float)
     )
   )
 
@@ -113,21 +143,21 @@
    (debug-last-point    int32)
    )
   (:methods
-    (tracking-spline-method-9 () none)
-    (tracking-spline-method-10 () none)
-    (tracking-spline-method-11 () none)
-    (tracking-spline-method-12 () none)
-    (tracking-spline-method-13 () none)
-    (tracking-spline-method-14 () none)
-    (tracking-spline-method-15 () none)
-    (tracking-spline-method-16 () none)
-    (tracking-spline-method-17 () none)
-    (tracking-spline-method-18 () none)
-    (tracking-spline-method-19 () none)
-    (tracking-spline-method-20 () none)
-    (tracking-spline-method-21 () none)
-    (tracking-spline-method-22 () none)
-    (tracking-spline-method-23 () none)
+    (tracking-spline-method-9 (_type_) none)
+    (tracking-spline-method-10 (_type_ vector) none)
+    (debug-point-info (_type_ int) none)
+    (debug-all-points (_type_) none)
+    (tracking-spline-method-13 (_type_ int) none)
+    (tracking-spline-method-14 (_type_ tracking-spline-sampler) none)
+    (tracking-spline-method-15 (_type_) none)
+    (tracking-spline-method-16 (_type_ float) none)
+    (tracking-spline-method-17 (_type_ vector float float symbol) int)
+    (tracking-spline-method-18 (_type_ float vector vector tracking-spline-sampler) vector)
+    (tracking-spline-method-19 (_type_ float vector vector tracking-spline-sampler) vector)
+    (tracking-spline-method-20 (_type_ vector int) none)
+    (tracking-spline-method-21 (_type_ vector float float float float vector) vector)
+    (tracking-spline-method-22 (_type_ float) symbol)
+    (debug-draw-spline (_type_) none)
     )
   )
 
@@ -324,6 +354,9 @@
    (tracking           cam-rotation-tracker  :inline)
    (fast-rot           basic)
    )
+  (:states
+    cam-combiner-active
+    )
   )
 
 
@@ -464,12 +497,9 @@
   (:methods
     (camera-master-method-14 (_type_ vector) vector)
     (camera-master-method-15 (_type_ vector) vector)
-    (camera-master-method-16 () none)
+    (camera-master-method-16 (_type_ symbol) int)
+    )
+  (:states
+    cam-master-active
     )
   )
-
-(define-extern cam-slave-go (function (state camera-slave) none :behavior camera-slave))
-(define-extern cam-slave-init (function (state camera-slave) entity none :behavior camera-slave))
-(define-extern cam-standard-event-handler (function process int symbol event-message-block object :behavior camera-slave))
-(define-extern cam-calc-follow! (function cam-rotation-tracker vector symbol vector))
-(define-extern slave-set-rotation! (function cam-rotation-tracker vector cam-slave-options-u32 float symbol none))
