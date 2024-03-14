@@ -3863,8 +3863,12 @@ void FunctionCallElement::update_from_stack(const Env& env,
         if (got_stack_new) {
           std::vector<Form*> stack_new_args;
           stack_new_args.push_back(pool.form<ConstantTokenElement>("'stack"));
-          stack_new_args.push_back(pool.form<ConstantTokenElement>(
-              fmt::format("'{}", type_source_form->to_string(env))));
+          if (type_source_form->to_string(env) == "array") {
+            stack_new_args.push_back(pool.form<ConstantTokenElement>("'boxed-array"));
+          } else {
+            stack_new_args.push_back(pool.form<ConstantTokenElement>(
+                fmt::format("'{}", type_source_form->to_string(env))));
+          }
           for (size_t i = 2; i < arg_forms.size(); i++) {
             stack_new_args.push_back(arg_forms.at(i));
           }

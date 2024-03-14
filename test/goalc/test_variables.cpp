@@ -86,6 +86,10 @@ TEST_F(VariableTests, StackStructureAlignment) {
   shared_compiler->runner.run_static_test(testCategory, "stack-structure-align.gc", {"1234\n"});
 }
 
+TEST_F(VariableTests, StackBoxedArray) {
+  shared_compiler->runner.run_static_test(testCategory, "stack-boxed-array.gc", {"36\n"});
+}
+
 TEST_F(VariableTests, GetSymbol) {
   shared_compiler->runner.run_static_test(testCategory, "get-symbol-1.static.gc",
                                           {"1375524\n"});  // 0x14fd24 in hex
