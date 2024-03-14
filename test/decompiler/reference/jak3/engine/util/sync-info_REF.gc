@@ -1,0 +1,620 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 13 of type sync-info
+;; WARN: Return type mismatch object vs none.
+(defmethod initialize! ((this sync-info) (arg0 sync-info-params))
+  (format 0 "ERROR: Invalid call to sync-info::initialize!~%")
+  (none)
+  )
+
+;; definition for method 9 of type sync-info
+(defmethod get-current-phase-no-mod ((this sync-info))
+  (let* ((v1-0 (-> this period))
+         (f0-1 (the float v1-0))
+         (f1-2 (+ (the float (mod (the-as uint (current-time)) v1-0)) (-> this offset)))
+         )
+    (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1)
+    )
+  )
+
+;; definition for method 10 of type sync-info
+(defmethod get-phase-offset ((this sync-info))
+  (/ (-> this offset) (the float (-> this period)))
+  )
+
+;; definition for method 15 of type sync-info
+;; WARN: Return type mismatch int vs none.
+(defmethod sync-now! ((this sync-info) (arg0 float))
+  (let* ((a2-0 (-> this period))
+         (f0-1 (the float a2-0))
+         (v1-0 (- arg0 (* (the float (the int (/ arg0 f0-1))) f0-1)))
+         (f1-4 (+ (the float (mod (the-as uint (current-time)) a2-0)) (-> this offset)))
+         (f1-6 (/ (- f1-4 (* (the float (the int (/ f1-4 f0-1))) f0-1)) f0-1))
+         (f1-10 (+ (* (- v1-0 f1-6) f0-1) f0-1 (-> this offset)))
+         )
+    (set! (-> this offset) (- f1-10 (* (the float (the int (/ f1-10 f0-1))) f0-1)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type sync-info
+(defmethod get-norm! ((this sync-info) (arg0 int))
+  (format 0 "ERROR: Unsupported sync-info::get-norm!~%")
+  0.0
+  )
+
+;; definition for method 12 of type sync-info
+(defmethod get-scaled-val! ((this sync-info) (arg0 float) (arg1 int))
+  (* (get-norm! this arg1) arg0)
+  )
+
+;; definition for method 14 of type sync-info
+(defmethod get-timeframe-offset! ((this sync-info) (arg0 time-frame))
+  (if (zero? arg0)
+      (set! arg0 (current-time))
+      )
+  (let* ((v1-4 (-> this period))
+         (f0-1 (the float v1-4))
+         (f1-2 (+ (the float (mod arg0 (the-as time-frame v1-4))) (-> this offset)))
+         )
+    (+ arg0 (the int (- f0-1 (* (/ (- f1-2 (* (the float (the int (/ f1-2 f0-1))) f0-1)) f0-1) f0-1))))
+    )
+  )
+
+;; definition for method 13 of type sync-linear
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defmethod initialize! ((this sync-linear) (arg0 sync-info-params))
+  (local-vars (sv-16 res-tag))
+  (if (!= (-> arg0 sync-type) 'sync-linear)
+      (format
+        0
+        "ERROR: <SW> Using wrong sync params in sync-linear::initialize (got ~A)!  Fix this!~%"
+        (-> arg0 sync-type)
+        )
+      )
+  (set! (-> this sync-flags) (-> arg0 sync-flags))
+  (let ((s4-0 (the-as int (-> arg0 period)))
+        (f30-0 (-> arg0 percent))
+        )
+    (let ((a0-3 (-> arg0 entity)))
+      (when a0-3
+        (set! sv-16 (new 'static 'res-tag))
+        (let ((v1-6 (res-lump-data a0-3 'sync (pointer float) :tag-ptr (& sv-16))))
+          (when v1-6
+            (set! s4-0 (the int (* 300.0 (-> v1-6 0))))
+            (set! f30-0 (-> v1-6 1))
+            )
+          )
+        )
+      )
+    (set! (-> this period) (the-as uint s4-0))
+    (let* ((f0-4 (the float s4-0))
+           (f1-1 (* f30-0 f0-4))
+           )
+      (set! (-> this offset) (- f1-1 (* (the float (the int (/ f1-1 f0-4))) f0-4)))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 11 of type sync-linear
+(defmethod get-norm! ((this sync-linear) (arg0 int))
+  (if (zero? arg0)
+      (set! arg0 (the-as int (current-time)))
+      )
+  (let* ((v1-4 (-> this period))
+         (f0-1 (the float v1-4))
+         )
+    (cond
+      ((logtest? (-> this sync-flags) (sync-flags pong))
+       (let* ((f1-0 2.0)
+              (f2-2 (+ (the float (mod arg0 (the-as int v1-4))) (-> this offset)))
+              (f0-3 (* f1-0 (/ (- f2-2 (* (the float (the int (/ f2-2 f0-1))) f0-1)) f0-1)))
+              )
+         (if (>= f0-3 1.0)
+             (set! f0-3 (- 2.0 f0-3))
+             )
+         f0-3
+         )
+       )
+      (else
+        (let ((f1-5 (+ (the float (mod arg0 (the-as int v1-4))) (-> this offset))))
+          (/ (- f1-5 (* (the float (the int (/ f1-5 f0-1))) f0-1)) f0-1)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type sync-linear
+(defmethod get-scaled-val! ((this sync-linear) (arg0 float) (arg1 int))
+  (* (get-norm! this arg1) arg0)
+  )
+
+;; definition for method 13 of type sync-eased
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defmethod initialize! ((this sync-eased) (arg0 sync-info-params))
+  (local-vars (sv-16 res-tag))
+  (if (!= (-> arg0 sync-type) 'sync-eased)
+      (format
+        0
+        "ERROR: <SW> Using wrong sync params in sync-eased::initialize (got ~A)!  Fix this!~%"
+        (-> arg0 sync-type)
+        )
+      )
+  (set! (-> this sync-flags) (-> arg0 sync-flags))
+  (let ((s5-0 (the-as int (-> arg0 period)))
+        (f22-0 (-> arg0 percent))
+        (f24-0 (-> arg0 pause-in))
+        (f26-0 (-> arg0 pause-out))
+        (f30-0 (-> arg0 ease-in))
+        (f28-0 (-> arg0 ease-out))
+        )
+    (let ((a0-3 (-> arg0 entity)))
+      (when a0-3
+        (set! sv-16 (new 'static 'res-tag))
+        (let ((v1-6 (res-lump-data a0-3 'sync (pointer float) :tag-ptr (& sv-16))))
+          (when v1-6
+            (set! s5-0 (the int (* 300.0 (-> v1-6 0))))
+            (set! f22-0 (-> v1-6 1))
+            (when (>= (-> sv-16 elt-count) (the-as uint 4))
+              (set! f30-0 (-> v1-6 2))
+              (set! f28-0 (-> v1-6 3))
+              (when (>= (-> sv-16 elt-count) (the-as uint 6))
+                (set! f24-0 (-> v1-6 4))
+                (set! f26-0 (-> v1-6 5))
+                )
+              )
+            )
+          )
+        )
+      )
+    (set! (-> this period) (the-as uint s5-0))
+    (let* ((f0-4 (the float s5-0))
+           (f1-1 (* f22-0 f0-4))
+           )
+      (set! (-> this offset) (- f1-1 (* (the float (the int (/ f1-1 f0-4))) f0-4)))
+      )
+    (cond
+      ((< f26-0 0.0)
+       (set! f26-0 0.0)
+       )
+      ((< 1.0 f26-0)
+       (set! f26-0 1.0)
+       )
+      )
+    (cond
+      ((< f24-0 0.0)
+       (set! f24-0 0.0)
+       )
+      ((< (- 1.0 f26-0) f24-0)
+       (set! f24-0 (- 1.0 f26-0))
+       )
+      )
+    (let ((f0-14 (the float s5-0)))
+      (set! (-> this pause-in) (* f24-0 f0-14))
+      (set! (-> this pause-out) (* f26-0 f0-14))
+      )
+    (if (< f30-0 0.0)
+        (set! f30-0 0.0)
+        )
+    (if (< 1.0 f30-0)
+        (set! f30-0 1.0)
+        )
+    (if (< f28-0 0.001)
+        (set! f28-0 0.001)
+        )
+    (if (< 1.0 f28-0)
+        (set! f28-0 1.0)
+        )
+    (let ((f0-20 (+ f30-0 f28-0)))
+      (when (< 1.0 f0-20)
+        (set! f0-20 1.0)
+        (set! f30-0 (- 1.0 f28-0))
+        )
+      (let* ((f1-6 (- 1.0 f0-20))
+             (f0-21 f30-0)
+             (f1-7 (+ f30-0 f1-6))
+             (f2-3 (* f0-21 f0-21))
+             (f3-3 (+ (* 2.0 f0-21 (- f1-7 f0-21)) f2-3))
+             (f4-3 (/ f0-21 (- 1.0 f1-7)))
+             (f3-4 (+ (* (- 1.0 f1-7) (- 1.0 f1-7) f4-3) f3-3))
+             )
+        (set! (-> this tlo) f0-21)
+        (set! (-> this thi) f1-7)
+        (set! (-> this ylo) f2-3)
+        (set! (-> this m2) f4-3)
+        (set! (-> this yend) f3-4)
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 11 of type sync-eased
+(defmethod get-norm! ((this sync-eased) (arg0 int))
+  (if (zero? arg0)
+      (set! arg0 (the-as int (current-time)))
+      )
+  (let* ((v1-4 (-> this period))
+         (f3-0 (the float v1-4))
+         (f0-1 (-> this pause-in))
+         (f2-0 (-> this pause-out))
+         (f1-1 (* 0.5 (- f3-0 (+ f0-1 f2-0))))
+         )
+    (the int (+ f0-1 f2-0 f3-0))
+    (cond
+      ((logtest? (-> this sync-flags) (sync-flags pong))
+       (let* ((f4-7 (+ (the float (mod arg0 (the-as int v1-4))) (-> this offset)))
+              (f3-2 (- f4-7 (* (the float (the int (/ f4-7 f3-0))) f3-0)))
+              (v1-6 #f)
+              )
+         (when (>= f3-2 (+ f1-1 f0-1))
+           (set! v1-6 #t)
+           (set! f3-2 (- f3-2 (+ f1-1 f0-1)))
+           f0-1
+           (set! f0-1 f2-0)
+           )
+         (cond
+           ((< f3-2 f0-1)
+            (set! f3-2 f0-1)
+            )
+           ((< (+ f0-1 f1-1) f3-2)
+            (set! f3-2 (+ f0-1 f1-1))
+            )
+           )
+         (let* ((f0-3 (/ (- f3-2 f0-1) f1-1))
+                (f1-2 (-> this tlo))
+                (f0-8 (/ (cond
+                           ((< f0-3 f1-2)
+                            (* f0-3 f0-3)
+                            )
+                           ((< f0-3 (-> this thi))
+                            (+ (* 2.0 f1-2 (- f0-3 f1-2)) (-> this ylo))
+                            )
+                           (else
+                             (let ((f1-5 (- 1.0 f0-3)))
+                               (- (-> this yend) (* f1-5 f1-5 (-> this m2)))
+                               )
+                             )
+                           )
+                         (-> this yend)
+                         )
+                      )
+                )
+           (if v1-6
+               (set! f0-8 (- 1.0 f0-8))
+               )
+           f0-8
+           )
+         )
+       )
+      (else
+        (format 0 "ERROR: <SW> Attempting to use sync-eased in unsupported non-pong mode.~%")
+        0.0
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type sync-eased
+(defmethod get-scaled-val! ((this sync-eased) (arg0 float) (arg1 int))
+  (* (get-norm! this arg1) arg0)
+  )
+
+;; definition for method 13 of type sync-paused
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defmethod initialize! ((this sync-paused) (arg0 sync-info-params))
+  (local-vars (sv-16 res-tag))
+  (if (!= (-> arg0 sync-type) 'sync-paused)
+      (format
+        0
+        "ERROR: <SW> Using wrong sync params in sync-paused::initialize (got ~A)!  Fix this!~%"
+        (-> arg0 sync-type)
+        )
+      )
+  (set! (-> this sync-flags) (-> arg0 sync-flags))
+  (let ((s5-0 (the-as int (-> arg0 period)))
+        (f26-0 (-> arg0 percent))
+        (f28-0 (-> arg0 pause-in))
+        (f30-0 (-> arg0 pause-out))
+        )
+    (let ((a0-3 (-> arg0 entity)))
+      (when a0-3
+        (set! sv-16 (new 'static 'res-tag))
+        (let ((v1-6 (res-lump-data a0-3 'sync (pointer float) :tag-ptr (& sv-16))))
+          (when v1-6
+            (set! s5-0 (the int (* 300.0 (-> v1-6 0))))
+            (set! f26-0 (-> v1-6 1))
+            (when (>= (-> sv-16 elt-count) (the-as uint 4))
+              (set! f28-0 (-> v1-6 2))
+              (set! f30-0 (-> v1-6 3))
+              )
+            )
+          )
+        )
+      )
+    (set! (-> this period) (the-as uint s5-0))
+    (let* ((f0-4 (the float s5-0))
+           (f1-1 (* f26-0 f0-4))
+           )
+      (set! (-> this offset) (- f1-1 (* (the float (the int (/ f1-1 f0-4))) f0-4)))
+      )
+    (cond
+      ((< f30-0 0.0)
+       (set! f30-0 0.0)
+       )
+      ((< 1.0 f30-0)
+       (set! f30-0 1.0)
+       )
+      )
+    (cond
+      ((< f28-0 0.0)
+       (set! f28-0 0.0)
+       )
+      ((< (- 1.0 f30-0) f28-0)
+       (set! f28-0 (- 1.0 f30-0))
+       )
+      )
+    (let ((f0-14 (the float s5-0)))
+      (set! (-> this pause-in) (* f28-0 f0-14))
+      (set! (-> this pause-out) (* f30-0 f0-14))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 11 of type sync-paused
+(defmethod get-norm! ((this sync-paused) (arg0 int))
+  (if (zero? arg0)
+      (set! arg0 (the-as int (current-time)))
+      )
+  (let* ((v1-4 (-> this period))
+         (f2-0 (the float v1-4))
+         (f0-1 (-> this pause-in))
+         (f1-0 (-> this pause-out))
+         )
+    (the int (+ f0-1 f1-0 f2-0))
+    (cond
+      ((logtest? (-> this sync-flags) (sync-flags pong))
+       (let* ((f3-5 (+ (the float (mod arg0 (the-as int v1-4))) (-> this offset)))
+              (f3-6 (- f3-5 (* (the float (the int (/ f3-5 f2-0))) f2-0)))
+              (f2-2 (* 0.5 (- f2-0 (+ f0-1 f1-0))))
+              (v1-7 #f)
+              )
+         (when (>= f3-6 (+ f2-2 f0-1))
+           (set! v1-7 #t)
+           (set! f3-6 (- f3-6 (+ f2-2 f0-1)))
+           (set! f0-1 f1-0)
+           )
+         (let* ((f1-1 (/ (- f3-6 f0-1) f2-2))
+                (f0-5 (fmax 0.0 (fmin 1.0 f1-1)))
+                )
+           (if v1-7
+               (set! f0-5 (- 1.0 f0-5))
+               )
+           f0-5
+           )
+         )
+       )
+      (else
+        (let* ((f3-9 (+ (the float (mod arg0 (the-as int v1-4))) (-> this offset)))
+               (f3-10 (- f3-9 (* (the float (the int (/ f3-9 f2-0))) f2-0)))
+               (f1-5 (- f2-0 (+ f0-1 f1-0)))
+               (f1-6 (/ (- f3-10 f0-1) f1-5))
+               )
+          (fmax 0.0 (fmin 1.0 f1-6))
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 12 of type sync-paused
+(defmethod get-scaled-val! ((this sync-paused) (arg0 float) (arg1 int))
+  (* (get-norm! this arg1) arg0)
+  )
+
+;; definition for method 9 of type delayed-rand-float
+(defmethod set-params! ((this delayed-rand-float) (arg0 int) (arg1 int) (arg2 float))
+  (set! (-> this min-time) arg0)
+  (set! (-> this max-time) arg1)
+  (set! (-> this max-val) (* 0.5 arg2))
+  (set! (-> this start-time) 0)
+  (set! (-> this timer) 0)
+  (set! (-> this value) 0.0)
+  (-> this value)
+  )
+
+;; definition for method 10 of type delayed-rand-float
+(defmethod reset! ((this delayed-rand-float))
+  (set-time! (-> this start-time))
+  (set! (-> this timer) (rand-vu-int-range (-> this min-time) (-> this max-time)))
+  (set! (-> this value) (rand-vu-float-range (- (-> this max-val)) (-> this max-val)))
+  )
+
+;; definition for method 11 of type delayed-rand-float
+(defmethod update! ((this delayed-rand-float))
+  (if (time-elapsed? (-> this start-time) (-> this timer))
+      (reset! this)
+      )
+  (-> this value)
+  )
+
+;; definition for method 12 of type delayed-rand-float
+(defmethod update-and-clear! ((this delayed-rand-float))
+  (if (time-elapsed? (-> this start-time) (-> this timer))
+      (reset! this)
+      (set! (-> this value) 0.0)
+      )
+  (-> this value)
+  )
+
+;; definition for method 9 of type oscillating-float
+(defmethod set-params! ((this oscillating-float) (arg0 float) (arg1 float) (arg2 float) (arg3 float))
+  (set! (-> this value) arg0)
+  (set! (-> this target) arg0)
+  (set! (-> this vel) 0.0)
+  (set! (-> this max-vel) arg2)
+  (set! (-> this damping) arg3)
+  (set! (-> this accel) arg1)
+  (-> this value)
+  )
+
+;; definition for method 10 of type oscillating-float
+(defmethod update! ((this oscillating-float) (arg0 float))
+  (with-pp
+    (let ((f0-3 (* (- (+ (-> this target) arg0) (-> this value)) (* (-> this accel) (-> pp clock time-adjust-ratio)))))
+      (+! (-> this vel) f0-3)
+      )
+    (set! (-> this vel) (fmin (-> this max-vel) (fmax (- (-> this max-vel)) (-> this vel))))
+    (set! (-> this vel) (* (-> this vel) (-> this damping)))
+    (+! (-> this value) (* (-> this vel) (-> pp clock time-adjust-ratio)))
+    (-> this value)
+    )
+  )
+
+;; definition for method 9 of type bouncing-float
+(defmethod set-params! ((this bouncing-float)
+                       (arg0 float)
+                       (arg1 float)
+                       (arg2 float)
+                       (arg3 float)
+                       (arg4 float)
+                       (arg5 float)
+                       (arg6 float)
+                       )
+  (set-params! (-> this osc) arg0 arg4 arg5 arg6)
+  (set! (-> this max-value) arg1)
+  (set! (-> this min-value) arg2)
+  (set! (-> this elasticity) arg3)
+  (set! (-> this state) 0)
+  (-> this osc value)
+  )
+
+;; definition for method 10 of type bouncing-float
+(defmethod update! ((this bouncing-float) (arg0 float))
+  (update! (-> this osc) arg0)
+  (set! (-> this state) 0)
+  (when (>= (-> this osc value) (-> this max-value))
+    (set! (-> this osc value) (-> this max-value))
+    (if (< 0.0 (-> this osc vel))
+        (set! (-> this osc vel) (* (-> this osc vel) (- (-> this elasticity))))
+        )
+    (set! (-> this state) 1)
+    )
+  (when (>= (-> this min-value) (-> this osc value))
+    (set! (-> this osc value) (-> this min-value))
+    (if (< (-> this osc vel) 0.0)
+        (set! (-> this osc vel) (* (-> this osc vel) (- (-> this elasticity))))
+        )
+    (set! (-> this state) -1)
+    )
+  (-> this osc value)
+  )
+
+;; definition for method 11 of type bouncing-float
+(defmethod at-min? ((this bouncing-float))
+  (= (-> this state) -1)
+  )
+
+;; definition for method 12 of type bouncing-float
+(defmethod at-max? ((this bouncing-float))
+  (= (-> this state) 1)
+  )
+
+;; definition for method 9 of type delayed-rand-vector
+(defmethod set-params! ((this delayed-rand-vector) (arg0 int) (arg1 int) (arg2 float) (arg3 float))
+  (set! (-> this min-time) arg0)
+  (set! (-> this max-time) arg1)
+  (set! (-> this xz-max) (* 0.5 arg2))
+  (set! (-> this y-max) (* 0.5 arg3))
+  (set! (-> this start-time) 0)
+  (set! (-> this timer) 0)
+  (vector-reset! (-> this value))
+  (-> this value)
+  )
+
+;; definition for method 10 of type delayed-rand-vector
+(defmethod update-now! ((this delayed-rand-vector))
+  (set-time! (-> this start-time))
+  (set! (-> this timer) (rand-vu-int-range (-> this min-time) (-> this max-time)))
+  (set! (-> this value x) (rand-vu-float-range (- (-> this xz-max)) (-> this xz-max)))
+  (set! (-> this value y) (rand-vu-float-range (- (-> this y-max)) (-> this y-max)))
+  (set! (-> this value z) (rand-vu-float-range (- (-> this xz-max)) (-> this xz-max)))
+  (-> this value)
+  )
+
+;; definition for method 11 of type delayed-rand-vector
+(defmethod update-with-delay! ((this delayed-rand-vector))
+  (if (time-elapsed? (-> this start-time) (-> this timer))
+      (update-now! this)
+      )
+  (-> this value)
+  )
+
+;; definition for method 12 of type delayed-rand-vector
+(defmethod update-with-delay-or-reset! ((this delayed-rand-vector))
+  (if (time-elapsed? (-> this start-time) (-> this timer))
+      (update-now! this)
+      (vector-reset! (-> this value))
+      )
+  (-> this value)
+  )
+
+;; definition for method 9 of type oscillating-vector
+;; INFO: Used lq/sq
+(defmethod set-params! ((this oscillating-vector) (arg0 vector) (arg1 float) (arg2 float) (arg3 float))
+  (cond
+    (arg0
+      (set! (-> this value quad) (-> arg0 quad))
+      (set! (-> this target quad) (-> arg0 quad))
+      )
+    (else
+      (vector-reset! (-> this value))
+      (vector-reset! (-> this target))
+      )
+    )
+  (vector-reset! (-> this vel))
+  (set! (-> this max-vel) arg2)
+  (set! (-> this damping) arg3)
+  (set! (-> this accel) arg1)
+  (-> this value)
+  )
+
+;; definition for method 10 of type oscillating-vector
+(defmethod update! ((this oscillating-vector) (arg0 vector))
+  (with-pp
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (cond
+        (arg0
+          (vector+! v1-0 (-> this target) arg0)
+          (vector-! v1-0 v1-0 (-> this value))
+          )
+        (else
+          (vector-! v1-0 (-> this target) (-> this value))
+          )
+        )
+      (vector-float*! v1-0 v1-0 (* (-> this accel) (-> pp clock time-adjust-ratio)))
+      (vector+! (-> this vel) (-> this vel) v1-0)
+      (let ((f0-2 (vector-length (-> this vel))))
+        (if (< (-> this max-vel) f0-2)
+            (vector-float*! (-> this vel) (-> this vel) (/ (-> this max-vel) f0-2))
+            )
+        )
+      (vector-float*! (-> this vel) (-> this vel) (-> this damping))
+      (vector-float*! v1-0 (-> this vel) (-> pp clock time-adjust-ratio))
+      (vector+! (-> this value) (-> this value) v1-0)
+      )
+    (-> this value)
+    )
+  )
+
+
+
+
