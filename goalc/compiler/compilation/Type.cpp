@@ -1173,8 +1173,8 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
       RegVal* mem;
       std::vector<RegVal*> args;
       int elt_size = ti->is_reference() ? 4 : ti->get_size_in_memory();
-      int mem_size = m_ts.lookup_type(type_of_object)->get_size_in_memory() +
-                     constant_count * elt_size;
+      int mem_size =
+          m_ts.lookup_type(type_of_object)->get_size_in_memory() + constant_count * elt_size;
       mem = fe->allocate_aligned_stack_variable(ts, mem_size, 16)->to_gpr(form, env);
 
       // the new method actually takes a "symbol" according to the type system. So we have to cheat
