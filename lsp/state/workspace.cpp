@@ -230,8 +230,7 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       lg::debug("Could not determine game version from path - {}", file_uri);
       return;
     }
-    // TODO - this should happen on a separate thread so the LSP is not blocking during this lengthy
-    // step
+
     if (m_compiler_instances.find(*game_version) == m_compiler_instances.end()) {
       lg::debug(
           "first time encountering a OpenGOAL file for game version - {}, initializing a compiler",
@@ -242,12 +241,22 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         lg::debug("unable to setup project path, not initializing a compiler");
         return;
       }
-      m_requester.send_progress_create_request("indexing-jak2", "Indexing - Jak 2");
+      const std::string progress_title =
+          fmt::format("Indexing {}", version_to_game_name_external(game_version.value()));
+      m_requester.send_progress_create_request(progress_title, "compiling project", -1);
       m_compiler_instances.emplace(game_version.value(),
                                    std::make_unique<Compiler>(game_version.value()));
-      // TODO - if this fails, annotate some errors, adjust progress
-      m_compiler_instances.at(*game_version)->run_front_end_on_string("(make-group \"all-code\")");
-      m_requester.send_progress_finish_request("indexing-jak2", "Indexed - Jak 2");
+      try {
+        // TODO - this should happen on a separate thread so the LSP is not blocking during this
+        // lengthy step
+        m_compiler_instances.at(*game_version)
+            ->run_front_end_on_string("(make-group \"all-code\")");
+        m_requester.send_progress_finish_request(progress_title, "indexed");
+      } catch (std::exception& e) {
+        // TODO - If it fails, annotate errors
+        m_requester.send_progress_finish_request(progress_title, "failed");
+        lg::debug("error when {}", progress_title);
+      }
     }
     //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
     //  TODO - if the file fails to `ml`, annotate some errors
