@@ -29,6 +29,7 @@
 (define-extern global kheap)
 (define-extern kheap type)
 (define-extern pointer type)
+(define-extern string type)
 
 (define-extern #t symbol)
 (define-extern #f symbol)
@@ -8098,6 +8099,7 @@
    (projection float              :offset-assert 56)
    (scale      float              :offset-assert 60)
    (color      font-color         :offset-assert 64) ;; guessed by decompiler
+   (color-signed int32            :overlay-at color)
    (flags      font-flags         :offset-assert 68) ;; guessed by decompiler
    (mat        matrix             :offset-assert 72)
    (start-line uint32             :offset-assert 76)
@@ -8177,7 +8179,7 @@
   :size-assert         #xbec
   :flag-assert         #xa00000bec
   (:methods
-    (set-context! (_type_ object) none) ;; 9
+    (set-context! (_type_ font-context) none) ;; 9
     )
   )
 
@@ -14169,8 +14171,8 @@
   )
 
 (deftype generic-gif-tag (structure)
-  ((data       uint32          4       :offset-assert 0) ;; guessed by decompiler
-   (qword      qword           :inline :offset 0)
+  ((data       uint32          4       :offset-assert 0 :score -1) ;; guessed by decompiler
+   (qword      qword           :inline :offset 0 :score -1)
    (fan-prim   gif-tag-prim            :offset 0) ;; guessed by decompiler
    (str-prim   gif-tag-prim            :offset 4) ;; guessed by decompiler
    (regs       gif-tag-regs-32         :offset 8) ;; guessed by decompiler
@@ -29845,14 +29847,14 @@
 ;; generic-effect                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *target-lock* object) ;; object
-;; (define-extern *generic-consts* object) ;; generic-consts
-;; (define-extern generic-work-init function) ;; (function generic-bucket-state none)
-;; (define-extern generic-upload-vu0 function) ;; (function none)
-;; (define-extern upload-vu0-program function) ;; (function vu-function pointer none)
-;; (define-extern generic-initialize-without-sync function) ;; (function matrix vu-lights none)
-;; (define-extern generic-initialize function) ;; (function generic-bucket-state matrix vu-lights none)
-;; (define-extern generic-wrapup function) ;; (function generic-bucket-state none)
+(define-extern *target-lock* object)
+(define-extern *generic-consts* generic-consts)
+(define-extern generic-work-init "Initialize the scratchpad work for generic." (function generic-bucket-state none))
+(define-extern generic-upload-vu0 "Upload generic VU0 program." (function none))
+(define-extern upload-vu0-program "Upload vu-function to VU0." (function vu-function pointer none))
+(define-extern generic-initialize-without-sync "Init generic, version for generic-merc, which relies on generic-merc init running after." (function matrix vu-lights none))
+(define-extern generic-initialize "Normal init for generic - sets up scratchpad and VU0." (function generic-bucket-state matrix vu-lights none))
+(define-extern generic-wrapup (function generic-bucket-state none))
 ;; (define-extern generic-dma-from-spr function)
 ;; (define-extern generic-light-proc function)
 ;; (define-extern generic-envmap-proc function)
@@ -29870,9 +29872,9 @@
 ;; (define-extern generic-copy-vtx-dclr-dtex function)
 ;; (define-extern generic-none function)
 ;; (define-extern generic-none-dma-wait function)
-;; (define-extern *warp-data* object) ;; object
-;; (define-extern generic-warp-source-proc function) ;; (function none)
-;; (define-extern generic-warp-source function) ;; (function gsf-buffer none)
+(define-extern *warp-data* object) ;; object
+(define-extern generic-warp-source-proc (function none))
+(define-extern generic-warp-source (function gsf-buffer none))
 ;; (define-extern generic-warp-dest-proc function)
 ;; (define-extern generic-warp-dest function)
 ;; (define-extern generic-warp-envmap-dest function)
@@ -30057,10 +30059,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern fx-copy-buf (function dma-buffer none))
-;; (define-extern *warp-shader* object) ;; adgif-shader
-;; (define-extern create-blanket function) ;; (function symbol)
-;; (define-extern *warp* object) ;; symbol
-;; (define-extern warp-test function) ;; (function object object int none)
+(define-extern *warp-shader* adgif-shader)
+(define-extern create-blanket (function symbol))
+(define-extern *warp* symbol)
+(define-extern warp-test (function object object int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim                   ;;
@@ -30145,8 +30147,8 @@
 ;; font-data                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *font12-table* object) ;; (inline-array vector)
-;; (define-extern *font24-table* object) ;; (inline-array vector)
+(define-extern *font12-table* (inline-array vector))
+(define-extern *font24-table* (inline-array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; font                           ;;
@@ -30157,17 +30159,16 @@
    (b float :offset 32))
   )
 
-;; (define-extern draw-string-asm function) ;; (function string dma-buffer font-context draw-string-result)
+(define-extern draw-string-asm (function string dma-buffer font-context draw-string-result))
 (define-extern draw-string (function string dma-buffer font-context draw-string-result))
-;; (define-extern get-string-length function) ;; (function string font-context draw-string-result)
+(define-extern get-string-length (function string font-context draw-string-result))
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
-;; (define-extern draw-string-adv function) ;; (function string dma-buffer font-context none)
+(define-extern draw-string-adv (function string dma-buffer font-context none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; decomp                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype huf-dictionary-node (structure)
   ((zero uint16  :offset-assert 0)
    (one  uint16  :offset-assert 2)
@@ -30176,12 +30177,11 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern unpack-comp-rle function) ;; (function (pointer int8) (pointer int8) (pointer int8))
-;; (define-extern unpack-comp-huf function) ;; (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none)
+(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) (pointer int8)))
+(define-extern unpack-comp-huf (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none))
 (define-extern unpack-comp-lzo (function (pointer uint8) (pointer uint8) none))
-;; (define-extern pack-comp-rle function) ;; (function (pointer uint8) (pointer uint8) int int (pointer uint8))
+(define-extern pack-comp-rle (function (pointer uint8) (pointer uint8) int int (pointer uint8)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; background                     ;;
@@ -39942,7 +39942,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern *generic-envmap-texture* object) ;; texture
-;; (define-extern *default-envmap-shader* object) ;; adgif-shader
+(define-extern *default-envmap-shader* adgif-shader)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-finish                 ;;
