@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: decomp.gc
-;; name in dgo: decomp
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for function unpack-comp-rle
 (defun unpack-comp-rle ((arg0 (pointer int8)) (arg1 (pointer int8)))
   "Decompress data compressed with run-length encoding."
   (local-vars (v1-2 int) (v1-3 uint))
@@ -44,13 +39,28 @@
   arg1
   )
 
+;; definition of type huf-dictionary-node
 (deftype huf-dictionary-node (structure)
   ((zero  uint16)
    (one   uint16)
    )
   )
 
+;; definition for method 3 of type huf-dictionary-node
+(defmethod inspect ((this huf-dictionary-node))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'huf-dictionary-node)
+  (format #t "~1Tzero: ~D~%" (-> this zero))
+  (format #t "~1Tone: ~D~%" (-> this one))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function unpack-comp-huf
+;; WARN: Return type mismatch int vs none.
 (defun unpack-comp-huf ((arg0 (pointer uint8)) (arg1 (pointer uint8)) (arg2 uint) (arg3 huf-dictionary-node))
   "Decompress data compressed with huffman encoding."
   (local-vars (t1-1 uint) (t3-2 (pointer uint16)))
@@ -98,6 +108,8 @@
   (none)
   )
 
+;; definition for function unpack-comp-lzo
+;; WARN: Return type mismatch int vs none.
 (defun unpack-comp-lzo ((arg0 (pointer uint8)) (arg1 (pointer uint8)))
   "Decompress data compressed with LZO encoding."
   0
@@ -142,7 +154,7 @@
         (set! a2-6 (-> arg1 0))
         (set! arg1 (&-> arg1 1))
         (b! (>= (the-as int a2-6) 16) cfg-18)
-        (let ((a2-10 (the-as (pointer uint8) (&- (&- (&-> arg0 -2049) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4))))))
+        (let ((a2-10 (&- (&- (&-> arg0 -2049) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4)))))
           (set! arg1 (&-> arg1 1))
           (set! (-> arg0 0) (-> a2-10 0))
           (set! (-> arg0 1) (-> a2-10 1))
@@ -155,7 +167,7 @@
         (label cfg-18)
         (b! (< (the-as int a2-6) 64) cfg-20)
         (let ((a3-23
-                (the-as (pointer uint8) (&- (&- (&-> arg0 -1) (the-as uint (logand (/ (the-as int a2-6) 4) 7))) (the-as uint (* (-> arg1 0) 8))))
+                (&- (&- (&-> arg0 -1) (the-as uint (logand (/ (the-as int a2-6) 4) 7))) (the-as uint (* (-> arg1 0) 8)))
                 )
               )
           (set! arg1 (&-> arg1 1))
@@ -163,7 +175,7 @@
             (b! #t cfg-36 :delay (nop!))
             (label cfg-20)
             (b! (< (the-as int a2-6) 32) cfg-27)
-            (set! a2-13 (the-as int (logand a2-6 31)))
+            (set! a2-13 (logand a2-6 31))
             (b! (nonzero? a2-13) cfg-26 :delay (empty-form))
             (b! #t cfg-24 :delay (nop!))
             (label cfg-23)
@@ -171,16 +183,16 @@
             (set! arg1 (&-> arg1 1))
             (label cfg-24)
             (b! (zero? (-> arg1 0)) cfg-23 :delay (nop!))
-            (set! a2-13 (the-as int (+ (-> arg1 0) 31 a2-13)))
+            (set! a2-13 (+ (-> arg1 0) 31 a2-13))
             (set! arg1 (&-> arg1 1))
             (label cfg-26)
-            (set! a3-23 (the-as (pointer uint8) (&- (&-> arg0 -1) (the-as uint (+ (shr (-> arg1 0) 2) (* (-> arg1 1) 64))))))
+            (set! a3-23 (&- (&-> arg0 -1) (the-as uint (+ (shr (-> arg1 0) 2) (* (-> arg1 1) 64)))))
             (set! arg1 (&-> arg1 2))
             (b! #t cfg-36 :delay (nop!))
             (label cfg-27)
             (b! (< (the-as int a2-6) 16) cfg-35)
-            (let ((a3-32 (the-as (pointer uint8) (&- arg0 (the-as uint (shl (logand a2-6 8) 11))))))
-              (set! a2-13 (the-as int (logand a2-6 7)))
+            (let ((a3-32 (&- arg0 (the-as uint (shl (logand a2-6 8) 11)))))
+              (set! a2-13 (logand a2-6 7))
               (b! (nonzero? a2-13) cfg-33 :delay (empty-form))
               (b! #t cfg-31 :delay (nop!))
               (label cfg-30)
@@ -188,18 +200,18 @@
               (set! arg1 (&-> arg1 1))
               (label cfg-31)
               (b! (zero? (-> arg1 0)) cfg-30 :delay (nop!))
-              (set! a2-13 (the-as int (+ (-> arg1 0) 7 a2-13)))
+              (set! a2-13 (+ (-> arg1 0) 7 a2-13))
               (set! arg1 (&-> arg1 1))
               (label cfg-33)
               (let ((a3-33 (&- a3-32 (the-as uint (+ (shr (-> arg1 0) 2) (* (-> arg1 1) 64))))))
                 (set! arg1 (&-> arg1 2))
                 (b! (= a3-33 arg0) cfg-47 :delay (nop!))
-                (set! a3-23 (&-> (the-as (pointer uint8) a3-33) -16384))
+                (set! a3-23 (&-> a3-33 -16384))
                 )
               )
             (b! #t cfg-36 :delay (nop!))
             (label cfg-35)
-            (let ((a2-16 (the-as (pointer uint8) (&- (&- (&-> arg0 -1) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4))))))
+            (let ((a2-16 (&- (&- (&-> arg0 -1) (the-as uint (/ (the-as int a2-6) 4))) (the-as uint (* (-> arg1 0) 4)))))
               (set! arg1 (&-> arg1 1))
               (set! (-> arg0 0) (-> a2-16 0))
               (set! (-> arg0 1) (-> a2-16 1))
@@ -245,6 +257,8 @@
   (none)
   )
 
+;; definition for method 16 of type level
+;; INFO: Used lq/sq
 (defmethod update-vis! ((this level) (arg0 level-vis-info) (arg1 uint) (arg2 (pointer uint8)))
   "Load/decompress precomputed visibility."
   (local-vars (t0-3 uint128) (sv-16 int) (sv-32 (pointer int8)))
@@ -323,7 +337,7 @@
           (when (zero? (the-as vis-info-flag s2-0))
             (let ((v1-30 (/ (+ s4-1 15) 16)))
               (dotimes (a0-19 v1-30)
-                (set! (-> (the-as (pointer int128) (&+ s1-0 (* a0-19 16)))) (the int128 0))
+                (set! (-> (the-as (pointer int128) (&+ s1-0 (* a0-19 16)))) 0)
                 )
               )
             (mem-copy! s1-0 (the-as (pointer uint8) s3-1) s4-1)
@@ -334,7 +348,7 @@
                 ((= v1-33 1)
                  (let ((v1-35 (/ (+ s4-1 15) 16)))
                    (dotimes (a0-23 v1-35)
-                     (set! (-> (the-as (pointer int128) (&+ s1-0 (* a0-23 16)))) (the int128 0))
+                     (set! (-> (the-as (pointer int128) (&+ s1-0 (* a0-23 16)))) 0)
                      )
                    )
                  (set! sv-16 (-> this bsp extra-vis-list-length))
@@ -415,6 +429,7 @@
     )
   )
 
+;; definition for function pack-comp-rle
 ;; WARN: Return type mismatch int vs (pointer uint8).
 (defun pack-comp-rle ((arg0 (pointer uint8)) (arg1 (pointer uint8)) (arg2 int) (arg3 int))
   "Compress data, used for map mask stuff."
@@ -504,3 +519,7 @@
     (the-as (pointer uint8) (+ s4-0 1))
     )
   )
+
+
+
+

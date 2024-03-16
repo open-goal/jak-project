@@ -7703,7 +7703,7 @@
     (level-method-13 () none) ;; 13 ;; (bsp-name (_type_) symbol)
     (compute-memory-usage! (_type_ symbol) memory-usage-block) ;; 14
     (level-method-15 () none) ;; 15 ;; (inside-boxes-check (_type_ vector) symbol)
-    (update-vis! (_type_ level-vis-info uint (pointer uint8)) symbol) ;; 16
+    (update-vis! "Load/decompress precomputed visibility." (_type_ level-vis-info uint (pointer uint8)) symbol) ;; 16
     (level-method-17 () none) ;; 17 ;; (load-continue (_type_) _type_)
     (level-method-18 () none) ;; 18 ;; (load-begin (_type_) _type_)
     (level-method-19 () none) ;; 19 ;; (login-begin (_type_) _type_)
@@ -23080,8 +23080,9 @@
   "The bsp-header is really an entire level.
    This probably started as a very simple structure, but now it is extremely complicated."
   ((info file-info                                               :offset 4)
-   (all-visible-list         (pointer uint16)     :offset 32) ;; guessed by decompiler
+   (all-visible-list         (pointer uint8)     :offset 32) ;; guessed by decompiler
    (visible-list-length      int16                :offset 36)
+   (extra-vis-list-length    int16                :offset-assert 38)
    (drawable-trees           drawable-tree-array  :offset 40) ;; guessed by decompiler
    (pat                      pointer              :offset 44) ;; guessed by decompiler
    (pat-length               int32                :offset 48)
@@ -30178,10 +30179,10 @@
   :flag-assert         #x900000004
   )
 
-(define-extern unpack-comp-rle (function (pointer int8) (pointer int8) (pointer int8)))
-(define-extern unpack-comp-huf (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none))
-(define-extern unpack-comp-lzo (function (pointer uint8) (pointer uint8) none))
-(define-extern pack-comp-rle (function (pointer uint8) (pointer uint8) int int (pointer uint8)))
+(define-extern unpack-comp-rle "Decompress data compressed with run-length encoding." (function (pointer int8) (pointer int8) (pointer int8)))
+(define-extern unpack-comp-huf "Decompress data compressed with huffman encoding." (function (pointer uint8) (pointer uint8) uint huf-dictionary-node none))
+(define-extern unpack-comp-lzo "Decompress data compressed with LZO encoding." (function (pointer uint8) (pointer uint8) none))
+(define-extern pack-comp-rle "Compress data, used for map mask stuff." (function (pointer uint8) (pointer uint8) int int (pointer uint8)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; background                     ;;
