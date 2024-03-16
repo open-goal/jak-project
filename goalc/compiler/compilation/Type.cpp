@@ -1120,7 +1120,9 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
                                  Env* env,
                                  bool call_constructor,
                                  bool use_singleton) {
-  auto type_of_object = parse_typespec(unquote(type), env);
+  auto type_str = symbol_string(unquote(type));
+  auto type_of_object =
+      type_str == "boxed-array" ? TypeSpec("array") : parse_typespec(unquote(type), env);
   auto fe = env->function_env();
   auto st_type_info = dynamic_cast<StructureType*>(m_ts.lookup_type(type_of_object));
   if (st_type_info && st_type_info->is_always_stack_singleton()) {
@@ -1131,14 +1133,16 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
     }
   }
   if (type_of_object == TypeSpec("inline-array") || type_of_object == TypeSpec("array")) {
-    if (call_constructor) {
-      throw_compiler_error(form, "Constructing stack arrays is not yet supported");
+    if (type_str == "array" && call_constructor && type_of_object == TypeSpec("array")) {
+      throw_compiler_error(form, "Use 'boxed-array instead of 'array for boxed stack arrays.");
     }
     if (use_singleton) {
       throw_compiler_error(form, "Singleton stack arrays are not yet supported");
     }
     bool is_inline = type_of_object == TypeSpec("inline-array");
-    auto elt_type = quoted_sym_as_string(pair_car(*rest));
+    auto elt_type = call_constructor && type_of_object == TypeSpec("array")
+                        ? symbol_string(pair_car(*rest))
+                        : quoted_sym_as_string(pair_car(*rest));
     rest = &pair_cdr(*rest);
 
     auto count_obj = pair_car(*rest);
@@ -1155,8 +1159,42 @@ Val* Compiler::compile_stack_new(const goos::Object& form,
       throw_compiler_error(form, "New array form got more arguments than expected");
     }
 
-    auto ts = is_inline ? m_ts.make_inline_array_typespec(elt_type)
-                        : m_ts.make_pointer_typespec(elt_type);
+    TypeSpec ts;
+    if (call_constructor && type_of_object == TypeSpec("array")) {
+      ts = m_ts.make_array_typespec("array", elt_type);
+    } else if (is_inline) {
+      ts = m_ts.make_inline_array_typespec(elt_type);
+    } else {
+      ts = m_ts.make_pointer_typespec(elt_type);
+    }
+
+    if (type_str == "boxed-array" && call_constructor && type_of_object == TypeSpec("array")) {
+      auto ti = m_ts.lookup_type(elt_type);
+      RegVal* mem;
+      std::vector<RegVal*> args;
+      int elt_size = ti->is_reference() ? 4 : ti->get_size_in_memory();
+      int mem_size =
+          m_ts.lookup_type(type_of_object)->get_size_in_memory() + constant_count * elt_size;
+      mem = fe->allocate_aligned_stack_variable(ts, mem_size, 16)->to_gpr(form, env);
+
+      // the new method actually takes a "symbol" according to the type system. So we have to cheat
+      // it.
+      mem->set_type(TypeSpec("symbol"));
+      args.push_back(mem);
+      // type
+      args.push_back(
+          compile_get_symbol_value(form, type_of_object.base_type(), env)->to_reg(form, env));
+      // element type
+      args.push_back(compile_get_symbol_value(form, elt_type, env)->to_reg(form, env));
+      // size
+      args.push_back(compile_integer(constant_count, env)->to_reg(form, env));
+
+      auto new_method = compile_get_method_of_type(form, type_of_object, "new", env);
+      auto new_obj = compile_real_function_call(form, new_method, args, env);
+      new_obj->set_type(ts);
+      return new_obj;
+    }
+
     auto info = m_ts.get_deref_info(ts);
     if (!info.can_deref) {
       throw_compiler_error(form, "Cannot make an {} of {}\n", type_of_object.print(), ts.print());
