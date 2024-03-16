@@ -1,27 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: foreground.gc
-;; name in dgo: foreground
-;; dgos: GAME
-
-;; +++merc-mode
-(defenum merc-mode
-  :type int32
-  (merc 0)
-  (emerc 1)
-  (mercneric 2)
-  (texture 3)
-  (mercneric2 4)
-  (mm5 5)
-  )
-;; ---merc-mode
-
-
-;; DECOMP BEGINS
-
+;; definition for symbol foreground-vu0-block, type vu-function
 (define foreground-vu0-block (new 'static 'vu-function :length 9 :qlength 5))
 
+;; definition for symbol *bucket-map*, type (pointer bucket-id-16)
 (define *bucket-map* (new 'static 'array bucket-id-16 462
                        (bucket-id-16 merc-l0-tfrag)
                        (bucket-id-16 emerc-l0-tfrag)
@@ -488,12 +471,15 @@
                        )
         )
 
+;; definition for function vu1-bucket-map
 ;; WARN: Return type mismatch bucket-id-16 vs bucket-id.
 (defun vu1-bucket-map ((arg0 int) (arg1 int) (arg2 merc-mode))
   "Map from level, texture, mode to bucket-id."
   (the-as bucket-id (-> *bucket-map* (+ (+ (* 42 arg0) (* 6 arg1)) (the-as int arg2))))
   )
 
+;; definition for function generic-bucket-state-init
+;; WARN: Return type mismatch int vs none.
 (defun generic-bucket-state-init ((arg0 generic-bucket-state))
   "Initialize generic-bucket-state for the first thing to draw in the bucket."
   (set! (-> arg0 gifbuf-adr) (the-as uint 837))
@@ -501,6 +487,7 @@
   (none)
   )
 
+;; definition for function mercneric-chain-init
 (defun mercneric-chain-init ((arg0 mercneric-chain) (arg1 bucket-id))
   "Initialize mercneric-chain"
   (set! (-> arg0 first) (the-as uint 0))
@@ -510,6 +497,7 @@
   (none)
   )
 
+;; definition for function foreground-init
 (defun foreground-init ()
   "Initialize scratchpad and VU0 for foreground. Start foreground DMA chains."
   (let ((gp-0 (the-as foreground-work (+ #x70000000 0))))
@@ -558,6 +546,8 @@
   (none)
   )
 
+;; definition for function texscroll-make-request
+;; WARN: Return type mismatch int vs none.
 (defun texscroll-make-request ((arg0 merc-effect))
   "Set up a texscroll, which will adjust texture coordinates of the given merc-effect during the next texscroll-execute."
   (with-pp
@@ -593,6 +583,8 @@
     )
   )
 
+;; definition for function texscroll-execute
+;; WARN: Return type mismatch int vs none.
 (defun texscroll-execute ()
   "Run pending texscroll requests."
   (dotimes (v1-0 (-> *foreground* texscroll requests))
@@ -653,6 +645,9 @@
   (none)
   )
 
+;; definition for function vu-lights<-light-group!
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun vu-lights<-light-group! ((arg0 vu-lights) (arg1 light-group))
   "Convert light-group format lights to vu-lights for the renderers."
   (local-vars (v1-0 uint128) (v1-1 uint128) (a2-1 uint128) (t0-1 uint128) (t1-1 uint128))
@@ -724,9 +719,10 @@
     )
   )
 
+;; definition for function foreground-add-mtx-calc
 (defun foreground-add-mtx-calc ((arg0 bone-calculation) (arg1 (inline-array pris-mtx)) (arg2 bone-calc-flags))
   "Request skinning matrix calculation."
-  (let ((t2-0 (-> (scratchpad-object foreground-work) regs))
+  (let ((t2-0 (-> (the-as foreground-work #x70000000) regs))
         (v1-1 *bone-calculation-list*)
         (a3-0 arg0)
         )
@@ -753,6 +749,8 @@
   (&+ arg0 48)
   )
 
+;; definition for function foreground-wrapup
+;; WARN: Return type mismatch int vs none.
 (defun foreground-wrapup ()
   "Finish foreground DMA chains."
   (let ((gp-0 (the-as foreground-work (+ #x70000000 0))))
@@ -816,19 +814,22 @@
   (none)
   )
 
+;; definition for symbol *default-shadow-settings*, type shadow-settings
 (define *default-shadow-settings* (new 'static 'shadow-settings
                                     :shadow-dir (new 'static 'vector :x -0.4226 :y -0.9063 :w 409600.0)
                                     :bot-plane (new 'static 'plane :y 1.0 :w 37683.2)
                                     :top-plane (new 'static 'plane :y 1.0 :w 4096.0)
-                                    :fade-vec (new 'static 'vector :x 409600.0)
+                                    :fade-dist 409600.0
                                     )
         )
 
+;; definition for function foreground-shadow
+;; INFO: Used lq/sq
 (defun foreground-shadow ((arg0 draw-control) (arg1 (inline-array pris-mtx)) (arg2 pointer))
   "Generate DMA for shadow drawing."
   (local-vars (a3-3 shadow-settings))
   (let ((v1-0 (-> arg0 shadow))
-        (t0-0 (-> (scratchpad-object foreground-work) distance w))
+        (t0-0 (-> (the-as foreground-work #x70000000) distance w))
         )
     (set! a3-3
           (cond
@@ -854,7 +855,7 @@
     (let ((t1-5 (-> a3-3 flags)))
       (-> arg0 cur-lod)
       (when (not (logtest? t1-5 (shadow-flags disable-fade)))
-        (if (< (-> a3-3 fade-vec x) t0-0)
+        (if (< (-> a3-3 fade-dist) t0-0)
             (set! t1-5 (logior t1-5 (shadow-flags disable-draw)))
             )
         )
@@ -872,7 +873,7 @@
                 (let ((t3-5 (-> *shadow-globals* bucket (-> a3-3 shadow-type))))
                   (let ((t5-1 (-> t3-5 next)))
                     (if (nonzero? t5-1)
-                        (set! (-> (the-as (pointer shadow-dma-packet) t5-1)) t2-10)
+                        (set! (-> (the-as (pointer int32) t5-1)) t2-10)
                         )
                     )
                   (if (zero? (-> t3-5 first))
@@ -930,6 +931,7 @@
   arg2
   )
 
+;; definition for function foreground-generic-merc-death
 ;; WARN: Return type mismatch uint vs none.
 (defun foreground-generic-merc-death ((arg0 draw-control) (arg1 generic-merc-ctrl))
   "Stash death effect values in the merc-fragment so generic merc can run the death effect."
@@ -953,14 +955,15 @@
   (none)
   )
 
+;; definition for function foreground-generic-merc-add-fragments
 (defun foreground-generic-merc-add-fragments ((arg0 merc-effect) (arg1 pointer) (arg2 mercneric-chain))
   "Add merc fragments to a generic merc chain."
   (let ((v1-0 (-> arg0 frag-geo))
-        (a3-0 (the-as merc-fragment-control (-> arg0 frag-ctrl)))
+        (a3-0 (the-as structure (-> arg0 frag-ctrl)))
         (a0-1 (-> arg0 frag-count))
         )
     (dotimes (t0-0 (the-as int a0-1))
-      (let ((t1-2 (+ (* (-> a3-0 mat-xfer-count) 2) 4))
+      (let ((t1-2 (+ (* (-> (the-as merc-fragment-control a3-0) mat-xfer-count) 2) 4))
             (t2-0 (-> v1-0 header mm-quadword-size))
             )
         (set! (-> (the-as dma-packet arg1) dma)
@@ -973,12 +976,12 @@
           (set! (-> arg2 next) (the-as uint (&+ arg1 12)))
           )
         (let ((a1-1 (the-as object (&+ arg1 16))))
-          (dotimes (t3-6 (the-as int (-> a3-0 mat-xfer-count)))
+          (dotimes (t3-6 (the-as int (-> (the-as merc-fragment-control a3-0) mat-xfer-count)))
             (let ((t5-4
-                    (-> (scratchpad-object foreground-work)
+                    (-> (the-as foreground-work #x70000000)
                         regs
                         mtxs
-                        (-> a3-0 mat-dest-data t3-6 matrix-number)
+                        (-> (the-as merc-fragment-control a3-0) mat-dest-data t3-6 matrix-number)
                         )
                     )
                   )
@@ -995,8 +998,7 @@
           (set! (-> (the-as dma-packet a1-1) vif1) (new 'static 'vif-tag))
           (set! arg1 (&+ (the-as pointer a1-1) 16))
           )
-        ;(set! a3-0 (+ (the-as uint a3-0) t1-2))
-        (&+! a3-0 t1-2)
+        (set! a3-0 (+ (the-as uint a3-0) t1-2))
         (set! v1-0 (the-as merc-fragment (+ (the-as uint v1-0) (* t2-0 16))))
         )
       )
@@ -1004,24 +1006,29 @@
   arg1
   )
 
+;; definition for function foreground-generic-merc
+;; INFO: function output is handled by mips2c
 (def-mips2c foreground-generic-merc (function draw-control pointer int pointer))
 
+;; definition for function foreground-merc
+;; INFO: function output is handled by mips2c
 (def-mips2c foreground-merc (function draw-control (inline-array pris-mtx) pointer int int object pointer))
 
-;; note: we didn't need it for jak 2 -> all emerc went to PC merc.
-(defun foreground-emerc ((arg0 draw-control) (arg1 (inline-array pris-mtx)) (arg2 pointer) (arg3 object) (arg4 int) (arg5 int))
-  arg2
-  )
+;; definition for function foreground-emerc
+;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; definition for function foreground-check-longest-edge-asm
+;; INFO: function output is handled by mips2c
 (def-mips2c foreground-check-longest-edge-asm (function draw-control float symbol))
 
+;; definition for function foreground-ripple
 ;; WARN: Return type mismatch int vs pointer.
 ;; ERROR: Unsupported inline assembly instruction kind - [sll v1, v1, 7]
 ;; ERROR: Unsupported inline assembly instruction kind - [addu t0, a2, v1]
 (defun foreground-ripple ((arg0 draw-control) (arg1 merc-ctrl) (arg2 pointer) (arg3 int))
-  (local-vars (v1-6 uint) (t0-0 pointer))
+  (local-vars (v1-6 int) (t0-0 int))
   (let* ((gp-0 (-> arg0 ripple))
-         (f0-0 (-> (scratchpad-object foreground-work) regs dist))
+         (f0-0 (-> (the-as foreground-work #x70000000) regs dist))
          (f1-3 (/ (- (-> gp-0 far-fade-dist) f0-0) (- (-> gp-0 far-fade-dist) (-> gp-0 close-fade-dist))))
          (f1-5 (fmax 0.0 (fmin 1.0 f1-3)))
          (f0-3 f1-5)
@@ -1030,13 +1037,11 @@
     (set! (-> gp-0 faded-scale) f30-0)
     (let ((f1-8 (/ f30-0 (* 128.0 (-> arg1 header xyz-scale)))))
       0
-      (let ((v1-5 (-> (scratchpad-object foreground-work) regs num-bones)))
-        ;; (.sll v1-6 v1-5 7)
-        (set! v1-6 (shl v1-5 7))
+      (let ((v1-5 (-> (the-as foreground-work #x70000000) regs num-bones)))
+        (.sll v1-6 v1-5 7)
         )
-      (let ((a0-1 (scratchpad-object foreground-work)))
-        ;; (.addu t0-0 arg2 v1-6)
-        (set! t0-0 (&+ arg2 v1-6))
+      (let ((a0-1 (the-as foreground-work #x70000000)))
+        (.addu t0-0 arg2 v1-6)
         (let ((v1-7 arg2)
               (s5-0 t0-0)
               )
@@ -1059,6 +1064,9 @@
     )
   )
 
+;; definition for function foreground-draw
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Bad vector register dependency: vf7
 ;; ERROR: Bad vector register dependency: vf8
 ;; ERROR: Bad vector register dependency: vf9
@@ -1075,10 +1083,8 @@
          (vf7 :class vf)
          (vf8 :class vf)
          (vf9 :class vf)
-         (acc :class vf)
          )
-    ;; (.lui work 28672)
-    (set! work (scratchpad-object foreground-work))
+    (.lui work 28672)
     (let* ((bone-calc (-> dma-buf base))
            (matrix-mem (the-as object (&+ bone-calc 64)))
            )
@@ -1090,23 +1096,23 @@
       (let* ((num-bones (+ (-> dc mgeo length) 3))
              (matrix-mem-size (* num-bones 128))
              )
-        (let ((regs (-> (scratchpad-object foreground-work) regs)))
+        (let ((regs (-> (the-as foreground-work #x70000000) regs)))
           (set! (-> regs joint-ptr) (the-as (inline-array joint) (-> dc jgeo data 0)))
           (set! (-> regs bone-ptr) (-> dc skeleton bones))
           (set! (-> regs num-bones) (the-as uint num-bones))
           (set! (-> regs dist) dist)
           (set! (-> regs dma-buf) dma-buf)
-          (set! (-> regs level-buckets) (-> (scratchpad-object foreground-work)
+          (set! (-> regs level-buckets) (-> (the-as foreground-work #x70000000)
                                             grid
                                             level-buckets
-                                            (-> (scratchpad-object foreground-work) draw-index-map (-> dc level-index))
+                                            (-> (the-as foreground-work #x70000000) draw-index-map (-> dc level-index))
                                             )
                 )
           )
         (let ((bone-output matrix-mem)
               (bone-flags 0)
               )
-          (let ((fg-regs (-> (scratchpad-object foreground-work) regs))
+          (let ((fg-regs (-> (the-as foreground-work #x70000000) regs))
                 (calc-list *bone-calculation-list*)
                 (calc (the-as bone-calculation bone-calc))
                 )
@@ -1135,7 +1141,7 @@
             (set! (-> work regs mtxs) (the-as (inline-array pris-mtx) matrix-mem))
             (let ((bucket-info (-> *foreground* merc-bucket-info)))
               (when (= (-> dc data-format) (draw-control-data-format merc))
-                (let ((lights-in (-> (scratchpad-object foreground-work) lights))
+                (let ((lights-in (-> (the-as foreground-work #x70000000) lights))
                       (lights-out (-> bucket-info light))
                       )
                   (let ((inv-camera (-> *math-camera* inv-camera-rot)))
@@ -1153,25 +1159,7 @@
                   (.lvf vf2 (&-> lights-in direction 1 quad))
                   (nop!)
                   (.lvf vf3 (&-> lights-in direction 2 quad))
-                      ;; (.vcallms 0)
-                      ;  mulax.xyzw ACC, vf01, vf04
-                      (.mul.x.vf acc vf1 vf4)
-                      ;  madday.xyzw ACC, vf02, vf04
-                      (.add.mul.y.vf acc vf2 vf4 acc)
-                      ;  maddz.xyzw vf07, vf03, vf04
-                      (.add.mul.z.vf vf7 vf3 vf4 acc)
-                      ;  mulax.xyzw ACC, vf01, vf05
-                      (.mul.x.vf acc vf1 vf5)
-                      ;  madday.xyzw ACC, vf02, vf05
-                      (.add.mul.y.vf acc vf2 vf5 acc)
-                      ;  maddz.xyzw vf08, vf03, vf05
-                      (.add.mul.z.vf vf8 vf3 vf5 acc)
-                      ;  mulax.xyzw ACC, vf01, vf06
-                      (.mul.x.vf acc vf1 vf6)
-                      ;  madday.xyzw ACC, vf02, vf06 :e
-                      (.add.mul.y.vf acc vf2 vf6 acc)
-                      ;  maddz.xyzw vf09, vf03, vf06
-                      (.add.mul.z.vf vf9 vf3 vf6 acc)
+                  (.vcallms 0)
                   (let ((a1-9 (-> lights-in color 0 quad)))
                     (nop!)
                     (let ((a2-6 (-> lights-in color 1 quad)))
@@ -1200,11 +1188,11 @@
                   (nop!)
                   (.svf (&-> lights-out direction 2 quad) vf9)
                   (nop!)
-                  (set! (-> lights-out direction 1 w) 0.0)
+                  (set! (-> lights-out fade-flags) (the-as uint 0))
                   )
-                (set! (-> (scratchpad-object foreground-work) regs merc-used) (the-as uint 0))
-                (set! (-> (scratchpad-object foreground-work) regs emerc-used) (the-as uint 0))
-                (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 0))
+                (set! (-> (the-as foreground-work #x70000000) regs merc-used) (the-as uint 0))
+                (set! (-> (the-as foreground-work #x70000000) regs emerc-used) (the-as uint 0))
+                (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 0))
                 (set! (-> bucket-info needs-clip) (if (logtest? (-> dc status) (draw-control-status close-to-screen))
                                                       1
                                                       0
@@ -1218,7 +1206,7 @@
                      (set! (-> bucket-info need-mercprime-if-merc) 1)
                      )
                     ((nonzero? (-> dc longest-edge))
-                     (if (foreground-check-longest-edge-asm dc (-> (scratchpad-object foreground-work) regs dist))
+                     (if (foreground-check-longest-edge-asm dc (-> (the-as foreground-work #x70000000) regs dist))
                          (set! (-> bucket-info need-mercprime-if-merc) 1)
                          (set! (-> bucket-info must-use-mercneric-for-clip) 1)
                          )
@@ -1247,7 +1235,7 @@
                                         )
                                       )
                                     )
-                               (if (< (-> (scratchpad-object foreground-work) regs dist) (-> texscroll-info max-dist))
+                               (if (< (-> (the-as foreground-work #x70000000) regs dist) (-> texscroll-info max-dist))
                                    (texscroll-make-request (-> geo effect effect-idx))
                                    )
                                )
@@ -1263,11 +1251,11 @@
                            )
                          (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 2))
                          (set! (-> bucket-info effect effect-idx disable-envmap) (the-as uint 1))
-                         (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 1))
+                         (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 1))
                          )
                         ((logtest? (-> geo effect effect-idx effect-bits) (effect-bits force-mercneric))
                          (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 2))
-                         (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 1))
+                         (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 1))
                          )
                         ((and (logtest? (-> geo effect effect-idx effect-usage) 1)
                               (not (logtest? (-> dc global-effect) (draw-control-global-effect disable-envmap)))
@@ -1279,7 +1267,7 @@
                                   )
                                 (envmap-fade0 (-> envmap-info fade0))
                                 (envmap-fade1 (-> envmap-info fade1))
-                                (envmap-interp (+ (* envmap-fade0 (-> (scratchpad-object foreground-work) regs dist)) envmap-fade1))
+                                (envmap-interp (+ (* envmap-fade0 (-> (the-as foreground-work #x70000000) regs dist)) envmap-fade1))
                                 (envmap-strength (fmax 0.0 (fmin 1.0 envmap-interp)))
                                 )
                            (cond
@@ -1335,13 +1323,13 @@
                                       (logtest? (-> geo effect effect-idx effect-bits) (effect-bits emerc))
                                       )
                                  (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 1))
-                                 (set! (-> (scratchpad-object foreground-work) regs emerc-used) (the-as uint 1))
+                                 (set! (-> (the-as foreground-work #x70000000) regs emerc-used) (the-as uint 1))
                                  )
                                 (else
                                   (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 2))
-                                  (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 1))
+                                  (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 1))
                                   (if (logtest? (-> dc status) (draw-control-status force-fade))
-                                      (set! (-> bucket-info light fade-int) (-> dc force-fade))
+                                      (set! (-> bucket-info light fade-int) (gpr->fpr (-> dc force-fade)))
                                       )
                                   )
                                 )
@@ -1362,13 +1350,13 @@
                                                      )
                                             )
                                     )
-                              (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 1))
-                              (set! (-> bucket-info light fade-int) (-> dc force-fade))
+                              (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 1))
+                              (set! (-> bucket-info light fade-int) (gpr->fpr (-> dc force-fade)))
                               )
                              (else
                                (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 0))
                                (set! (-> bucket-info effect effect-idx ignore-alpha) (the-as uint 1))
-                               (set! (-> (scratchpad-object foreground-work) regs merc-used) (the-as uint 1))
+                               (set! (-> (the-as foreground-work #x70000000) regs merc-used) (the-as uint 1))
                                )
                              )
                            )
@@ -1377,7 +1365,7 @@
                           (cond
                             ((logtest? (-> geo effect effect-idx effect-bits) (effect-bits cross-fade))
                              (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 2))
-                             (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 1))
+                             (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 1))
                              )
                             ((or (logtest? (-> dc status) (draw-control-status force-fade))
                                  (nonzero? (-> bucket-info must-use-mercneric-for-clip))
@@ -1386,11 +1374,11 @@
                              (if (logtest? (-> dc global-effect) (draw-control-global-effect disable-envmap))
                                  (set! (-> bucket-info effect effect-idx disable-envmap) (the-as uint 1))
                                  )
-                             (set! (-> (scratchpad-object foreground-work) regs mercneric-used) (the-as uint 1))
+                             (set! (-> (the-as foreground-work #x70000000) regs mercneric-used) (the-as uint 1))
                              )
                             (else
                               (set! (-> bucket-info effect effect-idx merc-path) (the-as uint 0))
-                              (set! (-> (scratchpad-object foreground-work) regs merc-used) (the-as uint 1))
+                              (set! (-> (the-as foreground-work #x70000000) regs merc-used) (the-as uint 1))
                               )
                             )
                           (set! (-> bucket-info effect effect-idx ignore-alpha)
@@ -1409,21 +1397,17 @@
                       (set! effect-mask (shr effect-mask 1))
                       )
                     )
-
-
-                  ;; TODO reassign for PC!
-
-                  (when (nonzero? (-> (scratchpad-object foreground-work) regs mercneric-used))
+                  (when (nonzero? (-> (the-as foreground-work #x70000000) regs mercneric-used))
                     (if (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask generic))
                         (set! dma-ptr (foreground-generic-merc dc (the-as pointer dma-ptr) 0))
                         )
                     )
                   (if (-> dc shadow)
                       (set! dma-ptr
-                            (foreground-shadow dc (-> (scratchpad-object foreground-work) regs mtxs) (the-as pointer dma-ptr))
+                            (foreground-shadow dc (-> (the-as foreground-work #x70000000) regs mtxs) (the-as pointer dma-ptr))
                             )
                       )
-                  (when (nonzero? (-> (scratchpad-object foreground-work) regs merc-used))
+                  (when (nonzero? (-> (the-as foreground-work #x70000000) regs merc-used))
                     (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask merc))
                       (let ((fade-amount 0)
                             (fade-enable #f)
@@ -1438,7 +1422,7 @@
                            )
                           ((= (-> dc cur-lod) (-> dc lod-set max-lod))
                            (let ((dist-until-gone
-                                   (- (-> dc lod-set lod (-> dc cur-lod) dist) (-> (scratchpad-object foreground-work) regs dist))
+                                   (- (-> dc lod-set lod (-> dc cur-lod) dist) (-> (the-as foreground-work #x70000000) regs dist))
                                    )
                                  )
                              (if (< dist-until-gone 81920.0)
@@ -1453,7 +1437,7 @@
                                 (a0-90 (-> bucket-info light))
                                 )
                             (set! (-> a0-90 fade-flags) (the-as uint 0.00000000000000000000000000000000000000000014))
-                            (set! (-> a0-90 fade-int) (the-as uint v1-164))
+                            (set! (-> a0-90 fade-int) (the-as uint (gpr->fpr v1-164)))
                             )
                           )
                         )
@@ -1461,7 +1445,7 @@
                           (set! dma-ptr
                                 (foreground-merc
                                   dc
-                                  (-> (scratchpad-object foreground-work) regs mtxs)
+                                  (-> (the-as foreground-work #x70000000) regs mtxs)
                                   (the-as pointer dma-ptr)
                                   32
                                   17
@@ -1471,7 +1455,7 @@
                           (set! dma-ptr
                                 (foreground-merc
                                   dc
-                                  (-> (scratchpad-object foreground-work) regs mtxs)
+                                  (-> (the-as foreground-work #x70000000) regs mtxs)
                                   (the-as pointer dma-ptr)
                                   35
                                   20
@@ -1482,12 +1466,12 @@
                       )
                     )
                   )
-                (when (nonzero? (-> (scratchpad-object foreground-work) regs emerc-used))
+                (when (nonzero? (-> (the-as foreground-work #x70000000) regs emerc-used))
                   (if (logtest? (vu1-renderer-mask emerc) (-> *display* vu1-enable-user))
                       (set! dma-ptr
                             (foreground-emerc
                               dc
-                              (-> (scratchpad-object foreground-work) regs mtxs)
+                              (-> (the-as foreground-work #x70000000) regs mtxs)
                               (the-as pointer dma-ptr)
                               29
                               19
@@ -1509,18 +1493,15 @@
             (let ((v1-190 (logand (the-as int dma-ptr) 48)))
               0
               (b! (zero? v1-190) cfg-133 :delay (set! a0-100 (the-as uint #x20000000)))
-              ;; (s.q! dma-ptr a0-100)
-              (set! (-> (the (pointer uint128) dma-ptr) 0) (the uint128 a0-100))
-
+              (s.q! dma-ptr a0-100)
               (let ((a0-101 dma-ptr))
                 (set! dma-ptr (+ (- (the-as int dma-ptr) (the-as uint v1-190)) 64))
-                ;; (s.w! (+ a0-101 4) (the-as int dma-ptr))
-                (set! (-> (the (pointer int32) (+ (the-as uint a0-101) 4))) (the-as int dma-ptr))
+                (s.w! (+ a0-101 4) (the-as int dma-ptr))
                 )
               )
             (label cfg-133)
-            (set! (-> (scratchpad-object foreground-work) regs dma-buf base)
-                  (the-as pointer (logand (the-as int dma-ptr) #xfffffff))
+            (set! (-> (the-as foreground-work #x70000000) regs dma-buf base)
+                  (the-as pointer (logand dma-ptr (the-as uint #xfffffff)))
                   )
             )
           )
@@ -1531,12 +1512,21 @@
     )
   )
 
+;; definition for function foreground-draw-hud
 ;; ERROR: function was not converted to expressions. Cannot decompile.
 
+;; failed to figure out what this is:
 (kmemopen global "foreground-engine")
 
+;; definition for symbol *foreground*, type foreground-globals
 (define *foreground* (new 'global 'foreground-globals))
 
+;; definition for symbol *foreground-draw-engine*, type engine
 (define *foreground-draw-engine* (new 'global 'engine 'draw 768 connection))
 
+;; failed to figure out what this is:
 (kmemclose)
+
+
+
+
