@@ -55,6 +55,29 @@ void setup_logging(bool verbose, std::string log_file, bool disable_ansi_colors)
   lg::initialize();
 }
 
+std::string temp_url_encode(const std::string& value) {
+  std::ostringstream escaped;
+  escaped.fill('0');
+  escaped << std::hex;
+
+  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
+    std::string::value_type c = (*i);
+
+    // Keep alphanumeric and other accepted characters intact
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '/') {
+      escaped << c;
+      continue;
+    }
+
+    // Any other characters are percent-encoded
+    escaped << std::uppercase;
+    escaped << '%' << std::setw(2) << int((unsigned char)c);
+    escaped << std::nouppercase;
+  }
+
+  return escaped.str();
+}
+
 int main(int argc, char** argv) {
   ArgumentGuard u8_guard(argc, argv);
 
@@ -80,6 +103,21 @@ int main(int argc, char** argv) {
   // AHHH this works?!
 
   AppState appstate;
+
+  auto path_str = file_util::convert_to_unix_path_separators(
+      "C:\\Users\\xtvas\\Repositories\\opengoal\\jak-project\\goal_src\\jak2\\engine\\math\\euler-"
+      "h.gc");
+  path_str = temp_url_encode(path_str);
+  const auto file_uri = fmt::format("file:///{}", path_str);
+
+  appstate.workspace.start_tracking_file(file_uri, "opengoal", test_file_contents);
+  auto maybe_tracked_file = appstate.workspace.get_tracked_og_file(file_uri);
+  if (!maybe_tracked_file) {
+    return {};
+  }
+  const auto& tracked_file = maybe_tracked_file.value().get();
+  const auto symbol = tracked_file.get_symbol_at_position({11, 11});
+
   LSPRouter lsp_router;
   appstate.verbose = verbose;
   try {

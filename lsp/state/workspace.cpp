@@ -355,28 +355,6 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
   // if this is called directly however (currently, via a hover LSP event)
   // it fails for a variety of reasons
   if (m_ast) {
-    // This does work (reparsing right here and now instead of using the already parsed tree)
-    auto parser = ts_parser_new();
-    if (ts_parser_set_language(parser, g_opengoalLang)) {
-      // Get the AST for the current state of the file
-      // TODO - eventually, we should consider doing partial updates of the AST
-      // but right now the LSP just receives the entire document so that's a larger change.
-      auto temp_ast = ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length());
-      TSNode root_node = ts_tree_root_node(temp_ast);
-      TSNode found_node =
-          ts_node_descendant_for_point_range(root_node, {position.m_line, position.m_character},
-                                             {position.m_line, position.m_character});
-      if (!ts_node_has_error(found_node)) {
-        uint32_t start = ts_node_start_byte(found_node);
-        uint32_t end = ts_node_end_byte(found_node);
-        const std::string node_str = m_content.substr(start, end - start);
-        const std::string node_name = ts_node_type(found_node);
-      } else {
-        found_node = ts_node_child(found_node, 0);
-      }
-    }
-    ts_parser_delete(parser);
-    // This doesn't work for some reason
     TSNode root_node = ts_tree_root_node(m_ast);
     auto node_str = ts_node_string(root_node);
     TSNode found_node =
