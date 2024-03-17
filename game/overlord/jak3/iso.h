@@ -1,0 +1,24 @@
+#pragma once
+
+#include "game/sce/iop.h"
+
+namespace jak3 {
+
+struct ISOBuffer {
+  void AdjustDataLength(int);
+  void AdvanceCurrentData(int);
+};
+
+struct ISO_Hdr {
+  iop::MsgPacket msg;
+
+  void SetActive();
+  void SetUnk1();
+  void SetUnk2();
+};
+
+struct ISO_Msg : ISO_Hdr {};
+
+struct ISO_LoadDGO : ISO_Msg {};
+
+}  // namespace jak3
