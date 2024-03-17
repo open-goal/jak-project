@@ -214,6 +214,8 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   Compiler compiler(game_name_to_version(version_info.game_name));
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
+  file_util::set_iso_data_dir(absolute(iso_data_path));
+  lg::info("set iso_data_dir to {}", absolute(iso_data_path).string());
 
   int flags = 0;
   for (const auto& flag : version_info.flags) {
