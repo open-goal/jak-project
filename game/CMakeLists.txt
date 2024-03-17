@@ -189,6 +189,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/font.cpp
         mips2c/jak3_functions/generic_effect.cpp
         mips2c/jak3_functions/lights.cpp
+        mips2c/jak3_functions/prim.cpp
         mips2c/jak3_functions/sky.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
