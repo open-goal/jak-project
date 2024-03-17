@@ -258,16 +258,29 @@ namespace shadow_calc_dual_verts { extern void link(); }
 namespace shadow_xform_verts { extern void link(); }
 }
 namespace jak3 {
-  namespace light_hash_get_bucket_index { extern void link(); }
-  namespace add_light_sphere_to_light_group { extern void link(); }
-  namespace light_hash_count_items { extern void link(); }
-  namespace light_hash_add_items { extern void link(); }
-  namespace debug_line_clip { extern void link(); }
-  namespace init_boundary_regs { extern void link(); }
-  namespace draw_boundary_polygon { extern void link(); }
-  namespace render_boundary_quad { extern void link(); }
-  namespace render_boundary_tri { extern void link(); }
-  namespace set_sky_vf27 { extern void link(); }
+namespace light_hash_get_bucket_index { extern void link(); }
+namespace add_light_sphere_to_light_group { extern void link(); }
+namespace light_hash_count_items { extern void link(); }
+namespace light_hash_add_items { extern void link(); }
+namespace debug_line_clip { extern void link(); }
+namespace init_boundary_regs { extern void link(); }
+namespace draw_boundary_polygon { extern void link(); }
+namespace render_boundary_quad { extern void link(); }
+namespace render_boundary_tri { extern void link(); }
+namespace set_sky_vf27 { extern void link(); }
+namespace generic_light_proc { extern void link(); }
+namespace generic_envmap_proc { extern void link(); }
+namespace generic_prepare_dma_double { extern void link(); }
+namespace generic_prepare_dma_single { extern void link(); }
+namespace generic_warp_source_proc { extern void link(); }
+namespace generic_warp_dest_proc { extern void link(); }
+namespace generic_warp_dest { extern void link(); }
+namespace generic_warp_envmap_dest { extern void link(); }
+namespace generic_no_light_proc { extern void link(); }
+namespace method_9_font_work { extern void link(); }
+namespace draw_string_asm { extern void link(); }
+namespace get_string_length { extern void link(); }
+
 }
 // clang-format on
 
@@ -443,7 +456,16 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"debug",
       {jak3::debug_line_clip::link, jak3::init_boundary_regs::link,
        jak3::draw_boundary_polygon::link, jak3::render_boundary_quad::link,
-       jak3::render_boundary_tri::link, jak3::set_sky_vf27::link}}}};
+       jak3::render_boundary_tri::link, jak3::set_sky_vf27::link}},
+     {"generic-effect",
+      {jak3::generic_light_proc::link, jak3::generic_envmap_proc::link,
+       jak3::generic_prepare_dma_double::link, jak3::generic_prepare_dma_single::link,
+       jak3::generic_warp_source_proc::link, jak3::generic_warp_dest_proc::link,
+       jak3::generic_warp_dest::link, jak3::generic_warp_envmap_dest::link,
+       jak3::generic_no_light_proc::link}},
+     {"font",
+      {jak3::method_9_font_work::link, jak3::draw_string_asm::link,
+       jak3::get_string_length::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});

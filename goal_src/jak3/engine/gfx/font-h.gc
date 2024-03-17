@@ -78,7 +78,9 @@
    (b float :offset 32))
   )
 
+(declare-type font-context structure)
 (define-extern draw-string-xy (function string dma-buffer int int font-color font-flags draw-string-result))
+(define-extern draw-string (function string dma-buffer font-context draw-string-result))
 
 ;; DECOMP BEGINS
 
@@ -105,18 +107,19 @@
         )
 
 (deftype font-context (basic)
-  ((origin      vector  :inline)
-   (strip-gif   vector  :inline)
-   (width       float)
-   (height      float)
-   (projection  float)
-   (scale       float)
-   (color       font-color)
-   (flags       font-flags)
-   (mat         matrix)
-   (start-line  uint32)
-   (alpha       float)
-   (max-x       float)
+  ((origin        vector  :inline)
+   (strip-gif     vector  :inline)
+   (width         float)
+   (height        float)
+   (projection    float)
+   (scale         float)
+   (color         font-color)
+   (color-signed  int32   :overlay-at color)
+   (flags         font-flags)
+   (mat           matrix)
+   (start-line    uint32)
+   (alpha         float)
+   (max-x         float)
    )
   (:methods
     (new (symbol type matrix int int float font-color font-flags) _type_)
@@ -301,7 +304,7 @@
    (reg-save                   uint32          5)
    )
   (:methods
-    (set-context! (_type_ object) none)
+    (set-context! (_type_ font-context) none)
     )
   )
 
@@ -728,6 +731,3 @@
   (set! (-> *font-work* color-table arg0 color 3) arg4)
   0
   )
-
-
-(define-extern draw-string (function string dma-buffer font-context draw-string-result))
