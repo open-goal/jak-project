@@ -275,7 +275,7 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
     }
     //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
     //  TODO - if the file fails to `ml`, annotate some errors
-    m_tracked_og_files[file_uri] = WorkspaceOGFile(content, *game_version);
+    m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(content, *game_version));
   }
 }
 
@@ -327,25 +327,16 @@ WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& 
   parse_content(content);
 }
 
-WorkspaceOGFile::~WorkspaceOGFile() {
-  if (m_ast) {
-    ts_tree_delete(m_ast);
-    m_ast = nullptr;
-  }
-}
-
 void WorkspaceOGFile::parse_content(const std::string& content) {
   m_content = content;
-  if (m_ast) {
-    ts_tree_delete(m_ast);
-    m_ast = nullptr;
-  }
   auto parser = ts_parser_new();
   if (ts_parser_set_language(parser, g_opengoalLang)) {
     // Get the AST for the current state of the file
     // TODO - eventually, we should consider doing partial updates of the AST
     // but right now the LSP just receives the entire document so that's a larger change.
-    m_ast = ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length());
+    m_ast = std::make_unique<TSTree>(
+        ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length()),
+        TreeSitterTreeDeleter());
   }
   ts_parser_delete(parser);
 }
@@ -355,7 +346,7 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
   // if this is called directly however (currently, via a hover LSP event)
   // it fails for a variety of reasons
   if (m_ast) {
-    TSNode root_node = ts_tree_root_node(m_ast);
+    TSNode root_node = ts_tree_root_node(m_ast.get());
     auto node_str = ts_node_string(root_node);
     TSNode found_node =
         ts_node_descendant_for_point_range(root_node, {position.m_line, position.m_character},

@@ -13,16 +13,20 @@
 #include "lsp/protocol/document_diagnostics.h"
 #include "lsp/protocol/document_symbols.h"
 #include "lsp/state/lsp_requester.h"
-#include "tree_sitter/api.h"
+
+#include "third-party/tree-sitter/tree-sitter/lib/src/tree.h"
 
 // TODO -
 // https://sourcegraph.com/github.com/ensisoft/detonator@36f626caf957d0734865a8f5641be6170d997f45/-/blob/editor/app/lua-tools.cpp?L116:15-116:30
+
+struct TreeSitterTreeDeleter {
+  void operator()(TSTree* ptr) const { ts_tree_delete(ptr); }
+};
 
 class WorkspaceOGFile {
  public:
   WorkspaceOGFile(){};
   WorkspaceOGFile(const std::string& content, const GameVersion& game_version);
-  virtual ~WorkspaceOGFile();
   std::string m_content;
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
@@ -33,10 +37,7 @@ class WorkspaceOGFile {
 
  private:
   int32_t version;
-  // NOTE - avoid smart pointers because they are forward declared typedefs -- can't be a field
-  // since smart pointers need a complete type definition to work from
-  TSParser* m_parser = nullptr;
-  TSTree* m_ast = nullptr;
+  std::unique_ptr<TSTree> m_ast;
 };
 
 class WorkspaceIRFile {
