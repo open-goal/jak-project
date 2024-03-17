@@ -16122,18 +16122,18 @@
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (prim-base-method-9 () none) ;; 9
+    (generate-dma! "Generate DMA for prim rendering." (_type_ matrix) none) ;; 9
     )
   )
 
 (defenum prim-flags
   :type uint32
   :bitfield #t
-  (pf0 0) ;; set by default
-  (pf1 1) ;; set by default
-  (pf2 2)
-  (pf3 3)
-  (pf4 4)
+  (alpha-blend-enable 0) ;; set by default
+  (texture-enable 1) ;; set by default
+  (fog-enable 2)
+  (pf3 3) ;; auto-clear vertices?
+  (pf4 4) ;; has new verts to draw?
   (no-texture-name 5) ;; only has the ID.
   )
 
@@ -16164,7 +16164,7 @@
   (:methods
     (new "Allocate a new prim-strip and room for vertices. The texture can be specified by name or ID."
          (symbol type int texture-id string) _type_)
-    (prim-strip-method-10 (_type_ draw-control) none) ;; 10
+    (setup-dma-and-tex "Set up the bucket, prim sink, and texture." (_type_ draw-control) none) ;; 10
     )
   )
 
@@ -16188,14 +16188,14 @@
    (mask         vector4w        :inline :offset-assert 208)
    (in-verts     int32                   :offset-assert 224)
    (num-verts    int32                   :offset-assert 228)
-   (vert-ptr     prim-vertex             :offset-assert 232)
+   (vert-ptr     (inline-array prim-vertex)             :offset-assert 232)
    (sinks        prim-sink         68 :inline     :offset-assert 236)
    )
   :method-count-assert 10
   :size-assert         #x52c
   :flag-assert         #xa0000052c
   (:methods
-    (prim-work-method-9 () none) ;; 9
+    (reset! "Reset all pending vertex/control data." (_type_) none) ;; 9
     )
   )
 
@@ -30668,8 +30668,8 @@
 ;; prim                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *prim-work* object)
-;; (define-extern prim-engine-execute function)
+(define-extern *prim-work* prim-work)
+(define-extern prim-engine-execute "Generate all prim DMA." (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sync-info                      ;;

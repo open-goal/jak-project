@@ -13,7 +13,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
   c->mov64(fp, t9);                                 // or fp, t9, r0
@@ -171,7 +171,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   c->load_symbol2(v1, cache.math_camera);           // lw v1, *math-camera*(s7)
   c->lqc2(vf26, 812, v1);                           // lqc2 vf26, 812(v1)
   c->lqc2(vf27, 812, v1);                           // lqc2 vf27, 812(v1)
@@ -2350,7 +2350,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   c->lqc2(vf23, 12, a1);                            // lqc2 vf23, 12(a1)
   c->lqc2(vf24, 12, a1);                            // lqc2 vf24, 12(a1)
   c->lw(v1, 64, a1);                                // lw v1, 64(a1)

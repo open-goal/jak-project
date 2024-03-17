@@ -280,6 +280,7 @@ namespace generic_no_light_proc { extern void link(); }
 namespace method_9_font_work { extern void link(); }
 namespace draw_string_asm { extern void link(); }
 namespace get_string_length { extern void link(); }
+namespace method_9_prim_strip { extern void link(); }
 
 }
 // clang-format on
@@ -464,8 +465,8 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak3::generic_warp_dest::link, jak3::generic_warp_envmap_dest::link,
        jak3::generic_no_light_proc::link}},
      {"font",
-      {jak3::method_9_font_work::link, jak3::draw_string_asm::link,
-       jak3::get_string_length::link}}}};
+      {jak3::method_9_font_work::link, jak3::draw_string_asm::link, jak3::get_string_length::link}},
+     {"prim", {jak3::method_9_prim_strip::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
