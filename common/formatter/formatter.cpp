@@ -5,6 +5,8 @@
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
+#include "common/formatter/rules/formatting_rules.h"
+#include "common/formatter/rules/rule_config.h"
 
 #include "tree_sitter/api.h"
 
@@ -400,8 +402,6 @@ std::string join_formatted_lines(const std::vector<std::string>& lines,
 std::optional<std::string> formatter::format_code(const std::string& source) {
   // Create a parser.
   std::shared_ptr<TSParser> parser(ts_parser_new(), TreeSitterParserDeleter());
-
-  // Set the parser's language (JSON in this case).
   ts_parser_set_language(parser.get(), tree_sitter_opengoal());
 
   // Build a syntax tree based on source code stored in a string.
@@ -418,6 +418,14 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
     lg::error("grammar parsing error, go figure it out!");
     return std::nullopt;
   }
+
+  TSNode found_node =
+          ts_node_descendant_for_point_range(root_node, {11, 11},
+                                             {11, 11});
+
+  uint32_t start = ts_node_start_byte(found_node);
+  uint32_t end = ts_node_end_byte(found_node);
+  const auto& test = source.substr(start, end - start);
 
   try {
     // There are three phases of formatting

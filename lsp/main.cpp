@@ -71,6 +71,14 @@ int main(int argc, char** argv) {
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
+  // TEST HELP
+  file_util::setup_project_path({});
+  const auto test_file_contents = file_util::read_text_file(
+      file_util::get_jak_project_dir() / "goal_src" / "jak2" / "engine" / "math" / "euler-h.gc");
+  const auto test_file = WorkspaceOGFile(test_file_contents, GameVersion::Jak2);
+  const auto result = test_file.get_symbol_at_position({11, 11});
+  // AHHH this works?!
+
   AppState appstate;
   LSPRouter lsp_router;
   appstate.verbose = verbose;
@@ -88,6 +96,11 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stdin), _O_BINARY);
 #endif
+
+  // TODO - make the server check for the process id of the extension host and exit itself if that
+  // process goes away (the process id comes on the command line as an argument and in the
+  // initialize request). This is what we do in all our servers since the extension host could die
+  // unexpected as well.
 
   try {
     char c;

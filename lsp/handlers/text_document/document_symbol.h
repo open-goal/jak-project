@@ -11,16 +11,17 @@ using json = nlohmann::json;
 
 std::optional<json> document_symbols_handler(Workspace& workspace, int /*id*/, json params) {
   auto converted_params = params.get<LSPSpec::DocumentSymbolParams>();
-  auto tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
+  auto maybe_tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
 
-  if (!tracked_file) {
+  if (!maybe_tracked_file) {
     return {};
   }
+  const auto& tracked_file = maybe_tracked_file.value().get();
 
   // TODO - convert to type!
 
   json arr = json::array();
-  for (const auto& symbol : tracked_file.value().m_symbols) {
+  for (const auto& symbol : tracked_file.m_symbols) {
     arr.push_back(symbol);
   }
   return arr;

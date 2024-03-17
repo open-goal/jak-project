@@ -1,5 +1,6 @@
 #pragma once
 
+#include "common/util/string_util.h"
 #include <optional>
 #include <regex>
 
@@ -184,19 +185,19 @@ std::optional<json> hover_handler(Workspace& workspace, int /*id*/, json raw_par
     }
     return hover_handler_ir(workspace, params, tracked_file.value());
   } else if (file_type == Workspace::FileType::OpenGOAL) {
-    auto tracked_file = workspace.get_tracked_og_file(params.m_textDocument.m_uri);
-    if (!tracked_file) {
+    auto maybe_tracked_file = workspace.get_tracked_og_file(params.m_textDocument.m_uri);
+    if (!maybe_tracked_file) {
       return {};
     }
-    // TODO - replace with AST usage instead of figuring out the symbol ourselves
-    const auto symbol = tracked_file->get_symbol_at_position(params.m_position);
+    const auto& tracked_file = maybe_tracked_file.value().get();
+    const auto symbol = tracked_file.get_symbol_at_position(params.m_position);
     if (!symbol) {
       lg::debug("hover - no symbol");
       return {};
     }
     // TODO - there is an issue with docstrings and overridden methods
     const auto& symbol_info =
-        workspace.get_global_symbol_info(tracked_file.value(), symbol.value());
+        workspace.get_global_symbol_info(tracked_file, symbol.value());
     if (!symbol_info) {
       lg::debug("hover - no symbol info - {}", symbol.value());
       return {};
@@ -231,17 +232,17 @@ std::optional<json> hover_handler(Workspace& workspace, int /*id*/, json raw_par
       }
       signature += ")";
       if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION &&
-          workspace.get_symbol_typespec(tracked_file.value(), symbol.value())) {
+          workspace.get_symbol_typespec(tracked_file, symbol.value())) {
         signature +=
-            fmt::format(": {}", workspace.get_symbol_typespec(tracked_file.value(), symbol.value())
+            fmt::format(": {}", workspace.get_symbol_typespec(tracked_file, symbol.value())
                                     ->last_arg()
                                     .base_type());
       } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
         signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
       }
-    } else if (workspace.get_symbol_typespec(tracked_file.value(), symbol.value())) {
+    } else if (workspace.get_symbol_typespec(tracked_file, symbol.value())) {
       signature += fmt::format(
-          ": {}", workspace.get_symbol_typespec(tracked_file.value(), symbol.value())->base_type());
+          ": {}", workspace.get_symbol_typespec(tracked_file, symbol.value())->base_type());
     }
 
     std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);

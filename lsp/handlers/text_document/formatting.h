@@ -16,18 +16,18 @@ std::optional<json> formatting_handler(Workspace& workspace, int /*id*/, json ra
   if (file_type == Workspace::FileType::OpenGOALIR) {
     return nullptr;
   } else if (file_type == Workspace::FileType::OpenGOAL) {
-    auto tracked_file = workspace.get_tracked_og_file(params.textDocument.m_uri);
-    if (!tracked_file) {
-      return nullptr;
+    auto maybe_tracked_file = workspace.get_tracked_og_file(params.textDocument.m_uri);
+    if (!maybe_tracked_file) {
+      return {};
     }
-    // TODO move away from holding the content directly
-    const auto result = formatter::format_code(tracked_file->m_content);
+    const auto& tracked_file = maybe_tracked_file.value().get();
+    const auto result = formatter::format_code(tracked_file.m_content);
     if (!result) {
       return nullptr;
     }
     json edits = json::array();
     auto format_edit = LSPSpec::TextEdit();
-    format_edit.range = {{0, 0}, {(uint32_t)tracked_file->m_lines.size(), 0}};
+    //format_edit.range = {{0, 0}, {(uint32_t)tracked_file->m_lines.size(), 0}};
     format_edit.newText = result.value();
     edits.push_back(format_edit);
     return edits;

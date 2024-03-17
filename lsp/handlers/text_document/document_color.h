@@ -6,6 +6,7 @@
 
 #include "lsp/protocol/common_types.h"
 #include "lsp/protocol/document_color.h"
+#include "lsp/state/workspace.h"
 
 float hexToFloat(const std::string& hex) {
   int value = std::stoi(hex, nullptr, 16);

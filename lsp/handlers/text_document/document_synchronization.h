@@ -38,11 +38,12 @@ std::optional<json> did_open_push_diagnostics(Workspace& workspace, json raw_par
   publish_params.m_version = params.m_textDocument.m_version;
 
   if (file_type == Workspace::FileType::OpenGOALIR) {
-    auto tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
-    if (!tracked_file) {
+    auto maybe_tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
+    if (!maybe_tracked_file) {
       return {};
     }
-    publish_params.m_diagnostics = tracked_file.value().m_diagnostics;
+    const auto& tracked_file = maybe_tracked_file.value().get();
+    publish_params.m_diagnostics = tracked_file.m_diagnostics;
   }
 
   json response;
@@ -61,12 +62,12 @@ std::optional<json> did_change_push_diagnostics(Workspace& workspace, json raw_p
   publish_params.m_version = params.m_textDocument.m_version;
 
   if (file_type == Workspace::FileType::OpenGOALIR) {
-    auto tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
-
-    if (!tracked_file) {
+    auto maybe_tracked_file = workspace.get_tracked_ir_file(params.m_textDocument.m_uri);
+    if (!maybe_tracked_file) {
       return {};
     }
-    publish_params.m_diagnostics = tracked_file.value().m_diagnostics;
+    const auto& tracked_file = maybe_tracked_file.value().get();
+    publish_params.m_diagnostics = tracked_file.m_diagnostics;
   }
 
   json response;

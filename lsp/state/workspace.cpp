@@ -5,9 +5,19 @@
 #include <sstream>
 
 #include "common/log/log.h"
+#include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
 
 #include "lsp/protocol/common_types.h"
+#include "tree_sitter/api.h"
+
+// Declare the `tree_sitter_opengoal` function, which is
+// implemented by the `tree-sitter-opengoal` library.
+extern "C" {
+extern const TSLanguage* tree_sitter_opengoal();
+}
+
+const TSLanguage* g_opengoalLang = tree_sitter_opengoal();
 
 std::string url_encode(const std::string& value) {
   std::ostringstream escaped;
@@ -111,18 +121,22 @@ Workspace::FileType Workspace::determine_filetype_from_uri(const LSPSpec::Docume
   return FileType::Unsupported;
 }
 
-std::optional<WorkspaceOGFile> Workspace::get_tracked_og_file(const LSPSpec::URI& file_uri) {
-  if (m_tracked_og_files.find(file_uri) == m_tracked_og_files.end()) {
-    return {};
+std::optional<std::reference_wrapper<WorkspaceOGFile>> Workspace::get_tracked_og_file(
+    const LSPSpec::URI& file_uri) {
+  auto it = m_tracked_og_files.find(file_uri);
+  if (it == m_tracked_og_files.end()) {
+    return std::nullopt;
   }
-  return m_tracked_og_files[file_uri];
+  return std::ref(it->second);
 }
 
-std::optional<WorkspaceIRFile> Workspace::get_tracked_ir_file(const LSPSpec::URI& file_uri) {
-  if (m_tracked_ir_files.count(file_uri) == 0) {
-    return {};
+std::optional<std::reference_wrapper<WorkspaceIRFile>> Workspace::get_tracked_ir_file(
+    const LSPSpec::URI& file_uri) {
+  auto it = m_tracked_ir_files.find(file_uri);
+  if (it == m_tracked_ir_files.end()) {
+    return std::nullopt;
   }
-  return m_tracked_ir_files[file_uri];
+  return std::ref(it->second);
 }
 
 std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
@@ -249,8 +263,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       try {
         // TODO - this should happen on a separate thread so the LSP is not blocking during this
         // lengthy step
-        m_compiler_instances.at(*game_version)
-            ->run_front_end_on_string("(make-group \"all-code\")");
+        // Temporarily disabled - TODO make this a setting
+        /*m_compiler_instances.at(*game_version)
+            ->run_front_end_on_string("(make-group \"all-code\")");*/
         m_requester.send_progress_finish_request(progress_title, "indexed");
       } catch (std::exception& e) {
         // TODO - If it fails, annotate errors
@@ -269,7 +284,7 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
   lg::debug("potentially updating - {}", file_uri);
   // Check if the file is already tracked or not, this is done because change events don't give
   // language details it's assumed you are keeping track of that!
-  if (m_tracked_ir_files.count(file_uri) != 0) {
+  if (m_tracked_ir_files.find(file_uri) != m_tracked_ir_files.end()) {
     lg::debug("updating tracked IR file - {}", file_uri);
     WorkspaceIRFile file(content);
     m_tracked_ir_files[file_uri] = file;
@@ -283,51 +298,102 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
       all_types_file->m_game_version = file.m_game_version;
       all_types_file->update_type_system();
     }
-  }
-
-  if (m_tracked_all_types_files.count(file_uri) != 0) {
+  } else if (m_tracked_all_types_files.find(file_uri) != m_tracked_all_types_files.end()) {
     lg::debug("updating tracked all types file - {}", file_uri);
     // If the all-types file has changed, re-parse it
     // NOTE - this assumes its still for the same game version!
     m_tracked_all_types_files[file_uri]->update_type_system();
+  } else if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
+    lg::debug("updating tracked OG file - {}", file_uri);
+    m_tracked_og_files[file_uri].parse_content(content);
   }
 };
 
 void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
-  if (m_tracked_ir_files.count(file_uri) != 0) {
+  if (m_tracked_ir_files.find(file_uri) != m_tracked_ir_files.end()) {
     m_tracked_ir_files.erase(file_uri);
-  }
-  if (m_tracked_all_types_files.count(file_uri) != 0) {
+  } else if (m_tracked_all_types_files.find(file_uri) != m_tracked_all_types_files.end()) {
     m_tracked_all_types_files.erase(file_uri);
+  } else if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
+    m_tracked_og_files.erase(file_uri);
   }
 }
 
 WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
-    : m_content(content), m_game_version(game_version) {
+    : m_game_version(game_version) {
   const auto line_ending = file_util::get_majority_file_line_endings(content);
-  m_lines = str_util::split_string(content, line_ending);
-  lg::info("Added new OG file. {} lines with {} symbols and {} diagnostics", m_lines.size(),
-           m_symbols.size(), m_diagnostics.size());
+  lg::info("Added new OG file. {} symbols and {} diagnostics", m_symbols.size(),
+           m_diagnostics.size());
+  parse_content(content);
+}
+
+WorkspaceOGFile::~WorkspaceOGFile() {
+  if (m_ast) {
+    ts_tree_delete(m_ast);
+    m_ast = nullptr;
+  }
+}
+
+void WorkspaceOGFile::parse_content(const std::string& content) {
+  m_content = content;
+  if (m_ast) {
+    ts_tree_delete(m_ast);
+    m_ast = nullptr;
+  }
+  auto parser = ts_parser_new();
+  if (ts_parser_set_language(parser, g_opengoalLang)) {
+    // Get the AST for the current state of the file
+    // TODO - eventually, we should consider doing partial updates of the AST
+    // but right now the LSP just receives the entire document so that's a larger change.
+    m_ast = ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length());
+  }
+  ts_parser_delete(parser);
 }
 
 std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
     const LSPSpec::Position position) const {
-  // Split the line on typical word boundaries
-  std::string line = m_lines.at(position.m_line);
-  std::smatch matches;
-  std::regex regex("[\\w\\.\\-_!<>*?]+");
-  std::regex_token_iterator<std::string::iterator> rend;
-
-  std::regex_token_iterator<std::string::iterator> match(line.begin(), line.end(), regex);
-  while (match != rend) {
-    auto match_start = std::distance(line.begin(), match->first);
-    auto match_end = match_start + match->length();
-    if (position.m_character >= match_start && position.m_character <= match_end) {
-      return match->str();
+  // if this is called directly however (currently, via a hover LSP event)
+  // it fails for a variety of reasons
+  if (m_ast) {
+    // This does work (reparsing right here and now instead of using the already parsed tree)
+    auto parser = ts_parser_new();
+    if (ts_parser_set_language(parser, g_opengoalLang)) {
+      // Get the AST for the current state of the file
+      // TODO - eventually, we should consider doing partial updates of the AST
+      // but right now the LSP just receives the entire document so that's a larger change.
+      auto temp_ast = ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length());
+      TSNode root_node = ts_tree_root_node(temp_ast);
+      TSNode found_node =
+          ts_node_descendant_for_point_range(root_node, {position.m_line, position.m_character},
+                                             {position.m_line, position.m_character});
+      if (!ts_node_has_error(found_node)) {
+        uint32_t start = ts_node_start_byte(found_node);
+        uint32_t end = ts_node_end_byte(found_node);
+        const std::string node_str = m_content.substr(start, end - start);
+        const std::string node_name = ts_node_type(found_node);
+      } else {
+        found_node = ts_node_child(found_node, 0);
+      }
     }
-    match++;
+    ts_parser_delete(parser);
+    // This doesn't work for some reason
+    TSNode root_node = ts_tree_root_node(m_ast);
+    auto node_str = ts_node_string(root_node);
+    TSNode found_node =
+        ts_node_descendant_for_point_range(root_node, {position.m_line, position.m_character},
+                                           {position.m_line, position.m_character});
+    if (!ts_node_has_error(found_node)) {
+      uint32_t start = ts_node_start_byte(found_node);
+      uint32_t end = ts_node_end_byte(found_node);
+      const std::string node_str = m_content.substr(start, end - start);
+      const std::string node_name = ts_node_type(found_node);
+      if (node_name == "sym_name") {
+        return node_str;
+      }
+    } else {
+      found_node = ts_node_child(found_node, 0);
+    }
   }
-
   return {};
 }
 

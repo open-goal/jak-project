@@ -13,21 +13,30 @@
 #include "lsp/protocol/document_diagnostics.h"
 #include "lsp/protocol/document_symbols.h"
 #include "lsp/state/lsp_requester.h"
+#include "tree_sitter/api.h"
+
+// TODO -
+// https://sourcegraph.com/github.com/ensisoft/detonator@36f626caf957d0734865a8f5641be6170d997f45/-/blob/editor/app/lua-tools.cpp?L116:15-116:30
 
 class WorkspaceOGFile {
  public:
   WorkspaceOGFile(){};
   WorkspaceOGFile(const std::string& content, const GameVersion& game_version);
-  // TODO - make private
-  int32_t version;
-  // TODO - keep an AST of the file instead
+  virtual ~WorkspaceOGFile();
   std::string m_content;
-  std::vector<std::string> m_lines;
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
   GameVersion m_game_version;
 
+  void parse_content(const std::string& new_content);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position) const;
+
+ private:
+  int32_t version;
+  // NOTE - avoid smart pointers because they are forward declared typedefs -- can't be a field
+  // since smart pointers need a complete type definition to work from
+  TSParser* m_parser = nullptr;
+  TSTree* m_ast = nullptr;
 };
 
 class WorkspaceIRFile {
@@ -99,8 +108,10 @@ class Workspace {
                            const std::string& content);
   void update_tracked_file(const LSPSpec::DocumentUri& file_uri, const std::string& content);
   void stop_tracking_file(const LSPSpec::DocumentUri& file_uri);
-  std::optional<WorkspaceOGFile> get_tracked_og_file(const LSPSpec::URI& file_uri);
-  std::optional<WorkspaceIRFile> get_tracked_ir_file(const LSPSpec::URI& file_uri);
+  std::optional<std::reference_wrapper<WorkspaceOGFile>> get_tracked_og_file(
+      const LSPSpec::URI& file_uri);
+  std::optional<std::reference_wrapper<WorkspaceIRFile>> get_tracked_ir_file(
+      const LSPSpec::URI& file_uri);
   std::optional<DefinitionMetadata> get_definition_info_from_all_types(
       const std::string& symbol_name,
       const LSPSpec::DocumentUri& all_types_uri);
