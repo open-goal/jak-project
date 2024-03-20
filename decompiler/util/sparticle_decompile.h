@@ -6,6 +6,7 @@
 #include "common/versions/versions.h"
 
 #include "decompiler/ObjectFile/LinkedWord.h"
+#include <decompiler/IR2/Env.h>
 
 namespace decompiler {
 goos::Object decompile_sparticle_field_init(const std::vector<decompiler::LinkedWord>& words,
@@ -14,5 +15,6 @@ goos::Object decompile_sparticle_field_init(const std::vector<decompiler::Linked
                                             goos::Object sound_spec,
                                             goos::Object userdata,
                                             const TypeSystem& ts,
-                                            GameVersion version);
+                                            GameVersion version,
+                                            const Env& env);
 }  // namespace decompiler

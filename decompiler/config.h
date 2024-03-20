@@ -11,7 +11,10 @@
 #include "common/versions/versions.h"
 
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/data/TextureDB.h"
 #include "decompiler/data/game_text.h"
+
+#include "third-party/json.hpp"
 
 namespace decompiler {
 struct RegisterTypeCast {
@@ -110,6 +113,7 @@ struct Config {
   bool write_scripts = false;
   bool disassemble_data = false;
   bool process_tpages = false;
+  bool write_tpage_imports = false;
   bool process_game_text = false;
   bool process_game_count = false;
   bool process_art_groups = false;
@@ -117,6 +121,7 @@ struct Config {
   bool process_subtitle_images = false;
   bool dump_art_group_info = false;
   bool dump_joint_geo_info = false;
+  bool dump_tex_info = false;
   bool rip_levels = false;
   bool extract_collision = false;
   bool find_functions = false;
@@ -176,6 +181,7 @@ struct Config {
       art_group_file_override;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info_dump;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info_dump;
+  std::unordered_map<u32, TexInfo> texture_info_dump;
   std::unordered_map<std::string, std::string> joint_node_hacks;
   std::unordered_map<std::string, int> process_stack_size_overrides;
 
@@ -187,5 +193,8 @@ struct Config {
 Config read_config_file(const fs::path& path_to_config_file,
                         const std::string& config_game_version,
                         const std::string& override_json = "{}");
+
+void from_json(const nlohmann::json& j, TexInfo& info);
+void to_json(nlohmann::json& j, const TexInfo& info);
 
 }  // namespace decompiler

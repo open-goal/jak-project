@@ -154,7 +154,7 @@ bool run_build_level(const std::string& input_file,
     decompiler::TextureDB tex_db;
     auto textures_out = file_util::get_jak_project_dir() / "decompiler_out/jak1/textures";
     file_util::create_dir_if_needed(textures_out);
-    db.process_tpages(tex_db, textures_out, config);
+    db.process_tpages(tex_db, textures_out, config, "");
 
     std::vector<std::string> processed_art_groups;
 
