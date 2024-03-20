@@ -99,6 +99,7 @@ class Compiler {
   std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
+  TypeSystem& type_system() { return m_ts; };
 
  private:
   GameVersion m_version;

@@ -219,6 +219,7 @@ std::optional<json> hover_handler(Workspace& workspace, int /*id*/, json raw_par
       takes_args = false;
     }
     // TODO - others useful, probably states?
+    auto type_info = workspace.get_symbol_typeinfo(tracked_file, symbol.value());
     signature += symbol.value();
     if (takes_args) {
       signature += "(";
@@ -232,17 +233,16 @@ std::optional<json> hover_handler(Workspace& workspace, int /*id*/, json raw_par
       }
       signature += ")";
       if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION &&
-          workspace.get_symbol_typespec(tracked_file, symbol.value())) {
+          type_info) {
         signature +=
-            fmt::format(": {}", workspace.get_symbol_typespec(tracked_file, symbol.value())
-                                    ->last_arg()
+            fmt::format(": {}", type_info->first.last_arg()
                                     .base_type());
       } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
         signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
       }
-    } else if (workspace.get_symbol_typespec(tracked_file, symbol.value())) {
+    } else if (type_info) {
       signature += fmt::format(
-          ": {}", workspace.get_symbol_typespec(tracked_file, symbol.value())->base_type());
+          ": {}", type_info->second->get_parent());
     }
 
     std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);

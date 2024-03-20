@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 
 #include "common/util/FileUtil.h"
@@ -37,7 +38,7 @@ class WorkspaceOGFile {
 
  private:
   int32_t version;
-  std::unique_ptr<TSTree> m_ast;
+  std::shared_ptr<TSTree> m_ast;
 };
 
 class WorkspaceIRFile {
@@ -118,8 +119,8 @@ class Workspace {
       const LSPSpec::DocumentUri& all_types_uri);
   std::optional<SymbolInfo> get_global_symbol_info(const WorkspaceOGFile& file,
                                                    const std::string& symbol_name);
-  std::optional<TypeSpec> get_symbol_typespec(const WorkspaceOGFile& file,
-                                              const std::string& symbol_name);
+  std::optional<std::pair<TypeSpec, Type*>> get_symbol_typeinfo(const WorkspaceOGFile& file,
+                                                                 const std::string& symbol_name);
   std::optional<Docs::DefinitionLocation> get_symbol_def_location(const WorkspaceOGFile& file,
                                                                   const SymbolInfo& symbol_info);
 

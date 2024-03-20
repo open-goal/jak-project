@@ -2,11 +2,11 @@
 
 #include "formatter_tree.h"
 
+#include "common/formatter/rules/formatting_rules.h"
+#include "common/formatter/rules/rule_config.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/string_util.h"
-#include "common/formatter/rules/formatting_rules.h"
-#include "common/formatter/rules/rule_config.h"
 
 #include "tree_sitter/api.h"
 
@@ -419,9 +419,7 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
     return std::nullopt;
   }
 
-  TSNode found_node =
-          ts_node_descendant_for_point_range(root_node, {11, 11},
-                                             {11, 11});
+  TSNode found_node = ts_node_descendant_for_point_range(root_node, {11, 11}, {11, 11});
 
   uint32_t start = ts_node_start_byte(found_node);
   uint32_t end = ts_node_end_byte(found_node);

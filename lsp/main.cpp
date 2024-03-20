@@ -94,29 +94,7 @@ int main(int argc, char** argv) {
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
 
-  // TEST HELP
-  file_util::setup_project_path({});
-  const auto test_file_contents = file_util::read_text_file(
-      file_util::get_jak_project_dir() / "goal_src" / "jak2" / "engine" / "math" / "euler-h.gc");
-  const auto test_file = WorkspaceOGFile(test_file_contents, GameVersion::Jak2);
-  const auto result = test_file.get_symbol_at_position({11, 11});
-  // AHHH this works?!
-
   AppState appstate;
-
-  auto path_str = file_util::convert_to_unix_path_separators(
-      "C:\\Users\\xtvas\\Repositories\\opengoal\\jak-project\\goal_src\\jak2\\engine\\math\\euler-"
-      "h.gc");
-  path_str = temp_url_encode(path_str);
-  const auto file_uri = fmt::format("file:///{}", path_str);
-
-  appstate.workspace.start_tracking_file(file_uri, "opengoal", test_file_contents);
-  auto maybe_tracked_file = appstate.workspace.get_tracked_og_file(file_uri);
-  if (!maybe_tracked_file) {
-    return {};
-  }
-  const auto& tracked_file = maybe_tracked_file.value().get();
-  const auto symbol = tracked_file.get_symbol_at_position({11, 11});
 
   LSPRouter lsp_router;
   appstate.verbose = verbose;

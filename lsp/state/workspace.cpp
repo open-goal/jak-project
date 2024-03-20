@@ -187,8 +187,10 @@ std::optional<SymbolInfo> Workspace::get_global_symbol_info(const WorkspaceOGFil
   return symbol;
 }
 
-std::optional<TypeSpec> Workspace::get_symbol_typespec(const WorkspaceOGFile& file,
-                                                       const std::string& symbol_name) {
+// TODO - consolidate what is needed into `SymbolInfo`
+std::optional<std::pair<TypeSpec, Type*>> Workspace::get_symbol_typeinfo(
+    const WorkspaceOGFile& file,
+    const std::string& symbol_name) {
   if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
     lg::debug("Compiler not instantiated for game version - {}",
               version_to_game_name(file.m_game_version));
@@ -197,7 +199,11 @@ std::optional<TypeSpec> Workspace::get_symbol_typespec(const WorkspaceOGFile& fi
   const auto& compiler = m_compiler_instances[file.m_game_version].get();
   const auto typespec = compiler->lookup_typespec(symbol_name);
   if (typespec) {
-    return typespec;
+    // TODO - structures have the parent type of 'basic', this contradicts the code.
+    const auto full_type_info = compiler->type_system().lookup_type_no_throw(typespec.value());
+    if (full_type_info != nullptr) {
+      return std::make_pair(typespec.value(), full_type_info);
+    }
   }
   return {};
 }
@@ -263,9 +269,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       try {
         // TODO - this should happen on a separate thread so the LSP is not blocking during this
         // lengthy step
-        // Temporarily disabled - TODO make this a setting
-        /*m_compiler_instances.at(*game_version)
-            ->run_front_end_on_string("(make-group \"all-code\")");*/
+        // TODO - make this a setting (disable indexing)
+        m_compiler_instances.at(*game_version)
+            ->run_front_end_on_string("(make-group \"all-code\")");
         m_requester.send_progress_finish_request(progress_title, "indexed");
       } catch (std::exception& e) {
         // TODO - If it fails, annotate errors
@@ -334,9 +340,8 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
     // Get the AST for the current state of the file
     // TODO - eventually, we should consider doing partial updates of the AST
     // but right now the LSP just receives the entire document so that's a larger change.
-    m_ast = std::make_unique<TSTree>(
-        ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length()),
-        TreeSitterTreeDeleter());
+    m_ast.reset(ts_parser_parse_string(parser, NULL, m_content.c_str(), m_content.length()),
+                TreeSitterTreeDeleter());
   }
   ts_parser_delete(parser);
 }
