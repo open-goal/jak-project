@@ -5,8 +5,8 @@
 #include "common/type_system/TypeSystem.h"
 #include "common/versions/versions.h"
 
+#include "decompiler/IR2/Env.h"
 #include "decompiler/ObjectFile/LinkedWord.h"
-#include <decompiler/IR2/Env.h>
 
 namespace decompiler {
 goos::Object decompile_sparticle_field_init(const std::vector<decompiler::LinkedWord>& words,
