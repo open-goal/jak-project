@@ -1,16 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: level.gc
-;; name in dgo: level
-;; dgos: GAME
-
-(define-extern level-update-after-load (function level login-state level))
-(define-extern *level-type-list* type)
-(define-extern city-sound-expand-want-list (function none))
-
-;; DECOMP BEGINS
-
+;; definition for function level-memory-mode->string
 (defun level-memory-mode->string ((arg0 level-memory-mode))
   "Convert level-memory-mode enum to string."
   (case arg0
@@ -80,6 +71,7 @@
     )
   )
 
+;; definition for function lookup-level-info
 ;; WARN: Return type mismatch object vs level-load-info.
 (defun lookup-level-info ((arg0 symbol))
   "Get the level load info. Symbol can be the level name, visname, nickname, or a symbol that contains a level-load-info value."
@@ -118,6 +110,7 @@
     )
   )
 
+;; definition for method 9 of type level-load-info
 (defmethod get-callback-symbol-value-by-slot! ((this level-load-info) (arg0 int))
   "Look up value of symbol in callback-list with the given int as the car. Print warning if symbol's value is 0."
   (let* ((v1-0 (the-as object (-> this callback-list)))
@@ -147,6 +140,7 @@
   #f
   )
 
+;; definition for method 10 of type level-load-info
 ;; WARN: Return type mismatch pair vs object.
 (defmethod get-callback-by-slot! ((this level-load-info) (arg0 int))
   "Look up value in callback-list with the given int as the car and return it. Doesn't derefence the symbol."
@@ -168,11 +162,13 @@
   (the-as pair #f)
   )
 
+;; definition for method 28 of type level-group
 (defmethod load-in-progress? ((this level-group))
   "Is there a load happening now?"
   (!= (-> *level* loading-level) (-> *level* level-default))
   )
 
+;; definition for method 11 of type level-group
 (defmethod get-level-by-heap-ptr-and-status ((this level-group) (arg0 pointer) (arg1 symbol))
   "Look up a loaded level, given pointer inside of level's heap,
    and the status of the level (active or loading)."
@@ -207,6 +203,7 @@
   (the-as level #f)
   )
 
+;; definition for method 29 of type level-group
 ;; WARN: Return type mismatch object vs symbol.
 (defmethod is-load-allowed? ((this level-group) (arg0 (pointer symbol)))
   "Does the exclusive-load setting allow us to load this level?"
@@ -250,6 +247,7 @@
     )
   )
 
+;; definition for function remap-level-name
 (defun remap-level-name ((arg0 level-load-info))
   "Get the load name, depending on if we should load a vis level or not."
   (if (-> *level* vis?)
@@ -258,6 +256,7 @@
       )
   )
 
+;; definition for method 21 of type level
 (defmethod get-art-group-by-name ((this level) (arg0 string))
   "Look up art-group in this level by name."
   (countdown (s4-0 (-> this art-group art-group-array length))
@@ -268,6 +267,7 @@
   (the-as art-group #f)
   )
 
+;; definition for method 13 of type level
 (defmethod bsp-name ((this level))
   "Try getting the name from the BSP. If that fails, return the level's name (typically the same)."
   (if (and (!= (-> this status) 'inactive) (-> this bsp) (nonzero? (-> this bsp name)))
@@ -276,6 +276,7 @@
       )
   )
 
+;; definition for function add-bsp-drawable
 (defun add-bsp-drawable ((arg0 bsp-header) (arg1 level) (arg2 symbol) (arg3 display-frame))
   "Callback function used by background-engine to draw a bsp.
    Note that most drawing work has been moved into finish-background,
@@ -288,11 +289,13 @@
   (none)
   )
 
+;; definition for method 2 of type level
 (defmethod print ((this level))
   (format #t "#<~A ~A ~S @ #x~X>" (-> this type) (-> this status) (-> this name) this)
   this
   )
 
+;; definition for method 7 of type bsp-header
 (defmethod relocate ((this bsp-header) (offset int))
   (let ((gp-0 (-> *level* loading-level)))
     (when gp-0
@@ -331,6 +334,7 @@
     )
   )
 
+;; definition for method 27 of type level
 ;; WARN: Return type mismatch level vs none.
 (defmethod load-common-package ((this level))
   "Somewhat useless leftover from a more compliated package system. Will load common in some cases."
@@ -342,6 +346,9 @@
   (none)
   )
 
+;; definition for method 29 of type level
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod vis-clear ((this level))
   "Clear visibility data: both the info and the cached vis bits. Switch all-visible? to loading."
   (countdown (v1-0 8)
@@ -349,13 +356,15 @@
     (set! (-> this vis-info v1-0) #f)
     )
   (dotimes (v1-3 128)
-    (set! (-> (the-as (pointer int128) (&+ (-> this vis-bits) (* v1-3 16)))) (the int128 0))
+    (set! (-> (the-as (pointer int128) (&+ (-> this vis-bits) (* v1-3 16)))) 0)
     )
   (set! (-> this all-visible?) 'loading)
   0
   (none)
   )
 
+;; definition for method 28 of type level
+;; WARN: Return type mismatch int vs none.
 (defmethod init-vis-from-bsp ((this level))
   "Link vis-infos from the bsp to the level."
   (when (not (or (= (-> this status) 'inactive) (not (-> this bsp))))
@@ -387,11 +396,12 @@
   (none)
   )
 
+;; definition for method 12 of type level-group
 (defmethod level-get-for-use ((this level-group) (arg0 symbol) (arg1 symbol))
   "Request a level by name in the given state.
    Will return quickly (non-blocking) and might not be able to get a level in the desired state,
    though it will do some small amount of work to make progress on loading.
-
+   
    This is the most general/powerful function like this: if there is no level with this name
    it will kick out levels as needed to make a free slot, and set up a new level, and start
    the load. This should only be used when you might want to start a load."
@@ -460,12 +470,15 @@
   s5-1
   )
 
+;; definition for method 27 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod do-nothing ((this level-group))
   "Empty method."
   0
   (none)
   )
 
+;; definition for method 26 of type level-group
 (defmethod status-of-level-and-borrows ((this level-group) (arg0 symbol) (arg1 symbol))
   "Get the combined status of a level and borrow levels."
   (if (not arg0)
@@ -540,6 +553,8 @@
     )
   )
 
+;; definition for method 26 of type level
+;; INFO: Used lq/sq
 (defmethod level-status-update! ((this level) (arg0 symbol))
   "Try to update the level to the given status, calling whatever is needed to make it happen.
    This can do both loading, linking, login, and activation.
@@ -615,10 +630,14 @@
   this
   )
 
+;; definition for symbol *login-state*, type login-state
 (define *login-state* (new 'global 'login-state))
 
+;; definition for symbol *print-login*, type symbol
 (define *print-login* #t)
 
+;; definition for function load-buffer-resize
+;; WARN: Return type mismatch int vs none.
 (defun load-buffer-resize ((arg0 level) (arg1 dgo-header))
   "Resize and relocate the DGO load buffers, making sure there is enough room to both load objects and heap alloc in the linker."
   (case (-> arg0 load-buffer-mode)
@@ -642,6 +661,7 @@
   (none)
   )
 
+;; definition for method 17 of type level
 (defmethod load-continue ((this level))
   "Main function to run level loading/linking.
    Called by the engine to make progress on loading levels."
@@ -769,6 +789,8 @@
   this
   )
 
+;; definition for function level-find-borrow-slot
+;; WARN: Return type mismatch int vs none.
 (defun level-find-borrow-slot ((borrower-level level) (mode level-memory-mode))
   "Set up a level to 'borrow' from another.
    This function finds the right 'host' level, which should
@@ -903,6 +925,7 @@
   (none)
   )
 
+;; definition for method 18 of type level
 (defmethod load-begin ((this level))
   "Start loading data of a level."
   (local-vars
@@ -1631,6 +1654,7 @@
   this
   )
 
+;; definition for method 19 of type level
 (defmethod login-begin ((this level))
   "Start logging in loaded level data."
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
@@ -1695,7 +1719,9 @@
   this
   )
 
+;; definition for function level-update-after-load
 ;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; INFO: Used lq/sq
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 s5, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
 ;; ERROR: Unsupported inline assembly instruction kind - [mfc0 v1, Count]
@@ -1954,7 +1980,7 @@
   (when (-> arg0 info borrow)
     (dotimes (v1-229 5)
       (set! (-> arg0 heap top-base)
-            (the pointer (&- (-> arg0 heap top-base) (the-as uint (shl (-> arg0 info borrow borrow-size v1-229) 10))))
+            (&- (-> arg0 heap top-base) (the-as uint (shl (-> arg0 info borrow borrow-size v1-229) 10)))
             )
       (set! (-> arg0 heap top) (-> arg0 heap top-base))
       (let ((a0-121 (-> arg0 borrow-heap v1-229)))
@@ -1984,6 +2010,8 @@
   arg0
   )
 
+;; definition for method 25 of type level
+;; INFO: Used lq/sq
 (defmethod birth ((this level))
   "Start running a level."
   (local-vars (sv-96 int))
@@ -2057,6 +2085,8 @@
   this
   )
 
+;; definition for method 9 of type level
+;; INFO: Used lq/sq
 (defmethod deactivate ((this level))
   "Keep a level in memory, but kill entities and stop drawing it."
   (case (-> this status)
@@ -2089,7 +2119,7 @@
      (set! (-> this light-hash) (the-as light-hash 0))
      (set! (-> this all-visible?) 'loading)
      (dotimes (v1-35 128)
-       (set! (-> (the-as (pointer int128) (&+ (-> this vis-bits) (* v1-35 16)))) (the int128 0))
+       (set! (-> (the-as (pointer int128) (&+ (-> this vis-bits) (* v1-35 16)))) 0)
        )
      (countdown (v1-38 8)
        (let ((a0-23 (-> this vis-info v1-38)))
@@ -2126,6 +2156,7 @@
   this
   )
 
+;; definition for method 10 of type level
 (defmethod unload! ((this level))
   "Remove level from memory."
   (deactivate this)
@@ -2301,31 +2332,23 @@
   this
   )
 
+;; definition for method 11 of type level
+;; ERROR: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
 (defmethod is-object-visible? ((this level) (arg0 int))
-  "Is drawable arg0 visible? Note that this will return #f if the visibility data is not loaded."
-  ;; check the vis bits!
-  (let* (;; lwu v1, 388(a0)
-            (vis-data (-> this vis-bits))
-            ;; sra a0, a1, 3
-            (byte-idx (sar arg0 3))
-            ;; daddu v1, a0, v1
-            ;; lb v1, 0(v1)
-            (vis-byte (-> (the (pointer int8) vis-data) byte-idx))
-            ;; andi a0, a1, 7
-            (bit-idx (logand arg0 #b111))
-            ;; addiu a0, a0, 56
-            (shift-amount (+ bit-idx 56)) ;; 56 + 8 = 64, to set the sign bit
-            ;; dsllv v1, v1, a0
-            (check-sign-word (the int (shl vis-byte shift-amount))) ;; signed
-            )
-    ;; slt v1, v1, r0    v1 = (csw < 0)
-    ;; daddiu v0, s7, 8
-    ;; movz v0, s7, v1   if (csw >= 0) result = false
-    ;;(format 0 "vis check ~D ~X ~X ~A~%" arg0 vis-byte check-sign-word (>= check-sign-word 0))
-    (< check-sign-word 0)
+  "Look up object visibility from bit-string."
+  (local-vars (a0-1 int) (a0-3 int))
+  (let ((v1-0 (-> this vis-bits)))
+    (shift-arith-right-32 a0-1 arg0 3)
+    (let ((v1-2 (-> (the-as (pointer int8) (+ a0-1 (the-as int v1-0))))))
+      (let ((a0-2 (logand arg0 7)))
+        (.addiu a0-3 a0-2 56)
+        )
+      (< (shl v1-2 a0-3) 0)
+      )
     )
   )
 
+;; definition for method 15 of type level
 (defmethod inside-bsp? ((this level))
   "Check if the camera is inside the BSP for this level."
   (cond
@@ -2341,6 +2364,8 @@
     )
   )
 
+;; definition for method 20 of type level
+;; WARN: Return type mismatch int vs none.
 (defmethod debug-print-region-splitbox ((this level) (arg0 vector) (arg1 object))
   (cond
     ((or (not (-> this bsp)) (zero? (-> this bsp region-tree)))
@@ -2353,6 +2378,7 @@
   (none)
   )
 
+;; definition for method 8 of type level
 (defmethod mem-usage ((this level) (usage memory-usage-block) (flags int))
   (when (= (-> this status) 'active)
     (set! (-> usage length) (max 68 (-> usage length)))
@@ -2407,6 +2433,8 @@
   this
   )
 
+;; definition for method 21 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod init-level-system ((this level-group) (arg0 symbol))
   "If needed, initialize the level system by loading common/art packages and allocating level heaps."
   (when (zero? (-> *level* heap base))
@@ -2437,6 +2465,7 @@
   (none)
   )
 
+;; definition for method 10 of type level-group
 (defmethod level-get-with-status ((this level-group) (arg0 symbol))
   "Get the first level with the given status, #f if there are none."
   (dotimes (v1-0 (-> this length))
@@ -2447,6 +2476,7 @@
   (the-as level #f)
   )
 
+;; definition for method 30 of type level-group
 (defmethod level-get-most-disposable ((this level-group))
   "Get the level inside this level-group that should
    be used to load a new level."
@@ -2487,6 +2517,7 @@
     )
   )
 
+;; definition for method 9 of type level-group
 (defmethod level-get ((this level-group) (arg0 symbol))
   "Lookup loaded level by name."
   (when arg0
@@ -2501,6 +2532,7 @@
     )
   )
 
+;; definition for method 22 of type level-group
 (defmethod art-group-get-by-name ((this level-group) (arg0 string) (arg1 (pointer level)))
   "Check all levels for an art group with the given name."
   (countdown (s4-0 11)
@@ -2520,6 +2552,7 @@
   (the-as art-group #f)
   )
 
+;; definition for method 13 of type level-group
 (defmethod activate-levels! ((this level-group))
   "Make all levels 'active!"
   (dotimes (s5-0 (-> this length))
@@ -2528,6 +2561,7 @@
   0
   )
 
+;; definition for method 20 of type level-group
 (defmethod level-get-target-inside ((this level-group))
   "Get the level that the player is 'in'."
   (let ((s5-0 (target-pos 0)))
@@ -2601,6 +2635,7 @@
     )
   )
 
+;; definition for method 8 of type level-group
 (defmethod mem-usage ((this level-group) (usage memory-usage-block) (flags int))
   (dotimes (s3-0 (-> this length))
     (mem-usage (-> this level s3-0) usage flags)
@@ -2608,6 +2643,8 @@
   this
   )
 
+;; definition for function bg
+;; WARN: Return type mismatch int vs none.
 (defun bg ((arg0 symbol))
   "Debug function to start playing a given level."
   (set! *cheat-mode* (if *debug-segment*
@@ -2691,6 +2728,7 @@
   (none)
   )
 
+;; definition for function play
 (defun play ((arg0 symbol) (arg1 symbol))
   "Start (or restart) the game!
    This will start up the display process, and load the initial level."
@@ -2773,6 +2811,8 @@
   0
   )
 
+;; definition for function play-boot
+;; WARN: Return type mismatch int vs none.
 (defun play-boot ()
   "Function called by the C Kernel to start the game (wrapper around play)."
   (process-spawn-function
@@ -2785,6 +2825,7 @@
   (none)
   )
 
+;; definition for function sound-bank-name->mode
 ;; WARN: Return type mismatch int vs sound-bank-mode.
 (defun sound-bank-name->mode ((arg0 symbol))
   (let ((v1-0 arg0))
@@ -2819,6 +2860,8 @@
     )
   )
 
+;; definition for function update-sound-banks
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function update-sound-banks has a return type of none, but the expression builder found a return statement.
 (defun update-sound-banks ((arg0 load-state) (arg1 (inline-array sound-bank-state)))
   (local-vars (v1-90 symbol))
@@ -3173,6 +3216,7 @@
   (none)
   )
 
+;; definition for method 10 of type load-state
 (defmethod update! ((this load-state))
   (local-vars (a0-11 symbol))
   (if (-> this update-callback)
@@ -3363,6 +3407,8 @@
   0
   )
 
+;; definition for method 16 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod assign-draw-indices ((this level-group))
   "Assign the order for levels to be drawn."
   (local-vars (t0-3 symbol))
@@ -3417,6 +3463,8 @@
   (none)
   )
 
+;; definition for method 19 of type level-group
+;; WARN: Return type mismatch int vs none.
 (defmethod level-update ((this level-group))
   "Per-frame update of the level system."
   (local-vars (v1-109 symbol))
@@ -3709,6 +3757,8 @@
   (none)
   )
 
+;; definition (debug) for function show-level
+;; WARN: Return type mismatch int vs none.
 (defun-debug show-level ((arg0 symbol))
   (set! (-> *setting-control* user-default border-mode) #t)
   (let ((s5-0 (new 'stack-no-clear 'array 'symbol 10)))
@@ -3729,6 +3779,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (when (zero? (-> *level* level0 art-group))
   (kmemopen global "level-struct")
   (let ((gp-0 *level*))
@@ -3774,3 +3825,7 @@
     )
   (kmemclose)
   )
+
+
+
+
