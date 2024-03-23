@@ -1596,5 +1596,21 @@
   `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage))
   )
 
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000244140625)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
+
 (import "goal_src/jak3/engine/data/tpages.gc")
 (import "goal_src/jak3/engine/data/textures.gc")
