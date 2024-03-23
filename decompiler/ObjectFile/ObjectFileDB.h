@@ -254,7 +254,10 @@ class ObjectFileDB {
                             const std::vector<std::string>& imports,
                             const std::unordered_set<std::string>& skip_functions);
 
-  std::string process_tpages(TextureDB& tex_db, const fs::path& output_path, const Config& cfg);
+  std::string process_tpages(TextureDB& tex_db,
+                             const fs::path& output_path,
+                             const Config& cfg,
+                             const fs::path& dump_out);
   std::string process_game_count_file();
   std::string process_game_text_files(const Config& cfg);
   std::string process_all_spool_subtitles(const Config& cfg, const fs::path& image_out);
@@ -397,4 +400,6 @@ class ObjectFileDB {
 
 std::string print_art_elt_for_dump(const std::string& group_name, const std::string& name, int idx);
 std::string print_jg_for_dump(const std::string& jg_name, const std::string& joint_name, int idx);
+std::string print_tpage_for_dump(const std::string& debug_name, u32 id);
+std::string print_tex_for_dump(const std::string& name, const std::string& page_name, u32 idx);
 }  // namespace decompiler

@@ -7,3 +7,42 @@
 
 ;; DECOMP BEGINS
 
+(defun cam-stop ()
+  (kill-by-name "camera-master" *active-pool*)
+  (kill-by-name "camera-slave" *active-pool*)
+  (kill-by-name "camera-combiner" *active-pool*)
+  (set! *camera* #f)
+  (set! *camera-combiner* #f)
+  #f
+  )
+
+(defun cam-start ((arg0 symbol))
+  (cam-stop)
+  (set! *camera-combiner* (the-as camera-combiner (ppointer->process (process-spawn
+                                                                       camera-combiner
+                                                                       :init cam-combiner-init
+                                                                       :name "camera-combiner"
+                                                                       :from *camera-dead-pool*
+                                                                       :to *camera-pool*
+                                                                       )
+                                                                     )
+                                                  )
+        )
+  (set! *camera* (the-as camera-master (ppointer->process (process-spawn
+                                                            camera-master
+                                                            :init cam-master-init
+                                                            :name "camera-master"
+                                                            :from *camera-master-dead-pool*
+                                                            :to *camera-pool*
+                                                            )
+                                                          )
+                                       )
+        )
+  (if arg0
+      (reset-cameras)
+      )
+  0
+  (none)
+  )
+
+(cam-start #f)
