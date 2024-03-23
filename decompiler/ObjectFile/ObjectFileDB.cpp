@@ -717,7 +717,8 @@ void ObjectFileDB::find_and_write_scripts(const fs::path& output_dir) {
 
 std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
                                          const fs::path& output_path,
-                                         const Config& cfg) {
+                                         const Config& cfg,
+                                         const fs::path& dump_out) {
   lg::info("- Finding textures in tpages...");
   std::string tpage_string = "tpage-";
   int total = 0, success = 0;
@@ -766,6 +767,27 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
     lg::warn("Did not find tpage-dir.");
     return {};
   }
+
+  if (cfg.write_tpage_imports) {
+    file_util::create_dir_if_needed(dump_out);
+    std::string tpage_dump;
+    std::string tex_dump;
+    for (auto& tpage : tex_db.tpage_names) {
+      tpage_dump += print_tpage_for_dump(tpage.second, tpage.first);
+    }
+    for (auto& tex : tex_db.textures) {
+      auto tpage_name = tex_db.tpage_names[tex.second.page];
+      dts.textures.emplace(tex.first, TexInfo{tex.second.name, tpage_name, tex.first & 0x0000ffff});
+      tex_dump += print_tex_for_dump(tex.second.name, tpage_name, tex.first & 0x0000ffff);
+    }
+
+    auto tpage_dump_out = dump_out / "tpages.gc";
+    auto tex_dump_out = dump_out / "textures.gc";
+
+    file_util::write_text_file(tpage_dump_out, tpage_dump);
+    file_util::write_text_file(tex_dump_out, tex_dump);
+  }
+
   return result;
 }
 
@@ -1106,5 +1128,11 @@ std::string print_art_elt_for_dump(const std::string& group_name,
 }
 std::string print_jg_for_dump(const std::string& jg_name, const std::string& joint_name, int idx) {
   return fmt::format("(def-joint-node {} \"{}\" {})\n", jg_name, joint_name, idx);
+}
+std::string print_tpage_for_dump(const std::string& debug_name, u32 id) {
+  return fmt::format("(defconstant {} {})\n", debug_name, id);
+}
+std::string print_tex_for_dump(const std::string& name, const std::string& page_name, u32 idx) {
+  return fmt::format("(def-tex {} {} {})\n", name, page_name, idx);
 }
 }  // namespace decompiler

@@ -3447,7 +3447,7 @@ goos::Object DefpartElement::to_form_internal(const Env& env) const {
       break;
     }
     item_forms.push_back(decompile_sparticle_field_init(e.data, e.field_id, e.flags, e.sound_spec,
-                                                        e.userdata, env.dts->ts, env.version));
+                                                        e.userdata, env.dts->ts, env.version, env));
   }
   if (!item_forms.empty()) {
     forms.push_back(pretty_print::to_symbol(":init-specs"));

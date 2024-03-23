@@ -1530,6 +1530,11 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
       result.push_back(pretty_print::to_symbol(fmt::format(
           ":{} {}", def.field_name,
           bitfield_defs_print(def.nested_field->field_type, def.nested_field->fields).print())));
+    } else if (def.is_float) {
+      float f;
+      memcpy(&f, &def.value, 4);
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, float_to_string(f, true))));
     } else {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));

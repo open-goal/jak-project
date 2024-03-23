@@ -496,6 +496,8 @@
 ;; a map for joint node names used by art loading code.
 (define *jg-info* (make-string-hash-table))
 
+;; a map for tpages used by texture macros.
+(define *tpage-info* (make-string-hash-table))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  build system      ;;

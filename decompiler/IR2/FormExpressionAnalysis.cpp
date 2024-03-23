@@ -3300,6 +3300,36 @@ void FunctionCallElement::update_from_stack(const Env& env,
     return;
   }
 
+  // tpage and texture macros
+  {
+    auto func = Matcher::symbol("lookup-texture-by-id");
+    auto func_fast = Matcher::symbol("lookup-texture-by-id-fast");
+    auto mr = match(func, unstacked.at(0));
+    auto mr_fast = match(func_fast, unstacked.at(0));
+    if (mr.matched || mr_fast.matched) {
+      auto tex_id = Matcher::any_integer(0);
+      auto mr2 = match(tex_id, unstacked.at(1));
+      if (mr2.matched) {
+        auto id = mr2.maps.ints.at(0);
+        u16 tpage = (id & 0xfff00000) >> 20;
+        u16 idx = (id & 0x000fff00) >> 8;
+        auto fixed_id = tpage << 16 | idx;
+        if (!env.dts->textures.empty() &&
+            env.dts->textures.find(fixed_id) != env.dts->textures.end()) {
+          std::vector<Form*> macro_args;
+          auto tex = env.dts->textures.at(fixed_id);
+          macro_args.push_back(pool.form<ConstantTokenElement>(tex.name));
+          macro_args.push_back(pool.form<ConstantTokenElement>(tex.tpage_name));
+          auto macro = pool.alloc_element<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>("get-texture")),
+              macro_args);
+          result->push_back(macro);
+          return;
+        }
+      }
+    }
+  }
+
   {
     // deal with virtual method calls.
     auto matcher = Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_OBJECT),

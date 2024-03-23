@@ -141,7 +141,7 @@ bool run_build_level(const std::string& input_file,
     decompiler::TextureDB tex_db;
     auto textures_out = file_util::get_jak_project_dir() / "decompiler_out/jak2/textures";
     file_util::create_dir_if_needed(textures_out);
-    db.process_tpages(tex_db, textures_out, config);
+    db.process_tpages(tex_db, textures_out, config, "");
 
     // find all art groups used by the custom level in other dgos
     if (level_json.contains("art_groups") && !level_json.at("art_groups").empty()) {

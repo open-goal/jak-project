@@ -170,7 +170,24 @@ void Compiler::generate_field_description(const goos::Object& form,
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(form, env));
   } else if (m_ts.tc(m_ts.make_typespec("structure"), f.type())) {
     // Structure
-    str_template += fmt::format("{}{}: #<{} @ #x~X>~%", tabs, f.name(), f.type().print());
+    auto ts = m_ts.lookup_type_no_throw(f.type());
+    if (ts) {
+      // try to use print method if the structure implements it
+      // TODO see if this can be done without a hardcoded list
+      std::vector<std::string> has_print = {
+          "vector",      "vector2",     "vector4w",           "vec4s",
+          "connectable", "connection",  "connection-minimap", "transform",
+          "transformq",  "entity-links"};
+      if (ts->get_parent() == "basic" ||
+          (ts->get_parent() == "structure" &&
+           std::find(has_print.begin(), has_print.end(), f.type().print()) != has_print.end())) {
+        str_template += fmt::format("{}{}: ~`{}`P~%", tabs, f.name(), f.type().print());
+      } else {
+        str_template += fmt::format("{}{}: #<{} @ #x~X>~%", tabs, f.name(), f.type().print());
+      }
+    } else {
+      str_template += fmt::format("{}{}: #<{} @ #x~X>~%", tabs, f.name(), f.type().print());
+    }
     format_args.push_back(get_field_of_structure(type, reg, f.name(), env)->to_gpr(form, env));
   } else if (f.type() == TypeSpec("seconds")) {
     // seconds

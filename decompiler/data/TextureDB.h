@@ -60,4 +60,11 @@ struct TextureDB {
 
   std::string generate_texture_dest_adjustment_table() const;
 };
+
+// used by decompiler for texture macros
+struct TexInfo {
+  std::string name;
+  std::string tpage_name;
+  u32 idx;
+};
 }  // namespace decompiler

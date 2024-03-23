@@ -1208,6 +1208,38 @@
   `(empty)
   )
 
+(defmacro def-tex (tex-name tpage idx)
+  "define a new texture for a tpage. adds it to a global map stored in goos."
+  ;; grab data about the texture
+  (let* ((tpage-string (symbol->string tpage))
+         (tex-name-string tex-name)
+         (tpage-info-lookup (hash-table-try-ref *tpage-info* tpage))
+         (tpage-info-exists (car tpage-info-lookup))
+         (tpage-info (cdr tpage-info-lookup))
+         )
+    ;; no tpage was found, make a new one and add it.
+    (when (not tpage-info-exists)
+      (set! tpage-info (make-string-hash-table))
+      (hash-table-set! *tpage-info* tpage-string tpage-info)
+      )
+    ;; lookup name in our tpage
+    (let* ((tex-name-lookup (hash-table-try-ref tpage-info tex-name-string))
+           (tex-name-exists (car tex-name-lookup))
+           (tex-new (list tex-name idx))) ;; this is the format of the individual entries
+      ;; found, check if valid
+      (if (and tex-name-exists (not (eq? (cdr tex-name-lookup) tex-new)))
+          (fmt #t "error redefining texture. data mismatch: {}\n" tex-new)
+          #f)
+      ;; not found. add to the tpage.
+      (when (not tex-name-exists)
+        (hash-table-set! tpage-info tex-name-string tex-new)
+        )
+      )
+    )
+  `(defconstant ,(string->symbol-format "{}-{}" tex-name tpage)
+     (new 'static 'texture-id :page ,tpage :index ,idx))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; built-in type stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -169,9 +169,10 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   // textures
   decompiler::TextureDB tex_db;
   auto textures_out = out_folder / "textures";
+  auto dump_out = out_folder / "import";
   file_util::create_dir_if_needed(textures_out);
   file_util::write_text_file(textures_out / "tpage-dir.txt",
-                             db.process_tpages(tex_db, textures_out, config));
+                             db.process_tpages(tex_db, textures_out, config, dump_out));
 
   // texture merges
   // TODO - put all this stuff in somewhere common
