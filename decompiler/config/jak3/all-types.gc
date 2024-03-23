@@ -3003,9 +3003,23 @@
   :flag-assert         #x90000004c
   )
 
+(defenum sound-bank-mode
+  :type uint32
+  (none 0)
+  (unknown 1)
+  (common 2)
+  (mode 3)
+  (full 4)
+  (half 5)
+  (halfa 6)
+  (halfb 7)
+  (halfc 8)
+  (virtual 9)
+  )
+
 (deftype sound-bank-state (structure)
   ((name symbol   :offset-assert 0)
-   (mode uint32  :offset-assert 4)
+   (mode sound-bank-mode  :offset-assert 4)
    )
   :pack-me
   :method-count-assert 9
@@ -7375,9 +7389,9 @@
   )
 
 (deftype level-borrow-info (basic)
-  ((alias       symbol   :offset-assert 4)
+  ((alias       object   :offset-assert 4)
    (borrow-size uint16 5 :offset-assert 8)
-   (borrow-info symbol 5 :offset-assert 20)
+   (borrow-info object 5 :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x28
@@ -7546,6 +7560,14 @@
   )
 ;; ---level-h:city-map-bits
 
+(defenum level-callback-slot
+  :type uint32
+  (level-birth-1 33)
+  (level-unload 34)
+  (level-birth-2 35)
+  (level-deactivate 36)
+  )
+
 (deftype level-load-info (basic)
   ((name-list         symbol           6       :offset-assert 4) ;; guessed by decompiler
    (name              symbol                   :offset 4) ;; guessed by decompiler
@@ -7591,8 +7613,8 @@
   :flag-assert         #xb000000a0
   ;; field extra-sound-bank uses ~A with a signed load.
   (:methods
-    (level-load-info-method-9 (_type_ int) object) ;; 9
-    (level-load-info-method-10 (_type_) none) ;; 10
+    (get-callback-symbol-value-by-slot! "Look up value of symbol in callback-list with the given int as the car. Print warning if symbol's value is 0." (_type_ int) object) ;; 9
+    (get-callback-by-slot! "Look up value in callback-list with the given int as the car and return it. Doesn't derefence the symbol." (_type_ int) object) ;; 10
     )
   )
 
@@ -7631,6 +7653,11 @@
    (entity                    entity-links-array                             :offset-assert 304) ;; guessed by decompiler
    (closest-object meters 10 :offset-assert 308)
    (tie-min-dist float :offset 352)
+   (fg-tfrag-min-dist float :offset-assert 356)
+   (fg-prim-min-dist float :offset-assert 360)
+   (fg-shrub-min-dist float :offset-assert 364)
+   (fg-warp-min-dist float :offset 372)
+   (fg-prim2-min-dist float :offset 380)
    ;; ???
    (upload-size               int32                                  20      :offset 388) ;; guessed by decompiler
    (inside-boxes?             basic                                          :offset-assert 468)
@@ -7697,27 +7724,31 @@
   :size-assert         #x152c
   :flag-assert         #x1e0000152c
   (:methods
-    (level-method-9 () none) ;; 9 ;; (deactivate (_type_) _type_)
-    (level-method-10 () none) ;; 10 ;; (is-object-visible? (_type_ int) symbol)
-    (level-method-11 () none) ;; 11 ;; (level-method-11 () none)
-    (level-method-12 () none) ;; 12 ;; (unload! (_type_) _type_)
-    (level-method-13 () none) ;; 13 ;; (bsp-name (_type_) symbol)
+    (deactivate "Keep a level in memory, but kill entities and stop drawing it." (_type_) _type_) ;; 9
+    (unload! "Remove level from memory." (_type_) _type_) ;; 10
+    (is-object-visible? "Look up object visibility from bit-string." (_type_ int) symbol) ;; 11
+    (level-method-12 () none) ;; 12
+    (bsp-name "Try getting the name from the BSP. If that fails, return the level's name (typically the same)." (_type_) symbol) ;; 13
     (compute-memory-usage! (_type_ symbol) memory-usage-block) ;; 14
-    (level-method-15 () none) ;; 15 ;; (inside-boxes-check (_type_ vector) symbol)
+    (inside-bsp? "Check if the camera is inside the BSP for this level." (_type_) symbol) ;; 15
     (update-vis! "Load/decompress precomputed visibility." (_type_ level-vis-info uint (pointer uint8)) symbol) ;; 16
-    (level-method-17 () none) ;; 17 ;; (load-continue (_type_) _type_)
-    (level-method-18 () none) ;; 18 ;; (load-begin (_type_) _type_)
-    (level-method-19 () none) ;; 19 ;; (login-begin (_type_) _type_)
-    (level-method-20 () none) ;; 20 ;; (debug-print-region-splitbox (_type_ vector object) none)
-    (get-art-group-by-name (_type_ string) art-group) ;; 21
+    (load-continue "Main function to run level loading/linking.
+                    Called by the engine to make progress on loading levels." (_type_) _type_) ;; 17
+    (load-begin "Start loading data of a level." (_type_) _type_) ;; 18
+    (login-begin "Start logging in loaded level data." (_type_) _type_) ;; 19
+    (debug-print-region-splitbox (_type_ vector object) none) ;; 20
+    (get-art-group-by-name "Look up art-group in this level by name." (_type_ string) art-group) ;; 21
     (level-method-22 () none) ;; 22 ;; (level-method-22 (_type_ symbol) int)
     (level-method-23 () none) ;; 23 ;; (lookup-text (_type_ text-id symbol) string)
     (level-method-24 () none) ;; 24 ;; (level-method-24 () none)
-    (level-method-25 () none) ;; 25 ;; (birth (_type_) _type_)
-    (level-method-26 () none) ;; 26 ;; (level-status-update! (_type_ symbol) _type_)
-    (level-method-27 () none) ;; 27 ;; (load-required-packages (_type_) _type_)
-    (level-method-28 () none) ;; 28 ;; (init-vis-from-bsp (_type_) none)
-    (level-method-29 () none) ;; 29 ;; (vis-clear (_type_) none)
+    (birth "Start running a level." (_type_) _type_) ;; 25
+    (level-status-update!   "Try to update the level to the given status, calling whatever is needed to make it happen.
+   This can do both loading, linking, login, and activation.
+   This is somewhat similar to level-get-for-use, but requires that you already have the level object.
+   This function is the way to transition from loaded to alive/active." (_type_ symbol) _type_) ;; 26
+    (load-common-package "Somewhat useless leftover from a more compliated package system. Will load common in some cases." (_type_) none) ;; 27
+    (init-vis-from-bsp "Link vis-infos from the bsp to the level." (_type_) none) ;; 28
+    (vis-clear "Clear visibility data: both the info and the cached vis bits. Switch all-visible? to loading." (_type_) none) ;; 29
     )
   )
 
@@ -7769,28 +7800,36 @@
   :flag-assert         #x1f0000ea54
   ;; Failed to read some fields.
   (:methods
-    (level-get (_type_ symbol) level) ;; 9
-    (level-group-method-10 () none) ;; 10 ;; (level-get-with-status (_type_ symbol) level)
-    (get-level-by-heap-ptr-and-status (_type_ pointer symbol) level) ;; 11
-    (level-group-method-12 () none) ;; 12 ;; (level-get-for-use (_type_ symbol symbol) level)
-    (level-group-method-13 () none) ;; 13 ;; (activate-levels! (_type_) int)
+    (level-get "Lookup loaded level by name." (_type_ symbol) level) ;; 9
+    (level-get-with-status "Get the first level with the given status, #f if there are none." (_type_ symbol) level) ;; 10
+    (get-level-by-heap-ptr-and-status "Look up a loaded level, given pointer inside of level's heap,
+                                       and the status of the level (active or loading)." (_type_ pointer symbol) level) ;; 11
+    (level-get-for-use   "Request a level by name in the given state.
+   Will return quickly (non-blocking) and might not be able to get a level in the desired state,
+   though it will do some small amount of work to make progress on loading.
+
+   This is the most general/powerful function like this: if there is no level with this name
+   it will kick out levels as needed to make a free slot, and set up a new level, and start
+   the load. This should only be used when you might want to start a load." (_type_ symbol symbol) level) ;; 12
+    (activate-levels! "Make all levels 'active!" (_type_) int) ;; 13
     (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
     (level-group-method-15 () none) ;; 15 ;; (debug-draw-actors (_type_ symbol) none)
-    (level-group-method-16 () none) ;; 16 ;; (assign-draw-indices (_type_) none)
+    (assign-draw-indices "Assign the order for levels to be drawn." (_type_) none) ;; 16
     (level-group-method-17 () none) ;; 17 ;; (actors-update (_type_) none)
     (level-group-method-18 () none) ;; 18 ;; (update-nav-meshes-method (_type_) none)
-    (level-update (_type_) none) ;; 19
-    (level-get-target-inside (_type_) level) ;; 20
-    (level-group-method-21 () none) ;; 21 ;; (alloc-levels-if-needed (_type_ symbol) none)
-    (art-group-get-by-name (_type_ string (pointer level)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
+    (level-update "Per-frame update of the level system." (_type_) none) ;; 19
+    (level-get-target-inside "Get the level that the player is 'in'." (_type_) level) ;; 20
+    (init-level-system "If needed, initialize the level system by loading common/art packages and allocating level heaps." (_type_ symbol) none) ;; 21
+    (art-group-get-by-name "Check all levels for an art group with the given name." (_type_ string (pointer level)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
     (level-group-method-23 () none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
     (level-group-method-24 () none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
     (level-group-method-25 () none) ;; 25 ;; (update-vis-volumes (_type_) none)
-    (level-group-method-26 (_type_ symbol int) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
-    (level-group-method-27 () none) ;; 27 ;; (print-volume-sizes (_type_) none)
-    (level-group-method-28 (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
-    (level-group-method-29 () none) ;; 29 ;; (load-in-progress? (_type_) symbol)
-    (level-group-method-30 () none) ;; 30 ;; (level-get-most-disposable (_type_) level)
+    (status-of-level-and-borrows "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
+    (do-nothing "Empty method." (_type_) none) ;; 27 ;; (print-volume-sizes (_type_) none)
+    (load-in-progress? "Is there a load happening now?" (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
+    (is-load-allowed? "Does the exclusive-load setting allow us to load this level?" (_type_ (pointer symbol)) symbol) ;; 29
+    (level-get-most-disposable "Get the level inside this level-group that should
+                               be used to load a new level." (_type_) level) ;; 30
     )
   )
 
@@ -8355,6 +8394,7 @@
 
 (define-extern *palette-fade-controls* palette-fade-controls)
 (define-extern *time-of-day-context* time-of-day-context)
+(define-extern *time-of-day* (pointer time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; profile                        ;;
@@ -10833,12 +10873,11 @@
     (bsp-misc 60)
     (bsp-node 61)
     (bsp-leaf-vis-self 62)
-
+    (bsp-leav-vis-adj 63)
     (draw-node 64)
-
     (pat 65)
-
-
+    (level-code 66)
+    (entity-links 67)
     (joint 68)
 
     (joint-anim-compressed-control 70)
@@ -16373,26 +16412,26 @@
    (command-list    pair                          :offset-assert 608) ;; guessed by decompiler
    (object-name     string             256        :offset-assert 612) ;; guessed by decompiler
    (object-status   basic              256        :offset-assert 1636) ;; guessed by decompiler
-   (update-callback basic                         :offset-assert 2660)
+   (update-callback (function load-state object)  :offset-assert 2660)
    )
   :method-count-assert 22
   :size-assert         #xa68
   :flag-assert         #x1600000a68
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (load-state-method-9 () none) ;; 9 ;; (reset! (_type_) _type_)
-    (load-state-method-10 () none) ;; 10 ;; (update! (_type_) int)
-    (load-state-method-11 () none) ;; 11 ;; (want-levels (_type_ (pointer symbol)) int)
+    (reset! (_type_) _type_) ;; 9
+    (update! (_type_) int) ;; 10
+    (want-levels (_type_ (pointer symbol)) int) ;; 11
     (want-sound-banks (_type_ (pointer symbol)) none) ;; 12
-    (load-state-method-13 () none) ;; 13 ;; (want-display-level (_type_ symbol symbol) int)
-    (load-state-method-14 () none) ;; 14 ;; (want-vis-level (_type_ symbol) none)
-    (load-state-method-15 () none) ;; 15 ;; (want-force-vis (_type_ symbol symbol) int)
-    (load-state-method-16 () none) ;; 16 ;; (want-force-inside (_type_ symbol symbol) none)
+    (want-display-level (_type_ symbol symbol) int) ;; 13
+    (want-vis-level (_type_ symbol) none) ;; 14
+    (want-force-vis (_type_ symbol symbol) int) ;; 15
+    (want-force-inside (_type_ symbol symbol) none) ;; 16
     (execute-commands-up-to (_type_ float) none) ;; 17
     (backup-load-state-and-set-cmds (_type_ pair) int) ;; 18
     (restore-load-state-and-cleanup (_type_) int) ;; 19
     (restore-load-state (_type_) int) ;; 20
-    (load-state-method-21 (_type_) none) ;; 21 ;; (add-borrow-levels (_type_) none)
+    (add-borrow-levels (_type_) none) ;; 21
     )
   )
 
@@ -23103,6 +23142,8 @@
   )
 
 (declare-type entity-camera entity)
+(declare-type entity-nav-mesh structure)
+(declare-type city-level-info structure)
 
 (deftype bsp-node (structure)
   "A node in the 'BSP' tree. This is really a bounding volume tree, where each volume is an axis-aligned box, containing 2 child boxes.
@@ -23124,39 +23165,39 @@
   "The bsp-header is really an entire level.
    This probably started as a very simple structure, but now it is extremely complicated."
   ((info file-info                                               :offset 4)
-   (all-visible-list         (pointer uint8)     :offset 32) ;; guessed by decompiler
-   (visible-list-length      int16                :offset 36)
+   (all-visible-list         (pointer uint8)     :offset-assert 32) ;; guessed by decompiler
+   (visible-list-length      int16                :offset-assert 36)
    (extra-vis-list-length    int16                :offset-assert 38)
-   (drawable-trees           drawable-tree-array  :offset 40) ;; guessed by decompiler
-   (pat                      pointer              :offset 44) ;; guessed by decompiler
-   (pat-length               int32                :offset 48)
+   (drawable-trees           drawable-tree-array  :offset-assert 40) ;; guessed by decompiler
+   (pat                      pointer              :offset-assert 44) ;; guessed by decompiler
+   (pat-length               int32                :offset-assert 48)
    ;; jak2: unlikely to match jak 3 exactly!!
    (texture-remap-table      (pointer uint64)            :offset-assert 52)
    (texture-remap-table-len  int32                       :offset-assert 56)
    (texture-ids              (pointer texture-id)        :offset-assert 60)
    (texture-page-count       int32                       :offset-assert 64)
    (unknown-basic            basic                       :offset-assert 68) ;; seems to be 0 everywhere.
-   ; (name                     symbol                      :offset-assert 72)
-   ; (nickname                 symbol                      :offset-assert 76)
-   ; (vis-info                 level-vis-info 8            :offset-assert 80)
-   (actors                   drawable-inline-array-actor :offset 112)
+   (name                     symbol                      :offset-assert 72)
+   (nickname                 symbol                      :offset-assert 76)
+   (vis-info                 level-vis-info 8            :offset-assert 80)
+   (actors                   drawable-inline-array-actor :offset-assert 112)
    (cameras                  (array entity-camera)       :offset-assert 116)
-   (nodes           (inline-array bsp-node)             :offset 120)
+   (nodes           (inline-array bsp-node)             :offset-assert 120)
 
    ;; jak2: unlikely to match jak 3 exactly!!
    (level                    level                       :offset-assert 124)
    (current-leaf-idx         uint16                      :offset-assert 128)
-   (texture-flags            texture-page-flag 10        :offset 130)
+   (texture-flags            texture-page-flag 10        :offset-assert 130)
    (cam-outside-bsp          uint8                       :offset        152)
    (cam-using-back           uint8                       :offset-assert 153)
    (cam-box-idx              uint16                      :offset-assert 154)
    ; (ambients                 symbol                      :offset-assert 156) ;; now just #t?
-   ; (subdivide-close          float                       :offset-assert 160)
-   ; (subdivide-far            float                       :offset-assert 164)
+   (subdivide-close          float                       :offset 160)
+   (subdivide-far            float                       :offset-assert 164)
    ; (race-meshes              (array entity-race-mesh)    :offset-assert 168)
    (actor-birth-order        (pointer uint32)            :offset 172)
-   ; (light-hash               light-hash                  :offset-assert 176)
-   ; (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
+   (light-hash               light-hash                  :offset-assert 176)
+   (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    ; (actor-groups             (array actor-group)         :offset-assert 184)
    (region-trees             (array drawable-tree-region-prim) :offset 188)
    ; (region-array             region-array                :offset-assert 192)
@@ -23165,10 +23206,10 @@
    (wind-array uint32 :offset 200)
    ; ;; 204 is maybe that array's length
    (wind-array-length int32 :offset 204)
-   ; (city-level-info          city-level-info                    :offset 208)
+   (city-level-info          city-level-info                    :offset 208)
    (vis-spheres              vector-array                       :offset 216)
    (vis-spheres-length       uint32                             :offset 248)
-   ; (region-tree              drawable-tree-region-prim          :offset 252)
+   (region-tree              drawable-tree-region-prim          :offset 252)
 
    (tfrag-masks              texture-masks-array         :offset 256)
    (tfrag-closest            (pointer float)             :offset-assert 260)
@@ -30197,16 +30238,16 @@
 ;; texture-anim-tables            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sky-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
 ;; (define-extern set-fog-height! function) ;; (function float none)
 ;; (define-extern set-cloud-minmax! function) ;; (function float float none)
-;; (define-extern *darkjak-texture-anim-array* texture-anim-array) ;; (texture-anim-array texture-anim)
+(define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 ;; (define-extern set-darkjak-texture-morph! function) ;; (function float none)
-;; (define-extern *darkjak-highres-texture-anim-array* texture-anim-array)
+(define-extern *darkjak-highres-texture-anim-array* (texture-anim-array texture-anim))
 ;; (define-extern set-darkjak-highres-texture-morph! function) ;; (function float symbol)
 (define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
-;; (define-extern *default-water-texture-anim-array* texture-anim-array)
-;; (define-extern *default-warp-texture-anim-array* texture-anim-array)
+(define-extern *default-water-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern *default-warp-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blit-displays                  ;;
@@ -30787,14 +30828,14 @@
 ;; (define-extern lookup-part-group-by-name function) ;; (function string sparticle-launch-group)
 (define-extern lookup-part-group-pointer-by-name (function string (pointer object)))
 (define-extern part-group-pointer? (function pointer symbol))
-;; (define-extern unlink-part-group-by-heap function) ;; (function kheap int)
+(define-extern unlink-part-group-by-heap (function kheap int))
 ;; (define-extern sp-init-fields! function) ;; (function (pointer float) (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol (inline-array sp-field-init-spec))
 ;; (define-extern *sp-launcher-lock* object) ;; symbol
 ;; (define-extern *sp-launch-queue* object) ;; sp-launch-queue
 ;; (define-extern *sp-launcher-enable* object) ;; symbol
 ;; (define-extern particle-setup-adgif function) ;; (function adgif-shader int none)
 ;; (define-extern *particle-adgif-cache* object) ;; particle-adgif-cache
-;; (define-extern particle-adgif-cache-flush function) ;; (function none)
+(define-extern particle-adgif-cache-flush (function none))
 ;; (define-extern particle-adgif function) ;; (function adgif-shader texture-id none)
 ;; (define-extern particle-adgif-callback function) ;; (function adgif-shader texture-id none)
 ;; (define-extern sp-queue-launch function) ;; (function sparticle-system sparticle-launcher matrix int)
@@ -30890,7 +30931,7 @@
 (define-extern kill-all-particles-with-key (function sparticle-launch-control none))
 ;; (define-extern forall-particles-runner function) ;; (function (function sparticle-system sparticle-cpuinfo pointer none) sparticle-system none)
 ;; (define-extern forall-particles function) ;; (function function symbol symbol none)
-;; (define-extern kill-all-particles-in-level function) ;; (function level int)
+(define-extern kill-all-particles-in-level (function level int))
 ;; (define-extern all-particles-50-to-60 function) ;; (function none)
 ;; (define-extern all-particles-60-to-50 function) ;; (function none)
 ;; (define-extern remap-particle function) ;; (function sparticle-system sparticle-cpuinfo pointer none)
@@ -31328,7 +31369,7 @@
 ;; (define-extern update-mood-exterior function) ;; (function mood-context-core3 mood-table float int object)
 ;; (define-extern copy-mood-exterior function) ;; (function mood-context symbol)
 ;; (define-extern copy-mood-exterior-ambi function) ;; (function mood-context symbol none)
-;; (define-extern clear-mood-context function) ;; (function mood-context symbol)
+(define-extern clear-mood-context (function mood-context symbol))
 ;; (define-extern update-mood-interior function) ;; (function mood-context float)
 ;; (define-extern update-mood-interior-ambient function)
 ;; (define-extern update-mood-flames function) ;; (function mood-context int int int float float float float :behavior time-of-day-proc)
@@ -31752,14 +31793,14 @@
 ;; load-state                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern level-base-level-name function)
-;; (define-extern *borrow-city-expansion-list* object)
-;; (define-extern *borrow-city-status-list* object)
-;; (define-extern borrow-city-expansion function)
-;; (define-extern add-want-level function)
-;; (define-extern *display-load-commands* object) ;; symbol
-;; (define-extern *backup-load-state* object) ;; load-state
-;; (define-extern *load-state* object) ;; load-state
+(define-extern level-base-level-name (function symbol object))
+(define-extern *borrow-city-expansion-list* pair)
+(define-extern *borrow-city-status-list* pair)
+(define-extern borrow-city-expansion (function pair object))
+(define-extern add-want-level (function (inline-array level-buffer-state) (pointer int64) symbol symbol symbol symbol object))
+(define-extern *display-load-commands* symbol)
+(define-extern *backup-load-state* load-state)
+(define-extern *load-state* load-state)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; level-info                     ;;
@@ -32067,21 +32108,30 @@
 ;; level                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern level-memory-mode->string (function level-memory-mode string))
-(define-extern lookup-level-info (function symbol level-load-info))
-;; (define-extern remap-level-name function) ;; (function level-load-info symbol)
-;; (define-extern add-bsp-drawable function) ;; (function bsp-header level symbol display-frame none)
-;; (define-extern *login-state* object) ;; login-state
+(define-extern *level-type-list* type)
+(define-extern level-memory-mode->string "Convert level-memory-mode enum to string." (function level-memory-mode string))
+(define-extern lookup-level-info "Get the level load info. Symbol can be the level name, visname, nickname, or a symbol that contains a level-load-info value." (function symbol level-load-info))
+(define-extern remap-level-name "Get the load name, depending on if we should load a vis level or not." (function level-load-info symbol))
+(define-extern add-bsp-drawable "Callback function used by background-engine to draw a bsp.
+                                 Note that most drawing work has been moved into finish-background,
+                                 and the draw method called here just adds references to high-level rendering data
+                                 to lists. The exception is debug-draw, which does run here (only for draw-strip-lines)." (function bsp-header level symbol display-frame none))
+(define-extern *login-state* login-state)
 (define-extern *print-login* symbol)
-;; (define-extern load-buffer-resize function) ;; (function level dgo-header none)
-;; (define-extern level-find-borrow-slot function)
-;; (define-extern level-update-after-load function) ;; (function level login-state level)
-;; (define-extern bg function) ;; (function symbol none)
-;; (define-extern play function) ;; (function symbol symbol int)
-;; (define-extern play-boot function) ;; (function none)
-;; (define-extern sound-bank-name->mode function)
-;; (define-extern update-sound-banks function) ;; (function int)
-;; (define-extern show-level function) ;; (function symbol int)
+(define-extern load-buffer-resize "Resize and relocate the DGO load buffers, making sure there is enough room to both load objects and heap alloc in the linker." (function level dgo-header none))
+(define-extern level-find-borrow-slot "Set up a level to 'borrow' from another.
+                                       This function finds the right 'host' level, which should
+                                       have prepared a heap for this level. This level will then
+                                       be configured to use this heap." (function level level-memory-mode none))
+(define-extern level-update-after-load "Run the post-load state machine to login level data." (function level login-state level))
+(define-extern bg "Debug function to start playing a given level." (function symbol none))
+(define-extern play "Start (or restart) the game!
+                     This will start up the display process, and load the initial level." (function symbol symbol int))
+(define-extern play-boot
+               "Function called by the C Kernel to start the game (wrapper around play)." (function none))
+(define-extern sound-bank-name->mode (function symbol sound-bank-mode))
+(define-extern update-sound-banks (function load-state (inline-array sound-bank-state) none))
+(define-extern show-level (function symbol none))
 (define-extern *default-level* level)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37282,7 +37332,7 @@
 ;; (define-extern end-display function) ;; (function display none)
 ;; (define-extern display-loop-main function) ;; (function display none)
 ;; (define-extern display-loop function) ;; (function int :behavior process)
-;; (define-extern on function) ;; (function symbol process)
+(define-extern on (function symbol process))
 ;; (define-extern off function) ;; (function int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -47576,7 +47626,8 @@
   )
 |#
 
-;; (define-extern *city-borrow-manager* object)
+(declare-type cty-borrow-manager basic)
+(define-extern *city-borrow-manager* cty-borrow-manager)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-faction-h                  ;;
@@ -69095,11 +69146,11 @@
 ;; (define-extern level->sound-bank-name function)
 ;; (define-extern insert-into-sound-list function)
 ;; (define-extern update-sound-info function)
-;; (define-extern mark-permanent-holds function)
+(define-extern mark-permanent-holds (function pair object))
 ;; (define-extern city-sound-exists? function)
 ;; (define-extern sound-bank-mode->use-count function)
 ;; (define-extern add-city-sound-bank-if-possible function)
-;; (define-extern city-sound-expand-want-list function)
+(define-extern city-sound-expand-want-list (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-init                   ;;
