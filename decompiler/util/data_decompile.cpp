@@ -1466,7 +1466,7 @@ goos::Object decompile_structure(const TypeSpec& type,
         } else if (word.kind() == LinkedWord::EMPTY_PTR) {
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("'()"));
         } else if (word.kind() == LinkedWord::TYPE_PTR) {
-          if (field.type() != TypeSpec("type")) {
+          if (!ts.tc(field.type(), TypeSpec("type"))) {
             throw std::runtime_error(
                 fmt::format("Field {} in type {} offset {} had a reference to type {}, but the "
                             "type of the field is not type.",
