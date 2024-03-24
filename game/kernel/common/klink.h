@@ -89,6 +89,7 @@ struct link_control {
   uint32_t jak2_work_v3();
   uint32_t jak2_work_v2();
 
+  uint32_t jak3_work_v2_v4();
   uint32_t jak3_work_v5();
   uint32_t jak3_work_opengoal();
 

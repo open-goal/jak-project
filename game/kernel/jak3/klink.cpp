@@ -7,6 +7,7 @@
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/klink.h"
 #include "game/kernel/common/kprint.h"
+#include "game/kernel/common/memory_layout.h"
 #include "game/kernel/jak3/kmalloc.h"
 #include "game/kernel/jak3/kscheme.h"
 #include "game/mips2c/mips2c_table.h"
@@ -145,7 +146,15 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
     LinkHeaderV5* l_hdr = (LinkHeaderV5*)m_object_data.c();
     m_flags = flags;
     u16 version = l_hdr->core.version;
-    ASSERT(version == 5);  // I think, since there's only a work v5.
+
+    if (version == 4) {
+      // it's a v4 produced by opengoal... lets just try using jak2's linker
+      m_version = 4;
+      printf("got version 4, falling back to jak1/jak2\n");
+      jak1_jak2_begin(object_file, name, size, heap, flags);
+      return;
+    }
+    ASSERT(version == 5 || version == 4);  // idk here...
     m_heap_top = heap->top;
     // this->unk_init1 = 1; TODO
     m_busy = true;
@@ -159,7 +168,15 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
     // this->m_unk_init0_4 = 0; TODO
     // this->m_unk_init0_5 = 0; TODO
     if (version == 4) {
-      ASSERT_NOT_REACHED();
+      auto old_object_data = m_object_data;
+      m_object_data.offset = ((u8*)&l_hdr->core.link_length) - g_ee_main_mem;  // jank
+      auto header_v4 = (const LinkHeaderV4*)l_hdr;
+      m_link_block_ptr =
+          old_object_data + header_v4->code_size + sizeof(LinkHeaderV4) + BASIC_OFFSET;
+      // m_object_data = old_object_data + sizeof(LinkHeaderV4);
+      ASSERT(m_object_data.offset == old_object_data.offset + sizeof(LinkHeaderV4));
+      m_code_size = header_v4->code_size;
+      printf("got a code size of %d\n", m_code_size);
     } else {
       m_object_data.offset = object_file.offset + l_hdr->core.length_to_get_to_code;
       if (version == 5) {
@@ -184,6 +201,11 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
         }
       } else {
         m_moved_link_block = true;
+        Ptr<u8> new_link_block_mem;
+        u8* link_block_move_dst;
+        u8* old_link_block;
+        u32 link_block_move_size;
+
         if (m_link_hdr->version == 5) {
           // the link block is inside our heap, but we'd like to avoid this.
           // we'll copy the link block, and the header to the temporary part of our heap:
@@ -191,9 +213,9 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
           // where we loaded the link data:
           auto offset_to_link_data = m_link_hdr->length_to_get_to_link;
 
-          // allocate memory for link data, and header
-          auto new_link_block_mem = kmalloc(m_heap, m_link_hdr->link_length + sizeof(LinkHeaderV5),
-                                            KMALLOC_TOP, "link-block");
+          // allocate memory for link data, and header (pvVar5)
+          new_link_block_mem = kmalloc(m_heap, m_link_hdr->link_length + sizeof(LinkHeaderV5),
+                                       KMALLOC_TOP, "link-block");
 
           // we'll place the header and link block back to back in the newly alloated block,
           // so patch up the offset for this new layout before copying
@@ -202,30 +224,44 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
           // move header!
           memmove(new_link_block_mem.c(), object_file.c(), sizeof(LinkHeaderV5));
 
-          // move link data!
-          auto old_link_block = object_file.c() + offset_to_link_data;
-          memmove(new_link_block_mem.c() + sizeof(LinkHeaderV5), old_link_block,
-                  m_link_hdr->link_length);
+          // dst: pvVar6
+          link_block_move_dst = new_link_block_mem.c() + sizeof(LinkHeaderV5);
 
-          // update our pointer to the link header core.
-          m_link_hdr = &((LinkHeaderV5*)new_link_block_mem.c())->core;
+          // move link data! (pcVar8)
+          old_link_block = object_file.c() + offset_to_link_data;
 
-          // scary: update the heap to kick out all the link data (and likely the actual data too).
-          // we'll be relying on the linking process to copy the data as needed.l
-          if (old_link_block < m_heap->current.c()) {
-            if (link_debug_printfs) {
-              printf("Kick out old link block\n");
-            }
-            m_heap->current.offset = old_link_block - g_ee_main_mem;
-          }
+          link_block_move_size = m_link_hdr->link_length;
         } else {
+          // hm, maybe only possible with version 2 or 3??
           ASSERT_NOT_REACHED();
+          // Note: definitely reading a v4 header as v5 right here...
+          new_link_block_mem =
+              kmalloc(m_heap, m_link_hdr->length_to_get_to_code, KMALLOC_TOP, "link-block");
+          link_block_move_dst = new_link_block_mem.c();
+          old_link_block = (u8*)(m_link_hdr->name + 17);  // lol
+          link_block_move_size = m_link_hdr->length_to_get_to_code;
+        }
+
+        memmove(link_block_move_dst, old_link_block, link_block_move_size);
+
+        // update our pointer to the link header core.
+        m_link_hdr = &((LinkHeaderV5*)new_link_block_mem.c())->core;
+
+        // scary: update the heap to kick out all the link data (and likely the actual data too).
+        // we'll be relying on the linking process to copy the data as needed.l
+        if (old_link_block < m_heap->current.c()) {
+          if (link_debug_printfs) {
+            printf("Kick out old link block\n");
+          }
+          m_heap->current.offset = old_link_block - g_ee_main_mem;
         }
       }
     }
     if ((m_flags & LINK_FLAG_FORCE_DEBUG) && MasterDebug && !DiskBoot) {
       m_keep_debug = true;
     }
+    // hack:
+    m_version = m_link_hdr->version;
   }
 }
 
@@ -248,6 +284,11 @@ uint32_t link_control::jak3_work() {
     ASSERT(!m_opengoal);
     *(u32*)(((u8*)m_link_hdr) - 4) = *((s7 + jak3_symbols::FIX_SYM_LINK_BLOCK - 1).cast<u32>());
     rv = jak3_work_v5();
+  } else if (m_version == 4) {
+    // Note: this is a bit of a hack. Jak 3 doesn't support v2/v4. But, OpenGOAL generates data
+    // objects in this format. We will just try reusing the jak 2 v2/v4 linker here and see if it
+    // works. See corresponding call to jak1_jak2_begin in begin.
+    rv = jak3_work_v2_v4();
   } else {
     ASSERT_MSG(false, fmt::format("UNHANDLED OBJECT FILE VERSION {} IN WORK!", m_version));
     return 0;
@@ -567,7 +608,14 @@ void link_control::jak3_finish(bool jump_from_c_to_goal) {
       output_segment_load(m_object_name, m_link_block_ptr, m_flags);
     }
   } else {
-    ASSERT_NOT_REACHED();
+    if (m_flags & LINK_FLAG_EXECUTE) {
+      auto entry = m_entry;
+      auto name = basename_goal(m_object_name);
+      strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
+      jak3::call_method_of_type_arg2(entry.offset, Ptr<jak3::Type>(*((entry - 4).cast<u32>())),
+                                     GOAL_RELOC_METHOD, m_heap.offset,
+                                     Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
+    }
   }
 
   *EnableMethodSet = *EnableMethodSet - this->m_keep_debug;
@@ -654,3 +702,214 @@ void ultimate_memcpy(void* dst, void* src, uint32_t size) {
 }
 
 }  // namespace jak3
+
+#define LINK_V2_STATE_INIT_COPY 0
+#define LINK_V2_STATE_OFFSETS 1
+#define LINK_V2_STATE_SYMBOL_TABLE 2
+#define OBJ_V2_CLOSE_ENOUGH 0x90
+#define OBJ_V2_MAX_TRANSFER 0x80000
+
+uint32_t link_control::jak3_work_v2_v4() {
+  //  u32 startCycle = kernel.read_clock(); todo
+
+  if (m_state == LINK_V2_STATE_INIT_COPY) {  // initialization and copying to heap
+    // we move the data segment to eliminate gaps
+    // very small gaps can be tolerated, as it is not worth the time penalty to move large objects
+    // many bytes. if this requires copying a large amount of data, we will do it in smaller chunks,
+    // allowing the copy to be spread over multiple game frames
+
+    // state initialization
+    if (m_segment_process == 0) {
+      m_heap_gap =
+          m_object_data - m_heap->current;  // distance between end of heap and start of object
+    }
+
+    if (m_heap_gap <
+        OBJ_V2_CLOSE_ENOUGH) {  // close enough, don't relocate the object, just expand the heap
+      if (link_debug_printfs) {
+        printf("[work_v2] close enough, not moving\n");
+      }
+      m_heap->current = m_object_data + m_code_size;
+      if (m_heap->top.offset <= m_heap->current.offset) {
+        MsgErr("dkernel: heap overflow\n");  // game has ~% instead of \n :P
+        return 1;
+      }
+
+      // added in jak 2, move the link block to the top of the heap so we can allocate on
+      // the level heap during linking without overwriting link data. this is used for level types
+      u32 link_block_size = *m_link_block_ptr.cast<u32>();
+      auto new_link_block = kmalloc(m_heap, link_block_size, KMALLOC_TOP, "link-block");
+      memmove(new_link_block.c(), m_link_block_ptr.c() - 4, link_block_size);
+      m_link_block_ptr = Ptr<uint8_t>(new_link_block.offset + 4);  // basic offset
+
+    } else {  // not close enough, need to move the object
+      // on the first run of this state...
+      if (m_segment_process == 0) {
+        m_original_object_location = m_object_data;
+        // allocate on heap, will have no gap
+        m_object_data = kmalloc(m_heap, m_code_size, 0, "data-segment");
+        if (link_debug_printfs) {
+          printf("[work_v2] moving from 0x%x to 0x%x\n", m_original_object_location.offset,
+                 m_object_data.offset);
+        }
+        if (!m_object_data.offset) {
+          MsgErr("dkernel: unable to malloc %d bytes for data-segment\n", m_code_size);
+          return 1;
+        }
+      }
+
+      // the actual copy
+      Ptr<u8> source = m_original_object_location + m_segment_process;
+      u32 size = m_code_size - m_segment_process;
+
+      if (size > OBJ_V2_MAX_TRANSFER) {  // around .5 MB
+        jak3::ultimate_memcpy((m_object_data + m_segment_process).c(), source.c(),
+                              OBJ_V2_MAX_TRANSFER);
+        m_segment_process += OBJ_V2_MAX_TRANSFER;
+        return 0;  // return, don't want to take too long.
+      }
+
+      // if we have bytes to copy, but they are less than the max transfer, do it in one shot!
+      if (size) {
+        jak3::ultimate_memcpy((m_object_data + m_segment_process).c(), source.c(), size);
+        if (m_segment_process > 0) {  // if we did a previous copy, we return now....
+          m_state = LINK_V2_STATE_OFFSETS;
+          m_segment_process = 0;
+          return 0;
+        }
+      }
+    }
+
+    // otherwise go straight into the next state.
+    m_state = LINK_V2_STATE_OFFSETS;
+    m_segment_process = 0;
+  }
+
+  // init offset phase
+  if (m_state == LINK_V2_STATE_OFFSETS && m_segment_process == 0) {
+    m_reloc_ptr = m_link_block_ptr + 8;  // seek to link table
+    if (*m_reloc_ptr == 0) {             // do we have pointer links to do?
+      m_reloc_ptr.offset++;              // if not, seek past the \0, and go to next state
+      m_state = LINK_V2_STATE_SYMBOL_TABLE;
+      m_segment_process = 0;
+    } else {
+      m_base_ptr = m_object_data;  // base address for offsetting.
+      m_loc_ptr = m_object_data;   // pointer which seeks thru the code
+      m_table_toggle = 0;          // are we seeking or fixing?
+      m_segment_process = 1;       // we've done first time setup
+    }
+  }
+
+  if (m_state == LINK_V2_STATE_OFFSETS) {  // pointer fixup
+    // this state reads through a table. Values alternate between "seek amount" and "number of
+    // consecutive 4-byte
+    //  words to fix up".  The counts are encoded using a variable length encoding scheme.  They use
+    //  a very stupid
+    // method of encoding values which requires O(n) bytes to store the value n.
+
+    // to avoid dropping a frame, we check every 0x400 relocations to see if 0.5 milliseconds have
+    // elapsed.
+    u32 relocCounter = 0x400;
+    while (true) {    // loop over entire table
+      while (true) {  // loop over current mode
+
+        // read and seek table
+        u8 count = *m_reloc_ptr;
+        m_reloc_ptr.offset++;
+
+        if (!m_table_toggle) {  // seek mode
+          m_loc_ptr.offset +=
+              4 *
+              count;  // perform seek (MIPS instructions are 4 bytes, so we >> 2 the seek amount)
+        } else {      // offset mode
+          for (u32 i = 0; i < count; i++) {
+            if (m_loc_ptr.offset % 4) {
+              ASSERT(false);
+            }
+            u32 code = *(m_loc_ptr.cast<u32>());
+            code += m_base_ptr.offset;
+            *(m_loc_ptr.cast<u32>()) = code;
+            m_loc_ptr.offset += 4;
+          }
+        }
+
+        if (count != 0xff) {
+          break;
+        }
+
+        if (*m_reloc_ptr == 0) {
+          m_reloc_ptr.offset++;
+          m_table_toggle = m_table_toggle ^ 1;
+        }
+      }
+
+      // reached the end of the tableToggle mode
+      m_table_toggle = m_table_toggle ^ 1;
+      if (*m_reloc_ptr == 0) {
+        break;  // end of the state
+      }
+      relocCounter--;
+      if (relocCounter == 0) {
+        //        u32 clock_value = kernel.read_clock();
+        //        if(clock_value - startCycle > 150000) { // 0.5 milliseconds
+        //          return 0;
+        //        }
+        relocCounter = 0x400;
+      }
+    }
+    m_reloc_ptr.offset++;
+    m_state = 2;
+    m_segment_process = 0;
+  }
+
+  if (m_state == 2) {  // GOAL object fixup
+    if (*m_reloc_ptr == 0) {
+      m_state = 3;
+      m_segment_process = 0;
+    } else {
+      while (true) {
+        u32 relocation = *m_reloc_ptr;
+        m_reloc_ptr.offset++;
+        Ptr<u8> goalObj;
+        char* name;
+        if ((relocation & 0x80) == 0) {
+          // symbol!
+          if (relocation > 9) {
+            m_reloc_ptr.offset--;  // no idea what this is.
+          }
+          name = m_reloc_ptr.cast<char>().c();
+          if (link_debug_printfs) {
+            printf("[work_v2] symlink: %s\n", name);
+          }
+          goalObj = jak3::intern_from_c(-1, 0, name).cast<u8>();
+        } else {
+          // type!
+          u8 nMethods = relocation & 0x7f;
+          if (nMethods == 0) {
+            nMethods = 1;
+          }
+          name = m_reloc_ptr.cast<char>().c();
+          if (link_debug_printfs) {
+            printf("[work_v2] symlink -type: %s\n", name);
+          }
+          goalObj = jak3::intern_type_from_c(-1, 0, name, nMethods).cast<u8>();
+        }
+        m_reloc_ptr.offset += strlen(name) + 1;
+        // DECOMPILER->hookStartSymlinkV3(_state - 1, _objectData, std::string(name));
+        m_reloc_ptr = c_symlink2(m_object_data, goalObj, m_reloc_ptr);
+        // DECOMPILER->hookFinishSymlinkV3();
+        if (*m_reloc_ptr == 0) {
+          break;  // done
+        }
+        //        u32 currentCycle = kernel.read_clock();
+        //        if(currentCycle - startCycle > 150000) {
+        //          return 0;
+        //        }
+      }
+      m_state = 3;
+      m_segment_process = 0;
+    }
+  }
+  m_entry = m_object_data + 4;
+  return 1;
+}
