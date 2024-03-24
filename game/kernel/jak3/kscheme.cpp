@@ -54,11 +54,11 @@ void kscheme_init_globals() {
 #endif
 }
 
-namespace {
 u32 u32_in_fixed_sym(u32 offset) {
   return Ptr<Symbol4<u32>>(s7.offset + offset)->value();
 }
 
+namespace {
 void fixed_sym_set(u32 offset, u32 value) {
   Ptr<Symbol4<u32>>(s7.offset + offset)->value() = value;
 }

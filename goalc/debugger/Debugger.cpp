@@ -793,8 +793,6 @@ void Debugger::read_symbol_table_jak3() {
         continue;
       }
 
-      printf("got %s\n", str.c_str());
-
       // update maps
       if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
         if (str == "asize-of-basic-func") {

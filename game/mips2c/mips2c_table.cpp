@@ -7,6 +7,7 @@
 #include "game/kernel/common/kscheme.h"
 #include "game/kernel/jak1/kscheme.h"
 #include "game/kernel/jak2/kscheme.h"
+#include "game/kernel/jak3/kscheme.h"
 #include "game/runtime.h"
 
 extern "C" {
@@ -281,6 +282,14 @@ namespace method_9_font_work { extern void link(); }
 namespace draw_string_asm { extern void link(); }
 namespace get_string_length { extern void link(); }
 namespace method_9_prim_strip { extern void link(); }
+namespace adgif_shader_texture_with_update { extern void link(); }
+namespace moving_sphere_triangle_intersect { extern void link(); }
+namespace collide_do_primitives { extern void link(); }
+namespace cspace_parented_transformq_joint { extern void link(); }
+namespace foreground_check_longest_edge_asm { extern void link(); }
+namespace foreground_merc { extern void link(); }
+namespace foreground_generic_merc { extern void link(); }
+
 
 }
 // clang-format on
@@ -466,7 +475,14 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
        jak3::generic_no_light_proc::link}},
      {"font",
       {jak3::method_9_font_work::link, jak3::draw_string_asm::link, jak3::get_string_length::link}},
-     {"prim", {jak3::method_9_prim_strip::link}}}};
+     {"texture", {jak3::adgif_shader_texture_with_update::link}},
+     {"collide-func",
+      {jak3::moving_sphere_triangle_intersect::link, jak3::collide_do_primitives::link}},
+     {"prim", {jak3::method_9_prim_strip::link}},
+     {"joint", {jak3::cspace_parented_transformq_joint::link}},
+     {"foreground",
+      {jak3::foreground_check_longest_edge_asm::link, jak3::foreground_generic_merc::link,
+       jak3::foreground_merc::link}}}};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
   const auto& it = m_executes.insert({name, {exec, Ptr<u8>()}});
@@ -487,6 +503,11 @@ void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 s
       jump_to_asm = Ptr<u8>(::jak2::alloc_heap_object(
           s7.offset + jak2_symbols::FIX_SYM_GLOBAL_HEAP,
           ::jak2::u32_in_fixed_sym(jak2_symbols::FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
+      break;
+    case GameVersion::Jak3:
+      jump_to_asm = Ptr<u8>(::jak3::alloc_heap_object(
+          s7.offset + jak3_symbols::FIX_SYM_GLOBAL_HEAP,
+          ::jak3::u32_in_fixed_sym(jak3_symbols::FIX_SYM_FUNCTION_TYPE), 0x40, UNKNOWN_PP));
       break;
     default:
       ASSERT(false);

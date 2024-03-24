@@ -1799,7 +1799,7 @@
    some, but not all, functions assume that a matrix is an affine transform.
    others assume that the rotation has no scale or shear (and that its inverse is its transpose)."
   ((data   float   16      :offset-assert 0 :score -2) ;; guessed by decompiler
-   (vector vector  4       :offset 0 :score -1) ;; guessed by decompiler
+   (vector vector  4  :inline     :offset 0 :score -1) ;; guessed by decompiler
    (quad   uint128 4       :offset 0) ;; guessed by decompiler
    (rvec   vector  :inline :offset 0 :score 1)
    (uvec   vector  :inline :offset 16 :score 1)
@@ -30761,7 +30761,6 @@
 ;; sparticle-launcher             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sp-queued-launch-particles (structure)
   ((sp-system   sparticle-system           :offset-assert 0) ;; guessed by decompiler
    (sp-launcher sparticle-launcher         :offset-assert 4) ;; guessed by decompiler
@@ -30771,34 +30770,28 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype sp-launch-queue (basic)
   ((in-use int32                          :offset-assert 4)
-   (queue  sp-queued-launch-particles 256 :offset-assert 16) ;; guessed by decompiler
+   (queue  sp-queued-launch-particles 256 :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x2010
   :flag-assert         #x900002010
   )
-|#
 
-#|
 (deftype particle-adgif-cache (basic)
   ((used    int32           :offset-assert 4)
    (last    uint16          :offset-assert 8)
    (lastgif adgif-shader    :offset-assert 12)
    (tidhash uint16       80 :offset-assert 16) ;; guessed by decompiler
-   (spadgif adgif-shader 80 :offset-assert 176) ;; guessed by decompiler
+   (spadgif adgif-shader 80 :inline :offset-assert 176) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x19b0
   :flag-assert         #x9000019b0
   )
-|#
 
-#|
 (deftype sp-launch-stack (structure)
   ((ra         basic                       :offset-assert 0)
    (dummy0     basic                       :offset-assert 4)
@@ -30822,23 +30815,22 @@
   :flag-assert         #x900000130
   ;; field ra uses ~A with a signed load. field dummy0 uses ~A with a signed load. field dummy1 uses ~A with a signed load. field b-spfic uses ~A with a signed load. field l-spfic uses ~A with a signed load.
   )
-|#
 
 ;; sparticle-launcher is already defined!
 
 (define-extern *part-id-table* (array sparticle-launcher))
 (define-extern *part-group-id-table* (array sparticle-launch-group))
-;; (define-extern *sp-temp* object) ;; float
+(define-extern *sp-temp* float)
 ;; (define-extern lookup-part-group-by-name function) ;; (function string sparticle-launch-group)
 (define-extern lookup-part-group-pointer-by-name (function string (pointer object)))
 (define-extern part-group-pointer? (function pointer symbol))
 (define-extern unlink-part-group-by-heap (function kheap int))
 ;; (define-extern sp-init-fields! function) ;; (function (pointer float) (inline-array sp-field-init-spec) sp-field-id sp-field-id symbol (inline-array sp-field-init-spec))
-;; (define-extern *sp-launcher-lock* object) ;; symbol
-;; (define-extern *sp-launch-queue* object) ;; sp-launch-queue
-;; (define-extern *sp-launcher-enable* object) ;; symbol
+(define-extern *sp-launcher-lock* symbol)
+(define-extern *sp-launch-queue* sp-launch-queue)
+(define-extern *sp-launcher-enable* symbol)
 ;; (define-extern particle-setup-adgif function) ;; (function adgif-shader int none)
-;; (define-extern *particle-adgif-cache* object) ;; particle-adgif-cache
+(define-extern *particle-adgif-cache* particle-adgif-cache)
 (define-extern particle-adgif-cache-flush (function none))
 ;; (define-extern particle-adgif function) ;; (function adgif-shader texture-id none)
 ;; (define-extern particle-adgif-callback function) ;; (function adgif-shader texture-id none)
@@ -30847,7 +30839,7 @@
 ;; (define-extern sp-euler-convert function) ;; (function sparticle-launchinfo sparticle-cpuinfo none)
 ;; (define-extern sp-rotate-system function) ;; (function sparticle-launchinfo sparticle-cpuinfo transformq none)
 (define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none))
-;; (define-extern *death-adgif* object) ;; adgif-shader
+(define-extern *death-adgif* adgif-shader)
 ;; (define-extern sp-launch-particles-death function) ;; (function sparticle-system sparticle-launcher vector none)
 ;; (define-extern sp-clear-queue function) ;; (function none)
 ;; (define-extern sp-relaunch-setup-fields function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
@@ -30865,7 +30857,7 @@
 ;; (define-extern birth-func-clean function)
 ;; (define-extern birth-func-process-clock function)
 ;; (define-extern birth-func-copy-rot-color function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
-;; (define-extern *global-toggle* object) ;; int
+(define-extern *global-toggle* int)
 ;; (define-extern birth-func-copy2-rot-color function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
 ;; (define-extern birth-func-copy-omega-to-z function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
 ;; (define-extern birth-func-random-next-time function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
