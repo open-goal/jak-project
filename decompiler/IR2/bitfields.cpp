@@ -965,7 +965,6 @@ Form* cast_to_int_enum(const EnumType* type_info, FormPool& pool, const Env& env
   return pool.form<GenericElement>(oper, pool.form<ConstantTokenElement>(entry));
 }
 
-
 Form* cast_to_bitfield_enum(const EnumType* type_info,
                             FormPool& pool,
                             const Env& env,
