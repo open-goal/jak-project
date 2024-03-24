@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: main.gc
-;; name in dgo: main
-;; dgos: GAME
-
-(define-extern menu-respond-to-pause (function symbol))
-(define-extern anim-tester-add-object (function string none))
-
-;; DECOMP BEGINS
-
+;; definition for function set-letterbox-frames
 ;; WARN: Return type mismatch time-frame vs none.
 (defun set-letterbox-frames ((arg0 time-frame))
   "Enable letterbox for the given amount of time."
@@ -23,6 +15,8 @@
     )
   )
 
+;; definition for function letterbox
+;; WARN: Return type mismatch int vs none.
 (defun letterbox ((arg0 bucket-id) (arg1 float))
   "Draw letterbox"
   (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -43,6 +37,8 @@
   (none)
   )
 
+;; definition for function set-blackout-frames
+;; WARN: Return type mismatch int vs none.
 (defun set-blackout-frames ((arg0 time-frame))
   "Enable blackout for the given amount of time."
   (with-pp
@@ -65,6 +61,8 @@
     )
   )
 
+;; definition for function blackout
+;; WARN: Return type mismatch int vs none.
 (defun blackout ((arg0 bucket-id))
   "Draw blackout as a sprite."
   (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -76,6 +74,7 @@
   (none)
   )
 
+;; definition for function add-blackout
 (defun add-blackout ((arg0 time-frame) (r int) (g int) (b int) (arg4 int))
   "Update display settings to do blackout with GS pmode alp."
   (let ((v1-0 *display*))
@@ -94,32 +93,40 @@
   0
   )
 
+;; definition for function paused?
 (defun paused? ()
   "Are we paused? Counts any type of pause/menu/freeze."
   (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'menu) (= *master-mode* 'freeze))
   )
 
+;; definition for function movie?
 (defun movie? ()
   "Are we in a movie?"
   (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie))
   )
 
+;; definition for function scene-select?
 (defun scene-select? ()
   (and (>= (-> *game-info* demo-state) (the-as uint 100)) (< (-> *game-info* demo-state) (the-as uint 200)))
   )
 
+;; definition for function demo?
 (defun demo? ()
   "Is this a demo version?"
   (or (= *kernel-boot-message* 'demo) (= *kernel-boot-message* 'demo-shared))
   )
 
+;; definition for function kiosk?
 (defun kiosk? ()
   "Is this a kiosk version of the game?"
   (= *kernel-boot-message* 'kiosk)
   )
 
+;; definition for symbol *last-master-mode*, type symbol
 (define *last-master-mode* 'game)
 
+;; definition for function set-master-mode
+;; WARN: Return type mismatch int vs none.
 (defun set-master-mode ((arg0 symbol))
   "Change the master mode and adjust a few masks"
   (when (!= arg0 *master-mode*)
@@ -172,6 +179,7 @@
   (none)
   )
 
+;; definition for function pause-allowed?
 (defun pause-allowed? ()
   "Should we allow a pause?"
   (not (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
@@ -187,6 +195,7 @@
        )
   )
 
+;; definition for function toggle-pause
 (defun toggle-pause ()
   "Update the pause state. Call this if the user presses a pause button
    This function will check the button and state and do a pause if needed."
@@ -296,8 +305,11 @@
   0
   )
 
+;; definition for symbol *screen-filter*, type screen-filter
 (define *screen-filter* (new 'static 'screen-filter :draw? #f :bucket (bucket-id tex-hud-pris2)))
 
+;; definition for method 9 of type screen-filter
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 9 screen-filter) has a return type of none, but the expression builder found a return statement.
 (defmethod draw ((this screen-filter))
   "Add DMA data to our bucket to draw the filter."
@@ -354,6 +366,9 @@
     )
   )
 
+;; definition for method 10 of type screen-filter
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod setup ((this screen-filter)
                  (arg0 vector)
                  (arg1 vector)
@@ -378,20 +393,28 @@
   (none)
   )
 
+;; definition for method 11 of type screen-filter
+;; WARN: Return type mismatch int vs none.
 (defmethod disable ((this screen-filter))
   (set! (-> this draw?) #f)
   0
   (none)
   )
 
+;; definition for symbol *cheat-temp*, type (pointer int32)
 (define *cheat-temp* (the-as (pointer int32) (malloc 'global 20)))
 
+;; definition for symbol *master-exit*, type symbol
 (define *master-exit* #f)
 
+;; definition for symbol *progress-cheat*, type symbol
 (define *progress-cheat* #f)
 
+;; definition for symbol *first-boot*, type symbol
 (define *first-boot* #t)
 
+;; definition for function main-timeouts
+;; WARN: Return type mismatch int vs none.
 (defun main-timeouts ()
   "Maybe reset/restart the game if no input has been given.
    Mainly used for kiosk/demo modes."
@@ -490,6 +513,8 @@
   (none)
   )
 
+;; definition for function main-cheats
+;; WARN: Return type mismatch int vs none.
 (defun main-cheats ()
   (when (and (cpad-hold? 0 l3) (or *cheat-mode* (not (demo?))))
     ((lambda ()
@@ -1298,6 +1323,8 @@
   (none)
   )
 
+;; definition for function end-display
+;; WARN: Return type mismatch int vs none.
 (defun end-display ((arg0 display))
   (let ((s5-0 (-> (if *debug-segment*
                       (-> arg0 frames (-> arg0 on-screen) debug-buf)
@@ -1307,76 +1334,112 @@
                   )
               )
         )
-    (with-profiler 'debug *profile-debug-color*
-      (with-dma-buffer-add-bucket ((s3-1 (if *debug-segment*
-                                             (-> arg0 frames (-> arg0 on-screen) debug-buf)
-                                             (-> arg0 frames (-> arg0 on-screen) global-buf)
-                                             )
-                                         )
-                                   (bucket-id debug-no-zbuf2)
-                                   )
-        (if (and (= *master-mode* 'pause)
-                 (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
+    (when *debug-segment*
+      (let ((s4-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-17 'debug)
+            (s3-0 *profile-debug-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s2-0 (-> s4-0 data (-> s4-0 count))))
+            (let ((s1-0 (-> s4-0 base-time)))
+              (set! (-> s2-0 name) v1-17)
+              (set! (-> s2-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s1-0))))
+              )
+            (set! (-> s2-0 depth) (the-as uint (-> s4-0 depth)))
+            (set! (-> s2-0 color) s3-0)
+            (set! (-> s4-0 segment (-> s4-0 depth)) s2-0)
+            )
+          (set! (-> s4-0 count) (min 1023 (+ (-> s4-0 count) 1)))
+          (+! (-> s4-0 depth) 1)
+          (set! (-> s4-0 max-depth) (max (-> s4-0 max-depth) (-> s4-0 depth)))
+          )
+        )
+      0
+      )
+    (with-dma-buffer-add-bucket ((s3-1 (if *debug-segment*
+                                           (-> arg0 frames (-> arg0 on-screen) debug-buf)
+                                           (-> arg0 frames (-> arg0 on-screen) global-buf)
+                                           )
+                                       )
+                                 (bucket-id debug-no-zbuf2)
+                                 )
+      (if (and (= *master-mode* 'pause)
+               (and (!= *cheat-mode* 'camera) (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1)))
+               )
+          (draw-string-xy
+            (lookup-text! *common-text* (text-id progress-pause) #f)
+            s3-1
+            256
+            (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+                352
+                320
+                )
+            (font-color red)
+            (font-flags shadow kerning middle large)
+            )
+          )
+      (let ((s2-2 (the int (-> *font-context* origin y))))
+        (cond
+          ((or (!= (-> *setting-control* user-current letterbox) 0.0)
+               (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
+               )
+           (+! s2-2 56)
+           )
+          ((and *display-profile* (not *display-capture-mode*))
+           (+! s2-2 48)
+           )
+          )
+        (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (-> *screen-shot-work* hud-enable))
+          (let* ((v1-73
+                   (draw-string-xy
+                     *stdcon0*
+                     s3-1
+                     (the int (-> *font-context* origin x))
+                     s2-2
+                     (font-color default)
+                     (font-flags shadow kerning)
+                     )
+                   )
+                 (a3-4 (+ s2-2 (the int (* 2.0 (-> v1-73 b)))))
                  )
             (draw-string-xy
-              (lookup-text! *common-text* (text-id progress-pause) #f)
+              *stdcon1*
               s3-1
-              256
-              (if (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
-                  352
-                  320
-                  )
-              (font-color red)
-              (font-flags shadow kerning middle large)
-              )
-            )
-        (let ((s2-2 (the int (-> *font-context* origin y))))
-          (cond
-            ((or (!= (-> *setting-control* user-current letterbox) 0.0)
-                 (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
-                 )
-             (+! s2-2 56)
-             )
-            ((and *display-profile* (not *display-capture-mode*))
-             (+! s2-2 48)
-             )
-            )
-          (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (-> *screen-shot-work* hud-enable))
-            (let* ((v1-73
-                     (draw-string-xy
-                       *stdcon0*
-                       s3-1
-                       (the int (-> *font-context* origin x))
-                       s2-2
-                       (font-color default)
-                       (font-flags shadow kerning)
-                       )
-                     )
-                   (a3-4 (+ s2-2 (the int (* 2.0 (-> v1-73 b)))))
-                   )
-              (draw-string-xy
-                *stdcon1*
-                s3-1
-                (the int (-> *font-context* origin x))
-                a3-4
-                (font-color default)
-                (font-flags shadow kerning)
-                )
+              (the int (-> *font-context* origin x))
+              a3-4
+              (font-color default)
+              (font-flags shadow kerning)
               )
             )
           )
-        (if (or (not *debug-segment*) *display-capture-mode*)
-            (set! *stdebug* *null*)
-            (set! *stdebug* *stdcon1*)
-            )
-        (if *display-iop-info*
-            (show-iop-info s3-1)
-            )
-        (if *display-memcard-info*
-            (show-mc-info s3-1)
-            )
         )
-      (set! *stdcon* (clear *stdcon0*))
+      (if (or (not *debug-segment*) *display-capture-mode*)
+          (set! *stdebug* *null*)
+          (set! *stdebug* *stdcon1*)
+          )
+      (if *display-iop-info*
+          (show-iop-info s3-1)
+          )
+      (if *display-memcard-info*
+          (show-mc-info s3-1)
+          )
+      )
+    (set! *stdcon* (clear *stdcon0*))
+    (when *debug-segment*
+      (let ((s4-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-108 (+ (-> s4-2 depth) -1))
+                 (s3-2 (-> s4-2 segment v1-108))
+                 (s2-3 (-> s4-2 base-time))
+                 )
+            (when (>= v1-108 0)
+              (set! (-> s3-2 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-3))))
+              (+! (-> s4-2 depth) -1)
+              )
+            )
+          )
+        )
+      0
       )
     (let ((v1-113 *dma-mem-usage*))
       (when (nonzero? v1-113)
@@ -1401,102 +1464,241 @@
   (none)
   )
 
+;; definition for function display-loop-main
+;; WARN: Return type mismatch int vs none.
 (defun display-loop-main ((arg0 display))
-  "Main function to run entire game engine."
   (with-pp
-
-    ;; do some work on loading a level
     (if (-> *level* loading-level)
         (load-continue (-> *level* loading-level))
         )
-
-    ;; modify vertices for merc face animation. I believe this is somewhat racing DMA of merc data to VU1.
-    (with-profiler 'merc *profile-merc-color*
-      (blerc-execute)
-      (blerc-init)
-      )
-
-    ;; modify merc vertices for texture scrolling effect. Again, racing DMA.
-    (texscroll-execute)
-
-    ;; modify merc vertices for water ripple effect. Again, racing DMA.
-    (ripple-execute)
-
-    ;; detect player/camera entering/exiting regions, and run callbacks for those.
-    (region-execute)
-
-    ;; decompress joint animations, compute joint and bone transformation for each actor.
-    ;; note that we also run this in a separate process. The math-engine will only run for
-    ;; actors that have changed their animation state. This is just a last chance for actors
-    ;; to update their joints before drawing.
-    (with-profiler 'joints *profile-joints-color*
-      (execute-math-engine)
-      )
-
-    ;; cloth simulation update
-    (execute-cloth-engine)
-
-    (with-profiler 'debug *profile-debug-color*
-      ;; run debug callbacks
-      (let* ((s5-5 *debug-hook*)
-             (t9-13 (car s5-5))
-             )
-        (while (not (null? s5-5))
-          ((the-as (function none) t9-13))
-          (set! s5-5 (cdr s5-5))
-          (set! t9-13 (car s5-5))
+    (when *debug-segment*
+      (let ((s5-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-13 'merc)
+            (s4-0 *profile-merc-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-0 (-> s5-0 data (-> s5-0 count))))
+            (let ((s2-0 (-> s5-0 base-time)))
+              (set! (-> s3-0 name) v1-13)
+              (set! (-> s3-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-0))))
+              )
+            (set! (-> s3-0 depth) (the-as uint (-> s5-0 depth)))
+            (set! (-> s3-0 color) s4-0)
+            (set! (-> s5-0 segment (-> s5-0 depth)) s3-0)
+            )
+          (set! (-> s5-0 count) (min 1023 (+ (-> s5-0 count) 1)))
+          (+! (-> s5-0 depth) 1)
+          (set! (-> s5-0 max-depth) (max (-> s5-0 max-depth) (-> s5-0 depth)))
           )
         )
-      ;; look for cheat-code inputs
-      (main-cheats)
+      0
       )
-
-    ;; Update camera data for rendering based on the location of the in-game camera.
-    ;; (movement of the camera is handled by the camera process, this is just preparing
-    ;; to render)
-    (with-profiler 'camera *profile-camera-color*
-      (update-camera)
-      (execute-cam-post-hook-engine)
+    (blerc-execute)
+    (blerc-init)
+    (when *debug-segment*
+      (let ((s5-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-37 (+ (-> s5-1 depth) -1))
+                 (s4-1 (-> s5-1 segment v1-37))
+                 (s3-1 (-> s5-1 base-time))
+                 )
+            (when (>= v1-37 0)
+              (set! (-> s4-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-1))))
+              (+! (-> s5-1 depth) -1)
+              )
+            )
+          )
+        )
+      0
       )
-
-    ;; Update start-menu map and masking
+    (texscroll-execute)
+    (ripple-execute)
+    (region-execute)
+    (when *debug-segment*
+      (let ((s5-2 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-50 'joints)
+            (s4-2 *profile-joints-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-2 (-> s5-2 data (-> s5-2 count))))
+            (let ((s2-1 (-> s5-2 base-time)))
+              (set! (-> s3-2 name) v1-50)
+              (set! (-> s3-2 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-1))))
+              )
+            (set! (-> s3-2 depth) (the-as uint (-> s5-2 depth)))
+            (set! (-> s3-2 color) s4-2)
+            (set! (-> s5-2 segment (-> s5-2 depth)) s3-2)
+            )
+          (set! (-> s5-2 count) (min 1023 (+ (-> s5-2 count) 1)))
+          (+! (-> s5-2 depth) 1)
+          (set! (-> s5-2 max-depth) (max (-> s5-2 max-depth) (-> s5-2 depth)))
+          )
+        )
+      0
+      )
+    (execute-math-engine)
+    (when *debug-segment*
+      (let ((s5-3 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-74 (+ (-> s5-3 depth) -1))
+                 (s4-3 (-> s5-3 segment v1-74))
+                 (s3-3 (-> s5-3 base-time))
+                 )
+            (when (>= v1-74 0)
+              (set! (-> s4-3 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-3))))
+              (+! (-> s5-3 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (execute-cloth-engine)
+    (when *debug-segment*
+      (let ((s5-4 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-87 'debug)
+            (s4-4 *profile-debug-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-4 (-> s5-4 data (-> s5-4 count))))
+            (let ((s2-2 (-> s5-4 base-time)))
+              (set! (-> s3-4 name) v1-87)
+              (set! (-> s3-4 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-2))))
+              )
+            (set! (-> s3-4 depth) (the-as uint (-> s5-4 depth)))
+            (set! (-> s3-4 color) s4-4)
+            (set! (-> s5-4 segment (-> s5-4 depth)) s3-4)
+            )
+          (set! (-> s5-4 count) (min 1023 (+ (-> s5-4 count) 1)))
+          (+! (-> s5-4 depth) 1)
+          (set! (-> s5-4 max-depth) (max (-> s5-4 max-depth) (-> s5-4 depth)))
+          )
+        )
+      0
+      )
+    (let* ((s5-5 *debug-hook*)
+           (t9-13 (car s5-5))
+           )
+      (while (not (null? s5-5))
+        ((the-as (function none) t9-13))
+        (set! s5-5 (cdr s5-5))
+        (set! t9-13 (car s5-5))
+        )
+      )
+    (main-cheats)
+    (when *debug-segment*
+      (let ((s5-6 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-115 (+ (-> s5-6 depth) -1))
+                 (s4-5 (-> s5-6 segment v1-115))
+                 (s3-5 (-> s5-6 base-time))
+                 )
+            (when (>= v1-115 0)
+              (set! (-> s4-5 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-5))))
+              (+! (-> s5-6 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (when *debug-segment*
+      (let ((s5-7 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-128 'camera)
+            (s4-6 *profile-camera-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-6 (-> s5-7 data (-> s5-7 count))))
+            (let ((s2-3 (-> s5-7 base-time)))
+              (set! (-> s3-6 name) v1-128)
+              (set! (-> s3-6 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-3))))
+              )
+            (set! (-> s3-6 depth) (the-as uint (-> s5-7 depth)))
+            (set! (-> s3-6 color) s4-6)
+            (set! (-> s5-7 segment (-> s5-7 depth)) s3-6)
+            )
+          (set! (-> s5-7 count) (min 1023 (+ (-> s5-7 count) 1)))
+          (+! (-> s5-7 depth) 1)
+          (set! (-> s5-7 max-depth) (max (-> s5-7 max-depth) (-> s5-7 depth)))
+          )
+        )
+      0
+      )
+    (update-camera)
+    (execute-cam-post-hook-engine)
+    (when *debug-segment*
+      (let ((s5-8 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-152 (+ (-> s5-8 depth) -1))
+                 (s4-7 (-> s5-8 segment v1-152))
+                 (s3-7 (-> s5-8 base-time))
+                 )
+            (when (>= v1-152 0)
+              (set! (-> s4-7 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-7))))
+              (+! (-> s5-8 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
     (update *bigmap*)
-
-    ;; do some more level loading.
     (if (-> *level* loading-level)
         (load-continue (-> *level* loading-level))
         )
-
-    ;; run the drawing system!
-    ;; (note that this does a significant amount of non-drawing stuff, like collision callbacks, actors-update,
-    ;; navigation update...)
-    (with-profiler 'draw-hook *profile-draw-hook-color*
-      (*draw-hook*)
+    (when *debug-segment*
+      (let ((s5-9 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-173 'draw-hook)
+            (s4-8 *profile-draw-hook-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-8 (-> s5-9 data (-> s5-9 count))))
+            (let ((s2-4 (-> s5-9 base-time)))
+              (set! (-> s3-8 name) v1-173)
+              (set! (-> s3-8 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-4))))
+              )
+            (set! (-> s3-8 depth) (the-as uint (-> s5-9 depth)))
+            (set! (-> s3-8 color) s4-8)
+            (set! (-> s5-9 segment (-> s5-9 depth)) s3-8)
+            )
+          (set! (-> s5-9 count) (min 1023 (+ (-> s5-9 count) 1)))
+          (+! (-> s5-9 depth) 1)
+          (set! (-> s5-9 max-depth) (max (-> s5-9 max-depth) (-> s5-9 depth)))
+          )
+        )
+      0
       )
-
-    ;; more level loading
+    (*draw-hook*)
+    (when *debug-segment*
+      (let ((s5-10 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-197 (+ (-> s5-10 depth) -1))
+                 (s4-9 (-> s5-10 segment v1-197))
+                 (s3-9 (-> s5-10 base-time))
+                 )
+            (when (>= v1-197 0)
+              (set! (-> s4-9 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-9))))
+              (+! (-> s5-10 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
     (if (-> *level* loading-level)
         (load-continue (-> *level* loading-level))
         )
-
     (if *display-color-bars*
         (draw-color-bars *blit-displays-work*)
         )
-
-    ;; run debug menu
     (*menu-hook*)
-    ;; load the right language file.
     (load-level-text-files -1)
-
-    ;; draw screen filter
     (when (-> *screen-filter* draw?)
       (if (-> *screen-filter* lock-vsync?)
           (set! (-> arg0 force-sync) (the-as uint (max 4 (the-as int (-> arg0 force-sync)))))
           )
       (draw *screen-filter*)
       )
-
-    ;; draw letterbox
     (when (or (!= (-> *setting-control* user-current letterbox) 0.0)
               (< (-> *display* base-clock frame-counter) (-> *game-info* letterbox-time))
               )
@@ -1515,49 +1717,81 @@
             )
           )
       )
-
-    ;; update blackout settings
     (when (-> *setting-control* user-current render)
       (if (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
           (set! (-> *setting-control* user-default bg-a-force) 1.0)
           (set! (-> *setting-control* user-default bg-a-force) 0.0)
           )
       )
-
-    ;; generate DMA to copy from render buffer to frame buffer.
-    (with-profiler 'blit-displays *profile-blit-color*
-      (blit-displays-work-method-19 *blit-displays-work*)
+    (when *debug-segment*
+      (let ((s5-11 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-266 'blit-displays)
+            (s4-10 *profile-blit-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s3-10 (-> s5-11 data (-> s5-11 count))))
+            (let ((s2-5 (-> s5-11 base-time)))
+              (set! (-> s3-10 name) v1-266)
+              (set! (-> s3-10 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-5))))
+              )
+            (set! (-> s3-10 depth) (the-as uint (-> s5-11 depth)))
+            (set! (-> s3-10 color) s4-10)
+            (set! (-> s5-11 segment (-> s5-11 depth)) s3-10)
+            )
+          (set! (-> s5-11 count) (min 1023 (+ (-> s5-11 count) 1)))
+          (+! (-> s5-11 depth) 1)
+          (set! (-> s5-11 max-depth) (max (-> s5-11 max-depth) (-> s5-11 depth)))
+          )
+        )
+      0
       )
-
-    ;; wrap up this frame (drawing of stdcon, debugging, etc.)
+    (blit-displays-work-method-19 *blit-displays-work*)
+    (when *debug-segment*
+      (let ((s5-12 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-292 (+ (-> s5-12 depth) -1))
+                 (s4-11 (-> s5-12 segment v1-292))
+                 (s3-11 (-> s5-12 base-time))
+                 )
+            (when (>= v1-292 0)
+              (set! (-> s4-11 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-11))))
+              (+! (-> s5-12 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
     (end-display arg0)
-
-    ;; finalize the DMA chain. This does have some potentially complicated texture stuff.
-    ;; Note that, in debug mode, this will do a sync-path, waiting for VU1 to finish.
-    ;; this is required to be able to display profiling data for all VU1 renderers, since this
-    ;; function also draws the profiling bars
     (display-frame-finish arg0)
-
-    ;; flip DMA buffers! Wait for VU1 to finish, compute frame times, do a vsync, and send the next chain.
     (display-sync arg0)
-
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-    ;; new frame
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-    ;; start stat collection for this frame
-    (start-profiling! (-> *perf-stats* data 0))
-
-    ;; update *teleport* flag, which is set when the game intentionally teleports the camera,
-    ;; and indicates that effects should not be gradually transitioned.
+    (when *debug-segment*
+      (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
+      (let* ((v1-307 (-> *perf-stats* data))
+             (a0-109 (-> v1-307 0 ctrl))
+             )
+        (+! (-> v1-307 0 count) 1)
+        (b! (zero? a0-109) cfg-132 :delay (nop!))
+        (.mtc0 Perf 0)
+        (.sync.l)
+        (.sync.p)
+        (.mtpc pcr0 0)
+        (.mtpc pcr1 0)
+        (.sync.l)
+        (.sync.p)
+        (.mtc0 Perf a0-109)
+        )
+      (.sync.l)
+      (.sync.p)
+      (label cfg-132)
+      0
+      )
     (set! (-> *time-of-day-context* title-updated) #f)
     (set! *teleport* #f)
     (when (nonzero? *teleport-count*)
       (set! *teleport* #t)
       (set! *teleport-count* (+ *teleport-count* -1))
       )
-
-    ;; do particles as soon as possible, since we're racing to send their data to VU1.
     (execute-particle-local-space-engine 0)
     (let ((gp-1 (-> pp clock)))
       (set! (-> pp clock) (-> *display* part-clock))
@@ -1565,15 +1799,11 @@
       (set! (-> pp clock) gp-1)
       )
     (execute-particle-local-space-engine 1)
-
-    ;; init unused? VU0 collision stuff.
     (dma-send
       (the-as dma-bank #x10008000)
       (the-as uint (-> *collide-vif0-init* data))
       (the-as uint (/ (-> *collide-vif0-init* length) 4))
       )
-
-    ;; update sound system.
     (swap-sound-buffers
       (ear-trans 0)
       (ear-trans 1)
@@ -1585,37 +1815,63 @@
       (-> (math-camera-matrix) rvec)
       (-> *setting-control* user-current sound-ear-scale)
       )
-
-    ;; update streaming animations
     (str-play-kick)
-
-    ;; update the level system
     (level-update *level*)
-
-    ;; update memory card
     (mc-run)
-
-    ;; check for memory card errors.
     (auto-save-check)
     0
     (none)
     )
   )
 
+;; definition for function display-loop
 (defbehavior display-loop process ()
   "Main loop for running the game."
-
   (stack-size-set! (-> self main-thread) 512)
-
-  ;; start process to run math (joints) engine.
   (process-spawn-function
     process
     (lambda :behavior process
       ()
       (logclear! (-> self mask) (process-mask freeze pause menu progress entity))
       (until #f
-        (with-profiler 'joints *profile-joints-color*
-          (execute-math-engine)
+        (when *debug-segment*
+          (let ((gp-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+                (v1-9 'joints)
+                (s5-0 *profile-joints-color*)
+                )
+            (when (and *dproc* *debug-segment*)
+              (let ((s4-0 (-> gp-0 data (-> gp-0 count))))
+                (let ((s3-0 (-> gp-0 base-time)))
+                  (set! (-> s4-0 name) v1-9)
+                  (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
+                  )
+                (set! (-> s4-0 depth) (the-as uint (-> gp-0 depth)))
+                (set! (-> s4-0 color) s5-0)
+                (set! (-> gp-0 segment (-> gp-0 depth)) s4-0)
+                )
+              (set! (-> gp-0 count) (min 1023 (+ (-> gp-0 count) 1)))
+              (+! (-> gp-0 depth) 1)
+              (set! (-> gp-0 max-depth) (max (-> gp-0 max-depth) (-> gp-0 depth)))
+              )
+            )
+          0
+          )
+        (execute-math-engine)
+        (when *debug-segment*
+          (let ((gp-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+            (when (and *dproc* *debug-segment*)
+              (let* ((v1-33 (+ (-> gp-1 depth) -1))
+                     (s5-1 (-> gp-1 segment v1-33))
+                     (s4-1 (-> gp-1 base-time))
+                     )
+                (when (>= v1-33 0)
+                  (set! (-> s5-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
+                  (+! (-> gp-1 depth) -1)
+                  )
+                )
+              )
+            )
+          0
           )
         (suspend)
         )
@@ -1625,10 +1881,7 @@
     :from *4k-dead-pool*
     :to *mid-pool*
     )
-
-
   (let ((gp-1 *display*))
-    ;; initial setup
     (set! *teleport* #t)
     (update *setting-control*)
     (init-time-of-day-context *time-of-day-context*)
@@ -1650,14 +1903,46 @@
     (set! (-> gp-1 frames 0 start-time) (timer-count (the-as timer-bank #x10000800)))
     (set! (-> gp-1 frames 1 start-time) (timer-count (the-as timer-bank #x10000800)))
     (set! (-> gp-1 dog-ratio) 1.0)
-
-    ;; main loop
     (while *run*
       (display-loop-main gp-1)
-
-      ;; while we suspend, all actors will run.
-      (with-profiler 'actors *profile-actors-color*
-        (suspend)
+      (when *debug-segment*
+        (let ((s5-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-27 'actors)
+              (s4-0 *profile-actors-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-0 (-> s5-0 data (-> s5-0 count))))
+              (let ((s2-0 (-> s5-0 base-time)))
+                (set! (-> s3-0 name) v1-27)
+                (set! (-> s3-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-0))))
+                )
+              (set! (-> s3-0 depth) (the-as uint (-> s5-0 depth)))
+              (set! (-> s3-0 color) s4-0)
+              (set! (-> s5-0 segment (-> s5-0 depth)) s3-0)
+              )
+            (set! (-> s5-0 count) (min 1023 (+ (-> s5-0 count) 1)))
+            (+! (-> s5-0 depth) 1)
+            (set! (-> s5-0 max-depth) (max (-> s5-0 max-depth) (-> s5-0 depth)))
+            )
+          )
+        0
+        )
+      (suspend)
+      (when *debug-segment*
+        (let ((s5-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-51 (+ (-> s5-1 depth) -1))
+                   (s4-1 (-> s5-1 segment v1-51))
+                   (s3-1 (-> s5-1 base-time))
+                   )
+              (when (>= v1-51 0)
+                (set! (-> s4-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-1))))
+                (+! (-> s5-1 depth) -1)
+                )
+              )
+            )
+          )
+        0
         )
       )
     )
@@ -1666,6 +1951,7 @@
   0
   )
 
+;; definition for function on
 (defun on ((arg0 symbol))
   "Start the display process."
   (when (not *dproc*)
@@ -1713,6 +1999,8 @@
   *dproc*
   )
 
+;; definition for function off
+;; WARN: Return type mismatch int vs none.
 (defun off ()
   "Stop the display process."
   (stop 'debug)
@@ -1727,3 +2015,7 @@
   0
   (none)
   )
+
+
+
+

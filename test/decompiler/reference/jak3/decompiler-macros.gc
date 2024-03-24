@@ -82,7 +82,7 @@
   ;; this uses the self field, which seems to always just get set to the object.
   ;; confirmed in Jak 1 that using self here is useless, not sure...
   `(let ((the-pp ,ppointer))
-     (if the-pp (-> the-pp 0 self))
+     (the process (if the-pp (-> the-pp 0 self)))
      )
   )
 
@@ -1595,6 +1595,22 @@
 (defmacro get-texture (name tpage)
   `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage))
   )
+
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000244140625)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
 
 (import "goal_src/jak3/engine/data/tpages.gc")
 (import "goal_src/jak3/engine/data/textures.gc")

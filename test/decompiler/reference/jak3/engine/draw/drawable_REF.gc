@@ -1,17 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: drawable.gc
-;; name in dgo: drawable
-;; dgos: GAME
-
-(defmacro spr-work ()
-  `(the work-area *fake-scratchpad-data*))
-
-(define-extern draw-vortex (function none)) ;; doesn't exist in jak 3!!
-
-;; DECOMP BEGINS
-
+;; definition for function sphere-cull
 ;; ERROR: Bad vector register dependency: vf16
 ;; ERROR: Bad vector register dependency: vf17
 ;; ERROR: Bad vector register dependency: vf18
@@ -28,13 +18,6 @@
          (vf19 :class vf)
          (vf9 :class vf)
          )
-        ;; og:preserve-this modified for PC: these register would be loaded by the draw method of bsp.
-        (let ((at-0 *math-camera*))
-          (.lvf vf16 (&-> at-0 plane 0 quad))
-          (.lvf vf17 (&-> at-0 plane 1 quad))
-          (.lvf vf18 (&-> at-0 plane 2 quad))
-          (.lvf vf19 (&-> at-0 plane 3 quad))
-          )
     (init-vf0-vector)
     (.lvf vf10 (&-> arg0 quad))
     (.mul.x.vf acc vf16 vf10)
@@ -49,6 +32,7 @@
     )
   )
 
+;; definition for function guard-band-cull
 ;; ERROR: Bad vector register dependency: vf20
 ;; ERROR: Bad vector register dependency: vf21
 ;; ERROR: Bad vector register dependency: vf22
@@ -66,13 +50,6 @@
          (vf9 :class vf)
          )
     (init-vf0-vector)
-        ;; og:preserve-this modified for PC: these registers would be loaded in dma-add-process-drawable
-        (let ((at-0 *math-camera*))
-          (.lvf vf20 (&-> at-0 guard-plane 0 quad))
-          (.lvf vf21 (&-> at-0 guard-plane 1 quad))
-          (.lvf vf22 (&-> at-0 guard-plane 2 quad))
-          (.lvf vf23 (&-> at-0 guard-plane 3 quad))
-          )
     (.lvf vf10 (&-> arg0 quad))
     (.mul.x.vf acc vf20 vf10)
     (.add.mul.y.vf acc vf21 vf10 acc)
@@ -86,6 +63,7 @@
     )
   )
 
+;; definition for function sphere-in-view-frustum?
 (defun sphere-in-view-frustum? ((arg0 sphere))
   "Check if sphere is in view frustum. Uses math-camera, so doesn't need register setup."
   (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128))
@@ -118,6 +96,7 @@
     )
   )
 
+;; definition for function line-in-view-frustum?
 (defun line-in-view-frustum? ((arg0 vector) (arg1 vector))
   "Check if line is in view frustum. Uses math-camera, so doesn't need register setup."
   (local-vars (v1-1 uint128) (v1-2 uint128) (v1-3 uint128) (a0-1 uint128) (a0-2 uint128) (a0-3 uint128))
@@ -157,34 +136,40 @@
     )
   )
 
+;; definition for function vis-cull
 ;; ERROR: failed type prop at 3: Could not figure out load: (set! v1 (l.b (+ v1 #x3800)))
 ;; WARN: Return type mismatch none vs symbol.
 ;; ERROR: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
-(defun vis-cull ((id int))
-  "Is this thing visible in the precomputed visiblity data? By draw-node id.
-   Assumes the scratchpad has the vis-list loaded."
-  (let* ((vis-byte (-> (spr-work) background vis-list (/ id 8))) ;; vis byte
-         (shift-amount (+ 56 (logand id 7)))
-         (shifted (shl vis-byte shift-amount))
-         )
-    (< (the-as int shifted) 0)
-    )
+(defun vis-cull ((a0-0 int))
+  "Check if object is visible by ID with precomputed visibility. Requres scratchpad to have vis-bits loaded."
+  (local-vars (v0-0 none) (v1-0 int) (v1-1 int) (v1-2 none) (v1-3 none) (a0-1 none) (a0-2 none) (a1-0 int))
+  (set! v1-0 #x70000000)
+  (shift-arith-right-32 a1-0 a0-0 3)
+  (set! v1-1 (+ a1-0 v1-0))
+  (set! v1-2 (the-as none (l.b (+ v1-1 #x3800))))
+  (set! a0-1 (the-as none (logand a0-0 7)))
+  (.addiu a0-2 a0-1 56)
+  (set! v1-3 (the-as none (sll v1-2 a0-2)))
+  (set! v0-0 (the-as none (<0.si v1-3)))
+  (ret-value v0-0)
   )
 
-
+;; definition (debug) for function vis-cull-debug
 ;; ERROR: Failed load: (set! v1-2 (l.b (+ v1-1 #x3800))) at op 2
 ;; ERROR: Unsupported inline assembly instruction kind - [addiu a0, a0, 56]
-(defun-debug vis-cull-debug ((a0-0 work-area) (id int))
-  "Like vis-cull, but you can specify a different work-area.
-   Unused."
-  (let* ((vis-byte (-> a0-0 background vis-list (/ id 8))) ;; vis byte
-         (shift-amount (+ 56 (logand id 7)))
-         (shifted (shl vis-byte shift-amount))
-         )
-    (< (the-as int shifted) 0)
+(defun-debug vis-cull-debug ((arg0 work-area) (arg1 int))
+  (local-vars (v1-0 int) (a0-2 int))
+  (shift-arith-right-32 v1-0 arg1 3)
+  (let ((v1-2 (l.b (+ v1-0 (the-as int arg0) #x3800))))
+    (let ((a0-1 (logand arg1 7)))
+      (.addiu a0-2 a0-1 56)
+      )
+    (< (shl v1-2 a0-2) 0)
     )
   )
 
+;; definition for function error-sphere
+;; WARN: Return type mismatch int vs none.
 (defun error-sphere ((arg0 drawable-error) (arg1 string))
   "Draw an error sphere and text for a drawable-error."
   (when *artist-error-spheres*
@@ -212,11 +197,14 @@
   (none)
   )
 
+;; definition for method 9 of type drawable
 (defmethod login ((this drawable))
   "Initialize the object after it is loaded."
   this
   )
 
+;; definition for method 10 of type drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this drawable))
   "Draw the drawable, and typically its children.
    This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
@@ -224,22 +212,30 @@
   (none)
   )
 
+;; definition for method 11 of type drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod drawable-method-11 ((this drawable))
   0
   (none)
   )
 
+;; definition for method 12 of type drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod drawable-method-12 ((this drawable))
   0
   (none)
   )
 
+;; definition for method 16 of type drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod collect-regions ((this drawable) (arg0 sphere) (arg1 int) (arg2 region-prim-list))
   "Fill the region-prim-list with regions that intersect the sphere."
   0
   (none)
   )
 
+;; definition for method 13 of type drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod collect-stats ((this drawable))
   "Collect triangle/perf statistics for rendering.
    This is only called when viewing stats.
@@ -248,12 +244,16 @@
   (none)
   )
 
+;; definition for method 14 of type drawable
+;; WARN: Return type mismatch int vs none.
 (defmethod debug-draw ((this drawable))
   "Debug-draw a drawable and its children. Typically uses the debug-draw functions."
   0
   (none)
   )
 
+;; definition for method 10 of type drawable-error
+;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this drawable-error))
   "Draw the drawable, and typically its children.
    This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
@@ -262,16 +262,21 @@
   (none)
   )
 
+;; definition for method 15 of type drawable
 (defmethod unpack-vis ((this drawable) (arg0 (pointer int8)) (arg1 (pointer int8)))
   arg1
   )
 
+;; definition for symbol *edit-instance*, type string
 (define *edit-instance* (the-as string #f))
 
+;; this part is debug only
 (when *debug-segment*
+;; definition for symbol *instance-mem-usage*, type memory-usage-block
 (define *instance-mem-usage* (new 'debug 'memory-usage-block))
 
 )
+;; definition for function find-instance-by-name-level
 (defun find-instance-by-name-level ((arg0 string) (arg1 level))
   "Find shrub or tie prototype by name in a level.
    Yes it says instance. No it does not return an instance."
@@ -304,6 +309,7 @@
   (the-as prototype-bucket #f)
   )
 
+;; definition for function find-instance-by-name
 (defun find-instance-by-name ((arg0 string))
   "Find shrub or tie prototype by name in any level.
    Yes it says instance. No it does not return an instance."
@@ -321,6 +327,7 @@
   (the-as prototype-bucket #f)
   )
 
+;; definition for function prototypes-game-visible-set!
 (defun prototypes-game-visible-set! ((arg0 pair) (arg1 symbol) (arg2 level))
   "Disable collision/visibilty of tie/shrub based on a list of prototype names.
    Only looks in the given level."
@@ -341,6 +348,7 @@
   0
   )
 
+;; definition (debug) for function find-instance-by-index
 (defun-debug find-instance-by-index ((arg0 type) (arg1 int) (arg2 bsp-header))
   (dotimes (v1-0 (-> *level* length))
     (let ((a3-3 (-> *level* level v1-0)))
@@ -377,6 +385,7 @@
   (the-as prototype-bucket #f)
   )
 
+;; definition (debug) for function prototype-bucket-type
 (defun-debug prototype-bucket-type ((arg0 prototype-bucket))
   (case (-> arg0 geometry 1 type)
     ((prototype-shrubbery shrubbery)
@@ -388,6 +397,7 @@
     )
   )
 
+;; definition (debug) for function prototype-bucket-recalc-fields
 (defun-debug prototype-bucket-recalc-fields ((arg0 prototype-bucket))
   (case (prototype-bucket-type arg0)
     ((instance-shrubbery)
@@ -404,6 +414,9 @@
   arg0
   )
 
+;; definition (debug) for function print-prototype-list
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun-debug print-prototype-list ()
   (local-vars (sv-16 (function prototype-bucket-shrub memory-usage-block int prototype-bucket-shrub)))
   (dotimes (gp-0 (-> *level* length))
@@ -506,6 +519,8 @@
   (none)
   )
 
+;; definition (debug) for function draw-instance-info
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defun-debug draw-instance-info ((arg0 string))
   (local-vars
@@ -744,6 +759,7 @@
   (none)
   )
 
+;; definition (debug) for function set-shadow-by-name
 ;; WARN: Return type mismatch uint vs none.
 (defun-debug set-shadow-by-name ((arg0 string) (arg1 int) (arg2 int))
   "Modify the shadow values for a process."
@@ -767,6 +783,7 @@
   (none)
   )
 
+;; definition (debug) for function get-shadow-by-name
 ;; WARN: Return type mismatch object vs none.
 (defun-debug get-shadow-by-name ((arg0 string))
   "Print to stdout the mask/values for the given process shadows"
@@ -783,6 +800,7 @@
   (none)
   )
 
+;; definition (debug) for function teleport-camera-by-name
 ;; WARN: Return type mismatch object vs none.
 (defun-debug teleport-camera-by-name ((arg0 string))
   "Move camera to entity by name"
@@ -799,6 +817,7 @@
   (none)
   )
 
+;; definition (debug) for function teleport-camera-by-pos
 ;; WARN: Return type mismatch object vs none.
 (defun-debug teleport-camera-by-pos ((arg0 float) (arg1 float) (arg2 float))
   "Move camera to position"
@@ -811,6 +830,8 @@
   (none)
   )
 
+;; definition for function calc-vu1-shadow
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
 (defun calc-vu1-shadow ((arg0 light-group) (arg1 draw-control))
   "Update shadow-ctrl based on lights"
@@ -866,6 +887,7 @@
     )
   )
 
+;; definition for function calc-shadow-masks
 ;; WARN: Return type mismatch symbol vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [srl v1, v1, 24]
 (defun calc-shadow-masks ((arg0 light-group) (arg1 draw-control) (arg2 uint))
@@ -894,7 +916,7 @@
               (let ((v1-13 (light-hash-get-bucket-index sv-64 (-> arg1 origin))))
                 (when (!= v1-13 -1)
                   (let ((s2-0 (-> sv-64 bucket-array v1-13)))
-                    (set! sv-76 (the pointer (+ (+ (-> s2-0 index) 0) (the-as uint (-> sv-64 index-array)))))
+                    (set! sv-76 (+ (+ (-> s2-0 index) 0) (the-as uint (-> sv-64 index-array))))
                     (dotimes (s1-0 (the-as int (-> s2-0 count)))
                       (let ((s0-0 (-> sv-64 light-sphere-array (-> (the-as (pointer uint8) (&+ sv-76 s1-0))))))
                         (when (= (-> s0-0 palette-index) -2)
@@ -904,9 +926,7 @@
                                  (f0-8 (fmax 0.0 (fmin 1.0 (/ (- (vector-vector-distance (-> s0-0 bsphere) sv-68) f28-0) f26-0))))
                                  )
                             (when (!= f0-8 1.0)
-                              ;; (.srl v1-26 v1-25 24)
-                              ;; og:preserve-this
-                              (set! v1-26 (logand #xffffffff (shr (-> s0-0 shadow) 24)))
+                              (.srl v1-26 v1-25 24)
                               (let ((a0-26 (shr (shl (-> s0-0 shadow) 40) 40)))
                                 (dotimes (a1-6 5)
                                   (when (logtest? v1-26 (ash 1 a1-6))
@@ -941,6 +961,7 @@
   (none)
   )
 
+;; definition for function calc-realtime-lights
 ;; WARN: Return type mismatch symbol vs none.
 (defun calc-realtime-lights ((arg0 light-group) (arg1 draw-control) (arg2 uint))
   (local-vars (sv-16 light-hash) (sv-20 vector) (sv-24 mood-context))
@@ -960,7 +981,7 @@
                        (s2-0 (+ (+ (-> s3-0 index) 0) (the-as uint (-> sv-16 index-array))))
                        )
                   (dotimes (s1-0 (the-as int (-> s3-0 count)))
-                    (let* ((a1-3 (-> sv-16 light-sphere-array (-> (the-as (pointer uint8) (+ s2-0 s1-0)))))
+                    (let* ((a1-3 (-> sv-16 light-sphere-array (-> (the-as (pointer uint8) (&+ s2-0 s1-0)))))
                            (v1-14 (-> a1-3 palette-index))
                            (f0-1 (if (= v1-14 -1)
                                      1.0
@@ -984,6 +1005,8 @@
   (none)
   )
 
+;; definition for function calc-vu1-lights
+;; WARN: Return type mismatch int vs none.
 (defun calc-vu1-lights ((arg0 vu-lights) (arg1 draw-control) (arg2 symbol))
   (local-vars (v1-44 float))
   (rlet ((vf1 :class vf)
@@ -1107,6 +1130,9 @@
     )
   )
 
+;; definition for function dma-add-process-drawable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function dma-add-process-drawable has a return type of none, but the expression builder found a return statement.
 (defun dma-add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
   "Generate DMA for foreground object, calculate lights/shadows, etc."
@@ -1133,7 +1159,24 @@
            )
       (init-vf0-vector)
       (set! sv-16 arg0)
-      (start-profiling! (-> *perf-stats* data (perf-stat-bucket foreground)))
+      (let* ((v1-1 (-> *perf-stats* data 50))
+             (a0-1 (-> v1-1 ctrl))
+             )
+        (+! (-> v1-1 count) 1)
+        (b! (zero? a0-1) cfg-2 :delay (nop!))
+        (.mtc0 Perf 0)
+        (.sync.l)
+        (.sync.p)
+        (.mtpc pcr0 0)
+        (.mtpc pcr1 0)
+        (.sync.l)
+        (.sync.p)
+        (.mtc0 Perf a0-1)
+        )
+      (.sync.l)
+      (.sync.p)
+      (label cfg-2)
+      0
       (when (get-menu-mode *blit-displays-work*)
         (if (not (logtest? (-> arg1 status) (draw-control-status hud)))
             (return #f)
@@ -1227,7 +1270,7 @@
                               (a2-12 (+ a1-4 12))
                               )
                           (let ((a3-8 (-> v1-49 texture-mask a2-12 mask quad))
-                                (t0-3 (-> (the-as (pointer uint128) (+ (the-as uint a0-18) (* 48 a1-4) (* t0-0 16))) 0))
+                                (t0-3 (-> (the-as (pointer int128) (+ (the-as uint a0-18) (* 48 a1-4) (* t0-0 16))) 0))
                                 )
                             (.por a3-9 a3-8 t0-3)
                             )
@@ -1268,7 +1311,16 @@
             )
           )
         )
-      (stop-profiling! (-> *perf-stats* data (perf-stat-bucket foreground)))
+      (let ((v1-88 (-> *perf-stats* data 50)))
+        (b! (zero? (-> v1-88 ctrl)) cfg-79 :delay (nop!))
+        (.mtc0 Perf 0)
+        (.sync.l)
+        (.sync.p)
+        (.mfpc a0-41 pcr0)
+        (+! (-> v1-88 accum0) a0-41)
+        (.mfpc a0-43 pcr1)
+        (+! (-> v1-88 accum1) a0-43)
+        )
       (label cfg-79)
       0
       0
@@ -1277,22 +1329,33 @@
     )
   )
 
+;; definition for symbol *hud-lights*, type vu-lights
 (define *hud-lights* (new 'global 'vu-lights))
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* direction 0) 1.0 0.0 0.0 1.0)
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* direction 1) 0.0 1.0 0.0 1.0)
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* direction 2) 0.0 0.0 1.0 1.0)
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* color 0) 0.0 0.0 0.0 1.0)
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* color 1) 0.0 0.0 0.0 1.0)
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* color 2) 0.5 0.5 0.5 1.0)
 
+;; failed to figure out what this is:
 (set-vector! (-> *hud-lights* ambient) 0.5 0.5 0.5 1.0)
 
+;; definition for function dma-add-process-drawable-hud
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defun dma-add-process-drawable-hud ((arg0 process-drawable) (arg1 draw-control) (arg2 float) (arg3 dma-buffer))
   "Special version of dma-add-process-drawable for drawing hud foreground objects"
   (local-vars (a3-4 uint128))
@@ -1331,6 +1394,7 @@
   (none)
   )
 
+;; definition for function add-process-drawable
 ;; WARN: Return type mismatch symbol vs none.
 (defun add-process-drawable ((arg0 process-drawable) (arg1 draw-control) (arg2 symbol) (arg3 dma-buffer))
   "Foreground engine function to generate dma for a process-drawable."
@@ -1338,26 +1402,64 @@
   (none)
   )
 
+;; definition for function foreground-engine-execute
+;; WARN: Return type mismatch int vs none.
 ;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin v1, 0]
 ;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin v1, 1]
 (defun foreground-engine-execute ((arg0 engine))
   "Draw all foreground objects!"
   (when (> (length arg0) 0)
     (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf base)))
-      (with-profiler 'foreground *profile-foreground-color*
-        (let ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf)))
-          ; (let ((v1-34 (-> s4-1 base)))
-          ;   (.sync.l)
-          ;   (.cache dxwbin v1-34 0)
-          ;   (.sync.l)
-          ;   (.cache dxwbin v1-34 1)
-          ;   )
-          ; (.sync.l)
-          ; 0
-          (foreground-init)
-          (execute-connections arg0 s4-1)
+      (when *debug-segment*
+        (let ((s4-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-16 'foreground)
+              (s3-0 *profile-foreground-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s2-0 (-> s4-0 data (-> s4-0 count))))
+              (let ((s1-0 (-> s4-0 base-time)))
+                (set! (-> s2-0 name) v1-16)
+                (set! (-> s2-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s1-0))))
+                )
+              (set! (-> s2-0 depth) (the-as uint (-> s4-0 depth)))
+              (set! (-> s2-0 color) s3-0)
+              (set! (-> s4-0 segment (-> s4-0 depth)) s2-0)
+              )
+            (set! (-> s4-0 count) (min 1023 (+ (-> s4-0 count) 1)))
+            (+! (-> s4-0 depth) 1)
+            (set! (-> s4-0 max-depth) (max (-> s4-0 max-depth) (-> s4-0 depth)))
+            )
           )
-        (foreground-wrapup)
+        0
+        )
+      (let ((s4-1 (-> *display* frames (-> *display* on-screen) global-buf)))
+        (let ((v1-34 (-> s4-1 base)))
+          (.sync.l)
+          (.cache dxwbin v1-34 0)
+          (.sync.l)
+          (.cache dxwbin v1-34 1)
+          )
+        (.sync.l)
+        0
+        (foreground-init)
+        (execute-connections arg0 s4-1)
+        )
+      (foreground-wrapup)
+      (when *debug-segment*
+        (let ((s5-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-49 (+ (-> s5-1 depth) -1))
+                   (s4-2 (-> s5-1 segment v1-49))
+                   (s3-1 (-> s5-1 base-time))
+                   )
+              (when (>= v1-49 0)
+                (set! (-> s4-2 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-1))))
+                (+! (-> s5-1 depth) -1)
+                )
+              )
+            )
+          )
+        0
         )
       (let ((v1-54 *dma-mem-usage*))
         (when (nonzero? v1-54)
@@ -1376,6 +1478,7 @@
   (none)
   )
 
+;; definition (debug) for function main-debug-hook
 (defun-debug main-debug-hook ()
   "Run debug engine, collision renderer."
   (when (not (or (= *master-mode* 'menu) (= *master-mode* 'progress)))
@@ -1390,12 +1493,16 @@
   (none)
   )
 
+;; definition for symbol *debug-hook*, type pair
 (define *debug-hook* (cons main-debug-hook '()))
 
+;; definition for symbol *add-sphere*, type symbol
 (define *add-sphere* #f)
 
+;; definition for symbol *generic-effect-mode*, type int
 (define *generic-effect-mode* 0)
 
+;; definition for function foreground-initialize-engines
 ;; WARN: Return type mismatch symbol vs none.
 (defun foreground-initialize-engines ()
   "Initialize shadow chains prior to foreground drawing."
@@ -1423,6 +1530,7 @@
   (none)
   )
 
+;; definition for function foreground-execute-cpu-vu0-engines
 (defun foreground-execute-cpu-vu0-engines ()
   "Run foreground drawing code on EE/VU0 (bones, generic merc, part of shadow, lightning, prim)"
   (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf)))
@@ -1436,6 +1544,8 @@
   (none)
   )
 
+;; definition for function real-main-draw-hook
+;; WARN: Return type mismatch int vs none.
 (defun real-main-draw-hook ()
   "Do all drawing! Called by main loop to run drawing for a frame.
    Note that this also dispatches collide events, updates actors, etc.
@@ -1443,7 +1553,7 @@
   (local-vars (a0-115 int) (a0-117 int))
   (with-pp
     (let ((v1-5 (-> *display* frames (-> *display* on-screen) global-buf)))
-      (set! (-> v1-5 end) (the pointer (&- (-> v1-5 end) (the-as uint (* (shr (+ (-> *display* mem-reserve-size) 8255) 6) 64)))))
+      (set! (-> v1-5 end) (&- (-> v1-5 end) (the-as uint (* (shr (+ (-> *display* mem-reserve-size) 8255) 6) 64))))
       )
     (when *display-bug-report*
       (let ((v1-13 (-> *display* frames (-> *display* on-screen) global-buf)))
@@ -1463,12 +1573,8 @@
         )
       )
     "Function to be executed to set up for engine dma"
-
-    ;; update renderer enable masks from menu
     (set! (-> *display* vu1-enable-user) (-> *display* vu1-enable-user-menu))
     (set! (-> *texture-pool* texture-enable-user) (-> *texture-pool* texture-enable-user-menu))
-
-    ;; print memory stats
     (when *debug-segment*
       (when (and *stats-memory* (!= *master-mode* 'menu))
         (cond
@@ -1492,12 +1598,8 @@
         )
       (reset! *dma-mem-usage*)
       )
-
-    ;; reset foreground
     (foreground-initialize-engines)
     (reset! *prim-work*)
-
-    ;; update wind/time of day prior to drawing.
     (let ((gp-2 (-> pp clock)))
       (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
           (set! (-> pp clock) (-> *display* bg-clock))
@@ -1509,36 +1611,99 @@
       (update-time-of-day *time-of-day-context*)
       (set! (-> pp clock) gp-2)
       )
-
-    ;; draw sky
-    (with-profiler 'sky *profile-sky-color*
-      (if (-> *sky-work* draw-vortex)
-          (draw-vortex)
-          (draw *sky-work*)
+    (when *debug-segment*
+      (let ((gp-3 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-73 'sky)
+            (s5-1 *profile-sky-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s4-0 (-> gp-3 data (-> gp-3 count))))
+            (let ((s3-0 (-> gp-3 base-time)))
+              (set! (-> s4-0 name) v1-73)
+              (set! (-> s4-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-0))))
+              )
+            (set! (-> s4-0 depth) (the-as uint (-> gp-3 depth)))
+            (set! (-> s4-0 color) s5-1)
+            (set! (-> gp-3 segment (-> gp-3 depth)) s4-0)
+            )
+          (set! (-> gp-3 count) (min 1023 (+ (-> gp-3 count) 1)))
+          (+! (-> gp-3 depth) 1)
+          (set! (-> gp-3 max-depth) (max (-> gp-3 max-depth) (-> gp-3 depth)))
           )
-      (flush-cache 0)
+        )
+      0
       )
-
-
-    ;; draw ocean
+    (if (-> *sky-work* draw-vortex)
+        (draw-vortex)
+        (draw *sky-work*)
+        )
+    (flush-cache 0)
+    (when *debug-segment*
+      (let ((gp-4 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-102 (+ (-> gp-4 depth) -1))
+                 (s5-2 (-> gp-4 segment v1-102))
+                 (s4-1 (-> gp-4 base-time))
+                 )
+            (when (>= v1-102 0)
+              (set! (-> s5-2 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-1))))
+              (+! (-> gp-4 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
     (let ((gp-5 (-> pp clock)))
       (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
           (set! (-> pp clock) (-> *display* bg-clock))
           (set! (-> pp clock) (-> *display* real-clock))
           )
-      (with-profiler 'ocean *profile-ocean-color*
-        (draw! *ocean*)
-        (if *ocean-map*
-            (update-map *ocean*)
+      (when *debug-segment*
+        (let ((s5-3 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-120 'ocean)
+              (s4-2 *profile-ocean-color*)
+              )
+          (when (and *dproc* *debug-segment*)
+            (let ((s3-1 (-> s5-3 data (-> s5-3 count))))
+              (let ((s2-0 (-> s5-3 base-time)))
+                (set! (-> s3-1 name) v1-120)
+                (set! (-> s3-1 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s2-0))))
+                )
+              (set! (-> s3-1 depth) (the-as uint (-> s5-3 depth)))
+              (set! (-> s3-1 color) s4-2)
+              (set! (-> s5-3 segment (-> s5-3 depth)) s3-1)
+              )
+            (set! (-> s5-3 count) (min 1023 (+ (-> s5-3 count) 1)))
+            (+! (-> s5-3 depth) 1)
+            (set! (-> s5-3 max-depth) (max (-> s5-3 max-depth) (-> s5-3 depth)))
             )
+          )
+        0
+        )
+      (draw! *ocean*)
+      (if *ocean-map*
+          (update-map *ocean*)
+          )
+      (when *debug-segment*
+        (let ((s5-4 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-150 (+ (-> s5-4 depth) -1))
+                   (s4-3 (-> s5-4 segment v1-150))
+                   (s3-2 (-> s5-4 base-time))
+                   )
+              (when (>= v1-150 0)
+                (set! (-> s4-3 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-2))))
+                (+! (-> s5-4 depth) -1)
+                )
+              )
+            )
+          )
+        0
         )
       (set! (-> pp clock) gp-5)
       )
-
-    ;; draw foreground
     (foreground-engine-execute *foreground-draw-engine*)
-
-    ;; do VU0/EE part of foreground drawing
     (let ((gp-6 (-> pp clock)))
       (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
           (set! (-> pp clock) (-> *display* bg-clock))
@@ -1547,12 +1712,8 @@
       (foreground-execute-cpu-vu0-engines)
       (set! (-> pp clock) gp-6)
       )
-
-
     (when *add-sphere*
       )
-
-    ;; sprites/particles
     (if (not (paused?))
         (execute-part-engine)
         )
@@ -1561,8 +1722,6 @@
           (sprite-draw *display*)
           )
       )
-
-    ;; debug drawing
     (when *debug-segment*
       (debug-draw-actors *level* *display-actor-marks*)
       (collide-shape-draw-debug-marks)
@@ -1574,42 +1733,166 @@
             )
         )
       )
-
-    ;; dispatch collision events
     (send-events-for-touching-shapes *touching-list*)
     (free-nodes *touching-list*)
     (prepare *collide-rider-pool*)
     (send-all! *event-queue*)
-
-    ;; level update actors:
-    (with-profiler 'actors *profile-actors-color*
-      (actors-update *level*)
-      )
-
-    ;; do navigation math
-    (with-profiler 'nav *profile-nav-color*
-      (update-nav-meshes-method *level*)
-      )
-
-    ;; draw the backgroun
-    (with-profiler 'background *profile-background-color*
-      (init-background)
-      (execute-connections *background-draw-engine* #f)
-      (start-profiling! (-> *perf-stats* data (perf-stat-bucket background)))
-      (finish-background)
-      (stop-profiling! (-> *perf-stats* data (perf-stat-bucket background)))
-      (update-wait-stats
-        (-> *perf-stats* data (perf-stat-bucket background))
-        (-> *background-work* wait-to-vu0)
-        (the-as uint 0)
-        (the-as uint 0)
+    (when *debug-segment*
+      (let ((gp-7 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-200 'actors)
+            (s5-5 *profile-actors-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s4-4 (-> gp-7 data (-> gp-7 count))))
+            (let ((s3-3 (-> gp-7 base-time)))
+              (set! (-> s4-4 name) v1-200)
+              (set! (-> s4-4 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-3))))
+              )
+            (set! (-> s4-4 depth) (the-as uint (-> gp-7 depth)))
+            (set! (-> s4-4 color) s5-5)
+            (set! (-> gp-7 segment (-> gp-7 depth)) s4-4)
+            )
+          (set! (-> gp-7 count) (min 1023 (+ (-> gp-7 count) 1)))
+          (+! (-> gp-7 depth) 1)
+          (set! (-> gp-7 max-depth) (max (-> gp-7 max-depth) (-> gp-7 depth)))
+          )
         )
+      0
       )
-
-    ;; end GOMI stats hack collection
+    (actors-update *level*)
+    (when *debug-segment*
+      (let ((gp-8 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-226 (+ (-> gp-8 depth) -1))
+                 (s5-6 (-> gp-8 segment v1-226))
+                 (s4-5 (-> gp-8 base-time))
+                 )
+            (when (>= v1-226 0)
+              (set! (-> s5-6 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-5))))
+              (+! (-> gp-8 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (when *debug-segment*
+      (let ((gp-9 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-239 'nav)
+            (s5-7 *profile-nav-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s4-6 (-> gp-9 data (-> gp-9 count))))
+            (let ((s3-4 (-> gp-9 base-time)))
+              (set! (-> s4-6 name) v1-239)
+              (set! (-> s4-6 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-4))))
+              )
+            (set! (-> s4-6 depth) (the-as uint (-> gp-9 depth)))
+            (set! (-> s4-6 color) s5-7)
+            (set! (-> gp-9 segment (-> gp-9 depth)) s4-6)
+            )
+          (set! (-> gp-9 count) (min 1023 (+ (-> gp-9 count) 1)))
+          (+! (-> gp-9 depth) 1)
+          (set! (-> gp-9 max-depth) (max (-> gp-9 max-depth) (-> gp-9 depth)))
+          )
+        )
+      0
+      )
+    (update-nav-meshes-method *level*)
+    (when *debug-segment*
+      (let ((gp-10 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-265 (+ (-> gp-10 depth) -1))
+                 (s5-8 (-> gp-10 segment v1-265))
+                 (s4-7 (-> gp-10 base-time))
+                 )
+            (when (>= v1-265 0)
+              (set! (-> s5-8 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-7))))
+              (+! (-> gp-10 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (when *debug-segment*
+      (let ((gp-11 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-278 'background)
+            (s5-9 *profile-background-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s4-8 (-> gp-11 data (-> gp-11 count))))
+            (let ((s3-5 (-> gp-11 base-time)))
+              (set! (-> s4-8 name) v1-278)
+              (set! (-> s4-8 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-5))))
+              )
+            (set! (-> s4-8 depth) (the-as uint (-> gp-11 depth)))
+            (set! (-> s4-8 color) s5-9)
+            (set! (-> gp-11 segment (-> gp-11 depth)) s4-8)
+            )
+          (set! (-> gp-11 count) (min 1023 (+ (-> gp-11 count) 1)))
+          (+! (-> gp-11 depth) 1)
+          (set! (-> gp-11 max-depth) (max (-> gp-11 max-depth) (-> gp-11 depth)))
+          )
+        )
+      0
+      )
+    (init-background)
+    (execute-connections *background-draw-engine* #f)
+    (let* ((v1-294 (-> *perf-stats* data 40))
+           (a0-113 (-> v1-294 ctrl))
+           )
+      (+! (-> v1-294 count) 1)
+      (b! (zero? a0-113) cfg-122 :delay (nop!))
+      (.mtc0 Perf 0)
+      (.sync.l)
+      (.sync.p)
+      (.mtpc pcr0 0)
+      (.mtpc pcr1 0)
+      (.sync.l)
+      (.sync.p)
+      (.mtc0 Perf a0-113)
+      )
+    (.sync.l)
+    (.sync.p)
+    (label cfg-122)
+    0
+    (finish-background)
+    (let ((v1-297 (-> *perf-stats* data 40)))
+      (b! (zero? (-> v1-297 ctrl)) cfg-124 :delay (nop!))
+      (.mtc0 Perf 0)
+      (.sync.l)
+      (.sync.p)
+      (.mfpc a0-115 pcr0)
+      (+! (-> v1-297 accum0) a0-115)
+      (.mfpc a0-117 pcr1)
+      (+! (-> v1-297 accum1) a0-117)
+      )
+    (label cfg-124)
+    0
+    (update-wait-stats
+      (-> *perf-stats* data 40)
+      (-> *background-work* wait-to-vu0)
+      (the-as uint 0)
+      (the-as uint 0)
+      )
+    (when *debug-segment*
+      (let ((gp-12 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-314 (+ (-> gp-12 depth) -1))
+                 (s5-10 (-> gp-12 segment v1-314))
+                 (s4-9 (-> gp-12 base-time))
+                 )
+            (when (>= v1-314 0)
+              (set! (-> s5-10 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s4-9))))
+              (+! (-> gp-12 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
     (end-perf-stat-collection)
-
-    ;; run collect-stats without the perf-stat collection running
     (when (and (!= *master-mode* 'menu) *stats-poly*)
       (dotimes (gp-13 (-> *level* length))
         (let ((v1-326 (-> *level* level gp-13)))
@@ -1628,22 +1911,23 @@
           (print-collide-stats)
           )
       )
-
-    ;; restart perf-stat collection
     (start-perf-stat-collection)
     0
     (none)
     )
   )
 
+;; definition for function main-draw-hook
 (defun main-draw-hook ()
   "Wrapper of real-main-draw-hook"
   (real-main-draw-hook)
   (none)
   )
 
+;; definition for symbol *draw-hook*, type (function none)
 (define *draw-hook* main-draw-hook)
 
+;; definition for function default-init-buffer
 ;; WARN: Return type mismatch symbol vs none.
 (defun default-init-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
   "Initialize DMA chain for a bucket."
@@ -1704,6 +1988,7 @@
   (none)
   )
 
+;; definition for function default-end-buffer
 ;; WARN: Return type mismatch symbol vs none.
 (defun default-end-buffer ((arg0 bucket-id) (arg1 gs-zbuf) (arg2 gs-test))
   "Add DMA data at the end of a bucket to reset settings."
@@ -1767,6 +2052,8 @@
   (none)
   )
 
+;; definition (debug) for function screen-shot-scale
+;; WARN: Return type mismatch int vs none.
 (defun-debug screen-shot-scale ((arg0 int) (arg1 string))
   (set! (-> *screen-shot-work* size) arg0)
   (set! (-> *screen-shot-work* name) arg1)
@@ -1775,6 +2062,8 @@
   (none)
   )
 
+;; definition (debug) for function screen-shot
+;; WARN: Return type mismatch int vs none.
 (defun-debug screen-shot ()
   "Take a screenshot."
   (screen-shot-scale 1 "image")
@@ -1782,6 +2071,7 @@
   (none)
   )
 
+;; definition for function display-frame-start
 ;; WARN: Return type mismatch display vs none.
 (defun display-frame-start ((arg0 display) (arg1 int) (arg2 float))
   "Advance clocks, poll pads/mouse, set up buckets."
@@ -1855,6 +2145,7 @@
   (none)
   )
 
+;; definition for function display-frame-finish
 (defun display-frame-finish ((arg0 display))
   "Do final texture remaps, sync DMA (wait for previous rendering to finish), and finalize DMA chain."
   (local-vars (a0-54 int) (a0-56 int))
@@ -1868,38 +2159,146 @@
       (merc-vu1-init-buffers)
       (emerc-vu1-init-buffers)
       (generic-vu1-init-buffers)
-      (with-profiler 'texture *profile-texture-color*
-        (when (-> *texture-pool* update-sprites-flag)
-          (update-sprites *texture-pool*)
-          (particle-adgif-cache-flush)
-          (remap-all-particles)
-          )
-        (let ((s3-1 (-> pp clock)))
-          (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
-              (set! (-> pp clock) (-> arg0 bg-clock))
-              (set! (-> pp clock) (-> arg0 real-clock))
+      (when *debug-segment*
+        (let ((s3-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+              (v1-12 'texture)
+              (s2-0 *profile-texture-color*)
               )
-          (upload-textures *texture-pool*)
-          (set! (-> pp clock) s3-1)
-          )
-        (if (-> *texture-pool* update-flag)
-            (update-warp-and-hud *texture-pool*)
+          (when (and *dproc* *debug-segment*)
+            (let ((s1-0 (-> s3-0 data (-> s3-0 count))))
+              (let ((s0-0 (-> s3-0 base-time)))
+                (set! (-> s1-0 name) v1-12)
+                (set! (-> s1-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s0-0))))
+                )
+              (set! (-> s1-0 depth) (the-as uint (-> s3-0 depth)))
+              (set! (-> s1-0 color) s2-0)
+              (set! (-> s3-0 segment (-> s3-0 depth)) s1-0)
+              )
+            (set! (-> s3-0 count) (min 1023 (+ (-> s3-0 count) 1)))
+            (+! (-> s3-0 depth) 1)
+            (set! (-> s3-0 max-depth) (max (-> s3-0 max-depth) (-> s3-0 depth)))
             )
-        (-> arg0 frames (-> arg0 on-screen) global-buf)
-        (update-eyes)
+          )
+        0
+        )
+      (when (-> *texture-pool* update-sprites-flag)
+        (update-sprites *texture-pool*)
+        (particle-adgif-cache-flush)
+        (remap-all-particles)
+        )
+      (let ((s3-1 (-> pp clock)))
+        (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+            (set! (-> pp clock) (-> arg0 bg-clock))
+            (set! (-> pp clock) (-> arg0 real-clock))
+            )
+        (upload-textures *texture-pool*)
+        (set! (-> pp clock) s3-1)
+        )
+      (if (-> *texture-pool* update-flag)
+          (update-warp-and-hud *texture-pool*)
+          )
+      (-> arg0 frames (-> arg0 on-screen) global-buf)
+      (update-eyes)
+      (when *debug-segment*
+        (let ((s3-2 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+          (when (and *dproc* *debug-segment*)
+            (let* ((v1-56 (+ (-> s3-2 depth) -1))
+                   (s2-1 (-> s3-2 segment v1-56))
+                   (s1-1 (-> s3-2 base-time))
+                   )
+              (when (>= v1-56 0)
+                (set! (-> s2-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s1-1))))
+                (+! (-> s3-2 depth) -1)
+                )
+              )
+            )
+          )
+        0
         )
       (when *debug-segment*
-        (with-profiler 'debug *profile-debug-color*
-          (debug-draw-buffers)
-          )
-        (with-profiler 'gs-sync *profile-gs-sync-color*
-          (when (nonzero? (sync-path 0 0))
-            (*dma-timeout-hook*)
-            (reset-vif1-path)
-            (nop!)
-            (nop!)
-            0
+        (when *debug-segment*
+          (let ((s3-3 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+                (v1-71 'debug)
+                (s2-2 *profile-debug-color*)
+                )
+            (when (and *dproc* *debug-segment*)
+              (let ((s1-2 (-> s3-3 data (-> s3-3 count))))
+                (let ((s0-1 (-> s3-3 base-time)))
+                  (set! (-> s1-2 name) v1-71)
+                  (set! (-> s1-2 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s0-1))))
+                  )
+                (set! (-> s1-2 depth) (the-as uint (-> s3-3 depth)))
+                (set! (-> s1-2 color) s2-2)
+                (set! (-> s3-3 segment (-> s3-3 depth)) s1-2)
+                )
+              (set! (-> s3-3 count) (min 1023 (+ (-> s3-3 count) 1)))
+              (+! (-> s3-3 depth) 1)
+              (set! (-> s3-3 max-depth) (max (-> s3-3 max-depth) (-> s3-3 depth)))
+              )
             )
+          0
+          )
+        (debug-draw-buffers)
+        (when *debug-segment*
+          (let ((s3-4 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+            (when (and *dproc* *debug-segment*)
+              (let* ((v1-95 (+ (-> s3-4 depth) -1))
+                     (s2-3 (-> s3-4 segment v1-95))
+                     (s1-3 (-> s3-4 base-time))
+                     )
+                (when (>= v1-95 0)
+                  (set! (-> s2-3 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s1-3))))
+                  (+! (-> s3-4 depth) -1)
+                  )
+                )
+              )
+            )
+          0
+          )
+        (when *debug-segment*
+          (let ((s3-5 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+                (v1-108 'gs-sync)
+                (s2-4 *profile-gs-sync-color*)
+                )
+            (when (and *dproc* *debug-segment*)
+              (let ((s1-4 (-> s3-5 data (-> s3-5 count))))
+                (let ((s0-2 (-> s3-5 base-time)))
+                  (set! (-> s1-4 name) v1-108)
+                  (set! (-> s1-4 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s0-2))))
+                  )
+                (set! (-> s1-4 depth) (the-as uint (-> s3-5 depth)))
+                (set! (-> s1-4 color) s2-4)
+                (set! (-> s3-5 segment (-> s3-5 depth)) s1-4)
+                )
+              (set! (-> s3-5 count) (min 1023 (+ (-> s3-5 count) 1)))
+              (+! (-> s3-5 depth) 1)
+              (set! (-> s3-5 max-depth) (max (-> s3-5 max-depth) (-> s3-5 depth)))
+              )
+            )
+          0
+          )
+        (when (nonzero? (sync-path 0 0))
+          (*dma-timeout-hook*)
+          (reset-vif1-path)
+          (nop!)
+          (nop!)
+          0
+          )
+        (when *debug-segment*
+          (let ((s3-6 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+            (when (and *dproc* *debug-segment*)
+              (let* ((v1-134 (+ (-> s3-6 depth) -1))
+                     (s2-5 (-> s3-6 segment v1-134))
+                     (s1-5 (-> s3-6 base-time))
+                     )
+                (when (>= v1-134 0)
+                  (set! (-> s2-5 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s1-5))))
+                  (+! (-> s3-6 depth) -1)
+                  )
+                )
+              )
+            )
+          0
           )
         (let ((s3-7 (-> arg0 frames (-> arg0 on-screen) profile-array data 0)))
           (when (and *dproc* *debug-segment*)
@@ -1915,19 +2314,18 @@
             )
           )
         0
-        (stop-profiling! (-> *perf-stats* data 0))
-        ; (let ((v1-155 (-> *perf-stats* data)))
-        ;   (b! (zero? (-> v1-155 0 ctrl)) cfg-63 :delay (nop!))
-        ;   (.mtc0 Perf 0)
-        ;   (.sync.l)
-        ;   (.sync.p)
-        ;   (.mfpc a0-54 pcr0)
-        ;   (+! (-> v1-155 0 accum0) a0-54)
-        ;   (.mfpc a0-56 pcr1)
-        ;   (+! (-> v1-155 0 accum1) a0-56)
-        ;   )
-        ; (label cfg-63)
-        ; 0
+        (let ((v1-155 (-> *perf-stats* data)))
+          (b! (zero? (-> v1-155 0 ctrl)) cfg-63 :delay (nop!))
+          (.mtc0 Perf 0)
+          (.sync.l)
+          (.sync.p)
+          (.mfpc a0-54 pcr0)
+          (+! (-> v1-155 0 accum0) a0-54)
+          (.mfpc a0-56 pcr1)
+          (+! (-> v1-155 0 accum1) a0-56)
+          )
+        (label cfg-63)
+        0
         (with-dma-buffer-add-bucket ((s2-7 (-> arg0 frames (-> arg0 on-screen) debug-buf))
                                      (bucket-id debug-no-zbuf2)
                                      )
@@ -2050,6 +2448,8 @@
     )
   )
 
+;; definition for function determine-pause-mode
+;; WARN: Return type mismatch int vs none.
 (defun determine-pause-mode ()
   "Update pause modes"
   (when (and (or (not *progress-process*) (can-go-back? (-> *progress-process* 0)))
@@ -2089,6 +2489,7 @@
   (none)
   )
 
+;; definition for function calc-ratio
 (defun calc-ratio ((arg0 int) (arg1 int))
   (let ((f0-1 (the float (sar (- arg0 arg1) 48))))
     (if (< f0-1 0.0)
@@ -2098,6 +2499,7 @@
     )
   )
 
+;; definition for function display-sync
 (defun display-sync ((arg0 display))
   (sync-path 0 0)
   (let* ((s4-0 (-> arg0 last-screen))
@@ -2116,7 +2518,7 @@
             (f26-0 (fmax 1.0 (fmin 4.0 (-> *display* dog-ratio))))
             )
         (if (< (the-as int s3-0) 0)
-            (set! s3-0 (the uint (+ #x10000 s3-0)))
+            (set! s3-0 (+ #x10000 s3-0))
             )
         (set! (-> arg0 frames s4-0 run-time) s3-0)
         (set! f30-1 (cond
@@ -2163,7 +2565,7 @@
         (let ((v1-50 (timer-count (the-as timer-bank #x10000800))))
           (let ((a0-19 (sar (- (shl v1-50 48) s5-0) 48)))
             (if (< (the-as int a0-19) 0)
-                (set! a0-19 (the uint (+ #x10000 a0-19)))
+                (set! a0-19 (+ #x10000 a0-19))
                 )
             (+! (-> arg0 total-run-time) a0-19)
             )
@@ -2201,3 +2603,7 @@
     )
   (none)
   )
+
+
+
+

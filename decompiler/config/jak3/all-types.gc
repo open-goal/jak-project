@@ -100,7 +100,7 @@
 (define-extern file-stream-write (function file-stream pointer uint uint))
 (define-extern file-stream-close (function file-stream file-stream))
 (define-extern new-dynamic-structure (function symbol type int structure))
-(define-extern kernel-shutdown (function none))
+(define-extern kernel-shutdown (function int none))
 (define-extern scf-get-timeout (function int))
 (define-extern scf-get-inactive-timeout (function int))
 (define-extern syncv (function int int))
@@ -4258,7 +4258,7 @@
   (tie-water)
   (etie-water)
   (etie-scissor-water)
-  (rn31)
+  (sprite)
   (rn32)
   (rn33)
   (rn34)
@@ -5642,8 +5642,8 @@
   ((on-screen            int32            :offset-assert 4)
    (last-screen          int32            :offset-assert 8)
    (frames               display-frame 2  :offset-assert 12) ;; guessed by decompiler
-   (bgcolor              uint64           :offset-assert 24) ;; gs-bgcolor
-   (pmode                uint64           :offset-assert 32) ;; gs-pmode
+   (bgcolor              gs-bgcolor       :offset-assert 24)
+   (pmode                gs-pmode         :offset-assert 32)
    (clock                clock         22 :offset-assert 40) ;; guessed by decompiler
    (session-clock        clock            :offset 40) ;; guessed by decompiler
    (game-clock           clock            :offset 44) ;; guessed by decompiler
@@ -6937,7 +6937,7 @@
    (bytes               uint8  4       :offset 60) ;; guessed by decompiler
    (mask                uint16         :offset 60)
    (palette-index       int8           :offset 63)
-   (shadow              uint32         :offset 32)
+   (shadow              uint32         :offset 32 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -6948,6 +6948,7 @@
   ((index uint16  :offset-assert 0)
    (count uint16  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -7813,10 +7814,10 @@
    the load. This should only be used when you might want to start a load." (_type_ symbol symbol) level) ;; 12
     (activate-levels! "Make all levels 'active!" (_type_) int) ;; 13
     (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
-    (level-group-method-15 () none) ;; 15 ;; (debug-draw-actors (_type_ symbol) none)
+    (debug-draw-actors (_type_ symbol) none) ;; 15
     (assign-draw-indices "Assign the order for levels to be drawn." (_type_) none) ;; 16
-    (level-group-method-17 () none) ;; 17 ;; (actors-update (_type_) none)
-    (level-group-method-18 () none) ;; 18 ;; (update-nav-meshes-method (_type_) none)
+    (actors-update (_type_) none) ;; 17
+    (update-nav-meshes-method (_type_) none) ;; 18
     (level-update "Per-frame update of the level system." (_type_) none) ;; 19
     (level-get-target-inside "Get the level that the player is 'in'." (_type_) level) ;; 20
     (init-level-system "If needed, initialize the level system by loading common/art packages and allocating level heaps." (_type_ symbol) none) ;; 21
@@ -9788,9 +9789,9 @@
     (trail-graph-method-9 () none) ;; 9 ;; (trail-graph-method-9 (_type_ int) none)
     (trail-graph-method-10 () none) ;; 10 ;; (trail-graph-method-10 (_type_ int) none)
     (trail-graph-method-11 () none) ;; 11 ;; (trail-graph-method-11 (_type_ int int) trail-node)
-    (trail-graph-method-12 () none) ;; 12 ;; (debug-draw (_type_) none)
+    (trail-graph-method-12 () none) ;; 12
     (trail-graph-method-13 () none) ;; 13 ;; (debug-draw-cell (_type_ int) none)
-    (trail-graph-method-14 () none) ;; 14 ;; (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol)
+    (debug-draw (_type_) none) ;; 14 ;; (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol)
     (trail-graph-method-15 () none) ;; 15 ;; (do-path (_type_ vector vector) int)
     (trail-graph-method-16 () none) ;; 16 ;; (trail-graph-method-16 () none)
     (trail-graph-method-17 () none) ;; 17 ;; (get-node-location-by-id (_type_ uint vector) vector)
@@ -10247,7 +10248,7 @@
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
     (bigmap-method-9 () none) ;; 9 ;; (initialize (_type_) none)
-    (bigmap-method-10 () none) ;; 10 ;; (update (_type_) none)
+    (update (_type_) none) ;; 10
     (draw (_type_ int int int int) int) ;; 11
     (bigmap-method-12 () none) ;; 12 ;; (handle-cpad-inputs (_type_) int)
     (bigmap-method-13 () none) ;; 13 ;; (compress-all (_type_) int)
@@ -10846,7 +10847,7 @@
     (tie-draw-points 13)
     (tie-debug 14)
     (tie-scissor 15)
-
+    (tie-pal 16)
     (tie-generic 17)
     (instance-tie 18)
     (instance-tie-colors0 19) ;; somehow used by tfrag too..
@@ -10854,6 +10855,7 @@
     (instance-tie-colors2 21)
     (instance-tie-colors3 22)
     (instance-tie-colors* 23)
+    (prototype-bucket-shrub 24)
 
 
     (shrubbery 27)
@@ -10891,8 +10893,10 @@
     (art-joint-anim 78)
 
     (texture 83)
-
+    (string 84)
     (array 85)
+
+    (debug 88)
 
     (eye-anim 112)
     )
@@ -10975,7 +10979,7 @@
     (blit-displays-work-method-16 () none) ;; 16
     (blit-displays-work-method-17 (_type_ vector int float symbol) none) ;; 17
     (blit-displays-work-method-18 () none) ;; 18
-    (blit-displays-work-method-19 () none) ;; 19
+    (blit-displays-work-method-19 (_type_) none) ;; 19 (called from main.gc)
     (blit-displays-work-method-20 () none) ;; 20
     (get-menu-mode (_type_) symbol) ;; 21
     (get-screen-copied (_type_) symbol) ;; 22
@@ -11208,8 +11212,8 @@
     (sky-work-method-10 () none) ;; 10 ;; (init-orbit-settings! (_type_ int float float float float float float) none)
     (sky-work-method-11 () none) ;; 11 ;; (update-colors-for-time (_type_ float) none)
     (sky-work-method-12 () none) ;; 12 ;; (update-time-and-speed (_type_ float float) none)
-    (sky-work-method-13 () none) ;; 13 ;; (draw (_type_) none)
-    (sky-work-method-14 () none) ;; 14 ;; (update-matrix (_type_ matrix) none)
+    (sky-work-method-13 () none) ;; 13
+    (draw (_type_) none) ;; 14 ;; (update-matrix (_type_ matrix) none)
     (sky-work-method-15 () none) ;; 15 ;; (update-template-colors (_type_) none)
     (sky-work-method-16 () none) ;; 16 ;; (init-regs-for-large-polygon-draw (_type_) none)
     (sky-work-method-17 () none) ;; 17 ;; (init-regs-for-sky-asm (_type_) none)
@@ -11714,8 +11718,8 @@
   :flag-assert         #x5c0000206c
   (:methods
     (get-height (_type_ vector symbol) float) ;; 11
-    (ocean-method-12 () none) ;; 12 ;; (draw! (_type_) none)
-    (ocean-method-13 () none) ;; 13 ;; (update-map (_type_) none)
+    (draw! (_type_) none) ;; 12
+    (update-map (_type_) none) ;; 13
     (ocean-method-14 () none) ;; 14 ;; (interp-wave (_type_ ocean-wave-info uint float) none)
     (ocean-method-15 () none) ;; 15 ;; (ocean-method-15 (_type_ matrix matrix) none)
     (ocean-method-16 () none) ;; 16 ;; (generate-verts (_type_ ocean-vert-array ocean-height-array) none)
@@ -12099,7 +12103,7 @@
 
 (deftype screen-filter (basic)
   ((draw?          symbol         :offset-assert 4) ;; guessed by decompiler
-   (bucket         int32          :offset-assert 8) ;; bucket-id
+   (bucket         bucket-id      :offset-assert 8)
    (depth          int32          :offset-assert 12)
    (ztest          uint64         :offset-assert 16)
    (color          vector :inline :offset-assert 32)
@@ -12108,14 +12112,14 @@
    (extra          vector :inline :offset-assert 80)
    (speed          float          :offset-assert 80 :overlay-at (-> extra x))
    (current-interp float          :offset-assert 84 :overlay-at (-> extra y))
-   (lock-vsync?    basic          :offset-assert 96)
+   (lock-vsync?    symbol         :offset-assert 96)
    )
   :method-count-assert 12
   :size-assert         #x64
   :flag-assert         #xc00000064
   (:methods
-    (draw (_type_) none) ;; 9
-    (setup (_type_ vector vector float bucket-id) none) ;; 10
+    (draw "Add DMA data to our bucket to draw the filter." (_type_) none) ;; 9
+    (setup "Initialize the screen-filter with the given settings." (_type_ vector vector float bucket-id int int symbol) none) ;; 10
     (disable (_type_) none) ;; 11
     )
   )
@@ -12137,7 +12141,7 @@
   :size-assert         #x44
   :flag-assert         #xa00000044
   (:methods
-    (col-rend-method-9 () none) ;; 9 ;; (col-rend-method-9 (_type_) none)
+    (draw (_type_) none) ;; 9
     )
   )
 
@@ -12367,8 +12371,8 @@
     (login "Initialize the object after it is loaded." (_type_) _type_);; 9
     (draw "Draw the drawable, and typically its children.
            This usually means adding stuff to a list to be drawn later, rather than expensive drawing here." (_type_) none) ;; 10
-    (drawable-method-11 () none) ;; 11 ;; (fill-collide-list-from-box (_type_ int collide-list collide-query) int)
-    (drawable-method-12 () none) ;; 12 ;; (fill-collide-list-from-line-sphere (_type_ int collide-list collide-query) int)
+    (drawable-method-11 (_type_) none) ;; 11 ;; (fill-collide-list-from-box (_type_ int collide-list collide-query) int)
+    (drawable-method-12 (_type_) none) ;; 12 ;; (fill-collide-list-from-line-sphere (_type_ int collide-list collide-query) int)
     (collect-stats "Collect triangle/perf statistics for rendering.
                     This is only called when viewing stats.
                     The vis-bits and culling registers are loaded during this time." (_type_) none) ;; 13
@@ -21436,9 +21440,9 @@
   (:methods
     (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
     (touching-list-method-9 () none) ;; 9 ;; (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
-    (touching-list-method-10 () none) ;; 10 ;; (free-nodes (_type_) none)
+    (free-nodes (_type_) none) ;; 10
     (touching-list-method-11 () none) ;; 11 ;; (update-from-step-size (_type_ float) none)
-    (touching-list-method-12 () none) ;; 12 ;; (send-events-for-touching-shapes (_type_) none)
+    (send-events-for-touching-shapes (_type_) none) ;; 12
     (touching-list-method-13 () none) ;; 13 ;; (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
     )
   )
@@ -23120,7 +23124,7 @@
   (proto-tie)
   (bones)
   (camera)
-  (foreground)
+  (foreground) ;; 50
   (hover-path)
   (hover-spheres)
   (hover-update)
@@ -29795,11 +29799,11 @@
 ;; (define-extern *stats-blerc* object) ;; symbol
 ;; (define-extern *blerc-globals* object) ;; blerc-globals
 ;; (define-extern blerc-stats-init function) ;; (function none)
-;; (define-extern blerc-init function) ;; (function none)
+(define-extern blerc-init (function none))
 ;; (define-extern blerc-a-fragment function)
 ;; (define-extern dma-from-spr function)
 ;; (define-extern merc-dma-chain-to-spr function)
-;; (define-extern blerc-execute function) ;; (function none)
+(define-extern blerc-execute (function none))
 (define-extern merc-blend-shape (function process-drawable object))
 ;; (define-extern setup-blerc-chains-for-one-fragment function) ;; (function object object object object object object object)
 ;; (define-extern setup-blerc-chains function) ;; (function merc-ctrl (pointer int16) dma-buffer none)
@@ -29863,7 +29867,7 @@
 ;; (define-extern ripple-execute-init function) ;; (function none)
 ;; (define-extern ripple-create-wave-table function) ;; (function ripple-wave-set int)
 ;; (define-extern ripple-apply-wave-table function) ;; (function merc-effect symbol)
-;; (define-extern ripple-execute function) ;; (function none)
+(define-extern ripple-execute (function none))
 ;; (define-extern ripple-matrix-scale function) ;; function
 ;; (define-extern ripple-add-debug-sphere function) ;; (function process-drawable vector float float none)
 ;; (define-extern ripple-slow-add-sine-waves function) ;; (function ripple-wave-set float float float)
@@ -29933,7 +29937,7 @@
 (define-extern foreground-check-longest-edge-asm (function draw-control float symbol))
 (define-extern foreground-ripple (function draw-control merc-ctrl pointer int pointer))
 (define-extern foreground-draw (function draw-control dma-buffer float none))
-;; (define-extern foreground-draw-hud function) ;; (function draw-control dma-buffer float none)
+(define-extern foreground-draw-hud (function draw-control dma-buffer float none))
 (define-extern *foreground* foreground-globals)
 (define-extern *foreground-draw-engine* engine)
 
@@ -30024,7 +30028,7 @@
 ;; (define-extern generic-merc-death function)
 ;; (define-extern generic-merc-execute-asm function)
 ;; (define-extern generic-merc-do-chain function) ;; (function mercneric-chain dma-buffer pointer)
-;; (define-extern generic-merc-execute-all function) ;; (function dma-buffer none)
+(define-extern generic-merc-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-tie                    ;;
@@ -30117,7 +30121,7 @@
 ;; (define-extern debug-draw-settings function) ;; (function shadow-settings symbol)
 ;; (define-extern shadow-execute function) ;; (function shadow-dma-packet pointer pointer)
 ;; (define-extern shadow-vu0-upload function) ;; (function none)
-;; (define-extern shadow-execute-all function) ;; (function dma-buffer none)
+(define-extern shadow-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-vu1                     ;;
@@ -30254,7 +30258,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *blit-displays-work* blit-displays-work)
-;; (define-extern draw-color-bars function) ;; (function none)
+(define-extern draw-color-bars (function blit-displays-work none))
 ;; (define-extern draw-raw-image function) ;; (function bucket-id art-group int int level int none)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30849,10 +30853,10 @@
 ;; (define-extern sp-relaunch-setup-fields function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
 ;; (define-extern sp-relaunch-particle-2d function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
 ;; (define-extern sp-relaunch-particle-3d function) ;; (function object sparticle-launcher sparticle-cpuinfo sprite-vec-data-3d none)
-;; (define-extern execute-particle-local-space-engine function)
+(define-extern execute-particle-local-space-engine (function int none))
 ;; (define-extern local-space-camera function)
 (define-extern local-space-proc-joint (function particle-local-space-info none))
-;; (define-extern execute-part-engine function) ;; (function none)
+(define-extern execute-part-engine (function none))
 ;; (define-extern sparticle-track-root function) ;; (function object sparticle-cpuinfo vector none)
 ;; (define-extern sparticle-track-root-prim function) ;; (function object sparticle-cpuinfo vector none)
 ;; (define-extern sparticle-track-joint function) ;; (function sparticle-system sparticle-cpuinfo vector none)
@@ -30935,8 +30939,8 @@
 ;; (define-extern all-particles-50-to-60 function) ;; (function none)
 ;; (define-extern all-particles-60-to-50 function) ;; (function none)
 ;; (define-extern remap-particle function) ;; (function sparticle-system sparticle-cpuinfo pointer none)
-;; (define-extern remap-all-particles function) ;; (function none)
-;; (define-extern process-particles function) ;; (function none)
+(define-extern remap-all-particles (function none))
+(define-extern process-particles (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; entity-table                   ;;
@@ -31754,11 +31758,11 @@
 ;; (define-extern time-of-day-setup function) ;; (function symbol symbol)
 (define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
 (define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
-;; (define-extern init-time-of-day-context function) ;; (function time-of-day-context symbol)
+(define-extern init-time-of-day-context (function time-of-day-context symbol))
 ;; (define-extern set-filter-color! function) ;; (function float float float none)
 ;; (define-extern tod-madd! function) ;; (function vector vector vector float)
 ;; (define-extern update-environment-colors function) ;; (function time-of-day-context vector)
-;; (define-extern update-time-of-day function) ;; (function time-of-day-context none)
+(define-extern update-time-of-day (function time-of-day-context none))
 ;; (define-extern calc-fade-from-fog function) ;; (function vector float)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -32320,7 +32324,7 @@
 (define-extern cshape-reaction-update-state (function control-info collide-query vector none))
 (define-extern cshape-reaction-default (function control-info collide-query vector vector collide-status))
 ;; (define-extern cshape-reaction-just-move function) ;; (function control-info collide-query vector collide-status)
-;; (define-extern collide-shape-draw-debug-marks function) ;; (function none)
+(define-extern collide-shape-draw-debug-marks (function none))
 ;; (define-extern *col-timer* object) ;; stopwatch
 ;; (define-extern *frame-timer* object) ;; stopwatch
 ;; (define-extern *col-timer-enable* object) ;; symbol
@@ -32335,7 +32339,7 @@
 ;; collide                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *collide-vif0-init* array) ;; (array uint32)
+(define-extern *collide-vif0-init* (array uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-planes                 ;;
@@ -32423,7 +32427,7 @@
 
 (define-extern *actor-hash* spatial-hash)
 ;; (define-extern *actor-hash-buckets* object) ;; actor-hash-buckets
-;; (define-extern update-actor-hash function) ;; (function none)
+(define-extern update-actor-hash (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; merc-death                     ;;
@@ -37215,54 +37219,62 @@
 ;; drawable                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sphere-cull function) ;; (function vector symbol)
-;; (define-extern guard-band-cull function) ;; (function vector symbol)
-(define-extern sphere-in-view-frustum? (function sphere symbol))
-(define-extern line-in-view-frustum? (function vector vector symbol))
-(define-extern vis-cull (function int symbol))
-;; (define-extern vis-cull-debug function) ;; (function work-area int symbol)
-;; (define-extern error-sphere function) ;; (function drawable-error string none)
-;; (define-extern *edit-instance* object) ;; string
-;; (define-extern *instance-mem-usage* object) ;; memory-usage-block
-;; (define-extern find-instance-by-name-level function) ;; (function string level prototype-bucket)
-;; (define-extern find-instance-by-name function) ;; (function string prototype-bucket)
-;; (define-extern prototypes-game-visible-set! function) ;; (function pair symbol int)
-;; (define-extern find-instance-by-index function) ;; (function type int bsp-header prototype-bucket)
-;; (define-extern prototype-bucket-type function) ;; (function prototype-bucket type)
-;; (define-extern prototype-bucket-recalc-fields function) ;; (function prototype-bucket prototype-bucket)
-;; (define-extern print-prototype-list function) ;; (function none)
-;; (define-extern draw-instance-info function) ;; (function string none)
-;; (define-extern set-shadow-by-name function) ;; (function string int int none)
-;; (define-extern get-shadow-by-name function) ;; (function string none)
-;; (define-extern teleport-camera-by-name function) ;; (function string none)
-;; (define-extern teleport-camera-by-pos function)
-;; (define-extern calc-vu1-shadow function)
-;; (define-extern calc-shadow-masks function)
-;; (define-extern calc-realtime-lights function)
-(define-extern calc-vu1-lights (function vu-lights draw-control uint none))
-(define-extern dma-add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
-;; (define-extern *hud-lights* object) ;; vu-lights
-(define-extern dma-add-process-drawable-hud (function process-drawable draw-control float dma-buffer none))
-(define-extern add-process-drawable (function process-drawable draw-control symbol dma-buffer none))
-;; (define-extern foreground-engine-execute function) ;; (function engine display-frame none)
-;; (define-extern main-debug-hook function) ;; (function none)
-;; (define-extern *debug-hook* object) ;; pair
-;; (define-extern *add-sphere* object) ;; symbol
-;; (define-extern *generic-effect-mode* object) ;; int
-;; (define-extern foreground-initialize-engines function) ;; (function none)
-;; (define-extern foreground-execute-cpu-vu0-engines function) ;; (function none)
-;; (define-extern real-main-draw-hook function) ;; (function none)
-;; (define-extern main-draw-hook function) ;; (function none)
-;; (define-extern *draw-hook* object) ;; (function none)
-;; (define-extern default-init-buffer function) ;; (function bucket-id gs-zbuf gs-test none)
-;; (define-extern default-end-buffer function) ;; (function bucket-id gs-zbuf gs-test none)
-;; (define-extern screen-shot-scale function) ;; (function int string none)
-;; (define-extern screen-shot function) ;; (function none)
-;; (define-extern display-frame-start function) ;; (function display int float none)
-;; (define-extern display-frame-finish function) ;; (function display display)
-;; (define-extern determine-pause-mode function) ;; (function int)
-;; (define-extern calc-ratio function)
-;; (define-extern display-sync function) ;; (function display none)
+(define-extern draw-vortex (function none)) ;; doesn't exist in jak 3!!
+(define-extern sphere-cull "Is this sphere visible? Uses cached camera matrix registers, so use with care." (function vector symbol))
+(define-extern guard-band-cull "Is this sphere within the guard band, and maybe needs clipping?  Uses cached camera matrix registers, so use with care." (function vector symbol))
+(define-extern sphere-in-view-frustum? "Check if sphere is in view frustum. Uses math-camera, so doesn't need register setup." (function sphere symbol))
+(define-extern line-in-view-frustum? "Check if line is in view frustum. Uses math-camera, so doesn't need register setup." (function vector vector symbol))
+(define-extern vis-cull "Check if object is visible by ID with precomputed visibility. Requres scratchpad to have vis-bits loaded." (function int symbol))
+(define-extern vis-cull-debug (function work-area int symbol))
+(define-extern error-sphere "Draw an error sphere and text for a drawable-error." (function drawable-error string none))
+(define-extern *edit-instance* string)
+(define-extern *instance-mem-usage* memory-usage-block)
+(define-extern find-instance-by-name-level "Find shrub or tie prototype by name in a level.
+                                           Yes it says instance. No it does not return an instance." (function string level prototype-bucket))
+(define-extern find-instance-by-name "Find shrub or tie prototype by name in any level.
+                                      Yes it says instance. No it does not return an instance." (function string prototype-bucket))
+(define-extern prototypes-game-visible-set!
+               "Disable collision/visibilty of tie/shrub based on a list of prototype names.
+                Only looks in the given level."
+               (function pair symbol level int))
+(define-extern find-instance-by-index (function type int bsp-header prototype-bucket))
+(define-extern prototype-bucket-type (function prototype-bucket type))
+(define-extern prototype-bucket-recalc-fields (function prototype-bucket prototype-bucket))
+(define-extern print-prototype-list (function none))
+(define-extern draw-instance-info (function string none))
+(define-extern set-shadow-by-name "Modify the shadow values for a process." (function string int int none))
+(define-extern get-shadow-by-name "Print to stdout the mask/values for the given process shadows" (function string none))
+(define-extern teleport-camera-by-name "Move camera to entity by name" (function string none))
+(define-extern teleport-camera-by-pos "Move camera to position" (function float float float none))
+(define-extern calc-vu1-shadow "Update shadow-ctrl based on lights" (function light-group draw-control none))
+(define-extern calc-shadow-masks (function light-group draw-control uint none))
+(define-extern calc-realtime-lights (function light-group draw-control uint none))
+(define-extern calc-vu1-lights (function vu-lights draw-control symbol none))
+(define-extern dma-add-process-drawable "Generate DMA for foreground object, calculate lights/shadows, etc." (function process-drawable draw-control symbol dma-buffer none))
+(define-extern *hud-lights* vu-lights)
+(define-extern dma-add-process-drawable-hud "Special version of dma-add-process-drawable for drawing hud foreground objects" (function process-drawable draw-control float dma-buffer none))
+(define-extern add-process-drawable "Foreground engine function to generate dma for a process-drawable." (function process-drawable draw-control symbol dma-buffer none))
+(define-extern foreground-engine-execute "Draw all foreground objects!" (function engine none))
+(define-extern main-debug-hook "Run debug engine, collision renderer." (function none))
+(define-extern *debug-hook* pair)
+(define-extern *add-sphere* symbol)
+(define-extern *generic-effect-mode* int)
+(define-extern foreground-initialize-engines "Initialize shadow chains prior to foreground drawing." (function none))
+(define-extern foreground-execute-cpu-vu0-engines "Run foreground drawing code on EE/VU0 (bones, generic merc, part of shadow, lightning, prim)" (function none))
+(define-extern real-main-draw-hook "Do all drawing! Called by main loop to run drawing for a frame.
+                                    Note that this also dispatches collide events, updates actors, etc.
+                                    It's a bit more than just drawing." (function none))
+(define-extern main-draw-hook "Wrapper of real-main-draw-hook" (function none))
+(define-extern *draw-hook* (function none))
+(define-extern default-init-buffer "Initialize DMA chain for a bucket." (function bucket-id gs-zbuf gs-test none))
+(define-extern default-end-buffer "Add DMA data at the end of a bucket to reset settings." (function bucket-id gs-zbuf gs-test none))
+(define-extern screen-shot-scale (function int string none))
+(define-extern screen-shot "Take a screenshot." (function none))
+(define-extern display-frame-start "Advance clocks, poll pads/mouse, set up buckets." (function display int float none))
+(define-extern display-frame-finish "Do final texture remaps, sync DMA (wait for previous rendering to finish), and finalize DMA chain." (function display display))
+(define-extern determine-pause-mode "Update pause modes" (function none))
+(define-extern calc-ratio (function int int float))
+(define-extern display-sync (function display none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; drawable-group                 ;;
@@ -37288,52 +37300,56 @@
 ;; main-collide                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern drawable-sphere-box-intersect? function) ;; (function drawable bounding-box4w symbol)
-;; (define-extern instance-sphere-box-intersect? function) ;; (function drawable instance-tie bounding-box4w symbol)
-;; (define-extern instance-tfragment-add-debug-sphere function) ;; (function drawable instance-tie symbol)
+(define-extern drawable-sphere-box-intersect? (function drawable bounding-box4w symbol))
+(define-extern instance-sphere-box-intersect? (function drawable instance-tie bounding-box4w symbol))
+(define-extern instance-tfragment-add-debug-sphere (function drawable instance-tie symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; video                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(define-extern *video-mode* int)
 (define-extern set-video-mode (function symbol none))
 (define-extern get-video-mode (function symbol))
 (define-extern set-aspect-ratio (function symbol none))
 (define-extern get-aspect-ratio (function symbol))
 (define-extern set-progressive-scan (function symbol none))
-;; (define-extern get-progressive-scan function) ;; (function symbol)
-;; (define-extern set-graphics-mode function) ;; (function none)
+(define-extern get-progressive-scan (function symbol))
+(define-extern set-graphics-mode (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; main                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern set-letterbox-frames (function time-frame none))
-(define-extern letterbox (function none))
-(define-extern set-blackout-frames (function time-frame none))
-(define-extern blackout (function none))
-(define-extern add-blackout (function time-frame int int int int int))
-(define-extern paused? (function symbol))
-(define-extern movie? (function symbol))
-;; (define-extern scene-select? function)
-(define-extern demo? (function symbol))
-(define-extern kiosk? (function symbol))
+(define-extern set-letterbox-frames "Enable letterbox for the given amount of time." (function time-frame none))
+(define-extern letterbox "Draw letterbox" (function bucket-id float none))
+(define-extern set-blackout-frames "Enable blackout for the given amount of time." (function time-frame none))
+(define-extern blackout "Draw blackout as a sprite." (function bucket-id none))
+(define-extern add-blackout "Update display settings to do blackout with GS pmode alp." (function time-frame int int int int int))
+(define-extern paused? "Are we paused? Counts any type of pause/menu/freeze." (function symbol))
+(define-extern movie? "Are we in a movie?" (function symbol))
+(define-extern scene-select? (function symbol))
+(define-extern demo? "Is this a demo version?" (function symbol))
+(define-extern kiosk? "Is this a kiosk version of the game?" (function symbol))
 (define-extern *last-master-mode* symbol)
-(define-extern set-master-mode (function symbol none))
-;; (define-extern pause-allowed? function) ;; (function symbol)
-;; (define-extern toggle-pause function) ;; (function int)
+(define-extern set-master-mode "Change the master mode and adjust a few masks" (function symbol none))
+(define-extern pause-allowed? "Should we allow a pause?" (function symbol))
+(define-extern toggle-pause "Update the pause state. Call this if the user presses a pause button
+                            This function will check the button and state and do a pause if needed."
+                            (function int))
 (define-extern *screen-filter* screen-filter)
-;; (define-extern *cheat-temp* object) ;; (pointer int32)
+(define-extern *cheat-temp* (pointer int32))
 (define-extern *master-exit* symbol)
 (define-extern *progress-cheat* symbol)
-;; (define-extern *first-boot* object) ;; symbol
-;; (define-extern main-timeouts function)
-;; (define-extern main-cheats function) ;; (function int)
-;; (define-extern end-display function) ;; (function display none)
-;; (define-extern display-loop-main function) ;; (function display none)
-;; (define-extern display-loop function) ;; (function int :behavior process)
-(define-extern on (function symbol process))
-;; (define-extern off function) ;; (function int)
+(define-extern *first-boot* symbol)
+(define-extern main-timeouts "Maybe reset/restart the game if no input has been given.
+                              Mainly used for kiosk/demo modes." (function none))
+(define-extern main-cheats (function none))
+(define-extern end-display (function display none))
+(define-extern display-loop-main (function display none))
+(define-extern display-loop "Main loop for running the game." (function int :behavior process))
+(define-extern on "Start the display process." (function symbol process))
+(define-extern off "Stop the display process." (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-cache                  ;;
@@ -37417,7 +37433,7 @@
 ;; (define-extern *compact-actors* object) ;; symbol
 ;; (define-extern *vis-actors* object) ;; symbol
 (define-extern entity-by-name (function string entity))
-;; (define-extern entity-by-type function) ;; (function type entity-actor)
+(define-extern entity-by-type (function type entity-actor))
 (define-extern entity-by-aid (function uint entity))
 ;; (define-extern entity-actor-from-level-name function) ;; (function symbol entity-actor)
 ;; (define-extern entity-nav-mesh-by-aid function) ;; (function actor-id entity-nav-mesh)
@@ -38793,7 +38809,7 @@
 ;; (define-extern anim-tester-add-newobj function)
 ;; (define-extern anim-tester-stop function)
 ;; (define-extern anim-tester-start function) ;; (function symbol)
-;; (define-extern anim-tester-add-object function) ;; (function string none)
+(define-extern anim-tester-add-object (function string none))
 ;; (define-extern anim-tester-set-name function)
 ;; (define-extern anim-tester-add-sequence function)
 
@@ -39914,7 +39930,7 @@
 ;; (define-extern debug-menu-context-make-default-menus function) ;; (function debug-menu-context debug-menu-context)
 ;; (define-extern *popup-menu-context* object) ;; debug-menu-context
 ;; (define-extern popup-menu-context-make-default-menus function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern menu-respond-to-pause function) ;; (function symbol)
+(define-extern menu-respond-to-pause (function symbol))
 ;; (define-extern *menu-hook* function) ;; (function debug-menu-context)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
