@@ -154,29 +154,21 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
       jak1_jak2_begin(object_file, name, size, heap, flags);
       return;
     }
-    ASSERT(version == 5 || version == 4);  // idk here...
+    ASSERT(version == 5);
     m_heap_top = heap->top;
     // this->unk_init1 = 1; TODO
     m_busy = true;
     m_heap = heap;
-    // this->m_unk_init0_0 = 0; TODO
+    m_entry.offset = 0;
     m_keep_debug = false;
     m_link_hdr = &l_hdr->core;  // m_hdr_ptr
     m_code_size = 0;
     // this->m_ptr_2 = l_hdr; just used for cache flush, so skip it! not really the right thing??
-    // this->m_unk_init0_3 = 0; TODO
-    // this->m_unk_init0_4 = 0; TODO
-    // this->m_unk_init0_5 = 0; TODO
+    m_state = 0;
+    m_segment_process = 0;
+    m_moved_link_block = 0;
     if (version == 4) {
-      auto old_object_data = m_object_data;
-      m_object_data.offset = ((u8*)&l_hdr->core.link_length) - g_ee_main_mem;  // jank
-      auto header_v4 = (const LinkHeaderV4*)l_hdr;
-      m_link_block_ptr =
-          old_object_data + header_v4->code_size + sizeof(LinkHeaderV4) + BASIC_OFFSET;
-      // m_object_data = old_object_data + sizeof(LinkHeaderV4);
-      ASSERT(m_object_data.offset == old_object_data.offset + sizeof(LinkHeaderV4));
-      m_code_size = header_v4->code_size;
-      printf("got a code size of %d\n", m_code_size);
+      ASSERT_NOT_REACHED();
     } else {
       m_object_data.offset = object_file.offset + l_hdr->core.length_to_get_to_code;
       if (version == 5) {
@@ -200,6 +192,11 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
           m_heap->current = m_object_data;
         }
       } else {
+        // the link block is in the heap. This is problematic because we don't want to hang
+        // on to this long term, but executing the top-level may allocate on this heap, causing
+        // stuff to get added after the hole left by the link data.
+        // So, we make a temporary allocation on the top and move it there.
+
         m_moved_link_block = true;
         Ptr<u8> new_link_block_mem;
         u8* link_block_move_dst;
@@ -234,12 +231,6 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
         } else {
           // hm, maybe only possible with version 2 or 3??
           ASSERT_NOT_REACHED();
-          // Note: definitely reading a v4 header as v5 right here...
-          new_link_block_mem =
-              kmalloc(m_heap, m_link_hdr->length_to_get_to_code, KMALLOC_TOP, "link-block");
-          link_block_move_dst = new_link_block_mem.c();
-          old_link_block = (u8*)(m_link_hdr->name + 17);  // lol
-          link_block_move_size = m_link_hdr->length_to_get_to_code;
         }
 
         memmove(link_block_move_dst, old_link_block, link_block_move_size);
@@ -298,9 +289,175 @@ uint32_t link_control::jak3_work() {
   return rv;
 }
 
+namespace jak3 {
+void ultimate_memcpy(void* dst, void* src, uint32_t size);
+}
+
 uint32_t link_control::jak3_work_v5() {
-  ASSERT_NOT_REACHED();  // save this for another day...
-  // TODO: there are some missing vars in begin. I just commented them out for now.
+  if (m_state == 0) {
+    // here, we change length_to_get_to_link to an actual pointer to the link table.
+    // since we need 32-bits, we'll store offset from g_ee_mem.
+    u8* link_data = ((u8*)m_link_hdr) - 4 + m_link_hdr->length_to_get_to_link;
+    m_link_hdr->length_to_get_to_link = link_data - g_ee_main_mem;
+
+    m_n_segments = m_link_hdr->n_segments;
+
+    // the link segments table is just at the start of the link data:
+    m_link_segments_table = (SegmentInfoV5*)link_data;
+    /*
+    for (int i = 0; i < m_n_segments; i++) {
+      printf(" %d: reloc %d, data %d, size %d, magic %d\n", i, m_link_segments_table[i].relocs,
+             m_link_segments_table[i].data, m_link_segments_table[i].size,
+             m_link_segments_table[i].magic);
+    }
+    */
+    // for now, only supporting 1 segment
+    ASSERT(m_n_segments == 1);
+
+    // fixup the relocs/data offsets into addresses (again, offsets from g_ee_main_mem)
+    // relocs is relative to this link data
+    m_link_segments_table[0].relocs += (link_data - g_ee_main_mem);
+    // data is relative to usual object_data
+    m_link_segments_table[0].data += m_object_data.offset;
+    ASSERT(m_link_segments_table[0].magic == 1);
+
+    // see if there's even data
+    if (m_link_segments_table[0].size == 0) {
+      // no data.
+      m_link_segments_table[0].data = 0;
+    } else {
+      // check if we need to move the main segment.
+      if (!m_moved_link_block ||
+          ((m_link_hdr->link_length + 0x50) <= m_link_hdr->length_to_get_to_code)) {
+        // printf(" v5 linker allocating for main segment... (%d)\n", m_moved_link_block);
+        auto old_data_offset = m_link_segments_table[0].data;  // 25
+        auto new_data = kmalloc(m_heap, m_link_segments_table[0].size, 0, "main-segment");
+        m_link_segments_table[0].data = new_data.offset;
+        if (!new_data.offset) {
+          MsgErr("dkernel: unable to malloc %d bytes for main-segment\n",
+                 m_link_segments_table[0].size);
+          return 1;
+        }
+        jak3::ultimate_memcpy(new_data.c(), old_data_offset + g_ee_main_mem,
+                              m_link_segments_table[0].size);
+      } else {
+        m_heap->current = m_object_data + m_code_size;
+        if (m_heap->top.offset <= m_heap->current.offset) {
+          MsgErr("dkernel: heap overflow\n");
+          return 1;
+        }
+      }
+    }
+
+    m_segment_process = 0;
+    m_state = 1;
+    m_object_data.offset = m_link_segments_table[0].data;
+
+    Ptr<u8> base_ptr(m_link_segments_table[0].data);
+    Ptr<u8> data_ptr = base_ptr - 4;
+    Ptr<u8> link_ptr(m_link_segments_table[0].relocs);
+
+    bool fixing = false;
+    if (*link_ptr) {
+      // we have pointers
+      while (true) {
+        while (true) {
+          if (!fixing) {
+            // seeking
+            data_ptr.offset += 4 * (*link_ptr);
+          } else {
+            // fixing.
+            for (uint32_t i = 0; i < *link_ptr; i++) {
+              // uint32_t old_code = *(const uint32_t*)(&data.at(data_ptr));
+              u32 old_code = *data_ptr.cast<u32>();
+              if ((old_code >> 24) == 0) {
+                // printf("modifying pointer at 0x%x (old 0x%x) : now ", data_ptr.offset,
+                //      *data_ptr.cast<u32>());
+                *data_ptr.cast<u32>() += base_ptr.offset;
+                // printf("0x%x\n", *data_ptr.cast<u32>());
+              } else {
+                ASSERT_NOT_REACHED();
+                /*
+                f.stats.v3_split_pointers++;
+                auto dest_seg = (old_code >> 8) & 0xf;
+                auto lo_hi_offset = (old_code >> 12) & 0xf;
+                ASSERT(lo_hi_offset);
+                ASSERT(dest_seg < 3);
+                auto offset_upper = old_code & 0xff;
+                uint32_t low_code = *(const uint32_t*)(&data.at(data_ptr + 4 * lo_hi_offset));
+                uint32_t offset = low_code & 0xffff;
+                if (offset_upper) {
+                  offset += (offset_upper << 16);
+                }
+                f.pointer_link_split_word(seg_id, data_ptr - base_ptr,
+                                          data_ptr + 4 * lo_hi_offset - base_ptr, dest_seg, offset);
+                */
+              }
+              data_ptr.offset += 4;
+            }
+          }
+
+          if (*link_ptr != 0xff)
+            break;
+          link_ptr.offset++;
+          if (*link_ptr == 0) {
+            link_ptr.offset++;
+            fixing = !fixing;
+          }
+        }
+
+        link_ptr.offset++;
+        fixing = !fixing;
+        if (*link_ptr == 0)
+          break;
+      }
+    }
+    link_ptr.offset++;
+
+    // symbol linking.
+    if (*link_ptr) {
+      auto sub_link_ptr = link_ptr;
+
+      while (true) {
+        auto reloc = *sub_link_ptr;
+        auto next_link_ptr = sub_link_ptr + 1;
+        link_ptr = next_link_ptr;
+
+        if ((reloc & 0x80) == 0) {
+          link_ptr = sub_link_ptr + 3;  //
+          const char* sname = link_ptr.cast<char>().c();
+          link_ptr.offset += strlen(sname) + 1;
+          // printf("linking symbol %s\n", sname);
+          auto goalObj = jak3::intern_from_c(-1, 0, sname);
+          link_ptr = c_symlink2(m_object_data, goalObj.cast<u8>(), link_ptr);
+
+        } else if ((reloc & 0x3f) == 0x3f) {
+          ASSERT(false);  // todo, does this ever get hit?
+        } else {
+          int n_methods_base = reloc & 0x3f;
+          int n_methods = n_methods_base * 4;
+          if (n_methods_base) {
+            n_methods += 3;
+          }
+          link_ptr.offset +=
+              2;  // ghidra misses some aliasing here and would have you think this is +1!
+          const char* sname = link_ptr.cast<char>().c();
+          // printf("linking type %s\n", sname);
+          link_ptr.offset += strlen(sname) + 1;
+          auto goalObj = jak3::intern_type_from_c(-1, 0, sname, n_methods);
+          link_ptr = c_symlink2(m_object_data, goalObj.cast<u8>(), link_ptr);
+        }
+
+        sub_link_ptr = link_ptr;
+        if (!*sub_link_ptr)
+          break;
+      }
+    }
+    m_entry = m_object_data + 4;
+    return 1;
+  } else {
+    ASSERT_NOT_REACHED();
+  }
 }
 
 namespace {
@@ -612,9 +769,12 @@ void link_control::jak3_finish(bool jump_from_c_to_goal) {
       auto entry = m_entry;
       auto name = basename_goal(m_object_name);
       strcpy(Ptr<char>(LINK_CONTROL_NAME_ADDR).c(), name);
-      jak3::call_method_of_type_arg2(entry.offset, Ptr<jak3::Type>(*((entry - 4).cast<u32>())),
-                                     GOAL_RELOC_METHOD, m_heap.offset,
+      // printf(" about to call... (0x%x)\n", entry.offset);
+      Ptr<jak3::Type> type(*((entry - 4).cast<u32>()));
+      // printf(" type is %s\n", jak3::sym_to_cstring(type->symbol));
+      jak3::call_method_of_type_arg2(entry.offset, type, GOAL_RELOC_METHOD, m_heap.offset,
                                      Ptr<char>(LINK_CONTROL_NAME_ADDR).offset);
+      // printf("  done with call!\n");
     }
   }
 
