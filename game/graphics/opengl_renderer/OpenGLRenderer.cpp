@@ -98,6 +98,9 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
     case GameVersion::Jak2:
       m_texture_animator = std::make_shared<TextureAnimator>(m_render_state.shaders, common_level);
       break;
+    case GameVersion::Jak3:
+      // for now, no texture animation for jak3...
+      break;
     default:
       ASSERT(false);
   }
@@ -114,8 +117,31 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
     case GameVersion::Jak2:
       init_bucket_renderers_jak2();
       break;
+    case GameVersion::Jak3:
+      init_bucket_renderers_jak3();
+      break;
     default:
       ASSERT(false);
+  }
+}
+
+void OpenGLRenderer::init_bucket_renderers_jak3() {
+  using namespace jak3;
+  m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
+  m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
+
+  {
+    auto p = scoped_prof("render-inits");
+    // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
+    for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
+      if (!m_bucket_renderers[i]) {
+        init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket-{}", i),
+                                                  BucketCategory::OTHER, i);
+      }
+
+      m_bucket_renderers[i]->init_shaders(m_render_state.shaders);
+      m_bucket_renderers[i]->init_textures(*m_render_state.texture_pool, GameVersion::Jak3);
+    }
   }
 }
 

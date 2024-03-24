@@ -80,6 +80,7 @@ class OpenGLRenderer {
   void blit_display();
   void init_bucket_renderers_jak1();
   void init_bucket_renderers_jak2();
+  void init_bucket_renderers_jak3();
   void draw_renderer_selection_window();
   void finish_screenshot(const std::string& output_name,
                          int px,

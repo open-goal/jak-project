@@ -83,6 +83,7 @@ set(RUNTIME_SOURCE
         graphics/sceGraphicsInterface.cpp
         graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/jak2_tpage_dir.cpp
+        graphics/texture/jak3_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         ${OG_ASM_FUNCS_FILE}
