@@ -10,6 +10,7 @@ add_executable(lsp
   protocol/formatting.cpp
   protocol/hover.cpp
   protocol/progress_report.cpp
+  protocol/type_hierarchy.cpp
   state/data/mips_instruction.cpp
   state/lsp_requester.cpp
   state/workspace.cpp

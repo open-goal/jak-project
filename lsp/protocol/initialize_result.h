@@ -55,6 +55,7 @@ class InitializeResult {
                    {"renameProvider", false},
                    {"documentLinkProvider", document_link_provider},
                    {"executeCommandProvider", execute_command_provider},
+                   {"typeHierarchyProvider", true},
                    {"experimental", {}},
                }}};
 };

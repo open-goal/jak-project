@@ -45,14 +45,12 @@ std::optional<json> go_to_definition_handler(Workspace& workspace, int /*id*/, j
     if (!symbol) {
       return {};
     }
-    const auto& symbol_info =
-        workspace.get_global_symbol_info(tracked_file, symbol.value());
+    const auto& symbol_info = workspace.get_global_symbol_info(tracked_file, symbol.value());
     if (!symbol_info) {
       return {};
     }
 
-    const auto& def_loc =
-        workspace.get_symbol_def_location(tracked_file, symbol_info.value());
+    const auto& def_loc = workspace.get_symbol_def_location(tracked_file, symbol_info.value());
     if (!def_loc) {
       return {};
     }

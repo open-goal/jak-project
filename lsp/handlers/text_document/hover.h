@@ -1,8 +1,9 @@
 #pragma once
 
-#include "common/util/string_util.h"
 #include <optional>
 #include <regex>
+
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/docs/DocTypes.h"
 #include "lsp/protocol/common_types.h"
@@ -196,8 +197,7 @@ std::optional<json> hover_handler(Workspace& workspace, int /*id*/, json raw_par
       return {};
     }
     // TODO - there is an issue with docstrings and overridden methods
-    const auto& symbol_info =
-        workspace.get_global_symbol_info(tracked_file, symbol.value());
+    const auto& symbol_info = workspace.get_global_symbol_info(tracked_file, symbol.value());
     if (!symbol_info) {
       lg::debug("hover - no symbol info - {}", symbol.value());
       return {};
@@ -232,17 +232,13 @@ std::optional<json> hover_handler(Workspace& workspace, int /*id*/, json raw_par
         }
       }
       signature += ")";
-      if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION &&
-          type_info) {
-        signature +=
-            fmt::format(": {}", type_info->first.last_arg()
-                                    .base_type());
+      if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION && type_info) {
+        signature += fmt::format(": {}", type_info->first.last_arg().base_type());
       } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
         signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
       }
     } else if (type_info) {
-      signature += fmt::format(
-          ": {}", type_info->second->get_parent());
+      signature += fmt::format(": {}", type_info->second->get_parent());
     }
 
     std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);

@@ -736,4 +736,25 @@ std::string get_majority_file_line_endings(const std::string& file_contents) {
   return "\n";
 }
 
+std::pair<int, std::string> get_majority_file_line_endings_and_count(
+    const std::string& file_contents) {
+  size_t lf_count = 0;
+  size_t crlf_count = 0;
+
+  for (size_t i = 0; i < file_contents.size(); ++i) {
+    if (file_contents[i] == '\n') {
+      if (i > 0 && file_contents[i - 1] == '\r') {
+        crlf_count++;
+      } else {
+        lf_count++;
+      }
+    }
+  }
+
+  if (crlf_count > lf_count) {
+    return {lf_count + crlf_count, "\r\n"};
+  }
+  return {lf_count + crlf_count, "\n"};
+}
+
 }  // namespace file_util

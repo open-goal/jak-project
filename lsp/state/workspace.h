@@ -29,6 +29,8 @@ class WorkspaceOGFile {
   WorkspaceOGFile(){};
   WorkspaceOGFile(const std::string& content, const GameVersion& game_version);
   std::string m_content;
+  int m_line_count = 0;
+  std::string m_line_ending;
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
   GameVersion m_game_version;
@@ -104,6 +106,7 @@ class Workspace {
   // and it's a lot faster to check the end of a string, then multiple tracked file maps
   FileType determine_filetype_from_languageid(const std::string& language_id);
   FileType determine_filetype_from_uri(const LSPSpec::DocumentUri& file_uri);
+  std::optional<GameVersion> determine_game_version_from_uri(const LSPSpec::DocumentUri& uri);
 
   void start_tracking_file(const LSPSpec::DocumentUri& file_uri,
                            const std::string& language_id,
@@ -120,9 +123,14 @@ class Workspace {
   std::optional<SymbolInfo> get_global_symbol_info(const WorkspaceOGFile& file,
                                                    const std::string& symbol_name);
   std::optional<std::pair<TypeSpec, Type*>> get_symbol_typeinfo(const WorkspaceOGFile& file,
-                                                                 const std::string& symbol_name);
+                                                                const std::string& symbol_name);
   std::optional<Docs::DefinitionLocation> get_symbol_def_location(const WorkspaceOGFile& file,
                                                                   const SymbolInfo& symbol_info);
+  std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>>
+  get_symbols_parent_type_path(const std::string& symbol_name, const GameVersion game_version);
+  std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>> get_types_subtypes(
+      const std::string& symbol_name,
+      const GameVersion game_version);
 
  private:
   LSPRequester m_requester;

@@ -27,7 +27,7 @@ std::optional<json> formatting_handler(Workspace& workspace, int /*id*/, json ra
     }
     json edits = json::array();
     auto format_edit = LSPSpec::TextEdit();
-    //format_edit.range = {{0, 0}, {(uint32_t)tracked_file->m_lines.size(), 0}};
+    format_edit.range = {{0, 0}, {(uint32_t)tracked_file.m_line_count, 0}};
     format_edit.newText = result.value();
     edits.push_back(format_edit);
     return edits;

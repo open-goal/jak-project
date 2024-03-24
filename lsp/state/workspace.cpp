@@ -157,12 +157,15 @@ std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
 //
 // This is bad because jak 2 now uses some code from the jak1 folder, and also wouldn't be able to
 // be determined (jak1 or jak2?) if we had a proper 'common' folder(s).
-std::optional<GameVersion> determine_game_version_from_uri(const LSPSpec::DocumentUri& uri) {
+std::optional<GameVersion> Workspace::determine_game_version_from_uri(
+    const LSPSpec::DocumentUri& uri) {
   const auto path = uri_to_path(uri);
   if (str_util::contains(path, "goal_src/jak1")) {
     return GameVersion::Jak1;
   } else if (str_util::contains(path, "goal_src/jak2")) {
     return GameVersion::Jak2;
+  } else if (str_util::contains(path, "goal_src/jak3")) {
+    return GameVersion::Jak3;
   }
   return {};
 }
@@ -199,8 +202,9 @@ std::optional<std::pair<TypeSpec, Type*>> Workspace::get_symbol_typeinfo(
   const auto& compiler = m_compiler_instances[file.m_game_version].get();
   const auto typespec = compiler->lookup_typespec(symbol_name);
   if (typespec) {
-    // TODO - structures have the parent type of 'basic', this contradicts the code.
-    const auto full_type_info = compiler->type_system().lookup_type_no_throw(typespec.value());
+    // NOTE - for some reason calling with the symbol's typespec and the symbol itself produces
+    // different results!
+    const auto full_type_info = compiler->type_system().lookup_type_no_throw(symbol_name);
     if (full_type_info != nullptr) {
       return std::make_pair(typespec.value(), full_type_info);
     }
@@ -227,6 +231,78 @@ std::optional<Docs::DefinitionLocation> Workspace::get_symbol_def_location(
     def_loc = new_def_loc;
   }
   return def_loc;
+}
+
+std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>>
+Workspace::get_symbols_parent_type_path(const std::string& symbol_name,
+                                        const GameVersion game_version) {
+  if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(game_version));
+    return {};
+  }
+
+  // name, docstring, def_loc
+  std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>> parents = {};
+
+  const auto& compiler = m_compiler_instances[game_version].get();
+  const auto parent_path = compiler->type_system().get_path_up_tree(symbol_name);
+  for (const auto& parent : parent_path) {
+    const auto symbol_infos = compiler->lookup_exact_name_info(parent);
+    if (!symbol_infos || symbol_infos->empty()) {
+      continue;
+    } else if (symbol_infos->size() > 1) {
+      continue;
+    }
+    const auto& symbol_info = symbol_infos->at(0);
+    const auto& goos_info =
+        compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
+    if (!goos_info) {
+      continue;
+    }
+    Docs::DefinitionLocation new_def_loc;
+    new_def_loc.filename = uri_from_path(goos_info->filename);
+    new_def_loc.line_idx = goos_info->line_idx_to_display;
+    new_def_loc.char_idx = goos_info->pos_in_line;
+    parents.push_back({parent, symbol_info.meta().docstring, new_def_loc});
+  }
+  return parents;
+}
+
+std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>>
+Workspace::get_types_subtypes(const std::string& symbol_name, const GameVersion game_version) {
+  if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(game_version));
+    return {};
+  }
+
+  // name, docstring, def_loc
+  std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>> subtypes = {};
+
+  const auto& compiler = m_compiler_instances[game_version].get();
+  const auto subtype_names =
+      compiler->type_system().search_types_by_parent_type_strict(symbol_name);
+  for (const auto& subtype_name : subtype_names) {
+    const auto symbol_infos = compiler->lookup_exact_name_info(subtype_name);
+    if (!symbol_infos || symbol_infos->empty()) {
+      continue;
+    } else if (symbol_infos->size() > 1) {
+      continue;
+    }
+    const auto& symbol_info = symbol_infos->at(0);
+    const auto& goos_info =
+        compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
+    if (!goos_info) {
+      continue;
+    }
+    Docs::DefinitionLocation new_def_loc;
+    new_def_loc.filename = uri_from_path(goos_info->filename);
+    new_def_loc.line_idx = goos_info->line_idx_to_display;
+    new_def_loc.char_idx = goos_info->pos_in_line;
+    subtypes.push_back({subtype_name, symbol_info.meta().docstring, new_def_loc});
+  }
+  return subtypes;
 }
 
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
@@ -327,7 +403,10 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
 
 WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
     : m_game_version(game_version) {
-  const auto line_ending = file_util::get_majority_file_line_endings(content);
+  const auto [line_count, line_ending] =
+      file_util::get_majority_file_line_endings_and_count(content);
+  m_line_count = line_count;
+  m_line_ending = line_ending;
   lg::info("Added new OG file. {} symbols and {} diagnostics", m_symbols.size(),
            m_diagnostics.size());
   parse_content(content);
@@ -348,11 +427,8 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
 
 std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
     const LSPSpec::Position position) const {
-  // if this is called directly however (currently, via a hover LSP event)
-  // it fails for a variety of reasons
   if (m_ast) {
     TSNode root_node = ts_tree_root_node(m_ast.get());
-    auto node_str = ts_node_string(root_node);
     TSNode found_node =
         ts_node_descendant_for_point_range(root_node, {position.m_line, position.m_character},
                                            {position.m_line, position.m_character});

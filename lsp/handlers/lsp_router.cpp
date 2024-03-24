@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 
 #include "lsp/handlers/initialize.h"
+#include "lsp/handlers/text_document/type_hierarchy.h"
 #include "lsp/protocol/error_codes.h"
 #include "text_document/completion.h"
 #include "text_document/document_color.h"
@@ -37,11 +38,10 @@ LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> req
     : m_route_type(LSPRouteType::REQUEST_RESPONSE), m_request_handler(request_handler) {}
 
 void LSPRouter::init_routes() {
-  m_routes["exit"] = LSPRoute(
-      [](Workspace& /*workspace*/, nlohmann::json /*params*/) {
-        lg::info("Shutting down LSP due to explicit request");
-        exit(0);
-      });
+  m_routes["exit"] = LSPRoute([](Workspace& /*workspace*/, nlohmann::json /*params*/) {
+    lg::info("Shutting down LSP due to explicit request");
+    exit(0);
+  });
   m_routes["shutdown"] = LSPRoute(
       [](Workspace& /*workspace*/, int /*id*/, nlohmann::json /*params*/) -> std::optional<json> {
         lg::info("Received shutdown request");
@@ -61,6 +61,9 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
   m_routes["textDocument/documentColor"] = LSPRoute(document_color_handler);
   m_routes["textDocument/formatting"] = LSPRoute(formatting_handler);
+  m_routes["textDocument/prepareTypeHierarchy"] = LSPRoute(prepare_type_hierarchy_handler);
+  m_routes["typeHierarchy/supertypes"] = LSPRoute(supertypes_type_hierarchy_handler);
+  m_routes["typeHierarchy/subtypes"] = LSPRoute(subtypes_type_hierarchy_handler);
   // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
   // Not Yet Supported Routes, noops
   m_routes["$/cancelRequest"] = LSPRoute();
