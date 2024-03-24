@@ -107,7 +107,10 @@ T extract_bitfield(T input, int start_bit, int size) {
 std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& type,
                                                              const TypeSystem& ts,
                                                              u64 value);
-
+std::optional<std::vector<std::string>> try_decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                                             const TypeSystem& ts,
+                                                                             u64 value,
+                                                                             bool require_success);
 std::optional<std::vector<BitFieldConstantDef>> try_decompile_bitfield_from_int(
     const TypeSpec& type,
     const TypeSystem& ts,
