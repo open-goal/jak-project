@@ -1,15 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: main.gc
-;; name in dgo: main
-;; dgos: GAME
-
-(define-extern menu-respond-to-pause (function symbol))
-(define-extern anim-tester-add-object (function string none))
-
-;; DECOMP BEGINS
-
+;; definition for function set-letterbox-frames
 ;; WARN: Return type mismatch time-frame vs none.
 (defun set-letterbox-frames ((arg0 time-frame))
   "Enable letterbox for the given amount of time."
@@ -23,6 +15,8 @@
     )
   )
 
+;; definition for function letterbox
+;; WARN: Return type mismatch int vs none.
 (defun letterbox ((arg0 bucket-id) (arg1 float))
   "Draw letterbox"
   (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -43,6 +37,8 @@
   (none)
   )
 
+;; definition for function set-blackout-frames
+;; WARN: Return type mismatch int vs none.
 (defun set-blackout-frames ((arg0 time-frame))
   "Enable blackout for the given amount of time."
   (with-pp
@@ -65,6 +61,8 @@
     )
   )
 
+;; definition for function blackout
+;; WARN: Return type mismatch int vs none.
 (defun blackout ((arg0 bucket-id))
   "Draw blackout as a sprite."
   (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
@@ -76,6 +74,7 @@
   (none)
   )
 
+;; definition for function add-blackout
 (defun add-blackout ((arg0 time-frame) (r int) (g int) (b int) (arg4 int))
   "Update display settings to do blackout with GS pmode alp."
   (let ((v1-0 *display*))
@@ -94,32 +93,40 @@
   0
   )
 
+;; definition for function paused?
 (defun paused? ()
   "Are we paused? Counts any type of pause/menu/freeze."
   (or (= *master-mode* 'pause) (= *master-mode* 'progress) (= *master-mode* 'menu) (= *master-mode* 'freeze))
   )
 
+;; definition for function movie?
 (defun movie? ()
   "Are we in a movie?"
   (logtest? (-> *kernel-context* prevent-from-run) (process-mask movie))
   )
 
+;; definition for function scene-select?
 (defun scene-select? ()
   (and (>= (-> *game-info* demo-state) (the-as uint 100)) (< (-> *game-info* demo-state) (the-as uint 200)))
   )
 
+;; definition for function demo?
 (defun demo? ()
   "Is this a demo version?"
   (or (= *kernel-boot-message* 'demo) (= *kernel-boot-message* 'demo-shared))
   )
 
+;; definition for function kiosk?
 (defun kiosk? ()
   "Is this a kiosk version of the game?"
   (= *kernel-boot-message* 'kiosk)
   )
 
+;; definition for symbol *last-master-mode*, type symbol
 (define *last-master-mode* 'game)
 
+;; definition for function set-master-mode
+;; WARN: Return type mismatch int vs none.
 (defun set-master-mode ((arg0 symbol))
   "Change the master mode and adjust a few masks"
   (when (!= arg0 *master-mode*)
@@ -172,6 +179,7 @@
   (none)
   )
 
+;; definition for function pause-allowed?
 (defun pause-allowed? ()
   "Should we allow a pause?"
   (not (or (< (-> *display* base-clock frame-counter) (-> *game-info* blackout-time))
@@ -187,6 +195,7 @@
        )
   )
 
+;; definition for function toggle-pause
 (defun toggle-pause ()
   "Update the pause state. Call this if the user presses a pause button
    This function will check the button and state and do a pause if needed."
@@ -296,8 +305,11 @@
   0
   )
 
+;; definition for symbol *screen-filter*, type screen-filter
 (define *screen-filter* (new 'static 'screen-filter :draw? #f :bucket (bucket-id tex-hud-pris2)))
 
+;; definition for method 9 of type screen-filter
+;; WARN: Return type mismatch int vs none.
 ;; WARN: Function (method 9 screen-filter) has a return type of none, but the expression builder found a return statement.
 (defmethod draw ((this screen-filter))
   "Add DMA data to our bucket to draw the filter."
@@ -354,6 +366,9 @@
     )
   )
 
+;; definition for method 10 of type screen-filter
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod setup ((this screen-filter)
                  (arg0 vector)
                  (arg1 vector)
@@ -378,20 +393,28 @@
   (none)
   )
 
+;; definition for method 11 of type screen-filter
+;; WARN: Return type mismatch int vs none.
 (defmethod disable ((this screen-filter))
   (set! (-> this draw?) #f)
   0
   (none)
   )
 
+;; definition for symbol *cheat-temp*, type (pointer int32)
 (define *cheat-temp* (the-as (pointer int32) (malloc 'global 20)))
 
+;; definition for symbol *master-exit*, type symbol
 (define *master-exit* #f)
 
+;; definition for symbol *progress-cheat*, type symbol
 (define *progress-cheat* #f)
 
+;; definition for symbol *first-boot*, type symbol
 (define *first-boot* #t)
 
+;; definition for function main-timeouts
+;; WARN: Return type mismatch int vs none.
 (defun main-timeouts ()
   "Maybe reset/restart the game if no input has been given.
    Mainly used for kiosk/demo modes."
@@ -490,6 +513,8 @@
   (none)
   )
 
+;; definition for function main-cheats
+;; WARN: Return type mismatch int vs none.
 (defun main-cheats ()
   (when (and (cpad-hold? 0 l3) (or *cheat-mode* (not (demo?))))
     ((lambda ()
@@ -1298,6 +1323,8 @@
   (none)
   )
 
+;; definition for function end-display
+;; WARN: Return type mismatch int vs none.
 (defun end-display ((arg0 display))
   (let ((s5-0 (-> (if *debug-segment*
                       (-> arg0 frames (-> arg0 on-screen) debug-buf)
@@ -1437,6 +1464,8 @@
   (none)
   )
 
+;; definition for function display-loop-main
+;; WARN: Return type mismatch int vs none.
 (defun display-loop-main ((arg0 display))
   (with-pp
     (if (-> *level* loading-level)
@@ -1795,6 +1824,7 @@
     )
   )
 
+;; definition for function display-loop
 (defbehavior display-loop process ()
   "Main loop for running the game."
   (stack-size-set! (-> self main-thread) 512)
@@ -1921,6 +1951,7 @@
   0
   )
 
+;; definition for function on
 (defun on ((arg0 symbol))
   "Start the display process."
   (when (not *dproc*)
@@ -1968,6 +1999,8 @@
   *dproc*
   )
 
+;; definition for function off
+;; WARN: Return type mismatch int vs none.
 (defun off ()
   "Stop the display process."
   (stop 'debug)
@@ -1982,3 +2015,7 @@
   0
   (none)
   )
+
+
+
+
