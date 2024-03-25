@@ -1239,15 +1239,18 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
   auto channel_form = mr_chan.int_or_form_to_form(pool, 0);
 
-  // now we checks for set!'s. the actual contents of the macro are not very complicated to match.
+  // now we check for set!'s. the actual contents of the macro are not very complicated to match.
   // there is just a LOT to match. and then to write!
   bool bad = false;
   int idx = 0;
   auto set_fi = match_ja_set(env, chan, "frame-interp", -1, in->body(), &idx, &bad);
+  auto set_fi1 = match_ja_set(env, chan, "frame-interp", 1, in->body(), &idx, &bad);
+  auto set_fi0 = match_ja_set(env, chan, "frame-interp", 0, in->body(), &idx, &bad);
   auto set_dist = match_ja_set(env, chan, "dist", -1, in->body(), &idx, &bad);
   auto set_fg = match_ja_set(env, chan, "frame-group", -1, in->body(), &idx, &bad);
   auto set_p0 = match_ja_set(env, chan, "param", 0, in->body(), &idx, &bad);
   auto set_p1 = match_ja_set(env, chan, "param", 1, in->body(), &idx, &bad);
+  auto set_p2 = match_ja_set(env, chan, "param", 2, in->body(), &idx, &bad);
   auto set_nf = match_ja_set(env, chan, "num-func", -1, in->body(), &idx, &bad);
   auto set_fn = match_ja_set(env, chan, "frame-num", -1, in->body(), &idx, &bad);
 
@@ -1367,14 +1370,15 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     Form* num_form = nullptr;
     // check the num! arg
     if (prelim_num == "identity") {
-      if (env.version == GameVersion::Jak2 && set_fn && !set_fn2) {
+      if (env.version >= GameVersion::Jak2 && set_fn && !set_fn2) {
         // jak 2-specific made-up thing!
         // this has only appeared once so far.
         if (set_fn->to_form(env).is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("zero");
           set_fn = nullptr;
         } else {
-          return nullptr;
+          num_form = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)), set_fn);
         }
       } else if (set_fn2) {
         auto obj_fn2 = set_fn2->to_form(env);
@@ -1479,12 +1483,17 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
 
   // other generic args
   ja_push_form_to_args(pool, args, set_fi, "frame-interp");
+  ja_push_form_to_args(pool, args, set_fi0, "frame-interp0");
+  ja_push_form_to_args(pool, args, set_fi1, "frame-interp1");
   ja_push_form_to_args(pool, args, set_dist, "dist");
   // ja_push_form_to_args(pool, args, form_fg, "frame-group");
   ja_push_form_to_args(pool, args, set_p0, "param0");
   ja_push_form_to_args(pool, args, set_p1, "param1");
+  ja_push_form_to_args(pool, args, set_p2, "param2");
   ja_push_form_to_args(pool, args, set_nf, "num-func");
-  ja_push_form_to_args(pool, args, set_fn, "frame-num");
+  if (arg_num_func != "num-func-identity") {
+    ja_push_form_to_args(pool, args, set_fn, "frame-num");
+  }
 
   // TODO
   if (set_fn2) {
