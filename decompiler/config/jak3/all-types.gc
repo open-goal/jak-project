@@ -19,6 +19,7 @@
 (define-extern boolean type) ;; not actually added as a runtime type in jak2, but valid? supports it.
 (define-extern uint16 type)
 (define-extern uint32 type)
+(define-extern int8 type)
 (define-extern int32 type)
 (define-extern int64 type)
 (define-extern uint8 type)
@@ -15982,7 +15983,7 @@
   :size-assert         #x60
   :flag-assert         #xf00000060
   (:methods
-    (new (symbol type float float float vector float float) _type_) ;; 0
+    (new (symbol type float float float vector shadow-flags float) _type_) ;; 0
     (enable-draw (shadow-control) int) ;; 9
     (disable-draw (shadow-control) int) ;; 10
     (set-top-plane-offset (shadow-control float) int) ;; 11
@@ -18763,7 +18764,7 @@
   :flag-assert         #xd00000053
   ;; field actor-option is likely a value type.
   (:methods
-    (new (symbol type process (pointer float) pickup-type float) _type_) ;; 0
+    (new (symbol type process (pointer float)) _type_) ;; 0
     (clear-mask-bits (_type_ int) none) ;; 12
     )
   )
@@ -18841,6 +18842,7 @@
    (delta       transformq       :inline :offset-assert 256)
    (last-speed  meters                   :offset-assert 304)
    (align       transformq       :inline :offset 160)
+   (mat         matrix           :inline :overlay-at (-> matrix 1)) ;; added
    )
   :method-count-assert 14
   :size-assert         #x134
@@ -18849,9 +18851,9 @@
     (new (symbol type process) _type_) ;; 0
     (compute-alignment! (_type_) transformq) ;; 9
     (align! (_type_ align-opts float float float) trsqv) ;; 10
-    (align-control-method-11 () none) ;; 11 ;; (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv)
-    (align-control-method-12 () none) ;; 12 ;; (first-transform (_type_) transform)
-    (align-control-method-13 () none) ;; 13 ;; (second-transform (_type_) transform)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv) ;; 11
+    (first-transform (_type_) transform) ;; 12
+    (second-transform (_type_) transform) ;; 13
     )
   )
 
@@ -18860,23 +18862,22 @@
 ;; penetrate-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; +++game-h:knocked-type
+;; +++penetrate-h:knocked-type
 (defenum knocked-type
   :type uint8
-  (knocked-type-0 0)
-  (knocked-type-1 1)
-  (knocked-type-2 2)
-  (knocked-type-3 3)
-  (knocked-type-4 4) ;; what the heck is this! (its on gator, and cant trigger it for the life of me)
-  (knocked-type-5 5)
-  (knocked-type-6 6)
-  (knocked-type-7 7)
-  (knocked-type-8 8)
-  (knocked-type-9 9)
-  (knocked-type-10 10)
+  (none 0)
+  (mech-punch 1)
+  (explode-or-darkjak 2)
+  (dark-shot 3)
+  (yellow-shot 4)
+  (red-shot 5)
+  (blue-shot 6)
+  (vehicle 7)
+  (knocked-off 8)
   )
-;; ---game-h:knocked-type
+;; ---penetrate-h:knocked-type
 
+;; +++penetrate-h:penetrate
 (defenum penetrate
   :type uint64
   :bitfield #t
@@ -18919,6 +18920,8 @@
   (jak-dark-blackhole 36)
   (emp-blast 37)
   )
+;; ---penetrate-h:penetrate
+
 (define-extern penetrate->string (function penetrate string))
 (define-extern penetrate-using->damage (function penetrate float))
 (define-extern penetrated-by-all&hit-points->penetrated-by (function penetrate int penetrate))
@@ -19372,6 +19375,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare-type continue-point basic)
+(declare-type scene-player process)
 
 (deftype scene-actor (basic)
   ((name                string  :offset-assert 4) ;; guessed by decompiler
@@ -19380,33 +19384,49 @@
    (prefix              string  :offset-assert 16) ;; guessed by decompiler
    (draw-frames         pair    :offset-assert 20) ;; guessed by decompiler
    (scissor-frames      pair    :offset-assert 24) ;; guessed by decompiler
-   (shadow-frames       basic   :offset-assert 28)
-   (cloth-reset-frames  basic   :offset-assert 32)
-   (cloth-commands      basic   :offset-assert 36)
+   (shadow-frames       pair    :offset-assert 28)
+   (cloth-reset-frames  pair    :offset-assert 32)
+   (cloth-commands      pair    :offset-assert 36)
    (camera              int16   :offset-assert 40)
    (light-index         uint8   :offset-assert 42)
    (shadow-mask         uint8   :offset-assert 43)
    (shadow-values       uint32  :offset-assert 44)
    (flags               uint32  :offset-assert 48)
-   (command-list        basic   :offset-assert 52)
+   (command-list        pair    :offset-assert 52)
    (shadow-flags        int32   :offset-assert 56)
    (shadow-volume-joint basic   :offset-assert 60)
    (draw-seg            uint64  :offset-assert 64)
    (no-draw-seg         uint64  :offset-assert 72)
    (last-frame          float   :offset-assert 80)
-   (process             uint64  :offset-assert 88) ;; handle
+   (process             handle  :offset-assert 88) ;; handle
    )
   :method-count-assert 10
   :size-assert         #x60
   :flag-assert         #xa00000060
   (:methods
-    (scene-actor-method-9 () none) ;; 9 ;; (scene-actor-method-9 (_type_ scene-player) (pointer process))
+    (setup-manipy-for-scene! (_type_ scene-player) (pointer process)) ;; 9
     )
   )
 
 (defenum scene-flags
   :bitfield #t
   :type uint32
+  (scf0 0)
+  (scf1 1)
+  (scf2 2)
+  (scf3 3)
+  (scf4 4)
+  (scf5 5)
+  (scf6 6)
+  (scf7 7)
+  (scf8 8)
+  (scf9 9)
+  (scf10 10)
+  (scf11 11)
+  (scf12 12)
+  (scf13 13)
+  (scf14 14)
+  (scf15 15)
   )
 
 (deftype scene (art-group)
@@ -19438,8 +19458,8 @@
   :flag-assert         #x1200000084
   ;; field on-running uses ~A with a signed load. field on-complete uses ~A with a signed load.
   (:methods
-    (scene-method-16 () none) ;; 16 ;; (scene-method-16 (_type_) _type_)
-    (scene-method-17 () none) ;; 17
+    (init-spool-by-scene! (_type_ spool-anim) spool-anim) ;; 16
+    (load-scene (_type_) scene) ;; 17
     )
   )
 
@@ -19470,21 +19490,23 @@
    (last-frame           float                 :offset-assert 376)
    (end-point            basic                 :offset-assert 380)
    (blackout-end         basic                 :offset-assert 384)
-   (new-trans-hook       basic                 :offset-assert 388)
-   (cur-trans-hook       basic                 :offset-assert 392)
+   (new-trans-hook       (function none)       :offset-assert 388)
+   (cur-trans-hook       (function none)       :offset-assert 392)
    (user-data            uint64                :offset-assert 400)
    )
   :method-count-assert 26
   :size-assert         #x198
   :flag-assert         #x1a01200198
   ;; field user-data uses ~A with a 64-bit load.
+  (:state-methods
+    (wait symbol) ;; 20
+    release ;; 21
+    play-anim ;; 22
+    )
   (:methods
-    (scene-player-method-20 () none) ;; 20 ;; (wait (symbol) _type_ :state)
-    (scene-player-method-21 () none) ;; 21 ;; (release () _type_ :state)
-    (scene-player-method-22 () none) ;; 22 ;; (play-anim () _type_ :state)
-    (scene-player-method-23 () none) ;; 23 ;; (scene-player-method-23 (_type_ string symbol) none)
-    (scene-player-method-24 () none) ;; 24 ;; (scene-player-method-24 (_type_ basic symbol) scene)
-    (scene-player-method-25 () none) ;; 25 ;; (scene-player-method-25 (_type_ float) none)
+    (scene-player-method-23 (_type_ string symbol) none) ;; 23
+    (scene-player-method-24 (_type_ scene symbol) scene) ;; 24
+    (scene-player-method-25 (_type_ float float) none) ;; 25
     )
   )
 
@@ -19701,11 +19723,11 @@
     pov-camera-startup ;; 24
     )
   (:methods
-    (pov-camera-method-25 () none) ;; 25 ;; (abort? (_type_) symbol)
-    (pov-camera-method-26 () none) ;; 26 ;; (target-grabbed? (_type_) symbol)
-    (pov-camera-method-27 () none) ;; 27 ;; (pov-camera-method-27 () none)
-    (pov-camera-method-28 () none) ;; 28 ;; (pov-camera-method-28 () none)
-    (pov-camera-method-29 () none) ;; 29 ;; (target-released? (_type_) symbol)
+    (abort? (_type_) symbol) ;; 25
+    (target-grabbed? (_type_) symbol) ;; 26
+    (set-stack-size! (_type_) none) ;; 27
+    (pov-camera-method-28 (_type_) none) ;; 28
+    (target-released? (_type_) symbol) ;; 29
     )
   )
 
@@ -20511,8 +20533,8 @@
     (set-collide-with! (_type_ collide-spec) none) ;; 47
     (set-collide-as! (_type_ collide-spec) none) ;; 48
     (collide-shape-method-49 () none) ;; 49 ;; (modify-collide-as! (_type_ int collide-spec collide-spec) none)
-    (collide-shape-method-50 () none) ;; 50 ;; (send-shoves (_type_ process touching-shapes-entry float float float) symbol)
-    (collide-shape-method-51 () none) ;; 51 ;; (above-ground? (_type_ collide-query vector collide-spec float float float) symbol)
+    (send-shoves (_type_ process touching-shapes-entry float float float) symbol) ;; 50
+    (above-ground? (_type_ collide-query vector collide-spec float float float) symbol) ;; 51
     (water-info-init! (_type_ water-info collide-action) water-info) ;; 52
     (collide-shape-method-53 () none) ;; 53 ;; (iterate-prims (_type_ (function collide-shape-prim none)) none)
     (collide-shape-method-54 () none) ;; 54 ;; (pusher-init (_type_) none)
@@ -20588,6 +20610,8 @@
   ((rider-time         time-frame                                                                 :offset-assert 200) ;; time-frame
    (rider-last-move    vector                                                             :inline :offset-assert 208)
    (trans-old          vector                                                             :inline :offset-assert 224)
+   (trans-old-old      vector :inline :offset 240) ;; added
+   (trans-old-old-old  vector :inline :offset 256) ;; added
    (poly-pat           pat-surface                                                                :offset 272) ;; guessed by decompiler
    (cur-pat            pat-surface                                                                :offset-assert 276) ;; guessed by decompiler
    (ground-pat         pat-surface                                                                :offset-assert 280) ;; guessed by decompiler
@@ -21382,7 +21406,7 @@
   (:methods
     (touching-prims-entry-method-9 () none) ;; 9 ;; (get-middle-of-bsphere-overlap (_type_ vector) vector)
     (touching-prims-entry-method-10 () none) ;; 10 ;; (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim)
-    (touching-prims-entry-method-11 () none) ;; 11 ;; (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result)
+    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result) ;; 11
     (touching-prims-entry-method-12 () none) ;; 12
     )
   )
@@ -21798,7 +21822,7 @@
   :flag-assert         #xd0000000c
   (:methods
     (clear-focused "Reset the focus' handle." (_type_) none) ;; 9
-    (collide-check?
+    (collide-spec-match?
       "If the focused process is not dead,
        check that the [[collide-spec]] of the focus and the process match."
       (_type_ process-focusable) object) ;; 10
@@ -21852,10 +21876,10 @@
     (new (symbol type process-drawable) _type_) ;; 0
     (effect-control-method-9 (_type_) none) ;; 9
     (do-effect (_type_ symbol float int) none) ;; 10
-    (effect-control-method-11 () none) ;; 11 ;; (do-effect-for-surface (_type_ symbol float int basic pat-surface) none)
+    (do-effect-for-surface (_type_ symbol float int basic pat-surface) none) ;; 11
     (play-effect-sound (_type_ symbol float int basic sound-name) int) ;; 12
     (set-channel-offset! (_type_ int) none) ;; 13
-    (effect-control-method-14 () none) ;; 14 ;; (play-effects-from-res-lump (_type_ float float float) none)
+    (play-effects-from-res-lump (_type_ float float float) none) ;; 14
     )
   )
 
@@ -22372,7 +22396,7 @@
     )
   (:methods
     (ragdoll-proc-method-15 (_type_ symbol vector symbol) none) ;; 15
-    (ragdoll-proc-method-16 (_type_ int) none) ;; 16
+    (disable-for-duration (_type_ time-frame) none) ;; 16
     (ragdoll-proc-method-17 (_type_ matrix) none) ;; 17
     (ragdoll-proc-method-18 (_type_ ragdoll-edit-info process) none) ;; 18
     (ragdoll-proc-method-19 (_type_) none) ;; 19
@@ -22642,6 +22666,7 @@
 (defenum target-anim
   :type int32
   (uninitialized -2)
+  (unknown -1)
   (default 0)
   (board 1)
   (dark 2)
@@ -29025,7 +29050,7 @@
 (define-extern joint-anim-login "Login a joint-anim-drawable by calling login on all drawables" (function joint-anim-drawable joint-anim-drawable))
 (define-extern joint-anim-inspect-elt "Inspect an uncompressed anim (unused)" (function joint-anim float joint-anim))
 (define-extern jacc-mem-usage "Compute memory usage stats for a compressed joint anim." (function joint-anim-compressed-control memory-usage-block int joint-anim-compressed-control))
-(define-extern joint-control-cleanup "Remove all animations that are stored on the given heap and return those slots to a safe default." (function joint-control kheap art-joint-anim none))
+(define-extern joint-control-cleanup "Remove all animations that are stored on the given heap and return those slots to a safe default." (function joint-control kheap art-joint-anim symbol))
 (define-extern joint-control-channel-eval "Run the num-func to produce the current frame for this channel." (function joint-control-channel float :behavior process))
 (define-extern joint-control-channel-eval! "Update the num-func for this channel and evaluate it." (function joint-control-channel (function joint-control-channel float float float float) float :behavior process))
 (define-extern joint-control-channel-group-eval! (function joint-control-channel art-joint-anim (function joint-control-channel float float float float) int))
@@ -30821,7 +30846,7 @@
 (define-extern *part-id-table* (array sparticle-launcher))
 (define-extern *part-group-id-table* (array sparticle-launch-group))
 (define-extern *sp-temp* float)
-;; (define-extern lookup-part-group-by-name function) ;; (function string sparticle-launch-group)
+(define-extern lookup-part-group-by-name (function string sparticle-launch-group))
 (define-extern lookup-part-group-pointer-by-name (function string (pointer object)))
 (define-extern part-group-pointer? (function pointer symbol))
 (define-extern unlink-part-group-by-heap (function kheap int))
@@ -32142,7 +32167,7 @@
 ;; (define-extern *expanded-text-line0* object) ;; string
 ;; (define-extern *expanded-text-line1* object) ;; string
 ;; (define-extern *level-text-file-load-flag* object) ;; symbol
-;; (define-extern convert-korean-text function) ;; (function string string)
+(define-extern convert-korean-text (function string string))
 ;; (define-extern text-is-loading object) ;; symbol
 ;; (define-extern load-game-text-info function) ;; (function string (pointer object) kheap int)
 (define-extern load-level-text-files (function int none))
@@ -33194,6 +33219,7 @@
    (constraint-length-sqd                float   :offset-assert 8)
    (particle0                            uint16  :offset-assert 12)
    (particle1                            uint16  :offset-assert 14)
+   (vec                                  vector :inline :offset 0 :score -1) ;; added
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -37645,9 +37671,9 @@
 ;; effect-control                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *footstep-surface* object) ;; pat-surface
+(define-extern *footstep-surface* object) ;; pat-surface
 (define-extern *debug-effect-control* symbol)
-;; (define-extern sound-name-with-material function) ;; (function string pat-surface string sound-name)
+(define-extern sound-name-with-material (function string pat-surface string sound-name))
 (define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
 (define-extern target-land-effect (function none :behavior target))
 
@@ -38137,16 +38163,13 @@
 ;; scene                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype scene-stage (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
   )
-|#
 
-#|
 (deftype subtitle-work (structure)
   ((draw-tmpl dma-gif-packet :inline :offset-assert 0)
    (color0    vector4w       :inline :offset-assert 32)
@@ -38156,34 +38179,33 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-;; (define-extern scene-decode-continue function) ;; (function basic continue-point)
-;; (define-extern scene-lookup function) ;; (function basic scene)
-;; (define-extern *subtitle-work* object) ;; subtitle-work
-;; (define-extern draw-subtitle-image function) ;; (function subtitle-image font-context none)
-;; (define-extern process-drawable-draw-subtitles function) ;; (function none :behavior process-drawable)
+(define-extern scene-decode-continue (function basic continue-point))
+(define-extern scene-lookup (function basic scene))
+(define-extern *subtitle-work* subtitle-work)
+(define-extern draw-subtitle-image (function subtitle-image font-context none))
+(define-extern process-drawable-draw-subtitles (function none :behavior process-drawable))
 (define-extern scene-player-init (function object symbol string none :behavior scene-player))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pov-camera                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern pov-camera-play-and-reposition function) ;; (function art-joint-anim vector float none :behavior pov-camera)
+(define-extern pov-camera-play-and-reposition (function art-joint-anim vector float none :behavior pov-camera))
 (define-extern pov-camera-init-by-other (function vector skeleton-group string pov-camera-flag process-drawable pair none :behavior pov-camera))
-;; (define-extern othercam-calc function) ;; (function float float)
+(define-extern othercam-calc (function float float))
 (define-extern othercam-init-by-other (function pov-camera int symbol symbol none :behavior othercam))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; powerups                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern cloud-track function) ;; (function process-tree process-tree (function vector none) time-frame time-frame time-frame none :behavior process)
+(define-extern cloud-track (function process-tree process-tree (function vector none) time-frame time-frame time-frame none :behavior process))
 (define-extern eco-blue-glow (function vector none))
-;; (define-extern target-eco-process function) ;; (function none :behavior target)
-;; (define-extern target-color-effect-process function) ;; (function none :behavior target)
-(define-extern target-update-segs (function process-drawable none))
-;; (define-extern target-draw-process function)
+(define-extern target-eco-process (function none :behavior target))
+(define-extern target-color-effect-process (function none :behavior target))
+(define-extern target-update-segs (function process-drawable float))
+(define-extern target-draw-process (function none :behavior target))
 (define-extern target-powerup-process (function none :behavior target))
 (define-extern target-powerup-effect (function symbol none :behavior target))
 (define-extern process-contact-action (function process none :behavior target))
@@ -40086,17 +40108,16 @@
 ;; los-control-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype los-control (structure)
-  ((src-proc            uint64                     :offset-assert 0) ;; handle
-   (dst-proc            uint64                     :offset-assert 8) ;; handle
-   (last-lost-los       uint64                     :offset-assert 16)
-   (last-gained-los     uint64                     :offset-assert 24)
-   (check-interval      uint64                     :offset-assert 32) ;; time-frame
+  ((src-proc            handle                     :offset-assert 0) ;; handle
+   (dst-proc            handle                     :offset-assert 8) ;; handle
+   (last-lost-los       time-frame                 :offset-assert 16)
+   (last-gained-los     time-frame                 :offset-assert 24)
+   (check-interval      time-frame                 :offset-assert 32) ;; time-frame
    (max-check-distance  float                      :offset-assert 40)
-   (last-check-time     uint64                     :offset-assert 48) ;; time-frame
+   (last-check-time     time-frame                 :offset-assert 48) ;; time-frame
    (last-collide-result collide-tri-result :inline :offset-assert 64)
-   (collide-with        collide-spec               :offset-assert 160) ;; guessed by decompiler
+   (collide-with        collide-spec               :offset 160) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #xa4
@@ -40109,148 +40130,159 @@
     (los-control-method-13 () none) ;; 13 ;; (new-source! (_type_ process time-frame collide-spec) none)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; airlock                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++airlock:airlock-options
+(defenum airlock-options
+  :type uint32
+  :bitfield #t
+  (ao0 0)
+  (front 1)
+  (block-flut 2)
+  (back 3)
+  (ao4 4)
+  )
+;; ---airlock:airlock-options
+
 (deftype com-airlock (process-drawable)
-  ((level-name             pair         :offset-assert 196) ;; guessed by decompiler
-   (open-test              pair         :offset-assert 200) ;; guessed by decompiler
-   (on-running             basic        :offset-assert 204)
-   (were-behind?           symbol       :offset-assert 208) ;; guessed by decompiler
-   (inner?                 symbol       :offset-assert 212) ;; guessed by decompiler
-   (sound-behind?          symbol       :offset-assert 216) ;; guessed by decompiler
-   (visible-move?          symbol       :offset-assert 220) ;; guessed by decompiler
-   (saw-pilot?             uint64       :offset-assert 228) ;; handle
-   (last-distance          meters       :offset-assert 236)
-   (y-height               vector       :offset-assert 240) ;; guessed by decompiler
-   (pre-open-speed         float        :offset-assert 244)
-   (open?                  basic        :offset-assert 248)
-   (latch-closed-time      uint64       :offset-assert 252) ;; time-frame
-   (latch-open-time        uint64       :offset-assert 260) ;; time-frame
-   (gear                   joint-mod    :offset-assert 268) ;; guessed by decompiler
-   (gear-rot               deg          :offset-assert 272) ;; degrees
-   (gear-rotv              deg          :offset-assert 276) ;; degrees
-   (gear-start-frame       float        :offset-assert 280)
-   (gear-stop-frame        float        :offset-assert 284)
-   (gear-play-time         uint64       :offset-assert 292)
-   (open-frame             float        :offset-assert 300)
-   (pre-open-frame         float        :offset-assert 304)
-   (lock-frame             float        :offset-assert 308)
-   (close-speed-multiplier float        :offset-assert 312)
-   (open-distance          meters     2 :offset-assert 316) ;; guessed by decompiler
-   (UNKNOWN                UNKNOWN      :offset-assert -1) ;; field could not be read.
-   (active-distance        meters     2 :offset-assert 324) ;; guessed by decompiler
-   (UNKNOWN                UNKNOWN      :offset-assert -1) ;; field could not be read.
-   (sound-id               sound-id     :offset-assert 332) ;; guessed by decompiler
-   (gear-sound-id          sound-id     :offset-assert 336) ;; guessed by decompiler
-   (sound-gear             sound-spec   :offset-assert 340) ;; guessed by decompiler
-   (sound-pre-open         sound-spec   :offset-assert 344) ;; guessed by decompiler
-   (sound-pre-open-stop    sound-spec   :offset-assert 348) ;; guessed by decompiler
-   (sound-lock-loop        sound-spec   :offset-assert 352) ;; guessed by decompiler
-   (sound-lock-stop        sound-spec   :offset-assert 356) ;; guessed by decompiler
-   (sound-open             sound-spec   :offset-assert 360) ;; guessed by decompiler
-   (sound-open-loop        sound-spec   :offset-assert 364) ;; guessed by decompiler
-   (sound-open-stop        sound-spec   :offset-assert 368) ;; guessed by decompiler
-   (sound-close            sound-spec   :offset-assert 372) ;; guessed by decompiler
-   (sound-close-loop       sound-spec   :offset-assert 376) ;; guessed by decompiler
-   (sound-close-stop       sound-spec   :offset-assert 380) ;; guessed by decompiler
-   (sound-post-close       sound-spec   :offset-assert 384) ;; guessed by decompiler
-   (sound-post-close-stop  sound-spec   :offset-assert 388) ;; guessed by decompiler
-   (spool-sound-time       uint64       :offset-assert 396) ;; time-frame
-   (start-open-time        uint64       :offset-assert 404)
-   (door-radius            meters       :offset-assert 412)
-   (allow-pilot?           basic        :offset-assert 416)
-   (allow-flut?            basic        :offset-assert 420)
-   (blocking-plane?        basic        :offset-assert 424)
+  ((level-name             pair         :offset-assert 200) ;; guessed by decompiler
+   (open-test              pair         :offset-assert 204) ;; guessed by decompiler
+   (on-running             pair         :offset-assert 208)
+   (were-behind?           symbol       :offset-assert 212) ;; guessed by decompiler
+   (inner?                 symbol       :offset-assert 216) ;; guessed by decompiler
+   (sound-behind?          symbol       :offset-assert 220) ;; guessed by decompiler
+   (visible-move?          symbol       :offset-assert 224) ;; guessed by decompiler
+   (saw-pilot?             handle       :offset-assert 232) ;; handle
+   (last-distance          meters       :offset-assert 240)
+   (y-height               vector       :offset-assert 244) ;; guessed by decompiler
+   (pre-open-speed         float        :offset-assert 248)
+   (open?                  symbol       :offset-assert 252)
+   (latch-closed-time      time-frame   :offset-assert 256) ;; time-frame
+   (latch-open-time        time-frame   :offset-assert 264) ;; time-frame
+   (gear                   joint-mod    :offset-assert 272) ;; guessed by decompiler
+   (gear-rot               degrees      :offset-assert 276) ;; degrees
+   (gear-rotv              degrees      :offset-assert 280) ;; degrees
+   (gear-start-frame       float        :offset-assert 284)
+   (gear-stop-frame        float        :offset-assert 288)
+   (gear-play-time         time-frame   :offset-assert 296)
+   (open-frame             float        :offset-assert 304)
+   (pre-open-frame         float        :offset-assert 308)
+   (lock-frame             float        :offset-assert 312)
+   (close-speed-multiplier float        :offset-assert 316)
+   (open-distance          meters     2 :offset-assert 320) ;; guessed by decompiler
+   (active-distance        meters     2 :offset-assert 328) ;; guessed by decompiler
+   (sound-id               sound-id     :offset-assert 336) ;; guessed by decompiler
+   (gear-sound-id          sound-id     :offset-assert 340) ;; guessed by decompiler
+   (sound-gear             sound-spec   :offset-assert 344) ;; guessed by decompiler
+   (sound-pre-open         sound-spec   :offset-assert 348) ;; guessed by decompiler
+   (sound-pre-open-stop    sound-spec   :offset-assert 352) ;; guessed by decompiler
+   (sound-lock-loop        sound-spec   :offset-assert 356) ;; guessed by decompiler
+   (sound-lock-stop        sound-spec   :offset-assert 360) ;; guessed by decompiler
+   (sound-open             sound-spec   :offset-assert 364) ;; guessed by decompiler
+   (sound-open-loop        sound-spec   :offset-assert 368) ;; guessed by decompiler
+   (sound-open-stop        sound-spec   :offset-assert 372) ;; guessed by decompiler
+   (sound-close            sound-spec   :offset-assert 376) ;; guessed by decompiler
+   (sound-close-loop       sound-spec   :offset-assert 380) ;; guessed by decompiler
+   (sound-close-stop       sound-spec   :offset-assert 384) ;; guessed by decompiler
+   (sound-post-close       sound-spec   :offset-assert 388) ;; guessed by decompiler
+   (sound-post-close-stop  sound-spec   :offset-assert 392) ;; guessed by decompiler
+   (spool-sound-time       time-frame   :offset-assert 400) ;; time-frame
+   (start-open-time        time-frame   :offset-assert 408)
+   (door-radius            float        :offset-assert 416 :decomp-as meters)
+   (allow-pilot?           symbol       :offset-assert 420)
+   (allow-flut?            symbol       :offset-assert 424)
+   (blocking-plane?        symbol       :offset-assert 428)
    )
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   ;; field level-name uses ~A with a signed load. field open-test uses ~A with a signed load. field on-running uses ~A with a signed load.
-  (:methods
-    (com-airlock-method-22 () none) ;; 22 ;; (init-airlock! (_type_) _type_)
-    (com-airlock-method-23 () none) ;; 23 ;; (want-cross-airlock? (_type_) symbol)
-    (com-airlock-method-24 () none) ;; 24 ;; (destination-loaded? (_type_ symbol) symbol)
-    (com-airlock-method-25 () none) ;; 25 ;; (check-crossing-distance (_type_ vector symbol) float)
-    (com-airlock-method-26 () none) ;; 26 ;; (rotate-gear! (_type_ float) degrees)
-    (com-airlock-method-27 () none) ;; 27 ;; (play-city-voice-sound (_type_ symbol) none)
-    (com-airlock-method-28 () none) ;; 28
-    (com-airlock-method-29 () none) ;; 29
-    )
   (:state-methods
-    open ;; 20, old: (open (symbol) _type_ :state)
-    close ;; 21, old: (close (symbol) _type_ :state)
+    (open symbol) ;; 20
+    (close symbol) ;; 21
+    )
+  (:methods
+    (init-airlock! (_type_) _type_) ;; 22
+    (want-cross-airlock? (_type_) object) ;; 23
+    (destination-loaded? (_type_ symbol) symbol) ;; 24
+    (check-crossing-distance (_type_ vector symbol) float) ;; 25
+    (com-airlock-method-26 (_type_ vector symbol) symbol) ;; 26
+    (rotate-gear! (_type_ float) degrees) ;; 27
+    (play-city-voice-sound (_type_ symbol) none) ;; 28
+    (spawn-blocking-plane (_type_ symbol) none) ;; 29
     )
   )
-|#
 
-#|
 (deftype com-airlock-outer (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype com-airlock-inner (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype cty-door (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype vin-door-ctyinda (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
+
 (deftype com-airlock-outer-mhcity (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype hip-door-a (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-;; (define-extern airlock-stop-part-trackers function)
-;; (define-extern airlock-command-lookup function)
+(define-extern airlock-stop-part-trackers (function none :behavior com-airlock))
+(define-extern airlock-command-lookup (function pair object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water-anim                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++water-anim:wanim-look
+(defenum wanim-look
+  :type int32
+  (nst-lake 0)
+  (forb-foresta 1)
+  (fora-forestb 2)
+  (fora-forestc 3)
+  (fora-forestd 4)
+  (fora-foreste 5)
+  (fora-forestf 6)
+  (waspala-thronesec 7)
+  (waspala-windowwall 8)
+  (waspala-frontthrone 9)
+  (waspala-frontwindowwall 10)
+  )
+;; ---water-anim:wanim-look
+
 (deftype water-anim (process-drawable)
   ((water-height        meters        :offset-assert 200)
    (wade-height         meters        :offset-assert 204)
@@ -40259,32 +40291,30 @@
    (attack-event        symbol        :offset-assert 216) ;; guessed by decompiler
    (attack-id           uint32        :offset-assert 220)
    (flow                flow-control  :offset-assert 224) ;; guessed by decompiler
-   (target              uint64        :offset-assert 232) ;; handle
-   (flags               water-flags   :offset-assert 240) ;; guessed by decompiler
-   (look                int32         :offset-assert 244)
+   (target              handle        :offset-assert 232) ;; handle
+   (flags               water-flag    :offset-assert 240) ;; guessed by decompiler
+   (look                wanim-look    :offset-assert 244)
    (play-ambient-sound? symbol        :offset-assert 248) ;; guessed by decompiler
    (visible             symbol        :offset-assert 252) ;; guessed by decompiler
    )
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
-  (:methods
-    (water-anim-method-20 () none) ;; 20 ;; (water-anim-state-20 () _type_ :state)
-    (water-anim-method-22 () none) ;; 22 ;; (move-to-point! (_type_ vector) int)
-    (water-anim-method-23 () none) ;; 23 ;; (get-ripple-height (_type_ vector) float)
-    (water-anim-method-24 () none) ;; 24 ;; (init-water! (_type_) none)
-    (water-anim-method-25 () none) ;; 25 ;; (reset-root! (_type_) trsqv)
-    (water-anim-method-26 () none) ;; 26 ;; (water-anim-init! (_type_) none)
-    (water-anim-method-27 () none) ;; 27 ;; (water-anim-method-27 (_type_) none)
-    (water-anim-method-28 () none) ;; 28 ;; (offset! (_type_) none)
-    )
   (:state-methods
-    idle ;; 21, old: (idle () _type_ :state)
+    unknown ;; 20, doesn't seem to be defined?
+    idle ;; 21
+    )
+  (:methods
+    (move-to-point! (_type_ vector) int) ;; 22
+    (get-ripple-height (_type_ vector) float) ;; 23
+    (init-water! (_type_) object) ;; 24
+    (alloc-root! (_type_) none) ;; 25
+    (water-anim-init! (_type_) none) ;; 26
+    (stub (_type_) none) ;; 27
+    (set-offset-and-look! (_type_) none) ;; 28
     )
   )
-|#
 
-#|
 (deftype water-anim-look (structure)
   ((skel-group         string      :offset-assert 0) ;; guessed by decompiler
    (anim               int32       :offset-assert 4)
@@ -40294,58 +40324,62 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern *water-anim-look* array) ;; (array water-anim-look)
-;; (define-extern water-anim-event-handler function) ;; (function process int symbol event-message-block object :behavior water-anim)
-;; (define-extern water-anim-init-by-other function) ;; (function entity-actor none :behavior water-anim)
+(define-extern *water-anim-look* (array water-anim-look))
+(define-extern water-anim-event-handler (function process int symbol event-message-block object :behavior water-anim))
+(define-extern water-anim-init-by-other (function entity-actor object :behavior water-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blocking-plane                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype blocking-plane (process-drawable)
-  ((current-attack-mode basic  :offset-assert 200)
+  ((root collide-shape :override)
+   (current-attack-mode symbol :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
-  (:methods
-    (blocking-plane-method-21 () none) ;; 21 ;; (init! (_type_ (inline-array vector) float) none)
-    )
   (:state-methods
-    idle ;; 20, old: (idle () _type_ :state)
+    idle ;; 20
+    )
+  (:methods
+    (init! (_type_ (inline-array vector) float) none) ;; 21
     )
   )
-|#
 
-;; (define-extern blocking-plane-init-by-other function) ;; (function (inline-array vector) float none :behavior blocking-plane)
-;; (define-extern blocking-plane-spawn function) ;; (function curve-control (inline-array vector) float none :behavior process)
-;; (define-extern blocking-plane-destroy function) ;; (function none :behavior blocking-plane)
+(define-extern blocking-plane-init-by-other (function (inline-array vector) float object :behavior blocking-plane))
+(define-extern blocking-plane-spawn (function curve-control (inline-array vector) float none :behavior process))
+(define-extern blocking-plane-destroy (function none :behavior blocking-plane))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; idle-control                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++idle-control:idle-control-cmd
+(defenum idle-control-cmd
+  :type uint8
+  (reset 0)
+  (play 1)
+  (push 2)
+  )
+;; ---idle-control:idle-control-cmd
+
 (deftype idle-control-frame (structure)
-  ((command uint8   :offset-assert 0)
+  ((command idle-control-cmd :offset-assert 0)
    (anim    uint32  :offset-assert 4)
    (param0  int32   :offset-assert 8)
    (param1  int32   :offset-assert 12)
-   (param2  basic   :offset-assert 16)
+   (param2  pair    :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   ;; field param2 uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype idle-control (structure)
-  ((anim          (pointer idle-control-frame)  :offset-assert 0) ;; guessed by decompiler
+  ((anim          (inline-array idle-control-frame)  :offset-assert 0) ;; guessed by decompiler
    (anim-speed    float                         :offset-assert 4)
    (current-index int32                         :offset-assert 8)
    (counter       int32                         :offset-assert 12)
@@ -40355,80 +40389,129 @@
   :size-assert         #x14
   :flag-assert         #xb00000014
   (:methods
-    (idle-control-method-9 () none) ;; 9 ;; (idle-control-method-9 (_type_ (pointer idle-control-frame)) none)
-    (idle-control-method-10 () none) ;; 10 ;; (idle-control-method-10 (_type_ process-drawable) none)
+    (init! "Initialize this [[idle-control]]." (_type_ (inline-array idle-control-frame)) none) ;; 9
+    (play-idle-frames!
+      "Set the process pointer to the given [[process-drawable]] and run the idle frames for it."
+      (_type_ process-drawable) none :behavior process-drawable) ;; 10
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; proc-focusable-spawner         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype proc-focusable-spawn-record (structure)
-  ((proc      uint64  :offset-assert 0)
+  "A record of a [[process-focusable]] that was created by a spawner."
+  ((proc      handle  :offset-assert 0)
    (index     int16   :offset-assert 8)
-   (dead-time uint64  :offset-assert 16)
+   (dead-time time-frame :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype proc-focusable-spawn-record-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data proc-focusable-spawn-record :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype proc-focusable-spawner (basic)
-  ((records     basic  :offset-assert 4)
-   (unused-list basic  :offset-assert 8)
+  "A [[process-focusable]] spawner. Keeps track of spawned processes and cleans up inactive ones."
+  ((records     proc-focusable-spawn-record-array :offset-assert 4)
+   (unused-list (array int8) :offset-assert 8)
    )
   :method-count-assert 17
   :size-assert         #xc
   :flag-assert         #x110000000c
   (:methods
-    (proc-focusable-spawner-method-9 () none) ;; 9
-    (proc-focusable-spawner-method-10 () none) ;; 10
-    (proc-focusable-spawner-method-11 () none) ;; 11
-    (proc-focusable-spawner-method-12 () none) ;; 12
-    (proc-focusable-spawner-method-13 () none) ;; 13
-    (proc-focusable-spawner-method-14 () none) ;; 14
-    (proc-focusable-spawner-method-15 () none) ;; 15
-    (proc-focusable-spawner-method-16 () none) ;; 16
+    (alloc-records! "Allocate records and unused list." (_type_ int symbol) none) ;; 9
+    (get-last-unused-handle! "Get the handle for the last element in the unused list and decrement the unused list size." (_type_) handle) ;; 10
+    (get-last-unused-val! "Get the last value in the unused list and decrement size." (_type_) int) ;; 11
+    (mark-unused! "Add this handle to the unused list." (_type_ handle) int) ;; 12
+    (init-records! "Initialize the records list." (_type_) none) ;; 13
+    (add-unused! "Add the given value to the unused list." (_type_ int) none) ;; 14
+    (check-inactive "Check for inactive processes and add them to the unused list." (_type_) symbol) ;; 15
+    (reset-and-kill-all! "Reset the records list and deactivate all remaining active processes." (_type_) none) ;; 16
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; enemy-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++enemy-h:enemy-aware
+(defenum enemy-aware
+  :type uint64
+  (ea0 0)
+  (ea1 1)
+  (ea2 2)
+  (ea3 3)
+  (ea4 4)
+  )
+;; ---enemy-h:enemy-aware
+
+;; +++enemy-h:enemy-flag
+(defenum enemy-flag
+  :type uint64
+  :bitfield #t
+  (look-at-focus 0)
+  (look-at-move-dest 1)
+  (vulnerable 2)
+  (vulnerable-backup 3)
+  (dangerous-backup 4)
+  (notice 5)
+  (alert 6)
+  (auto-reset-penetrate 7)
+  (victory 8)
+  (cam-attack-mode 9)
+  (use-notice-distance 10)
+  (attackable 11)
+  (attackable-backup 12)
+  (actor-pause-backup 13)
+  (enable-on-notice 14)
+  (enable-on-active 15)
+  (enable-on-hostile 16)
+  (dislike-combo 17)
+  (directed 18)
+  (directed-ready 19)
+  (chase-startup 20)
+  (lock-focus 21)
+  (multi-focus 22)
+  (use-trigger 23)
+  (trackable 24)
+  (trackable-backup 25)
+  (spawn-gem 26)
+  (check-water 27)
+  (check-water-backup 28)
+  (checking-water 29)
+  (drawn-mirrored 30)
+  (called-dying 31)
+  (no-initial-move-to-ground 32)
+  (jump-check-blocked 33)
+  (death-start 34)
+  (auto-death-phase-out 35)
+  (has-gem 36)
+  )
+;; ---enemy-h:enemy-flag
+
+(declare-type enemy process-focusable)
 (deftype enemy-focus (focus)
-  ((aware uint64  :offset-assert 16) ;; enemy-aware
-   (flags uint64  :offset-assert 24) ;; enemy-flag
+  ((aware enemy-aware :offset-assert 16) ;; enemy-aware
+   (flags enemy-flag  :offset-assert 24) ;; enemy-flag
    )
   :method-count-assert 14
   :size-assert         #x20
   :flag-assert         #xe00000020
   (:methods
-    (enemy-focus-method-13 () none) ;; 13 ;; (enemy-focus-method-13 (_type_ process-focusable enemy-aware) symbol)
+    (try-update-focus (_type_ process-focusable enemy) symbol :replace) ;; 12
+    (enemy-focus-method-13 (_type_ process-focusable enemy-aware) symbol) ;; 13
     )
   )
-|#
 
-#|
 (deftype enemy-info (basic)
   ((fact-defaults                       fact-info-enemy-defaults             :offset-assert 4) ;; guessed by decompiler
    (use-die-falling                     symbol                               :offset-assert 8) ;; guessed by decompiler
@@ -40438,7 +40521,7 @@
    (jump-debug-draw                     symbol                               :offset-assert 24) ;; guessed by decompiler
    (move-to-ground                      symbol                               :offset-assert 28) ;; guessed by decompiler
    (hover-if-no-ground                  symbol                               :offset-assert 32) ;; guessed by decompiler
-   (idle-anim-script                    (pointer idle-control-frame)         :offset-assert 36) ;; guessed by decompiler
+   (idle-anim-script                    (inline-array idle-control-frame)    :offset-assert 36) ;; guessed by decompiler
    (idle-anim                           int32                                :offset-assert 40)
    (notice-anim                         int32                                :offset-assert 44)
    (hostile-anim                        int32                                :offset-assert 48)
@@ -40454,16 +40537,16 @@
    (neck-joint                          int32                                :offset-assert 88)
    (look-at-joint                       int32                                :offset-assert 92)
    (bullseye-joint                      int32                                :offset-assert 96)
-   (sound-hit                           uint128                              :offset-assert 112) ;; sound-name
-   (sound-die                           uint128                              :offset-assert 128) ;; sound-name
+   (sound-hit                           sound-name                           :offset-assert 112) ;; sound-name
+   (sound-die                           sound-name                           :offset-assert 128) ;; sound-name
    (notice-distance                     meters                               :offset-assert 144)
    (notice-distance-delta               meters                               :offset-assert 148)
    (proximity-notice-distance           meters                               :offset-assert 152)
    (default-hit-points                  float                                :offset-assert 156) ;; int32
    (gnd-collide-with                    collide-spec                         :offset-assert 160) ;; guessed by decompiler
    (overlaps-others-collide-with-filter collide-spec                         :offset-assert 164) ;; guessed by decompiler
-   (penetrate-flinch                    uint64                               :offset-assert 168) ;; penetrate
-   (penetrate-knocked                   uint64                               :offset-assert 176) ;; penetrate
+   (penetrate-flinch                    penetrate                            :offset-assert 168) ;; penetrate
+   (penetrate-knocked                   penetrate                            :offset-assert 176) ;; penetrate
    (movement-gravity                    meters                               :offset-assert 184)
    (friction                            float                                :offset-assert 188)
    (slip-factor                         float                                :offset-assert 192)
@@ -40472,9 +40555,9 @@
    (attack-mode                         symbol                               :offset-assert 204) ;; guessed by decompiler
    (attack-damage                       int32                                :offset-assert 208)
    (recover-gnd-collide-with            collide-spec                         :offset-assert 212) ;; guessed by decompiler
-   (knocked-can-land-timeout            uint64                               :offset-assert 216)
-   (knocked-recover-timeout             uint64                               :offset-assert 224)
-   (ragdoll-blend-out-time              uint64                               :offset-assert 232)
+   (knocked-can-land-timeout            time-frame                           :offset-assert 216)
+   (knocked-recover-timeout             time-frame                           :offset-assert 224)
+   (ragdoll-blend-out-time              time-frame                           :offset-assert 232)
    (ragdoll-rotate-velocity-mult        float                                :offset-assert 240)
    (jump-height-min                     meters                               :offset-assert 244)
    (jump-height-factor                  float                                :offset-assert 248)
@@ -40522,29 +40605,40 @@
   :size-assert         #x1a4
   :flag-assert         #xa000001a4
   (:methods
-    (enemy-info-method-9 () none) ;; 9 ;; (copy-enemy-info! (_type_ _type_) none)
+    (copy-enemy-info! (_type_ _type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype enemy-knocked-info (structure)
   ((anim-speed         float   :offset-assert 0)
    (on-surface-count   int32   :offset-assert 4)
    (move-count         int32   :offset-assert 8)
-   (land-can-land-time uint64  :offset-assert 16) ;; time-frame
+   (land-can-land-time time-frame :offset-assert 16) ;; time-frame
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
+;; +++enemy-h:enemy-jump-flags
+(defenum enemy-jump-flags
+  :bitfield #t
+  :type uint8
+  (ejf0 0)
+  (ejf1 1)
+  (ejf2 2)
+  (ejf3 3)
+  (ejf4 4)
+  (ejf5 5)
+  (ejf6 6)
+  (ejf7 7)
+  )
+;; ---enemy-h:enemy-jump-flags
+
 (deftype enemy-jump-info (structure)
-  ((flags      uint8              :offset-assert 0) ;; enemy-jump-flags
+  ((flags      enemy-jump-flags   :offset-assert 0) ;; enemy-jump-flags
    (anim-speed float              :offset-assert 4)
-   (hang-time  uint64             :offset-assert 8) ;; time-frame
+   (hang-time  time-frame         :offset-assert 8) ;; time-frame
    (start-pos  vector     :inline :offset-assert 16)
    (dest-pos   vector     :inline :offset-assert 32)
    (traj       trajectory :inline :offset-assert 48)
@@ -40553,31 +40647,27 @@
   :size-assert         #x58
   :flag-assert         #x900000058
   )
-|#
 
-#|
 (deftype enemy-init-by-other-params (structure)
   ((trans                      vector     :inline :offset-assert 0)
    (quat                       quaternion :inline :offset-assert 16)
    (entity                     entity             :offset-assert 32) ;; guessed by decompiler
    (directed?                  symbol             :offset-assert 36) ;; guessed by decompiler
    (no-initial-move-to-ground? symbol             :offset-assert 40) ;; guessed by decompiler
-   (art-level                  basic              :offset-assert 44)
+   (art-level                  level              :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype enemy-attack-info (structure)
   ((attack-id         uint32         :offset-assert 0)
-   (knocked-type      uint8          :offset-assert 4) ;; knocked-type
+   (knocked-type      knocked-type   :offset-assert 4) ;; knocked-type
    (blue-juggle-count uint8          :offset-assert 5)
-   (attacker-handle   uint64         :offset-assert 8) ;; handle
-   (attack-time       uint64         :offset-assert 16) ;; time-frame
-   (penetrate-using   uint64         :offset-assert 24) ;; penetrate
+   (attacker-handle   handle         :offset-assert 8) ;; handle
+   (attack-time       time-frame     :offset-assert 16) ;; time-frame
+   (penetrate-using   penetrate      :offset-assert 24) ;; penetrate
    (attacker-pos      vector :inline :offset-assert 32)
    (attack-direction  vector :inline :offset-assert 48)
    (attack-position   vector :inline :offset-assert 64)
@@ -40587,47 +40677,45 @@
   :size-assert         #x54
   :flag-assert         #x900000054
   )
-|#
 
-#|
 (deftype enemy-best-focus (structure)
   ((proc   process  :offset-assert 0) ;; guessed by decompiler
    (rating float    :offset-assert 4)
-   (aware  uint64   :offset-assert 8) ;; enemy-aware
+   (aware  enemy-aware :offset-assert 8) ;; enemy-aware
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype enemy (process-focusable)
-  ((enemy-flags               enemy-flag                    :offset-assert 208)
+  ((fact                      fact-info-enemy               :override)
+   (root                      collide-shape-moving          :override)
+   (enemy-flags               enemy-flag                    :offset-assert 208)
    (enemy-info                enemy-info                    :offset-assert 216) ;; guessed by decompiler
    (hit-points                float                         :offset-assert 220) ;; int32
-   (gnd-collide-with          uint32                        :offset-assert 224)
+   (gnd-collide-with          collide-spec                  :offset-assert 224)
    (attack-id                 uint32                        :offset-assert 228)
    (persistent-attack-id      uint32                        :offset-assert 232)
    (water-max-height          float                         :offset-assert 236) ;; meters
    (water-surface-height      float                         :offset-assert 240) ;; meters
-   (desired-angle             float                         :offset-assert 244) ;; degrees
+   (desired-angle             degrees                       :offset-assert 244) ;; degrees
    (jump-why                  uint64                        :offset-assert 248)
-   (penetrated-by-all         uint64                        :offset-assert 256) ;; penetrate
-   (penetrate-flinch          uint64                        :offset-assert 264)
-   (penetrate-knocked         uint64                        :offset-assert 272)
-   (ragdoll-proc              uint64                        :offset-assert 280)
-   (reaction-time             uint64                        :offset-assert 288) ;; time-frame
-   (notice-time               uint64                        :offset-assert 296) ;; time-frame
-   (state-timeout             uint64                        :offset-assert 304) ;; time-frame
-   (auto-reset-penetrate-time uint64                        :offset-assert 312) ;; time-frame
-   (hit-focus-time            uint64                        :offset-assert 320) ;; time-frame
-   (last-draw-time            uint64                        :offset-assert 328) ;; time-frame
-   (starting-time             uint64                        :offset-assert 336) ;; time-frame
-   (fated-time                uint64                        :offset-assert 344) ;; time-frame
+   (penetrated-by-all         penetrate                     :offset-assert 256) ;; penetrate
+   (penetrate-flinch          penetrate                     :offset-assert 264)
+   (penetrate-knocked         penetrate                     :offset-assert 272)
+   (ragdoll-proc              handle                        :offset-assert 280)
+   (reaction-time             time-frame                    :offset-assert 288) ;; time-frame
+   (notice-time               time-frame                    :offset-assert 296) ;; time-frame
+   (state-timeout             time-frame                    :offset-assert 304) ;; time-frame
+   (auto-reset-penetrate-time time-frame                    :offset-assert 312) ;; time-frame
+   (hit-focus-time            time-frame                    :offset-assert 320) ;; time-frame
+   (last-draw-time            time-frame                    :offset-assert 328) ;; time-frame
+   (starting-time             time-frame                    :offset-assert 336) ;; time-frame
+   (fated-time                time-frame                    :offset-assert 344) ;; time-frame
    (focus-pos                 vector                :inline :offset-assert 352)
    (event-param-point         vector                :inline :offset-assert 368)
-   (jump-dest                 vector                :inline :offset-assert 368)
+   (jump-dest                 vector                :inline :offset 368)
    (focus                     enemy-focus           :inline :offset-assert 384)
    (incoming                  enemy-attack-info     :inline :offset-assert 416)
    (actor-group               (pointer actor-group)         :offset-assert 500) ;; guessed by decompiler
@@ -40644,139 +40732,139 @@
   :size-assert         #x228
   :flag-assert         #x9b01b00228
   ;; field enemy-flag is likely a value type. field on-notice uses ~A with a signed load. field on-active uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-death uses ~A with a signed load.
+  (:state-methods
+    dormant ;; 28
+    dormant-aware ;; 29
+    hit ;; 30
+    knocked ;; 31
+    knocked-recover ;; 32
+    idle ;; 33
+    active ;; 34
+    notice ;; 35
+    flee ;; 36
+    stare ;; 37
+    hostile ;; 38
+    victory ;; 39
+    die ;; 40
+    die-falling ;; 41
+    die-fast ;; 42
+    directed ;; 43
+    jump ;; 44
+    jump-blocked ;; 45
+    ambush-delay ;; 46
+    ambush ;; 47
+    view-anims ;; 48
+    gun-dark-2-stretch ;; 49
+    )
   (:methods
-    (enemy-method-28 () none) ;; 28 ;; (dormant-aware () _type_ :state)
-    (enemy-method-29 () none) ;; 29 ;; (hit () _type_ :state)
-    (enemy-method-30 () none) ;; 30 ;; (knocked () _type_ :state)
-    (enemy-method-31 () none) ;; 31 ;; (idle () _type_ :state)
-    (enemy-method-32 () none) ;; 32 ;; (active () _type_ :state)
-    (enemy-method-33 () none) ;; 33 ;; (notice () _type_ :state)
-    (enemy-method-34 () none) ;; 34 ;; (flee () _type_ :state)
-    (enemy-method-35 () none) ;; 35 ;; (stare () _type_ :state)
-    (enemy-method-36 () none) ;; 36 ;; (hostile () _type_ :state)
-    (enemy-method-37 () none) ;; 37 ;; (victory () _type_ :state)
-    (enemy-method-38 () none) ;; 38 ;; (die () _type_ :state)
-    (enemy-method-39 () none) ;; 39 ;; (die-falling () _type_ :state)
-    (enemy-method-40 () none) ;; 40 ;; (die-fast () _type_ :state)
-    (enemy-method-41 () none) ;; 41 ;; (directed () _type_ :state)
-    (enemy-method-42 () none) ;; 42 ;; (jump () _type_ :state)
-    (enemy-method-43 () none) ;; 43 ;; (jump-blocked () _type_ :state)
-    (enemy-method-44 () none) ;; 44 ;; (ambush () _type_ :state)
-    (enemy-method-45 () none) ;; 45 ;; (view-anims () _type_ :state)
-    (enemy-method-46 () none) ;; 46 ;; (enemy-method-46 (_type_ int) none)
-    (enemy-method-47 () none) ;; 47 ;; (enemy-method-47 (_type_ vector) float)
-    (enemy-method-48 () none) ;; 48 ;; (take-damage-from-attack (_type_ process event-message-block) int)
-    (enemy-method-49 () none) ;; 49 ;; (enemy-method-49 (_type_) time-frame)
-    (enemy-method-50 () none) ;; 50 ;; (enemy-method-50 (_type_ vector) vector)
-    (enemy-method-51 () none) ;; 51 ;; (enemy-method-51 (_type_) float)
-    (enemy-method-52 () none) ;; 52 ;; (enemy-method-52 (_type_ vector) none)
-    (enemy-method-53 () none) ;; 53 ;; (enemy-method-53 (_type_ process-focusable) symbol)
-    (enemy-method-54 () none) ;; 54 ;; (enemy-method-54 (_type_) enemy-flag)
-    (enemy-method-55 () none) ;; 55 ;; (common-post (_type_) none)
-    (enemy-method-56 () none) ;; 56 ;; (damage-amount-from-attack (_type_ process event-message-block) int)
-    (enemy-method-57 () none) ;; 57 ;; (update-target-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware)
-    (enemy-method-58 () none) ;; 58 ;; (enemy-method-58 (_type_ process event-message-block) symbol)
-    (enemy-method-59 () none) ;; 59 ;; (get-penetrate-info (_type_) penetrate)
-    (enemy-method-60 () none) ;; 60 ;; (coin-flip? (_type_) symbol)
-    (enemy-method-61 () none) ;; 61 ;; (enemy-method-61 (_type_ int) int)
-    (enemy-method-62 () none) ;; 62 ;; (enemy-method-62 (_type_) none)
-    (enemy-method-63 () none) ;; 63 ;; (enemy-method-63 (_type_ process-focusable enemy-aware) symbol)
-    (enemy-method-64 () none) ;; 64 ;; (go-dormant (_type_) object)
-    (enemy-method-65 () none) ;; 65 ;; (go-dormant-aware (_type_) object)
-    (enemy-method-66 () none) ;; 66 ;; (go-ambush (_type_) object)
-    (enemy-method-67 () none) ;; 67 ;; (go-stare (_type_) object)
-    (enemy-method-68 () none) ;; 68 ;; (go-stare2 (_type_) object)
-    (enemy-method-69 () none) ;; 69 ;; (go-directed (_type_) object)
-    (enemy-method-70 () none) ;; 70 ;; (go-hostile (_type_) object)
-    (enemy-method-71 () none) ;; 71 ;; (go-flee (_type_) object)
-    (enemy-method-72 () none) ;; 72 ;; (react-to-focus (_type_) object)
-    (enemy-method-73 () none) ;; 73 ;; (kill-prefer-falling (_type_) object)
-    (enemy-method-74 () none) ;; 74 ;; (general-event-handler (_type_ process int symbol event-message-block) object)
-    (enemy-method-75 () none) ;; 75 ;; (enemy-method-75 (_type_ process event-message-block) object)
-    (enemy-method-76 () none) ;; 76 ;; (enemy-method-76 (_type_ process event-message-block) symbol)
-    (enemy-method-77 () none) ;; 77 ;; (enemy-method-77 (_type_ enemy-knocked-info) symbol)
-    (enemy-method-78 () none) ;; 78 ;; (enemy-method-78 (_type_ enemy-knocked-info) symbol)
-    (enemy-method-79 () none) ;; 79 ;; (enemy-method-79 (_type_ int enemy-knocked-info) symbol)
-    (enemy-method-80 () none) ;; 80 ;; (enemy-method-80 (_type_ enemy-knocked-info) symbol)
-    (enemy-method-81 () none) ;; 81 ;; (enemy-method-81 (_type_) symbol)
-    (enemy-method-82 () none) ;; 82 ;; (enemy-method-82 (_type_ enemy-jump-info) symbol)
-    (enemy-method-83 () none) ;; 83 ;; (enemy-method-83 (_type_ enemy-jump-info) none)
-    (enemy-method-84 () none) ;; 84 ;; (enemy-method-84 (_type_ enemy-jump-info) none)
-    (enemy-method-85 () none) ;; 85 ;; (enemy-method-85 (_type_) float)
-    (enemy-method-86 () none) ;; 86 ;; (enemy-method-86 (_type_) symbol)
-    (enemy-method-87 () none) ;; 87 ;; (enemy-method-87 (_type_ enemy-jump-info) symbol)
-    (enemy-method-88 () none) ;; 88 ;; (enemy-method-88 (_type_ enemy-jump-info) symbol)
-    (enemy-method-89 () none) ;; 89 ;; (enemy-method-89 (_type_ enemy-jump-info) symbol)
-    (enemy-method-90 () none) ;; 90 ;; (enemy-method-90 (_type_ int enemy-jump-info) symbol)
-    (enemy-method-91 () none) ;; 91 ;; (enemy-method-91 (_type_ int enemy-jump-info) none)
-    (enemy-method-92 () none) ;; 92 ;; (enemy-method-92 (_type_ int enemy-jump-info) none)
-    (enemy-method-93 () none) ;; 93 ;; (enemy-method-93 (_type_) none)
-    (enemy-method-94 () none) ;; 94 ;; (enemy-method-94 (_type_ vector float) symbol)
-    (enemy-method-95 () none) ;; 95 ;; (enemy-method-95 (_type_ vector float) symbol)
-    (enemy-method-96 () none) ;; 96 ;; (enemy-method-96 (_type_ float symbol) symbol)
-    (enemy-method-97 () none) ;; 97 ;; (enemy-method-97 (_type_) process)
-    (enemy-method-98 () none) ;; 98 ;; (in-aggro-range? (_type_ process-focusable vector) symbol)
-    (enemy-method-99 () none) ;; 99 ;; (enemy-method-99 (_type_ process-focusable) symbol)
-    (enemy-method-100 () none) ;; 100 ;; (enemy-method-100 (_type_) symbol)
-    (enemy-method-101 () none) ;; 101 ;; (enemy-method-101 (_type_) none)
-    (enemy-method-102 () none) ;; 102 ;; (enemy-method-102 (_type_) symbol)
-    (enemy-method-103 () none) ;; 103 ;; (enemy-method-103 (_type_) collide-spec)
-    (enemy-method-104 () none) ;; 104 ;; (enemy-method-104 (_type_ process touching-shapes-entry uint) symbol)
-    (enemy-method-105 () none) ;; 105 ;; (enemy-method-105 (_type_ process) enemy-flag)
-    (enemy-method-106 () none) ;; 106 ;; (set-incoming-attack-info (_type_ process object penetrate attack-info) none)
-    (enemy-method-107 () none) ;; 107 ;; (get-enemy-target (_type_) process-focusable)
-    (enemy-method-108 () none) ;; 108 ;; (enemy-method-108 (_type_ process-drawable event-message-block) int)
-    (enemy-method-109 () none) ;; 109 ;; (look-at-target! (_type_ enemy-flag) none)
-    (enemy-method-110 () none) ;; 110 ;; (stop-looking-at-target! (_type_) none)
-    (enemy-method-111 () none) ;; 111 ;; (enemy-method-111 (_type_) none)
-    (enemy-method-112 () none) ;; 112 ;; (set-enemy-info! (_type_ enemy-info) none)
-    (enemy-method-113 () none) ;; 113 ;; (init-enemy-behaviour-and-stats! (_type_ enemy-info) none)
-    (enemy-method-114 () none) ;; 114 ;; (init-enemy-collision! (_type_) none)
-    (enemy-method-115 () none) ;; 115 ;; (init-enemy! (_type_) none)
-    (enemy-method-116 () none) ;; 116 ;; (go-idle (_type_) none)
-    (enemy-method-117 () none) ;; 117 ;; (rnd-float (_type_) float)
-    (enemy-method-118 () none) ;; 118 ;; (rnd-float-range (_type_ float float) float)
-    (enemy-method-119 () none) ;; 119 ;; (rnd-int-count (_type_ int) int)
-    (enemy-method-120 () none) ;; 120 ;; (rnd-bit (_type_ int int) int)
-    (enemy-method-121 () none) ;; 121 ;; (rnd-int-range (_type_ int int) int)
-    (enemy-method-122 () none) ;; 122 ;; (rnd-percent? (_type_ float) symbol)
-    (enemy-method-123 () none) ;; 123 ;; (rnd-go-idle? (_type_ float) symbol)
-    (enemy-method-124 () none) ;; 124 ;; (enemy-method-124 (_type_) collide-spec)
-    (enemy-method-125 () none) ;; 125 ;; (ground-pat-set! (_type_ collide-query collide-spec float float float) pat-surface)
-    (enemy-method-126 () none) ;; 126 ;; (enemy-above-ground? (_type_ collide-query vector collide-spec float float float) symbol)
-    (enemy-method-127 () none) ;; 127 ;; (enemy-method-127 (_type_ float float symbol collide-spec) symbol)
-    (enemy-method-128 () none) ;; 128 ;; (enemy-method-128 (_type_ vector move-above-ground-params) none)
-    (enemy-method-129 () none) ;; 129 ;; (enemy-method-129 (_type_) none)
-    (enemy-method-130 () none) ;; 130 ;; (enemy-method-130 (_type_ float) symbol)
-    (enemy-method-131 () none) ;; 131 ;; (penetrate-using->knocked (_type_ penetrate) knocked-type)
-    (enemy-method-132 () none) ;; 132 ;; (dying (_type_) none)
-    (enemy-method-133 () none) ;; 133 ;; (enemy-method-133 (_type_) symbol)
-    (enemy-method-134 () none) ;; 134 ;; (get-attacker (_type_ process attack-info) process-focusable)
-    (enemy-method-135 () none) ;; 135 ;; (enemy-method-135 (_type_ int) sound-id)
-    (enemy-method-136 () none) ;; 136 ;; (enemy-method-136 (_type_) enemy-flag)
-    (enemy-method-137 () none) ;; 137
-    (enemy-method-138 () none) ;; 138
-    (enemy-method-139 () none) ;; 139
-    (enemy-method-140 () none) ;; 140
-    (enemy-method-141 () none) ;; 141
-    (enemy-method-142 () none) ;; 142
-    (enemy-method-143 () none) ;; 143
-    (enemy-method-144 () none) ;; 144
-    (enemy-method-145 () none) ;; 145
-    (enemy-method-146 () none) ;; 146
-    (enemy-method-147 () none) ;; 147
-    (enemy-method-148 () none) ;; 148
-    (enemy-method-149 () none) ;; 149
-    (enemy-method-150 () none) ;; 150
-    (enemy-method-151 () none) ;; 151
-    (enemy-method-152 () none) ;; 152
-    (enemy-method-153 () none) ;; 153
-    (enemy-method-154 () none) ;; 154
+    (enemy-method-50 (_type_ int) none) ;; 50
+    (accelerate-fall! (_type_ vector) float) ;; 51
+    (damage-enemy! (_type_ object event-message-block) float) ;; 52
+    (reset-penetrate! (_type_) none) ;; 53
+    (get-knockback-dir! (_type_ vector) vector) ;; 54
+    (get-knockback-angle (_type_) degrees) ;; 55
+    (knocked-handler (_type_ vector) object) ;; 56
+    (can-collide-with-focus? (_type_ process-focusable) object) ;; 57
+    (check-water (_type_) object) ;; 58
+    (enemy-common-post (_type_) none) ;; 59
+    (lerp-damage (_type_ float) float) ;; 60
+    (scale-impact-vel-y! (_type_ vector vector float) vector) ;; 61
+    (get-damage-from-attack (_type_ object event-message-block) float) ;; 62
+    (enemy-method-63 (_type_ float) float) ;; 63
+    (update-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware) ;; 64
+    (penetrate->next-state (_type_) symbol) ;; 65
+    (get-penetrated-by (_type_) penetrate) ;; 66
+    (coin-flip? (_type_) symbol) ;; 67
+    (get-enemy-aware (_type_ enemy-aware) enemy-aware) ;; 68
+    (enemy-method-69 (_type_) none) ;; 69
+    (enemy-method-70 (_type_ process-focusable enemy-aware) none) ;; 70
+    (go-dormant (_type_) object) ;; 71
+    (go-dormant-aware (_type_) object) ;; 72
+    (go-idle (_type_) object) ;; 73
+    (go-ambush-delay (_type_) object) ;; 74
+    (go-stare (_type_) object) ;; 75
+    (go-stare2 (_type_) object) ;; 76
+    (go-directed (_type_) object) ;; 77
+    (go-hostile (_type_) object) ;; 78
+    (go-flee (_type_) object) ;; 79
+    (go-best-state (_type_) object) ;; 80
+    (go-die (_type_) object) ;; 81
+    (event-handler (_type_ process int symbol event-message-block) object :behavior enemy) ;; 82
+    (enemy-touch-handler (_type_ process event-message-block) none) ;; 83
+    (send-attack-on-jump-or-knocked (_type_ process event-message-block) none) ;; 84
+    (knocked-anim (_type_ enemy-knocked-info) symbol) ;; 85
+    (knocked-land-anim (_type_ enemy-knocked-info) symbol) ;; 86
+    (knocked-anim-handler (_type_ int enemy-knocked-info) symbol) ;; 87
+    (enemy-method-88 (_type_ enemy-knocked-info) symbol) ;; 88
+    (within-gspot-range? (_type_) symbol) ;; 89
+    (enemy-method-90 (_type_ ragdoll-proc) none) ;; 90
+    (enemy-method-91 (_type_) symbol) ;; 91
+    (init-jump-info! (_type_ enemy-jump-info) none) ;; 92
+    (setup-jump! (_type_ enemy-jump-info) none) ;; 93
+    (move-to-gspot! (_type_) float) ;; 94
+    (on-ground? (_type_) symbol) ;; 95
+    (jump-in-air-anim (_type_ enemy-jump-info) symbol) ;; 96
+    (jump-land-anim (_type_ enemy-jump-info) symbol) ;; 97
+    (jump-wind-up-anim (_type_ enemy-jump-info) symbol) ;; 98
+    (jump-anim-handler (_type_ int enemy-jump-info) symbol) ;; 99
+    (in-jump-handler (_type_ int enemy-jump-info) none) ;; 100
+    (enemy-method-101 (_type_) none) ;; 101
+    (go-directed2 (_type_) object) ;; 102
+    (enemy-method-103 (_type_ vector float) symbol) ;; 103
+    (enemy-method-104 (_type_ vector float) symbol) ;; 104
+    (enemy-method-105 (_type_ float symbol) symbol) ;; 105
+    (find-best-focus (_type_) process) ;; 106
+    (enemy-method-107 (_type_) symbol) ;; 107
+    (enemy-method-108 (_type_) symbol) ;; 108
+    (enemy-method-109 (_type_) symbol) ;; 109
+    (send-attack (_type_ process touching-shapes-entry uint) symbol) ;; 110
+    (on-attack (_type_ process-focusable) none) ;; 111
+    (get-incoming-attack! (_type_ process-drawable event-message-block penetrate attack-info touching-shapes-entry) none) ;; 112
+    (get-focus! (_type_) process-focusable) ;; 113
+    (send-attack-to-all-tshapes (_type_ process-focusable event-message-block) int) ;; 114
+    (set-look-at-mode! (_type_ int) none) ;; 115
+    (stop-look-at! (_type_) none) ;; 116
+    (apply-friction (_type_) none) ;; 117
+    (init-enemy-info! (_type_ enemy-info) none) ;; 118
+    (init-enemy-defaults! (_type_ enemy-info) none) ;; 119
+    (init-enemy-collision! (_type_) none) ;; 120
+    (init-enemy! (_type_) none) ;; 121
+    (go-idle2 (_type_) object) ;; 122
+    (enemy-method-123 (_type_) symbol) ;; 123
+    (disable-ragdoll (_type_) none) ;; 124
+    (ragdoll-settled? (_type_) object) ;; 125
+    (ragdoll-spawn! (_type_ symbol symbol) vector) ;; 126
+    (deactivate-ragdoll! (_type_) none) ;; 127
+    (rnd-float (_type_) float) ;; 128
+    (rnd-float-range (_type_ float float) float) ;; 129
+    (rnd-int (_type_ int) int) ;; 130
+    (enemy-method-131 (_type_ int int) int) ;; 131
+    (set-reaction-time! (_type_ time-frame time-frame) time-frame) ;; 132
+    (rnd-chance? (_type_ float) symbol) ;; 133
+    (enemy-method-134 (_type_ float) symbol) ;; 134
+    (enemy-method-135 (_type_) none) ;; 135
+    (set-ground-pat! (_type_ collide-query collide-spec float float float) pat-surface) ;; 136
+    (enemy-above-ground? (_type_ collide-query vector collide-spec float float float) symbol) ;; 137
+    (try-locate-ground (_type_ meters meters symbol collide-spec) symbol) ;; 138
+    (move-above-ground! (_type_ vector move-above-ground-params) none) ;; 139
+    (update-focus (_type_) process) ;; 140
+    (enemy-method-141 (_type_ float) symbol) ;; 141
+    (penetrate->knocked-type (_type_ penetrate) knocked-type) ;; 142
+    (on-dying (_type_) none) ;; 143
+    (falling? (_type_) symbol) ;; 144
+    (find-offending-pfoc (_type_ process attack-info) process-focusable) ;; 145
+    (play-damage-sound (_type_ int) sound-id) ;; 146
+    (check-victory (_type_) none) ;; 147
+    (go-gun-dark-2-stretch (_type_) object) ;; 148
+    (have-less-than-10-joints? (_type_) object) ;; 149
+    (enemy-method-150 (_type_) symbol) ;; 150
+    (should-move-to-ground? (_type_) symbol) ;; 151
+    (enemy-method-152 (_type_) float) ;; 152
+    (get-gem-pool-idx (_type_) int) ;; 153
+    (mark-as-dead (_type_) none) ;; 154
     )
   )
-|#
 
-#|
 (deftype anim-info (structure)
   ((anim-index   int32   :offset-assert 0)
    (travel-speed meters  :offset-assert 4)
@@ -40785,14 +40873,11 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-enemy-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nav-enemy-info (enemy-info)
   ((callback-info             nav-callback-info  :offset-assert 420)
    (use-momentum              symbol             :offset-assert 424) ;; guessed by decompiler
@@ -40810,11 +40895,11 @@
    (walk-travel-speed         meters             :offset-assert 472)
    (walk-acceleration         meters             :offset-assert 476)
    (walk-turning-acceleration meters             :offset-assert 480)
-   (maximum-rotation-rate     deg                :offset-assert 484) ;; degrees
+   (maximum-rotation-rate     degrees            :offset-assert 484) ;; degrees
    (notice-nav-radius         meters             :offset-assert 488)
    (frustration-distance      meters             :offset-assert 492)
-   (frustration-time          uint64             :offset-assert 496) ;; time-frame
-   (blocked-time              uint64             :offset-assert 504) ;; time-frame
+   (frustration-time          time-frame         :offset-assert 496) ;; time-frame
+   (blocked-time              time-frame         :offset-assert 504) ;; time-frame
    (circle-dist-lo            float              :offset-assert 512)
    (circle-dist-hi            float              :offset-assert 516)
    (nav-mesh                  nav-mesh           :offset-assert 520) ;; guessed by decompiler
@@ -40826,17 +40911,15 @@
     (nav-enemy-info-method-10 () none) ;; 10 ;; (copy-nav-enemy-info! (_type_ nav-enemy-info) none)
     )
   )
-|#
 
-#|
 (deftype nav-enemy (enemy)
   ((frustration-point       vector :inline :offset-assert 560)
    (move-dest               vector :inline :offset-assert 576)
-   (frustration-time        uint64         :offset-assert 592) ;; time-frame
-   (blocked-start-time      uint64         :offset-assert 600) ;; time-frame
-   (restore-nav-radius-time uint64         :offset-assert 608) ;; time-frame
+   (frustration-time        time-frame     :offset-assert 592) ;; time-frame
+   (blocked-start-time      time-frame     :offset-assert 600) ;; time-frame
+   (restore-nav-radius-time time-frame     :offset-assert 608) ;; time-frame
    (nav-radius-backup       float          :offset-assert 616)
-   (circle-radial-dist      float          :offset-assert 244)
+   (circle-radial-dist      float          :offset 244)
    )
   :method-count-assert 190
   :size-assert         #x26c
@@ -40879,11 +40962,9 @@
     (nav-enemy-method-189 () none) ;; 189
     )
   )
-|#
 
-#|
 (deftype nav-enemy-debug-control-info (basic)
-  ((enable   basic  :offset-assert 4)
+  ((enable   symbol :offset-assert 4)
    (steering float  :offset-assert 8)
    (throttle float  :offset-assert 12)
    )
@@ -40891,30 +40972,28 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; enemy                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *enemy-dummy-shadow-control* shadow-control) ;; shadow-control
-;; (define-extern get-penetrate-using-from-attack-event function) ;; (function process-drawable event-message-block penetrate)
-;; (define-extern enemy-setup-gem function)
-;; (define-extern enemy-init-by-other function) ;; (function process-drawable enemy-init-by-other-params none :behavior enemy)
-;; (define-extern enemy-event-handler function) ;; (function process int symbol event-message-block object :behavior enemy)
-;; (define-extern enemy-simple-post function) ;; (function none :behavior enemy)
-;; (define-extern enemy-falling-post function) ;; (function none :behavior enemy)
-;; (define-extern enemy-die-falling-post function) ;; (function none :behavior enemy)
-;; (define-extern *shockwave-knock-scalar* curve2d-fast)
-;; (define-extern ja-group-index? function) ;; (function int symbol :behavior enemy)
+(define-extern *enemy-dummy-shadow-control* shadow-control)
+(define-extern get-penetrate-using-from-attack-event (function process-drawable event-message-block penetrate))
+(define-extern enemy-setup-gem (function object :behavior enemy))
+(define-extern enemy-init-by-other (function process-drawable enemy-init-by-other-params object :behavior enemy))
+(define-extern enemy-event-handler (function process int symbol event-message-block object :behavior enemy))
+(define-extern enemy-simple-post (function none :behavior enemy))
+(define-extern enemy-falling-post (function none :behavior enemy))
+(define-extern enemy-die-falling-post (function none :behavior enemy))
+(define-extern *shockwave-knock-scalar* curve2d-fast)
+(define-extern ja-group-index? (function int symbol :behavior enemy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; enemy-states                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern gun-dark-2-anim-code function)
-;; (define-extern gun-dark-2-ragdoll-start function)
+(define-extern gun-dark-2-anim-code (function object :behavior enemy))
+(define-extern gun-dark-2-ragdoll-start (function enemy object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-enemy                      ;;
