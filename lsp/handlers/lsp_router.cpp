@@ -47,23 +47,25 @@ void LSPRouter::init_routes() {
         lg::info("Received shutdown request");
         return error_resp(ErrorCodes::UnknownErrorCode, "Problem occurred while existing");
       });
-  m_routes["initialize"] = LSPRoute(initialize_handler);
+  m_routes["initialize"] = LSPRoute(lsp_handlers::initialize);
   m_routes["initialize"].m_generic_post_action = [](Workspace& workspace) {
     workspace.set_initialized(true);
   };
   m_routes["initialized"] = LSPRoute();
-  m_routes["textDocument/documentSymbol"] = LSPRoute(document_symbols_handler);
-  m_routes["textDocument/didOpen"] = LSPRoute(did_open_handler, did_open_push_diagnostics);
-  m_routes["textDocument/didChange"] = LSPRoute(did_change_handler, did_change_push_diagnostics);
-  m_routes["textDocument/didClose"] = LSPRoute(did_close_handler);
-  m_routes["textDocument/hover"] = LSPRoute(hover_handler);
-  m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
-  m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
-  m_routes["textDocument/documentColor"] = LSPRoute(document_color_handler);
-  m_routes["textDocument/formatting"] = LSPRoute(formatting_handler);
-  m_routes["textDocument/prepareTypeHierarchy"] = LSPRoute(prepare_type_hierarchy_handler);
-  m_routes["typeHierarchy/supertypes"] = LSPRoute(supertypes_type_hierarchy_handler);
-  m_routes["typeHierarchy/subtypes"] = LSPRoute(subtypes_type_hierarchy_handler);
+  m_routes["textDocument/documentSymbol"] = LSPRoute(lsp_handlers::document_symbols);
+  m_routes["textDocument/didOpen"] =
+      LSPRoute(lsp_handlers::did_open, lsp_handlers::did_open_push_diagnostics);
+  m_routes["textDocument/didChange"] =
+      LSPRoute(lsp_handlers::did_change, lsp_handlers::did_change_push_diagnostics);
+  m_routes["textDocument/didClose"] = LSPRoute(lsp_handlers::did_close);
+  m_routes["textDocument/hover"] = LSPRoute(lsp_handlers::hover);
+  m_routes["textDocument/definition"] = LSPRoute(lsp_handlers::go_to_definition);
+  m_routes["textDocument/completion"] = LSPRoute(lsp_handlers::get_completions);
+  m_routes["textDocument/documentColor"] = LSPRoute(lsp_handlers::document_color);
+  m_routes["textDocument/formatting"] = LSPRoute(lsp_handlers::formatting);
+  m_routes["textDocument/prepareTypeHierarchy"] = LSPRoute(lsp_handlers::prepare_type_hierarchy);
+  m_routes["typeHierarchy/supertypes"] = LSPRoute(lsp_handlers::supertypes_type_hierarchy);
+  m_routes["typeHierarchy/subtypes"] = LSPRoute(lsp_handlers::subtypes_type_hierarchy);
   // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
   // Not Yet Supported Routes, noops
   m_routes["$/cancelRequest"] = LSPRoute();

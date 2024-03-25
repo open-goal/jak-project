@@ -1,5 +1,14 @@
 add_executable(lsp
   handlers/lsp_router.cpp
+  handlers/initialize.cpp
+  handlers/text_document/completion.cpp
+  handlers/text_document/document_color.cpp
+  handlers/text_document/document_symbol.cpp
+  handlers/text_document/document_synchronization.cpp
+  handlers/text_document/formatting.cpp
+  handlers/text_document/go_to.cpp
+  handlers/text_document/hover.cpp
+  handlers/text_document/type_hierarchy.cpp
   main.cpp
   protocol/common_types.cpp
   protocol/completion.cpp

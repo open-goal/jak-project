@@ -1,15 +1,7 @@
-// TODO - convert this to a proper class
+#include "initialize.h"
 
-#include "third-party/json.hpp"
-
-using json = nlohmann::json;
-
-class InitializeResult {
- public:
-  InitializeResult(){};
-  json to_json() { return result; }
-
- private:
+namespace lsp_handlers {
+std::optional<json> initialize(Workspace& workspace, int id, json params) {
   json text_document_sync{
       {"openClose", true},
       {"change", 1},  // Full sync
@@ -58,4 +50,6 @@ class InitializeResult {
                    {"typeHierarchyProvider", true},
                    {"experimental", {}},
                }}};
-};
+  return result;
+}
+}  // namespace lsp_handlers

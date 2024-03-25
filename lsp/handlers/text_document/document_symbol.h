@@ -5,24 +5,10 @@
 #include "lsp/protocol/common_types.h"
 #include "lsp/state/workspace.h"
 
-#include "third-party/json.hpp"
+#include "common/util/json_util.h"
 
-using json = nlohmann::json;
+namespace lsp_handlers {
 
-std::optional<json> document_symbols_handler(Workspace& workspace, int /*id*/, json params) {
-  auto converted_params = params.get<LSPSpec::DocumentSymbolParams>();
-  auto maybe_tracked_file = workspace.get_tracked_ir_file(converted_params.m_textDocument.m_uri);
+std::optional<json> document_symbols(Workspace& workspace, int id, json params);
 
-  if (!maybe_tracked_file) {
-    return {};
-  }
-  const auto& tracked_file = maybe_tracked_file.value().get();
-
-  // TODO - convert to type!
-
-  json arr = json::array();
-  for (const auto& symbol : tracked_file.m_symbols) {
-    arr.push_back(symbol);
-  }
-  return arr;
-}
+}  // namespace lsp_handlers

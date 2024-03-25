@@ -1,14 +1,10 @@
 #pragma once
 
 #include "common/log/log.h"
+#include "common/util/json_util.h"
 
-#include "lsp/protocol/initialize_result.h"
+#include "lsp/state/workspace.h"
 
-#include "third-party/json.hpp"
-
-using json = nlohmann::json;
-
-std::optional<json> initialize_handler(Workspace& /*workspace*/, int /*id*/, json /*params*/) {
-  InitializeResult result;
-  return result.to_json();
+namespace lsp_handlers {
+std::optional<json> initialize(Workspace& workspace, int id, json params);
 }
