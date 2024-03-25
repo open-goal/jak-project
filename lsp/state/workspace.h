@@ -24,6 +24,12 @@ struct TreeSitterTreeDeleter {
   void operator()(TSTree* ptr) const { ts_tree_delete(ptr); }
 };
 
+struct OpenGOALFormResult {
+  std::vector<std::string> tokens;
+  std::pair<int, int> start_point;
+  std::pair<int, int> end_point;
+};
+
 class WorkspaceOGFile {
  public:
   WorkspaceOGFile(){};
@@ -37,6 +43,8 @@ class WorkspaceOGFile {
 
   void parse_content(const std::string& new_content);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position) const;
+  std::vector<OpenGOALFormResult> search_for_forms_that_begin_with(
+      std::vector<std::string> prefix) const;
 
  private:
   int32_t version;
@@ -131,6 +139,8 @@ class Workspace {
   std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>> get_types_subtypes(
       const std::string& symbol_name,
       const GameVersion game_version);
+  std::unordered_map<std::string, s64> get_enum_entries(const std::string& enum_name,
+                                                        const GameVersion game_version);
 
  private:
   LSPRequester m_requester;

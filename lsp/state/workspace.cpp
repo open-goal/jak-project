@@ -6,6 +6,7 @@
 
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/ast_util.h"
 #include "common/util/string_util.h"
 
 #include "lsp/protocol/common_types.h"
@@ -305,6 +306,22 @@ Workspace::get_types_subtypes(const std::string& symbol_name, const GameVersion 
   return subtypes;
 }
 
+std::unordered_map<std::string, s64> Workspace::get_enum_entries(const std::string& enum_name,
+                                                                 const GameVersion game_version) {
+  if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(game_version));
+    return {};
+  }
+
+  const auto& compiler = m_compiler_instances[game_version].get();
+  const auto enum_info = compiler->type_system().try_enum_lookup(enum_name);
+  if (!enum_info) {
+    return {};
+  }
+  return enum_info->entries();
+}
+
 void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
                                     const std::string& language_id,
                                     const std::string& content) {
@@ -445,6 +462,33 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
     }
   }
   return {};
+}
+
+std::vector<OpenGOALFormResult> WorkspaceOGFile::search_for_forms_that_begin_with(
+    std::vector<std::string> prefix) const {
+  std::vector<OpenGOALFormResult> results = {};
+  if (!m_ast) {
+    return results;
+  }
+
+  TSNode root_node = ts_tree_root_node(m_ast.get());
+  std::vector<TSNode> found_nodes = {};
+  ast_util::search_for_forms_that_begin_with(m_content, root_node, prefix, found_nodes);
+
+  for (const auto& node : found_nodes) {
+    std::vector<std::string> tokens = {};
+    for (size_t i = 0; i < ts_node_child_count(node); i++) {
+      const auto child_node = ts_node_child(node, i);
+      const auto contents = ast_util::get_source_code(m_content, child_node);
+      tokens.push_back(contents);
+    }
+    const auto start_point = ts_node_start_point(node);
+    const auto end_point = ts_node_end_point(node);
+    results.push_back(
+        {tokens, {start_point.row, start_point.column}, {end_point.row, end_point.column}});
+  }
+
+  return results;
 }
 
 WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {

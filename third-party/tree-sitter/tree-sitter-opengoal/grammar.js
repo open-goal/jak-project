@@ -137,8 +137,7 @@ module.exports = grammar({
     [],
 
   inline: $ =>
-    [$._kwd_unqualified,
-    $._sym_unqualified],
+    [$._sym_unqualified],
 
   rules: {
     // THIS MUST BE FIRST -- even though this doesn't look like it matters
@@ -206,7 +205,7 @@ module.exports = grammar({
       seq(field('numberOfArgs', $._format_token), '*'),
       '?',
       "Newline",
-      seq(repeat(choice($._format_token, ',')), /[$mrRbBdDgGxXeEoOsStTfF]/),
+      seq(repeat(choice($._format_token, ',')), /[$mrRbBdDgGxXeEoOsStTfHhJjKkLlNnVwWyYzZ]/),
     ),
     format_specifier: $ =>
       prec.left(seq(

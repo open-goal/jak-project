@@ -66,6 +66,7 @@ add_library(common
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
         util/Assert.cpp
+        util/ast_util.cpp
         util/BitUtils.cpp
         util/compress.cpp
         util/crc32.cpp
