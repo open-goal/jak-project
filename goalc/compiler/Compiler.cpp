@@ -196,6 +196,8 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       bool term;
       auto loc_info = m_goos.reader.db.get_info_for(code, &term);
       if (term) {
+        lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Function:\n");
+        lg::print("{}\n", env->function_env()->name());
         lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
         lg::print("{}", loc_info);
       }
@@ -223,6 +225,8 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     bool term;
     auto loc_info = m_goos.reader.db.get_info_for(code, &term);
     if (term) {
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Function:\n");
+      lg::print("{}\n", env->function_env()->name());
       lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
       lg::print("{}", loc_info);
     }
