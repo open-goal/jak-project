@@ -611,55 +611,9 @@ std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name
   return {};
 }
 
-Val* Compiler::compile_load_project(const goos::Object& form, const goos::Object& rest, Env*) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::STRING}, {});
-  m_make.load_project_file(args.unnamed.at(0).as_string()->data);
-  return get_none();
-}
-
-Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, Env*) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::STRING},
-           {{"force", {false, {goos::ObjectType::SYMBOL}}},
-            {"verbose", {false, {goos::ObjectType::SYMBOL}}}});
-  bool force = false;
-  if (args.has_named("force")) {
-    force = get_true_or_false(form, args.get_named("force"));
-  }
-
-  bool verbose = false;
-  if (args.has_named("verbose")) {
-    verbose = get_true_or_false(form, args.get_named("verbose"));
-  }
-
-  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
-  return get_none();
-}
-
-Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
-                                                  const goos::Object& rest,
-                                                  Env*) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {}, {});
-
-  lg::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
-  lg::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
-  lg::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
-  lg::print("Total functions: {}\n", m_debug_stats.total_funcs);
-  lg::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
-  lg::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
-
-  return get_none();
-}
-
-Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env*) {
-  auto args = get_va(form, rest);
-  va_check(form, args, {goos::ObjectType::STRING}, {});
-
-  const auto& doc_path = fs::path(args.unnamed.at(0).as_string()->data);
-  lg::info("Saving docs to: {}", doc_path.string());
-
+std::tuple<std::unordered_map<std::string, Docs::SymbolDocumentation>,
+           std::unordered_map<std::string, Docs::FileDocumentation>>
+Compiler::generate_per_file_symbol_info() const {
   const auto symbols = m_symbol_info.get_all_symbols();
 
   std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols;
@@ -822,6 +776,59 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
     }
     file_docs[file_doc_key] = file_doc;
   }
+  return {all_symbols, file_docs};
+}
+
+Val* Compiler::compile_load_project(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+  m_make.load_project_file(args.unnamed.at(0).as_string()->data);
+  return get_none();
+}
+
+Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING},
+           {{"force", {false, {goos::ObjectType::SYMBOL}}},
+            {"verbose", {false, {goos::ObjectType::SYMBOL}}}});
+  bool force = false;
+  if (args.has_named("force")) {
+    force = get_true_or_false(form, args.get_named("force"));
+  }
+
+  bool verbose = false;
+  if (args.has_named("verbose")) {
+    verbose = get_true_or_false(form, args.get_named("verbose"));
+  }
+
+  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
+  return get_none();
+}
+
+Val* Compiler::compile_print_debug_compiler_stats(const goos::Object& form,
+                                                  const goos::Object& rest,
+                                                  Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {}, {});
+
+  lg::print("Spill operations (total): {}\n", m_debug_stats.num_spills);
+  lg::print("Spill operations (v1 only): {}\n", m_debug_stats.num_spills_v1);
+  lg::print("Eliminated moves: {}\n", m_debug_stats.num_moves_eliminated);
+  lg::print("Total functions: {}\n", m_debug_stats.total_funcs);
+  lg::print("Functions requiring v1: {}\n", m_debug_stats.funcs_requiring_v1_allocator);
+  lg::print("Size of autocomplete prefix tree: {}\n", m_symbol_info.symbol_count());
+
+  return get_none();
+}
+
+Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& doc_path = fs::path(args.unnamed.at(0).as_string()->data);
+  lg::info("Saving docs to: {}", doc_path.string());
+
+  const auto [all_symbols, file_docs] = generate_per_file_symbol_info();
 
   json symbol_map_data(all_symbols);
   file_util::write_text_file(

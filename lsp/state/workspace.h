@@ -30,6 +30,11 @@ struct OpenGOALFormResult {
   std::pair<int, int> end_point;
 };
 
+struct OGGlobalIndex {
+  std::unordered_map<std::string, Docs::SymbolDocumentation> global_symbols = {};
+  std::unordered_map<std::string, Docs::FileDocumentation> per_file_symbols = {};
+};
+
 class WorkspaceOGFile {
  public:
   WorkspaceOGFile(){};
@@ -37,11 +42,12 @@ class WorkspaceOGFile {
   std::string m_content;
   int m_line_count = 0;
   std::string m_line_ending;
+  GameVersion m_game_version;
   std::vector<LSPSpec::DocumentSymbol> m_symbols;
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
-  GameVersion m_game_version;
 
   void parse_content(const std::string& new_content);
+  void update_symbols(const OGGlobalIndex& index);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position) const;
   std::vector<OpenGOALFormResult> search_for_forms_that_begin_with(
       std::vector<std::string> prefix) const;
@@ -120,6 +126,7 @@ class Workspace {
                            const std::string& language_id,
                            const std::string& content);
   void update_tracked_file(const LSPSpec::DocumentUri& file_uri, const std::string& content);
+  void update_global_index(const GameVersion);
   void stop_tracking_file(const LSPSpec::DocumentUri& file_uri);
   std::optional<std::reference_wrapper<WorkspaceOGFile>> get_tracked_og_file(
       const LSPSpec::URI& file_uri);
@@ -158,4 +165,5 @@ class Workspace {
   //
   // Until that decoupling happens, things like this will remain fairly clunky.
   std::unordered_map<GameVersion, std::unique_ptr<Compiler>> m_compiler_instances;
+  std::unordered_map<GameVersion, OGGlobalIndex> m_global_indicies;
 };

@@ -485,7 +485,7 @@ void Compiler::asm_file(const CompilationOptions& options) {
     if (options.disassemble) {
       codegen_and_disassemble_object_file(obj_file, &data, &disasm, options.disasm_code_only);
       if (options.disassembly_output_file.empty()) {
-        printf("%s\n", disasm.c_str());
+        lg::print("{}\n", disasm);
       } else {
         file_util::write_text_file(options.disassembly_output_file, disasm);
       }
@@ -498,7 +498,7 @@ void Compiler::asm_file(const CompilationOptions& options) {
       if (m_listener.is_connected()) {
         m_listener.send_code(data, obj_file_name);
       } else {
-        printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
+        lg::print("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
       }
     }
 
@@ -511,15 +511,15 @@ void Compiler::asm_file(const CompilationOptions& options) {
     }
   } else {
     if (options.load) {
-      printf("WARNING - couldn't load because coloring is not enabled\n");
+      lg::print("WARNING - couldn't load because coloring is not enabled\n");
     }
 
     if (options.write) {
-      printf("WARNING - couldn't write because coloring is not enabled\n");
+      lg::print("WARNING - couldn't write because coloring is not enabled\n");
     }
 
     if (options.disassemble) {
-      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
+      lg::print("WARNING - couldn't disassemble because coloring is not enabled\n");
     }
   }
 }

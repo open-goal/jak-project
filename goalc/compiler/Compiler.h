@@ -13,6 +13,7 @@
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
 #include "goalc/compiler/SymbolInfo.h"
+#include "goalc/compiler/docs/DocTypes.h"
 #include "goalc/data_compiler/game_text_common.h"
 #include "goalc/debugger/Debugger.h"
 #include "goalc/emitter/Register.h"
@@ -100,6 +101,11 @@ class Compiler {
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
   TypeSystem& type_system() { return m_ts; };
+  // TODO - rename these types / namespaces -- consolidate with SymbolInfo and whatever else tries
+  // to also do this work
+  std::tuple<std::unordered_map<std::string, Docs::SymbolDocumentation>,
+             std::unordered_map<std::string, Docs::FileDocumentation>>
+  generate_per_file_symbol_info() const;
 
  private:
   GameVersion m_version;

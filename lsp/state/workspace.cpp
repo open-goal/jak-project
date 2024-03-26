@@ -338,6 +338,10 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       }
     }
   } else if (language_id == "opengoal") {
+    if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
+      lg::debug("Already tracking - {}", file_uri);
+      return;
+    }
     auto game_version = determine_game_version_from_uri(file_uri);
     if (!game_version) {
       lg::debug("Could not determine game version from path - {}", file_uri);
@@ -363,17 +367,17 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         // TODO - this should happen on a separate thread so the LSP is not blocking during this
         // lengthy step
         // TODO - make this a setting (disable indexing)
+        // TODO - ask water if there is a fancy way to reduce memory usage (disabling coloring,
+        // etc?)
         m_compiler_instances.at(*game_version)
             ->run_front_end_on_string("(make-group \"all-code\")");
         m_requester.send_progress_finish_request(progress_title, "indexed");
       } catch (std::exception& e) {
-        // TODO - If it fails, annotate errors
+        // TODO - If it fails, annotate errors (DIAGNOSTIC TODO)
         m_requester.send_progress_finish_request(progress_title, "failed");
         lg::debug("error when {}", progress_title);
       }
     }
-    //  TODO - otherwise, just `ml` the file instead of rebuilding the entire thing
-    //  TODO - if the file fails to `ml`, annotate some errors
     m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(content, *game_version));
   }
 }
@@ -405,6 +409,31 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
   } else if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
     lg::debug("updating tracked OG file - {}", file_uri);
     m_tracked_og_files[file_uri].parse_content(content);
+    // re-`ml` the file
+    const auto game_version = m_tracked_og_files[file_uri].m_game_version;
+    if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+      lg::debug("No compiler initialized for - {}", version_to_game_name(game_version));
+      return;
+    }
+    CompilationOptions options;
+    options.filename = uri_to_path(file_uri);
+    m_compiler_instances.at(game_version)->asm_file(options);
+    // Update global index
+    update_global_index(game_version);
+    // Update symbols for this specific file
+    m_tracked_og_files[file_uri].update_symbols(m_global_indicies[game_version]);
+  }
+}
+
+void Workspace::update_global_index(const GameVersion game_version) {
+  if (m_global_indicies.find(game_version) == m_global_indicies.end()) {
+    m_global_indicies[game_version] = OGGlobalIndex();
+  }
+  if (m_compiler_instances.find(game_version) != m_compiler_instances.end()) {
+    const auto [all_symbols, per_file_symbols] =
+        m_compiler_instances.at(game_version)->generate_per_file_symbol_info();
+    m_global_indicies[game_version].global_symbols = all_symbols;
+    m_global_indicies[game_version].per_file_symbols = per_file_symbols;
   }
 };
 
@@ -441,6 +470,8 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
   }
   ts_parser_delete(parser);
 }
+
+void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {}
 
 std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
     const LSPSpec::Position position) const {
