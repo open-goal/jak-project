@@ -733,9 +733,9 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
 
     case Kind::UNMERGED_LET: {
       auto as_let = dynamic_cast<LetElement*>(input->try_as_single_active_element());
-      size_t entries_matched = 0;
-      Form* innermost_let_body = nullptr;
       if (as_let) {
+        size_t entries_matched = 0;
+        Form* innermost_let_body = nullptr;
         // first try to find the innermost let, matching all let entries with the entry matchers
         // throughout
         as_let->apply_form([&](Form* form) {
