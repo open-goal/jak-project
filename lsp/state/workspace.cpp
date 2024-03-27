@@ -378,7 +378,7 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         lg::debug("error when {}", progress_title);
       }
     }
-    m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(content, *game_version));
+    m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(file_uri, content, *game_version));
   }
 }
 
@@ -447,8 +447,10 @@ void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
   }
 }
 
-WorkspaceOGFile::WorkspaceOGFile(const std::string& content, const GameVersion& game_version)
-    : m_game_version(game_version) {
+WorkspaceOGFile::WorkspaceOGFile(const LSPSpec::DocumentUri& uri,
+                                 const std::string& content,
+                                 const GameVersion& game_version)
+    : m_uri(uri), m_game_version(game_version) {
   const auto [line_count, line_ending] =
       file_util::get_majority_file_line_endings_and_count(content);
   m_line_count = line_count;
@@ -471,7 +473,145 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
   ts_parser_delete(parser);
 }
 
-void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {}
+void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
+  m_symbols.clear();
+  // Determine the file key, the compiler internally splits at "goal_src"
+  // TODO - this is something that should change if/when decoupled from `jak-project`
+  const auto file_key = file_util::split_path_at(m_uri, {"goal_src"});
+  if (index.per_file_symbols.find(file_key) != index.per_file_symbols.end()) {
+    const auto& file_symbols = index.per_file_symbols.at(file_key);
+    for (const auto& symbol : file_symbols.constants) {
+      LSPSpec::DocumentSymbol lsp_sym;
+      lsp_sym.m_name = symbol.name;
+      lsp_sym.m_kind = LSPSpec::SymbolKind::Constant;
+      lsp_sym.m_detail = symbol.description;
+      if (symbol.def_location) {
+        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
+                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_selectionRange = lsp_sym.m_range;
+      } else {
+        lsp_sym.m_range = {0, 0};
+      }
+      // TODO - would be nice to make this accurate but we don't store that info yet
+      lsp_sym.m_selectionRange = lsp_sym.m_range;
+      m_symbols.push_back(lsp_sym);
+    }
+    for (const auto& symbol : file_symbols.functions) {
+      LSPSpec::DocumentSymbol lsp_sym;
+      lsp_sym.m_name = symbol.name;
+      lsp_sym.m_kind = LSPSpec::SymbolKind::Function;
+      lsp_sym.m_detail = symbol.description;
+      if (symbol.def_location) {
+        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
+                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_selectionRange = lsp_sym.m_range;
+      } else {
+        lsp_sym.m_range = {0, 0};
+      }
+      // TODO - would be nice to make this accurate but we don't store that info yet
+      lsp_sym.m_selectionRange = lsp_sym.m_range;
+      m_symbols.push_back(lsp_sym);
+      // NOTE - could potentially add local variables to this but eh, that doesn't feel that useful
+    }
+    for (const auto& symbol : file_symbols.global_vars) {
+      LSPSpec::DocumentSymbol lsp_sym;
+      lsp_sym.m_name = symbol.name;
+      lsp_sym.m_kind = LSPSpec::SymbolKind::Variable;
+      lsp_sym.m_detail = symbol.description;
+      if (symbol.def_location) {
+        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
+                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_selectionRange = lsp_sym.m_range;
+      } else {
+        lsp_sym.m_range = {0, 0};
+      }
+      // TODO - would be nice to make this accurate but we don't store that info yet
+      lsp_sym.m_selectionRange = lsp_sym.m_range;
+      m_symbols.push_back(lsp_sym);
+    }
+    for (const auto& symbol : file_symbols.macros) {
+      LSPSpec::DocumentSymbol lsp_sym;
+      lsp_sym.m_name = symbol.name;
+      lsp_sym.m_kind = LSPSpec::SymbolKind::Operator;
+      lsp_sym.m_detail = symbol.description;
+      if (symbol.def_location) {
+        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
+                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_selectionRange = lsp_sym.m_range;
+      } else {
+        lsp_sym.m_range = {0, 0};
+      }
+      // TODO - would be nice to make this accurate but we don't store that info yet
+      lsp_sym.m_selectionRange = lsp_sym.m_range;
+      m_symbols.push_back(lsp_sym);
+    }
+    for (const auto& symbol : file_symbols.methods) {
+      LSPSpec::DocumentSymbol lsp_sym;
+      lsp_sym.m_name = fmt::format("{}::{}", symbol.type, symbol.name);
+      lsp_sym.m_kind = LSPSpec::SymbolKind::Method;
+      lsp_sym.m_detail = symbol.description;
+      if (symbol.def_location) {
+        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
+                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_selectionRange = lsp_sym.m_range;
+      } else {
+        lsp_sym.m_range = {0, 0};
+      }
+      // TODO - would be nice to make this accurate but we don't store that info yet
+      lsp_sym.m_selectionRange = lsp_sym.m_range;
+      m_symbols.push_back(lsp_sym);
+    }
+    for (const auto& symbol : file_symbols.types) {
+      LSPSpec::DocumentSymbol lsp_sym;
+      lsp_sym.m_name = symbol.name;
+      lsp_sym.m_kind = LSPSpec::SymbolKind::Class;
+      lsp_sym.m_detail = symbol.description;
+      if (symbol.def_location) {
+        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
+                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_selectionRange = lsp_sym.m_range;
+      } else {
+        lsp_sym.m_range = {0, 0};
+      }
+      // TODO - would be nice to make this accurate but we don't store that info yet
+      lsp_sym.m_selectionRange = lsp_sym.m_range;
+      std::vector<LSPSpec::DocumentSymbol> class_syms = {};
+      for (const auto& field : symbol.fields) {
+        LSPSpec::DocumentSymbol field_sym;
+        field_sym.m_name = field.name;
+        field_sym.m_detail = field.description;
+        if (field.is_array) {
+          field_sym.m_kind = LSPSpec::SymbolKind::Array;
+        } else {
+          field_sym.m_kind = LSPSpec::SymbolKind::Field;
+        }
+        // TODO - we don't store the line number for fields
+        field_sym.m_range = lsp_sym.m_range;
+        field_sym.m_selectionRange = lsp_sym.m_selectionRange;
+        class_syms.push_back(field_sym);
+      }
+      for (const auto& method : symbol.methods) {
+        LSPSpec::DocumentSymbol method_sym;
+        method_sym.m_name = method.name;
+        method_sym.m_kind = LSPSpec::SymbolKind::Method;
+        // TODO - we don't store the line number for fields
+        method_sym.m_range = lsp_sym.m_range;
+        method_sym.m_selectionRange = lsp_sym.m_selectionRange;
+        class_syms.push_back(method_sym);
+      }
+      for (const auto& state : symbol.states) {
+        LSPSpec::DocumentSymbol state_sym;
+        state_sym.m_name = state.name;
+        state_sym.m_kind = LSPSpec::SymbolKind::Event;
+        // TODO - we don't store the line number for fields
+        state_sym.m_range = lsp_sym.m_range;
+        state_sym.m_selectionRange = lsp_sym.m_selectionRange;
+        class_syms.push_back(state_sym);
+      }
+      m_symbols.push_back(lsp_sym);
+    }
+  }
+}
 
 std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
     const LSPSpec::Position position) const {
@@ -581,8 +721,6 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
       lg::info("Adding Symbol - {}", match.str());
       LSPSpec::DocumentSymbol new_symbol;
       new_symbol.m_name = match.str();
-      // TODO - function doc-string
-      // new_symbol.m_detail = ...
       new_symbol.m_kind = LSPSpec::SymbolKind::Function;
       LSPSpec::Range symbol_range;
       symbol_range.m_start = {line_num_zero_based, 0};

@@ -38,7 +38,10 @@ struct OGGlobalIndex {
 class WorkspaceOGFile {
  public:
   WorkspaceOGFile(){};
-  WorkspaceOGFile(const std::string& content, const GameVersion& game_version);
+  WorkspaceOGFile(const LSPSpec::DocumentUri& uri,
+                  const std::string& content,
+                  const GameVersion& game_version);
+  LSPSpec::DocumentUri m_uri;
   std::string m_content;
   int m_line_count = 0;
   std::string m_line_ending;
