@@ -613,7 +613,7 @@ std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name
 
 std::tuple<std::unordered_map<std::string, Docs::SymbolDocumentation>,
            std::unordered_map<std::string, Docs::FileDocumentation>>
-Compiler::generate_per_file_symbol_info() const {
+Compiler::generate_per_file_symbol_info() {
   const auto symbols = m_symbol_info.get_all_symbols();
 
   std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols;

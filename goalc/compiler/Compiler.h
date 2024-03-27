@@ -105,7 +105,7 @@ class Compiler {
   // to also do this work
   std::tuple<std::unordered_map<std::string, Docs::SymbolDocumentation>,
              std::unordered_map<std::string, Docs::FileDocumentation>>
-  generate_per_file_symbol_info() const;
+  generate_per_file_symbol_info();
 
  private:
   GameVersion m_version;

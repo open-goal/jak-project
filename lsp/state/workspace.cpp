@@ -379,6 +379,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       }
     }
     m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(file_uri, content, *game_version));
+    // Update global index
+    update_global_index(*game_version);
+    m_tracked_og_files[file_uri].update_symbols(m_global_indicies[*game_version]);
   }
 }
 
@@ -477,7 +480,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
   m_symbols.clear();
   // Determine the file key, the compiler internally splits at "goal_src"
   // TODO - this is something that should change if/when decoupled from `jak-project`
-  const auto file_key = file_util::split_path_at(m_uri, {"goal_src"});
+  const auto file_key =
+      file_util::convert_to_unix_path_separators(file_util::split_path_at(m_uri, {"goal_src"}));
   if (index.per_file_symbols.find(file_key) != index.per_file_symbols.end()) {
     const auto& file_symbols = index.per_file_symbols.at(file_key);
     for (const auto& symbol : file_symbols.constants) {
@@ -608,6 +612,7 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
         state_sym.m_selectionRange = lsp_sym.m_selectionRange;
         class_syms.push_back(state_sym);
       }
+      lsp_sym.m_children = class_syms;
       m_symbols.push_back(lsp_sym);
     }
   }
