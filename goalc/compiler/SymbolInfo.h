@@ -161,6 +161,8 @@ class SymbolInfo {
 /*!
  * A map of symbol info. It internally stores the info in a prefix tree so you can quickly get
  * a list of all symbols starting with a given prefix.
+ *
+ * TODO - no way to remove from the map (a symbol def goes away)
  */
 class SymbolInfoMap {
  public:

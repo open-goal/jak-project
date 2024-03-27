@@ -359,7 +359,7 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         return;
       }
       const std::string progress_title =
-          fmt::format("Indexing {}", version_to_game_name_external(game_version.value()));
+          fmt::format("Compiling {}", version_to_game_name_external(game_version.value()));
       m_requester.send_progress_create_request(progress_title, "compiling project", -1);
       m_compiler_instances.emplace(game_version.value(),
                                    std::make_unique<Compiler>(game_version.value()));
@@ -372,6 +372,9 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         m_compiler_instances.at(*game_version)
             ->run_front_end_on_string("(make-group \"all-code\")");
         m_requester.send_progress_finish_request(progress_title, "indexed");
+
+        // Update global index
+        update_global_index(*game_version);
       } catch (std::exception& e) {
         // TODO - If it fails, annotate errors (DIAGNOSTIC TODO)
         m_requester.send_progress_finish_request(progress_title, "failed");
@@ -379,8 +382,6 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       }
     }
     m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(file_uri, content, *game_version));
-    // Update global index
-    update_global_index(*game_version);
     m_tracked_og_files[file_uri].update_symbols(m_global_indicies[*game_version]);
   }
 }
@@ -421,22 +422,40 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
     CompilationOptions options;
     options.filename = uri_to_path(file_uri);
     m_compiler_instances.at(game_version)->asm_file(options);
+  }
+}
+
+void Workspace::tracked_file_will_save(const LSPSpec::DocumentUri& file_uri) {
+  lg::debug("file will be saved - {}", file_uri);
+  if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
+    lg::debug("updating global index - {}", file_uri);
     // Update global index
-    update_global_index(game_version);
+    // TODO - this is slow, but can be removed when the compiler itself is updated to dynamically
+    // keep this index properly updated as files are compiled!
+    update_global_index(m_tracked_og_files[file_uri].m_game_version);
     // Update symbols for this specific file
-    m_tracked_og_files[file_uri].update_symbols(m_global_indicies[game_version]);
+    m_tracked_og_files[file_uri].update_symbols(
+        m_global_indicies[m_tracked_og_files[file_uri].m_game_version]);
   }
 }
 
 void Workspace::update_global_index(const GameVersion game_version) {
-  if (m_global_indicies.find(game_version) == m_global_indicies.end()) {
-    m_global_indicies[game_version] = OGGlobalIndex();
-  }
-  if (m_compiler_instances.find(game_version) != m_compiler_instances.end()) {
-    const auto [all_symbols, per_file_symbols] =
-        m_compiler_instances.at(game_version)->generate_per_file_symbol_info();
-    m_global_indicies[game_version].global_symbols = all_symbols;
-    m_global_indicies[game_version].per_file_symbols = per_file_symbols;
+  const std::string progress_title =
+      fmt::format("Indexing {}", version_to_game_name_external(game_version));
+  try {
+    m_requester.send_progress_create_request(progress_title, "indexing project symbols", -1);
+    if (m_global_indicies.find(game_version) == m_global_indicies.end()) {
+      m_global_indicies[game_version] = OGGlobalIndex();
+    }
+    if (m_compiler_instances.find(game_version) != m_compiler_instances.end()) {
+      const auto [all_symbols, per_file_symbols] =
+          m_compiler_instances.at(game_version)->generate_per_file_symbol_info();
+      m_global_indicies[game_version].global_symbols = all_symbols;
+      m_global_indicies[game_version].per_file_symbols = per_file_symbols;
+    }
+    m_requester.send_progress_finish_request(progress_title, "indexed");
+  } catch (std::exception& e) {
+    m_requester.send_progress_finish_request(progress_title, "indexed");
   }
 };
 
@@ -490,8 +509,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
       lsp_sym.m_kind = LSPSpec::SymbolKind::Constant;
       lsp_sym.m_detail = symbol.description;
       if (symbol.def_location) {
-        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
-                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
+                                         (uint32_t)symbol.def_location->char_idx);
         lsp_sym.m_selectionRange = lsp_sym.m_range;
       } else {
         lsp_sym.m_range = {0, 0};
@@ -506,8 +525,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
       lsp_sym.m_kind = LSPSpec::SymbolKind::Function;
       lsp_sym.m_detail = symbol.description;
       if (symbol.def_location) {
-        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
-                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
+                                         (uint32_t)symbol.def_location->char_idx);
         lsp_sym.m_selectionRange = lsp_sym.m_range;
       } else {
         lsp_sym.m_range = {0, 0};
@@ -523,8 +542,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
       lsp_sym.m_kind = LSPSpec::SymbolKind::Variable;
       lsp_sym.m_detail = symbol.description;
       if (symbol.def_location) {
-        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
-                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
+                                         (uint32_t)symbol.def_location->char_idx);
         lsp_sym.m_selectionRange = lsp_sym.m_range;
       } else {
         lsp_sym.m_range = {0, 0};
@@ -539,8 +558,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
       lsp_sym.m_kind = LSPSpec::SymbolKind::Operator;
       lsp_sym.m_detail = symbol.description;
       if (symbol.def_location) {
-        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
-                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
+                                         (uint32_t)symbol.def_location->char_idx);
         lsp_sym.m_selectionRange = lsp_sym.m_range;
       } else {
         lsp_sym.m_range = {0, 0};
@@ -555,8 +574,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
       lsp_sym.m_kind = LSPSpec::SymbolKind::Method;
       lsp_sym.m_detail = symbol.description;
       if (symbol.def_location) {
-        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
-                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
+                                         (uint32_t)symbol.def_location->char_idx);
         lsp_sym.m_selectionRange = lsp_sym.m_range;
       } else {
         lsp_sym.m_range = {0, 0};
@@ -571,8 +590,8 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
       lsp_sym.m_kind = LSPSpec::SymbolKind::Class;
       lsp_sym.m_detail = symbol.description;
       if (symbol.def_location) {
-        lsp_sym.m_range = {(uint32_t)symbol.def_location->line_idx,
-                           (uint32_t)symbol.def_location->char_idx};
+        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
+                                         (uint32_t)symbol.def_location->char_idx);
         lsp_sym.m_selectionRange = lsp_sym.m_range;
       } else {
         lsp_sym.m_range = {0, 0};

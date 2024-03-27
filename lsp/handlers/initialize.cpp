@@ -5,7 +5,7 @@ std::optional<json> initialize(Workspace& workspace, int id, json params) {
   json text_document_sync{
       {"openClose", true},
       {"change", 1},  // Full sync
-      {"willSave", false},
+      {"willSave", true},
       {"willSaveWaitUntil", false},
       {"save", {{"includeText", false}}},
   };

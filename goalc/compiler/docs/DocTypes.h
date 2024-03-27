@@ -100,6 +100,7 @@ struct MethodDocumentation {
   bool is_builtin;
   std::string name;
   std::string description = "";
+  // TODO - this is `object` sometimes, for example `(defmethod print ((this light))`
   std::string type;
   std::optional<DefinitionLocation> def_location;
   // TODO - need to track function calls to determine this, obviously cant be determined from just

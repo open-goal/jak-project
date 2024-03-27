@@ -129,6 +129,7 @@ class Workspace {
                            const std::string& language_id,
                            const std::string& content);
   void update_tracked_file(const LSPSpec::DocumentUri& file_uri, const std::string& content);
+  void tracked_file_will_save(const LSPSpec::DocumentUri& file_uri);
   void update_global_index(const GameVersion);
   void stop_tracking_file(const LSPSpec::DocumentUri& file_uri);
   std::optional<std::reference_wrapper<WorkspaceOGFile>> get_tracked_og_file(

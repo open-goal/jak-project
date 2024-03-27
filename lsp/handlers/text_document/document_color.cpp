@@ -1,5 +1,3 @@
-#pragma once
-
 #include "lsp/protocol/document_color.h"
 
 #include <optional>

@@ -20,6 +20,11 @@ void did_close(Workspace& workspace, json raw_params) {
   workspace.stop_tracking_file(params.m_textDocument.m_uri);
 }
 
+void will_save(Workspace& workspace, json raw_params) {
+  auto params = raw_params.get<LSPSpec::WillSaveTextDocumentParams>();
+  workspace.tracked_file_will_save(params.textDocument.m_uri);
+}
+
 std::optional<json> did_open_push_diagnostics(Workspace& workspace, json raw_params) {
   auto params = raw_params.get<LSPSpec::DidOpenTextDocumentParams>();
   const auto file_type =

@@ -58,6 +58,7 @@ void LSPRouter::init_routes() {
   m_routes["textDocument/didChange"] =
       LSPRoute(lsp_handlers::did_change, lsp_handlers::did_change_push_diagnostics);
   m_routes["textDocument/didClose"] = LSPRoute(lsp_handlers::did_close);
+  m_routes["textDocument/willSave"] = LSPRoute(lsp_handlers::will_save);
   m_routes["textDocument/hover"] = LSPRoute(lsp_handlers::hover);
   m_routes["textDocument/definition"] = LSPRoute(lsp_handlers::go_to_definition);
   m_routes["textDocument/completion"] = LSPRoute(lsp_handlers::get_completions);
@@ -67,7 +68,7 @@ void LSPRouter::init_routes() {
   m_routes["typeHierarchy/supertypes"] = LSPRoute(lsp_handlers::supertypes_type_hierarchy);
   m_routes["typeHierarchy/subtypes"] = LSPRoute(lsp_handlers::subtypes_type_hierarchy);
   // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
-  // Not Yet Supported Routes, noops
+  // Not Supported Routes, noops
   m_routes["$/cancelRequest"] = LSPRoute();
   m_routes["textDocument/documentLink"] = LSPRoute();
   m_routes["textDocument/codeLens"] = LSPRoute();
