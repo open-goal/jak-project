@@ -667,7 +667,7 @@ block_2:
     goto block_7;
   }
 
-block_4:
+// block_4:
   c->ld(v1, 56, a0);                                // ld v1, 56(a0)
   c->andi(v1, v1, 4);                               // andi v1, v1, 4
   if (((s64)c->sgpr64(v1)) != ((s64)0)) {           // bnel v1, r0, L27
@@ -675,7 +675,7 @@ block_4:
     goto block_7;
   }
 
-block_6:
+//block_6:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
   c->ld(a1, 56, a0);                                // ld a1, 56(a0)
   c->andi(a1, a1, 2);                               // andi a1, a1, 2
