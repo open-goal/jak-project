@@ -1,0 +1,486 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type water-anim
+(deftype water-anim (process-drawable)
+  ((water-height         meters)
+   (wade-height          meters)
+   (swim-height          meters)
+   (bottom-height        meters)
+   (attack-event         symbol)
+   (attack-id            uint32)
+   (flow                 flow-control)
+   (target               handle)
+   (flags                water-flag)
+   (look                 wanim-look)
+   (play-ambient-sound?  symbol)
+   (visible              symbol)
+   )
+  (:state-methods
+    unknown
+    idle
+    )
+  (:methods
+    (move-to-point! (_type_ vector) int)
+    (get-ripple-height (_type_ vector) float)
+    (init-water! (_type_) object)
+    (alloc-root! (_type_) none)
+    (water-anim-init! (_type_) none)
+    (stub (_type_) none)
+    (set-offset-and-look! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type water-anim
+(defmethod inspect ((this water-anim))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Twater-height: (meters ~m)~%" (-> this water-height))
+  (format #t "~2Twade-height: (meters ~m)~%" (-> this wade-height))
+  (format #t "~2Tswim-height: (meters ~m)~%" (-> this swim-height))
+  (format #t "~2Tbottom-height: (meters ~m)~%" (-> this bottom-height))
+  (format #t "~2Tattack-event: ~A~%" (-> this attack-event))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tflow: ~A~%" (-> this flow))
+  (format #t "~2Ttarget: ~D~%" (-> this target))
+  (format #t "~2Tflags: #x~X~%" (-> this flags))
+  (format #t "~2Tlook: ~D~%" (-> this look))
+  (format #t "~2Tplay-ambient-sound?: ~A~%" (-> this play-ambient-sound?))
+  (format #t "~2Tvisible: ~A~%" (-> this visible))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type water-anim
+(defmethod relocate ((this water-anim) (offset int))
+  (if (nonzero? (-> this flow))
+      (&+! (-> this flow) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-nst-lake water-anim-nst water-anim-nst-lake-lod0-jg -1
+              ((water-anim-nst-lake-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 300)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-forb-foresta water-anim-forb 0 -1
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-fora-forestb water-anim-fora 0 -1
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-fora-forestc water-anim-fora 2 -1
+              ((3 (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-fora-forestd water-anim-fora 4 -1
+              ((5 (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-fora-foreste water-anim-fora 6 -1
+              ((7 (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-fora-forestf water-anim-fora 8 -1
+              ((9 (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-waspala-thronesec water-anim-waspala water-anim-waspala-thronesec-lod0-jg -1
+              ((water-anim-waspala-thronesec-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-waspala-windowwall water-anim-waspala water-anim-waspala-windowwall-lod0-jg -1
+              ((water-anim-waspala-windowwall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-waspala-frontthrone water-anim-waspala water-anim-waspala-frontthrone-lod0-jg -1
+              ((water-anim-waspala-frontthrone-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-water-anim-waspala-frontwindowwall water-anim-waspala water-anim-waspala-frontwindowwall-lod0-jg -1
+              ((water-anim-waspala-frontwindowwall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 500)
+              )
+
+;; definition of type water-anim-look
+(deftype water-anim-look (structure)
+  ((skel-group          string)
+   (anim                int32)
+   (ambient-sound-spec  sound-spec)
+   )
+  )
+
+;; definition for method 3 of type water-anim-look
+(defmethod inspect ((this water-anim-look))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'water-anim-look)
+  (format #t "~1Tskel-group: ~A~%" (-> this skel-group))
+  (format #t "~1Tanim: ~D~%" (-> this anim))
+  (format #t "~1Tambient-sound-spec: ~A~%" (-> this ambient-sound-spec))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *water-anim-look*, type (array water-anim-look)
+(define *water-anim-look*
+  (new 'static 'boxed-array :type water-anim-look
+    (new 'static 'water-anim-look :skel-group "water-anim-nst-lake" :anim 2 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-forb-foresta" :anim 2 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-fora-forestb" :anim 10 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-fora-forestc" :anim 10 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-fora-forestd" :anim 10 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-fora-foreste" :anim 10 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-fora-forestf" :anim 10 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-waspala-thronesec" :anim 8 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-waspala-windowwall" :anim 8 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-waspala-frontthrone" :anim 8 :ambient-sound-spec #f)
+    (new 'static 'water-anim-look :skel-group "water-anim-waspala-frontwindowwall" :anim 8 :ambient-sound-spec #f)
+    )
+  )
+
+;; definition for function water-anim-event-handler
+;; INFO: Used lq/sq
+(defbehavior water-anim-event-handler water-anim ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-1 object))
+  (case arg2
+    (('move-to)
+     (move-to-point! self (the-as vector (-> arg3 param 0)))
+     (set! v0-1 (logclear (-> self mask) (process-mask sleep-code)))
+     (set! (-> self mask) (the-as process-mask v0-1))
+     v0-1
+     )
+    (('move-to-y)
+     (let ((a1-2 (new 'stack-no-clear 'vector)))
+       (set! (-> a1-2 quad) (-> self root trans quad))
+       (set! (-> a1-2 y) (the-as float (-> arg3 param 0)))
+       (move-to-point! self a1-2)
+       )
+     (set! v0-1 (logclear (-> self mask) (process-mask sleep-code)))
+     (set! (-> self mask) (the-as process-mask v0-1))
+     v0-1
+     )
+    (('water)
+     (let* ((s5-0 (the-as object (-> arg3 param 0)))
+            (s4-0 (-> arg3 param 1))
+            (gp-0 (if (type? s4-0 process-focusable)
+                      s4-0
+                      )
+                  )
+            )
+       (when (and (logtest? (-> self flags) (water-flag deadly))
+                  (logtest? (water-flag touch-water) (-> (the-as water-info s5-0) flags))
+                  (the-as uint gp-0)
+                  )
+         (let ((v1-15 (-> self attack-event)))
+           (case v1-15
+             ((#f)
+              )
+             (('heat)
+              (send-event (the-as process-tree gp-0) 'heat (* 10.0 (seconds-per-frame)))
+              )
+             (('drown-death 'lava 'dark-eco-pool)
+              (if (and (not (focus-test? (the-as process-focusable gp-0) board))
+                       (send-event
+                         (the-as process-tree gp-0)
+                         'attack-invinc
+                         #f
+                         (static-attack-info
+                           :mask (vehicle-impulse-factor)
+                           ((id (-> self attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode v1-15))
+                           )
+                         )
+                       )
+                  (send-event self 'notify 'attack)
+                  )
+              )
+             (else
+               (if (and (not (focus-test? (the-as process-focusable gp-0) board))
+                        (send-event
+                          (the-as process-tree gp-0)
+                          'attack
+                          #f
+                          (static-attack-info
+                            :mask (vehicle-impulse-factor)
+                            ((id (-> self attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode v1-15))
+                            )
+                          )
+                        )
+                   (send-event self 'notify 'attack)
+                   )
+               )
+             )
+           )
+         )
+       (when (and (logtest? (-> self flags) (water-flag flow))
+                  (logtest? (water-flag touch-water) (-> (the-as water-info s5-0) flags))
+                  )
+         (let ((a0-40 (-> self flow)))
+           (if (nonzero? a0-40)
+               (push-process a0-40 (the-as process-focusable gp-0))
+               )
+           )
+         )
+       )
+     )
+    (('visible)
+     (cond
+       ((-> arg3 param 0)
+        (set! (-> self visible) #t)
+        )
+       (else
+         (set! (-> self visible) #f)
+         (logior! (-> self draw status) (draw-control-status no-draw))
+         )
+       )
+     (logclear! (-> self mask) (process-mask sleep-code))
+     #t
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (water-anim)
+  :virtual #t
+  :event water-anim-event-handler
+  :trans (behavior ()
+    (let ((a0-0 (-> self flow)))
+      (if (and (nonzero? a0-0) *display-vol-marks*)
+          (draw-path a0-0)
+          )
+      )
+    (cond
+      ((not (-> self visible))
+       )
+      ((< (-> (math-camera-pos) y) (+ -8192.0 (-> self root trans y)))
+       (logior! (-> self draw status) (draw-control-status no-draw))
+       )
+      (else
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        )
+      )
+    (if (and (-> self visible) (and (-> self play-ambient-sound?) (nonzero? (-> self sound))))
+        (update! (-> self sound))
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-post)
+      (logior! (-> self mask) (process-mask sleep-code))
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for method 22 of type water-anim
+;; INFO: Used lq/sq
+(defmethod move-to-point! ((this water-anim) (arg0 vector))
+  (set! (-> this root trans quad) (-> arg0 quad))
+  (set! (-> this water-height) (-> this root trans y))
+  (if (nonzero? (-> this sound))
+      (update-trans! (-> this sound) (-> this root trans))
+      )
+  )
+
+;; definition for method 23 of type water-anim
+(defmethod get-ripple-height ((this water-anim) (arg0 vector))
+  (ripple-find-height this 0 arg0)
+  )
+
+;; definition for method 27 of type water-anim
+;; WARN: Return type mismatch symbol vs none.
+(defmethod stub ((this water-anim))
+  (none)
+  )
+
+;; definition for method 28 of type water-anim
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch quaternion vs none.
+(defmethod set-offset-and-look! ((this water-anim))
+  (local-vars (sv-16 res-tag))
+  (set! (-> this play-ambient-sound?) #t)
+  (set! (-> this visible) #t)
+  (set! (-> this look)
+        (res-lump-value (-> this entity) 'look wanim-look :default (the-as uint128 -1) :time -1000000000.0)
+        )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-4 (res-lump-data (-> this entity) 'trans-offset vector :tag-ptr (& sv-16))))
+    (when v1-4
+      (+! (-> this root trans x) (-> v1-4 x))
+      (+! (-> this root trans y) (-> v1-4 y))
+      (+! (-> this root trans z) (-> v1-4 z))
+      )
+    )
+  (let ((f0-6 (res-lump-float (-> this entity) 'rotoffset)))
+    (if (!= f0-6 0.0)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-6)
+        )
+    )
+  (none)
+  )
+
+;; definition for method 24 of type water-anim
+;; WARN: Return type mismatch none vs object.
+(defmethod init-water! ((this water-anim))
+  (let ((s5-0 (-> this look)))
+    (if (or (< (the-as int s5-0) 0) (>= (the-as int s5-0) (-> *water-anim-look* length)))
+        (go process-drawable-art-error "skel group")
+        )
+    (let ((s5-1 (-> *water-anim-look* s5-0)))
+      (initialize-skeleton-by-name this (-> s5-1 skel-group))
+      (ja-channel-set! 1)
+      (let ((s4-0 (-> this skel root-channel 0)))
+        (joint-control-channel-group-eval!
+          s4-0
+          (the-as art-joint-anim (-> this draw art-group data (-> s5-1 anim)))
+          num-func-identity
+          )
+        (set! (-> s4-0 frame-num) 0.0)
+        )
+      (let ((a2-1 (-> s5-1 ambient-sound-spec)))
+        (when a2-1
+          (let ((a3-0 (new 'stack-no-clear 'vector)))
+            (vector+! a3-0 (-> this root trans) (-> this draw bounds))
+            (set! (-> this sound) (new 'process 'ambient-sound a2-1 a3-0 0.0))
+            )
+          )
+        )
+      )
+    )
+  (ja-post)
+  )
+
+;; definition for method 25 of type water-anim
+;; WARN: Return type mismatch trsqv vs none.
+(defmethod alloc-root! ((this water-anim))
+  (set! (-> this root) (new 'process 'trsqv))
+  (none)
+  )
+
+;; definition for method 26 of type water-anim
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch water-flag vs none.
+(defmethod water-anim-init! ((this water-anim))
+  (local-vars (sv-16 res-tag))
+  (set! (-> this attack-event) (the-as symbol ((method-of-type res-lump get-property-struct)
+                                               (-> this entity)
+                                               'attack-event
+                                               'interp
+                                               -1000000000.0
+                                               (the-as structure 'drown)
+                                               (the-as (pointer res-tag) #f)
+                                               *res-static-buf*
+                                               )
+                                       )
+        )
+  (process-drawable-from-entity! this (-> this entity))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this vol) (new 'process 'vol-control this))
+  (logior! (-> this vol flags) (vol-flags display? vol-flags-1))
+  (set! (-> this bottom-height) 32768.0)
+  (let* ((v1-8 *game-info*)
+         (a0-7 (+ (-> v1-8 attack-id) 1))
+         )
+    (set! (-> v1-8 attack-id) a0-7)
+    (set! (-> this attack-id) a0-7)
+    )
+  (set! (-> this target) (the-as handle #f))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-10 (the-as (pointer float) ((method-of-type res-lump get-property-data)
+                                        (-> this entity)
+                                        'water-height
+                                        'exact
+                                        -1000000000.0
+                                        (the-as pointer #f)
+                                        (& sv-16)
+                                        *res-static-buf*
+                                        )
+                       )
+               )
+        )
+    (when v1-10
+      (set! (-> this water-height) (-> v1-10 0))
+      (set! (-> this wade-height) (-> v1-10 1))
+      (set! (-> this swim-height) (-> v1-10 2))
+      (if (>= (-> sv-16 elt-count) (the-as uint 4))
+          (set! (-> this flags) (the-as water-flag (the int (-> v1-10 3))))
+          )
+      (if (>= (-> sv-16 elt-count) (the-as uint 5))
+          (set! (-> this bottom-height) (-> v1-10 4))
+          )
+      )
+    )
+  (logior! (-> this flags) (water-flag part-water))
+  (if (logtest? (-> this flags) (water-flag flow))
+      (set! (-> this flow) (new 'process 'flow-control this (the-as res-lump #f)))
+      )
+  (cond
+    ((zero? (-> this flags))
+     (if (< 0.0 (-> this wade-height))
+         (logior! (-> this flags) (water-flag can-wade))
+         )
+     (if (< 0.0 (-> this swim-height))
+         (logior! (-> this flags) (water-flag can-swim))
+         )
+     )
+    (else
+      )
+    )
+  (none)
+  )
+
+;; definition for function water-anim-init-by-other
+(defbehavior water-anim-init-by-other water-anim ((arg0 entity-actor))
+  (process-entity-set! self arg0)
+  (stub self)
+  (alloc-root! self)
+  (water-anim-init! self)
+  (set-offset-and-look! self)
+  (init-water! self)
+  (go-virtual idle)
+  )
+
+;; definition for method 11 of type water-anim
+(defmethod init-from-entity! ((this water-anim) (arg0 entity-actor))
+  (stub this)
+  (alloc-root! this)
+  (water-anim-init! this)
+  (set-offset-and-look! this)
+  (init-water! this)
+  (go (method-of-object this idle))
+  )
+
+
+
+

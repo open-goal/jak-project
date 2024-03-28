@@ -716,6 +716,20 @@ Mips2C_Line handle_generic_op2(const Instruction& i0,
           instr_str};
 }
 
+Mips2C_Line handle_div_divu(const Instruction& i0,
+                            const std::string& instr_str,
+                            const std::string& op_name) {
+  return {fmt::format("c->{}({}, {});", op_name, reg_to_name(i0.get_src(0)),
+                      reg_to_name(i0.get_src(1))),
+          instr_str};
+}
+
+Mips2C_Line handle_generic_op1(const Instruction& i0,
+                               const std::string& instr_str,
+                               const std::string& op_name) {
+  return {fmt::format("c->{}({});", op_name, reg_to_name(i0.get_dst(0))), instr_str};
+}
+
 Mips2C_Line handle_plain_op(const Instruction& /*i0*/,
                             const std::string& instr_str,
                             const std::string& op_name) {
@@ -1216,6 +1230,14 @@ Mips2C_Line handle_normal_instr(Mips2C_Output& output,
       return handle_vopmsub(i0, instr_str);
     case InstructionKind::PMFHL_LH:
       return handle_pmfhl_lh(i0, instr_str);
+    case InstructionKind::DIV:
+      return handle_div_divu(i0, instr_str, "div");
+    case InstructionKind::DIVU:
+      return handle_div_divu(i0, instr_str, "divu");
+    case InstructionKind::MFHI:
+      return handle_generic_op1(i0, instr_str, "mfhi");
+    case InstructionKind::MFLO:
+      return handle_generic_op1(i0, instr_str, "mflo");
     default:
       unknown_count++;
       return handle_unknown(instr_str);

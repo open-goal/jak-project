@@ -1,0 +1,219 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type proc-focusable-spawn-record
+(deftype proc-focusable-spawn-record (structure)
+  "A record of a [[process-focusable]] that was created by a spawner."
+  ((proc       handle)
+   (index      int16)
+   (dead-time  time-frame)
+   )
+  )
+
+;; definition for method 3 of type proc-focusable-spawn-record
+(defmethod inspect ((this proc-focusable-spawn-record))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'proc-focusable-spawn-record)
+  (format #t "~1Tproc: ~D~%" (-> this proc))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tdead-time: ~D~%" (-> this dead-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type proc-focusable-spawn-record-array
+(deftype proc-focusable-spawn-record-array (inline-array-class)
+  ((data  proc-focusable-spawn-record  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type proc-focusable-spawn-record-array
+(defmethod inspect ((this proc-focusable-spawn-record-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> proc-focusable-spawn-record-array heap-base) (the-as uint 32))
+
+;; definition of type proc-focusable-spawner
+(deftype proc-focusable-spawner (basic)
+  "A [[process-focusable]] spawner. Keeps track of spawned processes and cleans up inactive ones."
+  ((records      proc-focusable-spawn-record-array)
+   (unused-list  (array int8))
+   )
+  (:methods
+    (alloc-records! (_type_ int symbol) none)
+    (get-last-unused-handle! (_type_) handle)
+    (get-last-unused-val! (_type_) int)
+    (mark-unused! (_type_ handle) int)
+    (init-records! (_type_) none)
+    (add-unused! (_type_ int) none)
+    (check-inactive (_type_) symbol)
+    (reset-and-kill-all! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type proc-focusable-spawner
+(defmethod inspect ((this proc-focusable-spawner))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Trecords: ~A~%" (-> this records))
+  (format #t "~1Tunused-list: ~A~%" (-> this unused-list))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type proc-focusable-spawner
+(defmethod alloc-records! ((this proc-focusable-spawner) (count int) (allocation symbol))
+  "Allocate records and unused list."
+  (set! (-> this records)
+        ((method-of-type proc-focusable-spawn-record-array new) allocation proc-focusable-spawn-record-array count)
+        )
+  (set! (-> this unused-list) (the-as (array int8) ((method-of-type array new) allocation array int8 count)))
+  (init-records! this)
+  (none)
+  )
+
+;; definition for method 7 of type proc-focusable-spawner
+(defmethod relocate ((this proc-focusable-spawner) (offset int))
+  (if (nonzero? (-> this records))
+      (&+! (-> this records) offset)
+      )
+  (if (nonzero? (-> this unused-list))
+      (&+! (-> this unused-list) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 13 of type proc-focusable-spawner
+;; WARN: Return type mismatch int vs none.
+(defmethod init-records! ((this proc-focusable-spawner))
+  "Initialize the records list."
+  (dotimes (v1-0 (-> this records allocated-length))
+    (set! (-> this unused-list v1-0) v1-0)
+    (set! (-> this records data v1-0 proc) (the-as handle #f))
+    (set! (-> this records data v1-0 index) v1-0)
+    (set! (-> this records data v1-0 dead-time) 0)
+    )
+  (set! (-> this unused-list length) (-> this unused-list allocated-length))
+  (none)
+  )
+
+;; definition for method 11 of type proc-focusable-spawner
+(defmethod get-last-unused-val! ((this proc-focusable-spawner))
+  "Get the last value in the unused list and decrement size."
+  (cond
+    ((<= (-> this unused-list length) 0)
+     -1
+     )
+    (else
+      (let ((v0-0 (-> this unused-list (+ (-> this unused-list length) -1))))
+        (+! (-> this unused-list length) -1)
+        v0-0
+        )
+      )
+    )
+  )
+
+;; definition for method 10 of type proc-focusable-spawner
+(defmethod get-last-unused-handle! ((this proc-focusable-spawner))
+  "Get the handle for the last element in the unused list and decrement the unused list size."
+  (local-vars (v1-6 int))
+  (cond
+    ((<= (-> this unused-list length) 0)
+     (the-as handle #f)
+     )
+    ((begin (set! v1-6 (-> this unused-list (+ (-> this unused-list length) -1))) #t)
+     (+! (-> this unused-list length) -1)
+     (-> this records data v1-6 proc)
+     )
+    (else
+      (the-as handle #f)
+      )
+    )
+  )
+
+;; definition for method 14 of type proc-focusable-spawner
+;; WARN: Return type mismatch int vs none.
+(defmethod add-unused! ((this proc-focusable-spawner) (arg0 int))
+  "Add the given value to the unused list."
+  (set! (-> this records data arg0 dead-time) (+ (current-time) (seconds 1)))
+  (set! (-> this unused-list (-> this unused-list length)) arg0)
+  (+! (-> this unused-list length) 1)
+  (none)
+  )
+
+;; definition for method 12 of type proc-focusable-spawner
+(defmethod mark-unused! ((this proc-focusable-spawner) (arg0 handle))
+  "Add this handle to the unused list."
+  (dotimes (v1-0 (-> this records length))
+    (when (= (-> this records data v1-0 proc) arg0)
+      (add-unused! this v1-0)
+      (return 0)
+      )
+    )
+  (the-as int #f)
+  )
+
+;; definition for method 15 of type proc-focusable-spawner
+(defmethod check-inactive ((this proc-focusable-spawner))
+  "Check for inactive processes and add them to the unused list."
+  (local-vars (v1-10 symbol))
+  (dotimes (i (-> this records length))
+    (let* ((proc (handle->process (-> this records data i proc)))
+           (pfoc (if (type? proc process-focusable)
+                     proc
+                     )
+                 )
+           )
+      (when (or (not pfoc) (focus-test? (the-as process-focusable pfoc) inactive))
+        (dotimes (ii (-> this unused-list length))
+          (when (= (-> this unused-list ii) i)
+            (set! v1-10 #t)
+            (goto cfg-19)
+            )
+          )
+        (set! v1-10 #f)
+        (label cfg-19)
+        (if (not v1-10)
+            (add-unused! this i)
+            )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 16 of type proc-focusable-spawner
+;; WARN: Return type mismatch symbol vs none.
+(defmethod reset-and-kill-all! ((this proc-focusable-spawner))
+  "Reset the records list and deactivate all remaining active processes."
+  (dotimes (s5-0 (-> this records length))
+    (let ((a0-3 (handle->process (-> this records data s5-0 proc))))
+      (when a0-3
+        (deactivate a0-3)
+        (set! (-> this records data s5-0 proc) (the-as handle #f))
+        )
+      )
+    )
+  (none)
+  )
+
+
+
+

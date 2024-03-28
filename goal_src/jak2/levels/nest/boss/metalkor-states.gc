@@ -295,6 +295,7 @@
   )
 
 (defmethod deactivate ((this metalkor))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (-> this wing-sound-playing)
       (sound-stop (-> this wing-sound))
       )
@@ -303,14 +304,14 @@
   )
 
 ;; WARN: Return type mismatch process-focusable vs metalkor.
-(defmethod relocate ((this metalkor) (arg0 int))
+(defmethod relocate ((this metalkor) (offset int))
   (if (nonzero? (-> this shot-anticipate))
-      (&+! (-> this shot-anticipate) arg0)
+      (&+! (-> this shot-anticipate) offset)
       )
   (if (nonzero? (-> this neck))
-      (&+! (-> this neck) arg0)
+      (&+! (-> this neck) offset)
       )
-  (the-as metalkor ((method-of-type process-focusable relocate) this arg0))
+  (the-as metalkor ((method-of-type process-focusable relocate) this offset))
   )
 
 (defmethod get-trans ((this metalkor) (arg0 int))
@@ -514,10 +515,7 @@
                       )
                     )
             )
-      (let ((v1-24 (-> self skel root-channel 1)))
-        (set! (-> v1-24 frame-interp 1) f30-2)
-        (set! (-> v1-24 frame-interp 0) f30-2)
-        )
+      (ja :chan 1 :frame-interp0 f30-2 :frame-interp1 f30-2)
       )
     )
   (none)

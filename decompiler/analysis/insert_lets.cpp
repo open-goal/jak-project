@@ -1239,15 +1239,18 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
   }
   auto channel_form = mr_chan.int_or_form_to_form(pool, 0);
 
-  // now we checks for set!'s. the actual contents of the macro are not very complicated to match.
+  // now we check for set!'s. the actual contents of the macro are not very complicated to match.
   // there is just a LOT to match. and then to write!
   bool bad = false;
   int idx = 0;
   auto set_fi = match_ja_set(env, chan, "frame-interp", -1, in->body(), &idx, &bad);
+  auto set_fi1 = match_ja_set(env, chan, "frame-interp", 1, in->body(), &idx, &bad);
+  auto set_fi0 = match_ja_set(env, chan, "frame-interp", 0, in->body(), &idx, &bad);
   auto set_dist = match_ja_set(env, chan, "dist", -1, in->body(), &idx, &bad);
   auto set_fg = match_ja_set(env, chan, "frame-group", -1, in->body(), &idx, &bad);
   auto set_p0 = match_ja_set(env, chan, "param", 0, in->body(), &idx, &bad);
   auto set_p1 = match_ja_set(env, chan, "param", 1, in->body(), &idx, &bad);
+  auto set_p2 = match_ja_set(env, chan, "param", 2, in->body(), &idx, &bad);
   auto set_nf = match_ja_set(env, chan, "num-func", -1, in->body(), &idx, &bad);
   auto set_fn = match_ja_set(env, chan, "frame-num", -1, in->body(), &idx, &bad);
 
@@ -1367,14 +1370,15 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
     Form* num_form = nullptr;
     // check the num! arg
     if (prelim_num == "identity") {
-      if (env.version == GameVersion::Jak2 && set_fn && !set_fn2) {
+      if (env.version >= GameVersion::Jak2 && set_fn && !set_fn2) {
         // jak 2-specific made-up thing!
         // this has only appeared once so far.
         if (set_fn->to_form(env).is_float(0.0)) {
           num_form = pool.form<ConstantTokenElement>("zero");
           set_fn = nullptr;
         } else {
-          return nullptr;
+          num_form = pool.form<GenericElement>(
+              GenericOperator::make_function(pool.form<ConstantTokenElement>(prelim_num)), set_fn);
         }
       } else if (set_fn2) {
         auto obj_fn2 = set_fn2->to_form(env);
@@ -1479,12 +1483,17 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
 
   // other generic args
   ja_push_form_to_args(pool, args, set_fi, "frame-interp");
+  ja_push_form_to_args(pool, args, set_fi0, "frame-interp0");
+  ja_push_form_to_args(pool, args, set_fi1, "frame-interp1");
   ja_push_form_to_args(pool, args, set_dist, "dist");
   // ja_push_form_to_args(pool, args, form_fg, "frame-group");
   ja_push_form_to_args(pool, args, set_p0, "param0");
   ja_push_form_to_args(pool, args, set_p1, "param1");
+  ja_push_form_to_args(pool, args, set_p2, "param2");
   ja_push_form_to_args(pool, args, set_nf, "num-func");
-  ja_push_form_to_args(pool, args, set_fn, "frame-num");
+  if (arg_num_func != "num-func-identity") {
+    ja_push_form_to_args(pool, args, set_fn, "frame-num");
+  }
 
   // TODO
   if (set_fn2) {
@@ -1504,6 +1513,164 @@ FormElement* rewrite_joint_macro(LetElement* in, const Env& env, FormPool& pool)
       GenericOperator::make_function(
           pool.form<ConstantTokenElement>(func_status == NO_EVAL ? "ja-no-eval" : "ja")),
       args);
+}
+
+FormElement* rewrite_part_tracker_new(const std::string& type,
+                                      LetElement* in,
+                                      const Env& env,
+                                      FormPool& pool) {
+  // (let ((s4-11 (get-process *default-dead-pool* part-tracker #x4000 0)))
+  //   (when s4-11
+  //     (let ((t9-26 (method-of-type part-tracker activate)))
+  //       (t9-26 (the-as part-tracker s4-11) s5-1 "part-tracker" (the-as pointer #x70004000))
+  //       )
+  //     (let ((t9-27 run-function-in-process)
+  //           (a0-84 s4-11)
+  //           (a1-36 part-tracker-init)
+  //           )
+  //       (set! (-> *part-tracker-params-default* group) (-> this collect-effect))
+  //       (set! (-> *part-tracker-params-default* duration) 0)
+  //       (set! (-> *part-tracker-params-default* callback) part-tracker-track-target)
+  //       (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
+  //       (set! (-> *part-tracker-params-default* target) #f)
+  //       (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
+  //       ((the-as (function object object object none) t9-27) a0-84 a1-36
+  //       *part-tracker-params-default*)
+  //       )
+  //     (-> s4-11 ppointer)
+  //     )
+  //   )
+  auto cond = dynamic_cast<CondNoElseElement*>(in->body()->at(0));
+  if (!cond) {
+    return nullptr;
+  }
+  auto when_body = cond->entries.at(0).body;
+  auto activate_let = dynamic_cast<LetElement*>(when_body->at(0));
+  if (!activate_let) {
+    return nullptr;
+  }
+  auto activate_matcher = Matcher::let(
+      false,
+      {LetEntryMatcher::any(Matcher::op(GenericOpMatcher::fixed(FixedOperatorKind::METHOD_OF_TYPE),
+                                        {Matcher::any(), Matcher::constant_token("activate")}),
+                            0)},
+      {Matcher::func(Matcher::reg(Register(Reg::GPR, Reg::T9)),
+                     {Matcher::any(), Matcher::any(1), Matcher::any(2), Matcher::any()})});
+  auto activate_mr = match(activate_matcher, when_body->at(0));
+  if (!activate_mr.matched) {
+    return nullptr;
+  }
+  auto name = activate_mr.maps.forms.find(2);
+  auto to = activate_mr.maps.forms.find(1);
+  auto params_let = dynamic_cast<LetElement*>(when_body->at(1));
+  if (!params_let) {
+    return nullptr;
+  }
+  auto part_tracker_subsampler_params_body_matcher = {
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("group")}),
+                   Matcher::any(0)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("duration")}),
+                   Matcher::any(1)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("callback")}),
+                   Matcher::any(2)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("userdata")}),
+                   Matcher::any(3)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("target")}),
+                   Matcher::any(4)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("mat-joint")}),
+                   Matcher::any(5)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-subsampler-params-default*"),
+                                  false, {DerefTokenMatcher::string("subsample-num")}),
+                   Matcher::any(6)),
+      Matcher::any()};
+  auto part_tracker_params_body_matcher = {
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("group")}),
+                   Matcher::any(0)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("duration")}),
+                   Matcher::any(1)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("callback")}),
+                   Matcher::any(2)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("userdata")}),
+                   Matcher::any(3)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("target")}),
+                   Matcher::any(4)),
+      Matcher::set(Matcher::deref(Matcher::symbol("*part-tracker-params-default*"), false,
+                                  {DerefTokenMatcher::string("mat-joint")}),
+                   Matcher::any(5)),
+      Matcher::any()};
+  auto params_body_matcher = type == "part-tracker-subsampler"
+                                 ? part_tracker_subsampler_params_body_matcher
+                                 : part_tracker_params_body_matcher;
+  auto params_matcher = Matcher::unmerged_let(
+      {LetEntryMatcher::any(Matcher::symbol("run-function-in-process")),
+       LetEntryMatcher::any(Matcher::any()), LetEntryMatcher::any(Matcher::any())},
+      params_body_matcher);
+  auto params_mr = match(params_matcher, when_body->at(1));
+  if (!params_mr.matched) {
+    return nullptr;
+  }
+
+  std::vector<Form*> macro_args;
+  macro_args.push_back(pool.form<ConstantTokenElement>(type));
+  macro_args.push_back(pool.form<ConstantTokenElement>(":to"));
+  macro_args.push_back(to->second);
+  auto name_str = dynamic_cast<StringConstantElement*>(name->second->try_as_single_element());
+  if (name_str && name_str->value() != type) {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":name"));
+    macro_args.push_back(name->second);
+  }
+  auto group = params_mr.maps.forms.find(0);
+  macro_args.push_back(pool.form<ConstantTokenElement>(":group"));
+  macro_args.push_back(group->second);
+  auto duration = params_mr.maps.forms.find(1);
+  if (duration->second->to_string(env) != "0") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":duration"));
+    macro_args.push_back(duration->second);
+  }
+  auto callback = params_mr.maps.forms.find(2);
+  if (callback->second->to_string(env) != "#f") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":callback"));
+    macro_args.push_back(callback->second);
+  }
+  auto userdata = params_mr.maps.forms.find(3);
+  if (userdata->second->to_string(env) != "(the-as uint #f)") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":userdata"));
+    macro_args.push_back(userdata->second);
+  }
+  auto target = params_mr.maps.forms.find(4);
+  if (target->second->to_string(env) != "#f") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":target"));
+    macro_args.push_back(target->second);
+  }
+  auto mat_joint = params_mr.maps.forms.find(5);
+  if (mat_joint->second->to_string(env) != "*launch-matrix*") {
+    macro_args.push_back(pool.form<ConstantTokenElement>(":mat-joint"));
+    macro_args.push_back(mat_joint->second);
+  }
+  if (type == "part-tracker-subsampler") {
+    auto subsample_num = params_mr.maps.forms.find(6);
+    if (subsample_num->second->to_string(env) != "1.0") {
+      macro_args.push_back(pool.form<ConstantTokenElement>(":subsample-num"));
+      macro_args.push_back(subsample_num->second);
+    }
+  }
+
+  return pool
+      .form<GenericElement>(
+          GenericOperator::make_function(pool.form<ConstantTokenElement>("part-tracker-spawn")),
+          macro_args)
+      ->try_as_single_element();
 }
 
 FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
@@ -1530,6 +1697,13 @@ FormElement* rewrite_proc_new(LetElement* in, const Env& env, FormPool& pool) {
   }
 
   const auto& proc_type = mr_get_proc.maps.strings.at(1);
+
+  // part-tracker-spawn macro for jak 3
+  if (env.version >= GameVersion::Jak3 &&
+      (proc_type == "part-tracker" || proc_type == "part-tracker-subsampler")) {
+    return rewrite_part_tracker_new(proc_type, in, env, pool);
+  }
+
   auto macro_form =
       is_full_let ? in->body()->at(0) : in->entries().at(1).src->try_as_single_element();
 

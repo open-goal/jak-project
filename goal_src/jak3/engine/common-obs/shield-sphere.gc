@@ -5,5 +5,700 @@
 ;; name in dgo: shield-sphere
 ;; dgos: GAME
 
+;; +++shield-type
+(defenum shield-type
+  :type uint8
+  (shield-type-0)
+  (shield-type-1)
+  )
+;; ---shield-type
+
+
 ;; DECOMP BEGINS
 
+(deftype shield-sphere-heat (structure)
+  ((current-heat-value  float)
+   (damage-scalar       float)
+   (last-heat-time      time-frame)
+   (distort-handle      handle)
+   )
+  )
+
+
+(deftype shield-sphere-toggle (structure)
+  ((enable-time   time-frame)
+   (disable-time  time-frame)
+   )
+  )
+
+
+(deftype shield-sphere (process-focusable)
+  ((owner                 handle)
+   (sphere-size           float)
+   (offset-vec            vector                :inline)
+   (enabled?              symbol)
+   (shield-type           shield-type)
+   (track-joint           int32)
+   (heat-info             shield-sphere-heat    :inline)
+   (toggle-info           shield-sphere-toggle  :inline :overlay-at (-> heat-info current-heat-value))
+   (last-attack-time      time-frame)
+   (last-attack-id        uint32)
+   (persistent-attack-id  uint32)
+   )
+  (:state-methods
+    shield-enabled
+    shield-disabled
+    explode
+    die
+    )
+  (:methods
+    (shield-sphere-method-32 (_type_) quaternion)
+    (shield-enabled-trans (_type_) none)
+    (toggle-shield (_type_ symbol) none)
+    (shield-post (_type_) object)
+    (init-and-go! (_type_) object)
+    (init-collision! (_type_) none)
+    (shield-event-handler (_type_ process int symbol event-message-block) object)
+    (get-attack-damage (_type_ process-focusable event-message-block) int)
+    (shield-touch-handler (_type_ process-focusable event-message-block) object)
+    (shield-attack-handler (_type_ process-focusable event-message-block) symbol)
+    (send-shield-attack (_type_ process-focusable touching-shapes-entry int) object)
+    )
+  )
+
+
+(deftype shield-sphere-spawn-params (structure)
+  ((offset-vec       vector  :inline)
+   (owner            handle)
+   (sphere-size      float)
+   (shield-type      shield-type)
+   (track-joint      int32)
+   (enable-time      time-frame)
+   (disable-time     time-frame)
+   (shield-strength  int8)
+   (pad              int16)
+   )
+  )
+
+
+(defskelgroup skel-shield-sphere-distort shield-sphere-distort shield-sphere-distort-lod0-jg shield-sphere-distort-idle-ja
+              ((shield-sphere-distort-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              )
+
+(deftype shield-sphere-distort (process-drawable)
+  ((owner        handle)
+   (sphere-size  float)
+   )
+  (:state-methods
+    inactive
+    distort
+    die
+    )
+  )
+
+
+(deftype shield-sphere-distort-spawn-params (structure)
+  ((owner        handle)
+   (sphere-size  float)
+   )
+  )
+
+
+(defbehavior shield-sphere-distort-init-by-other shield-sphere-distort ((arg0 shield-sphere-distort-spawn-params))
+  (stack-size-set! (-> self main-thread) 128)
+  (set! (-> self owner) (-> arg0 owner))
+  (set! (-> self root) (new 'process 'trsqv))
+  (initialize-skeleton
+    self
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-shield-sphere-distort" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set-vector! (-> self root scale) (-> arg0 sphere-size) (-> arg0 sphere-size) (-> arg0 sphere-size) 1.0)
+  (go-virtual inactive)
+  )
+
+(defskelgroup skel-shield-sphere-explode shield-sphere-explode shield-sphere-explode-lod0-jg shield-sphere-explode-idle-ja
+              ((shield-sphere-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              )
+
+(define *shield-sphere-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 1 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 2 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+(defmethod init-and-go! ((this shield-sphere))
+  (case (-> this shield-type)
+    (((shield-type shield-type-0))
+     (set! (-> this heat-info current-heat-value) 0.0)
+     (set-time! (-> this heat-info last-heat-time))
+     )
+    (((shield-type shield-type-1))
+     )
+    )
+  (let* ((v1-5 *game-info*)
+         (a0-4 (+ (-> v1-5 attack-id) 1))
+         )
+    (set! (-> v1-5 attack-id) a0-4)
+    (set! (-> this last-attack-id) a0-4)
+    )
+  (let* ((v1-6 *game-info*)
+         (a0-6 (+ (-> v1-6 attack-id) 1))
+         )
+    (set! (-> v1-6 attack-id) a0-6)
+    (set! (-> this persistent-attack-id) a0-6)
+    )
+  (set-vector! (-> this draw color-mult) 0.4 0.4 0.4 0.4)
+  (shield-enabled-trans this)
+  (go (method-of-object this shield-enabled))
+  )
+
+(defmethod init-collision! ((this shield-sphere))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate mech-punch dark-punch dark-smack))
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle impenetrable-obj shield))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-7 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 (* 4096.0 (-> this sphere-size)))
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod shield-enabled-trans ((this shield-sphere))
+  (if (= (-> this shield-type) (shield-type shield-type-0))
+      (seek! (-> this heat-info current-heat-value) 0.0 (* 0.2 (seconds-per-frame)))
+      )
+  (let* ((s4-0 (handle->process (-> this owner)))
+         (s5-0 (if (type? s4-0 process-focusable)
+                   s4-0
+                   )
+               )
+         )
+    (cond
+      (s5-0
+        (if (!= (-> this track-joint) -1)
+            (vector<-cspace!
+              (-> this root trans)
+              (-> (the-as process-focusable s5-0) node-list data (-> this track-joint))
+              )
+            (vector+! (-> this root trans) (get-trans (the-as process-focusable s5-0) 0) (-> this offset-vec))
+            )
+        (shield-sphere-method-32 this)
+        (send-event s5-0 'go-invulnerable)
+        )
+      (else
+        (go (method-of-object this die))
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod toggle-shield ((this shield-sphere) (arg0 symbol))
+  (cond
+    (arg0
+      (let ((v1-1 (-> this root root-prim)))
+        (set! (-> v1-1 prim-core collide-as) (-> this root backup-collide-as))
+        (set! (-> v1-1 prim-core collide-with) (-> this root backup-collide-with))
+        )
+      )
+    (else
+      (let ((v1-3 (-> this root root-prim)))
+        (set! (-> v1-3 prim-core collide-as) (collide-spec))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec))
+        )
+      0
+      )
+    )
+  (let* ((s4-0 (handle->process (-> this owner)))
+         (a0-9 (if (type? s4-0 process-focusable)
+                   s4-0
+                   )
+               )
+         )
+    (cond
+      (arg0
+        (logior! (-> this draw status) (draw-control-status no-draw))
+        )
+      (else
+        (logclear! (-> this draw status) (draw-control-status no-draw))
+        (send-event a0-9 'go-vulnerable)
+        )
+      )
+    )
+  (set! (-> this enabled?) arg0)
+  0
+  (none)
+  )
+
+(defstate shield-enabled (shield-sphere)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (shield-event-handler self proc argc message block)
+    )
+  :enter (behavior ()
+    (toggle-shield self #t)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (shield-enabled-trans self)
+    (if (and (= (-> self shield-type) (shield-type shield-type-1))
+             (time-elapsed? (-> self state-time) (-> self toggle-info enable-time))
+             )
+        (go-virtual shield-disabled)
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (shield-post self)
+    )
+  )
+
+(defstate shield-disabled (shield-sphere)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (shield-event-handler self proc argc message block)
+    )
+  :enter (behavior ()
+    (toggle-shield self #f)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (and (= (-> self shield-type) (shield-type shield-type-1))
+             (time-elapsed? (-> self state-time) (-> self heat-info last-heat-time))
+             )
+        (go-virtual shield-enabled)
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (shield-post self)
+    )
+  )
+
+(defstate explode (shield-sphere)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (toggle-shield self #f)
+    (let ((a0-2 (handle->process (-> self heat-info distort-handle))))
+      (if a0-2
+          (send-event a0-2 'die)
+          )
+      )
+    (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (set! (-> gp-0 rot-speed) 20.0)
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-shield-sphere-explode" (the-as (pointer level) #f))
+        2
+        gp-0
+        *shield-sphere-exploder-params*
+        :name "joint-exploder"
+        :to self
+        :unk 0
+        )
+      )
+    )
+  :code (behavior ()
+    (while (-> self child)
+      (suspend)
+      )
+    (go-virtual die)
+    )
+  :post (behavior ()
+    (shield-post self)
+    )
+  )
+
+(defstate die (shield-sphere)
+  :virtual #t
+  :enter (behavior ()
+    '()
+    )
+  :code (behavior ()
+    '()
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod shield-post ((this shield-sphere))
+  (cond
+    ((not (-> this enabled?))
+     (logior! (-> this draw status) (draw-control-status no-draw))
+     (return (the-as object 0))
+     )
+    (else
+      (logclear! (-> this draw status) (draw-control-status no-draw))
+      )
+    )
+  (let ((f0-0 (calc-fade-from-fog (-> this root trans))))
+    (case (-> this shield-type)
+      (((shield-type shield-type-0))
+       (+ 0.4 (* 0.6 (-> this heat-info current-heat-value)))
+       (let ((a1-0 (new 'stack-no-clear 'vector)))
+         (set-vector! a1-0 0.4 0.4 0.4 0.4)
+         (vector-lerp! (-> this draw color-mult) a1-0 *zero-vector* (-> this heat-info current-heat-value))
+         )
+       (set-vector!
+         (-> this draw color-emissive)
+         (-> this heat-info current-heat-value)
+         0.0
+         0.0
+         (-> this heat-info current-heat-value)
+         )
+       )
+      (((shield-type shield-type-1))
+       (set-vector! (-> this draw color-mult) 0.4 0.4 0.4 (* 0.4 f0-0))
+       (set-vector! (-> this draw color-emissive) 0.0 0.0 0.0 0.0)
+       )
+      )
+    )
+  (transform-post)
+  )
+
+(defskelgroup skel-shield-sphere shield-sphere shield-sphere-lod0-jg shield-sphere-idle-ja
+              ((shield-sphere-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.5)
+              )
+
+(defbehavior shield-sphere-init-by-other shield-sphere ((arg0 shield-sphere-spawn-params))
+  (stack-size-set! (-> self main-thread) 128)
+  (logclear! (-> self mask) (process-mask enemy))
+  (set! (-> self sphere-size) (-> arg0 sphere-size))
+  (set! (-> self owner) (-> arg0 owner))
+  (set! (-> self track-joint) (-> arg0 track-joint))
+  (set! (-> self offset-vec quad) (-> arg0 offset-vec quad))
+  (init-collision! self)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-shield-sphere" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set-vector! (-> self root scale) (-> self sphere-size) (-> self sphere-size) (-> self sphere-size) 1.0)
+  (set! (-> self shield-type) (-> arg0 shield-type))
+  (case (-> self shield-type)
+    (((shield-type shield-type-0))
+     (set! (-> self heat-info damage-scalar) (/ 1.0 (the float (-> arg0 shield-strength))))
+     (let ((gp-1 (new 'stack-no-clear 'shield-sphere-distort-spawn-params)))
+       (set! (-> gp-1 owner) (process->handle self))
+       (set! (-> gp-1 sphere-size) (-> self sphere-size))
+       (let ((s5-1 (the-as process #f)))
+         (let* ((s4-1 (get-process *default-dead-pool* shield-sphere-distort #x4000 1))
+                (v1-22 (when s4-1
+                         (let ((t9-5 (method-of-type process activate)))
+                           (t9-5 s4-1 self "process" (the-as pointer #x70004000))
+                           )
+                         (run-now-in-process s4-1 shield-sphere-distort-init-by-other gp-1)
+                         (-> s4-1 ppointer)
+                         )
+                       )
+                )
+           (if v1-22
+               (set! s5-1 (-> v1-22 0))
+               )
+           )
+         (set! (-> self heat-info distort-handle) (process->handle s5-1))
+         )
+       )
+     )
+    (((shield-type shield-type-1))
+     (set! (-> self toggle-info enable-time) (-> arg0 enable-time))
+     (set! (-> self heat-info last-heat-time) (-> arg0 disable-time))
+     )
+    )
+  (ja-no-eval :group! (ja-group) :num! (loop!) :frame-num 0.0)
+  (ja-post)
+  (logior! (-> self draw status) (draw-control-status disable-fog))
+  (set! (-> self event-hook) (-> (method-of-type shield-sphere shield-enabled) event))
+  (init-and-go! self)
+  )
+
+(defmethod shield-sphere-method-32 ((this shield-sphere))
+  (forward-up-nopitch->quaternion
+    (-> this root quat)
+    (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (camera-pos) (-> this root trans)) 1.0)
+    *y-vector*
+    )
+  )
+
+(defmethod get-inv-mass ((this shield-sphere))
+  2.0
+  )
+
+(defmethod shield-event-handler ((this shield-sphere) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('shield-detach)
+     (go (method-of-object this die))
+     #t
+     )
+    (('active)
+     #t
+     )
+    (('heat-ratio)
+     (-> this heat-info current-heat-value)
+     )
+    (('notice)
+     (case (-> arg3 param 0)
+       (('die)
+        (go (method-of-object this die))
+        #t
+        )
+       (else
+         #f
+         )
+       )
+     )
+    (('enabled)
+     (go (method-of-object this shield-enabled))
+     )
+    (('disabled)
+     (go (method-of-object this shield-disabled))
+     )
+    (('touch)
+     (shield-touch-handler this (the-as process-focusable arg0) arg3)
+     )
+    (('attack)
+     (shield-attack-handler this (the-as process-focusable arg0) arg3)
+     )
+    (('impact-impulse)
+     (let ((v1-12 (the-as object (-> arg3 param 0))))
+       (when (< 40960.0 (* (-> (the-as rigid-body-impact v1-12) impulse) (get-inv-mass this)))
+         (logior! (-> this root penetrated-by) (penetrate vehicle))
+         (go (method-of-object this explode))
+         #t
+         )
+       )
+     )
+    )
+  )
+
+;; WARN: Return type mismatch number vs int.
+(defmethod get-attack-damage ((this shield-sphere) (arg0 process-focusable) (arg1 event-message-block))
+  (let ((v1-0 (the-as object (-> arg1 param 1))))
+    (the-as int (cond
+                  ((logtest? (attack-mask damage) (-> (the-as attack-info v1-0) mask))
+                   (the int (-> (the-as attack-info v1-0) damage))
+                   )
+                  (else
+                    (let ((a0-4 (get-penetrate-using-from-attack-event arg0 arg1)))
+                      (if (and (logtest? a0-4 (penetrate board)) (logtest? a0-4 (penetrate spin)))
+                          10000
+                          (penetrate-using->damage a0-4)
+                          )
+                      )
+                    )
+                  )
+            )
+    )
+  )
+
+(defmethod shield-touch-handler ((this shield-sphere) (arg0 process-focusable) (arg1 event-message-block))
+  (let* ((s5-0 (-> arg1 param 0))
+         (s2-0 arg0)
+         (s3-0 (if (type? s2-0 process-focusable)
+                   s2-0
+                   )
+               )
+         )
+    (when (and s5-0 s3-0)
+      (cond
+        ((and (and s3-0 (not (logtest? (-> s3-0 focus-status) (focus-status disable dead ignore grabbed))))
+              ((method-of-type touching-shapes-entry prims-touching-action?)
+               (the-as touching-shapes-entry s5-0)
+               (-> this root)
+               (collide-action deadly)
+               (collide-action)
+               )
+              )
+         (let ((a3-1 (-> this persistent-attack-id)))
+           (send-shield-attack this arg0 (the-as touching-shapes-entry s5-0) (the-as int a3-1))
+           )
+         )
+        ((and ((method-of-type touching-shapes-entry prims-touching-action?)
+               (the-as touching-shapes-entry s5-0)
+               (-> this root)
+               (collide-action no-standon)
+               (collide-action)
+               )
+              (not (logtest? (-> this root penetrated-by) (-> s3-0 root penetrate-using)))
+              )
+         (send-shoves (-> this root) arg0 (the-as touching-shapes-entry s5-0) 0.0 10240.0 24576.0)
+         )
+        )
+      )
+    )
+  )
+
+(defmethod shield-attack-handler ((this shield-sphere) (arg0 process-focusable) (arg1 event-message-block))
+  (let ((s5-0 (-> arg1 param 0))
+        (v1-0 (the-as object (-> arg1 param 1)))
+        )
+    (cond
+      ((and (and (-> this next-state) (= (-> this next-state name) 'shield-enabled))
+            (and (= (-> this shield-type) (shield-type shield-type-0))
+                 (or (!= (-> (the-as attack-info v1-0) id) (-> this last-attack-id))
+                     (time-elapsed? (-> this last-attack-time) (seconds 1))
+                     )
+                 )
+            )
+       (set! (-> this last-attack-id) (-> (the-as attack-info v1-0) id))
+       (set-time! (-> this last-attack-time))
+       (let* ((v1-5 (get-attack-damage this arg0 arg1))
+              (f30-0 (* (-> this heat-info damage-scalar) (the float v1-5)))
+              )
+         (when (> v1-5 0)
+           (if (< (+ f30-0 (-> this heat-info current-heat-value)) 1.0)
+               (set! f30-0 (fmin f30-0 (* 0.0027777778 (the float (- (current-time) (-> this heat-info last-heat-time))))))
+               )
+           (set-time! (-> this heat-info last-heat-time))
+           (let ((a0-14 (handle->process (-> this heat-info distort-handle))))
+             (if a0-14
+                 (send-event a0-14 'distort)
+                 )
+             )
+           (sound-play "dpbiped-shld-df")
+           (+! (-> this heat-info current-heat-value) f30-0)
+           (if (< 1.0 (-> this heat-info current-heat-value))
+               (go (method-of-object this explode))
+               )
+           )
+         )
+       (if (not (send-shield-attack this arg0 (the-as touching-shapes-entry s5-0) (the-as int (-> this persistent-attack-id)))
+                )
+           (send-shoves (-> this root) arg0 (the-as touching-shapes-entry s5-0) 0.0 12288.0 32768.0)
+           )
+       #t
+       )
+      (else
+        #f
+        )
+      )
+    )
+  )
+
+(defmethod send-shield-attack ((this shield-sphere) (arg0 process-focusable) (arg1 touching-shapes-entry) (arg2 int))
+  (let ((t0-0 0))
+    (send-event
+      arg0
+      'attack
+      arg1
+      (static-attack-info :mask (vehicle-impulse-factor) ((id (the-as uint arg2))
+                                                          (damage (the float t0-0))
+                                                          (vehicle-damage-factor 1.0)
+                                                          (vehicle-impulse-factor 1.0)
+                                                          (shove-back (meters 4))
+                                                          (shove-up (meters 3))
+                                                          (mode 'generic)
+                                                          )
+                          )
+      )
+    )
+  )
+
+(defstate die (shield-sphere-distort)
+  :virtual #t
+  :code (behavior ()
+    '()
+    )
+  )
+
+(defstate distort (shield-sphere-distort)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (go-virtual die)
+       )
+      (('distort)
+       (let ((f0-0 (ja-frame-num 0)))
+         (if (< 5.0 f0-0)
+             (go-virtual distort)
+             )
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    )
+  :trans (behavior ()
+    (let ((v1-1 (handle->process (-> self owner))))
+      (when v1-1
+        (set! (-> self root trans quad) (-> (the-as process-drawable v1-1) root trans quad))
+        (quaternion-copy! (-> self root quat) (-> (the-as process-drawable v1-1) root quat))
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! shield-sphere-distort-idle-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual inactive)
+    )
+  :post (behavior ()
+    (ja-post)
+    )
+  )
+
+(defstate inactive (shield-sphere-distort)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('distort)
+       (go-virtual distort)
+       )
+      (('die)
+       (go-virtual die)
+       )
+      )
+    )
+  :enter (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    )
+  :code sleep-code
+  )
