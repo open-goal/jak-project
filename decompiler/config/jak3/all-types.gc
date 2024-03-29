@@ -2270,7 +2270,7 @@
 (define-extern matrix-ur-compose (function matrix vector vector vector matrix))
 (define-extern matrix-f-u-compose (function matrix vector vector vector matrix))
 (define-extern matrix-f-r-compose (function matrix vector vector vector matrix))
-(define-extern matrix-u-f-compose (function matrix vector vector vector matrix))
+(define-extern matrix-u-f-compose (function matrix vector vector matrix))
 (define-extern matrix-u-r-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-f-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-u-compose (function matrix vector vector vector matrix))
@@ -7636,6 +7636,7 @@
 (declare-type light-hash basic)
 (declare-type engine basic)
 (declare-type game-text-info structure)
+(declare-type text-id uint32)
 (deftype level (basic)
   ((name                      symbol                                         :offset-assert 4) ;; guessed by decompiler
    (load-name                 symbol                                         :offset-assert 8) ;; guessed by decompiler
@@ -7741,7 +7742,7 @@
     (debug-print-region-splitbox (_type_ vector object) none) ;; 20
     (get-art-group-by-name "Look up art-group in this level by name." (_type_ string) art-group) ;; 21
     (level-method-22 () none) ;; 22 ;; (level-method-22 (_type_ symbol) int)
-    (level-method-23 () none) ;; 23 ;; (lookup-text (_type_ text-id symbol) string)
+    (lookup-text (_type_ text-id symbol) string) ;; 23
     (level-method-24 () none) ;; 24 ;; (level-method-24 () none)
     (birth "Start running a level." (_type_) _type_) ;; 25
     (level-status-update!   "Try to update the level to the given status, calling whatever is needed to make it happen.
@@ -8303,8 +8304,8 @@
    (moon-count         int32                     :offset-assert 232)
    (moon               sparticle-launch-control  :offset-assert 236) ;; guessed by decompiler
    (day-star-count     int32                     :offset-assert 240)
-   (day-star           basic                     :offset-assert 244)
-   (day-star-enable    basic                     :offset-assert 248)
+   (day-star           sparticle-launch-control  :offset-assert 244)
+   (day-star-enable    symbol                    :offset-assert 248)
    (start-timer        int32                     :offset-assert 252)
    )
   :method-count-assert 14
@@ -9549,6 +9550,7 @@
   ((id   text-id  :offset-assert 0) ;; guessed by decompiler
    (text string   :offset-assert 4) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -9558,7 +9560,7 @@
   ((length      int32              :offset-assert 4)
    (language-id int32              :offset-assert 8)
    (group-name  string             :offset-assert 12) ;; guessed by decompiler
-   (data        game-text :dynamic :offset-assert 16) ;; guessed by decompiler
+   (data        game-text :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 10
   :size-assert         #x10
@@ -21409,9 +21411,9 @@
   :flag-assert         #xd000000e8
   (:methods
     (touching-prims-entry-method-9 () none) ;; 9 ;; (get-middle-of-bsphere-overlap (_type_ vector) vector)
-    (touching-prims-entry-method-10 () none) ;; 10 ;; (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim)
-    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result) ;; 11
-    (touching-prims-entry-method-12 () none) ;; 12
+    (touching-prims-entry-method-10 () none) ;; 10
+    (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim) ;; 11
+    (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result) ;; 12
     )
   )
 
@@ -21449,7 +21451,7 @@
   (:methods
     (get-head (_type_) touching-prims-entry) ;; 9
     (get-next (_type_ touching-shapes-entry) touching-prims-entry) ;; 10
-    (touching-shapes-entry-method-11 () none) ;; 11 ;; (get-touched-shape (_type_ collide-shape) collide-shape)
+    (get-touched-shape (_type_ collide-shape) collide-shape) ;; 11
     (prims-touching? (_type_ collide-shape uint) touching-prims-entry) ;; 12
     (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic) ;; 13
     (touching-shapes-entry-method-14 () none) ;; 14 ;; (free-touching-prims-list (_type_) none)
@@ -22522,11 +22524,11 @@
     (play-impact-sound (_type_ projectile-options) none) ;; 28
     (projectile-method-29 (_type_) none) ;; 29 ;; (stop-sound! (_type_) none)
     (setup-collision! (_type_) none) ;; 30
-    (projectile-method-31 (_type_) none) ;; 31 ;; (init-proj-settings! (_type_) none)
+    (init-proj-settings! (_type_) none) ;; 31
     (projectile-method-32 (_type_) none) ;; 32 ;; (go-moving! (_type_) none)
     (go-impact! (_type_) none) ;; 33 ;; (go-sitting! (_type_) none)
     (projectile-method-34 (_type_) none) ;; 34 ;; (kill-projectile! (_type_) symbol)
-    (event-handler! (_type_ process int symbol event-message-block) object) ;; 35
+    (proj-event-handler (_type_ process int symbol event-message-block) object) ;; 35
     (handle-proj-hit! (_type_ process event-message-block) object) ;; 36
     (deal-damage! (_type_ process event-message-block) symbol) ;; 37
     (made-impact? (_type_) symbol) ;; 38
@@ -30284,8 +30286,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *sky-texture-anim-array* (texture-anim-array texture-anim))
-;; (define-extern set-fog-height! function) ;; (function float none)
-;; (define-extern set-cloud-minmax! function) ;; (function float float none)
+(define-extern set-fog-height! (function float none))
+(define-extern set-cloud-minmax! (function float float none))
 (define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 ;; (define-extern set-darkjak-texture-morph! function) ;; (function float none)
 (define-extern *darkjak-highres-texture-anim-array* (texture-anim-array texture-anim))
@@ -31401,9 +31403,9 @@
 
 (define-extern palette-select-special (function mood-context-core3 symbol))
 (define-extern clear-mood-times (function mood-context symbol)) ;;
-;; (define-extern update-mood-itimes function) ;; (function mood-context none)
+(define-extern update-mood-itimes (function mood-context none))
 ;; (define-extern update-mood-direction function) ;; (function mood-context-core3 mood-table float float)
-;; (define-extern update-mood-exterior function) ;; (function mood-context-core3 mood-table float int object)
+(define-extern update-mood-exterior (function mood-context-core3 mood-table float int object))
 ;; (define-extern copy-mood-exterior function) ;; (function mood-context symbol)
 ;; (define-extern copy-mood-exterior-ambi function) ;; (function mood-context symbol none)
 (define-extern clear-mood-context (function mood-context symbol))
@@ -31594,7 +31596,7 @@
   )
 |#
 
-;; (define-extern update-mood-default function) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern update-mood-default (function mood-context float int none :behavior time-of-day-proc))
 ;; (define-extern update-mood-copy-parent function)
 ;; (define-extern get-sphere-interp function) ;; (function sphere vector float float float)
 ;; (define-extern update-mood-ctywide function) ;; (function mood-context float int none :behavior time-of-day-proc)
@@ -31768,13 +31770,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern group-rain-screend-drop sparticle-launch-group)
-;; (define-extern update-snow function) ;; (function float vector vector none)
+(define-extern update-snow (function float vector vector none))
 ;; (define-extern birth-func-omega-normal-orient function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
 ;; (define-extern birth-func-rain function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
 ;; (define-extern check-drop-level-rain function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern check-drop-level-rain2 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern check-drop-level-splash function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern update-rain function) ;; (function float vector vector none)
+(define-extern update-rain (function float vector vector none))
 (define-extern cam-master-effect (function none :behavior camera-master))
 ;; (define-extern sparticle-track-sun function) ;; (function int sparticle-cpuinfo matrix none)
 
@@ -31782,19 +31784,19 @@
 ;; time-of-day                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern time-of-day-effect object) ;; (function none)
-;; (define-extern time-of-day-update function) ;; (function none :behavior time-of-day-proc)
-;; (define-extern update-counters function) ;; (function float :behavior time-of-day-proc)
-;; (define-extern time-of-day-tick state) ;; (state time-of-day-proc)
-;; (define-extern init-time-of-day function) ;; (function object :behavior time-of-day-proc)
-;; (define-extern start-time-of-day function) ;; (function (pointer process))
-;; (define-extern time-of-day-setup function) ;; (function symbol symbol)
+(define-extern time-of-day-effect (function none))
+(define-extern time-of-day-update (function none :behavior time-of-day-proc))
+(define-extern update-counters (function float :behavior time-of-day-proc))
+(define-extern time-of-day-tick (state time-of-day-proc))
+(define-extern init-time-of-day (function object :behavior time-of-day-proc))
+(define-extern start-time-of-day (function (pointer time-of-day-proc)))
+(define-extern time-of-day-setup (function symbol symbol))
 (define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
 (define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
 (define-extern init-time-of-day-context (function time-of-day-context symbol))
-;; (define-extern set-filter-color! function) ;; (function float float float none)
-;; (define-extern tod-madd! function) ;; (function vector vector vector float)
-;; (define-extern update-environment-colors function) ;; (function time-of-day-context vector)
+(define-extern set-filter-color! (function float float float none))
+(define-extern tod-madd! (function vector vector vector float))
+(define-extern update-environment-colors (function time-of-day-context vector))
 (define-extern update-time-of-day (function time-of-day-context none))
 (define-extern calc-fade-from-fog (function vector float))
 
@@ -32177,18 +32179,18 @@
 
 ;; game-text-info is already defined!
 
-;; (define-extern *expand-buf-number* object) ;; int
-;; (define-extern *game-text-word* object) ;; string
-;; (define-extern *game-text-line* object) ;; string
-;; (define-extern *expanded-text-line0* object) ;; string
-;; (define-extern *expanded-text-line1* object) ;; string
-;; (define-extern *level-text-file-load-flag* object) ;; symbol
+(define-extern *expand-buf-number* int)
+(define-extern *game-text-word* string)
+(define-extern *game-text-line* string)
+(define-extern *expanded-text-line0* string)
+(define-extern *expanded-text-line1* string)
+(define-extern *level-text-file-load-flag* symbol)
 (define-extern convert-korean-text (function string string))
-;; (define-extern text-is-loading object) ;; symbol
-;; (define-extern load-game-text-info function) ;; (function string (pointer object) kheap int)
+(define-extern text-is-loading symbol)
+(define-extern load-game-text-info (function string (pointer object) kheap int))
 (define-extern load-level-text-files (function int none))
-;; (define-extern draw-debug-text-box function) ;; (function font-context none)
-;; (define-extern print-game-text-scaled function) ;; (function string float font-context bucket-id none)
+(define-extern draw-debug-text-box (function font-context none))
+(define-extern print-game-text-scaled (function string float font-context bucket-id none))
 (define-extern print-game-text (function string font-context symbol int bucket-id float))
 (define-extern disable-level-text-file-loading (function none))
 (define-extern enable-level-text-file-loading (function none))
@@ -33964,7 +33966,7 @@
 (define-extern touch-tracker-init (function vector float time-frame none :behavior touch-tracker))
 (define-extern explosion-init-by-other (function explosion-init-params object :behavior explosion))
 (define-extern explosion-spawn-legacy-version (function process-drawable type explosion-init-params (pointer process)))
-(define-extern explosion-spawn (function process-drawable type explosion-init-params none))
+(define-extern explosion-spawn (function explosion-init-params process-drawable none))
 (define-extern find-closest-solid-sphere-prim (function collide-shape vector collide-spec collide-shape-prim))
 (define-extern *explosion-debug-sphere* sphere)
 (define-extern process-drawable-random-point! (function process-drawable vector vector))
@@ -35385,17 +35387,17 @@
 ;; (define-extern *curve-explo-scale-y* curve2d-fast)
 ;; (define-extern *part-gun-red3-explosion-texture-curve-settings* object)
 ;; (define-extern *curve-linear-up-red* object)
-;; (define-extern *red-shot-3-trail* object)
+(define-extern *red-shot-3-trail* light-trail-composition)
 ;; (define-extern *curve-yellow2-shot-alpha* object)
 ;; (define-extern *curve-yellow2-shot-color* curve-color-fast)
 ;; (define-extern *curve-linear-down-long* curve2d-fast)
-;; (define-extern *yellow-shot-2-trail* object)
+(define-extern *yellow-shot-2-trail* light-trail-composition)
 ;; (define-extern check-shell-level1 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern check-shell-level2 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern sparticle-dark-shot-lightning function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern sparticle-track-gun-joint-3d function)
 ;; (define-extern sparticle-track-gun-joint-player-y function)
-;; (define-extern *last-player-pos* object)
+(define-extern *last-player-pos* vector)
 ;; (define-extern birth-func-converge function)
 ;; (define-extern sparticle-red-2-converge function)
 ;; (define-extern sparticle-red-2-glow-trail-halt function)
@@ -36054,7 +36056,7 @@
 (define-extern gun-init (function none :behavior gun))
 (define-extern do-fire-backcheck (function vector vector symbol))
 (define-extern get-remaining-player-ammo (function pickup-type float))
-(define-extern adjust-player-ammo (function int pickup-type float))
+(define-extern adjust-player-ammo (function float pickup-type float))
 (define-extern adjust-player-ammo-over-time (function int float pickup-type float float))
 (define-extern truncate-player-ammo (function pickup-type none))
 (define-extern *last-gun-fire-time* last-gun-fire-time)
@@ -36291,266 +36293,246 @@
 ;; gun-yellow-shot                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-yellow-shot (projectile)
   ((hit-actor?        symbol         :offset-assert 512) ;; guessed by decompiler
    (tail-pos          vector :inline :offset-assert 528)
    (hit-pos           vector :inline :offset-assert 544)
-   (last-hit-time     uint64         :offset-assert 560)
-   (snd-whoosh        uint32         :offset-assert 568)
-   (muzzle-flash-part basic          :offset-assert 572)
-   (main-shot-part    basic          :offset-assert 576)
-   (shot-aim-part     basic          :offset-assert 580)
-   (shot-ring-part    basic          :offset-assert 584)
+   (last-hit-time     time-frame     :offset-assert 560)
+   (snd-whoosh        sound-id       :offset-assert 568)
+   (muzzle-flash-part sparticle-launcher :offset-assert 572)
+   (main-shot-part    sparticle-launcher :offset-assert 576)
+   (shot-aim-part     sparticle-launcher :offset-assert 580)
+   (shot-ring-part    sparticle-launcher :offset-assert 584)
    )
   :method-count-assert 44
   :size-assert         #x24c
   :flag-assert         #x2c01d0024c
   (:methods
-    (gun-yellow-shot-method-41 () none) ;; 41
-    (gun-yellow-shot-method-42 () none) ;; 42
-    (gun-yellow-shot-method-43 () none) ;; 43
+    (draw-main-shot (_type_ vector vector) none) ;; 41
+    (gun-yellow-shot-method-42 (_type_ float float matrix) none) ;; 42
+    (spawn-particles (_type_ vector) none) ;; 43
     )
   )
-|#
 
-#|
 (deftype gun-yellow-2-proc-ignore (structure)
-  ((hand uint64  :offset-assert 0)
-   (time uint64  :offset-assert 8)
+  ((hand handle  :offset-assert 0)
+   (time time-frame :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype gun-yellow-shot-2 (gun-yellow-shot)
-  ((last-collide-time       uint64          :offset-assert 592)
-   (snd-trail               uint32          :offset-assert 600)
-   (hit-yet?                basic           :offset-assert 604)
-   (actor-deflect?          basic           :offset-assert 608)
+  ((last-collide-time       time-frame      :offset-assert 592)
+   (snd-trail               sound-id        :offset-assert 600)
+   (hit-yet?                symbol          :offset-assert 604)
+   (actor-deflect?          symbol          :offset-assert 608)
    (max-actor-deflect-count int32           :offset-assert 612)
-   (last-hit-enemy          uint64          :offset-assert 616)
-   (delay-attack            uint64          :offset-assert 624)
+   (last-hit-enemy          handle          :offset-assert 616)
+   (delay-attack            time-frame      :offset-assert 624)
    (delay-norm              vector  :inline :offset-assert 640)
    (enemy-hit-count         int32           :offset-assert 656)
-   (ignore-list             UNKNOWN 6       :offset-assert 664)
-   (last-attack-time        uint64          :offset-assert 760)
+   (ignore-list             gun-yellow-2-proc-ignore 6 :inline :offset-assert 664)
+   (last-attack-time        time-frame      :offset-assert 760)
    )
   :method-count-assert 48
   :size-assert         #x300
   :flag-assert         #x3002800300
-  (:methods
-    (gun-yellow-shot-2-method-44 () none) ;; 44
-    (gun-yellow-shot-2-method-45 () none) ;; 45
-    (gun-yellow-shot-2-method-46 () none) ;; 46
-    (gun-yellow-shot-2-method-47 () none) ;; 47
-    )
   (:state-methods
     impact ;; 22
     )
+  (:methods
+    (on-impact (_type_ handle) object) ;; 44
+    (handle-impact (_type_ handle) object) ;; 45
+    (is-in-ignore-list? (_type_ handle) symbol) ;; 46
+    (add-to-ignore-list! (_type_ handle) int) ;; 47
+    )
   )
-|#
 
-#|
 (deftype gun-yellow-shot-3 (gun-yellow-shot)
   ()
   :method-count-assert 44
   :size-assert         #x24c
   :flag-assert         #x2c01d0024c
   )
-|#
 
-#|
 (deftype gun-yellow-3-saucer (projectile-bounce)
-  ((total-float-time       uint64         :offset-assert 552)
-   (state-time             uint64         :offset-assert 192)
-   (firing?                basic          :offset-assert 568)
-   (asleep?                basic          :offset-assert 572)
-   (first-fire-time        uint64         :offset-assert 576)
-   (activated?             basic          :offset-assert 584)
-   (collided-with-surface? basic          :offset-assert 588)
-   (last-deflect-time      uint64         :offset-assert 592)
-   (last-fire-time         uint64         :offset-assert 600)
-   (spawn-part             basic          :offset-assert 608)
-   (last-blink-time        uint64         :offset-assert 616)
-   (finished?              basic          :offset-assert 624)
+  ((total-float-time       time-frame     :offset-assert 552)
+   (firing?                symbol         :offset 568)
+   (asleep?                symbol         :offset-assert 572)
+   (first-fire-time        time-frame     :offset-assert 576)
+   (activated?             symbol         :offset-assert 584)
+   (collided-with-surface? symbol         :offset-assert 588)
+   (last-deflect-time      time-frame     :offset-assert 592)
+   (last-fire-time         time-frame     :offset-assert 600)
+   (spawn-part             sparticle-launch-control :offset-assert 608)
+   (last-blink-time        time-frame     :offset-assert 616)
+   (finished?              symbol         :offset-assert 624)
    (initial-fire-dir       vector :inline :offset-assert 640)
    (initial-fire-pos       vector :inline :offset-assert 656)
-   (last-deduct-ammo-time  uint64         :offset-assert 672)
+   (last-deduct-ammo-time  time-frame     :offset-assert 672)
    (total-ammo-drained     float          :offset-assert 680)
    (total-ammo-to-drain    float          :offset-assert 684)
-   (total-fire-time        uint64         :offset-assert 688)
-   (snd-hum                uint32         :offset-assert 696)
-   (snd-shoot              uint32         :offset-assert 700)
+   (total-fire-time        time-frame     :offset-assert 688)
+   (snd-hum                sound-id       :offset-assert 696)
+   (snd-shoot              sound-id       :offset-assert 700)
    )
   :method-count-assert 54
   :size-assert         #x2c0
   :flag-assert         #x36024002c0
-  (:methods
-    (gun-yellow-3-saucer-method-44 () none) ;; 44
-    (gun-yellow-3-saucer-method-50 () none) ;; 50
-    (gun-yellow-3-saucer-method-51 () none) ;; 51
-    (gun-yellow-3-saucer-method-52 () none) ;; 52
-    (gun-yellow-3-saucer-method-53 () none) ;; 53
-    )
   (:state-methods
-    spinning ;; 46
+    moving ;; 23
+    sitting ;; 41
+    undefined ;; 44
     navigating ;; 45
+    spinning ;; 46
     impact-explode ;; 47
     falling-down ;; 48
-    moving ;; 23
-    burnt-husk ;; 49
-    sitting ;; 41
+    burnt-husk
+    )
+  (:methods
+    (start-firing (_type_) none) ;; 50
+    (init-antigrav (_type_) none) ;; 51
+    (find-targets (_type_) int) ;; 52
+    (spawn-shot (_type_ vector) (pointer gun-yellow-shot-3)) ;; 53
     )
   (:states
     gun-yellow-3-saucer-base-state
     )
   )
-|#
 
-#|
 (deftype target-quality-info-saucer (structure)
-  ((targ  uint64  :offset-assert 0)
+  ((targ  handle  :offset-assert 0)
    (value float   :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype gun-yellow-3-event-msg (structure)
-  ((activated? basic  :offset-assert 0)
-   (finished?  basic  :offset-assert 4)
+  ((activated? symbol  :offset-assert 0)
+   (finished?  symbol  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern saucer-land-move function)
-;; (define-extern gun-fire-yellow-3 function)
-;; (define-extern gun-fire-yellow-2 function)
-;; (define-extern gun-fire-yellow-1 function)
+(define-extern saucer-land-move (function gun-yellow-3-saucer none))
+(define-extern gun-fire-yellow-3 (function object :behavior target))
+(define-extern gun-fire-yellow-2 (function (pointer gun-yellow-shot-2) :behavior target))
+(define-extern gun-fire-yellow-1 (function (pointer gun-yellow-shot) :behavior target))
 (define-extern target-gun-can-fire-yellow? (function pickup-type symbol :behavior target))
 (define-extern target-gun-fire-yellow (function pickup-type (pointer process) :behavior target))
-;; (define-extern someone-fire-yellow function) ;; (function process-drawable vector vector (pointer process))
-;; (define-extern gun-yellow-shot-move function) ;; (function gun-yellow-shot none)
-;; (define-extern *last-hit-deflect-target-handle* object)
-;; (define-extern gun-yellow-shot-do-deflect function)
-;; (define-extern gun-yellow-deflect-reaction function)
-;; (define-extern gun-yellow-shot-2-move function)
+(define-extern someone-fire-yellow (function process-drawable vector vector (pointer process)))
+(define-extern gun-yellow-shot-move (function gun-yellow-shot none))
+(define-extern *last-hit-deflect-target-handle* (pointer process))
+(define-extern gun-yellow-shot-do-deflect (function gun-yellow-shot-2 vector vector vector none :behavior gun-yellow-shot-2))
+(define-extern gun-yellow-deflect-reaction (function control-info collide-query vector vector collide-status))
+(define-extern gun-yellow-shot-2-move (function gun-yellow-shot-2 none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-red-shot                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-red-shot (process-drawable)
-  ((probe-count int32          :offset-assert 200)
-   (probe-mask  uint32         :offset-assert 204)
-   (actor-count int32          :offset-assert 208)
-   (attack-id   uint32         :offset-assert 212)
-   (start-pos   vector :inline :offset-assert 224)
-   (start-dir   vector :inline :offset-assert 240)
-   (start-rot   vector :inline :offset-assert 256)
-   (probe-dir   vector 19      :offset-assert 272) ;; guessed by decompiler
+  ((parent      (pointer gun)        :override)
+   (root        collide-shape-moving :override)
+   (probe-count int32             :offset-assert 200)
+   (probe-mask  uint32            :offset-assert 204)
+   (actor-count int32             :offset-assert 208)
+   (attack-id   uint32            :offset-assert 212)
+   (start-pos   vector    :inline :offset-assert 224)
+   (start-dir   vector    :inline :offset-assert 240)
+   (start-rot   vector    :inline :offset-assert 256)
+   (probe-dir   vector 19 :inline :offset-assert 272) ;; guessed by decompiler
    )
   :method-count-assert 30
   :size-assert         #x240
   :flag-assert         #x1e01c00240
-  (:methods
-    (gun-red-shot-method-23 () none) ;; 23 ;; (init-probes! (_type_ collide-shape) none)
-    (gun-red-shot-method-24 () none) ;; 24 ;; (gun-red-shot-method-24 (_type_) symbol)
-    (gun-red-shot-method-25 () none) ;; 25 ;; (noop (_type_) none)
-    (gun-red-shot-method-26 () none) ;; 26 ;; (gun-red-shot-method-26 (_type_) none)
-    (gun-red-shot-method-27 () none) ;; 27 ;; (gun-red-shot-method-27 (_type_) none)
-    (gun-red-shot-method-28 () none) ;; 28 ;; (gun-red-shot-method-28 (_type_ vector) sound-id)
-    (gun-red-shot-method-29 () none) ;; 29 ;; (fire! (_type_ process-drawable int) object)
-    )
   (:state-methods
-    idle ;; 22, old: (idle () _type_ :state)
-    blocked ;; 20, old: (blocked () _type_ :state)
-    debug-idle ;; 21, old: (debug-idle () _type_ :state)
+    blocked ;; 20
+    debug-idle ;; 21
+    idle ;; 22
+    )
+  (:methods
+    (init-probes! (_type_ collide-shape) none) ;; 23
+    (gun-red-shot-method-24 (_type_) none) ;; 24 ;; (gun-red-shot-method-24 (_type_) symbol)
+    (stub (_type_) none) ;; 25
+    (do-collision (_type_) none) ;; 26 ;; (gun-red-shot-method-26 (_type_) none)
+    (gun-red-shot-method-27 (_type_) none) ;; 27 ;; (gun-red-shot-method-27 (_type_) none)
+    (gun-red-shot-method-28 (_type_ vector) none) ;; 28 ;; (gun-red-shot-method-28 (_type_ vector) sound-id)
+    (gun-red-shot-method-29 (_type_ process-drawable touching-shapes-entry) none) ;; 29 ;; (fire! (_type_ process-drawable int) object)
     )
   )
-|#
 
-#|
 (deftype gun-red-3-grenade (projectile-bounce)
   ((blast-radius          float   :offset-assert 548)
-   (should-explode-soon?  basic   :offset-assert 552)
-   (explode-tick-time     uint64  :offset-assert 560)
-   (birth-time            uint64  :offset-assert 568)
-   (immediate-detonation? basic   :offset-assert 576)
-   (attack-id             uint32  :offset-assert 444)
-   (explode-delay-time    uint64  :offset-assert 584)
+   (should-explode-soon?  symbol  :offset-assert 552)
+   (explode-tick-time     time-frame :offset-assert 560)
+   (birth-time            time-frame :offset-assert 568)
+   (immediate-detonation? symbol  :offset-assert 576)
+   (explode-delay-time    time-frame :offset-assert 584)
    )
   :method-count-assert 48
   :size-assert         #x250
   :flag-assert         #x3001d00250
-  (:methods
-    (gun-red-3-grenade-method-45 () none) ;; 45
-    (gun-red-3-grenade-method-46 () none) ;; 46
-    (gun-red-3-grenade-method-47 () none) ;; 47
-    )
   (:state-methods
     impact ;; 22
-    impact-tiny ;; 44
-    sitting ;; 41
     moving ;; 23
+    sitting ;; 41
+    impact-tiny ;; 44
+    )
+  (:methods
+    (check-should-explode (_type_) int) ;; 45
+    (go-impact (_type_) object) ;; 46
+    (find-and-damage-targets (_type_) object) ;; 47
     )
   )
-|#
 
-#|
 (deftype shockwave-collision-pt (structure)
   ((collision-pt vector :inline :offset-assert 0)
    (normal       vector :inline :offset-assert 16)
-   (found?       basic          :offset-assert 32)
-   (angle        float          :offset-assert 36)
+   (found?       symbol         :offset-assert 32)
+   (angle        degrees        :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype gun-red-2-shockwave (process)
   ((origin                          vector  :inline :offset-assert 128)
    (max-radius                      float           :offset-assert 144)
    (strength                        float           :offset-assert 148)
    (current-radius                  float           :offset-assert 152)
    (current-intensity               float           :offset-assert 156)
-   (state-time                      uint64          :offset-assert 160)
+   (state-time                      time-frame      :offset-assert 160)
    (alpha-scalar                    float           :offset-assert 168)
    (base-damage                     float           :offset-assert 172)
-   (snd-charge                      uint32          :offset-assert 176)
+   (snd-charge                      sound-id        :offset-assert 176)
    (min-charge-radius               float           :offset-assert 180)
    (max-charge-radius               float           :offset-assert 184)
-   (total-charge-time               uint64          :offset-assert 192)
-   (total-explode-time              uint64          :offset-assert 200)
-   (ring-expansion-time             uint64          :offset-assert 208)
-   (burst-expansion-time            uint64          :offset-assert 216)
-   (warp-expansion-time             uint64          :offset-assert 224)
-   (previously-attacked-targets     UNKNOWN 64      :offset-assert 232)
+   (total-charge-time               time-frame      :offset-assert 192)
+   (total-explode-time              time-frame      :offset-assert 200)
+   (ring-expansion-time             time-frame      :offset-assert 208)
+   (burst-expansion-time            time-frame      :offset-assert 216)
+   (warp-expansion-time             time-frame      :offset-assert 224)
+   (previously-attacked-targets     handle 64       :offset-assert 232)
    (num-previously-attacked-targets int8            :offset-assert 744)
-   (start-pilot?                    basic           :offset-assert 748)
-   (explosion-0                     uint64          :offset-assert 752)
-   (explosion-1                     uint64          :offset-assert 760)
-   (generate-order-array            UNKNOWN 127     :offset-assert 768)
+   (start-pilot?                    symbol          :offset-assert 748)
+   (explosion-0                     handle          :offset-assert 752)
+   (explosion-1                     handle          :offset-assert 760)
+   (generate-order-array            uint8 127       :offset-assert 768)
    (current-stage-t                 float           :offset-assert 896)
    (ammo-drained                    float           :offset-assert 900)
-   (eventual-collision-points       UNKNOWN 128     :offset-assert 912)
+   (eventual-collision-points       shockwave-collision-pt 128 :inline :offset-assert 912)
    (next-computed-collision-point   int8            :offset-assert 7056)
    (num-collision-pts-to-generate   int8            :offset-assert 7057)
-   (show-scorch-marks?              basic           :offset-assert 7060)
+   (show-scorch-marks?              symbol          :offset-assert 7060)
    (height-off-ground               float           :offset-assert 7064)
    (max-ground-radius               float           :offset-assert 7068)
    (current-ring-radius             float           :offset-assert 7072)
@@ -36559,35 +36541,34 @@
    (current-warp-alpha              float           :offset-assert 7084)
    (current-burst-radius            float           :offset-assert 7088)
    (current-burst-alpha             float           :offset-assert 7092)
-   (generating-marks?               basic           :offset-assert 7096)
-   (generated-particles?            basic           :offset-assert 7100)
-   (charge-part-tracker             uint64          :offset-assert 7104)
+   (generating-marks?               symbol          :offset-assert 7096)
+   (generated-particles?            symbol          :offset-assert 7100)
+   (charge-part-tracker             handle          :offset-assert 7104)
    )
   :method-count-assert 28
   :size-assert         #x1bc8
   :flag-assert         #x1c1b501bc8
-  (:methods
-    (gun-red-2-shockwave-method-17 () none) ;; 17
-    (gun-red-2-shockwave-method-18 () none) ;; 18
-    (gun-red-2-shockwave-method-19 () none) ;; 19
-    (gun-red-2-shockwave-method-20 () none) ;; 20
-    (gun-red-2-shockwave-method-21 () none) ;; 21
-    (gun-red-2-shockwave-method-22 () none) ;; 22
-    (gun-red-2-shockwave-method-23 () none) ;; 23
-    (gun-red-2-shockwave-method-24 () none) ;; 24
-    (gun-red-2-shockwave-method-25 () none) ;; 25
-    (gun-red-2-shockwave-method-26 () none) ;; 26
-    (gun-red-2-shockwave-method-27 () none) ;; 27
-    )
   (:state-methods
+    charging ;; 14
     explode ;; 15
     die ;; 16
-    charging ;; 14
+    )
+  (:methods
+    (gun-red-2-shockwave-method-17 (_type_) none) ;; 17
+    (send-attack! (_type_ process-focusable symbol) none) ;; 18
+    ;; adding _type_ here causes decompiler hang
+    (gun-red-2-shockwave-method-19 () none) ;; 19
+    (gun-red-2-shockwave-method-20 (_type_) none) ;; 20
+    (gun-red-2-shockwave-method-21 (_type_) none) ;; 21
+    (gun-red-2-shockwave-method-22 (_type_ int int int int) none) ;; 22
+    (generate-shockwave-particles (_type_) none) ;; 23
+    (adjust-warp-radius-and-alpha (_type_) object) ;; 24
+    (adjust-ring-radius-and-alpha (_type_) none) ;; 25
+    (generate-collision-points (_type_) none) ;; 26
+    (spawn-ring (_type_) none) ;; 27
     )
   )
-|#
 
-#|
 (deftype gun-red-2-shockwave-init-params (structure)
   ((pos        vector :inline :offset-assert 0)
    (max-radius float          :offset-assert 16)
@@ -36597,38 +36578,33 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype gun-red-2-explosion (process-drawable)
   ()
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
   (:methods
-    (gun-red-2-explosion-method-20 () none) ;; 20
+    (gun-red-2-explosion-method-20 (_type_) none) ;; 20
     )
   )
-|#
 
-#|
 (deftype red-2-ring (process-drawable)
   ((current-alpha float  :offset-assert 200)
+   (pad uint8 12) ;; added
    )
   :method-count-assert 23
   :size-assert         #xd8
   :flag-assert         #x17006000d8
-  (:methods
-    (red-2-ring-method-21 () none) ;; 21
-    (red-2-ring-method-22 () none) ;; 22
-    )
   (:state-methods
     active ;; 20
+    fading ;; 21, referenced in event handler, but doesn't exist
+    )
+  (:methods
+    (red-2-ring-method-22 () none) ;; 22, also doesn't exist
     )
   )
-|#
 
-#|
 (deftype red-2-ring-init-params (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -36636,26 +36612,23 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype red-3-sphere (process-drawable)
   ((current-alpha float  :offset-assert 200)
+   (pad uint8 12) ;; added
    )
   :method-count-assert 23
   :size-assert         #xd8
   :flag-assert         #x17006000d8
-  (:methods
-    (red-3-sphere-method-21 () none) ;; 21
-    (red-3-sphere-method-22 () none) ;; 22
-    )
   (:state-methods
     active ;; 20
     )
+  (:methods
+    (red-3-sphere-method-21 (_type_) none) ;; 21
+    (red-3-sphere-method-22 (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype red-3-sphere-init-params (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -36663,24 +36636,23 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern part-tracker-move-to-target-gun function)
-;; (define-extern gun-red-2-shockwave-init-by-other function)
-;; (define-extern generate-shockwave-scorch-marks-3 function)
-;; (define-extern generate-shockwave-scorch-marks-2 function)
-;; (define-extern red-2-ring-event-handler function)
-;; (define-extern red-2-ring-init-by-other function)
-;; (define-extern *impact-blur* object)
-;; (define-extern *shockwave-blur-red-2* object)
-;; (define-extern gun-fire-red-2 function)
-;; (define-extern red-3-sphere-init-by-other function)
-;; (define-extern gun-fire-red-3 function)
-;; (define-extern gun-fire-red-1 function)
+(define-extern part-tracker-move-to-target-gun (function part-tracker none))
+(define-extern gun-red-2-shockwave-init-by-other (function gun-red-2-shockwave-init-params object :behavior gun-red-2-shockwave))
+(define-extern generate-shockwave-scorch-marks-3 (function int none :behavior gun-red-2-shockwave))
+(define-extern generate-shockwave-scorch-marks-2 (function none :behavior gun-red-2-shockwave))
+(define-extern red-2-ring-event-handler (function process int symbol event-message-block object :behavior red-2-ring))
+(define-extern red-2-ring-init-by-other (function red-2-ring-init-params object :behavior red-2-ring))
+(define-extern *impact-blur* curve2d-piecewise)
+(define-extern *shockwave-blur-red-2* curve2d-piecewise)
+(define-extern gun-fire-red-2 (function object :behavior target))
+(define-extern red-3-sphere-init-by-other (function red-3-sphere-init-params object :behavior red-3-sphere))
+(define-extern gun-fire-red-3 (function gun-red-3-grenade :behavior target))
+(define-extern gun-fire-red-1 (function gun-red-shot :behavior target))
 (define-extern target-gun-can-fire-red? (function pickup-type symbol :behavior target))
 (define-extern target-gun-fire-red (function pickup-type (pointer process) :behavior target))
-;; (define-extern gun-red-shot-event-handler function) ;; (function process-drawable int symbol event-message-block object :behavior gun-red-shot)
-;; (define-extern gun-red-shot-init-by-other function) ;; (function vector vector gun-red-shot :behavior gun-red-shot)
+(define-extern gun-red-shot-event-handler (function process int symbol event-message-block object :behavior gun-red-shot))
+(define-extern gun-red-shot-init-by-other (function vector vector object :behavior gun-red-shot))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-dark-shot                  ;;
