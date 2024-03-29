@@ -195,15 +195,15 @@ std::optional<json> hover(Workspace& workspace, int /*id*/, json raw_params) {
     LSPSpec::MarkupContent markup;
     markup.m_kind = "markdown";
 
-    const auto args =
-        Docs::get_args_from_docstring(symbol_info->args(), symbol_info->meta().docstring);
+    const auto args = Docs::get_args_from_docstring(symbol_info.value()->m_args,
+                                                    symbol_info.value()->m_docstring);
     std::string signature = "";
     bool takes_args = true;
-    if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION) {
+    if (symbol_info.value()->m_kind == symbol_info::Kind::FUNCTION) {
       signature += "function ";
-    } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
+    } else if (symbol_info.value()->m_kind == symbol_info::Kind::METHOD) {
       signature += "method ";
-    } else if (symbol_info->kind() == SymbolInfo::Kind::MACRO) {
+    } else if (symbol_info.value()->m_kind == symbol_info::Kind::MACRO) {
       signature += "macro ";
     } else {
       takes_args = false;
@@ -222,10 +222,11 @@ std::optional<json> hover(Workspace& workspace, int /*id*/, json raw_params) {
         }
       }
       signature += ")";
-      if (symbol_info->kind() == SymbolInfo::Kind::FUNCTION && type_info) {
+      if (symbol_info.value()->m_kind == symbol_info::Kind::FUNCTION && type_info) {
         signature += fmt::format(": {}", type_info->first.last_arg().base_type());
-      } else if (symbol_info->kind() == SymbolInfo::Kind::METHOD) {
-        signature += fmt::format(": {}", symbol_info->method_info().type.last_arg().base_type());
+      } else if (symbol_info.value()->m_kind == symbol_info::Kind::METHOD) {
+        signature +=
+            fmt::format(": {}", symbol_info.value()->m_method_info.type.last_arg().base_type());
       }
     } else if (type_info) {
       signature += fmt::format(": {}", type_info->second->get_parent());
@@ -233,8 +234,8 @@ std::optional<json> hover(Workspace& workspace, int /*id*/, json raw_params) {
 
     std::string body = fmt::format("```opengoal\n{}\n```\n\n", signature);
     body += "___\n\n";
-    if (!symbol_info->meta().docstring.empty()) {
-      body += truncate_docstring(symbol_info->meta().docstring) + "\n\n";
+    if (!symbol_info.value()->m_docstring.empty()) {
+      body += truncate_docstring(symbol_info.value()->m_docstring) + "\n\n";
     }
 
     // TODO - support @see/@returns/[[reference]]

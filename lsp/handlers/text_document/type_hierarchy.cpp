@@ -34,12 +34,12 @@ std::optional<json> prepare_type_hierarchy(Workspace& workspace, int /*id*/, jso
   type_item.name = symbol.value();
   // TODO - differentiate between struct and class perhaps
   type_item.kind = LSPSpec::SymbolKind::Class;
-  if (!symbol_info->meta().docstring.empty()) {
-    type_item.detail = symbol_info->meta().docstring;
+  if (symbol_info && !symbol_info.value()->m_docstring.empty()) {
+    type_item.detail = symbol_info.value()->m_docstring;
   }
-  type_item.uri = def_loc->filename;
+  type_item.uri = def_loc->file_path;
   // TODO - this range is technically not entirely correct, we'd have to parse the defining file
-  // with an AST to get the true entent of the deftype.  But for this purpose, its not really needed
+  // with an AST to get the true extent of the deftype.  But for this purpose, its not really needed
   //
   // HACK - the definition that our compiler stores is the form itself, so we will add
   // the width of the prefix `(deftype ` to the char_index

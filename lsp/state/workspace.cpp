@@ -171,8 +171,9 @@ std::optional<GameVersion> Workspace::determine_game_version_from_uri(
   return {};
 }
 
-std::optional<SymbolInfo> Workspace::get_global_symbol_info(const WorkspaceOGFile& file,
-                                                            const std::string& symbol_name) {
+std::optional<std::shared_ptr<symbol_info::SymbolInfo>> Workspace::get_global_symbol_info(
+    const WorkspaceOGFile& file,
+    const std::string& symbol_name) {
   if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
     lg::debug("Compiler not instantiated for game version - {}",
               version_to_game_name(file.m_game_version));
@@ -180,14 +181,14 @@ std::optional<SymbolInfo> Workspace::get_global_symbol_info(const WorkspaceOGFil
   }
   const auto& compiler = m_compiler_instances[file.m_game_version].get();
   const auto symbol_infos = compiler->lookup_exact_name_info(symbol_name);
-  if (!symbol_infos || symbol_infos->empty()) {
+  if (symbol_infos.empty()) {
     return {};
-  } else if (symbol_infos->size() > 1) {
+  } else if (symbol_infos.size() > 1) {
     // TODO - handle this (overriden methods is the main issue here)
-    lg::debug("Found symbol info, but found multiple infos - {}", symbol_infos->size());
+    lg::debug("Found symbol info, but found multiple infos - {}", symbol_infos.size());
     return {};
   }
-  const auto& symbol = symbol_infos->at(0);
+  const auto& symbol = symbol_infos.at(0);
   return symbol;
 }
 
@@ -213,23 +214,12 @@ std::optional<std::pair<TypeSpec, Type*>> Workspace::get_symbol_typeinfo(
   return {};
 }
 
-std::optional<Docs::DefinitionLocation> Workspace::get_symbol_def_location(
+std::optional<symbol_info::DefinitionLocation> Workspace::get_symbol_def_location(
     const WorkspaceOGFile& file,
-    const SymbolInfo& symbol_info) {
-  if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
-    lg::debug("Compiler not instantiated for game version - {}",
-              version_to_game_name(file.m_game_version));
+    const std::shared_ptr<symbol_info::SymbolInfo> symbol_info) {
+  const auto& def_loc = symbol_info->m_def_location;
+  if (!def_loc) {
     return {};
-  }
-  const auto& compiler = m_compiler_instances[file.m_game_version].get();
-  std::optional<Docs::DefinitionLocation> def_loc;
-  const auto& goos_info = compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
-  if (goos_info) {
-    Docs::DefinitionLocation new_def_loc;
-    new_def_loc.filename = uri_from_path(goos_info->filename);
-    new_def_loc.line_idx = goos_info->line_idx_to_display;
-    new_def_loc.char_idx = goos_info->pos_in_line;
-    def_loc = new_def_loc;
   }
   return def_loc;
 }
@@ -250,22 +240,21 @@ Workspace::get_symbols_parent_type_path(const std::string& symbol_name,
   const auto parent_path = compiler->type_system().get_path_up_tree(symbol_name);
   for (const auto& parent : parent_path) {
     const auto symbol_infos = compiler->lookup_exact_name_info(parent);
-    if (!symbol_infos || symbol_infos->empty()) {
+    if (symbol_infos.empty()) {
       continue;
-    } else if (symbol_infos->size() > 1) {
+    } else if (symbol_infos.size() > 1) {
       continue;
     }
-    const auto& symbol_info = symbol_infos->at(0);
-    const auto& goos_info =
-        compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
-    if (!goos_info) {
+    const auto& symbol_info = symbol_infos.at(0);
+    const auto& def_loc = symbol_info->m_def_location;
+    if (!def_loc) {
       continue;
     }
     Docs::DefinitionLocation new_def_loc;
-    new_def_loc.filename = uri_from_path(goos_info->filename);
-    new_def_loc.line_idx = goos_info->line_idx_to_display;
-    new_def_loc.char_idx = goos_info->pos_in_line;
-    parents.push_back({parent, symbol_info.meta().docstring, new_def_loc});
+    new_def_loc.filename = uri_from_path(def_loc->file_path);
+    new_def_loc.line_idx = def_loc->line_idx;
+    new_def_loc.char_idx = def_loc->char_idx;
+    parents.push_back({parent, symbol_info->m_docstring, new_def_loc});
   }
   return parents;
 }
@@ -286,22 +275,21 @@ Workspace::get_types_subtypes(const std::string& symbol_name, const GameVersion 
       compiler->type_system().search_types_by_parent_type_strict(symbol_name);
   for (const auto& subtype_name : subtype_names) {
     const auto symbol_infos = compiler->lookup_exact_name_info(subtype_name);
-    if (!symbol_infos || symbol_infos->empty()) {
+    if (symbol_infos.empty()) {
       continue;
-    } else if (symbol_infos->size() > 1) {
+    } else if (symbol_infos.size() > 1) {
       continue;
     }
-    const auto& symbol_info = symbol_infos->at(0);
-    const auto& goos_info =
-        compiler->get_goos().reader.db.get_short_info_for(symbol_info.src_form());
-    if (!goos_info) {
+    const auto& symbol_info = symbol_infos.at(0);
+    const auto& def_loc = symbol_info->m_def_location;
+    if (!def_loc) {
       continue;
     }
     Docs::DefinitionLocation new_def_loc;
-    new_def_loc.filename = uri_from_path(goos_info->filename);
-    new_def_loc.line_idx = goos_info->line_idx_to_display;
-    new_def_loc.char_idx = goos_info->pos_in_line;
-    subtypes.push_back({subtype_name, symbol_info.meta().docstring, new_def_loc});
+    new_def_loc.filename = uri_from_path(def_loc->file_path);
+    new_def_loc.line_idx = def_loc->line_idx;
+    new_def_loc.char_idx = def_loc->char_idx;
+    subtypes.push_back({subtype_name, symbol_info->m_docstring, new_def_loc});
   }
   return subtypes;
 }
@@ -372,9 +360,6 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
         m_compiler_instances.at(*game_version)
             ->run_front_end_on_string("(make-group \"all-code\")");
         m_requester.send_progress_finish_request(progress_title, "indexed");
-
-        // Update global index
-        update_global_index(*game_version);
       } catch (std::exception& e) {
         // TODO - If it fails, annotate errors (DIAGNOSTIC TODO)
         m_requester.send_progress_finish_request(progress_title, "failed");
@@ -382,7 +367,8 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       }
     }
     m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(file_uri, content, *game_version));
-    m_tracked_og_files[file_uri].update_symbols(m_global_indicies[*game_version]);
+    m_tracked_og_files[file_uri].update_symbols(
+        m_compiler_instances.at(*game_version)->lookup_symbol_info_by_file(uri_to_path(file_uri)));
   }
 }
 
@@ -419,44 +405,32 @@ void Workspace::update_tracked_file(const LSPSpec::DocumentUri& file_uri,
       lg::debug("No compiler initialized for - {}", version_to_game_name(game_version));
       return;
     }
-    CompilationOptions options;
-    options.filename = uri_to_path(file_uri);
-    m_compiler_instances.at(game_version)->asm_file(options);
   }
 }
 
 void Workspace::tracked_file_will_save(const LSPSpec::DocumentUri& file_uri) {
   lg::debug("file will be saved - {}", file_uri);
   if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
-    lg::debug("updating global index - {}", file_uri);
-    // Update global index
-    // TODO - this is slow, but can be removed when the compiler itself is updated to dynamically
-    // keep this index properly updated as files are compiled!
-    update_global_index(m_tracked_og_files[file_uri].m_game_version);
+    // goalc is not an incremental compiler (yet) so I believe it will be a better UX
+    // to re-compile on the file save, rather than as the user is typing
+    const auto game_version = m_tracked_og_files[file_uri].m_game_version;
+    if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+      lg::debug("No compiler initialized for - {}", version_to_game_name(game_version));
+      return;
+    }
+    CompilationOptions options;
+    options.filename = uri_to_path(file_uri);
+    // re-compile the file
+    m_compiler_instances.at(game_version)->asm_file(options);
     // Update symbols for this specific file
-    m_tracked_og_files[file_uri].update_symbols(
-        m_global_indicies[m_tracked_og_files[file_uri].m_game_version]);
+    const auto symbol_infos =
+        m_compiler_instances.at(game_version)->lookup_symbol_info_by_file(options.filename);
+    m_tracked_og_files[file_uri].update_symbols(symbol_infos);
   }
 }
 
-void Workspace::update_global_index(const GameVersion game_version) {
-  const std::string progress_title =
-      fmt::format("Indexing {}", version_to_game_name_external(game_version));
-  try {
-    m_requester.send_progress_create_request(progress_title, "indexing project symbols", -1);
-    if (m_global_indicies.find(game_version) == m_global_indicies.end()) {
-      m_global_indicies[game_version] = OGGlobalIndex();
-    }
-    if (m_compiler_instances.find(game_version) != m_compiler_instances.end()) {
-      const auto [all_symbols, per_file_symbols] =
-          m_compiler_instances.at(game_version)->generate_per_file_symbol_info();
-      m_global_indicies[game_version].global_symbols = all_symbols;
-      m_global_indicies[game_version].per_file_symbols = per_file_symbols;
-    }
-    m_requester.send_progress_finish_request(progress_title, "indexed");
-  } catch (std::exception& e) {
-    m_requester.send_progress_finish_request(progress_title, "indexed");
-  }
+void Workspace::update_global_index(const GameVersion game_version){
+    // TODO - project wide indexing potentially (ie. finding references)
 };
 
 void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
@@ -495,111 +469,47 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
   ts_parser_delete(parser);
 }
 
-void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
+void WorkspaceOGFile::update_symbols(
+    const std::vector<std::shared_ptr<symbol_info::SymbolInfo>> symbol_infos) {
   m_symbols.clear();
-  // Determine the file key, the compiler internally splits at "goal_src"
-  // TODO - this is something that should change if/when decoupled from `jak-project`
-  const auto file_key =
-      file_util::convert_to_unix_path_separators(file_util::split_path_at(m_uri, {"goal_src"}));
-  if (index.per_file_symbols.find(file_key) != index.per_file_symbols.end()) {
-    const auto& file_symbols = index.per_file_symbols.at(file_key);
-    for (const auto& symbol : file_symbols.constants) {
-      LSPSpec::DocumentSymbol lsp_sym;
-      lsp_sym.m_name = symbol.name;
-      lsp_sym.m_kind = LSPSpec::SymbolKind::Constant;
-      lsp_sym.m_detail = symbol.description;
-      if (symbol.def_location) {
-        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
-                                         (uint32_t)symbol.def_location->char_idx);
-        lsp_sym.m_selectionRange = lsp_sym.m_range;
-      } else {
-        lsp_sym.m_range = {0, 0};
-      }
-      // TODO - would be nice to make this accurate but we don't store that info yet
-      lsp_sym.m_selectionRange = lsp_sym.m_range;
-      m_symbols.push_back(lsp_sym);
+  // TODO - sorting by definition location would be nice (maybe VSCode already does this?)
+  for (const auto& symbol_info : symbol_infos) {
+    LSPSpec::DocumentSymbol lsp_sym;
+    lsp_sym.m_name = symbol_info->m_name;
+    lsp_sym.m_detail = symbol_info->m_docstring;
+    switch (symbol_info->m_kind) {
+      case symbol_info::Kind::CONSTANT:
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Constant;
+        break;
+      case symbol_info::Kind::FUNCTION:
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Function;
+        break;
+      case symbol_info::Kind::GLOBAL_VAR:
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Variable;
+        break;
+      case symbol_info::Kind::MACRO:
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Operator;
+        break;
+      case symbol_info::Kind::METHOD:
+        lsp_sym.m_name = fmt::format("{}::{}", symbol_info->m_type, symbol_info->m_name);
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Method;
+        break;
+      case symbol_info::Kind::TYPE:
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Class;
+        break;
+      default:
+        lsp_sym.m_kind = LSPSpec::SymbolKind::Object;
+        break;
     }
-    for (const auto& symbol : file_symbols.functions) {
-      LSPSpec::DocumentSymbol lsp_sym;
-      lsp_sym.m_name = symbol.name;
-      lsp_sym.m_kind = LSPSpec::SymbolKind::Function;
-      lsp_sym.m_detail = symbol.description;
-      if (symbol.def_location) {
-        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
-                                         (uint32_t)symbol.def_location->char_idx);
-        lsp_sym.m_selectionRange = lsp_sym.m_range;
-      } else {
-        lsp_sym.m_range = {0, 0};
-      }
-      // TODO - would be nice to make this accurate but we don't store that info yet
-      lsp_sym.m_selectionRange = lsp_sym.m_range;
-      m_symbols.push_back(lsp_sym);
-      // NOTE - could potentially add local variables to this but eh, that doesn't feel that useful
+    if (symbol_info->m_def_location) {
+      lsp_sym.m_range = LSPSpec::Range(symbol_info->m_def_location->line_idx,
+                                       symbol_info->m_def_location->char_idx);
+    } else {
+      lsp_sym.m_range = LSPSpec::Range(0, 0);
     }
-    for (const auto& symbol : file_symbols.global_vars) {
-      LSPSpec::DocumentSymbol lsp_sym;
-      lsp_sym.m_name = symbol.name;
-      lsp_sym.m_kind = LSPSpec::SymbolKind::Variable;
-      lsp_sym.m_detail = symbol.description;
-      if (symbol.def_location) {
-        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
-                                         (uint32_t)symbol.def_location->char_idx);
-        lsp_sym.m_selectionRange = lsp_sym.m_range;
-      } else {
-        lsp_sym.m_range = {0, 0};
-      }
-      // TODO - would be nice to make this accurate but we don't store that info yet
-      lsp_sym.m_selectionRange = lsp_sym.m_range;
-      m_symbols.push_back(lsp_sym);
-    }
-    for (const auto& symbol : file_symbols.macros) {
-      LSPSpec::DocumentSymbol lsp_sym;
-      lsp_sym.m_name = symbol.name;
-      lsp_sym.m_kind = LSPSpec::SymbolKind::Operator;
-      lsp_sym.m_detail = symbol.description;
-      if (symbol.def_location) {
-        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
-                                         (uint32_t)symbol.def_location->char_idx);
-        lsp_sym.m_selectionRange = lsp_sym.m_range;
-      } else {
-        lsp_sym.m_range = {0, 0};
-      }
-      // TODO - would be nice to make this accurate but we don't store that info yet
-      lsp_sym.m_selectionRange = lsp_sym.m_range;
-      m_symbols.push_back(lsp_sym);
-    }
-    for (const auto& symbol : file_symbols.methods) {
-      LSPSpec::DocumentSymbol lsp_sym;
-      lsp_sym.m_name = fmt::format("{}::{}", symbol.type, symbol.name);
-      lsp_sym.m_kind = LSPSpec::SymbolKind::Method;
-      lsp_sym.m_detail = symbol.description;
-      if (symbol.def_location) {
-        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
-                                         (uint32_t)symbol.def_location->char_idx);
-        lsp_sym.m_selectionRange = lsp_sym.m_range;
-      } else {
-        lsp_sym.m_range = {0, 0};
-      }
-      // TODO - would be nice to make this accurate but we don't store that info yet
-      lsp_sym.m_selectionRange = lsp_sym.m_range;
-      m_symbols.push_back(lsp_sym);
-    }
-    for (const auto& symbol : file_symbols.types) {
-      LSPSpec::DocumentSymbol lsp_sym;
-      lsp_sym.m_name = symbol.name;
-      lsp_sym.m_kind = LSPSpec::SymbolKind::Class;
-      lsp_sym.m_detail = symbol.description;
-      if (symbol.def_location) {
-        lsp_sym.m_range = LSPSpec::Range((uint32_t)symbol.def_location->line_idx,
-                                         (uint32_t)symbol.def_location->char_idx);
-        lsp_sym.m_selectionRange = lsp_sym.m_range;
-      } else {
-        lsp_sym.m_range = {0, 0};
-      }
-      // TODO - would be nice to make this accurate but we don't store that info yet
-      lsp_sym.m_selectionRange = lsp_sym.m_range;
-      std::vector<LSPSpec::DocumentSymbol> class_syms = {};
-      for (const auto& field : symbol.fields) {
+    if (symbol_info->m_kind == symbol_info::Kind::TYPE) {
+      std::vector<LSPSpec::DocumentSymbol> type_symbols = {};
+      for (const auto& field : symbol_info->m_type_fields) {
         LSPSpec::DocumentSymbol field_sym;
         field_sym.m_name = field.name;
         field_sym.m_detail = field.description;
@@ -611,29 +521,31 @@ void WorkspaceOGFile::update_symbols(const OGGlobalIndex& index) {
         // TODO - we don't store the line number for fields
         field_sym.m_range = lsp_sym.m_range;
         field_sym.m_selectionRange = lsp_sym.m_selectionRange;
-        class_syms.push_back(field_sym);
+        type_symbols.push_back(field_sym);
       }
-      for (const auto& method : symbol.methods) {
+      for (const auto& method : symbol_info->m_type_methods) {
         LSPSpec::DocumentSymbol method_sym;
         method_sym.m_name = method.name;
         method_sym.m_kind = LSPSpec::SymbolKind::Method;
         // TODO - we don't store the line number for fields
         method_sym.m_range = lsp_sym.m_range;
         method_sym.m_selectionRange = lsp_sym.m_selectionRange;
-        class_syms.push_back(method_sym);
+        type_symbols.push_back(method_sym);
       }
-      for (const auto& state : symbol.states) {
+      for (const auto& state : symbol_info->m_type_states) {
         LSPSpec::DocumentSymbol state_sym;
         state_sym.m_name = state.name;
         state_sym.m_kind = LSPSpec::SymbolKind::Event;
         // TODO - we don't store the line number for fields
         state_sym.m_range = lsp_sym.m_range;
         state_sym.m_selectionRange = lsp_sym.m_selectionRange;
-        class_syms.push_back(state_sym);
+        type_symbols.push_back(state_sym);
       }
-      lsp_sym.m_children = class_syms;
-      m_symbols.push_back(lsp_sym);
+      lsp_sym.m_children = type_symbols;
     }
+    // TODO - would be nice to make this accurate but we don't store that info yet
+    lsp_sym.m_selectionRange = lsp_sym.m_range;
+    m_symbols.push_back(lsp_sym);
   }
 }
 

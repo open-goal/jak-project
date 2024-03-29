@@ -50,7 +50,7 @@ class WorkspaceOGFile {
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
 
   void parse_content(const std::string& new_content);
-  void update_symbols(const OGGlobalIndex& index);
+  void update_symbols(const std::vector<std::shared_ptr<symbol_info::SymbolInfo>> symbol_infos);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position) const;
   std::vector<OpenGOALFormResult> search_for_forms_that_begin_with(
       std::vector<std::string> prefix) const;
@@ -139,12 +139,14 @@ class Workspace {
   std::optional<DefinitionMetadata> get_definition_info_from_all_types(
       const std::string& symbol_name,
       const LSPSpec::DocumentUri& all_types_uri);
-  std::optional<SymbolInfo> get_global_symbol_info(const WorkspaceOGFile& file,
-                                                   const std::string& symbol_name);
+  std::optional<std::shared_ptr<symbol_info::SymbolInfo>> get_global_symbol_info(
+      const WorkspaceOGFile& file,
+      const std::string& symbol_name);
   std::optional<std::pair<TypeSpec, Type*>> get_symbol_typeinfo(const WorkspaceOGFile& file,
                                                                 const std::string& symbol_name);
-  std::optional<Docs::DefinitionLocation> get_symbol_def_location(const WorkspaceOGFile& file,
-                                                                  const SymbolInfo& symbol_info);
+  std::optional<symbol_info::DefinitionLocation> get_symbol_def_location(
+      const WorkspaceOGFile& file,
+      const std::shared_ptr<symbol_info::SymbolInfo> symbol_info);
   std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>>
   get_symbols_parent_type_path(const std::string& symbol_name, const GameVersion game_version);
   std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>> get_types_subtypes(
@@ -168,6 +170,7 @@ class Workspace {
   // and then we can track projects instead of games
   //
   // Until that decoupling happens, things like this will remain fairly clunky.
+  // TODO - change this to a shared_ptr so it can more easily be passed around functions
   std::unordered_map<GameVersion, std::unique_ptr<Compiler>> m_compiler_instances;
   std::unordered_map<GameVersion, OGGlobalIndex> m_global_indicies;
 };
