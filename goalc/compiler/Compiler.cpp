@@ -26,7 +26,8 @@ Compiler::Compiler(GameVersion version,
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
       m_repl(std::move(repl)),
-      m_make(repl_config, user_profile) {
+      m_make(repl_config, user_profile),
+      m_symbol_info(&m_goos.reader.db) {
   m_listener.add_debugger(&m_debugger);
   m_listener.set_default_port(version);
   m_ts.add_builtin_types(m_version);
@@ -57,9 +58,7 @@ Compiler::Compiler(GameVersion version,
 
   // add built-in forms to symbol info
   for (const auto& [builtin_name, builtin_info] : g_goal_forms) {
-    SymbolInfo::Metadata sym_meta;
-    sym_meta.docstring = builtin_info.first;
-    m_symbol_info.add_builtin(builtin_name, sym_meta);
+    m_symbol_info.add_builtin(builtin_name, builtin_info.first);
   }
 
   // load auto-complete history, only if we are running in the interactive mode.
@@ -458,6 +457,10 @@ void Compiler::asm_file(const CompilationOptions& options) {
     // Found the file!, use it!
     file_path = candidate_paths.at(0).string();
   }
+
+  // Evict any symbols we have indexed for this file, this is what
+  // helps to ensure we have an up to date and accurate symbol index
+  m_symbol_info.evict_symbols_using_file_index(file_path);
 
   auto code = m_goos.reader.read_from_file({file_path});
 

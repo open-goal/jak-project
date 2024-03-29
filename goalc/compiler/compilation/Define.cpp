@@ -11,10 +11,10 @@
  */
 Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest, Env* env) {
   auto args = get_va(form, rest);
-  SymbolInfo::Metadata sym_meta;
+  std::string docstring;
   // Grab the docstring (if it's there) and then rip it out so we can do the normal validation
   if (args.unnamed.size() == 3 && args.unnamed.at(1).is_string()) {
-    sym_meta.docstring = args.unnamed.at(1).as_string()->data;
+    docstring = args.unnamed.at(1).as_string()->data;
     args.unnamed.erase(args.unnamed.begin() + 1);
   }
 
@@ -35,6 +35,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   auto sym_val = fe->alloc_val<SymbolVal>(symbol_string(sym), m_ts.make_typespec("symbol"));
   auto compiled_val = compile_error_guard(val, env);
   auto as_lambda = dynamic_cast<LambdaVal*>(compiled_val);
+  auto in_gpr = compiled_val->to_gpr(form, fe);
   if (as_lambda) {
     // there are two cases in which we save a function body that is passed to a define:
     // 1. It generated code [so went through the compiler] and the allow_inline flag is set.
@@ -50,11 +51,14 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     }
     // Most defines come via macro invokations, we want the TRUE defining form location
     // if we can get it
+    // TODO - test the return value changes
     if (env->macro_expand_env()) {
-      m_symbol_info.add_function(symbol_string(sym), as_lambda->lambda.params,
-                                 env->macro_expand_env()->root_form(), sym_meta);
+      m_symbol_info.add_function(symbol_string(sym), in_gpr->type().last_arg().base_type(),
+                                 as_lambda->lambda.params, env->macro_expand_env()->root_form(),
+                                 docstring);
     } else {
-      m_symbol_info.add_function(symbol_string(sym), as_lambda->lambda.params, form, sym_meta);
+      m_symbol_info.add_function(symbol_string(sym), in_gpr->type().last_arg().base_type(),
+                                 as_lambda->lambda.params, form, docstring);
     }
   }
 
@@ -62,7 +66,6 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
   }
 
-  auto in_gpr = compiled_val->to_gpr(form, fe);
   auto existing_type = m_symbol_types.find(sym.as_symbol());
   if (existing_type == m_symbol_types.end()) {
     m_symbol_types[sym.as_symbol()] = in_gpr->type();
@@ -79,7 +82,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
 
   if (!as_lambda) {
     // Don't double-add functions as globals
-    m_symbol_info.add_global(symbol_string(sym), form, sym_meta);
+    m_symbol_info.add_global(symbol_string(sym), in_gpr->type().base_type(), form, docstring);
   }
 
   env->emit(form, std::make_unique<IR_SetSymbolValue>(sym_val, in_gpr));

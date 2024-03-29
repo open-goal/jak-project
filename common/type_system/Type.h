@@ -27,6 +27,7 @@ struct MethodInfo {
   int id = -1;
   std::string name;
   TypeSpec type;
+  // TODO - this is `object` sometimes, for example `(defmethod print ((this light))`
   std::string defined_in_type;
   bool no_virtual = false;
   bool overrides_parent = false;
