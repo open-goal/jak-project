@@ -1,5 +1,7 @@
 #include "lsp_util.h"
 
+#include <sstream>
+
 #include "common/util/string_util.h"
 
 #include "fmt/core.h"
