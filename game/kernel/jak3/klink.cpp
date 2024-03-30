@@ -147,9 +147,9 @@ void link_control::jak3_begin(Ptr<uint8_t> object_file,
     m_flags = flags;
     u16 version = l_hdr->core.version;
 
-    if (version == 4) {
+    if (version == 4 || version == 2) {
       // it's a v4 produced by opengoal... lets just try using jak2's linker
-      m_version = 4;
+      m_version = version;
       printf("got version 4, falling back to jak1/jak2\n");
       jak1_jak2_begin(object_file, name, size, heap, flags);
       return;
@@ -275,7 +275,7 @@ uint32_t link_control::jak3_work() {
     ASSERT(!m_opengoal);
     *(u32*)(((u8*)m_link_hdr) - 4) = *((s7 + jak3_symbols::FIX_SYM_LINK_BLOCK - 1).cast<u32>());
     rv = jak3_work_v5();
-  } else if (m_version == 4) {
+  } else if (m_version == 4 || m_version == 2) {
     // Note: this is a bit of a hack. Jak 3 doesn't support v2/v4. But, OpenGOAL generates data
     // objects in this format. We will just try reusing the jak 2 v2/v4 linker here and see if it
     // works. See corresponding call to jak1_jak2_begin in begin.

@@ -199,6 +199,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     //    init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
     //                                               BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
 
+    // 583
+    init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER,
+                                         BucketId::DEBUG, 0x8000);
     // 584
     init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
                                          BucketId::DEBUG_NO_ZBUF2, 0x8000);

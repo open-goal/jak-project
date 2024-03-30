@@ -448,6 +448,7 @@ enum class BucketId {
 
   TEX_HUD_PRIS2 = 580,
 
+  DEBUG = 583,
   DEBUG_NO_ZBUF2 = 584,
   DEBUG_MENU = 585,
 
