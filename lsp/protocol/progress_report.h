@@ -11,7 +11,7 @@ struct WorkDoneProgressCreateParams {
 void to_json(json& j, const WorkDoneProgressCreateParams& obj);
 void from_json(const json& j, WorkDoneProgressCreateParams& obj);
 
-struct ProgressPayloadBegin {
+struct WorkDoneProgressBegin {
   std::string kind = "begin";
   // Mandatory title of the progress operation. Used to briefly inform about
   // the kind of operation being performed.
@@ -36,20 +36,10 @@ struct ProgressPayloadBegin {
   // that are not following this rule. The value range is [0, 100]
   std::optional<uint32_t> percentage;
 };
-void to_json(json& j, const ProgressPayloadBegin& obj);
-void from_json(const json& j, ProgressPayloadBegin& obj);
+void to_json(json& j, const WorkDoneProgressBegin& obj);
+void from_json(const json& j, WorkDoneProgressBegin& obj);
 
-struct ProgressParamsBegin {
-  // The progress token provided by the client or server.
-  std::string token;
-  // Payload
-  ProgressPayloadBegin value;
-};
-
-void to_json(json& j, const ProgressParamsBegin& obj);
-void from_json(const json& j, ProgressParamsBegin& obj);
-
-struct ProgressPayloadReport {
+struct WorkDoneProgressReport {
   std::string kind = "report";
   // Controls enablement state of a cancel button. This property is only valid
   // if a cancel button got requested in the `WorkDoneProgressBegin` payload.
@@ -71,35 +61,25 @@ struct ProgressPayloadReport {
   // that are not following this rule. The value range is [0, 100]
   std::optional<uint32_t> percentage;
 };
-void to_json(json& j, const ProgressPayloadReport& obj);
-void from_json(const json& j, ProgressPayloadReport& obj);
+void to_json(json& j, const WorkDoneProgressReport& obj);
+void from_json(const json& j, WorkDoneProgressReport& obj);
 
-struct ProgressParamsReport {
-  // The progress token provided by the client or server.
-  std::string token;
-  // Payload
-  ProgressPayloadReport value;
-};
-
-void to_json(json& j, const ProgressParamsReport& obj);
-void from_json(const json& j, ProgressParamsReport& obj);
-
-struct ProgressPayloadEnd {
+struct WorkDoneProgressEnd {
   std::string kind = "end";
   // Optional, a final message indicating to for example indicate the outcome
   // of the operation.
   std::optional<std::string> message;
 };
-void to_json(json& j, const ProgressPayloadEnd& obj);
-void from_json(const json& j, ProgressPayloadEnd& obj);
+void to_json(json& j, const WorkDoneProgressEnd& obj);
+void from_json(const json& j, WorkDoneProgressEnd& obj);
 
-struct ProgressParamsEnd {
-  // The progress token provided by the client or server.
+struct ProgressNotificationPayload {
   std::string token;
-  // Payload
-  ProgressPayloadEnd value;
+  std::optional<WorkDoneProgressBegin> beginValue;
+  std::optional<WorkDoneProgressReport> reportValue;
+  std::optional<WorkDoneProgressEnd> endValue;
 };
+void to_json(json& j, const ProgressNotificationPayload& obj);
+void from_json(const json& j, ProgressNotificationPayload& obj);
 
-void to_json(json& j, const ProgressParamsEnd& obj);
-void from_json(const json& j, ProgressParamsEnd& obj);
 }  // namespace LSPSpec

@@ -32,3 +32,13 @@ void LSPSpec::to_json(json& j, const DidCloseTextDocumentParams& obj) {
 void LSPSpec::from_json(const json& j, DidCloseTextDocumentParams& obj) {
   j.at("textDocument").get_to(obj.m_textDocument);
 }
+
+void LSPSpec::to_json(json& j, const WillSaveTextDocumentParams& obj) {
+  json_serialize(textDocument);
+  json_serialize(reason);
+}
+
+void LSPSpec::from_json(const json& j, WillSaveTextDocumentParams& obj) {
+  json_deserialize_if_exists(textDocument);
+  json_deserialize_if_exists(reason);
+}

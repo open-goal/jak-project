@@ -45,6 +45,7 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
       env->function_env()->alloc_env<MacroExpandEnv>(env, name.as_symbol(), macro->body, o);
   try {
     const auto& compile_result = compile(goos_result, compile_env_for_macro);
+    // TODO - is this critical (do the args and such change?)?
     m_macro_specs.emplace(macro->name, macro->args);
     return compile_result;
   } catch (CompilerException& ce) {
@@ -180,10 +181,9 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
   rest = &pair_cdr(*rest);
 
   // check for potential docstring
-  SymbolInfo::Metadata sym_meta;
+  std::string docstring = "";
   if (rest->is_pair() && pair_car(*rest).is_string() && !pair_cdr(*rest).is_empty_list()) {
-    std::string docstring = pair_car(*rest).as_string()->data;
-    sym_meta.docstring = docstring;
+    docstring = pair_car(*rest).as_string()->data;
     rest = &pair_cdr(*rest);
   }
 
@@ -218,7 +218,7 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
 
   // TODO - eventually, it'd be nice if global constants were properly typed
   // and this information was propagated
-  m_symbol_info.add_constant(sym.name_ptr, form, sym_meta);
+  m_symbol_info.add_constant(sym.name_ptr, form, docstring);
 
   return get_none();
 }
