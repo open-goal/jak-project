@@ -1,5 +1,7 @@
 #include "type_hierarchy.h"
 
+#include "lsp/lsp_util.h"
+
 namespace lsp_handlers {
 std::optional<json> prepare_type_hierarchy(Workspace& workspace, int /*id*/, json raw_params) {
   auto params = raw_params.get<LSPSpec::TypeHierarchyPrepareParams>();
@@ -37,7 +39,7 @@ std::optional<json> prepare_type_hierarchy(Workspace& workspace, int /*id*/, jso
   if (symbol_info && !symbol_info.value()->m_docstring.empty()) {
     type_item.detail = symbol_info.value()->m_docstring;
   }
-  type_item.uri = def_loc->file_path;
+  type_item.uri = lsp_util::uri_from_path(def_loc->file_path);
   // TODO - this range is technically not entirely correct, we'd have to parse the defining file
   // with an AST to get the true extent of the deftype.  But for this purpose, its not really needed
   //

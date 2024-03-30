@@ -23,7 +23,8 @@ add_executable(lsp
   state/data/mips_instruction.cpp
   state/lsp_requester.cpp
   state/workspace.cpp
-  transport/stdio.cpp)
+  transport/stdio.cpp
+  lsp_util.cpp)
 
 target_compile_definitions(lsp PRIVATE -DJSON_DIAGNOSTICS=1)
 

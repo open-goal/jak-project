@@ -9,6 +9,7 @@
 #include "common/util/ast_util.h"
 #include "common/util/string_util.h"
 
+#include "lsp/lsp_util.h"
 #include "lsp/protocol/common_types.h"
 #include "tree_sitter/api.h"
 
@@ -19,79 +20,6 @@ extern const TSLanguage* tree_sitter_opengoal();
 }
 
 const TSLanguage* g_opengoalLang = tree_sitter_opengoal();
-
-std::string url_encode(const std::string& value) {
-  std::ostringstream escaped;
-  escaped.fill('0');
-  escaped << std::hex;
-
-  for (std::string::const_iterator i = value.begin(), n = value.end(); i != n; ++i) {
-    std::string::value_type c = (*i);
-
-    // Keep alphanumeric and other accepted characters intact
-    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~' || c == '/') {
-      escaped << c;
-      continue;
-    }
-
-    // Any other characters are percent-encoded
-    escaped << std::uppercase;
-    escaped << '%' << std::setw(2) << int((unsigned char)c);
-    escaped << std::nouppercase;
-  }
-
-  return escaped.str();
-}
-
-std::string url_decode(const std::string& input) {
-  std::ostringstream decoded;
-
-  for (std::size_t i = 0; i < input.length(); ++i) {
-    if (input[i] == '%') {
-      // Check if there are enough characters remaining
-      if (i + 2 < input.length()) {
-        // Convert the next two characters after '%' into an integer value
-        std::istringstream hexStream(input.substr(i + 1, 2));
-        int hexValue = 0;
-        hexStream >> std::hex >> hexValue;
-
-        // Append the decoded character to the result
-        decoded << static_cast<char>(hexValue);
-
-        // Skip the next two characters
-        i += 2;
-      }
-    } else if (input[i] == '+') {
-      // Replace '+' with space character ' '
-      decoded << ' ';
-    } else {
-      // Append the character as is
-      decoded << input[i];
-    }
-  }
-
-  return decoded.str();
-}
-
-LSPSpec::DocumentUri uri_from_path(fs::path path) {
-  auto path_str = file_util::convert_to_unix_path_separators(path.string());
-  // vscode works with proper URL encoded URIs for file paths
-  // which means we have to roll our own...
-  path_str = url_encode(path_str);
-  return fmt::format("file:///{}", path_str);
-}
-
-std::string uri_to_path(LSPSpec::DocumentUri uri) {
-  auto decoded_uri = url_decode(uri);
-  if (str_util::starts_with(decoded_uri, "file:///")) {
-#ifdef _WIN32
-    decoded_uri = decoded_uri.substr(8);
-#else
-    decoded_uri = decoded_uri.substr(7);
-#endif
-  }
-  return decoded_uri;
-}
 
 Workspace::Workspace(){};
 Workspace::~Workspace(){};
@@ -160,7 +88,7 @@ std::optional<DefinitionMetadata> Workspace::get_definition_info_from_all_types(
 // be determined (jak1 or jak2?) if we had a proper 'common' folder(s).
 std::optional<GameVersion> Workspace::determine_game_version_from_uri(
     const LSPSpec::DocumentUri& uri) {
-  const auto path = uri_to_path(uri);
+  const auto path = lsp_util::uri_to_path(uri);
   if (str_util::contains(path, "goal_src/jak1")) {
     return GameVersion::Jak1;
   } else if (str_util::contains(path, "goal_src/jak2")) {
@@ -254,16 +182,26 @@ Workspace::get_symbols_parent_type_path(const std::string& symbol_name,
     const auto symbol_infos = compiler->lookup_exact_name_info(parent);
     if (symbol_infos.empty()) {
       continue;
-    } else if (symbol_infos.size() > 1) {
+    }
+    std::shared_ptr<symbol_info::SymbolInfo> symbol_info;
+    if (symbol_infos.size() > 1) {
+      for (const auto& info : symbol_infos) {
+        if (info->m_kind == symbol_info::Kind::TYPE) {
+          symbol_info = info;
+        }
+      }
+    } else {
+      symbol_info = symbol_infos.at(0);
+    }
+    if (!symbol_info) {
       continue;
     }
-    const auto& symbol_info = symbol_infos.at(0);
     const auto& def_loc = symbol_info->m_def_location;
     if (!def_loc) {
       continue;
     }
     Docs::DefinitionLocation new_def_loc;
-    new_def_loc.filename = uri_from_path(def_loc->file_path);
+    new_def_loc.filename = lsp_util::uri_from_path(def_loc->file_path);
     new_def_loc.line_idx = def_loc->line_idx;
     new_def_loc.char_idx = def_loc->char_idx;
     parents.push_back({parent, symbol_info->m_docstring, new_def_loc});
@@ -298,7 +236,7 @@ Workspace::get_types_subtypes(const std::string& symbol_name, const GameVersion 
       continue;
     }
     Docs::DefinitionLocation new_def_loc;
-    new_def_loc.filename = uri_from_path(def_loc->file_path);
+    new_def_loc.filename = lsp_util::uri_from_path(def_loc->file_path);
     new_def_loc.line_idx = def_loc->line_idx;
     new_def_loc.char_idx = def_loc->char_idx;
     subtypes.push_back({subtype_name, symbol_info->m_docstring, new_def_loc});
@@ -352,7 +290,8 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
       lg::debug(
           "first time encountering a OpenGOAL file for game version - {}, initializing a compiler",
           version_to_game_name(*game_version));
-      const auto project_path = file_util::try_get_project_path_from_path(uri_to_path(file_uri));
+      const auto project_path =
+          file_util::try_get_project_path_from_path(lsp_util::uri_to_path(file_uri));
       lg::debug("Detected project path - {}", project_path.value());
       if (!file_util::setup_project_path(project_path)) {
         lg::debug("unable to setup project path, not initializing a compiler");
@@ -380,7 +319,8 @@ void Workspace::start_tracking_file(const LSPSpec::DocumentUri& file_uri,
     }
     m_tracked_og_files.emplace(file_uri, WorkspaceOGFile(file_uri, content, *game_version));
     m_tracked_og_files[file_uri].update_symbols(
-        m_compiler_instances.at(*game_version)->lookup_symbol_info_by_file(uri_to_path(file_uri)));
+        m_compiler_instances.at(*game_version)
+            ->lookup_symbol_info_by_file(lsp_util::uri_to_path(file_uri)));
   }
 }
 
@@ -431,7 +371,7 @@ void Workspace::tracked_file_will_save(const LSPSpec::DocumentUri& file_uri) {
       return;
     }
     CompilationOptions options;
-    options.filename = uri_to_path(file_uri);
+    options.filename = lsp_util::uri_to_path(file_uri);
     // re-compile the file
     m_compiler_instances.at(game_version)->asm_file(options);
     // Update symbols for this specific file
@@ -519,6 +459,8 @@ void WorkspaceOGFile::update_symbols(
     } else {
       lsp_sym.m_range = LSPSpec::Range(0, 0);
     }
+    // TODO - would be nice to make this accurate but we don't store that info yet
+    lsp_sym.m_selectionRange = lsp_sym.m_range;
     if (symbol_info->m_kind == symbol_info::Kind::TYPE) {
       std::vector<LSPSpec::DocumentSymbol> type_symbols = {};
       for (const auto& field : symbol_info->m_type_fields) {
@@ -555,8 +497,6 @@ void WorkspaceOGFile::update_symbols(
       }
       lsp_sym.m_children = type_symbols;
     }
-    // TODO - would be nice to make this accurate but we don't store that info yet
-    lsp_sym.m_selectionRange = lsp_sym.m_range;
     m_symbols.push_back(lsp_sym);
   }
 }
@@ -578,14 +518,9 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
         return node_str;
       }
     } else {
-      found_node = ts_node_child(found_node, 0);
-      uint32_t start = ts_node_start_byte(found_node);
-      uint32_t end = ts_node_end_byte(found_node);
-      const std::string node_str = m_content.substr(start, end - start);
-      const std::string node_name = ts_node_type(found_node);
-      if (node_name == "sym_name") {
-        return node_str;
-      }
+      // found_node = ts_node_child(found_node, 0);
+      // TODO - maybe get this one (but check if has an error)
+      return {};
     }
   }
   return {};
@@ -652,7 +587,7 @@ void WorkspaceIRFile::find_all_types_path(const std::string& line) {
       const auto& game_version = matches[1];
       const auto& all_types_path = matches[2];
       lg::debug("Found DTS Path - {} : {}", game_version.str(), all_types_path.str());
-      auto all_types_uri = uri_from_path(fs::path(all_types_path.str()));
+      auto all_types_uri = lsp_util::uri_from_path(fs::path(all_types_path.str()));
       lg::debug("DTS URI - {}", all_types_uri);
       if (valid_game_version(game_version.str())) {
         m_game_version = game_name_to_version(game_version.str());

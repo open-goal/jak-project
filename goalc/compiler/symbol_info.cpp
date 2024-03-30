@@ -69,11 +69,13 @@ void SymbolInfoMap::add_global(const std::string& name,
                                const std::string& type,
                                const goos::Object& defining_form,
                                const std::string& docstring) {
-  SymbolInfo info = {.m_kind = Kind::GLOBAL_VAR,
-                     .m_name = name,
-                     .m_def_form = defining_form,
-                     .m_type = type,
-                     .m_docstring = docstring};
+  SymbolInfo info = {
+      .m_kind = Kind::GLOBAL_VAR,
+      .m_name = name,
+      .m_def_form = defining_form,
+      .m_docstring = docstring,
+      .m_type = type,
+  };
   info.set_definition_location(m_textdb);
   const auto inserted_symbol = m_symbol_map.insert(name, info);
   if (info.m_def_location) {
@@ -95,11 +97,13 @@ void SymbolInfoMap::add_function(const std::string& name,
                                  const std::vector<GoalArg> args,
                                  const goos::Object& defining_form,
                                  const std::string& docstring) {
-  SymbolInfo info = {.m_kind = Kind::FUNCTION,
-                     .m_name = name,
-                     .m_return_type = return_type,
-                     .m_def_form = defining_form,
-                     .m_docstring = docstring};
+  SymbolInfo info = {
+      .m_kind = Kind::FUNCTION,
+      .m_name = name,
+      .m_def_form = defining_form,
+      .m_docstring = docstring,
+      .m_return_type = return_type,
+  };
   for (const auto& goal_arg : args) {
     ArgumentInfo arg_info;
     arg_info.name = goal_arg.name;
@@ -120,37 +124,51 @@ void SymbolInfoMap::add_type(const std::string& name,
                              Type* type_info,
                              const goos::Object& defining_form,
                              const std::string& docstring) {
-  SymbolInfo info = {.m_kind = Kind::TYPE,
-                     .m_name = name,
-                     .m_parent_type = type_info->get_parent(),
-                     .m_type_size = type_info->get_size_in_memory(),
-                     .m_def_form = defining_form,
-                     .m_docstring = docstring};
+  SymbolInfo info = {
+      .m_kind = Kind::TYPE,
+      .m_name = name,
+      .m_def_form = defining_form,
+      .m_docstring = docstring,
+      .m_parent_type = type_info->get_parent(),
+      .m_type_size = type_info->get_size_in_memory(),
+  };
   // Only structure types have fields
   auto as_structure_type = dynamic_cast<StructureType*>(type_info);
   if (as_structure_type) {  // generate the inspect method
     for (const auto& field : as_structure_type->fields()) {
       // TODO - field docstrings arent a thing, yet!
-      FieldInfo field_info = {.name = field.name(),
-                              .description = "",
-                              .type = field.type().base_type(),
-                              .is_array = field.is_array(),
-                              .is_inline = field.is_inline(),
-                              .is_dynamic = field.is_dynamic()};
+      FieldInfo field_info = {
+          .name = field.name(),
+          .description = "",
+          .type = field.type().base_type(),
+          .is_array = field.is_array(),
+          .is_dynamic = field.is_dynamic(),
+          .is_inline = field.is_inline(),
+      };
     }
   }
   for (const auto& method : type_info->get_methods_defined_for_type()) {
     if (method.type.base_type() == "state") {
-      TypeStateInfo state_info = {.id = method.id, .is_virtual = true, .name = method.name};
+      TypeStateInfo state_info = {
+          .name = method.name,
+          .is_virtual = true,
+          .id = method.id,
+      };
       info.m_type_states.push_back(state_info);
     } else {
       TypeMethodInfo method_info = {
-          .id = method.id, .is_override = method.overrides_parent, .name = method.name};
+          .id = method.id,
+          .name = method.name,
+          .is_override = method.overrides_parent,
+      };
       info.m_type_methods.push_back(method_info);
     }
   }
   for (const auto& [state_name, state_info] : type_info->get_states_declared_for_type()) {
-    TypeStateInfo type_state_info = {.is_virtual = false, .name = state_name};
+    TypeStateInfo type_state_info = {
+        .name = state_name,
+        .is_virtual = false,
+    };
     info.m_type_states.push_back(type_state_info);
   }
   info.set_definition_location(m_textdb);
@@ -163,12 +181,14 @@ void SymbolInfoMap::add_type(const std::string& name,
 void SymbolInfoMap::add_constant(const std::string& name,
                                  const goos::Object& defining_form,
                                  const std::string& docstring) {
-  SymbolInfo info = {.m_kind = Kind::CONSTANT,
-                     .m_name = name,
-                     .m_def_form = defining_form,
-                     .m_docstring = docstring,
-                     // TODO - unfortunately, constants are not properly typed
-                     .m_type = "unknown"};
+  SymbolInfo info = {
+      .m_kind = Kind::CONSTANT,
+      .m_name = name,
+      .m_def_form = defining_form,
+      .m_docstring = docstring,
+      // TODO - unfortunately, constants are not properly typed
+      .m_type = "unknown",
+  };
   info.set_definition_location(m_textdb);
   const auto inserted_symbol = m_symbol_map.insert(name, info);
   if (info.m_def_location) {
@@ -181,7 +201,11 @@ void SymbolInfoMap::add_macro(const std::string& name,
                               const goos::Object& defining_form,
                               const std::string& docstring) {
   SymbolInfo info = {
-      .m_kind = Kind::MACRO, .m_name = name, .m_def_form = defining_form, .m_docstring = docstring};
+      .m_kind = Kind::MACRO,
+      .m_name = name,
+      .m_def_form = defining_form,
+      .m_docstring = docstring,
+  };
   for (const auto& arg : arg_spec.unnamed) {
     info.m_macro_args.push_back(arg);
   }
@@ -203,7 +227,11 @@ void SymbolInfoMap::add_macro(const std::string& name,
 }
 
 void SymbolInfoMap::add_builtin(const std::string& name, const std::string& docstring) {
-  SymbolInfo info = {.m_kind = Kind::LANGUAGE_BUILTIN, .m_name = name, .m_docstring = docstring};
+  SymbolInfo info = {
+      .m_kind = Kind::LANGUAGE_BUILTIN,
+      .m_name = name,
+      .m_docstring = docstring,
+  };
   info.set_definition_location(m_textdb);
   m_symbol_map.insert(name, info);
 }
@@ -212,10 +240,12 @@ void SymbolInfoMap::add_method(const std::string& method_name,
                                const std::vector<GoalArg> args,
                                const MethodInfo& method_info,
                                const goos::Object& defining_form) {
-  SymbolInfo info = {.m_kind = Kind::METHOD,
-                     .m_name = method_name,
-                     .m_method_info = method_info,
-                     .m_method_builtin = method_info.id <= 9};
+  SymbolInfo info = {
+      .m_kind = Kind::METHOD,
+      .m_name = method_name,
+      .m_method_info = method_info,
+      .m_method_builtin = method_info.id <= 9,
+  };
   if (method_info.docstring) {
     info.m_docstring = method_info.docstring.value();
   }

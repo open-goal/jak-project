@@ -18,12 +18,12 @@ std::unordered_map<GameVersion, std::unordered_map<int, std::tuple<float, float,
                          {
                              {0, {223.0, 239.0, 223.0, 255.0}},  {1, {255.0, 255.0, 255.0, 255.0}},
                              {2, {255.0, 255.0, 255.0, 127.0}},  {3, {255.0, 191.0, 63.0, 255.0}},
-                             {4, {255.0, 199.0, -1.0, 255.0}},   {5, {255.0, 255.0, -1.0, 255.0}},
+                             {4, {255.0, 199.0, 0.0, 255.0}},    {5, {255.0, 255.0, 0.0, 255.0}},
                              {6, {63.0, 255.0, 63.0, 255.0}},    {7, {127.0, 127.0, 255.0, 255.0}},
                              {8, {-1.0, 255.0, 255.0, 255.0}},   {9, {255.0, 127.0, 255.0, 255.0}},
                              {10, {191.0, 255.0, 255.0, 255.0}}, {11, {127.0, 191.0, 191.0, 255.0}},
                              {12, {255.0, 255.0, 255.0, 255.0}}, {13, {159.0, 159.0, 159.0, 255.0}},
-                             {14, {255.0, 167.0, -1.0, 255.0}},  {15, {223.0, 255.0, 95.0, 255.0}},
+                             {14, {255.0, 167.0, 0.0, 255.0}},   {15, {223.0, 255.0, 95.0, 255.0}},
                              {16, {143.0, 175.0, 15.0, 255.0}},  {17, {175.0, 191.0, 175.0, 255.0}},
                              {18, {127.0, 143.0, 127.0, 255.0}}, {19, {95.0, 63.0, 95.0, 255.0}},
                              {20, {255.0, 241.0, 143.0, 255.0}}, {21, {63.0, 187.0, 239.0, 255.0}},
@@ -32,7 +32,7 @@ std::unordered_map<GameVersion, std::unordered_map<int, std::tuple<float, float,
                              {26, {31.0, 201.0, 151.0, 255.0}},  {27, {139.0, 147.0, 239.0, 255.0}},
                              {28, {173.0, 251.0, 255.0, 255.0}}, {29, {253.0, 245.0, 101.0, 255.0}},
                              {30, {241.0, 241.0, 3.0, 255.0}},   {31, {141.0, 207.0, 243.0, 255.0}},
-                             {32, {223.0, 239.0, 223.0, 255.0}}, {33, {191.0, -1.0, -1.0, 255.0}},
+                             {32, {223.0, 239.0, 223.0, 255.0}}, {33, {191.0, -1.0, 0.0, 255.0}},
                              {34, {255.0, 191.0, 63.0, 255.0}},
                          }},
                         {GameVersion::Jak2,
@@ -137,13 +137,14 @@ std::optional<json> document_color(Workspace& workspace, int /*id*/, json raw_pa
         const auto font_color_val = font_color_enum_entries.at(font_color);
         if (game_font_colors[game_version.value()].find(font_color_val) !=
             game_font_colors[game_version.value()].end()) {
-          const auto [red, green, blue, alpha] =
+          const auto& [red, green, blue, alpha] =
               game_font_colors[game_version.value()].at(font_color_val);
           LSPSpec::ColorInformation color_info;
           color_info.range = {
               {(uint32_t)result.start_point.first, (uint32_t)result.start_point.second},
               {(uint32_t)result.end_point.first, (uint32_t)result.end_point.second}};
-          color_info.color = LSPSpec::Color{red, green, blue, alpha};
+          color_info.color =
+              LSPSpec::Color{red / 255.0f, green / 255.0f, blue / 255.0f, alpha / 255.0f};
           colors.push_back(color_info);
         }
       }
