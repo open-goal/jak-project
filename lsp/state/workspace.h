@@ -50,7 +50,7 @@ class WorkspaceOGFile {
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
 
   void parse_content(const std::string& new_content);
-  void update_symbols(const std::vector<std::shared_ptr<symbol_info::SymbolInfo>> symbol_infos);
+  void update_symbols(const std::vector<std::shared_ptr<symbol_info::SymbolInfo>>& symbol_infos);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position) const;
   std::vector<OpenGOALFormResult> search_for_forms_that_begin_with(
       std::vector<std::string> prefix) const;

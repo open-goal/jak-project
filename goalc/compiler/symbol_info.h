@@ -137,7 +137,7 @@ class SymbolInfoMap {
   void add_fwd_dec(const std::string& name, const goos::Object& defining_form);
   void add_function(const std::string& name,
                     const std::string& return_type,
-                    const std::vector<GoalArg> args,
+                    const std::vector<GoalArg>& args,
                     const goos::Object& defining_form,
                     const std::string& docstring = "");
   void add_type(const std::string& name,

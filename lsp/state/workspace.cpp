@@ -384,19 +384,15 @@ void Workspace::update_global_index(const GameVersion game_version){
 };
 
 void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
-  if (m_tracked_ir_files.find(file_uri) != m_tracked_ir_files.end()) {
-    m_tracked_ir_files.erase(file_uri);
-  } else if (m_tracked_all_types_files.find(file_uri) != m_tracked_all_types_files.end()) {
-    m_tracked_all_types_files.erase(file_uri);
-  } else if (m_tracked_og_files.find(file_uri) != m_tracked_og_files.end()) {
-    m_tracked_og_files.erase(file_uri);
-  }
+  m_tracked_ir_files.erase(file_uri);
+  m_tracked_all_types_files.erase(file_uri);
+  m_tracked_og_files.erase(file_uri);
 }
 
 WorkspaceOGFile::WorkspaceOGFile(const LSPSpec::DocumentUri& uri,
                                  const std::string& content,
                                  const GameVersion& game_version)
-    : m_uri(uri), m_game_version(game_version) {
+    : m_uri(uri), m_game_version(game_version), version(0) {
   const auto [line_count, line_ending] =
       file_util::get_majority_file_line_endings_and_count(content);
   m_line_count = line_count;
@@ -420,7 +416,7 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
 }
 
 void WorkspaceOGFile::update_symbols(
-    const std::vector<std::shared_ptr<symbol_info::SymbolInfo>> symbol_infos) {
+    const std::vector<std::shared_ptr<symbol_info::SymbolInfo>>& symbol_infos) {
   m_symbols.clear();
   // TODO - sorting by definition location would be nice (maybe VSCode already does this?)
   for (const auto& symbol_info : symbol_infos) {

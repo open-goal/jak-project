@@ -94,7 +94,7 @@ void SymbolInfoMap::add_fwd_dec(const std::string& name, const goos::Object& def
 
 void SymbolInfoMap::add_function(const std::string& name,
                                  const std::string& return_type,
-                                 const std::vector<GoalArg> args,
+                                 const std::vector<GoalArg>& args,
                                  const goos::Object& defining_form,
                                  const std::string& docstring) {
   SymbolInfo info = {
@@ -145,6 +145,7 @@ void SymbolInfoMap::add_type(const std::string& name,
           .is_dynamic = field.is_dynamic(),
           .is_inline = field.is_inline(),
       };
+      info.m_type_fields.push_back(field_info);
     }
   }
   for (const auto& method : type_info->get_methods_defined_for_type()) {
