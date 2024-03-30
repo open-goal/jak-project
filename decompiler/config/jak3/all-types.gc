@@ -7449,6 +7449,19 @@
   (movie0 16)
   (movie1 17)
   (movie2 18)
+  (tm19 19)
+  (tm20 20)
+  (tm21 21)
+  (tm22 22)
+  (tm23 23)
+  (tm24 24)
+  (tm25 25)
+  (tm26 26)
+  (tm27 27)
+  (tm28 28)
+  (tm29 29)
+  (tm30 30)
+  (tm31 31)
   )
 ;; ---level-h:task-mask
 
@@ -7815,7 +7828,7 @@
    it will kick out levels as needed to make a free slot, and set up a new level, and start
    the load. This should only be used when you might want to start a load." (_type_ symbol symbol) level) ;; 12
     (activate-levels! "Make all levels 'active!" (_type_) int) ;; 13
-    (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
+    (debug-print-entities (_type_ symbol type string) none) ;; 14
     (debug-draw-actors (_type_ symbol) none) ;; 15
     (assign-draw-indices "Assign the order for levels to be drawn." (_type_) none) ;; 16
     (actors-update (_type_) none) ;; 17
@@ -7824,11 +7837,11 @@
     (level-get-target-inside "Get the level that the player is 'in'." (_type_) level) ;; 20
     (init-level-system "If needed, initialize the level system by loading common/art packages and allocating level heaps." (_type_ symbol) none) ;; 21
     (art-group-get-by-name "Check all levels for an art group with the given name." (_type_ string (pointer level)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
-    (level-group-method-23 () none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
-    (level-group-method-24 () none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
-    (level-group-method-25 () none) ;; 25 ;; (update-vis-volumes (_type_) none)
+    (update-vis-volumes (_type_) none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
+    (level-group-method-24 (_type_) none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
+    (print-volume-sizes (_type_) none) ;; 25
     (status-of-level-and-borrows "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
-    (do-nothing "Empty method." (_type_) none) ;; 27 ;; (print-volume-sizes (_type_) none)
+    (do-nothing "Empty method." (_type_) none) ;; 27
     (load-in-progress? "Is there a load happening now?" (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
     (is-load-allowed? "Does the exclusive-load setting allow us to load this level?" (_type_ (pointer symbol)) symbol) ;; 29
     (level-get-most-disposable "Get the level inside this level-group that should
@@ -23187,6 +23200,7 @@
 
 (declare-type entity-camera entity)
 (declare-type entity-nav-mesh structure)
+(declare-type entity-race-mesh entity)
 (declare-type city-level-info structure)
 
 (deftype bsp-node (structure)
@@ -23238,11 +23252,11 @@
    ; (ambients                 symbol                      :offset-assert 156) ;; now just #t?
    (subdivide-close          float                       :offset 160)
    (subdivide-far            float                       :offset-assert 164)
-   ; (race-meshes              (array entity-race-mesh)    :offset-assert 168)
+   (race-meshes              (array entity-race-mesh)    :offset-assert 168)
    (actor-birth-order        (pointer uint32)            :offset 172)
    (light-hash               light-hash                  :offset-assert 176)
    (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
-   ; (actor-groups             (array actor-group)         :offset-assert 184)
+   (actor-groups             (array actor-group)         :offset-assert 184)
    (region-trees             (array drawable-tree-region-prim) :offset 188)
    ; (region-array             region-array                :offset-assert 192)
    (collide-hash             collide-hash                :offset 196)
@@ -25078,7 +25092,7 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (entity-links-method-9 () none) ;; 9 ;; (birth? (_type_ vector) symbol)
+    (birth? (_type_ vector) symbol) ;; 9
     )
   )
 
@@ -28079,9 +28093,9 @@
     (nav-mesh-method-19 () none) ;; 19 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-20 () none) ;; 20 ;; (set-normals-from-adjacent-bounds (_type_ clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-21 () none) ;; 21 ;; (find-adjacent-bounds-one (_type_ vector nav-poly int int) none)
-    (nav-mesh-method-22 () none) ;; 22 ;; (compute-bounding-box-from-vertices (_type_ vector vector) none)
+    (nav-mesh-method-22 () none) ;; 22
     (nav-mesh-method-23 () none) ;; 23 ;; (init-from-entity (_type_ entity-nav-mesh) none)
-    (nav-mesh-method-24 () none) ;; 24 ;; (handle-birth (_type_) none)
+    (compute-bounding-box-from-vertices (_type_ vector vector) none) ;; 24 ;; (handle-birth (_type_) none)
     (nav-mesh-method-25 () none) ;; 25 ;; (handle-kill (_type_) none)
     (nav-mesh-method-26 () none) ;; 26 ;; (update-navigation (_type_) none)
     (nav-mesh-method-27 () none) ;; 27 ;; (new-nav-control (_type_ process-drawable) nav-control)
@@ -28305,7 +28319,7 @@
   :size-assert         #x120
   :flag-assert         #x2f00000120
   (:methods
-    (nav-control-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
+    (debug-draw (_type_) none) ;; 9
     (nav-control-method-10 () none) ;; 10 ;; (point-in-bsphere? (_type_ vector) symbol)
     (find-poly-containing-point-1 (_type_ vector) nav-poly) ;; 11
     (cloest-point-on-mesh (_type_ vector vector nav-poly) nav-poly) ;; 12
@@ -33185,7 +33199,7 @@
 (define-extern slave-los-state->string (function slave-los-state string))
 ;; (define-extern cam-line-dma function) ;; (function pointer)
 ;; (define-extern camera-line2d function) ;; (function vector4w vector4w pointer)
-;; (define-extern camera-plot-float-func function) ;; (function float float float float (function float float) vector4w none)
+(define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
 (define-extern camera-line-setup (function vector4w none))
 (define-extern camera-line-draw (function vector vector none))
 (define-extern camera-line (function vector vector vector4w none))
@@ -37402,45 +37416,45 @@
   )
 
 (define-extern *spawn-actors* symbol)
-;; (define-extern *compact-actors* object) ;; symbol
-;; (define-extern *vis-actors* object) ;; symbol
+(define-extern *compact-actors* symbol)
+(define-extern *vis-actors* symbol)
 (define-extern entity-by-name (function string entity))
 (define-extern entity-by-type (function type entity-actor))
 (define-extern entity-by-aid (function uint entity))
 (define-extern entity-actor-from-level-name (function symbol entity-actor))
-;; (define-extern entity-nav-mesh-by-aid function) ;; (function actor-id entity-nav-mesh)
-;; (define-extern nav-mesh-from-res-tag function) ;; (function entity symbol int nav-mesh)
-;; (define-extern entity-by-meters function) ;; (function float float float entity-actor)
-;; (define-extern process-by-ename function) ;; (function string process)
-;; (define-extern entity-process-count function) ;; (function symbol int)
-;; (define-extern entity-count function) ;; (function int)
-;; (define-extern entity-remap-names function) ;; (function pair none)
-;; (define-extern process-status-bits function) ;; (function process symbol none)
+(define-extern entity-nav-mesh-by-aid (function actor-id entity-nav-mesh))
+(define-extern nav-mesh-from-res-tag (function entity symbol int nav-mesh))
+(define-extern entity-by-meters (function float float float entity-actor))
+(define-extern process-by-ename (function string process))
+(define-extern entity-process-count (function symbol int))
+(define-extern entity-count (function int))
+(define-extern entity-remap-names (function pair none))
+(define-extern process-status-bits (function process symbol none))
 (define-extern process-entity-set! (function process entity entity))
 (define-extern process-task-mask (function process task-mask))
-;; (define-extern update-actor-vis-box function) ;; (function process-drawable vector vector none)
-;; (define-extern expand-bounding-box function) ;; (function vector vector vector vector none)
-;; (define-extern expand-bounding-box-from-nav-meshes function)
-;; (define-extern expand-vis-box-with-point function) ;; (function entity vector none)
-;; (define-extern *debug-actor-info* debug-actor-info) ;; debug-actor-info
-;; (define-extern *pid-string* object) ;; string
-;; (define-extern debug-actor function) ;; (function string none)
-;; (define-extern debug-actor-process function)
-;; (define-extern draw-actor-marks function) ;; (function process none)
+(define-extern update-actor-vis-box (function process-drawable vector vector none))
+(define-extern expand-bounding-box (function vector vector vector vector none))
+(define-extern expand-bounding-box-from-nav-meshes (function entity vector vector object))
+(define-extern expand-vis-box-with-point (function entity vector none))
+(define-extern *debug-actor-info* debug-actor-info)
+(define-extern *pid-string* string)
+(define-extern debug-actor (function string none))
+(define-extern debug-actor-process (function process none))
+(define-extern draw-actor-marks (function process none))
 (define-extern init-entity (function process entity-actor type none))
-;; (define-extern entity-deactivate-handler function) ;; (function process entity-actor none)
-;; (define-extern check-for-rougue-process function) ;; (function process int int level none)
-;; (define-extern process-drawable-scale-from-entity! function) ;; (function process-drawable entity none)
+(define-extern entity-deactivate-handler (function process entity-actor none))
+(define-extern check-for-rougue-process (function process int int level none))
+(define-extern process-drawable-scale-from-entity! (function process-drawable entity none))
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 (define-extern reset-actors (function symbol none))
 (define-extern reset-cameras (function none))
 (define-extern entity-birth-no-kill (function entity process))
-;; (define-extern entity-task-complete-on function) ;; (function entity none)
-;; (define-extern entity-task-complete-off function) ;; (function entity none)
+(define-extern entity-task-complete-on (function entity none))
+(define-extern entity-task-complete-off (function entity none))
 (define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status))
 (define-extern find-nearest-entity (function vector type entity))
-;; (define-extern entity-speed-test function) ;; (function string entity)
-;; (define-extern dump-entity-remap function) ;; (function object object none)
+(define-extern entity-speed-test (function string entity))
+(define-extern dump-entity-remap (function object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; path                           ;;
