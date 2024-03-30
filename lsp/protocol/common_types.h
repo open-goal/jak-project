@@ -28,6 +28,11 @@ void from_json(const json& j, Position& obj);
 struct Range {
   Position m_start;
   Position m_end;
+
+  Range(){};
+  Range(Position start, Position end);
+  // point constructor
+  Range(uint32_t line, uint32_t character);
 };
 void to_json(json& j, const Range& obj);
 void from_json(const json& j, Range& obj);

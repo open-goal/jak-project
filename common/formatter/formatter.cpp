@@ -2,8 +2,11 @@
 
 #include "formatter_tree.h"
 
+#include "common/formatter/rules/formatting_rules.h"
+#include "common/formatter/rules/rule_config.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/ast_util.h"
 #include "common/util/string_util.h"
 
 #include "tree_sitter/api.h"
@@ -400,8 +403,6 @@ std::string join_formatted_lines(const std::vector<std::string>& lines,
 std::optional<std::string> formatter::format_code(const std::string& source) {
   // Create a parser.
   std::shared_ptr<TSParser> parser(ts_parser_new(), TreeSitterParserDeleter());
-
-  // Set the parser's language (JSON in this case).
   ts_parser_set_language(parser.get(), tree_sitter_opengoal());
 
   // Build a syntax tree based on source code stored in a string.

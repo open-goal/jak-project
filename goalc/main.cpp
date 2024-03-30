@@ -8,6 +8,7 @@
 #include "common/util/diff.h"
 #include "common/util/string_util.h"
 #include "common/util/term_util.h"
+#include "common/util/trie_map.h"
 #include "common/util/unicode_util.h"
 #include "common/versions/versions.h"
 

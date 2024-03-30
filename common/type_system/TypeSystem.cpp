@@ -1442,6 +1442,21 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
   return results;
 }
 
+std::vector<std::string> TypeSystem::search_types_by_parent_type_strict(
+    const std::string& parent_type) {
+  std::vector<std::string> results = {};
+  for (const auto& [type_name, type_info] : m_types) {
+    // Only NullType's have no parent
+    if (!type_info->has_parent()) {
+      continue;
+    }
+    if (type_info->get_parent() == parent_type) {
+      results.push_back(type_name);
+    }
+  }
+  return results;
+}
+
 std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
     const int minimum_method_id,
     const std::optional<std::vector<std::string>>& existing_matches) {
