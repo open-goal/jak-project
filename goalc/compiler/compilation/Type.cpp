@@ -441,8 +441,6 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
     }
   }
 
-  const auto db = m_goos.reader.db;
-  const auto test = db.get_short_info_for(form);
   m_symbol_info.add_type(result.type.base_type(), result.type_info, form);
 
   // return none, making the value of (deftype..) unusable

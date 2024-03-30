@@ -107,6 +107,8 @@ struct MethodDocumentation {
   std::string name;
   std::string description = "";
   // TODO - this is `object` sometimes, for example `(defmethod print ((this light))`
+  // i believe this is because we always grab the first symbol, but of course, overridden methods
+  // dont work like that so things are likely working as intended
   std::string type;
   std::optional<DefinitionLocation> def_location;
   // TODO - need to track function calls to determine this, obviously cant be determined from just
