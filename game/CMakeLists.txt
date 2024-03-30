@@ -195,6 +195,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/prim.cpp
         mips2c/jak3_functions/sky.cpp
         mips2c/jak3_functions/texture.cpp
+        mips2c/jak3_functions/particle_curves.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

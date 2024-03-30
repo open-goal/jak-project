@@ -292,6 +292,9 @@ void OpenGLRenderer::init_bucket_renderers_jak2() {
                                              BucketId::TEX_LCOM_PRIS, m_texture_animator);
   init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-pris", BucketCategory::MERC,
                                             BucketId::MERC_LCOM_PRIS, m_merc2);
+  init_bucket_renderer<Generic2BucketRenderer>("gmerc-lcom-pris", BucketCategory::GENERIC,
+                                               BucketId::GMERC_LCOM_PRIS, m_generic2,
+                                               Generic2::Mode::NORMAL);
   init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
                                              BucketId::TEX_LCOM_WATER, m_texture_animator);
   init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-water", BucketCategory::MERC,

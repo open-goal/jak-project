@@ -1,0 +1,368 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; failed to figure out what this is:
+(defskelgroup skel-ragdoll-test wlander-male wlander-male-lod0-jg wlander-male-ragdoll-ja
+              ((wlander-male-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; definition for symbol *ragdoll-test-ragdoll-setup*, type ragdoll-setup
+(define *ragdoll-test-ragdoll-setup* (new 'static 'ragdoll-setup
+                                       :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+                                       :bg-collide-with (collide-spec backgnd player-list)
+                                       :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+                                         (new 'static 'ragdoll-joint-setup :joint-index 3 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 4 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 5 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 6 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 7 :parent-joint 4)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 8 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 9 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 10 :parent-joint 4)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 11 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 12 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 13 :parent-joint 3)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 14 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 15 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 16 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 17 :parent-joint 13)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 18 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 19 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 20 :parent-joint 2)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 21 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 22 :parent-joint 12)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 23 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 24 :parent-joint 12)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 25 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 26 :parent-joint -1)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 27 :parent-joint 16)
+                                         (new 'static 'ragdoll-joint-setup :joint-index 28 :parent-joint 19)
+                                         )
+                                       )
+        )
+
+;; definition of type ragdoll-test
+(deftype ragdoll-test (process-focusable)
+  ((ragdoll-proc  handle)
+   )
+  (:state-methods
+    reform
+    tweak
+    freefall-reform
+    freefall
+    idle
+    )
+  )
+
+;; definition for method 3 of type ragdoll-test
+(defmethod inspect ((this ragdoll-test))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tragdoll-proc: ~D~%" (-> this ragdoll-proc))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate reform (ragdoll-test)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :exit (behavior ()
+    (cond
+      ((!= *external-cam-mode* 'locked)
+       )
+      (*target*
+        (set! *external-cam-mode* #f)
+        )
+      (else
+        (set! *external-cam-mode* 'pad-0)
+        )
+      )
+    )
+  :trans (behavior ()
+    (ja :num! (loop!))
+    (let ((gp-0 (handle->process (-> self ragdoll-proc))))
+      (when gp-0
+        (if (nonzero? *ragdoll-edit-info*)
+            (ragdoll-proc-method-18 (the-as ragdoll-proc gp-0) *ragdoll-edit-info*)
+            )
+        (ragdoll-proc-method-17 (the-as ragdoll-proc gp-0) *ragdoll-edit-info*)
+        (let ((v1-14 (-> (the-as ragdoll-proc gp-0) ragdoll)))
+          (if (or (zero? v1-14) (= (-> v1-14 flex-blend) 0.0))
+              (go-virtual idle)
+              )
+          )
+        )
+      )
+    (format *stdcon* "~%press r2 to advance single-step~%")
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate tweak (ragdoll-test)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((v1-1 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> v1-1 from) (process->ppointer proc))
+         (set! (-> v1-1 num-params) argc)
+         (set! (-> v1-1 message) message)
+         (set! (-> v1-1 param 0) (-> block param 0))
+         (set! (-> v1-1 param 1) (-> block param 1))
+         (set! (-> v1-1 param 2) (-> block param 2))
+         (set! (-> v1-1 param 3) (-> block param 3))
+         (set! (-> v1-1 param 4) (-> block param 4))
+         (set! (-> v1-1 param 5) (-> block param 5))
+         (send-event-function (handle->process (-> self ragdoll-proc)) v1-1)
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((a0-1 (handle->process (-> self ragdoll-proc))))
+      (if a0-1
+          (ragdoll-proc-method-15 (the-as ragdoll-proc a0-1) #f (the-as vector #f) #t)
+          )
+      )
+    (vector-reset! (-> self root transv))
+    )
+  :exit (behavior ()
+    (let ((a0-1 (handle->process (-> self ragdoll-proc))))
+      (if a0-1
+          (disable-for-duration (the-as ragdoll-proc a0-1) (seconds 0.25))
+          )
+      )
+    (if (= *external-cam-mode* 'locked)
+        (set! *external-cam-mode* 'pad-0)
+        )
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) 1) (cpad-pressed? 0 r3))
+        (go-virtual reform)
+        )
+    (let ((gp-0 (handle->process (-> self ragdoll-proc))))
+      (when gp-0
+        (when (nonzero? *ragdoll-edit-info*)
+          (ragdoll-proc-method-18 (the-as ragdoll-proc gp-0) *ragdoll-edit-info*)
+          (if (-> (the-as ragdoll-proc gp-0) ragdoll)
+              (logclear! (-> (the-as ragdoll-proc gp-0) ragdoll ragdoll-flags) (ragdoll-flag rf2))
+              )
+          )
+        (ragdoll-proc-method-17 (the-as ragdoll-proc gp-0) *ragdoll-edit-info*)
+        )
+      )
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate freefall-reform (ragdoll-test)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (ja :num! (loop!))
+    (let ((gp-0 (handle->process (-> self ragdoll-proc))))
+      (when gp-0
+        (ragdoll-proc-method-17 (the-as ragdoll-proc gp-0) (the-as ragdoll-edit-info 0))
+        (let ((v1-9 (-> (the-as ragdoll-proc gp-0) ragdoll)))
+          (if (or (zero? v1-9) (= (-> v1-9 flex-blend) 0.0))
+              (go-virtual idle)
+              )
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate freefall (ragdoll-test)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((v1-1 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> v1-1 from) (process->ppointer proc))
+         (set! (-> v1-1 num-params) argc)
+         (set! (-> v1-1 message) message)
+         (set! (-> v1-1 param 0) (-> block param 0))
+         (set! (-> v1-1 param 1) (-> block param 1))
+         (set! (-> v1-1 param 2) (-> block param 2))
+         (set! (-> v1-1 param 3) (-> block param 3))
+         (set! (-> v1-1 param 4) (-> block param 4))
+         (set! (-> v1-1 param 5) (-> block param 5))
+         (send-event-function (handle->process (-> self ragdoll-proc)) v1-1)
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((a0-1 (handle->process (-> self ragdoll-proc))))
+      (if a0-1
+          (ragdoll-proc-method-15 (the-as ragdoll-proc a0-1) #f (the-as vector #f) #t)
+          )
+      )
+    (vector-reset! (-> self root transv))
+    )
+  :exit (behavior ()
+    (let ((a0-1 (handle->process (-> self ragdoll-proc))))
+      (if a0-1
+          (disable-for-duration (the-as ragdoll-proc a0-1) (seconds 0.25))
+          )
+      )
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) 1) (cpad-pressed? 0 triangle))
+        (go-virtual freefall-reform)
+        )
+    (let ((a0-7 (handle->process (-> self ragdoll-proc))))
+      (if a0-7
+          (ragdoll-proc-method-17 (the-as ragdoll-proc a0-7) (the-as ragdoll-edit-info 0))
+          )
+      )
+    (format *stdcon* "press triangle to edit ragdoll~%")
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate idle (ragdoll-test)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (cond
+      ((not (time-elapsed? (-> self state-time) 1))
+       )
+      (else
+        (format *stdcon* "up: reinit ragdoll~%")
+        (format *stdcon* "l2: reset position~%")
+        (format *stdcon* "rpush: edit ragdoll~%")
+        (format *stdcon* "triangle: run ragdoll~%")
+        (if (= (-> self node-list data 2 param0) cspace<-parented-matrix-joint-flip-z!)
+            (format *stdcon* "x: stop mirroring~%")
+            (format *stdcon* "x: mirror~%")
+            )
+        (when (cpad-pressed? 0 up)
+          (let ((v1-13 (handle->process (-> self ragdoll-proc))))
+            (when v1-13
+              (if (nonzero? (-> (the-as ragdoll-proc v1-13) ragdoll))
+                  (ragdoll-setup! (-> (the-as ragdoll-proc v1-13) ragdoll) self *ragdoll-test-ragdoll-setup*)
+                  )
+              )
+            )
+          )
+        (when (cpad-pressed? 0 l2)
+          (cond
+            ((-> self entity)
+             (set! (-> self root trans quad) (-> self entity trans quad))
+             )
+            (else
+              (vector-reset! (-> self root trans))
+              (set! (-> self root trans y) -163840.0)
+              )
+            )
+          (quaternion-identity! (-> self root quat))
+          )
+        (if (cpad-pressed? 0 r3)
+            (go-virtual tweak)
+            )
+        (if (cpad-pressed? 0 triangle)
+            (go-virtual freefall)
+            )
+        (when (cpad-pressed? 0 x)
+          (cond
+            ((= (-> self node-list data 2 param0) cspace<-parented-matrix-joint-flip-z!)
+             (let ((v1-54 (-> self node-list data 2)))
+               (set! (-> v1-54 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint!))
+               (set! (-> v1-54 param1) #f)
+               (set! (-> v1-54 param2) #f)
+               )
+             )
+            (else
+              (let ((v1-56 (-> self node-list data 2)))
+                (set! (-> v1-56 param0) (the-as (function cspace transformq none) cspace<-parented-matrix-joint-flip-z!))
+                (set! (-> v1-56 param1) #f)
+                (set! (-> v1-56 param2) #f)
+                )
+              )
+            )
+          )
+        (set! (-> (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)) trans quad)
+              (-> self root trans quad)
+              )
+        )
+      )
+    (ja :num! (loop!))
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+;; definition for function ragdoll-test-init-by-other
+;; INFO: Used lq/sq
+(defbehavior ragdoll-test-init-by-other ragdoll-test ((arg0 ragdoll-setup) (arg1 entity-actor))
+  (process-entity-set! self arg1)
+  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> self root) s5-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 orient-tform quad))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-ragdoll-test" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> self mask) (process-mask enemy))
+  (set! (-> self ragdoll-proc)
+        (ppointer->handle
+          (process-spawn ragdoll-proc *ragdoll-test-ragdoll-setup* :name "ragdoll-proc" :to self :stack-size #x5000)
+          )
+        )
+  (go-virtual idle)
+  )
+
+
+
+

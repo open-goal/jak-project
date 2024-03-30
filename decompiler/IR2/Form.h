@@ -1178,6 +1178,7 @@ class StringConstantElement : public FormElement {
                          FormStack& stack,
                          std::vector<FormElement*>* result,
                          bool allow_side_effects) override;
+  const std::string& value() const { return m_value; }
 
  private:
   std::string m_value;

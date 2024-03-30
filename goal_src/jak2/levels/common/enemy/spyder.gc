@@ -1041,14 +1041,13 @@
     (ja-channel-push! 2 (seconds 0.2))
     (let ((f30-0 0.0))
       (ja-no-eval :group! spyder-shoot-low-ja :num! (loop!) :frame-num 0.0)
-      (let ((a0-12 (-> self skel root-channel 1)))
-        (set! (-> a0-12 frame-interp 1) f30-0)
-        (set! (-> a0-12 frame-interp 0) f30-0)
-        (set! (-> a0-12 frame-group) (the-as art-joint-anim spyder-shoot-high-ja))
-        (set! (-> a0-12 param 0) 0.0)
-        (set! (-> a0-12 frame-num) 0.0)
-        (joint-control-channel-group! a0-12 (the-as art-joint-anim spyder-shoot-high-ja) num-func-chan)
-        )
+      (ja-no-eval :chan 1
+                  :group! spyder-shoot-high-ja
+                  :num! (chan 0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :frame-num 0.0
+                  )
       (let ((a0-14 (handle->process (-> self focus handle))))
         (when a0-14
           (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1072,12 +1071,7 @@
                     (until (time-elapsed? s3-1 (seconds 0.2))
                       (set! f30-0 (seek f30-0 (lerp-scale 0.0 1.0 (the float s4-0) 0.0 8.0) (seconds-per-frame)))
                       (ja :num! (loop!))
-                      (let ((a0-27 (-> self skel root-channel 1)))
-                        (set! (-> a0-27 frame-interp 1) f30-0)
-                        (set! (-> a0-27 frame-interp 0) f30-0)
-                        (set! (-> a0-27 param 0) 0.0)
-                        (joint-control-channel-group-eval! a0-27 (the-as art-joint-anim #f) num-func-chan)
-                        )
+                      (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
                       (suspend)
                       )
                     )
@@ -1297,16 +1291,16 @@
   (none)
   )
 
-(defmethod relocate ((this spyder) (arg0 int))
+(defmethod relocate ((this spyder) (offset int))
   (if (nonzero? (-> this joint))
-      (&+! (-> this joint) arg0)
+      (&+! (-> this joint) offset)
       )
   (dotimes (v1-4 4)
     (if (nonzero? (-> this joint-ik v1-4))
-        (&+! (-> this joint-ik v1-4) arg0)
+        (&+! (-> this joint-ik v1-4) offset)
         )
     )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 (defmethod init-enemy! ((this spyder))

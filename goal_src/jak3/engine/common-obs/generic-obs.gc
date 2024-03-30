@@ -20,6 +20,56 @@
 (define-extern process-entity-set! (function process entity entity))
 (define-extern cshape-reaction-default (function control-info collide-query vector vector collide-status))
 
+(defmacro set-part-tracker-params (type group duration callback userdata target mat-joint subsample-num)
+  `(case ,type
+    ((part-tracker)
+     (set! (-> *part-tracker-params-default* group) ,group)
+     (set! (-> *part-tracker-params-default* duration) ,duration)
+     (set! (-> *part-tracker-params-default* callback) ,callback)
+     (set! (-> *part-tracker-params-default* userdata) ,userdata)
+     (set! (-> *part-tracker-params-default* target) ,target)
+     (set! (-> *part-tracker-params-default* mat-joint) ,mat-joint)
+     )
+    (else
+     (set! (-> *part-tracker-subsampler-params-default* group) ,group)
+     (set! (-> *part-tracker-subsampler-params-default* duration) ,duration)
+     (set! (-> *part-tracker-subsampler-params-default* callback) ,callback)
+     (set! (-> *part-tracker-subsampler-params-default* userdata) ,userdata)
+     (set! (-> *part-tracker-subsampler-params-default* target) ,target)
+     (set! (-> *part-tracker-subsampler-params-default* mat-joint) ,mat-joint)
+     (set! (-> *part-tracker-subsampler-params-default* subsample-num) ,subsample-num)
+     )
+    )
+  )
+
+(defmacro part-tracker-spawn (type &key (group #f)
+                                   &key (to #f)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 0)
+                                   &key (duration (seconds 0))
+                                   &key (callback #f)
+                                   &key (userdata (the uint #f))
+                                   &key (target #f)
+                                   &key (mat-joint *launch-matrix*)
+                                   &key (subsample-num 1.0))
+  "Specialized `process-spawn` macro for [[part-tracker]]s.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+  (with-gensyms (new-tracker)
+    `(let ((,new-tracker (the-as ,type (get-process *default-dead-pool* ,type ,stack-size ,unk))))
+        (when ,new-tracker
+          ((method-of-type ,type activate) ,new-tracker ,to ,(if name name `(symbol->string (quote ,type))) ,stack)
+          (set-part-tracker-params ,type ,group ,duration ,callback ,userdata ,target ,mat-joint ,subsample-num)
+          (run-now-in-process ,new-tracker
+            (if (= ,type part-tracker) part-tracker-init part-tracker-subsampler-init)
+            (if (= ,type part-tracker) *part-tracker-params-default* *part-tracker-subsampler-params-default*))
+          (the (pointer ,type) (-> ,new-tracker ppointer))
+          )
+        )
+    )
+  )
+
 ;; DECOMP BEGINS
 
 (define *part-tracker-params-default* (new 'static 'part-tracker-init-params))
@@ -1032,7 +1082,7 @@
                                        0.0
                                        614400.0
                                        (the-as vector #f)
-                                       0.000000000000000000000000000000000000000000084
+                                       (shadow-flags shdf02 shdf03 shdf04 disable-draw)
                                        245760.0
                                        )
           )
@@ -3027,12 +3077,12 @@
   )
 
 ;; WARN: Return type mismatch process vs none.
-(defun explosion-spawn ((arg0 process-drawable) (arg1 type) (arg2 explosion-init-params))
+(defun explosion-spawn ((arg0 explosion-init-params) (arg1 process-drawable))
   (let* ((gp-0 (the-as process #f))
          (s3-0 (get-process *default-dead-pool* explosion #x4000 1))
          (v1-1 (when s3-0
                  (let ((t9-1 (method-of-type explosion activate)))
-                   (t9-1 (the-as explosion s3-0) (the-as process-tree arg1) "explosion" (the-as pointer #x70004000))
+                   (t9-1 (the-as explosion s3-0) arg1 "explosion" (the-as pointer #x70004000))
                    )
                  (run-now-in-process s3-0 explosion-init-by-other arg0)
                  (-> s3-0 ppointer)
@@ -3662,56 +3712,18 @@
           (cond
             ((logtest? (-> self particle-launchers (-> self current-part-index) 0 flags) (sp-group-flag sp13))
              (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
-             (let ((gp-2 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
-               (when gp-2
-                 (let ((t9-4 (method-of-type part-tracker-subsampler activate)))
-                   (t9-4
-                     (the-as part-tracker-subsampler gp-2)
-                     *entity-pool*
-                     "part-tracker-subsampler"
-                     (the-as pointer #x70004000)
-                     )
-                   )
-                 (let ((t9-5 run-function-in-process)
-                       (a0-18 gp-2)
-                       (a1-3 part-tracker-subsampler-init)
-                       )
-                   (set! (-> *part-tracker-subsampler-params-default* group)
-                         (-> self particle-launchers (-> self current-part-index) 0)
-                         )
-                   (set! (-> *part-tracker-subsampler-params-default* duration) 0)
-                   (set! (-> *part-tracker-subsampler-params-default* callback) #f)
-                   (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
-                   (set! (-> *part-tracker-subsampler-params-default* target) #f)
-                   (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
-                   (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
-                   ((the-as (function object object object none) t9-5) a0-18 a1-3 *part-tracker-subsampler-params-default*)
-                   )
-                 (-> gp-2 ppointer)
-                 )
+             (part-tracker-spawn
+               part-tracker-subsampler
+               :to *entity-pool*
+               :group (-> self particle-launchers (-> self current-part-index) 0)
                )
              )
             (else
               (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
-              (let ((gp-3 (get-process *default-dead-pool* part-tracker #x4000 0)))
-                (when gp-3
-                  (let ((t9-7 (method-of-type part-tracker activate)))
-                    (t9-7 (the-as part-tracker gp-3) *entity-pool* "part-tracker" (the-as pointer #x70004000))
-                    )
-                  (let ((t9-8 run-function-in-process)
-                        (a0-23 gp-3)
-                        (a1-6 part-tracker-init)
-                        )
-                    (set! (-> *part-tracker-params-default* group) (-> self particle-launchers (-> self current-part-index) 0))
-                    (set! (-> *part-tracker-params-default* duration) 0)
-                    (set! (-> *part-tracker-params-default* callback) #f)
-                    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-                    (set! (-> *part-tracker-params-default* target) #f)
-                    (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
-                    ((the-as (function object object object none) t9-8) a0-23 a1-6 *part-tracker-params-default*)
-                    )
-                  (-> gp-3 ppointer)
-                  )
+              (part-tracker-spawn
+                part-tracker
+                :to *entity-pool*
+                :group (-> self particle-launchers (-> self current-part-index) 0)
                 )
               )
             )

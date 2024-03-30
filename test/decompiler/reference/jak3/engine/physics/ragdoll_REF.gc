@@ -75,7 +75,7 @@
             )
       (set! (-> s4-1 action-mask) (collide-action solid))
       (mem-copy! (the-as pointer (-> s4-1 bbox)) (the-as pointer s5-1) 32)
-      ((method-of-object *collide-cache* collide-cache-method-12))
+      (fill-using-bounding-box *collide-cache* s4-1)
       (when (not (logtest? (-> this ragdoll-flags) (ragdoll-flag rf11)))
         (let ((s4-2 (new 'stack-no-clear 'inline-array 'water-sphere 2)))
           (dotimes (s3-1 2)
@@ -192,7 +192,7 @@
 
 ;; definition for method 20 of type ragdoll
 ;; WARN: Return type mismatch int vs none.
-(defmethod ragdoll-method-20 ((this ragdoll) (arg0 vector))
+(defmethod reset-vec! ((this ragdoll) (arg0 vector))
   (vector-reset! arg0)
   0
   (none)
@@ -308,7 +308,7 @@
       )
     (let ((s4-1 (-> this ragdoll-joints arg1)))
       (when (and (logtest? (-> this ragdoll-flags) (ragdoll-flag rf0)) (!= (-> s4-1 coll-rad) 0.0))
-        (when (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+        (when (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
           (vector-matrix*! arg0 arg0 (-> this mirror))
           (vector-matrix*! (-> s4-1 position) (-> s4-1 position) (-> this mirror))
           )
@@ -370,7 +370,7 @@
                      (ragdoll-method-23 this (-> s4-1 position) *zero-vector* 1.0 #f)
                      )
                    )
-                 (set! (-> s4-1 ground-pat) (the-as uint (-> s2-1 best-other-tri pat)))
+                 (set! (-> s4-1 ground-pat) (-> s2-1 best-other-tri pat))
                  (let ((f0-7 (fmin 1.0 f30-0)))
                    (vector+float*! arg0 arg0 s3-2 f0-7)
                    (vector-float*! s3-2 s3-2 (- 1.0 f0-7))
@@ -414,13 +414,13 @@
               (set! (-> s3-3 reg 0) (the-as uint 0))
               (if (logtest? (-> s4-1 ragdoll-joint-flags) (ragdoll-joint-flag rjf2))
                   (set! (-> s3-3 reg 0) (the-as uint 127))
-                  (set! (-> s3-3 reg 0) (shr (shl (-> s4-1 ground-pat) 48) 58))
+                  (set! (-> s3-3 reg 0) (the-as uint (-> s4-1 ground-pat material)))
                   )
               (sound-play-by-spec s3-3 (new-sound-id) (-> s4-1 position))
               )
             )
           )
-        (when (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+        (when (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
           (vector-matrix*! arg0 arg0 (-> this mirror))
           (vector-matrix*! (-> s4-1 position) (-> s4-1 position) (-> this mirror))
           )
@@ -459,7 +459,7 @@
           (s3-0 (new 'stack-no-clear 'vector))
           )
       (set! (-> s3-0 quad) (-> s4-0 0 position quad))
-      (if (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+      (if (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
           (vector-matrix*! s3-0 s3-0 (-> this mirror))
           )
       (vector-! s2-0 s3-0 s2-0)
@@ -628,7 +628,7 @@
                   )
                 (set! (-> s2-1 trans quad) (-> s1-1 position quad))
                 (set! (-> s2-1 trans w) 1.0)
-                (if (logtest? (-> s3-1 ragdoll-flags) (ragdoll-flag rf8))
+                (if (logtest? (-> s3-1 ragdoll-flags) (ragdoll-flag mirror))
                     (matrix*! s2-1 s2-1 (-> s3-1 mirror))
                     )
                 (cond
@@ -792,7 +792,7 @@
 (defmethod ragdoll-method-9 ((this ragdoll) (arg0 matrix) (arg1 process-drawable))
   (cond
     ((= (-> arg1 node-list data 2 param0) cspace<-parented-matrix-joint-flip-z!)
-     (logior! (-> this ragdoll-flags) (ragdoll-flag rf8))
+     (logior! (-> this ragdoll-flags) (ragdoll-flag mirror))
      (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg1 node-list data 2)))
            (a1-5 (vector-normalize-copy!
                    (new 'stack-no-clear 'vector)
@@ -805,7 +805,7 @@
        )
      )
     (else
-      (logclear! (-> this ragdoll-flags) (ragdoll-flag rf8))
+      (logclear! (-> this ragdoll-flags) (ragdoll-flag mirror))
       (matrix-identity! arg0)
       )
     )
@@ -834,7 +834,7 @@
          (let ((s3-1 (-> this ragdoll-joints s4-1)))
            (new 'stack-no-clear 'vector)
            (vector<-cspace! (-> s3-1 position) (-> arg0 node-list data (-> s3-1 joint-index)))
-           (if (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+           (if (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
                (vector-matrix*! (-> s3-1 position) (-> s3-1 position) (-> this mirror))
                )
            )
@@ -889,7 +889,7 @@
              ((logtest? (-> this ragdoll-flags) (ragdoll-flag rf5))
               (logclear! (-> this ragdoll-flags) (ragdoll-flag rf5))
               (set! sv-144 (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg0 node-list data (-> s1-0 joint-index))))
-              (if (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+              (if (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
                   (vector-matrix*! sv-144 sv-144 (-> this mirror))
                   )
               (vector-! (-> s1-0 velocity) sv-144 (-> s1-0 position))
@@ -898,7 +898,7 @@
               )
              (else
                (vector<-cspace! (-> s1-0 position) (-> arg0 node-list data (-> s1-0 joint-index)))
-               (if (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+               (if (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
                    (vector-matrix*! (-> s1-0 position) (-> s1-0 position) (-> this mirror))
                    )
                (cond
@@ -925,7 +925,7 @@
                  (set! (-> s0-0 quad) (-> arg0 root trans quad))
                  )
                )
-             (if (logtest? (-> this ragdoll-flags) (ragdoll-flag rf8))
+             (if (logtest? (-> this ragdoll-flags) (ragdoll-flag mirror))
                  (vector-matrix*! s0-0 s0-0 (-> this mirror))
                  )
              (set! (-> s1-0 joint-length) (vector-vector-distance (-> s1-0 position) s0-0))
@@ -1236,7 +1236,7 @@
                             (= (-> this ragdoll-joints (+ s1-1 1) parent-joint) -1)
                             )
                    (set! sv-336 (new 'stack-no-clear 'vector))
-                   (ragdoll-method-20 this sv-336)
+                   (reset-vec! this sv-336)
                    (let ((v1-104 sv-560))
                      (let ((a0-45 sv-560))
                        (.mov.vf vf6 vf0 :mask #b1000)
@@ -1593,9 +1593,9 @@
 
 ;; definition for method 16 of type ragdoll-proc
 ;; WARN: Return type mismatch int vs none.
-(defmethod ragdoll-proc-method-16 ((this ragdoll-proc) (arg0 int))
+(defmethod disable-for-duration ((this ragdoll-proc) (arg0 time-frame))
   (if (nonzero? (-> this ragdoll))
-      (turn-off-for-duration! (-> this ragdoll) (the-as time-frame arg0))
+      (turn-off-for-duration! (-> this ragdoll) arg0)
       )
   0
   (none)
@@ -1603,13 +1603,9 @@
 
 ;; definition for method 17 of type ragdoll-proc
 ;; WARN: Return type mismatch int vs none.
-(defmethod ragdoll-proc-method-17 ((this ragdoll-proc) (arg0 matrix))
+(defmethod ragdoll-proc-method-17 ((this ragdoll-proc) (arg0 ragdoll-edit-info))
   (if (nonzero? (-> this ragdoll))
-      (ragdoll-method-15
-        (-> this ragdoll)
-        (the-as process-drawable (ppointer->process (-> this parent)))
-        (the-as ragdoll-edit-info arg0)
-        )
+      (ragdoll-method-15 (-> this ragdoll) (the-as process-drawable (ppointer->process (-> this parent))) arg0)
       )
   0
   (none)
@@ -1617,7 +1613,7 @@
 
 ;; definition for method 18 of type ragdoll-proc
 ;; WARN: Return type mismatch int vs none.
-(defmethod ragdoll-proc-method-18 ((this ragdoll-proc) (arg0 ragdoll-edit-info) (arg1 process))
+(defmethod ragdoll-proc-method-18 ((this ragdoll-proc) (arg0 ragdoll-edit-info))
   (if (and (nonzero? (-> this ragdoll)) (-> this ragdoll) (nonzero? arg0) arg0)
       (ragdoll-edit-info-method-17
         arg0
@@ -1766,7 +1762,3 @@
       )
   (go-virtual idle)
   )
-
-
-
-
