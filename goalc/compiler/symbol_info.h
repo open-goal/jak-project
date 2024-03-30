@@ -153,7 +153,7 @@ class SymbolInfoMap {
                  const std::string& docstring = "");
   void add_builtin(const std::string& name, const std::string& docstring = "");
   void add_method(const std::string& method_name,
-                  const std::vector<GoalArg> args,
+                  const std::vector<GoalArg>& args,
                   const MethodInfo& method_info,
                   const goos::Object& defining_form);
   std::vector<std::shared_ptr<SymbolInfo>> lookup_symbols_by_file(

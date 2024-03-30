@@ -238,7 +238,7 @@ void SymbolInfoMap::add_builtin(const std::string& name, const std::string& docs
 }
 
 void SymbolInfoMap::add_method(const std::string& method_name,
-                               const std::vector<GoalArg> args,
+                               const std::vector<GoalArg>& args,
                                const MethodInfo& method_info,
                                const goos::Object& defining_form) {
   SymbolInfo info = {
