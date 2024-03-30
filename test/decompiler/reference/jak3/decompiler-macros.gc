@@ -82,7 +82,7 @@
   ;; this uses the self field, which seems to always just get set to the object.
   ;; confirmed in Jak 1 that using self here is useless, not sure...
   `(let ((the-pp ,ppointer))
-     (if the-pp (-> the-pp 0 self))
+     (the process (if the-pp (-> the-pp 0 self)))
      )
   )
 
@@ -1380,7 +1380,10 @@
                           `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@param0) :random-mult 1)
                           )
                         ((eq? field-name 'texture)
-                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                          (if (eq? (car param0) 'new)
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,(string->symbol-format "{}-{}" (car param0) (cadr param0)) :flags (sp-flag int))
+                            )
                           )
                         ((eq? field-name 'next-launcher)
                           `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,param0 :flags (sp-flag launcher))
@@ -1555,3 +1558,59 @@
       )
     )
   )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
+  )
+
+(defmacro .movz (result value check original)
+  `(if (= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro get-texture (name tpage)
+  `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage))
+  )
+
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000244140625)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
+
+(import "goal_src/jak3/engine/data/tpages.gc")
+(import "goal_src/jak3/engine/data/textures.gc")

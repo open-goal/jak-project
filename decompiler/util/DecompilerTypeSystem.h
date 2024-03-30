@@ -5,6 +5,7 @@
 #include "common/type_system/TypeSystem.h"
 
 #include "decompiler/Disasm/Register.h"
+#include "decompiler/data/TextureDB.h"
 
 namespace decompiler {
 class TP_Type;
@@ -38,6 +39,7 @@ class DecompilerTypeSystem {
       format_ops_with_dynamic_string_by_func_name;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> art_group_info;
   std::unordered_map<std::string, std::unordered_map<int, std::string>> jg_info;
+  std::unordered_map<u32, TexInfo> textures;
 
   void add_symbol(const std::string& name) {
     if (symbols.find(name) == symbols.end()) {

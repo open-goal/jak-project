@@ -327,71 +327,98 @@
     )
   )
 
-(defmacro while (test &rest body)
+(defmacro continue (&key (from #f))
+  "Skips the remainder of the current loop iteration. Optionally continue from a labeled loop."
+  `(return-from ,(string->symbol (if from (string-append (symbol->string from) "-continue") "continue")) #f)
+ )
+
+(defmacro break (&key (from #f))
+  "Exits the current loop immediately. Optionally break from a labeled loop."
+  `(return-from ,(string->symbol (if from (string-append (symbol->string from) "-break") "break")) #f)
+ )
+
+(defmacro while (test &key (label #f) &rest body)
   "While loop. The test is evaluated before body."
   (with-gensyms (reloop test-exit)
-    `(begin
-       (goto ,test-exit)
-       (label ,reloop)
-       ,@body
-       (label ,test-exit)
-       (when-goto ,test ,reloop)
-       #f
-       )
+    (let ((break-label    (string->symbol (if label (string-append (symbol->string label) "-break") "break")))
+          (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
+      `(block ,break-label
+        (goto ,test-exit)
+        (label ,reloop)
+        (block ,continue-label
+          ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+        )
+        (label ,test-exit)
+        (when-goto ,test ,reloop)
+        #f
+        )
     )
   )
+)
 
-(defmacro until (test &rest body)
+(defmacro until (test &key (label #f) &rest body)
   "Until loop. The body is evaluated before the test."
   (with-gensyms (reloop)
-    `(begin
-       (label ,reloop)
-       ,@body
-       (when-goto (not ,test) ,reloop)
-       )
+    (let ((break-label    (string->symbol (if label (string-append (symbol->string label) "-break") "break")))
+          (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
+      `(block ,break-label
+        (label ,reloop)
+        (block ,continue-label
+          ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+        )
+        (when-goto (not ,test) ,reloop)
+        )
     )
   )
+)
 
-(defmacro dotimes (var &rest body)
+(defmacro dotimes (var &key (label #f) &rest body)
   "Loop like for (int i = 0; i < end; i++)
    var is a list made up of a variable to bind the amount to (second item), and the remaining forms are evaluated after the loop is finished."
-  `(let (( ,(first var) 0))
-     (while (< ,(first var) ,(second var))
-            ,@body
-            (1+! ,(first var))
-            )
-     ,@(cddr var)
-     )
+  (let ((continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
+    `(let (( ,(first var) 0))
+      (while (< ,(first var) ,(second var)) :label ,label
+              (block ,continue-label
+                ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+              )
+              (1+! ,(first var))
+              )
+      ,@(cddr var)
+      )
   )
+)
 
-(defmacro countdown (var &rest body)
+(defmacro countdown (var &key (label #f) &rest body)
   "Loop like for (int i = end; i-- > 0)"
   `(let ((,(first var) ,(second var)))
-     (while (!= ,(first var) 0)
+     (while (!= ,(first var) 0) :label ,label
        (set! ,(first var) (- ,(first var) 1))
        ,@body
        )
      )
   )
 
-(defmacro loop (&rest body)
+(defmacro loop (&key (label #f) &rest body)
   "Loop this code forever."
-  `(while #t
+  `(while #t :label ,label
       ,@body)
   )
 
-(defmacro doarray (bindings &rest body)
+(defmacro doarray (bindings &key (label #f) &rest body)
   "iterate over an array. usage: (doarray (<array entry name> <array>) <code>)"
 
   (with-gensyms (len i)
   (let ((val (first bindings))
-        (arr (second bindings)))
+        (arr (second bindings))
+        (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
 
         `(let* ((,len (-> ,arr length))
                 (,i 0)
                 (,val (-> ,arr ,i)))
-             (while (< ,i ,len)
-                ,@body
+             (while (< ,i ,len) :label ,label
+                (block ,continue-label
+                  ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+                )
                 (1+! ,i)
                 (set! ,val (-> ,arr ,i))
                 )
@@ -1179,6 +1206,38 @@
     )
   ;; `(defconstant ,name (-> self node-list data ,idx))
   `(empty)
+  )
+
+(defmacro def-tex (tex-name tpage idx)
+  "define a new texture for a tpage. adds it to a global map stored in goos."
+  ;; grab data about the texture
+  (let* ((tpage-string (symbol->string tpage))
+         (tex-name-string tex-name)
+         (tpage-info-lookup (hash-table-try-ref *tpage-info* tpage))
+         (tpage-info-exists (car tpage-info-lookup))
+         (tpage-info (cdr tpage-info-lookup))
+         )
+    ;; no tpage was found, make a new one and add it.
+    (when (not tpage-info-exists)
+      (set! tpage-info (make-string-hash-table))
+      (hash-table-set! *tpage-info* tpage-string tpage-info)
+      )
+    ;; lookup name in our tpage
+    (let* ((tex-name-lookup (hash-table-try-ref tpage-info tex-name-string))
+           (tex-name-exists (car tex-name-lookup))
+           (tex-new (list tex-name idx))) ;; this is the format of the individual entries
+      ;; found, check if valid
+      (if (and tex-name-exists (not (eq? (cdr tex-name-lookup) tex-new)))
+          (fmt #t "error redefining texture. data mismatch: {}\n" tex-new)
+          #f)
+      ;; not found. add to the tpage.
+      (when (not tex-name-exists)
+        (hash-table-set! tpage-info tex-name-string tex-new)
+        )
+      )
+    )
+  `(defconstant ,(string->symbol-format "{}-{}" tex-name tpage)
+     (new 'static 'texture-id :page ,tpage :index ,idx))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

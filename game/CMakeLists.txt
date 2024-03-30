@@ -83,6 +83,7 @@ set(RUNTIME_SOURCE
         graphics/sceGraphicsInterface.cpp
         graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/jak2_tpage_dir.cpp
+        graphics/texture/jak3_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         ${OG_ASM_FUNCS_FILE}
@@ -186,8 +187,14 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/vortex.cpp
         mips2c/jak3_functions/collide_func.cpp
         mips2c/jak3_functions/debug.cpp
+        mips2c/jak3_functions/font.cpp
+        mips2c/jak3_functions/foreground.cpp
+        mips2c/jak3_functions/generic_effect.cpp
+        mips2c/jak3_functions/joint.cpp
         mips2c/jak3_functions/lights.cpp
+        mips2c/jak3_functions/prim.cpp
         mips2c/jak3_functions/sky.cpp
+        mips2c/jak3_functions/texture.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

@@ -11,6 +11,8 @@
 (define-extern activate-progress (function process symbol none))
 (define-extern *progress-work* progress-work)
 (define-extern progress-allowed? (function symbol))
+(define-extern deactivate-progress (function none))
+(define-extern hide-progress-screen (function none))
 
 ;; +++progress-icon-flags
 (defenum progress-icon-flags
@@ -146,7 +148,7 @@
 (deftype progress-list (basic)
   ()
   (:methods
-    (progress-list-method-9 () none)
+    (progress-list-method-9 (_type_ int) game-task-info)
     )
   )
 
@@ -226,41 +228,43 @@
    (progress-id              uint32)
    (lock-tick-count          int32)
    )
+  (:state-methods
+    come-in
+    idle
+    go-away
+    gone
+    )
   (:methods
-    (progress-method-20 () none)
-    (progress-method-21 () none)
-    (progress-method-22 () none)
-    (progress-method-23 () none)
-    (progress-method-24 () none)
-    (progress-method-25 () none)
-    (progress-method-26 () none)
-    (progress-method-27 () none)
-    (progress-method-28 () none)
-    (progress-method-29 () none)
-    (progress-method-30 () none)
-    (progress-method-31 () none)
-    (progress-method-32 () none)
-    (progress-method-33 () none)
-    (progress-method-34 () none)
-    (progress-method-35 () none)
-    (progress-method-36 () none)
-    (progress-method-37 () none)
-    (progress-method-38 () none)
-    (progress-method-39 () none)
-    (progress-method-40 () none)
-    (progress-method-41 () none)
-    (progress-method-42 () none)
-    (progress-method-43 () none)
-    (progress-method-44 () none)
-    (progress-method-45 () none)
-    (progress-method-46 () none)
-    (progress-method-47 () none)
-    (progress-method-48 () none)
-    (progress-method-49 () none)
-    (progress-method-50 () none)
-    (progress-method-51 () none)
-    (progress-method-52 () none)
-    (progress-method-53 () none)
+    (init-defaults (_type_) object)
+    (respond-to-cpad (_type_) none)
+    (gone? (_type_) object)
+    (can-go-back? (_type_) symbol)
+    (get-state-check-card (_type_ symbol) symbol)
+    (push-state (_type_) int)
+    (pop-state (_type_) int)
+    (set-next-state (_type_ symbol int) int)
+    (set-menu-options (_type_ symbol) int)
+    (progress-method-33 (_type_ progress-box) none)
+    (progress-method-34 (_type_) none)
+    (get-scissor-stack-top (_type_) vector)
+    (get-language-by-idx (_type_ int) int)
+    (progress-method-37 (_type_) none)
+    (progress-method-38 (_type_ font-context float) none)
+    (progress-method-39 (_type_) none)
+    (progress-method-40 (_type_ font-context int int float) none)
+    (progress-method-41 (_type_ progress-box float) none)
+    (progress-method-42 (_type_ progress-box float) none)
+    (progress-method-43 (_type_ progress-box float) none)
+    (progress-method-44 (_type_ font-context string) none)
+    (progress-method-45 (_type_ font-context float float string float float int) float)
+    (progress-method-46 (_type_ font-context float int) none)
+    (progress-method-47 (_type_ font-context symbol symbol) none)
+    (draw-prev-next-footer (_type_ font-context float) none)
+    (draw-yes-no-style-footer (_type_ font-context text-id text-id) none)
+    (progress-method-50 (_type_ font-context text-id text-id text-id symbol symbol float) none)
+    (progress-method-51 (_type_ font-context) none)
+    (progress-method-52 (_type_ font-context string float float float float float) none)
+    (progress-method-53 (_type_ font-context) none)
     )
   )
 
@@ -307,7 +311,7 @@
   ((icons  progress-icon-part  :dynamic :offset  16)
    )
   (:methods
-    (progress-icon-array-method-9 () none)
+    (draw-icon-array! (_type_ int int float float rgba float) none)
     )
   )
 
@@ -319,8 +323,8 @@
    (box               hud-box  1 :inline)
    )
   (:methods
-    (menu-option-method-9 () none)
-    (menu-option-method-10 () none)
+    (respond-progress (_type_ progress symbol) int)
+    (draw-option (_type_ progress font-context int symbol) none)
     (menu-option-method-11 () none)
     )
   )
@@ -521,10 +525,10 @@
    (icon-offsety  float)
    )
   (:methods
-    (highscore-page-info-method-9 () none)
-    (highscore-page-info-method-10 () none)
-    (highscore-page-info-method-11 () none)
-    (highscore-page-info-method-12 () none)
+    (highscore-page-info-method-9 (_type_ progress font-context float float) none)
+    (highscore-page-info-method-10 (_type_ font-context float float float) none)
+    (highscore-page-info-method-11 (_type_ font-context int float float float) none)
+    (highscore-time->string (_type_ float) string)
     )
   )
 
@@ -533,11 +537,11 @@
   ((current-index  float)
    (target-index   float)
    (num-pages      int32)
-   (pages          highscore-page-info  16)
-   (info           basic)
+   (pages          paged-menu-option  16)
+   (info           (array highscore-page-info))
    )
   (:methods
-    (menu-highscores-option-method-12 () none)
+    (menu-highscores-option-method-12 (_type_) int)
     )
   )
 
@@ -550,7 +554,7 @@
    (vehicle  game-vehicles)
    )
   (:methods
-    (controls-string-info-method-9 () none)
+    (controls-string-info-method-9 (_type_ progress font-context float float float float float) none)
     )
   )
 
@@ -563,14 +567,14 @@
    (current-index  float)
    (target-index   float)
    (num-text       int32)
-   (on-screen      basic)
-   (text           text-id  9)
+   (on-screen      symbol)
+   (text           game-text  9)
    (strings        (array controls-string-info))
    )
   (:methods
-    (controls-page-info-method-9 () none)
-    (controls-page-info-method-10 () none)
-    (controls-page-info-method-11 () none)
+    (init-text! (_type_) int)
+    (controls-page-info-method-10 (_type_) none)
+    (controls-page-info-method-11 (_type_ progress font-context float float) none)
     )
   )
 
@@ -579,10 +583,10 @@
   ((current-index  float)
    (target-index   float)
    (pages          controls-page-info  7 :offset  76)
-   (info           basic)
+   (info           (array controls-page-info))
    )
   (:methods
-    (menu-controls-option-method-12 () none)
+    (menu-controls-option-method-12 (_type_) int)
     )
   )
 
@@ -596,8 +600,8 @@
    (flags             secret-item-option-flags)
    )
   (:methods
-    (secret-item-option-method-12 () none)
-    (secret-item-option-method-13 () none)
+    (secret-item-option-method-12 (_type_) int)
+    (secret-item-option-method-13 (_type_) game-vehicles)
     )
   )
 
@@ -704,8 +708,8 @@
    (item        game-items)
    )
   (:methods
-    (inventory-item-method-9 () none)
-    (inventory-item-method-10 () none)
+    (item-obtained? (_type_) symbol)
+    (inventory-item-method-10 (_type_ progress font-context float float symbol) none)
     )
   )
 
@@ -719,8 +723,8 @@
    (items        (array inventory-item))
    )
   (:methods
-    (inventory-item-group-method-9 () none)
-    (inventory-item-group-method-10 () none)
+    (have-items? (_type_) symbol)
+    (inventory-item-group-method-10 (_type_ progress font-context float float int) none)
     )
   )
 
@@ -731,7 +735,7 @@
    (groups         (array inventory-item-group))
    )
   (:methods
-    (inventory-screen-method-9 () none)
+    (inventory-screen-method-9 (_type_ progress font-context float float) none)
     )
   )
 

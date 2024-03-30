@@ -112,7 +112,166 @@
   )
 
 ;; definition (debug) for function target-history-print
-;; ERROR: function was not converted to expressions. Cannot decompile.
+;; WARN: new jak 2 until loop case, check carefully
+(defun-debug target-history-print ((arg0 history-iterator))
+  (local-vars
+    (sv-16 object)
+    (sv-24 int)
+    (sv-32 collide-status)
+    (sv-40 number)
+    (sv-44 vector)
+    (sv-48 vector)
+    (sv-52 vector)
+    (sv-56 vector)
+    (sv-60 vector)
+    (sv-64 vector)
+    (sv-68 number)
+    (sv-72 history-elt)
+    (sv-80 time-frame)
+    (sv-88 uint)
+    )
+  (set! sv-16 (-> arg0 out))
+  (set! sv-24 0)
+  (set! sv-32 (collide-status))
+  (set! sv-40 0)
+  (set! sv-44 *zero-vector*)
+  (set! sv-48 *zero-vector*)
+  (set! sv-52 *zero-vector*)
+  (set! sv-56 *zero-vector*)
+  (set! sv-60 *zero-vector*)
+  (set! sv-64 *zero-vector*)
+  (set! sv-68 0)
+  (until #f
+    (set! sv-72 (update-entries! arg0))
+    (if (not sv-72)
+        (return #f)
+        )
+    (set! sv-80 (frame-counter-delta arg0 sv-72))
+    (set! sv-88 (-> sv-72 record-id))
+    (when (!= sv-24 sv-88)
+      (set! sv-24 (the-as int sv-88))
+      (format
+        (-> arg0 out)
+        "~6D ~8S #x~8X "
+        sv-80
+        (if (logtest? sv-32 (collide-status no-touch))
+            "air"
+            (-> *pat-mode-info* (shr (shl (the-as int sv-68) 54) 61) name)
+            )
+        sv-32
+        )
+      (format
+        (-> arg0 out)
+        "~C~C~C~C~C~C"
+        (if (not (logtest? (the-as int sv-40) 1))
+            103
+            87
+            )
+        (if (not (logtest? (the-as int sv-40) 2))
+            103
+            87
+            )
+        (cond
+          ((logtest? (the-as int sv-40) 2048)
+           71
+           )
+          ((not (logtest? (the-as int sv-40) 4))
+           103
+           )
+          (else
+            87
+            )
+          )
+        (cond
+          ((logtest? (the-as int sv-40) 512)
+           66
+           )
+          ((logtest? (the-as int sv-40) 8)
+           76
+           )
+          (else
+            99
+            )
+          )
+        (if (not (logtest? (the-as int sv-40) 16))
+            110
+            66
+            )
+        (if (not (logtest? (the-as int sv-40) 32))
+            103
+            65
+            )
+        )
+      (format
+        (-> arg0 out)
+        "~C~C "
+        (cond
+          ((logtest? #x10000 (the-as int sv-40))
+           80
+           )
+          ((logtest? (the-as int sv-40) #x8000)
+           85
+           )
+          ((logtest? (the-as int sv-40) 64)
+           78
+           )
+          (else
+            95
+            )
+          )
+        (cond
+          ((logtest? (the-as int sv-40) 1024)
+           76
+           )
+          ((logtest? (the-as int sv-40) 256)
+           67
+           )
+          ((logtest? (the-as int sv-40) 128)
+           108
+           )
+          (else
+            95
+            )
+          )
+        )
+      (format (-> arg0 out) "trans: ~6,,2m ~6,,2m ~6,,2m  " (-> sv-44 x) (-> sv-44 y) (-> sv-44 z))
+      (format (-> arg0 out) "int: ~6,,2m ~6,,2m ~6,,2m " (-> sv-56 x) (-> sv-56 y) (-> sv-56 z))
+      (format (-> arg0 out) "vel: ~6,,2m ~6,,2m ~6,,2m " (-> sv-48 x) (-> sv-48 y) (-> sv-48 z))
+      (format (-> arg0 out) "vel-out: ~6,,2m ~6,,2m ~6,,2m " (-> sv-52 x) (-> sv-52 y) (-> sv-52 z))
+      (format (-> arg0 out) "normal: ~6,,2f ~6,,2f ~6,,2f " (-> sv-60 x) (-> sv-60 y) (-> sv-60 z))
+      (format (-> arg0 out) "local: ~6,,2f ~6,,2f ~6,,2f " (-> sv-64 x) (-> sv-64 y) (-> sv-64 z))
+      (format (-> arg0 out) "~%")
+      )
+    (case (-> sv-72 channel)
+      (((history-channel trans))
+       (set! sv-44 (-> sv-72 vector))
+       )
+      (((history-channel transv-in))
+       (set! sv-48 (-> sv-72 vector))
+       )
+      (((history-channel transv-out))
+       (set! sv-52 (-> sv-72 vector))
+       )
+      (((history-channel intersect))
+       (set! sv-56 (-> sv-72 vector))
+       )
+      (((history-channel pat))
+       (set! sv-68 (-> sv-72 vector x))
+       )
+      (((history-channel collide-status))
+       (set! sv-32 (-> sv-72 collide-status))
+       (set! sv-40 (-> sv-72 vector z))
+       )
+      (((history-channel surface-normal))
+       (set! sv-60 (-> sv-72 vector))
+       )
+      (((history-channel local-normal))
+       (set! sv-64 (-> sv-72 vector))
+       )
+      )
+    )
+  #f
+  )
 
 ;; definition (debug) for function target-print-stats
 ;; INFO: Used lq/sq
@@ -2534,8 +2693,7 @@
     (vector-average! (-> self control midpoint-of-hands) gp-0 s5-0)
     )
   (vector-! (-> self control ctrl-to-hands-offset) (-> self control midpoint-of-hands) (-> self control trans))
-  (-> self control impact-ctrl)
-  ((method-of-type impact-control impact-control-method-10))
+  (update-from-cspace (-> self control impact-ctrl))
   (cond
     ((focus-test? self edge-grab)
      (target-compute-edge)

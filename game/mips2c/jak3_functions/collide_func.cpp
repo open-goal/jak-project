@@ -241,7 +241,6 @@ void link() {
 } // namespace Mips2C
 // add moving_sphere_triangle_intersect::link to the link callback table for the object file.
 // FWD DEC:
-namespace moving_sphere_triangle_intersect { extern void link(); }
 
 //--------------------------MIPS2C---------------------
 // clang-format off
@@ -503,4 +502,3 @@ void link() {
 } // namespace Mips2C
 // add collide_do_primitives::link to the link callback table for the object file.
 // FWD DEC:
-namespace collide_do_primitives { extern void link(); }

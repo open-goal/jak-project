@@ -412,6 +412,12 @@ enum class BucketId {
 };
 }
 
+namespace jak3 {
+enum class BucketId {
+  MAX_BUCKETS = 587,
+};
+}
+
 enum class BucketCategory {
   TFRAG,
   TIE,

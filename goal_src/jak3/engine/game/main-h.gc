@@ -12,6 +12,8 @@
 (define-extern kiosk? (function symbol))
 (define-extern set-blackout-frames (function time-frame none))
 (define-extern set-master-mode (function symbol none))
+(define-extern on (function symbol process))
+(define-extern toggle-pause (function int))
 
 ;; +++main-h:collide-spec
 (defenum collide-spec
@@ -76,16 +78,16 @@
 (defenum scene-controls
   :type int64
   :bitfield #t
-  ; (channel)
-  ; (anim-name)
-  ; (dma-size)
-  ; (bounds-spheres)
-  ; (actors)
-  ; (actor-marks)
-  ; (special-fma-spheres)
-  ; (scene-controls-7)
-  ; (scene-controls-8)
-  ; (display-controls)
+  (channel)
+  (anim-name)
+  (dma-size)
+  (bounds-spheres)
+  (actors)
+  (actor-marks)
+  (special-fma-spheres)
+  (scene-controls-7)
+  (scene-controls-8)
+  (display-controls)
   )
 ;; ---main-h:scene-controls
 
@@ -167,6 +169,9 @@
   ; (sewer-lo 6)
   )
 ;; ---main-h:ocean-height-hack
+
+(define-extern *progress-cheat* symbol)
+(define-extern *last-master-mode* symbol)
 
 ;; DECOMP BEGINS
 
@@ -417,7 +422,7 @@
 
 (deftype screen-filter (basic)
   ((draw?           symbol)
-   (bucket          int32)
+   (bucket          bucket-id)
    (depth           int32)
    (ztest           uint64)
    (color           vector  :inline)
@@ -426,11 +431,11 @@
    (extra           vector  :inline)
    (speed           float   :overlay-at (-> extra data 0))
    (current-interp  float   :overlay-at (-> extra data 1))
-   (lock-vsync?     basic)
+   (lock-vsync?     symbol)
    )
   (:methods
     (draw (_type_) none)
-    (setup (_type_ vector vector float bucket-id) none)
+    (setup (_type_ vector vector float bucket-id int int symbol) none)
     (disable (_type_) none)
     )
   )
@@ -451,7 +456,7 @@
    (camera-to-bbox-dist  float)
    )
   (:methods
-    (col-rend-method-9 () none)
+    (draw (_type_) none)
     )
   )
 
