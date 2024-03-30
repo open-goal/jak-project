@@ -220,9 +220,10 @@ class SymbolInfoMap {
     return m_map.lookup(name);
   }
 
-  std::set<std::string> lookup_symbols_starting_with(const std::string& prefix) const {
+  std::set<std::string> lookup_symbols_starting_with(const std::string& prefix,
+                                                     int max_count) const {
     std::set<std::string> result;
-    auto lookup = m_map.lookup_prefix(prefix);
+    auto lookup = m_map.lookup_prefix(prefix, max_count);
     for (auto& x : lookup) {
       for (auto& y : *x) {
         result.insert(y.name());

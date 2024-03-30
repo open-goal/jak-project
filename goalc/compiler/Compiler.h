@@ -96,7 +96,8 @@ class Compiler {
                      std::vector<std::pair<std::string, replxx::Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
-  std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
+  std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix,
+                                                          int max_count) const;
   std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
   std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
 

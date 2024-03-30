@@ -3534,7 +3534,7 @@
   :type int32
   (bucket0 0)
   (bucket1 1)
-  (bucket2 2)
+  (bucket2 2) ;; pc vis stuff
   (bucket3 3) ;; blit?
   (tex-lcom-sky-pre 4)
   (bucket5 5) ;; sky
@@ -4187,7 +4187,7 @@
   (bucket582 582)
   (bucket583 583)
   (debug-no-zbuf2 584)
-  (bucket585 585)
+  (debug-menu 585)
   (bucket586 586)
   )
 
@@ -6645,11 +6645,14 @@
    (miptbp1    gs-miptbp             :offset 32) ;;
    (clamp      gs-clamp             :offset 48) ;; gs-clamp
    (clamp-reg  gs-reg64             :offset 56) ;;
-   (alpha      gs-alpha             :offset 64) ;;
+   (alpha      gs-miptbp             :offset 64) ;;
    (link-test  link-test-flags    :offset 8) ;; guessed by decompiler
    (texture-id texture-id         :offset 24) ;; guessed by decompiler
    (next       shader-ptr         :offset 40) ;; guessed by decompiler
    ;(alpha-as-miptb2 gs-miptbp :offset 64) ;; added!!
+   (alpha-as-miptb2 gs-miptbp :offset 64)
+   (reg-4-u32  gs-reg32           :offset 72)
+
    )
   :method-count-assert 9
   :size-assert         #x50
@@ -6880,7 +6883,7 @@
    (alpha-near  float          :offset-assert 124)
    (alpha-far   float          :offset-assert 128)
    (alpha-delta float          :offset-assert 132)
-   (color       uint32         :offset-assert 136)
+   (color       rgba           :offset-assert 136)
    )
   :method-count-assert 9
   :size-assert         #x8c
@@ -10808,7 +10811,7 @@
     (remove-setting (_type_ process symbol) none) ;; 12
     (kill-persister (_type_ engine-pers object) none) ;; 13
     (setting-control-method-14 (_type_ object) connectable) ;; 14
-    (setting-control-method-15 (_type_ object) connectable) ;; 15
+    (get-setting (_type_ object) connectable) ;; 15
     (remove-setting-by-arg0 (_type_ object) none) ;; 16
     (set-setting-by-param (_type_ symbol object object object) connection) ;; 17
     (apply-settings (_type_) user-setting-data) ;; 18
@@ -11214,7 +11217,7 @@
     (sky-work-method-9 () none) ;; 9 ;; (init-sun-data! (_type_ int float float float) none)
     (sky-work-method-10 () none) ;; 10 ;; (init-orbit-settings! (_type_ int float float float float float float) none)
     (sky-work-method-11 () none) ;; 11 ;; (update-colors-for-time (_type_ float) none)
-    (sky-work-method-12 () none) ;; 12 ;; (update-time-and-speed (_type_ float float) none)
+    (update-time-and-speed (_type_ float float) none) ;; 12
     (sky-work-method-13 () none) ;; 13
     (draw (_type_) none) ;; 14 ;; (update-matrix (_type_ matrix) none)
     (sky-work-method-15 () none) ;; 15 ;; (update-template-colors (_type_) none)
@@ -12487,7 +12490,7 @@
 
 (deftype drawable-tree-array (drawable-group)
   "Collection of drawable trees. This might have a tfrag tree, tie tree, etc."
-  ()
+  ((trees drawable-tree :dynamic :offset 32 :score 100))
   :flag-assert #x1100000020
   )
 
@@ -24161,6 +24164,7 @@
    (color-count         uint8                         :offset 57)
    (texture-masks-index uint16                        :offset 58)
    (generic             generic-tfragment             :offset 60)
+   (generic-u32         uint32                        :offset 60) ;; added
    )
   :method-count-assert 17
   :size-assert         #x40
@@ -31785,17 +31789,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern time-of-day-effect (function none))
-(define-extern time-of-day-update (function none :behavior time-of-day-proc))
-(define-extern update-counters (function float :behavior time-of-day-proc))
+(define-extern time-of-day-update "Update particles, sky, and effect for time-of-day." (function none :behavior time-of-day-proc))
+(define-extern update-counters "Set hours, minutes, senonds based on current frame." (function float :behavior time-of-day-proc))
 (define-extern time-of-day-tick (state time-of-day-proc))
-(define-extern init-time-of-day (function object :behavior time-of-day-proc))
-(define-extern start-time-of-day (function (pointer time-of-day-proc)))
-(define-extern time-of-day-setup (function symbol symbol))
+(define-extern init-time-of-day "Initialize the time-of-day process" (function object :behavior time-of-day-proc))
+(define-extern start-time-of-day "Start a new time of day process, killing old one if needed." (function (pointer time-of-day-proc)))
+(define-extern time-of-day-setup "Check if the time of day ratio is set up or not. If arg0 = #t, then set it if needed." (function symbol symbol))
 (define-extern time-of-day-interp-colors (function (pointer rgba) uint mood-context none))
 (define-extern time-of-day-interp-colors-scratch (function (pointer rgba) time-of-day-palette mood-context none))
-(define-extern init-time-of-day-context (function time-of-day-context symbol))
-(define-extern set-filter-color! (function float float float none))
-(define-extern tod-madd! (function vector vector vector float))
+(define-extern init-time-of-day-context "Set up lighting data to defaults" (function time-of-day-context symbol))
+(define-extern set-filter-color! "Set RGB of filter." (function float float float none))
+(define-extern tod-madd! "Multiply-add" (function vector vector vector float))
 (define-extern update-environment-colors (function time-of-day-context vector))
 (define-extern update-time-of-day (function time-of-day-context none))
 (define-extern calc-fade-from-fog (function vector float))
@@ -39153,6 +39157,7 @@
   )
 |#
 
+(declare-type editable-player process-drawable)
 #|
 (deftype editable-player (process-drawable)
   ((current           editable-array           :offset-assert 200) ;; guessed by decompiler
@@ -39210,7 +39215,7 @@
 ;; (define-extern editable-command->string function) ;; (function editable-command string)
 ;; (define-extern editable-filter->string function) ;; (function editable-filter basic string)
 ;; (define-extern *editable-work* object) ;; editable-work
-;; (define-extern *editable* object) ;; (pointer editable-player)
+(define-extern *editable* object) ;; (pointer editable-player)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; editable                       ;;
@@ -39240,7 +39245,7 @@
 ;; (define-extern editable-player-init function) ;; (function symbol none :behavior editable-player)
 ;; (define-extern set-editable-name function)
 ;; (define-extern select-editable-by-name function)
-;; (define-extern *editable-menu-context* object) ;; debug-menu-context
+(define-extern *editable-menu-context* debug-menu-context)
 ;; (define-extern editable-menu-command function) ;; (function int none)
 ;; (define-extern editable-menu-command-no-close function) ;; (function int none)
 ;; (define-extern dm-region-tree-pick-func function) ;; (function symbol debug-menu-msg symbol)
@@ -39821,8 +39826,8 @@
 ;; (define-extern *continue-bug-report* continue-point)
 ;; (define-extern *bug-report* object)
 ;; (define-extern bug-report-init function)
-;; (define-extern bug-report-stop function)
-;; (define-extern bug-report-start function)
+(define-extern bug-report-stop (function none))
+(define-extern bug-report-start (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sampler                        ;;
@@ -39839,47 +39844,47 @@
 ;; default-menu                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *debug-menu-context* object) ;; debug-menu-context
-;; (define-extern *dm-cam-mode-interpolation* object) ;; int
-;; (define-extern dm-cam-mode-func function) ;; (function (state camera-slave) debug-menu-msg object)
-;; (define-extern dm-cam-mode-default function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-cam-settings-default function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-cam-settings-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-cam-settings-func-int function) ;; (function int debug-menu-msg int int int)
-;; (define-extern dm-cam-externalize function) ;; (function symbol debug-menu-msg symbol)
-;; (define-extern dm-cam-setting-float function) ;; (function float debug-menu-msg float float float)
-;; (define-extern dm-cam-render-float function) ;; (function int debug-menu-msg float float float)
-;; (define-extern dm-subdiv-float function) ;; (function symbol debug-menu-msg float float float)
+(define-extern *debug-menu-context* debug-menu-context)
+(define-extern *dm-cam-mode-interpolation* int)
+(define-extern dm-cam-mode-func (function (state camera-slave) debug-menu-msg object))
+(define-extern dm-cam-mode-default (function object debug-menu-msg symbol))
+(define-extern dm-cam-settings-default (function object debug-menu-msg symbol))
+(define-extern dm-cam-settings-func (function int debug-menu-msg symbol))
+(define-extern dm-cam-settings-func-int (function int debug-menu-msg int int int))
+(define-extern dm-cam-externalize (function symbol debug-menu-msg symbol))
+(define-extern dm-cam-setting-float (function float debug-menu-msg float float float))
+(define-extern dm-cam-render-float (function int debug-menu-msg float float float))
+(define-extern dm-subdiv-float (function symbol debug-menu-msg float float float))
 ;; (define-extern dm-subdiv-int function) ;; (function symbol debug-menu-msg int int int)
-;; (define-extern dm-select-race-path function) ;; (function object debug-menu-msg int int)
-;; (define-extern dm-setting-language function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-setting-subtitle-language function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-setting-audio-language function)
-;; (define-extern dm-setting-stereo-mode function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-current-continue function) ;; (function string debug-menu-msg symbol)
-;; (define-extern dm-subdiv-draw-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-scissor-subdiv-draw-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-foreground-subdiv-draw-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-col-rend-on-func function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-col-rend-outline-func function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-col-rend-back-face-func function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-col-rend-normals-func function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-col-rend-ghost-hidden-func function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-col-rend-track-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-col-rend-show-only-toggle-func function) ;; (function uint debug-menu-msg symbol)
-;; (define-extern dm-col-rend-show-only-set-func function) ;; (function uint debug-menu-msg symbol)
-;; (define-extern dm-col-rend-cspec-toggle function) ;; (function uint debug-menu-msg symbol)
-;; (define-extern dm-col-rend-size function) ;; (function object debug-menu-msg float float)
-;; (define-extern dm-col-rend-cam-dist function) ;; (function object debug-menu-msg float float)
-;; (define-extern dm-ocean-height-func function) ;; (function ocean-height-hack debug-menu-msg symbol)
-;; (define-extern dm-ocean-subdiv-draw-func function) ;; (function object debug-menu-msg symbol)
-;; (define-extern dm-time-of-day-func function) ;; (function dm-time-of-day-setting debug-menu-msg symbol)
-;; (define-extern dm-time-of-day-func2 function) ;; (function symbol debug-menu-msg object)
-;; (define-extern dm-time-of-day-palette-func function) ;; (function dm-time-of-day-palette-settings debug-menu-msg symbol)
-;; (define-extern dm-boolean-toggle-pick-func function) ;; (function symbol debug-menu-msg object)
-;; (define-extern dm-time-of-day-pick-func function) ;; (function symbol debug-menu-msg symbol)
-;; (define-extern dm-stats-memory-func function) ;; (function int debug-menu-msg symbol)
-;; (define-extern dm-actor-marks-pick-func function) ;; (function symbol debug-menu-msg symbol)
+(define-extern dm-select-race-path (function object debug-menu-msg int int))
+(define-extern dm-setting-language (function int debug-menu-msg symbol))
+(define-extern dm-setting-subtitle-language (function int debug-menu-msg symbol))
+(define-extern dm-setting-audio-language (function int debug-menu-msg symbol))
+(define-extern dm-setting-stereo-mode (function object debug-menu-msg symbol))
+(define-extern dm-current-continue (function string debug-menu-msg symbol))
+(define-extern dm-subdiv-draw-func (function int debug-menu-msg symbol))
+(define-extern dm-scissor-subdiv-draw-func (function int debug-menu-msg symbol))
+(define-extern dm-foreground-subdiv-draw-func (function int debug-menu-msg symbol))
+(define-extern dm-col-rend-on-func (function object debug-menu-msg symbol))
+(define-extern dm-col-rend-outline-func (function object debug-menu-msg symbol))
+(define-extern dm-col-rend-back-face-func (function object debug-menu-msg symbol))
+(define-extern dm-col-rend-normals-func (function object debug-menu-msg symbol))
+(define-extern dm-col-rend-ghost-hidden-func (function object debug-menu-msg symbol))
+(define-extern dm-col-rend-track-func (function int debug-menu-msg symbol))
+(define-extern dm-col-rend-show-only-toggle-func (function uint debug-menu-msg symbol))
+(define-extern dm-col-rend-show-only-set-func (function uint debug-menu-msg symbol))
+(define-extern dm-col-rend-cspec-toggle (function uint debug-menu-msg symbol))
+(define-extern dm-col-rend-size (function object debug-menu-msg float float))
+(define-extern dm-col-rend-cam-dist (function object debug-menu-msg float float))
+;; (define-extern dm-ocean-height-func (function ocean-height-hack debug-menu-msg symbol))
+(define-extern dm-ocean-subdiv-draw-func (function object debug-menu-msg symbol))
+(define-extern dm-time-of-day-func (function int debug-menu-msg symbol))
+(define-extern dm-time-of-day-func2 (function symbol debug-menu-msg object))
+(define-extern dm-time-of-day-palette-func (function int debug-menu-msg symbol))
+(define-extern dm-boolean-toggle-pick-func (function symbol debug-menu-msg object))
+(define-extern dm-time-of-day-pick-func (function symbol debug-menu-msg symbol))
+(define-extern dm-stats-memory-func (function int debug-menu-msg symbol))
+(define-extern dm-actor-marks-pick-func (function symbol debug-menu-msg symbol))
 ;; (define-extern dm-debug-actor-lod-dist function)
 ;; (define-extern dm-select-race-pick-func function) ;; (function int debug-menu-msg symbol)
 ;; (define-extern dm-compact-actor-pick-func function) ;; (function symbol debug-menu-msg symbol)
@@ -39909,36 +39914,36 @@
 ;; (define-extern dm-bug-report-report-pick-func function) ;; (function symbol debug-menu-msg none)
 ;; (define-extern debug-menu-node<? function) ;; (function debug-menu-node debug-menu-node symbol)
 ;; (define-extern dm-shader-pick-func function) ;; (function texture-id debug-menu-msg symbol)
-;; (define-extern *shader-pick-menu* object) ;; debug-menu
+(define-extern *shader-pick-menu* debug-menu)
 ;; (define-extern build-shader-list function) ;; (function none)
 ;; (define-extern dm-instance-pick-func function) ;; (function string debug-menu-msg basic)
 ;; (define-extern dm-enable-instance-func function) ;; (function string debug-menu-msg symbol)
-;; (define-extern *instance-shrub-menu* object) ;; debug-menu
-;; (define-extern *instance-tie-menu* object) ;; debug-menu
-;; (define-extern *enable-instance-shrub-menu* object) ;; debug-menu
-;; (define-extern *enable-instance-tie-menu* object) ;; debug-menu
+(define-extern *instance-shrub-menu* debug-menu)
+(define-extern *instance-tie-menu* debug-menu)
+(define-extern *enable-instance-shrub-menu* symbol) ;; debug-menu
+(define-extern *enable-instance-tie-menu* symbol) ;; debug-menu
 ;; (define-extern build-instance-list function) ;; (function object none)
 ;; (define-extern dm-scene-load-pick-func function) ;; (function pair debug-menu-msg symbol)
 ;; (define-extern debug-create-cam-restore function) ;; (function none)
 ;; (define-extern debug-menu-make-camera-mode-menu function) ;; (function debug-menu debug-menu debug-menu-node)
-;; (define-extern debug-menu-make-camera-menu function) ;; (function debug-menu-context debug-menu-item-submenu)
-;; (define-extern debug-menu-make-shader-menu function) ;; (function debug-menu-context debug-menu-item-submenu)
-;; (define-extern debug-menu-make-instance-menu function) ;; (function debug-menu-context debug-menu-item-submenu)
+(define-extern debug-menu-make-camera-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-shader-menu (function debug-menu-context debug-menu-item-submenu))
+(define-extern debug-menu-make-instance-menu (function debug-menu-context debug-menu-item-submenu))
 ;; (define-extern dm-task-menu-pick-func function) ;; (function game-task debug-menu-msg symbol)
-;; (define-extern debug-menu-make-continue-sub-menu function) ;; (function game-info symbol pair)
+(define-extern debug-menu-make-continue-sub-menu (function game-info symbol pair))
 ;; (define-extern debug-menu-make-task-sub-menu function) ;; (function symbol pair)
-;; (define-extern debug-menu-make-task-menu function) ;; (function debug-menu-context debug-menu-item-submenu)
+(define-extern debug-menu-make-task-menu (function debug-menu-context debug-menu-item-submenu))
 ;; (define-extern dm-play-task-with-continue function) ;; (function game-task string none)
 ;; (define-extern dm-play-task function) ;; (function game-task none)
 ;; (define-extern dm-play-race function) ;; (function race-selection symbol none)
-;; (define-extern debug-menu-make-play-menu function) ;; (function debug-menu-context debug-menu-node)
+(define-extern debug-menu-make-play-menu (function debug-menu-context debug-menu-node))
 ;; (define-extern dm-anim-tester-flag-func function) ;; (function int debug-menu-msg symbol)
 ;; (define-extern dm-anim-tester-func function) ;; (function int debug-menu-msg symbol)
 ;; (define-extern dm-pilot-mode function) ;; (function object none)
 ;; (define-extern stop-watch-display function) ;; (function object object symbol)
-;; (define-extern debug-menu-context-make-default-menus function) ;; (function debug-menu-context debug-menu-context)
-;; (define-extern *popup-menu-context* object) ;; debug-menu-context
-;; (define-extern popup-menu-context-make-default-menus function) ;; (function debug-menu-context debug-menu-context)
+(define-extern debug-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
+(define-extern *popup-menu-context* debug-menu-context)
+(define-extern popup-menu-context-make-default-menus (function debug-menu-context debug-menu-context))
 (define-extern menu-respond-to-pause (function symbol))
 ;; (define-extern *menu-hook* function) ;; (function debug-menu-context)
 
@@ -40091,7 +40096,7 @@
 ;; texture-upload                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *generic-envmap-texture* object) ;; texture
+(define-extern *generic-envmap-texture* texture)
 (define-extern *default-envmap-shader* adgif-shader)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

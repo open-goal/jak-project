@@ -24,7 +24,9 @@
 using namespace iop;
 
 namespace jak1 {
+constexpr int kStrBufSize = sizeof(RPC_Str_Cmd_Jak1);
 static RPC_Str_Cmd_Jak1 sSTRBuf;
+constexpr int kPlayBufSize = 2 * sizeof(RPC_Play_Cmd_Jak1);
 static RPC_Play_Cmd_Jak1 sPLAYBuf[2];
 
 void* RPC_STR(unsigned int fno, void* _cmd, int y);
@@ -66,7 +68,8 @@ u32 STRThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR, &sSTRBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, STR_RPC_ID[g_game_version], RPC_STR, &sSTRBuf, kStrBufSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -79,7 +82,8 @@ u32 PLAYThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY, sPLAYBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, PLAY_RPC_ID[g_game_version], RPC_PLAY, sPLAYBuf, kPlayBufSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

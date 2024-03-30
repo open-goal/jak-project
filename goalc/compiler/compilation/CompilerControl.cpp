@@ -439,7 +439,8 @@ replxx::Replxx::completions_t Compiler::find_symbols_or_object_file_by_prefix(
   } else {
     const auto [token, stripped_leading_paren] = m_repl->get_current_repl_token(context);
     // Otherwise, look for symbols
-    auto possible_forms = lookup_symbol_infos_starting_with(token);
+    constexpr int kMaxForms = 100;
+    auto possible_forms = lookup_symbol_infos_starting_with(token, kMaxForms);
 
     for (auto& x : possible_forms) {
       completions.push_back(stripped_leading_paren ? "(" + x : x);
@@ -456,7 +457,8 @@ replxx::Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& contex
   (void)contextLen;
   (void)user_data;
   auto token = m_repl->get_current_repl_token(context);
-  auto possible_forms = lookup_symbol_infos_starting_with(token.first);
+  constexpr int kMaxForms = 100;
+  auto possible_forms = lookup_symbol_infos_starting_with(token.first, kMaxForms);
 
   replxx::Replxx::hints_t hints;
 
@@ -550,7 +552,8 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
   Timer timer;
-  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol().name_ptr);
+  auto result =
+      m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol().name_ptr, -1);
   auto time = timer.getMs();
 
   for (auto& x : result) {
@@ -588,9 +591,10 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
   return get_none();
 }
 
-std::set<std::string> Compiler::lookup_symbol_infos_starting_with(const std::string& prefix) const {
+std::set<std::string> Compiler::lookup_symbol_infos_starting_with(const std::string& prefix,
+                                                                  int max_count) const {
   if (m_goos.reader.check_string_is_valid(prefix)) {
-    return m_symbol_info.lookup_symbols_starting_with(prefix);
+    return m_symbol_info.lookup_symbols_starting_with(prefix, max_count);
   }
   return {};
 }

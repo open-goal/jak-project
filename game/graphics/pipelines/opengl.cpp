@@ -73,7 +73,7 @@ struct GraphicsData {
   FrameLimiter frame_limiter;
   Timer engine_timer;
   double last_engine_time = 1. / 60.;
-  float pmode_alp = 0.f;
+  float pmode_alp = 1.f;
 
   std::string imgui_log_filename, imgui_filename;
   GameVersion version;

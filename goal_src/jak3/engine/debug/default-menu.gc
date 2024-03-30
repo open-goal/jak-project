@@ -5,5 +5,135 @@
 ;; name in dgo: default-menu
 ;; dgos: GAME
 
+;; TODO: replace with real decomp of this stuff.
+
+(define *debug-menu-context* (new 'debug 'debug-menu-context))
+(defun dm-boolean-toggle-pick-func ((arg0 symbol) (arg1 debug-menu-msg))
+  (if (= arg1 (debug-menu-msg press))
+      (set! (-> arg0 value) (not (-> arg0 value)))
+      )
+  (-> arg0 value)
+  )
+
+
+(defun debug-menu-context-make-default-menus ((arg0 debug-menu-context))
+  (local-vars (sv-16 debug-menu-context))
+  (let ((s5-0 (new 'debug 'debug-menu arg0 "Main menu")))
+    (debug-menu-context-set-root-menu arg0 s5-0)
+    (debug-menu-append-item
+      s5-0
+      (debug-menu-make-from-template
+        arg0
+        '(menu
+           "Artist"
+           (flag "Poly Stats" *stats-poly* dm-boolean-toggle-pick-func)
+           (menu
+             "Memory Stats"
+             (flag "Enable" *stats-memory* dm-boolean-toggle-pick-func)
+             (flag "Short" *stats-memory-short* dm-boolean-toggle-pick-func)
+             ; (flag "Level 0" 0 dm-stats-memory-func)
+             ; (flag "Level 1" 1 dm-stats-memory-func)
+             ; (flag "Level 2" 2 dm-stats-memory-func)
+             ; (flag "Level 3" 3 dm-stats-memory-func)
+             ; (flag "Level 4" 4 dm-stats-memory-func)
+             ; (flag "Level 5" 5 dm-stats-memory-func)
+             ; (flag "Level 6" 6 dm-stats-memory-func)
+             ; (flag "Level 7" 7 dm-stats-memory-func)
+             ; (flag "Level 8" 8 dm-stats-memory-func)
+             ; (flag "Level 9" 9 dm-stats-memory-func)
+             )
+           (flag "All Visible" *artist-all-visible* dm-boolean-toggle-pick-func)
+           (flag "Flip Visible" *artist-flip-visible* dm-boolean-toggle-pick-func)
+           (flag "Fix Visible" *artist-fix-visible* dm-boolean-toggle-pick-func)
+           (flag "Fix Frustum" *artist-fix-frustum* dm-boolean-toggle-pick-func)
+           (flag "Manual Sample Point" *manual-sample-point* dm-boolean-toggle-pick-func)
+           (flag "Error Spheres" *artist-error-spheres* dm-boolean-toggle-pick-func)
+           (flag "Use menu subdiv" *artist-use-menu-subdiv* dm-boolean-toggle-pick-func)
+           ; (float-var "Subdiv Close" close dm-subdiv-float 10 1 #t 1 1000 1)
+           ; (float-var "Subdiv Far" far dm-subdiv-float 10 1 #t 1 1000 1)
+           ;; (function "Target Start" #f <lambda at L613>)
+           ;; (function "Target Stop" #f <lambda at L612>)
+           ; (menu
+           ;   "Anim Tester"
+           ;   (int-var "Speed" anim-speed dm-subdiv-int 10 10 #t -300 1000)
+           ;   (flag "Apply Align" at-apply-align dm-anim-tester-flag-func)
+           ;   (flag "Show Joint Inf" at-show-joint-info dm-anim-tester-flag-func)
+           ;   (function "Pick Object" at-pick-object dm-anim-tester-func)
+           ;   (function "Pick Joint Anim" at-pick-joint-anim dm-anim-tester-func)
+           ;   (function "Pick Sequence" at-pick-sequence dm-anim-tester-func)
+           ;   (function "Save Sequences" at-save-sequences dm-anim-tester-func)
+           ;   )
+           (flag "Show Entity Errors" *display-entity-errors* dm-boolean-toggle-pick-func)
+           (flag "Capture Mode" *display-capture-mode* dm-boolean-toggle-pick-func)
+           (flag "Sprite Info" *display-sprite-info* dm-boolean-toggle-pick-func)
+           (flag "Sprite Marks" *display-sprite-marks* dm-boolean-toggle-pick-func)
+           (flag "Sprite Spheres" *display-sprite-spheres* dm-boolean-toggle-pick-func)
+           ;(flag "Time of Day" #f dm-time-of-day-pick-func)
+           (flag "Preload Anims" *preload-spool-anims* dm-boolean-toggle-pick-func)
+           ;; (function "Mike F" #f <lambda at L610>)
+           ;; (function "Editor" #f <lambda at L608>)
+           ;; (flag "Screen shot highres enable" #f <lambda at L605>)
+           ;; (flag "Screen shot hud enable" #f <lambda at L602>)
+           )
+        )
+      )
+    )
+  arg0
+  )
+
+(define *popup-menu-context* (new 'debug 'debug-menu-context))
+
+(defun popup-menu-context-make-default-menus ((arg0 debug-menu-context))
+  (debug-menu-make-from-template
+    arg0
+    '(main-menu
+       "Popup"
+       ;; (flag "Cam 1" pad-1 dm-cam-externalize)
+       (flag "Turbo Cam" *camera-turbo-free* dm-boolean-toggle-pick-func)
+       )
+    )
+  arg0
+  )
+
+(debug-menu-context-make-default-menus *debug-menu-context*)
+(popup-menu-context-make-default-menus *popup-menu-context*)
+
+(defun menu-respond-to-pause ()
+  (case *master-mode*
+    (('menu)
+     (cond
+       ((and (cpad-hold? 0 l3) (cpad-hold? 0 select))
+        (debug-menu-context-send-msg *popup-menu-context* (debug-menu-msg activate) (debug-menu-dest activation))
+        (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+        ;; (debug-menu-context-send-msg *editable-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+        )
+       ; ((and (cpad-hold? 1 start) *editable*)
+       ;  (debug-menu-context-send-msg *editable-menu-context* (debug-menu-msg activate) (debug-menu-dest activation))
+       ;  (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+       ;  (debug-menu-context-send-msg *popup-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+       ;  )
+       ((and (cpad-hold? 0 l3) (cpad-hold? 0 start))
+        (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg activate) (debug-menu-dest activation))
+        (debug-menu-context-send-msg *popup-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+        ;;(debug-menu-context-send-msg *editable-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+        )
+       )
+     )
+    (else
+      (debug-menu-context-send-msg *debug-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+      (debug-menu-context-send-msg *popup-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+      ;; (debug-menu-context-send-msg *editable-menu-context* (debug-menu-msg deactivate) (debug-menu-dest activation))
+      )
+    )
+  #f
+  )
+
+(defun *menu-hook* ()
+  (debug-menus-handler *debug-menu-context*)
+  (debug-menus-handler *popup-menu-context*)
+  )
+
+
+
 ;; DECOMP BEGINS
 
