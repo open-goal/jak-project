@@ -130,7 +130,7 @@ class Workspace {
                            const std::string& content);
   void update_tracked_file(const LSPSpec::DocumentUri& file_uri, const std::string& content);
   void tracked_file_will_save(const LSPSpec::DocumentUri& file_uri);
-  void update_global_index(const GameVersion);
+  void update_global_index(const GameVersion game_version);
   void stop_tracking_file(const LSPSpec::DocumentUri& file_uri);
   std::optional<std::reference_wrapper<WorkspaceOGFile>> get_tracked_og_file(
       const LSPSpec::URI& file_uri);
@@ -139,6 +139,9 @@ class Workspace {
   std::optional<DefinitionMetadata> get_definition_info_from_all_types(
       const std::string& symbol_name,
       const LSPSpec::DocumentUri& all_types_uri);
+  std::vector<std::shared_ptr<symbol_info::SymbolInfo>> get_symbols_starting_with(
+      const GameVersion game_version,
+      const std::string& symbol_prefix);
   std::optional<std::shared_ptr<symbol_info::SymbolInfo>> get_global_symbol_info(
       const WorkspaceOGFile& file,
       const std::string& symbol_name);

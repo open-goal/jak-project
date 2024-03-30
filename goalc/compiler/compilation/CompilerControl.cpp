@@ -593,6 +593,11 @@ std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Compiler::lookup_symbol_in
   return m_symbol_info.lookup_symbols_by_file(file_path);
 }
 
+std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Compiler::lookup_symbol_info_by_prefix(
+    const std::string& prefix) const {
+  return m_symbol_info.lookup_symbols_starting_with(prefix);
+}
+
 std::set<std::string> Compiler::lookup_symbol_names_starting_with(const std::string& prefix) const {
   if (m_goos.reader.check_string_is_valid(prefix)) {
     return m_symbol_info.lookup_names_starting_with(prefix);

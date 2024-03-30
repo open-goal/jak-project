@@ -248,6 +248,16 @@ std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_exact_name(
   return m_symbol_map.retrieve_with_exact(name);
 }
 
+std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_symbols_starting_with(
+    const std::string& prefix) const {
+  std::vector<std::shared_ptr<SymbolInfo>> symbols;
+  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);
+  for (const auto& result : lookup) {
+    symbols.push_back(result);
+  }
+  return symbols;
+}
+
 std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix) const {
   std::set<std::string> names;
   const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);

@@ -99,6 +99,8 @@ class Compiler {
   MakeSystem& make_system() { return m_make; }
   std::vector<std::shared_ptr<symbol_info::SymbolInfo>> lookup_symbol_info_by_file(
       const std::string& file_path) const;
+  std::vector<std::shared_ptr<symbol_info::SymbolInfo>> lookup_symbol_info_by_prefix(
+      const std::string& prefix) const;
   std::set<std::string> lookup_symbol_names_starting_with(const std::string& prefix) const;
   std::vector<std::shared_ptr<symbol_info::SymbolInfo>> lookup_exact_name_info(
       const std::string& name) const;

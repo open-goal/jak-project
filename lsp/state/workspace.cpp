@@ -171,6 +171,18 @@ std::optional<GameVersion> Workspace::determine_game_version_from_uri(
   return {};
 }
 
+std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Workspace::get_symbols_starting_with(
+    const GameVersion game_version,
+    const std::string& symbol_prefix) {
+  if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
+    lg::debug("Compiler not instantiated for game version - {}",
+              version_to_game_name(game_version));
+    return {};
+  }
+  const auto& compiler = m_compiler_instances[game_version].get();
+  return compiler->lookup_symbol_info_by_prefix(symbol_prefix);
+}
+
 std::optional<std::shared_ptr<symbol_info::SymbolInfo>> Workspace::get_global_symbol_info(
     const WorkspaceOGFile& file,
     const std::string& symbol_name) {
@@ -560,12 +572,20 @@ std::optional<std::string> WorkspaceOGFile::get_symbol_at_position(
       uint32_t start = ts_node_start_byte(found_node);
       uint32_t end = ts_node_end_byte(found_node);
       const std::string node_str = m_content.substr(start, end - start);
+      lg::debug("AST SAP - {}", node_str);
       const std::string node_name = ts_node_type(found_node);
       if (node_name == "sym_name") {
         return node_str;
       }
     } else {
       found_node = ts_node_child(found_node, 0);
+      uint32_t start = ts_node_start_byte(found_node);
+      uint32_t end = ts_node_end_byte(found_node);
+      const std::string node_str = m_content.substr(start, end - start);
+      const std::string node_name = ts_node_type(found_node);
+      if (node_name == "sym_name") {
+        return node_str;
+      }
     }
   }
   return {};
