@@ -76,6 +76,8 @@ class Matcher {
   static Matcher let(bool is_star,
                      const std::vector<LetEntryMatcher>& entries,
                      const std::vector<Matcher>& elts);
+  static Matcher unmerged_let(const std::vector<LetEntryMatcher>& entries,
+                              const std::vector<Matcher>& elts);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -106,6 +108,7 @@ class Matcher {
     QUOTED_SYMBOL,
     SAME_VAR,
     LET,
+    UNMERGED_LET,
     VAR_NAME,
     INVALID
   };

@@ -5,5 +5,368 @@
 ;; name in dgo: base-plat
 ;; dgos: GAME
 
+;; +++eco-door-flags
+(defenum eco-door-flags
+  :type int32
+  :bitfield #t
+  (locked 0)
+  (unlocked 1)
+  (auto-close 2)
+  (one-way 3)
+  )
+;; ---eco-door-flags
+
+
 ;; DECOMP BEGINS
 
+(deftype base-plat (process-focusable)
+  ((smush         smush-control  :inline)
+   (basetrans     vector         :inline)
+   (bounce-time   time-frame)
+   (bouncing      symbol)
+   (bounce-scale  meters)
+   )
+  (:methods
+    (update-part-and-sfx! (_type_) none)
+    (init-bounce-params! (_type_) none)
+    (start-bounce! (_type_) none :behavior base-plat)
+    (get-art-group (_type_) art-group)
+    (init-collision! (_type_) none)
+    (base-plat-method-33 (_type_) none)
+    (base-plat-method-34 (_type_) none)
+    )
+  )
+
+
+(defmethod base-plat-method-34 ((this base-plat))
+  0
+  (none)
+  )
+
+(defmethod init-bounce-params! ((this base-plat))
+  (set! (-> this basetrans quad) (-> this root trans quad))
+  (set! (-> this bouncing) #f)
+  (set! (-> this bounce-scale) 819.2)
+  0
+  (none)
+  )
+
+(defmethod start-bounce! ((this base-plat))
+  (activate! (-> this smush) -1.0 60 150 1.0 1.0 (-> self clock))
+  (set-time! (-> this bounce-time))
+  (set! (-> this bouncing) #t)
+  (sound-play "plat-bounce" :position (-> this root trans))
+  (logclear! (-> this mask) (process-mask sleep))
+  (logclear! (-> this mask) (process-mask sleep-code))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior plat-code base-plat ()
+  (transform-post)
+  (suspend)
+  (transform-post)
+  (suspend)
+  (until #f
+    (when (not (-> self bouncing))
+      (logior! (-> self mask) (process-mask sleep))
+      (suspend)
+      0
+      )
+    (while (-> self bouncing)
+      (suspend)
+      )
+    )
+  #f
+  (none)
+  )
+
+(defbehavior plat-trans base-plat ()
+  (rider-trans)
+  (cond
+    ((-> self bouncing)
+     (let ((gp-0 (new 'stack-no-clear 'vector)))
+       (set! (-> gp-0 quad) (-> self basetrans quad))
+       (+! (-> gp-0 y) (* (-> self bounce-scale) (update! (-> self smush))))
+       (move-to-point! (-> self root) gp-0)
+       )
+     (if (not (!= (-> self smush amp) 0.0))
+         (set! (-> self bouncing) #f)
+         )
+     )
+    (else
+      (move-to-point! (-> self root) (-> self basetrans))
+      )
+    )
+  (none)
+  )
+
+(defbehavior plat-post base-plat ()
+  (update-part-and-sfx! self)
+  (rider-post)
+  (none)
+  )
+
+(defmethod base-plat-method-33 ((this base-plat))
+  0
+  (none)
+  )
+
+(defmethod update-part-and-sfx! ((this base-plat))
+  (if (nonzero? (-> this part))
+      (spawn (-> this part) (-> this root trans))
+      )
+  (when (nonzero? (-> this sound))
+    (set! (-> this sound trans quad) (-> this root trans quad))
+    (update! (-> this sound))
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defbehavior plat-event base-plat ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('bonk)
+     (start-bounce! self)
+     )
+    )
+  )
+
+(deftype eco-door (process-drawable)
+  ((root            collide-shape :override)
+   (speed           float)
+   (open-distance   float)
+   (close-distance  float)
+   (out-dir         vector         :inline)
+   (open-sound      sound-name)
+   (close-sound     sound-name)
+   (state-actor     entity-actor)
+   (flags           eco-door-flags)
+   (locked          symbol)
+   (auto-close      symbol)
+   (one-way         symbol)
+   )
+  (:state-methods
+    door-closed
+    door-opening
+    door-open
+    door-closing
+    )
+  (:methods
+    (update-lock-status! (_type_) none)
+    (init-collision! (_type_) none)
+    (eco-door-method-26 (_type_) none)
+    )
+  )
+
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior eco-door-event-handler eco-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('trigger)
+     (set! (-> self locked) (not (-> self locked)))
+     (cond
+       ((-> self locked)
+        (if (and (-> self next-state) (= (-> self next-state name) 'door-closed))
+            (sound-play "door-lock")
+            )
+        )
+       (else
+         (sound-play "door-unlock")
+         )
+       )
+     #t
+     )
+    )
+  )
+
+(defstate door-closed (eco-door)
+  :virtual #t
+  :code (behavior ()
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (suspend)
+    (update-transforms (-> self root))
+    (ja-post)
+    (until #f
+      (when (and *target*
+                 (and (>= (-> self open-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                      (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                      )
+                 )
+        (update-lock-status! self)
+        (if (and (not (-> self locked))
+                 (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status subtask-complete)))
+                     (send-event *target* 'query 'powerup (pickup-type eco-blue))
+                     (and (-> self one-way) (< (vector4-dot (-> self out-dir) (target-pos 0)) -8192.0))
+                     )
+                 )
+            (go-virtual door-opening)
+            )
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defstate door-opening (eco-door)
+  :virtual #t
+  :code (behavior ()
+    (if (and (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status subtask-complete)))
+                  )
+             (send-event *target* 'query 'powerup (pickup-type eco-blue))
+             )
+        (sound-play "blue-eco-on" :position (-> self root trans))
+        )
+    (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 (sound-group) #t)
+    (let ((v1-14 (-> self root root-prim)))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec))
+      )
+    0
+    (until (ja-done? 0)
+      (ja :num! (seek! max (-> self speed)))
+      (suspend)
+      )
+    (go-virtual door-open)
+    )
+  :post transform-post
+  )
+
+(defstate door-open (eco-door)
+  :virtual #t
+  :code (behavior ()
+    (set-time! (-> self state-time))
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (let ((v1-3 (-> self root root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec))
+      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+      )
+    0
+    (ja :num-func num-func-identity :frame-num max)
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (suspend)
+    (update-transforms (-> self root))
+    (ja-post)
+    (until #f
+      (let ((f30-0 (vector4-dot (-> self out-dir) (target-pos 0)))
+            (f28-0 (vector4-dot (-> self out-dir) (camera-pos)))
+            )
+        (when (and (-> self auto-close)
+                   (or (not *target*)
+                       (or (< (-> self close-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                           (focus-test? *target* teleporting)
+                           )
+                       )
+                   )
+          (if (and (>= (* f30-0 f28-0) 0.0) (< 16384.0 (fabs f28-0)))
+              (go-virtual door-closing)
+              )
+          )
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defstate door-closing (eco-door)
+  :virtual #t
+  :code (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-1 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (let ((gp-0 (new 'stack 'overlaps-others-params)))
+      (set! (-> gp-0 options) (overlaps-others-options oo0))
+      (set! (-> gp-0 tlist) #f)
+      (while (find-overlapping-shapes (-> self root) gp-0)
+        (suspend)
+        )
+      )
+    (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 (sound-group) #t)
+    (until (ja-done? 0)
+      (ja :num! (seek! 0.0 (-> self speed)))
+      (suspend)
+      )
+    (if (-> self locked)
+        (sound-play "door-lock")
+        )
+    (go-virtual door-closed)
+    )
+  :post transform-post
+  )
+
+(defmethod update-lock-status! ((this eco-door))
+  (when (-> this state-actor)
+    (if (logtest? (-> this state-actor extra perm status) (entity-perm-status subtask-complete))
+        (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags unlocked)))
+        (set! (-> this locked) (logtest? (-> this flags) (eco-door-flags locked)))
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-collision! ((this eco-door))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 0)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 16384.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod eco-door-method-26 ((this eco-door))
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! ((this eco-door) (arg0 entity-actor))
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (let ((f0-0 (res-lump-float (-> this entity) 'scale :default 1.0)))
+    (set-vector! (-> this root scale) f0-0 f0-0 f0-0 1.0)
+    )
+  (set! (-> this open-distance) 32768.0)
+  (set! (-> this close-distance) 49152.0)
+  (set! (-> this speed) 1.0)
+  (set! (-> this state-actor) #f)
+  (let ((v1-8 (entity-actor-lookup arg0 'state-actor 0)))
+    (if v1-8
+        (set! (-> this state-actor) v1-8)
+        )
+    )
+  (set! (-> this locked) #f)
+  (set! (-> this flags) (res-lump-value arg0 'flags eco-door-flags :time -1000000000.0))
+  (update-lock-status! this)
+  (set! (-> this auto-close) (logtest? (-> this flags) (eco-door-flags auto-close)))
+  (set! (-> this one-way) (logtest? (-> this flags) (eco-door-flags one-way)))
+  (vector-z-quaternion! (-> this out-dir) (-> this root quat))
+  (set! (-> this out-dir w) (- (vector-dot (-> this out-dir) (-> this root trans))))
+  (update-transforms (-> this root))
+  (eco-door-method-26 this)
+  (if (and (not (-> this auto-close))
+           (-> this entity)
+           (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+           )
+      (go (method-of-object this door-open))
+      (go (method-of-object this door-closed))
+      )
+  )

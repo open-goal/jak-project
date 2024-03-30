@@ -185,6 +185,13 @@
          ;; This way it can check the individual function types, make sure they make sense, and create
          ;; a state with the appropriate type.
          ,(cond
+           ((and virtual parent)
+            `(begin
+              (inherit-state ,new-state (the state ,parent))
+              (set! (-> ,new-state parent) (the state ,parent))
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+            )
            (virtual
             `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
             )
