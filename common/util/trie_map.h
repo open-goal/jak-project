@@ -38,7 +38,8 @@ class TrieMap {
   }
 
   // Retrieve elements with a given prefix
-  std::vector<std::shared_ptr<T>> retrieve_with_prefix(const std::string& prefix) const {
+  std::vector<std::shared_ptr<T>> retrieve_with_prefix(const std::string& prefix,
+                                                       int max_count = -1) const {
     std::vector<std::shared_ptr<T>> result;
     std::shared_ptr<TrieNode> node = root;
     // Traverse to the node representing the prefix
@@ -49,7 +50,7 @@ class TrieMap {
       node = node->children[c];
     }
     // Gather all elements stored at or below this node
-    retrieve_elements(node, result);
+    retrieve_elements(node, result, max_count);
     return result;
   }
 
@@ -88,14 +89,18 @@ class TrieMap {
  private:
   // Recursive function to retrieve elements stored at or below the given node
   void retrieve_elements(std::shared_ptr<TrieNode> node,
-                         std::vector<std::shared_ptr<T>>& result) const {
+                         std::vector<std::shared_ptr<T>>& result,
+                         int max_count) const {
     // Add elements stored at this node to the result
     for (const auto& element : node->elements) {
+      if (max_count >= 0 && (int)result.size() >= max_count) {
+        return;
+      }
       result.push_back(element);
     }
     // Recursively traverse children
     for (const auto& child : node->children) {
-      retrieve_elements(child.second, result);
+      retrieve_elements(child.second, result, max_count);
     }
   }
 

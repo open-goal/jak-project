@@ -247,7 +247,7 @@ std::string titlize(const std::string& str) {
 }
 
 std::string pad_right(const std::string& input, const int width, const char padding_char) {
-  if (input.length() >= width) {
+  if ((int)input.length() >= width) {
     return input;  // No need to pad if input length is already greater or equal to width
   } else {
     int padding_width = width - input.length();
