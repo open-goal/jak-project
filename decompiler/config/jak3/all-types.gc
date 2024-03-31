@@ -22884,7 +22884,7 @@
     target-darkjak-running-attack
     target-darkjak-smack-charge
     target-darkjak-smack
-    target-darkjak-bomb1 ;; associated process guessed by decompiler, old: (state float float target)
+    (target-darkjak-bomb1 float float)
     target-darkjak-bomb0
     (target-invisible-get-on handle time-frame)
     ;; lightjak
@@ -30303,7 +30303,7 @@
 (define-extern set-fog-height! (function float none))
 (define-extern set-cloud-minmax! (function float float none))
 (define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
-;; (define-extern set-darkjak-texture-morph! function) ;; (function float none)
+(define-extern set-darkjak-texture-morph! (function float none))
 (define-extern *darkjak-highres-texture-anim-array* (texture-anim-array texture-anim))
 ;; (define-extern set-darkjak-highres-texture-morph! function) ;; (function float symbol)
 (define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
@@ -30925,7 +30925,7 @@
 ;; (define-extern sparticle-mode-animate function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none)
 (define-extern sparticle-motion-blur (function sparticle-system sparticle-cpuinfo vector none))
 ;; (define-extern sparticle-motion-blur-old function) ;; (function object sparticle-cpuinfo sprite-vec-data-3d object)
-;; (define-extern sparticle-set-conerot function) ;; (function sparticle-launcher vector none)
+(define-extern sparticle-set-conerot (function sparticle-launcher vector none))
 ;; (define-extern sparticle-next-on-mode-1 function) ;; (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float)
 ;; (define-extern check-ground-bounce function) ;; (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float)
 ;; (define-extern check-drop-group-center function) ;; (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none)
@@ -34241,82 +34241,72 @@
 ;; lightning-new-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lightning-appearance (structure)
   ((base-alpha            float   :offset-assert 0)
    (width-range-start     float   :offset-assert 4)
    (width-range-end       float   :offset-assert 8)
    (tex-id                uint32  :offset-assert 12)
    (blend-mode            uint64  :offset-assert 16)
-   (fade-time             uint64  :offset-assert 24)
-   (regenerate-time-start uint64  :offset-assert 32)
-   (regenerate-time-end   uint64  :offset-assert 40)
-   (alpha-1-curve         basic   :offset-assert 48)
+   (fade-time             time-frame :offset-assert 24)
+   (regenerate-time-start time-frame :offset-assert 32)
+   (regenerate-time-end   time-frame :offset-assert 40)
+   (alpha-1-curve         curve2d-fast :offset-assert 48)
    (alpha-1-mode          uint64  :offset-assert 56)
    (alpha-1-repeat-dist   float   :offset-assert 64)
-   (alpha-2-curve         basic   :offset-assert 68)
+   (alpha-2-curve         curve2d-fast :offset-assert 68)
    (alpha-2-mode          uint64  :offset-assert 72)
    (alpha-2-repeat-dist   float   :offset-assert 80)
-   (width-curve           basic   :offset-assert 84)
+   (width-curve           curve2d-fast :offset-assert 84)
    (width-mode            uint64  :offset-assert 88)
    (width-repeat-dist     float   :offset-assert 96)
    (uv-repeat-dist        float   :offset-assert 100)
-   (uv-shift?             basic   :offset-assert 104)
-   (uv-shift-speed        uint64  :offset-assert 112)
-   (fade-time             uint64  :offset-assert 24)
-   (use-sprite-bucket?    basic   :offset-assert 128)
-   (use-accurate-interp?  basic   :offset-assert 132)
+   (uv-shift?             symbol  :offset-assert 104)
+   (uv-shift-speed        time-frame :offset-assert 112)
+   (use-sprite-bucket?    symbol  :offset 128)
+   (use-accurate-interp?  symbol  :offset-assert 132)
    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
   )
-|#
 
-#|
 (deftype lightning-span-internal (structure)
   ((index            int16  :offset-assert 0)
    (span-flags       uint8  :offset-assert 2)
    (num-inner-points int8   :offset-assert 3)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype lightning-span (structure)
   ((random-offset-size-start float  :offset-assert 0)
    (inner-random-offset-size float  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype lightning-spans-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data lightning-span :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype lightning-spans-internal-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data lightning-span-internal :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype tex-u-holder (structure)
   ((uu        float  :offset-assert 0)
    (last-dist float  :offset-assert 4)
@@ -34325,21 +34315,19 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype lightning-bolt (basic)
-  ((current-points                basic                  :offset-assert 4)
-   (desired-points                basic                  :offset-assert 8)
-   (span-pts-start                basic                  :offset-assert 12)
-   (spans                         basic                  :offset-assert 16)
-   (spans-internal                basic                  :offset-assert 20)
-   (strip1                        basic                  :offset-assert 24)
-   (strip2                        basic                  :offset-assert 28)
-   (inner-point-travel-time       uint64                 :offset-assert 32)
-   (start-fade-time               uint64                 :offset-assert 40)
-   (new-inner-point-generate-time uint64                 :offset-assert 48)
-   (last-generate-time            uint64                 :offset-assert 56)
+  ((current-points                vector-array           :offset-assert 4)
+   (desired-points                vector-array           :offset-assert 8)
+   (span-pts-start                vector-array           :offset-assert 12)
+   (spans                         lightning-spans-array  :offset-assert 16)
+   (spans-internal                lightning-spans-internal-array :offset-assert 20)
+   (strip1                        prim-strip             :offset-assert 24)
+   (strip2                        prim-strip             :offset-assert 28)
+   (inner-point-travel-time       time-frame             :offset-assert 32)
+   (start-fade-time               time-frame             :offset-assert 40)
+   (new-inner-point-generate-time time-frame             :offset-assert 48)
+   (last-generate-time            time-frame             :offset-assert 56)
    (base-width                    float                  :offset-assert 64)
    (current-uv-shift              float                  :offset-assert 68)
    (current-fade-scalar           float                  :offset-assert 72)
@@ -34347,22 +34335,22 @@
    (appearance                    lightning-appearance   :offset-assert 80)
    (fade-mode                     uint64                 :offset-assert 88)
    (generate-mode                 uint64                 :offset-assert 96)
-   (snap-inner-points?            basic                  :offset-assert 104)
-   (span-data                     UNKNOWN              2 :offset-assert 108)
-   (num-active-spans              int8                   :offset-assert 108)
-   (num-spans                     int8                   :offset-assert 109)
-   (base-color                    uint32                 :offset-assert 112)
+   (snap-inner-points?            symbol                 :offset-assert 104)
+   (span-data                     int8                 2 :offset-assert 108)
+   (num-active-spans              int8                   :offset 108)
+   (num-spans                     int8                   :offset 109)
+   (base-color                    rgba                   :offset-assert 112)
    )
   :method-count-assert 23
   :size-assert         #x74
   :flag-assert         #x1700000074
   (:methods
-    (lightning-bolt-method-9 () none) ;; 9
+    (lightning-bolt-method-9 (_type_ int int lightning-appearance) none) ;; 9
     (lightning-bolt-method-10 () none) ;; 10
-    (lightning-bolt-method-11 () none) ;; 11
-    (lightning-bolt-method-12 () none) ;; 12
-    (lightning-bolt-method-13 () none) ;; 13
-    (lightning-bolt-method-14 () none) ;; 14
+    (lightning-bolt-method-11 (_type_) none) ;; 11
+    (lightning-bolt-method-12 (_type_) none) ;; 12
+    (lightning-bolt-method-13 (_type_ int) none) ;; 13
+    (lightning-bolt-method-14 (_type_) int) ;; 14
     (lightning-bolt-method-15 () none) ;; 15
     (lightning-bolt-method-16 () none) ;; 16
     (lightning-bolt-method-17 () none) ;; 17
@@ -34373,13 +34361,11 @@
     (lightning-bolt-method-22 () none) ;; 22
     )
   )
-|#
 
-#|
 (deftype lightning-new-tracker (process)
-  ((bolt       basic   :offset-assert 128)
-   (lifetime   uint64  :offset-assert 136)
-   (state-time uint64  :offset-assert 144)
+  ((bolt       lightning-bolt :offset-assert 128)
+   (lifetime   time-frame :offset-assert 136)
+   (state-time time-frame :offset-assert 144)
    )
   :method-count-assert 16
   :size-assert         #x98
@@ -34389,14 +34375,12 @@
     (lightning-new-tracker-method-15 () none) ;; 15
     )
   )
-|#
 
-#|
 (deftype lightning-tracker-init-params (structure)
   ((appearance               lightning-appearance         :offset-assert 0)
    (start-pt                 vector               :inline :offset-assert 16)
    (end-pt                   vector               :inline :offset-assert 32)
-   (lifetime                 uint64                       :offset-assert 48)
+   (lifetime                 time-frame                   :offset-assert 48)
    (num-inner-points         int8                         :offset-assert 56)
    (inner-random-offset-size float                        :offset-assert 60)
    (random-offset-size-start float                        :offset-assert 64)
@@ -34405,8 +34389,6 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; particle-curves                ;;
@@ -35104,14 +35086,14 @@
    (clock-on        symbol             :offset-assert 80) ;; guessed by decompiler
    (hud             handle           1 :offset-assert 88) ;; guessed by decompiler
    (tone            sound-id           :offset-assert 96) ;; guessed by decompiler
-   (bomb            uint32             :offset-assert 100)
+   (bomb            (pointer process)  :offset-assert 100)
    (mode-sound-bank connection         :offset-assert 104)
    )
   :method-count-assert 10
   :size-assert         #x6c
   :flag-assert         #xa0000006c
   (:methods
-    (darkjak-info-method-9 () none) ;; 9 ;; (update-clock! (_type_ int) none)
+    (update-clock! (_type_ int) none) ;; 9
     )
   )
 
@@ -35373,7 +35355,7 @@
 (define-extern lightning-probe-callback (function lightning-tracker none))
 (define-extern process-drawable-shock-effect-replace (function process-drawable lightning-spec (function lightning-tracker none) int int float none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object))
-;; (define-extern process-drawable-shock-wall-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher symbol)
+(define-extern process-drawable-shock-wall-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher symbol))
 (define-extern process-drawable2-shock-effect (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none))
 ;; (define-extern process-drawable-shock-skel-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher float int int none)
 (define-extern *lightning-darkjak-pill* lightning-spec)
@@ -35413,7 +35395,7 @@
 ;; (define-extern sparticle-track-gun-joint-player-y function)
 (define-extern *last-player-pos* vector)
 ;; (define-extern birth-func-converge function)
-;; (define-extern sparticle-red-2-converge function)
+(define-extern sparticle-red-2-converge (function sparticle-system sparticle-cpuinfo vector none))
 ;; (define-extern sparticle-red-2-glow-trail-halt function)
 (define-extern *gun-dark-3-nuke-fade-time* time-frame)
 (define-extern *gun-dark-3-nuke-fade-curve* curve-color-piecewise)
@@ -35808,9 +35790,9 @@
   ((impact?            symbol          :offset-assert 512)
    (fire-point         vector  :inline :offset-assert 528)
    (explode-sound      uint32          :offset-assert 544)
-   (bolts              basic           :offset-assert 548)
+   (bolts              (array lightning-bolt)  :offset-assert 548)
    (ball-pos           vector 2 :inline :offset-assert 560)
-   (trail              light-trail      :offset-assert 592)
+   (trail              sparticle-launch-control :offset-assert 592)
    (ball1              sparticle-launch-control :offset-assert 596)
    (last-ground-height float           :offset-assert 600)
    (fire-sound         sound-id        :offset-assert 604)
@@ -35822,22 +35804,22 @@
     impact ;; 22
     )
   (:methods
-    (darkjak-ball-method-41 () none) ;; 41
+    (setup-bolts! (_type_ vector vector) none) ;; 41
     )
   )
 
-(define-extern darkjak-ball-slide-reaction (function none :behavior darkjak-ball))
-(define-extern darkjak-ball-move (function none :behavior darkjak-ball))
-(define-extern *darkjak-ball-lightning* lightning-spec)
+(define-extern darkjak-ball-slide-reaction (function control-info collide-query vector vector collide-status))
+(define-extern darkjak-ball-move (function darkjak-ball none))
+(define-extern *darkjak-ball-lightning* lightning-appearance)
 (define-extern *darkjak-ball-lightning-colors* (array rgba))
-(define-extern sparticle-track-hadouken (function none))
+(define-extern sparticle-track-hadouken (function object sparticle-cpuinfo vector none))
 (define-extern target-darkjak-setup (function symbol none :behavior target))
 (define-extern want-to-darkjak? (function symbol :behavior target))
 (define-extern *darkjak-trans-mods* surface)
 (define-extern target-darkjak-end-mode (function symbol none :behavior target))
 (define-extern target-darkjak-process (function none :behavior target))
-(define-extern target-darkjak-bomb-collide (function float float none :behavior target))
-(define-extern target-bomb1-fire-shot (function (pointer handle) int int int none :behavior target))
+(define-extern target-darkjak-bomb-collide (function (pointer float) float none :behavior target))
+(define-extern target-bomb1-fire-shot (function (array handle) int int object :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-lightjak                ;;
@@ -36145,8 +36127,16 @@
   :flag-assert         #x900000240
   )
 
+;; +++gun-blue-shot:gun-blue-lightning-cmd-msg
+(defenum gun-blue-lightning-cmd-msg
+  :type uint64
+  (active 0)
+  (inactive 1)
+  )
+;; ---gun-blue-shot:gun-blue-lightning-cmd-msg
+
 (deftype gun-blue-lightning-command (structure)
-  ((msg            uint64                            :offset-assert 0)
+  ((msg            gun-blue-lightning-cmd-msg :offset-assert 0)
    (lightning-info gun-blue-2-lightning-info :inline :offset-assert 16)
    )
   :method-count-assert 9
@@ -36155,7 +36145,7 @@
   )
 
 (deftype gun-blue-2-lightning-tracker (process-drawable)
-  ((lt-array                (array gun-blue-2-lightning-info) :offset-assert 200)
+  ((lt-array                (array lightning-bolt) :offset-assert 200)
    (should-draw-this-frame? symbol         :offset-assert 204)
    (last-spark-time         time-frame     :offset 216)
    (spark-time-interval     time-frame     :offset-assert 224)
@@ -36179,9 +36169,9 @@
     test ;; 23
     )
   (:methods
-    (gun-blue-2-lightning-tracker-method-24 () none) ;; 24
-    (gun-blue-2-lightning-tracker-method-25 () none) ;; 25
-    (gun-blue-2-lightning-tracker-method-26 () none) ;; 26
+    (setup-draw! (_type_ gun-blue-2-lightning-info) none) ;; 24
+    (gun-blue-2-lightning-tracker-method-25 (_type_) object) ;; 25
+    (gun-blue-2-lightning-tracker-method-26 (_type_ vector vector gun-blue-lightning-command) symbol) ;; 26
     )
   )
 
@@ -36212,7 +36202,7 @@
   :size-assert         #x241
   :flag-assert         #xa00000241
   (:methods
-    (rope-constraint-method-9 () none) ;; 9
+    (rope-constraint-method-9 (_type_ int) symbol) ;; 9
     )
   )
 
@@ -36241,32 +36231,32 @@
   :flag-assert         #x2901b00230
   )
 
-;; (define-extern sparticle-fade-alpha-dist function)
-;; (define-extern gun-fire-blue-1 function)
-;; (define-extern fmod-2 function)
-;; (define-extern get-dist-and-dot function)
-;; (define-extern gun-blue-shot-3-move function)
+(define-extern sparticle-fade-alpha-dist (function sparticle-system sparticle-cpuinfo matrix none))
+(define-extern gun-fire-blue-1 (function object :behavior target))
+(define-extern fmod-2 (function float float float))
+(define-extern get-dist-and-dot (function gun-blue-shot dist-dot-val object))
+(define-extern gun-blue-shot-3-move (function gun-blue-shot-3 none))
 (define-extern *blue-shot-trail* light-trail-composition)
-;; (define-extern gun-fire-blue-3 function)
-;; (define-extern draw-beam-segment function)
-;; (define-extern *found-objects* object)
-;; (define-extern *gun-blue-2-last-attack-id* object)
-;; (define-extern *gun-blue-2-last-attack-id-time* object)
-;; (define-extern fire-projectile-if-necessary function)
-;; (define-extern *gun-blue-2-targets* object)
-;; (define-extern *blue-2-lightning-shape* object)
+(define-extern gun-fire-blue-3 (function object :behavior target))
+(define-extern draw-beam-segment (function none))
+(define-extern *found-objects* (pointer handle))
+(define-extern *gun-blue-2-last-attack-id* uint)
+(define-extern *gun-blue-2-last-attack-id-time* timeframe-wrapper)
+(define-extern fire-projectile-if-necessary (function vector vector handle (pointer gun-blue-shot-2)))
+(define-extern *gun-blue-2-targets* (inline-array gun-blue-2-target-info))
+(define-extern *blue-2-lightning-shape* rope-constraint)
 (define-extern *uv-loop-curve* curve2d-piecewise)
-;; (define-extern *blue-light-test* object)
-;; (define-extern *blue-light-test-end* object)
-;; (define-extern *blue-light-test-big* object)
-;; (define-extern *blue-light-test-big-intense* object)
-;; (define-extern *blue-light-test-small-fade* object)
-;; (define-extern gun-blue-2-lightning-init-by-other function)
-;; (define-extern create-lightning-tracker-if-necessary function)
-;; (define-extern is-valid-blue-2-target function)
-;; (define-extern find-gun-blue-2-target function)
-;; (define-extern find-gun-blue-2-target-old function)
-;; (define-extern *lightning-pts-cache* object)
+(define-extern *blue-light-test* lightning-appearance)
+(define-extern *blue-light-test-end* lightning-appearance)
+(define-extern *blue-light-test-big* lightning-appearance)
+(define-extern *blue-light-test-big-intense* lightning-appearance)
+(define-extern *blue-light-test-small-fade* lightning-appearance)
+(define-extern gun-blue-2-lightning-init-by-other (function gun-blue-2-lightning-init-params object :behavior gun-blue-2-lightning-tracker))
+(define-extern create-lightning-tracker-if-necessary (function handle :behavior target))
+(define-extern is-valid-blue-2-target (function process-focusable int symbol))
+(define-extern find-gun-blue-2-target (function vector int process-drawable))
+(define-extern find-gun-blue-2-target-old (function vector int vector process-drawable))
+(define-extern *lightning-pts-cache* (inline-array vector))
 (define-extern gun-fire-blue-2 (function object :behavior target))
 (define-extern gun-fire-blue-2-old (function object :behavior target))
 (define-extern target-gun-can-fire-blue? (function pickup-type symbol :behavior target))
