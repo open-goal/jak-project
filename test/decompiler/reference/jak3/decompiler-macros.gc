@@ -215,9 +215,9 @@
          ,(cond
            ((and virtual parent)
             `(begin
-              (inherit-state ,new-state (the state ,parent))
-              (set! (-> ,new-state parent) (the state ,parent))
-              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              (inherit-state ,new-state ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
+              (set! (-> ,new-state parent) ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
+              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
             )
            (virtual

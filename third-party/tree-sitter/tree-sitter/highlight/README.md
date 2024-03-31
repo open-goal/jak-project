@@ -1,22 +1,25 @@
-# `tree-sitter-highlight`
+# Tree-sitter Highlight
 
-[![Crates.io](https://img.shields.io/crates/v/tree-sitter-highlight.svg)](https://crates.io/crates/tree-sitter-highlight)
+[![crates.io badge]][crates.io]
 
-### Usage
+[crates.io]: https://crates.io/crates/tree-sitter-highlight
+[crates.io badge]: https://img.shields.io/crates/v/tree-sitter-highlight.svg?color=%23B48723
 
-Add this crate, and the language-specific crates for whichever languages you want to parse, to your `Cargo.toml`:
+## Usage
+
+Add this crate, and the language-specific crates for whichever languages you want
+to parse, to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tree-sitter-highlight = "0.19"
-tree-sitter-html = "0.19"
-tree-sitter-javascript = "0.19"
+tree-sitter-highlight = "^0.21.0"
+tree-sitter-javascript = "0.20.3"
 ```
 
 Define the list of highlight names that you will recognize:
 
 ```rust
-let highlight_names = &[
+let highlight_names = [
     "attribute",
     "constant",
     "function.builtin",
@@ -38,34 +41,29 @@ let highlight_names = &[
 ];
 ```
 
-Create a highlighter. You need one of these for each thread that you're using for syntax highlighting:
+Create a highlighter. You need one of these for each thread that you're using for
+syntax highlighting:
 
 ```rust
 use tree_sitter_highlight::Highlighter;
 
-let highlighter = Highlighter::new();
+let mut highlighter = Highlighter::new();
 ```
 
-Load some highlighting queries from the `queries` directory of some language repositories:
+Load some highlighting queries from the `queries` directory of the language repository:
 
 ```rust
 use tree_sitter_highlight::HighlightConfiguration;
 
-let html_language = unsafe { tree_sitter_html() };
-let javascript_language = unsafe { tree_sitter_javascript() };
+let javascript_language = tree_sitter_javascript::language();
 
-let html_config = HighlightConfiguration::new(
-    tree_sitter_html::language(),
-    tree_sitter_html::HIGHLIGHTS_QUERY,
-    tree_sitter_html::INJECTIONS_QUERY,
-    "",
-).unwrap();
-
-let javascript_config = HighlightConfiguration::new(
-    tree_sitter_javascript::language(),
-    tree_sitter_javascript::HIGHLIGHTS_QUERY,
-    tree_sitter_javascript::INJECTIONS_QUERY,
-    tree_sitter_javascript::LCOALS_QUERY,
+let mut javascript_config = HighlightConfiguration::new(
+    javascript_language,
+    "javascript",
+    tree_sitter_javascript::HIGHLIGHT_QUERY,
+    tree_sitter_javascript::INJECTION_QUERY,
+    tree_sitter_javascript::LOCALS_QUERY,
+    false,
 ).unwrap();
 ```
 
@@ -102,4 +100,6 @@ for event in highlights {
 }
 ```
 
-The last parameter to `highlight` is a *language injection* callback. This allows other languages to be retrieved when Tree-sitter detects an embedded document (for example, a piece of JavaScript code inside of a `script` tag within HTML).
+The last parameter to `highlight` is a _language injection_ callback. This allows
+other languages to be retrieved when Tree-sitter detects an embedded document
+(for example, a piece of JavaScript code inside a `script` tag within HTML).

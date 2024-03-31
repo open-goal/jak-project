@@ -66,6 +66,7 @@ add_library(common
         type_system/TypeSpec.cpp
         type_system/TypeSystem.cpp
         util/Assert.cpp
+        util/ast_util.cpp
         util/BitUtils.cpp
         util/compress.cpp
         util/crc32.cpp
@@ -87,7 +88,7 @@ add_library(common
         util/Timer.cpp
         util/unicode_util.cpp
         versions/versions.cpp
-        )
+         "util/trie_map.h")
 
 target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
 
