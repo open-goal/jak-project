@@ -13,7 +13,7 @@ class TrieMap {
  private:
   // TrieNode structure
   struct TrieNode {
-    std::unordered_map<char, std::shared_ptr<TrieNode>> children;
+    std::map<char, std::shared_ptr<TrieNode>> children;
     std::vector<std::shared_ptr<T>> elements;
   };
 
@@ -72,6 +72,11 @@ class TrieMap {
   // Remove the specified element from the TrieMap
   void remove(const std::shared_ptr<T>& element) { remove_element(root, element); }
 
+  template <typename F>
+  int remove_matching(F&& f) {
+    return remove_matching_elements(root.get(), f);
+  }
+
   // Return the total number of elements stored in the TrieMap
   int size() const {
     int count = 0;
@@ -102,6 +107,36 @@ class TrieMap {
     for (const auto& child : node->children) {
       retrieve_elements(child.second, result, max_count);
     }
+  }
+
+  /*!
+   * Remove elements where f(element) == true;
+   */
+  template <typename F>
+  int remove_matching_elements(TrieNode* node, F&& f) {
+    int erase_count = 0;
+    // remove from this level
+    for (auto it = node->elements.begin(); it != node->elements.end();) {
+      if (f(it->get())) {
+        it = node->elements.erase(it);
+        erase_count++;
+      } else {
+        ++it;
+      }
+    }
+
+    // remove children
+    for (auto it = node->children.begin(); it != node->children.end();) {
+      erase_count += remove_matching_elements(it->second.get(), f);
+      // remove child if it's empty
+      if (it->second->children.empty() && it->second->elements.empty()) {
+        it = node->children.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
+    return erase_count;
   }
 
   // Recursive function to remove the specified element from the TrieMap
