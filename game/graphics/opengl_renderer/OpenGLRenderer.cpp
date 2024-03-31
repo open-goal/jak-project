@@ -143,10 +143,16 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     // 10
     for (int i = 0; i < LEVEL_MAX; i++) {
 #define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
+      // 10
       init_bucket_renderer<TextureUploadHandler>(
           fmt::format("tex-l{}-tfrag", i), BucketCategory::TEX,
           GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_TFRAG, BucketId::TEX_L1_TFRAG, i),
           texture_animator);
+      // 11
+      init_bucket_renderer<TFragment>(
+          fmt::format("tfrag-l{}-tfrag", i), BucketCategory::TFRAG,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_TFRAG, BucketId::TFRAG_L1_TFRAG, i),
+          std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i, anim_slot_array());
     }
 
     // 340
@@ -175,10 +181,16 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     // 463
     for (int i = 0; i < LEVEL_MAX; i++) {
 #define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
+      // 463
       init_bucket_renderer<TextureUploadHandler>(
           fmt::format("tex-l{}-water", i), BucketCategory::TEX,
           GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_WATER, BucketId::TEX_L1_WATER, i),
           texture_animator);
+      // 466
+      init_bucket_renderer<TFragment>(
+          fmt::format("tfrag-l{}-water", i), BucketCategory::TFRAG,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_WATER, BucketId::TFRAG_L1_WATER, i),
+          std::vector{tfrag3::TFragmentTreeKind::WATER}, false, i, anim_slot_array());
     }
 
     // 563
@@ -200,8 +212,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     //                                               BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
 
     // 583
-    init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER,
-                                         BucketId::DEBUG, 0x8000);
+    init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x8000);
     // 584
     init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
                                          BucketId::DEBUG_NO_ZBUF2, 0x8000);

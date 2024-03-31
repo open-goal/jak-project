@@ -192,7 +192,7 @@
       (when (sphere-cull (-> arg0 bsphere))
         (add-debug-sphere
           #t
-          (bucket-id bucket583)
+          (bucket-id debug)
           (-> arg0 bsphere)
           (-> arg0 bsphere w)
           (new 'static 'rgba :r #x80 :a #x80)
@@ -1493,103 +1493,103 @@
       (reset! *dma-mem-usage*)
       )
 
-    ;; reset foreground
-    (foreground-initialize-engines)
-    (reset! *prim-work*)
+    ; ;; reset foreground
+    ; (foreground-initialize-engines)
+    ; (reset! *prim-work*)
 
-    ;; update wind/time of day prior to drawing.
-    (let ((gp-2 (-> pp clock)))
-      (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
-          (set! (-> pp clock) (-> *display* bg-clock))
-          (set! (-> pp clock) (-> *display* real-clock))
-          )
-      (if (not (paused?))
-          (update-wind *wind-work* *wind-scales*)
-          )
-      (update-time-of-day *time-of-day-context*)
-      (set! (-> pp clock) gp-2)
-      )
+    ; ;; update wind/time of day prior to drawing.
+    ; (let ((gp-2 (-> pp clock)))
+    ;   (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+    ;       (set! (-> pp clock) (-> *display* bg-clock))
+    ;       (set! (-> pp clock) (-> *display* real-clock))
+    ;       )
+    ;   (if (not (paused?))
+    ;       (update-wind *wind-work* *wind-scales*)
+    ;       )
+    ;   (update-time-of-day *time-of-day-context*)
+    ;   (set! (-> pp clock) gp-2)
+    ;   )
 
-    ;; draw sky
-    (with-profiler 'sky *profile-sky-color*
-      (if (-> *sky-work* draw-vortex)
-          (draw-vortex)
-          (draw *sky-work*)
-          )
-      (flush-cache 0)
-      )
-
-
-    ;; draw ocean
-    (let ((gp-5 (-> pp clock)))
-      (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
-          (set! (-> pp clock) (-> *display* bg-clock))
-          (set! (-> pp clock) (-> *display* real-clock))
-          )
-      (with-profiler 'ocean *profile-ocean-color*
-        (draw! *ocean*)
-        (if *ocean-map*
-            (update-map *ocean*)
-            )
-        )
-      (set! (-> pp clock) gp-5)
-      )
-
-    ;; draw foreground
-    (foreground-engine-execute *foreground-draw-engine*)
-
-    ;; do VU0/EE part of foreground drawing
-    (let ((gp-6 (-> pp clock)))
-      (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
-          (set! (-> pp clock) (-> *display* bg-clock))
-          (set! (-> pp clock) (-> *display* real-clock))
-          )
-      (foreground-execute-cpu-vu0-engines)
-      (set! (-> pp clock) gp-6)
-      )
+    ; ;; draw sky
+    ; (with-profiler 'sky *profile-sky-color*
+    ;   (if (-> *sky-work* draw-vortex)
+    ;       (draw-vortex)
+    ;       (draw *sky-work*)
+    ;       )
+    ;   (flush-cache 0)
+    ;   )
 
 
-    (when *add-sphere*
-      )
+    ; ;; draw ocean
+    ; (let ((gp-5 (-> pp clock)))
+    ;   (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+    ;       (set! (-> pp clock) (-> *display* bg-clock))
+    ;       (set! (-> pp clock) (-> *display* real-clock))
+    ;       )
+    ;   (with-profiler 'ocean *profile-ocean-color*
+    ;     (draw! *ocean*)
+    ;     (if *ocean-map*
+    ;         (update-map *ocean*)
+    ;         )
+    ;     )
+    ;   (set! (-> pp clock) gp-5)
+    ;   )
 
-    ;; sprites/particles
-    (if (not (paused?))
-        (execute-part-engine)
-        )
-    (when (logtest? (vu1-renderer-mask sprite) (-> *display* vu1-enable-user))
-      (if (not (get-screen-copied *blit-displays-work*))
-          (sprite-draw *display*)
-          )
-      )
+    ; ;; draw foreground
+    ; (foreground-engine-execute *foreground-draw-engine*)
 
-    ;; debug drawing
-    (when *debug-segment*
-      (debug-draw-actors *level* *display-actor-marks*)
-      (collide-shape-draw-debug-marks)
-      )
-    (when *display-trail-graph*
-      (let ((a0-67 *trail-graph*))
-        (if a0-67
-            (debug-draw a0-67)
-            )
-        )
-      )
+    ; ;; do VU0/EE part of foreground drawing
+    ; (let ((gp-6 (-> pp clock)))
+    ;   (if (= (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
+    ;       (set! (-> pp clock) (-> *display* bg-clock))
+    ;       (set! (-> pp clock) (-> *display* real-clock))
+    ;       )
+    ;   (foreground-execute-cpu-vu0-engines)
+    ;   (set! (-> pp clock) gp-6)
+    ;   )
 
-    ;; dispatch collision events
-    (send-events-for-touching-shapes *touching-list*)
-    (free-nodes *touching-list*)
-    (prepare *collide-rider-pool*)
-    (send-all! *event-queue*)
 
-    ;; level update actors:
-    (with-profiler 'actors *profile-actors-color*
-      (actors-update *level*)
-      )
+    ; (when *add-sphere*
+    ;   )
 
-    ;; do navigation math
-    (with-profiler 'nav *profile-nav-color*
-      (update-nav-meshes-method *level*)
-      )
+    ; ;; sprites/particles
+    ; (if (not (paused?))
+    ;     (execute-part-engine)
+    ;     )
+    ; (when (logtest? (vu1-renderer-mask sprite) (-> *display* vu1-enable-user))
+    ;   (if (not (get-screen-copied *blit-displays-work*))
+    ;       (sprite-draw *display*)
+    ;       )
+    ;   )
+
+    ; ;; debug drawing
+    ; (when *debug-segment*
+    ;   (debug-draw-actors *level* *display-actor-marks*)
+    ;   (collide-shape-draw-debug-marks)
+    ;   )
+    ; (when *display-trail-graph*
+    ;   (let ((a0-67 *trail-graph*))
+    ;     (if a0-67
+    ;         (debug-draw a0-67)
+    ;         )
+    ;     )
+    ;   )
+
+    ; ;; dispatch collision events
+    ; (send-events-for-touching-shapes *touching-list*)
+    ; (free-nodes *touching-list*)
+    ; (prepare *collide-rider-pool*)
+    ; (send-all! *event-queue*)
+
+    ; ;; level update actors:
+    ; (with-profiler 'actors *profile-actors-color*
+    ;   (actors-update *level*)
+    ;   )
+
+    ; ;; do navigation math
+    ; (with-profiler 'nav *profile-nav-color*
+    ;   (update-nav-meshes-method *level*)
+    ;   )
 
     ;; draw the backgroun
     (with-profiler 'background *profile-background-color*

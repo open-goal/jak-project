@@ -419,8 +419,10 @@ enum class BucketId {
   TEX_LCOM_SKY_PRE = 4,
 
   TEX_L0_TFRAG = 10,
+  TFRAG_L0_TFRAG = 11,
 
   TEX_L1_TFRAG = 22,
+  TFRAG_L1_TFRAG = 23,
 
   TEX_LCOM_TFRAG = 340,
 
@@ -436,7 +438,11 @@ enum class BucketId {
 
   TEX_L0_WATER = 463,
 
+  TFRAG_L0_WATER = 466,
+
   TEX_L1_WATER = 473,
+
+  TFRAG_L1_WATER = 476,
 
   TEX_LCOM_WATER = 563,
 
