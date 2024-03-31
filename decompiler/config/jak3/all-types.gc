@@ -2265,16 +2265,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern matrix-fur-compose (function matrix vector vector vector matrix))
-(define-extern matrix-fu-compose (function matrix vector vector vector matrix))
+(define-extern matrix-fu-compose (function matrix vector vector matrix))
 (define-extern matrix-fr-compose (function matrix vector vector vector matrix))
 (define-extern matrix-ur-compose (function matrix vector vector vector matrix))
-(define-extern matrix-f-u-compose (function matrix vector vector vector matrix))
+(define-extern matrix-f-u-compose (function matrix vector vector matrix))
 (define-extern matrix-f-r-compose (function matrix vector vector vector matrix))
 (define-extern matrix-u-f-compose (function matrix vector vector matrix))
 (define-extern matrix-u-r-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-f-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-u-compose (function matrix vector vector vector matrix))
-(define-extern matrix-f-compose (function matrix vector vector vector matrix))
+(define-extern matrix-f-compose (function matrix vector float matrix))
 (define-extern matrix-u-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-compose (function matrix vector vector vector matrix))
 
@@ -7449,6 +7449,19 @@
   (movie0 16)
   (movie1 17)
   (movie2 18)
+  (tm19 19)
+  (tm20 20)
+  (tm21 21)
+  (tm22 22)
+  (tm23 23)
+  (tm24 24)
+  (tm25 25)
+  (tm26 26)
+  (tm27 27)
+  (tm28 28)
+  (tm29 29)
+  (tm30 30)
+  (tm31 31)
   )
 ;; ---level-h:task-mask
 
@@ -7815,7 +7828,7 @@
    it will kick out levels as needed to make a free slot, and set up a new level, and start
    the load. This should only be used when you might want to start a load." (_type_ symbol symbol) level) ;; 12
     (activate-levels! "Make all levels 'active!" (_type_) int) ;; 13
-    (level-group-method-14 () none) ;; 14 ;; (debug-print-entities (_type_ symbol type) none)
+    (debug-print-entities (_type_ symbol type string) none) ;; 14
     (debug-draw-actors (_type_ symbol) none) ;; 15
     (assign-draw-indices "Assign the order for levels to be drawn." (_type_) none) ;; 16
     (actors-update (_type_) none) ;; 17
@@ -7824,11 +7837,11 @@
     (level-get-target-inside "Get the level that the player is 'in'." (_type_) level) ;; 20
     (init-level-system "If needed, initialize the level system by loading common/art packages and allocating level heaps." (_type_ symbol) none) ;; 21
     (art-group-get-by-name "Check all levels for an art group with the given name." (_type_ string (pointer level)) art-group) ;; 22 ;; (load-commands-set! (_type_ pair) none)
-    (level-group-method-23 () none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
-    (level-group-method-24 () none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
-    (level-group-method-25 () none) ;; 25 ;; (update-vis-volumes (_type_) none)
+    (update-vis-volumes (_type_) none) ;; 23 ;; (art-group-get-by-name (_type_ string (pointer uint32)) art-group)
+    (level-group-method-24 (_type_) none) ;; 24 ;; (alt-load-command-get-index (_type_ symbol int) pair)
+    (print-volume-sizes (_type_) none) ;; 25
     (status-of-level-and-borrows "Get the combined status of a level and borrow levels." (_type_ symbol symbol) symbol) ;; 26 ;; (update-vis-volumes-from-nav-mesh (_type_) none)
-    (do-nothing "Empty method." (_type_) none) ;; 27 ;; (print-volume-sizes (_type_) none)
+    (do-nothing "Empty method." (_type_) none) ;; 27
     (load-in-progress? "Is there a load happening now?" (_type_) symbol) ;; 28 ;; (level-status (_type_ symbol) symbol)
     (is-load-allowed? "Does the exclusive-load setting allow us to load this level?" (_type_ (pointer symbol)) symbol) ;; 29
     (level-get-most-disposable "Get the level inside this level-group that should
@@ -17943,7 +17956,7 @@
    (radius            float       :offset-assert 56)
    (duration          float       :offset-assert 60)
    (duration-rand     float       :offset-assert 64)
-   (sound             symbol      :offset-assert 68)
+   (sound             sound-spec  :offset-assert 68)
    (delay             float       :offset-assert 72)
    (delay-rand        float       :offset-assert 76)
    )
@@ -20541,7 +20554,7 @@
     (send-shoves (_type_ process touching-shapes-entry float float float) symbol) ;; 50
     (above-ground? (_type_ collide-query vector collide-spec float float float) symbol) ;; 51
     (water-info-init! (_type_ water-info collide-action) water-info) ;; 52
-    (collide-shape-method-53 () none) ;; 53 ;; (iterate-prims (_type_ (function collide-shape-prim none)) none)
+    (iterate-prims (_type_ (function collide-shape-prim none)) none) ;; 53
     (collide-shape-method-54 () none) ;; 54 ;; (pusher-init (_type_) none)
     )
   )
@@ -23187,6 +23200,7 @@
 
 (declare-type entity-camera entity)
 (declare-type entity-nav-mesh structure)
+(declare-type entity-race-mesh entity)
 (declare-type city-level-info structure)
 
 (deftype bsp-node (structure)
@@ -23238,11 +23252,11 @@
    ; (ambients                 symbol                      :offset-assert 156) ;; now just #t?
    (subdivide-close          float                       :offset 160)
    (subdivide-far            float                       :offset-assert 164)
-   ; (race-meshes              (array entity-race-mesh)    :offset-assert 168)
+   (race-meshes              (array entity-race-mesh)    :offset-assert 168)
    (actor-birth-order        (pointer uint32)            :offset 172)
    (light-hash               light-hash                  :offset-assert 176)
    (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
-   ; (actor-groups             (array actor-group)         :offset-assert 184)
+   (actor-groups             (array actor-group)         :offset-assert 184)
    (region-trees             (array drawable-tree-region-prim) :offset 188)
    ; (region-array             region-array                :offset-assert 192)
    (collide-hash             collide-hash                :offset 196)
@@ -25078,7 +25092,7 @@
   :size-assert         #x40
   :flag-assert         #xa00000040
   (:methods
-    (entity-links-method-9 () none) ;; 9 ;; (birth? (_type_ vector) symbol)
+    (birth? (_type_ vector) symbol) ;; 9
     )
   )
 
@@ -25232,7 +25246,7 @@
    (sx          float            :offset 12)
    (sy          float            :offset 28)
    (rot         float            :offset 24)
-   (flag        int32            :offset 16)
+   (flag        int32            :offset 16 :score 1)
    (matrix      int32            :offset 20)
    (warp-turns  int32            :offset 16)
    (r           float            :offset 32)
@@ -28079,9 +28093,9 @@
     (nav-mesh-method-19 () none) ;; 19 ;; (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-20 () none) ;; 20 ;; (set-normals-from-adjacent-bounds (_type_ clamp-travel-vector-to-mesh-return-info) none)
     (nav-mesh-method-21 () none) ;; 21 ;; (find-adjacent-bounds-one (_type_ vector nav-poly int int) none)
-    (nav-mesh-method-22 () none) ;; 22 ;; (compute-bounding-box-from-vertices (_type_ vector vector) none)
+    (nav-mesh-method-22 () none) ;; 22
     (nav-mesh-method-23 () none) ;; 23 ;; (init-from-entity (_type_ entity-nav-mesh) none)
-    (nav-mesh-method-24 () none) ;; 24 ;; (handle-birth (_type_) none)
+    (compute-bounding-box-from-vertices (_type_ vector vector) none) ;; 24 ;; (handle-birth (_type_) none)
     (nav-mesh-method-25 () none) ;; 25 ;; (handle-kill (_type_) none)
     (nav-mesh-method-26 () none) ;; 26 ;; (update-navigation (_type_) none)
     (nav-mesh-method-27 () none) ;; 27 ;; (new-nav-control (_type_ process-drawable) nav-control)
@@ -28305,7 +28319,7 @@
   :size-assert         #x120
   :flag-assert         #x2f00000120
   (:methods
-    (nav-control-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
+    (debug-draw (_type_) none) ;; 9
     (nav-control-method-10 () none) ;; 10 ;; (point-in-bsphere? (_type_ vector) symbol)
     (find-poly-containing-point-1 (_type_ vector) nav-poly) ;; 11
     (cloest-point-on-mesh (_type_ vector vector nav-poly) nav-poly) ;; 12
@@ -30928,10 +30942,10 @@
 (define-extern *particle-vel* vector)
 ;; (define-extern birth-func-set-vel function) ;; (function object sparticle-cpuinfo sparticle-launchinfo none)
 ;; (define-extern birth-func-texture-group function) ;; (function int sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern rot-to-particle function)
+(define-extern rot-to-particle (function degrees sprite-vec-data-2d matrix none))
 ;; (define-extern birth-func-flip-based-on-scale function)
 ;; (define-extern sparticle-2d-spline-align function)
-;; (define-extern sparticle-2d-spline-align-instant function)
+(define-extern sparticle-2d-spline-align-instant (function object sparticle-cpuinfo sprite-vec-data-2d object none))
 ;; (define-extern birth-func-inherit-size function)
 ;; (define-extern birth-func-texture-group-2d function)
 ;; (define-extern birth-func-set-vel-2d function)
@@ -33185,7 +33199,7 @@
 (define-extern slave-los-state->string (function slave-los-state string))
 ;; (define-extern cam-line-dma function) ;; (function pointer)
 ;; (define-extern camera-line2d function) ;; (function vector4w vector4w pointer)
-;; (define-extern camera-plot-float-func function) ;; (function float float float float (function float float) vector4w none)
+(define-extern camera-plot-float-func (function float float float float (function float float) vector4w none))
 (define-extern camera-line-setup (function vector4w none))
 (define-extern camera-line-draw (function vector vector none))
 (define-extern camera-line (function vector vector vector4w none))
@@ -33580,7 +33594,7 @@
   :size-assert         #x10
   :flag-assert         #xc00000010
   (:methods
-    (curve2d-piecewise-method-10 (_type_ int symbol uint) none) ;; 10
+    (curve2d-piecewise-method-10 (_type_ int symbol int) none) ;; 10
     (curve2d-piecewise-method-11 (_type_) none) ;; 11
     )
   )
@@ -35357,7 +35371,7 @@
 ;; (define-extern spt-birth-func-part-jump-droppings-for function)
 (define-extern process-drawable-burn-effect (function time-frame rgbaf :behavior target))
 (define-extern lightning-probe-callback (function lightning-tracker none))
-;; (define-extern process-drawable-shock-effect-replace function)
+(define-extern process-drawable-shock-effect-replace (function process-drawable lightning-spec (function lightning-tracker none) int int float none))
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object))
 ;; (define-extern process-drawable-shock-wall-effect function) ;; (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher symbol)
 (define-extern process-drawable2-shock-effect (function process-drawable process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher none))
@@ -35369,28 +35383,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; (define-extern sparticle-track-gun-joint function)
-;; (define-extern *red-shot-colors* object) ;; (pointer rgba)
-;; (define-extern *range-explo-dust-color* curve-color-fast)
-;; (define-extern *range-explo-dust-alpha* curve2d-fast)
-;; (define-extern *range-explo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-explo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-explo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-explo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-explo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-gun-red3-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-explo-color* curve-color-fast)
-;; (define-extern *range-explo-alpha* curve2d-fast)
-;; (define-extern *range-explo-scale-x* curve2d-fast)
-;; (define-extern *range-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-explo-alpha* curve2d-fast)
-;; (define-extern *curve-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-explo-scale-y* curve2d-fast)
-;; (define-extern *part-gun-red3-explosion-texture-curve-settings* object)
-;; (define-extern *curve-linear-up-red* object)
+(define-extern *red-shot-colors* (pointer rgba))
+(define-extern *range-explo-dust-color* curve-color-fast)
+(define-extern *range-explo-dust-alpha* curve2d-fast)
+(define-extern *range-explo-dust-scale-x* curve2d-fast)
+(define-extern *range-explo-dust-scale-y* curve2d-fast)
+(define-extern *curve-explo-dust-alpha* curve2d-fast)
+(define-extern *curve-explo-dust-scale-x* curve2d-fast)
+(define-extern *curve-explo-dust-scale-y* curve2d-fast)
+(define-extern *part-gun-red3-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-explo-color* curve-color-fast)
+(define-extern *range-explo-alpha* curve2d-fast)
+(define-extern *range-explo-scale-x* curve2d-fast)
+(define-extern *range-explo-scale-y* curve2d-fast)
+(define-extern *curve-explo-alpha* curve2d-fast)
+(define-extern *curve-explo-scale-x* curve2d-fast)
+(define-extern *curve-explo-scale-y* curve2d-fast)
+(define-extern *part-gun-red3-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *curve-linear-up-red* curve2d-piecewise)
 (define-extern *red-shot-3-trail* light-trail-composition)
-;; (define-extern *curve-yellow2-shot-alpha* object)
-;; (define-extern *curve-yellow2-shot-color* curve-color-fast)
-;; (define-extern *curve-linear-down-long* curve2d-fast)
+(define-extern *curve-yellow2-shot-alpha* curve2d-piecewise)
+(define-extern *curve-yellow2-shot-color* curve-color-fast)
+(define-extern *curve-linear-down-long* curve2d-fast)
 (define-extern *yellow-shot-2-trail* light-trail-composition)
 ;; (define-extern check-shell-level1 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
 ;; (define-extern check-shell-level2 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
@@ -35401,20 +35415,20 @@
 ;; (define-extern birth-func-converge function)
 ;; (define-extern sparticle-red-2-converge function)
 ;; (define-extern sparticle-red-2-glow-trail-halt function)
-;; (define-extern *gun-dark-3-nuke-fade-time* object)
-;; (define-extern *gun-dark-3-nuke-fade-curve* object)
-;; (define-extern *gun-dark-3-nuke-blur-segs* object)
-;; (define-extern *gun-dark-3-nuke-blur-time* object)
-;; (define-extern *gun-dark-3-nuke-blur-curve* object)
-;; (define-extern *gun-dark-3-mushroom-speed* object)
-;; (define-extern *gun-dark-3-mushroom-size-time* object)
-;; (define-extern *gun-dark-3-nuke-mushroom-size-curve-x* object)
-;; (define-extern *gun-dark-3-nuke-mushroom-size-curve-y* object)
-;; (define-extern *gun-dark-3-nuke-fade-time-small* object)
-;; (define-extern *gun-dark-3-nuke-fade-curve-small* object)
-;; (define-extern *gun-dark-3-nuke-blur-segs-small* object)
-;; (define-extern *gun-dark-3-nuke-blur-time-small* object)
-;; (define-extern *gun-dark-3-nuke-blur-curve-small* object)
+(define-extern *gun-dark-3-nuke-fade-time* time-frame)
+(define-extern *gun-dark-3-nuke-fade-curve* curve-color-piecewise)
+(define-extern *gun-dark-3-nuke-blur-segs* uint)
+(define-extern *gun-dark-3-nuke-blur-time* time-frame)
+(define-extern *gun-dark-3-nuke-blur-curve* curve2d-piecewise)
+(define-extern *gun-dark-3-mushroom-speed* float)
+(define-extern *gun-dark-3-mushroom-size-time* time-frame)
+(define-extern *gun-dark-3-nuke-mushroom-size-curve-x* curve2d-piecewise)
+(define-extern *gun-dark-3-nuke-mushroom-size-curve-y* curve2d-piecewise)
+(define-extern *gun-dark-3-nuke-fade-time-small* time-frame)
+(define-extern *gun-dark-3-nuke-fade-curve-small* curve-color-piecewise)
+(define-extern *gun-dark-3-nuke-blur-segs-small* uint)
+(define-extern *gun-dark-3-nuke-blur-time-small* time-frame)
+(define-extern *gun-dark-3-nuke-blur-curve-small* curve2d-piecewise)
 ;; (define-extern spt-func-part-gun-dark-1-upgrade-shot-edges function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36068,9 +36082,8 @@
 ;; gun-blue-shot                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-blue-shot-3 (projectile)
-  ((hit-actor?             basic          :offset-assert 512)
+  ((hit-actor?             symbol         :offset-assert 512)
    (start-pos              vector :inline :offset-assert 528)
    (track-mode             uint64         :offset-assert 544)
    (random-travel-distance float          :offset-assert 552)
@@ -36083,9 +36096,7 @@
     dissipate ;; 21
     )
   )
-|#
 
-#|
 (deftype dist-dot-val (structure)
   ((dot             float          :offset-assert 0)
    (dist            float          :offset-assert 4)
@@ -36096,54 +36107,44 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype light-trail-tracker-blue-3 (light-trail-tracker-projectile)
   ()
   :method-count-assert 22
   :size-assert         #xb8
   :flag-assert         #x16004000b8
   )
-|#
 
-#|
 (deftype target-quality-info (structure)
-  ((targ  uint64  :offset-assert 0)
+  ((targ  handle  :offset-assert 0)
    (value float   :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype timeframe-wrapper (structure)
-  ((time uint64  :offset-assert 0)
+  ((time time-frame  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype gun-blue-2-lightning-info (structure)
-  ((pts                          UNKNOWN 32      :offset-assert 0)
+  ((pts                          vector 32 :inline :offset-assert 0)
    (num-pts                      int8            :offset-assert 512)
-   (should-draw-terminal-sparks? basic           :offset-assert 516)
+   (should-draw-terminal-sparks? symbol          :offset-assert 516)
    (terminal-spark-pos           vector  :inline :offset-assert 528)
-   (should-draw-extension?       basic           :offset-assert 544)
+   (should-draw-extension?       symbol          :offset-assert 544)
    (extension-end-point          vector  :inline :offset-assert 560)
    )
   :method-count-assert 9
   :size-assert         #x240
   :flag-assert         #x900000240
   )
-|#
 
-#|
 (deftype gun-blue-lightning-command (structure)
   ((msg            uint64                            :offset-assert 0)
    (lightning-info gun-blue-2-lightning-info :inline :offset-assert 16)
@@ -36152,20 +36153,18 @@
   :size-assert         #x250
   :flag-assert         #x900000250
   )
-|#
 
-#|
 (deftype gun-blue-2-lightning-tracker (process-drawable)
-  ((lt-array                basic          :offset-assert 200)
-   (should-draw-this-frame? basic          :offset-assert 204)
-   (last-spark-time         uint64         :offset-assert 216)
-   (spark-time-interval     uint64         :offset-assert 224)
-   (last-deduct-ammo-time   uint64         :offset-assert 232)
-   (snd-lightning           uint32         :offset-assert 240)
-   (active-enter-time       uint64         :offset-assert 248)
+  ((lt-array                (array gun-blue-2-lightning-info) :offset-assert 200)
+   (should-draw-this-frame? symbol         :offset-assert 204)
+   (last-spark-time         time-frame     :offset 216)
+   (spark-time-interval     time-frame     :offset-assert 224)
+   (last-deduct-ammo-time   time-frame     :offset-assert 232)
+   (snd-lightning           sound-id       :offset-assert 240)
+   (active-enter-time       time-frame     :offset-assert 248)
    (revolve-angle           float          :offset-assert 256)
    (sway-angle              float          :offset-assert 260)
-   (snd-spin                uint32         :offset-assert 264)
+   (snd-spin                sound-id       :offset-assert 264)
    (spin-intensity          float          :offset-assert 268)
    (prev-targ-pos           vector :inline :offset-assert 272)
    (last-probe-index        int16          :offset-assert 288)
@@ -36173,32 +36172,28 @@
   :method-count-assert 27
   :size-assert         #x122
   :flag-assert         #x1b00b00122
+  (:state-methods
+    active ;; 20
+    inactive ;; 21
+    die ;; 22
+    test ;; 23
+    )
   (:methods
     (gun-blue-2-lightning-tracker-method-24 () none) ;; 24
     (gun-blue-2-lightning-tracker-method-25 () none) ;; 25
     (gun-blue-2-lightning-tracker-method-26 () none) ;; 26
     )
-  (:state-methods
-    test ;; 23
-    active ;; 20
-    inactive ;; 21
-    die ;; 22
-    )
   )
-|#
 
-#|
 (deftype gun-blue-2-target-info (structure)
-  ((target     uint64  :offset-assert 0)
-   (start-time uint64  :offset-assert 8)
+  ((target     handle  :offset-assert 0)
+   (start-time time-frame :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype constraint-knot (structure)
   ((pt     vector :inline :offset-assert 0)
    (dir    vector :inline :offset-assert 16)
@@ -36208,11 +36203,9 @@
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype rope-constraint (structure)
-  ((constraints UNKNOWN 12 :offset-assert 0)
+  ((constraints constraint-knot 12 :inline :offset-assert 0)
    (num-knots   uint8      :offset-assert 576)
    )
   :method-count-assert 10
@@ -36222,9 +36215,7 @@
     (rope-constraint-method-9 () none) ;; 9
     )
   )
-|#
 
-#|
 (deftype gun-blue-2-lightning-init-params (structure)
   ((num-beams int8  :offset-assert 0)
    )
@@ -36232,9 +36223,7 @@
   :size-assert         #x1
   :flag-assert         #x900000001
   )
-|#
 
-#|
 (deftype gun-blue-shot (projectile)
   ((init-pos       vector :inline :offset-assert 512)
    (init-dir       vector :inline :offset-assert 528)
@@ -36244,23 +36233,20 @@
   :size-assert         #x230
   :flag-assert         #x2901b00230
   )
-|#
 
-#|
 (deftype gun-blue-shot-2 (gun-blue-shot)
   ()
   :method-count-assert 41
   :size-assert         #x230
   :flag-assert         #x2901b00230
   )
-|#
 
 ;; (define-extern sparticle-fade-alpha-dist function)
 ;; (define-extern gun-fire-blue-1 function)
 ;; (define-extern fmod-2 function)
 ;; (define-extern get-dist-and-dot function)
 ;; (define-extern gun-blue-shot-3-move function)
-;; (define-extern *blue-shot-trail* object)
+(define-extern *blue-shot-trail* light-trail-composition)
 ;; (define-extern gun-fire-blue-3 function)
 ;; (define-extern draw-beam-segment function)
 ;; (define-extern *found-objects* object)
@@ -36269,7 +36255,7 @@
 ;; (define-extern fire-projectile-if-necessary function)
 ;; (define-extern *gun-blue-2-targets* object)
 ;; (define-extern *blue-2-lightning-shape* object)
-;; (define-extern *uv-loop-curve* object)
+(define-extern *uv-loop-curve* curve2d-piecewise)
 ;; (define-extern *blue-light-test* object)
 ;; (define-extern *blue-light-test-end* object)
 ;; (define-extern *blue-light-test-big* object)
@@ -36281,13 +36267,13 @@
 ;; (define-extern find-gun-blue-2-target function)
 ;; (define-extern find-gun-blue-2-target-old function)
 ;; (define-extern *lightning-pts-cache* object)
-;; (define-extern gun-fire-blue-2 function)
-;; (define-extern gun-fire-blue-2-old function)
+(define-extern gun-fire-blue-2 (function object :behavior target))
+(define-extern gun-fire-blue-2-old (function object :behavior target))
 (define-extern target-gun-can-fire-blue? (function pickup-type symbol :behavior target))
-;; (define-extern *last-fire-blue-time* object)
+(define-extern *last-fire-blue-time* time-frame)
 (define-extern target-gun-fire-blue (function pickup-type (pointer process) :behavior target))
-;; (define-extern gun-blue-shot-move function) ;; (function gun-blue-shot none)
-;; (define-extern cshape-reaction-blue-shot function) ;; (function control-info collide-query vector vector collide-status)
+(define-extern gun-blue-shot-move (function gun-blue-shot none))
+(define-extern cshape-reaction-blue-shot (function control-info collide-query vector vector collide-status))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-yellow-shot                ;;
@@ -36460,12 +36446,12 @@
     )
   (:methods
     (init-probes! (_type_ collide-shape) none) ;; 23
-    (gun-red-shot-method-24 (_type_) none) ;; 24 ;; (gun-red-shot-method-24 (_type_) symbol)
+    (check-blocked? (_type_) symbol) ;; 24
     (stub (_type_) none) ;; 25
-    (do-collision (_type_) none) ;; 26 ;; (gun-red-shot-method-26 (_type_) none)
-    (gun-red-shot-method-27 (_type_) none) ;; 27 ;; (gun-red-shot-method-27 (_type_) none)
-    (gun-red-shot-method-28 (_type_ vector) none) ;; 28 ;; (gun-red-shot-method-28 (_type_ vector) sound-id)
-    (gun-red-shot-method-29 (_type_ process-drawable touching-shapes-entry) none) ;; 29 ;; (fire! (_type_ process-drawable int) object)
+    (find-targets (_type_) none) ;; 26
+    (setup-probes (_type_) none) ;; 27
+    (do-collision (_type_ vector) none) ;; 28
+    (send-attack! (_type_ process-drawable touching-shapes-entry) none) ;; 29
     )
   )
 
@@ -36554,17 +36540,16 @@
     die ;; 16
     )
   (:methods
-    (gun-red-2-shockwave-method-17 (_type_) none) ;; 17
+    (find-targets-and-attack! (_type_) none) ;; 17
     (send-attack! (_type_ process-focusable symbol) none) ;; 18
-    ;; adding _type_ here causes decompiler hang
-    (gun-red-2-shockwave-method-19 () none) ;; 19
-    (gun-red-2-shockwave-method-20 (_type_) none) ;; 20
-    (gun-red-2-shockwave-method-21 (_type_) none) ;; 21
+    (find-collision-point! (_type_) int) ;; 19
+    (generate-collision-points! (_type_) none) ;; 20
+    (adjust-height-and-radius (_type_) none) ;; 21
     (gun-red-2-shockwave-method-22 (_type_ int int int int) none) ;; 22
     (generate-shockwave-particles (_type_) none) ;; 23
     (adjust-warp-radius-and-alpha (_type_) object) ;; 24
     (adjust-ring-radius-and-alpha (_type_) none) ;; 25
-    (generate-collision-points (_type_) none) ;; 26
+    (generate-order-array (_type_) none) ;; 26
     (spawn-ring (_type_) none) ;; 27
     )
   )
@@ -36648,7 +36633,7 @@
 (define-extern gun-fire-red-2 (function object :behavior target))
 (define-extern red-3-sphere-init-by-other (function red-3-sphere-init-params object :behavior red-3-sphere))
 (define-extern gun-fire-red-3 (function gun-red-3-grenade :behavior target))
-(define-extern gun-fire-red-1 (function gun-red-shot :behavior target))
+(define-extern gun-fire-red-1 (function object :behavior target))
 (define-extern target-gun-can-fire-red? (function pickup-type symbol :behavior target))
 (define-extern target-gun-fire-red (function pickup-type (pointer process) :behavior target))
 (define-extern gun-red-shot-event-handler (function process int symbol event-message-block object :behavior gun-red-shot))
@@ -36658,36 +36643,33 @@
 ;; gun-dark-shot                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-dark-shot (projectile)
   ((blast-radius  float            :offset-assert 512)
    (core-position vector   :inline :offset-assert 528)
    (core-velocity vector   :inline :offset-assert 544)
    (spin-vector   vector   :inline :offset-assert 560)
-   (track-target  uint64           :offset-assert 576) ;; handle
+   (track-target  handle           :offset-assert 576)
    (size-t        float            :offset-assert 584)
-   (result-array  handle   16      :offset-assert 592) ;; guessed by decompiler
+   (result-array  handle   16      :offset-assert 592)
    (result-count  int8             :offset-assert 720)
-   (charge-sound  sound-id         :offset-assert 724) ;; guessed by decompiler
-   (fire-sound    sound-id         :offset-assert 728) ;; guessed by decompiler
-   (trail-sound   sound-id         :offset-assert 732) ;; guessed by decompiler
-   (explode-sound sound-id         :offset-assert 736) ;; guessed by decompiler
-   (start-pilot?  basic            :offset-assert 740)
-   (spread-timer  uint64           :offset-assert 744)
+   (charge-sound  sound-id         :offset-assert 724)
+   (fire-sound    sound-id         :offset-assert 728)
+   (trail-sound   sound-id         :offset-assert 732)
+   (explode-sound sound-id         :offset-assert 736)
+   (start-pilot?  symbol           :offset-assert 740)
+   (spread-timer  time-frame       :offset-assert 744)
    )
   :method-count-assert 43
   :size-assert         #x2f0
   :flag-assert         #x2b027002f0
   (:state-methods
     impact ;; 22
-    fizzle ;; 42
     moving ;; 23
-    startup ;; 41, old: (fizzle () _type_ :state)
+    startup ;; 41
+    fizzle ;; 42
     )
   )
-|#
 
-#|
 (deftype gun-dark-3-sphere (process-drawable)
   ((alpha-val float  :offset-assert 200)
    )
@@ -36698,9 +36680,7 @@
     active ;; 20
     )
   )
-|#
 
-#|
 (deftype gun-dark-3-sphere-init-params (structure)
   ((pos       vector :inline :offset-assert 0)
    (size-x    float          :offset-assert 16)
@@ -36711,122 +36691,114 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype last-active-nuke-info (structure)
-  ((last-active-nuke uint64  :offset-assert 0)
+  ((last-active-nuke handle  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype gun-dark-3-nuke (projectile)
-  ((flash-time                 uint64          :offset-assert 512)
-   (blur-time                  uint64          :offset-assert 520)
-   (spawned-mushroom-cloud?    basic           :offset-assert 528)
-   (strip                      basic           :offset-assert 532)
+  ((flash-time                 time-frame      :offset-assert 512)
+   (blur-time                  time-frame      :offset-assert 520)
+   (spawned-mushroom-cloud?    symbol          :offset-assert 528)
+   (strip                      prim-strip      :offset-assert 532)
    (mushroom-top-pos           vector  :inline :offset-assert 544)
-   (warp                       uint64          :offset-assert 560)
+   (warp                       handle          :offset-assert 560)
    (initial-velocity           vector  :inline :offset-assert 576)
    (start-y                    float           :offset-assert 592)
    (y-vel-adjust               float           :offset-assert 596)
    (launch-speed               float           :offset-assert 600)
    (launch-sin-region-start    float           :offset-assert 604)
    (launch-sin-region-end      float           :offset-assert 608)
-   (launch-stay-state-time     uint64          :offset-assert 616)
-   (launch-next-state          basic           :offset-assert 624)
-   (launch-impact-state        basic           :offset-assert 628)
+   (launch-stay-state-time     time-frame      :offset-assert 616)
+   (launch-next-state          (state gun-dark-3-nuke) :offset-assert 624)
+   (launch-impact-state        (state gun-dark-3-nuke) :offset-assert 628)
    (launch-y-scale             float           :offset-assert 632)
    (launch-height-t            float           :offset-assert 636)
    (expected-height            float           :offset-assert 640)
-   (total-fly-time             uint64          :offset-assert 648)
+   (total-fly-time             time-frame      :offset-assert 648)
    (num-dying-vehicles         uint8           :offset-assert 656)
    (num-dying-guards           uint8           :offset-assert 657)
    (num-dying-civilians        uint8           :offset-assert 658)
-   (last-death-sound-play-time uint64          :offset-assert 664)
-   (blur-curve                 basic           :offset-assert 672)
-   (fade-curve                 basic           :offset-assert 676)
+   (last-death-sound-play-time time-frame      :offset-assert 664)
+   (blur-curve                 curve2d-piecewise :offset-assert 672)
+   (fade-curve                 curve-color-piecewise :offset-assert 676)
    (num-blur-segments          uint8           :offset-assert 680)
-   (shook-camera?              basic           :offset-assert 684)
-   (hit-wall?                  basic           :offset-assert 688)
-   (killed-everything?         basic           :offset-assert 696)
-   (explode-sound              uint32          :offset-assert 700)
-   (explode-wall-sound         uint32          :offset-assert 704)
-   (played-trail?              basic           :offset-assert 708)
-   (smoke-trail                basic           :offset-assert 712)
-   (killed-objects             UNKNOWN 64      :offset-assert 720)
+   (shook-camera?              symbol          :offset-assert 684)
+   (hit-wall?                  symbol          :offset-assert 688)
+   (killed-everything?         symbol          :offset 696)
+   (explode-sound              sound-id        :offset-assert 700)
+   (explode-wall-sound         sound-id        :offset-assert 704)
+   (played-trail?              symbol          :offset-assert 708)
+   (smoke-trail                sparticle-subsampler :offset-assert 712)
+   (killed-objects             handle 64       :offset-assert 720)
    (num-killed-objects         int32           :offset-assert 1232)
-   (last-kill-time             uint64          :offset-assert 1240)
+   (last-kill-time             time-frame      :offset-assert 1240)
    )
   :method-count-assert 60
   :size-assert         #x4e0
   :flag-assert         #x3c046004e0
-  (:methods
-    (gun-dark-3-nuke-method-41 () none) ;; 41
-    (gun-dark-3-nuke-method-51 () none) ;; 51
-    (gun-dark-3-nuke-method-52 () none) ;; 52
-    (gun-dark-3-nuke-method-53 () none) ;; 53
-    (gun-dark-3-nuke-method-54 () none) ;; 54
-    (gun-dark-3-nuke-method-55 () none) ;; 55
-    (gun-dark-3-nuke-method-56 () none) ;; 56
-    (gun-dark-3-nuke-method-57 () none) ;; 57
-    (gun-dark-3-nuke-method-58 () none) ;; 58
-    (gun-dark-3-nuke-method-59 () none) ;; 59
-    )
   (:state-methods
-    wait-for-alive ;; 50
-    impact-small ;; 47
-    impact-embedded ;; 49
     impact ;; 22
-    impact-dud ;; 48
-    launch-3 ;; 46
-    launch-2 ;; 45
-    launch-1 ;; 44
-    launch-0 ;; 43
+    undefined ;; 41, not defined
     launching-base-state ;; 42
+    launch-0 ;; 43
+    launch-1 ;; 44
+    launch-2 ;; 45
+    launch-3 ;; 46
+    impact-small ;; 47
+    impact-dud ;; 48
+    impact-embedded ;; 49
+    wait-for-alive ;; 50
+    )
+  (:methods
+    (set-launch-height! (_type_) none) ;; 51
+    (do-blur-effect (_type_) none) ;; 52
+    (do-white-screen-effect (_type_) none) ;; 53
+    (count-casualties (_type_) none) ;; 54
+    (send-attack! (_type_ process-focusable) none) ;; 55
+    (play-death-sounds (_type_) none) ;; 56
+    (do-camera-shake (_type_) none) ;; 57
+    (do-vibration (_type_) none) ;; 58
+    (check-for-impact (_type_) none) ;; 59
     )
   )
-|#
 
-#|
 (deftype gravity-spinner (process)
   ((cached-damage          float          :offset-assert 128)
-   (end-time               uint64         :offset-assert 136)
-   (time-subtract          uint64         :offset-assert 144)
-   (parent-hand            uint64         :offset-assert 152)
+   (end-time               time-frame     :offset-assert 136)
+   (time-subtract          time-frame     :offset-assert 144)
+   (parent-hand            handle         :offset-assert 152)
    (rotation-accel         vector :inline :offset-assert 160)
    (original-sphere-offset sphere :inline :offset-assert 176)
    (obj-radius             float          :offset-assert 192)
-   (was-hit-previously?    basic          :offset-assert 196)
+   (was-hit-previously?    symbol         :offset-assert 196)
    (ground-height          float          :offset-assert 200)
-   (next-ground-probe-time uint64         :offset-assert 208)
+   (next-ground-probe-time time-frame     :offset-assert 208)
    )
   :method-count-assert 25
   :size-assert         #xd8
   :flag-assert         #x19006000d8
-  (:methods
-    (gravity-spinner-method-16 () none) ;; 16
-    (gravity-spinner-method-17 () none) ;; 17
-    (gravity-spinner-method-18 () none) ;; 18
-    (gravity-spinner-method-19 () none) ;; 19
-    (gravity-spinner-method-20 () none) ;; 20
-    (gravity-spinner-method-21 () none) ;; 21
-    (gravity-spinner-method-22 () none) ;; 22
-    (gravity-spinner-method-23 () none) ;; 23
-    (gravity-spinner-method-24 () none) ;; 24
-    )
   (:state-methods
     zero-g ;; 14
     zero-g-vehicle ;; 15
     )
+  (:methods
+    (gravity-spinner-method-16 (_type_ vector vector) none) ;; 16
+    (update-rotation (_type_ symbol) none) ;; 17
+    (gravity-spinner-method-18 (_type_ process) float) ;; 18
+    (handle-impact (_type_ symbol) vector) ;; 19
+    (probe-ground (_type_) none) ;; 20
+    (get-float-speed (_type_) float) ;; 21
+    (gravity-spinner-method-22 (_type_) none) ;; 22
+    (spawn-part (_type_) none) ;; 23
+    (rotate! (_type_ quaternion) none) ;; 24
+    )
   )
-|#
 
-#|
 (deftype gravity-ring (process-drawable)
   ((start-pos      vector              :inline :offset-assert 208)
    (jmod-outer     joint-mod-add-local :inline :offset-assert 224)
@@ -36834,67 +36806,68 @@
    (ring-scale-t   float                       :offset-assert 352)
    (current-radius float                       :offset-assert 356)
    (max-radius     float                       :offset-assert 360)
-   (reverse?       basic                       :offset-assert 364)
+   (reverse?       symbol                      :offset-assert 364)
    (total-time     float                       :offset-assert 368)
    (ring-width     float                       :offset-assert 372)
-   (stop-time      uint64                      :offset-assert 376)
+   (stop-time      time-frame                  :offset-assert 376)
    )
   :method-count-assert 22
   :size-assert         #x180
   :flag-assert         #x1601000180
-  (:methods
-    (gravity-ring-method-21 () none) ;; 21
-    )
   (:state-methods
     expand ;; 20
     )
+  (:methods
+    (gravity-ring-method-21 (_type_) none) ;; 21
+    )
   )
-|#
 
-#|
 (deftype gun-gravity (process-drawable)
   ((current-radius float          :offset-assert 200)
    (max-radius     float          :offset-assert 204)
    (lowest-y       float          :offset-assert 208)
    (start-pos      vector :inline :offset-assert 224)
    (total-time     float          :offset-assert 240)
-   (ring-closest   uint64         :offset-assert 248)
-   (ring-furthest  uint64         :offset-assert 256)
-   (gravity-sound  uint32         :offset-assert 264)
+   (ring-closest   handle         :offset-assert 248)
+   (ring-furthest  handle         :offset-assert 256)
+   (gravity-sound  sound-id       :offset-assert 264)
    )
   :method-count-assert 25
   :size-assert         #x10c
   :flag-assert         #x190090010c
-  (:methods
-    (gun-gravity-method-21 () none) ;; 21
-    (gun-gravity-method-22 () none) ;; 22
-    (gun-gravity-method-23 () none) ;; 23
-    (gun-gravity-method-24 () none) ;; 24
-    )
   (:state-methods
     expand ;; 20
     )
+  (:methods
+    (gun-gravity-method-21 (_type_) none) ;; 21
+    (gun-gravity-method-22 (_type_ symbol) none) ;; 22
+    (spawn-gravity-spinner (_type_ process) (pointer gravity-spinner)) ;; 23
+    (gun-gravity-method-24 (_type_) none) ;; 24
+    )
   )
-|#
 
-;; (define-extern sparticle-lightning-2d-spline-align-plus-rotz function)
-;; (define-extern gun-fire-dark-1 function)
-;; (define-extern gun-dark-3-sphere-init-by-other function)
-;; (define-extern *last-active-nuke* object)
-;; (define-extern gun-dark-reaction function)
-;; (define-extern nuke-move function)
+(define-extern market-object type)
+(define-extern fruit-stand type)
+(define-extern missile-bot type)
+
+(define-extern sparticle-lightning-2d-spline-align-plus-rotz (function object sparticle-cpuinfo sprite-vec-data-2d object none))
+(define-extern gun-fire-dark-1 (function (pointer process) :behavior target))
+(define-extern gun-dark-3-sphere-init-by-other (function gun-dark-3-sphere-init-params object :behavior gun-dark-3-sphere))
+(define-extern *last-active-nuke* last-active-nuke-info)
+(define-extern gun-dark-reaction (function control-info collide-query vector vector collide-status))
+(define-extern nuke-move (function object :behavior gun-dark-3-nuke))
 (define-extern target-gun-can-fire-dark? (function pickup-type symbol :behavior target))
-;; (define-extern gun-fire-dark-3 function)
-;; (define-extern process-drawable-shock-effect-bullseye function) ;; (function process-focusable process-focusable matrix int sparticle-launcher sparticle-launcher sparticle-launcher none)
-;; (define-extern gun-dark-shot-init-fizzle function) ;; (function vector none :behavior gun-dark-shot)
-;; (define-extern *gravity-origin-pos* object)
-;; (define-extern gravity-spinner-init-by-other function)
-;; (define-extern zero-g-wait-for-land function)
-;; (define-extern *zero-g-fake-attack-vec* object)
-;; (define-extern *gun-gravity-shadow-control* shadow-control)
-;; (define-extern gravity-ring-init-by-other function)
-;; (define-extern gun-gravity-init-by-other function)
-;; (define-extern gun-fire-dark-2 function)
+(define-extern gun-fire-dark-3 (function (pointer process) :behavior target))
+(define-extern process-drawable-shock-effect-bullseye (function process-focusable process-focusable lightning-spec (function lightning-tracker none) sparticle-launcher sparticle-launcher sparticle-launcher none))
+(define-extern gun-dark-shot-init-fizzle (function vector none :behavior gun-dark-shot))
+(define-extern *gravity-origin-pos* vector)
+(define-extern gravity-spinner-init-by-other (function handle object time-frame object :behavior gravity-spinner))
+(define-extern zero-g-wait-for-land (function object :behavior gravity-spinner))
+(define-extern *zero-g-fake-attack-vec* vector)
+(define-extern *gun-gravity-shadow-control* shadow-control)
+(define-extern gravity-ring-init-by-other (function vector symbol float float float time-frame object :behavior gravity-ring))
+(define-extern gun-gravity-init-by-other (function vector vector object :behavior gun-gravity))
+(define-extern gun-fire-dark-2 (function (pointer process) :behavior target))
 (define-extern target-gun-fire-dark (function pickup-type (pointer process) :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37443,45 +37416,45 @@
   )
 
 (define-extern *spawn-actors* symbol)
-;; (define-extern *compact-actors* object) ;; symbol
-;; (define-extern *vis-actors* object) ;; symbol
+(define-extern *compact-actors* symbol)
+(define-extern *vis-actors* symbol)
 (define-extern entity-by-name (function string entity))
 (define-extern entity-by-type (function type entity-actor))
 (define-extern entity-by-aid (function uint entity))
 (define-extern entity-actor-from-level-name (function symbol entity-actor))
-;; (define-extern entity-nav-mesh-by-aid function) ;; (function actor-id entity-nav-mesh)
-;; (define-extern nav-mesh-from-res-tag function) ;; (function entity symbol int nav-mesh)
-;; (define-extern entity-by-meters function) ;; (function float float float entity-actor)
-;; (define-extern process-by-ename function) ;; (function string process)
-;; (define-extern entity-process-count function) ;; (function symbol int)
-;; (define-extern entity-count function) ;; (function int)
-;; (define-extern entity-remap-names function) ;; (function pair none)
-;; (define-extern process-status-bits function) ;; (function process symbol none)
+(define-extern entity-nav-mesh-by-aid (function actor-id entity-nav-mesh))
+(define-extern nav-mesh-from-res-tag (function entity symbol int nav-mesh))
+(define-extern entity-by-meters (function float float float entity-actor))
+(define-extern process-by-ename (function string process))
+(define-extern entity-process-count (function symbol int))
+(define-extern entity-count (function int))
+(define-extern entity-remap-names (function pair none))
+(define-extern process-status-bits (function process symbol none))
 (define-extern process-entity-set! (function process entity entity))
 (define-extern process-task-mask (function process task-mask))
-;; (define-extern update-actor-vis-box function) ;; (function process-drawable vector vector none)
-;; (define-extern expand-bounding-box function) ;; (function vector vector vector vector none)
-;; (define-extern expand-bounding-box-from-nav-meshes function)
-;; (define-extern expand-vis-box-with-point function) ;; (function entity vector none)
-;; (define-extern *debug-actor-info* debug-actor-info) ;; debug-actor-info
-;; (define-extern *pid-string* object) ;; string
-;; (define-extern debug-actor function) ;; (function string none)
-;; (define-extern debug-actor-process function)
-;; (define-extern draw-actor-marks function) ;; (function process none)
+(define-extern update-actor-vis-box (function process-drawable vector vector none))
+(define-extern expand-bounding-box (function vector vector vector vector none))
+(define-extern expand-bounding-box-from-nav-meshes (function entity vector vector object))
+(define-extern expand-vis-box-with-point (function entity vector none))
+(define-extern *debug-actor-info* debug-actor-info)
+(define-extern *pid-string* string)
+(define-extern debug-actor (function string none))
+(define-extern debug-actor-process (function process none))
+(define-extern draw-actor-marks (function process none))
 (define-extern init-entity (function process entity-actor type none))
-;; (define-extern entity-deactivate-handler function) ;; (function process entity-actor none)
-;; (define-extern check-for-rougue-process function) ;; (function process int int level none)
-;; (define-extern process-drawable-scale-from-entity! function) ;; (function process-drawable entity none)
+(define-extern entity-deactivate-handler (function process entity-actor none))
+(define-extern check-for-rougue-process (function process int int level none))
+(define-extern process-drawable-scale-from-entity! (function process-drawable entity none))
 (define-extern process-drawable-from-entity! (function process-drawable entity-actor none))
 (define-extern reset-actors (function symbol none))
 (define-extern reset-cameras (function none))
 (define-extern entity-birth-no-kill (function entity process))
-;; (define-extern entity-task-complete-on function) ;; (function entity none)
-;; (define-extern entity-task-complete-off function) ;; (function entity none)
+(define-extern entity-task-complete-on (function entity none))
+(define-extern entity-task-complete-off (function entity none))
 (define-extern process-entity-status! (function process entity-perm-status symbol entity-perm-status))
 (define-extern find-nearest-entity (function vector type entity))
-;; (define-extern entity-speed-test function) ;; (function string entity)
-;; (define-extern dump-entity-remap function) ;; (function object object none)
+(define-extern entity-speed-test (function string entity))
+(define-extern dump-entity-remap (function object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; path                           ;;

@@ -1,17 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: gun-red-shot.gc
-;; name in dgo: gun-red-shot
-;; dgos: GAME
-
-(define-extern *impact-blur* curve2d-piecewise)
-(define-extern *shockwave-blur-red-2* curve2d-piecewise)
-(declare-type gun-red-shot process-drawable)
-(define-extern gun-red-shot-init-by-other (function vector vector object :behavior gun-red-shot))
-
-;; DECOMP BEGINS
-
+;; definition of type gun-red-shot
 (deftype gun-red-shot (process-drawable)
   ((parent       (pointer gun)        :override)
    (root         collide-shape-moving :override)
@@ -40,7 +30,28 @@
     )
   )
 
+;; definition for method 3 of type gun-red-shot
+(defmethod inspect ((this gun-red-shot))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tprobe-count: ~D~%" (-> this probe-count))
+  (format #t "~2Tprobe-mask: ~D~%" (-> this probe-mask))
+  (format #t "~2Tactor-count: ~D~%" (-> this actor-count))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Tstart-pos: #<vector @ #x~X>~%" (-> this start-pos))
+  (format #t "~2Tstart-dir: #<vector @ #x~X>~%" (-> this start-dir))
+  (format #t "~2Tstart-rot: #<vector @ #x~X>~%" (-> this start-rot))
+  (format #t "~2Tprobe-dir[19] @ #x~X~%" (-> this probe-dir))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type gun-red-3-grenade
 (deftype gun-red-3-grenade (projectile-bounce)
   ((blast-radius           float)
    (should-explode-soon?   symbol)
@@ -59,13 +70,35 @@
     )
   )
 
+;; definition for method 3 of type gun-red-3-grenade
+(defmethod inspect ((this gun-red-3-grenade))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type projectile-bounce inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tblast-radius: ~f~%" (-> this blast-radius))
+  (format #t "~2Tshould-explode-soon?: ~A~%" (-> this should-explode-soon?))
+  (format #t "~2Texplode-tick-time: ~D~%" (-> this explode-tick-time))
+  (format #t "~2Tbirth-time: ~D~%" (-> this birth-time))
+  (format #t "~2Timmediate-detonation?: ~A~%" (-> this immediate-detonation?))
+  (format #t "~2Tattack-id: ~D~%" (-> this attack-id))
+  (format #t "~2Texplode-delay-time: ~D~%" (-> this explode-delay-time))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gun-red-3-grenade gun gun-grenade-lod0-jg gun-grenade-idle-ja
               ((gun-grenade-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 0.2)
               :texture-level 10
               )
 
+;; definition for method 30 of type gun-red-3-grenade
+;; WARN: Return type mismatch int vs none.
 (defmethod setup-collision! ((this gun-red-3-grenade))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -100,16 +133,21 @@
   (none)
   )
 
+;; definition for method 36 of type gun-red-3-grenade
 ;; WARN: Return type mismatch symbol vs object.
 (defmethod handle-proj-hit! ((this gun-red-3-grenade) (arg0 process) (arg1 event-message-block))
   (go (method-of-object this impact))
   #t
   )
 
+;; definition for method 40 of type gun-red-3-grenade
 (defmethod projectile-method-40 ((this gun-red-3-grenade))
   256
   )
 
+;; definition for method 31 of type gun-red-3-grenade
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod init-proj-settings! ((this gun-red-3-grenade))
   (set! (-> this attack-mode) #f)
   (initialize-skeleton
@@ -167,6 +205,8 @@
   (none)
   )
 
+;; definition for method 32 of type gun-red-3-grenade
+;; WARN: Return type mismatch int vs none.
 (defmethod projectile-method-32 ((this gun-red-3-grenade))
   (cond
     ((not (do-fire-backcheck (-> this root trans) (-> this root transv)))
@@ -184,6 +224,7 @@
   (none)
   )
 
+;; definition for method 46 of type gun-red-3-grenade
 (defmethod go-impact ((this gun-red-3-grenade))
   (cond
     ((-> this should-explode-soon?)
@@ -208,6 +249,8 @@
     )
   )
 
+;; definition for method 47 of type gun-red-3-grenade
+;; INFO: Used lq/sq
 (defmethod find-and-damage-targets ((this gun-red-3-grenade))
   (local-vars (v1-21 float) (v1-45 float))
   (with-pp
@@ -340,6 +383,8 @@
     )
   )
 
+;; definition for method 45 of type gun-red-3-grenade
+;; INFO: Used lq/sq
 (defmethod check-should-explode ((this gun-red-3-grenade))
   (local-vars
     (sv-1680 vector)
@@ -470,6 +515,7 @@
     )
   )
 
+;; definition for method 25 of type gun-red-3-grenade
 (defmethod projectile-method-25 ((this gun-red-3-grenade))
   (spawn (-> this part) (-> this root trans))
   (if (logtest? (-> this root status) (collide-status touch-surface))
@@ -479,12 +525,14 @@
   (none)
   )
 
+;; definition for method 42 of type gun-red-3-grenade
 (defmethod projectile-bounce-method-42 ((this gun-red-3-grenade))
   (spawn (-> this part) (-> this root trans))
   (call-parent-method this)
   (none)
   )
 
+;; definition of type shockwave-collision-pt
 (deftype shockwave-collision-pt (structure)
   ((collision-pt  vector  :inline)
    (normal        vector  :inline)
@@ -493,7 +541,22 @@
    )
   )
 
+;; definition for method 3 of type shockwave-collision-pt
+(defmethod inspect ((this shockwave-collision-pt))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shockwave-collision-pt)
+  (format #t "~1Tcollision-pt: #<vector @ #x~X>~%" (-> this collision-pt))
+  (format #t "~1Tnormal: #<vector @ #x~X>~%" (-> this normal))
+  (format #t "~1Tfound?: ~A~%" (-> this found?))
+  (format #t "~1Tangle: ~f~%" (-> this angle))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type gun-red-2-shockwave
 (deftype gun-red-2-shockwave (process)
   ((origin                           vector                  :inline)
    (max-radius                       float)
@@ -555,7 +618,59 @@
     )
   )
 
+;; definition for method 3 of type gun-red-2-shockwave
+(defmethod inspect ((this gun-red-2-shockwave))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Torigin: #<vector @ #x~X>~%" (-> this origin))
+  (format #t "~2Tmax-radius: ~f~%" (-> this max-radius))
+  (format #t "~2Tstrength: ~f~%" (-> this strength))
+  (format #t "~2Tcurrent-radius: ~f~%" (-> this current-radius))
+  (format #t "~2Tcurrent-intensity: ~f~%" (-> this current-intensity))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Talpha-scalar: ~f~%" (-> this alpha-scalar))
+  (format #t "~2Tbase-damage: ~f~%" (-> this base-damage))
+  (format #t "~2Tsnd-charge: ~D~%" (-> this snd-charge))
+  (format #t "~2Tmin-charge-radius: ~f~%" (-> this min-charge-radius))
+  (format #t "~2Tmax-charge-radius: ~f~%" (-> this max-charge-radius))
+  (format #t "~2Ttotal-charge-time: ~D~%" (-> this total-charge-time))
+  (format #t "~2Ttotal-explode-time: ~D~%" (-> this total-explode-time))
+  (format #t "~2Tring-expansion-time: ~D~%" (-> this ring-expansion-time))
+  (format #t "~2Tburst-expansion-time: ~D~%" (-> this burst-expansion-time))
+  (format #t "~2Twarp-expansion-time: ~D~%" (-> this warp-expansion-time))
+  (format #t "~2Tpreviously-attacked-targets[64] @ #x~X~%" (-> this previously-attacked-targets))
+  (format #t "~2Tnum-previously-attacked-targets: ~D~%" (-> this num-previously-attacked-targets))
+  (format #t "~2Tstart-pilot?: ~A~%" (-> this start-pilot?))
+  (format #t "~2Texplosion-0: ~D~%" (-> this explosion-0))
+  (format #t "~2Texplosion-1: ~D~%" (-> this explosion-1))
+  (format #t "~2Tgenerate-order-array[127] @ #x~X~%" (-> this generate-order-array))
+  (format #t "~2Tcurrent-stage-t: ~f~%" (-> this current-stage-t))
+  (format #t "~2Tammo-drained: ~f~%" (-> this ammo-drained))
+  (format #t "~2Teventual-collision-points[128] @ #x~X~%" (-> this eventual-collision-points))
+  (format #t "~2Tnext-computed-collision-point: ~D~%" (-> this next-computed-collision-point))
+  (format #t "~2Tnum-collision-pts-to-generate: ~D~%" (-> this num-collision-pts-to-generate))
+  (format #t "~2Tshow-scorch-marks?: ~A~%" (-> this show-scorch-marks?))
+  (format #t "~2Theight-off-ground: ~f~%" (-> this height-off-ground))
+  (format #t "~2Tmax-ground-radius: ~f~%" (-> this max-ground-radius))
+  (format #t "~2Tcurrent-ring-radius: ~f~%" (-> this current-ring-radius))
+  (format #t "~2Tcurrent-ring-alpha: ~f~%" (-> this current-ring-alpha))
+  (format #t "~2Tcurrent-warp-radius: ~f~%" (-> this current-warp-radius))
+  (format #t "~2Tcurrent-warp-alpha: ~f~%" (-> this current-warp-alpha))
+  (format #t "~2Tcurrent-burst-radius: ~f~%" (-> this current-burst-radius))
+  (format #t "~2Tcurrent-burst-alpha: ~f~%" (-> this current-burst-alpha))
+  (format #t "~2Tgenerating-marks?: ~A~%" (-> this generating-marks?))
+  (format #t "~2Tgenerated-particles?: ~A~%" (-> this generated-particles?))
+  (format #t "~2Tcharge-part-tracker: ~D~%" (-> this charge-part-tracker))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type gun-red-2-shockwave-init-params
 (deftype gun-red-2-shockwave-init-params (structure)
   ((pos         vector  :inline)
    (max-radius  float)
@@ -563,7 +678,22 @@
    )
   )
 
+;; definition for method 3 of type gun-red-2-shockwave-init-params
+(defmethod inspect ((this gun-red-2-shockwave-init-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gun-red-2-shockwave-init-params)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tmax-radius: ~f~%" (-> this max-radius))
+  (format #t "~1Tstrength: ~f~%" (-> this strength))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function part-tracker-move-to-target-gun
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
 (defun part-tracker-move-to-target-gun ((arg0 part-tracker))
   (when *target*
@@ -573,6 +703,8 @@
   (none)
   )
 
+;; definition for function gun-red-2-shockwave-init-by-other
+;; INFO: Used lq/sq
 (defbehavior gun-red-2-shockwave-init-by-other gun-red-2-shockwave ((arg0 gun-red-2-shockwave-init-params))
   (set! (-> self current-intensity) 0.0)
   (set! (-> self current-radius) 0.0)
@@ -629,6 +761,8 @@
   (go-virtual charging)
   )
 
+;; definition for method 17 of type gun-red-2-shockwave
+;; INFO: Used lq/sq
 (defmethod find-targets-and-attack! ((this gun-red-2-shockwave))
   (local-vars
     (sv-32 bounding-box)
@@ -810,6 +944,9 @@
     )
   )
 
+;; definition for method 18 of type gun-red-2-shockwave
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod send-attack! ((this gun-red-2-shockwave) (arg0 process-focusable) (arg1 symbol))
   (let* ((a0-2 (get-trans arg0 3))
          (v1-2 (vector-! (new 'stack-no-clear 'vector) a0-2 (-> this origin)))
@@ -843,6 +980,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate charging (gun-red-2-shockwave)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -938,6 +1076,7 @@
     )
   )
 
+;; definition for function generate-shockwave-scorch-marks-3
 ;; WARN: Return type mismatch object vs none.
 (defbehavior generate-shockwave-scorch-marks-3 gun-red-2-shockwave ((arg0 int))
   (let ((s4-0 (-> self eventual-collision-points arg0))
@@ -975,6 +1114,7 @@
   (none)
   )
 
+;; definition for function generate-shockwave-scorch-marks-2
 ;; WARN: Return type mismatch symbol vs none.
 (defbehavior generate-shockwave-scorch-marks-2 gun-red-2-shockwave ()
   (set! (-> self show-scorch-marks?) #t)
@@ -994,6 +1134,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate die (gun-red-2-shockwave)
   :virtual #t
   :enter (behavior ()
@@ -1007,6 +1148,7 @@
     )
   )
 
+;; definition of type gun-red-2-explosion
 (deftype gun-red-2-explosion (process-drawable)
   ()
   (:methods
@@ -1014,7 +1156,20 @@
     )
   )
 
+;; definition for method 3 of type gun-red-2-explosion
+(defmethod inspect ((this gun-red-2-explosion))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
 
+;; definition for method 22 of type gun-red-2-shockwave
 (defmethod gun-red-2-shockwave-method-22 ((this gun-red-2-shockwave) (arg0 int) (arg1 int) (arg2 int) (arg3 int))
   (when (< 1 (- arg1 arg0))
     (let ((s2-0 (/ (+ arg0 arg1) 2)))
@@ -1028,6 +1183,11 @@
   (none)
   )
 
+;; definition for method 19 of type gun-red-2-shockwave
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 564 signed mismatch
+;; WARN: Stack slot offset 564 signed mismatch
+;; WARN: Stack slot offset 564 signed mismatch
 (defmethod find-collision-point! ((this gun-red-2-shockwave))
   (local-vars (sv-560 collide-query) (sv-564 int) (sv-608 vector) (sv-612 vector) (sv-616 float))
   (rlet ((acc :class vf)
@@ -1153,6 +1313,7 @@
     )
   )
 
+;; definition for method 20 of type gun-red-2-shockwave
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod generate-collision-points! ((this gun-red-2-shockwave))
   (while (< (-> this next-computed-collision-point) (-> this num-collision-pts-to-generate))
@@ -1161,6 +1322,8 @@
   (none)
   )
 
+;; definition for method 21 of type gun-red-2-shockwave
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch float vs none.
 (defmethod adjust-height-and-radius ((this gun-red-2-shockwave))
   (let ((a1-0 (new 'stack-no-clear 'collide-query)))
@@ -1187,6 +1350,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gun-red-sphere gun gun-red-sphere-lod0-jg gun-red-sphere-idle-ja
               ((gun-red-sphere-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 30)
@@ -1194,6 +1358,7 @@
               :light-index 4
               )
 
+;; definition of type red-2-ring
 (deftype red-2-ring (process-drawable)
   ((current-alpha  float)
    (pad            uint8  12)
@@ -1207,13 +1372,41 @@
     )
   )
 
+;; definition for method 3 of type red-2-ring
+(defmethod inspect ((this red-2-ring))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcurrent-alpha: ~f~%" (-> this current-alpha))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type red-2-ring-init-params
 (deftype red-2-ring-init-params (structure)
   ((pos  vector  :inline)
    )
   )
 
+;; definition for method 3 of type red-2-ring-init-params
+(defmethod inspect ((this red-2-ring-init-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'red-2-ring-init-params)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function red-2-ring-event-handler
+;; INFO: Used lq/sq
 (defbehavior red-2-ring-event-handler red-2-ring ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('scale)
@@ -1235,6 +1428,8 @@
     )
   )
 
+;; definition for function red-2-ring-init-by-other
+;; INFO: Used lq/sq
 (defbehavior red-2-ring-init-by-other red-2-ring ((arg0 red-2-ring-init-params))
   (set! (-> self root) (new 'process 'trsqv))
   (initialize-skeleton
@@ -1247,6 +1442,7 @@
   (go-virtual active)
   )
 
+;; failed to figure out what this is:
 (defstate active (red-2-ring)
   :virtual #t
   :event red-2-ring-event-handler
@@ -1275,6 +1471,8 @@
     )
   )
 
+;; definition for method 23 of type gun-red-2-shockwave
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod generate-shockwave-particles ((this gun-red-2-shockwave))
   (local-vars (sv-160 int) (sv-176 shockwave-collision-pt))
@@ -1358,6 +1556,7 @@
   (none)
   )
 
+;; definition for method 24 of type gun-red-2-shockwave
 (defmethod adjust-warp-radius-and-alpha ((this gun-red-2-shockwave))
   (let* ((f0-1 (/ (-> this max-radius) (-> this max-charge-radius)))
          (f0-3
@@ -1382,6 +1581,7 @@
   (send-event (handle->process (-> this explosion-1)) 'alpha (-> this current-warp-alpha))
   )
 
+;; definition for method 25 of type gun-red-2-shockwave
 ;; WARN: Return type mismatch float vs none.
 (defmethod adjust-ring-radius-and-alpha ((this gun-red-2-shockwave))
   (let ((f0-2 (/ (the float (- (current-time) (-> this state-time))) (the float (-> this ring-expansion-time)))))
@@ -1395,6 +1595,7 @@
   (none)
   )
 
+;; definition for method 26 of type gun-red-2-shockwave
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod generate-order-array ((this gun-red-2-shockwave))
   (gun-red-2-shockwave-method-22 this 0 (-> this num-collision-pts-to-generate) 0 0)
@@ -1415,48 +1616,69 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (when (or (zero? *impact-blur*) (!= loading-level global))
   (set! *impact-blur* (new 'loading-level 'curve2d-piecewise))
   (curve2d-piecewise-method-10 *impact-blur* 3 'loading-level (the-as int #f))
   )
 
+;; failed to figure out what this is:
 (set! (-> *impact-blur* pts data 0 first) 0.0)
 
+;; failed to figure out what this is:
 (set! (-> *impact-blur* pts data 0 second) 0.0)
 
+;; failed to figure out what this is:
 (set! (-> *impact-blur* pts data 1 first) 0.2)
 
+;; failed to figure out what this is:
 (set! (-> *impact-blur* pts data 1 second) 1.0)
 
+;; failed to figure out what this is:
 (set! (-> *impact-blur* pts data 2 first) 1.0)
 
+;; failed to figure out what this is:
 (set! (-> *impact-blur* pts data 2 second) 0.0)
 
+;; failed to figure out what this is:
 (when (or (zero? *shockwave-blur-red-2*) (!= loading-level global))
   (set! *shockwave-blur-red-2* (new 'loading-level 'curve2d-piecewise))
   (curve2d-piecewise-method-10 *shockwave-blur-red-2* 5 'loading-level (the-as int #f))
   )
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 0 first) 0.0)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 0 second) 0.0)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 1 first) 0.7)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 1 second) 0.0)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 2 first) 0.8)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 2 second) 1.0)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 3 first) 0.9)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 3 second) 0.3)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 4 first) 1.0)
 
+;; failed to figure out what this is:
 (set! (-> *shockwave-blur-red-2* pts data 4 second) 0.0)
 
+;; definition for method 27 of type gun-red-2-shockwave
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod spawn-ring ((this gun-red-2-shockwave))
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (set! (-> v1-0 quad) (-> this origin quad))
@@ -1475,6 +1697,7 @@
   (none)
   )
 
+;; definition for method 10 of type gun-red-2-shockwave
 (defmethod deactivate ((this gun-red-2-shockwave))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (blit-displays-work-method-17 *blit-displays-work* (-> this origin) 0 1.0 #f)
@@ -1482,6 +1705,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate explode (gun-red-2-shockwave)
   :virtual #t
   :enter (behavior ()
@@ -1601,6 +1825,8 @@
     )
   )
 
+;; definition for function gun-fire-red-2
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs object.
 (defbehavior gun-fire-red-2 target ()
   (let ((gp-0 (-> self gun))
@@ -1632,6 +1858,7 @@
     )
   )
 
+;; definition of type red-3-sphere
 (deftype red-3-sphere (process-drawable)
   ((current-alpha  float)
    (pad            uint8  12)
@@ -1645,13 +1872,41 @@
     )
   )
 
+;; definition for method 3 of type red-3-sphere
+(defmethod inspect ((this red-3-sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcurrent-alpha: ~f~%" (-> this current-alpha))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type red-3-sphere-init-params
 (deftype red-3-sphere-init-params (structure)
   ((pos  vector  :inline)
    )
   )
 
+;; definition for method 3 of type red-3-sphere-init-params
+(defmethod inspect ((this red-3-sphere-init-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'red-3-sphere-init-params)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function red-3-sphere-init-by-other
+;; INFO: Used lq/sq
 (defbehavior red-3-sphere-init-by-other red-3-sphere ((arg0 red-3-sphere-init-params))
   (set! (-> self root) (new 'process 'trsqv))
   (initialize-skeleton
@@ -1664,6 +1919,7 @@
   (go-virtual active)
   )
 
+;; failed to figure out what this is:
 (defstate active (red-3-sphere)
   :virtual #t
   :enter (behavior ()
@@ -1711,6 +1967,8 @@
     )
   )
 
+;; definition for function gun-fire-red-3
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (pointer process) vs gun-red-3-grenade.
 ;; ERROR: Unsupported inline assembly instruction kind - [mula.s f1, f4]
 ;; ERROR: Unsupported inline assembly instruction kind - [madda.s f2, f5]
@@ -1803,18 +2061,16 @@
                             )
                           (let ((f0-7 (vector-normalize-ret-len! s0-1 1.0)))
                             (let* ((v1-73 s0-1)
-                                   ; (f1-1 (-> sv-1968 x))
-                                   ; (f2-0 (-> sv-1968 y))
-                                   ; (f3-0 (-> sv-1968 z))
-                                   ; (f4-0 (-> v1-73 x))
-                                   ; (f5-0 (-> v1-73 y))
-                                   ; (f6-0 (-> v1-73 z))
+                                   (f1-1 (-> sv-1968 x))
+                                   (f2-0 (-> sv-1968 y))
+                                   (f3-0 (-> sv-1968 z))
+                                   (f4-0 (-> v1-73 x))
+                                   (f5-0 (-> v1-73 y))
+                                   (f6-0 (-> v1-73 z))
                                    )
-                              ;; og:preserve-this vector-dot
-                              ; (.mula.s f1-1 f4-0)
-                              ; (.madda.s f2-0 f5-0)
-                              ; (.madd.s f1-2 f3-0 f6-0)
-                              (set! f1-2 (vector-dot sv-1968 v1-73))
+                              (.mula.s f1-1 f4-0)
+                              (.madda.s f2-0 f5-0)
+                              (.madd.s f1-2 f3-0 f6-0)
                               )
                             (let ((f1-3 f1-2)
                                   (v1-75 (and (not s5-0) (logtest? (process-mask enemy guard) (-> s1-1 mask))))
@@ -1912,6 +2168,7 @@
     )
   )
 
+;; definition for method 39 of type gun-red-3-grenade
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod projectile-method-39 ((this gun-red-3-grenade))
   (let* ((a2-0 (-> this root))
@@ -1930,6 +2187,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate moving (gun-red-3-grenade)
   :virtual #t
   :trans (behavior ()
@@ -1942,6 +2200,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate sitting (gun-red-3-grenade)
   :virtual #t
   :trans (behavior ()
@@ -1954,6 +2213,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate impact-tiny (gun-red-3-grenade)
   :virtual #t
   :event projectile-event-handler
@@ -1983,6 +2243,7 @@
     )
   )
 
+;; definition for method 10 of type gun-red-3-grenade
 (defmethod deactivate ((this gun-red-3-grenade))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (blit-displays-work-method-17 *blit-displays-work* *zero-vector* 0 1.0 #f)
@@ -1990,6 +2251,7 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defstate impact (gun-red-3-grenade)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -2083,6 +2345,8 @@
     )
   )
 
+;; definition for function gun-fire-red-1
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch (pointer process) vs object.
 (defbehavior gun-fire-red-1 target ()
   (rlet ((acc :class vf)
@@ -2168,10 +2432,12 @@
     )
   )
 
+;; definition for function target-gun-can-fire-red?
 (defbehavior target-gun-can-fire-red? target ((arg0 pickup-type))
   #t
   )
 
+;; definition for function target-gun-fire-red
 ;; WARN: Return type mismatch object vs (pointer process).
 (defbehavior target-gun-fire-red target ((arg0 pickup-type))
   (+! (-> *game-info* shots-fired 1) 1.0)
@@ -2189,6 +2455,7 @@
           )
   )
 
+;; definition for function gun-red-shot-event-handler
 ;; WARN: Return type mismatch none vs object.
 (defbehavior gun-red-shot-event-handler gun-red-shot ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
@@ -2198,6 +2465,8 @@
     )
   )
 
+;; definition for method 29 of type gun-red-shot
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch object vs none.
 (defmethod send-attack! ((this gun-red-shot) (arg0 process-drawable) (arg1 touching-shapes-entry))
   (let* ((s5-0 arg0)
@@ -2263,11 +2532,16 @@
   (none)
   )
 
+;; definition for method 25 of type gun-red-shot
+;; WARN: Return type mismatch int vs none.
 (defmethod stub ((this gun-red-shot))
   0
   (none)
   )
 
+;; definition for method 23 of type gun-red-shot
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod init-probes! ((this gun-red-shot) (arg0 collide-shape))
   (let ((s5-0 (-> this probe-count)))
     (when (< s5-0 19)
@@ -2310,6 +2584,9 @@
   (none)
   )
 
+;; definition for method 26 of type gun-red-shot
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod find-targets ((this gun-red-shot))
   (local-vars (a2-5 float) (a2-12 float))
   (rlet ((vf1 :class vf)
@@ -2423,6 +2700,8 @@
     )
   )
 
+;; definition for method 27 of type gun-red-shot
+;; WARN: Return type mismatch int vs none.
 (defmethod setup-probes ((this gun-red-shot))
   (find-targets this)
   (let ((s5-0 (-> this probe-count)))
@@ -2443,6 +2722,8 @@
   (none)
   )
 
+;; definition for method 28 of type gun-red-shot
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod do-collision ((this gun-red-shot) (arg0 vector))
   (local-vars (at-0 int))
@@ -2490,6 +2771,7 @@
     )
   )
 
+;; definition for method 24 of type gun-red-shot
 (defmethod check-blocked? ((this gun-red-shot))
   (let ((v1-0 (-> this root))
         (t1-0 (new 'stack-no-clear 'collide-query))
@@ -2510,6 +2792,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate debug-idle (gun-red-shot)
   :virtual #t
   :code (behavior ()
@@ -2544,6 +2827,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate blocked (gun-red-shot)
   :virtual #t
   :event gun-red-shot-event-handler
@@ -2553,6 +2837,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (gun-red-shot)
   :virtual #t
   :event gun-red-shot-event-handler
@@ -2571,6 +2856,8 @@
     )
   )
 
+;; definition for function gun-red-shot-init-by-other
+;; INFO: Used lq/sq
 (defbehavior gun-red-shot-init-by-other gun-red-shot ((arg0 vector) (arg1 vector))
   (set! (-> self start-pos quad) (-> arg0 quad))
   (set! (-> self start-dir quad) (-> arg1 quad))
@@ -2642,3 +2929,7 @@
       (go-virtual idle)
       )
   )
+
+
+
+
