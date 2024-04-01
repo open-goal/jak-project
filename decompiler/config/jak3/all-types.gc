@@ -20217,6 +20217,7 @@
   :flag-assert         #x900000008
   )
 
+(declare-type collide-mesh-cache-tri structure)
 (deftype collide-mesh (basic)
   "A collision mesh for foreground objects,
    bound to the joint specified by `joint-id`."
@@ -20230,13 +20231,13 @@
   :size-assert         #x28
   :flag-assert         #x1000000028
   (:methods
-    (collide-mesh-method-9 () none) ;; 9 ;; (debug-draw-tris (_type_ process-drawable int) none)
-    (collide-mesh-method-10 () none) ;; 10 ;; (overlap-test (_type_ collide-mesh-cache-tri vector) symbol)
-    (collide-mesh-method-11 () none) ;; 11 ;; (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
-    (collide-mesh-method-12 () none) ;; 12 ;; (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float)
-    (collide-mesh-method-13 () none) ;; 13 ;; (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none)
-    (collide-mesh-method-14 () none) ;; 14 ;; (collide-mesh-math-1 (_type_ object object) none)
-    (collide-mesh-method-15 () none) ;; 15 ;; (collide-mesh-math-2 (_type_ object object object) none)
+    (debug-draw-tris (_type_ process-drawable int) none) ;; 9
+    (overlap-test (_type_ collide-mesh-cache-tri vector) symbol) ;; 10
+    (should-push-away-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float) ;; 11
+    (sphere-on-platform-test (_type_ collide-mesh-cache-tri collide-tri-result vector float) float) ;; 12
+    (unpack-mesh-to-cache! (_type_ (inline-array collide-mesh-cache-tri) matrix) none) ;; 13
+    (collide-mesh-math-1 (_type_ object object) none) ;; 14
+    (collide-mesh-math-2 (_type_ object object object) none) ;; 15
     )
   )
 
@@ -20255,13 +20256,14 @@
 (deftype collide-mesh-cache-entry (structure)
   "A foreground mesh collide cache entry."
   ((mat  matrix                 :inline  :offset-assert 0)
-   (tris collide-mesh-cache-tri :dynamic :offset-assert 64) ;; guessed by decompiler
+   (tris collide-mesh-cache-tri :dynamic :inline :offset-assert 64) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
 
+(declare-type collide-shape-prim-mesh basic)
 (deftype collide-mesh-cache (basic)
   "A collide cache for foreground meshes."
   ((used-size uint32       :offset-assert 4)
@@ -20273,13 +20275,13 @@
   :size-assert         #xbb90
   :flag-assert         #xd0000bb90
   (:methods
-    (collide-mesh-cache-method-9 () none) ;; 9 ;; (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry)
+    (populate-for-prim-mesh (_type_ collide-shape-prim-mesh) collide-mesh-cache-entry) ;; 9
     (is-id? "Does this cache have the given ID?" (_type_ int) symbol) ;; 10
     (next-id!
       "Reset all used entries in the cache and increment the ID.
        If the id is zero, set it to 1."
       (_type_) uint) ;; 11
-    (collide-mesh-cache-method-12 () none) ;; 12 ;; (allocate! (_type_ int) collide-mesh-cache-entry)
+    (allocate! (_type_ int) collide-mesh-cache-entry) ;; 12
     )
   )
 
@@ -20312,7 +20314,7 @@
   :size-assert         #x290
   :flag-assert         #xb00000290
   (:methods
-    (collide-rider-pool-method-9 () none) ;; 9 ;; (add-rider (_type_ handle) collide-rider)
+    (add-rider (_type_ handle) collide-rider) ;; 9
     (prepare (_type_) none) ;; 10
     )
   )
@@ -20413,7 +20415,9 @@
   )
 
 (declare-type collide-query structure)
+(declare-type collide-cache basic)
 (declare-type collide-cache-prim structure)
+(declare-type collide-shape-prim-group basic)
 (deftype collide-shape-prim (basic)
   "Base class for collide primitives."
   ((cshape          collide-shape             :offset-assert 4) ;; guessed by decompiler
@@ -20435,17 +20439,17 @@
   :flag-assert         #x1400000050
   (:methods
     (new (symbol type collide-shape uint int) _type_) ;; 0
-    (collide-shape-prim-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
-    (collide-shape-prim-method-10 () none) ;; 10 ;; (add-fg-prim-using-box (_type_ collide-cache) none)
-    (collide-shape-prim-method-11 () none) ;; 11 ;; (add-fg-prim-using-line-sphere (_type_ collide-cache object) none)
-    (collide-shape-prim-method-12 () none) ;; 12 ;; (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol)
-    (collide-shape-prim-method-13 () none) ;; 13 ;; (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol)
+    (debug-draw (_type_) none) ;; 9
+    (add-fg-prim-using-box (_type_ collide-cache) none) ;; 10
+    (add-fg-prim-using-line-sphere (_type_ collide-cache object) none) ;; 11
+    (overlaps-others-test (_type_ overlaps-others-params collide-shape-prim) symbol) ;; 12
+    (overlaps-others-group (_type_ overlaps-others-params collide-shape-prim-group) symbol) ;; 13
     (collide-shape-prim-method-14 () none) ;; 14 ;; (collide-shape-prim-method-14 () none)
-    (collide-shape-prim-method-15 () none) ;; 15 ;; (collide-with-collide-cache-prim-mesh (_type_ collide-query collide-cache-prim) none)
+    (collide-with-collide-cache-prim-mesh (_type_ collide-query collide-cache-prim) none) ;; 15
     (collide-with-collide-cache-prim-sphere (_type_ collide-query collide-cache-prim) none) ;; 16
-    (collide-shape-prim-method-17 () none) ;; 17 ;; (on-platform-test (_type_ collide-shape-prim collide-query float) none)
-    (collide-shape-prim-method-18 () none) ;; 18 ;; (should-push-away-test (_type_ collide-shape-prim collide-query) none)
-    (collide-shape-prim-method-19 () none) ;; 19 ;; (should-push-away-a-group-test (_type_ collide-shape-prim-group collide-query) none)
+    (on-platform-test (_type_ collide-shape-prim collide-query float) none) ;; 17
+    (should-push-away-test (_type_ collide-shape-prim collide-query) none) ;; 18
+    (should-push-away-a-group-test (_type_ collide-shape-prim-group collide-query) none) ;; 19
     )
   )
 
@@ -20531,31 +20535,31 @@
     (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
     (move-by-vector! (_type_ vector) none) ;; 28
     (move-to-point! (_type_ vector) none) ;; 29
-    (collide-shape-method-30 () none) ;; 30 ;; (debug-draw (_type_) none)
+    (debug-draw (_type_) none) ;; 30
     (fill-cache-for-shape (_type_ float collide-query) none) ;; 31
     (fill-cache-integrate-and-collide (_type_ vector collide-query meters) none) ;; 32
-    (collide-shape-method-33 () none) ;; 33 ;; (find-prim-by-id (_type_ uint) collide-shape-prim)
-    (collide-shape-method-34 () none) ;; 34 ;; (find-prim-by-id-logtest (_type_ uint) collide-shape-prim)
+    (find-prim-by-id (_type_ uint) collide-shape-prim) ;; 33
+    (find-prim-by-id-logtest (_type_ uint) collide-shape-prim) ;; 34
     (detect-riders! (_type_) symbol) ;; 35
-    (collide-shape-method-36 () none) ;; 36 ;; (build-bounding-box-for-shape (_type_ bounding-box float collide-spec) symbol)
+    (build-bounding-box-for-shape (_type_ bounding-box float collide-spec) symbol) ;; 36
     (integrate-and-collide! (_type_ vector) none) ;; 37
     (find-collision-meshes (_type_) none) ;; 38
-    (collide-shape-method-39 () none) ;; 39 ;; (on-platform (_type_ collide-shape collide-query) symbol)
+    (on-platform (_type_ collide-shape collide-query) symbol) ;; 39
     (find-overlapping-shapes (_type_ overlaps-others-params) symbol) ;; 40
-    (collide-shape-method-41 () none) ;; 41 ;; (shove-to-closest-point-on-path (_type_ attack-info float) vector)
-    (collide-shape-method-42 () none) ;; 42 ;; (should-push-away (_type_ collide-shape collide-query) symbol)
-    (collide-shape-method-43 () none) ;; 43 ;; (pull-rider! (_type_ pull-rider-info) none)
+    (shove-to-closest-point-on-path (_type_ attack-info float) vector) ;; 41
+    (should-push-away (_type_ collide-shape collide-query) symbol) ;; 42
+    (pull-rider! (_type_ pull-rider-info) none) ;; 43
     (pull-riders! (_type_) symbol) ;; 44
     (do-push-aways (_type_) collide-spec) ;; 45
     (update-transforms (_type_) none) ;; 46
     (set-collide-with! (_type_ collide-spec) none) ;; 47
     (set-collide-as! (_type_ collide-spec) none) ;; 48
-    (collide-shape-method-49 () none) ;; 49 ;; (modify-collide-as! (_type_ int collide-spec collide-spec) none)
+    (modify-collide-as! (_type_ int collide-spec collide-spec) none) ;; 49
     (send-shoves (_type_ process touching-shapes-entry float float float) symbol) ;; 50
     (above-ground? (_type_ collide-query vector collide-spec float float float) symbol) ;; 51
     (water-info-init! (_type_ water-info collide-action) water-info) ;; 52
     (iterate-prims (_type_ (function collide-shape-prim none)) none) ;; 53
-    (collide-shape-method-54 () none) ;; 54 ;; (pusher-init (_type_) none)
+    (pusher-init (_type_) none) ;; 54
     )
   )
 
@@ -20661,18 +20665,18 @@
   ;; field penetrate is likely a value type. field penetrate is likely a value type.
   (:methods
     (new (symbol type process-drawable collide-list-enum) _type_) ;; 0
-    (find-ground (_type_ collide-query collide-spec float float float) symbol) ;; 55
+    (find-ground (_type_ collide-query collide-spec float float float process) symbol) ;; 55
     (react-to-pat! (_type_ pat-surface) cshape-reaction-flags) ;; 56
-    (collide-shape-moving-method-57 () none) ;; 57 ;; (integrate-no-collide! (_type_ vector) none)
-    (collide-shape-moving-method-58 () none) ;; 58 ;; (integrate-for-enemy-no-mtg (_type_ vector overlaps-others-params) symbol)
-    (collide-shape-moving-method-59 () none) ;; 59 ;; (move-above-ground (_type_ vector move-above-ground-params) none)
-    (collide-shape-moving-method-60 () none) ;; 60 ;; (move-to-ground (_type_ float float symbol collide-spec) none)
+    (integrate-no-collide! (_type_ vector) none) ;; 57
+    (integrate-for-enemy-no-mtg (_type_ vector overlaps-others-params) symbol) ;; 58
+    (move-above-ground (_type_ vector move-above-ground-params) none) ;; 59
+    (move-to-ground (_type_ float float symbol collide-spec) none) ;; 60
     (move-to-ground-point (_type_ vector vector vector) none) ;; 61
     (compute-acc-due-to-gravity (_type_ vector float) vector) ;; 62
     (rbody-collision (_type_ rigid-body-control float) none) ;; 63
-    (collide-shape-moving-method-64 () none) ;; 64 ;; (try-snap-to-surface (_type_ vector float float float) symbol)
+    (try-snap-to-surface (_type_ vector float float float) symbol) ;; 64
     (fill-and-try-snap-to-surface (_type_ vector float float float collide-query) symbol) ;; 65
-    (collide-shape-moving-method-66 () none) ;; 66 ;; (step-collison! (_type_ vector vector float int) float)
+    (step-collision! (_type_ vector vector float int) float) ;; 66
     (collide-with-all-collide-cache-prims (_type_ matrix collide-query) none) ;; 67
     )
   )
@@ -21423,8 +21427,8 @@
   :size-assert         #xe8
   :flag-assert         #xd000000e8
   (:methods
-    (touching-prims-entry-method-9 () none) ;; 9 ;; (get-middle-of-bsphere-overlap (_type_ vector) vector)
-    (touching-prims-entry-method-10 () none) ;; 10
+    (touching-prims-entry-method-9 (_type_ vector) vector) ;; 9
+    (get-middle-of-bsphere-overlap (_type_ vector) vector) ;; 10
     (get-touched-prim (_type_ collide-shape touching-shapes-entry) collide-shape-prim) ;; 11
     (get-touched-tri (_type_ collide-shape touching-shapes-entry) collide-tri-result) ;; 12
     )
@@ -21440,10 +21444,10 @@
   :flag-assert         #xd00003c10
   (:methods
     (new (symbol type) _type_) ;; 0
-    (touching-prims-entry-pool-method-9 () none) ;; 9 ;; (alloc-node (_type_) touching-prims-entry)
-    (touching-prims-entry-pool-method-10 () none) ;; 10 ;; (get-free-node-count (_type_) int)
+    (alloc-node (_type_) touching-prims-entry) ;; 9
+    (get-free-node-count (_type_) int) ;; 10
     (init-list! (_type_) none) ;; 11
-    (touching-prims-entry-pool-method-12 () none) ;; 12 ;; (free-node (_type_ touching-prims-entry) touching-prims-entry)
+    (free-node (_type_ touching-prims-entry) touching-prims-entry) ;; 12
     )
   )
 
@@ -21467,7 +21471,7 @@
     (get-touched-shape (_type_ collide-shape) collide-shape) ;; 11
     (prims-touching? (_type_ collide-shape uint) touching-prims-entry) ;; 12
     (prims-touching-action? (_type_ collide-shape collide-action collide-action) basic) ;; 13
-    (touching-shapes-entry-method-14 () none) ;; 14 ;; (free-touching-prims-list (_type_) none)
+    (free-touching-prims-list (_type_) none) ;; 14
     )
   )
 
@@ -21481,12 +21485,12 @@
   :size-assert         #x408
   :flag-assert         #xe00000408
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
-    (touching-list-method-9 () none) ;; 9 ;; (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none)
+    (new (symbol type) _type_) ;; 0
+    (add-touching-prims (_type_ collide-shape-prim collide-shape-prim float collide-tri-result collide-tri-result) none) ;; 9
     (free-nodes (_type_) none) ;; 10
-    (touching-list-method-11 () none) ;; 11 ;; (update-from-step-size (_type_ float) none)
+    (update-from-step-size (_type_ float) none) ;; 11
     (send-events-for-touching-shapes (_type_) none) ;; 12
-    (touching-list-method-13 () none) ;; 13 ;; (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry)
+    (get-shapes-entry (_type_ collide-shape collide-shape) touching-shapes-entry) ;; 13
     )
   )
 
@@ -21535,7 +21539,7 @@
   :flag-assert         #xb000001e4
   (:methods
     (edge-grab-info-method-9 (_type_) symbol) ;; 9
-    (edge-grab-info-method-10 () none) ;; 10 ;; (debug-draw (_type_) none)
+    (edge-grab-info-method-10 (_type_) none) ;; 10 ;; (debug-draw (_type_) none)
     )
   )
 
@@ -21550,6 +21554,7 @@
   :flag-assert         #x900000020
   )
 
+(declare-type collide-edge-work structure)
 (deftype collide-edge-edge (structure)
   ((ignore        symbol                        :offset-assert 0)
    (etri          collide-edge-tri              :offset-assert 4)
@@ -21561,7 +21566,7 @@
   :size-assert         #x30
   :flag-assert         #xa00000030
   (:methods
-    (collide-edge-edge-method-9 () none) ;; 9 ;; (no-collision-at-edge (_type_ collide-edge-work edge-grab-info) symbol)
+    (no-collision-at-edge (_type_ collide-edge-work edge-grab-info) symbol) ;; 9
     )
   )
 
@@ -21589,8 +21594,8 @@
   :size-assert         #x810
   :flag-assert         #xb00000810
   (:methods
-    (collide-edge-hold-list-method-9 () none) ;; 9 ;; (debug-draw (_type_) object)
-    (collide-edge-hold-list-method-10 () none) ;; 10 ;; (add-to-list! (_type_ collide-edge-hold-item) none)
+    (debug-draw (_type_) object) ;; 9
+    (add-to-list! (_type_ collide-edge-hold-item) none) ;; 10
     )
   )
 
@@ -21651,18 +21656,18 @@
   :size-assert         #x26c0
   :flag-assert         #x15000026c0
   (:methods
-    (collide-edge-work-method-9 () none) ;; 9 ;; (search-for-edges (_type_ collide-edge-hold-list) none)
-    (collide-edge-work-method-10 () none) ;; 10 ;; (debug-draw-edges (_type_) object)
-    (collide-edge-work-method-11 () none) ;; 11 ;; (debug-draw-tris (_type_) none)
-    (collide-edge-work-method-12 () none) ;; 12 ;; (debug-draw-sphere (_type_) none)
-    (collide-edge-work-method-13 () none) ;; 13 ;; (find-adjacent-edge (_type_ collide-edge-hold-item edge-grab-info) none)
-    (collide-edge-work-method-14 () none) ;; 14 ;; (compute-center-point! (_type_ collide-edge-edge vector) float)
-    (collide-edge-work-method-15 () none) ;; 15 ;; (get-best-hand-point (_type_ vector vector int) float)
-    (collide-edge-work-method-16 () none) ;; 16 ;; (find-grabbable-edges (_type_) none)
-    (collide-edge-work-method-17 () none) ;; 17 ;; (find-grabbable-tris (_type_) none)
-    (collide-edge-work-method-18 () none) ;; 18 ;; (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol)
-    (collide-edge-work-method-19 () none) ;; 19 ;; (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol)
-    (collide-edge-work-method-20 () none) ;; 20 ;; (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol)
+    (search-for-edges (_type_ collide-edge-hold-list) none) ;; 9
+    (debug-draw-edges (_type_) object) ;; 10
+    (debug-draw-tris (_type_) none) ;; 11
+    (debug-draw-sphere (_type_) none) ;; 12
+    (find-adjacent-edge (_type_ collide-edge-hold-item edge-grab-info) none) ;; 13
+    (compute-center-point! (_type_ collide-edge-edge vector) float) ;; 14
+    (get-best-hand-point (_type_ vector vector int) float) ;; 15
+    (find-grabbable-edges (_type_) none) ;; 16
+    (find-grabbable-tris (_type_) none) ;; 17
+    (should-add-to-list? (_type_ collide-edge-hold-item collide-edge-edge) symbol) ;; 18
+    (find-best-grab! (_type_ collide-edge-hold-list edge-grab-info) symbol) ;; 19
+    (check-grab-for-collisions (_type_ collide-edge-hold-item edge-grab-info) symbol) ;; 20
     )
   )
 
@@ -22000,6 +22005,7 @@
   ((id         uint32  :offset-assert 0)
    (collidable basic   :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -22076,7 +22082,7 @@
    (axis-scale      vector                           :inline :offset 48)
    (avg-extents     vector                           :inline :offset 64)
    (bucket-array    uint32                                   :offset 44)
-   (item-array      (inline-array collide-hash-item)         :offset 60) ;; guessed by decompiler
+   (item-array      (inline-array collide-hash-item)         :offset 60 :score 1) ;; guessed by decompiler
    (dimension-array uint32                           3       :offset 76) ;; guessed by decompiler
    (num-items       uint32                                   :offset 92)
    )
@@ -23397,6 +23403,7 @@
    (prim-index  uint16         :offset 56)
    (user16      uint16         :offset 58)
    (user32      uint32         :offset 60)
+   (clear-flags uint128        :offset 48) ;; added
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -23412,6 +23419,7 @@
   (fake-prim 2)
   )
 
+(declare-type collide-list structure)
 (deftype collide-cache-prim (structure)
   "A primitive inside the collide-cache.
    This can represent a sphere, a triangle mesh, or a group of other primitives within a bounding sphere."
@@ -23431,8 +23439,8 @@
   :size-assert         #x30
   :flag-assert         #xb00000030
   (:methods
-    (collide-cache-prim-method-9 () none) ;; 9 ;; (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float)
-    (collide-cache-prim-method-10 () none) ;; 10 ;; (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float)
+    (resolve-moving-sphere-tri (_type_ collide-tri-result collide-prim-core vector float collide-action) float) ;; 9
+    (resolve-moving-sphere-sphere (_type_ collide-tri-result collide-prim-core vector float collide-action) float) ;; 10
     )
   )
 
@@ -23444,7 +23452,9 @@
    The supported queries are 'line-sphere' (raycast) and 'spheres' (check if intersecting anything).
    It is not useful for ollision queries against a specific foreground object, like 'am I on top of platform X right now?'."
   ((num-tris         int32                      :offset-assert 4)
+   (num-tris-u32     uint32                     :offset 4)
    (num-prims        int32                      :offset-assert 8)
+   (num-prims-u32    uint32                     :offset 8)
    (ignore-mask      pat-surface                :offset-assert 12) ;; guessed by decompiler
    (ignore-processes process            2       :offset-assert 16) ;; guessed by decompiler
    (collide-box      bounding-box       :inline :offset-assert 32)
@@ -23458,19 +23468,19 @@
   :size-assert         #x8670
   :flag-assert         #x1a00008670
   (:methods
-    (collide-cache-method-9 () none) ;; 9 ;; (debug-draw (_type_) none)
+    (debug-draw (_type_) none) ;; 9
     (fill-and-probe-using-line-sphere (_type_ collide-query) float) ;; 10
     (fill-and-probe-using-spheres (_type_ collide-query) symbol) ;; 11
     (fill-using-bounding-box (_type_ collide-query) none) ;; 12
     (fill-using-line-sphere (_type_ collide-query) none) ;; 13
-    (collide-cache-method-14 () none) ;; 14 ;; (fill-using-spheres (_type_ collide-query) none)
-    (collide-cache-method-15 () none) ;; 15 ;; (reset (_type_) none)
+    (fill-using-spheres (_type_ collide-query) none) ;; 14
+    (reset (_type_) none) ;; 15
     (probe-using-line-sphere (_type_ collide-query) float) ;; 16
-    (collide-cache-method-17 () none) ;; 17 ;; (probe-using-spheres (_type_ collide-query) symbol)
-    (collide-cache-method-18 () none) ;; 18 ;; (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none)
-    (collide-cache-method-19 () none) ;; 19 ;; (fill-from-fg-boxes (_type_) none)
-    (collide-cache-method-20 () none) ;; 20 ;; (fill-from-fg-line-sphere (_type_ collide-query) none)
-    (collide-cache-method-21 () none) ;; 21 ;; (fill-from-water (_type_ water-control) none)
+    (probe-using-spheres (_type_ collide-query) symbol) ;; 17
+    (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none) ;; 18
+    (fill-from-fg-boxes (_type_) none) ;; 19
+    (fill-from-fg-line-sphere (_type_ collide-query) none) ;; 20
+    (fill-from-water (_type_ water-control) none) ;; 21
     (collide-cache-method-22 () none) ;; 22 ;; (collide-cache-method-22 () none)
     (collide-cache-method-23 () none) ;; 23 ;; (collide-cache-method-23 () none)
     (collide-cache-method-24 () none) ;; 24 ;; (collide-cache-method-24 () none)
@@ -23516,7 +23526,9 @@
    (ignore-process0  process-tree                  :offset 88) ;; guessed by decompiler
    (ignore-process1  process-tree                  :offset 92) ;; guessed by decompiler
    (ignore-pat       pat-surface                   :offset-assert 96) ;; guessed by decompiler
+   (ignore-pat-s32   int32                         :offset 96)
    (collide-with     collide-spec                  :offset-assert 100) ;; guessed by decompiler
+   (collide-with-s32 int32                         :offset 100)
    (overlay-params   uint32                3       :offset 112) ;; guessed by decompiler
    (bbox             bounding-box          :inline :offset-assert 128)
    (bbox4w           bounding-box4w        :inline :offset-assert 160)
@@ -23530,7 +23542,7 @@
    (spheres          (inline-array sphere)         :offset 112 :score 1) ;; guessed by decompiler
    (num-spheres      uint32                        :offset 116)
    (solid-only       symbol                        :offset 120) ;; guessed by decompiler
-   (best-dist        float                         :offset 112)
+   (best-dist        float                         :offset 112 :score 2)
    (best-other-prim  collide-shape-prim            :offset 116 :score 1) ;; guessed by decompiler
    (best-my-prim     collide-shape-prim            :offset 120 :score 1) ;; guessed by decompiler
    (move-vec         vector                :inline :offset 224)
@@ -23551,6 +23563,15 @@
   :method-count-assert 9
   :size-assert         #x21c
   :flag-assert         #x90000021c
+  )
+
+(deftype do-push-aways-work (structure)
+  "Added"
+  ((cquery collide-query :inline)
+   (push-vel   vector :inline)
+   (vec33    vector :inline :offset 560)
+   (cspec  collide-spec :offset 576)
+   )
   )
 
 (define-extern *collide-test-flag* symbol)
@@ -24661,7 +24682,7 @@
   :flag-assert         #x1600000060
   (:methods
     (hfragment-method-17 () none) ;; 17
-    (hfragment-method-18 () none) ;; 18
+    (hfragment-method-18 (_type_ collide-cache collide-query) none) ;; 18
     (hfragment-method-19 () none) ;; 19
     (hfragment-method-20 () none) ;; 20
     (hfragment-method-21 () none) ;; 21
@@ -28485,7 +28506,7 @@
   :flag-assert         #x2800000074
   (:methods
     (new (symbol type int int) _type_) ;; 0
-    (spatial-hash-method-33 () none) ;; 33
+    (spatial-hash-method-33 (_type_ vector hash-object-info) none) ;; 33
     (add-an-object (_type_ vector hash-object-info) int) ;; 34
     (fill-actor-list-for-box (_type_ bounding-box (pointer collide-shape) int) int) ;; 35
     (fill-actor-list-for-sphere (_type_ sphere (pointer collide-shape) int) int) ;; 36
@@ -32213,19 +32234,18 @@
 ;; collide-hash                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern add-collide-debug-box function) ;; (function vector rgba none)
-;; (define-extern print-collide-cache-tri-count function) ;; (function none)
-;; (define-extern print-exceeded-max-cache-tris function) ;; (function none)
-;; (define-extern fill-bg-using-box-new function) ;; (function collide-cache object collide-query none)
-;; (define-extern fill-bg-using-line-sphere-new function) ;; (function collide-cache object collide-query none)
-;; (define-extern collide-list-fill-bg-using-box function) ;; (function collide-cache collide-list collide-query none)
-;; (define-extern collide-list-fill-bg-using-line-sphere function) ;; (function collide-cache collide-list collide-query none)
+(define-extern add-collide-debug-box (function vector rgba none))
+(define-extern print-collide-cache-tri-count (function none))
+(define-extern print-exceeded-max-cache-tris (function none))
+(define-extern fill-bg-using-box-new (function collide-cache object collide-query none))
+(define-extern fill-bg-using-line-sphere-new (function collide-cache object collide-query none))
+(define-extern collide-list-fill-bg-using-box (function collide-cache collide-list collide-query none))
+(define-extern collide-list-fill-bg-using-line-sphere (function collide-cache collide-list collide-query none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-probe                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype collide-probe-stack-elem (structure)
   ((child uint32  :offset-assert 0)
    (count uint32  :offset-assert 4)
@@ -32234,40 +32254,37 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype collide-probe-stack (structure)
-  ((data collide-probe-stack-elem 1024 :offset-assert 0) ;; guessed by decompiler
+  ((data collide-probe-stack-elem 1024 :inline :offset-assert 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4000
   :flag-assert         #x900004000
   )
-|#
 
-;; (define-extern creates-new-method? function) ;; (function type int symbol)
-;; (define-extern overrides-parent-method? function) ;; (function type int symbol)
-;; (define-extern describe-methods function) ;; (function type symbol)
-;; (define-extern indent-to function) ;; (function int none)
-;; (define-extern probe-traverse-draw-node function) ;; (function draw-node int none)
-;; (define-extern probe-traverse-inline-array-node function) ;; (function drawable-inline-array-node int none)
-;; (define-extern probe-traverse-collide-fragment function) ;; (function drawable-tree-collide-fragment int none)
-;; (define-extern *collide-probe-stack* object) ;; collide-probe-stack
-;; (define-extern collide-vu0-block object) ;; vu-function
-;; (define-extern collide-probe-node function) ;; (function (inline-array draw-node) int collide-list int)
-;; (define-extern print-out function) ;; (function int object)
-;; (define-extern collide-probe-instance-tie-collide-frags function) ;; (function none)
-;; (define-extern collide-probe-instance-tie function) ;; (function object int collide-list int int)
-;; (define-extern collide-probe-collide-fragment-tree-make-list function) ;; (function drawable-tree-collide-fragment collide-list none)
-;; (define-extern collide-probe-instance-tie-tree-make-list function) ;; (function drawable-tree-instance-tie collide-list int)
-;; (define-extern collide-upload-vu0 function) ;; (function none)
-;; (define-extern collide-probe-make-list function) ;; (function level collide-list none)
-;; (define-extern distc function) ;; (function vector vector float)
-;; (define-extern interpolate function) ;; (function float float float float float float)
-;; (define-extern misty-ambush-height function) ;; (function vector float)
-;; (define-extern misty-ambush-height-probe function) ;; (function vector float float)
-;; (define-extern pke-collide-test function) ;; (function none)
+(define-extern creates-new-method? (function type int symbol))
+(define-extern overrides-parent-method? (function type int symbol))
+(define-extern describe-methods (function type symbol))
+(define-extern indent-to (function int none))
+(define-extern probe-traverse-draw-node (function draw-node int none))
+(define-extern probe-traverse-inline-array-node (function drawable-inline-array-node int none))
+(define-extern probe-traverse-collide-fragment (function drawable-tree-collide-fragment int none))
+(define-extern *collide-probe-stack* collide-probe-stack)
+(define-extern collide-vu0-block vu-function)
+(define-extern collide-probe-node (function (inline-array draw-node) int collide-list int))
+(define-extern print-out (function int object))
+(define-extern collide-probe-instance-tie-collide-frags (function none))
+(define-extern collide-probe-instance-tie (function object int collide-list int int))
+(define-extern collide-probe-collide-fragment-tree-make-list (function drawable-tree-collide-fragment collide-list none))
+(define-extern collide-probe-instance-tie-tree-make-list (function drawable-tree-instance-tie collide-list int))
+(define-extern collide-upload-vu0 (function none))
+(define-extern collide-probe-make-list (function level collide-list none))
+(define-extern distc (function vector vector float))
+(define-extern interpolate (function float float float float float float))
+(define-extern misty-ambush-height (function vector float))
+(define-extern misty-ambush-height-probe (function vector float float))
+(define-extern pke-collide-test (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-frag                   ;;
@@ -32278,7 +32295,6 @@
 ;; collide-mesh                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sopt-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -32287,9 +32303,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype spat-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -32298,9 +32312,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype oot-work (structure)
   ((intersect     vector         :inline :offset-assert 0)
    (sphere-bbox4w bounding-box4w :inline :offset-assert 16)
@@ -32309,14 +32321,11 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-touch                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype add-prims-touching-work (structure)
   ((tri1 collide-tri-result  :offset-assert 0)
    (tri2 collide-tri-result  :offset-assert 4)
@@ -32325,7 +32334,6 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
 (define-extern get-intersect-point (function vector touching-prims-entry collide-shape touching-shapes-entry vector))
 
@@ -32333,7 +32341,6 @@
 ;; collide-edge-grab              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pbhp-stack-vars (structure)
   ((edge        collide-edge-edge         :offset-assert 0)
    (allocated   basic                     :offset-assert 4)
@@ -32344,9 +32351,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype faei-stack-vars (structure)
   ((hold-edge-vec-norm vector :inline :offset-assert 0)
    (adj-edge-vec-norm  vector :inline :offset-assert 16)
@@ -32359,25 +32364,24 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern *no-walk-surface* surface) ;; surface
+(define-extern *no-walk-surface* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-shape                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern find-ground-point function) ;; (function control-info vector float float vector)
-;; (define-extern target-attack-up function) ;; (function target symbol symbol none)
+(define-extern find-ground-point (function control-info vector float float vector))
+(define-extern target-attack-up (function target symbol symbol none))
 (define-extern collide-shape-moving-angle-set! (function collide-shape-moving vector vector none))
 (define-extern cshape-reaction-update-state (function control-info collide-query vector none))
 (define-extern cshape-reaction-default (function control-info collide-query vector vector collide-status))
 (define-extern cshape-reaction-just-move (function control-info collide-query vector collide-status))
 (define-extern collide-shape-draw-debug-marks (function none))
-;; (define-extern *col-timer* object) ;; stopwatch
-;; (define-extern *frame-timer* object) ;; stopwatch
-;; (define-extern *col-timer-enable* object) ;; symbol
-;; (define-extern debug-report-col-stats function) ;; (function int)
+(define-extern *col-timer* stopwatch)
+(define-extern *frame-timer* stopwatch)
+(define-extern *col-timer-enable* symbol)
+(define-extern debug-report-col-stats (function int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-shape-rider            ;;
@@ -32403,10 +32407,9 @@
 ;; spatial-hash                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype grid-hash-work (basic)
-  ((result-words      uint8  32      :offset-assert 16) ;; guessed by decompiler
-   (result-bits       uint8  32      :offset-assert 16) ;; guessed by decompiler
+  ((result-words      uint8  32      :offset 16) ;; guessed by decompiler
+   (result-bits       uint8  32      :offset 16) ;; guessed by decompiler
    (object-id         int32          :offset-assert 48)
    (temp-box-min      vector :inline :offset-assert 64)
    (temp-box-max      vector :inline :offset-assert 80)
@@ -32421,19 +32424,17 @@
   :size-assert         #x78
   :flag-assert         #x900000078
   )
-|#
 
-;; (define-extern *grid-hash-work* grid-hash-work) ;; grid-hash-work
-;; (define-extern validate-bucket-bits function) ;; (function grid-hash (pointer grid-hash-word) symbol)
-;; (define-extern draw-grid function) ;; (function vector vector (pointer int8) rgba none)
-;; (define-extern draw-sphere-box function) ;; (function sphere rgba none)
-;; (define-extern draw-line-sphere function) ;; (function vector vector float rgba none)
+(define-extern *grid-hash-work* grid-hash-work)
+(define-extern validate-bucket-bits (function grid-hash (pointer grid-hash-word) symbol))
+(define-extern draw-grid (function vector vector (pointer int8) rgba none))
+(define-extern draw-sphere-box (function sphere rgba none))
+(define-extern draw-line-sphere (function vector vector float rgba none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; actor-hash                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype actor-cshape-ptr (structure)
   ((cshape collide-shape  :offset-assert 0) ;; guessed by decompiler
    )
@@ -32441,41 +32442,37 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype actor-hash-bucket (structure)
   ((length     int16                            :offset-assert 0)
    (max-length int16                            :offset-assert 2)
    (data       (inline-array actor-cshape-ptr)  :offset-assert 4) ;; guessed by decompiler
    )
+  :allow-misaligned
   :method-count-assert 10
   :size-assert         #x8
   :flag-assert         #xa00000008
   (:methods
-    (actor-hash-bucket-method-9 () none) ;; 9 ;; (add-actor-cshape (_type_ collide-shape) none)
+    (add-actor-cshape (_type_ collide-shape) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype actor-hash-buckets (structure)
   ((hash spatial-hash              :offset-assert 0) ;; guessed by decompiler
    (list engine                    :offset-assert 4) ;; guessed by decompiler
-   (data actor-hash-bucket 4       :offset-assert 8) ;; guessed by decompiler
+   (data actor-hash-bucket 4 :inline :offset-assert 8) ;; guessed by decompiler
    (tpos vector            :inline :offset-assert 80)
    )
   :method-count-assert 10
   :size-assert         #x60
   :flag-assert         #xa00000060
   (:methods
-    (actor-hash-buckets-method-9 () none) ;; 9 ;; (hash-actors (_type_) none)
+    (hash-actors (_type_) none) ;; 9
     )
   )
-|#
 
 (define-extern *actor-hash* spatial-hash)
-;; (define-extern *actor-hash-buckets* object) ;; actor-hash-buckets
+(define-extern *actor-hash-buckets* actor-hash-buckets)
 (define-extern update-actor-hash (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -37331,7 +37328,6 @@
 ;; collide-cache                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype collide-puls-work (structure)
   ((ignore-pat pat-surface         :offset-assert 0) ;; guessed by decompiler
    (bsphere    sphere      :inline :offset-assert 16)
@@ -37341,9 +37337,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype lsmi-work (structure)
   ((best-u      float                 :offset-assert 0)
    (orig-best-u float                 :offset-assert 4)
@@ -37354,15 +37348,13 @@
   :size-assert         #x22c
   :flag-assert         #x90000022c
   )
-|#
 
-;; (define-extern test-closest-pt-in-triangle function) ;; (function collide-cache symbol)
+(define-extern test-closest-pt-in-triangle (function collide-cache symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; collide-debug                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype col-rend-filter (structure)
   ((show-pat-set   pat-surface  :offset-assert 0) ;; guessed by decompiler
    (show-pat-clear pat-surface  :offset-assert 4) ;; guessed by decompiler
@@ -37372,9 +37364,8 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-;; (define-extern col-rend-draw function) ;; (function col-rend col-rend-filter none)
+(define-extern col-rend-draw (function col-rend col-rend-filter none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; relocate                       ;;
