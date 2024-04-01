@@ -38,9 +38,9 @@ struct AudioDir {
   int entry_count() const { return entries.size(); }
 
   void debug_print() const {
-    for (auto& e : entries) {
-      // lg::debug("\"{}\" 0x{:07x} - 0x{:07x}", e.name, e.start_byte, e.end_byte);
-    }
+    // for (auto& e : entries) {
+    // lg::debug("\"{}\" 0x{:07x} - 0x{:07x}", e.name, e.start_byte, e.end_byte);
+    // }
   }
 };
 

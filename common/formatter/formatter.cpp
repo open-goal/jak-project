@@ -147,7 +147,7 @@ void apply_formatting_config(
     // Find the maximum number of columns
     int max_columns = 0;
     for (const auto& field : curr_node.refs) {
-      if (field.refs.size() > max_columns) {
+      if ((int)field.refs.size() > max_columns) {
         max_columns = field.refs.size();
       }
     }
@@ -156,7 +156,7 @@ void apply_formatting_config(
     for (int col = 0; col < max_columns; col++) {
       column_max_widths.push_back(0);
       for (const auto& field : curr_node.refs) {
-        if (field.refs.size() > col) {
+        if ((int)field.refs.size() > col) {
           const auto width = get_total_form_inlined_width(field.refs.at(col));
           if (width > column_max_widths.at(col)) {
             column_max_widths[col] = width;
@@ -271,7 +271,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
         val = comments::format_block_comment(ref.token_str());
       }
       form_lines.push_back(val);
-      if (!curr_node.metadata.is_top_level && i == curr_node.refs.size() - 1 &&
+      if (!curr_node.metadata.is_top_level && i == (int)curr_node.refs.size() - 1 &&
           (ref.metadata.is_comment)) {
         // if there's an inline comment at the end of a form, we have to force the paren to the next
         // line and do a new-line paren this is ugly, but we have no choice!
@@ -354,9 +354,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
 
   // Add any column padding
   if (!curr_node.formatting_config.list_element_column_widths.empty()) {
-    for (int i = 0; i < form_lines.size(); i++) {
+    for (int i = 0; i < (int)form_lines.size(); i++) {
       const auto& token = form_lines.at(i);
-      if (i < form_lines.size() - 1) {
+      if (i < (int)form_lines.size() - 1) {
         form_lines[i] = str_util::pad_right(
             token, curr_node.formatting_config.list_element_column_widths.at(i), ' ');
       }

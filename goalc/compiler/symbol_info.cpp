@@ -280,18 +280,20 @@ std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_exact_name(
 }
 
 std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_symbols_starting_with(
-    const std::string& prefix) const {
+    const std::string& prefix,
+    int max_count) const {
   std::vector<std::shared_ptr<SymbolInfo>> symbols;
-  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);
+  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix, max_count);
   for (const auto& result : lookup) {
     symbols.push_back(result);
   }
   return symbols;
 }
 
-std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix) const {
+std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix,
+                                                                int max_count) const {
   std::set<std::string> names;
-  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);
+  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix, max_count);
   for (const auto& result : lookup) {
     names.insert(result->m_name);
   }
@@ -309,9 +311,13 @@ std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::get_all_symbols() const 
 void SymbolInfoMap::evict_symbols_using_file_index(const std::string& file_path) {
   const auto standardized_path = file_util::convert_to_unix_path_separators(file_path);
   if (m_file_symbol_index.find(standardized_path) != m_file_symbol_index.end()) {
+    std::unordered_set<SymbolInfo*> sym_infos;
     for (const auto& symbol : m_file_symbol_index.at(standardized_path)) {
-      m_symbol_map.remove(symbol);
+      sym_infos.insert(symbol.get());
     }
+
+    m_symbol_map.remove_matching([&](SymbolInfo* info) { return sym_infos.count(info) != 0; });
+
     m_file_symbol_index.erase(standardized_path);
   }
 }

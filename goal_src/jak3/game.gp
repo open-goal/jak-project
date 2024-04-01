@@ -96,8 +96,11 @@
 ;; the case of a .o appearing in multiple dgos. But, if we depend on the last item in both lists, it
 ;; works out.
 
+(define common-dep '("$OUT/obj/default-menu.o"))
+(cgo-file "halfpipe.gd" common-dep)
+(cgo-file "wasall.gd" common-dep)
+
 #|
-(define common-dep '("$OUT/obj/cty-guard-turret-button.o" "$OUT/obj/default-menu-pc.o"))
 (cgo-file "preca.gd" common-dep)
 (cgo-file "outrocst.gd" common-dep)
 (cgo-file "ltornsam.gd" common-dep)
@@ -229,7 +232,6 @@
 (cgo-file "sea.gd" common-dep)
 (cgo-file "nsa.gd" common-dep)
 (cgo-file "lbiped.gd" common-dep)
-(cgo-file "wasall.gd" common-dep)
 (cgo-file "waschase.gd" common-dep)
 (cgo-file "desrescc.gd" common-dep)
 (cgo-file "desf.gd" common-dep)
@@ -318,7 +320,6 @@
 (cgo-file "sec.gd" common-dep)
 (cgo-file "lsnkwhls.gd" common-dep)
 (cgo-file "loninsim.gd" common-dep)
-(cgo-file "halfpipe.gd" common-dep)
 (cgo-file "cib.gd" common-dep)
 (cgo-file "inttitle.gd" common-dep)
 (cgo-file "desresc.gd" common-dep)

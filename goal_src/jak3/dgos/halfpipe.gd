@@ -18,5 +18,5 @@
   "urn-b-ag.go"
   "urn-c-ag.go"
   "urn-a-ag.go"
-  "halfpipe.o"
+  "halfpipe.go"
  ))

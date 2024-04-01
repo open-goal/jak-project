@@ -414,6 +414,50 @@ enum class BucketId {
 
 namespace jak3 {
 enum class BucketId {
+  BUCKET_2 = 2,
+  BLIT_START = 3,
+  TEX_LCOM_SKY_PRE = 4,
+
+  TEX_L0_TFRAG = 10,
+  TFRAG_L0_TFRAG = 11,
+
+  TEX_L1_TFRAG = 22,
+  TFRAG_L1_TFRAG = 23,
+
+  TEX_LCOM_TFRAG = 340,
+
+  TEX_LCOM_SHRUB = 345,
+
+  TEX_L0_PRIS = 351,
+
+  TEX_L1_PRIS = 356,
+
+  TEX_LCOM_PRIS = 401,
+
+  TEX_LCOM_SKY_POST = 461,
+
+  TEX_L0_WATER = 463,
+
+  TFRAG_L0_WATER = 466,
+
+  TEX_L1_WATER = 473,
+
+  TFRAG_L1_WATER = 476,
+
+  TEX_LCOM_WATER = 563,
+
+  TEX_SPRITE = 568,
+
+  TEX_WARP = 575,
+
+  TEX_HUD_HUD_ALPHA = 578,
+
+  TEX_HUD_PRIS2 = 580,
+
+  DEBUG = 583,
+  DEBUG_NO_ZBUF2 = 584,
+  DEBUG_MENU = 585,
+
   MAX_BUCKETS = 587,
 };
 }

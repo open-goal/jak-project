@@ -49,6 +49,7 @@ int ext_resume = 0;
 
 CmdDgo sLoadDgo;  // renamed from scmd to sLoadDGO in Jak 2
 static RPC_Dgo_Cmd sRPCBuff[1];
+constexpr int kRpcBuffSize = sizeof(RPC_Dgo_Cmd);
 VagDir gVagDir;
 
 /// The main buffer used for reading data and doing blzo decompression.
@@ -1097,7 +1098,8 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, kRpcBuffSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

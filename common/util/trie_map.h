@@ -13,7 +13,7 @@ class TrieMap {
  private:
   // TrieNode structure
   struct TrieNode {
-    std::unordered_map<char, std::shared_ptr<TrieNode>> children;
+    std::map<char, std::shared_ptr<TrieNode>> children;
     std::vector<std::shared_ptr<T>> elements;
   };
 
@@ -38,7 +38,8 @@ class TrieMap {
   }
 
   // Retrieve elements with a given prefix
-  std::vector<std::shared_ptr<T>> retrieve_with_prefix(const std::string& prefix) const {
+  std::vector<std::shared_ptr<T>> retrieve_with_prefix(const std::string& prefix,
+                                                       int max_count = -1) const {
     std::vector<std::shared_ptr<T>> result;
     std::shared_ptr<TrieNode> node = root;
     // Traverse to the node representing the prefix
@@ -49,7 +50,7 @@ class TrieMap {
       node = node->children[c];
     }
     // Gather all elements stored at or below this node
-    retrieve_elements(node, result);
+    retrieve_elements(node, result, max_count);
     return result;
   }
 
@@ -71,6 +72,11 @@ class TrieMap {
   // Remove the specified element from the TrieMap
   void remove(const std::shared_ptr<T>& element) { remove_element(root, element); }
 
+  template <typename F>
+  int remove_matching(F&& f) {
+    return remove_matching_elements(root.get(), f);
+  }
+
   // Return the total number of elements stored in the TrieMap
   int size() const {
     int count = 0;
@@ -88,15 +94,49 @@ class TrieMap {
  private:
   // Recursive function to retrieve elements stored at or below the given node
   void retrieve_elements(std::shared_ptr<TrieNode> node,
-                         std::vector<std::shared_ptr<T>>& result) const {
+                         std::vector<std::shared_ptr<T>>& result,
+                         int max_count) const {
     // Add elements stored at this node to the result
     for (const auto& element : node->elements) {
+      if (max_count >= 0 && (int)result.size() >= max_count) {
+        return;
+      }
       result.push_back(element);
     }
     // Recursively traverse children
     for (const auto& child : node->children) {
-      retrieve_elements(child.second, result);
+      retrieve_elements(child.second, result, max_count);
     }
+  }
+
+  /*!
+   * Remove elements where f(element) == true;
+   */
+  template <typename F>
+  int remove_matching_elements(TrieNode* node, F&& f) {
+    int erase_count = 0;
+    // remove from this level
+    for (auto it = node->elements.begin(); it != node->elements.end();) {
+      if (f(it->get())) {
+        it = node->elements.erase(it);
+        erase_count++;
+      } else {
+        ++it;
+      }
+    }
+
+    // remove children
+    for (auto it = node->children.begin(); it != node->children.end();) {
+      erase_count += remove_matching_elements(it->second.get(), f);
+      // remove child if it's empty
+      if (it->second->children.empty() && it->second->elements.empty()) {
+        it = node->children.erase(it);
+      } else {
+        ++it;
+      }
+    }
+
+    return erase_count;
   }
 
   // Recursive function to remove the specified element from the TrieMap

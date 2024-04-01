@@ -159,9 +159,10 @@ class SymbolInfoMap {
   std::vector<std::shared_ptr<SymbolInfo>> lookup_symbols_by_file(
       const std::string& file_path) const;
   std::vector<std::shared_ptr<SymbolInfo>> lookup_exact_name(const std::string& name) const;
-  std::vector<std::shared_ptr<SymbolInfo>> lookup_symbols_starting_with(
-      const std::string& prefix) const;
-  std::set<std::string> lookup_names_starting_with(const std::string& prefix) const;
+  std::vector<std::shared_ptr<SymbolInfo>> lookup_symbols_starting_with(const std::string& prefix,
+                                                                        int max_count = -1) const;
+  std::set<std::string> lookup_names_starting_with(const std::string& prefix,
+                                                   int max_count = -1) const;
   int symbol_count() const;
   std::vector<std::shared_ptr<SymbolInfo>> get_all_symbols() const;
   // Uses the per-file index to find and evict symbols globally
