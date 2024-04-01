@@ -57,8 +57,7 @@ void SymbolInfo::set_definition_location(const goos::TextDb* textdb) {
   }
 }
 
-void SymbolInfoMap::add_symbol_to_file_index(const std::string& file_path,
-                                             std::shared_ptr<SymbolInfo> symbol) {
+void SymbolInfoMap::add_symbol_to_file_index(const std::string& file_path, SymbolInfo* symbol) {
   if (m_file_symbol_index.find(file_path) == m_file_symbol_index.end()) {
     m_file_symbol_index[file_path] = {};
   }
@@ -266,27 +265,29 @@ void SymbolInfoMap::add_method(const std::string& method_name,
   }
 }
 
-std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_symbols_by_file(
-    const std::string& file_path) const {
+std::vector<SymbolInfo*> SymbolInfoMap::lookup_symbols_by_file(const std::string& file_path) const {
   if (m_file_symbol_index.find(file_path) != m_file_symbol_index.end()) {
     return m_file_symbol_index.at(file_path);
   }
   return {};
 }
 
-std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_exact_name(
-    const std::string& name) const {
+std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_name(const std::string& name) const {
   return m_symbol_map.retrieve_with_exact(name);
 }
 
-std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::lookup_symbols_starting_with(
+std::vector<SymbolInfo*> SymbolInfoMap::lookup_symbols_starting_with(
     const std::string& prefix) const {
-  std::vector<std::shared_ptr<SymbolInfo>> symbols;
+  std::vector<SymbolInfo*> symbols;
   const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);
   for (const auto& result : lookup) {
     symbols.push_back(result);
   }
   return symbols;
+}
+
+std::vector<SymbolInfo*> SymbolInfoMap::get_all_symbols() const {
+  return m_symbol_map.get_all_elements();
 }
 
 std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix) const {
@@ -302,15 +303,11 @@ int SymbolInfoMap::symbol_count() const {
   return m_symbol_map.size();
 }
 
-std::vector<std::shared_ptr<SymbolInfo>> SymbolInfoMap::get_all_symbols() const {
-  return m_symbol_map.get_all_elements();
-}
-
 void SymbolInfoMap::evict_symbols_using_file_index(const std::string& file_path) {
   const auto standardized_path = file_util::convert_to_unix_path_separators(file_path);
   if (m_file_symbol_index.find(standardized_path) != m_file_symbol_index.end()) {
     for (const auto& symbol : m_file_symbol_index.at(standardized_path)) {
-      m_symbol_map.remove(symbol);
+      m_symbol_map.remove(symbol->m_name, symbol);
     }
     m_file_symbol_index.erase(standardized_path);
   }

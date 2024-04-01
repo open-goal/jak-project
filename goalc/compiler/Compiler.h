@@ -97,13 +97,12 @@ class Compiler {
                      std::vector<std::pair<std::string, replxx::Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
-  std::vector<std::shared_ptr<symbol_info::SymbolInfo>> lookup_symbol_info_by_file(
+  std::vector<symbol_info::SymbolInfo*> lookup_symbol_info_by_file(
       const std::string& file_path) const;
-  std::vector<std::shared_ptr<symbol_info::SymbolInfo>> lookup_symbol_info_by_prefix(
+  std::vector<symbol_info::SymbolInfo*> lookup_symbol_info_by_prefix(
       const std::string& prefix) const;
   std::set<std::string> lookup_symbol_names_starting_with(const std::string& prefix) const;
-  std::vector<std::shared_ptr<symbol_info::SymbolInfo>> lookup_exact_name_info(
-      const std::string& name) const;
+  std::vector<symbol_info::SymbolInfo*> lookup_exact_name_info(const std::string& name) const;
   std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
   TypeSystem& type_system() { return m_ts; };
   // TODO - rename these types / namespaces -- consolidate with SymbolInfo and whatever else tries
@@ -321,7 +320,7 @@ class Compiler {
                                 int offset,
                                 Env* env);
 
-  std::string make_symbol_info_description(const std::shared_ptr<symbol_info::SymbolInfo> info);
+  std::string make_symbol_info_description(const symbol_info::SymbolInfo* info);
 
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);

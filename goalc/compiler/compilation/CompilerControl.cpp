@@ -358,8 +358,7 @@ Val* Compiler::compile_reload(const goos::Object& form, const goos::Object& rest
   return get_none();
 }
 
-std::string Compiler::make_symbol_info_description(
-    const std::shared_ptr<symbol_info::SymbolInfo> info) {
+std::string Compiler::make_symbol_info_description(const symbol_info::SymbolInfo* info) {
   switch (info->m_kind) {
     case symbol_info::Kind::GLOBAL_VAR:
       return fmt::format("[Global Variable] Type: {} Defined: {}",
@@ -588,12 +587,12 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
   return get_none();
 }
 
-std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Compiler::lookup_symbol_info_by_file(
+std::vector<symbol_info::SymbolInfo*> Compiler::lookup_symbol_info_by_file(
     const std::string& file_path) const {
   return m_symbol_info.lookup_symbols_by_file(file_path);
 }
 
-std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Compiler::lookup_symbol_info_by_prefix(
+std::vector<symbol_info::SymbolInfo*> Compiler::lookup_symbol_info_by_prefix(
     const std::string& prefix) const {
   return m_symbol_info.lookup_symbols_starting_with(prefix);
 }
@@ -605,7 +604,7 @@ std::set<std::string> Compiler::lookup_symbol_names_starting_with(const std::str
   return {};
 }
 
-std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Compiler::lookup_exact_name_info(
+std::vector<symbol_info::SymbolInfo*> Compiler::lookup_exact_name_info(
     const std::string& name) const {
   if (m_goos.reader.check_string_is_valid(name)) {
     return m_symbol_info.lookup_exact_name(name);
