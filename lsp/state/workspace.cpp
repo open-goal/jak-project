@@ -97,7 +97,7 @@ std::optional<GameVersion> Workspace::determine_game_version_from_uri(
   return {};
 }
 
-std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Workspace::get_symbols_starting_with(
+std::vector<symbol_info::SymbolInfo*> Workspace::get_symbols_starting_with(
     const GameVersion game_version,
     const std::string& symbol_prefix) {
   if (m_compiler_instances.find(game_version) == m_compiler_instances.end()) {
@@ -109,7 +109,7 @@ std::vector<std::shared_ptr<symbol_info::SymbolInfo>> Workspace::get_symbols_sta
   return compiler->lookup_symbol_info_by_prefix(symbol_prefix);
 }
 
-std::optional<std::shared_ptr<symbol_info::SymbolInfo>> Workspace::get_global_symbol_info(
+std::optional<symbol_info::SymbolInfo*> Workspace::get_global_symbol_info(
     const WorkspaceOGFile& file,
     const std::string& symbol_name) {
   if (m_compiler_instances.find(file.m_game_version) == m_compiler_instances.end()) {
@@ -154,7 +154,7 @@ std::optional<std::pair<TypeSpec, Type*>> Workspace::get_symbol_typeinfo(
 
 std::optional<symbol_info::DefinitionLocation> Workspace::get_symbol_def_location(
     const WorkspaceOGFile& file,
-    const std::shared_ptr<symbol_info::SymbolInfo> symbol_info) {
+    const symbol_info::SymbolInfo* symbol_info) {
   const auto& def_loc = symbol_info->m_def_location;
   if (!def_loc) {
     return {};
@@ -181,7 +181,7 @@ Workspace::get_symbols_parent_type_path(const std::string& symbol_name,
     if (symbol_infos.empty()) {
       continue;
     }
-    std::shared_ptr<symbol_info::SymbolInfo> symbol_info;
+    symbol_info::SymbolInfo* symbol_info;
     if (symbol_infos.size() > 1) {
       for (const auto& info : symbol_infos) {
         if (info->m_kind == symbol_info::Kind::TYPE) {
@@ -415,8 +415,7 @@ void WorkspaceOGFile::parse_content(const std::string& content) {
   ts_parser_delete(parser);
 }
 
-void WorkspaceOGFile::update_symbols(
-    const std::vector<std::shared_ptr<symbol_info::SymbolInfo>>& symbol_infos) {
+void WorkspaceOGFile::update_symbols(const std::vector<symbol_info::SymbolInfo*>& symbol_infos) {
   m_symbols.clear();
   // TODO - sorting by definition location would be nice (maybe VSCode already does this?)
   for (const auto& symbol_info : symbol_infos) {

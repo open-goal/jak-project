@@ -6,7 +6,7 @@
 
 #include "common/goos/Object.h"
 #include "common/util/Assert.h"
-#include "common/util/trie_map.h"
+#include "common/util/trie_with_duplicates.h"
 
 #include "goalc/compiler/Val.h"
 
@@ -120,13 +120,13 @@ struct SymbolInfo {
  */
 class SymbolInfoMap {
   goos::TextDb* m_textdb;
-  TrieMap<SymbolInfo> m_symbol_map;
+  TrieWithDuplicates<SymbolInfo> m_symbol_map;
   // Indexes references to symbols by the file they are defined within
   // This allows us to not only efficiently retrieve symbols by file, but also allows us to
   // cleanup symbols when files are re-compiled.
-  std::unordered_map<std::string, std::vector<std::shared_ptr<SymbolInfo>>> m_file_symbol_index;
+  std::unordered_map<std::string, std::vector<SymbolInfo*>> m_file_symbol_index;
 
-  void add_symbol_to_file_index(const std::string& file_path, std::shared_ptr<SymbolInfo> symbol);
+  void add_symbol_to_file_index(const std::string& file_path, SymbolInfo* symbol);
 
  public:
   SymbolInfoMap(goos::TextDb* textdb) : m_textdb(textdb) {}
@@ -156,14 +156,12 @@ class SymbolInfoMap {
                   const std::vector<GoalArg>& args,
                   const MethodInfo& method_info,
                   const goos::Object& defining_form);
-  std::vector<std::shared_ptr<SymbolInfo>> lookup_symbols_by_file(
-      const std::string& file_path) const;
-  std::vector<std::shared_ptr<SymbolInfo>> lookup_exact_name(const std::string& name) const;
-  std::vector<std::shared_ptr<SymbolInfo>> lookup_symbols_starting_with(
-      const std::string& prefix) const;
+  std::vector<SymbolInfo*> lookup_symbols_by_file(const std::string& file_path) const;
+  std::vector<SymbolInfo*> lookup_exact_name(const std::string& name) const;
+  std::vector<SymbolInfo*> lookup_symbols_starting_with(const std::string& prefix) const;
   std::set<std::string> lookup_names_starting_with(const std::string& prefix) const;
+  std::vector<SymbolInfo*> get_all_symbols() const;
   int symbol_count() const;
-  std::vector<std::shared_ptr<SymbolInfo>> get_all_symbols() const;
   // Uses the per-file index to find and evict symbols globally
   // This should be done before re-compiling a file, symbols will be re-added to the DB if they are
   // found again
