@@ -13,6 +13,25 @@
   `(format 0 ,(string-append "[START] " str) ,@args)
   )
 
+(defun give-all-stuff ()
+  ;; (send-event *target* 'get-pickup 18 #x447a0000)
+  ;; (send-event *target* 'get-pickup 17 #x447a0000)
+  ;; (send-event *target* 'get-pickup 13 #x447a0000)
+  ;; (send-event *target* 'get-pickup 14 #x447a0000)
+  ;; (send-event *target* 'get-pickup 15 #x447a0000)
+  ;; (send-event *target* 'get-pickup 16 #x447a0000)
+  ;; (send-event *target* 'get-pickup 7 #x42c80000)
+  (logior! (-> *game-info* features)
+    (game-feature
+      board
+      darkjak darkjak-smack darkjak-bomb0 darkjak-bomb1
+      lightjak lightjak-regen lightjak-swoop lightjak-freeze lightjak-shield
+      gun
+      gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1
+      gun-red-2 gun-yellow-2 gun-blue-2 gun-dark-2
+      gun-red-3 gun-yellow-3 gun-blue-3 gun-dark-3))
+  )
+
 (defmacro test-play ()
   "Temporary start macro"
   `(begin
@@ -21,6 +40,22 @@
      (start-debug "loading GAME.DGO~%")
      (load-package "game" global)
      (play-boot)
+
+     ;; wait 10 frames and then turn on profile bars.
+     ;; they get shut off as part of startup, so we can't do it here.
+     (process-spawn-function
+       process
+       (lambda ()
+         (dotimes (i 10)
+           (suspend)
+           )
+         (true! *display-profile*)
+         (true! *stats-profile-bars*)
+         (true! *display-actor-marks*)
+         (true! *display-bones*)
+         (give-all-stuff)
+         )
+       )
      )
   )
 
@@ -1754,7 +1789,7 @@
     (let ((s0-0 (the-as int (-> arg1 pos))))
       (when (= (-> arg1 state) -1)
         (when (< s0-0 (-> s2-0 length))
-          (let ((s1-0 (-> s2-0 data (the-as uint s0-0))))
+          (let ((s1-0 (-> s2-0 trees (the-as uint s0-0))))
             (cond
               ((= (-> (the-as drawable-tree-tfrag s1-0) type) drawable-tree-tfrag)
                (dotimes (s0-1 (-> (the-as drawable-tree-tfrag s1-0) length))
@@ -1903,7 +1938,7 @@
                      )
                    (set! (-> sv-96 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                    (set! (-> sv-96 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-                   (set! (-> sv-96 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
+                   (set! (-> sv-96 alpha) (new 'static 'gs-miptbp :tbp1 #x58))
                    (set! (-> sv-96 reg-0) (the-as uint 6))
                    (set! (-> sv-96 reg-1) (the-as uint 20))
                    (set! (-> sv-96 reg-2) (the-as uint 52))
