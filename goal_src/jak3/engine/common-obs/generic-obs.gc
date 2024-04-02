@@ -56,18 +56,19 @@
                                    &key (subsample-num 1.0))
   "Specialized `process-spawn` macro for [[part-tracker]]s.
    Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
-  (with-gensyms (new-tracker)
-    `(let ((,new-tracker (the-as ,type (get-process *default-dead-pool* ,type ,stack-size ,unk))))
-        (when ,new-tracker
-          ((method-of-type ,type activate) ,new-tracker ,to ,(if name name `(symbol->string (quote ,type))) ,stack)
-          (set-part-tracker-params ,type ,group ,duration ,callback ,userdata ,target ,mat-joint ,subsample-num)
-          (run-now-in-process ,new-tracker
-            (if (= ,type part-tracker) part-tracker-init part-tracker-subsampler-init)
-            (if (= ,type part-tracker) *part-tracker-params-default* *part-tracker-subsampler-params-default*))
-          (the (pointer ,type) (-> ,new-tracker ppointer))
-          )
-        )
-    )
+  ;; (with-gensyms (new-tracker)
+  ;;   `(let ((,new-tracker (the-as ,type (get-process *default-dead-pool* ,type ,stack-size ,unk))))
+  ;;       (when ,new-tracker
+  ;;         ((method-of-type ,type activate) ,new-tracker ,to ,(if name name `(symbol->string (quote ,type))) ,stack)
+  ;;         (set-part-tracker-params ,type ,group ,duration ,callback ,userdata ,target ,mat-joint ,subsample-num)
+  ;;         (run-now-in-process ,new-tracker
+  ;;           (if (= ,type part-tracker) part-tracker-init part-tracker-subsampler-init)
+  ;;           (if (= ,type part-tracker) *part-tracker-params-default* *part-tracker-subsampler-params-default*))
+  ;;         (the (pointer ,type) (-> ,new-tracker ppointer))
+  ;;         )
+  ;;       )
+  ;;   )
+  `(the (pointer process) #f)
   )
 
 ;; DECOMP BEGINS
