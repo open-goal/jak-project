@@ -2118,6 +2118,7 @@ block_9:
   // Unknown instr: mula.s f0, f3
   // Unknown instr: madda.s f1, f4
   // Unknown instr: madd.s f0, f2, f5
+  c->fprs[f0] = (c->fprs[f0] * c->fprs[f3]) + (c->fprs[f1] * c->fprs[f4]) + (c->fprs[f2] * c->fprs[f5]);
   c->mfc1(v1, f0);                                  // mfc1 v1, f0
   c->mtc1(f0, v1);                                  // mtc1 f0, v1
   c->lwc1(f1, 76, sp);                              // lwc1 f1, 76(sp)
