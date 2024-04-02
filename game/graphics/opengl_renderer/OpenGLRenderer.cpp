@@ -163,8 +163,19 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tex-l{}-shrub", i), BucketCategory::TEX,
           GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_SHRUB, BucketId::TEX_L1_SHRUB, i),
           m_texture_animator);
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-shrub", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i), m_merc2);
 
-      // 234
+      // 230
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-alpha", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_ALPHA, BucketId::TEX_L1_ALPHA, i),
+          m_texture_animator);
+      init_bucket_renderer<TFragment>(
+          fmt::format("tfrag-t-l{}-alpha", i), BucketCategory::TFRAG,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_ALPHA, BucketId::TFRAG_L1_ALPHA, i),
+          std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, i, anim_slot_array());
       init_bucket_renderer<Merc2BucketRenderer>(
           fmt::format("merc-l{}-alpha", i), BucketCategory::MERC,
           GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i), m_merc2);
@@ -215,6 +226,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tex-l{}-water", i), BucketCategory::TEX,
           GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_WATER, BucketId::TEX_L1_WATER, i),
           texture_animator);
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-water", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i), m_merc2);
       // 466
       init_bucket_renderer<TFragment>(
           fmt::format("tfrag-l{}-water", i), BucketCategory::TFRAG,
