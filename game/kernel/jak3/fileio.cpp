@@ -110,7 +110,8 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // texture page
     case TX_PAGE_FILE_TYPE:  // 0x21
-      sprintf(buf, "%sdata/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
+      // sprintf(buf, "%sdata/texture-page%d/%s.go", prefix, TX_PAGE_VERSION, name);
+      sprintf(buf, "%sout/jak3/obj/%s.go", prefix, name);
       break;
 
       // joint animation
@@ -145,7 +146,8 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // Everybody's favorite "art group" file. Container of different art.
     case ART_GROUP_FILE_TYPE:  // 0x30
-      sprintf(buf, "%sfinal/art-group%d/%s-ag.go", prefix, ART_FILE_VERSION, name);
+      // sprintf(buf, "%sfinal/art-group%d/%s-ag.go", prefix, ART_FILE_VERSION, name);
+      sprintf(buf, "%sout/jak3/obj/%s.go", prefix, name);
       break;
 
       // GOAL data object file containing visibility data. This likely contained the visibility data
