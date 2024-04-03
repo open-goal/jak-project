@@ -1173,7 +1173,7 @@ block_58:
     goto block_62;
   }
 
-block_61:
+// block_61:
   c->lwu(a2, 48, a1);                               // lwu a2, 48(a1)
   c->slt(a3, s4, a2);                               // slt a3, s4, a2
   c->daddiu(a2, s7, 4);                             // daddiu a2, s7, 4

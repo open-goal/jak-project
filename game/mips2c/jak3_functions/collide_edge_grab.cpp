@@ -7,7 +7,7 @@ namespace Mips2C::jak3 {
 namespace method_10_collide_edge_hold_list {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
+  // bool bc = false;
   u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
@@ -27,7 +27,7 @@ u64 execute(void* ctxt) {
     goto block_10;
   }
 
-block_2:
+// block_2:
   c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
   cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
   if (cop1_bc) {                                    // bc1tl L97
@@ -35,7 +35,7 @@ block_2:
     goto block_11;
   }
 
-block_4:
+// block_4:
   c->mov64(a0, v1);                                 // or a0, v1, r0
 
 block_5:
@@ -45,7 +45,7 @@ block_5:
     goto block_12;
   }
 
-block_7:
+// block_7:
   c->lwc1(f1, 4, v1);                               // lwc1 f1, 4(v1)
   cop1_bc = c->fprs[f0] < c->fprs[f1];              // c.lt.s f0, f1
   if (!cop1_bc) {                                   // bc1fl L95
@@ -168,7 +168,7 @@ block_5:
     goto block_21;
   }
 
-block_8:
+// block_8:
   c->dsll(v1, s0, 2);                               // dsll v1, s0, 2
   c->daddiu(a0, gp, 352);                           // daddiu a0, gp, 352
   c->daddu(v1, a0, v1);                             // daddu v1, a0, v1
@@ -469,7 +469,7 @@ u64 execute(void* ctxt) {
     goto block_6;
   }
 
-block_3:
+// block_3:
   c->sllv(a1, a0, r0);                              // sllv a1, a0, r0
   c->lwu(a1, 0, a1);                                // lwu a1, 0(a1)
   c->lw(a2, 40, a1);                                // lw a2, 40(a1)
@@ -946,7 +946,7 @@ block_8:
     goto block_1;
   }
 
-block_10:
+// block_10:
   if (((s64)c->sgpr64(t5)) == ((s64)c->sgpr64(t6))) {// beql t5, t6, L33
     c->daddiu(t3, t3, 64);                          // daddiu t3, t3, 64
     goto block_1;
@@ -1273,7 +1273,7 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
   u32 call_addr = 0;
-  bool cop1_bc = false;
+  // bool cop1_bc = false;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
@@ -1581,7 +1581,7 @@ block_14:
     goto block_18;
   }
 
-block_16:
+// block_16:
   c->load_symbol2(t9, cache.vector_vector_distance);// lw t9, vector-vector-distance(s7)
   c->lwu(v1, 12, s3);                               // lwu v1, 12(s3)
   c->daddu(a0, r0, v1);                             // daddu a0, r0, v1

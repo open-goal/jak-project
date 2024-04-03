@@ -356,7 +356,7 @@ namespace Mips2C::jak3 {
 namespace method_22_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
+  // bool bc = false;
   u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
@@ -1003,7 +1003,7 @@ block_2:
     goto block_6;
   }
 
-block_5:
+// block_5:
   c->dsubu(a1, r0, a1);                             // dsubu a1, r0, a1
   c->dsrav(a0, a0, a1);                             // dsrav a0, a0, a1
 
@@ -2392,7 +2392,7 @@ block_10:
     goto block_30;
   }
 
-block_12:
+// block_12:
   c->lwc1(f0, 16, gp);                              // lwc1 f0, 16(gp)
   c->lwc1(f1, 0, t0);                               // lwc1 f1, 0(t0)
   c->lwc1(f2, 12, t0);                              // lwc1 f2, 12(t0)
@@ -2410,7 +2410,7 @@ block_14:
     goto block_30;
   }
 
-block_16:
+// block_16:
   c->lwc1(f0, 4, t0);                               // lwc1 f0, 4(t0)
   c->lwc1(f1, 12, t0);                              // lwc1 f1, 12(t0)
   c->adds(f0, f0, f1);                              // add.s f0, f0, f1
@@ -2446,7 +2446,7 @@ block_22:
     goto block_30;
   }
 
-block_24:
+// block_24:
   c->lwc1(f0, 8, t0);                               // lwc1 f0, 8(t0)
   c->lwc1(f1, 12, t0);                              // lwc1 f1, 12(t0)
   c->adds(f0, f0, f1);                              // add.s f0, f0, f1
@@ -2464,7 +2464,7 @@ block_26:
     goto block_30;
   }
 
-block_28:
+// block_28:
   c->lwc1(f0, 24, gp);                              // lwc1 f0, 24(gp)
   c->lwc1(f1, 8, t0);                               // lwc1 f1, 8(t0)
   c->lwc1(f2, 12, t0);                              // lwc1 f2, 12(t0)

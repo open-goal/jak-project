@@ -201,7 +201,7 @@ block_12:
     goto block_16;
   }
 
-block_14:
+// block_14:
   c->load_symbol2(v1, cache.display_capture_mode);  // lw v1, *display-capture-mode*(s7)
   bc = c->sgpr64(s7) == c->sgpr64(v1);              // beq s7, v1, L91
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
@@ -975,7 +975,7 @@ block_6:
     goto block_3;
   }
 
-block_8:
+// block_8:
   c->vmul(DEST::xyzw, vf5, vf1, vf2);               // vmul.xyzw vf5, vf1, vf2
   c->lqc2(vf4, 0, s5);                              // lqc2 vf4, 0(s5)
   // nop                                            // sll r0, r0, 0
@@ -1003,7 +1003,7 @@ block_8:
     goto block_3;
   }
 
-block_11:
+// block_11:
   c->vadd_bc(DEST::x, BC::z, vf6, vf6, vf6);        // vaddz.x vf6, vf6, vf6
   // nop                                            // sll r0, r0, 0
   c->mov128_gpr_vf(v1, vf6);                        // qmfc2.i v1, vf6
@@ -1204,7 +1204,7 @@ block_7:
     goto block_10;
   }
 
-block_9:
+// block_9:
   c->vsub_bc(DEST::x, BC::y, vf2, vf0, vf1);        // vsuby.x vf2, vf0, vf1
   // nop                                            // sll r0, r0, 0
   c->vrsqrt(vf0, BC::w, vf14, BC::x);               // vrsqrt Q, vf0.w, vf14.x
@@ -1608,7 +1608,7 @@ block_1:
     goto block_1;
   }
 
-block_4:
+// block_4:
   c->vwaitq();                                      // vwaitq
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf8, vf8);                    // vmulq.xyz vf8, vf8, Q
@@ -1624,7 +1624,7 @@ block_5:
     goto block_1;
   }
 
-block_7:
+// block_7:
   c->daddiu(s0, s0, 1);                             // daddiu s0, s0, 1
   c->lq(a1, 16, s2);                                // lq a1, 16(s2)
   // nop                                            // sll r0, r0, 0
