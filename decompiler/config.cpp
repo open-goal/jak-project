@@ -48,7 +48,9 @@ Config make_config_via_json(nlohmann::json& json) {
   config.all_types_file = json.at("all_types_file").get<std::string>();
 
   auto inputs_json = read_json_file_from_config(json, "inputs_file");
-  config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
+  config.dgo_names = json.contains("dgo_names")
+                         ? json.at("dgo_names").get<std::vector<std::string>>()
+                         : inputs_json.at("dgo_names").get<std::vector<std::string>>();
   config.object_file_names = inputs_json.at("object_file_names").get<std::vector<std::string>>();
   config.str_file_names = inputs_json.at("str_file_names").get<std::vector<std::string>>();
 
@@ -381,9 +383,9 @@ Config read_config_file(const fs::path& path_to_config_file,
 
   // Then, update any config overrides
   if (override_json != "{}" && !override_json.empty()) {
-    lg::info("Config Overide: '{}'", override_json);
+    lg::info("Config Override: '{}'", override_json);
     auto cfg_override = parse_commented_json(override_json, "");
-    json.update(cfg_override);
+    json.update(cfg_override, true);
   }
 
   // debugging, dump the JSON config to a file
