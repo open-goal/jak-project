@@ -1648,7 +1648,7 @@ block_5:
     goto block_5;
   }
 
-block_9:
+// block_9:
   c->load_symbol2(t9, cache.closest_pt_in_triangle);// lw t9, closest-pt-in-triangle(s7)
   c->daddu(a0, r0, gp);                             // daddu a0, r0, gp
   c->daddu(a1, r0, s2);                             // daddu a1, r0, s2

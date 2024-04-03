@@ -34,7 +34,7 @@ block_1:
     goto block_1;
   }
 
-block_3:
+// block_3:
   c->dsubu(a1, a2, a3);                             // dsubu a1, a2, a3
   // nop                                            // sll r0, r0, 0
   bc = ((s64)c->sgpr64(a1)) >= 0;                   // bgez a1, L366

@@ -49,7 +49,7 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-block_2:
+// block_2:
   c->dsubu(a2, r0, a2);                             // dsubu a2, r0, a2
   c->dsrav(a1, a1, a2);                             // dsrav a1, a1, a2
 
@@ -1679,7 +1679,7 @@ u64 execute(void* ctxt) {
     goto block_4;
   }
 
-block_3:
+// block_3:
   c->dsubu(a3, r0, a3);                             // dsubu a3, r0, a3
   c->dsrav(a3, t2, a3);                             // dsrav a3, t2, a3
 
