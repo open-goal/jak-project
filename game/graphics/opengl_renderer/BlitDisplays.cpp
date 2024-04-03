@@ -14,7 +14,7 @@ void BlitDisplays::init_textures(TexturePool& texture_pool, GameVersion version)
       tbp = 0x3300;
       break;
     case GameVersion::Jak3:
-      tbp = 0x3300; // assuming this for now...
+      tbp = 0x3300;  // assuming this for now...
       break;
     default:
       ASSERT_NOT_REACHED();

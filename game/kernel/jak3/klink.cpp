@@ -835,7 +835,6 @@ uint64_t link_begin(u64* args) {
     saved_link_control.jak3_finish(false);
   }
   return work_result != 0;
-
 }
 uint64_t link_resume() {
   auto work_result = saved_link_control.jak3_work();
