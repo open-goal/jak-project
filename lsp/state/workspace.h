@@ -50,7 +50,7 @@ class WorkspaceOGFile {
   std::vector<LSPSpec::Diagnostic> m_diagnostics;
 
   void parse_content(const std::string& new_content);
-  void update_symbols(const std::vector<std::shared_ptr<symbol_info::SymbolInfo>>& symbol_infos);
+  void update_symbols(const std::vector<symbol_info::SymbolInfo*>& symbol_infos);
   std::optional<std::string> get_symbol_at_position(const LSPSpec::Position position) const;
   std::vector<OpenGOALFormResult> search_for_forms_that_begin_with(
       std::vector<std::string> prefix) const;
@@ -139,17 +139,15 @@ class Workspace {
   std::optional<DefinitionMetadata> get_definition_info_from_all_types(
       const std::string& symbol_name,
       const LSPSpec::DocumentUri& all_types_uri);
-  std::vector<std::shared_ptr<symbol_info::SymbolInfo>> get_symbols_starting_with(
-      const GameVersion game_version,
-      const std::string& symbol_prefix);
-  std::optional<std::shared_ptr<symbol_info::SymbolInfo>> get_global_symbol_info(
-      const WorkspaceOGFile& file,
-      const std::string& symbol_name);
+  std::vector<symbol_info::SymbolInfo*> get_symbols_starting_with(const GameVersion game_version,
+                                                                  const std::string& symbol_prefix);
+  std::optional<symbol_info::SymbolInfo*> get_global_symbol_info(const WorkspaceOGFile& file,
+                                                                 const std::string& symbol_name);
   std::optional<std::pair<TypeSpec, Type*>> get_symbol_typeinfo(const WorkspaceOGFile& file,
                                                                 const std::string& symbol_name);
   std::optional<symbol_info::DefinitionLocation> get_symbol_def_location(
       const WorkspaceOGFile& file,
-      const std::shared_ptr<symbol_info::SymbolInfo> symbol_info);
+      const symbol_info::SymbolInfo* symbol_info);
   std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>>
   get_symbols_parent_type_path(const std::string& symbol_name, const GameVersion game_version);
   std::vector<std::tuple<std::string, std::string, Docs::DefinitionLocation>> get_types_subtypes(
