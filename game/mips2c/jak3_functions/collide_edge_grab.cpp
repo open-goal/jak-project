@@ -53,7 +53,7 @@ block_5:
     goto block_5;
   }
 
-block_9:
+// block_9:
   c->sw(a1, 0, a0);                                 // sw a1, 0(a0)
   //beq r0, r0, L99                                 // beq r0, r0, L99
   c->sw(v1, 0, a1);                                 // sw v1, 0(a1)
@@ -1059,7 +1059,7 @@ block_20:
     goto block_26;
   }
 
-block_22:
+// block_22:
   c->daddiu(t3, t3, 1);                             // daddiu t3, t3, 1
   c->sw(s7, 0, t4);                                 // sw s7, 0(t4)
   // nop                                            // sll r0, r0, 0
@@ -1539,7 +1539,7 @@ block_6:
     goto block_18;
   }
 
-block_8:
+// block_8:
   c->load_symbol2(t9, cache.vector_vector_distance);// lw t9, vector-vector-distance(s7)
   c->lwu(v1, 12, s3);                               // lwu v1, 12(s3)
   c->daddu(a0, r0, v1);                             // daddu a0, r0, v1
@@ -1561,7 +1561,7 @@ block_10:
     goto block_18;
   }
 
-block_12:
+// block_12:
   c->load_symbol2(t9, cache.vector_vector_distance);// lw t9, vector-vector-distance(s7)
   c->lwu(v1, 8, s3);                                // lwu v1, 8(s3)
   c->daddu(a0, r0, v1);                             // daddu a0, r0, v1
