@@ -34,7 +34,7 @@ class Trie {
   int size() const { return m_size; }
 
   // Get all objects starting with the given prefix.
-  std::vector<T*> lookup_prefix(const std::string& str, int max_count = -1) const;
+  std::vector<T*> lookup_prefix(const std::string& str) const;
 
   // Get all nodes in the tree.
   std::vector<T*> get_all_nodes() const;
@@ -119,32 +119,25 @@ class Trie {
       return nullptr;
     }
 
-    bool get_all_children(std::vector<T*>& result, int max_count) const {
+    void get_all_children(std::vector<T*>& result) const {
       if (value) {
-        if (max_count >= 0 && result.size() >= (size_t)max_count) {
-          return false;
-        }
         result.push_back(value);
       }
       for (auto child : children) {
         if (child) {
-          if (!child->get_all_children(result, max_count)) {
-            // full
-            return false;
-          }
+          child->get_all_children(result);
         }
       }
-      return true;
     }
 
-    std::vector<T*> lookup_prefix(const char* str, int max_count) const {
+    std::vector<T*> lookup_prefix(const char* str) const {
       if (!*str) {
         std::vector<T*> result;
-        get_all_children(result, max_count);
+        get_all_children(result);
         return result;
       } else {
         if (children[idx(*str)]) {
-          return children[idx(*str)]->lookup_prefix(str + 1, max_count);
+          return children[idx(*str)]->lookup_prefix(str + 1);
         } else {
           return {};
         }
@@ -185,13 +178,13 @@ T* Trie<T>::operator[](const std::string& str) {
 }
 
 template <typename T>
-std::vector<T*> Trie<T>::lookup_prefix(const std::string& str, int max_count) const {
-  return m_root.lookup_prefix(str.c_str(), max_count);
+std::vector<T*> Trie<T>::lookup_prefix(const std::string& str) const {
+  return m_root.lookup_prefix(str.c_str());
 }
 
 template <typename T>
 std::vector<T*> Trie<T>::get_all_nodes() const {
   std::vector<T*> result;
-  m_root.get_all_children(result, -1);
+  m_root.get_all_children(result);
   return result;
 }
