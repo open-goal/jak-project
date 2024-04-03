@@ -112,14 +112,18 @@ class TrieWithDuplicates {
       results.push_back(element.get());
     }
     for (const auto& child : node->children) {
-      retrieve_elements(child.get(), results);
+      if (child.get() != nullptr) {
+        retrieve_elements(child.get(), results);
+      }
     }
   }
 
   void count_elements(const TrieNode* node, int& count) const {
     count += node->elements.size();
     for (const auto& child : node->children) {
-      count_elements(child.get(), count);
+      if (child.get() != nullptr) {
+        count_elements(child.get(), count);
+      }
     }
   }
 
@@ -128,7 +132,9 @@ class TrieWithDuplicates {
       result.push_back(element.get());
     }
     for (const auto& child : node->children) {
-      get_all_elements_helper(child.get(), result);
+      if (child.get() != nullptr) {
+        get_all_elements_helper(child.get(), result);
+      }
     }
   }
 };
