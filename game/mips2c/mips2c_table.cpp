@@ -329,6 +329,12 @@ namespace method_38_spatial_hash { extern void link(); }
 namespace method_35_spatial_hash { extern void link(); }
 namespace method_36_spatial_hash { extern void link(); }
 namespace method_34_spatial_hash { extern void link(); }
+namespace sparticle_motion_blur { extern void link(); }
+namespace sp_launch_particles_var { extern void link(); }
+namespace particle_adgif { extern void link(); }
+namespace sp_init_fields { extern void link(); }
+namespace sp_process_block_2d { extern void link(); }
+namespace sp_process_block_3d { extern void link(); }
 
 }
 // clang-format on
@@ -552,6 +558,10 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
           jak3::method_31_sphere_hash::link, jak3::method_32_spatial_hash::link,
           jak3::method_38_spatial_hash::link, jak3::method_35_spatial_hash::link,
           jak3::method_36_spatial_hash::link, jak3::method_34_spatial_hash::link}},
+        {"sparticle-launcher",
+         {jak3::sparticle_motion_blur::link, jak3::sp_launch_particles_var::link,
+          jak3::particle_adgif::link, jak3::sp_init_fields::link}},
+        {"sparticle", {jak3::sp_process_block_2d::link, jak3::sp_process_block_3d::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

@@ -201,6 +201,8 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/collide_edge_grab.cpp
         mips2c/jak3_functions/collide_mesh.cpp
         mips2c/jak3_functions/spatial_hash.cpp
+        mips2c/jak3_functions/sparticle.cpp
+        mips2c/jak3_functions/sparticle_launcher.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp
