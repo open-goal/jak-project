@@ -1140,6 +1140,7 @@ block_25:
   c->sqc2(vf18, 32, t4);                            // sqc2 vf18, 32(t4)
 
 block_26:
+  ;
   //jr ra                                           // jr ra
   // nop                                            // sll r0, r0, 0
   // goto end_of_function;                          // return
@@ -1264,6 +1265,7 @@ block_37:
   c->sw(t1, 8, a0);                                 // sw t1, 8(a0)
 
 block_40:
+  ;
   //jr ra                                           // jr ra
   // nop                                            // sll r0, r0, 0
   // goto end_of_function;                          // return
