@@ -245,6 +245,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     // 568
     init_bucket_renderer<TextureUploadHandler>("tex-sprite", BucketCategory::TEX,
                                                BucketId::TEX_SPRITE, texture_animator);
+    init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
     // 575
     init_bucket_renderer<TextureUploadHandler>("tex-warp", BucketCategory::TEX, BucketId::TEX_WARP,
                                                texture_animator);
