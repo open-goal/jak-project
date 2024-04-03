@@ -306,7 +306,6 @@ int SymbolInfoMap::symbol_count() const {
 void SymbolInfoMap::evict_symbols_using_file_index(const std::string& file_path) {
   const auto standardized_path = file_util::convert_to_unix_path_separators(file_path);
   if (m_file_symbol_index.find(standardized_path) != m_file_symbol_index.end()) {
-    std::unordered_set<SymbolInfo*> sym_infos;
     for (const auto& symbol : m_file_symbol_index.at(standardized_path)) {
       m_symbol_map.remove(symbol->m_name, symbol);
     }
