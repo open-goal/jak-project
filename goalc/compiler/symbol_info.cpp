@@ -292,7 +292,7 @@ std::vector<SymbolInfo*> SymbolInfoMap::get_all_symbols() const {
 
 std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix) const {
   std::set<std::string> names;
-  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix, max_count);
+  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);
   for (const auto& result : lookup) {
     names.insert(result->m_name);
   }
@@ -310,9 +310,6 @@ void SymbolInfoMap::evict_symbols_using_file_index(const std::string& file_path)
     for (const auto& symbol : m_file_symbol_index.at(standardized_path)) {
       m_symbol_map.remove(symbol->m_name, symbol);
     }
-
-    m_symbol_map.remove_matching([&](SymbolInfo* info) { return sym_infos.count(info) != 0; });
-
     m_file_symbol_index.erase(standardized_path);
   }
 }
