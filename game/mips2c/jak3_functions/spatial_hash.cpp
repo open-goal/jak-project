@@ -1518,7 +1518,7 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-block_2:
+// block_2:
   c->dsubu(t0, r0, t0);                             // dsubu t0, r0, t0
   c->dsrav(t0, t2, t0);                             // dsrav t0, t2, t0
 
