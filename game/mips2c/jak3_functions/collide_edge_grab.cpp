@@ -1,3 +1,4 @@
+// cppcheck-suppress-file unusedLabels
 //--------------------------MIPS2C---------------------
 // clang-format off
 #include "game/mips2c/mips2c_private.h"
