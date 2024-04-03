@@ -1020,105 +1020,9 @@ struct Cache {
   void* format; // format
 } cache;
 
-u64 execute(void* ctxt) {
-  auto* c = (ExecutionContext*)ctxt;
+void sub_l20_b15(ExecutionContext* c) {
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
-  c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
-  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
-  c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
-  c->mov64(fp, t9);                                 // or fp, t9, r0
-  c->lui(v1, 17617);                                // lui v1, 17617
-  c->ori(v1, v1, 46871);                            // ori v1, v1, 46871
-  c->mtc1(f0, v1);                                  // mtc1 f0, v1
-  c->lwc1(f4, 404, a0);                             // lwc1 f4, 404(a0)
-  // nop                                            // sll r0, r0, 0
-  c->mtc1(f2, r0);                                  // mtc1 f2, r0
-  c->lwu(a1, 4, a0);                                // lwu a1, 4(a0)
-  // nop                                            // sll r0, r0, 0
-  c->lwu(v1, 16, a0);                               // lwu v1, 16(a0)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf1, 12, a1);                             // lqc2 vf1, 12(a1)
-  c->daddiu(a1, a0, 6320);                          // daddiu a1, a0, 6320
-  c->lqc2(vf6, 64, a0);                             // lqc2 vf6, 64(a0)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf7, 80, a0);                             // lqc2 vf7, 80(a0)
-  c->vmove(DEST::xyzw, vf2, vf1);                   // vmove.xyzw vf2, vf1
-  // nop                                            // sll r0, r0, 0
-  c->vadd_bc(DEST::y, BC::y, vf1, vf0, vf6);        // vaddy.y vf1, vf0, vf6
-  // nop                                            // sll r0, r0, 0
-  c->vadd_bc(DEST::y, BC::y, vf2, vf0, vf7);        // vaddy.y vf2, vf0, vf7
-  // nop                                            // sll r0, r0, 0
-
-block_1:
-  bc = c->sgpr64(v1) == 0;                          // beq v1, r0, L31
-  c->lwu(t0, 0, a1);                                // lwu t0, 0(a1)
-  if (bc) {goto block_43;}                          // branch non-likely
-
-  c->daddiu(v1, v1, -1);                            // daddiu v1, v1, -1
-  // nop                                            // sll r0, r0, 0
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf3, 0, t0);                              // lqc2 vf3, 0(t0)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf4, 16, t0);                             // lqc2 vf4, 16(t0)
-  // nop                                            // sll r0, r0, 0
-  c->lqc2(vf5, 32, t0);                             // lqc2 vf5, 32(t0)
-  // Unknown instr: bgezal r0, L25
-  c->vmove(DEST::xyzw, vf8, vf3);                   // vmove.xyzw vf8, vf3
-  if (bc) {goto block_27;}                          // branch non-likely
-
-  bc = c->sgpr64(t0) == c->sgpr64(s7);              // beq t0, s7, L29
-  c->mov64(a2, t0);                                 // or a2, t0, r0
-  if (bc) {goto block_41;}                          // branch non-likely
-
-  // Unknown instr: bgezal r0, L25
-  c->vmove(DEST::xyzw, vf8, vf4);                   // vmove.xyzw vf8, vf4
-  if (bc) {goto block_27;}                          // branch non-likely
-
-  bc = c->sgpr64(t0) == c->sgpr64(s7);              // beq t0, s7, L29
-  c->mov64(a3, t0);                                 // or a3, t0, r0
-  if (bc) {goto block_41;}                          // branch non-likely
-
-  // Unknown instr: bgezal r0, L25
-  c->vmove(DEST::xyzw, vf8, vf5);                   // vmove.xyzw vf8, vf5
-  if (bc) {goto block_27;}                          // branch non-likely
-
-  bc = c->sgpr64(t0) == c->sgpr64(s7);              // beq t0, s7, L29
-  c->mov64(t0, t0);                                 // or t0, t0, r0
-  if (bc) {goto block_41;}                          // branch non-likely
-
-  c->mov64(t1, a2);                                 // or t1, a2, r0
-  // nop                                            // sll r0, r0, 0
-  // Unknown instr: bgezal r0, L20
-  c->mov64(t2, a3);                                 // or t2, a3, r0
-  if (bc) {goto block_15;}                          // branch non-likely
-
-  bc = c->sgpr64(t4) == c->sgpr64(s7);              // beq t4, s7, L30
-  c->mov64(t1, a3);                                 // or t1, a3, r0
-  if (bc) {goto block_42;}                          // branch non-likely
-
-  // Unknown instr: bgezal r0, L20
-  c->mov64(t2, t0);                                 // or t2, t0, r0
-  if (bc) {goto block_15;}                          // branch non-likely
-
-  bc = c->sgpr64(t4) == c->sgpr64(s7);              // beq t4, s7, L30
-  c->mov64(t1, t0);                                 // or t1, t0, r0
-  if (bc) {goto block_42;}                          // branch non-likely
-
-  // Unknown instr: bgezal r0, L20
-  c->mov64(t2, a2);                                 // or t2, a2, r0
-  if (bc) {goto block_15;}                          // branch non-likely
-
-  bc = c->sgpr64(t1) == c->sgpr64(s7);              // beq t1, s7, L30
-  // nop                                            // sll r0, r0, 0
-  if (bc) {goto block_42;}                          // branch non-likely
-
-  //beq r0, r0, L19                                 // beq r0, r0, L19
-  c->daddiu(a1, a1, 32);                            // daddiu a1, a1, 32
-  goto block_1;                                     // branch always
-
-
 block_15:
   c->mov64(t4, t1);                                 // or t4, t1, r0
   c->lwu(t3, 12, a0);                               // lwu t3, 12(a0)
@@ -1238,10 +1142,12 @@ block_25:
 block_26:
   //jr ra                                           // jr ra
   // nop                                            // sll r0, r0, 0
-  goto end_of_function;                             // return
+  // goto end_of_function;                          // return
+}
 
-
-block_27:
+void sub_l25_b27(ExecutionContext* c) {
+  bool bc = false;
+  bool cop1_bc = false;
   c->gprs[t2].du64[0] = 0;                          // or t2, r0, r0
   c->lwu(t1, 8, a0);                                // lwu t1, 8(a0)
   c->daddiu(t0, a0, 688);                           // daddiu t0, a0, 688
@@ -1360,8 +1266,112 @@ block_39:
 block_40:
   //jr ra                                           // jr ra
   // nop                                            // sll r0, r0, 0
-  goto end_of_function;                             // return
+  // goto end_of_function;                          // return
+}
 
+u64 execute(void* ctxt) {
+  auto* c = (ExecutionContext*)ctxt;
+  bool bc = false;
+  u32 call_addr = 0;
+  bool cop1_bc = false;
+  c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
+  c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
+  c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
+  c->mov64(fp, t9);                                 // or fp, t9, r0
+  c->lui(v1, 17617);                                // lui v1, 17617
+  c->ori(v1, v1, 46871);                            // ori v1, v1, 46871
+  c->mtc1(f0, v1);                                  // mtc1 f0, v1
+  c->lwc1(f4, 404, a0);                             // lwc1 f4, 404(a0)
+  // nop                                            // sll r0, r0, 0
+  c->mtc1(f2, r0);                                  // mtc1 f2, r0
+  c->lwu(a1, 4, a0);                                // lwu a1, 4(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lwu(v1, 16, a0);                               // lwu v1, 16(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf1, 12, a1);                             // lqc2 vf1, 12(a1)
+  c->daddiu(a1, a0, 6320);                          // daddiu a1, a0, 6320
+  c->lqc2(vf6, 64, a0);                             // lqc2 vf6, 64(a0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf7, 80, a0);                             // lqc2 vf7, 80(a0)
+  c->vmove(DEST::xyzw, vf2, vf1);                   // vmove.xyzw vf2, vf1
+  // nop                                            // sll r0, r0, 0
+  c->vadd_bc(DEST::y, BC::y, vf1, vf0, vf6);        // vaddy.y vf1, vf0, vf6
+  // nop                                            // sll r0, r0, 0
+  c->vadd_bc(DEST::y, BC::y, vf2, vf0, vf7);        // vaddy.y vf2, vf0, vf7
+  // nop                                            // sll r0, r0, 0
+
+block_1:
+  bc = c->sgpr64(v1) == 0;                          // beq v1, r0, L31
+  c->lwu(t0, 0, a1);                                // lwu t0, 0(a1)
+  if (bc) {goto block_43;}                          // branch non-likely
+
+  c->daddiu(v1, v1, -1);                            // daddiu v1, v1, -1
+  // nop                                            // sll r0, r0, 0
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf3, 0, t0);                              // lqc2 vf3, 0(t0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf4, 16, t0);                             // lqc2 vf4, 16(t0)
+  // nop                                            // sll r0, r0, 0
+  c->lqc2(vf5, 32, t0);                             // lqc2 vf5, 32(t0)
+  // Unknown instr: bgezal r0, L25
+  c->vmove(DEST::xyzw, vf8, vf3);                   // vmove.xyzw vf8, vf3
+  // if (bc) {goto block_27;}                       // branch non-likely
+  sub_l25_b27(c);
+
+  bc = c->sgpr64(t0) == c->sgpr64(s7);              // beq t0, s7, L29
+  c->mov64(a2, t0);                                 // or a2, t0, r0
+  if (bc) {goto block_41;}                          // branch non-likely
+
+  // Unknown instr: bgezal r0, L25
+  c->vmove(DEST::xyzw, vf8, vf4);                   // vmove.xyzw vf8, vf4
+  // if (bc) {goto block_27;}                       // branch non-likely
+  sub_l25_b27(c);
+
+  bc = c->sgpr64(t0) == c->sgpr64(s7);              // beq t0, s7, L29
+  c->mov64(a3, t0);                                 // or a3, t0, r0
+  if (bc) {goto block_41;}                          // branch non-likely
+
+  // Unknown instr: bgezal r0, L25
+  c->vmove(DEST::xyzw, vf8, vf5);                   // vmove.xyzw vf8, vf5
+  // if (bc) {goto block_27;}                       // branch non-likely
+  sub_l25_b27(c);
+
+  bc = c->sgpr64(t0) == c->sgpr64(s7);              // beq t0, s7, L29
+  c->mov64(t0, t0);                                 // or t0, t0, r0
+  if (bc) {goto block_41;}                          // branch non-likely
+
+  c->mov64(t1, a2);                                 // or t1, a2, r0
+  // nop                                            // sll r0, r0, 0
+  // Unknown instr: bgezal r0, L20
+  c->mov64(t2, a3);                                 // or t2, a3, r0
+  // if (bc) {goto block_15;}                       // branch non-likely
+  sub_l20_b15(c);
+
+  bc = c->sgpr64(t4) == c->sgpr64(s7);              // beq t4, s7, L30
+  c->mov64(t1, a3);                                 // or t1, a3, r0
+  if (bc) {goto block_42;}                          // branch non-likely
+
+  // Unknown instr: bgezal r0, L20
+  c->mov64(t2, t0);                                 // or t2, t0, r0
+  // if (bc) {goto block_15;}                       // branch non-likely
+  sub_l20_b15(c);
+
+  bc = c->sgpr64(t4) == c->sgpr64(s7);              // beq t4, s7, L30
+  c->mov64(t1, t0);                                 // or t1, t0, r0
+  if (bc) {goto block_42;}                          // branch non-likely
+
+  // Unknown instr: bgezal r0, L20
+  c->mov64(t2, a2);                                 // or t2, a2, r0
+  // if (bc) {goto block_15;}                       // branch non-likely
+  sub_l20_b15(c);
+
+  bc = c->sgpr64(t1) == c->sgpr64(s7);              // beq t1, s7, L30
+  // nop                                            // sll r0, r0, 0
+  if (bc) {goto block_42;}                          // branch non-likely
+
+  //beq r0, r0, L19                                 // beq r0, r0, L19
+  c->daddiu(a1, a1, 32);                            // daddiu a1, a1, 32
+  goto block_1;                                     // branch always
 
 block_41:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
@@ -1424,6 +1434,7 @@ u64 execute(void* ctxt) {
   bool bc = false;
   u32 call_addr = 0;
   bool cop1_bc = false;
+  float acc;
   c->daddiu(sp, sp, -96);                           // daddiu sp, sp, -96
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s3, 16, sp);                                // sq s3, 16(sp)
@@ -1613,8 +1624,11 @@ block_20:
   c->lwc1(f4, 4, v1);                               // lwc1 f4, 4(v1)
   c->lwc1(f5, 8, v1);                               // lwc1 f5, 8(v1)
   // Unknown instr: mula.s f0, f3
+  acc = c->fprs[f0] * c->fprs[f3];
   // Unknown instr: madda.s f1, f4
+  acc += c->fprs[f1] * c->fprs[f4];
   // Unknown instr: madd.s f0, f2, f5
+  c->fprs[f0] = acc + c->fprs[f2] * c->fprs[f5];
   c->mfc1(v1, f0);                                  // mfc1 v1, f0
   c->mtc1(f0, v1);                                  // mtc1 f0, v1
   c->abss(f0, f0);                                  // abs.s f0, f0
