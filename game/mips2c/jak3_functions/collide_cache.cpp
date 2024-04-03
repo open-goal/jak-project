@@ -967,7 +967,7 @@ block_3:
     goto block_3;
   }
 
-block_6:
+// block_6:
   cop1_bc = c->fprs[f1] <= c->fprs[f2];             // c.le.s f1, f2
   c->lqc2(vf3, 64, s3);                             // lqc2 vf3, 64(s3)
   if (cop1_bc) {                                    // bc1tl L38
@@ -1045,7 +1045,7 @@ block_14:
     goto block_17;
   }
 
-block_16:
+// block_16:
   c->lui(v0, -13122);                               // lui v0, -13122
   c->ori(v0, v0, 48160);                            // ori v0, v0, 48160
 
@@ -1397,7 +1397,7 @@ block_6:
     goto block_10;
   }
 
-block_9:
+// block_9:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
   c->lwu(a0, 24, s4);                               // lwu a0, 24(s4)
   c->andi(a0, a0, 1);                               // andi a0, a0, 1
@@ -1674,7 +1674,7 @@ block_9:
     goto block_5;
   }
 
-block_11:
+// block_11:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, #t
   c->mov64(v0, v1);                                 // or v0, v1, r0
   //beq r0, r0, L16                                 // beq r0, r0, L16

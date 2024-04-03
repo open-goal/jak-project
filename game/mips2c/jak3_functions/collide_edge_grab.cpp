@@ -676,7 +676,7 @@ block_20:
     goto block_23;
   }
 
-block_22:
+// block_22:
   c->load_symbol2(a0, cache.target);                // lw a0, *target*(s7)
   c->lwu(a0, 68, a0);                               // lwu a0, 68(a0)
   c->lwu(a0, 0, a0);                                // lwu a0, 0(a0)
@@ -916,7 +916,7 @@ block_5:
     goto block_1;
   }
 
-block_8:
+// block_8:
   c->vmula_bc(DEST::w, BC::x, vf0, vf9);            // vmulax.w acc, vf0, vf9
   // nop                                            // sll r0, r0, 0
   c->vmadda_bc(DEST::w, BC::y, vf0, vf9);           // vmadday.w acc, vf0, vf9
@@ -952,7 +952,7 @@ block_8:
     goto block_1;
   }
 
-block_12:
+// block_12:
   bc = c->sgpr64(t1) == c->sgpr64(t7);              // beq t1, t7, L36
   // nop                                            // sll r0, r0, 0
   if (bc) {goto block_15;}                          // branch non-likely
@@ -1023,7 +1023,7 @@ struct Cache {
 void sub_l20_b15(ExecutionContext* c) {
   bool bc = false;
   bool cop1_bc = false;
-block_15:
+// block_15:
   c->mov64(t4, t1);                                 // or t4, t1, r0
   c->lwu(t3, 12, a0);                               // lwu t3, 12(a0)
   c->dsll32(t4, t4, 0);                             // dsll32 t4, t4, 0
@@ -1045,7 +1045,7 @@ block_16:
     goto block_16;
   }
 
-block_19:
+// block_19:
   //beq r0, r0, L24                                 // beq r0, r0, L24
   c->sw(r0, 0, t4);                                 // sw r0, 0(t4)
   goto block_26;                                    // branch always
@@ -1257,7 +1257,7 @@ block_37:
     goto block_40;
   }
 
-block_39:
+// block_39:
   c->daddiu(t1, t1, 1);                             // daddiu t1, t1, 1
   c->sqc2(vf8, 0, t0);                              // sqc2 vf8, 0(t0)
   // nop                                            // sll r0, r0, 0

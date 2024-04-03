@@ -506,7 +506,7 @@ block_1:
     goto block_4;
   }
 
-block_3:
+// block_3:
   c->dsubu(a3, r0, a3);                             // dsubu a3, r0, a3
   c->dsrav(a3, t2, a3);                             // dsrav a3, t2, a3
 
@@ -1247,7 +1247,7 @@ block_2:
     goto block_6;
   }
 
-block_5:
+// block_5:
   c->dsubu(a1, r0, a1);                             // dsubu a1, r0, a1
   c->dsrav(a0, a0, a1);                             // dsrav a0, a0, a1
 
@@ -2428,7 +2428,7 @@ block_18:
     goto block_30;
   }
 
-block_20:
+// block_20:
   c->lwc1(f0, 20, gp);                              // lwc1 f0, 20(gp)
   c->lwc1(f1, 4, t0);                               // lwc1 f1, 4(t0)
   c->lwc1(f2, 12, t0);                              // lwc1 f2, 12(t0)
