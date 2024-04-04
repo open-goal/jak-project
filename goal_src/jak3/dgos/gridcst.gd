@@ -1,5 +1,5 @@
 ("GRIDCST.DGO"
- ("tpage-2967.o"
+ ("tpage-2967.go"
   "tpage-2968.go"
   "daxter-highres-ag.go"
   "jakc-highres-ag.go"
@@ -8,5 +8,5 @@
   "cara-ag.go"
   "blue-gun-mod-three-ag.go"
   "particleman-ag.go"
-  "gridcst.o"
+  "gridcst.go"
  ))

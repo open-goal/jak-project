@@ -17,5 +17,5 @@
   "fac-gun-tower-turret-ag.go"
   "particleman-ag.go"
   "hemisplosion-ag.go"
-  "factoryb-vis.o"
+  "factoryb-vis.go"
  ))

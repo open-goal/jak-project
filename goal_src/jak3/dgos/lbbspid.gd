@@ -4,5 +4,5 @@
   "egg-spider.o"
   "tpage-2664.go"
   "egg-spider-ag.go"
-  "lbbspid.o"
+  "lbbspid.go"
  ))

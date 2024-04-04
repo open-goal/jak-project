@@ -69,5 +69,5 @@
   "neo-debris-ag.go"
   "shield-sphere-distort-ag.go"
   "shield-sphere-ag.go"
-  "lpattack-vis.o"
+  "lpattack-vis.go"
  ))

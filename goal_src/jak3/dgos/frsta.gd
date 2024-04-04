@@ -34,5 +34,5 @@
   "warp-telescope-ag.go"
   "for-pillar-ag.go"
   "particleman-ag.go"
-  "foresta-vis.o"
+  "foresta-vis.go"
  ))

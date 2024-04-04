@@ -14,5 +14,5 @@
   "flut-saddle-ag.go"
   "snake-wheel-fma-ag.go"
   "particleman-ag.go"
-  "desliz.o"
+  "desliz.go"
  ))

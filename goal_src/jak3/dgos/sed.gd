@@ -15,5 +15,5 @@
   "sew-wall-switch-ag.go"
   "kg-debris-ag.go"
   "sew-slide-step-ag.go"
-  "sewd-vis.o"
+  "sewd-vis.go"
  ))

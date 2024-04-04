@@ -8,5 +8,5 @@
   "mhcity-de-tower-egg-ag.go"
   "mhcity-puffer-large-ag.go"
   "mhcity-puffer-ag.go"
-  "lctydest.o"
+  "lctydest.go"
  ))

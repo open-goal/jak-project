@@ -1,5 +1,5 @@
 ("LDAX.DGO"
- ("tpage-2130.o"
+ ("tpage-2130.go"
   "daxter-highres-ag.go"
-  "ldax.o"
+  "ldax.go"
  ))

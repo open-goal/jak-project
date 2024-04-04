@@ -1,5 +1,5 @@
 ("LGUNNORM.DGO"
- ("tpage-3139.o"
+ ("tpage-3139.go"
   "tpage-3170.go"
   "gun-kg-target-ag.go"
   "gun-kg-target-bonus-ag.go"
@@ -11,5 +11,5 @@
   "gun-kg-target-b-ag.go"
   "gun-cit-b-ag.go"
   "gun-cit-c-ag.go"
-  "lgunnorm.o"
+  "lgunnorm.go"
  ))

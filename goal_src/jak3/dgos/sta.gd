@@ -7,5 +7,5 @@
   "tpage-2514.go"
   "daxter-highres-ag.go"
   "light-eco-vent-ag.go"
-  "stadium-vis.o"
+  "stadium-vis.go"
  ))

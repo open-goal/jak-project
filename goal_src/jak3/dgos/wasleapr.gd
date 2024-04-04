@@ -15,5 +15,5 @@
   "tpage-1707.go"
   "monk-ag.go"
   "flut-wild-ag.go"
-  "wasleapr.o"
+  "wasleapr.go"
  ))

@@ -46,5 +46,5 @@
   "tpage-2867.go"
   "faccar-ag.go"
   "vehicle-explosion-ag.go"
-  "lfaccar.o"
+  "lfaccar.go"
  ))

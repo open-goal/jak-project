@@ -1,5 +1,5 @@
 ("LFACO.DGO"
- ("tpage-3287.o"
+ ("tpage-3287.go"
   "tpage-3288.go"
-  "lfacout-vis.o"
+  "lfacout-vis.go"
  ))

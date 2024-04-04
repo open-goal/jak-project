@@ -12,5 +12,5 @@
   "cty-missile-launcher-ag.go"
   "kg-pickup-ag.go"
   "cty-homing-missile-ag.go"
-  "lctyhijk.o"
+  "lctyhijk.go"
  ))

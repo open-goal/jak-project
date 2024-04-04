@@ -12,5 +12,5 @@
   "light-eco-vent-ag.go"
   "tpl-elevator-ag.go"
   "tpl-bridge-debris-ag.go"
-  "templed-vis.o"
+  "templed-vis.go"
  ))

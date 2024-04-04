@@ -1,5 +1,5 @@
 ("POWERGD.DGO"
- ("tpage-2187.o"
+ ("tpage-2187.go"
   "tpage-2249.go"
   "tpage-3164.go"
   "tpage-3181.go"
@@ -11,5 +11,5 @@
   "pow-rings-ag.go"
   "switcher-ag.go"
   "grunt-head-ag.go"
-  "powergd.o"
+  "powergd.go"
  ))

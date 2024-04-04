@@ -1,5 +1,5 @@
 ("WASCAST.DGO"
- ("tpage-1714.o"
+ ("tpage-1714.go"
   "tpage-2323.go"
   "daxter-highres-ag.go"
   "jakc-highres-ag.go"
@@ -9,5 +9,5 @@
   "eco-crystal-light-ag.go"
   "battle-amulet-ag.go"
   "particleman-ag.go"
-  "wascast.o"
+  "wascast.go"
  ))

@@ -8,5 +8,5 @@
   "shield-sphere-explode-ag.go"
   "shield-sphere-distort-ag.go"
   "shield-sphere-ag.go"
-  "lbiped.o"
+  "lbiped.go"
  ))

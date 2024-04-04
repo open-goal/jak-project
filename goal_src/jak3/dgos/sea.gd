@@ -52,5 +52,5 @@
   "sew-elevator-ag.go"
   "kg-debris-ag.go"
   "particleman-ag.go"
-  "sewa-vis.o"
+  "sewa-vis.go"
  ))

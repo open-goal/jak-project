@@ -1,5 +1,5 @@
 ("OUTROCST.DGO"
- ("tpage-2596.o"
+ ("tpage-2596.go"
   "tpage-2597.go"
   "kleever-highres-ag.go"
   "pecker-highres-ag.go"
@@ -9,5 +9,5 @@
   "tess-highres-ag.go"
   "ashelin-highres-ag.go"
   "particleman-ag.go"
-  "outrocst.o"
+  "outrocst.go"
  ))

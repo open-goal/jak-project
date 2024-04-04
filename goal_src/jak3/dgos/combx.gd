@@ -9,5 +9,5 @@
   "pecker-ingame-ag.go"
   "jakc-highres-ag.go"
   "tpl-elevator-ag.go"
-  "combx.o"
+  "combx.go"
  ))

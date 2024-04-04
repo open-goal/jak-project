@@ -1,3 +1,3 @@
 ("CTYCARKG.DGO"
- ("ctycarkg.o"
+ ("ctycarkg.go"
  ))

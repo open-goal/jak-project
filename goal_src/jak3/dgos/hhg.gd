@@ -10,5 +10,5 @@
   "jakc-highres-ag.go"
   "hip-door-a-ag.go"
   "particleman-ag.go"
-  "hiphog-vis.o"
+  "hiphog-vis.go"
  ))

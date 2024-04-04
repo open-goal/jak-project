@@ -1,5 +1,5 @@
 ("TEMA.DGO"
- ("jak-pole+0-ag.o"
+ ("jak-pole+0-ag.go"
   "battle.o"
   "hover-formation-h.o"
   "hover-nav-control-h.o"
@@ -57,5 +57,5 @@
   "shield-sphere-distort-ag.go"
   "tpl-oracle-eye-ag.go"
   "shield-sphere-ag.go"
-  "templea-vis.o"
+  "templea-vis.go"
  ))

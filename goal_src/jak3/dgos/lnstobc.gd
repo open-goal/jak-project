@@ -1,3 +1,3 @@
 ("LNSTOBC.DGO"
- ("lnstobc.o"
+ ("lnstobc.go"
  ))

@@ -17,5 +17,5 @@
   "mhcity-vine-wriggler-big-ag.go"
   "mhcity-claw-finger-small-ag.go"
   "mhcity-twitch-blade-ag.go"
-  "mhcityb-vis.o"
+  "mhcityb-vis.go"
  ))

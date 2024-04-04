@@ -1,5 +1,5 @@
 ("PRECB.DGO"
- ("tpage-2633.o"
+ ("tpage-2633.go"
   "tpage-2636.go"
   "precur-generator-b-ag.go"
   "precur-generator-c-ag.go"
@@ -11,5 +11,5 @@
   "shield-sphere-explode-ag.go"
   "shield-sphere-distort-ag.go"
   "shield-sphere-ag.go"
-  "precurb-vis.o"
+  "precurb-vis.go"
  ))

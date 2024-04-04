@@ -1,5 +1,5 @@
 ("LSNKWHLS.DGO"
- ("tpage-2588.o"
+ ("tpage-2588.go"
   "snake-wheel-fma-ag.go"
-  "lsnkwhls.o"
+  "lsnkwhls.go"
  ))

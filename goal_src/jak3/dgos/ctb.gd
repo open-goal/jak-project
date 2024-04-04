@@ -6,5 +6,5 @@
   "tpage-162.go"
   "tpage-159.go"
   "cty-door-ag.go"
-  "ctyslumb-vis.o"
+  "ctyslumb-vis.go"
  ))

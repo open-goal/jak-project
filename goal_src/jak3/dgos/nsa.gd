@@ -12,5 +12,5 @@
   "tpage-446.go"
   "tpage-1072.go"
   "egg-spider-ag.go"
-  "nsta-vis.o"
+  "nsta-vis.go"
  ))

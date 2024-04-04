@@ -22,5 +22,5 @@
   "des-train-barrier-ag.go"
   "des-train-stones-ag.go"
   "des-train-bollard-ag.go"
-  "destrack.o"
+  "destrack.go"
  ))

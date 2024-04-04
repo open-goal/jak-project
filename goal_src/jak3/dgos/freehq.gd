@@ -11,5 +11,5 @@
   "jakc-highres-ag.go"
   "torn-highres-ag.go"
   "freehq-sml-door-ag.go"
-  "freehq.o"
+  "freehq.go"
  ))
