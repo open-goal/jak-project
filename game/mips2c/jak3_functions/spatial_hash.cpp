@@ -817,6 +817,7 @@ block_4:
   c->mtc1(f2, r0);                                  // mtc1 f2, r0
   // Unknown instr: mula.s f3, f3
   // Unknown instr: madd.s f1, f1, f1
+  c->fprs[f1] = (c->fprs[f3] * c->fprs[f3]) + (c->fprs[f1] * c->fprs[f1]);
   cop1_bc = c->fprs[f2] < c->fprs[f1];              // c.lt.s f2, f1
   bc = !cop1_bc;                                    // bc1f L85
   // nop                                            // sll r0, r0, 0
@@ -1076,6 +1077,7 @@ block_12:
   // Unknown instr: mula.s f0, f0
   // Unknown instr: madda.s f1, f1
   // Unknown instr: madd.s f0, f2, f2
+  c->fprs[f0] = (c->fprs[f2] * c->fprs[f2]) + (c->fprs[f1] * c->fprs[f1]) + (c->fprs[f0] * c->fprs[f0]);
   c->lwu(t0, 28, sp);                               // lwu t0, 28(sp)
   c->lwc1(f1, 12, t0);                              // lwc1 f1, 12(t0)
   c->lwc1(f2, 12, gp);                              // lwc1 f2, 12(gp)
@@ -1334,6 +1336,7 @@ block_11:
   // Unknown instr: mula.s f0, f3
   // Unknown instr: madda.s f1, f4
   // Unknown instr: madd.s f0, f2, f5
+  c->fprs[f0] = (c->fprs[f2] * c->fprs[f5]) + (c->fprs[f1] * c->fprs[f4]) + (c->fprs[f0] * c->fprs[f3]);
   c->mfc1(v1, f0);                                  // mfc1 v1, f0
   c->mtc1(f0, v1);                                  // mtc1 f0, v1
   c->lwc1(f1, 56, sp);                              // lwc1 f1, 56(sp)
