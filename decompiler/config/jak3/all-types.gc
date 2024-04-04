@@ -10473,6 +10473,14 @@
   )
 ;; ---settings-h:game-vehicles
 
+;; +++settings-h:game-vehicle-u8
+(defenum game-vehicle-u8
+  :type uint8
+  :bitfield #t
+  :copy-entries game-vehicles
+  )
+;; ---settings-h:game-vehicle-u8
+
 (declare-type resetter-spec structure)
 (define-extern crate type)
 (deftype user-setting-data (structure)
@@ -14027,7 +14035,7 @@
   (:methods
     (game-task-node-info-method-9 () none) ;; 9 ;; (close! (_type_ symbol) int)
     (open! (_type_ symbol) int) ;; 10 ;; (open! (_type_ symbol) int)
-    (game-task-node-info-method-11 () none) ;; 11 ;; (open? (_type_) symbol)
+    (game-task-node-info-method-11 (_type_ symbol) none) ;; 11 ;; (open? (_type_) symbol)
     (game-task-node-info-method-12 (_type_) symbol) ;; 12 ;; (copy-hooks! (_type_ game-task-node-info) game-task-node-info)
     (game-task-node-info-method-13 () none) ;; 13 ;; (eval-add (_type_) int)
     )
@@ -16759,7 +16767,7 @@
    (dust-storm             handle                    :offset-assert 768)
    (flut-count             int32                     :offset-assert 776)
    (death-resetter         resetter-spec     :inline :offset-assert 780)
-   (current-vehicle        uint8                     :offset-assert 796)
+   (current-vehicle        game-vehicle-u8           :offset-assert 796)
    (vehicle-turbo-ready    float                     :offset-assert 800)
    (percent-complete       float                     :offset-assert 804)
    )
@@ -19367,6 +19375,7 @@
    (spec pair                              :offset-assert 4) ;; guessed by decompiler
    (func (function script-context object)  :offset-assert 8) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #xc
   :flag-assert         #xa0000000c
@@ -19396,8 +19405,8 @@
   (:methods
     (new (symbol type object process vector) _type_) ;; 0
     (eval! (_type_ pair) object) ;; 9
-    (script-context-method-10 () none) ;; 10 ;; (script-context-method-10 (_type_ object pair) object)
-    (script-context-method-11 () none) ;; 11 ;; (script-context-method-11 (_type_ pair pair symbol) symbol)
+    (script-context-method-10 (_type_ object pair) object) ;; 10
+    (script-context-method-11 (_type_ pair pair symbol) symbol) ;; 11
     )
   )
 
@@ -23288,7 +23297,7 @@
    (nav-meshes               (array entity-nav-mesh)     :offset-assert 180)
    (actor-groups             (array actor-group)         :offset-assert 184)
    (region-trees             (array drawable-tree-region-prim) :offset 188)
-   ; (region-array             region-array                :offset-assert 192)
+   (region-array             region-array                :offset-assert 192)
    (collide-hash             collide-hash                :offset 196)
    ; ;; 200 is some array
    (wind-array uint32 :offset 200)
@@ -33761,7 +33770,7 @@
 
 (deftype prim-beam-settings (structure)
   ((width     float   :offset-assert 0)
-   (color     uint32  :offset-assert 4)
+   (color     rgba    :offset-assert 4)
    (alpha     float   :offset-assert 8)
    (tex-id    uint32  :offset-assert 12)
    (num-tiles float   :offset-assert 16)
@@ -33800,17 +33809,17 @@
 
 (define-extern command-get-int (function object int int))
 (define-extern command-get-float (function object float float))
-;; (define-extern command-get-time function) ;; (function object int time-frame)
+(define-extern command-get-time (function object int time-frame))
 (define-extern command-get-param (function object object object))
-;; (define-extern command-get-quoted-param function) ;; (function object object object)
+(define-extern command-get-quoted-param (function object object object))
 (define-extern command-get-process (function object process process))
-;; (define-extern command-get-entity function) ;; (function object entity entity)
-;; (define-extern command-get-trans function) ;; (function object vector vector)
-;; (define-extern key-assoc function) ;; (function object pair vector4w pair)
-;; (define-extern *script-form* object) ;; (inline-array script-form)
-;; (define-extern level-from-heap function) ;; (function int level)
-;; (define-extern *syntax-context* object) ;; script-context
-;; (define-extern *script-context* object) ;; script-context
+(define-extern command-get-entity (function object entity entity))
+(define-extern command-get-trans (function object vector vector))
+(define-extern key-assoc (function object pair vector4w pair))
+(define-extern *script-form* (inline-array script-form))
+(define-extern level-from-heap (function int level))
+(define-extern *syntax-context* script-context)
+(define-extern *script-context* script-context)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; generic-obs                    ;;
@@ -37637,7 +37646,7 @@
 ;; effect-control                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *footstep-surface* object) ;; pat-surface
+(define-extern *footstep-surface* pat-surface)
 (define-extern *debug-effect-control* symbol)
 (define-extern sound-name-with-material (function string pat-surface string sound-name))
 (define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
@@ -37647,25 +37656,25 @@
 ;; water-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-wsplash-color* curve-color-fast)
-;; (define-extern *range-wsplash-alpha* curve2d-fast)
-;; (define-extern *range-wsplash-scale-x* curve2d-fast)
-;; (define-extern *range-wsplash-scale-y* curve2d-fast)
-;; (define-extern *curve-wsplash-alpha* curve2d-fast)
-;; (define-extern *curve-wsplash-scale-x* curve2d-fast)
-;; (define-extern *curve-wsplash-scale-y* curve2d-fast)
-;; (define-extern *part-water-splash-curve-settings* object)
-;; (define-extern *range-splash-color* curve-color-fast)
-;; (define-extern *range-splash-alpha* curve2d-fast)
-;; (define-extern *range-splash-scale-x* curve2d-fast)
-;; (define-extern *range-splash-scale-y* curve2d-fast)
-;; (define-extern *curve-splash-alpha* curve2d-fast)
-;; (define-extern *curve-splash-scale-x* curve2d-fast)
-;; (define-extern *curve-splash-scale-y* curve2d-fast)
-;; (define-extern *part-water-splash-center-curve-settings* object)
-;; (define-extern *curve-wsplash-small-scale-x* curve2d-fast)
-;; (define-extern *curve-wsplash-small-scale-y* curve2d-fast)
-;; (define-extern *part-water-splash-small-curve-settings* object)
+(define-extern *range-wsplash-color* curve-color-fast)
+(define-extern *range-wsplash-alpha* curve2d-fast)
+(define-extern *range-wsplash-scale-x* curve2d-fast)
+(define-extern *range-wsplash-scale-y* curve2d-fast)
+(define-extern *curve-wsplash-alpha* curve2d-fast)
+(define-extern *curve-wsplash-scale-x* curve2d-fast)
+(define-extern *curve-wsplash-scale-y* curve2d-fast)
+(define-extern *part-water-splash-curve-settings* particle-curve-settings)
+(define-extern *range-splash-color* curve-color-fast)
+(define-extern *range-splash-alpha* curve2d-fast)
+(define-extern *range-splash-scale-x* curve2d-fast)
+(define-extern *range-splash-scale-y* curve2d-fast)
+(define-extern *curve-splash-alpha* curve2d-fast)
+(define-extern *curve-splash-scale-x* curve2d-fast)
+(define-extern *curve-splash-scale-y* curve2d-fast)
+(define-extern *part-water-splash-center-curve-settings* particle-curve-settings)
+(define-extern *curve-wsplash-small-scale-x* curve2d-fast)
+(define-extern *curve-wsplash-small-scale-y* curve2d-fast)
+(define-extern *part-water-splash-small-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; water                          ;;
@@ -38122,7 +38131,7 @@
 (define-extern task-node-reset (function symbol int))
 ;; (define-extern task-node-dump function) ;; (function symbol symbol)
 ;; (define-extern resetter-init-by-other function)
-;; (define-extern task-manager-init-by-other function) ;; (function game-task-node-info symbol object :behavior task-manager)
+(define-extern task-manager-init-by-other (function game-task-node-info symbol object :behavior task-manager))
 ;; (define-extern task-manager-event-handler function) ;; (function process int symbol event-message-block object :behavior task-manager)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -61287,34 +61296,31 @@
 ;; prim-beam                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype prim-beam (process-drawable)
-  ((strip      basic                      :offset-assert 200)
+  ((strip      prim-strip                 :offset-assert 200)
    (pos0       vector             :inline :offset-assert 208)
    (pos1       vector             :inline :offset-assert 224)
    (appearance prim-beam-settings :inline :offset-assert 240)
-   (duration   uint64                     :offset-assert 272)
+   (duration   time-frame                 :offset 272)
    )
   :method-count-assert 26
   :size-assert         #x118
   :flag-assert         #x1a00a00118
-  (:methods
-    (prim-beam-method-22 () none) ;; 22
-    (prim-beam-method-23 () none) ;; 23
-    (prim-beam-method-24 () none) ;; 24
-    (prim-beam-method-25 () none) ;; 25
-    )
   (:state-methods
-    hidden ;; 21
     active ;; 20
+    hidden ;; 21
+    )
+  (:methods
+    (prim-beam-method-22 (_type_) none) ;; 22
+    (prim-beam-method-23 (_type_) none) ;; 23
+    (prim-beam-method-24 (_type_) none) ;; 24
+    (init-strip! (_type_) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype prim-beam-tracker (prim-beam)
-  ((track-obj1   uint64  :offset-assert 280)
-   (track-obj2   uint64  :offset-assert 288)
+  ((track-obj1   handle  :offset-assert 280)
+   (track-obj2   handle  :offset-assert 288)
    (track-joint1 int32   :offset-assert 296)
    (track-joint2 int32   :offset-assert 300)
    )
@@ -61322,11 +61328,10 @@
   :size-assert         #x130
   :flag-assert         #x1a00b00130
   )
-|#
 
-;; (define-extern *default-prim-beam-appearance* object)
-;; (define-extern prim-beam-tracker-init-by-other function)
-;; (define-extern spawn-prim-beam-tracker function)
+(define-extern *default-prim-beam-appearance* prim-beam-settings)
+(define-extern prim-beam-tracker-init-by-other (function prim-beam-tracker-params object :behavior prim-beam-tracker))
+(define-extern spawn-prim-beam-tracker (function prim-beam-tracker-params symbol process handle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precurd-obs                    ;;
