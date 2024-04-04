@@ -105,7 +105,8 @@ char* MakeFileName(int type, const char* name, int new_string) {
 
       // plain GOAL data object file
     case DATA_FILE_TYPE:  // 0x20
-      sprintf(buf, "%sfinal/%s.go", prefix, name);
+      // sprintf(buf, "%sfinal/%s.go", prefix, name);
+      sprintf(buf, "%sout/jak3/obj/%s.go", prefix, name);
       break;
 
       // texture page
