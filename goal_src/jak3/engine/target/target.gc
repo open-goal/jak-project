@@ -1385,13 +1385,13 @@
 
 (defstate target-jump-forward (target)
   :event target-jump-event-handler
-  :enter (behavior ((arg0 float) (arg1 float))
+  :enter (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     ((-> target-jump enter) arg0 arg1 (the-as surface #f))
     (set! (-> self control mod-surface) *forward-jump-mods*)
     )
   :exit target-exit
   :trans (-> target-jump trans)
-  :code (behavior ((arg0 float) (arg1 float))
+  :code (behavior ((arg0 float) (arg1 float) (arg2 symbol))
     (when (and (using-gun? self) (not (-> self gun charge-active?)))
       (set! (-> self gun top-anim-low-high) 0.0)
       (case (gun->eco (-> self gun gun-type))
@@ -1917,9 +1917,9 @@
     (cond
       ((= arg0 'stuck)
        )
-      ;; (else
-      ;;   (target-land-effect)
-      ;;   )
+      (else
+        (target-land-effect)
+        )
       )
     (set! (-> self control last-running-attack-end-time) 0)
     (set! (-> self control last-attack-end-time) 0)
@@ -2818,16 +2818,16 @@
                        (>= 0.0 (vector-dot (-> s5-3 best-other-tri normal) (-> self control impact-ctrl dir)))
                        )
               (when (= (-> s5-3 best-other-tri pat mode) (pat-mode wall))
-                ;; (cond
-                ;;   ((logtest? (-> *part-group-id-table* 12 flags) (sp-group-flag sp13))
-                ;;    (set! (-> *launch-matrix* trans quad) (-> s5-3 best-other-tri intersect quad))
-                ;;    (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 12))
-                ;;    )
-                ;;   (else
-                ;;     (set! (-> *launch-matrix* trans quad) (-> s5-3 best-other-tri intersect quad))
-                ;;     (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 12))
-                ;;     )
-                ;;   )
+                (cond
+                  ((logtest? (-> *part-group-id-table* 12 flags) (sp-group-flag sp13))
+                   (set! (-> *launch-matrix* trans quad) (-> s5-3 best-other-tri intersect quad))
+                   (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 12))
+                   )
+                  (else
+                    (set! (-> *launch-matrix* trans quad) (-> s5-3 best-other-tri intersect quad))
+                    (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 12))
+                    )
+                  )
                 (let ((name (if (using-gun? self)
                                 (the-as sound-name (static-sound-name "gun-punch-w-hit"))
                                 (the-as sound-name (static-sound-name "punch-w-hit"))
@@ -3791,7 +3791,7 @@
           (go target-hit-ground-hard f0-1)
           )
       )
-    ;; (target-land-effect)
+    (target-land-effect)
     (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 255 (seconds 0.1))
     (set-time! (-> self state-time))
     (set! (-> self control unknown-word04) (the-as uint arg0))
@@ -4144,7 +4144,7 @@
             )
         )
       )
-    ;; (target-land-effect)
+    (target-land-effect)
     (set! (-> self gun surpress-time) (+ (current-time) (seconds 0.1)))
     (set-time! (-> self state-hook-time))
     (set! (-> self state-hook)

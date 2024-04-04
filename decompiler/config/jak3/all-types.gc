@@ -22882,7 +22882,7 @@
     (target-roll-flip float float)
     target-turn-around
     (target-jump float float surface)
-    (target-jump-forward float float)
+    (target-jump-forward float float symbol)
     (target-high-jump float float object)
     (target-double-jump float float)
     (target-falling symbol)
@@ -23033,7 +23033,7 @@
     ;; pole
     (target-pole-cycle handle)
     (target-pole-flip-up float float float)
-    (target-pole-flip-up-jump float float)
+    (target-pole-flip-up-jump float float symbol)
     (target-pole-flip-forward float float float)
     (target-pole-flip-forward-jump float float)
     (target-launch float symbol vector int)
@@ -23049,6 +23049,12 @@
     ;; ladder
     (target-ladder-start handle)
     target-ladder
+    target-ladder-stance
+    target-ladder-walk-up
+    target-ladder-walk-down
+    target-ladder-slide-down
+    target-ladder-switch
+    target-ladder-jump-off
     ;; tube
     (target-tube-start handle)
     target-tube
@@ -36931,8 +36937,8 @@
 ;; board-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern board-charge-track function)
-;; (define-extern board-zap-track function)
+(define-extern board-charge-track (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern board-zap-track (function sparticle-system sparticle-cpuinfo vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; board-states                   ;;
@@ -64260,10 +64266,20 @@
 ;; target-ladder                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++target-ladder:ladder-options
+(defenum ladder-options
+  :type uint32
+  :bitfield #t
+  (lo0 0)
+  (lo1 1)
+  (lo2 2)
+  (nodraw 3)
+  )
+;; ---target-ladder:ladder-options
+
 (deftype ladder-info (basic)
-  ((ladder    uint64         :offset-assert 8)
-   (flip      deg            :offset-assert 16)
+  ((ladder    handle         :offset-assert 8)
+   (flip      degrees        :offset-assert 16)
    (interp    float          :offset-assert 20)
    (start-mat matrix :inline :offset-assert 32)
    )
@@ -64271,47 +64287,38 @@
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-;; (define-extern *ladder-mods* object)
-;; (define-extern target-ladder-stance object)
-;; (define-extern target-ladder-walk-up object)
-;; (define-extern target-ladder-walk-down object)
-;; (define-extern target-ladder-slide-down object)
-;; (define-extern target-ladder-switch object)
-;; (define-extern target-ladder-jump-off object)
+(define-extern *ladder-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ladder                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ladder (process-drawable)
-  ((rider-unit      float   :offset-assert 200)
-   (rider-time      uint64  :offset-assert 208)
+  ((root            collide-shape :override)
+   (rider-unit      float   :offset-assert 200)
+   (rider-time      time-frame :offset-assert 208)
    (art-height      meters  :offset-assert 216)
    (set-height      meters  :offset-assert 220)
    (meters-per-unit meters  :offset-assert 224)
    (meters-per-rung meters  :offset-assert 228)
-   (options         uint32  :offset-assert 232)
+   (options         ladder-options :offset-assert 232)
    )
   :method-count-assert 27
   :size-assert         #xec
   :flag-assert         #x1b007000ec
-  (:methods
-    (ladder-method-22 () none) ;; 22
-    (ladder-method-23 () none) ;; 23
-    (ladder-method-24 () none) ;; 24
-    (ladder-method-25 () none) ;; 25
-    (ladder-method-26 () none) ;; 26
-    )
   (:state-methods
-    active ;; 21
     idle ;; 20
+    (active handle) ;; 21
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 22
+    (init-skel! (_type_) none) ;; 23
+    (init-params! (_type_) none) ;; 24
+    (ladder-method-25 (_type_ matrix float) matrix) ;; 25
+    (nop (_type_) none) ;; 26
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; lfaccity-mood                  ;;
