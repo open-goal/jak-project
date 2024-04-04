@@ -221,6 +221,10 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
           GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS, BucketId::TEX_L1_PRIS, i),
           texture_animator);
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS2, BucketId::TEX_L1_PRIS2, i),
+          texture_animator);
 
       init_bucket_renderer<Merc2BucketRenderer>(
           fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
