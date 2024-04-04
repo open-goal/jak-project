@@ -153,6 +153,13 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tfrag-l{}-tfrag", i), BucketCategory::TFRAG,
           GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_TFRAG, BucketId::TFRAG_L1_TFRAG, i),
           std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i, anim_slot_array());
+      Tie3* tie = init_bucket_renderer<Tie3>(
+          fmt::format("tie-l{}-tfrag", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("etie-l{}-tfrag", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_TFRAG, BucketId::ETIE_L1_TFRAG, i), tie,
+          tfrag3::TieCategory::NORMAL_ENVMAP);
 
       // 17
       init_bucket_renderer<Merc2BucketRenderer>(
@@ -176,9 +183,25 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tfrag-t-l{}-alpha", i), BucketCategory::TFRAG,
           GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_ALPHA, BucketId::TFRAG_L1_ALPHA, i),
           std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, i, anim_slot_array());
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("tie-t-l{}-alpha", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_ALPHA, BucketId::TIE_L1_ALPHA, i), tie,
+          tfrag3::TieCategory::TRANS);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("etie-l{}-alpha", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_ALPHA, BucketId::ETIE_L1_ALPHA, i), tie,
+          tfrag3::TieCategory::TRANS_ENVMAP);
       init_bucket_renderer<Merc2BucketRenderer>(
           fmt::format("merc-l{}-alpha", i), BucketCategory::MERC,
           GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i), m_merc2);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("tie-w-l{}-water", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_WATER, BucketId::TIE_L1_WATER, i), tie,
+          tfrag3::TieCategory::WATER);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("etie-l{}-water", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_WATER, BucketId::ETIE_L1_WATER, i), tie,
+          tfrag3::TieCategory::WATER_ENVMAP);
     }
 
     // 340
