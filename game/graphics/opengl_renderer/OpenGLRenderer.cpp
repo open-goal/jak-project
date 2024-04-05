@@ -170,6 +170,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tex-l{}-shrub", i), BucketCategory::TEX,
           GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_SHRUB, BucketId::TEX_L1_SHRUB, i),
           m_texture_animator);
+      init_bucket_renderer<Shrub>(
+          fmt::format("shrub-l{}-shrub", i), BucketCategory::SHRUB,
+          GET_BUCKET_ID_FOR_LIST(BucketId::SHRUB_L0_SHRUB, BucketId::SHRUB_L1_SHRUB, i));
       init_bucket_renderer<Merc2BucketRenderer>(
           fmt::format("merc-l{}-shrub", i), BucketCategory::MERC,
           GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i), m_merc2);
