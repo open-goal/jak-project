@@ -4,5 +4,5 @@
   "tpage-1409.go"
   "interceptor-ag.go"
   "interceptor-b-ag.go"
-  "desrace2.o"
+  "desrace2.go"
  ))

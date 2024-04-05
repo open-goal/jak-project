@@ -13,6 +13,36 @@
 
 (define-extern birth-pickup-at-point (function vector pickup-type float symbol process-tree fact-info (pointer process) :behavior process))
 
+(#when PC_PORT
+
+(define *display-bones* #f)
+(define *display-joint-names* #f)
+
+(defun draw-joint-spheres ((arg0 process-drawable))
+  (dotimes (s5-0 (-> arg0 node-list length))
+    (let ((a2-0 (vector<-cspace! (new-stack-vector0) (-> arg0 node-list data s5-0))))
+      (add-debug-sphere #t (bucket-id debug) a2-0 (meters 0.2) (new 'static 'rgba :g #xff :a #x40))
+      (#when PC_PORT
+          (add-debug-text-sphere (!= (-> arg0 node-list data s5-0 joint) #f) (bucket-id debug) a2-0 (meters 0.1) (the string (-> arg0 node-list data s5-0 joint name)) (static-rgba 0 #xff 0 #x40)))
+      )
+    )
+  #f
+  )
+
+(defun-debug draw-bone-lines ((this process-drawable))
+  "Added in PC port to debug bones"
+  (dotimes (i (-> this node-list length))
+    (let ((parent (-> this node-list data i parent)))
+      (when (and parent (nonzero? parent) (-> parent joint) (-> parent parent))
+        (let ((child (vector<-cspace! (new-stack-vector0) (-> this node-list data i)))
+              )
+          (add-debug-line #t (bucket-id debug) child (vector<-cspace! (new-stack-vector0) parent) (new 'static 'rgba :r #xff :a #x40) #f (the rgba -1))
+          )
+        )
+      )
+    )
+  ))
+
 ;; DECOMP BEGINS
 
 (defmethod add-to-loading-level ((this skeleton-group))
@@ -68,6 +98,19 @@
     (init-vf0-vector)
     (.lvf vf2 (&-> (-> arg1 bone) transform trans quad))
     (.div.vf Q vf0 vf2 :fsf #b11 :ftf #b11)
+
+    ;; og:preserve-this ADDED (also added in jak1)
+    ;; there's a bug in swamp-blimp where they vector<-cspace!
+    ;; on some default-initialized-to-zero bones
+    ;; we have to return 0s for this to avoid NaNs getting everywhere.
+    (let ((temp (new-stack-vector0)))
+      (.svf (&-> temp quad) vf2)
+      (when (= (-> temp w) 0.0)
+        (set-vector! arg0 0. 0. 0. 1.)
+        (return arg0)
+        )
+      )
+
     (.wait.vf)
     (.mul.vf vf2 vf2 Q :mask #b111)
     (.nop.vf)
@@ -391,28 +434,25 @@
               )
         )
     (let ((s3-0 (+ s5-0 2)))
-      ((-> arg1 generate-frame-function) (the-as joint-anim-frame (+ 2400 #x70000000)) s3-0 arg1)
+      ;; og:preserve-this
+      ((-> arg1 generate-frame-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) s3-0 arg1)
       (if (-> arg1 prebind-function)
-          ((-> arg1 prebind-function) (the-as joint-anim-frame (+ 2400 #x70000000)) s3-0 arg1)
+          ((-> arg1 prebind-function) (the-as joint-anim-frame (+ 2400 (scratchpad-object int))) s3-0 arg1)
           )
       )
     (dotimes (s3-1 1)
       (let* ((v1-11 (-> arg0 data s3-1))
-             (t9-2 (-> v1-11 param0))
+             (t9-2 (the-as function (-> v1-11 param0)))
              )
-        (when t9-2
-          (let ((a0-6 v1-11)
-                (a1-3 (-> v1-11 param1))
-                )
-            (-> v1-11 param2)
-            (t9-2 a0-6 (the-as transformq a1-3))
+        (if (the-as (function cspace transformq none) t9-2)
+            ((the-as (function object object object none) t9-2) v1-11 (-> v1-11 param1) (-> v1-11 param2))
             )
-          )
         )
       )
     (dotimes (s3-2 2)
       (let* ((a0-8 (-> arg0 data (+ s3-2 1)))
-             (a1-5 (+ (* s3-2 64) 2400 #x70000000))
+             ;; og:preserve-this
+             (a1-5 (+ (* s3-2 64) 2400 (scratchpad-object int)))
              (t9-3 (-> a0-8 param0))
              )
         (if t9-3
@@ -426,14 +466,16 @@
          (dotimes (s4-1 s5-0)
            (cspace<-parented-transformq-joint!
              (-> arg0 data (+ s4-1 s3-3))
-             (the-as transformq (+ (* 48 s4-1) 2528 #x70000000))
+             ;; og:preserve-this
+             (the-as transformq (+ (* 48 s4-1) 2528 (scratchpad-object int)))
              )
            )
          )
         (else
           (dotimes (s4-2 s5-0)
             (let ((a0-10 (-> arg0 data (+ s4-2 s3-3)))
-                  (a1-9 (+ (* 48 s4-2) 2528 #x70000000))
+                  ;; og:preserve-this
+                  (a1-9 (+ (* 48 s4-2) 2528 (scratchpad-object int)))
                   )
               (if (-> a0-10 param0)
                   ((-> a0-10 param0) a0-10 (the-as transformq a1-9))
@@ -487,6 +529,13 @@
           )
         )
       )
+  ;; og:preserve-this
+  (#when PC_PORT (when *debug-segment*
+    (when *display-bones*
+      (draw-bone-lines (the-as process-drawable (-> this process))))
+    (if *display-joint-names*
+      (draw-joint-spheres (the-as process-drawable (-> this process))))
+    ))
     0
     (none)
     )
@@ -1463,18 +1512,18 @@
     (if (or (zero? s4-0) (or (not (-> gp-0 root-channel 0 frame-group)) (zero? (-> gp-0 active-channels))))
         (logior! (-> this draw status) (draw-control-status no-draw-temp))
         )
-    (if (logtest? (-> this skel status) (joint-control-status blend-shape blend-shape-valid))
-        (merc-blend-shape this)
-        )
-    (if (logtest? (-> this skel status) (joint-control-status eye-anim-valid eye-anim))
-        (merc-eye-anim this)
-        )
+    ;; (if (logtest? (-> this skel status) (joint-control-status blend-shape blend-shape-valid))
+    ;;     (merc-blend-shape this)
+    ;;     )
+    ;; (if (logtest? (-> this skel status) (joint-control-status eye-anim-valid eye-anim))
+    ;;     (merc-eye-anim this)
+    ;;     )
     (label cfg-45)
-    (let ((a0-26 (-> gp-0 effect)))
-      (if a0-26
-          (effect-control-method-9 a0-26)
-          )
-      )
+    ;; (let ((a0-26 (-> gp-0 effect)))
+    ;;   (if a0-26
+    ;;       (effect-control-method-9 a0-26)
+    ;;       )
+    ;;   )
     )
   0
   (none)

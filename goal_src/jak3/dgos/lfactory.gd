@@ -44,5 +44,5 @@
   "factorya-init.o"
   "jak-pilot+0-ag.go"
   "jak-pilot-hcar+0-ag.go"
-  "lfactory.o"
+  "lfactory.go"
  ))

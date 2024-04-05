@@ -101,5 +101,5 @@
   "searchlight-ag.go"
   "burning-bush-ag.go"
   "security-wall-ag.go"
-  "ctywide-vis.o"
+  "ctywide-vis.go"
  ))

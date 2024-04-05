@@ -36,5 +36,5 @@
   "fac-move-plat-a-ag.go"
   "fac-move-plat-b-ag.go"
   "fac-fire-torch-ag.go"
-  "factoryc-vis.o"
+  "factoryc-vis.go"
  ))

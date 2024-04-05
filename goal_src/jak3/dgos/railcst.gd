@@ -1,5 +1,5 @@
 ("RAILCST.DGO"
- ("tpage-2711.o"
+ ("tpage-2711.go"
   "tpage-2512.go"
   "tpage-2904.go"
   "tpage-2513.go"
@@ -20,5 +20,5 @@
   "fma-gun-ag.go"
   "plat-fma-ag.go"
   "particleman-ag.go"
-  "railcst.o"
+  "railcst.go"
  ))

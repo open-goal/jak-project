@@ -1,5 +1,5 @@
 ("DESBCST.DGO"
- ("tpage-2762.o"
+ ("tpage-2762.go"
   "tpage-2764.go"
   "tpage-2763.go"
   "daxter-highres-ag.go"
@@ -11,5 +11,5 @@
   "snake-wheel-fma-ag.go"
   "particleman-ag.go"
   "jakc-scarf-ag.go"
-  "desbcst.o"
+  "desbcst.go"
  ))

@@ -1,5 +1,5 @@
 ("PRECC.DGO"
- ("jak-pole+0-ag.o"
+ ("jak-pole+0-ag.go"
   "target-tube.o"
   "jak-tube+0-ag.go"
   "precurc-part.o"
@@ -11,5 +11,5 @@
   "precur-elevator-ag.go"
   "precur-door-a-ag.go"
   "precur-swingpole-pop-ag.go"
-  "precurc-vis.o"
+  "precurc-vis.go"
  ))

@@ -1284,7 +1284,7 @@
                                              (-> *display* frames (-> *display* on-screen) global-buf)
                                              )
                                          )
-                                   (bucket-id bucket583)
+                                   (bucket-id debug)
                                    )
         (show-iop-memory s5-1)
         )
@@ -1410,19 +1410,19 @@
         (load-continue (-> *level* loading-level))
         )
 
-    ;; modify vertices for merc face animation. I believe this is somewhat racing DMA of merc data to VU1.
-    (with-profiler 'merc *profile-merc-color*
-      (blerc-execute)
-      (blerc-init)
-      )
+    ; ;; modify vertices for merc face animation. I believe this is somewhat racing DMA of merc data to VU1.
+    ; (with-profiler 'merc *profile-merc-color*
+    ;   (blerc-execute)
+    ;   (blerc-init)
+    ;   )
 
-    ;; modify merc vertices for texture scrolling effect. Again, racing DMA.
-    (texscroll-execute)
+    ; ;; modify merc vertices for texture scrolling effect. Again, racing DMA.
+    ; (texscroll-execute)
 
-    ;; modify merc vertices for water ripple effect. Again, racing DMA.
-    (ripple-execute)
+    ; ;; modify merc vertices for water ripple effect. Again, racing DMA.
+    ; (ripple-execute)
 
-    ;; detect player/camera entering/exiting regions, and run callbacks for those.
+    ; ;; detect player/camera entering/exiting regions, and run callbacks for those.
     (region-execute)
 
     ;; decompress joint animations, compute joint and bone transformation for each actor.
@@ -1433,8 +1433,8 @@
       (execute-math-engine)
       )
 
-    ;; cloth simulation update
-    (execute-cloth-engine)
+    ; ;; cloth simulation update
+    ; (execute-cloth-engine)
 
     (with-profiler 'debug *profile-debug-color*
       ;; run debug callbacks
@@ -1459,8 +1459,8 @@
       (execute-cam-post-hook-engine)
       )
 
-    ;; Update start-menu map and masking
-    (update *bigmap*)
+    ; ;; Update start-menu map and masking
+    ; (update *bigmap*)
 
     ;; do some more level loading.
     (if (-> *level* loading-level)
@@ -1479,13 +1479,14 @@
         (load-continue (-> *level* loading-level))
         )
 
-    (if *display-color-bars*
-        (draw-color-bars *blit-displays-work*)
-        )
+    ; (if *display-color-bars*
+    ;     (draw-color-bars *blit-displays-work*)
+    ;     )
 
     ;; run debug menu
     (*menu-hook*)
-    ;; load the right language file.
+    ; load the right language file.
+    ;; disabled for now: seems to load 255COMMON.TXT.
     (load-level-text-files -1)
 
     ;; draw screen filter
@@ -1524,10 +1525,10 @@
           )
       )
 
-    ;; generate DMA to copy from render buffer to frame buffer.
-    (with-profiler 'blit-displays *profile-blit-color*
-      (blit-displays-work-method-19 *blit-displays-work*)
-      )
+    ; ;; generate DMA to copy from render buffer to frame buffer.
+    ; (with-profiler 'blit-displays *profile-blit-color*
+    ;   (blit-displays-work-method-19 *blit-displays-work*)
+    ;   )
 
     ;; wrap up this frame (drawing of stdcon, debugging, etc.)
     (end-display arg0)
@@ -1546,6 +1547,7 @@
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     ;; start stat collection for this frame
+    (start-frame! (-> arg0 frames (-> arg0 on-screen) profile-array data 0))
     (start-profiling! (-> *perf-stats* data 0))
 
     ;; update *teleport* flag, which is set when the game intentionally teleports the camera,
@@ -1567,11 +1569,11 @@
     (execute-particle-local-space-engine 1)
 
     ;; init unused? VU0 collision stuff.
-    (dma-send
-      (the-as dma-bank #x10008000)
-      (the-as uint (-> *collide-vif0-init* data))
-      (the-as uint (/ (-> *collide-vif0-init* length) 4))
-      )
+    ; (dma-send
+    ;   (the-as dma-bank #x10008000)
+    ;   (the-as uint (-> *collide-vif0-init* data))
+    ;   (the-as uint (/ (-> *collide-vif0-init* length) 4))
+    ;   )
 
     ;; update sound system.
     (swap-sound-buffers
@@ -1593,10 +1595,10 @@
     (level-update *level*)
 
     ;; update memory card
-    (mc-run)
+    ; (mc-run)
 
     ;; check for memory card errors.
-    (auto-save-check)
+    ; (auto-save-check)
     0
     (none)
     )
@@ -1630,8 +1632,8 @@
   (let ((gp-1 *display*))
     ;; initial setup
     (set! *teleport* #t)
-    (update *setting-control*)
-    (init-time-of-day-context *time-of-day-context*)
+    (update *setting-control*) ;; dies on camera stuff, which looks for entities.
+    ;; (init-time-of-day-context *time-of-day-context*)
     (display-sync gp-1)
     (display-frame-finish gp-1)
     (display-sync gp-1)
@@ -1639,12 +1641,12 @@
     (free-nodes *touching-list*)
     (prepare *collide-rider-pool*)
     (update-actor-hash)
-    (blerc-init)
-    (dma-send
-      (the-as dma-bank #x10008000)
-      (the-as uint (-> *collide-vif0-init* data))
-      (the-as uint (/ (-> *collide-vif0-init* length) 4))
-      )
+    ;; (blerc-init)
+    ; (dma-send
+    ;   (the-as dma-bank #x10008000)
+    ;   (the-as uint (-> *collide-vif0-init* data))
+    ;   (the-as uint (/ (-> *collide-vif0-init* length) 4))
+    ;   )
     (suspend)
     (set! (-> *setting-control* user-default bg-a) 0.0)
     (set! (-> gp-1 frames 0 start-time) (timer-count (the-as timer-bank #x10000800)))

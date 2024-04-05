@@ -777,8 +777,8 @@
   (none)
   )
 
-(defmethod set-ground-pat! ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float))
-  (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4)
+(defmethod set-ground-pat! ((this enemy) (arg0 collide-query) (arg1 collide-spec) (arg2 float) (arg3 float) (arg4 float) (arg5 process))
+  (when (find-ground (-> this root) arg0 arg1 arg2 arg3 arg4 arg5)
     (let ((v0-1 (-> arg0 best-other-tri pat)))
       (set! (-> this root ground-pat) v0-1)
       v0-1
@@ -791,17 +791,9 @@
   )
 
 (defmethod try-locate-ground ((this enemy) (arg0 meters) (arg1 meters) (arg2 symbol) (arg3 collide-spec))
-  (let* ((s4-0 (new 'stack-no-clear 'collide-query))
-         (a0-1 this)
-         (t9-0 (method-of-object a0-1 set-ground-pat!))
-         (v1-1 s4-0)
-         (t3-0 arg3)
-         (a3-1 arg0)
-         (t0-1 arg1)
-         (t1-0 1024.0)
-         )
+  (let ((s4-0 (new 'stack-no-clear 'collide-query)))
     (cond
-      ((t9-0 a0-1 v1-1 t3-0 a3-1 t0-1 t1-0)
+      ((set-ground-pat! this s4-0 arg3 arg0 arg1 1024.0 (the-as process #f))
        (let ((s5-1 (-> this root)))
          (let ((s3-0 (new 'stack-no-clear 'vector)))
            (set! (-> s3-0 quad) (-> this root trans quad))
@@ -874,16 +866,9 @@
     (set! (-> gp-0 prev-status) (-> gp-0 status))
     (vector-v+! (-> gp-0 trans) (-> gp-0 trans) arg0)
     (set! (-> arg1 new-pos quad) (-> gp-0 trans quad))
-    (let* ((s2-0 (new 'stack-no-clear 'collide-query))
-           (t9-1 (method-of-object this set-ground-pat!))
-           (a1-2 s2-0)
-           (a2-2 (-> arg1 gnd-collide-with))
-           (a3-0 (-> arg1 popup))
-           (t0-0 81920.0)
-           (t1-0 1024.0)
-           )
+    (let ((s2-0 (new 'stack-no-clear 'collide-query)))
       (cond
-        ((t9-1 this a1-2 a2-2 a3-0 t0-0 t1-0)
+        ((set-ground-pat! this s2-0 (-> arg1 gnd-collide-with) (-> arg1 popup) 81920.0 1024.0 (the-as process #f))
          (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
            (set! (-> arg1 on-ground?) #t)
            (set! (-> arg1 pat) (-> s2-0 best-other-tri pat))
@@ -2309,18 +2294,18 @@
           )
       (set! (-> s5-1 quad) (-> gp-0 trans quad))
       (vector-v++! s5-1 (-> gp-0 transv))
-      (let* ((a0-6 gp-0)
-             (t9-4 (method-of-object a0-6 find-ground))
-             (a2-1 (-> self enemy-info recover-gnd-collide-with))
-             (a3-0 8192.0)
-             (t0-0 81920.0)
-             (t1-0 1024.0)
-             )
-        (when (t9-4 a0-6 s4-1 a2-1 a3-0 t0-0 t1-0)
-          (when (>= (-> gp-0 gspot-pos y) (-> s5-1 y))
-            (set! (-> s5-1 y) (-> gp-0 gspot-pos y))
-            (vector-reset! (-> gp-0 transv))
-            )
+      (when (find-ground
+              gp-0
+              s4-1
+              (-> self enemy-info recover-gnd-collide-with)
+              8192.0
+              81920.0
+              1024.0
+              (the-as process #f)
+              )
+        (when (>= (-> gp-0 gspot-pos y) (-> s5-1 y))
+          (set! (-> s5-1 y) (-> gp-0 gspot-pos y))
+          (vector-reset! (-> gp-0 transv))
           )
         )
       (move-to-point! gp-0 s5-1)
@@ -2362,15 +2347,8 @@
 (defmethod on-ground? ((this enemy))
   (let ((gp-0 (-> this root)))
     (when (< (-> gp-0 transv y) 0.0)
-      (let* ((a1-0 (new 'stack-no-clear 'collide-query))
-             (v1-0 (-> this root))
-             (t9-0 (method-of-object v1-0 find-ground))
-             (a2-1 (-> this gnd-collide-with))
-             (a3-0 8192.0)
-             (t0-0 81920.0)
-             (t1-0 1024.0)
-             )
-        (t9-0 v1-0 a1-0 a2-1 a3-0 t0-0 t1-0)
+      (let ((a1-0 (new 'stack-no-clear 'collide-query)))
+        (find-ground (-> this root) a1-0 (-> this gnd-collide-with) 8192.0 81920.0 1024.0 (the-as process #f))
         )
       (>= (+ 409.6 (-> gp-0 gspot-pos y)) (-> gp-0 trans y))
       )
@@ -2782,14 +2760,14 @@
         (a1-0 (new 'stack-no-clear 'collide-query))
         )
     (if (or (< 0.0 (-> this root transv y)) (begin
-                                              (let* ((v1-3 gp-0)
-                                                     (t9-0 (method-of-object v1-3 find-ground))
-                                                     (a2-1 (-> this enemy-info recover-gnd-collide-with))
-                                                     (a3-0 8192.0)
-                                                     (t0-0 81920.0)
-                                                     (t1-0 1024.0)
-                                                     )
-                                                (t9-0 v1-3 a1-0 a2-1 a3-0 t0-0 t1-0)
+                                              (find-ground
+                                                gp-0
+                                                a1-0
+                                                (-> this enemy-info recover-gnd-collide-with)
+                                                8192.0
+                                                81920.0
+                                                1024.0
+                                                (the-as process #f)
                                                 )
                                               (let ((f0-2 (- (-> gp-0 trans y) (-> gp-0 gspot-pos y))))
                                                 (and (>= f0-2 -1228.8) (>= 6144.0 f0-2))

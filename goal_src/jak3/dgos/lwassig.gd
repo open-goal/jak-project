@@ -8,5 +8,5 @@
   "tpage-1698.go"
   "tpage-1843.go"
   "sig-rider-ag.go"
-  "lwassig.o"
+  "lwassig.go"
  ))

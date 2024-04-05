@@ -5,5 +5,66 @@
 ;; name in dgo: task-control
 ;; dgos: GAME
 
+
+(defmethod game-task-node-info-method-12 ((this game-task-node-info))
+  (local-vars (a0-3 symbol) (a1-1 symbol))
+  (let ((a1-0 (-> *game-info* sub-task-list))
+        (v1-1 this)
+        )
+    (and (not (logtest? (-> v1-1 flags) (game-task-node-flag closed)))
+         (begin
+           (dotimes (a2-2 4)
+             (let ((t0-0 (-> v1-1 parent-node a2-2)))
+               (when (and (nonzero? t0-0) (not (logtest? (-> a1-0 t0-0 flags) (game-task-node-flag closed))))
+                 (set! a1-1 #f)
+                 (goto cfg-12)
+                 )
+               )
+             )
+           (set! a1-1 #t)
+           (label cfg-12)
+           a1-1
+           )
+         (and (or (zero? (+ (-> *setting-control* user-current exclusive-task-count) (-> *game-info* task-node-exclusive length))
+                         )
+                  (begin
+                    (dotimes (a1-6 (the-as int (-> *setting-control* user-current exclusive-task-count)))
+                      (when (= (-> *setting-control* user-current exclusive-task a1-6) (-> this task))
+                        (set! a0-3 #t)
+                        (goto cfg-29)
+                        )
+                      )
+                    (dotimes (a1-9 (-> *game-info* task-node-exclusive length))
+                      (when (= (-> *game-info* task-node-exclusive a1-9) (-> this task))
+                        (set! a0-3 #t)
+                        (goto cfg-29)
+                        )
+                      )
+                    (set! a0-3 #f)
+                    (label cfg-29)
+                    (or a0-3 (logtest? (-> v1-1 flags) (game-task-node-flag auto-close disk-close)))
+                    )
+                  )
+              (or (not (-> v1-1 open?)) ((-> v1-1 open?) v1-1))
+              )
+         )
+    )
+  )
+
+(defmethod open! ((this game-task-node-info) (arg symbol))
+  (format #t "skipping (open! ~A ~A)~%" this arg)
+  0
+  )
+
+(defun update-task-masks ((arg0 symbol))
+  (format #t "skipping (update-task-masks ~A)~%" arg0)
+  0
+  )
+
+(defun task-node-reset ((arg0 symbol))
+  (format #t "skipping (task-node-reset ~A)~%" arg0)
+  0
+  )
+
 ;; DECOMP BEGINS
 

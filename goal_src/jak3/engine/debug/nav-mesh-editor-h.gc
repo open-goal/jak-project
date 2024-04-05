@@ -5,5 +5,204 @@
 ;; name in dgo: nav-mesh-editor-h
 ;; dgos: GAME
 
+(define-extern nav-mesh-editor-init (function none))
+
 ;; DECOMP BEGINS
 
+;; this file is debug only
+(declare-file (debug))
+
+(deftype vector-array (inline-array-class)
+  ((data  vector  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> vector-array heap-base) (the-as uint 16))
+
+(deftype int16-array (inline-array-class)
+  ((data  int16  :dynamic)
+   )
+  )
+
+
+(set! (-> int16-array heap-base) (the-as uint 2))
+
+(deftype nav-mesh-poly (structure)
+  ((poly-id     uint32)
+   (flags       uint32)
+   (index       basic)
+   (insert-pos  uint32)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (nav-mesh-poly-method-9 () none)
+    (nav-mesh-poly-method-10 () none)
+    (nav-mesh-poly-method-11 () none)
+    (nav-mesh-poly-method-12 () none)
+    (nav-mesh-poly-method-13 () none)
+    (nav-mesh-poly-method-14 () none)
+    )
+  )
+
+
+(deftype nav-mesh-poly-array (inline-array-class)
+  ((data  nav-mesh-poly  :inline :dynamic)
+   )
+  )
+
+(set! (-> nav-mesh-poly-array heap-base) (the-as uint 16))
+
+;; WARN: Return type mismatch object vs nav-mesh-poly.
+(defmethod new nav-mesh-poly ((allocation symbol) (type-to-make type))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    (let ((gp-0 (the-as object (t9-0 allocation v1-1))))
+      (when (zero? (the-as structure gp-0))
+        (set! gp-0 0)
+        (goto cfg-4)
+        )
+      ((method-of-type nav-mesh-poly nav-mesh-poly-method-9))
+      (label cfg-4)
+      (the-as nav-mesh-poly gp-0)
+      )
+    )
+  )
+
+(deftype nav-mesh-tri-quad (structure)
+  ((indices  int32  4)
+   (poly     uint32)
+   )
+  )
+
+
+(deftype nav-mesh-tri-quad-array (inline-array-class)
+  ((data  nav-mesh-tri-quad  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> nav-mesh-tri-quad-array heap-base) (the-as uint 32))
+
+(deftype nav-mesh-editable (structure)
+  ((flags          uint32)
+   (verts          basic)
+   (tris           basic)
+   (quads          nav-mesh-tri-quad-array)
+   (navmesh-id     uint32)
+   (idx            uint32)
+   (level-name     symbol)
+   (level-id       uint32)
+   (polys          nav-mesh-poly-array)
+   (selected-poly  uint32)
+   )
+  (:methods
+    (nav-mesh-editable-method-9 () none)
+    (nav-mesh-editable-method-10 () none)
+    (nav-mesh-editable-method-11 () none)
+    (nav-mesh-editable-method-12 () none)
+    (nav-mesh-editable-method-13 () none)
+    (nav-mesh-editable-method-14 () none)
+    (nav-mesh-editable-method-15 () none)
+    (nav-mesh-editable-method-16 () none)
+    (nav-mesh-editable-method-17 () none)
+    (nav-mesh-editable-method-18 () none)
+    )
+  )
+
+
+(deftype nav-mesh-editable-array (inline-array-class)
+  ((data  nav-mesh-editable  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> nav-mesh-editable-array heap-base) (the-as uint 48))
+
+(deftype nav-mesh-editor-undo (structure)
+  ((current-nav-mesh  nav-mesh-editable)
+   (selected-poly     uint32)
+   (index             basic)
+   (insert-pos        uint32)
+   (verts             basic)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (nav-mesh-editor-undo-method-9 () none)
+    )
+  )
+
+
+(deftype nav-mesh-editor-undo-array (inline-array-class)
+  ((data  nav-mesh-editor-undo  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> nav-mesh-editor-undo-array heap-base) (the-as uint 32))
+
+;; WARN: Return type mismatch object vs nav-mesh-editor-undo.
+(defmethod new nav-mesh-editor-undo ((allocation symbol) (type-to-make type))
+  (let ((t9-0 (method-of-type structure new))
+        (v1-1 type-to-make)
+        )
+    (-> type-to-make size)
+    (let ((gp-0 (the-as object (t9-0 allocation v1-1))))
+      (when (zero? (the-as structure gp-0))
+        (set! gp-0 0)
+        (goto cfg-4)
+        )
+      ((method-of-type nav-mesh-editor-undo nav-mesh-editor-undo-method-9))
+      (label cfg-4)
+      (the-as nav-mesh-editor-undo gp-0)
+      )
+    )
+  )
+
+(deftype nav-mesh-editor (process-drawable)
+  ((close-menu-time       uint64)
+   (external-cam-mode     basic)
+   (mouse-pressed         uint64)
+   (mouse-screen-pos      vector       :inline)
+   (mouse-pos             vector       :inline)
+   (mouse-end             vector       :inline)
+   (mouse-hit             vector       :inline)
+   (mouse-hit-pick        vector       :inline)
+   (mouse-snap            vector       :inline)
+   (mouse-normal          vector       :inline)
+   (mouse-collide         basic)
+   (mouse-tumble-dist     float)
+   (mouse-tumble          vector       :inline)
+   (manipulator-pos       vector       :inline)
+   (manipulator-back-pos  vector       :inline)
+   (lock-action           basic)
+   (mouse-action          uint32)
+   (mouse-action-pos-ref  vector       :inline)
+   (nav-meshes            basic)
+   (current-nav-mesh      nav-mesh-editable)
+   (manipulator           manipulator  :inline)
+   (level-name            basic)
+   (level-id              uint32)
+   (undo-min              uint32)
+   (undo-id               uint32)
+   (undo-max              uint32)
+   (undos                 basic)
+   (hide-unselected       basic)
+   (allow-snap            basic)
+   )
+  (:methods
+    (nav-mesh-editor-method-20 () none)
+    (nav-mesh-editor-method-21 () none)
+    (nav-mesh-editor-method-22 () none)
+    (nav-mesh-editor-method-23 () none)
+    (nav-mesh-editor-method-24 () none)
+    (nav-mesh-editor-method-25 () none)
+    (nav-mesh-editor-method-26 () none)
+    (nav-mesh-editor-method-27 () none)
+    )
+  )
+
+
+(define *nav-mesh-editor* (the-as nav-mesh-editor #f))

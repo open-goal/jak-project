@@ -11,7 +11,31 @@
 
 (defmacro start-debug (str &rest args)
   `(format 0 ,(string-append "[START] " str) ,@args)
-  0)
+  )
+
+(defun give-all-stuff ()
+  (send-event *target* 'get-pickup (pickup-type health) 1000.0)
+  (send-event *target* 'get-pickup (pickup-type shield) 1000.0)
+  ;; (send-event *target* 'get-pickup (pickup-type skill) 100.0)
+  ;; (send-event *target* 'get-pickup (pickup-type gem) 100.0)
+  (send-event *target* 'get-pickup (pickup-type ammo-yellow) 1000.0)
+  (send-event *target* 'get-pickup (pickup-type ammo-red) 1000.0)
+  (send-event *target* 'get-pickup (pickup-type ammo-blue) 1000.0)
+  (send-event *target* 'get-pickup (pickup-type ammo-dark) 1000.0)
+  ;; (send-event *target* 'get-pickup (pickup-type eco-pill-dark) 100.0)
+  (send-event *target* 'get-pickup (pickup-type eco-pill-light) 100.0)
+  (logior! (-> *game-info* features)
+    (game-feature
+      board board-launch feature39
+      darkeco
+      darkjak darkjak darkjak-smack darkjak-bomb0 darkjak-bomb1
+      lighteco
+      lightjak lightjak-regen lightjak-swoop lightjak-freeze lightjak-shield
+      gun
+      gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1
+      gun-red-2 gun-yellow-2 gun-blue-2 gun-dark-2
+      gun-red-3 gun-yellow-3 gun-blue-3 gun-dark-3))
+  )
 
 (defmacro test-play ()
   "Temporary start macro"
@@ -20,7 +44,23 @@
      (define *kernel-boot-message* 'play)
      (start-debug "loading GAME.DGO~%")
      (load-package "game" global)
-     ;; (play-boot)
+     (play-boot)
+
+     ;; wait 10 frames and then turn on profile bars.
+     ;; they get shut off as part of startup, so we can't do it here.
+     (process-spawn-function
+       process
+       (lambda ()
+         (dotimes (i 10)
+           (suspend)
+           )
+         (true! *display-profile*)
+         (true! *stats-profile-bars*)
+         (true! *display-actor-marks*)
+         (true! *display-bones*)
+         (give-all-stuff)
+         )
+       )
      )
   )
 
@@ -411,11 +451,15 @@
    it will kick out levels as needed to make a free slot, and set up a new level, and start
    the load. This should only be used when you might want to start a load."
   (local-vars (s5-1 level))
+
+  (start-debug "level-get-for-use: ~A ~A~%" arg0 arg1)
   (init-level-system this #f)
   (let* ((s2-0 (lookup-level-info arg0))
          (s1-0 (remap-level-name s2-0))
          )
+    (start-debug " remapped name: ~A~%" s1-0)
     (let ((s5-0 (level-get this s1-0)))
+      (start-debug " existing? ~A~%" s5-0)
       (when s5-0
         (level-status-update! s5-0 arg1)
         (set! s5-1 s5-0)
@@ -423,6 +467,7 @@
         )
       )
     (let ((a0-7 (level-get-most-disposable this)))
+      (start-debug " most disposable: ~A~%" a0-7)
       (set! s5-1 (if a0-7
                      (level-status-update! a0-7 'inactive)
                      a0-7
@@ -560,6 +605,7 @@
    This can do both loading, linking, login, and activation.
    This is somewhat similar to level-get-for-use, but requires that you already have the level object.
    This function is the way to transition from loaded to alive/active."
+  (start-debug "level-status-update: ~A ~A (current ~A)~%" this arg0 (-> this status))
   (case arg0
     (('inactive)
      (-> this status)
@@ -1649,8 +1695,10 @@
 (defmethod login-begin ((this level))
   "Start logging in loaded level data."
   (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
+  (format 0 "LOGIN-BEGIN: ~A~%" this)
   (cond
     ((-> this bsp)
+     (format 0 " and with a bsp too~%")
      (let ((s5-0 (-> this bsp)))
        (set! (-> s5-0 level tfrag-gs-test)
              (if (logtest? (-> s5-0 texture-flags 0) (texture-page-flag alpha-enable))
@@ -1733,20 +1781,20 @@
          (s2-0 (-> s3-0 drawable-trees))
          )
     0
-    (.mfc0 s5-0 Count)
+    ; (.mfc0 s5-0 Count)
     (label cfg-1)
     0
-    (.mfc0 v1-4 Count)
-    (let ((v1-5 (- v1-4 s5-0)))
-      (when (< #x186a0 v1-5)
-        (set! arg0 arg0)
-        (goto cfg-116)
-        )
-      )
+    ; (.mfc0 v1-4 Count)
+    ; (let ((v1-5 (- v1-4 s5-0)))
+    ;   (when (< #x186a0 v1-5)
+    ;     (set! arg0 arg0)
+    ;     (goto cfg-116)
+    ;     )
+    ;   )
     (let ((s0-0 (the-as int (-> arg1 pos))))
       (when (= (-> arg1 state) -1)
         (when (< s0-0 (-> s2-0 length))
-          (let ((s1-0 (-> s2-0 data (the-as uint s0-0))))
+          (let ((s1-0 (-> s2-0 trees (the-as uint s0-0))))
             (cond
               ((= (-> (the-as drawable-tree-tfrag s1-0) type) drawable-tree-tfrag)
                (dotimes (s0-1 (-> (the-as drawable-tree-tfrag s1-0) length))
@@ -1895,7 +1943,7 @@
                      )
                    (set! (-> sv-96 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                    (set! (-> sv-96 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-                   (set! (-> sv-96 alpha) (new 'static 'gs-alpha :b #x2 :c #x1 :d #x1))
+                   (set! (-> sv-96 alpha) (new 'static 'gs-miptbp :tbp1 #x58))
                    (set! (-> sv-96 reg-0) (the-as uint 6))
                    (set! (-> sv-96 reg-1) (the-as uint 20))
                    (set! (-> sv-96 reg-2) (the-as uint 52))
@@ -2041,7 +2089,10 @@
        (let ((s1-2 (-> this status)))
          (set! (-> this status) 'active)
          (do-nothing *level*)
-         (update-task-masks 'level)
+         (when (nonzero? update-task-masks) ;; added check
+           (format 0 "skipping update-task-masks~%")
+           (update-task-masks 'level)
+           )
          (assign-draw-indices *level*)
          (let ((s0-0 (-> this bsp nav-meshes)))
            (when (nonzero? s0-0)
@@ -2257,7 +2308,7 @@
     (set! (-> this loaded-texture-page-count) 0)
     (unlink-shaders-in-heap *texture-page-dir* (-> this heap))
     (unlink-part-group-by-heap (-> this heap))
-    (unlink-lightning-spec-by-heap (-> this heap))
+    ;; (unlink-lightning-spec-by-heap (-> this heap))
     (particle-adgif-cache-flush)
     (set! (-> this loaded-text-info-count) 0)
     (dotimes (s5-6 2)
@@ -2425,6 +2476,7 @@
 (defmethod init-level-system ((this level-group) (arg0 symbol))
   "If needed, initialize the level system by loading common/art packages and allocating level heaps."
   (when (zero? (-> *level* heap base))
+    (start-debug "allocating levels~%")
     (kmemopen global "level-heaps")
     (when (nmember "game" *kernel-packages*)
       (set! *kernel-packages* (cons "art" *kernel-packages*))
@@ -2446,6 +2498,10 @@
       (set! (-> gp-1 top-base) (&+ (-> gp-1 base) s5-1))
       (set! (-> gp-1 top) (-> gp-1 top-base))
       )
+    (start-debug "GLOBAL~%")
+    (inspect global)
+    (start-debug "LEVEL~%")
+    (inspect (-> this heap))
     (kmemclose)
     )
   0
@@ -2706,9 +2762,12 @@
   (none)
   )
 
+(defconstant *default-boot-level* 'halfpipe)
+
 (defun play ((arg0 symbol) (arg1 symbol))
   "Start (or restart) the game!
    This will start up the display process, and load the initial level."
+  (start-debug "call to play!~%")
   (kmemopen global "level-boot")
   (when *kernel-boot-level*
     (bg (string->symbol (the-as string *kernel-boot-level*)))
@@ -2719,7 +2778,7 @@
     )
   *kernel-boot-message*
   (let ((s5-0 (if *debug-segment*
-                  'wasall
+                  *default-boot-level*
                   'title
                   )
               )
@@ -2738,11 +2797,15 @@
                            )
           )
     (set! *time-of-day-fast* #f)
-    (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
-    (send-event (ppointer->process *time-of-day*) 'change 'hour 7)
-    (send-event (ppointer->process *time-of-day*) 'change 'minutes 0)
-    (send-event (ppointer->process *time-of-day*) 'change 'seconds 0)
-    (send-event (ppointer->process *time-of-day*) 'change 'frames 0)
+
+    ;; added nonzero check here.
+    (when (nonzero? *time-of-day*)
+      (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+      (send-event (ppointer->process *time-of-day*) 'change 'hour 7)
+      (send-event (ppointer->process *time-of-day*) 'change 'minutes 0)
+      (send-event (ppointer->process *time-of-day*) 'change 'seconds 0)
+      (send-event (ppointer->process *time-of-day*) 'change 'frames 0)
+      )
     (set! (-> *time-of-day-context* mode) (time-of-day-palette-id unk3))
     (set! (-> *mood-control* overide-weather-flag) #f)
     (set-blackout-frames (seconds 0.02))
@@ -2790,6 +2853,8 @@
 
 (defun play-boot ()
   "Function called by the C Kernel to start the game (wrapper around play)."
+
+  (start-debug "call to play-boot!~%")
   (process-spawn-function
     process
     (lambda () (play #t #t) (none))
@@ -3719,6 +3784,25 @@
           (/ (logand v1-194 1023) 103)
           )
         )
+    )
+  ;; og:preserve-this added
+  (let ((lev-names (new 'stack-no-clear 'array 'string 10))
+        (active-lev-names (new 'stack-no-clear 'array 'string 10)))
+    (dotimes (i 10)
+      (set! (-> active-lev-names i) "none")
+      (set! (-> lev-names i) "none")
+      (cond
+        ((or (= (-> this level i status) 'active)
+             (= (-> this level i status) 'alive)
+             (= (-> this level i status) 'loaded))
+          (set! (-> lev-names i) (symbol->string (-> this level i nickname)))
+          (if (-> this level i display?)
+              (set! (-> active-lev-names i) (symbol->string (-> this level i nickname))))
+          )
+        )
+      )
+    (__pc-set-levels lev-names)
+    (__pc-set-active-levels active-lev-names)
     )
   0
   (none)

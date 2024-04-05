@@ -1,5 +1,5 @@
 ("MUSEUM4.DGO"
- ("tpage-3390.o"
+ ("tpage-3390.go"
   "tpage-3365.go"
   "tpage-3419.go"
   "tpage-3386.go"
@@ -24,5 +24,5 @@
   "warrior-ag.go"
   "minershort-ag.go"
   "flutflut-ag.go"
-  "museum4.o"
+  "museum4.go"
  ))

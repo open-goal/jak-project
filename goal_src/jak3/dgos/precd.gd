@@ -49,5 +49,5 @@
   "precur-planet-ag.go"
   "precur-bridge-g-blocks-break-ag.go"
   "particleman-ag.go"
-  "precurd-vis.o"
+  "precurd-vis.go"
  ))

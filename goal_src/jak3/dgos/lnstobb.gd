@@ -6,5 +6,5 @@
   "mh-centipede-ag.go"
   "egg-spider-ag.go"
   "eco-crystal-light-ag.go"
-  "lnstobb.o"
+  "lnstobb.go"
  ))

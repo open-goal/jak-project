@@ -973,10 +973,7 @@
     )
   :trans (behavior ()
     (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
-    (let ((t9-2 (method-of-object (-> self root) collide-shape-moving-method-57)))
-      (-> self root transv)
-      (t9-2)
-      )
+    (integrate-no-collide! (-> self root) (-> self root transv))
     (when (and (>= 0.0 (-> self root transv y)) (>= (-> self base y) (-> self root trans y)))
       (set! (-> self root trans y) (-> self base y))
       (cond
@@ -1125,7 +1122,7 @@
              )
             (else
               (if (nonzero? (-> self part))
-                  (set! (-> self part fade) (* 0.0033333334 f0-1))
+                  (set! (-> self part local-space-binding) (the-as particle-local-space-info (* 0.0033333334 f0-1)))
                   )
               (when (nonzero? (-> self draw))
                 (logior! (-> self draw status) (draw-control-status force-fade))
@@ -1882,7 +1879,7 @@
         (a1-3 (-> this draw skeleton bones 3))
         )
     (if (nonzero? a0-7)
-        (sparticle-launch-control-method-17 a0-7 (the-as matrix a1-3))
+        (spawn-from-mat a0-7 (the-as matrix a1-3))
         )
     )
   0
@@ -2018,10 +2015,7 @@
             )
           )
         (else
-          (let ((t9-7 (method-of-object (-> self root) collide-shape-moving-method-57)))
-            (-> self root transv)
-            (t9-7)
-            )
+          (integrate-no-collide! (-> self root) (-> self root transv))
           )
         )
       )
@@ -3152,7 +3146,7 @@
   (you-suck-stage *game-info* #f 0)
   (cond
     ((or (< 20 (-> *game-info* live-eco-pill-count))
-         (not (logtest? (game-feature feature58) (-> *game-info* features)))
+         (not (logtest? (game-feature darkeco) (-> *game-info* features)))
          )
      (return (the-as pickup-type #f))
      )
@@ -3176,7 +3170,7 @@
 ;; WARN: Return type mismatch number vs pickup-type.
 (defun pickup-light-set! ((arg0 fact-info) (arg1 (pointer pickup-type)) (arg2 (pointer float)) (arg3 int))
   (the-as pickup-type (cond
-                        ((logtest? (game-feature feature57) (-> *game-info* features))
+                        ((logtest? (game-feature lighteco) (-> *game-info* features))
                          (set! (-> arg1 0) (pickup-type eco-pill-light))
                          (set! (-> arg2 0) 20.0)
                          )

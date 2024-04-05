@@ -1,3 +1,3 @@
 ("CTYPEPC.DGO"
- ("ctypepc.o"
+ ("ctypepc.go"
  ))

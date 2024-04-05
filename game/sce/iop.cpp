@@ -133,12 +133,14 @@ void sceSifRegisterRpc(sceSifServeData* serve,
                        unsigned int request,
                        sceSifRpcFunc func,
                        void* buff,
+                       int buff_size,
                        sceSifRpcFunc cfunc,
                        void* cbuff,
                        sceSifQueueData* qd) {
   serve->command = request;
   serve->func = func;
   serve->buff = buff;
+  serve->buff_size = buff_size;
   (void)cfunc;
   (void)cbuff;
   ASSERT(!cfunc);

@@ -1,5 +1,5 @@
 ("WASSEEM.DGO"
- ("tpage-1211.o"
+ ("tpage-1211.go"
   "tpage-1533.go"
   "tpage-1468.go"
   "tpage-1975.go"
@@ -10,5 +10,5 @@
   "neo-satellite-break-ag.go"
   "eco-crystal-dark-ag.go"
   "particleman-ag.go"
-  "wasseem.o"
+  "wasseem.go"
  ))

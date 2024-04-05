@@ -10,5 +10,5 @@
   "city-flitter-ag.go"
   "com-airlock-outer-ag.go"
   "battle-amulet-ag.go"
-  "ctygenb-vis.o"
+  "ctygenb-vis.go"
  ))

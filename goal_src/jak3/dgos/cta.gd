@@ -7,5 +7,5 @@
   "tpage-133.go"
   "tpage-131.go"
   "des-burning-bush-ag.go"
-  "ctysluma-vis.o"
+  "ctysluma-vis.go"
  ))

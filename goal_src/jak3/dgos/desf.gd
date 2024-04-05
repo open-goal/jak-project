@@ -6,5 +6,5 @@
   "des-draw-bridge-ag.go"
   "des-jump-bridge-ag.go"
   "des-garage-door-ag.go"
-  "desertf-vis.o"
+  "desertf-vis.go"
  ))

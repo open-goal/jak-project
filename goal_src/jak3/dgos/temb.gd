@@ -1,5 +1,5 @@
 ("TEMB.DGO"
- ("tpage-2617.o"
+ ("tpage-2617.go"
   "tpage-2628.go"
   "tpage-2625.go"
   "tpl-break-alcove-ag.go"
@@ -13,5 +13,5 @@
   "tpl-spindle-ag.go"
   "tpl-elec-swing-pole-ag.go"
   "tpl-oracle-eye-ag.go"
-  "templeb-vis.o"
+  "templeb-vis.go"
  ))

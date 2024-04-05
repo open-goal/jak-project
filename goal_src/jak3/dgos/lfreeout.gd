@@ -1,4 +1,4 @@
 ("LFREEOUT.DGO"
- ("tpage-3158.o"
-  "lfreeout.o"
+ ("tpage-3158.go"
+  "lfreeout.go"
  ))

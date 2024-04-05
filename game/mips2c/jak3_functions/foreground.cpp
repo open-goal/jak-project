@@ -327,6 +327,23 @@ struct Cache {
   void* merc_global_stats; // *merc-global-stats*
 } cache;
 
+struct MercEffectBucketInfo {
+  u8 color_fade[4];
+  u8 merc_path;
+  u8 ignore_alpha;
+  u8 disable_draw;
+  u8 disable_envmap;
+};
+
+struct MercBucketInfo {
+  u8 lights[0x70];
+  u32 needs_clip;
+  u32 mercprime;
+  u32 mercneric;
+  MercEffectBucketInfo effects[64];
+};
+static_assert(sizeof(MercBucketInfo) == 0x27c);
+
 // TODO: hack this up for pc merc rendering.
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
@@ -341,6 +358,7 @@ u64 execute(void* ctxt) {
   c->sq(s4, 80, sp);                                // sq s4, 80(sp)
   c->sq(s5, 96, sp);                                // sq s5, 96(sp)
   c->sq(gp, 112, sp);                               // sq gp, 112(sp)
+  const MercBucketInfo* mbi = (const MercBucketInfo*)(g_ee_main_mem + c->sgpr64(t1));
   c->mov64(t7, a3);                                 // or t7, a3, r0
   c->mov64(v1, t0);                                 // or v1, t0, r0
   c->lui(t0, 4096);                                 // lui t0, 4096
@@ -444,6 +462,23 @@ block_6:
   c->sw(a3, 12, a2);                                // sw a3, 12(a2)
   c->srl(s0, s0, 2);                                // srl s0, s0, 2
   c->sq(t1, 16, a2);                                // sq t1, 16(a2)
+
+  // pc hack
+  {
+    u16 use_pc_merc_bits = 0;
+    u16 ignore_alpha_bits = 0;
+    for (int i = 0; i < 16; i++) {
+      if (!mbi->effects[i].disable_draw) {
+        use_pc_merc_bits |= (1 << i);
+      }
+      if (mbi->effects[i].ignore_alpha) {
+        ignore_alpha_bits |= (1 << i);
+      }
+    }
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 28, &use_pc_merc_bits, 2);
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 30, &ignore_alpha_bits, 2);
+  }
+
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
   c->sq(t3, 48, a2);                                // sq t3, 48(a2)
   c->xor_(t3, t3, s0);                              // xor t3, t3, s0
@@ -500,6 +535,21 @@ block_6:
   c->sw(a3, 28, a2);                                // sw a3, 28(a2)
   c->daddiu(a2, a2, 144);                           // daddiu a2, a2, 144
 
+  // PC ADD BONUS DATA (bonus!)
+  {
+    // 10 qw test
+    u64 dmatag = 5 | (1 << 28);
+    memcpy(g_ee_main_mem + c->sgpr64(a2), &dmatag, 8);
+    u32 vif = (0b1001 << 24);
+    memcpy(g_ee_main_mem + c->sgpr64(a2) + 8, &vif, 4);
+
+    for (int i = 0; i < 16; i++) {
+      memcpy(g_ee_main_mem + c->sgpr64(a2) + 16 + i * 4, mbi->effects[i].color_fade, 4);
+    }
+
+    c->gprs[a2].du32[0] += 6 * 16;
+  }
+
 block_8:
   bc = c->sgpr64(s3) == 0;                          // beq s3, r0, L116
   c->addiu(s2, r0, 128);                            // addiu s2, r0, 128
@@ -513,6 +563,10 @@ block_10:
   c->sq(t5, 0, a2);                                 // sq t5, 0(a2)
   c->lbu(s0, 1, gp);                                // lbu s0, 1(gp)
   c->daddiu(gp, gp, 2);                             // daddiu gp, gp, 2
+
+  // HACK for PC PORT: stash the source matrix number in the unused bits of nop viftag.
+  c->sb(a3, 8, a2);
+
   c->lbu(a3, 0, gp);                                // lbu a3, 0(gp)
   c->daddiu(s3, s3, -1);                            // daddiu s3, s3, -1
   c->sb(s0, 12, a2);                                // sb s0, 12(a2)

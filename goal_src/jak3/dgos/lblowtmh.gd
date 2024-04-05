@@ -1,6 +1,6 @@
 ("LBLOWTMH.DGO"
- ("tpage-2978.o"
+ ("tpage-2978.go"
   "bt-grunt-ag.go"
   "bt-roboguard-ag.go"
-  "lblowtmh.o"
+  "lblowtmh.go"
  ))

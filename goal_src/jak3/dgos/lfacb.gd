@@ -2,5 +2,5 @@
  ("lfaccity-mood.o"
   "tpage-3401.go"
   "tpage-3402.go"
-  "lfacctyb-vis.o"
+  "lfacctyb-vis.go"
  ))

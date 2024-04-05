@@ -1,4 +1,4 @@
 ("RAILB2.DGO"
- ("tpage-2708.o"
-  "railb2.o"
+ ("tpage-2708.go"
+  "railb2.go"
  ))

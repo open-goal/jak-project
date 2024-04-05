@@ -13,5 +13,5 @@
   "particleman-ag.go"
   "terraformer-laser-end-ag.go"
   "terraformer-laser-ag.go"
-  "desboss2.o"
+  "desboss2.go"
  ))

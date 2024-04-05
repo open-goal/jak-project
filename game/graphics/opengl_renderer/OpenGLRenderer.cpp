@@ -129,10 +129,175 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
   using namespace jak3;
   m_bucket_renderers.resize((int)BucketId::MAX_BUCKETS);
   m_bucket_categories.resize((int)BucketId::MAX_BUCKETS, BucketCategory::OTHER);
-
+  std::shared_ptr<TextureAnimator> texture_animator = nullptr;  // todo tex anim
   {
     auto p = scoped_prof("render-inits");
-    // for now, for any unset renderers, just set them to an EmptyBucketRenderer.
+
+    m_blit_displays =
+        init_bucket_renderer<BlitDisplays>("blit", BucketCategory::OTHER, BucketId::BLIT_START);
+
+    // 4
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_SKY_PRE, texture_animator);
+
+    // 10
+    for (int i = 0; i < LEVEL_MAX; i++) {
+#define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
+      // 10
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-tfrag", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_TFRAG, BucketId::TEX_L1_TFRAG, i),
+          texture_animator);
+      // 11
+      init_bucket_renderer<TFragment>(
+          fmt::format("tfrag-l{}-tfrag", i), BucketCategory::TFRAG,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_TFRAG, BucketId::TFRAG_L1_TFRAG, i),
+          std::vector{tfrag3::TFragmentTreeKind::NORMAL}, false, i, anim_slot_array());
+      Tie3* tie = init_bucket_renderer<Tie3>(
+          fmt::format("tie-l{}-tfrag", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_TFRAG, BucketId::TIE_L1_TFRAG, i), i);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("etie-l{}-tfrag", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_TFRAG, BucketId::ETIE_L1_TFRAG, i), tie,
+          tfrag3::TieCategory::NORMAL_ENVMAP);
+
+      // 17
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-tfrag", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_TFRAG, BucketId::MERC_L1_TFRAG, i), m_merc2);
+
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-shrub", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_SHRUB, BucketId::TEX_L1_SHRUB, i),
+          m_texture_animator);
+      init_bucket_renderer<Shrub>(
+          fmt::format("shrub-l{}-shrub", i), BucketCategory::SHRUB,
+          GET_BUCKET_ID_FOR_LIST(BucketId::SHRUB_L0_SHRUB, BucketId::SHRUB_L1_SHRUB, i));
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-shrub", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_SHRUB, BucketId::MERC_L1_SHRUB, i), m_merc2);
+
+      // 230
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-alpha", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_ALPHA, BucketId::TEX_L1_ALPHA, i),
+          m_texture_animator);
+      init_bucket_renderer<TFragment>(
+          fmt::format("tfrag-t-l{}-alpha", i), BucketCategory::TFRAG,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_ALPHA, BucketId::TFRAG_L1_ALPHA, i),
+          std::vector{tfrag3::TFragmentTreeKind::TRANS}, false, i, anim_slot_array());
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("tie-t-l{}-alpha", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_ALPHA, BucketId::TIE_L1_ALPHA, i), tie,
+          tfrag3::TieCategory::TRANS);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("etie-l{}-alpha", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_ALPHA, BucketId::ETIE_L1_ALPHA, i), tie,
+          tfrag3::TieCategory::TRANS_ENVMAP);
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-alpha", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_ALPHA, BucketId::MERC_L1_ALPHA, i), m_merc2);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("tie-w-l{}-water", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TIE_L0_WATER, BucketId::TIE_L1_WATER, i), tie,
+          tfrag3::TieCategory::WATER);
+      init_bucket_renderer<Tie3AnotherCategory>(
+          fmt::format("etie-l{}-water", i), BucketCategory::TIE,
+          GET_BUCKET_ID_FOR_LIST(BucketId::ETIE_L0_WATER, BucketId::ETIE_L1_WATER, i), tie,
+          tfrag3::TieCategory::WATER_ENVMAP);
+    }
+
+    // 340
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-tfrag", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_TFRAG, texture_animator);
+    init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-tfrag", BucketCategory::MERC,
+                                              BucketId::MERC_LCOM_TFRAG, m_merc2);
+    // 345
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-shrub", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_SHRUB, texture_animator);
+    init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-shrub", BucketCategory::MERC,
+                                              BucketId::MERC_LCOM_SHRUB, m_merc2);
+    // 351
+    for (int i = 0; i < LEVEL_MAX; i++) {
+#define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-pris", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS, BucketId::TEX_L1_PRIS, i),
+          texture_animator);
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-pris2", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_PRIS2, BucketId::TEX_L1_PRIS2, i),
+          texture_animator);
+
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-pris", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS, BucketId::MERC_L1_PRIS, i), m_merc2);
+
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-pris2", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i), m_merc2);
+    }
+
+    // 401
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-pris", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_PRIS, texture_animator);
+    init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-pris", BucketCategory::MERC,
+                                              BucketId::MERC_LCOM_PRIS, m_merc2);
+
+    // 461
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-post", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_SKY_POST, texture_animator);
+
+    // 463
+    for (int i = 0; i < LEVEL_MAX; i++) {
+#define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
+      // 463
+      init_bucket_renderer<TextureUploadHandler>(
+          fmt::format("tex-l{}-water", i), BucketCategory::TEX,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TEX_L0_WATER, BucketId::TEX_L1_WATER, i),
+          texture_animator);
+      init_bucket_renderer<Merc2BucketRenderer>(
+          fmt::format("merc-l{}-water", i), BucketCategory::MERC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_WATER, BucketId::MERC_L1_WATER, i), m_merc2);
+      // 466
+      init_bucket_renderer<TFragment>(
+          fmt::format("tfrag-l{}-water", i), BucketCategory::TFRAG,
+          GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_WATER, BucketId::TFRAG_L1_WATER, i),
+          std::vector{tfrag3::TFragmentTreeKind::WATER}, false, i, anim_slot_array());
+    }
+
+    // 563
+    init_bucket_renderer<TextureUploadHandler>("tex-lcom-water", BucketCategory::TEX,
+                                               BucketId::TEX_LCOM_WATER, texture_animator);
+    init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-water", BucketCategory::MERC,
+                                              BucketId::MERC_LCOM_WATER, m_merc2);
+
+    // 568
+    init_bucket_renderer<TextureUploadHandler>("tex-sprite", BucketCategory::TEX,
+                                               BucketId::TEX_SPRITE, texture_animator);
+    init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
+    // 575
+    init_bucket_renderer<TextureUploadHandler>("tex-warp", BucketCategory::TEX, BucketId::TEX_WARP,
+                                               texture_animator);
+
+    init_bucket_renderer<TextureUploadHandler>("debug-no-zbuf1", BucketCategory::OTHER,
+                                               BucketId::DEBUG_NO_ZBUF1, m_texture_animator, true);
+    // 578
+    init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
+                                               BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
+
+    //    init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
+    //                                               BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
+
+    // 583
+    init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x8000);
+    // 584
+    init_bucket_renderer<DirectRenderer>("debug-no-zbuf2", BucketCategory::OTHER,
+                                         BucketId::DEBUG_NO_ZBUF2, 0x8000);
+    init_bucket_renderer<DirectRenderer>("debug-menu", BucketCategory::OTHER, BucketId::DEBUG_MENU,
+                                         0x8000);
+
+    // for any unset renderers, just set them to an EmptyBucketRenderer.
     for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
       if (!m_bucket_renderers[i]) {
         init_bucket_renderer<EmptyBucketRenderer>(fmt::format("bucket-{}", i),
@@ -1083,6 +1248,43 @@ void OpenGLRenderer::dispatch_buckets_jak2(DmaFollower dma,
   // TODO ending data.
 }
 
+void OpenGLRenderer::dispatch_buckets_jak3(DmaFollower dma,
+                                           ScopedProfilerNode& prof,
+                                           bool sync_after_buckets) {
+  // The first thing the DMA chain should be a call to a common default-registers chain.
+  // this chain resets the state of the GS. After this is buckets
+  m_category_times.fill(0);
+
+  m_render_state.buckets_base = dma.current_tag_offset();  // starts at 0 in jak 2
+  m_render_state.next_bucket = m_render_state.buckets_base + 16;
+  m_render_state.bucket_for_vis_copy = (int)jak3::BucketId::BUCKET_2;
+  m_render_state.num_vis_to_copy = jak3::LEVEL_MAX;
+
+  for (size_t bucket_id = 0; bucket_id < m_bucket_renderers.size(); bucket_id++) {
+    auto& renderer = m_bucket_renderers[bucket_id];
+    auto bucket_prof = prof.make_scoped_child(renderer->name_and_id());
+    g_current_renderer = renderer->name_and_id();
+    // lg::info("Render: {} start", g_current_renderer);
+    renderer->render(dma, &m_render_state, bucket_prof);
+    if (sync_after_buckets) {
+      auto pp = scoped_prof("finish");
+      glFinish();
+    }
+
+    // lg::info("Render: {} end", g_current_renderer);
+    //  should have ended at the start of the next chain
+    ASSERT(dma.current_tag_offset() == m_render_state.next_bucket);
+    m_render_state.next_bucket += 16;
+    vif_interrupt_callback(bucket_id + 1);
+    m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
+
+    // TODO: collision renderer
+  }
+  vif_interrupt_callback(m_bucket_renderers.size());
+
+  // TODO ending data.
+}
+
 /*!
  * This function finds buckets and dispatches them to the appropriate part.
  */
@@ -1099,6 +1301,9 @@ void OpenGLRenderer::dispatch_buckets(DmaFollower dma,
       break;
     case GameVersion::Jak2:
       dispatch_buckets_jak2(dma, prof, sync_after_buckets);
+      break;
+    case GameVersion::Jak3:
+      dispatch_buckets_jak3(dma, prof, sync_after_buckets);
       break;
     default:
       ASSERT(false);

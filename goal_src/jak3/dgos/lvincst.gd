@@ -1,5 +1,5 @@
 ("LVINCST.DGO"
- ("tpage-2869.o"
+ ("tpage-2869.go"
   "tpage-2870.go"
   "daxter-highres-ag.go"
   "jakc-highres-ag.go"
@@ -8,5 +8,5 @@
   "precursor-ag.go"
   "cipher-ag.go"
   "particleman-ag.go"
-  "lvincst.o"
+  "lvincst.go"
  ))

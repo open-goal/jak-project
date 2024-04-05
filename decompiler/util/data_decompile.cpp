@@ -990,6 +990,10 @@ const std::unordered_map<
               {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
              {"simple-sprite-system",
               {{"data", ArrayFieldDecompMeta(TypeSpec("sprite-glow-data"), 64)}}},
+             {"actor-hash-bucket",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"),
+                                             16,
+                                             ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

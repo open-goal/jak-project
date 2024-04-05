@@ -11,6 +11,58 @@
 
 ;; DECOMP BEGINS
 
+(defun pc-add-shrub-vis-mask ((dma-buf dma-buffer) (lev level))
+  "Add data so Proto.cpp can disable drawing for disabled protos."
+  (let ((packet (the-as dma-packet (-> dma-buf base))))
+    (set! (-> packet vif0) (new 'static 'vif-tag))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! (-> dma-buf base) (the pointer (&+ packet 16)))
+
+    (let ((lev-trees (-> lev bsp drawable-trees))
+          (data-ptr (the (pointer uint8) (-> dma-buf base)))
+          )
+      (dotimes (tree-idx (-> lev-trees length))
+        (let ((tree (-> lev-trees data tree-idx)))
+          (when (= (-> tree type) drawable-tree-instance-shrub)
+            (let* ((shrub-tree (the drawable-tree-instance-shrub tree))
+                   (protos (-> shrub-tree info prototype-inline-array-shrub))
+                   )
+              (dotimes (i (-> protos length))
+                (let ((proto (-> protos data i)))
+                  (when (logtest? (-> proto flags) (prototype-flags visible))
+                    ;; invisible!
+                    ;; (format 0 "invis: ~A~%" (-> proto name))
+                    (let ((src (-> proto name data)))
+                      (while (nonzero? (-> src))
+                        (set! (-> data-ptr) (-> src))
+                        (&+! src 1)
+                        (&+! data-ptr 1)
+                        )
+                      (set! (-> data-ptr) 0)
+                      (&+! data-ptr 1)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      ;; align
+      (while (nonzero? (logand data-ptr #xf))
+        (set! (-> data-ptr) 0)
+        (&+! data-ptr 1)
+        )
+      (set! (-> packet dma) (new 'static 'dma-tag
+                                 :id (dma-tag-id cnt)
+                                 :qwc (/ (&- data-ptr (-> dma-buf base)) 16))
+            )
+      (set! (-> dma-buf base) data-ptr)
+      #f
+      )
+    )
+  )
+
 (defmethod login ((this billboard))
   "Initialize the object after it is loaded."
   (adgif-shader-login (-> this flat))
@@ -245,7 +297,8 @@
   this
   )
 
-(define shrub-vu1-block (new 'static 'vu-function :length #x26a :qlength #x135))
+;; og:preserve-this
+(define shrub-vu1-block (new 'static 'vu-function #|:length #x26a :qlength #x135|#))
 
 (defun shrub-num-tris ((arg0 shrubbery))
   "Get the number of triangles in this shrubbery."
@@ -888,18 +941,38 @@
       (let ((v1-24 (-> *display* frames (-> *display* on-screen) global-buf)))
         (when (nonzero? (-> arg0 length))
           (let ((gp-0 (-> *display* frames (-> *display* on-screen) global-buf base)))
-            (start-profiling! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
-            (draw-inline-array-instance-shrub
-              v1-24
-              (&+ (-> arg0 data 0) 32)
-              (-> (the-as drawable-group (-> arg0 data 0)) length)
-              s4-0
-              )
-            (stop-profiling! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
+            ;; (start-profiling! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
+            ;; (draw-inline-array-instance-shrub
+            ;;   v1-24
+            ;;   (&+ (-> arg0 data 0) 32)
+            ;;   (-> (the-as drawable-group (-> arg0 data 0)) length)
+            ;;   s4-0
+            ;;   )
+            ;; (stop-profiling! (-> *perf-stats* data (perf-stat-bucket inst-shrub)))
 
-            (start-profiling! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
-            (draw-prototype-inline-array-shrub s5-0 s4-0)
-            (stop-profiling! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
+            ;; (start-profiling! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
+            ;; (draw-prototype-inline-array-shrub s5-0 s4-0)
+            ;; (stop-profiling! (-> *perf-stats* data (perf-stat-bucket proto-shrub)))
+
+            ;; og:preserve-this PC port shrub drawing
+            (with-dma-buffer-add-bucket ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                                         (-> (new 'static 'array bucket-id 10
+                                               (bucket-id shrub-l0-shrub)
+                                               (bucket-id shrub-l1-shrub)
+                                               (bucket-id shrub-l2-shrub)
+                                               (bucket-id shrub-l3-shrub)
+                                               (bucket-id shrub-l4-shrub)
+                                               (bucket-id shrub-l5-shrub)
+                                               (bucket-id shrub-l6-shrub)
+                                               (bucket-id shrub-l7-shrub)
+                                               (bucket-id shrub-l8-shrub)
+                                               (bucket-id shrub-l9-shrub)
+                                               )
+                                             *draw-index*
+                                             ))
+              (add-pc-tfrag3-data buf (-> *level* draw-level *draw-index*))
+              (pc-add-shrub-vis-mask buf (-> *level* draw-level *draw-index*))
+              )
             (let ((v1-33 *dma-mem-usage*))
               (when (nonzero? v1-33)
                 (set! (-> v1-33 length) (max 28 (-> v1-33 length)))

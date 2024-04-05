@@ -7,5 +7,5 @@
   "tpage-184.go"
   "tpage-181.go"
   "krimson-wall-ag.go"
-  "ctyindb-vis.o"
+  "ctyindb-vis.go"
  ))

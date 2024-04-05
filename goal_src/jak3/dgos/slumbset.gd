@@ -7,5 +7,5 @@
   "daxter-highres-ag.go"
   "keira-highres-ag.go"
   "jakc-highres-ag.go"
-  "slumbset.o"
+  "slumbset.go"
  ))

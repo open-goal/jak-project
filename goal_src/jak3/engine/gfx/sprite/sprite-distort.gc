@@ -93,7 +93,7 @@
   (none)
   )
 
-(define sprite-distort-vu1-block (new 'static 'vu-function :length 63 :qlength 32))
+(define sprite-distort-vu1-block (new 'static 'vu-function #|:length 63 :qlength 32|#))
 
 (defun sprite-init-distorter ((arg0 dma-buffer))
   "Generate DMA to initialize the distort renderer."
@@ -111,6 +111,24 @@
                                   )
                          (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                          )
+  ;; send current aspect used by the sine tables (PC only)
+  (#when PC_PORT
+    (let ((packet (the-as dma-packet (-> arg0 base))))
+      (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 1))
+      (set! (-> packet vif0) (new 'static 'vif-tag))
+      (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+      (&+! (-> arg0 base) 16)
+      )
+    (let ((aspect-vec (the-as vector (-> arg0 base))))
+      (set-vector! aspect-vec
+                   (-> *sprite-distorter-sine-tables* aspx)
+                   (-> *sprite-distorter-sine-tables* aspy)
+                   0.0
+                   0.0
+                   )
+      (&+! (-> arg0 base) 16)
+      )
+    )
   (let* ((v1-3 arg0)
          (a1-6 (the-as dma-packet (-> v1-3 base)))
          )

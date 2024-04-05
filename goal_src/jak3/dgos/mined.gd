@@ -34,5 +34,5 @@
   "particleman-ag.go"
   "cav-minecar-ag.go"
   "blue-two-upgrade-ag.go"
-  "mined.o"
+  "mined.go"
  ))

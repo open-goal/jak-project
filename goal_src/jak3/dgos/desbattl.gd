@@ -17,5 +17,5 @@
   "scorpion-gun-ag.go"
   "quantum-reflector-ag.go"
   "mh-flyer-missile-ag.go"
-  "desbattl.o"
+  "desbattl.go"
  ))

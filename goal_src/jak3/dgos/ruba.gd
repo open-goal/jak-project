@@ -1,5 +1,5 @@
 ("RUBA.DGO"
- ("tpage-2065.o"
+ ("tpage-2065.go"
   "tpage-2067.go"
   "tpage-2066.go"
   "tpage-2416.go"
@@ -13,5 +13,5 @@
   "rhino-wheel-fma-ag.go"
   "particleman-ag.go"
   "blocking-plane-ag.go"
-  "rubblea-vis.o"
+  "rubblea-vis.go"
  ))

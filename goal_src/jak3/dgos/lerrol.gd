@@ -1,3 +1,3 @@
 ("LERROL.DGO"
- ("lerrol.o"
+ ("lerrol.go"
  ))

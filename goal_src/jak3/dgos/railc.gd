@@ -1,4 +1,4 @@
 ("RAILC.DGO"
- ("tpage-2484.o"
-  "railc.o"
+ ("tpage-2484.go"
+  "railc.go"
  ))

@@ -29,5 +29,5 @@
   "min-elevator-ag.go"
   "min-boss-elev-ag.go"
   "min-bomb-train-debris-ag.go"
-  "minea-vis.o"
+  "minea-vis.go"
  ))

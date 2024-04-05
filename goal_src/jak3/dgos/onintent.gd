@@ -11,5 +11,5 @@
   "jakc-highres-ag.go"
   "samos-highres-ag.go"
   "onin-highres-ag.go"
-  "onintent.o"
+  "onintent.go"
  ))

@@ -1,5 +1,5 @@
 ("TOWERCST.DGO"
- ("tpage-3223.o"
+ ("tpage-3223.go"
   "tpage-2983.go"
   "tpage-3224.go"
   "tpage-3225.go"
@@ -16,5 +16,5 @@
   "tow-spawner-ag.go"
   "particleman-ag.go"
   "purple-three-ag.go"
-  "towercst.o"
+  "towercst.go"
  ))

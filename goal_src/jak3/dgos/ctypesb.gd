@@ -4,5 +4,5 @@
   "tpage-1758.go"
   "city-grunt-ag.go"
   "city-flitter-ag.go"
-  "ctypesb.o"
+  "ctypesb.go"
  ))

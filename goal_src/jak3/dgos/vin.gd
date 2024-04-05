@@ -10,5 +10,5 @@
   "warp-gate-ag.go"
   "vin-turbine-ag.go"
   "vin-door-ctyinda-ag.go"
-  "vinroom-vis.o"
+  "vinroom-vis.go"
  ))

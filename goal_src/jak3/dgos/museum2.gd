@@ -1,5 +1,5 @@
 ("MUSEUM2.DGO"
- ("museum-2-anims+0-ag.o"
+ ("museum-2-anims+0-ag.go"
   "tpage-3311.go"
   "tpage-3313.go"
   "tpage-3312.go"
@@ -14,5 +14,5 @@
   "ottsel-leader-ag.go"
   "ottsel-tess-ag.go"
   "jinx-highres-ag.go"
-  "museum2.o"
+  "museum2.go"
  ))

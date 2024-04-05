@@ -1,5 +1,5 @@
 ("RUBB.DGO"
- ("tpage-2058.o"
+ ("tpage-2058.go"
   "tpage-2059.go"
   "tpage-2060.go"
   "rub-rhino-door-ag.go"
@@ -7,5 +7,5 @@
   "rub-electric-gate-panel-a-ag.go"
   "security-wall-ag.go"
   "spotlight-ag.go"
-  "rubbleb-vis.o"
+  "rubbleb-vis.go"
  ))
