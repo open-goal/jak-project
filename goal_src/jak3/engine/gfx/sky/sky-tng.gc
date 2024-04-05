@@ -7,3 +7,59 @@
 
 ;; DECOMP BEGINS
 
+(defmethod update-time-and-speed ((this sky-work) (arg0 float) (arg1 float))
+  (if (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
+      (set! arg1 (* 10.0 arg1))
+      )
+  (sky-make-sun-data this 0 arg0)
+  (sky-make-sun-data this 1 arg0)
+  (sky-make-moon-data this arg0)
+  (+! (-> this off-s) (the int (* -8.0 arg1)))
+  (+! (-> this off-t) (the int (* 2.0 arg1)))
+  (set! (-> this time) arg0)
+  0
+  (none)
+  )
+
+(defmethod update-colors-for-time ((this sky-work) (arg0 float))
+  0
+  0
+  0.0
+  (let ((s5-0 *no-cloud-mood-color-table*))
+    (let ((s3-0 (-> *level* level-default mood-context))
+          (s4-0 (new 'stack-no-clear 'vector))
+          )
+      (let* ((v1-3 (the int arg0))
+             (f0-4 (- arg0 (the float v1-3)))
+             (f1-3 (- 1.0 f0-4))
+             (a0-4 (/ v1-3 24))
+             (a1-2 (-> *mood-interp-table* hour (- v1-3 (* 24 a0-4))))
+             (a0-7 (-> a1-2 snapshot1))
+             (v1-7 (-> a1-2 snapshot2))
+             (f0-6 (+ (* f1-3 (-> a1-2 morph-start)) (* f0-4 (-> a1-2 morph-end))))
+             )
+        (cond
+          ((= a0-7 v1-7)
+           (set! (-> this sun0-color quad) (-> s5-0 data a0-7 lgt-color quad))
+           )
+          (else
+            (let ((a1-5 (-> s5-0 data a0-7))
+                  (v1-11 (-> s5-0 data v1-7))
+                  )
+              (vector4-lerp! (-> this sun0-color) (-> a1-5 lgt-color) (-> v1-11 lgt-color) f0-6)
+              )
+            )
+          )
+        )
+      (set! (-> this sun0-color-lower quad) (-> s3-0 times 1 quad))
+      (set! (-> this ambi-color-lower quad) (-> s3-0 times 0 quad))
+      (set-vector! s4-0 1.9921875 1.9921875 1.9921875 1.0)
+      (vector4-lerp! (-> this ambi-color) (-> this ambi-color-lower) s4-0 (-> *mood-control* lightning-flash))
+      )
+    (set! (-> this sun0-color quad) (-> this sun0-color quad))
+    (set! (-> this sun1-color quad) (-> s5-0 data 7 lgt-color quad))
+    (set! (-> this moon-color quad) (-> s5-0 data 6 lgt-color quad))
+    )
+  0
+  (none)
+  )
