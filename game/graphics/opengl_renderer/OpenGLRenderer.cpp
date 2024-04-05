@@ -135,6 +135,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
 
     m_blit_displays =
         init_bucket_renderer<BlitDisplays>("blit", BucketCategory::OTHER, BucketId::BLIT_START);
+    init_bucket_renderer<VisDataHandler>("vis", BucketCategory::OTHER, BucketId::BUCKET_2);
 
     // 4
     init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
@@ -286,8 +287,12 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
                                                BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
 
-    //    init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
-    //                                               BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
+    init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
+                                               BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
+    init_bucket_renderer<TextureUploadHandler>("tex-hud-pris2", BucketCategory::TEX,
+                                               BucketId::TEX_HUD_PRIS2, texture_animator);
+    init_bucket_renderer<ProgressRenderer>("hud-draw-hud-alpha", BucketCategory::OTHER,
+                                           BucketId::HUD_DRAW_HUD_ALPHA, 0x1000);
 
     // 583
     init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x8000);

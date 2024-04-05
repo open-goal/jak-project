@@ -45,7 +45,7 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
-  if (render_state->version == GameVersion::Jak2) {
+  if (render_state->version >= GameVersion::Jak2) {
     // jak 2 proto visibility
     auto proto_mask_data = dma.read_and_advance();
     m_proto_vis_data = proto_mask_data.data;
