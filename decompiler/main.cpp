@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
 
   mem_log("After init: {} MB\n", get_peak_rss() / (1024 * 1024));
 
-  std::vector<fs::path> dgos, objs, strs, tex_strs;
+  std::vector<fs::path> dgos, objs, strs, tex_strs, art_strs;
   for (const auto& dgo_name : config.dgo_names) {
     dgos.push_back(in_folder / dgo_name);
   }
@@ -149,11 +149,16 @@ int main(int argc, char** argv) {
     tex_strs.push_back(in_folder / str_name);
   }
 
+  for (const auto& str_name : config.str_art_file_names) {
+    art_strs.push_back(in_folder / str_name);
+  }
+
   mem_log("After config read: {} MB", get_peak_rss() / (1024 * 1024));
 
   // build file database
   lg::info("Setting up object file DB...");
-  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, tex_strs, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, strs, tex_strs, art_strs,
+                  config);
 
   // Explicitly fail if a file in the 'allowed_objects' list wasn't found in the DB
   // as this is another silent error that can be confusing
@@ -333,7 +338,8 @@ int main(int argc, char** argv) {
     auto level_out_path =
         file_util::get_jak_project_dir() / "out" / game_version_names[config.game_version] / "fr3";
     file_util::create_dir_if_needed(level_out_path);
-    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config, level_out_path);
+    extract_all_levels(db, tex_db, config.levels_to_extract, "GAME.CGO", config,
+                       level_out_path);
   }
 
   mem_log("After extraction: {} MB", get_peak_rss() / (1024 * 1024));

@@ -92,7 +92,6 @@ tfrag3::Texture make_texture(u32 id,
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,
                                  const TextureDB& tex_db) {
-  ASSERT(lev.textures.empty());
   const auto& level_it = tex_db.texture_ids_per_level.find(level_name);
   if (level_it != tex_db.texture_ids_per_level.end()) {
     for (auto id : level_it->second) {
@@ -280,6 +279,9 @@ void extract_common(const ObjectFileDB& db,
   std::map<std::string, level_tools::ArtData> art_group_data;
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level, art_group_data);
+
+  add_all_textures_from_level(tfrag_level, "ARTSPOOL", tex_db);
+  extract_art_groups_from_level(db, tex_db, {}, "ARTSPOOL", tfrag_level, art_group_data);
 
   std::set<std::string> textures_we_have;
 

@@ -169,6 +169,7 @@ class ObjectFileDB {
                const std::vector<fs::path>& object_files,
                const std::vector<fs::path>& str_files,
                const std::vector<fs::path>& str_tex_files,
+               const std::vector<fs::path>& str_art_files,
                const Config& config);
   std::string generate_dgo_listing();
   std::string generate_obj_listing(const std::unordered_set<std::string>& merged_objs);

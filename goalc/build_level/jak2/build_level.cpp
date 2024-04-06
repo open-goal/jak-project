@@ -132,7 +132,7 @@ bool run_build_level(const std::string& input_file,
       objs.push_back(iso_folder / obj_name);
     }
 
-    decompiler::ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, {},
+    decompiler::ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, {}, {},
                                 config);
 
     // need to process link data for tpages

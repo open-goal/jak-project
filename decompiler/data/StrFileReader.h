@@ -19,6 +19,8 @@ class StrFileReader {
   explicit StrFileReader(const fs::path& file_path, GameVersion version);
   int chunk_count() const;
   const std::vector<u8>& get_chunk(int idx) const;
+  std::string get_chunk_art_name(int idx) const;
+
   std::string get_full_name(const std::string& short_name) const;
   std::string get_texture_name() const;
 
