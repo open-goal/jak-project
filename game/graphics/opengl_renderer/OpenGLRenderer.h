@@ -135,5 +135,6 @@ class OpenGLRenderer {
   } m_fbo_state;
 
   std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
+  std::unique_ptr<BucketRenderer> m_jak3_eye_renderer;
   GameVersion m_version;
 };
