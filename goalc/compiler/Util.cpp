@@ -314,7 +314,7 @@ bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
   }
 
   // check global constants
-  if (m_global_constants.find(obj.as_symbol()) != m_global_constants.end()) {
+  if (m_global_constants.lookup(obj.as_symbol())) {
     return true;
   }
 

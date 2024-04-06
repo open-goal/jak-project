@@ -700,10 +700,10 @@ StaticResult Compiler::compile_static(const goos::Object& form_before_macro, Env
     }
 
     // as a constant
-    auto kv = m_global_constants.find(form.as_symbol());
-    if (kv != m_global_constants.end()) {
+    auto kv = m_global_constants.lookup(form.as_symbol());
+    if (kv) {
       // expand constant and compile again.
-      return compile_static(kv->second, env);
+      return compile_static(*kv, env);
     } else {
       throw_compiler_error(form, "The symbol {} could not be evaluated at compile time",
                            form.print());

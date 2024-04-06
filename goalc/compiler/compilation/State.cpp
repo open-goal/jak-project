@@ -98,10 +98,10 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   }
 
   auto& state_name = args.unnamed.at(0).as_symbol();
-  auto existing_var = m_symbol_types.find(state_name);
+  auto existing_var = m_symbol_types.lookup(state_name);
 
   TypeSpec type_to_use;
-  if (existing_var == m_symbol_types.end()) {
+  if (!existing_var) {
     // we're a new state. we must have a type.
     if (!state_type) {
       throw_compiler_error(form,
@@ -110,11 +110,11 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                            state_name.name_ptr);
     }
     type_to_use = *state_type;
-    m_symbol_types[state_name] = *state_type;
+    m_symbol_types.set(state_name, *state_type);
   } else {
-    type_to_use = existing_var->second;
+    type_to_use = *existing_var;
     if (state_type) {
-      typecheck(form, existing_var->second, *state_type,
+      typecheck(form, *existing_var, *state_type,
                 fmt::format("type of state {}", state_name.name_ptr));
     }
   }

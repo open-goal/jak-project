@@ -346,8 +346,7 @@ Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* en
       if (uneval_head.as_symbol() == "inspect" || uneval_head.as_symbol() == "print") {
         is_method_call = true;
       } else {
-        if (is_local_symbol(uneval_head, env) ||
-            m_symbol_types.find(uneval_head.as_symbol()) != m_symbol_types.end()) {
+        if (is_local_symbol(uneval_head, env) || m_symbol_types.lookup(uneval_head.as_symbol())) {
           // the local environment (mlets, lexicals, constants, globals) defines this symbol.
           // this will "win" over a method name lookup, so we should compile as normal
           head = compile_error_guard(args.unnamed.front(), env);

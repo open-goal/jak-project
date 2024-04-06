@@ -125,10 +125,8 @@ class Compiler {
   // TODO - this should be able to be removed, these are stored in `m_symbol_info`
   std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
   // TODO - this should be able to be removed, these are stored in `m_symbol_info`
-  std::unordered_map<goos::InternedSymbolPtr, TypeSpec, goos::InternedSymbolPtr::hash>
-      m_symbol_types;
-  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
-      m_global_constants;
+  goos::InternedPtrMap<TypeSpec> m_symbol_types;
+  goos::InternedPtrMap<goos::Object> m_global_constants;
   std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
       m_inlineable_functions;
   CompilerSettings m_settings;

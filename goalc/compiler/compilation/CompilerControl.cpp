@@ -362,7 +362,7 @@ std::string Compiler::make_symbol_info_description(const symbol_info::SymbolInfo
   switch (info->m_kind) {
     case symbol_info::Kind::GLOBAL_VAR:
       return fmt::format("[Global Variable] Type: {} Defined: {}",
-                         m_symbol_types.at(m_goos.intern_ptr(info->m_name)).print(),
+                         m_symbol_types.lookup(m_goos.intern_ptr(info->m_name))->print(),
                          m_goos.reader.db.get_info_for(info->m_def_form));
     case symbol_info::Kind::LANGUAGE_BUILTIN:
       return fmt::format("[Built-in Form] {}\n", info->m_name);
@@ -379,7 +379,8 @@ std::string Compiler::make_symbol_info_description(const symbol_info::SymbolInfo
     case symbol_info::Kind::CONSTANT:
       return fmt::format(
           "[Constant] Name: {} Value: {} Defined: {}", info->m_name,
-          m_global_constants.at(m_goos.reader.symbolTable.intern(info->m_name.c_str())).print(),
+          m_global_constants.lookup(m_goos.reader.symbolTable.intern(info->m_name.c_str()))
+              ->print(),
           m_goos.reader.db.get_info_for(info->m_def_form));
     case symbol_info::Kind::FUNCTION:
       return fmt::format("[Function] Name: {} Defined: {}", info->m_name,
@@ -615,9 +616,9 @@ std::vector<symbol_info::SymbolInfo*> Compiler::lookup_exact_name_info(
 }
 
 std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name) {
-  const auto& it = m_symbol_types.find(m_goos.intern_ptr(symbol_name));
-  if (it != m_symbol_types.end()) {
-    return it->second;
+  const auto it = m_symbol_types.lookup(m_goos.intern_ptr(symbol_name));
+  if (it) {
+    return *it;
   }
   return {};
 }
@@ -686,7 +687,7 @@ Compiler::generate_per_file_symbol_info() {
       if (sym_info->m_kind == symbol_info::Kind::CONSTANT) {
         var.type = "unknown";  // Unfortunately, constants are not properly typed
       } else {
-        var.type = m_symbol_types.at(m_goos.intern_ptr(var.name)).base_type();
+        var.type = m_symbol_types.lookup(m_goos.intern_ptr(var.name))->base_type();
       }
       var.def_location = def_loc;
       if (sym_info->m_kind == symbol_info::Kind::GLOBAL_VAR) {
@@ -701,8 +702,8 @@ Compiler::generate_per_file_symbol_info() {
       func.def_location = def_loc;
       func.args = Docs::get_args_from_docstring(sym_info->m_args, func.description);
       // The last arg in the typespec is the return type
-      const auto& func_type = m_symbol_types.at(m_goos.intern_ptr(func.name));
-      func.return_type = func_type.last_arg().base_type();
+      const auto func_type = m_symbol_types.lookup(m_goos.intern_ptr(func.name));
+      func.return_type = func_type->last_arg().base_type();
       file_doc.functions.push_back(func);
     } else if (sym_info->m_kind == symbol_info::Kind::TYPE) {
       Docs::TypeDocumentation type;
