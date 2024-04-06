@@ -386,33 +386,32 @@ Val* Compiler::compile_deftype(const goos::Object& form, const goos::Object& res
   auto result = parse_deftype(rest, &m_ts, &m_global_constants);
 
   // look up the type name
-  auto kv = m_symbol_types.find(m_goos.intern_ptr(result.type.base_type()));
-  if (kv != m_symbol_types.end() && kv->second.base_type() != "type") {
+  auto kv = m_symbol_types.lookup(m_goos.intern_ptr(result.type.base_type()));
+  if (kv && kv->base_type() != "type") {
     // we already have something that's not a type with the same name, this is bad.
     lg::print("[Warning] deftype will redefine {} from {} to a type.\n", result.type.base_type(),
-              kv->second.print());
+              kv->print());
   }
   // remember that this is a type
-  m_symbol_types[m_goos.intern_ptr(result.type.base_type())] = m_ts.make_typespec("type");
+  m_symbol_types.set(m_goos.intern_ptr(result.type.base_type()), m_ts.make_typespec("type"));
 
   // add declared states
   for (auto& state : result.type_info->get_states_declared_for_type()) {
     auto interned_state_first = m_goos.intern_ptr(state.first);
-    auto existing_type = m_symbol_types.find(interned_state_first);
-    if (existing_type != m_symbol_types.end() && existing_type->second != state.second) {
+    auto existing_type = m_symbol_types.lookup(interned_state_first);
+    if (existing_type && *existing_type != state.second) {
       if (m_throw_on_define_extern_redefinition) {
         throw_compiler_error(form, "deftype would redefine the type of state {} from {} to {}.",
-                             state.first, existing_type->second.print(), state.second.print());
+                             state.first, existing_type->print(), state.second.print());
       } else {
         print_compiler_warning(
             "[Warning] deftype has redefined the type of state {}\npreviously: {}\nnow: "
             "{}\n",
-            state.first.c_str(), existing_type->second.print().c_str(),
-            state.second.print().c_str());
+            state.first.c_str(), existing_type->print().c_str(), state.second.print().c_str());
       }
     }
 
-    m_symbol_types[interned_state_first] = state.second;
+    m_symbol_types.set(interned_state_first, state.second);
     m_symbol_info.add_fwd_dec(state.first, form);
   }
 
@@ -1444,12 +1443,12 @@ Val* Compiler::compile_declare_type(const goos::Object& form, const goos::Object
 
   m_ts.forward_declare_type_as(type_name.name_ptr, kind);
 
-  auto existing_type = m_symbol_types.find(type_name);
-  if (existing_type != m_symbol_types.end() && existing_type->second != TypeSpec("type")) {
+  auto existing_type = m_symbol_types.lookup(type_name);
+  if (existing_type && *existing_type != TypeSpec("type")) {
     throw_compiler_error(form, "Cannot forward declare {} as a type: it is already a {}",
-                         type_name.name_ptr, existing_type->second.print());
+                         type_name.name_ptr, existing_type->print());
   }
-  m_symbol_types[type_name] = TypeSpec("type");
+  m_symbol_types.set(type_name, TypeSpec("type"));
 
   return get_none();
 }
