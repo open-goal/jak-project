@@ -165,7 +165,9 @@ std::string Debugger::get_info_about_addr(u32 addr) {
     if (map_loc.empty) {
       return "Unknown Address";
     }
-    std::string result = fmt::format("Object: {}\n", map_loc.obj_name);
+    std::string result = fmt::format("Object: {} {} (0x{:x} to 0x{:x}) offset 0x{:x}\n",
+                                     map_loc.obj_name, map_loc.seg_id, map_loc.start_addr,
+                                     map_loc.end_addr, addr - map_loc.start_addr);
     u64 obj_offset = addr - map_loc.start_addr;
     FunctionDebugInfo* info = nullptr;
     std::string name;
