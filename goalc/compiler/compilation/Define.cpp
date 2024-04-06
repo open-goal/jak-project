@@ -24,11 +24,11 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
   auto& val = args.unnamed.at(1);
 
   // check we aren't duplicated a name as both a symbol and global constant
-  auto global_constant = m_global_constants.find(sym.as_symbol());
-  if (global_constant != m_global_constants.end()) {
+  auto global_constant = m_global_constants.lookup(sym.as_symbol());
+  if (global_constant) {
     throw_compiler_error(
         form, "Cannot define a symbol named {}, it already exists as a global constant (value {}).",
-        sym.print(), global_constant->second.print());
+        sym.print(), global_constant->print());
   }
 
   auto fe = env->function_env();
@@ -66,16 +66,16 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
     throw_compiler_error(form, "Cannot define {} because it cannot be set.", sym_val->print());
   }
 
-  auto existing_type = m_symbol_types.find(sym.as_symbol());
-  if (existing_type == m_symbol_types.end()) {
-    m_symbol_types[sym.as_symbol()] = in_gpr->type();
+  auto existing_type = m_symbol_types.lookup(sym.as_symbol());
+  if (!existing_type) {
+    m_symbol_types.set(sym.as_symbol(), in_gpr->type());
   } else {
     bool do_typecheck = true;
     if (args.has_named("no-typecheck")) {
       do_typecheck = !get_true_or_false(form, args.named.at("no-typecheck"));
     }
     if (do_typecheck) {
-      typecheck(form, existing_type->second, in_gpr->type(),
+      typecheck(form, *existing_type, in_gpr->type(),
                 fmt::format("define on existing symbol {}", sym.as_symbol().name_ptr));
     }
   }
@@ -107,27 +107,26 @@ Val* Compiler::compile_define_extern(const goos::Object& form, const goos::Objec
 
   auto new_type = parse_typespec(typespec, env);
 
-  auto existing_type = m_symbol_types.find(sym.as_symbol());
+  auto existing_type = m_symbol_types.lookup(sym.as_symbol());
   // symbol already declared, and doesn't match existing definition. do more checks...
-  if (existing_type != m_symbol_types.end() && existing_type->second != new_type) {
+  if (existing_type && *existing_type != new_type) {
     if (m_allow_inconsistent_definition_symbols.find(symbol_string(sym)) ==
         m_allow_inconsistent_definition_symbols.end()) {
       // throw if we have throws enabled, and new definition is NOT just more generic
       // (that case is fine in goal)
-      if (!m_ts.tc(new_type, existing_type->second) && m_throw_on_define_extern_redefinition) {
+      if (!m_ts.tc(new_type, *existing_type) && m_throw_on_define_extern_redefinition) {
         throw_compiler_error(form,
                              "define-extern would redefine the type of symbol {} from {} to {}.",
-                             symbol_string(sym), existing_type->second.print(), new_type.print());
+                             symbol_string(sym), existing_type->print(), new_type.print());
       } else {
         print_compiler_warning(
             "define-extern has redefined the type of symbol {}\npreviously: {}\nnow: {}\n",
-            symbol_string(sym).c_str(), existing_type->second.print().c_str(),
-            new_type.print().c_str());
+            symbol_string(sym).c_str(), existing_type->print().c_str(), new_type.print().c_str());
       }
     }
   }
 
-  m_symbol_types[sym.as_symbol()] = new_type;
+  m_symbol_types.set(sym.as_symbol(), new_type);
   m_symbol_info.add_fwd_dec(symbol_string(sym), form);
   return get_none();
 }

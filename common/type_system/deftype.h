@@ -17,9 +17,7 @@ struct DeftypeResult {
   bool create_runtime_type = true;
 };
 
-DeftypeResult parse_deftype(
-    const goos::Object& deftype,
-    TypeSystem* ts,
-    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>*
-        constants = nullptr);
+DeftypeResult parse_deftype(const goos::Object& deftype,
+                            TypeSystem* ts,
+                            goos::EnvironmentMap* constants = nullptr);
 TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src);

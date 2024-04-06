@@ -187,13 +187,13 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
       }
 
       // it can either be a global or symbol
-      const auto& global_constant = m_global_constants.find(expanded.as_symbol());
-      const auto& existing_symbol = m_symbol_types.find(expanded.as_symbol());
+      const auto* global_constant = m_global_constants.lookup(expanded.as_symbol());
+      const auto* existing_symbol = m_symbol_types.lookup(expanded.as_symbol());
 
       // see if it's a constant
-      if (global_constant != m_global_constants.end()) {
+      if (global_constant) {
         // check there is no symbol with the same name, this is likely a bug and complain.
-        if (existing_symbol != m_symbol_types.end()) {
+        if (existing_symbol) {
           throw_compiler_error(
               code,
               "Ambiguous symbol: {} is both a global variable and a constant and it "
@@ -201,7 +201,7 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
         }
 
         // got a global constant
-        return try_constant_propagation(global_constant->second, env);
+        return try_constant_propagation(*global_constant, env);
       } else {
         // return to the compiler, we can't figure it out.
         return {expanded, true};
