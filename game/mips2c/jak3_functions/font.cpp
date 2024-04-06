@@ -1361,7 +1361,7 @@ block_146:
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
-  c->vftoi4(DEST::xyzw, vf1, vf1);                  // vftoi4.xyzw vf1, vf1
+  c->vftoi4_sat(DEST::xyzw, vf1, vf1);              // vftoi4.xyzw vf1, vf1
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf2, vf2);                    // vmulq.xyz vf2, vf2, Q
   // nop                                            // sll r0, r0, 0
@@ -1383,7 +1383,7 @@ block_146:
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
-  c->vftoi4(DEST::xyzw, vf2, vf2);                  // vftoi4.xyzw vf2, vf2
+  c->vftoi4_sat(DEST::xyzw, vf2, vf2);              // vftoi4.xyzw vf2, vf2
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf3, vf3);                    // vmulq.xyz vf3, vf3, Q
   // nop                                            // sll r0, r0, 0
@@ -1405,7 +1405,7 @@ block_146:
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
-  c->vftoi4(DEST::xyzw, vf3, vf3);                  // vftoi4.xyzw vf3, vf3
+  c->vftoi4_sat(DEST::xyzw, vf3, vf3);              // vftoi4.xyzw vf3, vf3
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf4, vf4);                    // vmulq.xyz vf4, vf4, Q
   // nop                                            // sll r0, r0, 0
@@ -1435,7 +1435,7 @@ block_152:
   c->vadd_bc(DEST::x, BC::w, vf23, vf23, vf14);     // vaddw.x vf23, vf23, vf14
 
 block_153:
-  c->vftoi4(DEST::xyzw, vf4, vf4);                  // vftoi4.xyzw vf4, vf4
+  c->vftoi4_sat(DEST::xyzw, vf4, vf4);              // vftoi4.xyzw vf4, vf4
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
@@ -2187,7 +2187,7 @@ block_225:
   // nop                                            // sll r0, r0, 0
   c->lqc2(vf11, 704, v1);                           // lqc2 vf11, 704(v1)
   // nop                                            // sll r0, r0, 0
-  c->vftoi4(DEST::xyzw, vf1, vf1);                  // vftoi4.xyzw vf1, vf1
+  c->vftoi4_sat(DEST::xyzw, vf1, vf1);              // vftoi4.xyzw vf1, vf1
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf2, vf2);                    // vmulq.xyz vf2, vf2, Q
   // nop                                            // sll r0, r0, 0
@@ -2209,7 +2209,7 @@ block_225:
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
-  c->vftoi4(DEST::xyzw, vf2, vf2);                  // vftoi4.xyzw vf2, vf2
+  c->vftoi4_sat(DEST::xyzw, vf2, vf2);              // vftoi4.xyzw vf2, vf2
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf3, vf3);                    // vmulq.xyz vf3, vf3, Q
   // nop                                            // sll r0, r0, 0
@@ -2231,7 +2231,7 @@ block_225:
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
-  c->vftoi4(DEST::xyzw, vf3, vf3);                  // vftoi4.xyzw vf3, vf3
+  c->vftoi4_sat(DEST::xyzw, vf3, vf3);              // vftoi4.xyzw vf3, vf3
   // nop                                            // sll r0, r0, 0
   c->vmulq(DEST::xyz, vf4, vf4);                    // vmulq.xyz vf4, vf4, Q
   // nop                                            // sll r0, r0, 0
@@ -2261,7 +2261,7 @@ block_230:
   c->vadd_bc(DEST::x, BC::w, vf23, vf23, vf14);     // vaddw.x vf23, vf23, vf14
 
 block_231:
-  c->vftoi4(DEST::xyzw, vf4, vf4);                  // vftoi4.xyzw vf4, vf4
+  c->vftoi4_sat(DEST::xyzw, vf4, vf4);              // vftoi4.xyzw vf4, vf4
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0

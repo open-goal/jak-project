@@ -7003,7 +7003,7 @@
 
 (deftype mood-channel (structure)
   ((data float   24 :offset-assert 0) ;; guessed by decompiler
-   (vecs vector4 6  :offset 0) ;; guessed by decompiler
+   (vecs vector4 6 :inline :offset 0) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x60
@@ -7034,6 +7034,7 @@
 
 (deftype mood-fog-table (structure)
   ((data mood-fog 8 :inline :offset-assert 0) ;; guessed by decompiler
+   (_data uint128 24 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x180
@@ -7059,6 +7060,7 @@
 
 (deftype mood-color-table (structure)
   ((data mood-color 8 :inline :offset-assert 0) ;; guessed by decompiler
+   (_data uint128 16 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x100
@@ -7144,6 +7146,7 @@
   ((time float  :offset-assert 0)
    (fade float  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
@@ -7153,6 +7156,7 @@
   ((flicker-off uint8  :offset-assert 0)
    (flicker-on  uint8  :offset-assert 1)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
@@ -7202,6 +7206,7 @@
    (length uint8  :offset-assert 5)
    (height uint8  :offset-assert 6)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x7
   :flag-assert         #x900000007
@@ -7238,6 +7243,7 @@
 (deftype mood-context (mood-context-core3)
   ((itimes vector4w 4 :inline  :offset-assert 1776) ;; guessed by decompiler
    (state  uint32   32 :offset-assert 1840) ;; guessed by decompiler
+   (data uint128   123 :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x7b0
@@ -7299,10 +7305,10 @@
   :size-assert         #x118
   :flag-assert         #x1900000118
   (:methods
-    (mood-control-method-9 () none) ;; 9 ;; (init-weather! (_type_) none)
-    (mood-control-method-10 () none) ;; 10 ;; (update-mood-weather! (_type_ float float float float) none)
-    (mood-control-method-11 () none) ;; 11 ;; (update-mood-range! (_type_ float float float float) none)
-    (mood-control-method-12 () none) ;; 12 ;; (set-time-for-random-weather! (_type_ float float) none)
+    (init-weather! (_type_) none) ;; 9
+    (set-cloud-and-fog-interp! (_type_ float float float float) none) ;; 10 ;; (update-mood-weather! (_type_ float float float float) none)
+    (update-mood-range! (_type_ float float float float) none) ;; 11
+    (set-time-for-random-weather! (_type_ float float) none) ;; 12
     (set-special-interps!
       "Sets the `*-special-interp` values with the given values
        @param! this The [[mood-control]]
@@ -7310,20 +7316,20 @@
        @param rate-interp Value to set [[this::rate-special-interp]]
        @param set-current-interp? Uses `target-interp` to set [[this::current-special-interp]
        @returns [[none]]"
-      (_type_ float float symbol) none) ;; 13 ;; (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
+      (_type_ float float symbol) none) ;; 13
     (weather-event-concluded? ;; TODO - guess at name
       "@returns [[#t]] if [[this::override-weather-flag]] is set, we aren't in a cutscene and [[this::current-special-interp]] is equal to `0.0`"
       (_type_) symbol) ;; 14 ;; (apply-mood-color (_type_ mood-control-work) none)
-    (mood-control-method-15 () none) ;; 15 ;; (apply-mood-channels (_type_ mood-control-work) none)
-    (mood-control-method-16 () none) ;; 16 ;; (adjust-num-clouds! (_type_ mood-control-work) none)
-    (mood-control-method-17 () none) ;; 17 ;; (gen-lightning-and-thunder! (_type_) number)
-    (mood-control-method-18 () none) ;; 18 ;; (play-or-stop-lightning! (_type_ sound-spec vector) sound-id)
-    (mood-control-method-19 () none) ;; 19
-    (mood-control-method-20 () none) ;; 20
-    (mood-control-method-21 () none) ;; 21
-    (mood-control-method-22 () none) ;; 22
-    (mood-control-method-23 () none) ;; 23
-    (mood-control-method-24 () none) ;; 24
+    (set-lightning-time! (_type_ int int float) none) ;; 15 ;; (apply-mood-channels (_type_ mood-control-work) none)
+    (apply-mood-clouds-and-fog (_type_ mood-control-work) none) ;; 16 ;; (adjust-num-clouds! (_type_ mood-control-work) none)
+    (apply-mood-fog (_type_ mood-control-work mood-color-table mood-color-table mood-color-table float) none) ;; 17
+    (apply-fog-height (_type_ mood-control-work float float float float) none) ;; 18
+    (apply-mood-colors (_type_ mood-control-work) none) ;; 19
+    (mood-control-method-20 (_type_ mood-control-work mood-color-table mood-color-table mood-color-table float) none) ;; 20
+    (apply-mood-channels (_type_ mood-control-work) none) ;; 21
+    (adjust-num-clouds (_type_ mood-control-work) none) ;; 22
+    (gen-lightning-and-thunder! (_type_ int) none) ;; 23
+    (play-or-stop-lightning-sfx! (_type_ sound-spec vector) none) ;; 24
     )
   )
 
@@ -11257,9 +11263,9 @@
   :size-assert         #x2814
   :flag-assert         #x2700002814
   (:methods
-    (sky-work-method-9 () none) ;; 9 ;; (init-sun-data! (_type_ int float float float) none)
-    (sky-work-method-10 () none) ;; 10 ;; (init-orbit-settings! (_type_ int float float float float float float) none)
-    (sky-work-method-11 () none) ;; 11 ;; (update-colors-for-time (_type_ float) none)
+    (init-sun-data! (_type_ int float float float) none) ;; 9
+    (init-orbit-settings! (_type_ int float float float float float float) none) ;; 10
+    (update-colors-for-time (_type_ float) none) ;; 11
     (update-time-and-speed (_type_ float float) none) ;; 12
     (sky-work-method-13 () none) ;; 13
     (draw (_type_) none) ;; 14 ;; (update-matrix (_type_ matrix) none)
@@ -23288,7 +23294,7 @@
    (cam-outside-bsp          uint8                       :offset        152)
    (cam-using-back           uint8                       :offset-assert 153)
    (cam-box-idx              uint16                      :offset-assert 154)
-   ; (ambients                 symbol                      :offset-assert 156) ;; now just #t?
+   (ambients                 symbol                      :offset-assert 156) ;; now just #t?
    (subdivide-close          float                       :offset 160)
    (subdivide-far            float                       :offset-assert 164)
    (race-meshes              (array entity-race-mesh)    :offset-assert 168)
@@ -31464,14 +31470,14 @@
 (define-extern palette-select-special (function mood-context-core3 symbol))
 (define-extern clear-mood-times (function mood-context symbol)) ;;
 (define-extern update-mood-itimes (function mood-context none))
-;; (define-extern update-mood-direction function) ;; (function mood-context-core3 mood-table float float)
+(define-extern update-mood-direction (function mood-context-core3 mood-table float float))
 (define-extern update-mood-exterior (function mood-context-core3 mood-table float int object))
-;; (define-extern copy-mood-exterior function) ;; (function mood-context symbol)
-;; (define-extern copy-mood-exterior-ambi function) ;; (function mood-context symbol none)
+(define-extern copy-mood-exterior (function mood-context symbol))
+(define-extern copy-mood-exterior-ambi (function mood-context symbol none))
 (define-extern clear-mood-context (function mood-context symbol))
-;; (define-extern update-mood-interior function) ;; (function mood-context float)
-;; (define-extern update-mood-interior-ambient function)
-;; (define-extern update-mood-flames function) ;; (function mood-context int int int float float float float :behavior time-of-day-proc)
+(define-extern update-mood-interior (function mood-context symbol float))
+(define-extern update-mood-interior-ambient (function mood-context symbol float vector))
+(define-extern update-mood-flames (function mood-context int int int float float float float :behavior time-of-day-proc))
 (define-extern *flash0* (array float))
 (define-extern *flash1* (array float))
 (define-extern *flash2* (array float))
@@ -31480,22 +31486,21 @@
 (define-extern *flash5* (array float))
 (define-extern *flash6* (array float))
 (define-extern *flash7* (array float))
-;; (define-extern update-mood-light function) ;; (function mood-context int int float float float float float float)
-;; (define-extern update-mood-lava function) ;; (function mood-context int int float float float float float float)
-;; (define-extern update-mood-flicker function) ;; (function mood-context int int none)
-;; (define-extern update-mood-florescent function) ;; (function mood-context int int float)
-;; (define-extern update-mood-electricity function) ;; (function mood-context int int float float none)
-;; (define-extern update-mood-pulse function) ;; (function mood-context int int float float float float none)
-;; (define-extern update-mood-strobe function) ;; (function mood-context int int int float float)
-;; (define-extern update-mood-caustics function) ;; (function mood-context int float float float float float)
-;; (define-extern overide-mood-fog function)
-;; (define-extern overide-mood-color function)
+(define-extern update-mood-light (function mood-context int int float float float float float float))
+(define-extern update-mood-lava (function mood-context int int float float float float float float))
+(define-extern update-mood-flicker (function mood-context int int none))
+(define-extern update-mood-florescent (function mood-context int int float))
+(define-extern update-mood-electricity (function mood-context int int float float none))
+(define-extern update-mood-pulse (function mood-context int int float float float float none))
+(define-extern update-mood-strobe (function mood-context int int int float float))
+(define-extern update-mood-caustics (function mood-context int float float float float float))
+(define-extern overide-mood-fog (function mood-context float int float none))
+(define-extern overide-mood-color (function mood-context float int float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-funcs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ctywide-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -31504,9 +31509,7 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-#|
 (deftype ctysluma-states (structure)
   ((light   light-state        :inline :offset-assert 0)
    (flame   flames-state       :inline :offset-assert 8)
@@ -31518,9 +31521,7 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype ctyslumb-states (structure)
   ((light   light-state        :inline :offset-assert 0)
    (spec-0  sp-field-init-spec         :offset-assert 8)
@@ -31531,9 +31532,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype ctyslumc-states (structure)
   ((light   light-state        :inline :offset-assert 0)
    (spec-0  sp-field-init-spec         :offset-assert 8)
@@ -31544,9 +31543,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype ctygenb-states (structure)
   ((light        light-state        :inline :offset-assert 0)
    (flame        flames-state       :inline :offset-assert 8)
@@ -31561,9 +31558,7 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype mhcitya-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
@@ -31571,9 +31566,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype mhcityb-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
@@ -31581,9 +31574,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype ctyport-states (structure)
   ((light           light-state        :inline :offset-assert 0)
    (spec-0          sp-field-init-spec         :offset-assert 8)
@@ -31593,9 +31584,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype ctymarka-states (structure)
   ((light light-state :inline :offset-assert 0)
    (blink float               :offset-assert 8)
@@ -31604,9 +31593,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype mountain-states (structure)
   ((light0 light-state        :inline :offset-assert 0)
    (light1 light-state        :inline :offset-assert 8)
@@ -31622,9 +31609,7 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype ctyinda-states (structure)
   ((light light-state :inline :offset-assert 0)
    )
@@ -31632,9 +31617,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype ctyindb-states (structure)
   ((light   light-state :inline :offset-assert 0)
    (flicker float               :offset-assert 8)
@@ -31643,9 +31626,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype atoll-states (structure)
   ((light     light-state :inline :offset-assert 0)
    (explosion float               :offset-assert 8)
@@ -31654,43 +31635,42 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
 (define-extern update-mood-default (function mood-context float int none :behavior time-of-day-proc))
-;; (define-extern update-mood-copy-parent function)
-;; (define-extern get-sphere-interp function) ;; (function sphere vector float float float)
-;; (define-extern update-mood-ctywide function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern update-mood-copy-ctywide function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-ctysluma function) ;; (function mood-context float)
-;; (define-extern update-mood-ctysluma function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-ctyslumb function) ;; (function mood-context uint)
-;; (define-extern update-mood-ctyslumb function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-ctyslumc function) ;; (function mood-context none)
-;; (define-extern update-mood-ctyslumc function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-ctygenb function)
-;; (define-extern update-mood-ctygenb function)
-;; (define-extern *mhcity-mood-fog-table* object)
-;; (define-extern overide-mhcity-fog function)
-;; (define-extern init-mood-mhcitya function)
-;; (define-extern update-mood-mhcitya function)
-;; (define-extern init-mood-mhcityb function)
-;; (define-extern update-mood-mhcityb function)
-;; (define-extern calc-lmhcity-palettes function)
-;; (define-extern update-mood-lmhcitya function)
-;; (define-extern update-mood-lmhcityb function)
-;; (define-extern *ctyport-level* object)
-;; (define-extern update-mood-ctyport function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern reset-marquee-color! function)
-;; (define-extern add-marquee-color! function)
-;; (define-extern update-mood-ctymarka function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-mountain function) ;; (function mood-context uint)
-;; (define-extern update-mood-mountain function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern update-mood-ctyinda function)
-;; (define-extern update-mood-ctyindb function)
-;; (define-extern init-mood-atoll function) ;; (function mood-context float)
-;; (define-extern update-mood-atoll function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern set-atoll-explosion! function) ;; (function float float)
-;; (define-extern update-mood-atollext function) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern update-mood-copy-parent (function mood-context object int none))
+(define-extern get-sphere-interp (function sphere vector float float float))
+(define-extern update-mood-ctywide (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-ctywide (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-ctysluma (function mood-context float))
+(define-extern update-mood-ctysluma (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-ctyslumb (function mood-context uint))
+(define-extern update-mood-ctyslumb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-ctyslumc (function mood-context none))
+(define-extern update-mood-ctyslumc (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-ctygenb (function mood-context object))
+(define-extern update-mood-ctygenb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *mhcity-mood-fog-table* mood-fog-table)
+(define-extern overide-mhcity-fog function)
+(define-extern init-mood-mhcitya (function mood-context object))
+(define-extern update-mood-mhcitya (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-mhcityb (function mood-context object))
+(define-extern update-mood-mhcityb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern calc-lmhcity-palettes function)
+(define-extern update-mood-lmhcitya (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-lmhcityb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *ctyport-level* level-group)
+(define-extern update-mood-ctyport (function mood-context float int none :behavior time-of-day-proc))
+(define-extern reset-marquee-color! function)
+(define-extern add-marquee-color! function)
+(define-extern update-mood-ctymarka (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-mountain (function mood-context uint))
+(define-extern update-mood-mountain (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctyinda (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ctyindb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-atoll (function mood-context float))
+(define-extern update-mood-atoll (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-atoll-explosion! (function float float))
+(define-extern update-mood-atollext (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mood-funcs2                    ;;
@@ -31831,14 +31811,14 @@
 
 (define-extern group-rain-screend-drop sparticle-launch-group)
 (define-extern update-snow (function float vector vector none))
-;; (define-extern birth-func-omega-normal-orient function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
-;; (define-extern birth-func-rain function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
-;; (define-extern check-drop-level-rain function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern check-drop-level-rain2 function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern check-drop-level-splash function) ;; (function sparticle-system sparticle-cpuinfo vector none)
+(define-extern birth-func-omega-normal-orient (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rain (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern check-drop-level-rain (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-rain2 (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern check-drop-level-splash (function sparticle-system sparticle-cpuinfo vector none))
 (define-extern update-rain (function float vector vector none))
 (define-extern cam-master-effect (function none :behavior camera-master))
-;; (define-extern sparticle-track-sun function) ;; (function int sparticle-cpuinfo matrix none)
+(define-extern sparticle-track-sun (function int sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; time-of-day                    ;;
@@ -31865,16 +31845,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *sky-work* sky-work)
-;; (define-extern sky-base-polygons object) ;; (inline-array sky-vertex)
-;; (define-extern sky-roof-polygons object) ;; (inline-array sky-vertex)
-;; (define-extern *cloud-vert-array* object) ;; cloud-vert-array
-;; (define-extern *cloud-poly* object) ;; (inline-array sky-vertex)
-;; (define-extern init-cloud-vert-array function) ;; (function symbol)
-;; (define-extern *haze-vert-array* object) ;; haze-vert-array
-;; (define-extern *haze-poly* object) ;; (inline-array sky-vertex)
-;; (define-extern init-haze-vert-array function) ;; (function symbol)
-;; (define-extern sky-make-sun-data function) ;; (function sky-work int float none)
-;; (define-extern sky-make-moon-data function) ;; (function sky-work float none)
+(define-extern sky-base-polygons (inline-array sky-vertex))
+(define-extern sky-roof-polygons (inline-array sky-vertex))
+(define-extern *cloud-vert-array* cloud-vert-array)
+(define-extern *cloud-poly* (inline-array sky-vertex))
+(define-extern init-cloud-vert-array (function symbol))
+(define-extern *haze-vert-array* haze-vert-array)
+(define-extern *haze-poly* (inline-array sky-vertex))
+(define-extern init-haze-vert-array (function symbol))
+(define-extern sky-make-sun-data (function sky-work int float none))
+(define-extern sky-make-moon-data (function sky-work float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sky-tng                        ;;
