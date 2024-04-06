@@ -37,10 +37,13 @@ class TrieWithDuplicates {
     return curr_node->elements.back().get();
   }
 
-  std::vector<T*> retrieve_with_prefix(const std::string& prefix) const {
+  std::vector<T*> retrieve_with_prefix(const std::string& prefix, int max_count = -1) const {
     std::vector<T*> results;
     TrieNode* curr_node = root.get();
     for (const char character : prefix) {
+      if (max_count >= 0 && (int)results.size() > max_count) {
+        return results;
+      }
       const auto& child = curr_node->children.at((uint8_t)character);
       if (child == nullptr) {
         return results;  // tree ends, nothing found with that prefix
@@ -48,7 +51,7 @@ class TrieWithDuplicates {
         curr_node = child.get();
       }
     }
-    retrieve_elements(curr_node, results);
+    retrieve_elements(curr_node, results, max_count);
     return results;
   }
 
@@ -107,13 +110,19 @@ class TrieWithDuplicates {
   }
 
  private:
-  void retrieve_elements(const TrieNode* node, std::vector<T*>& results) const {
+  void retrieve_elements(const TrieNode* node, std::vector<T*>& results, int max_count = -1) const {
     for (const auto& element : node->elements) {
+      if (max_count >= 0 && (int)results.size() > max_count) {
+        return;
+      }
       results.push_back(element.get());
     }
     for (const auto& child : node->children) {
+      if (max_count >= 0 && (int)results.size() > max_count) {
+        return;
+      }
       if (child.get() != nullptr) {
-        retrieve_elements(child.get(), results);
+        retrieve_elements(child.get(), results, max_count);
       }
     }
   }

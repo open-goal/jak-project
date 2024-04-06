@@ -442,7 +442,7 @@ replxx::Replxx::completions_t Compiler::find_symbols_or_object_file_by_prefix(
     // the syntax
     const auto [token, stripped_leading_paren] = m_repl->get_current_repl_token(context);
     // Otherwise, look for symbols
-    auto possible_forms = lookup_symbol_names_starting_with(token);
+    auto possible_forms = lookup_symbol_names_starting_with(token, 100);
 
     for (auto& x : possible_forms) {
       completions.push_back(stripped_leading_paren ? "(" + x : x);
@@ -459,7 +459,7 @@ replxx::Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& contex
   (void)contextLen;
   (void)user_data;
   auto token = m_repl->get_current_repl_token(context);
-  auto possible_forms = lookup_symbol_names_starting_with(token.first);
+  auto possible_forms = lookup_symbol_names_starting_with(token.first, 100);
 
   replxx::Replxx::hints_t hints;
 
@@ -597,9 +597,10 @@ std::vector<symbol_info::SymbolInfo*> Compiler::lookup_symbol_info_by_prefix(
   return m_symbol_info.lookup_symbols_starting_with(prefix);
 }
 
-std::set<std::string> Compiler::lookup_symbol_names_starting_with(const std::string& prefix) const {
+std::set<std::string> Compiler::lookup_symbol_names_starting_with(const std::string& prefix,
+                                                                  int max_count) const {
   if (m_goos.reader.check_string_is_valid(prefix)) {
-    return m_symbol_info.lookup_names_starting_with(prefix);
+    return m_symbol_info.lookup_names_starting_with(prefix, max_count);
   }
   return {};
 }
