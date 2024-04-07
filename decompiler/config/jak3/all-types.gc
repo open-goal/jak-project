@@ -22962,24 +22962,25 @@
     (target-board-clone-anim handle)
     ;; flut
     (target-flut-start handle symbol int)
-    target-flut-get-on
-    target-flut-get-off
+    (target-flut-get-on handle)
+    (target-flut-get-off handle)
     target-flut-get-off-jump
-    target-flut-eject
+    (target-flut-eject symbol)
     target-flut-grab
     target-flut-stance
     target-flut-walk
-    target-flut-jump
-    target-flut-double-jump
+    (target-flut-jump float float)
+    (target-flut-double-jump float float)
     target-flut-running-attack
-    target-flut-air-attack
+    (target-flut-air-attack float)
     target-flut-air-attack-hit-ground
-    target-flut-hit
+    (target-flut-hit symbol attack-info)
     target-flut-hit-ground
-    target-flut-falling
-    target-flut-kanga-catch
-    target-flut-death
-    target-flut-clone-anim
+    (target-flut-falling object)
+    (target-flut-kanga-catch handle symbol)
+    (target-flut-death symbol)
+    (target-flut-clone-anim handle)
+    target-flut-run-wild
     ;; mech
     (target-mech-start handle float symbol)
     (target-mech-get-on handle)
@@ -35152,33 +35153,40 @@
 (defenum flut-flag
   :type uint64
   :bitfield #t
+  (ff0 0)
+  (ff1 1)
+  (ff2 2)
+  (ff3 3)
   )
 ;; ---flut-h:flut-flag
 
 (deftype flut (process-focusable)
-  ((extra-trans       vector             :inline :offset-assert 208)
+  ((root              collide-shape-moving       :override)
+   (extra-trans       vector             :inline :offset-assert 208)
    (condition         int32                      :offset-assert 224)
    (shadow-backup     shadow-geo                 :offset-assert 228)
    (rider             handle                     :offset-assert 232)
    (nav-sphere-handle handle                     :offset-assert 240)
    (probe-time        time-frame                 :offset-assert 248)
-   (count-lock        basic                      :offset-assert 256)
+   (count-lock        symbol                     :offset-assert 256)
    (flags             flut-flag                  :offset-assert 264)
-   (mode              basic                      :offset-assert 272)
+   (mode              symbol                     :offset-assert 272)
    (color-index       int32                      :offset-assert 276)
    (minimap           connection-minimap         :offset-assert 280)
    )
   :method-count-assert 35
   :size-assert         #x11c
   :flag-assert         #x2300a0011c
+  (:state-methods
+    wait-for-start ;; 28
+    idle ;; 29
+    (pickup (state flut)) ;; 30
+    wait-for-return ;; 31
+    die ;; 32
+    )
   (:methods
-    (flut-method-28 () none) ;; 28
-    (flut-method-29 () none) ;; 29
-    (flut-method-30 () none) ;; 30
-    (flut-method-31 () none) ;; 31
-    (flut-method-32 () none) ;; 32
-    (flut-method-33 () none) ;; 33
-    (flut-method-34 () none) ;; 34
+    (flut-method-33 (_type_) symbol) ;; 33
+    (spawn-part-and-sound! (_type_) none) ;; 34
     )
   )
 
@@ -49513,7 +49521,7 @@
 ;; (define-extern traffic-manager-init-by-other function) ;; (function none :behavior traffic-manager)
 (define-extern traffic-start (function none))
 (define-extern traffic-kill (function none))
-;; (define-extern ctywide-entity-hack function) ;; (function none)
+(define-extern ctywide-entity-hack (function none))
 ;; (define-extern traffic-entity-hack function)
 ;; (define-extern riders-on function) ;; (function none)
 ;; (define-extern riders-off function) ;; (function none)
@@ -65656,17 +65664,16 @@
 ;; flut                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *flut-shadow-control* shadow-control)
-;; (define-extern *flut-color-table* array)
-;; (define-extern flut-color-from-index function)
-;; (define-extern flut-random-color-index function)
-;; (define-extern flut-init function)
+(define-extern *flut-shadow-control* shadow-control)
+(define-extern *flut-color-table* (array rgbaf))
+(define-extern flut-color-from-index (function int none :behavior flut))
+(define-extern flut-random-color-index (function int))
+(define-extern flut-init (function entity-actor transformq handle flut-flag symbol object :behavior flut))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-flut                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flut-bank (basic)
   ((jump-height-min        meters  :offset-assert 4)
    (jump-height-max        meters  :offset-assert 8)
@@ -65679,33 +65686,31 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *FLUT-bank* flut-bank)
-;; (define-extern *flut-walk-mods* surface)
-;; (define-extern *flut-run-racer-mods* surface)
-;; (define-extern *flut-run-wild-mods* surface)
-;; (define-extern *flut-jump-wild-mods* surface)
-;; (define-extern *flut-jump-mods* surface)
-;; (define-extern *flut-jump-racer-mods* surface)
-;; (define-extern *flut-double-jump-mods* surface)
-;; (define-extern *flut-double-jump-racer-mods* surface)
-;; (define-extern *flut-run-attack-mods* surface)
-;; (define-extern *flut-air-attack-mods* surface)
-;; (define-extern flut-leg-ik-callback function)
-;; (define-extern flut-update-ik function)
-;; (define-extern target-flut-get-off? function)
-;; (define-extern target-flut-post-post function)
-;; (define-extern target-flut-wild-post function)
-;; (define-extern target-flut-post function)
-;; (define-extern target-flut-falling-anim-trans function)
-;; (define-extern target-flut-hit-ground-anim function)
-;; (define-extern target-flut-standard-event-handler function)
-;; (define-extern target-flut-dangerous-event-handler function)
-;; (define-extern target-fldax-enter function)
-;; (define-extern target-fldax-exit function)
-;; (define-extern target-flut-run-wild object)
-;; (define-extern *flut-get-off-mods* object)
+(define-extern *FLUT-bank* flut-bank)
+(define-extern *flut-walk-mods* surface)
+(define-extern *flut-run-racer-mods* surface)
+(define-extern *flut-run-wild-mods* surface)
+(define-extern *flut-jump-wild-mods* surface)
+(define-extern *flut-jump-mods* surface)
+(define-extern *flut-jump-racer-mods* surface)
+(define-extern *flut-double-jump-mods* surface)
+(define-extern *flut-double-jump-racer-mods* surface)
+(define-extern *flut-run-attack-mods* surface)
+(define-extern *flut-air-attack-mods* surface)
+(define-extern flut-leg-ik-callback (function joint-mod-ik object object vector none))
+(define-extern flut-update-ik (function object :behavior target))
+(define-extern target-flut-get-off? (function symbol :behavior target))
+(define-extern target-flut-post-post (function none :behavior target))
+(define-extern target-flut-wild-post (function none :behavior target))
+(define-extern target-flut-post (function none :behavior target))
+(define-extern target-flut-falling-anim-trans (function object :behavior target))
+(define-extern target-flut-hit-ground-anim (function object :behavior target))
+(define-extern target-flut-standard-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-flut-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-fldax-enter (function object :behavior target))
+(define-extern target-fldax-exit (function object :behavior target))
+(define-extern *flut-get-off-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctymark-obs-h                  ;;
