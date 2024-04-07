@@ -760,9 +760,9 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
   }
 
   // check eyes
-  u32 eye_tpage = version == GameVersion::Jak2 ? 0x70c : 0x1cf;
-  u32 left_id = version == GameVersion::Jak2 ? 7 : 0x6f;
-  u32 right_id = version == GameVersion::Jak2 ? 8 : 0x70;
+  u32 eye_tpage = PerGameVersion<u32>(0x1cf, 0x70c, 0x3)[version];
+  u32 left_id = PerGameVersion<u32>(0x6f, 0x7, 0x2)[version];
+  u32 right_id = PerGameVersion<u32>(0x70, 0x8, 0x3)[version];
 
   if (eye_out && (pc_combo_tex_id >> 16) == eye_tpage) {
     auto tex_it = tex_db.textures.find(pc_combo_tex_id);
