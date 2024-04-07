@@ -412,6 +412,15 @@ std::string TexturePool::get_debug_texture_name(PcTextureId id) {
   if (it) {
     return *it;
   } else {
-    return "???";
+    return "??? (missing PC id to name mapping)";
+  }
+}
+
+std::string TexturePool::get_debug_texture_name_from_tbp(u32 tbp) {
+  auto info = lookup_gpu_texture(tbp);
+  if (!info) {
+    return "??? (bad tbp)";
+  } else {
+    return get_debug_texture_name(info->tex_id);
   }
 }

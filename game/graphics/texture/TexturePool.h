@@ -348,6 +348,7 @@ class TexturePool {
   PcTextureId allocate_pc_port_texture(GameVersion version);
 
   std::string get_debug_texture_name(PcTextureId id);
+  std::string get_debug_texture_name_from_tbp(u32 tbp);
 
  private:
   void refresh_links(GpuTexture& texture);
