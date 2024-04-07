@@ -124,7 +124,7 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
                                    const std::string& dgo_name,
                                    tfrag3::Level& level_data,
                                    std::map<std::string, level_tools::ArtData>& art_group_data) {
-  if (db.obj_files_by_name.count(dgo_name)) {
+  if (db.obj_files_by_dgo.count(dgo_name)) {
     const auto& files = db.obj_files_by_dgo.at(dgo_name);
     for (const auto& file : files) {
       if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
