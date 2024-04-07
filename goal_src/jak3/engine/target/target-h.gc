@@ -170,6 +170,25 @@
 ;; target-ladder
 (define-extern *ladder-mods* surface)
 
+;; target-tube
+(define-extern *tube-mods* surface)
+(define-extern *tube-jump-mods* surface)
+(define-extern *tube-hit-mods* surface)
+(define-extern *tube-surface* surface)
+
+;; target-flut
+(define-extern *flut-walk-mods* surface)
+(define-extern *flut-run-racer-mods* surface)
+(define-extern *flut-run-wild-mods* surface)
+(define-extern *flut-jump-wild-mods* surface)
+(define-extern *flut-jump-mods* surface)
+(define-extern *flut-jump-racer-mods* surface)
+(define-extern *flut-double-jump-mods* surface)
+(define-extern *flut-double-jump-racer-mods* surface)
+(define-extern *flut-run-attack-mods* surface)
+(define-extern *flut-air-attack-mods* surface)
+(define-extern *flut-get-off-mods* surface)
+
 ;; +++lightjak-stage
 (defenum lightjak-stage
   :bitfield #t
@@ -237,7 +256,8 @@
    (leg-ik                       joint-mod-ik      2)
    (foot                         joint-mod         2)
    (cloth                        symbol)
-   (init-time                    time-frame)
+   (mech-ik                      joint-mod-ik      2)
+   (init-time                    time-frame        :overlay-at (-> mech-ik 0))
    (teleport-time                time-frame)
    (state-hook-time              time-frame)
    (state-hook                   (function none :behavior target))
@@ -272,9 +292,9 @@
    (mode-param1                  handle)
    (mode-param2                  uint64)
    (mode-param3                  uint64)
-   (major-mode-exit-hook         basic)
-   (major-mode-event-hook        basic)
-   (sub-mode-exit-hook           basic)
+   (major-mode-exit-hook         (function none :behavior target))
+   (major-mode-event-hook        (function none :behavior target))
+   (sub-mode-exit-hook           (function none :behavior target))
    (ext-geo-control              external-art-buffer)
    (pending-ext-geo              target-geo)
    (ext-geo                      target-geo)
@@ -370,25 +390,26 @@
     target-edge-grab
     (target-edge-grab-jump float float symbol)
     target-edge-grab-off
-    (target-falling symbol)
+    (target-falling object)
     target-float
     (target-flop float float float object)
     (target-flop-hit-ground symbol)
-    target-flut-air-attack
+    (target-flut-air-attack float)
     target-flut-air-attack-hit-ground
-    target-flut-clone-anim
-    target-flut-death
-    target-flut-double-jump
-    target-flut-eject
-    target-flut-falling
-    target-flut-get-off
+    (target-flut-clone-anim handle)
+    (target-flut-death symbol)
+    (target-flut-double-jump float float)
+    (target-flut-eject symbol)
+    (target-flut-falling object)
+    (target-flut-get-off handle)
     target-flut-get-off-jump
-    target-flut-get-on
+    (target-flut-get-on handle)
     target-flut-grab
-    target-flut-hit
+    (target-flut-hit symbol attack-info)
     target-flut-hit-ground
-    target-flut-jump
-    target-flut-kanga-catch
+    (target-flut-jump float float)
+    (target-flut-kanga-catch handle symbol)
+    target-flut-run-wild
     target-flut-running-attack
     target-flut-stance
     (target-flut-start handle symbol int)
@@ -446,22 +467,22 @@
     target-mech-carry-drag
     target-mech-carry-drop
     target-mech-carry-falling
-    target-mech-carry-hit-ground
-    target-mech-carry-jump
+    (target-mech-carry-hit-ground symbol)
+    (target-mech-carry-jump float float)
     target-mech-carry-pickup
     target-mech-carry-stance
     target-mech-carry-throw
     target-mech-carry-walk
-    target-mech-clone-anim
-    target-mech-death
-    target-mech-falling
+    (target-mech-clone-anim handle)
+    (target-mech-death symbol)
+    (target-mech-falling symbol)
     target-mech-get-off
-    target-mech-get-on
-    target-mech-get-up
+    (target-mech-get-on handle)
+    (target-mech-get-up handle)
     target-mech-grab
-    target-mech-hit
-    target-mech-hit-ground
-    target-mech-jump
+    (target-mech-hit symbol attack-info)
+    (target-mech-hit-ground symbol)
+    (target-mech-jump float float surface)
     target-mech-punch
     target-mech-shield
     target-mech-stance
@@ -504,7 +525,11 @@
     target-swim-walk
     target-title
     target-tube
+    (target-tube-death symbol)
+    (target-tube-hit symbol attack-info)
+    (target-tube-jump float float)
     (target-tube-start handle)
+    target-tube-walk
     target-turn-around
     target-turret-get-off
     (target-turret-get-on handle)

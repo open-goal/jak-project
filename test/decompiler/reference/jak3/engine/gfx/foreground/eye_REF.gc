@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: eye.gc
-;; name in dgo: eye
-;; dgos: GAME
-
-;; DECOMP BEGINS
-
+;; definition for symbol *eye-work*, type eye-work
 (define *eye-work* (new 'static 'eye-work
                      :sprite-tmpl (new 'static 'dma-gif-packet
                        :dma-vif (new 'static 'dma-packet
@@ -33,6 +28,7 @@
                      )
         )
 
+;; definition for function find-free-eye-index
 (defun find-free-eye-index ((arg0 int) (arg1 string) (arg2 int))
   (dotimes (s4-0 32)
     (let ((s2-0 (-> *eye-control-array* data s4-0)))
@@ -72,6 +68,7 @@
   0
   )
 
+;; definition for function free-eye-index
 (defun free-eye-index ((idx int))
   (when (< idx 32)
     (let ((v1-4 (-> *eye-control-array* data idx)))
@@ -94,6 +91,8 @@
   0
   )
 
+;; definition for function render-eyes-32
+;; INFO: Used lq/sq
 (defun render-eyes-32 ((arg0 dma-buffer) (arg1 eye-control) (arg2 int))
   (local-vars (sv-16 float))
   (let ((v1-0 *display*)
@@ -382,6 +381,8 @@
     )
   )
 
+;; definition for function render-eyes-64
+;; INFO: Used lq/sq
 (defun render-eyes-64 ((arg0 dma-buffer) (arg1 eye-control) (arg2 int))
   (local-vars (sv-16 float))
   (let ((v1-0 *display*)
@@ -670,6 +671,94 @@
     )
   )
 
+;; definition for function debug-eyes
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch pointer vs none.
+;; ERROR: Failed store: (s.q! (+ v1-23 16) a0-10) at op 69
+;; ERROR: Failed store: (s.w! (+ a0-11 4) a1-6) at op 74
+;; ERROR: Failed store: (s.w! (+ a0-11 8) a1-7) at op 76
+;; ERROR: Failed store: (s.w! (+ a0-11 12) a1-8) at op 78
+;; ERROR: Failed store: (s.w! (+ a0-12 4) 0) at op 81
+;; ERROR: Failed store: (s.w! (+ a0-12 8) 0) at op 82
+;; ERROR: Failed store: (s.w! (+ a0-12 12) 0) at op 83
+;; ERROR: Failed store: (s.w! (+ a0-13 4) a1-10) at op 88
+;; ERROR: Failed store: (s.w! (+ a0-13 8) a1-11) at op 90
+;; ERROR: Failed store: (s.w! (+ a0-13 12) 0) at op 91
+;; ERROR: Failed store: (s.w! (+ a0-14 4) a1-13) at op 96
+;; ERROR: Failed store: (s.w! (+ a0-14 8) 0) at op 97
+;; ERROR: Failed store: (s.w! (+ a0-14 12) 0) at op 98
+;; ERROR: Failed store: (s.w! (+ v1-24 4) a0-16) at op 103
+;; ERROR: Failed store: (s.w! (+ v1-24 8) a0-17) at op 105
+;; ERROR: Failed store: (s.w! (+ v1-24 12) 0) at op 106
+(defun debug-eyes ((arg0 dma-buffer))
+  (dma-buffer-add-gs-set arg0
+                         (test-1 (new 'static 'gs-test :ate #x1 :atst (gs-atest always) :zte #x1 :ztst (gs-ztest always)))
+                         (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
+                         (tex0-1
+                           (new 'static 'gs-tex0 :tbw #x1 :th (log2 512) :tw (log2 64) :tbp0 (-> *eyes-texture-base* vram-block))
+                           )
+                         (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x4 :l #x1 :k #xeed))
+                         (texa (new 'static 'gs-texa :ta0 #x80 :ta1 #x80))
+                         (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+                         )
+  (let ((v1-23 (-> arg0 base)))
+    (set! (-> (the-as (pointer uint128) v1-23)) (-> *eye-work* sprite-tmpl dma-vif quad))
+    (let ((a0-10 (-> *eye-work* sprite-tmpl quad 1)))
+      (s.q! (+ v1-23 16) a0-10)
+      )
+    (let ((a0-11 (&+ v1-23 32)))
+      (set! (-> (the-as (pointer int32) a0-11)) 128)
+      (let ((a1-6 128))
+        (s.w! (+ a0-11 4) a1-6)
+        )
+      (let ((a1-7 128))
+        (s.w! (+ a0-11 8) a1-7)
+        )
+      (let ((a1-8 128))
+        (s.w! (+ a0-11 12) a1-8)
+        )
+      )
+    (let ((a0-12 (&+ v1-23 48)))
+      (set! (-> (the-as (pointer int32) a0-12)) 0)
+      (s.w! (+ a0-12 4) 0)
+      (s.w! (+ a0-12 8) 0)
+      (s.w! (+ a0-12 12) 0)
+      )
+    (let ((a0-13 (&+ v1-23 64)))
+      (set! (-> (the-as (pointer int32) a0-13)) #x7e00)
+      (let ((a1-10 #x7800))
+        (s.w! (+ a0-13 4) a1-10)
+        )
+      (let ((a1-11 #xffffff))
+        (s.w! (+ a0-13 8) a1-11)
+        )
+      (s.w! (+ a0-13 12) 0)
+      )
+    (let ((a0-14 (&+ v1-23 80)))
+      (set! (-> (the-as (pointer int32) a0-14)) 1024)
+      (let ((a1-13 8192))
+        (s.w! (+ a0-14 4) a1-13)
+        )
+      (s.w! (+ a0-14 8) 0)
+      (s.w! (+ a0-14 12) 0)
+      )
+    (let ((v1-24 (&+ v1-23 96)))
+      (set! (-> (the-as (pointer int32) v1-24)) #x8200)
+      (let ((a0-16 #x8800))
+        (s.w! (+ v1-24 4) a0-16)
+        )
+      (let ((a0-17 #xffffff))
+        (s.w! (+ v1-24 8) a0-17)
+        )
+      (s.w! (+ v1-24 12) 0)
+      )
+    )
+  (&+! (-> arg0 base) 112)
+  (none)
+  )
+
+;; definition for function update-eyes
+;; WARN: Return type mismatch int vs none.
 (defun update-eyes ()
   (when (not (-> *blit-displays-work* screen-copied))
     (dotimes (gp-0 32)
@@ -867,6 +956,7 @@
   (none)
   )
 
+;; definition for function get-eye-block
 ;; WARN: Return type mismatch uint vs int.
 (defun get-eye-block ((arg0 int) (arg1 int))
   (let ((v1-0 arg0)
@@ -876,6 +966,7 @@
     )
   )
 
+;; definition for function convert-eye-data
 (defun convert-eye-data ((arg0 eye) (arg1 uint))
   (local-vars
     (v0-0 float)
@@ -906,6 +997,8 @@
     )
   )
 
+;; definition for function merc-eye-anim
+;; WARN: Return type mismatch int vs none.
 (defun merc-eye-anim ((arg0 process-drawable))
   (let* ((v1-2 (-> arg0 draw mgeo header eye-ctrl))
          (a0-2 (-> arg0 skel float-channels))
@@ -1031,3 +1124,7 @@
   0
   (none)
   )
+
+
+
+

@@ -1,31 +1,16 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: collision-editor.gc
-;; name in dgo: collision-editor
-;; dgos: GAME
-
-;; +++collision-editor-func
-(defenum collision-editor-func
-  :type uint64
-  (analog 0)
-  (edit 1)
-  (print-collision 2)
-  (stop-editor 3)
-  )
-;; ---collision-editor-func
-
-
-;; DECOMP BEGINS
-
 ;; this file is debug only
 (declare-file (debug))
 
+;; failed to figure out what this is:
 (defskelgroup skel-collision-editor sew-rove-plat sew-rove-plat-lod0-jg sew-rove-plat-idle-ja
               ((sew-rove-plat-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 100)
               )
 
+;; definition of type collision-editor-default-proc
 (deftype collision-editor-default-proc (process-drawable)
   ()
   (:state-methods
@@ -33,7 +18,20 @@
     )
   )
 
+;; definition for method 3 of type collision-editor-default-proc
+(defmethod inspect ((this collision-editor-default-proc))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (defstate idle (collision-editor-default-proc)
   :virtual #t
   :trans (behavior ()
@@ -42,6 +40,7 @@
   :code sleep-code
   )
 
+;; definition for function collision-editor-default-proc-init-by-other
 (defbehavior collision-editor-default-proc-init-by-other collision-editor-default-proc ()
   (let ((gp-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere gp-0 (the-as uint 0))))
@@ -69,6 +68,7 @@
   (go-virtual idle)
   )
 
+;; definition of type collision-editor-edited-proc
 (deftype collision-editor-edited-proc (process-drawable)
   ()
   (:state-methods
@@ -76,7 +76,20 @@
     )
   )
 
+;; definition for method 3 of type collision-editor-edited-proc
+(defmethod inspect ((this collision-editor-edited-proc))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (defstate idle (collision-editor-edited-proc)
   :virtual #t
   :code sleep-code
@@ -85,6 +98,7 @@
     )
   )
 
+;; definition for function collision-editor-edited-proc-init-by-other
 (defbehavior collision-editor-edited-proc-init-by-other collision-editor-edited-proc ()
   (let ((gp-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere gp-0 (the-as uint 0))))
@@ -111,10 +125,13 @@
   (go-virtual idle)
   )
 
+;; definition for symbol *collision-editor-mesh-names*, type (array string)
 (define *collision-editor-mesh-names* (new 'static 'boxed-array :type string "moveplat"))
 
+;; definition for symbol *collision-editor-art-group-name*, type string
 (define *collision-editor-art-group-name* "sew-rove-plat")
 
+;; definition for function collision-editor-add-mesh-to-ccache
 (defun collision-editor-add-mesh-to-ccache ((arg0 collide-shape-prim-group) (arg1 collide-cache))
   (set! (-> arg1 collide-box4w min x) -409600000)
   (set! (-> arg1 collide-box4w min y) -409600000)
@@ -130,6 +147,8 @@
   (none)
   )
 
+;; definition for function print-default-collision
+;; INFO: Used lq/sq
 ;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
@@ -142,6 +161,7 @@
 ;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
 ;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+;; WARN: Return type mismatch int vs none.
 (defun print-default-collision ((arg0 process-drawable))
   (local-vars (sv-224 matrix) (sv-240 symbol) (sv-256 string) (sv-272 float) (sv-288 float))
   (let ((gp-0 (process-spawn collision-editor-default-proc :name "collision-editor-default-proc")))
@@ -340,6 +360,7 @@
   (none)
   )
 
+;; definition for function print-actual-collision
 ;; WARN: Return type mismatch object vs none.
 (defun print-actual-collision ((arg0 process-drawable))
   (format #t "~%~%")
@@ -449,6 +470,7 @@
   (none)
   )
 
+;; definition of type collision-editor
 (deftype collision-editor (process)
   ((proc  handle)
    )
@@ -457,6 +479,7 @@
     )
   )
 
+;; definition for method 3 of type collision-editor
 (defmethod inspect ((this collision-editor))
   (when (not this)
     (set! this this)
@@ -470,6 +493,7 @@
   this
   )
 
+;; definition of type collision-edit-info
 (deftype collision-edit-info (structure)
   ((editing       symbol)
    (current-func  collision-editor-func)
@@ -483,6 +507,7 @@
     )
   )
 
+;; definition for method 3 of type collision-edit-info
 (defmethod inspect ((this collision-edit-info))
   (when (not this)
     (set! this this)
@@ -497,6 +522,7 @@
   this
   )
 
+;; definition for function collision-edit-get-max-prim
 (defun collision-edit-get-max-prim ((arg0 process-drawable))
   (let ((gp-0 0))
     (when (and arg0 (type? (-> arg0 root) collide-shape))
@@ -510,6 +536,7 @@
     )
   )
 
+;; definition for function collision-edit-get-prim
 ;; WARN: Return type mismatch int vs collide-shape-prim.
 (defun collision-edit-get-prim ((arg0 process-drawable) (arg1 int))
   (when (and arg0 (type? (-> arg0 root) collide-shape))
@@ -524,6 +551,8 @@
   (the-as collide-shape-prim #f)
   )
 
+;; definition for method 9 of type collision-edit-info
+;; WARN: Return type mismatch int vs none.
 (defmethod collision-edit-info-method-9 ((this collision-edit-info))
   (if (cpad-pressed? 0 up)
       (+! (-> this current-func) -1)
@@ -549,6 +578,8 @@
   (none)
   )
 
+;; definition for method 11 of type collision-edit-info
+;; WARN: Return type mismatch int vs none.
 (defmethod collision-edit-info-method-11 ((this collision-edit-info) (arg0 process-drawable))
   (local-vars (s5-0 int))
   (when (not arg0)
@@ -581,6 +612,9 @@
   (none)
   )
 
+;; definition for method 10 of type collision-edit-info
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-menu ((this collision-edit-info) (arg0 process-drawable))
   (local-vars (a3-0 string))
   (when (cpad-pressed? 0 l2)
@@ -895,12 +929,15 @@
   (none)
   )
 
+;; definition for symbol *collision-edit-info*, type collision-edit-info
 (define *collision-edit-info* (the-as collision-edit-info 0))
 
+;; definition for symbol *collision-edit-info*, type collision-edit-info
 (define *collision-edit-info*
   (new 'static 'collision-edit-info :editing #t :current-func (collision-editor-func print-collision))
   )
 
+;; failed to figure out what this is:
 (defstate idle (collision-editor)
   :virtual #t
   :exit (behavior ()
@@ -921,11 +958,14 @@
   :code sleep-code
   )
 
+;; definition for function collision-editor-init-by-other
 (defbehavior collision-editor-init-by-other collision-editor ((arg0 handle))
   (set! (-> self proc) arg0)
   (go-virtual idle)
   )
 
+;; definition for function stop-collision-edit
+;; WARN: Return type mismatch int vs none.
 (defun stop-collision-edit ()
   (kill-by-type collision-editor-edited-proc *active-pool*)
   (kill-by-type collision-editor *active-pool*)
@@ -933,6 +973,7 @@
   (none)
   )
 
+;; definition for function collision-edit
 (defun collision-edit ((arg0 process))
   (stop-collision-edit)
   (when (not arg0)
@@ -947,3 +988,7 @@
     (process-spawn collision-editor gp-2 :name "collision-editor")
     )
   )
+
+
+
+

@@ -21424,7 +21424,7 @@
    (last-nonzero-input-dir-targ                    quaternion                 :inline     :offset 6384)
    (time-of-last-wall-hide-first-check-pass        time-frame                             :offset 6400)
    (time-of-first-wall-hide-first-check-pass       time-frame                             :offset 6408)
-   (pad uint8 4)
+   (unknown-float0000                              float                                  :offset 6416)
    )
   :size-assert #x1914
   :flag-assert #x4400001914
@@ -22772,7 +22772,8 @@
    (leg-ik                      joint-mod-ik                     2       :offset-assert 252) ;; guessed by decompiler
    (foot                        joint-mod                        2       :offset-assert 260) ;; guessed by decompiler
    (cloth                       symbol                                   :offset-assert 268)
-   (init-time                   time-frame                               :offset-assert 272) ;; time-frame
+   (mech-ik                     joint-mod-ik                     2       :offset-assert 272) ;; added
+   (init-time                   time-frame                               :offset 272) ;; time-frame
    (teleport-time               time-frame                               :offset-assert 280) ;; time-frame
    (state-hook-time             time-frame                               :offset-assert 288) ;; time-frame
    (state-hook                  (function none :behavior target)         :offset-assert 296) ;; guessed by decompiler
@@ -22807,9 +22808,9 @@
    (mode-param1                 handle                                   :offset-assert 2320) ;; handle
    (mode-param2                 uint64                                   :offset-assert 2328)
    (mode-param3                 uint64                                   :offset-assert 2336)
-   (major-mode-exit-hook        basic                                    :offset-assert 2344)
-   (major-mode-event-hook       basic                                    :offset-assert 2348)
-   (sub-mode-exit-hook          basic                                    :offset-assert 2352)
+   (major-mode-exit-hook        (function none :behavior target)         :offset-assert 2344)
+   (major-mode-event-hook       (function none :behavior target)         :offset-assert 2348)
+   (sub-mode-exit-hook          (function none :behavior target)         :offset-assert 2352)
    (ext-geo-control             external-art-buffer                      :offset-assert 2356)
    (pending-ext-geo             target-geo                               :offset-assert 2360)
    (ext-geo                     target-geo                               :offset-assert 2364)
@@ -22900,7 +22901,7 @@
     (target-jump-forward float float symbol)
     (target-high-jump float float object)
     (target-double-jump float float)
-    (target-falling symbol)
+    (target-falling object)
     target-slide-down
     (target-flop float float float object)
     (target-hit-ground symbol)
@@ -22961,49 +22962,50 @@
     (target-board-clone-anim handle)
     ;; flut
     (target-flut-start handle symbol int)
-    target-flut-get-on
-    target-flut-get-off
+    (target-flut-get-on handle)
+    (target-flut-get-off handle)
     target-flut-get-off-jump
-    target-flut-eject
+    (target-flut-eject symbol)
     target-flut-grab
     target-flut-stance
     target-flut-walk
-    target-flut-jump
-    target-flut-double-jump
+    (target-flut-jump float float)
+    (target-flut-double-jump float float)
     target-flut-running-attack
-    target-flut-air-attack
+    (target-flut-air-attack float)
     target-flut-air-attack-hit-ground
-    target-flut-hit
+    (target-flut-hit symbol attack-info)
     target-flut-hit-ground
-    target-flut-falling
-    target-flut-kanga-catch
-    target-flut-death
-    target-flut-clone-anim
+    (target-flut-falling object)
+    (target-flut-kanga-catch handle symbol)
+    (target-flut-death symbol)
+    (target-flut-clone-anim handle)
+    target-flut-run-wild
     ;; mech
     (target-mech-start handle float symbol)
-    target-mech-get-on ;; associated process guessed by decompiler, old: (state handle target)
+    (target-mech-get-on handle)
     target-mech-get-off
-    target-mech-get-up
+    (target-mech-get-up handle)
     target-mech-grab
     target-mech-stance
     target-mech-walk
-    target-mech-jump ;; associated process guessed by decompiler, old: (state float float surface target)
+    (target-mech-jump float float surface)
     target-mech-punch
     target-mech-shield
-    target-mech-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
-    target-mech-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
-    target-mech-falling ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-mech-hit symbol attack-info)
+    (target-mech-hit-ground symbol)
+    (target-mech-falling symbol)
     target-mech-carry-pickup
     target-mech-carry-stance
     target-mech-carry-walk
-    target-mech-carry-jump ;; associated process guessed by decompiler, old: (state float float symbol target)
+    (target-mech-carry-jump float float)
     target-mech-carry-drag
     target-mech-carry-drop
     target-mech-carry-throw
-    target-mech-carry-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-mech-carry-hit-ground symbol)
     target-mech-carry-falling
-    target-mech-death ;; associated process guessed by decompiler, old: (state symbol target)
-    target-mech-clone-anim ;; associated process guessed by decompiler, old: (state handle target)
+    (target-mech-death symbol)
+    (target-mech-clone-anim handle)
     ;; pilot
     (target-racing-start handle)
     (target-grab-ride handle)
@@ -23071,8 +23073,12 @@
     target-ladder-switch
     target-ladder-jump-off
     ;; tube
-    (target-tube-start handle)
     target-tube
+    target-tube-walk
+    (target-tube-start handle)
+    (target-tube-jump float float)
+    (target-tube-hit symbol attack-info)
+    (target-tube-death symbol)
     ;; tobot
     tobot-stance
     )
@@ -27896,29 +27902,29 @@
   :flag-assert         #x2000000024
   (:methods
     (new "Allocate a new path-control, set up the curve to point to the specified lump data." (symbol type process symbol float entity symbol) _type_) ;; 0
-    (path-control-method-9 (_type_) none) ;; 9 ;; (debug-draw (_type_) none)
+    (debug-draw (_type_) none) ;; 9
     (get-point-in-path! (_type_ vector float symbol) vector) ;; 10
-    (path-control-method-11 () none) ;; 11 ;; (get-random-point (_type_ vector) vector)
-    (path-control-method-12 () none) ;; 12 ;; (displacement-between-two-points-copy! (_type_ vector float float) vector)
-    (path-control-method-13 () none) ;; 13 ;; (displacement-between-two-points-normalized! (_type_ vector float) vector)
+    (get-random-point (_type_ vector) vector) ;; 11
+    (path-control-method-12 (_type_ vector float float) vector) ;; 12 ;; (displacement-between-two-points-copy! (_type_ vector float float) vector)
+    (displacement-between-two-points-normalized! (_type_ vector float) vector) ;; 13
     (get-point-at-percent-along-path! (_type_ vector float symbol) vector) ;; 14
-    (path-control-method-15 () none) ;; 15 ;; (displacement-between-points-at-percent-scaled! (_type_ vector float float) vector)
+    (path-control-method-15 (_type_ vector float float) vector) ;; 15 ;; (displacement-between-points-at-percent-scaled! (_type_ vector float float) vector)
     (displacement-between-points-at-percent-normalized! (_type_ vector float) vector) ;; 16
     (get-num-segments (_type_) float) ;; 17
     (total-distance (_type_) float) ;; 18
     (get-num-verts (_type_) int) ;; 19
     (segement-duration->path-duration (_type_ float) float) ;; 20
     (path-duration->segment-duration (_type_ float) float) ;; 21
-    (path-control-method-22 () none) ;; 22 ;; (get-furthest-point-on-path (_type_ vector) float)
-    (path-control-method-23 () none) ;; 23 ;; (get-path-percentage-at-furthest-point (_type_ vector) float)
-    (path-control-method-24 () none) ;; 24 ;; (path-control-method-24 (_type_ vector) vector)
+    (path-control-method-22 (_type_ vector) float) ;; 22 ;; (get-furthest-point-on-path (_type_ vector) float)
+    (path-control-method-23 (_type_ vector) float) ;; 23 ;; (get-path-percentage-at-furthest-point (_type_ vector) float)
+    (path-control-method-24 (_type_ vector) float) ;; 24 ;; (path-control-method-24 (_type_ vector) vector)
     (path-control-method-25 (_type_ vector) float) ;; 25
-    (path-control-method-26 () none) ;; 26 ;; (displacement-between-two-points! (_type_ vector float float) vector)
-    (path-control-method-27 () none) ;; 27
-    (path-control-method-28 () none) ;; 28
-    (path-control-method-29 () none) ;; 29
+    (path-control-method-26 (_type_ float float) float) ;; 26 ;; (displacement-between-two-points! (_type_ vector float float) vector)
+    (path-control-method-27 (_type_ vector) vector) ;; 27
+    (path-control-method-28 (_type_ vector float float) float) ;; 28
+    (path-control-method-29 (_type_ vector int float) float) ;; 29
     (should-display-marks? (_type_) symbol) ;; 30
-    (path-control-method-31 () none) ;; 31
+    (displacement-between-two-points! (_type_ vector float float) vector) ;; 31
     )
   )
 
@@ -35147,33 +35153,40 @@
 (defenum flut-flag
   :type uint64
   :bitfield #t
+  (ff0 0)
+  (ff1 1)
+  (ff2 2)
+  (ff3 3)
   )
 ;; ---flut-h:flut-flag
 
 (deftype flut (process-focusable)
-  ((extra-trans       vector             :inline :offset-assert 208)
+  ((root              collide-shape-moving       :override)
+   (extra-trans       vector             :inline :offset-assert 208)
    (condition         int32                      :offset-assert 224)
    (shadow-backup     shadow-geo                 :offset-assert 228)
    (rider             handle                     :offset-assert 232)
    (nav-sphere-handle handle                     :offset-assert 240)
    (probe-time        time-frame                 :offset-assert 248)
-   (count-lock        basic                      :offset-assert 256)
+   (count-lock        symbol                     :offset-assert 256)
    (flags             flut-flag                  :offset-assert 264)
-   (mode              basic                      :offset-assert 272)
+   (mode              symbol                     :offset-assert 272)
    (color-index       int32                      :offset-assert 276)
    (minimap           connection-minimap         :offset-assert 280)
    )
   :method-count-assert 35
   :size-assert         #x11c
   :flag-assert         #x2300a0011c
+  (:state-methods
+    wait-for-start ;; 28
+    idle ;; 29
+    (pickup (state flut)) ;; 30
+    wait-for-return ;; 31
+    die ;; 32
+    )
   (:methods
-    (flut-method-28 () none) ;; 28
-    (flut-method-29 () none) ;; 29
-    (flut-method-30 () none) ;; 30
-    (flut-method-31 () none) ;; 31
-    (flut-method-32 () none) ;; 32
-    (flut-method-33 () none) ;; 33
-    (flut-method-34 () none) ;; 34
+    (flut-method-33 (_type_) symbol) ;; 33
+    (spawn-part-and-sound! (_type_) none) ;; 34
     )
   )
 
@@ -35313,7 +35326,7 @@
 (define-extern move-legs? (function symbol :behavior target))
 (define-extern jump-hit-ground-stuck? (function symbol :behavior target))
 (define-extern target-time-to-ground (function time-frame :behavior target))
-(define-extern fall-test (function (state symbol target) float none :behavior target))
+(define-extern fall-test (function (state object target) float none :behavior target))
 (define-extern slide-down-test (function none :behavior target))
 (define-extern smack-surface? (function symbol symbol :behavior target))
 (define-extern can-roll? (function symbol :behavior target))
@@ -36961,6 +36974,7 @@
    (drag-sound-id         sound-id                   :offset-assert 80) ;; guessed by decompiler
    (whine-sound-id        sound-id                   :offset-assert 84) ;; guessed by decompiler
    (shield-sound-id       sound-id                   :offset-assert 88)
+   (mode-sound-bank       connection                 :offset-assert 92) ;; added
    (mech-start-time       time-frame                 :offset-assert 96) ;; time-frame
    (mech-time             time-frame                 :offset-assert 104) ;; time-frame
    (no-get-off-time       time-frame                 :offset-assert 112) ;; time-frame
@@ -36990,7 +37004,7 @@
    (smoke-local-vel       vector             2 :inline :offset-assert 464) ;; guessed by decompiler
    (particle-system-2d    basic                      :offset-assert 496)
    (particle-system-3d    basic                      :offset-assert 500)
-   (part-thruster         sparticle-launch-control   :offset-assert 504)
+   (part-thruster         sparticle-launcher         :offset-assert 504)
    (part-thruster-scale-x sp-field-init-spec         :offset-assert 508)
    (part-thruster-scale-y sp-field-init-spec         :offset-assert 512)
    (part-quat             quaternion                 :offset-assert 516)
@@ -40100,7 +40114,6 @@
 ;; collision-editor               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype collision-editor-default-proc (process-drawable)
   ()
   :method-count-assert 21
@@ -40110,9 +40123,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype collision-editor-edited-proc (process-drawable)
   ()
   :method-count-assert 21
@@ -40122,11 +40133,9 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype collision-editor (process)
-  ((proc uint64  :offset-assert 128)
+  ((proc handle  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x88
@@ -40135,39 +40144,46 @@
     idle ;; 14
     )
   )
-|#
 
-#|
+;; +++collision-editor:collision-editor-func
+(defenum collision-editor-func
+  :type uint64
+  (analog 0)
+  (edit 1)
+  (print-collision 2)
+  (stop-editor 3)
+  )
+;; ---collision-editor:collision-editor-func
+
 (deftype collision-edit-info (structure)
-  ((editing      basic   :offset-assert 0)
-   (current-func uint64  :offset-assert 8)
-   (analog-func  uint64  :offset-assert 16)
+  ((editing      symbol  :offset-assert 0)
+   (current-func collision-editor-func :offset-assert 8)
+   (analog-func  collision-editor-func :offset-assert 16)
    (current-prim int32   :offset-assert 24)
    )
   :method-count-assert 12
   :size-assert         #x1c
   :flag-assert         #xc0000001c
   (:methods
-    (collision-edit-info-method-9 () none) ;; 9
-    (collision-edit-info-method-10 () none) ;; 10
-    (collision-edit-info-method-11 () none) ;; 11
+    (collision-edit-info-method-9 (_type_) none) ;; 9
+    (draw-menu (_type_ process-drawable) none) ;; 10
+    (collision-edit-info-method-11 (_type_ process-drawable) none) ;; 11
     )
   )
-|#
 
-;; (define-extern collision-editor-default-proc-init-by-other function)
-;; (define-extern collision-editor-edited-proc-init-by-other function)
-;; (define-extern *collision-editor-mesh-names* array)
-;; (define-extern *collision-editor-art-group-name* string)
-;; (define-extern collision-editor-add-mesh-to-ccache function)
-;; (define-extern print-default-collision function)
-;; (define-extern print-actual-collision function)
-;; (define-extern collision-edit-get-max-prim function)
-;; (define-extern collision-edit-get-prim function)
-;; (define-extern *collision-edit-info* object)
-;; (define-extern collision-editor-init-by-other function)
-;; (define-extern stop-collision-edit function)
-;; (define-extern collision-edit function)
+(define-extern collision-editor-default-proc-init-by-other (function object :behavior collision-editor-default-proc))
+(define-extern collision-editor-edited-proc-init-by-other (function object :behavior collision-editor-edited-proc))
+(define-extern *collision-editor-mesh-names* (array string))
+(define-extern *collision-editor-art-group-name* string)
+(define-extern collision-editor-add-mesh-to-ccache (function collide-shape-prim-group collide-cache none))
+(define-extern print-default-collision (function process-drawable none))
+(define-extern print-actual-collision (function process-drawable none))
+(define-extern collision-edit-get-max-prim (function process-drawable int))
+(define-extern collision-edit-get-prim (function process-drawable int collide-shape-prim))
+(define-extern *collision-edit-info* collision-edit-info)
+(define-extern collision-editor-init-by-other (function handle object :behavior collision-editor))
+(define-extern stop-collision-edit (function none))
+(define-extern collision-edit (function process (pointer process)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; speech-manager                 ;;
@@ -41594,7 +41610,6 @@
 ;; simple-nav-sphere              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype simple-nav-sphere (process-drawable)
   ((first-time? symbol  :offset-assert 200) ;; guessed by decompiler
    (track-joint int32   :offset-assert 204)
@@ -41603,14 +41618,13 @@
   :size-assert         #xd0
   :flag-assert         #x16005000d0
   (:state-methods
-    active ;; 21, old: (active () _type_ :state)
-    idle ;; 20, old: (idle () _type_ :state)
+    idle ;; 20
+    active ;; 21
     )
   )
-|#
 
-;; (define-extern simple-nav-sphere-event-handler function) ;; (function process int symbol event-message-block object :behavior simple-nav-sphere)
-;; (define-extern simple-nav-sphere-init-by-other function) ;; (function float vector nav-mesh int none :behavior simple-nav-sphere)
+(define-extern simple-nav-sphere-event-handler (function process int symbol event-message-block object :behavior simple-nav-sphere))
+(define-extern simple-nav-sphere-init-by-other (function float vector nav-mesh int object :behavior simple-nav-sphere))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; process-taskable               ;;
@@ -49507,7 +49521,7 @@
 ;; (define-extern traffic-manager-init-by-other function) ;; (function none :behavior traffic-manager)
 (define-extern traffic-start (function none))
 (define-extern traffic-kill (function none))
-;; (define-extern ctywide-entity-hack function) ;; (function none)
+(define-extern ctywide-entity-hack (function none))
 ;; (define-extern traffic-entity-hack function)
 ;; (define-extern riders-on function) ;; (function none)
 ;; (define-extern riders-off function) ;; (function none)
@@ -50277,59 +50291,56 @@
 ;; mech-part                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern mech-spawn-thruster function) ;; (function mech-info vector vector float float none)
+(define-extern mech-spawn-thruster (function mech-info vector vector float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mech (process-drawable)
-  ((extra-trans       vector :inline :offset-assert 208)
+  ((root              collide-shape-moving :override)
+   (extra-trans       vector :inline :offset-assert 208)
    (condition         int32          :offset-assert 224)
-   (shadow-backup     basic          :offset-assert 228)
-   (rider             uint64         :offset-assert 232)
+   (shadow-backup     shadow-geo     :offset-assert 228)
+   (rider             handle         :offset-assert 232)
    (shield-value      float          :offset-assert 240)
-   (nav-sphere-handle uint64         :offset-assert 248)
-   (probe-time        uint64         :offset-assert 256) ;; time-frame
+   (nav-sphere-handle handle         :offset-assert 248)
+   (probe-time        time-frame     :offset-assert 256) ;; time-frame
    )
   :method-count-assert 25
   :size-assert         #x108
   :flag-assert         #x1900900108
-  (:methods
-    (mech-method-24 () none) ;; 24 ;; (mech-method-24 (_type_) none)
-    )
   (:state-methods
-    wait-for-return ;; 23, old: (wait-for-return () _type_ :state)
-    pickup ;; 22, old: (pickup ((state mech)) _type_ :state)
-    idle ;; 21, old: (idle () _type_ :state)
-    wait-for-start ;; 20, old: (wait-for-start () _type_ :state)
+    wait-for-start ;; 20
+    idle ;; 21
+    (pickup (state mech)) ;; 22
+    wait-for-return ;; 23
+    )
+  (:methods
+    (mech-method-24 (_type_) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype mech-target (process-drawable)
-  ()
+  ((parent (pointer target) :override)
+   )
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:state-methods
-    active ;; 21, old: (active () _type_ :state)
-    idle ;; 20, old: (idle () _type_ :state)
+    idle ;; 20
+    active ;; 21
     )
   )
-|#
 
-;; (define-extern mech-init function) ;; (function entity-actor matrix3 handle float none :behavior mech)
-;; (define-extern mech-target-init function) ;; (function vector quaternion entity-actor none :behavior mech)
-;; (define-extern mech-target-spawn function) ;; (function vector process quaternion entity-actor (pointer mech-target))
+(define-extern mech-init (function entity-actor matrix3 handle float object :behavior mech))
+(define-extern mech-target-init (function vector quaternion entity-actor object :behavior mech))
+(define-extern mech-target-spawn (function vector process quaternion entity-actor (pointer mech-target)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-mech                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mech-shield (shield-sphere)
   ()
   :method-count-assert 43
@@ -50339,43 +50350,42 @@
     shield-disabled ;; 29
     )
   )
-|#
 
-;; (define-extern mech-shield-init-by-other function)
-;; (define-extern *mech-stance-mods* surface) ;; surface
-;; (define-extern *mech-walk-mods* surface) ;; surface
-;; (define-extern *mech-jump-mods* surface) ;; surface
-;; (define-extern *mech-punch-mods* surface) ;; surface
-;; (define-extern *mech-pickup-mods* surface) ;; surface
-;; (define-extern *mech-carry-walk-mods* surface) ;; surface
-;; (define-extern *mech-carry-drag-mods* surface) ;; surface
-;; (define-extern *mech-carry-jump-mods* surface) ;; surface
-;; (define-extern target-mech-falling-anim-trans function) ;; (function none :behavior target)
-;; (define-extern target-mech-mech-effect function) ;; (function target none :behavior mech)
-;; (define-extern mech-on-ground? function) ;; (function symbol :behavior target)
-;; (define-extern target-mech-get-off? function) ;; (function symbol :behavior target)
-;; (define-extern target-mech-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-mech-bonk-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern mech-leg-ik-callback function) ;; (function joint-mod-ik matrix matrix vector object :behavior target)
-;; (define-extern mech-update-ik function) ;; (function none :behavior target)
-;; (define-extern target-mech-init function) ;; (function handle float symbol none :behavior target)
-;; (define-extern target-mech-exit function) ;; (function none :behavior target)
-;; (define-extern target-mech-effect function) ;; (function none :behavior target)
-;; (define-extern target-mech-add-thrust function) ;; (function none :behavior target)
-;; (define-extern target-mech-collision function) ;; (function none :behavior target)
-;; (define-extern target-mech-real-post function) ;; (function none :behavior target)
-;; (define-extern target-mech-post function) ;; (function none :behavior target)
+(define-extern mech-shield-init-by-other (function shield-sphere-spawn-params object :behavior mech-shield))
+(define-extern *mech-stance-mods* surface)
+(define-extern *mech-walk-mods* surface)
+(define-extern *mech-jump-mods* surface)
+(define-extern *mech-punch-mods* surface)
+(define-extern *mech-pickup-mods* surface)
+(define-extern *mech-carry-walk-mods* surface)
+(define-extern *mech-carry-drag-mods* surface)
+(define-extern *mech-carry-jump-mods* surface)
+(define-extern target-mech-falling-anim-trans (function none :behavior target))
+(define-extern target-mech-mech-effect (function target none :behavior mech))
+(define-extern mech-on-ground? (function symbol :behavior target))
+(define-extern target-mech-get-off? (function symbol :behavior target))
+(define-extern target-mech-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-mech-bonk-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern mech-leg-ik-callback (function joint-mod-ik matrix matrix vector object :behavior target))
+(define-extern mech-update-ik (function none :behavior target))
+(define-extern target-mech-init (function handle float symbol none :behavior target))
+(define-extern target-mech-exit (function none :behavior target))
+(define-extern target-mech-effect (function none :behavior target))
+(define-extern target-mech-add-thrust (function none :behavior target))
+(define-extern target-mech-collision (function none :behavior target))
+(define-extern target-mech-real-post (function none :behavior target))
+(define-extern target-mech-post (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech-states                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *mech-exploder-params* joint-exploder-static-params) ;; joint-exploder-static-params
-;; (define-extern check-turn-on-shield function)
-;; (define-extern mech-can-throw? function)
-;; (define-extern target-mech-punch-pick function) ;; (function symbol int :behavior target)
-;; (define-extern target-mech-carry-update function) ;; (function none :behavior target)
-;; (define-extern target-mech-carry-post function) ;; (function none :behavior target)
+(define-extern *mech-exploder-params* joint-exploder-static-params)
+(define-extern check-turn-on-shield (function target object))
+(define-extern mech-can-throw? (function symbol :behavior target))
+(define-extern target-mech-punch-pick (function symbol int :behavior target))
+(define-extern target-mech-carry-update (function none :behavior target))
+(define-extern target-mech-carry-post (function none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nstb-texture                   ;;
@@ -65654,17 +65664,16 @@
 ;; flut                           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *flut-shadow-control* shadow-control)
-;; (define-extern *flut-color-table* array)
-;; (define-extern flut-color-from-index function)
-;; (define-extern flut-random-color-index function)
-;; (define-extern flut-init function)
+(define-extern *flut-shadow-control* shadow-control)
+(define-extern *flut-color-table* (array rgbaf))
+(define-extern flut-color-from-index (function int none :behavior flut))
+(define-extern flut-random-color-index (function int))
+(define-extern flut-init (function entity-actor transformq handle flut-flag symbol object :behavior flut))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-flut                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flut-bank (basic)
   ((jump-height-min        meters  :offset-assert 4)
    (jump-height-max        meters  :offset-assert 8)
@@ -65677,33 +65686,31 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *FLUT-bank* flut-bank)
-;; (define-extern *flut-walk-mods* surface)
-;; (define-extern *flut-run-racer-mods* surface)
-;; (define-extern *flut-run-wild-mods* surface)
-;; (define-extern *flut-jump-wild-mods* surface)
-;; (define-extern *flut-jump-mods* surface)
-;; (define-extern *flut-jump-racer-mods* surface)
-;; (define-extern *flut-double-jump-mods* surface)
-;; (define-extern *flut-double-jump-racer-mods* surface)
-;; (define-extern *flut-run-attack-mods* surface)
-;; (define-extern *flut-air-attack-mods* surface)
-;; (define-extern flut-leg-ik-callback function)
-;; (define-extern flut-update-ik function)
-;; (define-extern target-flut-get-off? function)
-;; (define-extern target-flut-post-post function)
-;; (define-extern target-flut-wild-post function)
-;; (define-extern target-flut-post function)
-;; (define-extern target-flut-falling-anim-trans function)
-;; (define-extern target-flut-hit-ground-anim function)
-;; (define-extern target-flut-standard-event-handler function)
-;; (define-extern target-flut-dangerous-event-handler function)
-;; (define-extern target-fldax-enter function)
-;; (define-extern target-fldax-exit function)
-;; (define-extern target-flut-run-wild object)
-;; (define-extern *flut-get-off-mods* object)
+(define-extern *FLUT-bank* flut-bank)
+(define-extern *flut-walk-mods* surface)
+(define-extern *flut-run-racer-mods* surface)
+(define-extern *flut-run-wild-mods* surface)
+(define-extern *flut-jump-wild-mods* surface)
+(define-extern *flut-jump-mods* surface)
+(define-extern *flut-jump-racer-mods* surface)
+(define-extern *flut-double-jump-mods* surface)
+(define-extern *flut-double-jump-racer-mods* surface)
+(define-extern *flut-run-attack-mods* surface)
+(define-extern *flut-air-attack-mods* surface)
+(define-extern flut-leg-ik-callback (function joint-mod-ik object object vector none))
+(define-extern flut-update-ik (function object :behavior target))
+(define-extern target-flut-get-off? (function symbol :behavior target))
+(define-extern target-flut-post-post (function none :behavior target))
+(define-extern target-flut-wild-post (function none :behavior target))
+(define-extern target-flut-post (function none :behavior target))
+(define-extern target-flut-falling-anim-trans (function object :behavior target))
+(define-extern target-flut-hit-ground-anim (function object :behavior target))
+(define-extern target-flut-standard-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-flut-dangerous-event-handler (function process int symbol event-message-block object :behavior target))
+(define-extern target-fldax-enter (function object :behavior target))
+(define-extern target-fldax-exit (function object :behavior target))
+(define-extern *flut-get-off-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctymark-obs-h                  ;;
@@ -68255,10 +68262,9 @@
 ;; target-tube                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tube-info (basic)
-  ((entity           basic            :offset-assert 4)
-   (tube             uint64           :offset-assert 8) ;; handle
+  ((entity           entity           :offset-assert 4)
+   (tube             handle           :offset-assert 8) ;; handle
    (downhill         vector   :inline :offset-assert 16)
    (centertube       vector   :inline :offset-assert 32)
    (downtube         vector   :inline :offset-assert 48)
@@ -68267,7 +68273,7 @@
    (old-transv       vector   :inline :offset-assert 96)
    (mod-x            float            :offset-assert 112)
    (mod-y            float            :offset-assert 116)
-   (start-time       uint64           :offset-assert 120) ;; time-frame
+   (start-time       time-frame       :offset-assert 120) ;; time-frame
    (turn-anim-targ   float            :offset-assert 128)
    (turn-anim-frame  float            :offset-assert 132)
    (turn-anim-vel    float            :offset-assert 136)
@@ -68279,20 +68285,16 @@
   :size-assert         #x98
   :flag-assert         #x900000098
   )
-|#
 
-#|
 (deftype tube-bank (basic)
   ()
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype slide-control (process-drawable)
-  ((target uint64         :offset-assert 200) ;; handle
+  ((target handle         :offset-assert 200) ;; handle
    (pos    float          :offset-assert 208)
    (trans  vector :inline :offset-assert 224)
    (rot    vector :inline :offset-assert 240)
@@ -68302,27 +68304,23 @@
   :size-assert         #x110
   :flag-assert         #x1600900110
   (:state-methods
-    slide-control-ride ;; 21, old: (slide-control-ride () _type_ :state)
-    slide-control-watch ;; 20, old: (slide-control-watch () _type_ :state)
+    slide-control-watch ;; 20
+    slide-control-ride ;; 21
     )
   )
-|#
 
-;; (define-extern *tube-mods* surface) ;; surface
-;; (define-extern *tube-jump-mods* surface) ;; surface
-;; (define-extern *tube-hit-mods* surface) ;; surface
-;; (define-extern *tube-surface* surface) ;; surface
-;; (define-extern *TUBE-bank* tube-bank) ;; tube-bank
-;; (define-extern tube-sounds function) ;; (function sound-id :behavior target)
-;; (define-extern tube-thrust function) ;; (function float float none :behavior target)
-;; (define-extern target-tube-post function) ;; (function none :behavior target)
-;; (define-extern target-tube-turn-anim function) ;; (function none :behavior target)
-;; (define-extern target-tube-walk object)
-;; (define-extern target-tube-jump object) ;; (state float float target)
-;; (define-extern target-tube-hit object) ;; (state symbol attack-info target)
-;; (define-extern target-tube-death object) ;; (state symbol target)
-;; (define-extern distance-from-tangent function) ;; (function path-control float vector vector vector vector float)
-;; (define-extern find-target-point function) ;; (function vector float :behavior slide-control)
+(define-extern *tube-mods* surface)
+(define-extern *tube-jump-mods* surface)
+(define-extern *tube-hit-mods* surface)
+(define-extern *tube-surface* surface)
+(define-extern *TUBE-bank* tube-bank)
+(define-extern tube-sounds (function sound-id :behavior target))
+(define-extern tube-thrust (function float float none :behavior target))
+(define-extern target-tube-post (function none :behavior target))
+(define-extern target-tube-turn-anim (function none :behavior target))
+
+(define-extern distance-from-tangent (function path-control float vector vector vector vector float))
+(define-extern find-target-point (function vector float :behavior slide-control))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precurc-part                   ;;

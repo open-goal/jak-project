@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: flut.gc
-;; name in dgo: flut
-;; dgos: WWD, DESLIZ, VOCA
-
-;; DECOMP BEGINS
-
+;; definition for symbol *flut-shadow-control*, type shadow-control
 (define *flut-shadow-control*
   (new 'static 'shadow-control :settings (new 'static 'shadow-settings
                                            :center (new 'static 'vector :w (the-as float #xa))
@@ -17,6 +12,7 @@
                                )
   )
 
+;; definition for symbol *flut-color-table*, type (array rgbaf)
 (define *flut-color-table* (the-as (array rgbaf) (new 'static 'boxed-array :type vector
                                                    (new 'static 'vector :x 1.0 :y 1.0 :z 0.8 :w 1.0)
                                                    (new 'static 'vector :x 1.0 :y 1.0 :z 0.7 :w 1.0)
@@ -35,6 +31,8 @@
                                                  )
         )
 
+;; definition for method 34 of type flut
+;; WARN: Return type mismatch int vs none.
 (defmethod spawn-part-and-sound! ((this flut))
   (if (nonzero? (-> this part))
       (spawn (-> this part) (-> this root trans))
@@ -46,6 +44,7 @@
   (none)
   )
 
+;; definition for method 10 of type flut
 (defmethod deactivate ((this flut))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (when (-> this count-lock)
@@ -56,16 +55,21 @@
   (none)
   )
 
+;; definition for function flut-color-from-index
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defbehavior flut-color-from-index flut ((arg0 int))
   (set! (-> self draw color-mult quad) (-> *flut-color-table* (mod arg0 (-> *flut-color-table* length)) quad))
   0
   (none)
   )
 
+;; definition for function flut-random-color-index
 (defun flut-random-color-index ()
   (rand-vu-int-range 0 (-> *flut-color-table* length))
   )
 
+;; definition for method 33 of type flut
 (defmethod flut-method-33 ((this flut))
   (let ((gp-0 (the-as (array collide-shape) (new 'stack 'boxed-array collide-shape 32))))
     (let ((a1-2 (sphere<-vector+r! (new 'stack-no-clear 'sphere) (-> this root trans) 16384.0)))
@@ -90,6 +94,7 @@
   #t
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-start (flut)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -184,6 +189,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate idle (flut)
   :virtual #t
   :event (-> (method-of-type flut wait-for-start) event)
@@ -213,8 +219,7 @@
       (set! (-> self count-lock) #t)
       (+! (-> *game-info* flut-count) 1)
       )
-    ;; og:preserve-this not-yet-implemented check
-    (if (and (nonzero? *minimap*) (not (-> self minimap)))
+    (if (not (-> self minimap))
         (set! (-> self minimap) (add-icon! *minimap* self (the-as uint 11) (the-as int #f) (the-as vector #t) 0))
         )
     (change-parent self *entity-pool*)
@@ -302,6 +307,7 @@
   :post ja-post
   )
 
+;; failed to figure out what this is:
 (defstate pickup (flut)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -387,6 +393,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-return (flut)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -426,6 +433,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate die (flut)
   :virtual #t
   :enter (-> (method-of-type flut idle) enter)
@@ -525,6 +533,8 @@
     )
   )
 
+;; definition for function flut-init
+;; INFO: Used lq/sq
 (defbehavior flut-init flut ((arg0 entity-actor) (arg1 transformq) (arg2 handle) (arg3 flut-flag) (arg4 symbol))
   (let ((s1-0 (new 'process 'collide-shape-moving self (collide-list-enum usually-hit-by-player))))
     (set! (-> s1-0 dynam) (copy *standard-dynamics* 'process))
@@ -618,6 +628,7 @@
     )
   )
 
+;; definition for method 11 of type flut
 (defmethod init-from-entity! ((this flut) (arg0 entity-actor))
   (flut-init
     arg0
@@ -627,3 +638,7 @@
     'normal
     )
   )
+
+
+
+
