@@ -417,6 +417,7 @@ enum class BucketId {
   BUCKET_2 = 2,
   BLIT_START = 3,
   TEX_LCOM_SKY_PRE = 4,
+  OCEAN_MID_FAR = 6,
 
   TEX_L0_TFRAG = 10,
   TFRAG_L0_TFRAG = 11,
