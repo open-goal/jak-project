@@ -419,7 +419,7 @@
 ;; definition for method 11 of type basebutton
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this basebutton) (arg0 entity-actor))
-  (local-vars (r0-0 uint128) (v1-17 uint128) (a0-14 object) (a1-6 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (init! this)
   (set! (-> this button-id) -1)
   (let ((v1-4 (res-lump-value (-> this entity) 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
@@ -434,26 +434,12 @@
       (logclear! (-> this button-status) (button-status pressed))
       )
   (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
-  (set! sv-16 0)
-  (let ((v1-15 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-15 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
-      ((and v1-15 (begin
-                    (let ((a0-15 #t))
-                      (let ((a1-5 (the-as uint128 sv-16)))
-                        (.pcpyud a1-6 a1-5 r0-0)
-                        )
-                      (let ((a1-8 (the-as int (shr (* (the-as int a1-6) 2) 49))))
-                        (cmove-#f-zero a0-14 a1-8 a0-15)
-                        )
-                      )
-                    a0-14
-                    )
-            )
+      ((and v1-15 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-15))
-       (let ((v1-16 (the-as uint128 sv-16)))
-         (.pcpyud v1-17 v1-16 r0-0)
-         )
-       (set! (-> this actor-group-count) (shr (* (the-as int v1-17) 2) 49))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
         (set! (-> this actor-group) (the-as (pointer actor-group) #f))
