@@ -1,23 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: grunt.gc
-;; name in dgo: grunt
-;; dgos: MIC
-
-;; +++grunt-flags
-(defenum grunt-flags
-  :type uint8
-  :bitfield #t
-  (gf0 0)
-  (gf1 1)
-  (gf2 2)
-  )
-;; ---grunt-flags
-
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup skel-grunt grunt grunt-lod0-jg -1
               ((grunt-lod0-mg (meters 20)) (grunt-lod1-mg (meters 40)) (grunt-lod2-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 5)
@@ -25,6 +9,7 @@
               :origin-joint-index 18
               )
 
+;; definition of type grunt-anim-info
 (deftype grunt-anim-info (structure)
   ((anim-index    int32)
    (travel-speed  meters)
@@ -32,7 +17,20 @@
   :pack-me
   )
 
+;; definition for method 3 of type grunt-anim-info
+(defmethod inspect ((this grunt-anim-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'grunt-anim-info)
+  (format #t "~1Tanim-index: ~D~%" (-> this anim-index))
+  (format #t "~1Ttravel-speed: (meters ~m)~%" (-> this travel-speed))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type grunt-global-info
 (deftype grunt-global-info (basic)
   ((patrol-anim  grunt-anim-info  4 :inline)
    (charge-anim  grunt-anim-info  3 :inline)
@@ -40,7 +38,21 @@
    )
   )
 
+;; definition for method 3 of type grunt-global-info
+(defmethod inspect ((this grunt-global-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tpatrol-anim[4] @ #x~X~%" (-> this patrol-anim))
+  (format #t "~1Tcharge-anim[3] @ #x~X~%" (-> this charge-anim))
+  (format #t "~1Tattack-anim[2] @ #x~X~%" (-> this attack-anim))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type grunt
 (deftype grunt (nav-enemy)
   ((patrol-anim             grunt-anim-info)
    (charge-anim             grunt-anim-info)
@@ -68,7 +80,33 @@
     )
   )
 
+;; definition for method 3 of type grunt
+(defmethod inspect ((this grunt))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tpatrol-anim: #<grunt-anim-info @ #x~X>~%" (-> this patrol-anim))
+  (format #t "~2Tcharge-anim: #<grunt-anim-info @ #x~X>~%" (-> this charge-anim))
+  (format #t "~2Tattack-anim: #<grunt-anim-info @ #x~X>~%" (-> this attack-anim))
+  (format #t "~2Tintro-path: ~A~%" (-> this intro-path))
+  (format #t "~2Tcircle-radial-dist: ~f~%" (-> this desired-angle))
+  (format #t "~2Tuse-charge-anim-index: ~D~%" (-> this use-charge-anim-index))
+  (format #t "~2Tjumping-ambush-path-pt: ~D~%" (-> this jumping-ambush-path-pt))
+  (format #t "~2Tgrunt-flags: ~D~%" (-> this grunt-flags))
+  (format #t "~2Tstate-timeout2: ~D~%" (-> this state-timeout2))
+  (format #t "~2Tnext-warn-time: ~D~%" (-> this next-warn-time))
+  (format #t "~2Tdest: #<vector @ #x~X>~%" (-> this dest))
+  (format #t "~2Tfocus-pos: #<vector @ #x~X>~%" (-> this focus-pos))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
+  (label cfg-4)
+  this
+  )
 
+;; definition for symbol *grunt-global-info*, type grunt-global-info
 (define *grunt-global-info* (new 'static 'grunt-global-info
                               :patrol-anim (new 'static 'inline-array grunt-anim-info 4
                                 (new 'static 'grunt-anim-info :anim-index 11 :travel-speed (meters 4))
@@ -88,6 +126,7 @@
                               )
         )
 
+;; definition for symbol *grunt-nav-enemy-info*, type nav-enemy-info
 (define *grunt-nav-enemy-info*
   (new 'static 'nav-enemy-info
     :use-die-falling #t
@@ -863,8 +902,10 @@
     )
   )
 
+;; failed to figure out what this is:
 (set! (-> *grunt-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
 
+;; definition for method 82 of type grunt
 (defmethod event-handler ((this grunt) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('hit 'hit-knocked)
@@ -923,6 +964,7 @@
     )
   )
 
+;; definition for method 74 of type grunt
 (defmethod go-ambush-delay ((this grunt))
   (cond
     ((logtest? (-> this fact enemy-options) (enemy-option user10))
@@ -938,6 +980,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate falling-ambush (grunt)
   :virtual #t
   :event enemy-event-handler
@@ -1012,6 +1055,7 @@
   :post nav-enemy-falling-post
   )
 
+;; definition for method 102 of type grunt
 (defmethod go-directed2 ((this grunt))
   (case (-> this jump-why)
     ((2)
@@ -1023,6 +1067,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate jumping-ambush (grunt)
   :virtual #t
   :event enemy-event-handler
@@ -1059,6 +1104,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate jumping-ambush-cont (grunt)
   :virtual #t
   :event enemy-event-handler
@@ -1094,6 +1140,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate active (grunt)
   :virtual #t
   :code (behavior ()
@@ -1202,6 +1249,7 @@
     )
   )
 
+;; definition for method 196 of type grunt
 (defmethod grunt-method-196 ((this grunt) (arg0 float))
   (local-vars (v1-5 float))
   (rlet ((acc :class vf)
@@ -1253,6 +1301,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate hostile (grunt)
   :virtual #t
   :trans (behavior ()
@@ -1328,6 +1377,7 @@
   :post nav-enemy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate attack (grunt)
   :virtual #t
   :event enemy-event-handler
@@ -1423,6 +1473,7 @@
   :post nav-enemy-chase-post
   )
 
+;; failed to figure out what this is:
 (defstate spin-attack (grunt)
   :virtual #t
   :event enemy-event-handler
@@ -1497,6 +1548,7 @@
   :post nav-enemy-simple-post
   )
 
+;; failed to figure out what this is:
 (defstate circling (grunt)
   :virtual #t
   :code (behavior ()
@@ -1593,6 +1645,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate pacing (grunt)
   :virtual #t
   :code (behavior ()
@@ -1654,6 +1707,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate stop-chase (grunt)
   :virtual #t
   :code (behavior ()
@@ -1687,6 +1741,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait-for-focus (grunt)
   :virtual #t
   :event enemy-event-handler
@@ -1734,6 +1789,7 @@
   :post (-> (method-of-type nav-enemy idle) post)
   )
 
+;; failed to figure out what this is:
 (defstate knocked-recover (grunt)
   :virtual #t
   :code (behavior ()
@@ -1766,6 +1822,7 @@
     )
   )
 
+;; definition for method 125 of type grunt
 (defmethod ragdoll-settled? ((this grunt))
   (let ((t9-0 (method-of-type nav-enemy ragdoll-settled?)))
     (and (t9-0 this) (or (= (-> this root gspot-pos y) -40959590.0)
@@ -1775,6 +1832,7 @@
     )
   )
 
+;; definition for method 143 of type grunt
 (defmethod on-dying ((this grunt))
   (when (-> this minimap)
     (logior! (-> this minimap flags) (minimap-flag fade-out))
@@ -1784,6 +1842,7 @@
   (none)
   )
 
+;; definition for method 7 of type grunt
 ;; WARN: Return type mismatch nav-enemy vs grunt.
 (defmethod relocate ((this grunt) (offset int))
   (if (nonzero? (-> this intro-path))
@@ -1792,6 +1851,8 @@
   (the-as grunt ((method-of-type nav-enemy relocate) this offset))
   )
 
+;; definition for method 120 of type grunt
+;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy-collision! ((this grunt))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
@@ -1887,14 +1948,18 @@
   (none)
   )
 
+;; definition for method 197 of type grunt
 (defmethod get-enemy-info ((this grunt))
   *grunt-nav-enemy-info*
   )
 
+;; definition for method 67 of type grunt
 (defmethod coin-flip? ((this grunt))
   #f
   )
 
+;; definition for method 121 of type grunt
+;; WARN: Return type mismatch int vs none.
 (defmethod init-enemy! ((this grunt))
   (initialize-skeleton
     this
@@ -1948,6 +2013,7 @@
   (none)
   )
 
+;; definition for method 122 of type grunt
 ;; WARN: Return type mismatch int vs object.
 (defmethod go-idle2 ((this grunt))
   (if (logtest? (-> this fact enemy-options) (enemy-option user9))
@@ -1956,3 +2022,7 @@
       )
   0
   )
+
+
+
+

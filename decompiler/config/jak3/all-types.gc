@@ -42480,70 +42480,74 @@
 ;; grunt                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype grunt-anim-info (structure)
   ((anim-index   int32   :offset-assert 0)
    (travel-speed meters  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype grunt-global-info (basic)
-  ((patrol-anim grunt-anim-info 4 :offset-assert 4) ;; guessed by decompiler
-   (charge-anim grunt-anim-info 3 :offset-assert 36) ;; guessed by decompiler
-   (attack-anim grunt-anim-info 2 :offset-assert 60) ;; guessed by decompiler
+  ((patrol-anim grunt-anim-info 4 :inline :offset-assert 4) ;; guessed by decompiler
+   (charge-anim grunt-anim-info 3 :inline :offset-assert 36) ;; guessed by decompiler
+   (attack-anim grunt-anim-info 2 :inline :offset-assert 60) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x4c
   :flag-assert         #x90000004c
   )
-|#
 
-#|
+;; +++grunt:grunt-flags
+(defenum grunt-flags
+  :type uint8
+  :bitfield #t
+  (gf0 0)
+  (gf1 1)
+  (gf2 2)
+  )
+;; ---grunt:grunt-flags
+
 (deftype grunt (nav-enemy)
   ((patrol-anim            grunt-anim-info            :offset-assert 620)
    (charge-anim            grunt-anim-info            :offset-assert 624)
    (attack-anim            grunt-anim-info            :offset-assert 628)
    (intro-path             path-control               :offset-assert 632) ;; guessed by decompiler
-   (use-charge-anim-index  int8                       :offset-assert 640)
+   (use-charge-anim-index  int8                       :offset 640)
    (jumping-ambush-path-pt int8                       :offset-assert 641)
-   (grunt-flags            uint8                      :offset-assert 642)
-   (state-timeout2         uint64                     :offset-assert 648)
-   (next-warn-time         uint64                     :offset-assert 656) ;; time-frame
+   (grunt-flags            grunt-flags                :offset-assert 642)
+   (state-timeout2         time-frame                 :offset-assert 648)
+   (next-warn-time         time-frame                 :offset-assert 656) ;; time-frame
    (dest                   vector             :inline :offset-assert 672)
-   (focus-pos              vector             :inline :offset-assert 352)
-   (minimap                connection-minimap         :offset-assert 704)
+   (minimap                connection-minimap         :offset 704)
    )
   :method-count-assert 198
   :size-assert         #x2c4
   :flag-assert         #xc6025002c4
-  (:methods
-    (grunt-method-196 () none) ;; 196
-    (grunt-method-197 () none) ;; 197
-    )
   (:state-methods
     knocked-recover ;; 32
-    stop-chase ;; 158
-    circling ;; 157
-    pacing ;; 156
-    spin-attack ;; 195
-    wait-for-focus ;; 194
-    hostile ;; 38
-    attack ;; 190
     active ;; 34
-    jumping-ambush-cont ;; 193
-    jumping-ambush ;; 192
+    hostile ;; 38
+    pacing ;; 156
+    circling ;; 157
+    stop-chase ;; 158
+    attack ;; 190
     falling-ambush ;; 191
+    jumping-ambush ;; 192
+    jumping-ambush-cont ;; 193
+    wait-for-focus ;; 194
+    spin-attack ;; 195
+    )
+  (:methods
+    (grunt-method-196 (_type_ float) process-focusable) ;; 196
+    (get-enemy-info (_type_) nav-enemy-info) ;; 197
     )
   )
-|#
 
-;; (define-extern *grunt-global-info* grunt-global-info) ;; grunt-global-info
-;; (define-extern *grunt-nav-enemy-info* nav-enemy-info) ;; nav-enemy-info
+(define-extern *grunt-global-info* grunt-global-info)
+(define-extern *grunt-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; battle                         ;;
