@@ -994,6 +994,9 @@ const std::unordered_map<
               {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"),
                                              16,
                                              ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
+             {"nav-mesh",
+              {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
+               {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
