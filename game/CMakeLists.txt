@@ -204,6 +204,8 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/spatial_hash.cpp
         mips2c/jak3_functions/sparticle.cpp
         mips2c/jak3_functions/sparticle_launcher.cpp
+        mips2c/jak3_functions/nav_control.cpp
+        mips2c/jak3_functions/nav_engine.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

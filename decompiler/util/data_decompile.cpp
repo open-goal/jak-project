@@ -997,6 +997,16 @@ const std::unordered_map<
              {"nav-mesh",
               {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
                {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
+             {"enemy-info",
+              {{"idle-anim-script",
+                ArrayFieldDecompMeta(TypeSpec("idle-control-frame"),
+                                     32,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
+             {"nav-enemy-info",
+              {{"idle-anim-script",
+                ArrayFieldDecompMeta(TypeSpec("idle-control-frame"),
+                                     32,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
