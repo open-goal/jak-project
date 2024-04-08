@@ -59506,12 +59506,14 @@
 ;; manta                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++manta:manta-flags
 (defenum manta-flags
   :type uint16
   :bitfield #t
   (mf0 0)
   (mf1 1)
   )
+;; ---manta:manta-flags
 
 (deftype manta (nav-enemy)
   ((info                     rigid-body-object-constants         :offset-assert 620)
@@ -59569,7 +59571,7 @@
     )
   (:methods
     (manta-method-195 (_type_) none) ;; 195
-    (manta-method-196 (_type_) none) ;; 196
+    (manta-method-196 (_type_) symbol) ;; 196
     (manta-method-197 (_type_) none) ;; 197
     (manta-method-198 (_type_) none) ;; 198
     (manta-method-199 (_type_) none) ;; 199
@@ -59629,6 +59631,7 @@
   :flag-assert         #x900000028
   )
 
+;; +++gekko:gekko-flag
 (defenum gekko-flag
   :type uint16
   :bitfield #t
@@ -59638,10 +59641,11 @@
   (on-wall?)
   (falling-off-wall?)
   )
+;; ---gekko:gekko-flag
 
 (deftype gekko (nav-enemy)
   ((shadow-spot     gekko-shadow-spot :inline :offset-assert 624)
-   (foot            gekko-foot-info   4 :inline :offset-assert 672)
+   (foot            gekko-foot-info 4 :inline :offset-assert 672)
    (rot-matrix      matrix            :inline :offset-assert 1056)
    (gspot-normal    vector            :inline :offset-assert 1120)
    (tilt-quat       quaternion        :inline :offset-assert 1136)
@@ -59654,8 +59658,8 @@
    (rot-mult        float                     :offset-assert 1212)
    (move-speed      float                     :offset-assert 1216)
    (move-decel      float                     :offset-assert 1220)
-   (turn-next-state basic                     :offset-assert 1224)
-   (path-wall       basic                     :offset-assert 1228)
+   (turn-next-state (state gekko)             :offset-assert 1224)
+   (path-wall       path-control              :offset-assert 1228)
    (scared-timer    time-frame                :offset-assert 1232)
    (scale           float                     :offset-assert 1240)
    (probe-len       float                     :offset-assert 1244)
@@ -59688,13 +59692,13 @@
     turn-quick ;; 201
     )
   (:methods
-    (gekko-method-202 () none) ;; 202
-    (gekko-method-203 () none) ;; 203
-    (gekko-method-204 () none) ;; 204
-    (gekko-method-205 () none) ;; 205
-    (gekko-method-206 () none) ;; 206
-    (gekko-method-207 () none) ;; 207
-    (gekko-method-208 () none) ;; 208
+    (gekko-method-202 (_type_) none) ;; 202
+    (gekko-method-203 (_type_) none) ;; 203
+    (gekko-method-204 (_type_) none) ;; 204
+    (gekko-method-205 (_type_) none) ;; 205
+    (gekko-method-206 (_type_) none) ;; 206
+    (gekko-method-207 (_type_) none) ;; 207
+    (gekko-method-208 (_type_) none) ;; 208
     )
   )
 
@@ -59705,15 +59709,15 @@
   :flag-assert         #xd1046004e0
   )
 
-(define-extern *gekko-ik-setup* gekko-ik-setup)
+(define-extern *gekko-ik-setup* (inline-array gekko-ik-setup))
 (define-extern *gekko-foot-offset* (array gekko-foot-info))
 (define-extern *fact-info-gekko-defaults* fact-info-enemy-defaults)
 (define-extern *gekko-nav-enemy-info* nav-enemy-info)
-(define-extern hostile-wall-trans function)
-(define-extern gekko-stare-code function)
-(define-extern gekko-foot-rot-handler function)
-(define-extern gekko-postbind function)
-(define-extern gekko-postbind-callback function)
+(define-extern hostile-wall-trans (function none :behavior gekko))
+(define-extern gekko-stare-code (function none :behavior gekko))
+(define-extern gekko-foot-rot-handler (function cspace transformq none))
+(define-extern gekko-postbind (function draw-control cspace-array none))
+(define-extern gekko-postbind-callback (function draw-control cspace-array joint-control none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rat                            ;;
