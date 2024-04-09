@@ -7,3 +7,186 @@
 
 ;; DECOMP BEGINS
 
+(deftype market-object (crate)
+  ((sound-explode   sound-spec)
+   (part-explode    sparticle-launch-group)
+   (explode-matrix  matrix  :inline)
+   )
+  )
+
+
+(defmethod init-collision! ((this market-object))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    knocked
+                                    )
+          )
+    (set! (-> this root) (the-as collide-shape-moving s5-0))
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch market-object vs none.
+(defmethod init-skel! ((this market-object))
+  (set! (-> this draw light-index) (the-as uint 10))
+  (set! (-> this look) (-> this type symbol))
+  (when (= (-> this fact pickup-type) (pickup-type eco-pill-random))
+    (set! (-> this fact pickup-type) (pickup-type none))
+    0
+    )
+  (set! (-> this base quad) (-> this root trans quad))
+  (crate-post)
+  (nav-mesh-connect-from-ent this)
+  (none)
+  )
+
+(defstate idle (market-object)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((a1-1 (the-as object (-> block param 1)))
+             (a0-2 proc)
+             )
+         (-> (the-as attack-info a1-1) id)
+         (let ((gp-0 (-> (the-as attack-info a1-1) count)))
+           (cond
+             ((and (logtest? (attack-mask penetrate-using) (-> (the-as attack-info a1-1) mask))
+                   (logtest? (penetrate jak-dark-nuke) (-> (the-as attack-info a1-1) penetrate-using))
+                   )
+              (go-virtual die #t 0)
+              )
+             (else
+               (when a0-2
+                 (let ((v1-9 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
+                   (when v1-9
+                     (forward-up-nopitch->inv-matrix
+                       (-> self explode-matrix)
+                       (vector-! (new 'stack-no-clear 'vector) (-> v1-9 root trans) (-> self root trans))
+                       *up-vector*
+                       )
+                     (set! (-> self explode-matrix trans quad) (-> self root trans quad))
+                     )
+                   )
+                 )
+               (send-event proc 'get-attack-count 1)
+               (process-contact-action proc)
+               (set! (-> self target) (process->handle proc))
+               (go-virtual die #f (the-as int gp-0))
+               )
+             )
+           )
+         )
+       )
+      (else
+        (crate-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  )
+
+(defstate die (market-object)
+  :virtual #t
+  :enter (behavior ((arg0 symbol) (arg1 int))
+    (when (not arg0)
+      (when (and (logtest? (-> self draw status) (draw-control-status on-screen))
+                 (< (vector-vector-xz-distance (-> self root trans) (camera-pos)) 409600.0)
+                 )
+        (if (logtest? (-> self part-explode flags) (sp-group-flag sp13))
+            (part-tracker-spawn
+              part-tracker-subsampler
+              :to self
+              :group (-> self part-explode)
+              :mat-joint (-> self explode-matrix)
+              )
+            (part-tracker-spawn part-tracker :to self :group (-> self part-explode) :mat-joint (-> self explode-matrix))
+            )
+        )
+      (if (nonzero? (-> self sound-explode))
+          (sound-play-by-spec (-> self sound-explode) (new-sound-id) (the-as vector #t))
+          )
+      )
+    (let* ((t9-10 find-parent-method)
+           (a0-9 market-object)
+           (a1-9 30)
+           (t9-11 (-> (the-as (state symbol int market-object) (t9-10 a0-9 a1-9)) enter))
+           )
+      (if t9-11
+          (t9-11 (the-as symbol a0-9) a1-9)
+          )
+      )
+    )
+  )
+
+(deftype market-basket-a (market-object)
+  ()
+  )
+
+
+(deftype market-basket-b (market-object)
+  ()
+  )
+
+
+(deftype market-crate (market-object)
+  ()
+  )
+
+
+(deftype market-sack-a (market-object)
+  ()
+  )
+
+
+(deftype market-sack-b (market-object)
+  ()
+  )
+
+
+(deftype fruit-stand (process-focusable)
+  ((incoming-attack-id  uint32)
+   (hack-counter        uint32)
+   (count-sparts        uint32)
+   (first-sparts        uint32)
+   (num-sparts          uint32)
+   (sparts-index        uint32  4)
+   (sparts-pos          vector  4 :inline)
+   (parts-alive?        symbol)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (fruit-stand-method-29 (_type_) none)
+    (fruit-stand-method-30 (_type_) none)
+    )
+  )
