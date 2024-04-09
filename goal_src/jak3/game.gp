@@ -313,7 +313,7 @@
 ;; (cgo-file "railb2.gd" common-dep)
 ;; (cgo-file "lbbspirt.gd" common-dep)
 ;; (cgo-file "temd.gd" common-dep)
-;; (cgo-file "mined.gd" common-dep)
+(cgo-file "mined.gd" common-dep)
 (cgo-file "wwd.gd" common-dep)
 ;; (cgo-file "loutro3.gd" common-dep)
 ;; (cgo-file "sec.gd" common-dep)
