@@ -31078,7 +31078,7 @@
 (define-extern sparticle-2d-spline-align (function object sparticle-cpuinfo sprite-vec-data-2d object none))
 (define-extern sparticle-2d-spline-align-instant (function object sparticle-cpuinfo sprite-vec-data-2d none))
 (define-extern birth-func-inherit-size (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
-(define-extern birth-func-texture-group-2d (function object sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-texture-group-2d (function object sparticle-cpuinfo sparticle-launchinfo object object none))
 (define-extern birth-func-set-vel-2d (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern sparticle-3d-rotate-xz-to-camera (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d none))
 (define-extern spt-func-relative-pos (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d none))
@@ -41005,7 +41005,7 @@
     (enemy-method-105 (_type_ float symbol) symbol) ;; 105
     (find-best-focus (_type_) process) ;; 106
     (is-pfoc-in-mesh? (_type_ process-focusable vector) symbol) ;; 107
-    (enemy-method-108 (_type_) symbol) ;; 108
+    (enemy-method-108 (_type_ process-focusable) symbol) ;; 108
     (enemy-method-109 (_type_) symbol) ;; 109
     (send-attack (_type_ process touching-shapes-entry uint) symbol) ;; 110
     (on-attack (_type_ process-focusable) none) ;; 111
@@ -42553,7 +42553,6 @@
 ;; battle                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype battle-info (basic)
   ((id                                int8          :offset-assert 4)
    (notice-spec                       uint64        :offset-assert 8)
@@ -42576,9 +42575,7 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype battle-ally (structure)
   ((entity entity-actor  :offset-assert 0) ;; guessed by decompiler
    )
@@ -42586,19 +42583,15 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype battle-ally-array (inline-array-class)
-  ((data battle-ally :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data battle-ally :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype battle-breed (structure)
   ((breed-type type   :offset-assert 0) ;; guessed by decompiler
    (percent    float  :offset-assert 4)
@@ -42607,21 +42600,23 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype battle-breed-array (inline-array-class)
-  ((data battle-breed :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data battle-breed :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
+(defenum battle-spawner-flags
+  :bitfield #t
+  :type int64
+  (hit)
+  )
+
 (deftype battle-spawner (structure)
-  ((flags               uint64                     :offset-assert 0) ;; battle-spawner-flags
+  ((flags               battle-spawner-flags       :offset-assert 0) ;; battle-spawner-flags
    (entity              entity-actor               :offset-assert 8) ;; guessed by decompiler
    (breeds              battle-breed-array         :offset-assert 12) ;; guessed by decompiler
    (creature-index      int8                       :offset-assert 16)
@@ -42630,31 +42625,37 @@
    (mode                uint8                      :offset-assert 19)
    (intro-path          path-control               :offset-assert 20) ;; guessed by decompiler
    (notice-attack-delay uint32                     :offset-assert 24)
-   (creature            uint64                     :offset-assert 32) ;; handle
-   (last-spawn-time     uint64                     :offset-assert 40) ;; time-frame
-   (noticed-attack-time uint64                     :offset-assert 48) ;; time-frame
+   (creature            handle                     :offset-assert 32) ;; handle
+   (last-spawn-time     time-frame                 :offset-assert 40) ;; time-frame
+   (noticed-attack-time time-frame                 :offset-assert 48) ;; time-frame
    (attack-pos          vector             :inline :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype battle-spawner-array (inline-array-class)
-  ((data battle-spawner :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data battle-spawner :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
+(defenum battle-flags
+  :bitfield #t
+  :type uint8
+  (noticed)
+  (active)
+  (beaten)
+  (no-spawner-block)
+  (battle-music-set)
+  )
+
 (deftype battle (process-drawable)
   ((info                     battle-info           :offset-assert 200) ;; guessed by decompiler
-   (flags                    uint8                 :offset-assert 204) ;; battle-flags
+   (flags                    battle-flags          :offset-assert 204) ;; battle-flags
    (spawn-initial-creatures? symbol                :offset-assert 208) ;; guessed by decompiler
    (next-spawn-delay         uint32                :offset-assert 212)
    (on-notice                basic                 :offset-assert 216)
@@ -42664,8 +42665,8 @@
    (count                    uint32                :offset-assert 232)
    (die-count                uint32                :offset-assert 236)
    (stat-child-count         uint16                :offset-assert 240)
-   (cant-spawn-time          uint64                :offset-assert 248) ;; time-frame
-   (jammed-starting-time     uint64                :offset-assert 256) ;; time-frame
+   (cant-spawn-time          time-frame            :offset-assert 248) ;; time-frame
+   (jammed-starting-time     time-frame            :offset-assert 256) ;; time-frame
    (spawners                 battle-spawner-array  :offset-assert 264) ;; guessed by decompiler
    (allies                   battle-ally-array     :offset-assert 268) ;; guessed by decompiler
    )
@@ -42673,48 +42674,47 @@
   :size-assert         #x110
   :flag-assert         #x3500900110
   ;; field on-notice uses ~A with a signed load. field on-hostile uses ~A with a signed load. field on-beaten uses ~A with a signed load.
-  (:methods
-    (battle-method-21 () none) ;; 21 ;; (battle-state-21 () _type_ :state)
-    (battle-method-25 () none) ;; 25 ;; (spawner-blocked? (_type_ battle-spawner) symbol)
-    (battle-method-26 () none) ;; 26 ;; (spawner-blocked-by-collide? (_type_ battle-spawner) symbol)
-    (battle-method-27 () none) ;; 27 ;; (draw-battle-marks (_type_) none)
-    (battle-method-28 () none) ;; 28 ;; (initialize-enemy-lists (_type_) none)
-    (battle-method-29 () none) ;; 29 ;; (initialize-spawner-breeds (_type_ battle-spawner entity-actor) none)
-    (battle-method-30 () none) ;; 30 ;; (get-spawner-for-enemy (_type_ process) battle-spawner)
-    (battle-method-31 () none) ;; 31 ;; (initialize-ally (_type_ battle-ally entity-actor) none)
-    (battle-method-32 () none) ;; 32 ;; (initialize-spawner (_type_ battle-spawner entity-actor) none)
-    (battle-method-33 () none) ;; 33 ;; (initialize-battle (_type_) none)
-    (battle-method-34 () none) ;; 34 ;; (init-go (_type_) int)
-    (battle-method-35 () none) ;; 35 ;; (get-spawn-delay (_type_) int)
-    (battle-method-36 () none) ;; 36 ;; (get-best-spawner (_type_) battle-spawner)
-    (battle-method-37 () none) ;; 37 ;; (spawner-free? (_type_ battle-spawner) symbol)
-    (battle-method-38 () none) ;; 38 ;; (spawn-from-breed (_type_ battle-breed enemy-init-by-other-params) handle)
-    (battle-method-39 () none) ;; 39 ;; (spawn-from-spawner (_type_ battle-spawner symbol) none)
-    (battle-method-40 () none) ;; 40 ;; (spawn-initial-creatures (_type_) none)
-    (battle-method-41 () none) ;; 41 ;; (get-random-breed (_type_ battle-spawner) battle-breed)
-    (battle-method-42 () none) ;; 42 ;; (spawner-hit (_type_ battle-spawner process) symbol)
-    (battle-method-43 () none) ;; 43 ;; (spawner-try-jump (_type_ battle-spawner enemy) symbol)
-    (battle-method-44 () none) ;; 44 ;; (spawner-do-jump (_type_ battle-spawner) int)
-    (battle-method-45 () none) ;; 45 ;; (spawner-hittable? (_type_ battle-spawner) symbol)
-    (battle-method-46 () none) ;; 46 ;; (spawner-in-intro? (_type_ battle-spawner) symbol)
-    (battle-method-47 () none) ;; 47 ;; (set-battle-music (_type_) none)
-    (battle-method-48 () none) ;; 48 ;; (unset-battle-music (_type_) none)
-    (battle-method-49 () none) ;; 49 ;; (update-allies-list (_type_) int)
-    (battle-method-50 () none) ;; 50 ;; (beaten? (_type_) symbol)
-    (battle-method-51 () none) ;; 51 ;; (spawner-active? (_type_ battle-spawner symbol) symbol)
-    (battle-method-52 () none) ;; 52 ;; (spawner-active-count (_type_) int)
-    )
   (:state-methods
-    beaten ;; 24, old: (beaten () _type_ :state)
-    hostile ;; 23, old: (hostile () _type_ :state)
-    notice ;; 22, old: (notice () _type_ :state)
-    idle ;; 20, old: (idle () _type_ :state)
+    idle ;; 20
+    undefined ;; 21, not defined
+    notice ;; 22
+    hostile ;; 23
+    beaten ;; 24
+    )
+  (:methods
+    (spawner-blocked? (_type_ battle-spawner) symbol) ;; 25
+    (spawner-blocked-by-collide? (_type_ battle-spawner) symbol) ;; 26
+    (draw-battle-marks (_type_) none) ;; 27
+    (initialize-enemy-lists (_type_) none) ;; 28
+    (initialize-spawner-breeds (_type_ battle-spawner entity-actor) none) ;; 29
+    (get-spawner-for-enemy (_type_ process) battle-spawner) ;; 30
+    (initialize-ally (_type_ battle-ally entity-actor) none) ;; 31
+    (initialize-spawner (_type_ battle-spawner entity-actor) none) ;; 32
+    (initialize-battle (_type_) none) ;; 33
+    (init-go (_type_) int) ;; 34
+    (get-spawn-delay (_type_) int) ;; 35
+    (get-best-spawner (_type_) battle-spawner) ;; 36
+    (spawner-free? (_type_ battle-spawner) symbol) ;; 37
+    (spawn-from-breed (_type_ battle-breed enemy-init-by-other-params) handle) ;; 38
+    (spawn-from-spawner (_type_ battle-spawner symbol) none) ;; 39
+    (spawn-initial-creatures (_type_) none) ;; 40
+    (get-random-breed (_type_ battle-spawner) battle-breed) ;; 41
+    (spawner-hit (_type_ battle-spawner process) symbol) ;; 42
+    (spawner-try-jump (_type_ battle-spawner enemy) symbol) ;; 43
+    (spawner-do-jump (_type_ battle-spawner) int) ;; 44
+    (spawner-hittable? (_type_ battle-spawner) symbol) ;; 45
+    (spawner-in-intro? (_type_ battle-spawner) symbol) ;; 46
+    (set-battle-music (_type_) none) ;; 47
+    (unset-battle-music (_type_) none) ;; 48
+    (update-allies-list (_type_) int) ;; 49
+    (beaten? (_type_) symbol) ;; 50
+    (spawner-active? (_type_ battle-spawner symbol) symbol) ;; 51
+    (spawner-active-count (_type_) int) ;; 52
     )
   )
-|#
 
-;; (define-extern *battles* array) ;; (array battle-info)
-;; (define-extern battle-event-handler function) ;; (function process int symbol event-message-block object :behavior battle)
+(define-extern *battles* (array battle-info))
+(define-extern battle-event-handler (function process int symbol event-message-block object :behavior battle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-formation-h              ;;
@@ -62041,24 +62041,19 @@
 ;; wascitya-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-stad-door (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype waspala-elevator (elevator)
   ()
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desertf-obs                    ;;
@@ -64667,10 +64662,9 @@
 ;; forest-obs-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype shaker (structure)
   ((axis         vector :inline :offset-assert 0)
-   (start-time   uint64         :offset-assert 16) ;; time-frame
+   (start-time   time-frame     :offset-assert 16) ;; time-frame
    (decay-time   float          :offset-assert 24)
    (amplitude    float          :offset-assert 28)
    (freq         float          :offset-assert 32)
@@ -64684,10 +64678,9 @@
   :size-assert         #x38
   :flag-assert         #xa00000038
   (:methods
-    (shaker-method-9 () none) ;; 9 ;; (shaker-method-9 (_type_) none)
+    (shaker-method-9 (_type_) none)
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65724,68 +65717,55 @@
 ;; ctymark-obs-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype market-object (crate)
-  ((sound-explode  basic          :offset-assert 288)
-   (part-explode   basic          :offset-assert 292)
+  ((sound-explode  sound-spec     :offset-assert 288)
+   (part-explode   sparticle-launch-group :offset-assert 292)
    (explode-matrix matrix :inline :offset-assert 304)
    )
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   (:state-methods
-    die ;; 30
     idle ;; 29
+    ;; (die symbol int) ;; 30
     )
   )
-|#
 
-#|
 (deftype market-basket-a (market-object)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype market-basket-b (market-object)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype market-crate (market-object)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype market-sack-a (market-object)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype market-sack-b (market-object)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype fruit-stand (process-focusable)
   ((incoming-attack-id uint32   :offset-assert 208)
    (hack-counter       uint32   :offset-assert 212)
@@ -65793,31 +65773,32 @@
    (first-sparts       uint32   :offset-assert 220)
    (num-sparts         uint32   :offset-assert 224)
    (sparts-index       uint32 4 :offset-assert 228) ;; guessed by decompiler
-   (sparts-pos         vector 4 :offset-assert 256) ;; guessed by decompiler
-   (parts-alive?       basic    :offset-assert 320)
+   (sparts-pos         vector 4 :inline :offset-assert 256) ;; guessed by decompiler
+   (parts-alive?       symbol   :offset-assert 320)
    )
   :method-count-assert 31
   :size-assert         #x144
   :flag-assert         #x1f00d00144
+  (:state-methods
+    idle ;; 28
+    )
   (:methods
-    (fruit-stand-method-28 () none) ;; 28 ;; (fruit-stand-method-28 (_type_) none)
-    (fruit-stand-method-29 () none) ;; 29 ;; (fruit-stand-method-29 (_type_) none)
-    (fruit-stand-method-30 () none) ;; 30
+    (fruit-stand-method-29 (_type_) none) ;; 29
+    (fruit-stand-method-30 (_type_) none) ;; 30
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctymark-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern check-market-piece-ground function) ;; (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none)
-;; (define-extern market-activate function) ;; (function level none)
-;; (define-extern *fruit-check-ground-counter* object) ;; int
-;; (define-extern fruit-check-ground-bounce function) ;; (function sparticle-system sparticle-cpuinfo sparticle-launchinfo matrix float)
-;; (define-extern fruit-sparticle-next-on-mode-1 function) ;; (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float)
-;; (define-extern fruit-stand-event-handler function) ;; (function process int symbol event-message-block object :behavior fruit-stand)
+(define-extern check-market-piece-ground (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern market-activate (function level none))
+(define-extern *fruit-check-ground-counter* int)
+(define-extern fruit-check-ground-bounce (function sparticle-system sparticle-cpuinfo sparticle-launchinfo matrix float))
+(define-extern fruit-sparticle-next-on-mode-1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo float))
+(define-extern fruit-stand-event-handler (function process int symbol event-message-block object :behavior fruit-stand))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasteland-scenes               ;;
@@ -65974,67 +65955,66 @@
 ;; waswide-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-birth-func-brightness-sat-scrape-dirt function)
-;; (define-extern spt-birth-func-part-sat-scrape-dirt function)
-;; (define-extern spt-birth-func-part-sat-scrape-rocks function)
-;; (define-extern *range-sat-explo-scene-color* curve-color-fast)
-;; (define-extern *range-sat-explo-scene-alpha* curve2d-fast)
-;; (define-extern *range-sat-explo-scene-scale-x* curve2d-fast)
-;; (define-extern *range-sat-explo-scene-scale-y* curve2d-fast)
-;; (define-extern *curve-sat-explo-scene-alpha* curve2d-fast)
-;; (define-extern *curve-sat-explo-scene-scale-x* curve2d-fast)
-;; (define-extern *curve-sat-explo-scene-scale-y* curve2d-fast)
-;; (define-extern *part-neo-satellite-explosion-texture-scene-curve-settings* object)
-;; (define-extern *range-color-wascity-palace-fire-beacon-flame* curve-color-fast)
-;; (define-extern *range-alpha-wascity-palace-fire-beacon-flame* curve2d-fast)
-;; (define-extern *range-scale-wascity-palace-fire-beacon-flame-x* curve2d-fast)
-;; (define-extern *range-scale-wascity-palace-fire-beacon-flame-y* curve2d-fast)
-;; (define-extern *r-curve-wascity-palace-fire-beacon-flame* curve2d-fast)
-;; (define-extern *g-curve-wascity-palace-fire-beacon-flame* curve2d-fast)
-;; (define-extern *b-curve-wascity-palace-fire-beacon-flame* curve2d-fast)
-;; (define-extern *curve-alpha-wascity-palace-fire-beacon-flame* curve2d-fast)
-;; (define-extern *curve-wascity-palace-fire-beacon-flame-x* curve2d-fast)
-;; (define-extern *curve-wascity-palace-fire-beacon-flame-y* curve2d-fast)
-;; (define-extern *part-wascity-palace-fire-beacon-flame-curve-settings* object)
-;; (define-extern *range-wrsplash-color* curve-color-fast)
-;; (define-extern *range-wrsplash-alpha* curve2d-fast)
-;; (define-extern *range-wrsplash-scale-x* curve2d-fast)
-;; (define-extern *range-wrsplash-scale-y* curve2d-fast)
-;; (define-extern *curve-wrsplash-alpha* curve2d-fast)
-;; (define-extern *curve-wrsplash-scale-x* curve2d-fast)
-;; (define-extern *curve-wrsplash-scale-y* curve2d-fast)
-;; (define-extern *part-water-rocks-splash-curve-settings* object)
-;; (define-extern part-wascityb-bird1-path function)
-;; (define-extern part-wascityb-bird2-path function)
-;; (define-extern part-wascityb-bird3-path function)
-;; (define-extern part-wascityb-bird4-path function)
-;; (define-extern part-wascityb-bird5-path function)
-;; (define-extern part-wascityb-bird6-path function)
-;; (define-extern part-wascityb-bird7-path function)
-;; (define-extern part-wascityb-bird8-path function)
-;; (define-extern part-wascityb-bird9-path function)
-;; (define-extern part-wascityb-bird10-path function)
-;; (define-extern part-wascitya-fly1-path function)
-;; (define-extern part-wascitya-fly2-path function)
-;; (define-extern part-wascitya-fly3-path function)
-;; (define-extern *range-color-flame* curve-color-fast)
-;; (define-extern *range-alpha-flame* curve2d-fast)
-;; (define-extern *range-scale-flame-x* curve2d-fast)
-;; (define-extern *range-scale-flame-y* curve2d-fast)
-;; (define-extern *r-curve-flame* curve2d-fast)
-;; (define-extern *g-curve-flame* curve2d-fast)
-;; (define-extern *b-curve-flame* curve2d-fast)
-;; (define-extern *curve-alpha-flame* curve2d-fast)
-;; (define-extern *curve-flame-x* curve2d-fast)
-;; (define-extern *curve-flame-y* curve2d-fast)
-;; (define-extern *part-gas-lamp-flame-curve-settings* object)
-;; (define-extern *part-talltorch-flame-curve-settings* object)
+(define-extern spt-birth-func-brightness-sat-scrape-dirt (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-sat-scrape-dirt (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-sat-scrape-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-sat-explo-scene-color* curve-color-fast)
+(define-extern *range-sat-explo-scene-alpha* curve2d-fast)
+(define-extern *range-sat-explo-scene-scale-x* curve2d-fast)
+(define-extern *range-sat-explo-scene-scale-y* curve2d-fast)
+(define-extern *curve-sat-explo-scene-alpha* curve2d-fast)
+(define-extern *curve-sat-explo-scene-scale-x* curve2d-fast)
+(define-extern *curve-sat-explo-scene-scale-y* curve2d-fast)
+(define-extern *part-neo-satellite-explosion-texture-scene-curve-settings* particle-curve-settings)
+(define-extern *range-color-wascity-palace-fire-beacon-flame* curve-color-fast)
+(define-extern *range-alpha-wascity-palace-fire-beacon-flame* curve2d-fast)
+(define-extern *range-scale-wascity-palace-fire-beacon-flame-x* curve2d-fast)
+(define-extern *range-scale-wascity-palace-fire-beacon-flame-y* curve2d-fast)
+(define-extern *r-curve-wascity-palace-fire-beacon-flame* curve2d-fast)
+(define-extern *g-curve-wascity-palace-fire-beacon-flame* curve2d-fast)
+(define-extern *b-curve-wascity-palace-fire-beacon-flame* curve2d-fast)
+(define-extern *curve-alpha-wascity-palace-fire-beacon-flame* curve2d-fast)
+(define-extern *curve-wascity-palace-fire-beacon-flame-x* curve2d-fast)
+(define-extern *curve-wascity-palace-fire-beacon-flame-y* curve2d-fast)
+(define-extern *part-wascity-palace-fire-beacon-flame-curve-settings* particle-curve-settings)
+(define-extern *range-wrsplash-color* curve-color-fast)
+(define-extern *range-wrsplash-alpha* curve2d-fast)
+(define-extern *range-wrsplash-scale-x* curve2d-fast)
+(define-extern *range-wrsplash-scale-y* curve2d-fast)
+(define-extern *curve-wrsplash-alpha* curve2d-fast)
+(define-extern *curve-wrsplash-scale-x* curve2d-fast)
+(define-extern *curve-wrsplash-scale-y* curve2d-fast)
+(define-extern *part-water-rocks-splash-curve-settings* particle-curve-settings)
+(define-extern part-wascityb-bird1-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird2-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird3-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird4-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird5-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird6-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird7-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird8-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird9-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascityb-bird10-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascitya-fly1-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascitya-fly2-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wascitya-fly3-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *range-color-flame* curve-color-fast)
+(define-extern *range-alpha-flame* curve2d-fast)
+(define-extern *range-scale-flame-x* curve2d-fast)
+(define-extern *range-scale-flame-y* curve2d-fast)
+(define-extern *r-curve-flame* curve2d-fast)
+(define-extern *g-curve-flame* curve2d-fast)
+(define-extern *b-curve-flame* curve2d-fast)
+(define-extern *curve-alpha-flame* curve2d-fast)
+(define-extern *curve-flame-x* curve2d-fast)
+(define-extern *curve-flame-y* curve2d-fast)
+(define-extern *part-gas-lamp-flame-curve-settings* particle-curve-settings)
+(define-extern *part-talltorch-flame-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; waswide-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-windmill (process-drawable)
   ((quat quaternion :inline :offset-assert 208)
    )
@@ -66045,61 +66025,49 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype wascity-flag-base (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (wascity-flag-base-method-21 () none) ;; 21
-    (wascity-flag-base-method-22 () none) ;; 22
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (wascity-flag-base-method-21 (_type_) none) ;; 21
+    (wascity-flag-base-method-22 (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype wascity-flag-a (wascity-flag-base)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype wascity-flag-b (wascity-flag-base)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype wascity-flag-c (wascity-flag-base)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype wascity-flag-d (wascity-flag-base)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype wascity-wind-fan (process-drawable)
   ((quat quaternion :inline :offset-assert 208)
    )
@@ -66110,86 +66078,70 @@
     idle ;; 20
     )
   )
-|#
 
 ;; shaker is already defined!
 
-#|
 (deftype wascity-cactus (process-focusable)
-  ((shakers              UNKNOWN 6 :offset-assert 208)
+  ((shakers              shaker 6 :inline :offset-assert 208)
    (incoming-attack-id   uint32    :offset-assert 592)
-   (incoming-attack-time uint64    :offset-assert 600)
+   (incoming-attack-time time-frame :offset-assert 600)
    (hit-points           float     :offset-assert 608)
    )
   :method-count-assert 32
   :size-assert         #x264
   :flag-assert         #x2001f00264
-  (:methods
-    (wascity-cactus-method-30 () none) ;; 30
-    (wascity-cactus-method-31 () none) ;; 31
-    )
   (:state-methods
     idle ;; 28
     die ;; 29
     )
+  (:methods
+    (wascity-cactus-method-30 (_type_) none) ;; 30
+    (wascity-cactus-method-31 (_type_) none) ;; 31
+    )
   )
-|#
 
-#|
 (deftype wascity-market-crate (market-crate)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype wascity-market-basket-a (market-basket-a)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype wascity-market-basket-b (market-basket-b)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype wascity-market-sack-a (market-sack-a)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype wascity-market-sack-b (market-sack-b)
   ()
   :method-count-assert 43
   :size-assert         #x170
   :flag-assert         #x2b00f00170
   )
-|#
 
-#|
 (deftype wascity-fruit-stand (fruit-stand)
   ()
   :method-count-assert 31
   :size-assert         #x144
   :flag-assert         #x1f00d00144
   )
-|#
 
-#|
 (deftype wascity-water-pump (process-drawable)
   ()
   :method-count-assert 21
@@ -66199,38 +66151,31 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype wascity-awning-a (bouncer)
   ()
   :method-count-assert 27
   :size-assert         #xd8
   :flag-assert         #x1b006000d8
   )
-|#
 
-#|
 (deftype wascity-awning-b (bouncer)
   ()
   :method-count-assert 27
   :size-assert         #xd8
   :flag-assert         #x1b006000d8
   )
-|#
 
-#|
 (deftype monk-npc (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-;; (define-extern wascity-windmill-callback function)
-;; (define-extern *wascity-cactus-exploder-params* joint-exploder-static-params)
-;; (define-extern wascity-cactus-callback function)
+(define-extern wascity-windmill-callback (function cspace transformq none))
+(define-extern *wascity-cactus-exploder-params* joint-exploder-static-params)
+(define-extern wascity-cactus-callback (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wascity-ocean                  ;;
@@ -66282,29 +66227,27 @@
 ;; dogat                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dogat (nav-enemy)
   ((rotation-matrix matrix :inline :offset-assert 624)
-   (scared-timer    uint64         :offset-assert 688)
+   (scared-timer    time-frame     :offset-assert 688)
    )
   :method-count-assert 192
   :size-assert         #x2b8
   :flag-assert         #xc0024002b8
-  (:methods
-    (dogat-method-191 () none) ;; 191
-    )
   (:state-methods
-    flee ;; 36
-    notice ;; 35
-    active ;; 34
-    sit-idle ;; 190
     idle ;; 33
+    active ;; 34
+    notice ;; 35
+    flee ;; 36
+    sit-idle ;; 190
+    )
+  (:methods
+    (dogat-method-191 (_type_) none) ;; 191
     )
   )
-|#
 
-;; (define-extern *dogat-nav-enemy-info* nav-enemy-info)
-;; (define-extern dogat-travel-post function)
+(define-extern *dogat-nav-enemy-info* nav-enemy-info)
+(define-extern dogat-travel-post (function none :behavior dogat))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; blow-tower-shared              ;;
