@@ -28879,9 +28879,9 @@
     (disable-physics! (_type_) none) ;; 41
     (rigid-body-object-method-42 (_type_) none) ;; 42
     (rigid-body-object-method-43 (_type_) none) ;; 43
-    (impulse-handler (_type_) none) ;; 44 ;; (apply-damage (_type_ float rigid-body-impact) none)
+    (impulse-handler (_type_) none) ;; 44
     (go-active (_type_) object) ;; 45
-    (rigid-body-object-method-46 (_type_) none) ;; 46
+    (apply-damage (_type_ float rigid-body-impact) none) ;; 46
     (impulse-force<-penetrate (_type_ rigid-body-impact attack-info penetrate) none) ;; 47
     (rigid-body-object-method-48 (_type_) none) ;; 48
     (rbody-event-handler (_type_ process int symbol event-message-block) object) ;; 49
@@ -52681,17 +52681,14 @@
 ;; vehicle-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vehicle-info (structure)
-  ((handle-by-vehicle-type UNKNOWN 44 :offset-assert 0)
+  ((handle-by-vehicle-type handle 44 :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x160
   :flag-assert         #x900000160
   )
-|#
 
-#|
 (deftype vehicle-lookup-info (structure)
   ((turn-radius       meters  :offset-assert 0)
    (throttle-turning  float   :offset-assert 4)
@@ -52701,9 +52698,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vehicle-control-point (structure)
   ((local-pos vector :inline :offset-assert 0)
    (normal    vector :inline :offset-assert 16)
@@ -52712,9 +52707,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype vehicle-attach-point (structure)
   ((local-pos vector :inline :offset-assert 0)
    (rot       vector :inline :offset-assert 16)
@@ -52723,12 +52716,15 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+(defenum vehicle-wheel-flags
+  :type uint64
+  :bitfield #t
+  )
+
 (deftype vehicle-wheel-info (structure)
   ((local-pos          vector :inline :offset-assert 0)
-   (flags              uint64         :offset-assert 16)
+   (flags              vehicle-wheel-flags :offset-assert 16)
    (callback           basic          :offset-assert 24)
    (inertia            float          :offset-assert 28)
    (radius             float          :offset-assert 32)
@@ -52746,16 +52742,14 @@
    (camber             float          :offset-assert 80)
    (settle-pos         float          :offset-assert 84)
    (probe-radius       float          :offset-assert 88)
-   (tread-texture      basic          :offset-assert 92)
-   (tread-tid          uint32         :offset-assert 96)
+   (tread-texture      texture        :offset-assert 92)
+   (tread-tid          texture-id     :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype vehicle-engine-info (structure)
   ((max-torque          float  :offset-assert 0)
    (inertia             float  :offset-assert 4)
@@ -52768,28 +52762,25 @@
    (peak-torque-rpm     float  :offset-assert 32)
    (powerband-width-rpm float  :offset-assert 36)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype vehicle-transmission-info (structure)
   ((inertia           float     :offset-assert 0)
    (upshift-rpm       float     :offset-assert 4)
    (downshift-rpm     float     :offset-assert 8)
    (final-drive-ratio float     :offset-assert 12)
-   (gear-ratio-array  UNKNOWN 8 :offset-assert 16)
+   (gear-ratio-array  float 8   :offset-assert 16)
    (gear-count        int8      :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x31
   :flag-assert         #x900000031
   )
-|#
 
-#|
 (deftype vehicle-handling-info (structure)
   ((max-engine-thrust                 meters  :offset-assert 0)
    (inv-max-engine-thrust             float   :offset-assert 4)
@@ -52797,7 +52788,7 @@
    (engine-intake-factor              float   :offset-assert 12)
    (brake-factor                      float   :offset-assert 16)
    (turbo-boost-factor                float   :offset-assert 20)
-   (turbo-boost-duration              uint16  :offset-assert 24)
+   (turbo-boost-duration              uint16  :offset-assert 24 :decomp-as time-frame)
    (max-xz-speed                      meters  :offset-assert 28)
    (player-turn-anim-bias             float   :offset-assert 32)
    (player-turn-anim-min              float   :offset-assert 36)
@@ -52847,21 +52838,20 @@
    (ai-steering-factor                float   :offset-assert 212)
    (ai-throttle-factor                float   :offset-assert 216)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xdc
   :flag-assert         #x9000000dc
   )
-|#
 
-#|
 (deftype vehicle-physics-model-info (structure)
   ((lift-thruster-count     int8                       :offset-assert 0)
    (roll-thruster-count     int8                       :offset-assert 1)
    (stabilizer-count        int8                       :offset-assert 2)
    (inv-lift-thruster-count float                      :offset-assert 4)
-   (lift-thruster-array     UNKNOWN            4       :offset-assert 16)
-   (roll-thruster-array     UNKNOWN            2       :offset-assert 144)
-   (stabilizer-array        UNKNOWN            6       :offset-assert 208)
+   (lift-thruster-array     vehicle-attach-point 4 :inline :offset-assert 16)
+   (roll-thruster-array     vehicle-attach-point 2 :inline :offset-assert 144)
+   (stabilizer-array        vehicle-attach-point 6 :inline :offset-assert 208)
    (engine-thrust-local-pos vector             :inline :offset-assert 400)
    (brake-local-pos         vector             :inline :offset-assert 416)
    (wheel-count             int8                       :offset-assert 432)
@@ -52873,9 +52863,7 @@
   :size-assert         #x294
   :flag-assert         #x900000294
   )
-|#
 
-#|
 (deftype vehicle-camera-info (structure)
   ((string-min-height       meters          :offset-assert 0)
    (string-max-height       meters          :offset-assert 4)
@@ -52888,21 +52876,19 @@
    (normal-max-angle-offset float           :offset-assert 32)
    (air-max-angle-offset    float           :offset-assert 36)
    (max-lookaround-speed    float           :offset-assert 40)
-   (look-pos-array          UNKNOWN 4       :offset-assert 48)
-   (look-front              vector  :inline :offset-assert 48)
-   (look-left               vector  :inline :offset-assert 64)
-   (look-right              vector  :inline :offset-assert 80)
-   (look-rear               vector  :inline :offset-assert 96)
+   (look-pos-array          vector 4 :inline :offset-assert 48)
+   (look-front              vector  :inline :offset 48)
+   (look-left               vector  :inline :offset 64)
+   (look-right              vector  :inline :offset 80)
+   (look-rear               vector  :inline :offset 96)
    )
   :method-count-assert 9
   :size-assert         #x70
   :flag-assert         #x900000070
   )
-|#
 
-#|
 (deftype vehicle-sound-loop-info (structure)
-  ((sound        uint128  :offset-assert 0)
+  ((sound        sound-name :offset-assert 0)
    (speed        float    :offset-assert 16)
    (min-speed    float    :offset-assert 20)
    (max-speed    float    :offset-assert 24)
@@ -52915,87 +52901,99 @@
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
 (deftype vehicle-sound-info (structure)
   ((engine-pitch-scale     float                           :offset-assert 0)
    (engine-pitch-offset    float                           :offset-assert 4)
    (engine-pitch-mod-amp   float                           :offset-assert 8)
    (engine-sound-select    int8                            :offset-assert 12)
-   (thrust-sound           uint8                   16      :offset-assert 16) ;; field uses ~g print with a quadword load!
-   (scrape-sound           uint8                   16      :offset-assert 32) ;; field uses ~g print with a quadword load!
-   (glance-sound           uint8                   16      :offset-assert 48) ;; field uses ~g print with a quadword load!
-   (impact-sound           uint8                   16      :offset-assert 64) ;; field uses ~g print with a quadword load!
-   (impact2-sound          uint8                   16      :offset-assert 80) ;; field uses ~g print with a quadword load!
-   (explode-sound          uint8                   16      :offset-assert 96) ;; field uses ~g print with a quadword load!
-   (explode2-sound         uint8                   16      :offset-assert 112) ;; field uses ~g print with a quadword load!
-   (extra-sound            uint8                   16      :offset-assert 128) ;; field uses ~g print with a quadword load!
-   (water-sound            uint8                   16      :offset-assert 144) ;; field uses ~g print with a quadword load!
-   (jump-sound             uint8                   16      :offset-assert 160) ;; field uses ~g print with a quadword load!
-   (turbo-sound            uint8                   16      :offset-assert 176) ;; field uses ~g print with a quadword load!
-   (damage-sound           uint8                   16      :offset-assert 192) ;; field uses ~g print with a quadword load!
+   ; (thrust-sound           uint8                   16      :offset 16) ;; field uses ~g print with a quadword load!
+   ; (scrape-sound           uint8                   16      :offset-assert 32) ;; field uses ~g print with a quadword load!
+   ; (glance-sound           uint8                   16      :offset-assert 48) ;; field uses ~g print with a quadword load!
+   ; (impact-sound           uint8                   16      :offset-assert 64) ;; field uses ~g print with a quadword load!
+   ; (impact2-sound          uint8                   16      :offset-assert 80) ;; field uses ~g print with a quadword load!
+   ; (explode-sound          uint8                   16      :offset-assert 96) ;; field uses ~g print with a quadword load!
+   ; (explode2-sound         uint8                   16      :offset-assert 112) ;; field uses ~g print with a quadword load!
+   ; (extra-sound            uint8                   16      :offset-assert 128) ;; field uses ~g print with a quadword load!
+   ; (water-sound            uint8                   16      :offset-assert 144) ;; field uses ~g print with a quadword load!
+   ; (jump-sound             uint8                   16      :offset-assert 160) ;; field uses ~g print with a quadword load!
+   ; (turbo-sound            uint8                   16      :offset-assert 176) ;; field uses ~g print with a quadword load!
+   ; (damage-sound           uint8                   16      :offset-assert 192) ;; field uses ~g print with a quadword load!
+   (thrust-sound           sound-name                      :offset 16) ;; field uses ~g print with a quadword load!
+   (scrape-sound           sound-name                      :offset-assert 32) ;; field uses ~g print with a quadword load!
+   (glance-sound           sound-name                      :offset-assert 48) ;; field uses ~g print with a quadword load!
+   (impact-sound           sound-name                      :offset-assert 64) ;; field uses ~g print with a quadword load!
+   (impact2-sound          sound-name                      :offset-assert 80) ;; field uses ~g print with a quadword load!
+   (explode-sound          sound-name                      :offset-assert 96) ;; field uses ~g print with a quadword load!
+   (explode2-sound         sound-name                      :offset-assert 112) ;; field uses ~g print with a quadword load!
+   (extra-sound            sound-name                      :offset-assert 128) ;; field uses ~g print with a quadword load!
+   (water-sound            sound-name                      :offset-assert 144) ;; field uses ~g print with a quadword load!
+   (jump-sound             sound-name                      :offset-assert 160) ;; field uses ~g print with a quadword load!
+   (turbo-sound            sound-name                      :offset-assert 176) ;; field uses ~g print with a quadword load!
+   (damage-sound           sound-name                      :offset-assert 192) ;; field uses ~g print with a quadword load!
    (bank-replace           basic                           :offset-assert 208)
    (idle-rpm               float                           :offset-assert 212)
    (idle-pitch-scale       float                           :offset-assert 216)
    (idle-crossover-rpm     float                           :offset-assert 220)
    (engine-rpm             float                           :offset-assert 224)
    (engine-crossover-rpm   float                           :offset-assert 228)
-   (start-sound            uint8                   16      :offset-assert 240) ;; field uses ~g print with a quadword load!
-   (stop-sound             uint8                   16      :offset-assert 256) ;; field uses ~g print with a quadword load!
-   (idle-sound             uint8                   16      :offset-assert 272) ;; field uses ~g print with a quadword load!
-   (engine-sound           uint8                   16      :offset-assert 288) ;; field uses ~g print with a quadword load!
-   (engine-load-sound      uint8                   16      :offset-assert 304) ;; field uses ~g print with a quadword load!
-   (susp-creak-sound       uint8                   16      :offset-assert 320) ;; field uses ~g print with a quadword load!
-   (susp-bottom-out-sound  uint8                   16      :offset-assert 336) ;; field uses ~g print with a quadword load!
+   ; (start-sound            uint8                   16      :offset 240) ;; field uses ~g print with a quadword load!
+   ; (stop-sound             uint8                   16      :offset-assert 256) ;; field uses ~g print with a quadword load!
+   ; (idle-sound             uint8                   16      :offset-assert 272) ;; field uses ~g print with a quadword load!
+   ; (engine-sound           uint8                   16      :offset-assert 288) ;; field uses ~g print with a quadword load!
+   ; (engine-load-sound      uint8                   16      :offset-assert 304) ;; field uses ~g print with a quadword load!
+   ; (susp-creak-sound       uint8                   16      :offset-assert 320) ;; field uses ~g print with a quadword load!
+   ; (susp-bottom-out-sound  uint8                   16      :offset-assert 336) ;; field uses ~g print with a quadword load!
+   (start-sound            sound-name                      :offset 240)
+   (stop-sound             sound-name                      :offset-assert 256)
+   (idle-sound             sound-name                      :offset-assert 272)
+   (engine-sound           sound-name                      :offset-assert 288)
+   (engine-load-sound      sound-name                      :offset-assert 304)
+   (susp-creak-sound       sound-name                      :offset-assert 320)
+   (susp-bottom-out-sound  sound-name                      :offset-assert 336)
    (susp-speed-threshold   float                           :offset-assert 352)
-   (tire-roll-sounds       UNKNOWN                 4       :offset-assert 368)
-   (tire-slide-sounds      UNKNOWN                 2       :offset-assert 560)
-   (tire-roll-hum-sound    vehicle-sound-loop-info :inline :offset-assert 368)
-   (tire-roll-dirt-sound   vehicle-sound-loop-info :inline :offset-assert 416)
-   (tire-roll-sand-sound   vehicle-sound-loop-info :inline :offset-assert 464)
-   (tire-roll-knobby-sound vehicle-sound-loop-info :inline :offset-assert 512)
-   (tire-slide-road-sound  vehicle-sound-loop-info :inline :offset-assert 560)
-   (tire-slide-dirt-sound  vehicle-sound-loop-info :inline :offset-assert 608)
+   (tire-roll-sounds       vehicle-sound-loop-info 4 :inline :offset-assert 368)
+   (tire-slide-sounds      vehicle-sound-loop-info 2 :inline :offset-assert 560)
+   (tire-roll-hum-sound    vehicle-sound-loop-info :inline :offset 368)
+   (tire-roll-dirt-sound   vehicle-sound-loop-info :inline :offset 416)
+   (tire-roll-sand-sound   vehicle-sound-loop-info :inline :offset 464)
+   (tire-roll-knobby-sound vehicle-sound-loop-info :inline :offset 512)
+   (tire-slide-road-sound  vehicle-sound-loop-info :inline :offset 560)
+   (tire-slide-dirt-sound  vehicle-sound-loop-info :inline :offset 608)
    )
   :method-count-assert 9
   :size-assert         #x290
   :flag-assert         #x900000290
   )
-|#
 
-#|
 (deftype vehicle-particle-info (structure)
   ((headlight-count       int8      :offset-assert 0)
    (taillight-count       int8      :offset-assert 1)
    (thruster-flame-width  meters    :offset-assert 4)
    (thruster-flame-length meters    :offset-assert 8)
-   (thruster-local-pos    UNKNOWN 2 :offset-assert 16)
-   (exhaust-local-pos     UNKNOWN 2 :offset-assert 48)
-   (exhaust-local-dir     UNKNOWN 2 :offset-assert 80)
-   (smoke-local-pos       UNKNOWN 2 :offset-assert 112)
-   (smoke-local-vel       UNKNOWN 2 :offset-assert 144)
-   (headlight-local-pos   UNKNOWN 3 :offset-assert 176)
-   (taillight-local-pos   UNKNOWN 2 :offset-assert 224)
+   (thruster-local-pos    vector 2 :inline :offset-assert 16)
+   (exhaust-local-pos     vector 2 :inline :offset-assert 48)
+   (exhaust-local-dir     vector 2 :inline :offset-assert 80)
+   (smoke-local-pos       vector 2 :inline :offset-assert 112)
+   (smoke-local-vel       vector 2 :inline :offset-assert 144)
+   (headlight-local-pos   vector 3 :inline :offset-assert 176)
+   (taillight-local-pos   vector 2 :inline :offset-assert 224)
    )
   :method-count-assert 9
   :size-assert         #x100
   :flag-assert         #x900000100
   )
-|#
 
-#|
 (deftype vehicle-section-info (structure)
   ((damage-seg-array uint64 3 :offset-assert 0) ;; guessed by decompiler
    (damage-seg-count int8     :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x19
   :flag-assert         #x900000019
   )
-|#
 
-#|
 (deftype vehicle-damage-info (structure)
   ((inv-toughness-factor    float                        :offset-assert 0)
    (hit-points              float                        :offset-assert 4)
@@ -53006,21 +53004,19 @@
    (hit-deadly              float                        :offset-assert 24)
    (impact-damage-factor    float                        :offset-assert 28)
    (section-count           int8                         :offset-assert 32)
-   (section-array           UNKNOWN              4       :offset-assert 40)
-   (section-bike-front      vehicle-section-info :inline :offset-assert 40)
-   (section-bike-rear       vehicle-section-info :inline :offset-assert 72)
-   (section-car-front-left  vehicle-section-info :inline :offset-assert 40)
-   (section-car-rear-left   vehicle-section-info :inline :offset-assert 72)
-   (section-car-front-right vehicle-section-info :inline :offset-assert 104)
-   (section-car-rear-right  vehicle-section-info :inline :offset-assert 136)
+   (section-array           vehicle-section-info 4 :inline :offset-assert 40)
+   (section-bike-front      vehicle-section-info :inline :offset 40)
+   (section-bike-rear       vehicle-section-info :inline :offset 72)
+   (section-car-front-left  vehicle-section-info :inline :offset 40)
+   (section-car-rear-left   vehicle-section-info :inline :offset 72)
+   (section-car-front-right vehicle-section-info :inline :offset 104)
+   (section-car-rear-right  vehicle-section-info :inline :offset 136)
    )
   :method-count-assert 9
   :size-assert         #xa8
   :flag-assert         #x9000000a8
   )
-|#
 
-#|
 (deftype vehicle-setup-info (structure)
   ((settle-height       float  :offset-assert 0)
    (settle-rot-x        float  :offset-assert 4)
@@ -53029,63 +53025,64 @@
    (look-select         uint8  :offset-assert 16)
    (color-option-count  int8   :offset-assert 17)
    (color-option-select int8   :offset-assert 18)
-   (gun-yaw-min         float  :offset-assert 24)
+   (gun-yaw-min         float  :offset 24)
    (gun-yaw-max         float  :offset-assert 28)
    (gun-pitch-min       float  :offset-assert 32)
    (gun-pitch-max       float  :offset-assert 36)
    (gun-z-offset        float  :offset-assert 40)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+(defenum vehicle-seat-flag
+  :type uint8
+  :bitfield #t
+  (vsf0 0)
+  (vsf1 1)
+  (vsf2 2)
+  )
+
 (deftype vehicle-seat-info (structure)
-  ((data     uint8  16      :offset-assert 0) ;; guessed by decompiler
-   (position vector :inline :offset-assert 0)
-   (pos-x    float          :offset-assert 0)
-   (pos-y    float          :offset-assert 4)
-   (pos-z    float          :offset-assert 8)
-   (angle    int16          :offset-assert 12)
-   (flags    uint8          :offset-assert 14)
+  ((data     uint8  16      :offset-assert 0 :score -1) ;; guessed by decompiler
+   (position vector :inline :offset 0)
+   (pos-x    float          :offset 0)
+   (pos-y    float          :offset 4)
+   (pos-z    float          :offset 8)
+   (angle    int16          :offset 12)
+   (flags    vehicle-seat-flag :offset 14)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype vehicle-grab-rail-info (structure)
-  ((local-pos vector 2       :offset-assert 0) ;; guessed by decompiler
+  ((local-pos vector 2 :inline :offset-assert 0) ;; guessed by decompiler
    (normal    vector :inline :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype vehicle-rider-info (structure)
   ((seat-count         int8      :offset-assert 0)
    (rider-stance       uint8     :offset-assert 1)
    (grab-rail-count    int8      :offset-assert 2)
    (attach-point-count int8      :offset-assert 3)
    (grab-rail-array    uint32    :offset-assert 4)
-   (seat-array         UNKNOWN 4 :offset-assert 16)
-   (rider-hand-offset  UNKNOWN 2 :offset-assert 80)
+   (seat-array         vehicle-seat-info 4 :inline :offset-assert 16)
+   (rider-hand-offset  vector 2 :inline :offset-assert 80)
    (attach-point-array uint32    :offset-assert 112)
    )
   :method-count-assert 9
   :size-assert         #x74
   :flag-assert         #x900000074
   )
-|#
 
-#|
 (deftype vehicle-explosion-info (joint-exploder-static-params)
   ((skel      skeleton-group  :offset-assert 40) ;; guessed by decompiler
    (skel-name string          :offset-assert 44) ;; guessed by decompiler
@@ -53095,11 +53092,17 @@
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
+;; bunch of fields missing from inspect
 (deftype vehicle-particle-common-info (structure)
-  ((headlight-glow-template sprite-glow-data  :offset-assert 28)
+  ((sp-system2d             sparticle-system :offset-assert 0)
+   (sp-system3d             sparticle-system :offset-assert 4)
+   (part-thruster           sparticle-launcher :offset-assert 8)
+   (part-thruster-x         sp-field-init-spec :offset-assert 12)
+   (part-spec2              sp-field-init-spec :offset-assert 16)
+   (part-quat               quaternion        :offset-assert 20)
+   (part-vel                vector            :offset-assert 24)
+   (headlight-glow-template sprite-glow-data  :offset-assert 28)
    (taillight-glow-template sprite-glow-data  :offset-assert 32)
    (thruster-glow-template  sprite-glow-data  :offset-assert 36)
    )
@@ -53107,12 +53110,10 @@
   :size-assert         #x28
   :flag-assert         #xa00000028
   (:methods
-    (vehicle-particle-common-info-method-9 () none) ;; 9
+    (init! (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags               uint32                               :offset-assert 208)
    (object-type         uint8                                :offset-assert 212)
@@ -53132,193 +53133,249 @@
    (rider               vehicle-rider-info           :inline :offset-assert 2448)
    (explosion           vehicle-explosion-info               :offset-assert 2564) ;; guessed by decompiler
    (explosion-part      int32                                :offset-assert 2568)
-   (debris              basic                                :offset-assert 2572)
-   (name-text           uint32                               :offset-assert 2576)
+   (debris              debris                               :offset-assert 2572)
+   (name-text           text-id                              :offset-assert 2576)
    (particle-common     vehicle-particle-common-info         :offset-assert 2580)
    )
   :method-count-assert 10
   :size-assert         #xa18
   :flag-assert         #xa00000a18
   (:methods
-    (rigid-body-vehicle-constants-method-9 () none) ;; 9 ;; (rigid-body-vehicle-constants-method-9 (_type_) none)
+    (init-part! (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype vehicle-section (structure)
   ((damage float  :offset-assert 0)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
+(defenum vehicle-flag
+  :type uint64
+  :bitfield #t
+  (enable-collision 0)
+  (disturbed 1)
+  (damaged 2)
+  (dead 3)
+  (player-touching 4)
+  (player-edge-grabbing 5)
+  (player-standing-on 6)
+  (player-impulse-force 7)
+  (player-contact-force 8)
+  (persistent 9)
+  (impact 10)
+  (in-air 11)
+  (on-ground 12)
+  (on-flight-level 13)
+  (riding 14)
+  (player-grabbed 15)
+  (player-dismounting 16)
+  (player-driving 17)
+  (net-player-driving 18)
+  (ai-driving 19)
+  (waiting-for-player 20)
+  (ignition 21)
+  (nav-spheres 22)
+  (turbo-boost 23)
+  (reverse-gear 24)
+  (traffic-managed 25)
+  (flight-level-transition 26)
+  (flight-level-transition-ending 27)
+  (camera-bike-mode 28)
+  (camera-rapid-tracking-mode 29)
+  (camera 30)
+  (camera-inside-view 31)
+  (camera-look-mode 32)
+  (alert 33)
+  (in-pursuit 34)
+  (target-in-sight 35)
+  (rammed-target 36)
+  (sounds 37)
+  (particles 38)
+  (joints 39)
+  (lights-on 40)
+  (lights-update 41)
+  (lights-dead 42)
+  (no-hijack 43)
+  (unique 44)
+  (tracking-mode 45)
+  (overturned 46)
+  (gun-dark-2-zero-g 47)
+  (ignore-damage 48)
+  (ignore-impulse 49)
+  (player-killed 50)
+  (draw-marks 51)
+  )
+
 (deftype vehicle (rigid-body-object)
-  ((flags                    vehicle-flag             :offset-assert 212) ;; rigid-body-object-flag
-   (squad                    basic                    :offset-assert 300)
-   (control-hook             basic                    :offset-assert 304)
-   (controls                 vehicle-controls :inline :offset-assert 308)
-   (prev-controls            vehicle-controls :inline :offset-assert 332)
-   (engine-power-factor      float                    :offset-assert 356)
-   (force-scale              float                    :offset-assert 360)
-   (target-distance2         meters                   :offset-assert 364)
-   (water-flags              uint32                   :offset-assert 368)
-   (target-acceleration      vector           :inline :offset-assert 380)
-   (impact-pos               vector           :inline :offset-assert 396)
-   (impact-local-pos         vector           :inline :offset-assert 412)
-   (lin-acceleration         vector           :inline :offset-assert 428)
-   (hit-points               float                    :offset-assert 444)
-   (damage-factor            float                    :offset-assert 448)
-   (crash-level              int8                     :offset-assert 452)
-   (force-level              int8                     :offset-assert 453)
-   (traffic-hash-id          int8                     :offset-assert 454)
-   (traffic-priority-id      int8                     :offset-assert 455)
-   (power-fluctuation-factor float                    :offset-assert 456)
-   (power-level              float                    :offset-assert 460)
-   (overlap-player-counter   uint8                    :offset-assert 464)
-   (physics-counter          uint8                    :offset-assert 465)
-   (cam-view                 int8                     :offset-assert 466)
-   (brake-factor             float                    :offset-assert 468)
-   (cam-speed-interp         float                    :offset-assert 472)
-   (camera-dist2             float                    :offset-assert 476)
-   (player-dist2             float                    :offset-assert 480)
-   (bound-radius             float                    :offset-assert 484)
-   (rider-array              handle           4       :offset-assert 492) ;; guessed by decompiler
-   (impact-proc              uint64                   :offset-assert 524)
-   (impact-pat               uint32                   :offset-assert 532)
-   (impact-time              uint32                   :offset-assert 536)
-   (prev-impact-time         uint32                   :offset-assert 540)
-   (sent-attack-time         time-frame               :offset-assert 544) ;; guessed by decompiler
-   (air-time                 time-frame               :offset-assert 548) ;; guessed by decompiler
-   (water-time               uint32                   :offset-assert 552)
-   (offscreen-time           uint32                   :offset-assert 556)
-   (crash-time               time-frame               :offset-assert 560) ;; guessed by decompiler
-   (turbo-boost-time         time-frame               :offset-assert 564) ;; guessed by decompiler
-   (player-dismount-time     uint32                   :offset-assert 568)
-   (crash-duration           uint16                   :offset-assert 572)
-   (turbo-boost-duration     uint16                   :offset-assert 574)
-   (turbo-boost-factor       float                    :offset-assert 576)
-   (crash-impulse            float                    :offset-assert 580)
-   (water-height             float                    :offset-assert 584)
-   (lights-factor            float                    :offset-assert 588)
-   (outgoing-attack-id       uint32                   :offset-assert 592)
-   (fog-fade                 float                    :offset-assert 596)
-   (scrape-sound-id          sound-id                 :offset-assert 600) ;; guessed by decompiler
-   (damage-zap-sound-id      sound-id                 :offset-assert 604) ;; guessed by decompiler
-   (scrape-sound-envelope    float                    :offset-assert 608)
-   (exhaust-part-accum       basic            2       :offset-assert 612) ;; guessed by decompiler
-   (smoke-part-accum         basic            2       :offset-assert 620) ;; guessed by decompiler
-   (section-array            vehicle-section  4       :offset-assert 628) ;; guessed by decompiler
+  ((info                     rigid-body-vehicle-constants :override)
+   (v-flags                  vehicle-flag             :offset 216 :score 1) ;; rigid-body-object-flag
+   (unknown-flags            vehicle-flag             :offset 296)
+   (squad                    basic                    :offset-assert 304)
+   (control-hook             basic                    :offset-assert 308)
+   (controls                 vehicle-controls :inline :offset-assert 312)
+   (prev-controls            vehicle-controls :inline :offset-assert 336)
+   (engine-power-factor      float                    :offset-assert 360)
+   (force-scale              float                    :offset-assert 364)
+   (target-distance2         meters                   :offset-assert 368)
+   (water-flags              uint32                   :offset-assert 372)
+   (target-acceleration      vector           :inline :offset-assert 384)
+   (impact-pos               vector           :inline :offset-assert 400)
+   (impact-local-pos         vector           :inline :offset-assert 416)
+   (lin-acceleration         vector           :inline :offset-assert 432)
+   (hit-points               float                    :offset-assert 448)
+   (damage-factor            float                    :offset-assert 452)
+   (crash-level              int8                     :offset-assert 456)
+   (force-level              int8                     :offset-assert 457)
+   (traffic-hash-id          int8                     :offset-assert 458)
+   (traffic-priority-id      int8                     :offset-assert 459)
+   (power-fluctuation-factor float                    :offset-assert 460)
+   (power-level              float                    :offset-assert 464)
+   (overlap-player-counter   uint8                    :offset-assert 468)
+   (physics-counter          uint8                    :offset-assert 469)
+   (cam-view                 int8                     :offset-assert 470)
+   (brake-factor             float                    :offset-assert 472)
+   (cam-speed-interp         float                    :offset-assert 476)
+   (camera-dist2             float                    :offset-assert 480)
+   (player-dist2             float                    :offset-assert 484)
+   (bound-radius             float                    :offset-assert 488)
+   (rider-array              handle           4       :offset-assert 496) ;; guessed by decompiler
+   (impact-proc              handle                   :offset-assert 528)
+   (impact-pat               uint32                   :offset-assert 536)
+   (impact-time              uint32                   :offset-assert 540)
+   (prev-impact-time         uint32                   :offset-assert 544)
+   (sent-attack-time         uint32                   :offset-assert 548) ;; guessed by decompiler
+   (air-time                 uint32                   :offset-assert 552) ;; guessed by decompiler
+   (water-time               uint32                   :offset-assert 556)
+   (offscreen-time           uint32                   :offset-assert 560)
+   (crash-time               uint32                   :offset-assert 564) ;; guessed by decompiler
+   (turbo-boost-time         uint32                   :offset-assert 568) ;; guessed by decompiler
+   (player-dismount-time     uint32                   :offset-assert 572)
+   (crash-duration           uint16                   :offset-assert 576)
+   (turbo-boost-duration     uint16                   :offset-assert 578)
+   (turbo-boost-factor       float                    :offset-assert 580)
+   (crash-impulse            float                    :offset-assert 584)
+   (water-height             float                    :offset-assert 588)
+   (lights-factor            float                    :offset-assert 592)
+   (outgoing-attack-id       uint32                   :offset-assert 596)
+   (fog-fade                 float                    :offset-assert 600)
+   (scrape-sound-id          sound-id                 :offset-assert 604) ;; guessed by decompiler
+   (damage-zap-sound-id      sound-id                 :offset-assert 608) ;; guessed by decompiler
+   (scrape-sound-envelope    float                    :offset-assert 612)
+   (exhaust-part-accum       sparticle-launch-control 2 :offset-assert 616) ;; guessed by decompiler
+   (smoke-part-accum         sparticle-launch-control 2 :offset-assert 624) ;; guessed by decompiler
+   (section-array            vehicle-section  4 :inline :offset-assert 632) ;; guessed by decompiler
    )
   :method-count-assert 152
   :size-assert         #x2b8
   :flag-assert         #x98024002b8
   ;; field vehicle-flag is likely a value type.
+  (:state-methods
+    inactive ;; 56
+    waiting ;; 57
+    player-control ;; 58
+    crash ;; 59
+    explode ;; 60
+    die ;; 61
+    )
   (:methods
-    (vehicle-method-56 () none) ;; 56 ;; (vehicle-state-56 () _type_ :state)
-    (vehicle-method-57 () none) ;; 57 ;; (player-control () _type_ :state)
-    (vehicle-method-58 () none) ;; 58 ;; (crash () _type_ :state)
-    (vehicle-method-59 () none) ;; 59 ;; (explode () _type_ :state)
-    (vehicle-method-60 () none) ;; 60 ;; (die () _type_ :state)
-    (vehicle-method-61 () none) ;; 61 ;; (measure-control-parameters () _type_ :state)
-    (vehicle-method-62 () none) ;; 62 ;; (vehicle-method-62 (_type_ float) none)
-    (vehicle-method-63 () none) ;; 63 ;; (vehicle-method-63 (_type_ float) none)
-    (vehicle-method-64 () none) ;; 64 ;; (vehicle-method-64 () none)
-    (vehicle-method-65 () none) ;; 65 ;; (start-jump (_type_) none)
-    (vehicle-method-66 () none) ;; 66 ;; (vehicle-method-66 (_type_) none)
-    (vehicle-method-67 () none) ;; 67 ;; (get-seat-count (_type_) int)
-    (vehicle-method-68 () none) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
-    (vehicle-method-69 () none) ;; 69 ;; (get-rider-in-seat (_type_ int) process)
-    (vehicle-method-70 () none) ;; 70 ;; (vehicle-method-70 (_type_) process)
-    (vehicle-method-71 () none) ;; 71 ;; (put-rider-in-seat (_type_ int process-focusable) none)
-    (vehicle-method-72 () none) ;; 72 ;; (vehicle-method-72 (_type_) uint)
-    (vehicle-method-73 () none) ;; 73 ;; (get-best-seat-for-vehicle (_type_ vector int int) int)
-    (vehicle-method-74 () none) ;; 74 ;; (remove-rider (_type_ process) none)
-    (vehicle-method-75 () none) ;; 75 ;; (vehicle-method-75 (_type_) float)
-    (vehicle-method-76 () none) ;; 76 ;; (vehicle-method-76 (_type_ int uint) none)
-    (vehicle-method-77 () none) ;; 77 ;; (vehicle-method-77 (_type_) none)
-    (vehicle-method-78 () none) ;; 78 ;; (vehicle-method-78 (_type_ int) none)
-    (vehicle-method-79 () none) ;; 79 ;; (vehicle-method-79 (_type_) none)
-    (vehicle-method-80 () none) ;; 80 ;; (vehicle-method-80 (_type_) none)
-    (vehicle-method-81 () none) ;; 81 ;; (vehicle-method-81 (_type_) none)
-    (vehicle-method-82 () none) ;; 82 ;; (vehicle-method-82 (_type_) none)
-    (vehicle-method-83 () none) ;; 83 ;; (vehicle-method-83 (_type_) none)
-    (vehicle-method-84 () none) ;; 84 ;; (draw-thruster (_type_ vector vector float float) none)
-    (vehicle-method-85 () none) ;; 85 ;; (draw-thrusters (_type_) none)
-    (vehicle-method-86 () none) ;; 86 ;; (update-joint-mods (_type_) none)
-    (vehicle-method-87 () none) ;; 87 ;; (vehicle-method-87 (_type_) none)
-    (vehicle-method-88 () none) ;; 88 ;; (vehicle-method-88 (_type_) none)
-    (vehicle-method-89 () none) ;; 89 ;; (vehicle-method-89 (_type_) none)
-    (vehicle-method-90 () none) ;; 90 ;; (vehicle-method-90 (_type_) none)
-    (vehicle-method-91 () none) ;; 91 ;; (vehicle-method-91 (_type_) none)
-    (vehicle-method-92 () none) ;; 92 ;; (vehicle-method-92 (_type_) none)
-    (vehicle-method-93 () none) ;; 93 ;; (vehicle-method-93 (_type_) none)
-    (vehicle-method-94 () none) ;; 94 ;; (vehicle-method-94 (_type_) none)
-    (vehicle-method-95 () none) ;; 95 ;; (vehicle-method-95 (_type_ vector) none)
-    (vehicle-method-96 () none) ;; 96 ;; (vehicle-method-96 (_type_) none)
-    (vehicle-method-97 () none) ;; 97 ;; (vehicle-method-97 (_type_) none)
-    (vehicle-method-98 () none) ;; 98 ;; (vehicle-method-98 (_type_ float) none)
-    (vehicle-method-99 () none) ;; 99 ;; (vehicle-method-99 (_type_ float) none)
-    (vehicle-method-100 () none) ;; 100 ;; (vehicle-method-100 (_type_ float vehicle-physics-work) none)
-    (vehicle-method-101 () none) ;; 101 ;; (vehicle-method-101 (_type_) none)
-    (vehicle-method-102 () none) ;; 102 ;; (shadow-enable (_type_) none)
-    (vehicle-method-103 () none) ;; 103 ;; (shadow-disable (_type_) none)
-    (vehicle-method-104 () none) ;; 104 ;; (vehicle-method-104 (_type_) none)
-    (vehicle-method-105 () none) ;; 105 ;; (vehicle-method-105 (_type_) symbol)
-    (vehicle-method-106 () none) ;; 106 ;; (vehicle-method-106 (_type_) none)
-    (vehicle-method-107 () none) ;; 107 ;; (vehicle-method-107 (_type_) none)
-    (vehicle-method-108 () none) ;; 108 ;; (vehicle-method-108 (_type_) none)
-    (vehicle-method-109 () none) ;; 109 ;; (vehicle-method-109 (_type_) none)
-    (vehicle-method-110 () none) ;; 110 ;; (vehicle-method-110 (_type_) none)
-    (vehicle-method-111 () none) ;; 111 ;; (vehicle-method-111 (_type_ object target) none)
-    (vehicle-method-112 () none) ;; 112 ;; (decrease-traffic-alert-level (_type_ int) int)
-    (vehicle-method-113 () none) ;; 113 ;; (vehicle-method-113 (_type_) none)
-    (vehicle-method-114 () none) ;; 114 ;; (vehicle-method-114 (_type_) none)
-    (vehicle-method-115 () none) ;; 115 ;; (vehicle-method-115 (_type_ vector) none)
-    (vehicle-method-116 () none) ;; 116 ;; (vehicle-method-116 (_type_ (pointer vehicle-controls)) none)
-    (vehicle-method-117 () none) ;; 117 ;; (vehicle-method-117 (_type_ vector int int) none)
-    (vehicle-method-118 () none) ;; 118 ;; (vehicle-method-118 (_type_ int) none)
-    (vehicle-method-119 () none) ;; 119 ;; (vehicle-method-119 (_type_) none)
-    (vehicle-method-120 () none) ;; 120 ;; (vehicle-method-120 (_type_) none)
-    (vehicle-method-121 () none) ;; 121 ;; (vehicle-method-121 (_type_) none)
-    (vehicle-method-122 () none) ;; 122 ;; (vehicle-method-122 (_type_) none)
-    (vehicle-method-123 () none) ;; 123 ;; (vehicle-method-123 (_type_) none)
-    (vehicle-method-124 () none) ;; 124 ;; (vehicle-method-124 (_type_) none)
-    (vehicle-method-125 () none) ;; 125 ;; (vehicle-method-125 (_type_ float) none)
-    (vehicle-method-126 () none) ;; 126 ;; (vehicle-method-126 (_type_ float) none)
-    (vehicle-method-127 () none) ;; 127 ;; (vehicle-method-127 (_type_) none)
-    (vehicle-method-128 () none) ;; 128 ;; (vehicle-method-128 (_type_) none)
-    (vehicle-method-129 () none) ;; 129 ;; (vehicle-method-129 (_type_) none)
-    (vehicle-method-130 () none) ;; 130 ;; (vehicle-method-130 (_type_ traffic-object-spawn-params) none)
-    (vehicle-method-131 () none) ;; 131 ;; (vehicle-method-131 (_type_) none)
-    (vehicle-method-132 () none) ;; 132 ;; (vehicle-method-132 (_type_) none)
-    (vehicle-method-133 () none) ;; 133 ;; (check-player-get-on (_type_) none)
-    (vehicle-method-134 () none) ;; 134 ;; (vehicle-method-134 (_type_ process) none)
-    (vehicle-method-135 () none) ;; 135 ;; (vehicle-method-135 (_type_ traffic-object-spawn-params) none)
-    (vehicle-method-136 () none) ;; 136 ;; (vehicle-method-136 (_type_ traffic-object-spawn-params) none)
-    (vehicle-method-137 () none) ;; 137 ;; (vehicle-method-137 (_type_ traffic-object-spawn-params) none)
-    (vehicle-method-138 () none) ;; 138 ;; (vehicle-method-138 (_type_) none)
-    (vehicle-method-139 () none) ;; 139 ;; (vehicle-method-139 (_type_) none)
-    (vehicle-method-140 () none) ;; 140 ;; (vehicle-method-140 (_type_) none)
-    (vehicle-method-141 () none) ;; 141 ;; (vehicle-method-141 (_type_) none)
-    (vehicle-method-142 () none) ;; 142 ;; (vehicle-method-142 (_type_) none)
-    (vehicle-method-143 () none) ;; 143 ;; (vehicle-method-143 (_type_) none)
-    (vehicle-method-144 () none) ;; 144
-    (vehicle-method-145 () none) ;; 145
-    (vehicle-method-146 () none) ;; 146
-    (vehicle-method-147 () none) ;; 147
-    (vehicle-method-148 () none) ;; 148
-    (vehicle-method-149 () none) ;; 149
-    (vehicle-method-150 () none) ;; 150
-    (vehicle-method-151 () none) ;; 151
+    (vehicle-method-62 (_type_) none) ;; 62 ;; (vehicle-method-62 (_type_ float) none)
+    (vehicle-method-63 (_type_) none) ;; 63 ;; (vehicle-method-63 (_type_ float) none)
+    (vehicle-method-64 (_type_) none) ;; 64 ;; (vehicle-method-64 () none)
+    (vehicle-method-65 (_type_) none) ;; 65 ;; (start-jump (_type_) none)
+    (vehicle-method-66 (_type_ vector) none) ;; 66 ;; (vehicle-method-66 (_type_) none)
+    (get-rider-in-seat (_type_ int) process) ;; 67 ;; (get-seat-count (_type_) int)
+    (vehicle-method-68 (_type_) none) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
+    (put-rider-in-seat (_type_ int process) none) ;; 69 ;; (get-rider-in-seat (_type_ int) process)
+    (vehicle-method-70 (_type_) none) ;; 70 ;; (vehicle-method-70 (_type_) process)
+    (get-best-seat (_type_ vector vehicle-seat-flag int) int) ;; 71 ;; (put-rider-in-seat (_type_ int process-focusable) none)
+    (remove-riders (_type_ handle) none) ;; 72 ;; (vehicle-method-72 (_type_) uint)
+    (vehicle-method-73 (_type_) none) ;; 73 ;; (get-best-seat-for-vehicle (_type_ vector int int) int)
+    (vehicle-method-74 (_type_ int uint) none) ;; 74 ;; (remove-rider (_type_ process) none)
+    (vehicle-method-75 (_type_) none) ;; 75 ;; (vehicle-method-75 (_type_) float)
+    (vehicle-method-76 (_type_) none) ;; 76 ;; (vehicle-method-76 (_type_ int uint) none)
+    (vehicle-method-77 (_type_) none) ;; 77 ;; (vehicle-method-77 (_type_) none)
+    (vehicle-method-78 (_type_) none) ;; 78 ;; (vehicle-method-78 (_type_ int) none)
+    (vehicle-method-79 (_type_) none) ;; 79 ;; (vehicle-method-79 (_type_) none)
+    (vehicle-method-80 (_type_) none) ;; 80 ;; (vehicle-method-80 (_type_) none)
+    (vehicle-method-81 (_type_) none) ;; 81 ;; (vehicle-method-81 (_type_) none)
+    (vehicle-method-82 (_type_) none) ;; 82 ;; (vehicle-method-82 (_type_) none)
+    (vehicle-method-83 (_type_) none) ;; 83 ;; (vehicle-method-83 (_type_) none)
+    (vehicle-method-84 (_type_) none) ;; 84 ;; (draw-thruster (_type_ vector vector float float) none)
+    (vehicle-method-85 (_type_) none) ;; 85 ;; (draw-thrusters (_type_) none)
+    (vehicle-method-86 (_type_) none) ;; 86 ;; (update-joint-mods (_type_) none)
+    (vehicle-method-87 (_type_) none) ;; 87 ;; (vehicle-method-87 (_type_) none)
+    (vehicle-method-88 (_type_) none) ;; 88 ;; (vehicle-method-88 (_type_) none)
+    (vehicle-method-89 (_type_) none) ;; 89 ;; (vehicle-method-89 (_type_) none)
+    (vehicle-method-90 (_type_) none) ;; 90 ;; (vehicle-method-90 (_type_) none)
+    (vehicle-method-91 (_type_) none) ;; 91 ;; (vehicle-method-91 (_type_) none)
+    (vehicle-method-92 (_type_) none) ;; 92 ;; (vehicle-method-92 (_type_) none)
+    (vehicle-method-93 (_type_) none) ;; 93 ;; (vehicle-method-93 (_type_) none)
+    (vehicle-method-94 (_type_) none) ;; 94 ;; (vehicle-method-94 (_type_) none)
+    (vehicle-method-95 (_type_) none) ;; 95 ;; (vehicle-method-95 (_type_ vector) none)
+    (vehicle-method-96 (_type_) none) ;; 96 ;; (vehicle-method-96 (_type_) none)
+    (vehicle-method-97 (_type_) none) ;; 97 ;; (vehicle-method-97 (_type_) none)
+    (vehicle-method-98 (_type_) none) ;; 98 ;; (vehicle-method-98 (_type_ float) none)
+    (vehicle-method-99 (_type_) none) ;; 99 ;; (vehicle-method-99 (_type_ float) none)
+    (vehicle-method-100 (_type_) none) ;; 100 ;; (vehicle-method-100 (_type_ float vehicle-physics-work) none)
+    (vehicle-method-101 (_type_) none) ;; 101 ;; (vehicle-method-101 (_type_) none)
+    (vehicle-method-102 (_type_) none) ;; 102 ;; (shadow-enable (_type_) none)
+    (vehicle-method-103 (_type_) none) ;; 103 ;; (shadow-disable (_type_) none)
+    (vehicle-method-104 (_type_) none) ;; 104 ;; (vehicle-method-104 (_type_) none)
+    (vehicle-method-105 (_type_) none) ;; 105 ;; (vehicle-method-105 (_type_) symbol)
+    (vehicle-method-106 (_type_) none) ;; 106 ;; (vehicle-method-106 (_type_) none)
+    (vehicle-method-107 (_type_) none) ;; 107 ;; (vehicle-method-107 (_type_) none)
+    (vehicle-method-108 (_type_) none) ;; 108 ;; (vehicle-method-108 (_type_) none)
+    (vehicle-method-109 (_type_) none) ;; 109 ;; (vehicle-method-109 (_type_) none)
+    (vehicle-method-110 (_type_) none) ;; 110 ;; (vehicle-method-110 (_type_) none)
+    (get-linear-accel! (_type_ vector) none) ;; 111 ;; (vehicle-method-111 (_type_ object target) none)
+    (copy-vehicle-controls! (_type_ vehicle-controls) none) ;; 112 ;; (decrease-traffic-alert-level (_type_ int) int)
+    (vehicle-method-113 (_type_) none) ;; 113 ;; (vehicle-method-113 (_type_) none)
+    (vehicle-method-114 (_type_ int) none) ;; 114 ;; (vehicle-method-114 (_type_) none)
+    (vehicle-method-115 (_type_) none) ;; 115 ;; (vehicle-method-115 (_type_ vector) none)
+    (vehicle-method-116 (_type_ symbol) none) ;; 116 ;; (vehicle-method-116 (_type_ (pointer vehicle-controls)) none)
+    (vehicle-method-117 (_type_) none) ;; 117 ;; (vehicle-method-117 (_type_ vector int int) none)
+    (vehicle-method-118 (_type_) none) ;; 118 ;; (vehicle-method-118 (_type_ int) none)
+    (vehicle-method-119 (_type_) none) ;; 119 ;; (vehicle-method-119 (_type_) none)
+    (vehicle-method-120 (_type_) none) ;; 120 ;; (vehicle-method-120 (_type_) none)
+    (vehicle-method-121 (_type_) none) ;; 121 ;; (vehicle-method-121 (_type_) none)
+    (vehicle-method-122 (_type_) none) ;; 122 ;; (vehicle-method-122 (_type_) none)
+    (vehicle-method-123 (_type_) none) ;; 123 ;; (vehicle-method-123 (_type_) none)
+    (vehicle-method-124 (_type_) none) ;; 124 ;; (vehicle-method-124 (_type_) none)
+    (vehicle-method-125 (_type_) none) ;; 125 ;; (vehicle-method-125 (_type_ float) none)
+    (vehicle-method-126 (_type_) none) ;; 126 ;; (vehicle-method-126 (_type_ float) none)
+    (check-player-get-on (_type_ process-focusable) symbol) ;; 127 ;; (vehicle-method-127 (_type_) none)
+    (vehicle-method-128 (_type_) none) ;; 128 ;; (vehicle-method-128 (_type_) none)
+    (vehicle-method-129 (_type_) none) ;; 129 ;; (vehicle-method-129 (_type_) none)
+    (vehicle-method-130 (_type_) none) ;; 130 ;; (vehicle-method-130 (_type_ traffic-object-spawn-params) none)
+    (vehicle-method-131 (_type_) none) ;; 131 ;; (vehicle-method-131 (_type_) none)
+    (vehicle-method-132 (_type_) none) ;; 132 ;; (vehicle-method-132 (_type_) none)
+    (vehicle-method-133 (_type_) none) ;; 133 ;; (check-player-get-on (_type_) none)
+    (vehicle-method-134 (_type_) none) ;; 134 ;; (vehicle-method-134 (_type_ process) none)
+    (vehicle-method-135 (_type_) none) ;; 135 ;; (vehicle-method-135 (_type_ traffic-object-spawn-params) none)
+    (vehicle-method-136 (_type_) none) ;; 136 ;; (vehicle-method-136 (_type_ traffic-object-spawn-params) none)
+    (vehicle-method-137 (_type_) none) ;; 137 ;; (vehicle-method-137 (_type_ traffic-object-spawn-params) none)
+    (vehicle-method-138 (_type_) none) ;; 138 ;; (vehicle-method-138 (_type_) none)
+    (vehicle-method-139 (_type_) none) ;; 139 ;; (vehicle-method-139 (_type_) none)
+    (vehicle-method-140 (_type_) none) ;; 140 ;; (vehicle-method-140 (_type_) none)
+    (vehicle-method-141 (_type_) none) ;; 141 ;; (vehicle-method-141 (_type_) none)
+    (vehicle-method-142 (_type_) none) ;; 142 ;; (vehicle-method-142 (_type_) none)
+    (vehicle-method-143 (_type_) none) ;; 143 ;; (vehicle-method-143 (_type_) none)
+    (vehicle-method-144 (_type_) none) ;; 144
+    (vehicle-method-145 (_type_) none) ;; 145
+    (vehicle-method-146 (_type_) none) ;; 146
+    (vehicle-method-147 (_type_) none) ;; 147
+    (vehicle-method-148 (_type_) none) ;; 148
+    (vehicle-method-149 (_type_) none) ;; 149
+    (vehicle-method-150 (_type_) none) ;; 150
+    (set-hit-points (_type_ float) none) ;; 151
     )
   )
-|#
 
-#|
 (deftype vehicle-probe-work (structure)
   ((local-pos     vector :inline :offset-assert 0)
    (local-normal  vector :inline :offset-assert 16)
@@ -53335,9 +53392,7 @@
   :size-assert         #xa0
   :flag-assert         #x9000000a0
   )
-|#
 
-#|
 (deftype vehicle-physics-work (structure)
   ((mat              matrix             :inline :offset-assert 0)
    (force            vector             :inline :offset-assert 64)
@@ -53357,15 +53412,13 @@
    (vel-dot-norm     float                      :offset-assert 276)
    (friction-coef    float                      :offset-assert 280)
    (speed-factor     float                      :offset-assert 284)
-   (probe-work-array vehicle-probe-work 4       :offset-assert 288) ;; guessed by decompiler
+   (probe-work-array vehicle-probe-work 4 :inline :offset-assert 288) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x3a0
   :flag-assert         #x9000003a0
   )
-|#
 
-#|
 (deftype vehicle-draw-thruster-params (structure)
   ((quat     quaternion :inline :offset-assert 0)
    (trans    vector     :inline :offset-assert 16)
@@ -53378,14 +53431,17 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
 ;; (deftype debug-vehicle-work (basic)
 ;;   ()
 ;;   :flag-assert #x900000070
 ;;   )
 
-;; (define-extern meters-per-sec->mph function)
+(deftype debug-vehicle-work (basic)
+  ()
+  )
+
+(define-extern meters-per-sec->mph (function float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-part                   ;;
@@ -53396,55 +53452,62 @@
 ;; vehicle-effects                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern calc-fade-vals function) ;; (function float none)
-;; (define-extern *vehicle-headlight-glow-template* object) ;; sprite-glow-data
-;; (define-extern *vehicle-taillight-glow-template* object) ;; sprite-glow-data
-;; (define-extern *vehicle-thruster-glow-template* object) ;; sprite-glow-data
-;; (define-extern *vehicle-particle-common-info* object)
-;; (define-extern vehicle-draw-thruster function)
+(define-extern calc-fade-vals (function float none))
+(define-extern *vehicle-headlight-glow-template* sprite-glow-data)
+(define-extern *vehicle-taillight-glow-template* sprite-glow-data)
+(define-extern *vehicle-thruster-glow-template* sprite-glow-data)
+(define-extern *vehicle-particle-common-info* vehicle-particle-common-info)
+(define-extern vehicle-draw-thruster (function vehicle-particle-common-info vehicle-draw-thruster-params none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *debug-vehicle-work* debug-vehicle-work) ;; debug-vehicle-work
-;; (define-extern *vehicle-shadow-control* shadow-control) ;; shadow-control
-;; (define-extern *vehicle-shadow-control-disabled* shadow-control) ;; shadow-control
-;; (define-extern vehicle-event-handler function) ;; (function process int symbol event-message-block object :behavior vehicle)
+(define-extern *debug-vehicle-work* debug-vehicle-work)
+(define-extern *vehicle-shadow-control* shadow-control)
+(define-extern *vehicle-shadow-control-disabled* shadow-control)
+(define-extern vehicle-event-handler (function process int symbol event-message-block object :behavior vehicle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-util                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(deftype mystery-vehicle-type0 (structure)
+  "vehicle::check-player-get-on"
+  ((mat    matrix 3      :inline :offset-assert 0)
+   (vec    vector 2      :inline :offset-assert 192)
+   (proc   handle 2              :offset-assert 224)
+   (cquery collide-query :inline :offset-assert 240)
+   (floats float  5              :offset-assert 780)
+   )
+  )
+
 (deftype vehicle-hud-request (structure)
-  ((handle           uint64  :offset-assert 0) ;; handle
-   (hack-handle-init basic   :offset-assert 0)
+  ((handle           handle  :offset-assert 0) ;; handle
+   (hack-handle-init symbol  :offset 0)
    (priority         float   :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype vehicle-hud-requests (structure)
-  ((time     uint64                :offset-assert 0) ;; time-frame
-   (requests vehicle-hud-request 4 :offset-assert 8) ;; guessed by decompiler
+  ((time     time-frame                    :offset-assert 0) ;; time-frame
+   (requests vehicle-hud-request 4 :inline :offset-assert 8) ;; guessed by decompiler
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x48
   :flag-assert         #xc00000048
   (:methods
-    (vehicle-hud-requests-method-9 () none) ;; 9 ;; (vehicle-hud-requests-method-9 (_type_) none)
-    (vehicle-hud-requests-method-10 () none) ;; 10 ;; (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request)
-    (vehicle-hud-requests-method-11 () none) ;; 11 ;; (vehicle-hud-requests-method-11 (_type_) vehicle-hud-request)
+    (vehicle-hud-requests-method-9 (_type_) none) ;; 9
+    (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request) ;; 10 ;; (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request)
+    (vehicle-hud-requests-method-11 (_type_) vehicle-hud-request) ;; 11
     )
   )
-|#
 
-#|
 (deftype vehicle-hud-chooser (structure)
   ((cur  vehicle-hud-requests :inline :offset-assert 0)
    (last vehicle-hud-requests :inline :offset-assert 72)
@@ -53453,13 +53516,12 @@
   :size-assert         #x90
   :flag-assert         #xa00000090
   (:methods
-    (vehicle-hud-chooser-method-9 () none) ;; 9 ;; (vehicle-hud-chooser-method-9 (_type_ handle float) symbol)
+    (vehicle-hud-chooser-method-9 (_type_ handle float) symbol) ;; 9
     )
   )
-|#
 
-;; (define-extern *vehicle-hud-chooser* object) ;; vehicle-hud-chooser
-;; (define-extern *pilot-edge-grab-info* object) ;; pilot-edge-grab-info
+(define-extern *vehicle-hud-chooser* vehicle-hud-chooser)
+(define-extern *pilot-edge-grab-info* pilot-edge-grab-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-physics                ;;
@@ -53470,7 +53532,7 @@
 ;; vehicle-states                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern vehicle-explode-post function) ;; (function none :behavior vehicle)
+(define-extern vehicle-explode-post (function none :behavior vehicle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-manager                ;;
@@ -53482,8 +53544,8 @@
   :size-assert         #x80
   :flag-assert         #x1200000080
   (:state-methods
-    active ;; 15
     idle ;; 14
+    active ;; 15
     )
   (:methods
     (vehicle-manager-method-16 () none) ;; 16
@@ -54573,15 +54635,27 @@
 ;; prebot-eco-creature            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++prebot-eco-creature:eco-creature-flag
+(defenum eco-creature-flag
+  :type uint64
+  :bitfield #t
+  (ecf0 0)
+  (ecf1 1)
+  (ecf2 2)
+  (ecf3 3)
+  (ecf4 4)
+  (ecf5 5)
+  )
+;; ---prebot-eco-creature:eco-creature-flag
+
 (deftype prebot-large-eco-creature (nav-enemy)
   ((old-y-deg         float              :offset-assert 620)
    (diff-angle        float              :offset-assert 624)
-   (attack-anims      basic              :offset-assert 628)
-   (victory-anims     basic              :offset-assert 632)
+   (attack-anims      (array int32)      :offset-assert 628)
+   (victory-anims     (array int32)      :offset-assert 632)
    (turn-left-anim    int32              :offset-assert 636)
    (turn-right-anim   int32              :offset-assert 640)
-   (split-type        basic              :offset-assert 644)
+   (split-type        type               :offset-assert 644)
    (attack-stop-frame float              :offset-assert 648)
    (traj              trajectory :inline :offset-assert 656)
    (which-trajectory  int8               :offset-assert 696)
@@ -54589,35 +54663,33 @@
    (y-rotate          float              :offset-assert 704)
    (launch-pos        vector     :inline :offset-assert 720)
    (launch            vector     :inline :offset-assert 736)
-   (spin-jm           basic              :offset-assert 752)
-   (trail-part        basic              :offset-assert 756)
-   (trail-sound       uint32             :offset-assert 760)
-   (flags             uint64             :offset-assert 768)
+   (spin-jm           joint-mod          :offset-assert 752)
+   (trail-part        sparticle-launch-control :offset-assert 756)
+   (trail-sound       sound-id           :offset-assert 760)
+   (flags             eco-creature-flag  :offset-assert 768)
    )
   :method-count-assert 196
   :size-assert         #x308
   :flag-assert         #xc402900308
-  (:methods
-    (prebot-large-eco-creature-method-194 () none) ;; 194
-    (prebot-large-eco-creature-method-195 () none) ;; 195
-    )
   (:state-methods
-    unfold ;; 190
+    knocked ;; 31
+    notice ;; 35
+    stare ;; 37
+    hostile ;; 38
     victory ;; 39
     pacing ;; 156
     circling ;; 157
-    hostile ;; 38
+    unfold ;; 190
     fly-to-dest ;; 191
-    notice ;; 35
     attack ;; 192
-    stare ;; 37
     wait-for-children ;; 193
-    knocked ;; 31
+    )
+  (:methods
+    (prebot-large-eco-creature-method-194 (_type_) none) ;; 194
+    (prebot-large-eco-creature-method-195 (_type_) none) ;; 195
     )
   )
-|#
 
-#|
 (deftype prebot-medium-eco-creature (prebot-large-eco-creature)
   ((is-top        basic  :offset-assert 776)
    (is-bottom     basic  :offset-assert 780)
@@ -54627,76 +54699,63 @@
   :method-count-assert 198
   :size-assert         #x318
   :flag-assert         #xc602a00318
-  (:methods
-    (prebot-medium-eco-creature-method-196 () none) ;; 196
-    (prebot-medium-eco-creature-method-197 () none) ;; 197
-    )
   (:state-methods
     knocked-recover ;; 32
     )
+  (:methods
+    (prebot-medium-eco-creature-method-196 (_type_) none) ;; 196
+    (prebot-medium-eco-creature-method-197 (_type_) none) ;; 197
+    )
   )
-|#
 
-#|
 (deftype prebot-small-eco-creature (prebot-medium-eco-creature)
   ()
   :method-count-assert 198
   :size-assert         #x318
   :flag-assert         #xc602a00318
   )
-|#
 
-#|
 (deftype medium-eco-creature-launched (prebot-medium-eco-creature)
   ()
   :method-count-assert 198
   :size-assert         #x318
   :flag-assert         #xc602a00318
   )
-|#
 
-#|
 (deftype small-eco-creature-launched (prebot-small-eco-creature)
   ()
   :method-count-assert 198
   :size-assert         #x318
   :flag-assert         #xc602a00318
   )
-|#
 
-#|
 (deftype large-eco-creature (prebot-large-eco-creature)
   ()
   :method-count-assert 196
   :size-assert         #x308
   :flag-assert         #xc402900308
   )
-|#
 
-#|
 (deftype medium-eco-creature (prebot-medium-eco-creature)
   ()
   :method-count-assert 198
   :size-assert         #x318
   :flag-assert         #xc602a00318
   )
-|#
 
-#|
 (deftype small-eco-creature (prebot-small-eco-creature)
   ()
   :method-count-assert 198
   :size-assert         #x318
   :flag-assert         #xc602a00318
   )
-|#
 
-;; (define-extern *prebot-large-eco-creature-nav-enemy-info* nav-enemy-info)
-;; (define-extern large-eco-creature-split function)
-;; (define-extern *prebot-medium-eco-creature-nav-enemy-info* nav-enemy-info)
-;; (define-extern prebot-eco-creature-joint-callback function)
-;; (define-extern adjust-split-joints function)
-;; (define-extern *prebot-small-eco-creature-nav-enemy-info* nav-enemy-info)
+(define-extern *prebot-large-eco-creature-nav-enemy-info* nav-enemy-info)
+(define-extern large-eco-creature-split (function none :behavior prebot-large-eco-creature))
+(define-extern *prebot-medium-eco-creature-nav-enemy-info* nav-enemy-info)
+(define-extern prebot-eco-creature-joint-callback (function cspace transformq none))
+(define-extern adjust-split-joints (function none :behavior prebot-medium-eco-creature))
+(define-extern *prebot-small-eco-creature-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; deswalk-part                   ;;
@@ -72532,81 +72591,78 @@
 ;; mined-mood                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mined-states (structure)
-  ((filter UNKNOWN 2 :offset-assert 0)
-   (light  UNKNOWN 2 :offset-assert 32)
+  ((filter vector 2 :inline :offset-assert 0)
+   (light  light-sphere 2 :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-;; (define-extern set-mined-filter-light! function)
-;; (define-extern init-mood-mined function)
-;; (define-extern update-mood-mined function)
-;; (define-extern set-mined-filter! function)
+(define-extern set-mined-filter-light! (function string light-hash vector light-sphere light-sphere))
+(define-extern init-mood-mined (function mood-context float))
+(define-extern update-mood-mined (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-mined-filter! (function vector int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mined-texture                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *mined-tfrag-texture-anim-array* texture-anim-array)
-;; (define-extern set-mined-pillar-texture! function)
+(define-extern *mined-tfrag-texture-anim-array* texture-anim-array)
+(define-extern set-mined-pillar-texture! (function float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prebot-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern birth-func-pillar-rocks-bounce function)
-;; (define-extern spt-func-pillar-rocks-bounce1 function)
-;; (define-extern spt-func-pillar-rocks-bounce2 function)
-;; (define-extern spt-func-pillar-rocks-bounce3 function)
-;; (define-extern spt-birth-func-brightness-prebot-eco-pillar-rocks function)
-;; (define-extern spt-birth-func-brightness-prebot-eco-pillar-rocks2 function)
-;; (define-extern spt-birth-func-brightness-prebot-eco-pillar-rocks3 function)
-;; (define-extern spt-birth-func-part-prebot-eco-pillar-rocks function)
-;; (define-extern spt-func-part-prebot-eco-pillar-rocks function)
-;; (define-extern spt-birth-func-part-prebot-eco-pillar-rocks-bounce1 function)
-;; (define-extern spt-func-part-prebot-eco-pillar-rocks-bounce1 function)
-;; (define-extern spt-birth-func-part-prebot-eco-pillar-rocks-bounce2 function)
-;; (define-extern *range-mine-boss-stuck-flame-color* curve-color-fast)
-;; (define-extern *range-mine-boss-stuck-flame-alpha* curve2d-fast)
-;; (define-extern *range-mine-boss-stuck-flame-scale-x* curve2d-fast)
-;; (define-extern *range-mine-boss-stuck-flame-scale-y* curve2d-fast)
-;; (define-extern *r-curve-mine-boss-stuck-flame* curve2d-fast)
-;; (define-extern *g-curve-mine-boss-stuck-flame* curve2d-fast)
-;; (define-extern *b-curve-mine-boss-stuck-flame* curve2d-fast)
-;; (define-extern *curve-mine-boss-stuck-flame-alpha* curve2d-fast)
-;; (define-extern *curve-mine-boss-stuck-flame-scale-x* curve2d-fast)
-;; (define-extern *curve-mine-boss-stuck-flame-scale-y* curve2d-fast)
-;; (define-extern *part-prebot-stuck-flame-curve-settings* object)
-;; (define-extern *range-mine-boss-explo-color* curve-color-fast)
-;; (define-extern *range-mine-boss-explo-alpha* curve2d-fast)
-;; (define-extern *range-mine-boss-explo-scale-x* curve2d-fast)
-;; (define-extern *range-mine-boss-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-mine-boss-explo-alpha* curve2d-fast)
-;; (define-extern *curve-mine-boss-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-mine-boss-explo-scale-y* curve2d-fast)
-;; (define-extern *part-prebot-chasm-explosion-texture-curve-settings* object)
-;; (define-extern *range-final-mine-boss-explo-color* curve-color-fast)
-;; (define-extern *range-final-mine-boss-explo-alpha* curve2d-fast)
-;; (define-extern *range-final-mine-boss-explo-scale-x* curve2d-fast)
-;; (define-extern *range-final-mine-boss-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-final-mine-boss-explo-alpha* curve2d-fast)
-;; (define-extern *curve-final-mine-boss-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-final-mine-boss-explo-scale-y* curve2d-fast)
-;; (define-extern *part-final-prebot-chasm-explosion-texture-curve-settings* object)
-;; (define-extern spt-birth-func-brightness-prebot-pillar-shatter-rocks function)
-;; (define-extern spt-birth-func-part-prebot-eco-pillar-shatter function)
-;; (define-extern spt-func-part-prebot-eco-pillar-shatter function)
+(define-extern birth-func-pillar-rocks-bounce (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-pillar-rocks-bounce1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-pillar-rocks-bounce2 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-pillar-rocks-bounce3 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-prebot-eco-pillar-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-prebot-eco-pillar-rocks2 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-prebot-eco-pillar-rocks3 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-prebot-eco-pillar-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-prebot-eco-pillar-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-prebot-eco-pillar-rocks-bounce1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-prebot-eco-pillar-rocks-bounce1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-prebot-eco-pillar-rocks-bounce2 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-mine-boss-stuck-flame-color* curve-color-fast)
+(define-extern *range-mine-boss-stuck-flame-alpha* curve2d-fast)
+(define-extern *range-mine-boss-stuck-flame-scale-x* curve2d-fast)
+(define-extern *range-mine-boss-stuck-flame-scale-y* curve2d-fast)
+(define-extern *r-curve-mine-boss-stuck-flame* curve2d-fast)
+(define-extern *g-curve-mine-boss-stuck-flame* curve2d-fast)
+(define-extern *b-curve-mine-boss-stuck-flame* curve2d-fast)
+(define-extern *curve-mine-boss-stuck-flame-alpha* curve2d-fast)
+(define-extern *curve-mine-boss-stuck-flame-scale-x* curve2d-fast)
+(define-extern *curve-mine-boss-stuck-flame-scale-y* curve2d-fast)
+(define-extern *part-prebot-stuck-flame-curve-settings* particle-curve-settings)
+(define-extern *range-mine-boss-explo-color* curve-color-fast)
+(define-extern *range-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *range-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *range-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *curve-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *curve-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *curve-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *part-prebot-chasm-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-final-mine-boss-explo-color* curve-color-fast)
+(define-extern *range-final-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *range-final-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *range-final-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *curve-final-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *curve-final-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *curve-final-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *part-final-prebot-chasm-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern spt-birth-func-brightness-prebot-pillar-shatter-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-prebot-eco-pillar-shatter (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-prebot-eco-pillar-shatter (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prebot-setup                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype prebot-eco-pillar-launch-spec (structure)
   ((offset vector  :offset-assert 0)
    (height float   :offset-assert 4)
@@ -72616,223 +72672,232 @@
   :size-assert         #x9
   :flag-assert         #x900000009
   )
-|#
 
-#|
 (deftype prebot-eco-pillar (process-drawable)
-  ((vulnerable basic  :offset-assert 200)
-   (hot        basic  :offset-assert 204)
+  ((root       collide-shape-moving :override)
+   (vulnerable symbol :offset-assert 200)
+   (hot        symbol :offset-assert 204)
    (start-y    float  :offset-assert 208)
    (end-y      float  :offset-assert 212)
-   (heat-part  basic  :offset-assert 216)
-   (cool-part  basic  :offset-assert 220)
+   (heat-part  sparticle-launch-control :offset-assert 216)
+   (cool-part  sparticle-launch-control :offset-assert 220)
    )
   :method-count-assert 26
   :size-assert         #xe0
   :flag-assert         #x1a006000e0
-  (:methods
-    (prebot-eco-pillar-method-20 () none) ;; 20
-    (prebot-eco-pillar-method-21 () none) ;; 21
-    (prebot-eco-pillar-method-22 () none) ;; 22
-    (prebot-eco-pillar-method-23 () none) ;; 23
-    (prebot-eco-pillar-method-24 () none) ;; 24
-    (prebot-eco-pillar-method-25 () none) ;; 25
+  (:state-methods
+    wait-to-die ;; 20
+    heat-up ;; 21
+    grow ;; 22
+    cool-down ;; 23
+    wait-to-cool ;; 24
+    idle ;; 25
     )
   )
-|#
 
-#|
 (deftype cav-railblocker (process-focusable)
   ((incoming-attack-id  uint32  :offset-assert 208)
    (hit-points          float   :offset-assert 212)
-   (notify-on-die       basic   :offset-assert 216)
-   (notify-on-die-2     basic   :offset-assert 220)
-   (trackable           basic   :offset-assert 224)
-   (red-tip-change-time uint64  :offset-assert 232)
-   (alt-red-tip-on      basic   :offset-assert 240)
+   (notify-on-die       entity   :offset-assert 216)
+   (notify-on-die-2     entity   :offset-assert 220)
+   (trackable           symbol  :offset-assert 224)
+   (red-tip-change-time time-frame  :offset-assert 232)
+   (alt-red-tip-on      symbol  :offset-assert 240)
    )
   :method-count-assert 31
   :size-assert         #xf4
   :flag-assert         #x1f008000f4
+  (:state-methods
+    idle ;; 28
+    fall ;; 29
+    )
   (:methods
-    (cav-railblocker-method-28 () none) ;; 28
-    (cav-railblocker-method-29 () none) ;; 29
-    (cav-railblocker-method-30 () none) ;; 30
+    (cav-railblocker-method-30 (_type_ symbol) none) ;; 30
     )
   )
-|#
 
-#|
 (deftype cav-minecar (process-drawable)
   ()
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
-  (:methods
-    (cav-minecar-method-20 () none) ;; 20
+  (:state-methods
+    idle ;; 20
     )
   )
-|#
 
-#|
+(declare-type prebot process-focusable)
+
 (deftype prebot-sword (process-drawable)
-  ((prefix              basic                    :offset-assert 200)
+  ((parent              (pointer prebot)         :override)
+   (root                collide-shape-moving     :override)
+   (prefix              string                   :offset-assert 200)
    (blade-scale         cam-float-seeker :inline :offset-assert 204)
-   (blade-jm            basic                    :offset-assert 228)
-   (sword-sound         uint32                   :offset-assert 232)
-   (sword-sound-playing basic                    :offset-assert 236)
+   (blade-jm            joint-mod                :offset-assert 228)
+   (sword-sound         sound-id                 :offset-assert 232)
+   (sword-sound-playing symbol                   :offset-assert 236)
    (prev-position       vector           :inline :offset-assert 240)
-   (use-pos-pitch       basic                    :offset-assert 256)
+   (use-pos-pitch       symbol                   :offset-assert 256)
    (old-target-dist     float                    :offset-assert 260)
-   (alternate-sound     basic                    :offset-assert 264)
+   (alternate-sound     sound-spec               :offset-assert 264)
    (whoosh-lead         float                    :offset-assert 268)
-   (allow-whoosh        basic                    :offset-assert 272)
+   (allow-whoosh        symbol                   :offset-assert 272)
    (current-volume      float                    :offset-assert 276)
    )
   :method-count-assert 21
   :size-assert         #x118
   :flag-assert         #x1500a00118
-  (:methods
-    (prebot-sword-method-20 () none) ;; 20
+  (:state-methods
+    idle ;; 20
     )
   )
-|#
 
-#|
 (deftype prebot-shockwave (process-drawable)
   ()
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
-  (:methods
-    (prebot-shockwave-method-20 () none) ;; 20
+  (:state-methods
+    idle ;; 20
     )
   )
-|#
 
-#|
 (deftype prebot-gun (process-drawable)
-  ((prefix basic  :offset-assert 200)
+  ((parent (pointer prebot) :override)
+   (root   collide-shape-moving :override)
+   (prefix string  :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xcc
   :flag-assert         #x15005000cc
-  (:methods
-    (prebot-gun-method-20 () none) ;; 20
+  (:state-methods
+    idle ;; 20
     )
   )
-|#
 
-#|
 (deftype prebot-tentacle (process-drawable)
-  ((prefix              basic   :offset-assert 200)
-   (aim-jm              basic   :offset-assert 204)
-   (half-aim-jm         basic   :offset-assert 208)
-   (laser-sound         uint32  :offset-assert 212)
-   (laser-sound-playing basic   :offset-assert 216)
+  ((parent              (pointer prebot) :override)
+   (root                collide-shape-moving :override)
+   (prefix              string    :offset-assert 200)
+   (aim-jm              joint-mod-polar-look-at :offset-assert 204)
+   (half-aim-jm         joint-mod-polar-look-at :offset-assert 208)
+   (laser-sound         sound-id  :offset-assert 212)
+   (laser-sound-playing symbol    :offset-assert 216)
    )
   :method-count-assert 21
   :size-assert         #xdc
   :flag-assert         #x15006000dc
-  (:methods
-    (prebot-tentacle-method-20 () none) ;; 20
+  (:state-methods
+    idle ;; 20
     )
   )
-|#
 
-#|
 (deftype prebot-ammo-tracker (structure)
-  ((handle          uint64         :offset-assert 0)
+  ((handle          handle         :offset-assert 0)
    (where           vector :inline :offset-assert 16)
-   (birth-next-time basic          :offset-assert 32)
-   (timer           uint64         :offset-assert 40)
+   (birth-next-time symbol         :offset-assert 32)
+   (timer           time-frame     :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+;; +++prebot-setup:prebot-flag
+(defenum prebot-flag
+  :type uint32
+  :bitfield #t
+  (pf0 0)
+  (pf1 1)
+  (pf2 2)
+  (pf3 3)
+  (pf4 4)
+  (pf5 5)
+  (pf6 6)
+  (pf7 7)
+  (pf8 8)
+  )
+;; ---prebot-setup:prebot-flag
+
 (deftype prebot (process-focusable)
-  ((critters            UNKNOWN             28      :offset-assert 208)
+  ((critters            handle              28      :offset-assert 208)
    (critters-to-launch  int8                        :offset-assert 432)
-   (gun                 uint64                      :offset-assert 440)
-   (swords              UNKNOWN             2       :offset-assert 448)
-   (tentacles           UNKNOWN             5       :offset-assert 464)
-   (beam-projectile     uint64                      :offset-assert 504)
-   (pillars             UNKNOWN             5       :offset-assert 512)
+   (gun                 handle                      :offset-assert 440)
+   (swords              handle              2       :offset-assert 448)
+   (tentacles           handle              5       :offset-assert 464)
+   (beam-projectile     handle                      :offset-assert 504)
+   (pillars             handle              5       :offset-assert 512)
    (original-position   vector              :inline :offset-assert 560)
    (position            cam-vector-seeker   :inline :offset-assert 576)
    (stage               int8                        :offset-assert 636)
    (stage-hit-points    float                       :offset-assert 640)
    (last-attack-id      uint32                      :offset-assert 644)
    (neck-angle          cam-float-seeker    :inline :offset-assert 648)
-   (no-collision-timer  uint64                      :offset-assert 672)
+   (no-collision-timer  time-frame                  :offset-assert 672)
    (num-attacks         uint8                       :offset-assert 680)
-   (shoulder-aim-jm     basic                       :offset-assert 684)
+   (shoulder-aim-jm     joint-mod-polar-look-at     :offset-assert 684)
    (shot-extra-y        float                       :offset-assert 688)
    (shot-extra-xz       float                       :offset-assert 692)
    (which-movie         int8                        :offset-assert 696)
    (light-flash         cam-vector-seeker   :inline :offset-assert 704)
    (light-pulse         oscillating-vector  :inline :offset-assert 768)
    (light-pulse-flicker delayed-rand-vector :inline :offset-assert 832)
-   (laugh-played        basic                       :offset-assert 880)
-   (grunt-played        basic                       :offset-assert 884)
-   (trythis-played      basic                       :offset-assert 888)
-   (laugh-timer         uint64                      :offset-assert 896)
-   (blocker             uint64                      :offset-assert 904)
-   (flags               uint32                      :offset-assert 912)
-   (pillar-hint-timer   uint64                      :offset-assert 920)
-   (minecar-hint-timer  uint64                      :offset-assert 928)
-   (ammo                UNKNOWN             20      :offset-assert 944)
+   (laugh-played        symbol                      :offset-assert 880)
+   (grunt-played        symbol                      :offset-assert 884)
+   (trythis-played      symbol                      :offset-assert 888)
+   (laugh-timer         time-frame                  :offset-assert 896)
+   (blocker             handle                      :offset-assert 904)
+   (flags               prebot-flag                 :offset-assert 912)
+   (pillar-hint-timer   time-frame                  :offset-assert 920)
+   (minecar-hint-timer  time-frame                  :offset-assert 928)
+   (ammo                prebot-ammo-tracker 20 :inline :offset-assert 944)
    )
   :method-count-assert 47
   :size-assert         #x770
   :flag-assert         #x2f06f00770
+  (:state-methods
+    beaten ;; 28
+    play-fma ;; 29
+    play-hit-movie ;; 30
+    destroy-pillars ;; 31
+    watch-pillars ;; 32
+    create-pillars ;; 33
+    activate-tentacles ;; 34
+    watch-critters ;; 35
+    launch-critters ;; 36
+    sweep-done
+    sweep
+    slam-done
+    slam
+    pre-slam
+    jump-to-hover
+    hidden
+    test
+    )
   (:methods
-    (prebot-method-28 () none) ;; 28
-    (prebot-method-29 () none) ;; 29
-    (prebot-method-30 () none) ;; 30
-    (prebot-method-31 () none) ;; 31
-    (prebot-method-32 () none) ;; 32
-    (prebot-method-33 () none) ;; 33
-    (prebot-method-34 () none) ;; 34
-    (prebot-method-35 () none) ;; 35
-    (prebot-method-36 () none) ;; 36
-    (prebot-method-37 () none) ;; 37
-    (prebot-method-38 () none) ;; 38
-    (prebot-method-39 () none) ;; 39
-    (prebot-method-40 () none) ;; 40
-    (prebot-method-41 () none) ;; 41
-    (prebot-method-42 () none) ;; 42
-    (prebot-method-43 () none) ;; 43
-    (prebot-method-44 () none) ;; 44
-    (prebot-method-45 () none) ;; 45
-    (prebot-method-46 () none) ;; 46
+    (prebot-method-45 (_type_) none) ;; 45
+    (prebot-method-46 (_type_) none) ;; 46
     )
   )
-|#
 
-;; (define-extern *cav-railblocker-exploder-params* joint-exploder-static-params)
-;; (define-extern prebot-eco-pillar-init-by-other function)
-;; (define-extern *prebot-sword-color-curve* object)
-;; (define-extern *prebot-sword-white-red-curve* object)
-;; (define-extern *prebot-sword-width-curve* curve2d-fast)
-;; (define-extern *prebot-sword-color-array* object)
-;; (define-extern prebot-sword-init-by-other function)
-;; (define-extern prebot-shockwave-init-by-other function)
-;; (define-extern prebot-gun-init-by-other function)
-;; (define-extern prebot-tentacle-init-by-other function)
+(define-extern *cav-railblocker-exploder-params* joint-exploder-static-params)
+(define-extern prebot-eco-pillar-init-by-other (function vector prebot-eco-pillar-launch-spec object :behavior prebot-eco-pillar))
+(define-extern *prebot-sword-color-curve* curve-color-piecewise)
+(define-extern *prebot-sword-white-red-curve* curve-color-piecewise)
+(define-extern *prebot-sword-width-curve* curve2d-fast)
+(define-extern *prebot-sword-color-array* light-trail-composition)
+(define-extern prebot-sword-init-by-other (function string vector basic sound-spec object :behavior prebot-sword))
+(define-extern prebot-shockwave-init-by-other (function vector quaternion object :behavior prebot-shockwave))
+(define-extern prebot-gun-init-by-other (function string vector object :behavior prebot-gun))
+(define-extern prebot-tentacle-init-by-other (function string vector int object :behavior prebot-tentacle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prebot-states                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-prebot (task-manager)
-  ((manager-entity basic   :offset-assert 240)
-   (check-timer    uint64  :offset-assert 248)
+  ((manager-entity entity  :offset-assert 240)
+   (check-timer    time-frame :offset-assert 248)
    )
   :method-count-assert 32
   :size-assert         #x100
@@ -72841,27 +72906,25 @@
     active ;; 15
     )
   )
-|#
 
-;; (define-extern prebot-neck-callback function)
-;; (define-extern prebot-light-pulse-off function)
-;; (define-extern prebot-light-pulse-on function)
-;; (define-extern prebot-light-flash function)
-;; (define-extern prebot-prespool function)
-;; (define-extern prebot-common function)
-;; (define-extern prebot-go-next-stage function)
-;; (define-extern prebot-handler function)
-;; (define-extern prebot-set-cam-slave-fov function)
-;; (define-extern prebot-setup-shot-offsets function)
-;; (define-extern prebot-fire-tentacle function)
-;; (define-extern prebot-launch-critter function)
-;; (define-extern prebot-spawn-shockwave function)
+(define-extern prebot-neck-callback (function cspace transformq none :behavior prebot))
+(define-extern prebot-light-pulse-off (function none :behavior prebot))
+(define-extern prebot-light-pulse-on (function float float float vector :behavior prebot))
+(define-extern prebot-light-flash (function float float float vector :behavior prebot))
+(define-extern prebot-prespool (function object :behavior prebot))
+(define-extern prebot-common (function object :behavior prebot))
+(define-extern prebot-go-next-stage (function object :behavior prebot))
+(define-extern prebot-handler (function process int symbol event-message-block object :behavior prebot))
+(define-extern prebot-set-cam-slave-fov (function float float :behavior prebot))
+(define-extern prebot-setup-shot-offsets (function object :behavior prebot))
+(define-extern prebot-fire-tentacle (function handle vector object :behavior prebot))
+(define-extern prebot-launch-critter (function object :behavior prebot))
+(define-extern prebot-spawn-shockwave (function object :behavior prebot))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prebot-extras                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cav-break-bridge (process-drawable)
   ()
   :method-count-assert 21
@@ -72871,9 +72934,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype prebot-shockwave-joint-position (structure)
   ((joint-index int8           :offset-assert 0)
    (position    vector :inline :offset-assert 16)
@@ -72882,9 +72943,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype prebot-gun-shot (projectile)
   ((whoosh-sound uint32  :offset-assert 512)
    )
@@ -72896,9 +72955,7 @@
     moving ;; 23
     )
   )
-|#
 
-#|
 (deftype cav-exit-door (process-drawable)
   ((initial-y float  :offset-assert 200)
    )
@@ -72910,32 +72967,29 @@
     rise ;; 21
     )
   )
-|#
 
-;; (define-extern *prebot-eco-pillar-debris-params* debris-static-params)
-;; (define-extern prebot-eco-pillar-handler function)
+(define-extern *prebot-eco-pillar-debris-params* debris-static-params)
+(define-extern prebot-eco-pillar-handler (function process int symbol event-message-block object :behavior prebot-eco-pillar))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mined-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cav-airlock-door (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-;; (define-extern prebot-darken function)
-;; (define-extern scene-prebot-gun-spawn function)
-;; (define-extern spt-birth-func-brightness-mine-boss-fma-dust-trailer function)
-;; (define-extern spt-birth-func-brightness-mine-boss-fma-dust function)
-;; (define-extern spt-birth-func-part-mine-boss-fma-dust function)
-;; (define-extern spt-birth-func-part-mine-boss-fma-rocks function)
-;; (define-extern spt-birth-func-part-mine-boss-fma-dust2 function)
-;; (define-extern spt-birth-func-part-mine-boss-fma-rocks2 function)
+(define-extern prebot-darken function)
+(define-extern scene-prebot-gun-spawn function)
+(define-extern spt-birth-func-brightness-mine-boss-fma-dust-trailer function)
+(define-extern spt-birth-func-brightness-mine-boss-fma-dust function)
+(define-extern spt-birth-func-part-mine-boss-fma-dust function)
+(define-extern spt-birth-func-part-mine-boss-fma-rocks function)
+(define-extern spt-birth-func-part-mine-boss-fma-dust2 function)
+(define-extern spt-birth-func-part-mine-boss-fma-rocks2 function)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcanox-texture               ;;
