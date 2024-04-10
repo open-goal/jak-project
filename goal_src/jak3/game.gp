@@ -206,7 +206,7 @@
 ; (cgo-file "gridcst.gd" common-dep) ;; city-destroy-grid-res
 ; (cgo-file "slumbset.gd" common-dep) ;; sewer-met-hum-intro
 ; ;; sewer
-; (cgo-file "sea.gd" common-dep)
+(cgo-file "sea.gd" common-dep)
 ; (cgo-file "seb.gd" common-dep)
 ; (cgo-file "sec.gd" common-dep)
 ; (cgo-file "sed.gd" common-dep)
