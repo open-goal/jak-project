@@ -22491,7 +22491,7 @@
     (get-max-angle-for-joint-idx (_type_ int) degrees) ;; 22
     (ragdoll-method-23 (_type_ vector vector float symbol) none) ;; 23
     (ragdoll-method-24 (_type_ vector int) none) ;; 24
-    (ragdoll-method-25 (_type_ process-drawable) none) ;; 25
+    (enable-ragdoll! (_type_ process-drawable) none) ;; 25
     )
   )
 
@@ -27966,7 +27966,7 @@
     (path-control-method-25 (_type_ vector) float) ;; 25
     (path-control-method-26 (_type_ float float) float) ;; 26 ;; (displacement-between-two-points! (_type_ vector float float) vector)
     (path-control-method-27 (_type_ vector) vector) ;; 27
-    (path-control-method-28 (_type_ vector float float) float) ;; 28
+    (path-control-method-28 (_type_ vector vector symbol) float) ;; 28
     (path-control-method-29 (_type_ vector int float) float) ;; 29
     (should-display-marks? (_type_) symbol) ;; 30
     (displacement-between-two-points! (_type_ vector float float) vector) ;; 31
@@ -28450,7 +28450,7 @@
     (clamp-vector-to-mesh-no-gaps (_type_ vector nav-poly vector clamp-travel-vector-to-mesh-return-info) none) ;; 21
     (find-first-sphere-and-update-avoid-params (_type_ vector nav-avoid-spheres-params) float) ;; 22
     (set-spheres-from-nav-ids (_type_) none) ;; 23
-    (add-root-sphere-to-hash! (_type_ vector int) none) ;; 24
+    (add-root-sphere-to-hash! (_type_ vector int) symbol) ;; 24
     (get-max-rotation-rate (_type_) float) ;; 25
     (get-sphere-mask (_type_) uint) ;; 26
     (get-target-speed (_type_) meters) ;; 27
@@ -28604,7 +28604,7 @@
     (add-a-sphere-with-flag (_type_ vector int) int) ;; 27
     (update-from-spheres (_type_) none) ;; 28
     (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params) none) ;; 29
-    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params int int) none) ;; 30
+    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params int int) symbol) ;; 30
     (add-sphere-with-mask-and-id (_type_ vector int int) symbol) ;; 31
     (sphere-hash-method-32 (_type_ sphere int) symbol) ;; 32
     )
@@ -44354,30 +44354,28 @@
 ;; jump-pad                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype jump-pad (bouncer)
   ((fan-quat          quaternion :inline :offset-assert 224)
    (rot-vel           float              :offset-assert 240)
-   (fan-loop-sound-id uint32             :offset-assert 244)
-   (fan-loop-sound    basic              :offset-assert 248)
-   (jump-sound        basic              :offset-assert 252)
+   (fan-loop-sound-id sound-id           :offset-assert 244)
+   (fan-loop-sound    sound-spec         :offset-assert 248)
+   (jump-sound        sound-spec         :offset-assert 252)
    )
   :method-count-assert 30
   :size-assert         #x100
   :flag-assert         #x1e00800100
-  (:methods
-    (jump-pad-method-27 () none) ;; 27
-    (jump-pad-method-28 () none) ;; 28
-    (jump-pad-method-29 () none) ;; 29
-    )
   (:state-methods
-    fire ;; 21
     idle ;; 20
+    fire ;; 21
+    )
+  (:methods
+    (get-skel (_type_) art-group) ;; 27
+    (get-fan-joint-idx (_type_) int) ;; 28
+    (init-sounds (_type_) none) ;; 29
     )
   )
-|#
 
-;; (define-extern jump-pad-joint-fan function)
+(define-extern jump-pad-joint-fan (function cspace quaternion none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; roboguard                      ;;
@@ -44509,37 +44507,33 @@
 ;; kg-grunt                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kg-grunt-anim-info (structure)
   ((anim-index   int32   :offset-assert 0)
    (travel-speed meters  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype kg-grunt-global-info (basic)
   ((prev-knocked-anim-index    int32     :offset-assert 4)
    (prev-yellow-hit-anim-index int32     :offset-assert 8)
    (prev-blue-hit-anim-index   int32     :offset-assert 12)
-   (patrol-anim                UNKNOWN 4 :offset-assert 16)
-   (charge-anim                UNKNOWN 3 :offset-assert 48)
-   (attack-anim                UNKNOWN 2 :offset-assert 72)
-   (knocked-anim               UNKNOWN 4 :offset-assert 88)
-   (knocked-land-anim          UNKNOWN 4 :offset-assert 120)
-   (yellow-hit-anim            UNKNOWN 4 :offset-assert 152)
-   (blue-hit-anim              UNKNOWN 6 :offset-assert 184)
+   (patrol-anim                kg-grunt-anim-info 4 :inline :offset-assert 16)
+   (charge-anim                kg-grunt-anim-info 3 :inline :offset-assert 48)
+   (attack-anim                kg-grunt-anim-info 2 :inline :offset-assert 72)
+   (knocked-anim               kg-grunt-anim-info 4 :inline :offset-assert 88)
+   (knocked-land-anim          kg-grunt-anim-info 4 :inline :offset-assert 120)
+   (yellow-hit-anim            kg-grunt-anim-info 4 :inline :offset-assert 152)
+   (blue-hit-anim              kg-grunt-anim-info 6 :inline :offset-assert 184)
    )
   :method-count-assert 9
   :size-assert         #xe8
   :flag-assert         #x9000000e8
   )
-|#
 
-#|
 (deftype kg-grunt (nav-enemy)
   ((patrol-anim            kg-grunt-anim-info         :offset-assert 620)
    (charge-anim            kg-grunt-anim-info         :offset-assert 624)
@@ -44547,50 +44541,48 @@
    (knocked-anim           kg-grunt-anim-info         :offset-assert 632)
    (yellow-hit-anim        kg-grunt-anim-info         :offset-assert 636)
    (blue-hit-anim          kg-grunt-anim-info         :offset-assert 640)
-   (intro-path             basic                      :offset-assert 644)
-   (use-charge-anim-index  int8                       :offset-assert 652)
+   (intro-path             path-control               :offset-assert 644)
+   (use-charge-anim-index  int8                       :offset 652)
    (knocked-anim-index     int8                       :offset-assert 653)
    (jumping-ambush-path-pt int8                       :offset-assert 654)
    (kg-grunt-flags         uint8                      :offset-assert 655)
-   (state-timeout2         uint64                     :offset-assert 656)
-   (next-warn-time         uint64                     :offset-assert 664)
+   (state-timeout2         time-frame                 :offset-assert 656)
+   (next-warn-time         time-frame                 :offset-assert 664)
    (dest                   vector             :inline :offset-assert 672)
-   (focus-pos              vector             :inline :offset-assert 352)
-   (minimap                connection-minimap         :offset-assert 704)
+   (minimap                connection-minimap         :offset 704)
    (debris-count           uint32                     :offset-assert 708)
    (debris-mask            uint32                     :offset-assert 712)
    )
   :method-count-assert 199
   :size-assert         #x2cc
   :flag-assert         #xc7025002cc
-  (:methods
-    (kg-grunt-method-197 () none) ;; 197
-    (kg-grunt-method-198 () none) ;; 198
-    )
   (:state-methods
-    stop-chase ;; 158
-    pacing ;; 156
-    spin-attack ;; 195
-    wait-for-focus ;; 194
-    hostile ;; 38
-    attack ;; 190
     active ;; 34
-    jumping-ambush-cont ;; 193
-    jumping-ambush ;; 192
-    falling-ambush ;; 191
+    hostile ;; 38
+    pacing ;; 156
     circling ;; 157
+    stop-chase ;; 158
+    attack ;; 190
+    falling-ambush ;; 191
+    jumping-ambush ;; 192
+    jumping-ambush-cont ;; 193
+    wait-for-focus ;; 194
+    spin-attack ;; 195
     explode ;; 196
     )
+  (:methods
+    (go-attack (_type_ float) process-focusable) ;; 197
+    (get-nav-enemy-info (_type_) nav-enemy-info) ;; 198
+    )
   )
-|#
 
-;; (define-extern *kg-grunt-debris-params* debris-static-params)
-;; (define-extern *kg-grunt-debris-elbow-shoulder-params* debris-static-params)
-;; (define-extern *kg-grunt-debris-array-params* array)
-;; (define-extern *kg-grunt-debris-knee-hip-params* debris-static-params)
-;; (define-extern *kg-grunt-global-info* kg-grunt-global-info)
-;; (define-extern *fact-info-kg-grunt-defaults* fact-info-enemy-defaults)
-;; (define-extern *kg-grunt-nav-enemy-info* nav-enemy-info)
+(define-extern *kg-grunt-debris-params* debris-static-params)
+(define-extern *kg-grunt-debris-elbow-shoulder-params* debris-static-params)
+(define-extern *kg-grunt-debris-array-params* (array debris-static-params))
+(define-extern *kg-grunt-debris-knee-hip-params* debris-static-params)
+(define-extern *kg-grunt-global-info* kg-grunt-global-info)
+(define-extern *fact-info-kg-grunt-defaults* fact-info-enemy-defaults)
+(define-extern *kg-grunt-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-sewb                 ;;
@@ -44626,26 +44618,25 @@
 ;; sewer-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-color-sewer-gas* curve-color-fast)
-;; (define-extern *range-alpha-sewer-gas* curve2d-fast)
-;; (define-extern *range-scale-sewer-gas-x* curve2d-fast)
-;; (define-extern *range-scale-sewer-gas-y* curve2d-fast)
-;; (define-extern *r-curve-sewer-gas* curve2d-fast)
-;; (define-extern *g-curve-sewer-gas* curve2d-fast)
-;; (define-extern *b-curve-sewer-gas* curve2d-fast)
-;; (define-extern *curve-alpha-sewer-gas* curve2d-fast)
-;; (define-extern *curve-sewer-gas-x* curve2d-fast)
-;; (define-extern *curve-sewer-gas-y* curve2d-fast)
-;; (define-extern *part-sewer-steam-puff-curve-settings* object)
-;; (define-extern *steam-particle-list* array)
-;; (define-extern birth-func-texture-group-steam function)
-;; (define-extern spt-func-birth-on-bubble-pop function)
+(define-extern *range-color-sewer-gas* curve-color-fast)
+(define-extern *range-alpha-sewer-gas* curve2d-fast)
+(define-extern *range-scale-sewer-gas-x* curve2d-fast)
+(define-extern *range-scale-sewer-gas-y* curve2d-fast)
+(define-extern *r-curve-sewer-gas* curve2d-fast)
+(define-extern *g-curve-sewer-gas* curve2d-fast)
+(define-extern *b-curve-sewer-gas* curve2d-fast)
+(define-extern *curve-alpha-sewer-gas* curve2d-fast)
+(define-extern *curve-sewer-gas-x* curve2d-fast)
+(define-extern *curve-sewer-gas-y* curve2d-fast)
+(define-extern *part-sewer-steam-puff-curve-settings* particle-curve-settings)
+(define-extern *steam-particle-list* (array int32))
+(define-extern birth-func-texture-group-steam (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-birth-on-bubble-pop (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-mood                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sewb-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
@@ -44653,9 +44644,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype sewc-states (structure)
   ((pulse       pulse-state       :inline :offset-assert 0)
    (electricity electricity-state :inline :offset-assert 16)
@@ -44665,9 +44654,7 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype sewd-states (structure)
   ((pulse       pulse-state       :inline :offset-assert 0)
    (electricity electricity-state :inline :offset-assert 16)
@@ -44677,31 +44664,25 @@
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype sewg-states (structure)
-  ((electricity UNKNOWN 2 :offset-assert 0)
-   (rot         float     :offset-assert 32)
+  ((electricity electricity-state 2 :inline :offset-assert 0)
+   (rot         float     :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype sewh-states (structure)
-  ((electricity  UNKNOWN 5 :offset-assert 0)
-   (turret-value float     :offset-assert 80)
+  ((electricity  electricity-state 5 :inline :offset-assert 0)
+   (turret-value float     :offset 80)
    )
   :method-count-assert 9
   :size-assert         #x54
   :flag-assert         #x900000054
   )
-|#
 
-#|
 (deftype sewj-states (structure)
   ((rot float  :offset-assert 0)
    )
@@ -44709,40 +44690,33 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
-(deftype sewa-states (UNKNOWN)
+(deftype sewa-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern update-sewer-lights function) ;; (function mood-context none)
-;; (define-extern update-mood-sewa function)
-;; (define-extern init-mood-sewb function)
-;; (define-extern update-mood-sewb function)
-;; (define-extern init-mood-sewc function)
-;; (define-extern update-mood-sewc function)
-;; (define-extern init-mood-sewd function)
-;; (define-extern update-mood-sewd function)
-;; (define-extern set-sewd-light! function)
-;; (define-extern init-mood-sewg function)
-;; (define-extern update-mood-sewg function)
+(define-extern update-sewer-lights (function mood-context none))
+(define-extern update-mood-sewa (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-sewb (function mood-context float))
+(define-extern update-mood-sewb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-sewc (function mood-context float))
+(define-extern update-mood-sewc (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-sewd (function mood-context float))
+(define-extern update-mood-sewd (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-sewd-light! (function float none))
+(define-extern init-mood-sewg (function mood-context float))
+(define-extern update-mood-sewg (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-sewg-electricity-scale! (function float int none))
-;; (define-extern init-mood-sewh function)
-;; (define-extern update-mood-sewh function)
+(define-extern init-mood-sewh (function mood-context float))
+(define-extern update-mood-sewh (function mood-context float int none :behavior time-of-day-proc))
 (define-extern set-sewh-electricity-scale! (function float int none))
-;; (define-extern set-sewh-turret-flash! function)
-;; (define-extern update-mood-sewj function)
+(define-extern set-sewh-turret-flash! (function none))
+(define-extern update-mood-sewj (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sew-laser-guard                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype gun-turret-params (structure)
   ((normal-sg    skeleton-group   :offset-assert 0) ;; guessed by decompiler
    (explode-sg   skeleton-group   :offset-assert 4) ;; guessed by decompiler
@@ -44758,39 +44732,35 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype sew-laser-guard (enemy)
   ((params                        gun-turret-params         :offset-assert 552)
    (aim-pos                       vector            :inline :offset-assert 560)
-   (smoke-part                    basic                     :offset-assert 576)
-   (casing-part                   basic                     :offset-assert 580)
+   (smoke-part                    sparticle-launch-control  :offset-assert 576)
+   (casing-part                   sparticle-launch-control  :offset-assert 580)
    (sync-orient                   sync-linear       :inline :offset-assert 584)
    (start-orient                  quaternion        :inline :offset-assert 608)
    (end-orient                    quaternion        :inline :offset-assert 624)
-   (last-play-sweep-dir-positive? basic                     :offset-assert 640)
+   (last-play-sweep-dir-positive? symbol                    :offset-assert 640)
    (last-play-sweep-sync          float                     :offset-assert 644)
-   (sound-hum                     uint32                    :offset-assert 648)
-   (sound-scorch                  uint32                    :offset-assert 652)
+   (sound-hum                     sound-id                  :offset-assert 648)
+   (sound-scorch                  sound-id                  :offset-assert 652)
    )
   :method-count-assert 157
   :size-assert         #x290
   :flag-assert         #x9d02100290
-  (:methods
-    (sew-laser-guard-method-155 () none) ;; 155
-    (sew-laser-guard-method-156 () none) ;; 156
-    )
   (:state-methods
     hit ;; 30
-    die ;; 40
     stare ;; 37
     hostile ;; 38
+    die ;; 40
+    )
+  (:methods
+    (sew-laser-guard-method-155 (_type_) none) ;; 155
+    (sew-laser-guard-method-156 (_type_) none) ;; 156
     )
   )
-|#
 
-#|
 (deftype sew-laser-shot (projectile)
   ()
   :method-count-assert 41
@@ -44800,40 +44770,34 @@
     dissipate ;; 21
     )
   )
-|#
 
-;; (define-extern sew-laser-shot-move function)
-;; (define-extern *sew-laser-guard-enemy-info* enemy-info)
-;; (define-extern fire-laser! function)
+(define-extern sew-laser-shot-move (function sew-laser-shot none))
+(define-extern *sew-laser-guard-enemy-info* enemy-info)
+(define-extern fire-laser! (function vector vector sew-laser-guard float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-curved-door (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype sew-floating-plat (elevator)
   ()
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
   )
-|#
 
-#|
 (deftype sew-cam-sequencer (process)
-  ((activate-script basic   :offset-assert 132)
-   (enter-script    basic   :offset-assert 136)
-   (exit-script     basic   :offset-assert 140)
-   (timeout         uint64  :offset-assert 144)
+  ((activate-script pair    :offset 132)
+   (enter-script    pair    :offset-assert 136)
+   (exit-script     pair    :offset-assert 140)
+   (timeout         time-frame :offset-assert 144)
    (offset          uint64  :offset-assert 152)
    )
   :method-count-assert 15
@@ -44844,32 +44808,26 @@
     active ;; 14
     )
   )
-|#
 
-#|
 (deftype sew-floor-switch (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   (:state-methods
-    idle-down ;; 22
-    going-down ;; 21
     idle-up ;; 20
+    going-down ;; 21
+    idle-down ;; 22
     )
   )
-|#
 
-#|
 (deftype sew-jump-pad (jump-pad)
   ()
   :method-count-assert 30
   :size-assert         #x100
   :flag-assert         #x1e00800100
   )
-|#
 
-#|
 (deftype sew-fan (enemy)
   ((activate-distance float              :offset-assert 552)
    (path-pos          float              :offset-assert 556)
@@ -44881,93 +44839,83 @@
    (dest-quat         quaternion :inline :offset-assert 624)
    (fan-rot           float              :offset-assert 640)
    (fan-rot-vel       float              :offset-assert 644)
-   (hostile-part      basic              :offset-assert 648)
-   (gust-part         basic              :offset-assert 652)
-   (sound-fan-loop-id uint32             :offset-assert 656)
+   (hostile-part      sparticle-launch-control :offset-assert 648)
+   (gust-part         sparticle-launch-control :offset-assert 652)
+   (sound-fan-loop-id sound-id           :offset-assert 656)
    )
   :method-count-assert 155
   :size-assert         #x294
   :flag-assert         #x9b02200294
   (:state-methods
-    die ;; 40
-    hostile ;; 38
+    idle ;; 33
     active ;; 34
     notice ;; 35
-    idle ;; 33
+    hostile ;; 38
+    die ;; 40
     )
   )
-|#
 
-#|
 (deftype sew-elevator (process-drawable)
   ()
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
-  (:methods
-    (sew-elevator-method-21 () none) ;; 21
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 21
+    )
   )
-|#
 
-#|
 (deftype sew-gate (process-drawable)
-  ((play-time     uint64  :offset-assert 200)
-   (sound-played1 basic   :offset-assert 208)
-   (sound-played2 basic   :offset-assert 212)
+  ((play-time     time-frame :offset-assert 200)
+   (sound-played1 symbol  :offset-assert 208)
+   (sound-played2 symbol  :offset-assert 212)
    )
   :method-count-assert 23
   :size-assert         #xd8
   :flag-assert         #x17006000d8
   (:state-methods
-    opened ;; 22
-    open ;; 21
     idle ;; 20
+    open ;; 21
+    opened ;; 22
     )
   )
-|#
 
-#|
 (deftype sew-wall-switch (process-drawable)
-  ((actor-group       uint32              :offset-assert 196)
-   (actor-group-count int32               :offset-assert 200)
-   (minimap           connection-minimap  :offset-assert 204)
+  ((actor-group       (pointer actor-group) :offset-assert 200)
+   (actor-group-count int32               :offset-assert 204)
+   (minimap           connection-minimap  :offset-assert 208)
    )
   :method-count-assert 23
   :size-assert         #xd4
   :flag-assert         #x17006000d4
   (:state-methods
-    opened ;; 22
-    open ;; 21
     idle ;; 20
+    open ;; 21
+    opened ;; 22
     )
   )
-|#
 
-#|
 (deftype sew-fence-gate (process-drawable)
   ()
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   (:state-methods
-    closing ;; 23
-    opening ;; 22
-    open ;; 21
     closed ;; 20
+    open ;; 21
+    opening ;; 22
+    closing ;; 23
     )
   )
-|#
 
-#|
 (deftype sew-vent (process-drawable)
   ((sync          sync-linear :inline :offset-assert 200)
    (attack-id     int32               :offset-assert 216)
    (last-sync-val float               :offset-assert 220)
-   (vent-sound    uint32              :offset-assert 224)
+   (vent-sound    sound-id            :offset-assert 224)
    )
   :method-count-assert 21
   :size-assert         #xe4
@@ -44976,27 +44924,23 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype sew-power-switch (process-drawable)
   ()
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:state-methods
-    turned-off ;; 21
     idle ;; 20
+    turned-off ;; 21
     )
   )
-|#
 
-#|
 (deftype sew-gas-step (base-plat)
-  ((sound-id      uint32              :offset-assert 272)
+  ((sound-id      sound-id            :offset-assert 272)
    (sync          sync-linear :inline :offset-assert 280)
    (last-sync-val float               :offset-assert 296)
-   (gas-time      uint64              :offset-assert 304)
+   (gas-time      time-frame          :offset-assert 304)
    (attack-id     int32               :offset-assert 312)
    )
   :method-count-assert 36
@@ -45006,34 +44950,32 @@
     idle ;; 35
     )
   )
-|#
 
-;; (define-extern sewer-login function)
-;; (define-extern sewer-logout function)
-;; (define-extern sewb-activate function)
-;; (define-extern sewc-activate function)
-;; (define-extern sewg-activate function)
-;; (define-extern sewl-activate function)
-;; (define-extern sewo-activate function)
-;; (define-extern sewj-activate function)
-;; (define-extern sew-cam-sequencer-init-by-other function)
-;; (define-extern sew-cam-eval-script function)
-;; (define-extern *sew-fan-enemy-info* enemy-info)
-;; (define-extern *sew-fan-exploder-params* joint-exploder-static-params)
-;; (define-extern update-surface-float function)
-;; (define-extern update-idle function)
-;; (define-extern update-hostile function)
-;; (define-extern sew-fan-joint-fan function)
-;; (define-extern sew-fan-joint-floor function)
+(define-extern sewer-login (function none))
+(define-extern sewer-logout (function none))
+(define-extern sewb-activate (function none))
+(define-extern sewc-activate (function none))
+(define-extern sewg-activate (function none))
+(define-extern sewl-activate (function none))
+(define-extern sewo-activate (function none))
+(define-extern sewj-activate (function none))
+(define-extern sew-cam-sequencer-init-by-other (function entity-actor object :behavior sew-cam-sequencer))
+(define-extern sew-cam-eval-script (function pair object))
+(define-extern *sew-fan-enemy-info* enemy-info)
+(define-extern *sew-fan-exploder-params* joint-exploder-static-params)
+(define-extern update-surface-float (function float :behavior sew-fan))
+(define-extern update-idle (function none :behavior sew-fan))
+(define-extern update-hostile (function none :behavior sew-fan))
+(define-extern sew-fan-joint-fan (function cspace transformq none))
+(define-extern sew-fan-joint-floor (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-obs2                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-laser-beam (process-drawable)
   ((sync     sync-linear :inline :offset-assert 200)
-   (sound-id uint32              :offset-assert 216)
+   (sound-id sound-id            :offset-assert 216)
    )
   :method-count-assert 21
   :size-assert         #xdc
@@ -45042,41 +44984,35 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype sew-m-gate (process-drawable)
-  ((actor-group       uint32  :offset-assert 196)
-   (actor-group-count int32   :offset-assert 200)
+  ((actor-group       (pointer actor-group) :offset-assert 200)
+   (actor-group-count int32   :offset-assert 204)
    )
   :method-count-assert 23
   :size-assert         #xd0
   :flag-assert         #x17005000d0
   (:state-methods
-    raised ;; 22
+    idle ;; 20
     open ;; 21
-    idle ;; 20
+    raised ;; 22
     )
   )
-|#
 
-#|
 (deftype sew-pipe (process-drawable)
-  ((actor-group       uint32  :offset-assert 196)
-   (actor-group-count int32   :offset-assert 200)
+  ((actor-group       (pointer actor-group)  :offset-assert 200)
+   (actor-group-count int32   :offset-assert 204)
    )
   :method-count-assert 23
   :size-assert         #xd0
   :flag-assert         #x17005000d0
   (:state-methods
-    down ;; 22
-    lower ;; 21
     idle ;; 20
+    lower ;; 21
+    down ;; 22
     )
   )
-|#
 
-#|
 (deftype sew-grate-plat (process-drawable)
   ((test-pos vector :inline :offset-assert 208)
    (closed-x float          :offset-assert 224)
@@ -45086,52 +45022,47 @@
   :size-assert         #xe8
   :flag-assert         #x18007000e8
   (:state-methods
-    close ;; 23
-    opened ;; 22
-    open ;; 21
     closed ;; 20
+    open ;; 21
+    opened ;; 22
+    close ;; 23
     )
   )
-|#
 
-;; (define-extern fire-sew-laser-beam! function)
-;; (define-extern *sew-laser-beam-shadow-control* shadow-control)
+(define-extern fire-sew-laser-beam! (function vector vector sew-laser-beam none))
+(define-extern *sew-laser-beam-shadow-control* shadow-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-move-turret              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-move-turret (process-drawable)
-  ((sound-id     uint32  :offset-assert 200)
-   (use-doppler? basic   :offset-assert 204)
+  ((sound-id     sound-id :offset-assert 200)
+   (use-doppler? symbol   :offset-assert 204)
    )
   :method-count-assert 23
   :size-assert         #xd0
   :flag-assert         #x17005000d0
-  (:methods
-    (sew-move-turret-method-22 () none) ;; 22
-    )
   (:state-methods
-    active ;; 21
     idle ;; 20
+    active ;; 21
+    )
+  (:methods
+    (sew-move-turret-method-22 (_type_ int) none) ;; 22
     )
   )
-|#
 
-#|
 (deftype sew-move-turret-shot (guard-shot)
-  ((doppler-sound uint32  :offset-assert 544)
-   (use-doppler?  basic   :offset-assert 548)
+  ((doppler-sound sound-id :offset-assert 544)
+   (use-doppler?  symbol   :offset-assert 548)
    )
   :method-count-assert 41
   :size-assert         #x228
   :flag-assert         #x2901b00228
   )
-|#
 
-;; (define-extern sew-turret-shot-move function)
-;; (define-extern spawn-sew-move-turret-projectile function)
+(define-extern sew-turret-shot-move (function sew-move-turret-shot none))
+(define-extern spawn-sew-move-turret-projectile (function sew-move-turret vector vector float vector (pointer sew-move-turret-shot)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-scenes                   ;;
@@ -45160,60 +45091,57 @@
 
 ;; gun-turret-params is already defined!
 
-#|
 (deftype sew-laser-turret (enemy)
   ((params           gun-turret-params         :offset-assert 552)
    (aim-pos          vector            :inline :offset-assert 560)
-   (smoke-part       basic                     :offset-assert 576)
-   (casing-part      basic                     :offset-assert 580)
-   (flash-state      basic                     :offset-assert 584)
-   (can-shoot        basic                     :offset-assert 588)
-   (last-active-time uint64                    :offset-assert 592)
+   (smoke-part       sparticle-launch-control  :offset-assert 576)
+   (casing-part      sparticle-launch-control  :offset-assert 580)
+   (flash-state      symbol                    :offset-assert 584)
+   (can-shoot        symbol                    :offset-assert 588)
+   (last-active-time time-frame                :offset-assert 592)
    (target-distance  float                     :offset-assert 600)
-   (target-on-ground basic                     :offset-assert 604)
-   (was-hit          basic                     :offset-assert 608)
+   (target-on-ground symbol                    :offset-assert 604)
+   (was-hit          symbol                    :offset-assert 608)
    (awareness-radius float                     :offset-assert 612)
-   (ring-rate        uint64                    :offset-assert 616)
+   (ring-rate        time-frame                :offset-assert 616)
    (max-num-rings    int32                     :offset-assert 624)
    (last-spawn-index int32                     :offset-assert 628)
-   (spin-sound-id    uint32                    :offset-assert 632)
-   (last-play-time   uint64                    :offset-assert 640)
-   (strip            basic                     :offset-assert 648)
+   (spin-sound-id    sound-id                  :offset-assert 632)
+   (last-play-time   time-frame                :offset-assert 640)
+   (strip            prim-strip                :offset-assert 648)
    )
   :method-count-assert 164
   :size-assert         #x28c
   :flag-assert         #xa40210028c
-  (:methods
-    (sew-laser-turret-method-159 () none) ;; 159
-    (sew-laser-turret-method-160 () none) ;; 160
-    (sew-laser-turret-method-161 () none) ;; 161
-    (sew-laser-turret-method-162 () none) ;; 162
-    (sew-laser-turret-method-163 () none) ;; 163
-    )
   (:state-methods
-    turn-off ;; 158
     hostile ;; 38
-    alert ;; 155
     die ;; 40
-    spinning-down ;; 157
+    alert ;; 155
     spinning-up ;; 156
+    spinning-down ;; 157
+    turn-off ;; 158
+    )
+  (:methods
+    (start-firing (_type_ symbol int) none) ;; 159
+    (sew-laser-turret-method-160 (_type_) none) ;; 160
+    (generate-prim-verts! (_type_ float float) none) ;; 161
+    (check-suitable-focus (_type_) symbol) ;; 162
+    (sew-laser-turret-method-163 (_type_) none) ;; 163
     )
   )
-|#
 
-;; (define-extern *sew-laser-turret-enemy-info* enemy-info)
-;; (define-extern do-spin function)
-;; (define-extern compute-ring-period function)
-;; (define-extern compute-ring-position function)
-;; (define-extern compute-num-rings-to-draw function)
-;; (define-extern compute-ring-size function)
-;; (define-extern check-enemy function)
+(define-extern *sew-laser-turret-enemy-info* enemy-info)
+(define-extern do-spin (function sew-laser-turret float quaternion))
+(define-extern compute-ring-period (function int float))
+(define-extern compute-ring-position (function int int float))
+(define-extern compute-num-rings-to-draw (function time-frame time-frame float int int))
+(define-extern compute-ring-size (function float float float))
+(define-extern check-enemy (function sew-laser-turret float process-focusable symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sew-platforms                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-plat-updown (base-plat)
   ((sync     sync-eased :inline :offset-assert 272)
    (path-pos float              :offset-assert 316)
@@ -45221,19 +45149,17 @@
   :method-count-assert 38
   :size-assert         #x140
   :flag-assert         #x2600c00140
-  (:methods
-    (sew-plat-updown-method-37 () none) ;; 37
-    )
   (:state-methods
-    active ;; 36
     idle ;; 35
+    active ;; 36
+    )
+  (:methods
+    (get-skel (_type_) art-group) ;; 37
     )
   )
-|#
 
-#|
 (deftype sew-slide-step (sew-plat-updown)
-  ((last-played-start? basic  :offset-assert 320)
+  ((last-played-start? symbol  :offset-assert 320)
    )
   :method-count-assert 38
   :size-assert         #x144
@@ -45242,11 +45168,9 @@
     active ;; 36
     )
   )
-|#
 
-#|
 (deftype sew-moving-step-a (sew-plat-updown)
-  ((last-played-start? basic  :offset-assert 320)
+  ((last-played-start? symbol :offset-assert 320)
    (last-val           float  :offset-assert 324)
    )
   :method-count-assert 38
@@ -45256,36 +45180,32 @@
     active ;; 36
     )
   )
-|#
 
-#|
 (deftype sew-moving-step-b (process-drawable)
   ((sync           sync-linear :inline :offset-assert 200)
    (num-steps      int8                :offset-assert 216)
-   (step-delay     uint64              :offset-assert 224)
+   (step-delay     time-frame          :offset-assert 224)
    (start-step-pos vector      :inline :offset-assert 240)
    (end-step-pos   vector      :inline :offset-assert 256)
    (last-sync-val  float               :offset-assert 272)
-   (sound-idle     uint32              :offset-assert 276)
+   (sound-idle     sound-id            :offset-assert 276)
    )
   :method-count-assert 27
   :size-assert         #x118
   :flag-assert         #x1b00a00118
-  (:methods
-    (sew-moving-step-b-method-22 () none) ;; 22
-    (sew-moving-step-b-method-23 () none) ;; 23
-    (sew-moving-step-b-method-24 () none) ;; 24
-    (sew-moving-step-b-method-25 () none) ;; 25
-    (sew-moving-step-b-method-26 () none) ;; 26
-    )
   (:state-methods
-    active ;; 21
     idle ;; 20
+    active ;; 21
+    )
+  (:methods
+    (sew-moving-step-b-method-22 (_type_ float) int) ;; 22
+    (sew-moving-step-b-method-23 (_type_) float) ;; 23
+    (sew-moving-step-b-method-24 (_type_) int) ;; 24
+    (alloc-trsqv! (_type_) none) ;; 25
+    (sew-moving-step-b-method-26 (_type_ int float) float) ;; 26
     )
   )
-|#
 
-#|
 (deftype sew-moving-step-b-step (base-plat)
   ((start-pos      vector      :inline :offset-assert 272)
    (end-pos        vector      :inline :offset-assert 288)
@@ -45303,25 +45223,21 @@
     die ;; 36
     )
   )
-|#
 
-#|
 (deftype sew-moving-step-b-step-param (structure)
   ((start-pos vector :inline :offset-assert 0)
    (end-pos   vector :inline :offset-assert 16)
-   (ent       basic          :offset-assert 32)
-   (period    uint64         :offset-assert 40)
+   (ent       entity-actor   :offset-assert 32)
+   (period    time-frame     :offset-assert 40)
    (offset    float          :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype sew-rove-plat (sew-plat-updown)
-  ((sound-id uint32  :offset-assert 320)
+  ((sound-id sound-id  :offset-assert 320)
    )
   :method-count-assert 38
   :size-assert         #x144
@@ -45330,12 +45246,10 @@
     active ;; 36
     )
   )
-|#
 
-#|
 (deftype sew-move-plat (base-plat)
-  ((sound-id          uint32    :offset-assert 272)
-   (positions         UNKNOWN 2 :offset-assert 288)
+  ((sound-id          sound-id  :offset-assert 272)
+   (positions         vector 2 :inline :offset-assert 288)
    (current-pos-index int8      :offset-assert 320)
    (dest-pos-index    int8      :offset-assert 321)
    (speed             float     :offset-assert 324)
@@ -45343,27 +45257,25 @@
   :method-count-assert 38
   :size-assert         #x148
   :flag-assert         #x2600d00148
-  (:methods
-    (sew-move-plat-method-37 () none) ;; 37
-    )
   (:state-methods
-    active ;; 36
     waiting ;; 35
+    active ;; 36
+    )
+  (:methods
+    (sew-move-plat-method-37 (_type_) int) ;; 37
     )
   )
-|#
 
-;; (define-extern sew-moving-step-b-step-init-by-other function)
-;; (define-extern fmod function)
-;; (define-extern spawn-moving-step-b-step function)
+(define-extern sew-moving-step-b-step-init-by-other (function sew-moving-step-b-step-param object :behavior sew-moving-step-b-step))
+(define-extern fmod (function float float float))
+(define-extern spawn-moving-step-b-step (function sew-moving-step-b float sew-moving-step-b-step))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sew-whirlpool                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sew-whirlpool (process-drawable)
-  ((spool-sound-id uint32  :offset-assert 200)
+  ((spool-sound-id sound-id  :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xcc
@@ -45372,239 +45284,262 @@
     idle ;; 20
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; saberfish                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype saberfish-jump-info (structure)
   ((windup-anim uint32  :offset-assert 0)
    (air-anim    uint32  :offset-assert 4)
    (land-anim   uint32  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype saberfish-init-by-other-params (enemy-init-by-other-params)
-  ((spawn-parent  uint64             :offset-assert 48)
-   (message       basic              :offset-assert 56)
+  ((spawn-parent  handle             :offset-assert 48)
+   (message       symbol             :offset-assert 56)
    (pos           vector     :inline :offset-assert 64)
    (orient        quaternion :inline :offset-assert 80)
-   (initial-state basic              :offset-assert 96)
+   (initial-state symbol             :offset-assert 96)
    )
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
+;; +++saberfish:saberfish-query-type
+(defenum saberfish-query-type
+  :type uint64
+  (set-nav-idx)
+  (set-mesh)
+  (set-in-water)
+  (can-go-to-ground?)
+  )
+;; ---saberfish:saberfish-query-type
+
+;; +++saberfish:saberfish-find-behavior
+(defenum saberfish-find-behavior
+  :type uint64
+  (none)
+  (behavior1)
+  (behavior2)
+  )
+;; ---saberfish:saberfish-find-behavior
+
 (deftype saberfish-spawner-query-msg (structure)
-  ((query-type             uint64         :offset-assert 0)
+  ((query-type             saberfish-query-type :offset-assert 0)
    (closest-nav-mesh-index int8           :offset-assert 8)
    (pos                    vector :inline :offset-assert 16)
-   (behavior               uint64         :offset-assert 32)
-   (nav-mesh-index         int8           :offset-assert 8)
-   (mesh                   basic          :offset-assert 16)
-   (in-water?              basic          :offset-assert 40)
-   (can-go-to-ground?      basic          :offset-assert 40)
+   (behavior               saberfish-find-behavior :offset-assert 32)
+   (nav-mesh-index         int8           :offset 8)
+   (mesh                   nav-mesh       :offset 16 :score 1)
+   (in-water?              symbol         :offset 40)
+   (can-go-to-ground?      symbol         :offset 40)
    )
   :method-count-assert 9
   :size-assert         #x2c
   :flag-assert         #x90000002c
   )
-|#
 
-#|
+;; +++saberfish:saberfish-command
+(defenum saberfish-command
+  :type int32
+  (attack 0)
+  (hostile-orient 1)
+  (hostile 2)
+  (spin-attack 3)
+  (stare 4)
+  (start-terrain-transition 5)
+  )
+;; ---saberfish:saberfish-command
+
 (deftype saberfish (nav-enemy)
   ((initial-y-angle                float                       :offset-assert 620)
-   (last-attack-time               uint64                      :offset-assert 624)
-   (in-pursuit?                    basic                       :offset-assert 632)
-   (flee-to-readjust?              basic                       :offset-assert 636)
-   (use-stored-flee-point?         basic                       :offset-assert 640)
-   (scare-start-time               uint64                      :offset-assert 648)
-   (scare-time                     uint64                      :offset-assert 656)
+   (last-attack-time               time-frame                  :offset-assert 624)
+   (in-pursuit?                    symbol                      :offset-assert 632)
+   (flee-to-readjust?              symbol                      :offset-assert 636)
+   (use-stored-flee-point?         symbol                      :offset-assert 640)
+   (scare-start-time               time-frame                  :offset-assert 648)
+   (scare-time                     time-frame                  :offset-assert 656)
    (jump-point-start               vector              :inline :offset-assert 672)
    (jump-point-end                 vector              :inline :offset-assert 688)
-   (align                          basic                       :offset-assert 148)
-   (jump                           saberfish-jump-info :inline :offset-assert 708)
+   (jump                           saberfish-jump-info :inline :offset 708)
    (flee-point-temp                vector              :inline :offset-assert 720)
-   (last-land-check-time           uint64                      :offset-assert 736)
-   (last-target-check-time         uint64                      :offset-assert 744)
-   (is-submerged?                  basic                       :offset-assert 752)
+   (last-land-check-time           time-frame                  :offset-assert 736)
+   (last-target-check-time         time-frame                  :offset-assert 744)
+   (is-submerged?                  symbol                      :offset-assert 752)
    (current-nav-mesh-index         int8                        :offset-assert 756)
    (dest-nav-mesh-index            int8                        :offset-assert 757)
    (desired-dest-nav-point         vector              :inline :offset-assert 768)
    (desired-dest-mesh-index        int8                        :offset-assert 784)
    (flee-point                     vector              :inline :offset-assert 800)
-   (spawn-parent                   uint64                      :offset-assert 816)
+   (spawn-parent                   handle                      :offset-assert 816)
    (pos-start                      vector              :inline :offset-assert 832)
    (quat-start                     quaternion          :inline :offset-assert 848)
-   (move-to-ground?                basic                       :offset-assert 864)
+   (move-to-ground?                symbol                      :offset-assert 864)
    (swim-final-rotate-deg          float                       :offset-assert 868)
    (swim-travel-anim               int8                        :offset-assert 872)
    (swim-speed                     float                       :offset-assert 876)
    (swim-rotate-last-dot           float                       :offset-assert 880)
    (swim-anim-last-dot             float                       :offset-assert 884)
-   (last-swim-flip-time            uint64                      :offset-assert 888)
+   (last-swim-flip-time            time-frame                  :offset-assert 888)
    (saberfish-y-rotate             float                       :offset-assert 896)
-   (doing-180-spin?                basic                       :offset-assert 900)
-   (adjusted-y-yet?                basic                       :offset-assert 904)
+   (doing-180-spin?                symbol                      :offset-assert 900)
+   (adjusted-y-yet?                symbol                      :offset-assert 904)
    (attack-dir                     vector              :inline :offset-assert 912)
    (rotate-anim-quat               quaternion          :inline :offset-assert 928)
    (post-spinflip-expected-heading vector              :inline :offset-assert 944)
    (nav-velocity                   vector              :inline :offset-assert 960)
    (nav-dir                        vector              :inline :offset-assert 976)
-   (initial-state                  basic                       :offset-assert 992)
-   (knocked-under-water?           basic                       :offset-assert 996)
+   (initial-state                  symbol                      :offset-assert 992)
+   (knocked-under-water?           symbol                      :offset-assert 996)
    (ground-state                   uint8                       :offset-assert 1000)
    (jump-start-ground-state        uint8                       :offset-assert 1001)
-   (ground-only?                   basic                       :offset-assert 1004)
+   (ground-only?                   symbol                      :offset-assert 1004)
    )
   :method-count-assert 245
   :size-assert         #x3f0
   :flag-assert         #xf5037003f0
-  (:methods
-    (saberfish-method-195 () none) ;; 195
-    (saberfish-method-199 () none) ;; 199
-    (saberfish-method-201 () none) ;; 201
-    (saberfish-method-202 () none) ;; 202
-    (saberfish-method-210 () none) ;; 210
-    (saberfish-method-214 () none) ;; 214
-    (saberfish-method-215 () none) ;; 215
-    (saberfish-method-216 () none) ;; 216
-    (saberfish-method-217 () none) ;; 217
-    (saberfish-method-218 () none) ;; 218
-    (saberfish-method-219 () none) ;; 219
-    (saberfish-method-220 () none) ;; 220
-    (saberfish-method-221 () none) ;; 221
-    (saberfish-method-222 () none) ;; 222
-    (saberfish-method-223 () none) ;; 223
-    (saberfish-method-224 () none) ;; 224
-    (saberfish-method-225 () none) ;; 225
-    (saberfish-method-226 () none) ;; 226
-    (saberfish-method-227 () none) ;; 227
-    (saberfish-method-228 () none) ;; 228
-    (saberfish-method-229 () none) ;; 229
-    (saberfish-method-230 () none) ;; 230
-    (saberfish-method-231 () none) ;; 231
-    (saberfish-method-232 () none) ;; 232
-    (saberfish-method-233 () none) ;; 233
-    (saberfish-method-234 () none) ;; 234
-    (saberfish-method-235 () none) ;; 235
-    (saberfish-method-236 () none) ;; 236
-    (saberfish-method-237 () none) ;; 237
-    (saberfish-method-238 () none) ;; 238
-    (saberfish-method-239 () none) ;; 239
-    (saberfish-method-240 () none) ;; 240
-    (saberfish-method-241 () none) ;; 241
-    (saberfish-method-242 () none) ;; 242
-    (saberfish-method-243 () none) ;; 243
-    (saberfish-method-244 () none) ;; 244
-    )
   (:state-methods
-    saberfish-swimming ;; 213
-    saberfish-crawl-out-of-tube ;; 209
-    notice ;; 35
-    command-mode ;; 206
+    hit ;; 30
+    knocked ;; 31
     knocked-recover ;; 32
+    idle ;; 33
+    active ;; 34
+    notice ;; 35
     flee ;; 36
+    stare ;; 37
+    hostile ;; 38
+    attack ;; 190
+    hostile-orient ;; 191
+    swimming-hostile ;; 192
+    spin-attack ;; 193
+    stare-idle ;; 194
+    undefined0 ;; 195, not defined
     transition-terrain-move-towards-initial-jump ;; 196
     transition-terrain-orient-towards-initial-jump ;; 197
     transition-terrain-jump ;; 198
-    knocked ;; 31
-    water-impact ;; 205
-    base-saberfish-state ;; 203
-    attack ;; 190
-    diving-into-water ;; 204
-    hit ;; 30
-    knocked-recover-water ;; 212
-    hostile ;; 38
-    stare-idle ;; 194
-    idle ;; 33
-    swim-180-spin ;; 207
-    hostile-orient ;; 191
-    saberfish-sitting-on-land ;; 211
-    stare ;; 37
-    spin-attack ;; 193
+    undefined1 ;; 199, not defined
     water-land ;; 200
-    active ;; 34
+    undefined2 ;; 201, not defined
+    undefined3 ;; 202, not defined
+    base-saberfish-state ;; 203
+    diving-into-water ;; 204
+    water-impact ;; 205
+    command-mode ;; 206
+    swim-180-spin ;; 207
     swimming-base ;; 208
-    swimming-hostile ;; 192
+    saberfish-crawl-out-of-tube ;; 209
+    undefined4 ;; 210, not defined
+    saberfish-sitting-on-land ;; 211
+    knocked-recover-water ;; 212
+    saberfish-swimming ;; 213
+    )
+  (:methods
+    (saberfish-method-214 (_type_ vector) float) ;; 214
+    (saberfish-method-215 (_type_) float) ;; 215
+    (get-cmd (_type_) saberfish-command) ;; 216
+    (saberfish-method-217 (_type_) none) ;; 217
+    (saberfish-method-218 (_type_) none) ;; 218
+    (saberfish-method-219 (_type_) none) ;; 219
+    (saberfish-method-220 (_type_) none) ;; 220
+    (handle-cmd (_type_ saberfish-command) object) ;; 221
+    (attack-delay-elapsed? (_type_) symbol) ;; 222
+    (saberfish-method-223 (_type_) none) ;; 223
+    (go-terrain-transition (_type_ symbol) object) ;; 224
+    (get-nav-mesh-idx (_type_ vector saberfish-find-behavior) int) ;; 225
+    (start-terrain-transition (_type_) object) ;; 226
+    (desired-nav-idx-valid? (_type_) symbol) ;; 227
+    (saberfish-method-228 (_type_) symbol) ;; 228
+    (set-dest-nav! (_type_ vector saberfish-find-behavior) none) ;; 229
+    (change-nav-mesh (_type_) none) ;; 230
+    (saberfish-method-231 (_type_ vector float symbol vector) symbol) ;; 231
+    (do-jump (_type_) object) ;; 232
+    (saberfish-method-233 (_type_) nav-poly) ;; 233
+    (saberfish-method-234 (_type_ vector) none) ;; 234
+    (on-submerged (_type_ symbol) none) ;; 235
+    (saberfish-method-236 (_type_ int) nav-mesh) ;; 236
+    (saberfish-method-237 (_type_ int) symbol) ;; 237
+    (saberfish-method-238 (_type_ symbol float float) object) ;; 238
+    (saberfish-method-239 (_type_ vector) float) ;; 239
+    (saberfish-method-240 (_type_ time-frame) none) ;; 240
+    (saberfish-method-241 (_type_) symbol) ;; 241
+    (get-ground-state (_type_) int) ;; 242
+    (saberfish-method-243 (_type_) symbol) ;; 243
+    (set-should-move-to-ground (_type_) none) ;; 244
+    )
+  (:states
+    transition-terrain-jump-from-water
+    transition-terrain-jump-from-land
     )
   )
-|#
 
-;; (define-extern find-behavior<-in-water? function)
-;; (define-extern in-water<-find-behavior function)
-;; (define-extern *saberfish-nav-enemy-info* nav-enemy-info)
-;; (define-extern get-spawn-parent function)
-;; (define-extern saberfish-water-post function)
-;; (define-extern saberfish-chase-post function)
-;; (define-extern saberfish-orient-code-setup function)
-;; (define-extern saberfish-orient-code-single-pass function)
-;; (define-extern saberfish-orient-code function)
-;; (define-extern saberfish-swim-code function)
-;; (define-extern saberfish-swim-travel-trans function)
-;; (define-extern swimming-base-exit function)
-;; (define-extern transition-terrain-jump-from-water state)
-;; (define-extern jump-from-land-dive-anim function)
-;; (define-extern transition-terrain-jump-from-land state)
-;; (define-extern transition-pursue-behavior function)
-;; (define-extern turbo-swim function)
-;; (define-extern saberfish-command-event-handler function)
-;; (define-extern saberfish-init-by-other function)
-;; (define-extern find-ground-for-obj function)
+(define-extern find-behavior<-in-water? (function symbol saberfish-find-behavior))
+(define-extern in-water<-find-behavior (function saberfish-find-behavior symbol))
+(define-extern *saberfish-nav-enemy-info* nav-enemy-info)
+(define-extern get-spawn-parent (function process :behavior saberfish))
+(define-extern saberfish-water-post (function none :behavior saberfish))
+(define-extern saberfish-chase-post (function none :behavior saberfish))
+(define-extern saberfish-orient-code-setup (function none :behavior saberfish))
+(define-extern saberfish-orient-code-single-pass (function float float :behavior saberfish))
+(define-extern saberfish-orient-code (function none :behavior saberfish))
+(define-extern saberfish-swim-code (function none :behavior saberfish))
+(define-extern saberfish-swim-travel-trans (function none :behavior saberfish))
+(define-extern swimming-base-exit (function none :behavior saberfish))
+(define-extern jump-from-land-dive-anim (function none :behavior saberfish))
+(define-extern transition-pursue-behavior (function none :behavior saberfish))
+(define-extern turbo-swim (function symbol :behavior saberfish))
+(define-extern saberfish-command-event-handler (function process int symbol event-message-block object :behavior saberfish))
+(define-extern saberfish-init-by-other (function process-drawable saberfish-init-by-other-params object :behavior saberfish))
+(define-extern find-ground-for-obj (function process-focusable int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; saberfish-spawner              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; path-index-array is already defined!
-
-#|
-(deftype nav-mesh-jump (structure)
-  ((mesh      basic  :offset-assert 0)
-   (paths     basic  :offset-assert 4)
-   (in-water? basic  :offset-assert 8)
-   )
-  :method-count-assert 9
-  :size-assert         #xc
-  :flag-assert         #x90000000c
-  )
-|#
-
-#|
-(deftype nav-mesh-jump-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+(deftype path-index-array (inline-array-class)
+  ((data int8 :dynamic :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
+(deftype nav-mesh-jump (structure)
+  ((mesh      nav-mesh :offset-assert 0)
+   (paths     path-index-array :offset-assert 4)
+   (in-water? symbol :offset-assert 8)
+   )
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
+(deftype nav-mesh-jump-array (inline-array-class)
+  ((data nav-mesh-jump :dynamic :inline :offset-assert 16)
+   )
+  :method-count-assert 14
+  :size-assert         #x10
+  :flag-assert         #xe00000010
+  )
+
 (deftype saberfish-spawner-command (structure)
-  ((command       basic   :offset-assert 0)
-   (message       basic   :offset-assert 4)
-   (initial-state basic   :offset-assert 8)
-   (parent        uint64  :offset-assert 16)
+  ((command       symbol  :offset-assert 0)
+   (message       symbol  :offset-assert 4)
+   (initial-state symbol  :offset-assert 8)
+   (parent        handle  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype saberfish-spawn-query (structure)
   ((alive-count int16  :offset-assert 0)
    )
@@ -45612,61 +45547,55 @@
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype saberfish-spawner (process-drawable)
-  ((jump-paths            basic       :offset-assert 200)
-   (nav-mesh-jumps        basic       :offset-assert 204)
+  ((jump-paths            (array path-control) :offset-assert 200)
+   (nav-mesh-jumps        nav-mesh-jump-array :offset-assert 204)
    (live-count            int8        :offset-assert 208)
-   (last-spawned-process  uint64      :offset-assert 216)
-   (mgr-parent            uint64      :offset-assert 224)
-   (spawned-saberfish     UNKNOWN 128 :offset-assert 232)
+   (last-spawned-process  handle      :offset-assert 216)
+   (mgr-parent            handle      :offset-assert 224)
+   (spawned-saberfish     handle  128 :offset-assert 232)
    (num-spawned-saberfish int32       :offset-assert 1256)
    )
   :method-count-assert 27
   :size-assert         #x4ec
   :flag-assert         #x1b047004ec
-  (:methods
-    (saberfish-spawner-method-21 () none) ;; 21
-    (saberfish-spawner-method-22 () none) ;; 22
-    (saberfish-spawner-method-23 () none) ;; 23
-    (saberfish-spawner-method-24 () none) ;; 24
-    (saberfish-spawner-method-25 () none) ;; 25
-    (saberfish-spawner-method-26 () none) ;; 26
-    )
   (:state-methods
     saberfish-spawner-base-state ;; 20
     )
+  (:methods
+    (saberfish-spawner-method-21 (_type_) none) ;; 21
+    (saberfish-spawner-method-22 (_type_ vector saberfish-find-behavior) int) ;; 22
+    (draw-paths (_type_) none) ;; 23
+    (saberfish-spawner-method-24 (_type_ saberfish) int) ;; 24
+    (spawn-saberfish (_type_ symbol symbol process) none) ;; 25
+    (saberfish-spawner-method-26 (_type_ process int symbol event-message-block) object) ;; 26
+    )
   )
-|#
 
-#|
 (deftype saberfish-spawn-manager-base (process)
-  ((actor-group           uint32  :offset-assert 124)
-   (actor-group-count     int32   :offset-assert 128)
-   (total-num-spawned     int32   :offset-assert 132)
-   (total-alive           int32   :offset-assert 136)
-   (spawn-timer           uint64  :offset-assert 140)
-   (state-time            uint64  :offset-assert 148)
-   (allowed-on-land-count int8    :offset-assert 156)
+  ((actor-group           (pointer actor-group)  :offset-assert 128)
+   (actor-group-count     int32   :offset-assert 132)
+   (total-num-spawned     int32   :offset-assert 136)
+   (total-alive           int32   :offset-assert 140)
+   (spawn-timer           time-frame :offset-assert 144)
+   (state-time            time-frame :offset-assert 152)
+   (allowed-on-land-count int8    :offset-assert 160)
    )
   :method-count-assert 19
   :size-assert         #xa1
   :flag-assert         #x13003000a1
-  (:methods
-    (saberfish-spawn-manager-base-method-16 () none) ;; 16
-    (saberfish-spawn-manager-base-method-17 () none) ;; 17
-    (saberfish-spawn-manager-base-method-18 () none) ;; 18
-    )
   (:state-methods
-    idle ;; 15
     active ;; 14
+    idle ;; 15
+    )
+  (:methods
+    (go-active (_type_) object) ;; 16
+    (get-alive-count (_type_) int) ;; 17
+    (get-alive-count-grounded (_type_ int) int) ;; 18
     )
   )
-|#
 
-#|
 (deftype saberfish-mgr-room1 (saberfish-spawn-manager-base)
   ()
   :method-count-assert 19
@@ -45676,25 +45605,22 @@
     active ;; 14
     )
   )
-|#
 
-#|
 (deftype saberfish-mgr-room2 (saberfish-spawn-manager-base)
   ()
   :method-count-assert 22
   :size-assert         #xa1
   :flag-assert         #x16003000a1
   (:state-methods
-    stage-2 ;; 21
-    stage-1 ;; 20
     stage-0 ;; 19
+    stage-1 ;; 20
+    stage-2 ;; 21
     )
   )
-|#
 
-;; (define-extern *temporary-closest-nav-mesh-indices* object)
-;; (define-extern *temporary-num-paths-per-nav-mesh-count* object)
-;; (define-extern saberfish-mgr-event-handler function)
+(define-extern *temporary-closest-nav-mesh-indices* (pointer int8))
+(define-extern *temporary-num-paths-per-nav-mesh-count* (pointer uint8))
+(def-event-handler saberfish-mgr-event-handler saberfish-spawn-manager-base)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; needle-fish                    ;;
@@ -45905,13 +45831,12 @@
 ;; kg-hopper                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kg-hopper (nav-enemy)
   ((speed-y               float                      :offset-assert 620)
    (accel-y               float                      :offset-assert 624)
    (next-jump-time        int32                      :offset-assert 628)
-   (path-intro            basic                      :offset-assert 632)
-   (can-go-knocked?       basic                      :offset-assert 636)
+   (path-intro            path-control               :offset-assert 632)
+   (can-go-knocked?       symbol                     :offset-assert 636)
    (land-anim-index       int32                      :offset-assert 640)
    (step-num              int32                      :offset-assert 644)
    (best-point            vector             :inline :offset-assert 656)
@@ -45930,51 +45855,47 @@
   :method-count-assert 194
   :size-assert         #x2f0
   :flag-assert         #xc2027002f0
-  (:methods
-    (kg-hopper-method-191 () none) ;; 191
-    (kg-hopper-method-192 () none) ;; 192
-    (kg-hopper-method-193 () none) ;; 193
-    )
   (:state-methods
+    active ;; 34
     notice ;; 35
-    hostile ;; 38
     stare ;; 37
+    hostile ;; 38
     jump ;; 44
     ambush ;; 47
-    active ;; 34
     explode ;; 190
     )
+  (:methods
+    (kg-hopper-method-191 (_type_) symbol) ;; 191
+    (kg-hopper-method-192 () none) ;; 192
+    (get-skel (_type_) art-group) ;; 193
+    )
   )
-|#
 
-#|
 (deftype kg-hopper-anim-info (structure)
   ((hit-anim-index  int32  :offset-assert 0)
    (land-anim-index int32  :offset-assert 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype kg-hopper-global-info (basic)
   ((prev-yellow-hit int8      :offset-assert 4)
    (prev-blue-hit   int8      :offset-assert 5)
-   (yellow-hit-anim UNKNOWN 3 :offset-assert 8)
-   (blue-hit-anim   UNKNOWN 3 :offset-assert 32)
+   (yellow-hit-anim kg-hopper-anim-info 3 :inline :offset-assert 8)
+   (blue-hit-anim   kg-hopper-anim-info 3 :inline :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-;; (define-extern *kg-hopper-debris-params* debris-static-params)
-;; (define-extern *kg-hopper-global-info* kg-hopper-global-info)
-;; (define-extern *kg-hopper-nav-enemy-info* nav-enemy-info)
-;; (define-extern *kg-hopper-next-jump-time* object)
+(define-extern *kg-hopper-debris-params* debris-static-params)
+(define-extern *kg-hopper-global-info* kg-hopper-global-info)
+(define-extern *kg-hopper-nav-enemy-info* nav-enemy-info)
+(define-extern *kg-hopper-next-jump-time* time-frame)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; neo-grenadier                  ;;
@@ -71379,82 +71300,71 @@
 ;; wasall-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-birth-func-brightness-buggy-dirt-bits function)
-;; (define-extern spt-birth-func-part-buggy-dirt-bits function)
-;; (define-extern spt-birth-func-part-buggy-skid-bits function)
-;; (define-extern *wasdoors-range-color-flame* curve-color-fast)
-;; (define-extern *wasdoors-range-alpha-flame* curve2d-fast)
-;; (define-extern *wasdoors-range-scale-flame-x* curve2d-fast)
-;; (define-extern *wasdoors-range-scale-flame-y* curve2d-fast)
-;; (define-extern *r-wasdoors-curve-flame* curve2d-fast)
-;; (define-extern *g-wasdoors-curve-flame* curve2d-fast)
-;; (define-extern *b-wasdoors-curve-flame* curve2d-fast)
-;; (define-extern *wasdoors-curve-alpha-flame* curve2d-fast)
-;; (define-extern *wasdoors-curve-flame-x* curve2d-fast)
-;; (define-extern *wasdoors-curve-flame-y* curve2d-fast)
-;; (define-extern *part-wasdoors-gas-lamp-flame-curve-settings* object)
-;; (define-extern spt-birth-func-brightness-part-desert-boss-slide-dust function)
+(define-extern spt-birth-func-brightness-buggy-dirt-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-buggy-dirt-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-buggy-skid-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *wasdoors-range-color-flame* curve-color-fast)
+(define-extern *wasdoors-range-alpha-flame* curve2d-fast)
+(define-extern *wasdoors-range-scale-flame-x* curve2d-fast)
+(define-extern *wasdoors-range-scale-flame-y* curve2d-fast)
+(define-extern *r-wasdoors-curve-flame* curve2d-fast)
+(define-extern *g-wasdoors-curve-flame* curve2d-fast)
+(define-extern *b-wasdoors-curve-flame* curve2d-fast)
+(define-extern *wasdoors-curve-alpha-flame* curve2d-fast)
+(define-extern *wasdoors-curve-flame-x* curve2d-fast)
+(define-extern *wasdoors-curve-flame-y* curve2d-fast)
+(define-extern *part-wasdoors-gas-lamp-flame-curve-settings* particle-curve-settings)
+(define-extern spt-birth-func-brightness-part-desert-boss-slide-dust (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasall-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-airlock (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype wascity-airlock-small (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype wascity-elevator-door (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
-  (:state-methods
-    open ;; 20
-    )
   )
-|#
 
-#|
 (deftype tentacle (process-drawable)
   ((init-pos        vector :inline :offset-assert 208)
    (focus-pos       vector :inline :offset-assert 224)
-   (nav-mesh        basic          :offset-assert 240)
-   (active-timer    uint64         :offset-assert 248)
+   (nav-mesh        nav-mesh       :offset-assert 240)
+   (active-timer    time-frame     :offset-assert 248)
    (fade-level      float          :offset-assert 256)
-   (sound-id-loop   uint32         :offset-assert 260)
-   (sound-id-attack uint32         :offset-assert 264)
+   (sound-id-loop   sound-id       :offset-assert 260)
+   (sound-id-attack sound-id       :offset-assert 264)
    )
   :method-count-assert 26
   :size-assert         #x10c
   :flag-assert         #x1a0090010c
   (:state-methods
-    wait ;; 25
-    kill-player ;; 24
-    attacking-1 ;; 23
-    attacking-0 ;; 22
-    un-dive-player ;; 21
     dormant ;; 20
+    un-dive-player ;; 21
+    attacking-0 ;; 22
+    attacking-1 ;; 23
+    kill-player ;; 24
+    wait ;; 25
     )
   )
-|#
 
-;; (define-extern tentacle-follow-post function)
-;; (define-extern tentacle-attack-handler function)
+(define-extern tentacle-follow-post (function none :behavior tentacle))
+(define-extern tentacle-attack-handler (function process int symbol event-message-block object :behavior tentacle))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasall-tasks                   ;;
