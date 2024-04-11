@@ -41150,7 +41150,7 @@
     (nav-enemy-method-183 (_type_) none) ;; 183
     (nav-enemy-method-184 (_type_) none) ;; 184
     (nav-enemy-method-185 (_type_) symbol) ;; 185
-    (nav-enemy-method-186 (_type_) none) ;; 186
+    (nav-enemy-method-186 (_type_) symbol) ;; 186
     (nav-enemy-method-187 (_type_) none) ;; 187
     (nav-enemy-method-188 (_type_) none) ;; 188
     (copy-nav-state-vel! (_type_ vector) none) ;; 189
@@ -44382,7 +44382,16 @@
 ;; roboguard                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++roboguard:roboguard-flag
+(defenum roboguard-flag
+  :type uint16
+  :bitfield #t
+  (rf0 0)
+  (rf1 1)
+  (rf2 2)
+  )
+;; ---roboguard:roboguard-flag
+
 (deftype roboguard (nav-enemy)
   ((los                    los-control :inline :offset-assert 624)
    (rotation-matrix        matrix      :inline :offset-assert 800)
@@ -44392,54 +44401,53 @@
    (focus-formation-source vector      :inline :offset-assert 960)
    (me-to-focus-dir        vector      :inline :offset-assert 976)
    (me-to-focus-angle      float               :offset-assert 992)
-   (flags                  uint16              :offset-assert 996)
+   (flags                  roboguard-flag      :offset-assert 996)
    (torso-aim-blend        float               :offset-assert 1000)
    (torso-angle            float               :offset-assert 1004)
    (torso-seek-speed       float               :offset-assert 1008)
    (torso-to-focus-angle   float               :offset-assert 1012)
    (last-torso-frame-num   float               :offset-assert 1016)
    (stand-angle-threshold  float               :offset-assert 1020)
-   (arm-rot-mult           UNKNOWN     2       :offset-assert 1024)
-   (arm-rot                UNKNOWN     2       :offset-assert 1032)
-   (fire-time              uint64              :offset-assert 1040)
+   (arm-rot-mult           float       2       :offset-assert 1024)
+   (arm-rot                degrees     2       :offset-assert 1032)
+   (fire-time              time-frame          :offset-assert 1040)
    (fire-count             uint32              :offset-assert 1048)
-   (last-attack-time       uint64              :offset-assert 1056)
-   (update-focus-pos       basic               :offset-assert 1064)
+   (last-attack-time       time-frame          :offset-assert 1056)
+   (update-focus-pos       symbol              :offset-assert 1064)
    (formation-angle-sign   float               :offset-assert 1068)
    (last-hit-points        int32               :offset-assert 1072)
    )
   :method-count-assert 197
   :size-assert         #x434
   :flag-assert         #xc503c00434
-  (:methods
-    (roboguard-method-194 () none) ;; 194
-    (roboguard-method-195 () none) ;; 195
-    (roboguard-method-196 () none) ;; 196
-    )
   (:state-methods
-    die ;; 40
-    knocked-recover ;; 32
     knocked ;; 31
-    shoot-attack ;; 192
-    hostile-stand ;; 190
-    hostile ;; 38
-    explode ;; 193
-    stare ;; 37
-    close-attack ;; 191
-    notice ;; 35
+    knocked-recover ;; 32
     idle ;; 33
+    notice ;; 35
+    stare ;; 37
+    hostile ;; 38
+    die ;; 40
+    hostile-stand ;; 190
+    close-attack ;; 191
+    shoot-attack ;; 192
+    explode ;; 193
+    )
+  (:methods
+    (roboguard-method-194 (_type_ vector float) symbol) ;; 194
+    (roboguard-method-195 (_type_) none) ;; 195
+    (roboguard-method-196 (_type_ int) none) ;; 196
     )
   )
-|#
 
-;; (define-extern *roboguard-exploder-params* joint-exploder-static-params)
-;; (define-extern *roboguard-explode-joints* array)
-;; (define-extern *roboguard-debris-array-params* array)
-;; (define-extern *fact-info-roboguard-defaults* fact-info-enemy-defaults)
-;; (define-extern *roboguard-nav-enemy-info* nav-enemy-info)
-;; (define-extern roboguard-turn-torso-post function)
-;; (define-extern roboguard-turret-code function)
-;; (define-extern *roboguard-formation-table* array)
+(define-extern *roboguard-exploder-params* joint-exploder-static-params)
+(define-extern *roboguard-explode-joints* (array int32))
+(define-extern *roboguard-debris-array-params* (array debris-static-params))
+(define-extern *fact-info-roboguard-defaults* fact-info-enemy-defaults)
+(define-extern *roboguard-nav-enemy-info* nav-enemy-info)
+(define-extern roboguard-turn-torso-post (function none :behavior roboguard))
+(define-extern roboguard-turret-code (function none :behavior roboguard))
+(define-extern *roboguard-formation-table* (array float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; robo-hover                     ;;
@@ -45688,66 +45696,72 @@
 ;; sewer-frog                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sewer-frog (nav-enemy)
-  ((scared-timer uint64  :offset-assert 624)
+  ((scared-timer time-frame :offset-assert 624)
    )
   :method-count-assert 193
   :size-assert         #x278
   :flag-assert         #xc102000278
-  (:methods
-    (sewer-frog-method-192 () none) ;; 192
-    )
   (:state-methods
     knocked ;; 31
-    flee ;; 36
-    hostile ;; 38
-    stare ;; 37
-    attack ;; 190
     active ;; 34
+    flee ;; 36
+    stare ;; 37
+    hostile ;; 38
+    attack ;; 190
     turn-to-face-focus ;; 191
     )
+  (:methods
+    (sewer-frog-method-192 (_type_) none) ;; 192
+    )
   )
-|#
 
-;; (define-extern *fact-info-sewer-frog-defaults* fact-info-enemy-defaults)
-;; (define-extern *sewer-frog-nav-enemy-info* nav-enemy-info)
-;; (define-extern sewer-frog-hop function)
-;; (define-extern sewer-frog-turn-to-face function)
-;; (define-extern sewer-frog-check-hop function)
+(define-extern *fact-info-sewer-frog-defaults* fact-info-enemy-defaults)
+(define-extern *sewer-frog-nav-enemy-info* nav-enemy-info)
+(define-extern sewer-frog-hop (function none :behavior sewer-frog))
+(define-extern sewer-frog-turn-to-face (function vector none :behavior sewer-frog))
+(define-extern sewer-frog-check-hop (function none :behavior sewer-frog))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; spydroid-orig                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++spydroid-orig:spydroid-orig-flag
+(defenum spydroid-orig-flag
+  :type uint64
+  :bitfield #t
+  (sof0 0)
+  (sof1 1)
+  (sof2 2)
+  )
+;; ---spydroid-orig:spydroid-orig-flag
+
 (deftype spydroid-orig (nav-enemy)
   ((old-y-deg    float     :offset-assert 620)
    (diff-angle   float     :offset-assert 624)
-   (flags        uint64    :offset-assert 632)
-   (lightning    UNKNOWN 4 :offset-assert 640)
+   (flags        spydroid-orig-flag :offset-assert 632)
+   (lightning    lightning-control 4 :offset-assert 640)
    (floor        float     :offset-assert 656)
-   (explode-part basic     :offset-assert 660)
+   (explode-part sparticle-launch-control :offset-assert 660)
    )
   :method-count-assert 192
   :size-assert         #x298
   :flag-assert         #xc002200298
   (:state-methods
     stare ;; 37
+    notice ;; 35
+    hostile ;; 38
+    die-falling ;; 41
     pacing ;; 156
     circling ;; 157
-    hostile ;; 38
     attack ;; 190
-    die-falling ;; 41
-    notice ;; 35
     explode ;; 191
     )
   )
-|#
 
-;; (define-extern *spydroid-orig-exploder-params* joint-exploder-static-params)
-;; (define-extern *fact-info-spydroid-orig-defaults* fact-info-enemy-defaults)
-;; (define-extern *spydroid-orig-nav-enemy-info* nav-enemy-info)
+(define-extern *spydroid-orig-exploder-params* joint-exploder-static-params)
+(define-extern *fact-info-spydroid-orig-defaults* fact-info-enemy-defaults)
+(define-extern *spydroid-orig-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flyingsaw                      ;;
@@ -45902,7 +45916,6 @@
 ;; neo-grenadier                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bank-info (structure)
   ((circle      sphere :inline :offset-assert 0)
    (tangent-pos vector :inline :offset-assert 16)
@@ -45913,53 +45926,60 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
+;; +++neo-grenadier:grenadier-status-flag
+(defenum grenadier-status-flag
+  :type uint64
+  :bitfield #t
+  (gsf0 0)
+  (gsf1 1)
+  (gsf2 2)
+  (gsf3 3)
+  )
+;; ---neo-grenadier:grenadier-status-flag
+
 (deftype neo-grenadier (nav-enemy)
   ((shot-trajectory           trajectory            :inline :offset-assert 624)
-   (hostile-path              basic                         :offset-assert 664)
+   (hostile-path              path-control                  :offset-assert 664)
    (bank                      bank-info             :inline :offset-assert 672)
    (joint                     joint-mod-blend-world         :offset-assert 736)
-   (heading                   basic                         :offset-assert 740)
+   (heading                   symbol                        :offset-assert 740)
    (move-pos                  vector                :inline :offset-assert 752)
    (move-angle                float                         :offset-assert 768)
-   (status-flags              uint64                        :offset-assert 776)
-   (suppress-knockaside-timer uint64                        :offset-assert 784)
+   (status-flags              grenadier-status-flag         :offset-assert 776)
+   (suppress-knockaside-timer time-frame                    :offset-assert 784)
    )
   :method-count-assert 196
   :size-assert         #x318
   :flag-assert         #xc402a00318
-  (:methods
-    (neo-grenadier-method-193 () none) ;; 193
-    (neo-grenadier-method-194 () none) ;; 194
-    (neo-grenadier-method-195 () none) ;; 195
-    )
   (:state-methods
-    victory ;; 39
     hit ;; 30
-    spin-kick ;; 192
-    hostile ;; 38
-    backup ;; 191
-    notice ;; 35
-    attack ;; 190
     active ;; 34
+    notice ;; 35
+    hostile ;; 38
+    victory ;; 39
+    attack ;; 190
+    backup ;; 191
+    spin-kick ;; 192
+    )
+  (:methods
+    (neo-grenadier-method-193 (_type_) none) ;; 193
+    (set-bank-info! (_type_ vector) none) ;; 194
+    (neo-grenadier-method-195 (_type_) none) ;; 195
     )
   )
-|#
 
-;; (define-extern *fact-info-neo-grenadier-defaults* fact-info-enemy-defaults)
-;; (define-extern *neo-grenadier-nav-enemy-info* nav-enemy-info)
-;; (define-extern pos-rotate-y<-vector+vector function) ;; (function vector vector float)
+(define-extern *fact-info-neo-grenadier-defaults* fact-info-enemy-defaults)
+(define-extern *neo-grenadier-nav-enemy-info* nav-enemy-info)
+(define-extern pos-rotate-y<-vector+vector (function vector vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; neo-juicer                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype neo-juicer-shot (projectile)
-  ((lightning UNKNOWN 5 :offset-assert 512)
-   (victim    uint64    :offset-assert 536)
+  ((lightning lightning-control 5 :offset-assert 512)
+   (victim    handle    :offset-assert 536)
    )
   :method-count-assert 41
   :size-assert         #x220
@@ -45968,87 +45988,81 @@
     dissipate ;; 21
     )
   )
-|#
 
-#|
 (deftype neo-juicer-anim-info (structure)
   ((anim-index int32  :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype neo-juicer-global-info (basic)
   ((prev-yellow-hit int8      :offset-assert 4)
    (prev-blue-hit   int8      :offset-assert 5)
-   (idle-anim       UNKNOWN 3 :offset-assert 8)
-   (patrol-anim     UNKNOWN 2 :offset-assert 20)
-   (notice-anim     UNKNOWN 2 :offset-assert 28)
-   (charge-anim     UNKNOWN 2 :offset-assert 36)
-   (knocked-anim    UNKNOWN 2 :offset-assert 44)
-   (celebrate-anim  UNKNOWN 2 :offset-assert 52)
-   (yellow-hit-anim UNKNOWN 4 :offset-assert 60)
-   (blue-hit-anim   UNKNOWN 6 :offset-assert 76)
+   (idle-anim       neo-juicer-anim-info 3 :inline :offset-assert 8)
+   (patrol-anim     neo-juicer-anim-info 2 :inline :offset-assert 20)
+   (notice-anim     neo-juicer-anim-info 2 :inline :offset-assert 28)
+   (charge-anim     neo-juicer-anim-info 2 :inline :offset-assert 36)
+   (knocked-anim    neo-juicer-anim-info 2 :inline :offset-assert 44)
+   (celebrate-anim  neo-juicer-anim-info 2 :inline :offset-assert 52)
+   (yellow-hit-anim neo-juicer-anim-info 4 :inline :offset-assert 60)
+   (blue-hit-anim   neo-juicer-anim-info 6 :inline :offset-assert 76)
    )
   :method-count-assert 9
   :size-assert         #x64
   :flag-assert         #x900000064
   )
-|#
 
-#|
 (deftype neo-juicer (nav-enemy)
   ((los                los-control :inline :offset-assert 624)
-   (intro-path         basic               :offset-assert 788)
-   (joint              basic               :offset-assert 792)
-   (joint-enable       basic               :offset-assert 796)
+   (intro-path         path-control        :offset-assert 788)
+   (joint              joint-mod           :offset-assert 792)
+   (joint-enable       symbol              :offset-assert 796)
    (joint-blend        float               :offset-assert 800)
-   (last-fire-time     uint64              :offset-assert 808)
-   (heading            basic               :offset-assert 816)
+   (last-fire-time     time-frame          :offset-assert 808)
+   (heading            symbol              :offset-assert 816)
    (move-angle         float               :offset-assert 820)
-   (torso-track-player basic               :offset-assert 824)
-   (circle-backward?   basic               :offset-assert 832)
-   (using-turn-anim    basic               :offset-assert 836)
-   (hit-focus          basic               :offset-assert 840)
+   (torso-track-player joint-mod           :offset-assert 824)
+   (circle-backward?   symbol              :offset 832)
+   (using-turn-anim    symbol              :offset-assert 836)
+   (hit-focus          focus               :offset-assert 840)
    (ambush-path-pt     int8                :offset-assert 844)
    (charge-index       int8                :offset-assert 845)
    (hostile-dest       vector      :inline :offset-assert 848)
-   (current-projectile uint64              :offset-assert 864)
+   (current-projectile handle              :offset-assert 864)
    )
   :method-count-assert 197
   :size-assert         #x368
   :flag-assert         #xc502f00368
-  (:methods
-    (neo-juicer-method-192 () none) ;; 192
-    (neo-juicer-method-193 () none) ;; 193
-    (neo-juicer-method-194 () none) ;; 194
-    (neo-juicer-method-195 () none) ;; 195
-    (neo-juicer-method-196 () none) ;; 196
-    )
   (:state-methods
-    stare ;; 37
     hit ;; 30
-    circling ;; 157
-    taunt ;; 155
+    active ;; 34
+    notice ;; 35
+    stare ;; 37
     hostile ;; 38
     victory ;; 39
-    attack ;; 191
-    notice ;; 35
-    ambush-cont ;; 190
     ambush ;; 47
-    active ;; 34
+    taunt ;; 155
+    circling ;; 157
+    ambush-cont ;; 190
+    attack ;; 191
+    )
+  (:methods
+    (go-die-or-knocked (_type_) object) ;; 192
+    (spawn-proj! (_type_ process-focusable uint) none) ;; 193
+    (track-focus! (_type_) none) ;; 194
+    (start-tracking (_type_) none) ;; 195
+    (toggle-deadly-flag (_type_ symbol) none) ;; 196
     )
   )
-|#
 
-;; (define-extern neo-juicer-proj-move function)
-;; (define-extern *neo-juicer-global-info* neo-juicer-global-info)
-;; (define-extern *fact-info-neo-juicer-defaults* fact-info-enemy-defaults)
-;; (define-extern *neo-juicer-nav-enemy-info* nav-enemy-info)
-;; (define-extern neo-juicer-face-player-post function)
+(define-extern neo-juicer-proj-move (function neo-juicer-shot none))
+(define-extern *neo-juicer-global-info* neo-juicer-global-info)
+(define-extern *fact-info-neo-juicer-defaults* fact-info-enemy-defaults)
+(define-extern *neo-juicer-nav-enemy-info* nav-enemy-info)
+(define-extern neo-juicer-face-player-post (function none :behavior neo-juicer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-wasp-part                   ;;
