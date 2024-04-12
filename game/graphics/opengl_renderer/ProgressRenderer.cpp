@@ -42,6 +42,9 @@ void ProgressRenderer::handle_frame(u64 val,
         break;
       case kMinimapFbp:  // 126
         m_fb_ctxt.emplace(m_minimap_fb);
+        // replace any other texture that the game loaded to this slot with our PC with the GPU
+        // one that we assume will get written to now.
+        render_state->texture_pool->move_existing_to_vram(m_minimap_gpu_tex, kMinimapVramAddr);
         m_offscreen_mode = true;
         break;
       default:
