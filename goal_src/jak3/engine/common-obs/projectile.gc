@@ -477,7 +477,8 @@
     )
   (logior! (-> self options) (projectile-options po4))
   (setup-collision! self)
-  (let ((s5-0 (-> self root)))
+  (let ((s5-0 (-> self root))
+        (parent (-> self parent 0)))
     (when (type? s5-0 collide-shape-moving)
       (set! (-> self root dynam gravity y) 1228800.0)
       (set! (-> self root dynam gravity-length) 1228800.0)
@@ -487,7 +488,16 @@
     (logclear! (-> self mask) (process-mask enemy))
     (set! (-> s5-0 trans quad) (-> arg0 pos quad))
     (set! (-> self starting-pos quad) (-> arg0 pos quad))
-    (quaternion-copy! (-> s5-0 quat) (-> self parent 0 root quat))
+    ;; og:preserve-this
+    ;; some projectiles have their parent set as *rigid-body-queue-manager*,
+    ;; which is not a process-drawable, so we use its own parent
+    ;; (usually the vehicle firing the projectile) to set the quat instead.
+    ;; on original hardware, this would not crash because misaligned qw loads silently mask the lower bits
+    ;; of the address, loading a junk value instead.
+    (if (= parent *rigid-body-queue-manager*)
+      (quaternion-copy! (-> s5-0 quat) (-> (the process-drawable (-> parent parent 0)) root quat))
+      (quaternion-copy! (-> s5-0 quat) (-> self parent 0 root quat))
+      )
     (vector-identity! (-> s5-0 scale))
     (set! (-> s5-0 transv quad) (-> arg0 vel quad))
     (set! (-> self pre-move-transv quad) (-> arg0 vel quad))
