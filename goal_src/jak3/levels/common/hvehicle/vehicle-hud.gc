@@ -5,5 +5,76 @@
 ;; name in dgo: vehicle-hud
 ;; dgos: HGA, LPATK, RAILA, LFACCAR, CWI, WASALL, LFACTORY, COMBA
 
+(declare-type hud-vehicle-turbo hud)
+(define-extern hud-vehicle-turbo-spawn (function process hud-vehicle-turbo))
+
 ;; DECOMP BEGINS
 
+(deftype hud-vehicle-health (hud)
+  ()
+  )
+
+
+(defmethod draw ((this hud-vehicle-health))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (+ (the int (* -100.0 (-> this offset))) 5)
+    366
+    )
+  (set! (-> this sprites 0 pos z) #xfffff0)
+  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) 4 6)
+  (set! (-> this sprites 1 pos z) #xfffff0)
+  (let ((f0-4 (fmax 0.0 (fmin 1.0 (-> *game-info* health-bar-vehicle)))))
+    (set! (-> this sprites 1 color x) (the int (* 255.0 (- 1.0 f0-4))))
+    (set! (-> this sprites 1 color y) (the int (* 255.0 f0-4)))
+    (set! (-> this sprites 1 color z) 0)
+    (set! (-> this sprites 1 scale-x) (* 20.5 f0-4))
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-vehicle-health))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-vehicle-health))
+  (vehicle-entity-hack 27)
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-lower-left-2) (gui-action play) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (lookup-texture-by-name
+                                                     "hud-small-vehicle-health-bar-01"
+                                                     (the-as string #f)
+                                                     (the-as (pointer texture-page) #f)
+                                                     )
+                                        )
+        )
+  (set! (-> this sprites 0 flags) (hud-sprite-flags))
+  (set! (-> this sprites 0 scale-x) 1.43)
+  (set! (-> this sprites 0 scale-y) 1.3)
+  (set! (-> this sprites 1 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 1 flags) (hud-sprite-flags))
+  (set! (-> this sprites 1 scale-x) 0.0)
+  (set! (-> this sprites 1 scale-y) 2.5)
+  (set! (-> this sprites 1 color w) 48)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch process vs hud-vehicle-health.
+(defun hud-vehicle-health-spawn ((arg0 vehicle))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn hud-vehicle-health :init hud-init-by-other :name "hud-vehicle-health" :to arg0)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as hud-vehicle-health gp-0)
+    )
+  )
