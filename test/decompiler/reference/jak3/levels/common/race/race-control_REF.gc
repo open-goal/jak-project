@@ -1,0 +1,142 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type race-control
+(deftype race-control (structure)
+  ((state         race-state)
+   (mesh          race-mesh)
+   (path-select   int8)
+   (path-group    race-path-group)
+   (path          race-path)
+   (path-t        float)
+   (racer-state   racer-state)
+   (path-sample   race-path-sample  :inline)
+   (lin-velocity  vector            :inline)
+   (ang-velocity  vector            :inline)
+   )
+  (:methods
+    (race-control-method-9 (_type_ int vector) none)
+    (race-control-method-10 (_type_ race-state racer-state) none)
+    (race-control-method-11 (_type_ float) none)
+    (race-control-method-12 (_type_ vector) none)
+    )
+  )
+
+;; definition for method 3 of type race-control
+(defmethod inspect ((this race-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'race-control)
+  (format #t "~1Tstate: #<race-state @ #x~X>~%" (-> this state))
+  (format #t "~1Tmesh: ~A~%" (-> this mesh))
+  (format #t "~1Tpath-select: ~D~%" (-> this path-select))
+  (format #t "~1Tpath-group: #<race-path-group @ #x~X>~%" (-> this path-group))
+  (format #t "~1Tpath: #<race-path @ #x~X>~%" (-> this path))
+  (format #t "~1Tpath-t: ~f~%" (-> this path-t))
+  (format #t "~1Tracer-state: #<racer-state @ #x~X>~%" (-> this racer-state))
+  (format #t "~1Tpath-sample: #<race-path-sample @ #x~X>~%" (-> this path-sample))
+  (format #t "~1Tlin-velocity: #<vector @ #x~X>~%" (-> this lin-velocity))
+  (format #t "~1Tang-velocity: #<vector @ #x~X>~%" (-> this ang-velocity))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 12 of type race-control
+;; WARN: Return type mismatch int vs none.
+(defmethod race-control-method-12 ((this race-control) (arg0 vector))
+  (let* ((f0-0 (-> this path-t))
+         (f0-2 (race-path-method-12 (-> this path) arg0 (+ -1.0 f0-0) (+ 1.0 f0-0)))
+         )
+    (set! (-> this path-t) f0-2)
+    (race-path-method-11 (-> this path) (-> this path-sample) (-> this lin-velocity) f0-2)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type race-control
+;; WARN: Return type mismatch int vs none.
+(defmethod race-control-method-11 ((this race-control) (arg0 float))
+  (let ((f0-1 (+ (-> this path-t) (* 15.0 arg0))))
+    (set! f0-1 (cond
+                 ((logtest? (-> this mesh flags) (race-mesh-flag rmf0))
+                  (let ((f1-3 (the float (-> this path sample-count))))
+                    (if (>= f0-1 f1-3)
+                        (set! f0-1 (- f0-1 f1-3))
+                        )
+                    )
+                  f0-1
+                  )
+                 (else
+                   (fmin f0-1 (the float (+ (-> this path sample-count) -1)))
+                   )
+                 )
+          )
+    (set! (-> this path-t) f0-1)
+    (race-path-method-11 (-> this path) (-> this path-sample) (-> this lin-velocity) f0-1)
+    )
+  (vector-reset! (-> this ang-velocity))
+  0
+  (none)
+  )
+
+;; definition for method 9 of type race-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod race-control-method-9 ((this race-control) (arg0 int) (arg1 vector))
+  (let ((v1-1 (-> this path-group path-count)))
+    (if (>= arg0 v1-1)
+        (set! arg0 0)
+        )
+    (set! (-> this path-select) arg0)
+    (cond
+      ((> v1-1 0)
+       (let ((s4-0 (-> this path-group paths arg0)))
+         (set! (-> this path) s4-0)
+         (let ((s3-0 (new 'stack-no-clear 'race-mesh-slice-query)))
+           (set! (-> s3-0 search-sphere quad) (-> arg1 quad))
+           (set! (-> s3-0 search-sphere r) 61440.0)
+           (race-mesh-method-13 (-> this mesh) (the-as race-mesh-slice-query (&-> s3-0 slice-id)))
+           (when (!= (-> s3-0 slice-id) -1)
+             (let* ((v1-12 (-> this mesh slices (-> s3-0 slice-id)))
+                    (f0-1 (-> (the-as (pointer float) (+ (* (-> v1-12 start-edge) 4) (the-as int (-> s4-0 edge-infos))))))
+                    (f1-0 (-> (the-as (pointer float) (+ (* (-> v1-12 end-edge) 4) (the-as int (-> s4-0 edge-infos))))))
+                    )
+               (when (and (>= f0-1 0.0) (>= f1-0 0.0))
+                 (let ((f0-2 (race-path-method-12 s4-0 arg1 f0-1 f1-0)))
+                   (set! (-> this path-t) f0-2)
+                   (race-path-method-11 (-> this path) (-> this path-sample) (-> this lin-velocity) f0-2)
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+      (else
+        (set! (-> this path) #f)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type race-control
+;; WARN: Return type mismatch int vs none.
+(defmethod race-control-method-10 ((this race-control) (arg0 race-state) (arg1 racer-state))
+  (set! (-> this state) arg0)
+  (set! (-> this mesh) (-> arg0 info mesh))
+  (if (-> this mesh)
+      (set! (-> this path-group) (-> this mesh path-groups 0))
+      )
+  (set! (-> this racer-state) arg1)
+  0
+  (none)
+  )
+
+
+
+
