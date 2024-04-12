@@ -1084,12 +1084,12 @@
   0
   )
 
-(defmethod rigid-body-object-method-46 ((this rigid-body-object))
+(defmethod apply-damage ((this rigid-body-object) (arg0 float) (arg1 rigid-body-impact))
   0
   (none)
   )
 
-(defmethod rigid-body-object-method-48 ((this rigid-body-object))
+(defmethod on-impact ((this rigid-body-object) (arg0 rigid-body-impact))
   0
   (none)
   )
@@ -1155,7 +1155,7 @@
       )
     (set! (-> arg0 impulse) (* f0-1 (-> this info extra attack-force-scale)))
     )
-  (rigid-body-object-method-46 this)
+  (apply-damage this f1-1 arg0)
   0
   (none)
   )
@@ -1187,8 +1187,8 @@
           (add-debug-vector #t (bucket-id debug-no-zbuf1) (-> s5-0 point) s4-1 (meters 0.00024414062) *color-blue*)
           )
         )
+      (on-impact this s5-0)
       )
-    (rigid-body-object-method-48 this)
     (if (and (-> this next-state) (= (-> this next-state name) 'idle))
         (go-active this)
         )
@@ -1240,7 +1240,7 @@
             *color-blue*
             )
           )
-        (rigid-body-object-method-48 this)
+        (on-impact this s5-0)
         (if (and (-> this next-state) (= (-> this next-state name) 'idle))
             (go-active this)
             )
@@ -1254,11 +1254,12 @@
 (defmethod rbody-event-handler ((this rigid-body-object) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('impact-impulse)
-     (-> arg3 param 0)
-     (if (!= this arg0)
-         (impulse-handler this)
-         )
-     (rigid-body-object-method-48 this)
+     (let ((s5-1 (-> arg3 param 0)))
+       (if (!= this arg0)
+           (impulse-handler this)
+           )
+       (on-impact this (the-as rigid-body-impact s5-1))
+       )
      (if (and (-> this next-state) (= (-> this next-state name) 'idle))
          (go-active this)
          )

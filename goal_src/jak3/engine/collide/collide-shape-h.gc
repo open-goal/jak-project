@@ -78,6 +78,24 @@
 ;; ---collide-status
 
 
+(defmacro normalized-heading-to-quaternion! (quat heading)
+  "Modified for PC. This does a clever trick, but it doesn't work if the heading is exactly
+   [0, 0, -1] because this tries to normalize a quaternion that's all 0's.
+   I think that, on PS2, something prevents the heading from being exactly 0, 0, -1,
+   but this doesn't happen on PC. A similar thing happened with Jak 1's punch glitch,
+   where some trig functions were slightly off from returning exactly 0.0 and 1.0 on PS2
+   rounding only."
+  `(begin
+     (if (and (= (-> ,heading x) 0.0)
+              (= (+ 1.0 (-> ,heading z)) 0.0)
+              )
+         (quaternion-set! ,quat 0.0 1.0 0.0 0.0)
+         (quaternion-set! ,quat 0.0 (-> ,heading x) 0.0 (+ 1.0 (-> ,heading z)))
+         )
+     (quaternion-normalize! ,quat)
+     )
+  )
+
 (declare-type collide-shape trsqv)
 (declare-type collide-shape-moving collide-shape)
 (declare-type control-info collide-shape-moving)
@@ -132,6 +150,17 @@
   (csrf31)
   )
 ;; ---cshape-reaction-flags
+
+
+;; +++nav-flags
+(defenum nav-flags
+  :type uint8
+  :bitfield #t
+  (has-root-sphere 0)
+  (has-extra-sphere 1)
+  (has-child-spheres 2)
+  )
+;; ---nav-flags
 
 
 ;; DECOMP BEGINS
@@ -299,7 +328,7 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
   ((actor-hash-index     int16   :offset  12)
    (process              process-drawable)
    (max-iteration-count  uint8)
-   (nav-flags            uint8)
+   (nav-flags            nav-flags)
    (total-prims          uint8)
    (num-riders           uint8)
    (pat-ignore-mask      pat-surface)
@@ -455,7 +484,7 @@ Most [[process-drawable]]s have a [[collide-shape]] that represents their root t
     (set! (-> s5-0 actor-hash-index) -1)
     (set! (-> s5-0 process) arg0)
     (set! (-> s5-0 max-iteration-count) (the-as uint 1))
-    (set! (-> s5-0 nav-flags) (the-as uint 1))
+    (set! (-> s5-0 nav-flags) (nav-flags has-root-sphere))
     (set! (-> s5-0 event-self) #f)
     (set! (-> s5-0 event-other) #f)
     (set! (-> s5-0 riders) (the-as (inline-array collide-rider) #f))

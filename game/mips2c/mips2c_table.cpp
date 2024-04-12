@@ -335,6 +335,17 @@ namespace particle_adgif { extern void link(); }
 namespace sp_init_fields { extern void link(); }
 namespace sp_process_block_2d { extern void link(); }
 namespace sp_process_block_3d { extern void link(); }
+namespace method_39_nav_state { extern void link(); }
+namespace method_21_nav_engine { extern void link(); }
+namespace method_20_nav_engine { extern void link(); }
+namespace method_18_nav_engine { extern void link(); }
+namespace method_17_nav_engine { extern void link(); }
+namespace nav_state_patch_pointers { extern void link(); }
+namespace nav_dma_send_from_spr_no_flush { extern void link(); }
+namespace nav_dma_send_to_spr_no_flush { extern void link(); }
+namespace blerc_execute { extern void link(); }
+namespace setup_blerc_chains_for_one_fragment { extern void link(); }
+namespace sparticle_motion_blur_dirt { extern void link(); }
 
 }
 // clang-format on
@@ -562,6 +573,15 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
          {jak3::sparticle_motion_blur::link, jak3::sp_launch_particles_var::link,
           jak3::particle_adgif::link, jak3::sp_init_fields::link}},
         {"sparticle", {jak3::sp_process_block_2d::link, jak3::sp_process_block_3d::link}},
+        {"nav-engine",
+         {jak3::method_21_nav_engine::link, jak3::method_20_nav_engine::link,
+          jak3::method_18_nav_engine::link, jak3::method_17_nav_engine::link,
+          jak3::nav_state_patch_pointers::link, jak3::nav_dma_send_from_spr_no_flush::link,
+          jak3::nav_dma_send_to_spr_no_flush::link}},
+        {"nav-control", {jak3::method_39_nav_state::link}},
+        {"merc-blend-shape",
+         {jak3::blerc_execute::link, jak3::setup_blerc_chains_for_one_fragment::link}},
+        {"wvehicle-part", {jak3::sparticle_motion_blur_dirt::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

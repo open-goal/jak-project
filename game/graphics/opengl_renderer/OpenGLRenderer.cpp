@@ -277,6 +277,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<TextureUploadHandler>("tex-sprite", BucketCategory::TEX,
                                                BucketId::TEX_SPRITE, texture_animator);
     init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
+    init_bucket_renderer<Generic2BucketRenderer>("generic-sprite-3", BucketCategory::OTHER,
+                                                 BucketId::GENERIC_SPRITE_3, m_generic2,
+                                                 Generic2::Mode::LIGHTNING);
     // 575
     init_bucket_renderer<TextureUploadHandler>("tex-warp", BucketCategory::TEX, BucketId::TEX_WARP,
                                                texture_animator);
@@ -289,10 +292,14 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
 
     init_bucket_renderer<TextureUploadHandler>("tex-hud-hud-alpha", BucketCategory::TEX,
                                                BucketId::TEX_HUD_HUD_ALPHA, texture_animator);
+    init_bucket_renderer<ProgressRenderer>("hud-draw-hud-alpha", BucketCategory::OTHER,
+                                           BucketId::HUD_DRAW_HUD_ALPHA, 0x8000);
     init_bucket_renderer<TextureUploadHandler>("tex-hud-pris2", BucketCategory::TEX,
                                                BucketId::TEX_HUD_PRIS2, texture_animator);
-    init_bucket_renderer<ProgressRenderer>("hud-draw-hud-alpha", BucketCategory::OTHER,
-                                           BucketId::HUD_DRAW_HUD_ALPHA, 0x1000);
+    init_bucket_renderer<TextureUploadHandler>("hud-draw-pris2", BucketCategory::TEX,
+                                               BucketId::HUD_DRAW_PRIS2, texture_animator);
+    init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::BUCKET582,
+                                           0x8000);
 
     // 583
     init_bucket_renderer<DirectRenderer>("debug", BucketCategory::OTHER, BucketId::DEBUG, 0x8000);

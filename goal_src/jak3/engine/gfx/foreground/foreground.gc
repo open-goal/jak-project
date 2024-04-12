@@ -1541,11 +1541,14 @@
    "
   (when (or (not (-> pd skel))
             (zero? (-> pd skel))
+            ;; types such as debris-group are not actually proper process-drawables and
+            ;; don't have a joint-control.
+            (symbol-member? (-> pd type symbol) '(debris-group))
             )
     (return #f)
     )
 
-  ;; grab the currently playing animatoin
+  ;; grab the currently playing animation
   (let* ((jc-channel (-> pd skel root-channel 0))
          (anim (-> jc-channel frame-group))
          (got-weights #f)
@@ -1636,8 +1639,6 @@
    (bit-flags pc-merc-bits)
    )
   )
-
-(define *use-fp-blerc* #f)
 
 (defun pc-merc-draw-request ((dc draw-control) (dma-buf pointer) (matrix-buf pointer) (tex-idx int) (update-verts symbol) (blercs (pointer float)))
   "Send a request to PC Merc2 to draw the given object.
