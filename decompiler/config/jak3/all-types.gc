@@ -53190,11 +53190,18 @@
     )
   )
 
+;; +++vehicle-h:vehicle-type-u8
+(defenum vehicle-type-u8
+  :type uint8
+  :copy-entries vehicle-type
+  )
+;; ---vehicle-h:vehicle-type-u8
+
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags               uint32                               :offset-assert 208)
    (object-type         uint8                                :offset-assert 212)
    (guard-type          uint8                                :offset-assert 213)
-   (vehicle-type        uint8                                :offset-assert 214)
+   (vehicle-type        vehicle-type-u8                      :offset-assert 214)
    (engine              vehicle-engine-info          :inline :offset-assert 216)
    (transmission        vehicle-transmission-info    :inline :offset-assert 256)
    (handling            vehicle-handling-info        :inline :offset-assert 308)
@@ -53290,6 +53297,7 @@
   (vf53 53)
   (vf54 54)
   (vf55 55)
+  (vf56 56)
   )
 ;; ---vehicle-h:vehicle-flag
 
@@ -53771,7 +53779,6 @@
 ;; turret-control                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype turret-barrel-info (structure)
   ((local-pos vector :inline :offset-assert 0)
    (local-dir vector :inline :offset-assert 16)
@@ -53780,11 +53787,35 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+(deftype turret-control-stack-var0 (structure)
+  ((params projectile-init-by-other-params :inline :offset 0)
+   (mat0 matrix :inline :offset 128)
+   (vec2 vector :inline :offset 192)
+   (vec3 vector :inline :offset 208)
+   )
+  )
+
+(deftype turret-control-stack-var1 (structure)
+  "TODO - sigh...another one that i cant seem to find a fit"
+  ((vec-1 vector :inline :offset-assert 0)
+   (vec-2 vector :inline :offset-assert 16)
+   (vec-3 vector :inline :offset-assert 32)
+   (vec-4 vector :inline :offset-assert 48)
+   (vec-5 vector :inline :offset-assert 64)
+   (vec-6 vector :inline :offset-assert 80)
+   (vec-7 vector :inline :offset-assert 96)
+   (mat-1 matrix :inline :offset-assert 112)
+   (vec-8 vector :inline :offset-assert 176)
+   (vec-9 vector :inline :offset-assert 192)
+   (vec-10 vector :inline :offset-assert 208)
+   (vec-11 vector :inline :offset-assert 224)
+   (vec-12 vector :inline :offset-assert 240)
+   )
+  )
+
 (deftype turret-control-info (structure)
-  ((shot-type              basic                      :offset-assert 0)
+  ((shot-type              type                       :offset-assert 0)
    (joint-index            int8                       :offset-assert 4)
    (barrel-count           int8                       :offset-assert 5)
    (shot-speed             float                      :offset-assert 8)
@@ -53794,21 +53825,30 @@
    (vehicle-impulse-factor float                      :offset-assert 24)
    (rot-min                float              2       :offset-assert 28) ;; guessed by decompiler
    (rot-max                float              2       :offset-assert 36) ;; guessed by decompiler
-   (rot-x-min              float                      :offset-assert 28)
-   (rot-x-max              float                      :offset-assert 36)
-   (rot-y-min              float                      :offset-assert 32)
-   (rot-y-max              float                      :offset-assert 40)
+   (rot-x-min              float                      :offset 28)
+   (rot-x-max              float                      :offset 36)
+   (rot-y-min              float                      :offset 32)
+   (rot-y-max              float                      :offset 40)
    (local-pos              vector             :inline :offset-assert 48)
    (local-dir              vector             :inline :offset-assert 64)
-   (barrel-array           turret-barrel-info 4       :offset-assert 80) ;; guessed by decompiler
+   (barrel-array           turret-barrel-info 4 :inline :offset-assert 80) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
+(defenum turret-flag
+  :bitfield #t
+  :type uint8
+  (firing 0)
+  (aiming 1)
+  (should-shoot 2)
+  (targetting-laser 3)
+  (display-marks 4)
+  (no-rot-y-clamp 5)
+  )
+
 (deftype turret-control (structure)
   ((info                 turret-control-info   :offset-assert 0)
    (guard-settings       squad-unit-settings   :offset-assert 4) ;; traffic-guard-type-settings
@@ -53820,42 +53860,41 @@
    (target-dist          float                 :offset-assert 16)
    (inaccuracy           float                 :offset-assert 20)
    (burst-delay-factor   float                 :offset-assert 24)
-   (aim-offset-angle     float                 :offset-assert 28) ;; degrees
+   (aim-offset-angle     degrees              :offset-assert 28) ;; degrees
    (aim-rot              float               2 :offset-assert 32) ;; guessed by decompiler
    (aim-rot-vel          float               2 :offset-assert 40) ;; guessed by decompiler
    (aim-rot-offset       float               2 :offset-assert 48) ;; guessed by decompiler
-   (aim-rot-x            float                 :offset-assert 32)
-   (aim-rot-y            float                 :offset-assert 36)
-   (aim-rot-vel-x        float                 :offset-assert 40)
-   (aim-rot-vel-y        float                 :offset-assert 44)
-   (target-in-sight-time uint64                :offset-assert 56) ;; time-frame
-   (aim-acquire-time     uint64                :offset-assert 64) ;; time-frame
-   (shoot-time           uint64                :offset-assert 72) ;; time-frame
-   (owner-handle         uint64                :offset-assert 80) ;; handle
-   (ignore-handle        uint64                :offset-assert 88)
+   (aim-rot-x            float                 :offset 32)
+   (aim-rot-y            float                 :offset 36)
+   (aim-rot-vel-x        float                 :offset 40)
+   (aim-rot-vel-y        float                 :offset 44)
+   (target-in-sight-time time-frame            :offset-assert 56) ;; time-frame
+   (aim-acquire-time     time-frame            :offset-assert 64) ;; time-frame
+   (shoot-time           time-frame            :offset-assert 72) ;; time-frame
+   (owner-handle         handle                :offset-assert 80) ;; handle
+   (ignore-handle        handle                :offset-assert 88)
    )
   :method-count-assert 18
   :size-assert         #x60
   :flag-assert         #x1200000060
   ;; field turret-flag is likely a value type.
   (:methods
-    (turret-control-method-9 () none) ;; 9 ;; (turret-control-method-9 (_type_ vehicle vector vector) none)
-    (turret-control-method-10 () none) ;; 10 ;; (turret-control-method-10 (_type_ vehicle) none)
-    (turret-control-method-11 () none) ;; 11 ;; (turret-control-method-11 (_type_ object object vector) none)
-    (turret-control-method-12 () none) ;; 12 ;; (update-joint-mod (_type_ joint-mod-rotate-local) none)
-    (turret-control-method-13 () none) ;; 13 ;; (turret-control-method-13 (_type_) none)
-    (turret-control-method-14 () none) ;; 14 ;; (turret-control-method-14 (_type_) none)
-    (turret-control-method-15 () none) ;; 15 ;; (set-info (_type_ turret-control-info) none)
-    (turret-control-method-16 () none) ;; 16 ;; (turret-control-method-16 (_type_ float float) none)
-    (turret-control-method-17 () none) ;; 17 ;; (turret-control-method-17 (_type_ vehicle) none)
+    (turret-control-method-9 (_type_ vehicle vector vector) none) ;; 9
+    (turret-control-method-10 (_type_ vehicle) none) ;; 10
+    (turret-control-method-11 (_type_ object object vector) none) ;; 11
+    (update-joint-mod (_type_ joint-mod-rotate-local) none) ;; 12
+    (turret-control-method-13 (_type_) none) ;; 13
+    (turret-control-method-14 (_type_) none) ;; 14
+    (set-info (_type_ turret-control-info) none) ;; 15
+    (turret-control-method-16 (_type_ float float) none) ;; 16
+    (turret-control-method-17 (_type_ vehicle) none) ;; 17
     )
   )
-|#
 
-;; (define-extern vehicle-los-clear? function) ;; (function vector vector symbol)
-;; (define-extern vehicle-draw-beam function) ;; (function sparticle-launcher vector vector object symbol none)
-;; (define-extern vehicle-draw-laser-spot function) ;; (function vector vector symbol none)
-;; (define-extern vehicle-draw-laser function) ;; (function vector vector none)
+(define-extern vehicle-los-clear? (function vector vector symbol))
+(define-extern vehicle-draw-beam (function sparticle-launcher vector vector object symbol none))
+(define-extern vehicle-draw-laser-spot (function vector vector symbol none))
+(define-extern vehicle-draw-laser (function vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-pilot                   ;;
@@ -58294,12 +58333,11 @@
 ;; wcar-scorpion                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-scorpion (wcar-base)
-  ((jmod-axles      UNKNOWN                4       :offset-assert 2752)
-   (jmod-shock-tops UNKNOWN                4       :offset-assert 2880)
-   (jmod-shock-mids UNKNOWN                4       :offset-assert 3008)
-   (jmod-shock-bots UNKNOWN                4       :offset-assert 3264)
+  ((jmod-axles      joint-mod-rotate-local 4 :inline :offset-assert 2752)
+   (jmod-shock-tops joint-mod-rotate-local 4 :inline :offset-assert 2880)
+   (jmod-shock-mids joint-mod-set-local    4 :inline :offset-assert 3008)
+   (jmod-shock-bots joint-mod-set-local    4 :inline :offset-assert 3264)
    (jmod-gun-kick   joint-mod-add-local    :inline :offset-assert 3520)
    (jmod-gun-tilt   joint-mod-add-local    :inline :offset-assert 3584)
    (jmod-gun-turn   joint-mod-rotate-local :inline :offset-assert 3648)
@@ -58308,50 +58346,71 @@
   :size-assert         #xe60
   :flag-assert         #xcb0de00e60
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-toad                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(deftype wcar-toad-stack-var0 (structure)
+  ((params projectile-init-by-other-params :inline :offset 0)
+   (mat0 matrix :inline :offset 128)
+   (vec0 vector :inline :offset 256)
+   (vec1 vector :inline :offset 272)
+   (vec2 vector :inline :offset 288)
+   (vec3 vector :inline :offset 304)
+   (vec4 vector :inline :offset 320)
+   (vec5 vector :inline :offset 336)
+   (vec6 vector :inline :offset 368)
+   (vec7 vector :inline :offset 384)
+   (vec8 vector :inline :offset 416)
+   (vec9 vector :inline :offset 432)
+   (vec10 vector :inline :offset 448)
+   (vec11 vector :inline :offset 464)
+   (barrel-idx int8 :offset 480)
+   )
+  )
+
 (deftype v-toad (wcar-base)
-  ((jmod-axles      UNKNOWN 4 :offset-assert 2752)
-   (jmod-shock-tops UNKNOWN 2 :offset-assert 2880)
-   (jmod-shock-bots UNKNOWN 2 :offset-assert 2944)
+  ((jmod-axles      joint-mod-rotate-local 4 :inline :offset-assert 2752)
+   (jmod-shock-tops joint-mod-rotate-local 2 :inline :offset-assert 2880)
+   (jmod-shock-bots joint-mod-set-local 2 :inline :offset-assert 2944)
    )
   :method-count-assert 204
   :size-assert         #xc00
   :flag-assert         #xcc0b800c00
   (:methods
-    (v-toad-method-203 () none) ;; 203
+    (v-toad-method-203 (_type_ vehicle-wheel-state vehicle-wheel-info) none) ;; 203
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-fox                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-fox (wcar-snake-base)
   ()
   :method-count-assert 203
   :size-assert         #xd60
   :flag-assert         #xcb0ce00d60
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-rhino                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; added
+(deftype wcar-rhino-proj-params (structure)
+  ((mat matrix :inline :offset 0)
+   (gun-local-pos vector :inline :offset 64)
+   (gun-local-dir vector :inline :offset 80)
+   (gun-dir vector :inline :offset 96)
+   (params projectile-init-by-other-params :inline :offset 128)
+   )
+  )
+
 (deftype v-rhino (wcar-base)
-  ((jmod-axles    UNKNOWN                4       :offset-assert 2752)
+  ((jmod-axles    joint-mod-rotate-local 4 :inline :offset-assert 2752)
    (jmod-gun-kick joint-mod-add-local    :inline :offset-assert 2880)
    (jmod-gun-turn joint-mod-rotate-local :inline :offset-assert 2944)
    )
@@ -58359,44 +58418,35 @@
   :size-assert         #xba0
   :flag-assert         #xcb0b200ba0
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-mirage                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-mirage (wcar-snake-base)
   ()
   :method-count-assert 203
   :size-assert         #xd60
   :flag-assert         #xcb0ce00d60
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-x-ride                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-x-ride (wcar-snake-base)
   ()
   :method-count-assert 203
   :size-assert         #xd60
   :flag-assert         #xcb0ce00d60
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-marauder                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-marauder (wcar-base)
-  ((jmod-axles        UNKNOWN                4       :offset-assert 2752)
+  ((jmod-axles        joint-mod-rotate-local 4 :inline :offset-assert 2752)
    (jmod-gun-x        joint-mod-rotate-local :inline :offset-assert 2880)
    (jmod-gun-y        joint-mod-rotate-local :inline :offset-assert 2912)
    (jmod-hatch        joint-mod-rotate-local :inline :offset-assert 2944)
@@ -58408,17 +58458,16 @@
   :method-count-assert 204
   :size-assert         #xc09
   :flag-assert         #xcc0b900c09
-  (:methods
-    (v-marauder-method-203 () none) ;; 203
-    )
   (:state-methods
     explode ;; 60
     )
+  (:methods
+    (v-marauder-method-203 () none) ;; 203
+    )
   )
-|#
 
-;; (define-extern *v-marauder-turret-control-info* object)
-;; (define-extern *v-marauder-turret-guard-settings* object)
+(define-extern *v-marauder-turret-control-info* object)
+(define-extern *v-marauder-turret-guard-settings* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; w-parking-spot                 ;;
