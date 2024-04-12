@@ -345,6 +345,7 @@ namespace nav_dma_send_from_spr_no_flush { extern void link(); }
 namespace nav_dma_send_to_spr_no_flush { extern void link(); }
 namespace blerc_execute { extern void link(); }
 namespace setup_blerc_chains_for_one_fragment { extern void link(); }
+namespace sparticle_motion_blur_dirt { extern void link(); }
 
 }
 // clang-format on
@@ -580,6 +581,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"nav-control", {jak3::method_39_nav_state::link}},
         {"merc-blend-shape",
          {jak3::blerc_execute::link, jak3::setup_blerc_chains_for_one_fragment::link}},
+        {"wvehicle-part", {jak3::sparticle_motion_blur_dirt::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
