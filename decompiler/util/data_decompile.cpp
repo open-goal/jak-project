@@ -1007,6 +1007,11 @@ const std::unordered_map<
                 ArrayFieldDecompMeta(TypeSpec("idle-control-frame"),
                                      32,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
+             {"vehicle-rider-info",
+              {{"attach-point-array",
+                ArrayFieldDecompMeta(TypeSpec("vehicle-attach-point"),
+                                     32,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
