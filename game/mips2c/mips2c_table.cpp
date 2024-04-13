@@ -346,6 +346,10 @@ namespace nav_dma_send_to_spr_no_flush { extern void link(); }
 namespace blerc_execute { extern void link(); }
 namespace setup_blerc_chains_for_one_fragment { extern void link(); }
 namespace sparticle_motion_blur_dirt { extern void link(); }
+namespace ripple_matrix_scale { extern void link(); }
+namespace ripple_apply_wave_table { extern void link(); }
+namespace ripple_create_wave_table { extern void link(); }
+namespace ripple_execute_init { extern void link(); }
 
 }
 // clang-format on
@@ -582,6 +586,9 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"merc-blend-shape",
          {jak3::blerc_execute::link, jak3::setup_blerc_chains_for_one_fragment::link}},
         {"wvehicle-part", {jak3::sparticle_motion_blur_dirt::link}},
+        {"ripple",
+         {jak3::ripple_matrix_scale::link, jak3::ripple_apply_wave_table::link,
+          jak3::ripple_create_wave_table::link, jak3::ripple_execute_init::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {
