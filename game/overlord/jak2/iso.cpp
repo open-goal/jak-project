@@ -677,7 +677,11 @@ u32 ISOThread() {
       pLVar14 = (VagStrListNode*)NewStreamsList.next;
       do {
         if (pLVar14->id != 0) {
-          QueueVAGStream(pLVar14);
+          if (g_game_version != GameVersion::Jak3) {
+            // doesn't work.
+            printf("jak3 skipping vag stream\n");
+            QueueVAGStream(pLVar14);
+          }
         }
         pLVar14 = (VagStrListNode*)pLVar14->list.next;
         iVar4 = iVar4 + 1;
