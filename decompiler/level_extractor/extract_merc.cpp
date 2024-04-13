@@ -228,8 +228,14 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::DEST) {
     // Cv = (Cs - Cd) * FIX + Cd
-    ASSERT(reg.fix() == 64);
-    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+    if (reg.fix() == 64) {
+      mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+    } else if (reg.fix() == 128) {
+      // Cv = (Cs - Cd) + Cd = Cs... no blend.
+      mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
+    } else {
+      ASSERT_NOT_REACHED();
+    }
   } else if (reg.a_mode() == GsAlpha::BlendMode::DEST &&
              reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
