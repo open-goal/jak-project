@@ -7190,6 +7190,7 @@
    (target-brightness float  :offset-assert 8)
    (speed             float  :offset-assert 12)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
@@ -28235,7 +28236,7 @@
   (:methods
     (debug-draw (_type_) none) ;; 9
     (nav-mesh-method-10 (_type_ vector vector nav-poly) nav-poly) ;; 10
-    (nav-mesh-method-11 (_type_ vector) none) ;; 11
+    (nav-mesh-method-11 (_type_ vector) nav-poly) ;; 11
     (nav-mesh-method-12 (_type_ vector float nav-poly) symbol) ;; 12
     (poly-centroid (_type_ nav-poly vector) vector) ;; 13
     (poly-centroid-local (_type_ nav-poly vector) vector) ;; 14
@@ -30093,7 +30094,7 @@
 (define-extern ripple-create-wave-table (function ripple-wave-set int))
 (define-extern ripple-apply-wave-table (function merc-effect symbol))
 (define-extern ripple-execute (function none))
-(define-extern ripple-matrix-scale function)
+(define-extern ripple-matrix-scale (function merc-effect none))
 (define-extern ripple-add-debug-sphere (function process-drawable vector float float none))
 (define-extern ripple-slow-add-sine-waves (function ripple-wave-set float float float))
 (define-extern ripple-find-height (function process-drawable int vector float))
@@ -50491,7 +50492,6 @@
 ;; nst-mood                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nsta-states (structure)
   ((poison-interp float  :offset-assert 0)
    )
@@ -50499,280 +50499,253 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype nstb-states (structure)
   ((poison-interp float     :offset-assert 0)
-   (pulse         UNKNOWN 5 :offset-assert 4)
+   (pulse         pulse-state 5 :inline :offset 4)
    )
   :method-count-assert 9
   :size-assert         #x54
   :flag-assert         #x900000054
   )
-|#
 
-;; (define-extern update-nst-lights function)
-;; (define-extern update-mood-nsta function)
-;; (define-extern init-mood-nstb function)
-;; (define-extern update-mood-nstb function)
-;; (define-extern *nstb-light-mode* object)
-;; (define-extern set-nstb-lights! function)
+(define-extern update-nst-lights (function mood-context float none))
+(define-extern update-mood-nsta (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-nstb (function mood-context float))
+(define-extern update-mood-nstb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *nstb-light-mode* int)
+(define-extern set-nstb-lights! (function int float float symbol none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nst-part                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-color-ceiling-dust* curve-color-fast)
-;; (define-extern *range-alpha-ceiling-dust* curve2d-fast)
-;; (define-extern *range-scale-ceiling-dust-x* curve2d-fast)
-;; (define-extern *range-scale-ceiling-dust-y* curve2d-fast)
-;; (define-extern *curve-alpha-ceiling-dust* curve2d-fast)
-;; (define-extern *curve-ceiling-dust-x* curve2d-fast)
-;; (define-extern *curve-ceiling-dust-y* curve2d-fast)
-;; (define-extern *part-nest-ceiling-dust-curve-settings* object)
-;; (define-extern birth-func-find-ground function)
-;; (define-extern spt-func-check-hit-ground function)
-;; (define-extern *range-color-ground-impact-dust* curve-color-fast)
-;; (define-extern *range-alpha-ground-impact-dust* curve2d-fast)
-;; (define-extern *range-scale-ground-impact-dust-x* curve2d-fast)
-;; (define-extern *range-scale-ground-impact-dust-y* curve2d-fast)
-;; (define-extern *curve-alpha-ground-impact-dust* curve2d-fast)
-;; (define-extern *curve-ground-impact-dust-x* curve2d-fast)
-;; (define-extern *curve-ground-impact-dust-y* curve2d-fast)
-;; (define-extern *part-nest-ground-impact-dust-curve-settings* object)
-;; (define-extern part-nest-bat1-path function)
-;; (define-extern part-nest-bat2-path function)
-;; (define-extern part-nest-bat3-path function)
-;; (define-extern part-nest-bat4-path function)
-;; (define-extern part-nest-bat5-path function)
-;; (define-extern part-nest-bat6-path function)
-;; (define-extern part-nest-bat7-path function)
-;; (define-extern part-nest-bat8-path function)
-;; (define-extern part-nest-bat9-path function)
-;; (define-extern part-nest-bat10-path function)
-;; (define-extern *range-nst-splash-color* curve-color-fast)
-;; (define-extern *range-nst-splash-alpha* curve2d-fast)
-;; (define-extern *range-nst-splash-scale-x* curve2d-fast)
-;; (define-extern *range-nst-splash-scale-y* curve2d-fast)
-;; (define-extern *curve-nst-splash-alpha* curve2d-fast)
-;; (define-extern *curve-nst-splash-scale-x* curve2d-fast)
-;; (define-extern *curve-nst-splash-scale-y* curve2d-fast)
-;; (define-extern *part-bridge-break-splash-curve-settings* object)
-;; (define-extern birth-func-nstb-set-height-and-curve function)
-;; (define-extern birth-func-nstb-set-height function)
-;; (define-extern birth-func-nstb-set-height-and-texture-group function)
-;; (define-extern *range-color-cocoon-poison-gas* curve-color-fast)
-;; (define-extern *range-alpha-cocoon-poison-gas* curve2d-fast)
-;; (define-extern *range-scale-cocoon-poison-gas-x* curve2d-fast)
-;; (define-extern *range-scale-cocoon-poison-gas-y* curve2d-fast)
-;; (define-extern *r-curve-cocoon-poison-gas* curve2d-fast)
-;; (define-extern *g-curve-cocoon-poison-gas* curve2d-fast)
-;; (define-extern *b-curve-cocoon-poison-gas* curve2d-fast)
-;; (define-extern *curve-alpha-cocoon-poison-gas* curve2d-fast)
-;; (define-extern *curve-cocoon-poison-gas-x* curve2d-fast)
-;; (define-extern *curve-cocoon-poison-gas-y* curve2d-fast)
-;; (define-extern *part-cocoon-poison-gas-curve-settings* object)
+(define-extern *range-color-ceiling-dust* curve-color-fast)
+(define-extern *range-alpha-ceiling-dust* curve2d-fast)
+(define-extern *range-scale-ceiling-dust-x* curve2d-fast)
+(define-extern *range-scale-ceiling-dust-y* curve2d-fast)
+(define-extern *curve-alpha-ceiling-dust* curve2d-fast)
+(define-extern *curve-ceiling-dust-x* curve2d-fast)
+(define-extern *curve-ceiling-dust-y* curve2d-fast)
+(define-extern *part-nest-ceiling-dust-curve-settings* particle-curve-settings)
+(define-extern birth-func-find-ground (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-check-hit-ground (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern *range-color-ground-impact-dust* curve-color-fast)
+(define-extern *range-alpha-ground-impact-dust* curve2d-fast)
+(define-extern *range-scale-ground-impact-dust-x* curve2d-fast)
+(define-extern *range-scale-ground-impact-dust-y* curve2d-fast)
+(define-extern *curve-alpha-ground-impact-dust* curve2d-fast)
+(define-extern *curve-ground-impact-dust-x* curve2d-fast)
+(define-extern *curve-ground-impact-dust-y* curve2d-fast)
+(define-extern *part-nest-ground-impact-dust-curve-settings* particle-curve-settings)
+(define-extern part-nest-bat1-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat2-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat3-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat4-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat5-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat6-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat7-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat8-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat9-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-nest-bat10-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *range-nst-splash-color* curve-color-fast)
+(define-extern *range-nst-splash-alpha* curve2d-fast)
+(define-extern *range-nst-splash-scale-x* curve2d-fast)
+(define-extern *range-nst-splash-scale-y* curve2d-fast)
+(define-extern *curve-nst-splash-alpha* curve2d-fast)
+(define-extern *curve-nst-splash-scale-x* curve2d-fast)
+(define-extern *curve-nst-splash-scale-y* curve2d-fast)
+(define-extern *part-bridge-break-splash-curve-settings* particle-curve-settings)
+(define-extern birth-func-nstb-set-height-and-curve (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-nstb-set-height (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern birth-func-nstb-set-height-and-texture-group (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern *range-color-cocoon-poison-gas* curve-color-fast)
+(define-extern *range-alpha-cocoon-poison-gas* curve2d-fast)
+(define-extern *range-scale-cocoon-poison-gas-x* curve2d-fast)
+(define-extern *range-scale-cocoon-poison-gas-y* curve2d-fast)
+(define-extern *r-curve-cocoon-poison-gas* curve2d-fast)
+(define-extern *g-curve-cocoon-poison-gas* curve2d-fast)
+(define-extern *b-curve-cocoon-poison-gas* curve2d-fast)
+(define-extern *curve-alpha-cocoon-poison-gas* curve2d-fast)
+(define-extern *curve-cocoon-poison-gas-x* curve2d-fast)
+(define-extern *curve-cocoon-poison-gas-y* curve2d-fast)
+(define-extern *part-cocoon-poison-gas-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nst-obs                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype nst-water-anim (water-anim)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype nst-metalhead-eggs (process-focusable)
-  ((actor-group  basic  :offset-assert 208)
-   (notify-actor basic  :offset-assert 212)
+  ((actor-group  actor-group :offset-assert 208)
+   (notify-actor entity-actor :offset-assert 212)
    )
   :method-count-assert 33
   :size-assert         #xd8
   :flag-assert         #x21006000d8
-  (:methods
-    (nst-metalhead-eggs-method-31 () none) ;; 31
-    (nst-metalhead-eggs-method-32 () none) ;; 32
-    )
   (:state-methods
-    die-fast ;; 30
-    die ;; 29
     idle ;; 28
+    die ;; 29
+    die-fast ;; 30
+    )
+  (:methods
+    (init-skel-and-jcontrol! (_type_) none) ;; 31
+    (init-collision! (_type_) none) ;; 32
     )
   )
-|#
 
-#|
 (deftype nst-metalhead-eggs-a (nst-metalhead-eggs)
   ()
   :method-count-assert 33
   :size-assert         #xd8
   :flag-assert         #x21006000d8
   )
-|#
 
-#|
 (deftype nst-metalhead-eggs-b (nst-metalhead-eggs)
   ()
   :method-count-assert 33
   :size-assert         #xd8
   :flag-assert         #x21006000d8
   )
-|#
 
-#|
 (deftype nst-metalhead-eggs-c (nst-metalhead-eggs)
   ()
   :method-count-assert 33
   :size-assert         #xd8
   :flag-assert         #x21006000d8
   )
-|#
 
-#|
 (deftype nst-bridge-base (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (nst-bridge-base-method-21 () none) ;; 21
-    (nst-bridge-base-method-22 () none) ;; 22
-    )
   (:state-methods
     nst-bridge-base-state ;; 20
     )
+  (:methods
+    (get-skel (_type_) art-group) ;; 21
+    (init-collision! (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype nst-falling-stone-bridge-goo (process-drawable)
   ()
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
     )
   )
-|#
 
-#|
 (deftype nst-falling-stone-bridge (nst-bridge-base)
   ((fall-anim         int32               :offset-assert 200)
-   (goo               uint32              :offset-assert 204)
-   (actor-group       basic               :offset-assert 208)
+   (goo               (pointer nst-falling-stone-bridge-goo) :offset-assert 204)
+   (actor-group       actor-group         :offset-assert 208)
    (egg-threshold     uint8               :offset-assert 212)
-   (stop-bridge-sound basic               :offset-assert 216)
-   (bridge-sound      uint32              :offset-assert 220)
+   (stop-bridge-sound symbol              :offset-assert 216)
+   (bridge-sound      sound-id            :offset-assert 220)
    (minimap           connection-minimap  :offset-assert 224)
    )
   :method-count-assert 27
   :size-assert         #xe4
   :flag-assert         #x1b007000e4
   (:state-methods
-    grounded ;; 26
-    falling ;; 25
-    explode-dispatch ;; 24
     idle ;; 23
+    explode-dispatch ;; 24
+    falling ;; 25
+    grounded ;; 26
     )
   )
-|#
 
-#|
 (deftype nst-collapsing-stone-bridge (nst-bridge-base)
-  ((anim              basic   :offset-assert 200)
+  ((root              collide-shape-moving :override)
+   (anim              spool-anim :offset-assert 200)
    (exit-anim         int32   :offset-assert 204)
    (bridge-type       uint64  :offset-assert 208)
-   (stop-bridge-sound basic   :offset-assert 216)
-   (bridge-sound      uint32  :offset-assert 220)
+   (stop-bridge-sound symbol  :offset-assert 216)
+   (bridge-sound      sound-id :offset-assert 220)
    )
   :method-count-assert 27
   :size-assert         #xe0
   :flag-assert         #x1b006000e0
   (:state-methods
-    collapse-fast ;; 26
-    collapsed ;; 25
-    collapsing ;; 24
     idle ;; 23
+    collapsing ;; 24
+    collapsed ;; 25
+    collapse-fast ;; 26
     )
   )
-|#
 
-#|
 (deftype cocoon-grenade-shot (metalhead-grenade-shot)
   ()
   :method-count-assert 41
   :size-assert         #x214
   :flag-assert         #x2901a00214
   )
-|#
 
-#|
 (deftype nst-cocoon-a (enemy)
-  ((alt-actor            basic                       :offset-assert 552)
+  ((alt-actor            entity-actor                :offset-assert 552)
    (activate-distance    float                       :offset-assert 556)
-   (can-shoot?           basic                       :offset-assert 560)
-   (last-attack-time     uint64                      :offset-assert 568)
+   (can-shoot?           symbol                      :offset-assert 560)
+   (last-attack-time     time-frame                  :offset-assert 568)
    (turret               joint-mod-set-world :inline :offset-assert 576)
    (dest-quat            quaternion          :inline :offset-assert 640)
-   (cycling?             basic                       :offset-assert 656)
+   (cycling?             symbol                      :offset-assert 656)
    (cycle-rot            float                       :offset-assert 660)
    (shots-left           uint8                       :offset-assert 664)
-   (cocoon-part          basic                       :offset-assert 668)
-   (charge-down-part     basic                       :offset-assert 672)
-   (charge-up-part       basic                       :offset-assert 676)
-   (sound-turret-loop-id uint32                      :offset-assert 680)
-   (sound-turret-loop    basic                       :offset-assert 684)
+   (cocoon-part          sparticle-launch-control    :offset-assert 668)
+   (charge-down-part     sparticle-launch-control    :offset-assert 672)
+   (charge-up-part       sparticle-launch-control    :offset-assert 676)
+   (sound-turret-loop-id sound-id                    :offset-assert 680)
+   (sound-turret-loop    sound-spec                  :offset-assert 684)
    (palette-id           int32                       :offset-assert 688)
    (minimap              connection-minimap          :offset-assert 692)
    )
   :method-count-assert 156
   :size-assert         #x2b8
   :flag-assert         #x9c024002b8
-  (:methods
-    (nst-cocoon-a-method-155 () none) ;; 155
-    )
   (:state-methods
-    die ;; 40
     hit ;; 30
+    notice ;; 35
     stare ;; 37
     hostile ;; 38
-    notice ;; 35
+    die ;; 40
+    )
+  (:methods
+    (fire-shot! (_type_ symbol) none) ;; 155
     )
   )
-|#
 
-#|
 (deftype nst-cocoon-b (process-drawable)
-  ((sound-amb-loop-id uint32  :offset-assert 200)
-   (sound-amb-loop    basic   :offset-assert 204)
-   (gas-sound-id      uint32  :offset-assert 208)
+  ((sound-amb-loop-id sound-id :offset-assert 200)
+   (sound-amb-loop    sound-spec :offset-assert 204)
+   (gas-sound-id      sound-id :offset-assert 208)
    )
   :method-count-assert 25
   :size-assert         #xd4
   :flag-assert         #x19006000d4
   (:state-methods
-    retracted ;; 24
-    releasing-poison ;; 23
-    wait-for-cocoons ;; 22
-    retracting ;; 21
     idle ;; 20
+    retracting ;; 21
+    wait-for-cocoons ;; 22
+    releasing-poison ;; 23
+    retracted ;; 24
     )
   )
-|#
 
-#|
 (deftype nst-light-barrier (process-focusable)
   ((pass               int32          :offset-assert 208)
    (incoming-attack-id uint32         :offset-assert 212)
-   (next-message-time  uint64         :offset-assert 216)
+   (next-message-time  time-frame     :offset-assert 216)
    (message            int32          :offset-assert 224)
    (plane              plane  :inline :offset-assert 240)
    (color              vector :inline :offset-assert 256)
@@ -50781,27 +50754,26 @@
   :method-count-assert 31
   :size-assert         #x120
   :flag-assert         #x1f00a00120
-  (:methods
-    (nst-light-barrier-method-29 () none) ;; 29
-    (nst-light-barrier-method-30 () none) ;; 30
-    )
   (:state-methods
     idle ;; 28
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 29
+    (set-proc-mask! (_type_) none) ;; 30
+    )
   )
-|#
 
-;; (define-extern ripple-for-nst-water-anim ripple-wave-set)
-;; (define-extern *nst-metalhead-eggs-last-sound-time* object)
-;; (define-extern *nst-falling-stone-bridge-goo-exploder-params* joint-exploder-static-params)
-;; (define-extern nst-falling-stone-bridge-goo-init-by-other function)
-;; (define-extern *nst-falling-stone-bridge-part-nodes* array)
-;; (define-extern sound-exit function)
-;; (define-extern *nst-bridge-break-anims* array)
-;; (define-extern *nst-bridge-break-exit-anims* array)
-;; (define-extern *nst-cocoon-a-enemy-info* enemy-info)
-;; (define-extern *nst-cocoon-a-goop-joints* array)
-;; (define-extern *nst-cocoon-a-exploder-params* joint-exploder-static-params)
+(define-extern ripple-for-nst-water-anim ripple-wave-set)
+(define-extern *nst-metalhead-eggs-last-sound-time* time-frame)
+(define-extern *nst-falling-stone-bridge-goo-exploder-params* joint-exploder-static-params)
+(define-extern nst-falling-stone-bridge-goo-init-by-other (function entity-actor object :behavior nst-falling-stone-bridge-goo))
+(define-extern *nst-falling-stone-bridge-part-nodes* (array int32))
+(define-extern sound-exit (function none :behavior nst-falling-stone-bridge))
+(define-extern *nst-bridge-break-anims* (array spool-anim))
+(define-extern *nst-bridge-break-exit-anims* (array int32))
+(define-extern *nst-cocoon-a-enemy-info* enemy-info)
+(define-extern *nst-cocoon-a-goop-joints* (array int16))
+(define-extern *nst-cocoon-a-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-bat                         ;;
@@ -50863,32 +50835,29 @@
 ;; egg-spider                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype egg-spider-shot (metalhead-grenade-shot)
   ()
   :method-count-assert 41
   :size-assert         #x214
   :flag-assert         #x2901a00214
   )
-|#
 
-#|
 (deftype egg-spider (nav-enemy)
   ((base-height       float              :offset-assert 620)
    (target-pos        vector     :inline :offset-assert 624)
    (offset-target-pos vector     :inline :offset-assert 640)
-   (change-dir-time   uint64             :offset-assert 656)
-   (last-change-dir   uint64             :offset-assert 664)
-   (onscreen-time     uint64             :offset-assert 672)
-   (next-explosion    uint64             :offset-assert 680)
+   (change-dir-time   time-frame         :offset-assert 656)
+   (last-change-dir   time-frame         :offset-assert 664)
+   (onscreen-time     time-frame         :offset-assert 672)
+   (next-explosion    time-frame         :offset-assert 680)
    (move-angle        float              :offset-assert 688)
-   (heading           basic              :offset-assert 692)
+   (heading           symbol             :offset-assert 692)
    (size              float              :offset-assert 696)
    (angle-spot        float              :offset-assert 700)
-   (trackable?        basic              :offset-assert 704)
-   (vehicle-attack?   basic              :offset-assert 708)
+   (trackable?        symbol             :offset-assert 704)
+   (vehicle-attack?   symbol             :offset-assert 708)
    (seat-index        int32              :offset-assert 712)
-   (wvehicle          uint64             :offset-assert 720)
+   (wvehicle          handle             :offset-assert 720)
    (vec-up            vector     :inline :offset-assert 736)
    (vec-up-speed      vector     :inline :offset-assert 752)
    (traj              trajectory :inline :offset-assert 768)
@@ -50898,74 +50867,72 @@
   :method-count-assert 197
   :size-assert         #x344
   :flag-assert         #xc502d00344
-  (:methods
-    (egg-spider-method-190 () none) ;; 190
-    (egg-spider-method-194 () none) ;; 194
-    (egg-spider-method-195 () none) ;; 195
-    (egg-spider-method-196 () none) ;; 196
-    )
   (:state-methods
-    ambush ;; 47
     knocked ;; 31
+    idle ;; 33
     hostile ;; 38
+    ambush ;; 47
+    undefined ;; 190, not defined
+    attack ;; 191
     on-vehicle ;; 192
     jump-on-vehicle ;; 193
-    attack ;; 191
-    idle ;; 33
+    )
+  (:methods
+    (egg-spider-method-194 (_type_) none) ;; 194
+    (egg-spider-method-195 (_type_ nav-control vector) none) ;; 195
+    (kill-if-offscreen (_type_) object) ;; 196
     )
   )
-|#
 
-#|
 (deftype spider-manager (process-drawable)
-  ((count-alive       int32          :offset-assert 196)
-   (next-spawn-time   uint64         :offset-assert 204)
-   (min-spawn-delay   int32          :offset-assert 212)
-   (max-spawn-delay   int32          :offset-assert 216)
-   (next-spot-time    uint64         :offset-assert 220)
-   (min-spot-delay    int32          :offset-assert 228)
-   (max-spot-delay    int32          :offset-assert 232)
-   (actor-group       uint32         :offset-assert 236)
-   (actor-group-count int32          :offset-assert 240)
-   (spawn-pos         vector :inline :offset-assert 252)
-   (nav-id            uint32         :offset-assert 268)
-   (can-rid           uint64         :offset-assert 276)
-   (next-explosion    uint64         :offset-assert 284)
-   (num-nav-mesh      int32          :offset-assert 292)
-   (count-max         int32          :offset-assert 296)
-   (max-spawn-size    float          :offset-assert 300)
-   (count-death       uint32         :offset-assert 304)
+  ((child            (pointer egg-spider)     :override)
+   (count-alive       int32          :offset-assert 200)
+   (next-spawn-time   time-frame     :offset-assert 208)
+   (min-spawn-delay   int32          :offset-assert 216)
+   (max-spawn-delay   int32          :offset-assert 220)
+   (next-spot-time    time-frame     :offset-assert 224)
+   (min-spot-delay    int32          :offset-assert 232)
+   (max-spot-delay    int32          :offset-assert 236)
+   (actor-group       (pointer actor-group) :offset-assert 240)
+   (actor-group-count int32          :offset-assert 244)
+   (spawn-pos         vector :inline :offset-assert 256)
+   (nav-id            uint32         :offset-assert 272)
+   (can-rid           handle         :offset-assert 280)
+   (next-explosion    time-frame     :offset-assert 288)
+   (num-nav-mesh      int32          :offset-assert 296)
+   (count-max         int32          :offset-assert 300)
+   (max-spawn-size    float          :offset-assert 304)
+   (count-death       uint32         :offset-assert 308)
    )
   :method-count-assert 26
   :size-assert         #x138
   :flag-assert         #x1a00c00138
-  (:methods
-    (spider-manager-method-21 () none) ;; 21
-    (spider-manager-method-22 () none) ;; 22
-    (spider-manager-method-23 () none) ;; 23
-    (spider-manager-method-24 () none) ;; 24
-    (spider-manager-method-25 () none) ;; 25
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (spider-manager-method-21 (_type_) none) ;; 21
+    (go-idle (_type_) object) ;; 22
+    (check-can-rid (_type_) int) ;; 23
+    (spider-manager-method-24 (_type_ vector) none) ;; 24
+    (spider-manager-method-25 (_type_ sphere) symbol) ;; 25
+    )
   )
-|#
 
-;; (define-extern *egg-spider-always-trackable?* object)
-;; (define-extern check-drop-level-egg-spider-dirt-rubble function)
-;; (define-extern spt-birth-func-brightness-egg-spider function)
-;; (define-extern spt-birth-func-part-egg-spider-clumps function)
-;; (define-extern spt-func-part-egg-spider-clumps function)
-;; (define-extern spt-birth-func-part-egg-spider-clumps-mass function)
-;; (define-extern spt-func-part-egg-spider-clumps-mass function)
-;; (define-extern spt-birth-func-part-egg-spider-clumps-pop function)
-;; (define-extern spt-func-part-egg-spider-clumps-pop function)
-;; (define-extern spt-birth-func-part-egg-spider-clumps-stays function)
-;; (define-extern spt-func-part-egg-spider-clumps-stays function)
-;; (define-extern *egg-spider-nav-enemy-info* nav-enemy-info)
-;; (define-extern *egg-spider-next-knocked-vehicle* object)
-;; (define-extern egg-spider-init-by-other function)
+(define-extern *egg-spider-always-trackable?* symbol)
+(define-extern check-drop-level-egg-spider-dirt-rubble (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern spt-birth-func-brightness-egg-spider (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-egg-spider-clumps (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-egg-spider-clumps (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-egg-spider-clumps-mass (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-egg-spider-clumps-mass (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-egg-spider-clumps-pop (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-egg-spider-clumps-pop (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-egg-spider-clumps-stays (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-egg-spider-clumps-stays (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern *egg-spider-nav-enemy-info* nav-enemy-info)
+(define-extern *egg-spider-next-knocked-vehicle* time-frame)
+(define-extern egg-spider-init-by-other (function spider-manager enemy-init-by-other-params float object :behavior egg-spider))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nest-scenes                    ;;
@@ -52592,11 +52559,11 @@
    (shot-count       int8    :offset-assert 1)
    (rand-shot-count  int8    :offset-assert 2)
    (inaccuracy       float   :offset-assert 4)
-   (acquire-delay    uint16  :offset-assert 8)
-   (shot-delay       uint16  :offset-assert 10)
-   (burst-delay      uint16  :offset-assert 12)
-   (rand-burst-delay uint16  :offset-assert 14)
-   (rand-shot-delay  uint16  :offset-assert 16)
+   (acquire-delay    uint16  :offset-assert 8 :decomp-as time-frame)
+   (shot-delay       uint16  :offset-assert 10 :decomp-as time-frame)
+   (burst-delay      uint16  :offset-assert 12 :decomp-as time-frame)
+   (rand-burst-delay uint16  :offset-assert 14 :decomp-as time-frame)
+   (rand-shot-delay  uint16  :offset-assert 16 :decomp-as time-frame)
    )
   :method-count-assert 9
   :size-assert         #x12
@@ -53430,7 +53397,7 @@
     (vehicle-method-65 (_type_) int) ;; 65 ;; (start-jump (_type_) none)
     (vehicle-method-66 (_type_ vector int) none) ;; 66
     (get-rider-in-seat (_type_ int) process) ;; 67 ;; (get-seat-count (_type_) int)
-    (vehicle-method-68 (_type_) none) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
+    (vehicle-method-68 (_type_) process) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
     (put-rider-in-seat (_type_ int process) none) ;; 69 ;; (get-rider-in-seat (_type_ int) process)
     (vehicle-method-70 (_type_) none) ;; 70 ;; (vehicle-method-70 (_type_) process)
     (get-best-seat (_type_ vector vehicle-seat-flag int) int) ;; 71 ;; (put-rider-in-seat (_type_ int process-focusable) none)
@@ -53797,7 +53764,6 @@
   )
 
 (deftype turret-control-stack-var1 (structure)
-  "TODO - sigh...another one that i cant seem to find a fit"
   ((vec-1 vector :inline :offset-assert 0)
    (vec-2 vector :inline :offset-assert 16)
    (vec-3 vector :inline :offset-assert 32)
@@ -57032,115 +56998,108 @@
 ;; nst-eggs-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *nest-eggs-speech-list* object)
+(define-extern *nest-eggs-speech-list* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sig-rider                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype sig-rider (process-focusable)
   ((front-back-interp float   :offset-assert 208)
    (left-right-interp float   :offset-assert 212)
    (up-down-interp    float   :offset-assert 216)
-   (complain-time     uint64  :offset-assert 224)
+   (complain-time     time-frame :offset-assert 224)
    (complain-speech   int32   :offset-assert 232)
-   (last-moved-time   uint64  :offset-assert 240)
+   (last-moved-time   time-frame :offset-assert 240)
    )
   :method-count-assert 30
   :size-assert         #xf8
   :flag-assert         #x1e008000f8
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
     )
   )
-|#
 
-;; (define-extern sig-pilot-trans function)
-;; (define-extern sig-pilot-wcar-anim-loop function)
-;; (define-extern sig-rider-init-by-other function)
-;; (define-extern sig-rider-spawn function)
+(define-extern sig-pilot-trans (function none :behavior sig-rider))
+(define-extern sig-pilot-wcar-anim-loop (function none :behavior sig-rider))
+(define-extern sig-rider-init-by-other (function vehicle symbol object :behavior sig-rider))
+(define-extern sig-rider-spawn (function vehicle symbol sig-rider))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nst-gas                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-nest-cocoon-gas (task-manager)
-  ((vehicle-handle        uint64              :offset-assert 240)
-   (poison-cloud-timer    uint64              :offset-assert 248)
+  ((vehicle-handle        handle              :offset-assert 240)
+   (poison-cloud-timer    time-frame          :offset-assert 248)
    (poison-level          float               :offset-assert 256)
-   (played-damus-talkbox? basic               :offset-assert 260)
+   (played-damus-talkbox? symbol              :offset-assert 260)
    (minimap               connection-minimap  :offset-assert 264)
-   (complain-time         uint64              :offset-assert 272)
-   (played-gas-warning    basic               :offset-assert 280)
-   (part                  basic               :offset-assert 284)
+   (complain-time         time-frame          :offset-assert 272)
+   (played-gas-warning    symbol              :offset-assert 280)
+   (part                  sparticle-launch-control :offset-assert 284)
    )
   :method-count-assert 33
   :size-assert         #x120
   :flag-assert         #x2100a00120
   (:state-methods
-    paused ;; 32
     active ;; 15
+    paused ;; 32
     )
   )
-|#
 
-;; (define-extern *nest-poison-center* object)
-;; (define-extern *garage-center* object)
-;; (define-extern set-nst-poison! function)
-;; (define-extern birth-func-set-fog-num function)
+(define-extern *nest-poison-center* vector)
+(define-extern *garage-center* vector)
+(define-extern set-nst-poison! (function mood-context none))
+(define-extern birth-func-set-fog-num (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nst-tasks                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-nest-cocoons (task-manager)
-  ((vehicle-handle        uint64              :offset-assert 236)
-   (cocoon-manager-entity basic               :offset-assert 244)
-   (cocoon-count          int32               :offset-assert 248)
-   (kill-cocoon-speech    int32               :offset-assert 252)
-   (minimap               connection-minimap  :offset-assert 256)
-   (actor-group           uint32              :offset-assert 260)
-   (actor-group-count     int32               :offset-assert 264)
-   (tunnel                basic               :offset-assert 268)
+  ((vehicle-handle        handle              :offset-assert 240)
+   (cocoon-manager-entity entity-actor        :offset-assert 248)
+   (cocoon-count          int32               :offset-assert 252)
+   (kill-cocoon-speech    int32               :offset-assert 256)
+   (minimap               connection-minimap  :offset-assert 260)
+   (actor-group           (pointer actor-group) :offset-assert 264)
+   (actor-group-count     int32               :offset-assert 268)
+   (tunnel                basic               :offset-assert 272)
    )
   :method-count-assert 36
   :size-assert         #x114
   :flag-assert         #x2400a00114
   (:methods
-    (task-manager-nest-cocoons-method-32 () none) ;; 32
-    (task-manager-nest-cocoons-method-33 () none) ;; 33
-    (task-manager-nest-cocoons-method-34 () none) ;; 34
-    (task-manager-nest-cocoons-method-35 () none) ;; 35
+    (init-actor-group! (_type_) none) ;; 32
+    (task-manager-nest-cocoons-method-33 (_type_) none) ;; 33
+    (task-manager-nest-cocoons-method-34 (_type_) symbol) ;; 34
+    (task-manager-nest-cocoons-method-35 (_type_) none) ;; 35
     )
   (:state-methods
-    resolution ;; 17
     active ;; 15
+    resolution ;; 17
     )
   )
-|#
 
-;; (define-extern setup-scorpion function)
+(define-extern setup-scorpion (function none :behavior task-manager-nest-cocoons))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; des-cactus                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype des-plant (process-focusable)
-  ((exploder-params    basic           :offset-assert 208)
-   (exploder-skel      basic           :offset-assert 212)
+  ((exploder-params    joint-exploder-static-params :offset-assert 208)
+   (exploder-skel      skeleton-group  :offset-assert 212)
    (exploder-anim      uint32          :offset-assert 216)
    (hit-points         float           :offset-assert 220)
    (incoming-attack-id int32           :offset-assert 224)
-   (exploder           uint64          :offset-assert 232)
+   (exploder           handle          :offset-assert 232)
    (attack-vel         vector  :inline :offset-assert 240)
    (spring-pos         vector  :inline :offset-assert 256)
    (spring-vel         vector  :inline :offset-assert 272)
-   (jmods              UNKNOWN 4       :offset-assert 288)
+   (jmods              joint-mod-rotate-local 4 :inline :offset-assert 288)
    )
   :method-count-assert 36
   :size-assert         #x1a0
@@ -57158,25 +57117,20 @@
     idle ;; 28
     )
   )
-|#
 
-#|
 (deftype des-cactus-a (des-plant)
   ()
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
   )
-|#
 
-#|
 (deftype des-cactus-b (des-plant)
   ()
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
   )
-|#
 
 ;; (define-extern *des-cactus-a-explode-params* joint-exploder-static-params)
 ;; (define-extern *des-cactus-b-explode-params* joint-exploder-static-params)
@@ -57465,9 +57419,9 @@
 (define-extern *was-squad-manager* object)
 (def-event-handler was-squad-manager-event-handler was-squad-manager)
 (define-extern was-squad-manager-init-by-other (function object :behavior was-squad-manager))
-(define-extern was-squad-manager-start function)
-(define-extern was-squad-manager-kill function)
-(define-extern wvh function)
+(define-extern was-squad-manager-start (function process none))
+(define-extern was-squad-manager-kill (function none))
+(define-extern wvh (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-h                     ;;
@@ -57769,8 +57723,8 @@
     (wvehicle-method-198 (_type_) none) ;; 198
     (wvehicle-method-199 (_type_) none) ;; 199
     (wvehicle-method-200 (_type_ vector wvehicle-part-work) none) ;; 200
-    (wvehicle-method-201 (_type_) none) ;; 201
-    (wvehicle-method-202 (_type_) none) ;; 202
+    (wvehicle-method-201 (_type_ float) none) ;; 201
+    (wvehicle-method-202 (_type_ float) none) ;; 202
     )
   )
 
@@ -57843,7 +57797,7 @@
 
 (define-extern turbo-pickup-init-by-other (function vector symbol none :behavior turbo-pickup))
 (define-extern race-turbo-pickup-spawn (function process vector turbo-pickup))
-(define-extern turbo-pickup-spawn (function process vector turbo-pickup :behavior turbo-pickup))
+(define-extern turbo-pickup-spawn (function vector turbo-pickup :behavior turbo-pickup))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-wheel                 ;;
@@ -58462,12 +58416,12 @@
     explode ;; 60
     )
   (:methods
-    (v-marauder-method-203 () none) ;; 203
+    (setup-draw-masks (_type_ int) none) ;; 203
     )
   )
 
-(define-extern *v-marauder-turret-control-info* object)
-(define-extern *v-marauder-turret-guard-settings* object)
+(define-extern *v-marauder-turret-control-info* turret-control-info)
+(define-extern *v-marauder-turret-guard-settings* squad-unit-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; w-parking-spot                 ;;
@@ -60235,59 +60189,51 @@
 ;; desbeast-path-h                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype desbeast-node (structure)
   ((position    vector :inline :offset-assert 0)
    (nav-mesh-id uint32         :offset-assert 16)
-   (pos-x       float          :offset-assert 0)
-   (pos-y       float          :offset-assert 4)
-   (pos-z       float          :offset-assert 8)
+   (pos-x       float          :offset 0)
+   (pos-y       float          :offset 4)
+   (pos-z       float          :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype desbeast-path (structure)
   ((node-count uint16  :offset-assert 0)
-   (node       uint32  :offset-assert 4)
+   (node       (inline-array desbeast-node)  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desbeast-path                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *desbeast-path-table* array)
+(define-extern *desbeast-path-table* (array desbeast-path))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; des-beast                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype beast-grenade (projectile-bounce)
   ((blast-radius float  :offset-assert 548)
    )
   :method-count-assert 45
   :size-assert         #x228
   :flag-assert         #x2d01b00228
-  (:methods
-    (beast-grenade-method-44 () none) ;; 44
-    )
   (:state-methods
     impact ;; 22
     )
+  (:methods
+    (beast-grenade-method-44 (_type_) none) ;; 44
+    )
   )
-|#
 
-#|
 (deftype beast-rider (enemy)
   ()
   :method-count-assert 155
@@ -60297,9 +60243,7 @@
     idle ;; 33
     )
   )
-|#
 
-#|
 (deftype des-beast (enemy)
   ((path-pos               float                      :offset-assert 552)
    (path-pos-speed         float                      :offset-assert 556)
@@ -60307,83 +60251,82 @@
    (main-speed-factor      float                      :offset-assert 564)
    (main-speed-factor-dest float                      :offset-assert 568)
    (des-path               desbeast-path              :offset-assert 572)
-   (angle-turret           float                      :offset-assert 580)
+   (angle-turret           float                      :offset 580)
    (angle-gun              float                      :offset-assert 584)
    (run-start-frame        float                      :offset-assert 588)
-   (can-turn?              basic                      :offset-assert 592)
-   (behind-time            uint64                     :offset-assert 600)
+   (can-turn?              symbol                     :offset-assert 592)
+   (behind-time            time-frame                 :offset-assert 600)
    (target-gun-pos         vector             :inline :offset-assert 608)
    (incoming-attack-id     uint32                     :offset-assert 624)
-   (hit-points2            float                      :offset-assert 632)
+   (hit-points2            float                      :offset 632)
    (angry                  float                      :offset-assert 636)
-   (attack-next?           basic                      :offset-assert 640)
+   (attack-next?           symbol                     :offset-assert 640)
    (minimap                connection-minimap         :offset-assert 644)
    (s-clock                float                      :offset-assert 648)
-   (attack-id-time         uint64                     :offset-assert 656)
+   (attack-id-time         time-frame                 :offset-assert 656)
    (oomass                 float                      :offset-assert 664)
    (jitter                 float                      :offset-assert 668)
-   (next-shoot             uint64                     :offset-assert 672)
-   (shoot-delay            uint64                     :offset-assert 680)
-   (manager                uint64                     :offset-assert 688)
-   (hit-part               basic                      :offset-assert 696)
+   (next-shoot             time-frame                 :offset-assert 672)
+   (shoot-delay            time-frame                 :offset-assert 680)
+   (manager                handle                     :offset-assert 688)
+   (hit-part               sparticle-launch-control   :offset-assert 696)
    )
   :method-count-assert 168
   :size-assert         #x2bc
   :flag-assert         #xa8024002bc
-  (:methods
-    (des-beast-method-160 () none) ;; 160
-    (des-beast-method-161 () none) ;; 161
-    (des-beast-method-162 () none) ;; 162
-    (des-beast-method-163 () none) ;; 163
-    (des-beast-method-164 () none) ;; 164
-    (des-beast-method-165 () none) ;; 165
-    (des-beast-method-166 () none) ;; 166
-    (des-beast-method-167 () none) ;; 167
-    )
   (:state-methods
-    get-up ;; 158
-    die ;; 40
-    down ;; 157
-    die-run ;; 159
-    falling ;; 156
-    turn-back ;; 155
     idle ;; 33
+    die ;; 40
+    turn-back ;; 155
+    falling ;; 156
+    down ;; 157
+    get-up ;; 158
+    die-run ;; 159
+    )
+  (:methods
+    (debug-draw-path (_type_) none) ;; 160
+    (get-linear-vel! (_type_ vector) vector) ;; 161
+    (des-beast-method-162 (_type_) none) ;; 162
+    (des-beast-method-163 (_type_) none) ;; 163
+    (des-beast-method-164 (_type_) none) ;; 164
+    (des-beast-method-165 (_type_) none) ;; 165
+    (des-beast-method-166 (_type_) none) ;; 166
+    (des-beast-method-167 (_type_ bounding-box) symbol) ;; 167
     )
   )
-|#
 
-;; (define-extern *curve-beast-linear-up-red* object)
-;; (define-extern *trail-color-curve-grenade* curve-color-fast)
-;; (define-extern *curve-grenade-linear-trail* curve2d-fast)
-;; (define-extern *beast-grenade-trail* object)
-;; (define-extern spt-birth-func-brightness-grenade-bits function)
-;; (define-extern spt-birth-func-part-grenade-explosion-bits function)
-;; (define-extern *range-grenade-explo-dust-color* curve-color-fast)
-;; (define-extern *range-grenade-explo-dust-alpha* curve2d-fast)
-;; (define-extern *range-grenade-explo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-grenade-explo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-grenade-explo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-grenade-explo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-grenade-explo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-grenade-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-grenade-explo-color* curve-color-fast)
-;; (define-extern *range-grenade-explo-alpha* curve2d-fast)
-;; (define-extern *range-grenade-explo-scale-x* curve2d-fast)
-;; (define-extern *range-grenade-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-grenade-explo-alpha* curve2d-fast)
-;; (define-extern *curve-grenade-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-grenade-explo-scale-y* curve2d-fast)
-;; (define-extern *part-grenade-explosion-texture-curve-settings* object)
-;; (define-extern spt-birth-func-part-beast-fall-bits function)
-;; (define-extern spt-birth-func-part-beast-foot-bits function)
-;; (define-extern *beast-rider-enemy-info* enemy-info)
-;; (define-extern *des-beast-enemy-info* enemy-info)
-;; (define-extern beast-rider-init-by-other function)
-;; (define-extern *beast-camera-slow-motion* object)
-;; (define-extern des-beast-active-post function)
-;; (define-extern des-beast-gun-swivel-callback function)
-;; (define-extern des-beast-gun-callback function)
-;; (define-extern des-beast-init-by-other function)
+(define-extern *curve-beast-linear-up-red* curve2d-piecewise)
+(define-extern *trail-color-curve-grenade* curve-color-fast)
+(define-extern *curve-grenade-linear-trail* curve2d-fast)
+(define-extern *beast-grenade-trail* light-trail-composition)
+(define-extern spt-birth-func-brightness-grenade-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-grenade-explosion-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-grenade-explo-dust-color* curve-color-fast)
+(define-extern *range-grenade-explo-dust-alpha* curve2d-fast)
+(define-extern *range-grenade-explo-dust-scale-x* curve2d-fast)
+(define-extern *range-grenade-explo-dust-scale-y* curve2d-fast)
+(define-extern *curve-grenade-explo-dust-alpha* curve2d-fast)
+(define-extern *curve-grenade-explo-dust-scale-x* curve2d-fast)
+(define-extern *curve-grenade-explo-dust-scale-y* curve2d-fast)
+(define-extern *part-grenade-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-grenade-explo-color* curve-color-fast)
+(define-extern *range-grenade-explo-alpha* curve2d-fast)
+(define-extern *range-grenade-explo-scale-x* curve2d-fast)
+(define-extern *range-grenade-explo-scale-y* curve2d-fast)
+(define-extern *curve-grenade-explo-alpha* curve2d-fast)
+(define-extern *curve-grenade-explo-scale-x* curve2d-fast)
+(define-extern *curve-grenade-explo-scale-y* curve2d-fast)
+(define-extern *part-grenade-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern spt-birth-func-part-beast-fall-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-beast-foot-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *beast-rider-enemy-info* enemy-info)
+(define-extern *des-beast-enemy-info* enemy-info)
+(define-extern beast-rider-init-by-other (function object :behavior beast-rider))
+(define-extern *beast-camera-slow-motion* vector)
+(define-extern des-beast-active-post (function none :behavior des-beast))
+(define-extern des-beast-gun-swivel-callback (function cspace transformq none))
+(define-extern des-beast-gun-callback (function cspace transformq none))
+(define-extern des-beast-init-by-other (function level entity-actor desbeast-path quaternion handle object :behavior des-beast))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-flyer                       ;;
@@ -71791,39 +71734,8 @@
 ;; wasall-tasks                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dust-storm-randomizer (process)
-  ((name             basic                 :offset-assert 0)
-   (mask             process-mask          :offset-assert 4)
-   (clock            basic                 :offset-assert 8)
-   (parent           uint32                :offset-assert 12)
-   (brother          uint32                :offset-assert 16)
-   (child            uint32                :offset-assert 20)
-   (ppointer         uint32                :offset-assert 24)
-   (self             basic                 :offset-assert 28)
-   (pool             basic                 :offset-assert 32)
-   (status           basic                 :offset-assert 36)
-   (pid              int32                 :offset-assert 40)
-   (main-thread      basic                 :offset-assert 44)
-   (top-thread       basic                 :offset-assert 48)
-   (entity           basic                 :offset-assert 52)
-   (level            basic                 :offset-assert 56)
-   (state            basic                 :offset-assert 60)
-   (prev-state       basic                 :offset-assert 64)
-   (next-state       basic                 :offset-assert 68)
-   (state-stack      basic                 :offset-assert 72)
-   (trans-hook       basic                 :offset-assert 76)
-   (post-hook        basic                 :offset-assert 80)
-   (event-hook       basic                 :offset-assert 84)
-   (allocated-length int32                 :offset-assert 88)
-   (heap-base        uint32                :offset-assert 92)
-   (heap-top         uint32                :offset-assert 96)
-   (heap-cur         uint32                :offset-assert 100)
-   (stack-frame-top  basic                 :offset-assert 104)
-   (heap             kheap        :inline  :offset-assert 92)
-   (connection-list  connectable  :inline  :offset-assert 108)
-   (stack            UNKNOWN      :dynamic :offset-assert 124)
-   )
+  ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
@@ -71831,12 +71743,10 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype task-manager-temple (task-manager)
-  ((rod-of-god     uint64              :offset-assert 240)
-   (vehicle        uint64              :offset-assert 248)
+  ((rod-of-god     handle              :offset-assert 240)
+   (vehicle        handle              :offset-assert 248)
    (minimap        connection-minimap  :offset-assert 256)
    (minimap-temple connection-minimap  :offset-assert 260)
    )
@@ -71844,13 +71754,11 @@
   :size-assert         #x108
   :flag-assert         #x2200900108
   (:methods
-    (task-manager-temple-method-32 () none) ;; 32
-    (task-manager-temple-method-33 () none) ;; 33
+    (task-manager-temple-method-32 (_type_) none) ;; 32
+    (task-manager-temple-method-33 (_type_) none) ;; 33
     )
   )
-|#
 
-#|
 (deftype task-manager-temple-climb (task-manager-temple)
   ()
   :method-count-assert 34
@@ -71860,9 +71768,7 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-temple-tests (task-manager-temple)
   ()
   :method-count-assert 34
@@ -71872,23 +71778,19 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-desert-interceptors-attack (task-manager)
-  ((target-set-time uint64  :offset-assert 240)
+  ((target-set-time time-frame :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf8
   :flag-assert         #x20008000f8
   (:state-methods
-    fail ;; 18
     active ;; 15
+    (fail resetter-params) ;; 18
     )
   )
-|#
 
-#|
 (deftype task-manager-vehicle-training-1 (task-manager)
   ()
   :method-count-assert 32
@@ -71898,9 +71800,7 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-vehicle-training-2 (task-manager)
   ()
   :method-count-assert 32
@@ -71910,18 +71810,14 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-highlight-vehicle (task-manager)
   ()
   :method-count-assert 32
   :size-assert         #xf0
   :flag-assert         #x20007000f0
   )
-|#
 
-#|
 (deftype oasis-defense-intro-manager (task-manager)
   ()
   :method-count-assert 32
@@ -71931,9 +71827,7 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-highlight-vehicle-wait (task-manager)
   ()
   :method-count-assert 32
@@ -71943,9 +71837,7 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-vehicle-wait (task-manager)
   ()
   :method-count-assert 32
@@ -71955,9 +71847,7 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-lock-wasdoors (task-manager)
   ()
   :method-count-assert 32
@@ -71967,62 +71857,51 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-get-to-corral (task-manager)
   ()
   :method-count-assert 32
   :size-assert         #xf0
   :flag-assert         #x20007000f0
   )
-|#
 
-#|
 (deftype task-manager-desert-beast-battle-intro (task-manager)
-  ((sig-rider-handle uint64  :offset-assert 240)
+  ((sig-rider-handle handle  :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf8
   :flag-assert         #x20008000f8
   )
-|#
 
-#|
 (deftype task-manager-desert-beast-battle (task-manager)
-  ((sig-rider-handle uint64  :offset-assert 240)
+  ((sig-rider-handle handle :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf8
   :flag-assert         #x20008000f8
   )
-|#
 
-#|
 (deftype task-manager-desert-beast-battle-end (task-manager)
   ()
   :method-count-assert 32
   :size-assert         #xf0
   :flag-assert         #x20007000f0
   )
-|#
 
-#|
 (deftype task-manager-nest-hunt (task-manager)
-  ((vehicle-handle     uint64              :offset-assert 240)
-   (sig-handle         uint64              :offset-assert 248)
+  ((vehicle-handle     handle              :offset-assert 240)
+   (sig-handle         handle              :offset-assert 248)
    (minimap-connection connection-minimap  :offset-assert 256)
-   (showing-desert     basic               :offset-assert 260)
+   (showing-desert     symbol              :offset-assert 260)
    )
   :method-count-assert 32
   :size-assert         #x108
   :flag-assert         #x2000900108
   )
-|#
 
-;; (define-extern wasall-kill-duplicate-vehicle function)
-;; (define-extern dust-storm-randomizer-init-by-other function)
-;; (define-extern spawn-dust-storm-randomizer function)
+(define-extern wasall-kill-duplicate-vehicle (function none))
+(define-extern dust-storm-randomizer-init-by-other (function object :behavior dust-storm-randomizer))
+(define-extern spawn-dust-storm-randomizer (function process none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; waswide-mood                   ;;
@@ -74695,22 +74574,19 @@
 ;; desert-hover                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-beast (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype task-manager-desert-hover (task-manager)
-  ((vehicle-h         uint64  :offset-assert 236)
-   (actor-group       uint32  :offset-assert 244)
-   (actor-group-count int32   :offset-assert 248)
-   (end-time          uint64  :offset-assert 252)
-   (hud-counter       uint64  :offset-assert 204)
+  ((vehicle-h         handle  :offset-assert 240)
+   (actor-group       (pointer actor-group)  :offset-assert 248)
+   (actor-group-count int32   :offset-assert 252)
+   (end-time          time-frame :offset-assert 256)
+   (pad uint8 8)
    )
   :method-count-assert 32
   :size-assert         #x110
@@ -74719,8 +74595,6 @@
     active ;; 15
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; deshover-texture               ;;

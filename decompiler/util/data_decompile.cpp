@@ -690,7 +690,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
     the_macro.push_back(pretty_print::to_symbol(fmt::format(":num {}", num)));
   }
   if (group != 1) {
-    the_macro.push_back(pretty_print::to_symbol(fmt::format(":group {}", num)));
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":group {}", group)));
   }
   if ((mask & 1) || volume != 1024) {
     implicit_mask |= 1 << 0;
@@ -1012,6 +1012,10 @@ const std::unordered_map<
                 ArrayFieldDecompMeta(TypeSpec("vehicle-attach-point"),
                                      32,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
+             {"desbeast-path",
+              {{"node", ArrayFieldDecompMeta(TypeSpec("desbeast-node"),
+                                             32,
+                                             ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
