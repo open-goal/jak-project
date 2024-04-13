@@ -113,10 +113,10 @@
 (cgo-file "wascast.gd" common-dep)
 (cgo-file "wasall.gd" common-dep)
 ; ;; arena
-; (cgo-file "wasstada.gd" common-dep)
-; (cgo-file "wasstadb.gd" common-dep)
-; (cgo-file "wasstadc.gd" common-dep)
-; (cgo-file "arenacst.gd" common-dep)
+(cgo-file "wasstada.gd" common-dep)
+(cgo-file "wasstadb.gd" common-dep)
+(cgo-file "wasstadc.gd" common-dep)
+(cgo-file "arenacst.gd" common-dep)
 ; ;; desert
 ; (cgo-file "desa.gd" common-dep)
 ; (cgo-file "desb.gd" common-dep)
@@ -134,7 +134,7 @@
 ; (cgo-file "desh.gd" common-dep)
 ; (cgo-file "deshover.gd" common-dep)
 ; (cgo-file "deshunt.gd" common-dep)
-; (cgo-file "desinter.gd" common-dep)
+(cgo-file "desinter.gd" common-dep)
 ; (cgo-file "desjump.gd" common-dep)
 ; (cgo-file "desliz.gd" common-dep)
 ; (cgo-file "desoasis.gd" common-dep)
