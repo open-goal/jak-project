@@ -132,7 +132,7 @@
 ; (cgo-file "desf.gd" common-dep)
 ; (cgo-file "desg.gd" common-dep)
 ; (cgo-file "desh.gd" common-dep)
-; (cgo-file "deshover.gd" common-dep)
+(cgo-file "deshover.gd" common-dep)
 ; (cgo-file "deshunt.gd" common-dep)
 (cgo-file "desinter.gd" common-dep)
 ; (cgo-file "desjump.gd" common-dep)
@@ -150,8 +150,8 @@
 ; (cgo-file "oasiscst.gd" common-dep)
 ; (cgo-file "warpcast.gd" common-dep) ;; air train
 ; ;; nest
-; (cgo-file "nsa.gd" common-dep)
-; (cgo-file "nsb.gd" common-dep)
+(cgo-file "nsa.gd" common-dep)
+(cgo-file "nsb.gd" common-dep)
 ; ;; temple
 ; (cgo-file "tema.gd" common-dep)
 ; (cgo-file "temb.gd" common-dep)
@@ -390,7 +390,7 @@
 ; (cgo-file "ltrtwhls.gd" common-dep)
 ; (cgo-file "lvincst.gd" common-dep)
 ; (cgo-file "lwasbbv.gd" common-dep)
-; (cgo-file "lwassig.gd" common-dep)
+(cgo-file "lwassig.gd" common-dep)
 ; (cgo-file "lwlandm.gd" common-dep)
 ; (cgo-file "lwstdpck.gd" common-dep)
 
