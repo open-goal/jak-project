@@ -1,0 +1,579 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type des-jump-bridge
+(deftype des-jump-bridge (process-drawable)
+  ()
+  (:state-methods
+    idle
+    raise
+    up
+    )
+  )
+
+;; definition for method 3 of type des-jump-bridge
+(defmethod inspect ((this des-jump-bridge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-jump-bridge des-jump-bridge des-jump-bridge-lod0-jg des-jump-bridge-idle-ja
+              ((des-jump-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 40 60)
+              :origin-joint-index 4
+              )
+
+;; failed to figure out what this is:
+(defstate idle (des-jump-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('raise)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual raise)
+       )
+      )
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate raise (des-jump-bridge)
+  :virtual #t
+  :code (behavior ()
+    (cond
+      ((string-suffix= (-> self name) "-1")
+       (ja-no-eval :group! des-jump-bridge-80meterup-ja :num! (seek!) :frame-num 0.0)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       )
+      (else
+        (ja-no-eval :group! des-jump-bridge-60meterup-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (go-virtual up)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate up (des-jump-bridge)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (if (string-suffix= (-> self name) "-1")
+        (ja :group! des-jump-bridge-80meterup-ja :num! max)
+        (ja :group! des-jump-bridge-60meterup-ja :num! max)
+        )
+    (transform-post)
+    (logior! (-> self mask) (process-mask actor-pause))
+    (sleep-code)
+    )
+  )
+
+;; definition for method 11 of type des-jump-bridge
+(defmethod init-from-entity! ((this des-jump-bridge) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 4)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 163840.0 286720.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 -81920.0 0.0 163840.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-11 transform-index) 4)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 122880.0 204800.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-13 transform-index) 5)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 40960.0 163840.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-jump-bridge" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (if (or (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+          (task-node-closed? (game-task-node desert-chase-marauders-ambush))
+          )
+      (go (method-of-object this up))
+      (go (method-of-object this idle))
+      )
+  )
+
+;; definition of type des-draw-bridge
+(deftype des-draw-bridge (process-drawable)
+  ((plane  vector  :inline)
+   )
+  (:state-methods
+    idle
+    dormant
+    lower
+    down
+    raise
+    )
+  (:methods
+    (des-draw-bridge-method-25 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type des-draw-bridge
+(defmethod inspect ((this des-draw-bridge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tplane: #<vector @ #x~X>~%" (-> this plane))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-draw-bridge des-draw-bridge des-draw-bridge-lod0-jg des-draw-bridge-idle-ja
+              ((des-draw-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 10 25)
+              :shadow des-draw-bridge-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defstate idle (des-draw-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('lower)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual lower)
+       )
+      )
+    )
+  :trans (behavior ()
+    (des-draw-bridge-method-25 self)
+    (when (and *target*
+               (focus-test? *target* pilot-riding)
+               (let ((gp-0 (handle->process (-> *target* pilot vehicle))))
+                 (and (if (type? gp-0 v-toad)
+                          gp-0
+                          )
+                      (< (vector-vector-distance (-> self root trans) (target-pos 0)) 327680.0)
+                      (< 0.0 (vector4-dot (-> self plane) (target-pos 0)))
+                      )
+                 )
+               )
+      (if (and *target* (not (logtest? (-> *target* focus-status) (focus-status grabbed))))
+          (process-grab? *target* #f)
+          )
+      (when (and *target* (focus-test? *target* grabbed) (< (vector-length (-> *target* control transv)) 2048.0))
+        (let ((s5-1 (new 'static 'inline-array vector 2 (new 'static 'vector) (new 'static 'vector))))
+          (let ((s3-0 (-> s5-1 0))
+                (gp-3 (-> s5-1 1))
+                (s2-0 (new 'stack-no-clear 'vector))
+                (s4-0 (new 'stack-no-clear 'vector))
+                )
+            (vector-normalize! (vector-z-quaternion! s2-0 (-> self root quat)) 102400.0)
+            (vector-x-quaternion! s4-0 (-> self root quat))
+            (vector+! s2-0 s2-0 (-> self root trans))
+            (set! (-> s3-0 quad) (-> s2-0 quad))
+            (set! (-> gp-3 quad) (-> s2-0 quad))
+            (vector+! s3-0 s3-0 (vector-normalize! s4-0 143360.0))
+            (vector+! gp-3 gp-3 (vector-normalize! s4-0 -102400.0))
+            )
+          (blocking-plane-spawn (the-as curve-control #f) s5-1 122880.0)
+          )
+        (set-setting! 'letterbox 'abs 1.0 0)
+        (set-setting! 'letterbox-speed 'abs 4.0 0)
+        (set-setting! 'pilot-exit #f 0.0 0)
+        (set-setting! 'jump #f 0.0 0)
+        (go-virtual lower)
+        )
+      )
+    (if (and *target*
+             (focus-test? *target* pilot-riding)
+             (< (if *target*
+                    (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))
+                    4096000.0
+                    )
+                512000.0
+                )
+             )
+        (set-setting! 'jump #f 0.0 0)
+        (set-setting! 'jump #t 0.0 0)
+        )
+    (when (task-node-closed? (game-task-node desert-chase-marauders-ambush))
+      (remove-setting! 'pilot-exit)
+      (go-virtual lower)
+      )
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (ja :group! (ja-group) :num! min)
+    (transform-post)
+    (logior! (-> self mask) (process-mask actor-pause))
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate dormant (des-draw-bridge)
+  :virtual #t
+  :parent (des-draw-bridge idle)
+  :event #f
+  :trans (behavior ()
+    (des-draw-bridge-method-25 self)
+    (if (and (task-node-closed? (game-task-node desert-chase-marauders-introduction))
+             (not (task-node-closed? (game-task-node desert-chase-marauders-resolution)))
+             )
+        (go-virtual idle)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate lower (des-draw-bridge)
+  :virtual #t
+  :trans (behavior ()
+    (des-draw-bridge-method-25 self)
+    )
+  :code (behavior ()
+    (sound-play "drawbridge")
+    (ja-no-eval :group! des-draw-bridge-down-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (sound-play "drawbridge-end")
+    (go-virtual down)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate down (des-draw-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('down?)
+       #t
+       )
+      (('raise)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual raise)
+       )
+      )
+    )
+  :trans (behavior ()
+    (des-draw-bridge-method-25 self)
+    (when (and *target* (focus-test? *target* grabbed))
+      (process-release? *target*)
+      (blocking-plane-destroy)
+      (remove-setting! 'letterbox)
+      )
+    (when (and *target*
+               (< (vector4-dot (-> self plane) (target-pos 0)) -40960.0)
+               (not (task-node-closed? (game-task-node desert-chase-marauders-ambush)))
+               )
+      (remove-setting! 'letterbox-speed)
+      (go-virtual raise)
+      )
+    (if (and *target*
+             (focus-test? *target* pilot-riding)
+             (< (if *target*
+                    (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))
+                    4096000.0
+                    )
+                512000.0
+                )
+             )
+        (set-setting! 'jump #f 0.0 0)
+        (set-setting! 'jump #t 0.0 0)
+        )
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (ja :group! des-draw-bridge-down-ja :num! max)
+    (transform-post)
+    (logior! (-> self mask) (process-mask actor-pause))
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate raise (des-draw-bridge)
+  :virtual #t
+  :trans (behavior ()
+    (des-draw-bridge-method-25 self)
+    )
+  :code (behavior ()
+    (ja-no-eval :group! des-draw-bridge-down-ja :num! (seek! 0.0) :frame-num max)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 0.0))
+      )
+    (go-virtual idle)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(method-set! des-draw-bridge 25 (if *debug-segment*
+                                    (lambda () 0 (none))
+                                    nothing
+                                    )
+             )
+
+;; definition for method 11 of type des-draw-bridge
+(defmethod init-from-entity! ((this des-draw-bridge) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 40960.0 122880.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-9 transform-index) 4)
+      (set-vector! (-> v1-9 local-sphere) 0.0 0.0 20480.0 61440.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 20480.0 73728.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-draw-bridge" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this root pause-adjust-distance) 409600.0)
+  (vector-z-quaternion! (-> this plane) (-> arg0 quat))
+  (set! (-> this plane w) (- (vector-dot (-> this plane) (-> this root trans))))
+  (cond
+    ((and (task-node-closed? (game-task-node desert-chase-marauders-introduction))
+          (not (task-node-closed? (game-task-node desert-chase-marauders-resolution)))
+          )
+     (if (or (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+             (task-node-closed? (game-task-node desert-chase-marauders-ambush))
+             )
+         (go (method-of-object this down))
+         (go (method-of-object this idle))
+         )
+     )
+    (else
+      (go (method-of-object this dormant))
+      )
+    )
+  )
+
+;; definition of type des-garage-door
+(deftype des-garage-door (process-drawable)
+  ()
+  (:state-methods
+    idle
+    open
+    opening
+    closing
+    )
+  )
+
+;; definition for method 3 of type des-garage-door
+(defmethod inspect ((this des-garage-door))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-garage-door des-garage-door des-garage-door-lod0-jg des-garage-door-idle-ja
+              ((des-garage-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 10)
+              :origin-joint-index 3
+              )
+
+;; definition for function des-garage-door-handler
+(defbehavior des-garage-door-handler des-garage-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('open)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go-virtual opening)
+     )
+    (('close)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go-virtual closing)
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (des-garage-door)
+  :virtual #t
+  :event des-garage-door-handler
+  :code (behavior ()
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (transform-post)
+    (logior! (-> self mask) (process-mask actor-pause))
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate open (des-garage-door)
+  :virtual #t
+  :event des-garage-door-handler
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (ja :num-func num-func-identity :frame-num max)
+    (transform-post)
+    (logior! (-> self mask) (process-mask actor-pause))
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate opening (des-garage-door)
+  :virtual #t
+  :event des-garage-door-handler
+  :code (behavior ()
+    (sound-play "gate-raise")
+    (until #f
+      (ja :num! (seek!))
+      (suspend)
+      (if (ja-done? 0)
+          (goto cfg-5)
+          )
+      )
+    #f
+    (label cfg-5)
+    (go-virtual open)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate closing (des-garage-door)
+  :virtual #t
+  :event des-garage-door-handler
+  :code (behavior ()
+    (sound-play "gate-lower")
+    (until #f
+      (ja :num! (seek! 0.0))
+      (suspend)
+      (if (ja-done? 0)
+          (goto cfg-5)
+          )
+      )
+    #f
+    (label cfg-5)
+    (go-virtual idle)
+    )
+  :post transform-post
+  )
+
+;; definition for method 11 of type des-garage-door
+(defmethod init-from-entity! ((this des-garage-door) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 1) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 2))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 20480.0 0.0 40960.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 20480.0 0.0 40960.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-garage-door" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (let ((v1-19 (-> this skel root-channel 0)))
+    (set! (-> v1-19 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
+    )
+  (go (method-of-object this idle))
+  )
+
+
+
+
