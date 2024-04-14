@@ -12103,17 +12103,17 @@
 ;; +++main-h:race-marks-controls
 (defenum race-marks-controls
   :type int64
-  ; (all-off 0)
-  ; (path0-red 1)
-  ; (path1-green 2)
-  ; (path2-blue 4)
-  ; (path3-yellow 8)
-  ; (path4-cyan 16)
-  ; (path5-violet 32)
-  ; (path6-orange 64)
-  ; (path7-black 128)
-  ; (all-paths-on 255)
-  ; (rmc2040 2040)
+  (all-off 0)
+  (path0-red 1)
+  (path1-green 2)
+  (path2-blue 4)
+  (path3-yellow 8)
+  (path4-cyan 16)
+  (path5-violet 32)
+  (path6-orange 64)
+  (path7-black 128)
+  (all-paths-on 255)
+  (rmc2040 2040)
   )
 ;; ---main-h:race-marks-controls
 
@@ -51185,48 +51185,54 @@
 ;; artifact-race                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++artifact-race:artifact-type
+(defenum artifact-type
+  :type uint8
+  (artifact-a)
+  (artifact-b)
+  (artifact-c)
+  (artifact-d)
+  )
+;; ---artifact-race:artifact-type
+
 (deftype artifact-info (structure)
   ((pos           vector :inline :offset-assert 0)
    (time          uint32         :offset-assert 16)
-   (artifact-type uint8          :offset-assert 20)
+   (artifact-type artifact-type  :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x15
   :flag-assert         #x900000015
   )
-|#
 
-#|
 (deftype was-artifact (process-drawable)
-  ((pos  vector :inline :offset-assert 208)
+  ((root collide-shape :override)
+   (pos  vector :inline :offset-assert 208)
    (angs vector :inline :offset-assert 224)
    )
   :method-count-assert 26
   :size-assert         #xf0
   :flag-assert         #x1a007000f0
-  (:methods
-    (was-artifact-method-23 () none) ;; 23
-    (was-artifact-method-24 () none) ;; 24
-    (was-artifact-method-25 () none) ;; 25
-    )
   (:state-methods
-    die ;; 22
-    sink ;; 21
     idle ;; 20
+    sink ;; 21
+    die ;; 22
+    )
+  (:methods
+    (find-ground (_type_) symbol) ;; 23
+    (check-pickup (_type_) none) ;; 24
+    (rotate (_type_) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype task-manager-desert-artifact-race (task-manager)
   ((count              int8            :offset-assert 240)
    (max-count          int8            :offset-assert 241)
    (death-count        uint8           :offset-assert 242)
    (target-count       int8            :offset-assert 243)
    (target-speed       float           :offset-assert 244)
-   (slave              uint64          :offset-assert 248)
-   (speech-time        uint64          :offset-assert 256)
+   (slave              handle          :offset-assert 248)
+   (speech-time        time-frame      :offset-assert 256)
    (final-time         uint32          :offset-assert 264)
    (suck-factor        float           :offset-assert 268)
    (extra-suck-time    float           :offset-assert 272)
@@ -51234,32 +51240,30 @@
    (dust-begin         float           :offset-assert 280)
    (dust-last-artifact float           :offset-assert 284)
    (dust-end           float           :offset-assert 288)
-   (ent                basic           :offset-assert 292)
-   (speech-callback    basic           :offset-assert 296)
+   (ent                entity-actor    :offset-assert 292)
+   (speech-callback    (function task-manager int none) :offset-assert 296)
    (begin-pos          vector  :inline :offset-assert 304)
    (end-pos            vector  :inline :offset-assert 320)
    (door-plane         vector  :inline :offset-assert 336)
-   (objs               UNKNOWN 32      :offset-assert 352)
+   (objs               artifact-info 32 :inline :offset-assert 352)
    )
   :method-count-assert 35
   :size-assert         #x560
   :flag-assert         #x2304e00560
   (:methods
-    (task-manager-desert-artifact-race-method-32 () none) ;; 32
-    (task-manager-desert-artifact-race-method-33 () none) ;; 33
-    (task-manager-desert-artifact-race-method-34 () none) ;; 34
+    (set-fog-interp (_type_ float) none) ;; 32
+    (speech-callback0 (_type_ int) none) ;; 33
+    (speech-callback1 (_type_ int) none) ;; 34
     )
   (:state-methods
-    fail ;; 18
-    complete ;; 16
     active ;; 15
+    complete ;; 16
     )
   )
-|#
 
-;; (define-extern was-artifact-init-by-other function)
-;; (define-extern was-artifact-spawn function)
-;; (define-extern *artifact-race-speech-list* object)
+(define-extern was-artifact-init-by-other (function artifact-info object :behavior was-artifact))
+(define-extern was-artifact-spawn (function process artifact-info was-artifact))
+(define-extern *artifact-race-speech-list* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-part                   ;;
@@ -52310,7 +52314,6 @@
 ;; desert-mood                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype desert-states (structure)
   ((light    light-state  :inline :offset-assert 0)
    (flame    flames-state :inline :offset-assert 8)
@@ -52321,9 +52324,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype desertg-states (structure)
   ((light   light-state  :inline :offset-assert 0)
    (flame   flames-state :inline :offset-assert 8)
@@ -52333,9 +52334,7 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype deswalk-states (structure)
   ((light    light-state  :inline :offset-assert 0)
    (flame    flames-state :inline :offset-assert 8)
@@ -52346,12 +52345,11 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern update-mood-desert function)
-;; (define-extern init-mood-desertg function)
-;; (define-extern update-mood-desertg function)
-;; (define-extern update-mood-deswalk function)
+(define-extern update-mood-desert (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-desertg (function mood-context float))
+(define-extern update-mood-desertg (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-deswalk (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-ocean                   ;;
@@ -55897,6 +55895,14 @@
 (defenum racer-info-flag
   :type uint8
   :bitfield #t
+  (rif0 0)
+  (rif1 1)
+  (rif2 2)
+  (rif3 3)
+  (rif4 4)
+  (rif5 5)
+  (rif6 6)
+  (rif7 7)
   )
 ;; ---race-h:racer-info-flag
 
@@ -55921,7 +55927,7 @@
 (deftype race-info (basic)
   ((race-mesh-name           string                                     :offset-assert 4) ;; guessed by decompiler
    (path-group-name          string                                     :offset-assert 8) ;; guessed by decompiler
-   (task-node                uint16                                     :offset-assert 12) ;; game-task-node
+   (task-node                game-task-node                             :offset-assert 12) ;; game-task-node
    (mesh                     race-mesh                                  :offset-assert 16) ;; guessed by decompiler
    (ai-min-speed-factor      float                                      :offset-assert 20)
    (ai-max-speed-factor      float                                      :offset-assert 24)
@@ -55958,7 +55964,7 @@
   :flag-assert         #xa000000aa
   ;; field borrow uses ~A with a signed load.
   (:methods
-    (race-info-method-9 () none) ;; 9 ;; (initialize-mesh (_type_) none)
+    (init-by-mesh! (_type_) none) ;; 9
     )
   )
 
@@ -55966,8 +55972,18 @@
 (defenum racer-state-flags
   :type uint8
   :bitfield #t
+  (rsf0 0)
+  (rsf1 1)
+  (rsf2 2)
+  (rsf3 3)
+  (rsf4 4)
+  (rsf5 5)
+  (rsf6 6)
+  (rsf7 7)
   )
 ;; ---race-h:racer-state-flags
+
+(declare-type race-state structure)
 
 (deftype racer-state (structure)
   ((position          vector :inline :offset-assert 0)
@@ -55993,23 +56009,49 @@
   :size-assert         #x70
   :flag-assert         #xe00000070
   (:methods
-    (racer-state-method-9 () none) ;; 9 ;; (update-lap-distance (_type_ race-state) none)
-    (racer-state-method-10 () none) ;; 10 ;; (begin-lap (_type_ race-state) none)
-    (racer-state-method-11 () none) ;; 11 ;; (end-lap (_type_ race-state) none)
-    (racer-state-method-12 () none) ;; 12 ;; (print-laps (_type_ race-state string) none)
-    (racer-state-method-13 () none) ;; 13 ;; (init-racer! (_type_ process-drawable) none)
+    (update-lap-distance (_type_ race-state) none) ;; 9
+    (begin-lap (_type_ race-state) none) ;; 10
+    (end-lap (_type_ race-state) none) ;; 11
+    (print-laps (_type_ race-state string) none) ;; 12
+    (init-racer! (_type_ process-drawable) none) ;; 13
     )
   )
 
 ;; +++race-h:race-state-enum
 (defenum race-state-enum
   :type uint8
+  (rs0)
+  (rs1)
+  (rs2)
+  (rs3)
+  (rs4)
+  (rs5)
+  (rs6)
+  (rs7)
+  (rs8)
   )
 ;; ---race-h:race-state-enum
 
 ;; +++race-h:race-flag
 (defenum race-flag
   :type uint8
+  (rf0 0)
+  (rf1 1)
+  (rf2 2)
+  (rf3 3)
+  (rf4 4)
+  (rf5 5)
+  (rf6 6)
+  (rf7 7)
+  (rf8 8)
+  (rf9 9)
+  (rf10 10)
+  (rf11 11)
+  (rf12 12)
+  (rf13 13)
+  (rf14 14)
+  (rf15 15)
+  (rf16 16)
   )
 ;; ---race-h:race-flag
 
@@ -56044,18 +56086,18 @@
   :size-assert         #x520
   :flag-assert         #x1500000520
   (:methods
-    (race-state-method-9 () none) ;; 9 ;; (init-racers! (_type_ process-drawable) none)
-    (race-state-method-10 () none) ;; 10 ;; (begin-race (_type_) none)
-    (race-state-method-11 () none) ;; 11 ;; (update (_type_) none)
-    (race-state-method-12 () none) ;; 12 ;; (update-rankings (_type_) none)
-    (race-state-method-13 () none) ;; 13 ;; (debug-print-rankings (_type_) none)
-    (race-state-method-14 () none) ;; 14 ;; (update-racers (_type_) none)
-    (race-state-method-15 () none) ;; 15 ;; (spawn-race-signal (_type_) none)
-    (race-state-method-16 () none) ;; 16 ;; (initialize (_type_ process race-info) none)
-    (race-state-method-17 () none) ;; 17 ;; (set-speech-tables! (_type_) none)
-    (race-state-method-18 () none) ;; 18 ;; (setup-race (_type_) none)
-    (race-state-method-19 () none) ;; 19
-    (race-state-method-20 () none) ;; 20
+    (init-racers! (_type_ process-drawable int) none) ;; 9
+    (begin-race (_type_) none) ;; 10
+    (update (_type_) none) ;; 11
+    (update-rankings (_type_) none) ;; 12
+    (debug-print-rankings (_type_) none) ;; 13
+    (update-racers (_type_) none) ;; 14
+    (race-state-method-15 (_type_) none) ;; 15 ;; (spawn-race-signal (_type_) none)
+    (deactivate-race (_type_) none) ;; 16
+    (initialize (_type_ process race-info) none) ;; 17 ;; (set-speech-tables! (_type_) none)
+    (race-state-method-18 () none) ;; 18
+    (setup-race (_type_) none) ;; 19
+    (get-racer-count (_type_) int) ;; 20
     )
   )
 
@@ -56070,21 +56112,23 @@
   :method-count-assert 28
   :size-assert         #xa4
   :flag-assert         #x1c003000a4
+  (:state-methods
+    idle ;; 14
+    active ;; 15
+    fail ;; 16
+    win ;; 17
+    lose ;; 18
+    die ;; 19
+    )
   (:methods
-    (race-manager-method-14 () none) ;; 14 ;; (idle () _type_ :state)
-    (race-manager-method-15 () none) ;; 15 ;; (active () _type_ :state)
-    (race-manager-method-16 () none) ;; 16 ;; (fail () _type_ :state)
-    (race-manager-method-17 () none) ;; 17 ;; (win () _type_ :state)
-    (race-manager-method-18 () none) ;; 18 ;; (lose () _type_ :state)
-    (race-manager-method-19 () none) ;; 19 ;; (die () _type_ :state)
-    (race-manager-method-20 () none) ;; 20 ;; (update (_type_) int)
-    (race-manager-method-21 () none) ;; 21 ;; (initialize-state (_type_) none)
-    (race-manager-method-22 () none) ;; 22 ;; (race-manager-method-22 (_type_) none)
-    (race-manager-method-23 () none) ;; 23 ;; (initialize-race-state (_type_) none)
-    (race-manager-method-24 () none) ;; 24 ;; (draw-message-continue (_type_) none)
-    (race-manager-method-25 () none) ;; 25 ;; (draw-message-retry (_type_) none)
-    (race-manager-method-26 () none) ;; 26 ;; (save-score (_type_ float) none)
-    (race-manager-method-27 () none) ;; 27 ;; (stop-speech (_type_) none)
+    (update (_type_) int) ;; 20
+    (initialize-state (_type_) none) ;; 21
+    (race-manager-method-22 (_type_) none) ;; 22
+    (initialize-race-state (_type_) none) ;; 23
+    (draw-message-continue (_type_) none) ;; 24
+    (draw-message-retry (_type_) none) ;; 25
+    (save-score (_type_ int) symbol) ;; 26
+    (stop-speech (_type_) none) ;; 27
     )
   )
 
@@ -56321,16 +56365,33 @@
 ;; race-manager                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern race-find-ground function) ;; (function vector vector symbol)
-;; (define-extern *race-state* object) ;; race-state
-;; (define-extern *race-rigid-body-queue* object) ;; rigid-body-queue
-;; (define-extern race-manager-event-handler function) ;; (function process int symbol event-message-block object :behavior race-manager)
-;; (define-extern race-manager-init-by-other function) ;; (function race-info symbol none :behavior race-manager)
-;; (define-extern race-start function) ;; (function int process symbol process)
-;; (define-extern race-kill function) ;; (function none)
-;; (define-extern race-vehicle-entity-hack function) ;; (function none)
-;; (define-extern race-level-activate function) ;; (function level none)
-;; (define-extern race-level-deactivate function) ;; (function none)
+(deftype race-manager-stack-var0 (structure)
+  "stack slot 16 in race-state::initialize"
+  ((mat  matrix :inline :offset 0)
+   (vec0 vector :inline :offset 64)
+   (vec1 vector :inline :offset 80)
+   (word int32          :offset 96)
+   )
+  )
+
+(deftype race-manager-stack-var1 (structure)
+  ((params traffic-object-spawn-params :inline :offset 0)
+   (vec0 vector :inline :offset 128)
+   (vec1 vector :inline :offset 144)
+   (vec2 vector :inline :offset 160)
+   )
+  )
+
+(define-extern race-find-ground (function vector vector symbol))
+(define-extern *race-state* race-state)
+(define-extern *race-rigid-body-queue* rigid-body-queue)
+(def-event-handler race-manager-event-handler race-manager)
+(define-extern race-manager-init-by-other (function race-info symbol none :behavior race-manager))
+(define-extern race-start (function int process symbol process))
+(define-extern race-kill (function none))
+(define-extern race-vehicle-entity-hack (function none))
+(define-extern race-level-activate (function level none))
+(define-extern race-level-deactivate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-hud                       ;;
@@ -56414,7 +56475,7 @@
 ;; (define-extern delete-race-path function)
 ;; (define-extern *pilot-recorder* object)
 ;; (define-extern pilot-recorder-init-by-other function)
-;; (define-extern start-pilot-recorder function) ;; (function none)
+(define-extern start-pilot-recorder (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; was-leaper-race-h              ;;
@@ -57666,10 +57727,10 @@
     (wvehicle-method-177 (_type_ vehicle-controls) none) ;; 177
     (wvehicle-method-178 (_type_) none) ;; 178
     (wvehicle-method-179 (_type_) none) ;; 179
-    (wvehicle-method-180 (_type_ uint) none) ;; 180
+    (race-select-path-randomly-from-mask (_type_ uint) none) ;; 180
     (wvehicle-method-181 (_type_) none) ;; 181
     (wvehicle-method-182 (_type_) none) ;; 182
-    (wvehicle-method-183 (_type_) none) ;; 183
+    (wvehicle-method-183 (_type_ vehicle-controls) none) ;; 183
     (wvehicle-method-184 (_type_) none) ;; 184
     (wvehicle-method-185 (_type_) none) ;; 185
     (wvehicle-method-186 (_type_) none) ;; 186
@@ -57683,7 +57744,7 @@
     (wvehicle-method-194 (_type_ vehicle-wheel-state wvehicle-part-work) none) ;; 194
     (wvehicle-method-195 (_type_) none) ;; 195
     (wvehicle-method-196 (_type_) none) ;; 196
-    (wvehicle-method-197 (_type_) symbol) ;; 197
+    (race-setup (_type_ int) symbol) ;; 197
     (wvehicle-method-198 (_type_) none) ;; 198
     (wvehicle-method-199 (_type_) none) ;; 199
     (wvehicle-method-200 (_type_ vector wvehicle-part-work) none) ;; 200
@@ -58080,6 +58141,35 @@
 ;; wvehicle-race                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftype wvehicle-race-stack-var0 (structure)
+  ((vec0 vector :inline :offset 0)
+   (vec1 vector :inline :offset 16)
+   (vec2 vector :inline :offset 32)
+   (vec3 vector :inline :offset 48)
+   (vec4 vector :inline :offset 64)
+   (vec5 vector :inline :offset 80)
+   (vec6 vector :inline :offset 96)
+   (vec7 vector :inline :offset 112)
+   (vec8 vector :inline :offset 128)
+   (vec9 vector :inline :offset 144)
+   (vec10 vector :inline :offset 160)
+   (vec11 vector :inline :offset 176)
+   (float0 float :offset 192)
+   (byte0 uint8 :offset 196)
+   (sample race-path-sample :inline :offset 208)
+   (vec12 vector :inline :offset 240)
+   (vec13 vector :inline :offset 256)
+   (float1 float :offset 272)
+   (time uint32 :offset 276)
+   (float2 float :offset 280)
+   (float3 float :offset 284)
+   (float4 float :offset 288)
+   (float5 float :offset 292)
+   (float6 float :offset 296)
+   (float7 float :offset 300)
+   (float8 float :offset 304)
+   )
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wvehicle-states                ;;
@@ -65728,9 +65818,8 @@
 ;; turtle-training                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype des-train-bollard (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
@@ -65738,9 +65827,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype des-train-barrier (process-drawable)
   ()
   :method-count-assert 21
@@ -65750,9 +65837,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype des-train-stones (process-drawable)
   ()
   :method-count-assert 21
@@ -65762,9 +65847,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype turtle-training-goal (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -65772,42 +65855,35 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype task-manager-desert-turtle-training (task-manager)
-  ((goal-array      UNKNOWN          7       :offset-assert 240)
+  ((goal-array      turtle-training-goal 7 :inline :offset-assert 240)
    (door-plane      vector           :inline :offset-assert 352)
    (start-pos       vector           :inline :offset-assert 368)
    (goal-pos        vector           :inline :offset-assert 384)
    (player-pos      vector           :inline :offset-assert 400)
    (player-vel      vector           :inline :offset-assert 416)
    (player-controls vehicle-controls :inline :offset-assert 432)
-   (test-time       uint64                   :offset-assert 456)
+   (test-time       time-frame               :offset-assert 456)
    (max-count       int16                    :offset-assert 464)
-   (show-message?   basic                    :offset-assert 468)
+   (show-message?   symbol                   :offset-assert 468)
    )
   :method-count-assert 33
   :size-assert         #x1d8
   :flag-assert         #x21016001d8
   (:methods
-    (task-manager-desert-turtle-training-method-32 () none) ;; 32
-    )
-  (:state-methods
-    active ;; 15
+    (print-training-text (_type_ text-id) none) ;; 32
     )
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; kleever-rider                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype kleever-rider (process-focusable)
-  ((vehicle           uint64         :offset-assert 208)
-   (speech-time       uint64         :offset-assert 216)
+  ((vehicle           handle         :offset-assert 208)
+   (speech-time       time-frame     :offset-assert 216)
    (accel             vector :inline :offset-assert 224)
    (accel-factor      vector :inline :offset-assert 240)
    (front-back-interp float          :offset-assert 256)
@@ -65818,15 +65894,13 @@
   :size-assert         #x10c
   :flag-assert         #x1e0090010c
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
     )
   )
-|#
 
-#|
 (deftype wland-driver (process-focusable)
-  ((vehicle           uint64         :offset-assert 208)
+  ((vehicle           handle         :offset-assert 208)
    (accel             vector :inline :offset-assert 224)
    (accel-factor      vector :inline :offset-assert 240)
    (front-back-interp float          :offset-assert 256)
@@ -65837,53 +65911,58 @@
   :size-assert         #x10c
   :flag-assert         #x1e0090010c
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
     )
   )
-|#
 
-;; (define-extern kleever-pilot-trans function)
-;; (define-extern kleever-pilot-wcar-anim-loop function)
-;; (define-extern kleever-rider-init-by-other function)
-;; (define-extern kleever-rider-spawn function)
-;; (define-extern wland-driver-pilot-trans function)
-;; (define-extern wland-driver-pilot-wcar-anim-loop function)
-;; (define-extern wland-driver-init-by-other function)
-;; (define-extern wland-driver-spawn function)
+(deftype kleever-rider-stack-var0 (structure)
+  ((mat0 matrix :inline :offset 0)
+   (vec0 vector :inline :offset 64)
+   (vec1 vector :inline :offset 80)
+   (vec2 vector :inline :offset 96)
+   (time uint32         :offset 112)
+   )
+  )
+
+(define-extern kleever-pilot-trans (function none :behavior kleever-rider))
+(define-extern kleever-pilot-wcar-anim-loop (function none :behavior kleever-rider))
+(define-extern kleever-rider-init-by-other (function vehicle object :behavior kleever-rider))
+(define-extern kleever-rider-spawn (function process kleever-rider))
+(define-extern wland-driver-pilot-trans (function none :behavior wland-driver))
+(define-extern wland-driver-pilot-wcar-anim-loop (function none :behavior wland-driver))
+(define-extern wland-driver-init-by-other (function vehicle object :behavior wland-driver))
+(define-extern wland-driver-spawn (function process wland-driver))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; course-race                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-race (task-manager)
   ((start-pos      vector :inline :offset-assert 240)
-   (start-continue basic          :offset-assert 256)
-   (scene-player   uint64         :offset-assert 264)
-   (race-started?  basic          :offset-assert 272)
-   (player-won?    basic          :offset-assert 276)
+   (start-continue continue-point :offset-assert 256)
+   (scene-player   handle         :offset-assert 264)
+   (race-started?  symbol         :offset-assert 272)
+   (player-won?    symbol         :offset-assert 276)
    )
   :method-count-assert 39
   :size-assert         #x118
   :flag-assert         #x2700a00118
-  (:methods
-    (task-manager-race-method-33 () none) ;; 33
-    (task-manager-race-method-34 () none) ;; 34
-    (task-manager-race-method-35 () none) ;; 35
-    (task-manager-race-method-36 () none) ;; 36
-    (task-manager-race-method-37 () none) ;; 37
-    (task-manager-race-method-38 () none) ;; 38
-    )
   (:state-methods
+    active ;; 15
     complete ;; 16
     finished ;; 32
-    active ;; 15
+    )
+  (:methods
+    (task-manager-race-method-33 (_type_) none) ;; 33
+    (task-manager-race-method-34 (_type_) none) ;; 34
+    (task-manager-race-method-35 (_type_) none) ;; 35
+    (task-manager-race-method-36 (_type_) none) ;; 36
+    (task-manager-race-method-37 (_type_) none) ;; 37
+    (task-manager-race-method-38 (_type_) none) ;; 38
     )
   )
-|#
 
-#|
 (deftype task-manager-desert-course-race (task-manager-race)
   ((fail-plane vector :inline :offset-assert 288)
    )
@@ -65891,13 +65970,11 @@
   :size-assert         #x130
   :flag-assert         #x2700b00130
   (:state-methods
-    finished ;; 32
     active ;; 15
+    finished ;; 32
     )
   )
-|#
 
-#|
 (deftype bbush-time-trial-hud-info (structure)
   ((goal     float  :offset-assert 0)
    (goal-cup uint8  :offset-assert 4)
@@ -65906,21 +65983,17 @@
   :size-assert         #x5
   :flag-assert         #x900000005
   )
-|#
 
-#|
 (deftype hud-wasbbv-goal-time (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype task-manager-bbush-time-trial-1 (task-manager-race)
   ((game-score uint8   :offset-assert 280)
-   (hud-goal   uint64  :offset-assert 288)
+   (hud-goal   handle  :offset-assert 288)
    )
   :method-count-assert 39
   :size-assert         #x128
@@ -65929,11 +66002,9 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype des-rally-bollard (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
@@ -65941,12 +66012,10 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype task-manager-bbush-rally (task-manager-race)
   ((game-score uint8   :offset-assert 280)
-   (hud-goal   uint64  :offset-assert 288)
+   (hud-goal   handle  :offset-assert 288)
    )
   :method-count-assert 39
   :size-assert         #x128
@@ -65955,16 +66024,22 @@
     active ;; 15
     )
   )
-|#
 
-;; (define-extern *v-snake-racer-constants* object)
-;; (define-extern *v-mirage-racer-constants* object)
-;; (define-extern *v-fox-racer-constants* object)
-;; (define-extern *v-x-ride-racer-constants* object)
-;; (define-extern *v-marauder-racer-constants* object)
-;; (define-extern task-manager-race-pre-race-sequence function)
-;; (define-extern task-manager-desert-course-race-pre-race-sequence function)
-;; (define-extern *bbush-time-trial-hud-info* object)
+(deftype course-race-stack-var0 (structure)
+  ((params traffic-object-spawn-params :inline :offset 0)
+   (vec1 vector :inline :offset 128)
+   (vec2 vector :inline :offset 144)
+   )
+  )
+
+(define-extern *v-snake-racer-constants* rigid-body-vehicle-constants)
+(define-extern *v-mirage-racer-constants* rigid-body-vehicle-constants)
+(define-extern *v-fox-racer-constants* rigid-body-vehicle-constants)
+(define-extern *v-x-ride-racer-constants* rigid-body-vehicle-constants)
+(define-extern *v-marauder-racer-constants* rigid-body-vehicle-constants)
+(define-extern task-manager-race-pre-race-sequence (function none :behavior task-manager-race))
+(define-extern task-manager-desert-course-race-pre-race-sequence (function symbol :behavior task-manager-desert-course-race))
+(define-extern *bbush-time-trial-hud-info* bbush-time-trial-hud-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flut-part                      ;;
