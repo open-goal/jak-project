@@ -144,7 +144,7 @@
 ; (cgo-file "desresc.gd" common-dep)
 ; (cgo-file "desrescc.gd" common-dep)
 ; (cgo-file "desrescg.gd" common-dep)
-; (cgo-file "destrack.gd" common-dep)
+(cgo-file "destrack.gd" common-dep)
 ; (cgo-file "desw.gd" common-dep)
 (cgo-file "dst.gd" common-dep)
 ; (cgo-file "oasiscst.gd" common-dep)
