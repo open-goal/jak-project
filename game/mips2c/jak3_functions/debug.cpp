@@ -572,6 +572,7 @@ block_2:
   c->sqc2(vf6, 176, a3);                            // sqc2 vf6, 176(a3)
   // nop                                            // sll r0, r0, 0
   // Unknown instr: jr t9
+  draw_boundary_polygon::execute(ctxt);
   // nop                                            // sll r0, r0, 0
   //jr ra                                           // jr ra
   c->daddu(sp, sp, r0);                             // daddu sp, sp, r0
