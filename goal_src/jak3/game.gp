@@ -120,7 +120,7 @@
 ; ;; desert
 ; (cgo-file "desa.gd" common-dep)
 (cgo-file "desb.gd" common-dep)
-; (cgo-file "desbattl.gd" common-dep)
+(cgo-file "desbattl.gd" common-dep)
 ; (cgo-file "desbcst.gd" common-dep)
 ; (cgo-file "desboss1.gd" common-dep)
 ; (cgo-file "desboss2.gd" common-dep)
