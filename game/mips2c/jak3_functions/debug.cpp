@@ -560,6 +560,8 @@ u64 execute(void* ctxt) {
   if (bc) {goto block_2;}                           // branch non-likely
 
   // Unknown instr: jr t9
+  draw_boundary_polygon::execute(ctxt);
+  goto end_of_function;
   // nop                                            // sll r0, r0, 0
 
 block_2:
