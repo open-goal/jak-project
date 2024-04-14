@@ -100,7 +100,6 @@
 
 ;; wascity
 (cgo-file "wwd.gd" common-dep) ;; waswide
-(cgo-file "wsd.gd" common-dep) ;; wasdoors (garage)
 (cgo-file "waschase.gd" common-dep)
 (cgo-file "wasdefen.gd" common-dep)
 (cgo-file "wasleapr.gd" common-dep)
@@ -112,6 +111,7 @@
 (cgo-file "wcaseem.gd" common-dep)
 (cgo-file "wascast.gd" common-dep)
 (cgo-file "wasall.gd" common-dep)
+(cgo-file "wsd.gd" common-dep) ;; wasdoors (garage)
 ; ;; arena
 (cgo-file "wasstada.gd" common-dep)
 (cgo-file "wasstadb.gd" common-dep)
@@ -126,11 +126,11 @@
 ; (cgo-file "desboss2.gd" common-dep)
 ; (cgo-file "desc.gd" common-dep)
 ; (cgo-file "deschase.gd" common-dep)
-; (cgo-file "desd.gd" common-dep)
+(cgo-file "desd.gd" common-dep)
 ; (cgo-file "dese.gd" common-dep)
 ; (cgo-file "deserrol.gd" common-dep)
-; (cgo-file "desf.gd" common-dep)
-; (cgo-file "desg.gd" common-dep)
+(cgo-file "desf.gd" common-dep)
+(cgo-file "desg.gd" common-dep)
 ; (cgo-file "desh.gd" common-dep)
 (cgo-file "deshover.gd" common-dep)
 ; (cgo-file "deshunt.gd" common-dep)
