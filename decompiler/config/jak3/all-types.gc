@@ -46489,59 +46489,27 @@
 ;; wasdoors-init                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wasdoors-manager (process)
-  ((name             basic                 :offset-assert 0)
-   (mask             process-mask          :offset-assert 4)
-   (clock            basic                 :offset-assert 8)
-   (parent           uint32                :offset-assert 12)
-   (brother          uint32                :offset-assert 16)
-   (child            uint32                :offset-assert 20)
-   (ppointer         uint32                :offset-assert 24)
-   (self             basic                 :offset-assert 28)
-   (pool             basic                 :offset-assert 32)
-   (status           basic                 :offset-assert 36)
-   (pid              int32                 :offset-assert 40)
-   (main-thread      basic                 :offset-assert 44)
-   (top-thread       basic                 :offset-assert 48)
-   (entity           basic                 :offset-assert 52)
-   (level            basic                 :offset-assert 56)
-   (state            basic                 :offset-assert 60)
-   (prev-state       basic                 :offset-assert 64)
-   (next-state       basic                 :offset-assert 68)
-   (state-stack      basic                 :offset-assert 72)
-   (trans-hook       basic                 :offset-assert 76)
-   (post-hook        basic                 :offset-assert 80)
-   (event-hook       basic                 :offset-assert 84)
-   (allocated-length int32                 :offset-assert 88)
-   (heap-base        uint32                :offset-assert 92)
-   (heap-top         uint32                :offset-assert 96)
-   (heap-cur         uint32                :offset-assert 100)
-   (stack-frame-top  basic                 :offset-assert 104)
-   (heap             kheap        :inline  :offset-assert 92)
-   (connection-list  connectable  :inline  :offset-assert 108)
-   (stack            UNKNOWN      :dynamic :offset-assert 124)
-   )
+  ()
   :method-count-assert 16
   :size-assert         #x80
   :flag-assert         #x1000000080
-  (:methods
-    (wasdoors-manager-method-15 () none) ;; 15
-    )
   (:state-methods
     idle ;; 14
     )
+  (:methods
+    (repair-vehicles (_type_) none) ;; 15
+    )
   )
-|#
 
-;; (define-extern wasdoors-point-inside? function)
-;; (define-extern wasdoors-cleanup function)
-;; (define-extern wasdoors-manager-init-by-other function)
-;; (define-extern *wasdoors-manager* object)
-;; (define-extern wasdoors-manager-start function)
-;; (define-extern wasdoors-manager-kill function)
-;; (define-extern wasdoors-activate function)
-;; (define-extern wasdoors-deactivate function)
+(define-extern wasdoors-point-inside? (function vector symbol))
+(define-extern wasdoors-cleanup (function level none))
+(define-extern wasdoors-manager-init-by-other (function object :behavior wasdoors-manager))
+(define-extern *wasdoors-manager* (pointer wasdoors-manager))
+(define-extern wasdoors-manager-start (function none))
+(define-extern wasdoors-manager-kill (function none))
+(define-extern wasdoors-activate (function level none))
+(define-extern wasdoors-deactivate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasdoors-scenes                ;;
@@ -54742,35 +54710,30 @@
 ;; desertg-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype desert-elec-gate (elec-gate)
   ()
   :method-count-assert 31
   :size-assert         #x200
   :flag-assert         #x1f01800200
   )
-|#
 
-#|
 (deftype desert-eggwall (process-drawable)
-  ((task-node uint16  :offset-assert 200)
+  ((task-node game-task-node :offset-assert 200)
    )
   :method-count-assert 23
   :size-assert         #xca
   :flag-assert         #x17005000ca
+  (:state-methods
+    idle ;; 20
+    die ;; 21
+    )
   (:methods
     (desert-eggwall-method-22 () none) ;; 22
     )
-  (:state-methods
-    die ;; 21
-    idle ;; 20
-    )
   )
-|#
 
-#|
 (deftype des-cactus-obstacle (process-focusable)
-  ((explode-time uint64  :offset-assert 208)
+  ((explode-time time-frame :offset-assert 208)
    )
   :method-count-assert 29
   :size-assert         #xd8
@@ -54779,9 +54742,8 @@
     idle ;; 28
     )
   )
-|#
 
-;; (define-extern *desert-elec-gate-params* object)
+(define-extern *desert-elec-gate-params* elec-gate-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; terraformer-drone              ;;
@@ -57106,17 +57068,17 @@
   :method-count-assert 36
   :size-assert         #x1a0
   :flag-assert         #x24012001a0
-  (:methods
-    (des-plant-method-30 () none) ;; 30
-    (des-plant-method-31 () none) ;; 31
-    (des-plant-method-32 () none) ;; 32
-    (des-plant-method-33 () none) ;; 33
-    (des-plant-method-34 () none) ;; 34
-    (des-plant-method-35 () none) ;; 35
-    )
   (:state-methods
-    explode ;; 29
     idle ;; 28
+    explode ;; 29
+    )
+  (:methods
+    (des-plant-method-30 (_type_) none) ;; 30
+    (des-plant-method-31 (_type_) none) ;; 31
+    (des-plant-method-32 (_type_) none) ;; 32
+    (des-plant-method-33 (_type_ symbol attack-info) symbol) ;; 33
+    (des-plant-method-34 (_type_ rigid-body-impact) symbol) ;; 34
+    (des-plant-method-35 (_type_ vector) none) ;; 35
     )
   )
 
@@ -57134,8 +57096,8 @@
   :flag-assert         #x24012001a0
   )
 
-;; (define-extern *des-cactus-a-explode-params* joint-exploder-static-params)
-;; (define-extern *des-cactus-b-explode-params* joint-exploder-static-params)
+(define-extern *des-cactus-a-explode-params* joint-exploder-static-params)
+(define-extern *des-cactus-b-explode-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desertd-obs                    ;;
@@ -58420,6 +58382,14 @@
   (:methods
     (setup-draw-masks (_type_ int) none) ;; 203
     )
+  )
+
+(deftype wcar-marauder-stack-var0 (structure)
+  ((time0 uint32 :offset 0)
+   (float0 float :offset 16)
+   (float1 float :offset 20)
+   (time uint32 :offset 24)
+   )
   )
 
 (define-extern *v-marauder-turret-control-info* turret-control-info)
@@ -62409,56 +62379,50 @@
 ;; desertf-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype des-jump-bridge (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   (:state-methods
-    up ;; 22
-    raise ;; 21
     idle ;; 20
+    raise ;; 21
+    up ;; 22
     )
   )
-|#
 
-#|
 (deftype des-draw-bridge (process-drawable)
   ((plane vector :inline :offset-assert 208)
    )
   :method-count-assert 26
   :size-assert         #xe0
   :flag-assert         #x1a006000e0
-  (:methods
-    (des-draw-bridge-method-25 () none) ;; 25
-    )
   (:state-methods
-    raise ;; 24
-    down ;; 23
-    lower ;; 22
-    dormant ;; 21
     idle ;; 20
+    dormant ;; 21
+    lower ;; 22
+    down ;; 23
+    raise ;; 24
+    )
+  (:methods
+    (des-draw-bridge-method-25 (_type_) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype des-garage-door (process-drawable)
   ()
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   (:state-methods
-    closing ;; 23
-    opening ;; 22
-    open ;; 21
     idle ;; 20
+    open ;; 21
+    opening ;; 22
+    closing ;; 23
     )
   )
-|#
 
-;; (define-extern des-garage-door-handler function)
+(def-event-handler des-garage-door-handler des-garage-door)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; destroy-dark-eco               ;;
@@ -63092,7 +63056,6 @@
 ;; desert-dust-storm              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype desert-dust-storm (process)
   ((intensity                float          :offset-assert 128)
    (intensity-rate           float          :offset-assert 132)
@@ -63104,35 +63067,33 @@
    (wind-speed               float          :offset-assert 172)
    (dest-wind-speed          float          :offset-assert 176)
    (stretch-val              float          :offset-assert 180)
-   (last-hold-time           uint64         :offset-assert 184)
+   (last-hold-time           time-frame     :offset-assert 184)
    (wind-intensity           float          :offset-assert 192)
-   (new-generate-time        uint64         :offset-assert 200)
-   (state-time               uint64         :offset-assert 208)
+   (new-generate-time        time-frame     :offset-assert 200)
+   (state-time               time-frame     :offset-assert 208)
    (fog-plane-origin         vector :inline :offset-assert 224)
    (fog-plane-dir            vector :inline :offset-assert 240)
-   (is-intro?                basic          :offset-assert 256)
-   (wind-sound               uint32         :offset-assert 260)
-   (enabled-screen-filter?   basic          :offset-assert 264)
+   (is-intro?                symbol         :offset-assert 256)
+   (wind-sound               sound-id       :offset-assert 260)
+   (enabled-screen-filter?   symbol         :offset-assert 264)
    (dust-storm-clock-scalar  float          :offset-assert 268)
    )
   :method-count-assert 21
   :size-assert         #x110
   :flag-assert         #x1500900110
-  (:methods
-    (desert-dust-storm-method-17 () none) ;; 17
-    (desert-dust-storm-method-18 () none) ;; 18
-    (desert-dust-storm-method-19 () none) ;; 19
-    (desert-dust-storm-method-20 () none) ;; 20
-    )
   (:state-methods
-    die ;; 16
-    hold-pos ;; 15
     track ;; 14
+    hold-pos ;; 15
+    die ;; 16
+    )
+  (:methods
+    (desert-dust-storm-method-17 (_type_) none) ;; 17
+    (desert-dust-storm-method-18 (_type_) float) ;; 18
+    (desert-dust-storm-method-19 (_type_) none) ;; 19
+    (desert-dust-storm-method-20 (_type_) float) ;; 20
     )
   )
-|#
 
-#|
 (deftype dust-storm-bank (basic)
   ((spawn-radius      meters  :offset-assert 4)
    (spawn-rand-xz-min meters  :offset-assert 8)
@@ -63144,21 +63105,20 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-;; (define-extern *duststorm-wind-vec* object)
-;; (define-extern *duststorm-wind-vel* object)
-;; (define-extern *duststorm-intensity* object)
-;; (define-extern *duststorm-stationary?* object)
-;; (define-extern *fog-intensity-scalar* object)
-;; (define-extern desert-dust-storm-init-by-other function)
-;; (define-extern *DUST_STORM-bank* dust-storm-bank)
-;; (define-extern sparticle-duststorm-birth-func function)
-;; (define-extern sparticle-duststorm-move function)
-;; (define-extern compute-wind-angle function)
-;; (define-extern create-dust-storm function)
-;; (define-extern desert-activate function)
-;; (define-extern desert-deactivate function)
+(define-extern *duststorm-wind-vec* vector)
+(define-extern *duststorm-wind-vel* float)
+(define-extern *duststorm-intensity* float)
+(define-extern *duststorm-stationary?* symbol)
+(define-extern *fog-intensity-scalar* float)
+(define-extern desert-dust-storm-init-by-other (function level symbol vector object :behavior desert-dust-storm))
+(define-extern *DUST_STORM-bank* dust-storm-bank)
+(define-extern sparticle-duststorm-birth-func (function none))
+(define-extern sparticle-duststorm-move (function sparticle-system sparticle-cpuinfo sparticle-launchinfo vector))
+(define-extern compute-wind-angle (function float float float float))
+(define-extern create-dust-storm (function process-tree level handle))
+(define-extern desert-activate (function level handle))
+(define-extern desert-deactivate (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; credits-h                      ;;
@@ -66542,36 +66502,34 @@
 ;; tizard                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tizard (process-focusable)
   ((rotation-matrix matrix  :inline :offset-assert 208)
-   (ground-normal   UNKNOWN 2       :offset-assert 272)
+   (ground-normal   vector 2 :inline :offset-assert 272)
    (path-dir        vector  :inline :offset-assert 304)
    (path-base-u     float           :offset-assert 320)
    (path-u          float           :offset-assert 324)
    (path-du         float           :offset-assert 328)
-   (first-run?      basic           :offset-assert 332)
+   (first-run?      symbol          :offset-assert 332)
    )
   :method-count-assert 36
   :size-assert         #x150
   :flag-assert         #x2400d00150
-  (:methods
-    (tizard-method-33 () none) ;; 33
-    (tizard-method-34 () none) ;; 34
-    (tizard-method-35 () none) ;; 35
-    )
   (:state-methods
-    die ;; 32
-    turning ;; 31
-    turn ;; 30
-    walk ;; 29
     idle ;; 28
+    walk ;; 29
+    turn ;; 30
+    turning ;; 31
+    die ;; 32
+    )
+  (:methods
+    (tizard-method-33 (_type_) none) ;; 33
+    (tizard-method-34 (_type_) none) ;; 34
+    (tizard-method-35 (_type_) none) ;; 35
     )
   )
-|#
 
-;; (define-extern tizard-event-handler function)
-;; (define-extern tizard-tilt-jmod-func function)
+(def-event-handler tizard-event-handler tizard)
+(define-extern tizard-tilt-jmod-func (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dogat                          ;;
@@ -68754,9 +68712,8 @@
 ;; wcar-marauder-b                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-marauder-b (wcar-base)
-  ((jmod-axles     UNKNOWN                4       :offset-assert 2752)
+  ((jmod-axles     joint-mod-rotate-local 4 :inline :offset-assert 2752)
    (jmod-gun-x     joint-mod-rotate-local :inline :offset-assert 2880)
    (jmod-gun-y     joint-mod-rotate-local :inline :offset-assert 2912)
    (turret-control turret-control         :inline :offset-assert 2944)
@@ -68768,11 +68725,10 @@
     explode ;; 60
     )
   )
-|#
 
-;; (define-extern *v-marauder-b-turret-control-info* object)
-;; (define-extern *v-marauder-b-turret-guard-settings* object)
-;; (define-extern *v-marauder-b-constants* object)
+(define-extern *v-marauder-b-turret-control-info* turret-control-info)
+(define-extern *v-marauder-b-turret-guard-settings* squad-unit-settings)
+(define-extern *v-marauder-b-constants* rigid-body-vehicle-constants)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-chase-path-h            ;;
@@ -71909,7 +71865,6 @@
 ;; waswide-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -71918,9 +71873,7 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-#|
 (deftype wascitya-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -71929,9 +71882,7 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-#|
 (deftype wascityb-states (structure)
   ((light        light-state  :inline :offset-assert 0)
    (flame        flames-state :inline :offset-assert 8)
@@ -71941,12 +71892,11 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-;; (define-extern update-mood-wascity function)
-;; (define-extern update-mood-wascitya function)
-;; (define-extern update-mood-wascityb function)
-;; (define-extern set-wascityb-turret-flash! function)
+(define-extern update-mood-wascity (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-wascitya (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-wascityb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-wascityb-turret-flash! (function float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-h                      ;;
