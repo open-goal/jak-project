@@ -1021,6 +1021,10 @@ const std::unordered_map<
                {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},
                {"decision-point-array",
                 ArrayFieldDecompMeta(TypeSpec("race-decision-point"), 16)}}},
+             {"flyingsaw-graph",
+              {{"node", ArrayFieldDecompMeta(TypeSpec("flyingsaw-node"),
+                                             48,
+                                             ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

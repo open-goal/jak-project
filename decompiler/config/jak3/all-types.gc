@@ -41018,7 +41018,7 @@
     (go-best-state (_type_) object) ;; 80
     (go-die (_type_) object) ;; 81
     (event-handler (_type_ process int symbol event-message-block) object :behavior enemy) ;; 82
-    (enemy-touch-handler (_type_ process event-message-block) none) ;; 83
+    (enemy-touch-handler (_type_ process event-message-block) object) ;; 83
     (send-attack-on-jump-or-knocked (_type_ process event-message-block) none) ;; 84
     (knocked-anim (_type_ enemy-knocked-info) symbol) ;; 85
     (knocked-land-anim (_type_ enemy-knocked-info) symbol) ;; 86
@@ -45804,52 +45804,48 @@
 ;; flyingsaw                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flyingsaw-node (structure)
   ((position   vector :inline :offset-assert 0)
    (spark      vector :inline :offset-assert 16)
-   (make-spark basic          :offset-assert 32)
-   (pos-x      float          :offset-assert 0)
-   (pos-y      float          :offset-assert 4)
-   (pos-z      float          :offset-assert 8)
-   (spark-x    float          :offset-assert 16)
-   (spark-y    float          :offset-assert 20)
-   (spark-z    float          :offset-assert 24)
+   (make-spark symbol         :offset-assert 32)
+   (pos-x      float          :offset 0)
+   (pos-y      float          :offset 4)
+   (pos-z      float          :offset 8)
+   (spark-x    float          :offset 16)
+   (spark-y    float          :offset 20)
+   (spark-z    float          :offset 24)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype flyingsaw-graph (structure)
   ((node-count uint16  :offset-assert 0)
-   (node       uint32  :offset-assert 4)
+   (node       (inline-array flyingsaw-node) :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype flyingsaw (process-drawable)
-  ((no-collision-timer uint64                      :offset-assert 200)
+  ((root               collide-shape               :override)
+   (no-collision-timer time-frame                  :offset-assert 200)
    (graph              flyingsaw-graph             :offset-assert 208)
    (current-node       uint16                      :offset-assert 212)
    (hip-angle          float                       :offset-assert 216)
    (blade-angle        float                       :offset-assert 220)
-   (spin-1             basic                       :offset-assert 224)
-   (spin-2             basic                       :offset-assert 228)
-   (spin-3             basic                       :offset-assert 232)
-   (spin-4             basic                       :offset-assert 236)
+   (spin-1             joint-mod                   :offset-assert 224)
+   (spin-2             joint-mod                   :offset-assert 228)
+   (spin-3             joint-mod                   :offset-assert 232)
+   (spin-4             joint-mod                   :offset-assert 236)
    (base-quat          quaternion          :inline :offset-assert 240)
    (wobble-target      delayed-rand-vector :inline :offset-assert 256)
    (wobble             oscillating-vector  :inline :offset-assert 304)
-   (fly-sound          uint32                      :offset-assert 364)
-   (fly-sound-playing  basic                       :offset-assert 368)
-   (spark-timer        uint64                      :offset-assert 376)
+   (fly-sound          sound-id                    :offset-assert 364)
+   (fly-sound-playing  symbol                      :offset-assert 368)
+   (spark-timer        time-frame                  :offset-assert 376)
    (spark-mat          matrix              :inline :offset-assert 384)
    )
   :method-count-assert 21
@@ -45859,10 +45855,9 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *flyingsaw_2-graph* object)
-;; (define-extern *flyingsaw_3-graph* object)
+(define-extern *flyingsaw_2-graph* flyingsaw-graph)
+(define-extern *flyingsaw_3-graph* flyingsaw-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-texture                  ;;

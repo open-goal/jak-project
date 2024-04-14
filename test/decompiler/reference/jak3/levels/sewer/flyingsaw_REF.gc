@@ -1,17 +1,13 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: flyingsaw.gc
-;; name in dgo: flyingsaw
-;; dgos: SEA
-
-;; DECOMP BEGINS
-
+;; failed to figure out what this is:
 (defskelgroup skel-flyingsaw flyingsaw flyingsaw-lod0-jg flyingsaw-idle-ja
               ((flyingsaw-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 4)
               )
 
+;; definition of type flyingsaw-node
 (deftype flyingsaw-node (structure)
   ((position    vector  :inline)
    (spark       vector  :inline)
@@ -25,14 +21,47 @@
    )
   )
 
+;; definition for method 3 of type flyingsaw-node
+(defmethod inspect ((this flyingsaw-node))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'flyingsaw-node)
+  (format #t "~1Tposition: ~`vector`P~%" (-> this position))
+  (format #t "~1Tspark: ~`vector`P~%" (-> this spark))
+  (format #t "~1Tmake-spark: ~A~%" (-> this make-spark))
+  (format #t "~1Tpos-x: ~f~%" (-> this position x))
+  (format #t "~1Tpos-y: ~f~%" (-> this position y))
+  (format #t "~1Tpos-z: ~f~%" (-> this position z))
+  (format #t "~1Tspark-x: ~f~%" (-> this spark x))
+  (format #t "~1Tspark-y: ~f~%" (-> this spark y))
+  (format #t "~1Tspark-z: ~f~%" (-> this spark z))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type flyingsaw-graph
 (deftype flyingsaw-graph (structure)
   ((node-count  uint16)
    (node        (inline-array flyingsaw-node))
    )
   )
 
+;; definition for method 3 of type flyingsaw-graph
+(defmethod inspect ((this flyingsaw-graph))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'flyingsaw-graph)
+  (format #t "~1Tnode-count: ~D~%" (-> this node-count))
+  (format #t "~1Tnode: #x~X~%" (-> this node))
+  (label cfg-4)
+  this
+  )
 
+;; definition for symbol *flyingsaw_2-graph*, type flyingsaw-graph
 (define *flyingsaw_2-graph* (new 'static 'flyingsaw-graph
                               :node-count #xa
                               :node (new 'static 'inline-array flyingsaw-node 10
@@ -90,6 +119,7 @@
                               )
         )
 
+;; definition for symbol *flyingsaw_3-graph*, type flyingsaw-graph
 (define *flyingsaw_3-graph* (new 'static 'flyingsaw-graph
                               :node-count #x10
                               :node (new 'static 'inline-array flyingsaw-node 16
@@ -177,6 +207,7 @@
                               )
         )
 
+;; definition of type flyingsaw
 (deftype flyingsaw (process-drawable)
   ((root                collide-shape       :override)
    (no-collision-timer  time-frame)
@@ -201,7 +232,36 @@
     )
   )
 
+;; definition for method 3 of type flyingsaw
+(defmethod inspect ((this flyingsaw))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tno-collision-timer: ~D~%" (-> this no-collision-timer))
+  (format #t "~2Tgraph: #<flyingsaw-graph @ #x~X>~%" (-> this graph))
+  (format #t "~2Tcurrent-node: ~D~%" (-> this current-node))
+  (format #t "~2Thip-angle: ~f~%" (-> this hip-angle))
+  (format #t "~2Tblade-angle: ~f~%" (-> this blade-angle))
+  (format #t "~2Tspin-1: ~A~%" (-> this spin-1))
+  (format #t "~2Tspin-2: ~A~%" (-> this spin-2))
+  (format #t "~2Tspin-3: ~A~%" (-> this spin-3))
+  (format #t "~2Tspin-4: ~A~%" (-> this spin-4))
+  (format #t "~2Tbase-quat: #<quaternion @ #x~X>~%" (-> this base-quat))
+  (format #t "~2Twobble-target: #<delayed-rand-vector @ #x~X>~%" (-> this wobble-target))
+  (format #t "~2Twobble: #<oscillating-vector @ #x~X>~%" (-> this wobble))
+  (format #t "~2Tfly-sound: ~D~%" (-> this fly-sound))
+  (format #t "~2Tfly-sound-playing: ~A~%" (-> this fly-sound-playing))
+  (format #t "~2Tspark-timer: ~D~%" (-> this spark-timer))
+  (format #t "~2Tspark-mat: #<matrix @ #x~X>~%" (-> this spark-mat))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (defstate idle (flyingsaw)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -335,6 +395,7 @@
     )
   )
 
+;; definition for method 10 of type flyingsaw
 (defmethod deactivate ((this flyingsaw))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (-> this fly-sound-playing)
@@ -344,6 +405,7 @@
   (none)
   )
 
+;; definition for method 7 of type flyingsaw
 ;; WARN: Return type mismatch process-drawable vs flyingsaw.
 (defmethod relocate ((this flyingsaw) (offset int))
   (if (nonzero? (-> this spin-1))
@@ -361,6 +423,8 @@
   (the-as flyingsaw ((method-of-type process-drawable relocate) this offset))
   )
 
+;; definition for method 11 of type flyingsaw
+;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this flyingsaw) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 penetrated-by)
@@ -473,3 +537,7 @@
   (set! (-> this fly-sound-playing) #f)
   (go (method-of-object this idle))
   )
+
+
+
+
