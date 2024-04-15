@@ -288,8 +288,8 @@
 ; (cgo-file "museum3b.gd" common-dep)
 ; (cgo-file "museum4.gd" common-dep)
 ; (cgo-file "museum4b.gd" common-dep)
-; ;; test
-; (cgo-file "halfpipe.gd" common-dep)
+;; test
+(cgo-file "halfpipe.gd" common-dep)
 ; ;; borrow
 ; (cgo-file "lashelin.gd" common-dep)
 ; (cgo-file "lbbring1.gd" common-dep)

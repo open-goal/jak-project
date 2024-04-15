@@ -346,6 +346,7 @@ namespace nav_dma_send_to_spr_no_flush { extern void link(); }
 namespace blerc_execute { extern void link(); }
 namespace setup_blerc_chains_for_one_fragment { extern void link(); }
 namespace sparticle_motion_blur_dirt { extern void link(); }
+namespace foreground_draw_hud { extern void link(); }
 
 }
 // clang-format on
@@ -540,7 +541,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"joint", {jak3::cspace_parented_transformq_joint::link}},
         {"foreground",
          {jak3::foreground_check_longest_edge_asm::link, jak3::foreground_generic_merc::link,
-          jak3::foreground_merc::link}},
+          jak3::foreground_merc::link, jak3::foreground_draw_hud::link}},
         {"particle-curves", {jak3::live_func_curve::link, jak3::birth_func_curve::link}},
         {"collide-hash",
          {jak3::method_11_collide_hash::link, jak3::method_12_collide_hash::link,

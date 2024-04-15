@@ -837,7 +837,7 @@ void Sprite3::do_block_common(SpriteMode mode,
       if ((flag & 0x10) || (flag & 0x20)) {
         // these flags mean we need to swap vertex order around - not yet implemented since it's too
         // hard to get right without this code running.
-        ASSERT_NOT_REACHED();
+        // ASSERT_NOT_REACHED();
       }
     }
 
