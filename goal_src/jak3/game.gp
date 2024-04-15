@@ -96,7 +96,7 @@
 ;; the case of a .o appearing in multiple dgos. But, if we depend on the last item in both lists, it
 ;; works out.
 
-(define common-dep '("$OUT/obj/default-menu.o"))
+(define common-dep '("$OUT/obj/default-menu-pc.o"))
 
 ;; wascity
 (cgo-file "wwd.gd" common-dep) ;; waswide
