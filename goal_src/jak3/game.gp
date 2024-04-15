@@ -235,10 +235,10 @@
 ; (cgo-file "facc.gd" common-dep)
 ; (cgo-file "facd.gd" common-dep)
 ; ;; tower
-; (cgo-file "towb.gd" common-dep)
-; (cgo-file "towera.gd" common-dep)
-; (cgo-file "towerc.gd" common-dep)
-; (cgo-file "towercst.gd" common-dep)
+(cgo-file "towb.gd" common-dep)
+(cgo-file "towera.gd" common-dep)
+(cgo-file "towerc.gd" common-dep)
+(cgo-file "towercst.gd" common-dep)
 ; ;; stadium
 ; (cgo-file "sta.gd" common-dep)
 ; (cgo-file "staa.gd" common-dep)
