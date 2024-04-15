@@ -11,8 +11,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-                                            ;; version: 0.2.0.0
-(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 2 0 0))
+                                            ;; version: 0.3.0.0
+(defconstant PC_KERNEL_VERSION (static-pckernel-version 0 3 0 0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; types and enums
@@ -31,8 +31,6 @@
   (suck-in-all)
   (music-player)
   (no-textures)
-  (fast-movies)
-  (slow-movies)
   (fast-speed)
   (slow-speed)
   (fast-travel)
@@ -42,7 +40,6 @@
   (board-tricks)
   (weather-bad)
   (weather-good)
-  (hijack-lines)
   )
 
 ;; pc enum for languages. this is the game's languages + custom ones.
@@ -53,29 +50,30 @@
   (german 2)
   (spanish 3)
   (italian 4)
-  (japanese 5)
-  (korean 6)
-  (uk-english 7)
+  (commentary 5)
+  (japanese 6)
+  (korean 7)
+  (russian 8)
+  (portuguese 9)
+  (dutch 10)
+  (uk-english 11)
   ;; custom
-  (portuguese 8)
-  (finnish 9)
-  (swedish 10)
-  (danish 11)
-  (norwegian 12)
-  (dutch 13)
-  (br-portuguese 14)
-  (hungarian 15)
-  (catalan 16)
-  (icelandic 17)
-  (russian 18)
-  (polish 19)
-  (lithuanian 20)
+  (finnish 12)
+  (swedish 13)
+  (danish 14)
+  (norwegian 15)
+  (br-portuguese 16)
+  (hungarian 17)
+  (catalan 18)
+  (icelandic 19)
+  (polish 20)
+  (lithuanian 21)
 
   (custom 999) ;; temp
   )
 
 ;; The Jak 2 version of the pc-settings object.
-(deftype pc-settings-jak2 (pc-settings)
+(deftype pc-settings-jak3 (pc-settings)
   (;; cheats
    (cheats            pc-cheats)
    (cheats-revealed   pc-cheats)
@@ -91,7 +89,7 @@
    (fast-elevator? symbol)
    (fast-progress? symbol)
 
-   (stats   statistics)
+   ;(stats   statistics)
 
    ;; gfx
    (smooth-minimap?   symbol)
@@ -100,8 +98,6 @@
    ;; other
    (controller-led-status?    symbol)
    (speedrunner-mode-custom-bind uint32)
-
-   (text-language pc-language) ;; language for game text
 	 )
 
   (:methods
@@ -111,10 +107,10 @@
     )
   )
 
-(define *pc-settings* (the pc-settings-jak2 #f))
+(define *pc-settings* (the pc-settings-jak3 #f))
 
 
-;; jak 2 discord rpc structure
+;; jak 3 discord rpc structure
 (deftype discord-info (structure)
   ((orb-count float)
    (gem-count float)
@@ -134,7 +130,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defmethod reset-misc ((obj pc-settings-jak2) (call-handlers symbol))
+(defmethod reset-misc ((obj pc-settings-jak3) (call-handlers symbol))
   "Set the default misc settings"
 
   ((method-of-type pc-settings reset-misc) obj call-handlers)
@@ -145,22 +141,9 @@
   (true! (-> obj smooth-minimap?))
   (false! (-> obj hires-clouds?))
   (set! (-> obj speedrunner-mode-custom-bind) 0)
-
-  (cond
-    ((and (= *default-territory* GAME_TERRITORY_SCEE) (= (-> obj text-language) (pc-language english)))
-      (set! (-> obj text-language) (pc-language uk-english))
-      )
-    ((= *default-territory* GAME_TERRITORY_SCEI)
-      (set! (-> obj text-language) (pc-language japanese))
-      )
-    ((= *default-territory* GAME_TERRITORY_SCEK)
-      (set! (-> obj text-language) (pc-language korean))
-      )
-    (else
-      ))
   0)
 
-(defmethod reset-extra ((obj pc-settings-jak2) (call-handlers symbol))
+(defmethod reset-extra ((obj pc-settings-jak3) (call-handlers symbol))
   "Set the default goodies settings"
 
   ((method-of-type pc-settings reset-extra) obj call-handlers)
@@ -169,15 +152,16 @@
   (set! (-> obj cheats-revealed) (pc-cheats))
   (set! (-> obj cheats-purchased) (pc-cheats))
   (set! (-> obj cheats-unlocked) (pc-cheats))
+  (set! (-> obj cheats-mask) (pc-cheats))
 
   (clear-all! (-> obj music-unlocked))
   (dotimes (i 6)
     (set! (-> obj flava-unlocked i) #f))
 
-  (set! (-> obj stats) *statistics*)
+  ;(set! (-> obj stats) *statistics*)
   0)
 
-(defmethod reset-input ((obj pc-settings-jak2) (device symbol) (call-handlers symbol))
+(defmethod reset-input ((obj pc-settings-jak3) (device symbol) (call-handlers symbol))
   "Set the default input settings"
 
   ((method-of-type pc-settings reset-input) obj device call-handlers)
@@ -247,14 +231,6 @@
    (turbo-board-speed     float)
    (hijack-speech-chance  float)
    (flags   pc-cheat-state-flag)
-
-   (sewer-valve-start-time  time-frame)
-   (sewer-valve-end-time    time-frame)
-   (sewer-valve-target-seconds  int8)
-   (sewer-valve-on              int8)
-
-   (kill-civvie-target  int16)
-   (kill-car-target     int16)
    )
   )
 
@@ -264,11 +240,6 @@
                               :airlock-close-speed 1.75
                               :turbo-board-speed 1.5
                               :hijack-speech-chance 0.45
-
-                              :sewer-valve-target-seconds 75
-
-                              :kill-civvie-target 40
-                              :kill-car-target 20
                               ))
 
 (defmacro cheat-state-flag? (&rest flags)
