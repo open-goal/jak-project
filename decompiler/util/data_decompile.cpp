@@ -1025,6 +1025,8 @@ const std::unordered_map<
               {{"node", ArrayFieldDecompMeta(TypeSpec("flyingsaw-node"),
                                              48,
                                              ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
+             {"nav-network-info",
+              {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
