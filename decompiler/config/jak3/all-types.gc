@@ -43216,7 +43216,7 @@
     (hover-enemy-method-161 (_type_) none) ;; 161
     (hover-enemy-method-162 (_type_ float) vector) ;; 162
     (hover-enemy-method-163 (_type_) none) ;; 163
-    (hover-enemy-method-164 (_type_) none) ;; 164
+    (hover-enemy-method-164 (_type_ int float) none) ;; 164
     (hover-enemy-method-165 (_type_) none) ;; 165
     (play-fly-anim (_type_ int float int int) none) ;; 166
     (hover-enemy-method-167 (_type_) none) ;; 167
@@ -44407,29 +44407,26 @@
 ;; robo-hover                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype robo-hover-shot (guard-shot)
   ()
   :method-count-assert 41
   :size-assert         #x220
   :flag-assert         #x2901a00220
   )
-|#
 
-#|
 (deftype robo-hover (hover-enemy)
-  ((wrist-quat            UNKNOWN 2       :offset-assert 976)
+  ((wrist-quat            quaternion 2 :inline :offset-assert 976)
    (aim-position          vector  :inline :offset-assert 1008)
    (entity-group          basic           :offset-assert 1024)
-   (smoke-part            basic           :offset-assert 1028)
-   (engine-part           basic           :offset-assert 1032)
-   (next-fire-time        uint64          :offset-assert 1040)
+   (smoke-part            sparticle-launch-control :offset-assert 1028)
+   (engine-part           sparticle-launch-control :offset-assert 1032)
+   (next-fire-time        time-frame      :offset-assert 1040)
    (gun-blend             float           :offset-assert 1048)
    (path-u                float           :offset-assert 1052)
    (path-du               float           :offset-assert 1056)
    (path-du-final         float           :offset-assert 1060)
    (path-dest             float           :offset-assert 1064)
-   (sound-id              uint32          :offset-assert 1068)
+   (sound-id              sound-id        :offset-assert 1068)
    (knocked-recover-anim  int32           :offset-assert 1072)
    (attack-wait-min       float           :offset-assert 1076)
    (attack-wait-max       float           :offset-assert 1080)
@@ -44441,30 +44438,29 @@
   :method-count-assert 184
   :size-assert         #x44c
   :flag-assert         #xb803d0044c
-  (:methods
-    (robo-hover-method-182 () none) ;; 182
-    (robo-hover-method-183 () none) ;; 183
-    )
   (:state-methods
-    knocked-recover ;; 32
     knocked ;; 31
-    attack ;; 180
-    kick-attack ;; 179
-    explode ;; 181
-    hostile ;; 38
+    knocked-recover ;; 32
     notice ;; 35
-    ambush-attack ;; 178
-    ambush-fly ;; 177
+    hostile ;; 38
     ambush ;; 47
+    ambush-fly ;; 177
+    ambush-attack ;; 178
+    kick-attack ;; 179
+    attack ;; 180
+    explode ;; 181
+    )
+  (:methods
+    (spawn-shot-from-cspace-idx (_type_ vector projectile-init-by-other-params int float) none) ;; 182
+    (should-attack? (_type_ process-focusable) symbol) ;; 183
     )
   )
-|#
 
-;; (define-extern *fact-info-robo-hover-defaults* fact-info-enemy-defaults)
-;; (define-extern *robo-hover-enemy-info* enemy-info)
-;; (define-extern *robo-hover-debris-params* debris-static-params)
-;; (define-extern exit-ambush? function)
-;; (define-extern robo-hover-arm-jmod function)
+(define-extern *fact-info-robo-hover-defaults* fact-info-enemy-defaults)
+(define-extern *robo-hover-enemy-info* enemy-info)
+(define-extern *robo-hover-debris-params* debris-static-params)
+(define-extern exit-ambush? (function symbol :behavior robo-hover))
+(define-extern robo-hover-arm-jmod (function cspace transformq none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; kg-grunt                       ;;
@@ -44551,31 +44547,31 @@
 ;; hover-nav-sewb                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sewb-adjacency* object)
+(define-extern *sewb-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-sewg                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sewg-adjacency* object)
+(define-extern *sewg-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-sewl                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sewl-adjacency* object)
+(define-extern *sewl-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-sewo                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sewo-adjacency* object)
+(define-extern *sewo-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-sewj                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *sewj-adjacency* object)
+(define-extern *sewj-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; sewer-part                     ;;
@@ -44914,14 +44910,14 @@
     )
   )
 
-(define-extern sewer-login (function none))
-(define-extern sewer-logout (function none))
-(define-extern sewb-activate (function none))
-(define-extern sewc-activate (function none))
-(define-extern sewg-activate (function none))
-(define-extern sewl-activate (function none))
-(define-extern sewo-activate (function none))
-(define-extern sewj-activate (function none))
+(define-extern sewer-login (function level none))
+(define-extern sewer-logout (function level none))
+(define-extern sewb-activate (function level none))
+(define-extern sewc-activate (function level none))
+(define-extern sewg-activate (function level none))
+(define-extern sewl-activate (function level none))
+(define-extern sewo-activate (function level none))
+(define-extern sewj-activate (function level none))
 (define-extern sew-cam-sequencer-init-by-other (function entity-actor object :behavior sew-cam-sequencer))
 (define-extern sew-cam-eval-script (function pair object))
 (define-extern *sew-fan-enemy-info* enemy-info)
@@ -61283,7 +61279,7 @@
 ;; hover-nav-towera               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *towera-adjacency* object)
+(define-extern *towera-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tower-part                     ;;
@@ -61294,7 +61290,6 @@
 ;; tower-mood                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype tower-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
@@ -61302,128 +61297,119 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
-(deftype ltowerb-states (UNKNOWN)
+(deftype ltowerb-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern update-mood-ltowerb function)
-;; (define-extern init-mood-tower function)
-;; (define-extern update-tower-lights function)
-;; (define-extern update-mood-tower function)
-;; (define-extern *towerb-water-texture-anim-array* texture-anim-array)
+(define-extern init-mood-mineb (function mood-context float))
+(define-extern update-mood-mineb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-ltowerb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-tower (function mood-context float))
+(define-extern update-tower-lights (function mood-context none))
+(define-extern update-mood-tower (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *towerb-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tower-scenes                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-dark-tower-explo-color* curve-color-fast)
-;; (define-extern *range-dark-tower-explo-alpha* curve2d-fast)
-;; (define-extern *range-dark-tower-explo-scale-x* curve2d-fast)
-;; (define-extern *range-dark-tower-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-dark-tower-explo-alpha* curve2d-fast)
-;; (define-extern *curve-dark-tower-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-dark-tower-explo-scale-y* curve2d-fast)
-;; (define-extern *part-dark-tower-explosion-texture-curve-settings* object)
-;; (define-extern *range-tower-dust-color* curve-color-fast)
-;; (define-extern *range-tower-dust-alpha* curve2d-fast)
-;; (define-extern *range-tower-dust-scale-x* curve2d-fast)
-;; (define-extern *range-tower-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-tower-dust-alpha* curve2d-fast)
-;; (define-extern *curve-tower-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-tower-dust-scale-y* curve2d-fast)
-;; (define-extern *part-hellcat-tower-dust-landing-curve-settings* object)
+(define-extern *range-dark-tower-explo-color* curve-color-fast)
+(define-extern *range-dark-tower-explo-alpha* curve2d-fast)
+(define-extern *range-dark-tower-explo-scale-x* curve2d-fast)
+(define-extern *range-dark-tower-explo-scale-y* curve2d-fast)
+(define-extern *curve-dark-tower-explo-alpha* curve2d-fast)
+(define-extern *curve-dark-tower-explo-scale-x* curve2d-fast)
+(define-extern *curve-dark-tower-explo-scale-y* curve2d-fast)
+(define-extern *part-dark-tower-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-tower-dust-color* curve-color-fast)
+(define-extern *range-tower-dust-alpha* curve2d-fast)
+(define-extern *range-tower-dust-scale-x* curve2d-fast)
+(define-extern *range-tower-dust-scale-y* curve2d-fast)
+(define-extern *curve-tower-dust-alpha* curve2d-fast)
+(define-extern *curve-tower-dust-scale-x* curve2d-fast)
+(define-extern *curve-tower-dust-scale-y* curve2d-fast)
+(define-extern *part-hellcat-tower-dust-landing-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; tower-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype actor-group-watcher (process)
-  ((actor-group       uint32  :offset-assert 124)
-   (actor-group-count int32   :offset-assert 128)
-   (notify-actor      basic   :offset-assert 132)
+  ((actor-group       (pointer actor-group)  :offset-assert 128)
+   (actor-group-count int32        :offset-assert 132)
+   (notify-actor      entity-actor :offset-assert 136)
    )
   :method-count-assert 16
   :size-assert         #x8c
   :flag-assert         #x100010008c
   (:state-methods
-    active ;; 15
     idle ;; 14
+    active ;; 15
     )
   )
-|#
 
-#|
 (deftype tow-large-plat (process-drawable)
-  ((actor-group       uint32  :offset-assert 196)
-   (actor-group-count int32   :offset-assert 200)
-   (final-y           float   :offset-assert 204)
-   (fade-level        float   :offset-assert 208)
-   (sound-id          uint32  :offset-assert 212)
+  ((actor-group       (pointer actor-group)  :offset-assert 200)
+   (actor-group-count int32   :offset-assert 204)
+   (final-y           float   :offset-assert 208)
+   (fade-level        float   :offset-assert 212)
+   (sound-id          sound-id  :offset-assert 216)
    )
   :method-count-assert 26
   :size-assert         #xdc
   :flag-assert         #x1a006000dc
   (:state-methods
-    die ;; 25
-    trigger-movie ;; 24
-    wait-to-trigger-movie ;; 23
-    lowered ;; 22
-    lower ;; 21
     idle ;; 20
+    lower ;; 21
+    lowered ;; 22
+    wait-to-trigger-movie ;; 23
+    trigger-movie ;; 24
+    die ;; 25
+    )
+  (:states
+    wait-for-battle
     )
   )
-|#
 
-#|
 (deftype tow-energy-bridge (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   (:state-methods
-    active ;; 22
-    extending ;; 21
     idle ;; 20
+    extending ;; 21
+    active ;; 22
     )
   )
-|#
 
-#|
 (deftype tow-spawner (process-drawable)
-  ((spawn-time        uint64  :offset-assert 200)
+  ((spawn-time        time-frame  :offset-assert 200)
    (spawn-count       int32   :offset-assert 208)
    (spawn-count-final int32   :offset-assert 212)
-   (nav-mesh          basic   :offset-assert 216)
+   (nav-mesh          nav-mesh   :offset-assert 216)
    )
   :method-count-assert 27
   :size-assert         #xdc
   :flag-assert         #x1b006000dc
-  (:methods
-    (tow-spawner-method-25 () none) ;; 25
-    (tow-spawner-method-26 () none) ;; 26
-    )
   (:state-methods
-    done ;; 24
-    wait-for-children ;; 23
-    spawning ;; 22
-    active ;; 21
     idle ;; 20
+    active ;; 21
+    spawning ;; 22
+    wait-for-children ;; 23
+    done ;; 24
+    )
+  (:methods
+    (can-spawn-creature? (_type_ vector float) symbol) ;; 25
+    (do-spawn (_type_) none) ;; 26
     )
   )
-|#
 
-#|
 (deftype tow-tentacle (process-drawable)
-  ((attack-id          int32   :offset-assert 200)
-   (no-collision-timer uint64  :offset-assert 208)
+  ((root collide-shape :override)
+   (attack-id          int32   :offset-assert 200)
+   (no-collision-timer time-frame  :offset-assert 208)
    )
   :method-count-assert 21
   :size-assert         #xd8
@@ -61432,29 +61418,25 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype task-manager-tower-destroy (task-manager)
-  ((creak-sound-id       uint32         :offset-assert 240)
-   (creak-sound-timer    uint64         :offset-assert 248)
-   (creak-sound-duration uint64         :offset-assert 256)
+  ((creak-sound-id       sound-id       :offset-assert 240)
+   (creak-sound-timer    time-frame     :offset-assert 248)
+   (creak-sound-duration time-frame     :offset-assert 256)
    (goo-sound-id         uint32         :offset-assert 264)
-   (goo-sound-timer      uint64         :offset-assert 272)
-   (goo-sound-duration   uint64         :offset-assert 280)
-   (goo-sound-playing    basic          :offset-assert 288)
+   (goo-sound-timer      time-frame     :offset-assert 272)
+   (goo-sound-duration   time-frame     :offset-assert 280)
+   (goo-sound-playing    symbol         :offset-assert 288)
    (goo-sound-location   vector :inline :offset-assert 304)
    )
   :method-count-assert 32
   :size-assert         #x140
   :flag-assert         #x2000c00140
   )
-|#
 
-;; (define-extern towera-login function)
-;; (define-extern towera-logout function)
-;; (define-extern towera-activate function)
-;; (define-extern wait-for-battle state)
+(define-extern towera-login (function level none))
+(define-extern towera-logout (function level none))
+(define-extern towera-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-destroy-grid               ;;
