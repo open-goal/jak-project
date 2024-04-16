@@ -7,3 +7,64 @@
 
 ;; DECOMP BEGINS
 
+(deftype eco-green-collider (process-drawable)
+  ((root  collide-shape :override)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (init-collision! (_type_) none)
+    )
+  )
+
+
+(defstate idle (eco-green-collider)
+  :virtual #t
+  :trans (behavior ()
+    (spawn (-> self part) (-> self root trans))
+    )
+  :code (behavior ()
+    (update-transforms (-> self root))
+    (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> a1-0 options) (overlaps-others-options))
+      (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
+      (set! (-> a1-0 tlist) *touching-list*)
+      (when (find-overlapping-shapes (-> self root) a1-0)
+        )
+      )
+    (set-time! (-> self state-time))
+    (until (time-elapsed? (-> self state-time) (seconds 2))
+      (suspend)
+      )
+    )
+  )
+
+(defmethod init-collision! ((this eco-green-collider))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec projectile))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec obstacle hit-by-others-list))
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 2048.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (set! (-> this root event-other) 'green-eco-attack)
+  0
+  (none)
+  )
+
+(defbehavior eco-green-collider-init-by-other eco-green-collider ((arg0 vector) (arg1 entity-actor))
+  (process-entity-set! self arg1)
+  (init-collision! self)
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 125) self))
+  (go-virtual idle)
+  )
