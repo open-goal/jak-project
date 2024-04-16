@@ -1027,6 +1027,8 @@ const std::unordered_map<
                                              ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
              {"nav-network-info",
               {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
+             {"forest-path-points-static",
+              {{"points", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

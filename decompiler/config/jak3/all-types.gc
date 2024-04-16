@@ -38099,7 +38099,7 @@
   :size-assert         #xf0
   :flag-assert         #x15007000f0
   (:methods
-    (init! (_type_ entity-actor int) object) ;; 20
+    (init! (_type_ entity-actor pickup-type) object) ;; 20
     )
   (:states
     vent-wait-for-touch
@@ -44021,7 +44021,7 @@
   ((part-trail        sparticle-launch-control   :offset-assert 208)
    (actor-group       (pointer actor-group)      :offset-assert 212)
    (actor-group-count int32                      :offset-assert 216)
-   (part-subsampler   sparticle-launch-control   :offset-assert 220)
+   (part-subsampler   sparticle-subsampler       :offset-assert 220)
    (path-pos          float                      :offset-assert 224)
    (speed             float                      :offset-assert 228)
    (velocity          vector             :inline :offset-assert 240)
@@ -55675,7 +55675,7 @@
 ;; hover-nav-foresta              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *foresta-adjacency* object)
+(define-extern *foresta-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; neo-spawner                    ;;
@@ -64947,199 +64947,177 @@
 ;; eco-green-collider             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype eco-green-collider (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
-  (:methods
-    (eco-green-collider-method-21 () none) ;; 21
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 21
+    )
   )
-|#
 
-;; (define-extern eco-green-collider-init-by-other function)
+(define-extern eco-green-collider-init-by-other (function vector entity-actor object :behavior eco-green-collider))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-birth-func-brightness-part-neo-spawner-explode-juice function)
-;; (define-extern spt-birth-func-brightness-part-forest-leaf-fall function)
-;; (define-extern spt-birth-func-part-forest-leaf-fall function)
-;; (define-extern spt-forest-check-ground-lie-flat function)
-;; (define-extern spt-birth-func-part-forest-leaf-fall-water function)
-;; (define-extern spt-check-water-lie-flat function)
-;; (define-extern spt-birth-func-brightness-mh-plant-rebirth-dust function)
-;; (define-extern spt-birth-func-brightness-mh-plant-rebirth-rocks function)
-;; (define-extern spt-birth-func-brightness-mh-plant-rebirth-dirt function)
-;; (define-extern spt-birth-func-part-mh-plant-rebirth-dirt function)
-;; (define-extern spt-birth-func-part-mh-plant-rebirth-rocks function)
-;; (define-extern spt-func-part-mh-plant-rebirth-rocks function)
-;; (define-extern spt-func-birth-on-stop function)
-;; (define-extern spt-birth-func-brightness-mh-plant-die-juice function)
-;; (define-extern spt-birth-func-brightness-for-bridge-bits function)
-;; (define-extern spt-birth-func-part-for-bridge-bits function)
-;; (define-extern *range-ffexplo-dust-color* curve-color-fast)
-;; (define-extern *range-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-for-ring-finder-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-ffexplo-color* curve-color-fast)
-;; (define-extern *range-ffexplo-alpha* curve2d-fast)
-;; (define-extern *range-ffexplo-scale-x* curve2d-fast)
-;; (define-extern *range-ffexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-ffexplo-alpha* curve2d-fast)
-;; (define-extern *curve-ffexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-ffexplo-scale-y* curve2d-fast)
-;; (define-extern *part-for-ring-finder-explosion-texture-curve-settings* object)
-;; (define-extern birth-func-for-ground-dirt-bounce function)
-;; (define-extern spt-func-for-ground-dirt-bounce1 function)
-;; (define-extern spt-func-for-ground-dirt-bounce2 function)
-;; (define-extern spt-birth-func-brightness-for-statue-rocks function)
-;; (define-extern spt-birth-func-brightness-for-statue-dirt function)
-;; (define-extern spt-birth-func-part-for-statue-rise-dirt function)
-;; (define-extern spt-birth-func-part-for-statue-rise-rocks function)
-;; (define-extern spt-func-part-for-statue-rise-rocks function)
-;; (define-extern spt-birth-func-part-for-statue-rise-rocks-bounce1 function)
-;; (define-extern spt-func-part-for-statue-rise-rocks-bounce1 function)
-;; (define-extern spt-func-for-ground-dirt-bounce3 function)
-;; (define-extern spt-birth-func-part-for-statue-rise-rocks-bounce2 function)
-;; (define-extern *range-sat-explo-color* curve-color-fast)
-;; (define-extern *range-sat-explo-alpha* curve2d-fast)
-;; (define-extern *range-sat-explo-scale-x* curve2d-fast)
-;; (define-extern *range-sat-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-sat-explo-alpha* curve2d-fast)
-;; (define-extern *curve-sat-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-sat-explo-scale-y* curve2d-fast)
-;; (define-extern *part-for-statue-explosion-texture-curve-settings* object)
+(define-extern spt-birth-func-brightness-part-neo-spawner-explode-juice (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-part-forest-leaf-fall (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-forest-leaf-fall (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-forest-check-ground-lie-flat (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-forest-leaf-fall-water (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-check-water-lie-flat (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-mh-plant-rebirth-dust (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-brightness-mh-plant-rebirth-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-brightness-mh-plant-rebirth-dirt (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-mh-plant-rebirth-dirt (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-mh-plant-rebirth-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-mh-plant-rebirth-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-birth-on-stop (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-brightness-mh-plant-die-juice (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-brightness-for-bridge-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-for-bridge-bits (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-ffexplo-dust-color* curve-color-fast)
+(define-extern *range-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *part-for-ring-finder-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-ffexplo-color* curve-color-fast)
+(define-extern *range-ffexplo-alpha* curve2d-fast)
+(define-extern *range-ffexplo-scale-x* curve2d-fast)
+(define-extern *range-ffexplo-scale-y* curve2d-fast)
+(define-extern *curve-ffexplo-alpha* curve2d-fast)
+(define-extern *curve-ffexplo-scale-x* curve2d-fast)
+(define-extern *curve-ffexplo-scale-y* curve2d-fast)
+(define-extern *part-for-ring-finder-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern birth-func-for-ground-dirt-bounce (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-for-ground-dirt-bounce1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-for-ground-dirt-bounce2 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-brightness-for-statue-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-brightness-for-statue-dirt (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-for-statue-rise-dirt (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-for-statue-rise-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-for-statue-rise-rocks (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-for-statue-rise-rocks-bounce1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-for-statue-rise-rocks-bounce1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-for-ground-dirt-bounce3 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-for-statue-rise-rocks-bounce2 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-sat-explo-color* curve-color-fast)
+(define-extern *range-sat-explo-alpha* curve2d-fast)
+(define-extern *range-sat-explo-scale-x* curve2d-fast)
+(define-extern *range-sat-explo-scale-y* curve2d-fast)
+(define-extern *curve-sat-explo-alpha* curve2d-fast)
+(define-extern *curve-sat-explo-scale-x* curve2d-fast)
+(define-extern *curve-sat-explo-scale-y* curve2d-fast)
+(define-extern *part-for-statue-explosion-texture-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-mood                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype forest-states (structure)
   ((light      light-state :inline :offset-assert 0)
-   (gun-values UNKNOWN     3       :offset-assert 8)
+   (gun-values float       3       :offset-assert 8)
    (fog-interp float               :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-;; (define-extern update-forest-lights function)
-;; (define-extern update-mood-forest function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern set-forest-gun-flash! function)
-;; (define-extern set-forest-fog-interp! function)
+(define-extern update-forest-lights (function mood-context float none))
+(define-extern update-mood-forest (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-forest-gun-flash! (function symbol int none))
+(define-extern set-forest-fog-interp! (function float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; foresta-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype water-anim-for (water-anim)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype water-anim-for-a (water-anim-for)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype water-anim-for-b (water-anim-for)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype water-anim-for-c (water-anim-for)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype water-anim-for-d (water-anim-for)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype water-anim-for-e (water-anim-for)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype water-anim-for-f (water-anim-for)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype for-log (process-drawable)
-  ((shakers          UNKNOWN 4 :offset-assert 208)
-   (last-ridden-time uint64    :offset-assert 464)
-   (water-anim       basic     :offset-assert 472)
+  ((root collide-shape-moving :override)
+   (shakers          shaker 4 :inline :offset-assert 208)
+   (last-ridden-time time-frame :offset-assert 464)
+   (water-anim       entity-actor :offset-assert 472)
    )
   :method-count-assert 25
   :size-assert         #x1dc
   :flag-assert         #x19016001dc
-  (:methods
-    (for-log-method-22 () none) ;; 22
-    (for-log-method-23 () none) ;; 23
-    (for-log-method-24 () none) ;; 24
-    )
   (:state-methods
-    active ;; 21
     idle ;; 20
+    active ;; 21
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 22
+    (event-handler (_type_ process int symbol event-message-block) object) ;; 23
+    (get-water-height (_type_ vector) float) ;; 24
     )
   )
-|#
 
-#|
 (deftype for-jump-pad (jump-pad)
   ()
   :method-count-assert 30
   :size-assert         #x100
   :flag-assert         #x1e00800100
   )
-|#
 
-#|
 (deftype for-pillar (process-drawable)
   ((extend-height  meters  :offset-assert 200)
    (id             int32   :offset-assert 204)
@@ -65150,37 +65128,33 @@
   :method-count-assert 25
   :size-assert         #xe4
   :flag-assert         #x19007000e4
-  (:methods
-    (for-pillar-method-23 () none) ;; 23
-    (for-pillar-method-24 () none) ;; 24
-    )
   (:state-methods
-    complete ;; 22
-    rise ;; 21
     idle ;; 20
+    rise ;; 21
+    complete ;; 22
+    )
+  (:methods
+    (get-skel (_type_) art-group) ;; 23
+    (init-collision! (_type_) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype for-telescope (process-drawable)
-  ((sound-id uint32  :offset-assert 200)
+  ((sound-id sound-id  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
-  (:methods
-    (for-telescope-method-21 () none) ;; 21
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (for-telescope-method-21 (_type_) none) ;; 21
+    )
   )
-|#
 
-#|
 (deftype for-tower (for-pillar)
-  ((telescope uint64  :offset-assert 232)
+  ((telescope handle  :offset-assert 232)
    )
   :method-count-assert 25
   :size-assert         #xf0
@@ -65189,9 +65163,7 @@
     complete ;; 22
     )
   )
-|#
 
-#|
 (deftype shoulder-plates (process-drawable)
   ()
   :method-count-assert 21
@@ -65201,81 +65173,69 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern ripple-for-water-anim-for ripple-wave-set)
-;; (define-extern for-log-callback function)
-;; (define-extern for-log-event-handler function)
-;; (define-extern for-pillar-event-handler function)
-;; (define-extern for-telescope-init-by-other function)
-;; (define-extern shoulder-plates-init-by-other function)
+(define-extern ripple-for-water-anim-for ripple-wave-set)
+(define-extern for-log-callback (function cspace transformq none))
+(def-event-handler for-log-event-handler for-log)
+(def-event-handler for-pillar-event-handler for-pillar)
+(define-extern for-telescope-init-by-other (function vector entity-actor object :behavior for-telescope))
+(define-extern shoulder-plates-init-by-other (function vector entity-actor level object :behavior shoulder-plates))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-bridges                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype for-break-bridge-board (process-drawable)
-  ()
+  ((root collide-shape-moving :override))
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
-  (:methods
-    (for-break-bridge-board-method-22 () none) ;; 22
-    (for-break-bridge-board-method-23 () none) ;; 23
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (get-skel (_type_) art-group) ;; 22
+    (init-collision! (_type_) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype for-break-bridge-board-a (for-break-bridge-board)
   ()
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   )
-|#
 
-#|
 (deftype for-break-bridge-board-b (for-break-bridge-board)
   ()
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   )
-|#
 
-#|
 (deftype for-break-bridge-board-c (for-break-bridge-board)
   ()
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   )
-|#
 
-#|
 (deftype for-break-bridge-board-d (for-break-bridge-board)
   ()
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
   )
-|#
 
-;; (define-extern *for-break-bridge-board-exploder-params* joint-exploder-static-params)
+(define-extern *for-break-bridge-board-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-plant                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype eco-green-board-hint (process)
-  ((state-time uint64  :offset-assert 128)
+  ((state-time time-frame  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x88
@@ -65284,97 +65244,87 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype mh-plant (process-focusable)
-  ((attack-id      uint32  :offset-assert 208)
-   (sound-id       uint32  :offset-assert 212)
+  ((root           collide-shape-moving :override)
+   (attack-id      uint32  :offset-assert 208)
+   (sound-id       sound-id :offset-assert 212)
    (sub-state      uint32  :offset-assert 216)
-   (sub-state-time uint64  :offset-assert 224)
+   (sub-state-time time-frame  :offset-assert 224)
    )
   :method-count-assert 37
   :size-assert         #xe8
   :flag-assert         #x25007000e8
-  (:methods
-    (mh-plant-method-32 () none) ;; 32
-    (mh-plant-method-33 () none) ;; 33
-    (mh-plant-method-34 () none) ;; 34
-    (mh-plant-method-35 () none) ;; 35
-    (mh-plant-method-36 () none) ;; 36
-    )
   (:state-methods
-    die ;; 31
-    repopulate ;; 30
-    idle ;; 29
     pop-up ;; 28
+    idle ;; 29
+    repopulate ;; 30
+    die ;; 31
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 32
+    (spawn-board-hint (_type_) none) ;; 33
+    (init! (_type_ entity-actor) none) ;; 34
+    (try-repopulate (_type_) none) ;; 35
+    (toggle-dead (_type_) none) ;; 36
     )
   )
-|#
 
-;; (define-extern eco-green-board-hint-init-by-other function)
-;; (define-extern mh-plant-event-handler function)
+(define-extern eco-green-board-hint-init-by-other (function entity-actor object :behavior eco-green-board-hint))
+(def-event-handler mh-plant-event-handler mh-plant)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-kill-plants             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-forest-plants (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-green-eco-gauge (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype eco-green-trail-tracker (light-trail-tracker)
   ()
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
   )
-|#
 
-#|
 (deftype task-manager-forest-plants (task-manager)
-  ((plant-manager-entity basic   :offset-assert 236)
-   (actor-group          uint32  :offset-assert 240)
-   (actor-group-count    int32   :offset-assert 244)
-   (plants               basic   :offset-assert 248)
-   (check-timer          uint64  :offset-assert 252)
-   (displayed-hint?      basic   :offset-assert 260)
-   (trail-handle         uint64  :offset-assert 268)
-   (hud-green-eco        uint64  :offset-assert 212)
-   (updated-minimap?     basic   :offset-assert 276)
-   (cam-setting-timer    uint64  :offset-assert 284)
+  ((plant-manager-entity entity   :offset-assert 240)
+   (actor-group          (pointer actor-group)  :offset-assert 244)
+   (actor-group-count    int32   :offset-assert 248)
+   (plants               (array entity-actor)   :offset-assert 252)
+   (check-timer          time-frame  :offset-assert 256)
+   (displayed-hint?      symbol  :offset-assert 264)
+   (trail-handle         handle  :offset-assert 272)
+   (hud-green-eco        handle  :offset 216)
+   (updated-minimap?     symbol  :offset-assert 280)
+   (cam-setting-timer    time-frame  :offset-assert 288)
    )
   :method-count-assert 33
   :size-assert         #x128
   :flag-assert         #x2100b00128
-  (:methods
-    (task-manager-forest-plants-method-32 () none) ;; 32
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (init-actor-group! (_type_) none) ;; 32
+    )
   )
-|#
 
-;; (define-extern *eco-width-curve* curve2d-fast)
-;; (define-extern *eco-alpha-curve* curve2d-fast)
-;; (define-extern *eco-color-curve-green* curve-color-fast)
-;; (define-extern *eco-green-trail* object)
+(define-extern *eco-width-curve* curve2d-fast)
+(define-extern *eco-alpha-curve* curve2d-fast)
+(define-extern *eco-color-curve-green* curve-color-fast)
+(define-extern *eco-green-trail* light-trail-composition)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-texture                 ;;
@@ -65388,149 +65338,135 @@
 ;; forest-ring-chase              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype for-race-ring-finder (process-drawable)
   ((path-pos          float   :offset-assert 200)
-   (sound-id          uint32  :offset-assert 204)
+   (sound-id          sound-id  :offset-assert 204)
    (ring-finder-speed float   :offset-assert 208)
-   (part-subsampler   basic   :offset-assert 212)
+   (part-subsampler   sparticle-subsampler :offset-assert 212)
    )
   :method-count-assert 23
   :size-assert         #xd8
   :flag-assert         #x17006000d8
-  (:methods
-    (for-race-ring-finder-method-22 () none) ;; 22
-    )
   (:state-methods
-    die ;; 21
     find ;; 20
+    die ;; 21
+    )
+  (:methods
+    (for-race-ring-finder-method-22 (_type_) vector) ;; 22
     )
   )
-|#
 
-#|
 (deftype for-race-ring (process-drawable)
   ((mat        matrix :inline :offset-assert 208)
-   (taskman    uint64         :offset-assert 272)
-   (is-final?  basic          :offset-assert 280)
-   (part-final basic          :offset-assert 284)
+   (taskman    handle         :offset-assert 272)
+   (is-final?  symbol         :offset-assert 280)
+   (part-final sparticle-launch-control :offset-assert 284)
    )
   :method-count-assert 24
   :size-assert         #x120
   :flag-assert         #x1800a00120
-  (:methods
-    (for-race-ring-method-23 () none) ;; 23
-    )
   (:state-methods
-    die ;; 22
-    idle ;; 21
     dormant ;; 20
+    idle ;; 21
+    die ;; 22
+    )
+  (:methods
+    (for-race-ring-method-23 (_type_) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype for-statue (process-drawable)
-  ((id        int32   :offset-assert 200)
-   (sound-id  uint32  :offset-assert 204)
-   (part-eyes basic   :offset-assert 208)
+  ((root      collide-shape :override)
+   (id        int32   :offset-assert 200)
+   (sound-id  sound-id :offset-assert 204)
+   (part-eyes sparticle-launch-control :offset-assert 208)
    (alpha     float   :offset-assert 212)
    )
   :method-count-assert 29
   :size-assert         #xd8
   :flag-assert         #x1d006000d8
-  (:methods
-    (for-statue-method-27 () none) ;; 27
-    (for-statue-method-28 () none) ;; 28
-    )
   (:state-methods
-    explode ;; 26
-    complete ;; 25
-    open-eyes ;; 24
-    active ;; 23
-    rise ;; 22
-    idle ;; 21
     dormant ;; 20
+    idle ;; 21
+    rise ;; 22
+    active ;; 23
+    open-eyes ;; 24
+    complete ;; 25
+    explode ;; 26
+    )
+  (:methods
+    (for-statue-method-27 (_type_) none) ;; 27
+    (for-statue-method-28 (_type_) none) ;; 28
     )
   )
-|#
 
-#|
 (deftype hud-forest-ring-chase (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype forest-path-points-static (structure)
-  ((points uint32  :offset-assert 0)
+  ((points (inline-array vector)  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype forest-path-array-static (structure)
-  ((paths basic  :offset-assert 0)
+  ((paths (array forest-path-points-static)  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype forest-ring-path-control (path-control)
   ()
   :method-count-assert 32
   :size-assert         #x24
   :flag-assert         #x2000000024
+  (:methods
+    (new (symbol type process int int) _type_) ;; 0
+    )
   )
-|#
 
-#|
 (deftype forest-path-array (structure)
-  ((paths basic  :offset-assert 0)
+  ((paths (array forest-ring-path-control) :offset-assert 0)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype task-manager-forest-ring-chase (task-manager)
-  ((ring-manager-entity basic     :offset-assert 236)
-   (actor-group         uint32    :offset-assert 240)
-   (actor-group-count   int32     :offset-assert 244)
-   (current-statue      uint8     :offset-assert 248)
-   (current-ring        uint8     :offset-assert 249)
-   (check-timer         uint64    :offset-assert 252)
-   (use-camera?         basic     :offset-assert 260)
-   (path-ctrl           UNKNOWN 5 :offset-assert 264)
-   (ring-finder         uint64    :offset-assert 348)
-   (found-ring?         basic     :offset-assert 356)
-   (cam-timer           uint64    :offset-assert 364)
-   (cam-timer-set?      basic     :offset-assert 372)
+  ((ring-manager-entity entity    :offset-assert 240)
+   (actor-group         (pointer actor-group)    :offset-assert 244)
+   (actor-group-count   int32     :offset-assert 248)
+   (current-statue      uint8     :offset-assert 252)
+   (current-ring        uint8     :offset-assert 253)
+   (check-timer         time-frame :offset-assert 256)
+   (use-camera?         symbol     :offset-assert 264)
+   (path-ctrl           forest-path-array 5 :inline :offset-assert 268)
+   (ring-finder         handle    :offset 352)
+   (found-ring?         symbol    :offset-assert 360)
+   (cam-timer           time-frame :offset-assert 368)
+   (cam-timer-set?      symbol    :offset-assert 376)
    )
   :method-count-assert 33
   :size-assert         #x17c
   :flag-assert         #x210100017c
-  (:methods
-    (task-manager-forest-ring-chase-method-32 () none) ;; 32
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (init-actor-group! (_type_) none) ;; 32
+    )
   )
-|#
 
-#|
 (deftype task-manager-forest-ring-resolution (task-manager)
   ()
   :method-count-assert 32
@@ -65540,47 +65476,43 @@
     active ;; 15
     )
   )
-|#
 
-;; (define-extern print-ring-positions function)
-;; (define-extern for-race-ring-finder-init-by-other function)
-;; (define-extern for-race-ring-cleared? function)
-;; (define-extern *for-statue-played-hint?* object)
-;; (define-extern *for-statue-debris-params* debris-static-params)
-;; (define-extern *for-ring-times* array)
-;; (define-extern *forest-path-array-lengths* array)
-;; (define-extern *forest-path-point-lengths* array)
-;; (define-extern *forest-ring-paths* array)
+(define-extern print-ring-positions (function none))
+(define-extern for-race-ring-finder-init-by-other (function vector entity object :behavior for-race-ring-finder))
+(define-extern for-race-ring-cleared? (function quaternion vector symbol))
+(define-extern *for-statue-played-hint?* object)
+(define-extern *for-statue-debris-params* debris-static-params)
+(define-extern *for-ring-times* (array (array float)))
+(define-extern *forest-path-array-lengths* (array int32))
+(define-extern *forest-path-point-lengths* (array (array int32)))
+(define-extern *forest-ring-paths* (array forest-path-array-static))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; forest-tasks                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-forest-machine (task-manager)
-  ((manager-entity          basic   :offset-assert 236)
-   (actor-group             uint32  :offset-assert 240)
-   (actor-group-count       int32   :offset-assert 244)
-   (max-neo-spawned-enemies int32   :offset-assert 248)
+  ((manager-entity          entity   :offset-assert 240)
+   (actor-group             (pointer actor-group)  :offset-assert 244)
+   (actor-group-count       int32   :offset-assert 248)
+   (max-neo-spawned-enemies int32   :offset-assert 252)
    )
   :method-count-assert 34
   :size-assert         #x100
   :flag-assert         #x2200800100
-  (:methods
-    (task-manager-forest-machine-method-32 () none) ;; 32
-    (task-manager-forest-machine-method-33 () none) ;; 33
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (init-actor-group! (_type_) none) ;; 32
+    (get-closest-actor (_type_ vector) entity) ;; 33
+    )
   )
-|#
 
-#|
 (deftype task-manager-forest-machine-resolution (task-manager)
-  ((manager-entity    basic   :offset-assert 236)
-   (actor-group       uint32  :offset-assert 240)
-   (actor-group-count int32   :offset-assert 244)
+  ((manager-entity    entity   :offset-assert 240)
+   (actor-group       (pointer actor-group)  :offset-assert 244)
+   (actor-group-count int32   :offset-assert 248)
    )
   :method-count-assert 32
   :size-assert         #xfc
@@ -65589,23 +65521,20 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype railx-states-fora (structure)
-  ((pulses UNKNOWN     4       :offset-assert 0)
-   (blue   pulse-state :inline :offset-assert 0)
-   (yellow pulse-state :inline :offset-assert 16)
-   (warp   pulse-state :inline :offset-assert 32)
-   (spill  pulse-state :inline :offset-assert 48)
+  ((pulses pulse-state 4 :inline :offset-assert 0 :score 1)
+   (blue   pulse-state :inline :offset 0)
+   (yellow pulse-state :inline :offset 16)
+   (warp   pulse-state :inline :offset 32)
+   (spill  pulse-state :inline :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-;; (define-extern set-railx-light-brightness-fora! function)
+(define-extern set-railx-light-brightness-fora! (function int float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hiphog-obs                     ;;
