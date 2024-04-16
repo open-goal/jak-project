@@ -250,7 +250,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
   int fails = 0;
   while (true) {
     std::string this_backtrace;
-    this_backtrace = fmt::format("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp, rsp - m_debug_context.base, rip, rip - m_debug_context.base);
+    this_backtrace = fmt::format("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp,
+                                 rsp - m_debug_context.base, rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
@@ -259,7 +260,8 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
         frame.rip_info.func_debug->stack_usage) {
       fails = 0;
       this_backtrace += "<====================== CALL STACK ======================>\n";
-      this_backtrace += fmt::format("{} from {}\n", frame.rip_info.function_name, frame.rip_info.func_debug->obj_name);
+      this_backtrace += fmt::format("{} from {}\n", frame.rip_info.function_name,
+                                    frame.rip_info.func_debug->obj_name);
       // we're good!
       auto disasm = disassemble_at_rip(frame.rip_info);
       this_backtrace += fmt::format("{}\n", disasm.text);
@@ -315,7 +317,9 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
           }
         } else*/
         if (fails > 70) {
-          this_backtrace += "Backtrace was too long. Exception might have happened outside GOAL code, or the stack frame is too long.\n";
+          this_backtrace +=
+              "Backtrace was too long. Exception might have happened outside GOAL code, or the "
+              "stack frame is too long.\n";
           break;
         }
         // attempt to backtrace anyway! if this fails then rip
