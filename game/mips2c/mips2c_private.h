@@ -382,8 +382,8 @@ struct ExecutionContext {
 
   void sq(int src, int offset, int addr) {
     auto s = gpr_src(src);
-    ASSERT((offset & 15) == 0);
-    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
+    // ASSERT((offset & 15) == 0);
+    memcpy(g_ee_main_mem + ((gpr_addr(addr) + offset) & (~15)), &s.du32[0], 16);
   }
 
   void sqc2(int src, int offset, int addr) {
