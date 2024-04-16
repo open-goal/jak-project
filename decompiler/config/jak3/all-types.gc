@@ -833,7 +833,7 @@
    (state            state                                                             :offset-assert 64) ;; guessed by decompiler
    (prev-state       state                                                             :offset-assert 68)
    (next-state       state                                                             :offset-assert 72) ;; guessed by decompiler
-   (state-stack      basic                                                             :offset-assert 76)
+   (state-stack      (array state)                                                     :offset-assert 76)
    (trans-hook       function                                                          :offset-assert 80) ;; guessed by decompiler
    (post-hook        function                                                          :offset-assert 84) ;; guessed by decompiler
    (event-hook       (function process int symbol event-message-block object)          :offset-assert 88) ;; guessed by decompiler
@@ -43347,7 +43347,6 @@
 ;; dp-bipedal-shot                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dp-bipedal-grenade-shot (projectile-bounce)
   ((blast-radius float  :offset-assert 548)
    )
@@ -43359,110 +43358,102 @@
     impact ;; 22
     )
   )
-|#
 
-;; (define-extern spawn-dp-bipedal-grenade function)
+(define-extern spawn-dp-bipedal-grenade (function process-focusable vector vector float (pointer dp-bipedal-grenade-shot)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dp-bipedal                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dp-bipedal-shield (shield-sphere)
   ()
   :method-count-assert 43
   :size-assert         #x128
   :flag-assert         #x2b00b00128
   )
-|#
 
-#|
 (deftype dp-bipedal-invis-particle-joint (structure)
   ((joint    int16  :offset-assert 0)
    (distance float  :offset-assert 4)
    (size     float  :offset-assert 8)
-   (spawn?   basic  :offset-assert 12)
+   (spawn?   symbol :offset-assert 12)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype dp-bipedal (nav-enemy)
-  ((los                       los-control        :inline :offset-assert 620)
-   (rotation-matrix           matrix             :inline :offset-assert 796)
-   (focus-dir                 vector             :inline :offset-assert 860)
-   (focus-close-attack-pos    vector             :inline :offset-assert 876)
-   (focus-throw-attack-pos    vector             :inline :offset-assert 892)
-   (focus-bullseye            vector             :inline :offset-assert 908)
-   (los-source                vector             :inline :offset-assert 924)
-   (formation-position        vector             :inline :offset-assert 940)
-   (focus-formation-source    vector             :inline :offset-assert 956)
-   (dest-quat                 quaternion         :inline :offset-assert 972)
-   (minimap                   connection-minimap         :offset-assert 988)
-   (part-ambush               basic                      :offset-assert 992)
-   (effect-rate               float                      :offset-assert 996)
-   (effect-timer              uint64                     :offset-assert 1004)
-   (scared-timer              uint64                     :offset-assert 1012)
-   (close-attack-timer        uint64                     :offset-assert 1020)
-   (can-attack-throw?         basic                      :offset-assert 1028)
-   (shield-handle             uint64                     :offset-assert 1036)
-   (shield-timer              uint64                     :offset-assert 1044)
-   (shield-sound-id           uint32                     :offset-assert 1052)
-   (fade-level                float                      :offset-assert 1056)
-   (turret-entity             basic                      :offset-assert 1060)
-   (actor-group               uint32                     :offset-assert 496)
-   (actor-group-count         int32                      :offset-assert 500)
-   (on-screen-timer           uint64                     :offset-assert 1076)
-   (valid-ground-timer        uint64                     :offset-assert 1084)
-   (knocked-focus-reset-timer uint64                     :offset-assert 1092)
+  ((los                       los-control        :inline :offset-assert 624)
+   (rotation-matrix           matrix             :inline :offset-assert 800)
+   (focus-dir                 vector             :inline :offset-assert 864)
+   (focus-close-attack-pos    vector             :inline :offset-assert 880)
+   (focus-throw-attack-pos    vector             :inline :offset-assert 896)
+   (focus-bullseye            vector             :inline :offset-assert 912)
+   (los-source                vector             :inline :offset-assert 928)
+   (formation-position        vector             :inline :offset-assert 944)
+   (focus-formation-source    vector             :inline :offset-assert 960)
+   (dest-quat                 quaternion         :inline :offset-assert 976)
+   (minimap                   connection-minimap         :offset-assert 992)
+   (part-ambush               sparticle-launch-control   :offset-assert 996)
+   (effect-rate               float                      :offset-assert 1000)
+   (effect-timer              time-frame                 :offset-assert 1008)
+   (scared-timer              time-frame                 :offset-assert 1016)
+   (close-attack-timer        time-frame                 :offset-assert 1024)
+   (can-attack-throw?         symbol                     :offset-assert 1032)
+   (shield-handle             handle                     :offset-assert 1040)
+   (shield-timer              time-frame                 :offset-assert 1048)
+   (shield-sound-id           sound-id                   :offset-assert 1056)
+   (fade-level                float                      :offset-assert 1060)
+   (turret-entity             entity-actor               :offset-assert 1064)
+   ; (actor-group               uint32                     :offset-assert 500)
+   ; (actor-group-count         int32                      :offset-assert 504)
+   (on-screen-timer           time-frame                 :offset 1080)
+   (valid-ground-timer        time-frame                 :offset-assert 1088)
+   (knocked-focus-reset-timer time-frame                 :offset-assert 1096)
    )
   :method-count-assert 212
   :size-assert         #x450
   :flag-assert         #xd403d00450
-  (:methods
-    (dp-bipedal-method-204 () none) ;; 204
-    (dp-bipedal-method-205 () none) ;; 205
-    (dp-bipedal-method-206 () none) ;; 206
-    (dp-bipedal-method-207 () none) ;; 207
-    (dp-bipedal-method-208 () none) ;; 208
-    (dp-bipedal-method-209 () none) ;; 209
-    (dp-bipedal-method-210 () none) ;; 210
-    (dp-bipedal-method-211 () none) ;; 211
-    )
   (:state-methods
-    turret-get-off ;; 201
-    turret-getting-off ;; 200
-    turret-get-on ;; 199
-    turret-seek ;; 198
-    die ;; 40
-    active ;; 34
-    knocked-recover ;; 32
-    turret-active ;; 202
     dormant ;; 28
-    shield-explode ;; 197
-    turret-active-shoot ;; 203
     dormant-aware ;; 29
-    de-ambush ;; 190
+    knocked ;; 31
+    knocked-recover ;; 32
+    active ;; 34
     hostile ;; 38
-    shield-out ;; 194
-    hostile-stand ;; 191
-    shield-idle ;; 195
-    shield-in ;; 196
+    die ;; 40
     ambush ;; 47
+    de-ambush ;; 190
+    hostile-stand ;; 191
     attack-close ;; 192
     attack-throw ;; 193
-    knocked ;; 31
+    shield-out ;; 194
+    shield-idle ;; 195
+    shield-in ;; 196
+    shield-explode ;; 197
+    turret-seek ;; 198
+    turret-get-on ;; 199
+    turret-getting-off ;; 200
+    turret-get-off ;; 201
+    turret-active ;; 202
+    turret-active-shoot ;; 203
+    )
+  (:methods
+    (can-enter-turret? (_type_) object) ;; 204
+    (focus-close? (_type_) object) ;; 205
+    (dp-bipedal-method-206 (_type_) object) ;; 206
+    (set-collide-spec! (_type_ symbol) none) ;; 207
+    (probe-point-for-los-block (_type_ vector vector float) symbol) ;; 208
+    (dp-bipedal-method-209 (_type_ vector float) object) ;; 209
+    (dp-bipedal-method-210 (_type_) none) ;; 210
+    (get-turret-actor (_type_) entity-actor) ;; 211
     )
   )
-|#
 
-#|
 (deftype dp-bipedal-spawner (process)
   ((spawn-pos        vector :inline :offset-assert 128)
-   (spawn-timer      uint64         :offset-assert 144)
+   (spawn-timer      time-frame     :offset-assert 144)
    (enemies-spawned  int32          :offset-assert 152)
    (enemies-to-spawn int32          :offset-assert 156)
    )
@@ -43470,25 +43461,24 @@
   :size-assert         #xa0
   :flag-assert         #x10002000a0
   (:state-methods
-    die ;; 15
     idle ;; 14
+    die ;; 15
     )
   )
-|#
 
-;; (define-extern *dp-bipedal-formation-table* array)
-;; (define-extern *dp-bipedal-invis-joint-list* array)
-;; (define-extern *fact-info-dp-bipedal-defaults* fact-info-enemy-defaults)
-;; (define-extern *dp-bipedal-nav-enemy-info* nav-enemy-info)
-;; (define-extern region-check-has-los function)
-;; (define-extern dp-bipedal-formation-post function)
-;; (define-extern dp-bipedal-hostile-post function)
-;; (define-extern dp-bipedal-attack-close-post function)
-;; (define-extern dp-bipedal-consider-attacks function)
-;; (define-extern dp-bipedal-turret-post function)
-;; (define-extern dp-bipedal-turret-code function)
-;; (define-extern trajectory-prediction function)
-;; (define-extern dp-bipedal-spawner-event-handler function)
+(define-extern *dp-bipedal-formation-table* (array float))
+(define-extern *dp-bipedal-invis-joint-list* (array dp-bipedal-invis-particle-joint))
+(define-extern *fact-info-dp-bipedal-defaults* fact-info-enemy-defaults)
+(define-extern *dp-bipedal-nav-enemy-info* nav-enemy-info)
+(define-extern region-check-has-los (function vector vector float symbol))
+(define-extern dp-bipedal-formation-post (function none :behavior dp-bipedal))
+(define-extern dp-bipedal-hostile-post (function none :behavior dp-bipedal))
+(define-extern dp-bipedal-attack-close-post (function none :behavior dp-bipedal))
+(define-extern dp-bipedal-consider-attacks (function none :behavior dp-bipedal))
+(define-extern dp-bipedal-turret-post (function none :behavior dp-bipedal))
+(define-extern dp-bipedal-turret-code (function none :behavior dp-bipedal))
+(define-extern trajectory-prediction (function vector vector vector vector vector float float symbol))
+(def-event-handler dp-bipedal-spawner-event-handler dp-bipedal-spawner)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-templea              ;;
