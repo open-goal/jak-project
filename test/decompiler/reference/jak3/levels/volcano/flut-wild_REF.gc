@@ -1,0 +1,1077 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type flut-wild
+(deftype flut-wild (nav-enemy)
+  ((minimap             connection-minimap)
+   (focus-ignore-timer  time-frame)
+   (color-index         int32)
+   (first-notice?       symbol)
+   )
+  (:state-methods
+    flee-path
+    disappear
+    )
+  )
+
+;; definition for method 3 of type flut-wild
+(defmethod inspect ((this flut-wild))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
+  (format #t "~2Tfocus-ignore-timer: ~D~%" (-> this focus-ignore-timer))
+  (format #t "~2Tcolor-index: ~D~%" (-> this color-index))
+  (format #t "~2Tfirst-notice?: ~A~%" (-> this first-notice?))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *flut-wild-enemy-info*, type nav-enemy-info
+(define *flut-wild-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 2
+        :param1 2
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 6
+    :hit-anim -1
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim -1
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim 8
+    :jump-land-anim 10
+    :neck-joint 27
+    :look-at-joint 28
+    :bullseye-joint 28
+    :notice-distance (meters 15)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 15)
+    :default-hit-points 6.0
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.4)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :orient-tform (new 'static 'vector :x -1.0 :w 1194.157)
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :geo-tform (new 'static 'vector :x 1.0)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2629.632
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 20873.217)
+          :geo-tform (new 'static 'vector :x 1.0 :w 20873.217)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2614.4768
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.1704 :z -0.9853 :w 15569.605)
+          :geo-tform (new 'static 'vector :x -0.4274 :y -0.4868 :z 0.7617 :w 18433.893)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1610.5472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.8732 :z 0.4873 :w 15302.164)
+          :geo-tform (new 'static 'vector :x 0.7034 :y -0.6338 :z 0.3215 :w 15596.385)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5791 :z 0.8151 :w 11558.42)
+          :geo-tform (new 'static 'vector :x 0.8238 :y 0.3798 :z 0.4207 :w 42972.246)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.4571 :z -0.8893 :w 19925.455)
+          :geo-tform (new 'static 'vector :x 0.8208 :y 0.2176 :z 0.528 :w 39373.336)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1928.8064
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.561 :z 0.8278 :w 9103.351)
+          :geo-tform (new 'static 'vector :x -0.3642 :y -0.7961 :z 0.4832 :w 16043.704)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.9564 :z 0.292 :w 8776.054)
+          :geo-tform (new 'static 'vector :x 0.4435 :y 0.8705 :z 0.2128 :w 24472.58)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x -0.9673 :z -0.2533 :w 381.27386)
+          :geo-tform (new 'static 'vector :x 0.3685 :y 0.923 :z -0.1101 :w 36000.09)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.3945 :z 0.9188 :w 14214.484)
+          :geo-tform (new 'static 'vector :x 0.1731 :y 0.9462 :z -0.273 :w 22531.295)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x -0.1578 :z 0.9874 :w 15629.571)
+          :geo-tform (new 'static 'vector :x -0.4878 :y 0.5276 :z -0.6953 :w 19455.945)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1144.0128
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9425 :z -0.334 :w 15664.214)
+          :geo-tform (new 'static 'vector :x 0.6225 :y 0.6917 :z -0.366 :w 16376.664)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.4209 :z -0.907 :w 11175.945)
+          :geo-tform (new 'static 'vector :x 0.7582 :y -0.4201 :z -0.4984 :w 43130.516)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3239 :z 0.946 :w 19266.947)
+          :geo-tform (new 'static 'vector :x 0.7849 :y -0.2644 :z -0.5602 :w 40304.6)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1891.1232
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5614 :z -0.8275 :w 9708.066)
+          :geo-tform (new 'static 'vector :x -0.2414 :y 0.4469 :z 0.8613 :w 29508.95)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.8992 :z -0.4373 :w 9794.027)
+          :geo-tform (new 'static 'vector :x 0.9523 :y 0.1755 :z 0.2494 :w 41777.16)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.2004 :z -0.9797 :w 1084.0018)
+          :geo-tform (new 'static 'vector :x -0.4049 :y 0.8577 :z 0.3165 :w 14899.664)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.3111 :z -0.9503 :w 15597.714)
+          :geo-tform (new 'static 'vector :x 0.791 :y -0.3039 :z -0.5308 :w 40263.406)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x -1.0 :w 767.2809)
+          :geo-tform (new 'static 'vector :x 0.9998 :y -0.0102 :z -0.0127 :w 24633.29)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2619.8015
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6726 :z -0.7399 :w 367.54773)
+          :geo-tform (new 'static 'vector :x 0.9963 :y -0.0253 :z -0.0816 :w 24617.67)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1764.5568
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.4252 :z 0.905 :w 42117.6)
+          :geo-tform (new 'static 'vector :x 0.5688 :y 0.7764 :z 0.2711 :w 35412.523)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 22
+          :pre-tform (new 'static 'vector :x -0.1568 :z 0.9876 :w 21430.2)
+          :geo-tform (new 'static 'vector :x -0.0109 :y 0.4226 :z -0.9062 :w 21658.684)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint 22
+          :pre-tform (new 'static 'vector :x 0.8859 :z -0.4637 :w 2917.153)
+          :geo-tform (new 'static 'vector :x 0.9956 :y 0.0154 :z -0.0923 :w 20905.402)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 842.9568
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :x 1.0 :w 7957.1807)
+          :geo-tform (new 'static 'vector :x -1.0 :w 5707.4937)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2072.9856
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 3393.8364)
+          :geo-tform (new 'static 'vector :x -1.0 :w 2313.6758)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1938.2272
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 28
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 7074.1016)
+          :geo-tform (new 'static 'vector :x 1.0 :w 3951.73)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1904.2303
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 29
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 19678.33)
+          :geo-tform (new 'static 'vector :x 1.0 :w 23076.754)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 30
+          :parent-joint 28
+          :pre-tform (new 'static 'vector :x 0.9308 :z -0.3654 :w 19295.691)
+          :geo-tform (new 'static 'vector :x -0.8961 :y 0.1035 :z 0.4314 :w 14528.53)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 356.352
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 31
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6506 :z -0.7593 :w 16957.348)
+          :geo-tform (new 'static 'vector :x -0.6503 :y 0.3658 :z 0.6657 :w 19638.062)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 405.504
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 32
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.2793 :z -0.9601 :w 15934.35)
+          :geo-tform (new 'static 'vector :x -0.6805 :y 0.1615 :z 0.7146 :w 28037.555)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 400.9984
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 33
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6208 :z -0.7839 :w 3905.4177)
+          :geo-tform (new 'static 'vector :x -0.6953 :y 0.1627 :z 0.7 :w 33562.953)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 289.1776
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 34
+          :parent-joint 28
+          :pre-tform (new 'static 'vector :x 0.9313 :z 0.364 :w 19297.22)
+          :geo-tform (new 'static 'vector :x -0.8969 :y -0.103 :z -0.4299 :w 14526.728)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 383.7952
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 35
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6531 :z 0.7572 :w 16968.672)
+          :geo-tform (new 'static 'vector :x -0.6525 :y -0.3648 :z -0.6641 :w 19626.594)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 256.0
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 36
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.2852 :z 0.9584 :w 15940.631)
+          :geo-tform (new 'static 'vector :x 0.6834 :y 0.1612 :z 0.7119 :w 37498.535)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 366.592
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 37
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6285 :z 0.7777 :w 3911.1157)
+          :geo-tform (new 'static 'vector :x 0.698 :y 0.1637 :z 0.697 :w 31968.098)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 354.7136
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 38
+          :parent-joint 26
+          :pre-tform (new 'static 'vector :x 0.3896 :z -0.9209 :w 13952.6875)
+          :geo-tform (new 'static 'vector :x 0.5118 :y 0.8282 :z 0.2281 :w 29441.027)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 777.8304
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 39
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5719 :z -0.8202 :w 12225.559)
+          :geo-tform (new 'static 'vector :x 0.1758 :y -0.9834 :z -0.043 :w 19622.133)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 40
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7708 :z 0.637 :w 3074.658)
+          :geo-tform (new 'static 'vector :x 0.3345 :y 0.8926 :z 0.3018 :w 6041.8)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 41
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6433 :z -0.7655 :w 14687.983)
+          :geo-tform (new 'static 'vector :x 0.2746 :y 0.6996 :z 0.6595 :w 12399.465)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 42
+          :parent-joint 26
+          :pre-tform (new 'static 'vector :x 0.3866 :z 0.9222 :w 13970.636)
+          :geo-tform (new 'static 'vector :x 0.2588 :y 0.4807 :z 0.8377 :w 14308.293)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 832.7168
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 43
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.62 :z 0.7845 :w 12117.4795)
+          :geo-tform (new 'static 'vector :x -0.051 :y -0.9504 :z -0.3065 :w 16217.175)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 44
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.578 :z -0.8159 :w 3575.4258)
+          :geo-tform (new 'static 'vector :x -0.0994 :y 0.992 :z 0.0766 :w 36495.305)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 45
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5459 :z 0.8378 :w 17974.248)
+          :geo-tform (new 'static 'vector :x 0.1773 :y 0.9817 :z 0.0691 :w 23538.42)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 46
+          :parent-joint 33
+          :pre-tform (new 'static 'vector :x 0.9887 :z -0.1494 :w 8738.098)
+          :geo-tform (new 'static 'vector :x 0.6711 :y -0.4186 :z -0.6118 :w 25162.291)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        )
+      )
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 4
+    :turn-anim -1
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 16)
+    :run-acceleration (meters 20)
+    :run-turning-acceleration (meters 80)
+    :walk-travel-speed (meters 5)
+    :walk-acceleration (meters 8)
+    :walk-turning-acceleration (meters 2)
+    :maximum-rotation-rate (degrees 720)
+    :notice-nav-radius (meters 1)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *flut-wild-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; failed to figure out what this is:
+(defstate idle (flut-wild)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (task-node-closed? (game-task-node volcano-darkeco-catch-flut))
+        (go-virtual disappear)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate notice (flut-wild)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy notice) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (-> self first-notice?)
+      (let ((gp-0 (-> self entity extra perm)))
+        (logior! (-> gp-0 status) (entity-perm-status bit-5))
+        (cond
+          ((zero? (-> gp-0 user-object 0))
+           (if (res-lump-struct (-> self entity) 'camera-name structure)
+               (process-spawn
+                 external-camera-controller
+                 (-> self entity)
+                 750
+                 #f
+                 :name "external-camera-controller"
+                 :to *entity-pool*
+                 )
+               )
+           )
+          (else
+            (if (res-lump-struct (-> self entity) 'camera-name structure)
+                (process-spawn
+                  external-camera-controller
+                  (-> self entity)
+                  450
+                  #f
+                  :name "external-camera-controller"
+                  :to *entity-pool*
+                  )
+                )
+            (set! (-> self first-notice?) #f)
+            )
+          )
+        (set! (-> gp-0 user-object 0) (+ (the-as int (-> gp-0 user-object 0)) 1))
+        )
+      )
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy notice) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (-> self first-notice?)
+      (talker-spawn-func (-> *talker-speech* 172) *entity-pool* (target-pos 0) (the-as region #f))
+      (set! (-> self first-notice?) #f)
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (dotimes (s5-0 (if (-> self first-notice?)
+                         2
+                         1
+                         )
+                     )
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
+                    :num! (seek! max f30-0)
+                    :frame-num 0.0
+                    )
+        (until (ja-done? 0)
+          (vector-! gp-0 (target-pos 0) (-> self root trans))
+          (seek-toward-heading-vec! (-> self root) gp-0 (-> self enemy-info maximum-rotation-rate) (seconds 0.05))
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    (go-best-state self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate flee-path (flut-wild)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (nav-enemy-method-177 self)
+    (nav-enemy-method-181 self)
+    (nav-enemy-method-183 self)
+    (logclear! (-> self enemy-flags) (enemy-flag vulnerable vulnerable-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag attackable attackable-backup))
+    (logior! (-> self focus-status) (focus-status disable))
+    )
+  :trans (behavior ()
+    (cond
+      ((>= (path-control-method-23 (-> self path) (-> self root trans)) 1.0)
+       (go-virtual flee)
+       )
+      ((let ((t9-2 vector-vector-xz-distance)
+             (a0-1 (-> self root trans))
+             (a2-0 (-> self nav state))
+             (a1-1 (new 'stack-no-clear 'vector))
+             )
+         (set! (-> a1-1 quad) (-> a2-0 target-pos quad))
+         (and (< (t9-2 a0-1 a1-1) 8192.0) (< (the-as int (-> self focus aware)) 4))
+         )
+       (go-stare self)
+       )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! flut-wild-run-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((f0-0 (path-control-method-23 (-> self path) (target-pos 0)))
+          (gp-1 (new 'stack-no-clear 'vector))
+          )
+      (let ((f0-2 (fmin 1.0 (+ 0.2 f0-0))))
+        (get-point-at-percent-along-path! (-> self path) gp-1 f0-2 'interp)
+        )
+      (closest-point-on-mesh (-> self nav) gp-1 gp-1 (the-as nav-poly #f))
+      (let ((v1-9 (-> self nav state)))
+        (logclear! (-> v1-9 flags) (nav-state-flag directional-mode))
+        (logior! (-> v1-9 flags) (nav-state-flag target-poly-dirty))
+        (set! (-> v1-9 target-pos quad) (-> gp-1 quad))
+        )
+      )
+    0
+    (nav-enemy-travel-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (flut-wild)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-time! (-> self focus-ignore-timer))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate disappear (flut-wild)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (when (-> self minimap)
+      (kill-callback (-> *minimap* engine) (-> self minimap))
+      (set! (-> self minimap) #f)
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    )
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+;; definition for method 56 of type flut-wild
+;; WARN: Return type mismatch float vs object.
+(defmethod knocked-handler ((this flut-wild) (arg0 vector))
+  (get-knockback-dir! this arg0)
+  (let ((f30-0 (rnd-float-range this 0.0 1.0)))
+    (vector-float*! arg0 arg0 (lerp 24576.0 57344.0 f30-0))
+    (set! (-> arg0 y) (lerp 32768.0 61440.0 f30-0))
+    )
+  )
+
+;; definition for method 98 of type flut-wild
+(defmethod jump-wind-up-anim ((this flut-wild) (arg0 enemy-jump-info))
+  #f
+  )
+
+;; definition for method 108 of type flut-wild
+(defmethod enemy-method-108 ((this flut-wild) (arg0 process-focusable))
+  #t
+  )
+
+;; definition for method 79 of type flut-wild
+(defmethod go-flee ((this flut-wild))
+  (if (< (path-control-method-23 (-> this path) (-> this root trans)) 1.0)
+      (go (method-of-object this flee-path))
+      (go (method-of-object this flee))
+      )
+  )
+
+;; definition for method 59 of type flut-wild
+(defmethod enemy-common-post ((this flut-wild))
+  (if (task-node-closed? (game-task-node volcano-darkeco-catch-flut))
+      (go (method-of-object this disappear))
+      )
+  (if (time-elapsed? (-> this focus-ignore-timer) (seconds 2))
+      (logclear! (-> this focus-status) (focus-status ignore))
+      (logior! (-> this focus-status) (focus-status ignore))
+      )
+  (when (and *target*
+             (and (not (focus-test? *target* grabbed in-head light board mech dark))
+                  (and (and *target* (and (>= 20480.0 (vector-vector-distance (-> this root trans) (-> *target* control trans)))
+                                          (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                          )
+                            )
+                       (can-display-query? this "flut-wild" -99.0)
+                       )
+                  )
+             )
+    (let ((s5-0
+            (new 'stack 'font-context *font-default-matrix* 32 320 0.0 (font-color default) (font-flags shadow kerning))
+            )
+          )
+      (let ((v1-25 s5-0))
+        (set! (-> v1-25 width) (the float 340))
+        )
+      (let ((v1-26 s5-0))
+        (set! (-> v1-26 height) (the float 80))
+        )
+      (let ((v1-27 s5-0)
+            (a0-14 (-> *setting-control* user-default language))
+            )
+        (set! (-> v1-27 scale) (if (or (= a0-14 (language-enum korean)) (= a0-14 (language-enum russian)))
+                                   0.9
+                                   0.7
+                                   )
+              )
+        )
+      (set! (-> s5-0 flags) (font-flags shadow kerning large))
+      (print-game-text
+        (lookup-text! *common-text* (text-id text-0083) #f)
+        s5-0
+        #f
+        44
+        (bucket-id hud-draw-hud-alpha)
+        )
+      )
+    (when (and (cpad-pressed? 0 triangle) (send-event *target* 'change-mode 'flut this 'fight (-> this color-index)))
+      (script-eval '(want-continue "volcano-flut-1"))
+      (go (method-of-object this disappear))
+      )
+    )
+  ((method-of-type nav-enemy enemy-common-post) this)
+  (none)
+  )
+
+;; definition for method 82 of type flut-wild
+;; INFO: Used lq/sq
+(defmethod event-handler ((this flut-wild) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (go (method-of-object this knocked))
+     )
+    (('trans)
+     (let ((v0-4 (the-as object (-> arg3 param 0))))
+       (set! (-> (the-as vector v0-4) quad) (-> this root trans quad))
+       v0-4
+       )
+     )
+    (('touched)
+     (send-event arg0 'touch (-> arg3 param 0))
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 120 of type flut-wild
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-enemy-collision! ((this flut-wild))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 8601.6)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 8192.0 0.0 8192.0)
+      )
+    (set! (-> s5-0 nav-radius) 10240.0)
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 143 of type flut-wild
+(defmethod on-dying ((this flut-wild))
+  (with-pp
+    (when (not (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer pp))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'fail)
+        (let ((t9-0 send-event-function)
+              (v1-8 (-> *game-info* sub-task-list (game-task-node volcano-darkeco-catch-flut)))
+              )
+          (t9-0
+            (handle->process (if (-> v1-8 manager)
+                                 (-> v1-8 manager manager)
+                                 (the-as handle #f)
+                                 )
+                             )
+            a1-0
+            )
+          )
+        )
+      )
+    ((method-of-type nav-enemy on-dying) this)
+    (none)
+    )
+  )
+
+;; definition for method 122 of type flut-wild
+(defmethod go-idle2 ((this flut-wild))
+  (if (task-node-closed? (game-task-node volcano-darkeco-catch-flut))
+      (go (method-of-object this disappear))
+      ((method-of-type nav-enemy go-idle2) this)
+      )
+  )
+
+;; definition for method 121 of type flut-wild
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this flut-wild))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-flut" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *flut-wild-enemy-info*)
+  (let ((v1-5 (-> this neck)))
+    (set! (-> v1-5 up) (the-as uint 1))
+    (set! (-> v1-5 nose) (the-as uint 2))
+    (set! (-> v1-5 ear) (the-as uint 0))
+    (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
+    (set! (-> v1-5 ignore-angle) 30947.555)
+    )
+  (set! (-> this path) (new 'process 'path-control this 'path 0.0 (-> this entity) #f))
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (set! (-> this focus-ignore-timer) 0)
+  (process-entity-status! this (entity-perm-status bit-4) #t)
+  (logclear! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask bot))
+  (let ((v1-15 (-> this nav)))
+    (set! (-> v1-15 sphere-mask) (the-as uint #x1000fe))
+    )
+  0
+  (set! (-> this color-index) (flut-random-color-index))
+  (flut-color-from-index (-> this color-index))
+  (set! (-> this first-notice?) #t)
+  (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 141) (the-as int #f) (the-as vector #t) 0))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-catch-flut
+(deftype task-manager-catch-flut (task-manager)
+  ((flut-entity  entity-actor)
+   )
+  )
+
+;; definition for method 3 of type task-manager-catch-flut
+(defmethod inspect ((this task-manager-catch-flut))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tflut-entity: ~A~%" (-> this flut-entity))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 26 of type task-manager-catch-flut
+;; WARN: Return type mismatch object vs none.
+(defmethod task-manager-method-26 ((this task-manager-catch-flut))
+  (if (and (time-elapsed? (-> this state-time) (seconds 1)) *target* (focus-test? *target* flut))
+      (send-event this 'complete)
+      )
+  (call-parent-method this)
+  (when (time-elapsed? (-> this state-time) (seconds 1))
+    (cond
+      ((-> this flut-entity)
+       (let ((v1-14 (-> this flut-entity)))
+         (if (not (if v1-14
+                      (-> v1-14 extra process)
+                      )
+                  )
+             (send-event this 'fail)
+             )
+         )
+       )
+      (else
+        (set! (-> this flut-entity) (the-as entity-actor (entity-by-name "flut-wild-1")))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-catch-flut
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-time-limit ((this task-manager-catch-flut))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this flut-entity) #f)
+  (none)
+  )
+
+;; definition of type task-manager-restrict-to-flut
+(deftype task-manager-restrict-to-flut (task-manager)
+  ()
+  )
+
+;; definition for method 3 of type task-manager-restrict-to-flut
+(defmethod inspect ((this task-manager-restrict-to-flut))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 25 of type task-manager-restrict-to-flut
+(defmethod task-manager-method-25 ((this task-manager-restrict-to-flut))
+  (remove-setting! 'pilot-exit)
+  ((method-of-type task-manager task-manager-method-25) this)
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-restrict-to-flut
+;; WARN: Return type mismatch connection vs none.
+(defmethod set-time-limit ((this task-manager-restrict-to-flut))
+  ((method-of-type task-manager set-time-limit) this)
+  (set-setting! 'pilot-exit #f 0.0 0)
+  (none)
+  )
+
+
+
+
