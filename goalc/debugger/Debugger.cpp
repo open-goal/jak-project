@@ -790,7 +790,7 @@ void Debugger::read_symbol_table_jak3() {
       //      ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
 
       std::string str(str_buff);
-      if (str.length() >= 50) {
+      if (str.length() >= 60) {
         lg::print("Invalid symbol #x{:x}!\n", sym_offset);
         continue;
       }

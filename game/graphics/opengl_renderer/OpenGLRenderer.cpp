@@ -1302,7 +1302,12 @@ void OpenGLRenderer::dispatch_buckets_jak3(DmaFollower dma,
     vif_interrupt_callback(bucket_id + 1);
     m_category_times[(int)m_bucket_categories[bucket_id]] += bucket_prof.get_elapsed_time();
 
-    // TODO: collision renderer
+    // hack to draw the collision mesh in the middle the drawing
+    if (bucket_id + 1 == (int)jak3::BucketId::TEX_L0_ALPHA &&
+        Gfx::g_global_settings.collision_enable) {
+      auto p = prof.make_scoped_child("collision-draw");
+      m_collide_renderer.render(&m_render_state, p);
+    }
   }
   vif_interrupt_callback(m_bucket_renderers.size());
 
