@@ -224,11 +224,6 @@ InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
   return result;
 }
 
-void print_and_append_to_string(std::string& str, const std::string& log) {
-  str += log;
-  lg::print("{}", log);
-}
-
 std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
                                                     u64 rsp,
                                                     std::optional<std::string> dump_path) {
@@ -238,14 +233,13 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
   lg::print("Backtrace:\n");
   std::vector<BacktraceFrame> bt;
 
-  if (rip == m_debug_context.base) {
+  bool null_pc = rip == m_debug_context.base;
+  if (null_pc) {
     // we jumped to NULL.
-    print_and_append_to_string(backtrace_contents,
-                               "Jumped to GOAL 0x0. Attempting to find previous function.\n");
+
     u64 next_rip = 0;
     if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-      print_and_append_to_string(backtrace_contents,
-                                 "  failed to read return address off of the stack\n");
+      lg::print("Failed to read return address off of the stack!\n");
       return {};
     }
 
@@ -255,10 +249,9 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
 
   int fails = 0;
   while (true) {
-    print_and_append_to_string(
-        backtrace_contents,
-        fmt::format("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp,
-                    rsp - m_debug_context.base, rip, rip - m_debug_context.base));
+    std::string this_backtrace;
+    this_backtrace = fmt::format("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp,
+                                 rsp - m_debug_context.base, rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
@@ -266,19 +259,18 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
       fails = 0;
-      print_and_append_to_string(backtrace_contents,
-                                 "<====================== CALL STACK ======================>\n");
-      print_and_append_to_string(backtrace_contents,
-                                 fmt::format("{} from {}\n", frame.rip_info.function_name,
-                                             frame.rip_info.func_debug->obj_name));
+      this_backtrace += "<====================== CALL STACK ======================>\n";
+      this_backtrace += fmt::format("{} from {}\n", frame.rip_info.function_name,
+                                    frame.rip_info.func_debug->obj_name);
       // we're good!
       auto disasm = disassemble_at_rip(frame.rip_info);
-      print_and_append_to_string(backtrace_contents, fmt::format("{}\n", disasm.text));
+      this_backtrace += fmt::format("{}\n", disasm.text);
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
       if (!read_memory_if_safe<u64>(&next_rip, rsp_at_call - m_debug_context.base)) {
-        print_and_append_to_string(backtrace_contents, "Invalid return address encountered!\n");
+        this_backtrace += "Invalid return address encountered!\n";
+        backtrace_contents = this_backtrace + backtrace_contents;
         break;
       }
 
@@ -288,7 +280,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
     } else {
       if (!frame.rip_info.knows_function) {
         if (fails == 0) {
-          print_and_append_to_string(backtrace_contents, "Unknown Function at rip\n");
+          this_backtrace += "Unknown Function at rip\n";
         }
 
         /*
@@ -325,16 +317,17 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
           }
         } else*/
         if (fails > 70) {
-          print_and_append_to_string(
-              backtrace_contents,
+          this_backtrace +=
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
-              "stack frame is too long.\n");
+              "stack frame is too long.\n";
+          backtrace_contents = this_backtrace + backtrace_contents;
           break;
         }
         // attempt to backtrace anyway! if this fails then rip
         u64 next_rip = 0;
         if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base - 8)) {
-          print_and_append_to_string(backtrace_contents, "Invalid return address encountered!\n");
+          this_backtrace += "Invalid return address encountered!\n";
+          backtrace_contents = this_backtrace + backtrace_contents;
           break;
         }
 
@@ -343,21 +336,24 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
         ++fails;
         // break;
       } else if (!frame.rip_info.func_debug) {
-        print_and_append_to_string(
-            backtrace_contents,
-            fmt::format("Function {} has no debug info.\n", frame.rip_info.function_name));
+        this_backtrace +=
+            fmt::format("Function {} has no debug info.\n", frame.rip_info.function_name);
+        backtrace_contents = this_backtrace + backtrace_contents;
         break;
       } else {
-        print_and_append_to_string(
-            backtrace_contents,
-            fmt::format("Function {} with no stack frame data.\n", frame.rip_info.function_name));
+        this_backtrace +=
+            fmt::format("Function {} with no stack frame data.\n", frame.rip_info.function_name);
+        backtrace_contents = this_backtrace + backtrace_contents;
         break;
       }
     }
 
     bt.push_back(frame);
+
+    backtrace_contents = this_backtrace + backtrace_contents;
   }
 
+  lg::print("{}\n", backtrace_contents);
   if (dump_path) {
     file_util::write_text_file(dump_path.value(), backtrace_contents);
   }
@@ -449,21 +445,21 @@ void Debugger::update_break_info(std::optional<std::string> dump_path) {
   m_memory_map = m_listener->build_memory_map();
   // lg::print("{}", m_memory_map.print());
   read_symbol_table();
-  m_regs_valid = false;
-  if (!xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break)) {
-    lg::print("[Debugger] get_regs_now failed after break, something is wrong\n");
-  } else {
-    m_regs_valid = true;
-    lg::print("{}", m_regs_at_break.print_gprs());
-  }
+  m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
 
   if (regs_valid()) {
     m_break_info = get_rip_info(m_regs_at_break.rip);
     update_continue_info();
-    auto dis = disassemble_at_rip(m_break_info);
-    lg::print("{}\n", dis.text);
 
     get_backtrace(m_regs_at_break.rip, m_regs_at_break.gprs[emitter::RSP], dump_path);
+    auto dis = disassemble_at_rip(m_break_info);
+    lg::print("{}\n", dis.text);
+  }
+
+  if (!m_regs_valid) {
+    lg::print("[Debugger] get_regs_now failed after break, something is wrong\n");
+  } else {
+    lg::print("{}", m_regs_at_break.print_gprs());
   }
 }
 
