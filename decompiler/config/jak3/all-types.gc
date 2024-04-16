@@ -26879,7 +26879,9 @@
   )
 
 (deftype hud-for-turret-health (hud)
-  ((unknown-float0 float  :offset 2800)
+  ((aim-vector-source vector :inline :offset-assert 2768)
+   (aim-vector        vector :inline :offset-assert 2784)
+   (fade-interp       float          :offset-assert 2800)
    )
   :method-count-assert 27
   :size-assert         #xaf4
@@ -44407,7 +44409,7 @@
 (deftype robo-hover (hover-enemy)
   ((wrist-quat            quaternion 2 :inline :offset-assert 976)
    (aim-position          vector  :inline :offset-assert 1008)
-   (entity-group          basic           :offset-assert 1024)
+   (entity-group          actor-group              :offset-assert 1024)
    (smoke-part            sparticle-launch-control :offset-assert 1028)
    (engine-part           sparticle-launch-control :offset-assert 1032)
    (next-fire-time        time-frame      :offset-assert 1040)
@@ -46845,7 +46847,7 @@
     (target-turret-method-36 (_type_) none) ;; 36
     (target-turret-method-37 (_type_) none) ;; 37
     (target-turret-method-38 (_type_) none) ;; 38
-    (target-turret-method-39 (_type_) none) ;; 39
+    (get-params (_type_) target-turret-params) ;; 39
     (target-turret-method-40 (_type_) none) ;; 40
     (target-turret-method-41 (_type_) object) ;; 41
     (target-turret-method-42 (_type_) none) ;; 42
@@ -55501,7 +55503,6 @@
 ;; for-turret-shot                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype for-turret-shot (projectile)
   ((tail-pos vector :inline :offset-assert 512)
    )
@@ -55509,10 +55510,9 @@
   :size-assert         #x210
   :flag-assert         #x2901900210
   )
-|#
 
-;; (define-extern for-turret-shot-move function)
-;; (define-extern spawn-for-turret-projectile function)
+(define-extern for-turret-shot-move (function for-turret-shot none))
+(define-extern spawn-for-turret-projectile (function target-turret vector vector float (pointer for-turret-shot)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; for-turret                     ;;
@@ -55520,9 +55520,8 @@
 
 ;; hud-for-turret-health is already defined!
 
-#|
 (deftype for-turret-blocker (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
@@ -55530,46 +55529,43 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype for-turret (target-turret)
-  ((aim-pos              vector             :inline :offset-assert 556)
-   (muzzle-pos           vector             :inline :offset-assert 572)
-   (battle-entity        basic                      :offset-assert 588)
-   (focus-handle         uint64                     :offset-assert 596)
-   (task-node-id         int32                      :offset-assert 604)
-   (fire-timer           uint64                     :offset-assert 612)
-   (nav-mesh             basic                      :offset-assert 620)
-   (flash-palette-index  int32                      :offset-assert 624)
-   (flash-palette-level  basic                      :offset-assert 628)
-   (blocker              uint64                     :offset-assert 636)
-   (actor-group          uint32                     :offset-assert 644)
-   (actor-group-count    int32                      :offset-assert 648)
-   (last-speed0          float                      :offset-assert 652)
-   (minimap              connection-minimap         :offset-assert 656)
-   (current-barrel       int32                      :offset-assert 660)
-   (barrel-recoil-offset UNKNOWN            2       :offset-assert 664)
+  ((aim-pos              vector             :inline :offset-assert 560)
+   (muzzle-pos           vector             :inline :offset-assert 576)
+   (battle-entity        entity                     :offset-assert 592)
+   (focus-handle         handle                     :offset-assert 600)
+   (task-node-id         int32                      :offset-assert 608)
+   (fire-timer           time-frame                 :offset-assert 616)
+   (nav-mesh             nav-mesh                   :offset-assert 624)
+   (flash-palette-index  int32                      :offset-assert 628)
+   (flash-palette-level  level                      :offset-assert 632)
+   (blocker              handle                     :offset-assert 640)
+   (actor-group          (pointer actor-group)      :offset-assert 648)
+   (actor-group-count    int32                      :offset-assert 652)
+   (last-speed0          float                      :offset-assert 656)
+   (minimap              connection-minimap         :offset-assert 660)
+   (current-barrel       int32                      :offset-assert 664)
+   (barrel-recoil-offset float              2       :offset-assert 668)
    )
   :method-count-assert 61
   :size-assert         #x2a4
   :flag-assert         #x3d023002a4
   (:state-methods
+    idle ;; 28
+    setup ;; 29
     shutdown ;; 31
     active ;; 30
-    gunner-active ;; 60
     die ;; 33
     gunner-setup ;; 59
-    setup ;; 29
-    idle ;; 28
+    gunner-active ;; 60
     )
   )
-|#
 
-;; (define-extern for-turret-blocker-init-by-other function)
-;; (define-extern *for-turret-params* object)
-;; (define-extern *for-turret-exploder-params* joint-exploder-static-params)
-;; (define-extern *for-turret-offset-table* array)
+(define-extern for-turret-blocker-init-by-other (function vector entity object :behavior for-turret-blocker))
+(define-extern *for-turret-params* target-turret-params)
+(define-extern *for-turret-exploder-params* joint-exploder-static-params)
+(define-extern *for-turret-offset-table* (array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; neo-wasp-part                  ;;
@@ -55580,26 +55576,23 @@
 ;; neo-wasp                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype neo-wasp-shot (metalhead-shot)
   ()
   :method-count-assert 41
   :size-assert         #x210
   :flag-assert         #x2901900210
   )
-|#
 
-#|
 (deftype neo-wasp (hover-enemy)
   ((gun-jmod              joint-mod-rotate-local :inline :offset-assert 976)
-   (entity-group          basic                          :offset-assert 1008)
-   (smoke-part            basic                          :offset-assert 1012)
-   (engine-part           basic                          :offset-assert 1016)
+   (entity-group          actor-group                    :offset-assert 1008)
+   (smoke-part            sparticle-launch-control       :offset-assert 1012)
+   (engine-part           sparticle-launch-control       :offset-assert 1016)
    (minimap               connection-minimap             :offset-assert 1020)
-   (old-gravity           float                          :offset-assert 1028)
+   (old-gravity           float                          :offset 1028)
    (knocked-anim          int32                          :offset-assert 1032)
    (knocked-recover-anim  int32                          :offset-assert 1036)
-   (last-fire-time        uint64                         :offset-assert 1040)
+   (last-fire-time        time-frame                     :offset-assert 1040)
    (bridge-index          int32                          :offset-assert 1048)
    (gun-x-angle           float                          :offset-assert 1052)
    (gun-x-angle-final     float                          :offset-assert 1056)
@@ -55608,41 +55601,39 @@
    (path-du-final         float                          :offset-assert 1068)
    (path-dest             float                          :offset-assert 1072)
    (plat-pos              vector                 :inline :offset-assert 1088)
-   (sound-id              uint32                         :offset-assert 1104)
-   (on-screen-timer       uint64                         :offset-assert 1112)
+   (sound-id              sound-id                       :offset-assert 1104)
+   (on-screen-timer       time-frame                     :offset-assert 1112)
    (attack-wait-min       float                          :offset-assert 1120)
    (attack-wait-max       float                          :offset-assert 1124)
    (attack-miss-dist-min  float                          :offset-assert 1128)
    (attack-miss-dist-max  float                          :offset-assert 1132)
    (attack-miss-dist-curr float                          :offset-assert 1136)
-   (mech-flame-texture-id uint32                         :offset-assert 1140)
+   (mech-flame-texture-id sound-id                       :offset-assert 1140)
    )
   :method-count-assert 185
   :size-assert         #x478
   :flag-assert         #xb904000478
-  (:methods
-    (neo-wasp-method-182 () none) ;; 182
-    (neo-wasp-method-183 () none) ;; 183
-    (neo-wasp-method-184 () none) ;; 184
-    )
   (:state-methods
-    die-now ;; 180
     knocked-recover ;; 32
-    attack ;; 179
-    die-explode ;; 181
-    hostile ;; 38
-    ambush-attack ;; 178
     notice ;; 35
-    ambush-flying ;; 177
+    hostile ;; 38
     ambush ;; 47
+    ambush-flying ;; 177
+    ambush-attack ;; 178
+    attack ;; 179
+    die-now ;; 180
+    die-explode ;; 181
+    )
+  (:methods
+    (neo-wasp-method-182 (_type_) process-focusable) ;; 182
+    (spawn-debris (_type_) none) ;; 183
+    (fire-shot-from-cspace-idx (_type_ projectile-init-by-other-params int int) none) ;; 184
     )
   )
-|#
 
-#|
 (deftype neo-wasp-spawner (process)
   ((spawn-pos        vector :inline :offset-assert 128)
-   (spawn-timer      uint64         :offset-assert 144)
+   (spawn-timer      time-frame     :offset-assert 144)
    (enemies-spawned  int32          :offset-assert 152)
    (enemies-to-spawn int32          :offset-assert 156)
    )
@@ -55650,16 +55641,15 @@
   :size-assert         #xa0
   :flag-assert         #x10002000a0
   (:state-methods
-    die ;; 15
     idle ;; 14
+    die ;; 15
     )
   )
-|#
 
-;; (define-extern *neo-wasp-debris-params* debris-static-params)
-;; (define-extern *fact-info-neo-wasp-defaults* fact-info-enemy-defaults)
-;; (define-extern *neo-wasp-enemy-info* enemy-info)
-;; (define-extern neo-wasp-spawner-event-handler function)
+(define-extern *neo-wasp-debris-params* debris-static-params)
+(define-extern *fact-info-neo-wasp-defaults* fact-info-enemy-defaults)
+(define-extern *neo-wasp-enemy-info* enemy-info)
+(def-event-handler neo-wasp-spawner-event-handler neo-wasp)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-foresta              ;;
@@ -55671,22 +55661,19 @@
 ;; neo-spawner                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-neo-spawner-health (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype neo-spawner-manager (process)
-  ((actor-group       uint32  :offset-assert 124)
-   (actor-group-count int32   :offset-assert 128)
-   (total-spawned     int32   :offset-assert 132)
-   (max-spawned       int32   :offset-assert 136)
-   (suppress-spawn    basic   :offset-assert 140)
+  ((actor-group       (pointer actor-group)  :offset-assert 128)
+   (actor-group-count int32   :offset-assert 132)
+   (total-spawned     int32   :offset-assert 136)
+   (max-spawned       int32   :offset-assert 140)
+   (suppress-spawn    symbol  :offset-assert 144)
    )
   :method-count-assert 15
   :size-assert         #x94
@@ -55695,64 +55682,59 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype neo-spawner-type (structure)
-  ((spawn-type basic   :offset-assert 0)
+  ((spawn-type type    :offset-assert 0)
    (count      uint32  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype neo-spawner (process-focusable)
-  ((info               basic               :offset-assert 208)
-   (actor-group        uint32              :offset-assert 212)
+  ((info               neo-spawner-type    :offset-assert 208)
+   (actor-group        (pointer actor-group) :offset-assert 212)
    (actor-group-count  int32               :offset-assert 216)
-   (manager-entity     basic               :offset-assert 220)
-   (turret-entity      basic               :offset-assert 224)
+   (manager-entity     entity              :offset-assert 220)
+   (turret-entity      entity              :offset-assert 224)
    (minimap            connection-minimap  :offset-assert 228)
    (incoming-attack-id int32               :offset-assert 232)
    (health             float               :offset-assert 236)
    (health-hud-timer   float               :offset-assert 240)
-   (open-time          uint64              :offset-assert 248)
-   (triggered?         basic               :offset-assert 256)
-   (hud-health         uint64              :offset-assert 264)
-   (lightning-time     uint64              :offset-assert 272)
-   (dead-part          basic               :offset-assert 280)
-   (last-spawn-time    uint64              :offset-assert 288)
-   (state-time         uint64              :offset-assert 192)
+   (open-time          time-frame          :offset-assert 248)
+   (triggered?         symbol              :offset-assert 256)
+   (hud-health         handle              :offset-assert 264)
+   (lightning-time     time-frame          :offset-assert 272)
+   (dead-part          sparticle-launch-control :offset-assert 280)
+   (last-spawn-time    time-frame          :offset-assert 288)
+   (pad uint8 8)
    )
   :method-count-assert 37
   :size-assert         #x130
   :flag-assert         #x2500b00130
-  (:methods
-    (neo-spawner-method-35 () none) ;; 35
-    (neo-spawner-method-36 () none) ;; 36
-    )
   (:state-methods
-    dead ;; 34
-    die ;; 33
-    vulnerable ;; 32
-    spawn-enemy ;; 31
-    open ;; 30
-    opening ;; 29
     closed ;; 28
+    opening ;; 29
+    open ;; 30
+    spawn-enemy ;; 31
+    vulnerable ;; 32
+    die ;; 33
+    dead ;; 34
+    )
+  (:methods
+    (spawn-neo (_type_) none) ;; 35
+    (neo-spawner-method-36 () none) ;; 36, not defined
     )
   )
-|#
 
-;; (define-extern foresta-login function)
-;; (define-extern foresta-logout function)
-;; (define-extern foresta-activate function)
-;; (define-extern *neo-spawner-info* array)
-;; (define-extern *neo-spawner-debris-params* debris-static-params)
-;; (define-extern neo-spawner-handler function)
-;; (define-extern neo-spawner-active-post function)
+(define-extern foresta-login (function level none))
+(define-extern foresta-logout (function level none))
+(define-extern foresta-activate (function level none))
+(define-extern *neo-spawner-info* (array neo-spawner-type))
+(define-extern *neo-spawner-debris-params* debris-static-params)
+(def-event-handler neo-spawner-handler neo-spawner)
+(define-extern neo-spawner-active-post (function none :behavior neo-spawner))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; race-h                         ;;
