@@ -430,14 +430,13 @@
                   )
                 )
                (('tube)
-                (cond
-                  ((focus-test? self indax)
-                   enter-state
-                   (-> *TARGET-bank* tube-jump-height-min)
-                   (-> *TARGET-bank* tube-jump-height-max)
-                   (go target-indax-jump)
-                   )
-                  (else
+                (if (focus-test? self indax)
+                    (go
+                      target-indax-jump
+                      (-> *TARGET-bank* tube-jump-height-min)
+                      (-> *TARGET-bank* tube-jump-height-max)
+                      (the-as surface #f)
+                      )
                     (go
                       target-jump
                       (-> *TARGET-bank* tube-jump-height-min)
@@ -445,7 +444,6 @@
                       (the-as surface #f)
                       )
                     )
-                  )
                 )
                )
              )
@@ -666,16 +664,10 @@
                (and (< 4096.0 (target-height-above-ground)) (!= (-> self control gspot-pat-surfce event) 7))
                )
       (set! (-> self control unknown-float0000) (+ -24576.0 (-> self tube centertube y)))
-      (cond
-        ((focus-test? self indax)
-         enter-state
-         'tube
-         (go target-indax-falling)
-         )
-        (else
+      (if (focus-test? self indax)
+          (go target-indax-falling 'tube)
           (go target-falling 'tube)
           )
-        )
       )
     )
   :code (behavior ()
@@ -902,16 +894,10 @@
           (('endlessfall)
            (when (= (-> self game mode) 'play)
              (pickup-collectable! (-> self fact) (pickup-type health) -1000.0 (the-as handle #f))
-             (cond
-               ((focus-test? self indax)
-                enter-state
-                (-> gp-0 mode)
-                (go target-indax-death)
-                )
-               (else
+             (if (focus-test? self indax)
+                 (go target-indax-death (-> gp-0 mode))
                  (go target-death (-> gp-0 mode))
                  )
-               )
              )
            )
           (('lava 'melt)

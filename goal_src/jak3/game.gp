@@ -164,8 +164,8 @@
 ; (cgo-file "hga.gd" common-dep)
 ; (cgo-file "hgb.gd" common-dep)
 ; ;; volcano
-; (cgo-file "voca.gd" common-dep)
-; (cgo-file "vocx.gd" common-dep)
+(cgo-file "voca.gd" common-dep)
+(cgo-file "vocx.gd" common-dep)
 ;; mine
 (cgo-file "mia.gd" common-dep)
 (cgo-file "mib.gd" common-dep)
