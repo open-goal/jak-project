@@ -64124,7 +64124,6 @@
 ;; mantis                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mantis-jump-info (structure)
   ((distance    float          :offset-assert 0)
    (search-step uint32         :offset-assert 4)
@@ -64138,53 +64137,59 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+;; +++mantis:mantis-flag
+(defenum mantis-flag
+  :type uint16
+  :bitfield #t
+  (tracked 0)
+  (attack1-enabled 1)
+  )
+;; ---mantis:mantis-flag
+
 (deftype mantis (nav-enemy)
-  ((base-height  float                    :offset-assert 616)
-   (flags        mantis-flag              :offset-assert 620)
-   (attack-timer uint64                   :offset-assert 628) ;; time-frame
-   (track-timer  uint64                   :offset-assert 636) ;; time-frame
-   (gspot-timer  uint64                   :offset-assert 644) ;; time-frame
-   (gspot-normal vector           :inline :offset-assert 652)
-   (my-up-vector vector           :inline :offset-assert 668)
-   (jump         mantis-jump-info :inline :offset-assert 684)
+  ((base-height  float                    :offset-assert 620)
+   (flags        mantis-flag              :offset-assert 624)
+   (attack-timer time-frame               :offset 632) ;; time-frame
+   (track-timer  time-frame               :offset-assert 640) ;; time-frame
+   (gspot-timer  time-frame               :offset-assert 648) ;; time-frame
+   (gspot-normal vector           :inline :offset-assert 656)
+   (my-up-vector vector           :inline :offset-assert 672)
+   (jump         mantis-jump-info :inline :offset-assert 688)
    )
   :method-count-assert 207
   :size-assert         #x2e0
   :flag-assert         #xcf026002e0
   ;; field mantis-flag is likely a value type.
-  (:methods
-    (mantis-method-195 () none) ;; 195
-    (mantis-method-199 () none) ;; 199
-    (mantis-method-200 () none) ;; 200
-    (mantis-method-201 () none) ;; 201
-    (mantis-method-202 () none) ;; 202
-    (mantis-method-203 () none) ;; 203
-    (mantis-method-204 () none) ;; 204
-    (mantis-method-205 () none) ;; 205
-    (mantis-method-206 () none) ;; 206
-    )
   (:state-methods
-    hop-away ;; 198
-    roll-left ;; 197
-    roll-right ;; 196
-    attack1 ;; 192, old: (mantis-method-192 (_type_ vector vector) none)
-    attack0 ;; 191, old: (mantis-method-191 (_type_ vector vector) int)
-    hostile ;; 38
-    ambush-jumping ;; 194, old: (mantis-method-194 (_type_) symbol)
-    ambush-crawling ;; 193, old: (mantis-method-193 (_type_ vector) none)
-    crawl ;; 190, old: (mantis-method-190 (_type_ vector vector) none)
-    ambush ;; 47
     active ;; 34
+    hostile ;; 38
+    ambush ;; 47
+    crawl ;; 190
+    attack0 ;; 191
+    attack1 ;; 192
+    ambush-crawling ;; 193
+    ambush-jumping ;; 194
+    undefined ;; 195, not defined
+    roll-right ;; 196
+    roll-left ;; 197
+    hop-away ;; 198
+    )
+  (:methods
+    (mantis-method-199 (_type_) none) ;; 199
+    (mantis-method-200 (_type_) none) ;; 200
+    (mantis-method-201 (_type_ vector vector) symbol) ;; 201
+    (mantis-method-202 (_type_ process-focusable vector) none) ;; 202
+    (mantis-method-203 (_type_ process-focusable vector) none) ;; 203
+    (mantis-method-204 (_type_ process-focusable vector) none) ;; 204
+    (mantis-method-205 (_type_ vector) none) ;; 205
+    (mantis-method-206 (_type_) object) ;; 206
     )
   )
-|#
 
-;; (define-extern *fact-info-mantis-defaults* fact-info-enemy-defaults)
-;; (define-extern *mantis-nav-enemy-info* nav-enemy-info) ;; nav-enemy-info
-;; (define-extern mantis-roll-post function)
+(define-extern *fact-info-mantis-defaults* fact-info-enemy-defaults)
+(define-extern *mantis-nav-enemy-info* nav-enemy-info)
+(define-extern mantis-roll-post (function none :behavior mantis))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasstadc-obs                   ;;
