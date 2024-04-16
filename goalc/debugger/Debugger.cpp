@@ -320,6 +320,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
           this_backtrace +=
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
               "stack frame is too long.\n";
+          backtrace_contents = this_backtrace + backtrace_contents;
           break;
         }
         // attempt to backtrace anyway! if this fails then rip
