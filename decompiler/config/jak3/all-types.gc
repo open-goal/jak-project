@@ -19708,6 +19708,7 @@
   ((pause-in  float  :offset-assert 16)
    (pause-out float  :offset-assert 20)
    )
+  :pack-me
   :method-count-assert 16
   :size-assert         #x18
   :flag-assert         #x1000000018
@@ -22303,7 +22304,7 @@
   )
 
 (deftype chain-physics (basic)
-  ((chain-joints          chain-physics-joint 20 :inline     :offset-assert 16) ;; guessed by decompiler
+  ((chain-joints          chain-physics-joint 20 :inline :offset-assert 16) ;; guessed by decompiler
    (num-joints            uint8                       :offset-assert 1296)
    (root-joint-index      uint8                       :offset-assert 1297)
    (joint-length          float                       :offset-assert 1300)
@@ -22316,22 +22317,22 @@
    (negate-y              symbol                      :offset-assert 1360) ;; guessed by decompiler
    (axial-slop            float                       :offset-assert 1364)
    (maximum-stretch       float                       :offset-assert 1368)
-   (turn-off-start        uint64                      :offset-assert 1376) ;; time-frame
-   (turn-off-duration     uint64                      :offset-assert 1384) ;; time-frame
+   (turn-off-start        time-frame                  :offset-assert 1376) ;; time-frame
+   (turn-off-duration     time-frame                  :offset-assert 1384) ;; time-frame
    )
   :method-count-assert 18
   :size-assert         #x570
   :flag-assert         #x1200000570
   (:methods
-    (chain-physics-method-9 () none) ;; 9 ;; (initialize-chain-joints (_type_) symbol)
-    (chain-physics-method-10 () none) ;; 10 ;; (turn-off (_type_ time-frame) none)
-    (chain-physics-method-11 () none) ;; 11 ;; (update (_type_ process-drawable) none)
-    (chain-physics-method-12 () none) ;; 12 ;; (gravity-update (_type_ process-drawable) none)
-    (chain-physics-method-13 () none) ;; 13 ;; (apply-gravity (_type_ vector int process-drawable) none)
-    (chain-physics-method-14 () none) ;; 14 ;; (chain-physics-method-14 (_type_ vector int) none)
-    (chain-physics-method-15 () none) ;; 15 ;; (clamp-length (_type_ vector vector object process-drawable) vector)
-    (chain-physics-method-16 () none) ;; 16 ;; (chain-physics-method-16 (_type_ int) float)
-    (chain-physics-method-17 () none) ;; 17 ;; (chain-physics-method-17 (_type_ vector int) none)
+    (initialize-chain-joints (_type_) symbol) ;; 9
+    (turn-off (_type_ time-frame) none) ;; 10
+    (update (_type_ process-drawable) none) ;; 11
+    (gravity-update (_type_ process-drawable) none) ;; 12
+    (apply-gravity (_type_ vector int process-drawable) none) ;; 13
+    (chain-physics-method-14 (_type_ vector int) none) ;; 14
+    (clamp-length (_type_ vector vector object process-drawable) vector) ;; 15
+    (chain-physics-method-16 (_type_ int) float) ;; 16
+    (chain-physics-method-17 (_type_ vector int) none) ;; 17
     )
   )
 
@@ -23108,16 +23109,22 @@
     target-indax-walk
     target-indax-attack
     target-indax-running-attack
-    target-indax-jump ;; associated process guessed by decompiler, old: (state float float surface target)
-    target-indax-double-jump ;; associated process guessed by decompiler, old: (state float float target)
-    target-indax-attack-air ;; associated process guessed by decompiler, old: (state symbol target)
-    target-indax-hang
-    target-indax-falling ;; associated process guessed by decompiler, old: (state symbol target)
-    target-indax-hit ;; associated process guessed by decompiler, old: (state symbol attack-info target)
-    target-indax-hit-ground ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-indax-jump float float surface)
+    (target-indax-double-jump float float)
+    (target-indax-attack-air symbol)
+    (target-indax-falling symbol)
+    (target-indax-hit symbol attack-info)
+    (target-indax-hit-ground symbol)
     target-indax-trip
-    target-indax-grab
-    target-indax-death ;; associated process guessed by decompiler, old: (state symbol target)
+    (target-indax-grab symbol)
+    (target-indax-death symbol)
+    ;; indax-hang
+    target-indax-hang
+    target-indax-hang-stance
+    target-indax-hang-walk
+    target-indax-hang-dodge
+    target-indax-hang-attack
+    target-indax-hang-turn-around
     ;; swim
     target-wade-walk
     target-wade-stance
@@ -44295,7 +44302,7 @@
 ;; chain-physics                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern chain-physics-initialize function) ;; (function process-drawable chain-physics int float (array chain-physics-setup) int)
+(define-extern chain-physics-initialize (function process-drawable chain-physics int float (array chain-physics-setup) int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; jump-pad                       ;;
@@ -51601,32 +51608,27 @@
 ;; target-indax                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *indax-walk-mods* object) ;; surface
-;; (define-extern *indax-jump-mods* object) ;; surface
-;; (define-extern *indax-double-jump-mods* object) ;; surface
-;; (define-extern *indax-bounce-mods* object) ;; surface
-;; (define-extern target-indax-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-indax-dangerous-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-indax-jump-event-handler function) ;; (function process int symbol event-message-block object :behavior target)
-;; (define-extern target-indax-reset function)
-;; (define-extern target-indax-init function) ;; (function none :behavior target)
-;; (define-extern target-indax-exit function) ;; (function none :behavior target)
-;; (define-extern target-indax-real-post function) ;; (function none :behavior target)
-;; (define-extern target-indax-post function) ;; (function none :behavior target)
-;; (define-extern target-indax-hit-setup-anim function) ;; (function attack-info none :behavior target)
+(define-extern *indax-walk-mods* surface)
+(define-extern *indax-jump-mods* surface)
+(define-extern *indax-double-jump-mods* surface)
+(define-extern *indax-bounce-mods* surface)
+(def-event-handler target-indax-handler target)
+(def-event-handler target-indax-dangerous-event-handler target)
+(def-event-handler target-indax-jump-event-handler target)
+(define-extern target-indax-reset (function none :behavior target))
+(define-extern target-indax-init (function none :behavior target))
+(define-extern target-indax-exit (function none :behavior target))
+(define-extern target-indax-real-post (function none :behavior target))
+(define-extern target-indax-post (function none :behavior target))
+(define-extern target-indax-hit-setup-anim (function attack-info none :behavior target))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-indax-hang              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *indax-hang-walk-mods* surface)
-;; (define-extern *indax-hang-dodge-mods* surface)
-;; (define-extern *indax-hang-attack-mods* object)
-;; (define-extern target-indax-hang-stance object)
-;; (define-extern target-indax-hang-walk object)
-;; (define-extern target-indax-hang-dodge object)
-;; (define-extern target-indax-hang-attack object)
-;; (define-extern target-indax-hang-turn-around object)
+(define-extern *indax-hang-walk-mods* surface)
+(define-extern *indax-hang-dodge-mods* surface)
+(define-extern *indax-hang-attack-mods* surface)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; roboguard-city                 ;;
@@ -73004,57 +73006,49 @@
 ;; volcanox-mood                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype volcanox-states (UNKNOWN)
+(deftype volcanox-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern *volcanox-mood-color-table* object)
-;; (define-extern *volcanox-mood-fog-table* object)
-;; (define-extern update-mood-volcanox function)
+(define-extern *volcanox-mood-color-table* mood-color-table)
+(define-extern *volcanox-mood-fog-table* mood-fog-table)
+(define-extern update-mood-volcanox (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcanox-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vol-holo-eye (process-drawable)
-  ((eyeball-jmod       joint-mod-set-world-no-trans :inline :offset-assert 204)
-   (other-eyeball-jmod joint-mod-set-world          :inline :offset-assert 268)
-   (next-blink-time    uint64                               :offset-assert 332)
-   (trigger-radius     float                                :offset-assert 340)
-   (idle-clock         uint64                               :offset-assert 348)
-   (actor-group        uint32                               :offset-assert 356)
-   (actor-group-count  int32                                :offset-assert 360)
-   (triggered?         basic                                :offset-assert 364)
-   (untriggered?       basic                                :offset-assert 368)
-   (kill-quat          quaternion                   :inline :offset-assert 380)
-   (kill-angle         float                                :offset-assert 396)
-   (kill-speed         float                                :offset-assert 400)
-   (init-trans         vector                       :inline :offset-assert 412)
-   (perm-part          uint64                               :offset-assert 428)
+  ((eyeball-jmod       joint-mod-set-world-no-trans :inline :offset-assert 208)
+   (other-eyeball-jmod joint-mod-set-world          :inline :offset-assert 272)
+   (next-blink-time    time-frame                           :offset-assert 336)
+   (trigger-radius     float                                :offset-assert 344)
+   (idle-clock         time-frame                           :offset-assert 352)
+   (actor-group        (pointer actor-group)                :offset-assert 360)
+   (actor-group-count  int32                                :offset-assert 364)
+   (triggered?         symbol                               :offset-assert 368)
+   (untriggered?       symbol                               :offset-assert 372)
+   (kill-quat          quaternion                   :inline :offset-assert 384)
+   (kill-angle         float                                :offset-assert 400)
+   (kill-speed         float                                :offset-assert 404)
+   (init-trans         vector                       :inline :offset-assert 416)
+   (perm-part          handle                               :offset-assert 432)
    )
   :method-count-assert 26
   :size-assert         #x1b8
   :flag-assert         #x1a014001b8
-  (:methods
-    (vol-holo-eye-method-25 () none) ;; 25
-    )
   (:state-methods
-    die-fast ;; 24
-    die ;; 23
-    close ;; 22
-    alert ;; 21
     idle ;; 20
+    alert ;; 21
+    close ;; 22
+    die ;; 23
+    die-fast ;; 24
+    )
+  (:methods
+    (track-target (_type_) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype tpl-glider-broken (process-drawable)
   ()
   :method-count-assert 21
@@ -73064,54 +73058,48 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype dm-spines (process-drawable)
-  ((alt-actor basic  :offset-assert 200)
+  ((alt-actor entity-actor  :offset-assert 200)
    )
   :method-count-assert 23
   :size-assert         #xcc
   :flag-assert         #x17005000cc
   (:state-methods
-    opening ;; 22
-    closed ;; 21
     open ;; 20
+    closed ;; 21
+    opening ;; 22
     )
   )
-|#
 
-;; (define-extern sparticle-vol-holo-halo0 function)
-;; (define-extern sparticle-vol-holo-halo1 function)
+(define-extern sparticle-vol-holo-halo0 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern sparticle-vol-holo-halo1 (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcanox-scenes                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype monk-mummy (process-taskable)
   ()
   :method-count-assert 40
   :size-assert         #x118
   :flag-assert         #x2800a00118
   )
-|#
 
-;; (define-extern spt-birth-func-brightness-volcano-glider-dust function)
+(define-extern spt-birth-func-brightness-volcano-glider-dust (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flitter                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flitter (nav-enemy)
   ((move-angle       float                      :offset-assert 620)
-   (heading          basic                      :offset-assert 624)
-   (change-dir-time  uint64                     :offset-assert 632) ;; time-frame
-   (last-change-dir  uint64                     :offset-assert 640)
-   (off-screen-timer uint64                     :offset-assert 648)
-   (amb-sound-timer  uint64                     :offset-assert 656)
-   (attack-time      uint64                     :offset-assert 664) ;; time-frame
+   (heading          symbol                     :offset-assert 624)
+   (change-dir-time  time-frame                 :offset-assert 632) ;; time-frame
+   (last-change-dir  time-frame                 :offset-assert 640)
+   (off-screen-timer time-frame                 :offset-assert 648)
+   (amb-sound-timer  time-frame                 :offset-assert 656)
+   (attack-time      time-frame                 :offset-assert 664) ;; time-frame
    (target-pos       vector             :inline :offset-assert 672)
    (attack-pos       vector             :inline :offset-assert 688)
    (base-height      float                      :offset-assert 704)
@@ -73120,29 +73108,28 @@
   :method-count-assert 196
   :size-assert         #x2c8
   :flag-assert         #xc4025002c8
-  (:methods
-    (flitter-method-192 () none) ;; 192
-    (flitter-method-193 () none) ;; 193
-    (flitter-method-194 () none) ;; 194
-    (flitter-method-195 () none) ;; 195
-    )
   (:state-methods
-    victory ;; 39
-    hostile ;; 38
-    die ;; 40
-    circling ;; 157
-    stare ;; 37
-    ambush-jumping ;; 191
-    attack ;; 190
     active ;; 34
+    stare ;; 37
+    hostile ;; 38
+    victory ;; 39
+    die ;; 40
     ambush ;; 47
+    circling ;; 157
+    attack ;; 190
+    ambush-jumping ;; 191
+    )
+  (:methods
+    (flitter-method-192 (_type_) none) ;; 192
+    (play-amb (_type_) none) ;; 193
+    (flitter-method-194 (_type_ process-focusable) symbol) ;; 194
+    (lerp-between-attack-pos-and-trans (_type_) float) ;; 195
     )
   )
-|#
 
-;; (define-extern check-drop-level-flitter-dirt-rubble function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern *flitter-nav-enemy-info* nav-enemy-info) ;; nav-enemy-info
-;; (define-extern flitter-fall-and-play-death-anim function) ;; (function art-joint-anim float time-frame none :behavior flitter)
+(define-extern check-drop-level-flitter-dirt-rubble (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *flitter-nav-enemy-info* nav-enemy-info)
+(define-extern flitter-fall-and-play-death-anim (function art-joint-anim float time-frame none :behavior flitter))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; templex-part                   ;;
@@ -73253,27 +73240,26 @@
 ;; volcano-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-func-part-volcano-embers function)
-;; (define-extern spt-func-birth-on-pop function)
-;; (define-extern *lava-particle-list* array)
-;; (define-extern birth-func-texture-group-lava function)
-;; (define-extern spt-func-part-lava-ball-spout-puff function)
-;; (define-extern spt-birth-func-brightness-part-volcano-leaf-fall function)
-;; (define-extern spt-birth-func-part-volcano-leaf-fall function)
-;; (define-extern spt-volcano-check-ground-lie-flat function)
+(define-extern spt-func-part-volcano-embers (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-birth-on-pop (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern *lava-particle-list* (array int32))
+(define-extern birth-func-texture-group-lava (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-part-lava-ball-spout-puff (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-part-volcano-leaf-fall (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-birth-func-part-volcano-leaf-fall (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-volcano-check-ground-lie-flat (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcano-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *vol-invis-joint-list* array)
-;; (define-extern spt-birth-func-brightness-part-volcano-rock-break-dust function)
+(define-extern *vol-invis-joint-list* (array invis-particle-joint))
+(define-extern spt-birth-func-brightness-part-volcano-rock-break-dust (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rigid-body-plat                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rigid-body-platform-constants (rigid-body-object-constants)
   ((drag-factor           float   :offset-assert 208)
    (buoyancy-factor       float   :offset-assert 212)
@@ -73283,7 +73269,7 @@
    (player-dive-factor    float   :offset-assert 228)
    (player-force-distance meters  :offset-assert 232)
    (player-force-clamp    meters  :offset-assert 236)
-   (player-force-timeout  uint64  :offset-assert 240)
+   (player-force-timeout  time-frame  :offset-assert 240)
    (explosion-force       meters  :offset-assert 248)
    (control-point-count   int32   :offset-assert 252)
    (platform              symbol  :offset-assert 256) ;; guessed by decompiler
@@ -73293,9 +73279,7 @@
   :size-assert         #x108
   :flag-assert         #x900000108
   )
-|#
 
-#|
 (deftype rigid-body-control-point (structure)
   ((local-pos vector :inline :offset-assert 0)
    (world-pos vector :inline :offset-assert 16)
@@ -73305,108 +73289,94 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype rigid-body-control-point-inline-array (inline-array-class)
-  ((data rigid-body-control-point :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data rigid-body-control-point :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype rigid-body-platform (rigid-body-object)
-  ((control-point-array rigid-body-control-point-inline-array  :offset-assert 288) ;; guessed by decompiler
+  ((info                rigid-body-platform-constants          :override)
+   (control-point-array rigid-body-control-point-inline-array  :offset-assert 288) ;; guessed by decompiler
    (float-height-offset float                                  :offset-assert 292)
-   (player-bonk-timeout uint64                                 :offset-assert 296)
-   (water-anim          water-anim                             :offset-assert 304) ;; guessed by decompiler
+   (player-bonk-timeout time-frame                             :offset-assert 296)
+   (water-anim          entity-actor                           :offset-assert 304) ;; guessed by decompiler
    )
   :method-count-assert 60
   :size-assert         #x134
   :flag-assert         #x3c00c00134
   (:methods
-    (rigid-body-platform-method-56 () none) ;; 56 ;; (rigid-body-platform-method-56 (_type_ vector) none)
-    (rigid-body-platform-method-57 () none) ;; 57
-    (rigid-body-platform-method-58 () none) ;; 58
-    (rigid-body-platform-method-59 () none) ;; 59
+    (get-lava-height (_type_ vector) float) ;; 56
+    (rigid-body-platform-method-57 (_type_ (inline-array vector)) none) ;; 57
+    (rigid-body-platform-method-58 (_type_) none) ;; 58
+    (rigid-body-platform-method-59 (_type_ vector) none) ;; 59
     )
   )
-|#
 
-;; (define-extern *rigid-body-platform-constants* object) ;; rigid-body-platform-constants
+(define-extern *rigid-body-platform-constants* rigid-body-platform-constants)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcano-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vol-rising-step (process-drawable)
   ((sync      sync-paused :inline :offset-assert 200)
    (idle-anim int32               :offset-assert 224)
    (amplitude float               :offset-assert 228)
    (init-y    float               :offset-assert 232)
-   (sound-id  uint32              :offset-assert 236)
+   (sound-id  sound-id            :offset-assert 236)
    )
   :method-count-assert 25
   :size-assert         #xf0
   :flag-assert         #x19007000f0
-  (:methods
-    (vol-rising-step-method-23 () none) ;; 23
-    (vol-rising-step-method-24 () none) ;; 24
-    )
   (:state-methods
-    active ;; 22
-    pre-active ;; 21
     inactive ;; 20
+    pre-active ;; 21
+    active ;; 22
+    )
+  (:methods
+    (vol-rising-step-method-23 (_type_) none) ;; 23
+    (vol-rising-step-method-24 (_type_) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype vol-rising-step-a (vol-rising-step)
   ()
   :method-count-assert 25
   :size-assert         #xf0
   :flag-assert         #x19007000f0
   )
-|#
 
-#|
 (deftype vol-rising-step-b (vol-rising-step)
   ()
   :method-count-assert 25
   :size-assert         #xf0
   :flag-assert         #x19007000f0
   )
-|#
 
-#|
 (deftype vol-rising-step-c (vol-rising-step)
   ()
   :method-count-assert 25
   :size-assert         #xf0
   :flag-assert         #x19007000f0
   )
-|#
 
-#|
 (deftype vol-rising-step-d (vol-rising-step)
   ()
   :method-count-assert 25
   :size-assert         #xf0
   :flag-assert         #x19007000f0
   )
-|#
 
-#|
 (deftype lava-shoot (process-drawable)
-  ((sync               sync-paused :inline :offset-assert 200)
+  ((root               collide-shape-moving :override)
+   (sync               sync-paused :inline :offset-assert 200)
    (attack-id          uint32              :offset-assert 224)
-   (sound-id           uint32              :offset-assert 228)
-   (no-collision-timer uint64              :offset-assert 232)
+   (sound-id           sound-id            :offset-assert 228)
+   (no-collision-timer time-frame          :offset-assert 232)
    )
   :method-count-assert 21
   :size-assert         #xf0
@@ -73415,141 +73385,124 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype vol-balance-plat-chain-physics (chain-physics)
   ()
   :method-count-assert 18
   :size-assert         #x570
   :flag-assert         #x1200000570
   )
-|#
 
-#|
 (deftype vol-balance-plat (rigid-body-object)
   ((pivot-transform  transformq :inline :offset-assert 288)
    (init-pos         vector     :inline :offset-assert 336)
    (force-pos        vector     :inline :offset-assert 352)
-   (rope             basic              :offset-assert 368)
-   (rope-initialized basic              :offset-assert 372)
+   (rope             vol-balance-plat-chain-physics :offset-assert 368)
+   (rope-initialized symbol             :offset-assert 372)
    )
   :method-count-assert 56
   :size-assert         #x178
   :flag-assert         #x3801000178
   )
-|#
 
-#|
 (deftype vol-steam-explosion (process-drawable)
-  ((sync               sync-paused :inline :offset-assert 200)
-   (notify-actor       basic               :offset-assert 224)
+  ((root               collide-shape-moving :override)
+   (sync               sync-paused :inline :offset-assert 200)
+   (notify-actor       entity-actor        :offset-assert 224)
    (attack-id          uint32              :offset-assert 228)
    (lid-y              float               :offset-assert 232)
    (extra-id           int32               :offset-assert 236)
    (y-speed            float               :offset-assert 240)
-   (sound-id           uint32              :offset-assert 244)
-   (stopped-up-by      uint64              :offset-assert 248)
-   (no-collision-timer uint64              :offset-assert 256)
+   (sound-id           sound-id            :offset-assert 244)
+   (stopped-up-by      handle              :offset-assert 248)
+   (no-collision-timer time-frame          :offset-assert 256)
    (trigger-count      int32               :offset-assert 264)
    )
   :method-count-assert 24
   :size-assert         #x10c
   :flag-assert         #x180090010c
-  (:methods
-    (vol-steam-explosion-method-23 () none) ;; 23
-    )
   (:state-methods
-    active ;; 22
-    stopped-up ;; 21
     idle ;; 20
+    stopped-up ;; 21
+    active ;; 22
+    )
+  (:methods
+    (vol-steam-explosion-method-23 (_type_) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype spinning-hole (vol-steam-explosion)
   ()
   :method-count-assert 24
   :size-assert         #x10c
   :flag-assert         #x180090010c
   )
-|#
 
-#|
 (deftype vol-bouncer (bouncer)
   ()
   :method-count-assert 27
   :size-assert         #xd8
   :flag-assert         #x1b006000d8
   (:state-methods
-    fire ;; 21
     idle ;; 20
+    fire ;; 21
     )
   )
-|#
 
-#|
 (deftype vol-lava-ball (process-drawable)
   ((y-initial          float   :offset-assert 200)
    (y-velocity         float   :offset-assert 204)
    (y-acc              float   :offset-assert 208)
    (attack-id          uint32  :offset-assert 212)
-   (no-collision-timer uint64  :offset-assert 216)
+   (no-collision-timer time-frame  :offset-assert 216)
    )
   :method-count-assert 22
   :size-assert         #xe0
   :flag-assert         #x16006000e0
   (:state-methods
-    done ;; 21
     idle ;; 20
+    done ;; 21
     )
   )
-|#
 
-#|
 (deftype vol-lava-ball-spout (process-drawable)
   ((sync         sync-paused :inline :offset-assert 200)
-   (ball         uint64              :offset-assert 224)
+   (ball         handle              :offset-assert 224)
    (ball-height  float               :offset-assert 232)
-   (sound-id     uint32              :offset-assert 236)
-   (explode-time uint64              :offset-assert 240)
+   (sound-id     sound-id            :offset-assert 236)
+   (explode-time time-frame          :offset-assert 240)
    )
   :method-count-assert 23
   :size-assert         #xf8
   :flag-assert         #x17008000f8
   (:state-methods
-    active ;; 22
-    going-active ;; 21
     idle ;; 20
+    going-active ;; 21
+    active ;; 22
     )
   )
-|#
 
-#|
 (deftype vol-collapsing-rock (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   (:state-methods
-    falling ;; 22
-    idle ;; 21
     inactive ;; 20
+    idle ;; 21
+    (falling symbol) ;; 22
     )
   )
-|#
 
-;; (define-extern *vol-balance-plat-chain-setup* array)
-;; (define-extern *vol-balance-plat-rigid-body-constants* object)
-;; (define-extern vol-lava-ball-post function)
-;; (define-extern vol-lava-ball-init-by-other function)
+(define-extern *vol-balance-plat-chain-setup* (array chain-physics-setup))
+(define-extern *vol-balance-plat-rigid-body-constants* rigid-body-object-constants)
+(define-extern vol-lava-ball-post (function none :behavior vol-lava-ball))
+(define-extern vol-lava-ball-init-by-other (function vector entity-actor object :behavior vol-lava-ball))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcano-obs2                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vol-lava-plat (rigid-body-platform)
   ((anchor-point vector :inline :offset-assert 320)
    (path-u       float          :offset-assert 336)
@@ -73561,11 +73514,9 @@
     active ;; 29
     )
   )
-|#
 
-#|
 (deftype vol-lava-plat-spawner (process)
-  ((path basic  :offset-assert 128)
+  ((path path-control  :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
@@ -73574,70 +73525,62 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype vol-break-ground (process-drawable)
-  ((ridden     basic   :offset-assert 200)
-   (ride-timer uint64  :offset-assert 208)
+  ((root collide-shape :override)
+   (ridden     symbol  :offset-assert 200)
+   (ride-timer time-frame :offset-assert 208)
    )
   :method-count-assert 24
   :size-assert         #xd8
   :flag-assert         #x18006000d8
-  (:methods
-    (vol-break-ground-method-23 () none) ;; 23
-    )
   (:state-methods
-    collapse ;; 22
-    active ;; 21
     idle ;; 20
+    active ;; 21
+    collapse ;; 22
+    )
+  (:methods
+    (set-proto-vis (_type_ symbol) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype vol-stone-lid (rigid-body-object)
-  ((to-hole-vec    vector :inline :offset-assert 288)
-   (hole           basic          :offset-assert 304)
+  ((root           collide-shape-moving :override)
+   (to-hole-vec    vector :inline :offset-assert 288)
+   (hole           entity-actor   :offset-assert 304)
    (hole-dist-xz   float          :offset-assert 308)
    (hole-dist-y    float          :offset-assert 312)
    (hole-sync-norm float          :offset-assert 316)
-   (lava-timer     uint64         :offset-assert 320)
-   (stop-timer     uint64         :offset-assert 328)
+   (lava-timer     time-frame     :offset-assert 320)
+   (stop-timer     time-frame     :offset-assert 328)
    )
   :method-count-assert 58
   :size-assert         #x150
   :flag-assert         #x3a00d00150
   (:state-methods
-    die-and-respawn ;; 57
-    stopped ;; 56
-    active ;; 29
     idle ;; 28
+    active ;; 29
+    stopped ;; 56
+    die-and-respawn ;; 57
     )
   )
-|#
 
-;; (define-extern *vol-lava-plat-platform-constants* object)
-;; (define-extern vol-lava-plat-init-by-other function)
-;; (define-extern *vol-stone-lid-rigid-body-constants* object)
-;; (define-extern vol-stone-lid-init-by-other function)
+(define-extern *vol-lava-plat-platform-constants* rigid-body-platform-constants)
+(define-extern vol-lava-plat-init-by-other (function entity-actor float object :behavior vol-lava-plat))
+(define-extern *vol-stone-lid-rigid-body-constants* rigid-body-object-constants)
+(define-extern vol-stone-lid-init-by-other (function entity-actor object :behavior vol-stone-lid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcano-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype volcano-states (UNKNOWN)
+(deftype volcano-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern *volcano-mood-color-table* object)
-;; (define-extern *volcano-mood-fog-table* object)
-;; (define-extern update-mood-volcano function)
+(define-extern *volcano-mood-color-table* mood-color-table)
+(define-extern *volcano-mood-fog-table* mood-fog-table)
+(define-extern update-mood-volcano (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; volcano-texture                ;;
@@ -73649,88 +73592,80 @@
 ;; spiky-frog                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype spiky-frog (nav-enemy)
-  ((eye-jmod       UNKNOWN    2       :offset-assert 620)
+  ((eye-jmod       joint-mod  2       :offset-assert 620)
    (roll-transform transformq :inline :offset-assert 640)
-   (time-out       uint64             :offset-assert 688)
-   (sound-id       uint32             :offset-assert 696)
+   (time-out       time-frame         :offset-assert 688)
+   (sound-id       sound-id           :offset-assert 696)
    )
   :method-count-assert 199
   :size-assert         #x2bc
   :flag-assert         #xc7024002bc
-  (:methods
-    (spiky-frog-method-196 () none) ;; 196
-    (spiky-frog-method-197 () none) ;; 197
-    (spiky-frog-method-198 () none) ;; 198
-    )
   (:state-methods
-    knocked-recover ;; 32
-    notice ;; 35
-    rolling ;; 191
-    active ;; 34
-    rolling-start ;; 190
-    pacing ;; 156
-    turn ;; 195
-    circling ;; 157
-    stare ;; 37
-    attack ;; 193
-    hostile ;; 38
-    attack-recover ;; 194
-    rolling-stop ;; 192
     knocked ;; 31
+    knocked-recover ;; 32
+    active ;; 34
+    notice ;; 35
+    stare ;; 37
+    hostile ;; 38
+    pacing ;; 156
+    circling ;; 157
+    rolling-start ;; 190
+    rolling ;; 191
+    rolling-stop ;; 192
+    (attack vector) ;; 193
+    attack-recover ;; 194
+    turn ;; 195
+    )
+  (:methods
+    (spiky-frog-method-196 (_type_) none) ;; 196
+    (clear-roll-joint-callback (_type_) none) ;; 197
+    (init-eyes! (_type_ int int) none) ;; 198
     )
   )
-|#
 
-;; (define-extern *fact-info-spiky-frog-defaults* fact-info-enemy-defaults)
-;; (define-extern *spiky-frog-nav-enemy-info* nav-enemy-info)
-;; (define-extern spiky-frog-hop-slow-code function)
+(define-extern *fact-info-spiky-frog-defaults* fact-info-enemy-defaults)
+(define-extern *spiky-frog-nav-enemy-info* nav-enemy-info)
+(define-extern spiky-frog-hop-slow-code (function none :behavior spiky-frog))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flut-wild                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype flut-wild (nav-enemy)
   ((minimap            connection-minimap  :offset-assert 620)
-   (focus-ignore-timer uint64              :offset-assert 624)
+   (focus-ignore-timer time-frame          :offset-assert 624)
    (color-index        int32               :offset-assert 632)
-   (first-notice?      basic               :offset-assert 636)
+   (first-notice?      symbol              :offset-assert 636)
    )
   :method-count-assert 192
   :size-assert         #x280
   :flag-assert         #xc002000280
   (:state-methods
     knocked ;; 31
+    idle ;; 33
+    notice ;; 35
     flee-path ;; 190
     disappear ;; 191
-    notice ;; 35
-    idle ;; 33
     )
   )
-|#
 
-#|
 (deftype task-manager-catch-flut (task-manager)
-  ((flut-entity basic  :offset-assert 240)
+  ((flut-entity entity-actor  :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf4
   :flag-assert         #x20008000f4
   )
-|#
 
-#|
 (deftype task-manager-restrict-to-flut (task-manager)
   ()
   :method-count-assert 32
   :size-assert         #xf0
   :flag-assert         #x20007000f0
   )
-|#
 
-;; (define-extern *flut-wild-enemy-info* nav-enemy-info)
+(define-extern *flut-wild-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flamer-lava                    ;;
@@ -73738,10 +73673,9 @@
 
 ;; flying-formation is already defined!
 
-#|
 (deftype flamer-lava (nav-enemy)
   ((shot-trajectory   trajectory          :inline :offset-assert 624)
-   (last-fire-time    uint64                      :offset-assert 664)
+   (last-fire-time    time-frame                  :offset-assert 664)
    (sync-off          uint32                      :offset-assert 672)
    (base-pos          vector              :inline :offset-assert 688)
    (idle-pos          vector              :inline :offset-assert 704)
@@ -73749,14 +73683,14 @@
    (dest-pos          vector              :inline :offset-assert 736)
    (zone-to-world     matrix              :inline :offset-assert 752)
    (world-to-zone     matrix              :inline :offset-assert 816)
-   (formation-entity  basic                       :offset-assert 880)
+   (formation-entity  entity                      :offset-assert 880)
    (flit-joint        joint-mod-set-local :inline :offset-assert 896)
    (flit-angle        float                       :offset-assert 960)
-   (flit-timer        uint64                      :offset-assert 968)
+   (flit-timer        time-frame                  :offset-assert 968)
    (path-pos          float                       :offset-assert 976)
    (sound-volume      float                       :offset-assert 980)
    (scale             float                       :offset-assert 984)
-   (hit-surface?      basic                       :offset-assert 988)
+   (hit-surface?      symbol                      :offset-assert 988)
    (ground-mode       int8                        :offset-assert 992)
    (init-quat         quaternion          :inline :offset-assert 1008)
    (surface-normal    vector              :inline :offset-assert 1024)
@@ -73769,53 +73703,50 @@
   :method-count-assert 205
   :size-assert         #x460
   :flag-assert         #xcd03e00460
-  (:methods
-    (flamer-lava-method-194 () none) ;; 194
-    (flamer-lava-method-195 () none) ;; 195
-    (flamer-lava-method-196 () none) ;; 196
-    (flamer-lava-method-197 () none) ;; 197
-    (flamer-lava-method-198 () none) ;; 198
-    (flamer-lava-method-199 () none) ;; 199
-    (flamer-lava-method-200 () none) ;; 200
-    (flamer-lava-method-201 () none) ;; 201
-    (flamer-lava-method-202 () none) ;; 202
-    (flamer-lava-method-203 () none) ;; 203
-    (flamer-lava-method-204 () none) ;; 204
-    )
   (:state-methods
-    knocked ;; 31
-    hostile ;; 38
-    exit-ambush-path ;; 193
-    exit-ambush ;; 192
-    attack ;; 190
-    ambush ;; 47
-    active ;; 34
-    idle ;; 33
-    dormant-aware ;; 29
-    die-falling ;; 41
     dormant ;; 28
+    dormant-aware ;; 29
+    idle ;; 33
+    knocked ;; 31
+    active ;; 34
     notice ;; 35
+    hostile ;; 38
+    die-falling ;; 41
+    ambush ;; 47
+    attack ;; 190
     wait-for-formation ;; 191
+    exit-ambush ;; 192
+    exit-ambush-path ;; 193
+    )
+  (:methods
+    (flamer-lava-method-194 (_type_) none) ;; 194
+    (flamer-lava-method-195 (_type_ vector process-focusable) none) ;; 195
+    (flamer-lava-method-196 (_type_) object) ;; 196
+    (flamer-lava-method-197 (_type_) none) ;; 197
+    (flamer-lava-method-198 (_type_) none) ;; 198
+    (flamer-lava-method-199 (_type_ float) vector) ;; 199
+    (flamer-lava-method-200 (_type_) none) ;; 200
+    (flamer-lava-method-201 (_type_ int float int int) none) ;; 201
+    (flamer-lava-method-202 (_type_) none) ;; 202
+    (flamer-lava-method-203 (_type_) none) ;; 203
+    (shadow-draw-probe (_type_) none) ;; 204
     )
   )
-|#
 
-#|
 (deftype flaming-lava (flamer-lava)
   ()
   :method-count-assert 205
   :size-assert         #x460
   :flag-assert         #xcd03e00460
   )
-|#
 
-;; (define-extern *flamer-lava-exploder-params* joint-exploder-static-params)
-;; (define-extern *flamer-lava-fact-defaults* fact-info-enemy-defaults)
-;; (define-extern *flamer-lava-nav-enemy-info* nav-enemy-info)
-;; (define-extern flamer-lava-attack-post function)
-;; (define-extern flamer-lava-flit-post function)
-;; (define-extern flamer-lava-fly-code function)
-;; (define-extern vector-square! function) ;; (function vector vector vector)
+(define-extern *flamer-lava-exploder-params* joint-exploder-static-params)
+(define-extern *flamer-lava-fact-defaults* fact-info-enemy-defaults)
+(define-extern *flamer-lava-nav-enemy-info* nav-enemy-info)
+(define-extern flamer-lava-attack-post (function none :behavior flamer-lava))
+(define-extern flamer-lava-flit-post (function none :behavior flamer-lava))
+(define-extern flamer-lava-fly-code (function none :behavior flamer-lava))
+(define-extern vector-square! (function vector vector vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasstadb-obs                   ;;
