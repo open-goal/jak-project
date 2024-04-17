@@ -173,7 +173,7 @@
 (cgo-file "mined.gd" common-dep)
 (cgo-file "minee.gd" common-dep)
 ; ;; city
-; (cgo-file "cwi.gd" common-dep) ;; ctywide
+(cgo-file "cwi.gd" common-dep) ;; ctywide
 ; (cgo-file "cfa.gd" common-dep) ;; ctyfarm
 ; (cgo-file "cfb.gd" common-dep)
 ; (cgo-file "cgb.gd" common-dep) ;; ctygen
@@ -222,9 +222,9 @@
 ; (cgo-file "sen.gd" common-dep)
 ; (cgo-file "seo.gd" common-dep)
 ; ;; mhcity
-; (cgo-file "mhca.gd" common-dep)
-; (cgo-file "mhcb.gd" common-dep)
-; (cgo-file "mhctycst.gd" common-dep)
+(cgo-file "mhca.gd" common-dep)
+(cgo-file "mhcb.gd" common-dep)
+(cgo-file "mhctycst.gd" common-dep)
 ;; forest
 (cgo-file "frsta.gd" common-dep)
 (cgo-file "frstb.gd" common-dep)
@@ -240,9 +240,9 @@
 (cgo-file "towerc.gd" common-dep)
 (cgo-file "towercst.gd" common-dep)
 ; ;; stadium
-; (cgo-file "sta.gd" common-dep)
-; (cgo-file "staa.gd" common-dep)
-; (cgo-file "stb.gd" common-dep)
+(cgo-file "sta.gd" common-dep)
+(cgo-file "staa.gd" common-dep)
+(cgo-file "stb.gd" common-dep)
 ; ;; rubble
 ; (cgo-file "rbct.gd" common-dep)
 ; (cgo-file "ruba.gd" common-dep)
@@ -331,7 +331,7 @@
 ; (cgo-file "ldmpckgn.gd" common-dep)
 ; (cgo-file "lerrol.gd" common-dep)
 ; (cgo-file "lfacb.gd" common-dep)
-; (cgo-file "lfaccar.gd" common-dep)
+(cgo-file "lfaccar.gd" common-dep)
 ; (cgo-file "lfaccity.gd" common-dep)
 ; (cgo-file "lfaco.gd" common-dep)
 ; (cgo-file "lfacrm1.gd" common-dep)
