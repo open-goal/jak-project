@@ -49023,14 +49023,18 @@
 ;; flee-info                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype flee-info (UNKNOWN)
-  ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
-  )
-|#
+; (deftype flee-info (structure)
+;   ()
+;   :method-count-assert 14
+;   :flag-assert #xe00000000
+;   (:methods
+;     (flee-info-method-9 (_type_) none) ;; 9
+;     (flee-info-method-10 (_type_) none) ;; 10
+;     (flee-info-method-11 (_type_) none) ;; 11
+;     (flee-info-method-12 (_type_) none) ;; 12
+;     (flee-info-method-13 (_type_) none) ;; 13
+;     )
+;   )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -63182,31 +63186,26 @@
 ;; wcar-faccar                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype v-faccar (wcar-base)
-  ((jmod-axles      UNKNOWN 4 :offset-assert 2752)
-   (jmod-shock-tops UNKNOWN 4 :offset-assert 2880)
-   (jmod-shock-mids UNKNOWN 4 :offset-assert 3008)
-   (jmod-antenna    UNKNOWN 4 :offset-assert 3264)
+  ((jmod-axles      joint-mod-rotate-local 4 :inline :offset-assert 2752)
+   (jmod-shock-tops joint-mod-rotate-local 4 :inline :offset-assert 2880)
+   (jmod-shock-mids joint-mod-set-local    4 :inline :offset-assert 3008)
+   (jmod-antenna    joint-mod-rotate-local 4 :inline :offset-assert 3264)
    )
   :method-count-assert 204
   :size-assert         #xd40
   :flag-assert         #xcc0cc00d40
   (:methods
-    (v-faccar-method-203 () none) ;; 203
+    (v-faccar-method-203 (_type_ vector) (pointer process)) ;; 203
     )
   )
-|#
 
-#|
 (deftype faccar (w-parking-spot)
   ()
   :method-count-assert 27
   :size-assert         #xf8
   :flag-assert         #x1b008000f8
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; onintent-part                  ;;
@@ -63224,7 +63223,6 @@
 ;; stadium-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype stadium-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -63233,9 +63231,8 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-;; (define-extern update-mood-stadium function) ;; (function mood-context float int none :behavior time-of-day-proc)
+(define-extern update-mood-stadium (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadium-part                   ;;
@@ -63547,108 +63544,126 @@
 ;; kanga-lizard                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++kanga-lizard:waschase-speech-flag
+(defenum waschase-speech-flag
+  :type uint64
+  :bitfield #t
+  (wsf0 0)
+  (wsf1 1)
+  (wsf2 2)
+  (wsf3 3)
+  (wsf4 4)
+  (wsf5 5)
+  (wsf6 6)
+  )
+;; ---kanga-lizard:waschase-speech-flag
+
 (deftype waschase-speech-instance (structure)
   ((speech      uint16  :offset-assert 0)
    (probability float   :offset-assert 4)
-   (flags       uint64  :offset-assert 8)
+   (flags       waschase-speech-flag :offset-assert 8)
    (play-count  uint32  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
+;; +++kanga-lizard:waschase-speech-info-flag
+(defenum waschase-speech-info-flag
+  :type uint8
+  :bitfield #t
+  (wsi0 0)
+  (wsi1 1)
+  (wsi2 2)
+  (wsi3 3)
+  (wsi4 4)
+  (wsi5 5)
+  (wsi6 6)
+  (wsi7 7)
+  )
+;; ---kanga-lizard:waschase-speech-info-flag
+
 (deftype waschase-speech-info (structure)
-  ((speeches         basic   :offset-assert 0)
-   (play-time        uint64  :offset-assert 8)
-   (current-random   uint64  :offset-assert 16)
-   (minimum-interval uint64  :offset-assert 24)
-   (random-interval  uint64  :offset-assert 32)
-   (last-played      int8    :offset-assert 40)
-   (flags            uint8   :offset-assert 41)
+  ((speeches         (array waschase-speech-instance) :offset-assert 0)
+   (play-time        time-frame :offset-assert 8)
+   (current-random   time-frame :offset-assert 16)
+   (minimum-interval time-frame :offset-assert 24)
+   (random-interval  time-frame :offset-assert 32)
+   (last-played      int8       :offset-assert 40)
+   (flags            waschase-speech-info-flag :offset-assert 41)
    )
   :method-count-assert 9
   :size-assert         #x2a
   :flag-assert         #x90000002a
   )
-|#
 
-#|
 (deftype waschase-speech-group (structure)
-  ((play-time uint64  :offset-assert 0)
-   (info      basic   :offset-assert 8)
+  ((play-time time-frame                   :offset-assert 0)
+   (info      (array waschase-speech-info) :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype kanga-lizard (nav-enemy)
   ((minimap            connection-minimap  :offset-assert 620)
-   (last-focus-ping    uint64              :offset-assert 624)
-   (total-flee-time    uint64              :offset-assert 632)
-   (current-flee-start uint64              :offset-assert 640)
-   (being-attacked     basic               :offset-assert 648)
+   (last-focus-ping    time-frame          :offset-assert 624)
+   (total-flee-time    time-frame          :offset-assert 632)
+   (current-flee-start time-frame          :offset-assert 640)
+   (being-attacked     symbol              :offset-assert 648)
    )
   :method-count-assert 193
   :size-assert         #x28c
   :flag-assert         #xc10210028c
   (:state-methods
     knocked ;; 31
+    flee ;; 36
     hidden ;; 190
     reinit-if-find-nav-mesh ;; 191
     die-eaten ;; 192
-    flee ;; 36
     )
   )
-|#
 
-#|
 (deftype task-manager-kanga-lizard (task-manager)
-  ((manager-entity    basic   :offset-assert 236)
-   (check-timer       uint64  :offset-assert 244)
-   (main-timer        uint64  :offset-assert 252)
-   (actor-group       uint32  :offset-assert 260)
-   (actor-group-count int32   :offset-assert 264)
-   (dead-mask         uint32  :offset-assert 268)
-   (last-eaten-talk   int8    :offset-assert 272)
-   (last-die-talk     int8    :offset-assert 273)
-   (been-on-flut      basic   :offset-assert 276)
+  ((manager-entity    entity   :offset-assert 240)
+   (check-timer       time-frame :offset-assert 248)
+   (main-timer        time-frame :offset-assert 256)
+   (actor-group       (pointer actor-group) :offset-assert 264)
+   (actor-group-count int32   :offset-assert 268)
+   (dead-mask         uint32  :offset-assert 272)
+   (last-eaten-talk   int8    :offset-assert 276)
+   (last-die-talk     int8    :offset-assert 277)
+   (been-on-flut      symbol  :offset-assert 280)
    )
   :method-count-assert 33
   :size-assert         #x11c
   :flag-assert         #x2100a0011c
-  (:methods
-    (task-manager-kanga-lizard-method-32 () none) ;; 32
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (init-actor-group! (_type_) none) ;; 32
+    )
   )
-|#
 
-;; (define-extern *kanga-lizard-speech-list* object)
-;; (define-extern *waschase-speech* object)
-;; (define-extern reset-waschase-speeches function)
-;; (define-extern waschase-play-speech function)
-;; (define-extern *kanga-lizard-nav-enemy-info* nav-enemy-info)
+(define-extern *kanga-lizard-speech-list* (inline-array talker-speech-class))
+(define-extern *waschase-speech* waschase-speech-group)
+(define-extern reset-waschase-speeches (function none))
+(define-extern waschase-play-speech (function int none))
+(define-extern *kanga-lizard-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-lpattack             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *lpattack-adjacency* object)
+(define-extern *lpattack-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadiuma-mood                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype stadiumb-states (structure)
   ((light light-state  :inline :offset-assert 0)
    (flame flames-state :inline :offset-assert 8)
@@ -63657,115 +63672,102 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-#|
 (deftype stadiuma-states (structure)
   ((light       light-state :inline :offset-assert 0)
-   (electricity UNKNOWN     2       :offset-assert 8)
+   (electricity electricity-state 2 :inline :offset-assert 8)
+   (pad uint8 16)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-;; (define-extern update-mood-stadiumb function) ;; (function mood-context float int none :behavior time-of-day-proc)
-;; (define-extern init-mood-stadiuma function)
-;; (define-extern update-mood-stadiuma function)
-;; (define-extern set-stadiuma-electricity-scale! function)
+(define-extern update-mood-stadiumb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern init-mood-stadiuma (function mood-context none))
+(define-extern update-mood-stadiuma (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-stadiuma-electricity-scale! (function float int symbol int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadium-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype stadium-flag-base (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (stadium-flag-base-method-21 () none) ;; 21
-    (stadium-flag-base-method-22 () none) ;; 22
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (get-skel (_type_) art-group) ;; 21
+    (stadium-flag-base-method-22 (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype stadium-sails-left (stadium-flag-base)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype stadium-sails-right (stadium-flag-base)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype rub-dark-jak-door (process-drawable)
-  ((played-hint? basic  :offset-assert 200)
-   (block?       basic  :offset-assert 204)
+  ((root         collide-shape :override)
+   (played-hint? symbol :offset-assert 200)
+   (block?       symbol :offset-assert 204)
    )
   :method-count-assert 23
   :size-assert         #xd0
   :flag-assert         #x17005000d0
-  (:methods
-    (rub-dark-jak-door-method-22 () none) ;; 22
-    )
   (:state-methods
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
+    )
+  (:methods
+    (rub-dark-jak-door-method-22 (_type_) none) ;; 22
     )
   )
-|#
 
-#|
 (deftype rub-falling-step (process-drawable)
-  ((mat matrix :inline :offset-assert 208)
+  ((root         collide-shape :override)
+   (mat matrix :inline :offset-assert 208)
    )
   :method-count-assert 23
   :size-assert         #x110
   :flag-assert         #x1700900110
   (:state-methods
-    fade-in ;; 22
-    drop ;; 21
     idle ;; 20
+    drop ;; 21
+    fade-in ;; 22
     )
   )
-|#
 
-#|
 (deftype rub-rhino-door (process-focusable)
   ()
   :method-count-assert 34
   :size-assert         #xd0
   :flag-assert         #x22005000d0
-  (:methods
-    (rub-rhino-door-method-30 () none) ;; 30
-    (rub-rhino-door-method-31 () none) ;; 31
-    (rub-rhino-door-method-32 () none) ;; 32
-    (rub-rhino-door-method-33 () none) ;; 33
-    )
   (:state-methods
-    explode ;; 29
     idle ;; 28
+    explode ;; 29
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 30
+    (impact-breaks-door? (_type_ rigid-body-impact wvehicle) symbol) ;; 31
+    (go-explode (_type_) none) ;; 32
+    (do-explode (_type_) none) ;; 33
     )
   )
-|#
 
-#|
 (deftype mh-tower-smoke-stda (process-drawable)
   ()
   :method-count-assert 21
@@ -63775,24 +63777,23 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *rub-rhino-door-exploder-params* joint-exploder-static-params)
+(define-extern *rub-rhino-door-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; stadium-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-birth-func-brightness-buggy-door function)
-;; (define-extern spt-birth-func-part-buggy-door function)
-;; (define-extern *range-sat-explo-fma-color* curve-color-fast)
-;; (define-extern *range-sat-explo-fma-alpha* curve2d-fast)
-;; (define-extern *range-sat-explo-fma-scale-x* curve2d-fast)
-;; (define-extern *range-sat-explo-fma-scale-y* curve2d-fast)
-;; (define-extern *curve-sat-explo-fma-alpha* curve2d-fast)
-;; (define-extern *curve-sat-explo-fma-scale-x* curve2d-fast)
-;; (define-extern *curve-sat-explo-fma-scale-y* curve2d-fast)
-;; (define-extern *part-fma-neo-satellite-explosion-texture-curve-settings* object)
+(define-extern spt-birth-func-brightness-buggy-door (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-buggy-door (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-sat-explo-fma-color* curve-color-fast)
+(define-extern *range-sat-explo-fma-alpha* curve2d-fast)
+(define-extern *range-sat-explo-fma-scale-x* curve2d-fast)
+(define-extern *range-sat-explo-fma-scale-y* curve2d-fast)
+(define-extern *curve-sat-explo-fma-alpha* curve2d-fast)
+(define-extern *curve-sat-explo-fma-scale-x* curve2d-fast)
+(define-extern *curve-sat-explo-fma-scale-y* curve2d-fast)
+(define-extern *part-fma-neo-satellite-explosion-texture-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rubblea-init                   ;;
@@ -63817,8 +63818,8 @@
 ;; stadiuma-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-birth-func-brightness-part-rubble-break-dust function)
-;; (define-extern spt-birth-func-brightness-part-rubble-break-dust-trail function)
+(define-extern spt-birth-func-brightness-part-rubble-break-dust (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-brightness-part-rubble-break-dust-trail (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rubble-part                    ;;
@@ -63961,115 +63962,118 @@
 ;; spyder                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype spyder-shot (metalhead-shot)
   ()
   :method-count-assert 41
   :size-assert         #x210
   :flag-assert         #x2901900210
   )
-|#
 
-#|
+;; +++spyder:spyder-flag
+(defenum spyder-flag
+  :type uint64
+  :bitfield #t
+  (sf0 0)
+  (sf1 1)
+  (sf2 2)
+  (sf3 3)
+  (sf4 4)
+  (sf5 5)
+  (sf6 6)
+  (sf7 7)
+  )
+;; ---spyder:spyder-flag
+
 (deftype spyder (nav-enemy)
   ((los               los-control           :inline :offset-assert 624)
    (joint             joint-mod-blend-world :inline :offset-assert 800) ;; joint-mod
    (start-pos         vector                :inline :offset-assert 928)
-   (focus-pos         vector                :inline :offset-assert 352)
-   (face-pos          vector                :inline :offset-assert 960)
+   (face-pos          vector                :inline :offset 960)
    (my-up-vector      vector                :inline :offset-assert 976)
-   (status-flags      uint64                        :offset-assert 992) ;; spyder-flags
-   (change-dir-timer  uint64                        :offset-assert 1000) ;; time-frame
-   (fire-info         vector                2       :offset-assert 1008) ;; guessed by decompiler
+   (status-flags      spyder-flag                   :offset-assert 992) ;; spyder-flags
+   (change-dir-timer  time-frame                    :offset-assert 1000) ;; time-frame
+   (fire-info         vector                2 :inline :offset-assert 1008) ;; guessed by decompiler
    (joint-ik          joint-mod-ik          4       :offset-assert 1040) ;; guessed by decompiler
    (delta-y-ik        float                 4       :offset-assert 1056) ;; guessed by decompiler
    (predator-effect?  symbol                        :offset-assert 1072) ;; guessed by decompiler
-   (shock-effect-time uint64                        :offset-assert 1080) ;; time-frame
-   (shock-effect-end  uint64                        :offset-assert 1088) ;; time-frame
+   (shock-effect-time time-frame                    :offset-assert 1080) ;; time-frame
+   (shock-effect-end  time-frame                    :offset-assert 1088) ;; time-frame
    (fade              float                         :offset-assert 1096)
    (dest-fade         float                         :offset-assert 1100)
    )
   :method-count-assert 198
   :size-assert         #x450
   :flag-assert         #xc603d00450
-  (:methods
-    (spyder-method-192 () none) ;; 192
-    (spyder-method-193 () none) ;; 193
-    (spyder-method-194 () none) ;; 194
-    (spyder-method-195 () none) ;; 195
-    (spyder-method-196 () none) ;; 196
-    (spyder-method-197 () none) ;; 197
-    )
   (:state-methods
-    victory ;; 39
     knocked ;; 31
-    hostile ;; 38
-    attack ;; 190
     active ;; 34
-    backup ;; 191
     notice ;; 35
+    hostile ;; 38
+    victory ;; 39
+    attack ;; 190
+    backup ;; 191
+    )
+  (:methods
+    (spyder-method-192 (_type_) none) ;; 192
+    (spyder-method-193 (_type_) none) ;; 193
+    (spyder-method-194 (_type_) none) ;; 194
+    (fire-shot (_type_ (inline-array vector) float) none) ;; 195
+    (spyder-method-196 (_type_ vector) none) ;; 196
+    (spyder-method-197 (_type_) none) ;; 197
     )
   )
-|#
 
-;; (define-extern *spyder-nav-enemy-info* nav-enemy-info) ;; nav-enemy-info
-;; (define-extern spyder-travel-post function) ;; (function none :behavior spyder)
-;; (define-extern spyder-face-player-post function) ;; (function none :behavior spyder)
-;; (define-extern *spyder-ik-limb-setup* object)
+(define-extern *spyder-nav-enemy-info* nav-enemy-info)
+(define-extern spyder-travel-post (function none :behavior spyder))
+(define-extern spyder-face-player-post (function none :behavior spyder))
+(define-extern *spyder-ik-limb-setup* (inline-array ik-limb-setup))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rapid-gunner                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rapid-gunner (nav-enemy)
   ((dest-quat    quaternion :inline :offset-assert 624)
    (turret-pos   vector     :inline :offset-assert 640)
-   (turret-actor basic              :offset-assert 656)
-   (scared-timer uint64             :offset-assert 664)
+   (turret-actor entity-actor       :offset-assert 656)
+   (scared-timer time-frame         :offset-assert 664)
    )
   :method-count-assert 197
   :size-assert         #x2a0
   :flag-assert         #xc5022002a0
   (:state-methods
     knocked-recover ;; 32
-    attack ;; 196
-    turret-get-off ;; 195
     hostile ;; 38
-    turret-getting-off ;; 194
-    turret-active-shoot ;; 193
-    turret-active ;; 192
-    turret-get-on ;; 191
     turret-seek ;; 190
+    turret-get-on ;; 191
+    turret-active ;; 192
+    turret-active-shoot ;; 193
+    turret-getting-off ;; 194
+    turret-get-off ;; 195
+    attack ;; 196
     )
   )
-|#
 
-;; (define-extern *rapid-gunner-nav-enemy-info* nav-enemy-info) ;; nav-enemy-info
-;; (define-extern rapid-gunner-turret-post function)
-;; (define-extern rapid-gunner-turret-code function)
+(define-extern *rapid-gunner-nav-enemy-info* nav-enemy-info)
+(define-extern rapid-gunner-turret-post (function none :behavior rapid-gunner))
+(define-extern rapid-gunner-turret-code (function none :behavior rapid-gunner))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dm-mine-spider                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dm-mine-spider (nav-enemy)
-  ((change-dir-time uint64  :offset-assert 624)
-   (last-change-dir uint64  :offset-assert 632)
+  ((change-dir-time time-frame :offset-assert 624)
+   (last-change-dir time-frame :offset-assert 632)
    (move-angle      float   :offset-assert 640)
-   (heading         basic   :offset-assert 644)
+   (heading         symbol  :offset-assert 644)
    (size            float   :offset-assert 648)
    (angle-spot      float   :offset-assert 652)
-   (trackable?      basic   :offset-assert 656)
+   (trackable?      symbol  :offset-assert 656)
    )
   :method-count-assert 194
   :size-assert         #x294
   :flag-assert         #xc202200294
-  (:methods
-    (dm-mine-spider-method-192 () none) ;; 192
-    (dm-mine-spider-method-193 () none) ;; 193
-    )
   (:state-methods
     knocked ;; 31
     hostile ;; 38
@@ -64077,48 +64081,49 @@
     run-stop ;; 190
     attack ;; 191
     )
+  (:methods
+    (dm-mine-spider-method-192 (_type_) none) ;; 192
+    (dm-mine-spider-method-193 (_type_ nav-control vector) none) ;; 193
+    )
   )
-|#
 
-#|
 (deftype dm-mine-spider-spawner (process-focusable)
   ((count-alive     int32   :offset-assert 208)
    (attack-id       uint32  :offset-assert 212)
-   (next-spawn-time uint64  :offset-assert 216)
-   (alt-actor       basic   :offset-assert 224)
+   (next-spawn-time time-frame :offset-assert 216)
+   (alt-actor       entity-actor :offset-assert 224)
    (nav-id          uint32  :offset-assert 228)
    (num-nav-mesh    int32   :offset-assert 232)
    (count-max       int32   :offset-assert 236)
    (hit-points      int32   :offset-assert 240)
-   (nav-sphere      uint64  :offset-assert 248)
+   (nav-sphere      handle  :offset-assert 248)
    )
   :method-count-assert 34
   :size-assert         #x100
   :flag-assert         #x2200800100
-  (:methods
-    (dm-mine-spider-spawner-method-30 () none) ;; 30
-    (dm-mine-spider-spawner-method-31 () none) ;; 31
-    (dm-mine-spider-spawner-method-32 () none) ;; 32
-    (dm-mine-spider-spawner-method-33 () none) ;; 33
-    )
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
+    )
+  (:methods
+    (dm-mine-spider-spawner-method-30 (_type_) none) ;; 30
+    (dm-mine-spider-spawner-method-31 (_type_) none) ;; 31
+    (dm-mine-spider-spawner-method-32 (_type_ vector) none) ;; 32
+    (dm-mine-spider-spawner-method-33 (_type_ vector) symbol) ;; 33
     )
   )
-|#
 
-;; (define-extern check-drop-level-dm-mine-spider-dirt-rubble function)
-;; (define-extern spt-birth-func-brightness-dm-mine-spider function)
-;; (define-extern spt-birth-func-part-dm-mine-spider-clumps function)
-;; (define-extern spt-func-part-dm-mine-spider-clumps function)
-;; (define-extern spt-birth-func-part-dm-mine-spider-clumps-mass function)
-;; (define-extern spt-func-part-dm-mine-spider-clumps-mass function)
-;; (define-extern spt-birth-func-part-dm-mine-spider-clumps-pop function)
-;; (define-extern spt-func-part-dm-mine-spider-clumps-pop function)
-;; (define-extern spt-birth-func-part-dm-mine-spider-clumps-stays function)
-;; (define-extern spt-func-part-dm-mine-spider-clumps-stays function)
-;; (define-extern *dm-mine-spider-nav-enemy-info* nav-enemy-info)
+(define-extern check-drop-level-dm-mine-spider-dirt-rubble (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern spt-birth-func-brightness-dm-mine-spider (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-part-dm-mine-spider-clumps (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-dm-mine-spider-clumps (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern spt-birth-func-part-dm-mine-spider-clumps-mass (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-dm-mine-spider-clumps-mass (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern spt-birth-func-part-dm-mine-spider-clumps-pop (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-dm-mine-spider-clumps-pop (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern spt-birth-func-part-dm-mine-spider-clumps-stays (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern spt-func-part-dm-mine-spider-clumps-stays (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *dm-mine-spider-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mantis                         ;;
@@ -69948,7 +69953,6 @@
 ;; mhcity-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bubbles-path (process-drawable)
   ()
   :method-count-assert 22
@@ -69959,67 +69963,56 @@
     die ;; 21
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mhcity-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mhcity-dark-eco-door (process-focusable)
-  ((should-break? basic   :offset-assert 208)
-   (broken-door   uint64  :offset-assert 216)
+  ((should-break? symbol  :offset-assert 208)
+   (broken-door   handle  :offset-assert 216)
    )
   :method-count-assert 33
   :size-assert         #xe0
   :flag-assert         #x21006000e0
   (:state-methods
-    broken ;; 31
-    cracked-idle ;; 30
-    cracked ;; 29
     idle ;; 28
+    cracked ;; 29
+    cracked-idle ;; 30
+    broken ;; 31
     broken-idle ;; 32
     )
   )
-|#
 
-#|
 (deftype mhcity-dark-eco-door-broken (process-drawable)
   ()
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:state-methods
-    shatter ;; 21
     crack ;; 20
+    shatter ;; 21
     )
   )
-|#
 
-#|
 (deftype mhcity-lump (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
   )
-|#
 
-#|
 (deftype mhcity-dark-eco-nodule (process-drawable)
   ()
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:state-methods
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
     )
   )
-|#
 
-#|
 (deftype mhcity-ambient-killable (process-focusable)
   ((hit-points     float   :offset-assert 208)
    (drop-type      int32   :offset-assert 212)
@@ -70030,17 +70023,15 @@
   :method-count-assert 31
   :size-assert         #xe4
   :flag-assert         #x1f007000e4
-  (:methods
-    (mhcity-ambient-killable-method-29 () none) ;; 29
-    (mhcity-ambient-killable-method-30 () none) ;; 30
-    )
   (:state-methods
     die-hidden ;; 28
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 29
+    (init-fields! (_type_) none) ;; 30
+    )
   )
-|#
 
-#|
 (deftype mhcity-vein-writhing-large (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70050,9 +70041,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-vein-writhing-small (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70062,9 +70051,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-claw-finger-small (mhcity-ambient-killable)
   ((twitch-speed         float              :offset-assert 228)
    (twitch-angle-current float              :offset-assert 232)
@@ -70079,9 +70066,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-twitch-blade (process-drawable)
   ()
   :method-count-assert 21
@@ -70091,9 +70076,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype mhcity-vine-wriggler (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70103,9 +70086,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-vine-wriggler-big (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70115,9 +70096,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-de-tower-undervines (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70127,9 +70106,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-grunt-egg-c (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70139,9 +70116,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-grunt-egg-b (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70151,9 +70126,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-grunt-egg-d (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70163,9 +70136,7 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype mhcity-grunt-egg-a (mhcity-ambient-killable)
   ()
   :method-count-assert 32
@@ -70175,18 +70146,14 @@
     idle ;; 31
     )
   )
-|#
 
-#|
 (deftype curve-bubbles-Shape (process-hidden)
   ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
   )
-|#
 
-#|
 (deftype mhcity-tower-door (process-drawable)
   ()
   :method-count-assert 21
@@ -70196,20 +70163,17 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern mhcity-dark-eco-door-broken-init-by-other function)
-;; (define-extern *darkeco-nodule-task-nodes* array)
-;; (define-extern mhcity-ambient-killable-event-handler function)
+(define-extern mhcity-dark-eco-door-broken-init-by-other (function process-drawable object :behavior mhcity-dark-eco-door-broken))
+(define-extern *darkeco-nodule-task-nodes* array)
+(def-event-handler mhcity-ambient-killable-event-handler mhcity-ambient-killable)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mhcity-obs2                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mhcity-puffer (process-focusable)
-  ((state-time uint64             :offset-assert 192)
-   (period     uint64             :offset-assert 216)
+  ((period     uint64             :offset 216)
    (duration   uint64             :offset-assert 224)
    (offset     uint64             :offset-assert 232)
    (is-jump?   basic              :offset-assert 240)
@@ -70220,21 +70184,19 @@
   :method-count-assert 35
   :size-assert         #x128
   :flag-assert         #x2300b00128
-  (:methods
-    (mhcity-puffer-method-32 () none) ;; 32
-    (mhcity-puffer-method-33 () none) ;; 33
-    (mhcity-puffer-method-34 () none) ;; 34
-    )
   (:state-methods
     active ;; 28
     blowing ;; 29
     blowing-prep ;; 30
     puffer-active-base-state ;; 31
     )
+  (:methods
+    (init-collision! (_type_ float) none) ;; 32
+    (get-skel (_type_) art-group) ;; 33
+    (update (_type_) none) ;; 34
+    )
   )
-|#
 
-#|
 (deftype puffer-init-by-other-params (structure)
   ((pos      vector     :inline :offset-assert 0)
    (orient   quaternion :inline :offset-assert 16)
@@ -70249,9 +70211,7 @@
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-#|
 (deftype mhcity-puffer-large (mhcity-puffer)
   ()
   :method-count-assert 35
@@ -70263,9 +70223,8 @@
     blowing-prep ;; 30
     )
   )
-|#
 
-;; (define-extern puffer-init-by-other function)
+(define-extern puffer-init-by-other (function puffer-init-by-other-params object :behavior mhcity-puffer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; krimson-wall                   ;;
