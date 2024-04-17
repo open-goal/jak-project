@@ -59000,63 +59000,59 @@
 ;; marauder                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype marauder (nav-enemy)
   ((los                   los-control     :inline :offset-assert 624)
    (target-pos            vector          :inline :offset-assert 800)
-   (jump-attack           basic                   :offset-assert 816)
+   (jump-attack           symbol                  :offset-assert 816)
    (jump-info             enemy-jump-info :inline :offset-assert 832)
-   (save                  basic                   :offset-assert 920)
+   (save                  symbol                  :offset-assert 920)
    (save-pos              vector          :inline :offset-assert 928)
-   (ambush?               basic                   :offset-assert 944)
-   (knocked-back?         basic                   :offset-assert 948)
+   (ambush?               symbol                  :offset-assert 944)
+   (knocked-back?         symbol                  :offset-assert 948)
    (run-anim              int32                   :offset-assert 952)
-   (gun?                  basic                   :offset-assert 956)
-   (target-last-attacker? basic                   :offset-assert 960)
-   (visible-last          uint64                  :offset-assert 968)
+   (gun?                  symbol                  :offset-assert 956)
+   (target-last-attacker? symbol                  :offset-assert 960)
+   (visible-last          time-frame              :offset-assert 968)
    (traj                  trajectory      :inline :offset-assert 976)
-   (skip-jump             basic                   :offset-assert 1016)
+   (skip-jump             symbol                  :offset-assert 1016)
    )
   :method-count-assert 199
   :size-assert         #x3fc
   :flag-assert         #xc7038003fc
-  (:methods
-    (marauder-method-196 () none) ;; 196
-    (marauder-method-197 () none) ;; 197
-    (marauder-method-198 () none) ;; 198
-    )
   (:state-methods
-    attack-run ;; 190
-    ambush ;; 47
-    lava-die ;; 193
-    stare ;; 37
-    idle ;; 33
-    victory ;; 39
-    jump-out ;; 195
     knocked ;; 31
-    jump ;; 44
-    gun-shoot ;; 194
+    idle ;; 33
+    stare ;; 37
     hostile ;; 38
-    save-wait ;; 192
+    victory ;; 39
+    jump ;; 44
+    ambush ;; 47
+    attack-run ;; 190
     save ;; 191
+    save-wait ;; 192
+    lava-die ;; 193
+    gun-shoot ;; 194
+    jump-out ;; 195
+    )
+  (:methods
+    (toggle-collide-spec (_type_ symbol int) none) ;; 196
+    (fire-shot (_type_) none) ;; 197
+    (set-multi-focus (_type_ symbol) none) ;; 198
     )
   )
-|#
 
-#|
 (deftype marauder-init-by-other-params (enemy-init-by-other-params)
-  ((multi-focus basic  :offset-assert 48)
-   (skip-jump   basic  :offset-assert 52)
+  ((multi-focus symbol :offset-assert 48)
+   (skip-jump   symbol  :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-;; (define-extern *fact-info-marauder-defaults* fact-info-enemy-defaults)
-;; (define-extern *marauder-nav-enemy-info* nav-enemy-info)
-;; (define-extern marauder-init-by-other function)
+(define-extern *fact-info-marauder-defaults* fact-info-enemy-defaults)
+(define-extern *marauder-nav-enemy-info* nav-enemy-info)
+(define-extern marauder-init-by-other (function process-drawable marauder-init-by-other-params object :behavior marauder))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; oasis-defense                  ;;
@@ -63259,52 +63255,56 @@
 ;; wasstada-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wstd-door (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
+;; +++wasstada-obs:wstd-arena-plat-flag
+(defenum wstd-arena-plat-flag
+  :type uint64
+  :bitfield #t
+  (wap0 0)
+  (wap1 1)
+  )
+;; ---wasstada-obs:wstd-arena-plat-flag
+
 (deftype wstd-arena-plat (base-plat)
   ((sync               sync-paused :inline :offset-assert 272)
-   (flags              uint64              :offset-assert 296)
-   (ride-timer         uint64              :offset-assert 304)
+   (flags              wstd-arena-plat-flag :offset-assert 296)
+   (ride-timer         time-frame          :offset-assert 304)
    (current-pos        float               :offset-assert 312)
    (dest-pos           float               :offset-assert 316)
    (speed              float               :offset-assert 320)
    (y-pos              float               :offset-assert 324)
-   (ambient-sound-id   uint32              :offset-assert 328)
+   (ambient-sound-id   sound-id            :offset-assert 328)
    (on-activate        basic               :offset-assert 332)
    (go-pos             float               :offset-assert 336)
-   (sound-id           uint32              :offset-assert 340)
-   (sound-running-loop basic               :offset-assert 344)
+   (sound-id           sound-id            :offset-assert 340)
+   (sound-running-loop sound-spec          :offset-assert 344)
    )
   :method-count-assert 45
   :size-assert         #x15c
   :flag-assert         #x2d00e0015c
   ;; field on-activate uses ~A with a signed load.
-  (:methods
-    (wstd-arena-plat-method-43 () none) ;; 43
-    (wstd-arena-plat-method-44 () none) ;; 44
-    )
   (:state-methods
+    plat-base-state ;; 35
+    idle ;; 36
+    active ;; 37
+    wait ;; 38
+    run ;; 39
     show ;; 40
     wait-show ;; 41
     go-down ;; 42
-    wait ;; 38
-    run ;; 39
-    active ;; 37
-    idle ;; 36
-    plat-base-state ;; 35
+    )
+  (:methods
+    (wstd-arena-plat-method-43 (_type_) none) ;; 43
+    (wstd-arena-plat-method-44 (_type_) none) ;; 44
     )
   )
-|#
 
-#|
 (deftype wstd-flag-a (process-drawable)
   ()
   :method-count-assert 21
@@ -63314,11 +63314,9 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype wstd-blocker (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
@@ -63326,28 +63324,26 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype crowd-manager (process)
   ((crowd-intensity float          :offset-assert 128)
-   (snd-id-1        uint32         :offset-assert 132)
-   (snd-id-2        uint32         :offset-assert 136)
-   (next-sound      uint64         :offset-assert 144)
+   (snd-id-1        sound-id       :offset-assert 132)
+   (snd-id-2        sound-id       :offset-assert 136)
+   (next-sound      time-frame     :offset-assert 144)
    (channel         uint32         :offset-assert 152)
-   (dur-sound       uint64         :offset-assert 160)
+   (dur-sound       time-frame     :offset-assert 160)
    (volume-1        float          :offset-assert 168)
    (volume-2        float          :offset-assert 172)
    (trans-1         vector :inline :offset-assert 176)
    (trans-2         vector :inline :offset-assert 192)
    (crowd-int-red   float          :offset-assert 208)
    (trans           vector :inline :offset-assert 224)
-   (training?       basic          :offset-assert 240)
-   (darkjak?        basic          :offset-assert 244)
-   (sid             uint32         :offset-assert 248)
+   (training?       symbol         :offset-assert 240)
+   (darkjak?        symbol         :offset-assert 244)
+   (sid             sound-id       :offset-assert 248)
    (volume          float          :offset-assert 252)
    (snd-count       uint32         :offset-assert 256)
-   (start-sound     basic          :offset-assert 260)
+   (start-sound     sound-spec     :offset-assert 260)
    )
   :method-count-assert 15
   :size-assert         #x108
@@ -63356,34 +63352,32 @@
     idle ;; 14
     )
   )
-|#
 
-;; (define-extern *range-color-lava-flame* curve-color-fast)
-;; (define-extern *range-alpha-lava-flame* curve2d-fast)
-;; (define-extern *range-scale-lava-flame-x* curve2d-fast)
-;; (define-extern *range-scale-lava-flame-y* curve2d-fast)
-;; (define-extern *r-curve-lava-flame* curve2d-fast)
-;; (define-extern *g-curve-lava-flame* curve2d-fast)
-;; (define-extern *b-curve-lava-flame* curve2d-fast)
-;; (define-extern *curve-alpha-lava-flame* curve2d-fast)
-;; (define-extern *curve-scale-lava-flame-x* curve2d-fast)
-;; (define-extern *curve-scale-lava-flame-y* curve2d-fast)
-;; (define-extern *part-wasstada-lava-flame-curve-settings* object)
-;; (define-extern *crowd-manager* object)
-;; (define-extern *crowd-positions* array)
+(define-extern *range-color-lava-flame* curve-color-fast)
+(define-extern *range-alpha-lava-flame* curve2d-fast)
+(define-extern *range-scale-lava-flame-x* curve2d-fast)
+(define-extern *range-scale-lava-flame-y* curve2d-fast)
+(define-extern *r-curve-lava-flame* curve2d-fast)
+(define-extern *g-curve-lava-flame* curve2d-fast)
+(define-extern *b-curve-lava-flame* curve2d-fast)
+(define-extern *curve-alpha-lava-flame* curve2d-fast)
+(define-extern *curve-scale-lava-flame-x* curve2d-fast)
+(define-extern *curve-scale-lava-flame-y* curve2d-fast)
+(define-extern *part-wasstada-lava-flame-curve-settings* particle-curve-settings)
+(define-extern *crowd-manager* (pointer crowd-manager))
+(define-extern *crowd-positions* (array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasstada-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype spectator-info (structure)
   ((flags     int32   :offset-assert 0)
-   (textures  basic   :offset-assert 4)
+   (textures  (array int32)   :offset-assert 4)
    (y-pos     float   :offset-assert 8)
    (delta-y   float   :offset-assert 12)
    (angle     float   :offset-assert 16)
-   (hola-time uint64  :offset-assert 24)
+   (hola-time time-frame  :offset-assert 24)
    (offset    uint32  :offset-assert 32)
    (speed     uint32  :offset-assert 36)
    )
@@ -63392,13 +63386,11 @@
   :flag-assert         #x900000028
   ;; field textures uses ~A with a signed load.
   )
-|#
 
-#|
 (deftype wasstada-crowd (process-drawable)
   ((mat        matrix  :inline :offset-assert 208)
-   (spectators UNKNOWN 15      :offset-assert 272)
-   (hola       float           :offset-assert 992)
+   (spectators spectator-info 15 :inline :offset-assert 272)
+   (hola       float           :offset 992)
    )
   :method-count-assert 21
   :size-assert         #x3e4
@@ -63407,49 +63399,48 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *range-color-lava-geyser-flame* curve-color-fast)
-;; (define-extern *range-alpha-lava-geyser-flame* curve2d-fast)
-;; (define-extern *range-scale-lava-geyser-flame-x* curve2d-fast)
-;; (define-extern *range-scale-lava-geyser-flame-y* curve2d-fast)
-;; (define-extern *r-curve-lava-geyser-flame* curve2d-fast)
-;; (define-extern *g-curve-lava-geyser-flame* curve2d-fast)
-;; (define-extern *b-curve-lava-geyser-flame* curve2d-fast)
-;; (define-extern *curve-alpha-lava-geyser-flame* curve2d-fast)
-;; (define-extern *curve-scale-lava-geyser-flame-x* curve2d-fast)
-;; (define-extern *curve-scale-lava-geyser-flame-y* curve2d-fast)
-;; (define-extern *part-wasstada-lava-geyser-flame-curve-settings* object)
-;; (define-extern *range-color-wasstada-crucible-flame* curve-color-fast)
-;; (define-extern *range-alpha-wasstada-crucible-flame* curve2d-fast)
-;; (define-extern *range-scale-wasstada-crucible-flame-x* curve2d-fast)
-;; (define-extern *range-scale-wasstada-crucible-flame-y* curve2d-fast)
-;; (define-extern *r-curve-wasstada-crucible-flame* curve2d-fast)
-;; (define-extern *g-curve-wasstada-crucible-flame* curve2d-fast)
-;; (define-extern *b-curve-wasstada-crucible-flame* curve2d-fast)
-;; (define-extern *curve-alpha-wasstada-crucible-flame* curve2d-fast)
-;; (define-extern *curve-wasstada-crucible-flame-x* curve2d-fast)
-;; (define-extern *curve-wasstada-crucible-flame-y* curve2d-fast)
-;; (define-extern *part-wasstada-crucible-flame-curve-settings* object)
-;; (define-extern *range-color-wasstada-bowl-flame* curve-color-fast)
-;; (define-extern *range-alpha-wasstada-bowl-flame* curve2d-fast)
-;; (define-extern *range-scale-wasstada-bowl-flame-x* curve2d-fast)
-;; (define-extern *range-scale-wasstada-bowl-flame-y* curve2d-fast)
-;; (define-extern *r-curve-wasstada-bowl-flame* curve2d-fast)
-;; (define-extern *g-curve-wasstada-bowl-flame* curve2d-fast)
-;; (define-extern *b-curve-wasstada-bowl-flame* curve2d-fast)
-;; (define-extern *curve-alpha-wasstada-bowl-flame* curve2d-fast)
-;; (define-extern *curve-wasstada-bowl-flame-x* curve2d-fast)
-;; (define-extern *curve-wasstada-bowl-flame-y* curve2d-fast)
-;; (define-extern *part-wasstada-bowl-flame-curve-settings* object)
-;; (define-extern part-wasstada-bird1-path function)
-;; (define-extern part-wasstada-bird2-path function)
-;; (define-extern part-wasstada-bird3-path function)
-;; (define-extern part-wasstada-bird4-path function)
-;; (define-extern part-wasstada-bird5-path function)
-;; (define-extern *crowd-dudes-position* array)
-;; (define-extern *crowd-dudes-textures* array)
-;; (define-extern crowd-dude-func function)
+(define-extern *range-color-lava-geyser-flame* curve-color-fast)
+(define-extern *range-alpha-lava-geyser-flame* curve2d-fast)
+(define-extern *range-scale-lava-geyser-flame-x* curve2d-fast)
+(define-extern *range-scale-lava-geyser-flame-y* curve2d-fast)
+(define-extern *r-curve-lava-geyser-flame* curve2d-fast)
+(define-extern *g-curve-lava-geyser-flame* curve2d-fast)
+(define-extern *b-curve-lava-geyser-flame* curve2d-fast)
+(define-extern *curve-alpha-lava-geyser-flame* curve2d-fast)
+(define-extern *curve-scale-lava-geyser-flame-x* curve2d-fast)
+(define-extern *curve-scale-lava-geyser-flame-y* curve2d-fast)
+(define-extern *part-wasstada-lava-geyser-flame-curve-settings* particle-curve-settings)
+(define-extern *range-color-wasstada-crucible-flame* curve-color-fast)
+(define-extern *range-alpha-wasstada-crucible-flame* curve2d-fast)
+(define-extern *range-scale-wasstada-crucible-flame-x* curve2d-fast)
+(define-extern *range-scale-wasstada-crucible-flame-y* curve2d-fast)
+(define-extern *r-curve-wasstada-crucible-flame* curve2d-fast)
+(define-extern *g-curve-wasstada-crucible-flame* curve2d-fast)
+(define-extern *b-curve-wasstada-crucible-flame* curve2d-fast)
+(define-extern *curve-alpha-wasstada-crucible-flame* curve2d-fast)
+(define-extern *curve-wasstada-crucible-flame-x* curve2d-fast)
+(define-extern *curve-wasstada-crucible-flame-y* curve2d-fast)
+(define-extern *part-wasstada-crucible-flame-curve-settings* particle-curve-settings)
+(define-extern *range-color-wasstada-bowl-flame* curve-color-fast)
+(define-extern *range-alpha-wasstada-bowl-flame* curve2d-fast)
+(define-extern *range-scale-wasstada-bowl-flame-x* curve2d-fast)
+(define-extern *range-scale-wasstada-bowl-flame-y* curve2d-fast)
+(define-extern *r-curve-wasstada-bowl-flame* curve2d-fast)
+(define-extern *g-curve-wasstada-bowl-flame* curve2d-fast)
+(define-extern *b-curve-wasstada-bowl-flame* curve2d-fast)
+(define-extern *curve-alpha-wasstada-bowl-flame* curve2d-fast)
+(define-extern *curve-wasstada-bowl-flame-x* curve2d-fast)
+(define-extern *curve-wasstada-bowl-flame-y* curve2d-fast)
+(define-extern *part-wasstada-bowl-flame-curve-settings* particle-curve-settings)
+(define-extern part-wasstada-bird1-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wasstada-bird2-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wasstada-bird3-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wasstada-bird4-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern part-wasstada-bird5-path (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *crowd-dudes-position* (array vector))
+(define-extern *crowd-dudes-textures* (array (array int32)))
+(define-extern crowd-dude-func (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasstada-texture               ;;
@@ -63461,7 +63452,6 @@
 ;; wasstada-mood                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wasstada-states (structure)
   ((flame0 flames-state :inline :offset-assert 0)
    (flame1 flames-state :inline :offset-assert 8)
@@ -63470,12 +63460,11 @@
   :size-assert         #xf
   :flag-assert         #x90000000f
   )
-|#
 
-;; (define-extern *wasstada-mood-color-table* object)
-;; (define-extern *wasstada-mood-fog-table* object)
-;; (define-extern update-mood-wasstada function)
-;; (define-extern update-mood-copy-wasstada function)
+(define-extern *wasstada-mood-color-table* mood-color-table)
+(define-extern *wasstada-mood-fog-table* mood-fog-table)
+(define-extern update-mood-wasstada (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-copy-wasstada (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factorya-texture               ;;
@@ -64200,9 +64189,8 @@
 ;; wasstadc-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-throne-rog (task-manager)
-  ((arrow-h uint64  :offset-assert 240)
+  ((arrow-h handle  :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf8
@@ -64211,30 +64199,26 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype wstd-fight-plat-box (base-plat)
-  ((crate-h        uint64  :offset-assert 272)
-   (next-lava-part uint64  :offset-assert 280)
+  ((crate-h        handle  :offset-assert 272)
+   (next-lava-part time-frame :offset-assert 280)
    )
   :method-count-assert 41
   :size-assert         #x120
   :flag-assert         #x2900a00120
-  (:methods
-    (wstd-fight-plat-box-method-37 () none) ;; 37
-    (wstd-fight-plat-box-method-38 () none) ;; 38
-    (wstd-fight-plat-box-method-39 () none) ;; 39
-    (wstd-fight-plat-box-method-40 () none) ;; 40
-    )
   (:state-methods
     active ;; 35
     open ;; 36
     )
+  (:methods
+    (wstd-fight-plat-box-method-37 (_type_) none) ;; 37
+    (wstd-fight-plat-box-method-38 (_type_) none) ;; 38
+    (wstd-fight-plat-box-method-39 (_type_) symbol) ;; 39
+    (wstd-fight-plat-box-method-40 (_type_) none) ;; 40
+    )
   )
-|#
 
-#|
 (deftype wstd-fight-house-a (process-drawable)
   ()
   :method-count-assert 22
@@ -64245,121 +64229,113 @@
     open ;; 21
     )
   )
-|#
 
-#|
 (deftype wstd-fight-plat (base-plat)
   ((basepos          vector  :inline :offset-assert 272)
-   (box              UNKNOWN 4       :offset-assert 288)
-   (door             UNKNOWN 4       :offset-assert 320)
-   (next-crate-spawn uint64          :offset-assert 352)
+   (box              handle 4        :offset-assert 288)
+   (door             handle 4        :offset-assert 320)
+   (next-crate-spawn time-frame      :offset-assert 352)
    (next-box-spawn   int32           :offset-assert 360)
    (delta-y          float           :offset-assert 364)
-   (spawn-lava?      basic           :offset-assert 368)
-   (next-lava-part   uint64          :offset-assert 376)
+   (spawn-lava?      symbol          :offset-assert 368)
+   (next-lava-part   time-frame      :offset-assert 376)
    (part-lava-pos    vector  :inline :offset-assert 384)
-   (attack-pos       UNKNOWN 8       :offset-assert 400)
-   (attack-ang       UNKNOWN 8       :offset-assert 528)
+   (attack-pos       vector 8 :inline :offset-assert 400)
+   (attack-ang       degrees 8       :offset-assert 528)
    (cur-point        int32           :offset-assert 560)
-   (ambient-sound-id uint32          :offset-assert 564)
+   (ambient-sound-id sound-id        :offset-assert 564)
    (depth            float           :offset-assert 568)
-   (go-up            basic           :offset-assert 572)
+   (go-up            symbol          :offset-assert 572)
    (translate        float           :offset-assert 576)
-   (next-lava-sound  uint64          :offset-assert 584)
-   (next-alarm-sound uint64          :offset-assert 592)
+   (next-lava-sound  time-frame      :offset-assert 584)
+   (next-alarm-sound time-frame      :offset-assert 592)
    (y-offset-box     float           :offset-assert 600)
    )
   :method-count-assert 41
   :size-assert         #x25c
   :flag-assert         #x2901e0025c
-  (:methods
-    (wstd-fight-plat-method-36 () none) ;; 36
-    (wstd-fight-plat-method-39 () none) ;; 39
-    (wstd-fight-plat-method-40 () none) ;; 40
-    )
   (:state-methods
-    go-down ;; 38
-    active ;; 37
     plat-base-state ;; 35
+    undefined ;; 36, not defined
+    active ;; 37
+    go-down ;; 38
+    )
+  (:methods
+    (wstd-fight-plat-method-39 (_type_) none) ;; 39
+    (wstd-fight-plat-method-40 (_type_) none) ;; 40
     )
   )
-|#
 
-#|
 (deftype wstd-fight-plat-smlplat (base-plat)
   ((basepos          vector :inline :offset-assert 272)
-   (box              uint64         :offset-assert 288)
-   (next-crate-spawn uint64         :offset-assert 296)
+   (box              handle         :offset-assert 288)
+   (next-crate-spawn time-frame     :offset-assert 296)
    (next-box-spawn   int32          :offset-assert 304)
    (delta-y          float          :offset-assert 308)
-   (spawn-lava?      basic          :offset-assert 312)
-   (next-lava-part   uint64         :offset-assert 320)
+   (spawn-lava?      symbol         :offset-assert 312)
+   (next-lava-part   time-frame     :offset-assert 320)
    (part-lava-pos    vector :inline :offset-assert 336)
-   (ambient-sound-id uint32         :offset-assert 352)
+   (ambient-sound-id sound-id       :offset-assert 352)
    (depth            float          :offset-assert 356)
    (translate        float          :offset-assert 360)
    (angle-move       float          :offset-assert 364)
-   (ride-timer       uint64         :offset-assert 368)
-   (lock             basic          :offset-assert 376)
+   (ride-timer       time-frame     :offset-assert 368)
+   (lock             symbol         :offset-assert 376)
    )
   :method-count-assert 43
   :size-assert         #x17c
   :flag-assert         #x2b0100017c
-  (:methods
-    (wstd-fight-plat-smlplat-method-36 () none) ;; 36
-    (wstd-fight-plat-smlplat-method-41 () none) ;; 41
-    (wstd-fight-plat-smlplat-method-42 () none) ;; 42
-    )
   (:state-methods
-    go-up-fma ;; 40
-    go-up ;; 39
-    go-down ;; 38
-    active ;; 37
     plat-base-state ;; 35
+    undefined ;; 36, not defined
+    active ;; 37
+    go-down ;; 38
+    go-up ;; 39
+    go-up-fma ;; 40
+    )
+  (:methods
+    (wstd-fight-plat-smlplat-method-41 (_type_) none) ;; 41
+    (wstd-fight-plat-smlplat-method-42 (_type_) none) ;; 42
     )
   )
-|#
 
-#|
 (deftype wstd-fight-plat-large (base-plat)
   ((basepos          vector  :inline :offset-assert 272)
-   (box              UNKNOWN 4       :offset-assert 288)
-   (door             UNKNOWN 8       :offset-assert 320)
-   (next-crate-spawn uint64          :offset-assert 384)
+   (box              handle 4        :offset-assert 288)
+   (door             handle 8        :offset-assert 320)
+   (next-crate-spawn time-frame      :offset-assert 384)
    (next-box-spawn   int32           :offset-assert 392)
    (delta-y          float           :offset-assert 396)
-   (spawn-lava?      basic           :offset-assert 400)
-   (next-lava-part   uint64          :offset-assert 408)
+   (spawn-lava?      symbol          :offset-assert 400)
+   (next-lava-part   time-frame      :offset-assert 408)
    (part-lava-pos    vector  :inline :offset-assert 416)
-   (attack-pos       UNKNOWN 8       :offset-assert 432)
-   (attack-ang       UNKNOWN 8       :offset-assert 560)
+   (attack-pos       vector 8 :inline :offset-assert 432)
+   (attack-ang       degrees 8       :offset-assert 560)
    (cur-point        int32           :offset-assert 592)
-   (ambient-sound-id uint32          :offset-assert 596)
+   (ambient-sound-id sound-id        :offset-assert 596)
    (depth            float           :offset-assert 600)
-   (go-up            basic           :offset-assert 604)
+   (go-up            symbol          :offset-assert 604)
    (translate        float           :offset-assert 608)
-   (next-lava-sound  uint64          :offset-assert 616)
-   (next-alarm-sound uint64          :offset-assert 624)
+   (next-lava-sound  time-frame      :offset-assert 616)
+   (next-alarm-sound time-frame      :offset-assert 624)
    )
   :method-count-assert 43
   :size-assert         #x278
   :flag-assert         #x2b02000278
-  (:methods
-    (wstd-fight-plat-large-method-36 () none) ;; 36
-    (wstd-fight-plat-large-method-40 () none) ;; 40
-    (wstd-fight-plat-large-method-41 () none) ;; 41
-    (wstd-fight-plat-large-method-42 () none) ;; 42
-    )
   (:state-methods
-    end ;; 39
-    go-down ;; 38
-    active ;; 37
     plat-base-state ;; 35
+    undefined ;; 36, not defined
+    active ;; 37
+    go-down ;; 38
+    end ;; 39
+    )
+  (:methods
+    (wstd-fight-plat-large-method-40 (_type_) none) ;; 40
+    (wstd-fight-plat-large-method-41 (_type_) none) ;; 41
+    (wstd-fight-plat-large-method-42 (_type_) none) ;; 42
     )
   )
-|#
 
-#|
 (deftype house-info (structure)
   ((joint-index uint32  :offset-assert 0)
    (y-angle     float   :offset-assert 4)
@@ -64369,74 +64345,77 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype marauder-info (structure)
-  ((handle    uint64  :offset-assert 0)
+  ((handle    handle  :offset-assert 0)
    (vis-point int32   :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
+;; added, was defined inside of a function
+(deftype plat-info (structure)
+  ((joint-idx uint32 :offset-assert 0)
+   (x-off     float  :offset-assert 4)
+   (z-off     float  :offset-assert 8)
+   )
+  :pack-me
+  :method-count-assert 9
+  :size-assert         #xc
+  :flag-assert         #x90000000c
+  )
+
 (deftype task-manager-arena-fight-base (task-manager)
-  ((marauder          UNKNOWN 16 :offset-assert 236)
-   (last-count        uint32     :offset-assert 492)
-   (count-alive       uint32     :offset-assert 496)
-   (entity            basic      :offset-assert 52)
-   (check-timer       uint64     :offset-assert 508)
-   (next-spawn        uint64     :offset-assert 516)
-   (count             uint32     :offset-assert 524)
-   (angle             uint32     :offset-assert 528)
-   (dark              basic      :offset-assert 532)
-   (arrow-h           uint64     :offset-assert 540)
-   (snd-id            uint32     :offset-assert 548)
-   (crowd-intensity   float      :offset-assert 552)
-   (next-go-down      uint64     :offset-assert 556)
-   (actor-group       uint32     :offset-assert 564)
-   (actor-group-count int32      :offset-assert 568)
-   (platform          UNKNOWN 4  :offset-assert 572)
-   (gui-id            uint32     :offset-assert 604)
-   (crate-h           UNKNOWN 3  :offset-assert 612)
-   (darkbomb          basic      :offset-assert 636)
+  ((marauder          marauder-info 16 :inline :offset-assert 240)
+   (last-count        uint32     :offset-assert 496)
+   (count-alive       uint32     :offset-assert 500)
+   (check-timer       time-frame :offset 512)
+   (next-spawn        time-frame :offset-assert 520)
+   (count             uint32     :offset-assert 528)
+   (angle             uint32     :offset-assert 532)
+   (dark              symbol     :offset-assert 536)
+   (arrow-h           handle     :offset-assert 544)
+   (snd-id            sound-id   :offset-assert 552)
+   (crowd-intensity   float      :offset-assert 556)
+   (next-go-down      time-frame :offset-assert 560)
+   (actor-group       (pointer actor-group) :offset-assert 568)
+   (actor-group-count int32      :offset-assert 572)
+   (platform          handle 4   :offset-assert 576)
+   (gui-id            sound-id   :offset-assert 608)
+   (crate-h           handle 3   :offset-assert 616)
+   (darkbomb          symbol     :offset-assert 640)
    )
   :method-count-assert 37
   :size-assert         #x284
   :flag-assert         #x2502100284
   (:methods
-    (task-manager-arena-fight-base-method-32 () none) ;; 32
-    (task-manager-arena-fight-base-method-33 () none) ;; 33
-    (task-manager-arena-fight-base-method-34 () none) ;; 34
-    (task-manager-arena-fight-base-method-35 () none) ;; 35
-    (task-manager-arena-fight-base-method-36 () none) ;; 36
+    (spawn-marauder (_type_ vector quaternion actor-id symbol symbol) none) ;; 32
+    (task-manager-arena-fight-base-method-33 (_type_) none) ;; 33
+    (task-manager-arena-fight-base-method-34 (_type_) none) ;; 34
+    (task-manager-arena-fight-base-method-35 (_type_ text-id) none) ;; 35
+    (spawn-crate (_type_ vector quaternion pickup-type) handle) ;; 36
     )
   )
-|#
 
-#|
 (deftype task-manager-arena-gun-training (task-manager)
-  ((gui-id  uint32  :offset-assert 240)
-   (text-id uint32  :offset-assert 244)
+  ((gui-id  sound-id :offset-assert 240)
+   (text-id text-id  :offset-assert 244)
    )
   :method-count-assert 33
   :size-assert         #xf8
   :flag-assert         #x21008000f8
-  (:methods
-    (task-manager-arena-gun-training-method-32 () none) ;; 32
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (print-text (_type_ text-id) none) ;; 32
+    )
   )
-|#
 
-#|
 (deftype task-manager-arena-gun-training-blue (task-manager-arena-gun-training)
-  ()
+  ((pad uint8 8))
   :method-count-assert 33
   :size-assert         #x100
   :flag-assert         #x2100800100
@@ -64444,65 +64423,62 @@
     active ;; 15
     )
   )
-|#
 
-#|
 (deftype task-manager-arena-fight (task-manager-arena-fight-base)
-  ((display-fire basic  :offset-assert 644)
+  ((display-fire symbol  :offset-assert 644)
    )
   :method-count-assert 40
   :size-assert         #x288
   :flag-assert         #x2802100288
-  (:methods
-    (task-manager-arena-fight-method-39 () none) ;; 39
-    )
   (:state-methods
-    throne ;; 38
-    go-down ;; 37
     active ;; 15
+    go-down ;; 37
+    throne ;; 38
+    )
+  (:methods
+    (task-manager-arena-fight-method-39 (_type_) none) ;; 39
     )
   )
-|#
 
-#|
 (deftype task-manager-arena-fight-2 (task-manager-arena-fight-base)
-  ((play-hint     basic   :offset-assert 644)
-   (hint-time     uint64  :offset-assert 648)
-   (dj-train-time uint64  :offset-assert 656)
-   (dj-train      uint32  :offset-assert 664)
+  ((play-hint     symbol :offset-assert 644)
+   (hint-time     time-frame :offset-assert 648)
+   (dj-train-time time-frame :offset-assert 656)
+   (dj-train      uint32     :offset-assert 664)
    )
   :method-count-assert 40
   :size-assert         #x29c
   :flag-assert         #x280220029c
   (:state-methods
-    done ;; 38
-    go-down ;; 37
-    wait-start ;; 39
     active ;; 15
+    go-down ;; 37
+    done ;; 38
+    wait-start ;; 39
     )
   )
-|#
 
-#|
 (deftype task-manager-arena-fight-3 (task-manager-arena-fight-2)
   ()
   :method-count-assert 40
   :size-assert         #x29c
   :flag-assert         #x280220029c
   (:state-methods
-    wait-start ;; 39
     done ;; 38
+    wait-start ;; 39
     )
   )
-|#
 
-;; (define-extern wstd-fight-plat-box-init-by-other function)
-;; (define-extern wstd-fight-house-a-init-by-other function)
-;; (define-extern *fight-plat-lava-pos* array)
-;; (define-extern wstd-fight-plat-init-by-other function)
-;; (define-extern wstd-fight-plat-smlplat-init-by-other function)
-;; (define-extern wasstadc-tl function)
-;; (define-extern wstd-fight-plat-large-init-by-other function)
+(define-extern wstd-fight-plat-box-init-by-other (function object :behavior wstd-fight-plat-box))
+(define-extern wstd-fight-house-a-init-by-other (function object :behavior wstd-fight-house-a))
+(define-extern *fight-plat-lava-pos* (array vector))
+(define-extern wstd-fight-plat-init-by-other (function vector int float float object :behavior wstd-fight-plat))
+(define-extern wstd-fight-plat-smlplat-init-by-other (function vector object float object :behavior wstd-fight-plat-smlplat))
+(define-extern wasstadc-tl (function none))
+(define-extern wstd-fight-plat-large-init-by-other (function vector int float object :behavior wstd-fight-plat-large))
+
+(define-extern *wstd-fight-large-house* (array house-info))
+(define-extern *fight-plat-lava-large-pos* (array vector))
+(define-extern *wstd-fight-large-plat* (array plat-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-ladder                  ;;
@@ -73716,116 +73692,103 @@
 ;; wasstadb-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype arena-state (structure)
-  ((time uint64  :offset-assert 0)
+  ((time time-frame  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype hud-timer-training (hud-timer)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-arena-final-stats (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype arena-token (process-drawable)
-  ((trans-y  float          :offset-assert 200)
+  ((root     collide-shape-moving :override)
+   (trans-y  float          :offset-assert 200)
    (offset   float          :offset-assert 204)
    (gspot    vector :inline :offset-assert 208)
-   (shadow-h uint64         :offset-assert 224)
+   (shadow-h handle         :offset-assert 224)
    )
   :method-count-assert 25
   :size-assert         #xe8
   :flag-assert         #x19007000e8
-  (:methods
-    (arena-token-method-23 () none) ;; 23
-    (arena-token-method-24 () none) ;; 24
-    )
   (:state-methods
-    hide ;; 22
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    hide ;; 22
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 23
+    (probe-background (_type_) symbol) ;; 24
     )
   )
-|#
 
-#|
 (deftype wstd-training-dummy (process-drawable)
-  ()
+  ((root collide-shape-moving :override))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (wstd-training-dummy-method-22 () none) ;; 22
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 22
     )
   )
-|#
 
-#|
 (deftype task-manager-arena-training (task-manager)
-  ((judge-h           uint64  :offset-assert 236)
-   (arrow-h           uint64  :offset-assert 244)
-   (hud-stat          uint64  :offset-assert 252)
-   (check-timer       uint64  :offset-assert 260)
-   (actor-group       uint32  :offset-assert 268)
-   (actor-group-count int32   :offset-assert 272)
-   (checkpoint-timer  float   :offset-assert 276)
-   (checkpoint-tokens uint64  :offset-assert 284)
-   (message-id        uint32  :offset-assert 292)
+  ((judge-h           handle  :offset-assert 240)
+   (arrow-h           handle  :offset-assert 248)
+   (hud-stat          handle  :offset-assert 256)
+   (check-timer       time-frame  :offset-assert 264)
+   (actor-group       (pointer actor-group)  :offset-assert 272)
+   (actor-group-count int32   :offset-assert 276)
+   (checkpoint-timer  float   :offset-assert 280)
+   (checkpoint-tokens handle  :offset-assert 288)
+   (message-id        text-id :offset-assert 296)
    )
   :method-count-assert 38
   :size-assert         #x12c
   :flag-assert         #x2600b0012c
-  (:methods
-    (task-manager-arena-training-method-36 () none) ;; 36
-    (task-manager-arena-training-method-37 () none) ;; 37
-    )
   (:state-methods
     active ;; 15
-    done ;; 35
-    idle ;; 34
-    wait-more ;; 33
     wait-touch ;; 32
+    wait-more ;; 33
+    idle ;; 34
+    done ;; 35
+    )
+  (:methods
+    (task-manager-arena-training-method-36 (_type_) none) ;; 36
+    (print-text (_type_) none) ;; 37
     )
   )
-|#
 
-#|
 (deftype wstd-trapdoor (process-drawable)
-  ((notify-actor basic  :offset-assert 200)
+  ((root collide-shape :override)
+   (notify-actor entity-actor  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
     )
   )
-|#
 
-#|
 (deftype wstd-flag (process-drawable)
   ()
   :method-count-assert 21
@@ -73835,15 +73798,14 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *arena-state* object)
-;; (define-extern *wstd-training-dummy-exploder-params* joint-exploder-static-params)
-;; (define-extern *arena-trainer-checkpoint-valid* object)
-;; (define-extern *arena-trainer-checkpoint-time* object)
-;; (define-extern *arena-trainer-checkpoint-tokens* object)
-;; (define-extern *training-fail* object)
-;; (define-extern *wstd-trapdoor-exploder-params* joint-exploder-static-params)
+(define-extern *arena-state* arena-state)
+(define-extern *wstd-training-dummy-exploder-params* joint-exploder-static-params)
+(define-extern *arena-trainer-checkpoint-valid* object)
+(define-extern *arena-trainer-checkpoint-time* float)
+(define-extern *arena-trainer-checkpoint-tokens* (pointer uint64))
+(define-extern *training-fail* resetter-params)
+(define-extern *wstd-trapdoor-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; protect-script                 ;;
