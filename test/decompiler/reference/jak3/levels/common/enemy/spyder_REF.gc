@@ -1,0 +1,1452 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type spyder-shot
+(deftype spyder-shot (metalhead-shot)
+  ()
+  )
+
+;; definition for method 3 of type spyder-shot
+(defmethod inspect ((this spyder-shot))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type metalhead-shot inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 28 of type spyder-shot
+;; WARN: Return type mismatch int vs none.
+(defmethod play-impact-sound ((this spyder-shot) (arg0 projectile-options))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (sound-play "spyder-fire")
+       )
+      ((= v1-0 (projectile-options po0))
+       (sound-play "spyder-shot-hit")
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 31 of type spyder-shot
+;; WARN: Return type mismatch int vs none.
+(defmethod init-proj-settings! ((this spyder-shot))
+  (call-parent-method this)
+  (set! (-> this max-speed) 307200.0)
+  (set! (-> this timeout) (seconds 0.267))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-spyder spyder spyder-lod0-jg -1
+              ((spyder-lod0-mg (meters 20)) (spyder-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow spyder-shadow-mg
+              :origin-joint-index 28
+              )
+
+;; definition of type spyder
+(deftype spyder (nav-enemy)
+  ((los                los-control            :inline)
+   (joint              joint-mod-blend-world  :inline)
+   (start-pos          vector                 :inline)
+   (face-pos           vector                 :inline :offset 960)
+   (my-up-vector       vector                 :inline)
+   (status-flags       spyder-flag)
+   (change-dir-timer   time-frame)
+   (fire-info          vector                 2 :inline)
+   (joint-ik           joint-mod-ik           4)
+   (delta-y-ik         float                  4)
+   (predator-effect?   symbol)
+   (shock-effect-time  time-frame)
+   (shock-effect-end   time-frame)
+   (fade               float)
+   (dest-fade          float)
+   )
+  (:state-methods
+    attack
+    backup
+    )
+  (:methods
+    (spyder-method-192 (_type_) none)
+    (spyder-method-193 (_type_) none)
+    (spyder-method-194 (_type_) none)
+    (fire-shot (_type_ (inline-array vector) float) none)
+    (spyder-method-196 (_type_ vector) none)
+    (spyder-method-197 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type spyder
+(defmethod inspect ((this spyder))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tlos: #<los-control @ #x~X>~%" (-> this los))
+  (format #t "~2Tjoint: #<joint-mod-blend-world @ #x~X>~%" (-> this joint))
+  (format #t "~2Tstart-pos: #<vector @ #x~X>~%" (-> this start-pos))
+  (format #t "~2Tfocus-pos: #<vector @ #x~X>~%" (-> this focus-pos))
+  (format #t "~2Tface-pos: #<vector @ #x~X>~%" (-> this face-pos))
+  (format #t "~2Tmy-up-vector: #<vector @ #x~X>~%" (-> this my-up-vector))
+  (format #t "~2Tstatus-flags: ~D~%" (-> this status-flags))
+  (format #t "~2Tchange-dir-timer: ~D~%" (-> this change-dir-timer))
+  (format #t "~2Tfire-info[2] @ #x~X~%" (-> this fire-info))
+  (format #t "~2Tjoint-ik[4] @ #x~X~%" (-> this joint-ik))
+  (format #t "~2Tdelta-y-ik[4] @ #x~X~%" (-> this delta-y-ik))
+  (format #t "~2Tpredator-effect?: ~A~%" (-> this predator-effect?))
+  (format #t "~2Tshock-effect-time: ~D~%" (-> this shock-effect-time))
+  (format #t "~2Tshock-effect-end: ~D~%" (-> this shock-effect-end))
+  (format #t "~2Tfade: ~f~%" (-> this fade))
+  (format #t "~2Tdest-fade: ~f~%" (-> this dest-fade))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *spyder-nav-enemy-info*, type nav-enemy-info
+(define *spyder-nav-enemy-info* (new 'static 'nav-enemy-info
+                                  :use-die-falling #t
+                                  :use-victory #t
+                                  :use-jump-blocked #t
+                                  :debug-draw-neck #f
+                                  :jump-debug-draw #f
+                                  :move-to-ground #t
+                                  :hover-if-no-ground #f
+                                  :idle-anim-script (new 'static 'inline-array idle-control-frame 2
+                                    (new 'static 'idle-control-frame
+                                      :command (idle-control-cmd play)
+                                      :anim #x4
+                                      :param0 1
+                                      :param1 1
+                                      :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+                                      )
+                                    (new 'static 'idle-control-frame)
+                                    )
+                                  :idle-anim 4
+                                  :notice-anim 6
+                                  :hostile-anim 8
+                                  :hit-anim 15
+                                  :knocked-anim 16
+                                  :knocked-land-anim 20
+                                  :die-anim 12
+                                  :die-falling-anim 11
+                                  :victory-anim 7
+                                  :jump-wind-up-anim 21
+                                  :jump-in-air-anim 22
+                                  :jump-land-anim 23
+                                  :neck-joint 7
+                                  :look-at-joint 7
+                                  :bullseye-joint 28
+                                  :sound-hit (static-sound-name "spyder-hit")
+                                  :sound-die (static-sound-name "spyder-die")
+                                  :notice-distance (meters 80)
+                                  :notice-distance-delta (meters 10)
+                                  :proximity-notice-distance (meters 80)
+                                  :default-hit-points 8.0
+                                  :gnd-collide-with (collide-spec backgnd)
+                                  :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+                                  :penetrate-knocked (penetrate
+                                    touch
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    vehicle
+                                    flut-attack
+                                    board
+                                    mech
+                                    mech-punch
+                                    mech-bonk
+                                    dark-skin
+                                    dark-punch
+                                    dark-bomb
+                                    dark-smack
+                                    flut
+                                    shield
+                                    explode
+                                    jak-yellow-shot
+                                    jak-red-shot
+                                    jak-blue-shot
+                                    jak-dark-shot
+                                    enemy-yellow-shot
+                                    enemy-dark-shot
+                                    eco-yellow
+                                    eco-red
+                                    eco-blue
+                                    eco-green
+                                    knocked
+                                    jak-red-shockwave
+                                    jak-dark-nuke
+                                    jak-dark-blackhole
+                                    emp-blast
+                                    penetrate38
+                                    penetrate39
+                                    penetrate40
+                                    penetrate41
+                                    penetrate42
+                                    penetrate43
+                                    penetrate44
+                                    penetrate45
+                                    penetrate46
+                                    penetrate47
+                                    penetrate48
+                                    penetrate49
+                                    penetrate50
+                                    penetrate51
+                                    penetrate52
+                                    penetrate53
+                                    penetrate54
+                                    penetrate55
+                                    penetrate56
+                                    penetrate57
+                                    penetrate58
+                                    penetrate59
+                                    penetrate60
+                                    penetrate61
+                                    penetrate64
+                                    penetrate63
+                                    )
+                                  :movement-gravity (meters -100)
+                                  :friction 0.8
+                                  :attack-shove-back (meters 3)
+                                  :attack-shove-up (meters 2)
+                                  :attack-mode 'generic
+                                  :attack-damage 2
+                                  :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+                                  :knocked-can-land-timeout (seconds 0.1)
+                                  :knocked-recover-timeout (seconds 2)
+                                  :ragdoll-blend-out-time (seconds 0.25)
+                                  :ragdoll-rotate-velocity-mult 1.0
+                                  :jump-height-min (meters 3)
+                                  :jump-height-factor 0.5
+                                  :knocked-seek-ry-clamp 2730.6667
+                                  :knocked-soft-vxz-lo 90112.0
+                                  :knocked-soft-vxz-hi 131072.0
+                                  :knocked-soft-vy-lo 114688.0
+                                  :knocked-soft-vy-hi 155648.0
+                                  :knocked-medium-vxz-lo 147456.0
+                                  :knocked-medium-vxz-hi 196608.0
+                                  :knocked-medium-vy-lo 135168.0
+                                  :knocked-medium-vy-hi 151552.0
+                                  :knocked-hard-vxz-lo 78643.2
+                                  :knocked-hard-vxz-hi 117964.8
+                                  :knocked-hard-vy-lo 183500.8
+                                  :knocked-hard-vy-hi 209715.2
+                                  :knocked-huge-vxz-lo 164659.2
+                                  :knocked-huge-vxz-hi 249036.8
+                                  :knocked-huge-vy-lo 183500.8
+                                  :knocked-huge-vy-hi 217907.2
+                                  :knocked-yellow-vxz-lo 40960.0
+                                  :knocked-yellow-vxz-hi 49152.0
+                                  :knocked-yellow-vy-lo 57344.0
+                                  :knocked-yellow-vy-hi 81920.0
+                                  :knocked-red-vxz-lo 24576.0
+                                  :knocked-red-vxz-hi 131072.0
+                                  :knocked-red-vy-lo 94208.0
+                                  :knocked-red-vy-hi 139264.0
+                                  :knocked-blue-vxz-lo 40960.0
+                                  :knocked-blue-vxz-hi 49152.0
+                                  :knocked-blue-vy-lo 57344.0
+                                  :knocked-blue-vy-hi 98304.0
+                                  :ragdoll-info #f
+                                  :shadow-size (meters 2)
+                                  :shadow-max-y (meters 1)
+                                  :shadow-min-y (meters -1)
+                                  :shadow-locus-dist (meters 150)
+                                  :gem-joint 7
+                                  :gem-seg #x2
+                                  :gem-no-seg #x4
+                                  :gem-offset (new 'static 'sphere :y 819.2 :z 942.08 :r 163840.0)
+                                  :knocked-off #t
+                                  :callback-info #f
+                                  :use-momentum #f
+                                  :use-frustration #t
+                                  :use-stop-chase #f
+                                  :use-circling #t
+                                  :use-pacing #t
+                                  :walk-anim 5
+                                  :turn-anim -1
+                                  :run-anim 8
+                                  :taunt-anim -1
+                                  :run-travel-speed (meters 8)
+                                  :run-acceleration (meters 1)
+                                  :run-turning-acceleration (meters 50)
+                                  :walk-travel-speed (meters 4)
+                                  :walk-acceleration (meters 1)
+                                  :walk-turning-acceleration (meters 3)
+                                  :maximum-rotation-rate (degrees 360)
+                                  :notice-nav-radius (meters 35)
+                                  :frustration-distance (meters 8)
+                                  :frustration-time (seconds 4)
+                                  :blocked-time (seconds 0.3)
+                                  :circle-dist-lo 20480.0
+                                  :circle-dist-hi 61440.0
+                                  :nav-mesh #f
+                                  )
+        )
+
+;; failed to figure out what this is:
+(set! (-> *spyder-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 82 of type spyder
+(defmethod event-handler ((this spyder) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (when (= (-> this hit-points) 0.0)
+       (case (-> this incoming knocked-type)
+         (((knocked-type yellow-shot) (knocked-type blue-shot))
+          (set! (-> this incoming knocked-type) (knocked-type none))
+          0
+          )
+         )
+       )
+     (go (method-of-object this knocked))
+     )
+    (('attack)
+     (if (type? (-> arg0 parent 0) enemy)
+         (logior! (-> this status-flags) (spyder-flag sf1))
+         )
+     ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+     )
+    (('notify)
+     (cond
+       ((= (-> arg3 param 0) 'attack)
+        (cond
+          ((= (-> arg3 param 1) (handle->process (-> this focus handle)))
+           (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+             (set! (-> a1-6 from) (process->ppointer arg0))
+             (set! (-> a1-6 num-params) arg1)
+             (set! (-> a1-6 message) 'victory)
+             (set! (-> a1-6 param 0) (-> arg3 param 0))
+             (set! (-> a1-6 param 1) (-> arg3 param 1))
+             (set! (-> a1-6 param 2) (-> arg3 param 2))
+             (set! (-> a1-6 param 3) (-> arg3 param 3))
+             (set! (-> a1-6 param 4) (-> arg3 param 4))
+             (set! (-> a1-6 param 5) (-> arg3 param 5))
+             (send-event-function this a1-6)
+             )
+           )
+          (else
+            ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+            )
+          )
+        )
+       (else
+         ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+         )
+       )
+     )
+    (('uncloak)
+     (when (!= (-> this dest-fade) 128.0)
+       (set! (-> this shock-effect-end) (+ (current-time) (seconds 1)))
+       (set! (-> this dest-fade) 128.0)
+       (sound-play "spyder-uncloak")
+       )
+     (send-event this 'cue-chase)
+     ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 192 of type spyder
+;; WARN: Return type mismatch int vs none.
+(defmethod spyder-method-192 ((this spyder))
+  (seek! (-> this fade) (-> this dest-fade) (* 500.0 (seconds-per-frame)))
+  (set! (-> this draw force-fade) (the-as uint (the int (-> this fade))))
+  (when (< (current-time) (-> this shock-effect-end))
+    (when (time-elapsed? (-> this shock-effect-time) (seconds 0.04))
+      (set-time! (-> this shock-effect-time))
+      (process-drawable-shock-skel-effect
+        this
+        (-> *lightning-spec-id-table* 6)
+        lightning-probe-callback
+        (-> *part-id-table* 160)
+        2048.0
+        -1
+        -1
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 193 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spyder-method-193 ((this spyder))
+  (let ((a0-2 (handle->process (-> this focus handle))))
+    (when a0-2
+      (let* ((s5-0 (-> this root trans))
+             (s2-1 (vector-! (new 'stack-no-clear 'vector) (get-trans (the-as process-focusable a0-2) 0) s5-0))
+             (f0-0 (vector-length s2-1))
+             (s4-0 (new 'stack-no-clear 'vector))
+             )
+        (cond
+          ((>= 143360.0 f0-0)
+           (let ((s3-0 (new 'stack-no-clear 'vector)))
+             (logxor! (-> this status-flags) (spyder-flag sf4))
+             (if (logtest? (-> this status-flags) (spyder-flag sf4))
+                 (set-vector! s3-0 (-> s2-1 z) (-> s2-1 y) (- (-> s2-1 x)) 1.0)
+                 (set-vector! s3-0 (- (-> s2-1 z)) (-> s2-1 y) (-> s2-1 x) 1.0)
+                 )
+             (vector-normalize! s3-0 (* 4096.0 (rand-vu-float-range 8.0 16.0)))
+             (clamp-vector-to-mesh-cross-gaps
+               (-> this nav)
+               s5-0
+               (-> this nav state current-poly)
+               s3-0
+               204.8
+               #f
+               (the-as clamp-travel-vector-to-mesh-return-info #f)
+               )
+             (vector+! s4-0 s5-0 s3-0)
+             )
+           )
+          (else
+            (vector-normalize! s2-1 (+ -122880.0 f0-0))
+            (vector+! s4-0 s5-0 s2-1)
+            )
+          )
+        (set! (-> this move-dest quad) (-> s5-0 quad))
+        (closest-point-on-mesh (-> this nav) (-> this move-dest) s4-0 (the-as nav-poly #f))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 85 of type spyder
+(defmethod knocked-anim ((this spyder) (arg0 enemy-knocked-info))
+  (case (-> this incoming knocked-type)
+    (((knocked-type yellow-shot))
+     (let ((a0-2 (-> this skel root-channel 0)))
+       (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> this draw art-group data 15)))
+       (set! (-> a0-2 param 0)
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 15)) frames num-frames) -1))
+             )
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
+       (set! (-> a0-2 frame-num) 0.0)
+       (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 15)) num-func-seek!)
+       )
+     #t
+     )
+    (((knocked-type blue-shot))
+     (let* ((a0-4 '((spyder-blue-hit0-ja) (spyder-blue-hit1-ja) (spyder-blue-hit2-ja)))
+            (a1-4 ((method-of-type (rtype-of a0-4) length) a0-4))
+            (s5-0 (new 'static 'array int64 3 17 18 19))
+            (s4-0 (new 'static 'array int32 4 0 0 0 0))
+            (a2-1 (ash 1 (-> s4-0 0)))
+            (v1-20 (enemy-method-131 this a1-4 a2-1))
+            (s5-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-20 8) (the-as int s5-0))))))
+            )
+       (set! (-> s4-0 0) v1-20)
+       (let ((v1-23 (if (> (-> this skel active-channels) 0)
+                        (-> this skel root-channel 0 frame-group)
+                        )
+                    )
+             )
+         (if (and v1-23 (= v1-23 (-> this draw art-group data 20)))
+             (ja-channel-push! 1 (seconds 0.17))
+             (ja-channel-push! 1 (seconds 0.02))
+             )
+         )
+       (let ((a0-19 (-> this skel root-channel 0)))
+         (set! (-> a0-19 frame-group) (the-as art-joint-anim s5-1))
+         (set! (-> a0-19 param 0) (the float (+ (-> (the-as art-joint-anim s5-1) frames num-frames) -1)))
+         (set! (-> a0-19 param 1) 1.0)
+         (set! (-> a0-19 frame-num) 0.0)
+         (joint-control-channel-group! a0-19 (the-as art-joint-anim s5-1) num-func-seek!)
+         )
+       )
+     #t
+     )
+    (((knocked-type none))
+     (cond
+       ((= (-> this hit-points) 0.0)
+        (let ((a0-20 (-> this skel root-channel 0)))
+          (set! (-> a0-20 frame-group) (the-as art-joint-anim (-> this draw art-group data 13)))
+          (set! (-> a0-20 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 13)) frames num-frames) -1))
+                )
+          (set! (-> a0-20 param 1) (-> arg0 anim-speed))
+          (set! (-> a0-20 frame-num) 0.0)
+          (joint-control-channel-group! a0-20 (the-as art-joint-anim (-> this draw art-group data 13)) num-func-seek!)
+          )
+        #t
+        )
+       (else
+         ((method-of-type nav-enemy knocked-anim) this arg0)
+         )
+       )
+     )
+    (else
+      ((method-of-type nav-enemy knocked-anim) this arg0)
+      )
+    )
+  )
+
+;; definition for method 86 of type spyder
+(defmethod knocked-land-anim ((this spyder) (arg0 enemy-knocked-info))
+  (case (-> this incoming knocked-type)
+    (((knocked-type yellow-shot))
+     (cond
+       ((= (-> this hit-points) 0.0)
+        (let ((v1-3 (-> this skel root-channel 0)))
+          (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 12)))
+          (set! (-> v1-3 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 12)) frames num-frames) -1))
+                )
+          (set! (-> v1-3 param 1) 1.0)
+          (set! (-> v1-3 frame-num) 0.0)
+          (joint-control-channel-group! v1-3 (the-as art-joint-anim (-> this draw art-group data 12)) num-func-seek!)
+          )
+        #t
+        )
+       (else
+         #f
+         )
+       )
+     )
+    (((knocked-type none))
+     (if (= (-> this hit-points) 0.0)
+         #t
+         ((method-of-type nav-enemy knocked-land-anim) this arg0)
+         )
+     )
+    (else
+      ((method-of-type nav-enemy knocked-land-anim) this arg0)
+      )
+    )
+  )
+
+;; definition for method 96 of type spyder
+(defmethod jump-in-air-anim ((this spyder) (arg0 enemy-jump-info))
+  (let ((s5-0 (-> this draw art-group data (-> this enemy-info jump-in-air-anim))))
+    (let ((v1-6 (if (> (-> this skel active-channels) 0)
+                    (-> this skel root-channel 0 frame-group)
+                    )
+                )
+          )
+      (cond
+        ((and v1-6 (= v1-6 (-> this draw art-group data (-> this enemy-info jump-wind-up-anim))))
+         (ja-channel-push! 1 0)
+         )
+        (else
+          (let ((a0-10 (-> this skel root-channel 0)))
+            (set! (-> a0-10 param 0) 1.0)
+            (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-loop!)
+            )
+          (ja-channel-push! 1 (seconds 0.1))
+          )
+        )
+      )
+    (let ((a0-12 (-> this skel root-channel 0)))
+      (set! (-> a0-12 frame-group) (the-as art-joint-anim s5-0))
+      (set! (-> a0-12 param 0) (the float (+ (-> (the-as art-joint-anim s5-0) frames num-frames) -1)))
+      (set! (-> a0-12 param 1) (-> arg0 anim-speed))
+      (set! (-> a0-12 frame-num) 0.0)
+      (joint-control-channel-group! a0-12 (the-as art-joint-anim s5-0) num-func-seek!)
+      )
+    )
+  #t
+  )
+
+;; definition for function spyder-travel-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior spyder-travel-post spyder ()
+  (set! (-> self face-pos quad) (-> self move-dest quad))
+  (logior! (-> self status-flags) (spyder-flag sf3))
+  (nav-enemy-travel-post)
+  0
+  (none)
+  )
+
+;; definition for function spyder-face-player-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior spyder-face-player-post spyder ()
+  (logior! (-> self status-flags) (spyder-flag sf3))
+  (let ((gp-0 (handle->process (-> self focus handle)))
+        (f30-0 (-> self nav max-rotation-rate))
+        )
+    (when gp-0
+      (set! (-> self face-pos quad) (-> (get-trans (the-as process-focusable gp-0) 0) quad))
+      (let ((a0-4 self))
+        (if (logtest? (enemy-flag ef38) (-> a0-4 enemy-flags))
+            (seek-to-point-toward-point!
+              (-> self root)
+              (get-trans (the-as process-focusable gp-0) 0)
+              f30-0
+              (seconds 0.02)
+              )
+            )
+        )
+      )
+    )
+  (nav-enemy-simple-post)
+  0
+  (none)
+  )
+
+;; definition for method 194 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spyder-method-194 ((this spyder))
+  (cond
+    ((and (logtest? (-> this status-flags) (spyder-flag sf2)) (!= (-> this joint blend) 1.0))
+     (seek! (-> this joint blend) 1.0 (* 0.8 (seconds-per-frame)))
+     )
+    ((and (not (logtest? (-> this status-flags) (spyder-flag sf2))) (!= (-> this joint blend) 0.0))
+     (seek! (-> this joint blend) 0.0 (* 0.8 (seconds-per-frame)))
+     )
+    )
+  (let ((s5-0 (new 'stack-no-clear 'quaternion)))
+    (let ((a1-2 (-> this node-list data 37 bone transform)))
+      (matrix-with-scale->quaternion s5-0 a1-2)
+      )
+    (let ((a1-4 (quaternion-from-two-vectors! (new 'stack-no-clear 'quaternion) (-> this my-up-vector) *up-vector*)))
+      (quaternion*! s5-0 a1-4 s5-0)
+      )
+    (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> this face-pos) (-> this root trans)))
+          (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+          )
+      (cond
+        ((logtest? (-> this status-flags) (spyder-flag sf3))
+         (vector-! s4-1 (-> this face-pos) (-> this root trans))
+         (logclear! (-> this status-flags) (spyder-flag sf3))
+         )
+        (else
+          (set! (-> s4-1 quad) (-> s3-0 quad))
+          )
+        )
+      (set! (-> s4-1 y) 0.0)
+      (vector-xz-normalize! s4-1 1.0)
+      (set! (-> s3-0 y) 0.0)
+      (vector-xz-normalize! s3-0 1.0)
+      (let ((a1-11 (quaternion-from-two-vectors-max-angle! (new 'stack-no-clear 'quaternion) s3-0 s4-1 10012.444)))
+        (quaternion*! s5-0 a1-11 s5-0)
+        )
+      )
+    (quaternion-slerp!
+      (-> this joint transform quat)
+      (-> this joint transform quat)
+      s5-0
+      (* 10.0 (seconds-per-frame))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 196 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spyder-method-196 ((this spyder) (arg0 vector))
+  (when (not (logtest? (-> this status-flags) (spyder-flag sf0)))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s4-0 quad) (-> *up-vector* quad))
+      (let ((s3-0 (new 'stack-no-clear 'quaternion)))
+        (quaternion-from-two-vectors-max-angle! s3-0 s4-0 (-> this root gspot-normal) 4551.1113)
+        (vector-orient-by-quat! s4-0 s4-0 s3-0)
+        )
+      (let ((s3-1 (-> this my-up-vector)))
+        (vector-deg-seek s3-1 s3-1 s4-0 (* 16384.0 (seconds-per-frame)))
+        (vector-normalize! s3-1 1.0)
+        (forward-up-nopitch->quaternion (-> this root quat) arg0 s3-1)
+        )
+      )
+    (logior! (-> this status-flags) (spyder-flag sf0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 59 of type spyder
+;; INFO: Used lq/sq
+(defmethod enemy-common-post ((this spyder))
+  (spyder-method-197 this)
+  (spyder-method-196 this (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+  (when (< 1 (the-as int (-> this focus aware)))
+    (let ((s5-1 (handle->process (-> this focus handle))))
+      (when s5-1
+        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable s5-1) 1) quad))
+        (los-control-method-9
+          (-> this los)
+          (the-as process-focusable s5-1)
+          (get-trans (the-as process-focusable s5-1) 3)
+          819.2
+          4096.0
+          )
+        )
+      )
+    )
+  (update-trans! (-> this sound) (-> this root trans))
+  (update! (-> this sound))
+  (spyder-method-194 this)
+  (let ((t9-9 (method-of-type nav-enemy enemy-common-post)))
+    (t9-9 this)
+    )
+  (logclear! (-> this status-flags) (spyder-flag sf0))
+  (if (logtest? (-> this status-flags) (spyder-flag sf5))
+      (los-control-method-9 (-> this los) (the-as process-focusable #f) (the-as vector #f) 819.2 4096.0)
+      )
+  (if (-> this predator-effect?)
+      (spyder-method-192 this)
+      )
+  (none)
+  )
+
+;; definition for symbol *spyder-ik-limb-setup*, type (inline-array ik-limb-setup)
+(define *spyder-ik-limb-setup* (new 'static 'inline-array ik-limb-setup 4
+                                 (new 'static 'ik-limb-setup :elbow-index 30 :hand-dist -7577.6)
+                                 (new 'static 'ik-limb-setup :elbow-index 32 :hand-dist 7577.6)
+                                 (new 'static 'ik-limb-setup :elbow-index 34 :hand-dist 7577.6)
+                                 (new 'static 'ik-limb-setup :elbow-index 36 :hand-dist -7577.6)
+                                 )
+        )
+
+;; failed to figure out what this is:
+(defstate notice (spyder)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy notice) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (!= (-> self dest-fade) 128.0)
+      (set! (-> self shock-effect-end) (+ (current-time) (seconds 1)))
+      (set! (-> self dest-fade) 128.0)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (spyder)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 4)
+      (enable-set! (-> self joint-ik gp-0) #t)
+      )
+    )
+  )
+
+;; definition for method 197 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spyder-method-197 ((this spyder))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s5-0 (new 'stack-no-clear 'collide-query)))
+      (let ((v1-0 (-> s5-0 bbox))
+            (a0-2 (-> this root trans))
+            (a1-0 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a1-0 x) 22528.0)
+        (set! (-> a1-0 y) 22528.0)
+        (set! (-> a1-0 z) 22528.0)
+        (set! (-> a1-0 w) 1.0)
+        (vector-! (the-as vector v1-0) a0-2 a1-0)
+        )
+      (let ((v1-2 (-> s5-0 bbox max))
+            (a0-4 (-> this root trans))
+            (a1-1 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a1-1 x) 22528.0)
+        (set! (-> a1-1 y) 22528.0)
+        (set! (-> a1-1 z) 22528.0)
+        (set! (-> a1-1 w) 1.0)
+        (vector+! v1-2 a0-4 a1-1)
+        )
+      (set! (-> s5-0 collide-with) (collide-spec backgnd))
+      (set! (-> s5-0 ignore-process0) #f)
+      (set! (-> s5-0 ignore-process1) #f)
+      (set! (-> s5-0 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (fill-using-bounding-box *collide-cache* s5-0)
+      (dotimes (s4-0 4)
+        (-> this joint-ik s4-0 shoulder-matrix-no-ik)
+        (let ((a2-8 (-> this joint-ik s4-0 elbow-matrix-no-ik))
+              (s3-0 (new 'stack-no-clear 'vector))
+              )
+          (let ((v1-15 (new 'stack-no-clear 'vector)))
+            (set! (-> v1-15 quad) (-> *y-vector* quad))
+            (new 'stack-no-clear 'vector)
+            (let ((s2-0 (new 'stack-no-clear 'vector)))
+              (let ((a1-3 s3-0))
+                (let ((a0-9 (-> a2-8 trans)))
+                  (let ((a2-9 (-> a2-8 uvec)))
+                    (let ((a3-3 (-> this joint-ik s4-0 hand-dist)))
+                      (.mov vf7 a3-3)
+                      )
+                    (.lvf vf5 (&-> a2-9 quad))
+                    )
+                  (.lvf vf4 (&-> a0-9 quad))
+                  )
+                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                (.mul.x.vf acc vf5 vf7 :mask #b111)
+                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.svf (&-> a1-3 quad) vf6)
+                )
+              (set! (-> s2-0 quad) (-> s3-0 quad))
+              (set! (-> s2-0 y) (-> this root trans y))
+              (let ((a2-10 (-> s5-0 start-pos)))
+                (let ((a0-12 s2-0))
+                  (let ((a1-6 v1-15))
+                    (let ((a3-5 16384.0))
+                      (.mov vf7 a3-5)
+                      )
+                    (.lvf vf5 (&-> a1-6 quad))
+                    )
+                  (.lvf vf4 (&-> a0-12 quad))
+                  )
+                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                (.mul.x.vf acc vf5 vf7 :mask #b111)
+                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.svf (&-> a2-10 quad) vf6)
+                )
+              (vector-float*! (-> s5-0 move-dist) v1-15 -32768.0)
+              (let ((v1-16 s5-0))
+                (set! (-> v1-16 radius) 40.96)
+                (set! (-> v1-16 collide-with) (collide-spec backgnd))
+                (set! (-> v1-16 ignore-process0) #f)
+                (set! (-> v1-16 ignore-process1) #f)
+                (set! (-> v1-16 ignore-pat)
+                      (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                      )
+                (set! (-> v1-16 action-mask) (collide-action solid))
+                )
+              (let ((f0-13 (probe-using-line-sphere *collide-cache* s5-0)))
+                (when (>= f0-13 0.0)
+                  (let ((a1-10 s2-0))
+                    (let ((v1-19 (-> s5-0 start-pos)))
+                      (let ((a0-20 (-> s5-0 move-dist)))
+                        (let ((a2-11 f0-13))
+                          (.mov vf7 a2-11)
+                          )
+                        (.lvf vf5 (&-> a0-20 quad))
+                        )
+                      (.lvf vf4 (&-> v1-19 quad))
+                      )
+                    (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                    (.mul.x.vf acc vf5 vf7 :mask #b111)
+                    (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                    (.svf (&-> a1-10 quad) vf6)
+                    )
+                  )
+                )
+              (let ((f0-15 (fmax -8192.0 (fmin 8192.0 (- (-> s2-0 y) (-> s3-0 y))))))
+                (+! (-> this delta-y-ik s4-0) (* 10.0 (seconds-per-frame) (- f0-15 (-> this delta-y-ik s4-0))))
+                )
+              )
+            )
+          (+! (-> s3-0 y) (-> this delta-y-ik s4-0))
+          (set-ik-target! (-> this joint-ik s4-0) s3-0)
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (spyder)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (spyder-method-193 self)
+    (set-look-at-mode! self 2)
+    (logclear! (-> self status-flags) (spyder-flag sf1))
+    (when (!= (-> self dest-fade) 128.0)
+      (set! (-> self shock-effect-end) (+ (current-time) (seconds 1)))
+      (set! (-> self dest-fade) 128.0)
+      (sound-play "spyder-uncloak")
+      )
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logclear! (-> self status-flags) (spyder-flag sf5))
+    (set-look-at-mode! self 1)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((a0-1 (handle->process (-> self focus handle))))
+      (when a0-1
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-1) 0) quad))
+          (let* ((s5-0 (-> self root trans))
+                 (f30-0 (vector-vector-distance s5-0 gp-0))
+                 (f0-0 (vector-vector-xz-distance s5-0 (-> self move-dest)))
+                 )
+            (cond
+              ((>= (+ 2048.0 (-> self root nav-radius)) f0-0)
+               (if (and (>= 143360.0 f30-0) (should-check-los? (-> self los) 0))
+                   (go-virtual attack)
+                   )
+               (spyder-method-193 self)
+               )
+              ((>= 24576.0 f0-0)
+               (logior! (-> self status-flags) (spyder-flag sf5))
+               )
+              )
+            )
+          )
+        )
+      )
+    )
+  :post (behavior ()
+    (let ((a0-0 (-> self nav state))
+          (v1-1 (-> self move-dest))
+          )
+      (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      )
+    0
+    (spyder-travel-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate backup (spyder)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((v1-2 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-2 enemy-flags)))
+          (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-2 enemy-flags))))
+          )
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-2 enemy-flags))))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
+      )
+    0
+    )
+  :trans (behavior ()
+    (let ((f0-0 (vector-vector-xz-distance (-> self root trans) (-> self move-dest))))
+      (if (or (>= 4096.0 f0-0) (time-elapsed? (-> self state-time) (seconds 6)))
+          (go-hostile self)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info run-anim)) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (spyder-travel-post)
+    )
+  )
+
+;; definition for method 195 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch (pointer process) vs none.
+(defmethod fire-shot ((this spyder) (arg0 (inline-array vector)) (arg1 float))
+  (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
+    (let ((v1-0 (-> arg0 0))
+          (a1-1 (-> arg0 1))
+          )
+      (set! (-> gp-0 ent) (-> this entity))
+      (set! (-> gp-0 charge) 1.0)
+      (set! (-> gp-0 options) (projectile-options))
+      (logclear! (-> gp-0 options) (projectile-options po14 po15 po16))
+      (set! (-> gp-0 pos quad) (-> v1-0 quad))
+      (set! (-> gp-0 notify-handle) (process->handle this))
+      (set! (-> gp-0 owner-handle) (the-as handle #f))
+      (set! (-> gp-0 target-handle) (the-as handle #f))
+      (set! (-> gp-0 target-pos quad) (the-as uint128 0))
+      (set! (-> gp-0 ignore-handle) (process->handle this))
+      (let* ((a0-13 *game-info*)
+             (a3-12 (+ (-> a0-13 attack-id) 1))
+             )
+        (set! (-> a0-13 attack-id) a3-12)
+        (set! (-> gp-0 attack-id) a3-12)
+        )
+      (set! (-> gp-0 timeout) (seconds 4))
+      (vector-normalize! (vector-! (-> gp-0 vel) a1-1 v1-0) arg1)
+      )
+    (spawn-projectile spyder-shot gp-0 this *default-dead-pool*)
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate attack (spyder)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('event-attack)
+       (fire-shot self (-> self fire-info) 307200.0)
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (let ((v1-1 (-> self nav state))
+          (a0-1 (-> self root trans))
+          )
+      (logclear! (-> v1-1 flags) (nav-state-flag directional-mode))
+      (logior! (-> v1-1 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> v1-1 target-pos quad) (-> a0-1 quad))
+      )
+    0
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-4 enemy-flags))))
+      )
+    0
+    (set-look-at-mode! self 1)
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (let ((v1-2 (-> self nav)))
+      (set! (-> v1-2 max-rotation-rate) (-> *spyder-nav-enemy-info* maximum-rotation-rate))
+      )
+    0
+    )
+  :trans (behavior ()
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+        (go-virtual victory)
+        )
+    (if (or (>= 2 (the-as int (-> self focus aware))) (not (get-focus! self)))
+        (go-stare self)
+        )
+    )
+  :code (behavior ()
+    (when (not (enemy-method-105 self 2730.6667 #t))
+      (ja-channel-push! 1 (seconds 0.2))
+      (ja :group! spyder-patrol0-ja)
+      (ja :num-func num-func-identity :frame-num 0.0)
+      (until (enemy-method-105 self 910.2222 #t)
+        (ja-blend-eval)
+        (suspend)
+        (ja :num! (loop! 0.75))
+        )
+      )
+    (let ((v1-17 (-> self nav)))
+      (set! (-> v1-17 max-rotation-rate) (* 0.05 (-> *spyder-nav-enemy-info* maximum-rotation-rate)))
+      )
+    0
+    (ja-channel-push! 2 (seconds 0.2))
+    (let ((f30-0 0.0))
+      (ja-no-eval :group! spyder-shoot-low-ja :num! (loop!) :frame-num 0.0)
+      (ja-no-eval :chan 1
+                  :group! spyder-shoot-high-ja
+                  :num! (chan 0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :frame-num 0.0
+                  )
+      (let ((a0-14 (handle->process (-> self focus handle))))
+        (when a0-14
+          (let ((gp-0 (new 'stack-no-clear 'vector)))
+            (set! (-> gp-0 quad) (-> (get-trans (the-as process-focusable a0-14) 0) quad))
+            (let ((s5-0 (new 'stack-no-clear 'vector)))
+              (set! (-> s5-0 quad) (-> gp-0 quad))
+              (let ((f28-0 0.0))
+                (dotimes (s4-0 8)
+                  (let* ((f26-0 (fmin (-> self root trans y) (-> gp-0 y)))
+                         (s3-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node spyder-lod0-jg shoot)))
+                         (f0-11 (fmin 40960.0 (+ -16384.0 (vector-vector-distance s3-0 gp-0))))
+                         (s2-1 (vector-! (new 'stack-no-clear 'vector) s3-0 gp-0))
+                         )
+                    (vector-normalize! s2-1 (- f0-11 f28-0))
+                    (vector+! s2-1 gp-0 s2-1)
+                    (set! (-> s2-1 y) f26-0)
+                    (set! (-> self fire-info 0 quad) (-> s3-0 quad))
+                    (set! (-> self fire-info 1 quad) (-> s2-1 quad))
+                    )
+                  (let ((s3-1 (current-time)))
+                    (until (time-elapsed? s3-1 (seconds 0.2))
+                      (set! f30-0 (seek f30-0 (lerp-scale 0.0 1.0 (the float s4-0) 0.0 8.0) (seconds-per-frame)))
+                      (ja :num! (loop!))
+                      (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
+                      (suspend)
+                      )
+                    )
+                  (let ((f28-1 (+ 12288.0 f28-0)))
+                    (set! (-> gp-0 quad) (-> s5-0 quad))
+                    (let ((a0-31 (handle->process (-> self focus handle))))
+                      (if a0-31
+                          (set! (-> s5-0 quad) (-> (get-trans (the-as process-focusable a0-31) 0) quad))
+                          )
+                      )
+                    (set! f28-0 (fmax 0.0 (- f28-1 (vector-vector-distance gp-0 s5-0))))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (until (ja-done? 0)
+      (ja :num! (seek! 2.0))
+      (let ((a0-36 (-> self skel root-channel 1)))
+        (let ((f0-23 1.0))
+          (set! (-> a0-36 frame-interp 1) f0-23)
+          (set! (-> a0-36 frame-interp 0) f0-23)
+          )
+        (set! (-> a0-36 param 0) 0.0)
+        (joint-control-channel-group-eval! a0-36 (the-as art-joint-anim #f) num-func-chan)
+        )
+      (suspend)
+      )
+    (let ((v1-88 self))
+      (set! (-> v1-88 enemy-flags) (the-as enemy-flag (logclear (-> v1-88 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (go-hostile self)
+    )
+  :post (behavior ()
+    (spyder-face-player-post)
+    )
+  )
+
+;; definition for method 78 of type spyder
+(defmethod go-hostile ((this spyder))
+  (if (and (not (logtest? (-> this status-flags) (spyder-flag sf1)))
+           (-> this next-state)
+           (let ((v1-5 (-> this next-state name)))
+             (or (= v1-5 'notice) (= v1-5 'knocked))
+             )
+           )
+      (go (method-of-object this attack))
+      )
+  (go (method-of-object this hostile))
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (spyder)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logclear! (-> self status-flags) (spyder-flag sf2))
+    (dotimes (gp-0 4)
+      (enable-set! (-> self joint-ik gp-0) #f)
+      )
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (!= (-> self hit-points) 0.0)
+      (logior! (-> self status-flags) (spyder-flag sf2))
+      (dotimes (gp-0 4)
+        (enable-set! (-> self joint-ik gp-0) #t)
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate victory (spyder)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self draw bounds w) 30310.4)
+    )
+  :exit (behavior ()
+    (set! (-> self draw bounds w) 20480.0)
+    )
+  )
+
+;; definition for method 160 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod normalize-heading! ((this spyder) (arg0 nav-control))
+  (let ((t9-0 (method-of-object this spyder-method-196))
+        (a2-0 (-> arg0 state))
+        (a1-1 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> a1-1 quad) (-> a2-0 heading quad))
+    (t9-0 this a1-1)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 67 of type spyder
+(defmethod coin-flip? ((this spyder))
+  #f
+  )
+
+;; definition for method 120 of type spyder
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this spyder))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 8))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride deadly no-standon))
+      (set! (-> s4-0 transform-index) 5)
+      (set-vector! (-> s4-0 local-sphere) 0.0 6144.0 0.0 14336.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-14 prim-core action) (collide-action solid can-ride deadly))
+      (set-vector! (-> v1-14 local-sphere) 0.0 4915.2 0.0 6144.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-16 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-16 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-16 local-sphere) 0.0 9830.4 0.0 6144.0)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-18 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-18 prim-core action) (collide-action semi-solid deadly))
+      (set! (-> v1-18 transform-index) 5)
+      (set-vector! (-> v1-18 local-sphere) 0.0 0.0 0.0 4915.2)
+      )
+    (let ((v1-20 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-20 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-20 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-20 prim-core action) (collide-action deadly))
+      (set! (-> v1-20 transform-index) 28)
+      (set-vector! (-> v1-20 local-sphere) 0.0 0.0 0.0 2252.8)
+      )
+    (let ((v1-22 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-22 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-22 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-22 prim-core action) (collide-action deadly))
+      (set! (-> v1-22 transform-index) 20)
+      (set-vector! (-> v1-22 local-sphere) 0.0 0.0 0.0 2048.0)
+      )
+    (let ((v1-24 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-24 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-24 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-24 prim-core action) (collide-action deadly))
+      (set! (-> v1-24 transform-index) 10)
+      (set-vector! (-> v1-24 local-sphere) 0.0 0.0 0.0 2048.0)
+      )
+    (let ((v1-26 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-26 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-26 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-26 prim-core action) (collide-action deadly))
+      (set! (-> v1-26 transform-index) 7)
+      (set-vector! (-> v1-26 local-sphere) 0.0 0.0 0.0 2048.0)
+      )
+    (set! (-> s5-0 nav-radius) 12288.0)
+    (let ((v1-28 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-28 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-28 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type spyder
+(defmethod relocate ((this spyder) (offset int))
+  (dotimes (v1-0 4)
+    (if (nonzero? (-> this joint-ik v1-0))
+        (&+! (-> this joint-ik v1-0) offset)
+        )
+    )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 121 of type spyder
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this spyder))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-spyder" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *spyder-nav-enemy-info*)
+  (let ((v1-5 (-> this neck)))
+    (set! (-> v1-5 up) (the-as uint 1))
+    (set! (-> v1-5 nose) (the-as uint 2))
+    (set! (-> v1-5 ear) (the-as uint 0))
+    (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
+    (set! (-> v1-5 ignore-angle) 30947.555)
+    )
+  (let ((v1-7 (-> this nav)))
+    (set! (-> v1-7 speed-scale) 1.0)
+    )
+  0
+  (set-gravity-length (-> this root dynam) 573440.0)
+  (set-vector! (-> this root scale) 1.5 1.5 1.5 1.0)
+  (set! (-> this my-up-vector quad) (-> *up-vector* quad))
+  (set! (-> this status-flags) (spyder-flag sf2))
+  (if (rand-vu-percent? 0.5)
+      (logior! (-> this status-flags) (spyder-flag sf4))
+      )
+  (set! (-> this start-pos quad) (-> this root trans quad))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "spyder-talk" :group 0 :fo-max 70) (-> this root trans) 0.0)
+        )
+  (init-los!
+    (-> this los)
+    this
+    (seconds 0.1)
+    327680.0
+    (collide-spec backgnd obstacle hit-by-others-list los-blocker)
+    )
+  (init (-> this joint) this (the-as uint 4) (joint-mod-base-flags attached quat))
+  (set! (-> this joint blend) 1.0)
+  (let ((f30-0 (-> this root trans y)))
+    (dotimes (s5-1 4)
+      (set! (-> this joint-ik s5-1)
+            (new
+              'process
+              'joint-mod-ik
+              this
+              (-> *spyder-ik-limb-setup* s5-1 elbow-index)
+              (-> *spyder-ik-limb-setup* s5-1 hand-dist)
+              )
+            )
+      (enable-set! (-> this joint-ik s5-1) #f)
+      (set! (-> this delta-y-ik 0) f30-0)
+      )
+    )
+  (cond
+    ((>= (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0) 0)
+     (setup-masks (-> this draw) 8 0)
+     (logior! (-> this draw status) (draw-control-status force-fade warp-cross-fade))
+     (set! (-> this draw force-fade) (the-as uint 0))
+     (set! (-> this fade) 0.0)
+     (set! (-> this dest-fade) 0.0)
+     (set! (-> this predator-effect?) #t)
+     )
+    (else
+      (setup-masks (-> this draw) 8 0)
+      (set! (-> this predator-effect?) #f)
+      )
+    )
+  (add-connection
+    *part-engine*
+    this
+    7
+    this
+    468
+    (new 'static 'vector :x 901.12 :y -983.04 :z 942.08 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    this
+    7
+    this
+    468
+    (new 'static 'vector :x -901.12 :y -983.04 :z 942.08 :w 163840.0)
+    )
+  0
+  (none)
+  )
+
+
+
+

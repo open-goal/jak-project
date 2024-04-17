@@ -475,7 +475,7 @@
 ;; definition for method 11 of type vol-holo-eye
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this vol-holo-eye) (arg0 entity-actor))
-  (local-vars (r0-0 uint128) (a0-6 object) (a0-9 uint128) (a1-7 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (set! (-> this root) (new 'process 'trsqv))
   (process-drawable-from-entity! this arg0)
   (initialize-skeleton
@@ -484,25 +484,11 @@
     (the-as pair 0)
     )
   (set! (-> this trigger-radius) 110592.0)
-  (set! sv-16 0)
-  (let ((v1-6 (res-lump-data arg0 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-6 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
-      ((and v1-6 (begin
-                   (let ((a0-7 #t))
-                     (let ((a1-6 (the-as uint128 sv-16)))
-                       (.pcpyud a1-7 a1-6 r0-0)
-                       )
-                     (let ((a1-9 (the-as int (shr (* (the-as int a1-7) 2) 49))))
-                       (cmove-#f-zero a0-6 a1-9 a0-7)
-                       )
-                     )
-                   a0-6
-                   )
-            )
-       (let ((a0-8 (the-as uint128 sv-16)))
-         (.pcpyud a0-9 a0-8 r0-0)
-         )
-       (set! (-> this actor-group-count) (shr (* (the-as int a0-9) 2) 49))
+      ((and v1-6 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-6))
        )
       (else
@@ -745,7 +731,3 @@
     )
   (go (method-of-object this open))
   )
-
-
-
-
