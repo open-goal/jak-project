@@ -11,5 +11,5 @@
   "pre-artifact-b-ag.go"
   "pre-artifact-c-ag.go"
   "was-artifact-ag.go"
-  "desrace1.o"
+  "desrace1.go"
  ))

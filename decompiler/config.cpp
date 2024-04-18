@@ -59,6 +59,11 @@ Config make_config_via_json(nlohmann::json& json) {
         inputs_json.at("str_texture_file_names").get<std::vector<std::string>>();
   }
 
+  if (inputs_json.contains("str_art_file_names")) {
+    config.str_art_file_names =
+        inputs_json.at("str_art_file_names").get<std::vector<std::string>>();
+  }
+
   config.audio_dir_file_name = inputs_json.at("audio_dir_file_name").get<std::string>();
   config.streamed_audio_file_names =
       inputs_json.at("streamed_audio_file_names").get<std::vector<std::string>>();

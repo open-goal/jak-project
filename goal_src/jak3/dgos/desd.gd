@@ -8,5 +8,5 @@
   "tpage-3384.go"
   "des-cactus-b-ag.go"
   "des-cactus-a-ag.go"
-  "desertd-vis.o"
+  "desertd-vis.go"
  ))

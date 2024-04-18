@@ -6,5 +6,5 @@
   "neo-satellite-fma-ag.go"
   "neo-satellite-game-ring-ag.go"
   "neo-satellite-ps-symbols-ag.go"
-  "waspgame.o"
+  "waspgame.go"
  ))

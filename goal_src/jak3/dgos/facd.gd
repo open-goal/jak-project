@@ -44,5 +44,5 @@
   "shield-sphere-distort-ag.go"
   "fac-drop-plat-ag.go"
   "shield-sphere-ag.go"
-  "factoryd-vis.o"
+  "factoryd-vis.go"
  ))

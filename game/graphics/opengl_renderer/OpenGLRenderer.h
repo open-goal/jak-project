@@ -46,7 +46,7 @@ struct RenderOptions {
   bool internal_res_screenshot = false;
   std::string screenshot_path;
 
-  float pmode_alp_register = 0.f;
+  float pmode_alp_register = 1.f;
 
   // when enabled, does a `glFinish()` after each major rendering pass. This blocks until the GPU
   // is done working, making it easier to profile GPU utilization.
@@ -75,6 +75,7 @@ class OpenGLRenderer {
   void dispatch_buckets(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
   void dispatch_buckets_jak1(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
   void dispatch_buckets_jak2(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
+  void dispatch_buckets_jak3(DmaFollower dma, ScopedProfilerNode& prof, bool sync_after_buckets);
 
   void do_pcrtc_effects(float alp, SharedRenderState* render_state, ScopedProfilerNode& prof);
   void blit_display();
@@ -134,5 +135,6 @@ class OpenGLRenderer {
   } m_fbo_state;
 
   std::unique_ptr<BucketRenderer> m_jak2_eye_renderer;
+  std::unique_ptr<BucketRenderer> m_jak3_eye_renderer;
   GameVersion m_version;
 };

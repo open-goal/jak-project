@@ -1,5 +1,5 @@
 ("SEI.DGO"
- ("tpage-1123.o"
+ ("tpage-1123.go"
   "tpage-1130.go"
   "tpage-1124.go"
   "tpage-1122.go"
@@ -8,5 +8,5 @@
   "sew-fence-gate-ag.go"
   "sew-floor-switch-ag.go"
   "sew-rove-plat-ag.go"
-  "sewi-vis.o"
+  "sewi-vis.go"
  ))

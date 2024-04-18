@@ -17,5 +17,5 @@
   "wstd-blocker-ag.go"
   "wstd-square-plat-b-ag.go"
   "wstd-square-plat-c-ag.go"
-  "wasstada.o"
+  "wasstada.go"
  ))

@@ -7,5 +7,5 @@
   "bombbot-ag.go"
   "bombbot-bomb-ag.go"
   "kg-debris-ag.go"
-  "lctyass.o"
+  "lctyass.go"
  ))

@@ -13,5 +13,5 @@
   "sew-floor-switch-ag.go"
   "cty-sniper-turret-reticle-ag.go"
   "cty-sniper-button-top-ag.go"
-  "lctysnpr.o"
+  "lctysnpr.go"
  ))

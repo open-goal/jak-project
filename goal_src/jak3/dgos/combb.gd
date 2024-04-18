@@ -1,4 +1,4 @@
 ("COMBB.DGO"
- ("tpage-2189.o"
-  "combb.o"
+ ("tpage-2189.go"
+  "combb.go"
  ))

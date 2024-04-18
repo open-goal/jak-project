@@ -4,5 +4,5 @@
   "tpage-2070.go"
   "lfac-hanger-door-ag.go"
   "cty-door-ag.go"
-  "lfacrm1.o"
+  "lfacrm1.go"
  ))

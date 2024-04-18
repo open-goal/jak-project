@@ -7,9 +7,9 @@
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :texture-level 10
+              :sort 1
               :origin-joint-index 3
               :shadow-joint-index 3
-              :light-index 1
               )
 
 ;; failed to figure out what this is:
@@ -19,9 +19,9 @@
               :longest-edge (meters 1)
               :shadow jak-ext-geo-c+0-jakclod0-sash-cg
               :texture-level 10
+              :sort 1
               :origin-joint-index 3
               :shadow-joint-index 3
-              :light-index 1
               )
 
 ;; failed to figure out what this is:
@@ -30,9 +30,9 @@
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :texture-level 10
+              :sort 1
               :origin-joint-index 3
               :shadow-joint-index 3
-              :light-index 1
               )
 
 ;; failed to figure out what this is:
@@ -42,9 +42,9 @@
               :longest-edge (meters 1)
               :shadow jakb-c-shadow-mg
               :texture-level 10
+              :sort 1
               :origin-joint-index 3
               :shadow-joint-index 3
-              :light-index 1
               :clothing (((mesh 10)
                 (gravity-constant (meters 16))
                 (wind-constant 0.5)
@@ -106,10 +106,9 @@
               :longest-edge (meters 1)
               :shadow jakb-walk-down-ja
               :texture-level 10
-              :sort 2
+              :sort 4
               :origin-joint-index 3
               :shadow-joint-index 3
-              :light-index 4
               )
 
 ;; failed to figure out what this is:
@@ -118,8 +117,8 @@
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :texture-level 10
-              :shadow-joint-index 3
-              :light-index 5
+              :sort 5
+              :origin-joint-index 3
               )
 
 ;; definition for symbol *target-shadow-control*, type shadow-control
@@ -139,9 +138,9 @@
               :bounds (static-spherem 0 0 0 3.2)
               :longest-edge (meters 1)
               :shadow jak-highres-shadow-mg
+              :sort 1
               :origin-joint-index 3
               :shadow-joint-index 3
-              :light-index 1
               )
 
 ;; failed to figure out what this is:
@@ -205,7 +204,7 @@
               ((collectables-generic-blast-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               :texture-level 10
-              :light-index 4
+              :sort 4
               )
 
 ;; failed to figure out what this is:
@@ -213,7 +212,7 @@
               ((collectables-generic-ripples-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 6)
               :texture-level 10
-              :light-index 4
+              :sort 4
               )
 
 ;; failed to figure out what this is:
@@ -221,7 +220,7 @@
               ((collectables-bomb-blast-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               :texture-level 10
-              :light-index 4
+              :sort 4
               )
 
 ;; definition of type target-bank
@@ -1539,7 +1538,7 @@
 
 ;; definition for function fall-test
 ;; WARN: Return type mismatch object vs none.
-(defbehavior fall-test target ((arg0 (state symbol target)) (arg1 float))
+(defbehavior fall-test target ((arg0 (state object target)) (arg1 float))
   (when (and (not (logtest? (-> self control status) (collide-status on-surface)))
              (time-elapsed? (-> self control last-time-on-surface) (-> *TARGET-bank* ground-timeout))
              (>= 0.0 (vector-dot (-> self control dynam gravity-normal) (-> self control transv)))
@@ -1635,7 +1634,7 @@
       (set! (-> s4-0 1 y) (+ 2867.2 (-> *TARGET-bank* body-radius) (-> s4-0 1 y)))
       (set! (-> s4-0 1 r) (-> *TARGET-bank* body-radius))
       (let ((v1-12 gp-0))
-        (set! (-> v1-12 spheres) s4-0)
+        (set! (-> v1-12 best-dist) (the-as float s4-0))
         (set! (-> v1-12 best-other-prim) (the-as collide-shape-prim 2))
         (set! (-> v1-12 collide-with)
               (logclear
@@ -1805,12 +1804,7 @@
      (set! (-> arg1 control invul2-off-time) arg0)
      )
     )
-  (let ((t9-0 (method-of-object (-> arg1 control) collide-shape-method-49)))
-    2
-    #x8000
-    0
-    (t9-0)
-    )
+  (modify-collide-as! (-> arg1 control) 2 (collide-spec jak-vulnerable) (collide-spec))
   (logior! (-> arg1 focus-status) (focus-status ignore))
   0
   (none)
@@ -1834,12 +1828,7 @@
     )
   (when (not (logtest? (target-flags tinvuln1 tinvuln2) (-> arg0 target-flags)))
     (logclear! (-> arg0 draw status) (draw-control-status no-draw-bounds))
-    (let ((t9-0 (method-of-object (-> arg0 control) collide-shape-method-49)))
-      2
-      0
-      #x8000
-      (t9-0)
-      )
+    (modify-collide-as! (-> arg0 control) 2 (collide-spec) (collide-spec jak-vulnerable))
     )
   0
   (none)

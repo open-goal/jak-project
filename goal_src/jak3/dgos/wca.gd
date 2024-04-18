@@ -22,5 +22,5 @@
   "wascity-stad-door-ag.go"
   "market-basket-b-ag.go"
   "market-basket-a-ag.go"
-  "wascitya-vis.o"
+  "wascitya-vis.go"
  ))

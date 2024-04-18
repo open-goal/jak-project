@@ -1,4 +1,4 @@
 ("HGB.DGO"
- ("tpage-3028.o"
-  "hangb-vis.o"
+ ("tpage-3028.go"
+  "hangb-vis.go"
  ))

@@ -16,5 +16,5 @@
   "interceptor-ag.go"
   "interceptor-b-ag.go"
   "des-rally-bollard-ag.go"
-  "desrally.o"
+  "desrally.go"
  ))

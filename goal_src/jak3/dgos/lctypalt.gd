@@ -10,5 +10,5 @@
   "assault-script.o"
   "assault-task.o"
   "tpage-3093.go"
-  "lctypalt.o"
+  "lctypalt.go"
  ))

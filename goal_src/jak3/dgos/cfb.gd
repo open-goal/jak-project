@@ -16,5 +16,5 @@
   "farm-beetree-ag.go"
   "farm-small-cabbage-ag.go"
   "farm-sprinkler-barrels-ag.go"
-  "ctyfarmb-vis.o"
+  "ctyfarmb-vis.go"
  ))

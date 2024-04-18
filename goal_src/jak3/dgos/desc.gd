@@ -1,5 +1,5 @@
 ("DESC.DGO"
- ("tpage-1371.o"
+ ("tpage-1371.go"
   "tpage-1573.go"
-  "desertc-vis.o"
+  "desertc-vis.go"
  ))

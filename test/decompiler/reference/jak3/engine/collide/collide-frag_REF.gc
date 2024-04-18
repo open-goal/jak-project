@@ -1,0 +1,111 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type drawable-tree-collide-fragment
+(defmethod login ((this drawable-tree-collide-fragment))
+  "Initialize the object after it is loaded."
+  this
+  )
+
+;; definition for method 10 of type drawable-tree-collide-fragment
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this drawable-tree-collide-fragment))
+  "Draw the drawable, and typically its children.
+   This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
+  (when *display-render-collision*
+    (dotimes (s5-0 (-> this length))
+      (draw (-> this data s5-0))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type drawable-tree-collide-fragment
+(defmethod unpack-vis ((this drawable-tree-collide-fragment) (arg0 (pointer int8)) (arg1 (pointer int8)))
+  arg1
+  )
+
+;; definition for method 8 of type collide-fragment
+;; WARN: Return type mismatch int vs collide-fragment.
+(defmethod mem-usage ((this collide-fragment) (usage memory-usage-block) (flags int))
+  (let ((s5-0 (if (logtest? flags 1)
+                  55
+                  51
+                  )
+              )
+        (s4-0 (-> this mesh))
+        )
+    (set! (-> usage data s5-0 name) "collide-fragment")
+    (+! (-> usage data s5-0 count) 1)
+    (let ((v1-9 (+ (asize-of this) (asize-of s4-0))))
+      (+! (-> usage data s5-0 used) v1-9)
+      (+! (-> usage data s5-0 total) (logand -16 (+ v1-9 15)))
+      )
+    (set! (-> usage data (+ s5-0 1) name) "collision-poly")
+    (+! (-> usage data (+ s5-0 1) count) (-> s4-0 poly-count))
+    (let ((v1-20 (+ (-> s4-0 strip-data-len) (-> s4-0 poly-count))))
+      (+! (-> usage data (+ s5-0 1) used) v1-20)
+      (+! (-> usage data (+ s5-0 1) total) v1-20)
+      )
+    (set! (-> usage data (+ s5-0 2) name) "collision-vertex")
+    (+! (-> usage data (+ s5-0 2) count) (-> s4-0 vertex-count))
+    (let ((v1-29 (* (-> s4-0 vertex-data-qwc) 16)))
+      (+! (-> usage data (+ s5-0 2) used) v1-29)
+      (let ((v0-2 (+ (-> usage data (+ s5-0 2) total) v1-29)))
+        (set! (-> usage data (+ s5-0 2) total) v0-2)
+        (the-as collide-fragment v0-2)
+        )
+      )
+    )
+  )
+
+;; definition for method 9 of type drawable-inline-array-collide-fragment
+(defmethod login ((this drawable-inline-array-collide-fragment))
+  "Initialize the object after it is loaded."
+  this
+  )
+
+;; definition for method 10 of type collide-fragment
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this collide-fragment))
+  "Draw the drawable, and typically its children.
+   This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
+  0
+  (none)
+  )
+
+;; definition for method 10 of type drawable-inline-array-collide-fragment
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this drawable-inline-array-collide-fragment))
+  "Draw the drawable, and typically its children.
+   This usually means adding stuff to a list to be drawn later, rather than expensive drawing here."
+  (dotimes (s5-0 (-> this length))
+    (let ((s4-0 (-> this data s5-0)))
+      (if (sphere-cull (-> s4-0 bsphere))
+          (draw s4-0)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 8 of type drawable-inline-array-collide-fragment
+(defmethod mem-usage ((this drawable-inline-array-collide-fragment) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 1 (-> usage length)))
+  (set! (-> usage data 0 name) "drawable-group")
+  (+! (-> usage data 0 count) 1)
+  (let ((v1-5 32))
+    (+! (-> usage data 0 used) v1-5)
+    (+! (-> usage data 0 total) (logand -16 (+ v1-5 15)))
+    )
+  (dotimes (s3-0 (-> this length))
+    (mem-usage (-> this data s3-0) usage flags)
+    )
+  this
+  )
+
+
+
+

@@ -1,5 +1,5 @@
 ("LASHELIN.DGO"
- ("tpage-1222.o"
+ ("tpage-1222.go"
   "ashelin-highres-ag.go"
-  "lashelin.o"
+  "lashelin.go"
  ))

@@ -7,3 +7,524 @@
 
 ;; DECOMP BEGINS
 
+(deftype dogat (nav-enemy)
+  ((rotation-matrix  matrix  :inline)
+   (scared-timer     time-frame)
+   )
+  (:state-methods
+    sit-idle
+    )
+  (:methods
+    (dogat-method-191 (_type_) none)
+    )
+  )
+
+
+(defskelgroup skel-dogat dogat dogat-lod0-jg dogat-idle-ja
+              ((dogat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow dogat-shadow-mg
+              )
+
+(define *dogat-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 7
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 15)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x4
+        :param0 3
+        :param1 6
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 15)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x5
+        :param0 2
+        :param1 4
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 15)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x6
+        :param0 2
+        :param1 4
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 3
+    :hostile-anim 7
+    :hit-anim -1
+    :knocked-anim 8
+    :knocked-land-anim 9
+    :die-anim 3
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint -1
+    :look-at-joint 23
+    :bullseye-joint 3
+    :sound-hit (static-sound-name "dogat-hit")
+    :sound-die (static-sound-name "dogat-die")
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 20)
+    :default-hit-points 1.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info #f
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #f
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 7
+    :turn-anim -1
+    :run-anim 7
+    :taunt-anim -1
+    :run-travel-speed (meters 15)
+    :run-acceleration (meters 6)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 7.5)
+    :walk-acceleration (meters 6)
+    :walk-turning-acceleration (meters 25)
+    :maximum-rotation-rate (degrees 1440)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *dogat-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior dogat-travel-post dogat ()
+  (none)
+  )
+
+(defstate idle (dogat)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy idle) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self scared-timer) 0)
+    0
+    )
+  )
+
+(defstate sit-idle (dogat)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self state-timeout) (the-as time-frame (the int (* 300.0 (rand-vu-float-range 0.6 2.1)))))
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-4 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  :trans (behavior ()
+    (let ((v1-0 (-> self focus aware)))
+      (cond
+        ((= v1-0 (enemy-aware ea4))
+         (go-flee self)
+         )
+        ((< (the-as int v1-0) 1)
+         (go-virtual idle)
+         )
+        )
+      )
+    (if (time-elapsed? (-> self state-time) (-> self state-timeout))
+        (go-virtual active)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (let ((gp-0 (rand-vu-int-range 2 4)))
+        (dotimes (s5-0 gp-0)
+          (ja-no-eval :group! dogat-idle-sit-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      (ja-channel-push! 1 (seconds 0.02))
+      (let ((gp-1 (rand-vu-int-range 2 4)))
+        (dotimes (s5-1 gp-1)
+          (ja-no-eval :group! dogat-idle-situp-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      (ja-channel-push! 1 (seconds 0.02))
+      (let ((gp-2 (rand-vu-int-range 2 4)))
+        (dotimes (s5-2 gp-2)
+          (ja-no-eval :group! dogat-idle-eat-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      (ja-channel-push! 1 (seconds 0.02))
+      )
+    #f
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate active (dogat)
+  :virtual #t
+  :enter (behavior ()
+    (local-vars (v1-12 symbol) (v1-15 vector) (f0-4 float))
+    (let ((t9-0 (-> (method-of-type nav-enemy active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let* ((a2-0 (-> self root trans))
+           (gp-0 (new 'stack-no-clear 'vector))
+           (s4-0 (closest-point-on-mesh (-> self nav) gp-0 a2-0 (the-as nav-poly #f)))
+           (s5-0 (new 'stack-no-clear 'vector))
+           )
+      (let ((s3-0 0))
+        (until (< f0-4 (sqrtf (+ (* (-> v1-15 x) (-> v1-15 x)) (* (-> v1-15 z) (-> v1-15 z)))))
+          (vector-rotate-around-y! s5-0 (-> self rotation-matrix fvec) (* 182.04445 (rand-vu-float-range -175.0 175.0)))
+          (vector-normalize! s5-0 (* 4096.0 (rand-vu-float-range 10.0 24.0)))
+          (clamp-vector-to-mesh-cross-gaps
+            (-> self nav)
+            gp-0
+            s4-0
+            s5-0
+            204.8
+            #f
+            (the-as clamp-travel-vector-to-mesh-return-info #f)
+            )
+          (+! s3-0 1)
+          (when (< 6 s3-0)
+            (set! v1-12 #f)
+            (goto cfg-8)
+            )
+          (set! f0-4 16384.0)
+          (set! v1-15 s5-0)
+          )
+        )
+      (set! v1-12 #t)
+      (label cfg-8)
+      (if v1-12
+          (vector+! (-> self move-dest) gp-0 s5-0)
+          (set! (-> self move-dest quad) (-> gp-0 quad))
+          )
+      )
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! dogat-run0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      ((-> (method-of-type nav-enemy active) trans))
+      (if (< (vector-vector-xz-distance (-> self move-dest) (-> self root trans)) 8192.0)
+          (go-virtual sit-idle)
+          )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((a0-0 (-> self nav state))
+          (v1-1 (-> self move-dest))
+          )
+      (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      )
+    0
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defstate notice (dogat)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual flee)
+    )
+  )
+
+(defstate flee (dogat)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self enemy-info hostile-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (until #f
+      (suspend)
+      (ja :num! (loop! 2.0))
+      )
+    #f
+    )
+  )
+
+(defmethod go-hostile ((this dogat))
+  (set-time! (-> this scared-timer))
+  (go (method-of-object this flee))
+  )
+
+(defmethod enemy-method-108 ((this dogat) (arg0 process-focusable))
+  (or (< (vector-vector-xz-distance (-> this root trans) (get-trans arg0 0)) 143360.0)
+      (not (time-elapsed? (-> this scared-timer) (seconds 4)))
+      )
+  )
+
+(defmethod send-attack-to-all-tshapes ((this dogat) (arg0 process-focusable) (arg1 event-message-block))
+  0
+  )
+
+(defmethod init-enemy-collision! ((this dogat))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list projectile)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 9011.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4915.2 0.0 4915.2)
+      )
+    (set! (-> s5-0 nav-radius) 4096.0)
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod enemy-method-50 ((this dogat) (arg0 int))
+  (let ((v1-0 arg0))
+    (cond
+      ((= v1-0 1)
+       (let ((v1-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0)))
+         (set! (-> v1-4 prim-core collide-with)
+               (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+               )
+         )
+       )
+      ((or (= v1-0 2) (zero? v1-0))
+       (set! (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0 prim-core collide-with)
+             (collide-spec)
+             )
+       0
+       )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch shadow-control vs none.
+(defmethod init-enemy! ((this dogat))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dogat" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *dogat-nav-enemy-info*)
+  (set-vector! (-> this root scale) 2.5 2.5 2.5 1.0)
+  (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
+  (logior! (-> this skel status) (joint-control-status sync-math))
+  (logclear! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask civilian))
+  (set! (-> this draw shadow-ctrl) (new
+                                     'process
+                                     'shadow-control
+                                     -4096.0
+                                     4096.0
+                                     614400.0
+                                     (the-as vector #f)
+                                     (shadow-flags shdf00 shdf04)
+                                     245760.0
+                                     )
+        )
+  (none)
+  )

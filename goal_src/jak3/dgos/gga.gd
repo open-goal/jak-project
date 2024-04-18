@@ -20,5 +20,5 @@
   "fort-entry-gate-ag.go"
   "hip-door-a-ag.go"
   "particleman-ag.go"
-  "gungame-vis.o"
+  "gungame-vis.go"
  ))

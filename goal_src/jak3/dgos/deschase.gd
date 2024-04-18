@@ -17,5 +17,5 @@
   "interceptor-b-ag.go"
   "pre-artifact-a-ag.go"
   "catapult-target-ag.go"
-  "deschase.o"
+  "deschase.go"
  ))

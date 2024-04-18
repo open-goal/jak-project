@@ -1,0 +1,609 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 9 of type path-control
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw ((this path-control))
+  (cond
+    ((logtest? (-> this flags) (path-control-flag not-found))
+     (when (and (type? (-> this process) process-drawable) *display-entity-errors* (not *display-capture-mode*))
+       (let ((s5-0 add-debug-text-3d)
+             (s4-0 #t)
+             (s3-0 577)
+             )
+         (format (clear *temp-string*) "path data error in ~S" (-> this process name))
+         (s5-0
+           s4-0
+           (the-as bucket-id s3-0)
+           *temp-string*
+           (-> this process root trans)
+           (font-color red)
+           (the-as vector2h #f)
+           )
+         )
+       )
+     )
+    ((let ((a0-5 this))
+       (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display)))
+       )
+     (dotimes (s5-1 (-> this curve num-cverts))
+       (let ((s4-1 (-> this curve cverts s5-1)))
+         (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (< s5-1 (+ (-> this curve num-cverts) -1)))
+             (add-debug-line
+               #t
+               (bucket-id debug-no-zbuf1)
+               s4-1
+               (-> this curve cverts (+ s5-1 1))
+               (new 'static 'rgba :r #xff :g #x80 :a #x80)
+               #f
+               (the-as rgba -1)
+               )
+             )
+         (if (logtest? (-> this flags) (path-control-flag draw-point))
+             (add-debug-x #t (bucket-id debug-no-zbuf1) s4-1 (new 'static 'rgba :r #xff :a #x80))
+             )
+         (when (logtest? (-> this flags) (path-control-flag draw-text))
+           (let ((s3-1 add-debug-text-3d)
+                 (s2-1 #t)
+                 (s1-0 577)
+                 )
+             (format (clear *temp-string*) "~D" s5-1)
+             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))
+             )
+           )
+         )
+       )
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 18 of type path-control
+(defmethod total-distance ((this path-control))
+  (let ((f30-0 (-> this curve length)))
+    (when (= f30-0 0.0)
+      (dotimes (s5-0 (+ (-> this curve num-cverts) -1))
+        (+! f30-0 (vector-vector-distance (-> this curve cverts s5-0) (-> this curve cverts (+ s5-0 1))))
+        )
+      (set! (-> this curve length) f30-0)
+      )
+    f30-0
+    )
+  )
+
+;; definition for method 18 of type curve-control
+(defmethod total-distance ((this curve-control))
+  (let ((f0-0 (-> this curve length)))
+    (when (= f0-0 0.0)
+      (set! f0-0 (curve-length (-> this curve)))
+      (set! (-> this curve length) f0-0)
+      )
+    f0-0
+    )
+  )
+
+;; definition for method 26 of type path-control
+;; INFO: Used lq/sq
+(defmethod path-control-method-26 ((this path-control) (arg0 float) (arg1 float))
+  (local-vars (v1-9 float))
+  (let ((f30-0 (* arg0 (the float (+ (-> this curve num-cverts) -1))))
+        (f28-0 (if (< 0.0 arg1)
+                   1.0
+                   -1.0
+                   )
+               )
+        (f26-0 (fabs arg1))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (get-point-in-path! this s5-0 f30-0 'interp)
+    0.0
+    (while (< 0.0 f26-0)
+      (let ((f24-0 (the float (the int (+ f28-0 f30-0)))))
+        (set! f30-0 (cond
+                      ((or (< f24-0 0.0) (>= f24-0 (the float (-> this curve num-cverts))))
+                       (set! v1-9 f24-0)
+                       (goto cfg-19)
+                       f30-0
+                       )
+                      (else
+                        (let ((s4-0 (new 'stack-no-clear 'vector)))
+                          (set! (-> s4-0 quad) (-> this curve cverts (the int (the float (the int f24-0))) quad))
+                          0.0
+                          (let ((f0-16 (vector-vector-distance s5-0 s4-0)))
+                            (cond
+                              ((< f0-16 f26-0)
+                               (set! f26-0 (- f26-0 f0-16))
+                               (set! (-> s5-0 quad) (-> s4-0 quad))
+                               f24-0
+                               )
+                              (else
+                                (let ((f0-17 (/ f26-0 f0-16)))
+                                  (set! v1-9 (lerp f30-0 f24-0 f0-17))
+                                  )
+                                (goto cfg-19)
+                                f30-0
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+              )
+        )
+      )
+    )
+  (set! v1-9 (the-as float #f))
+  (label cfg-19)
+  (let* ((f0-21 (/ v1-9 (the float (+ (-> this curve num-cverts) -1))))
+         (f0-22 (fmin 1.0 f0-21))
+         )
+    (fmax 0.0 f0-22)
+    )
+  )
+
+;; definition for method 10 of type path-control
+;; INFO: Used lq/sq
+(defmethod get-point-in-path! ((this path-control) (arg0 vector) (arg1 float) (arg2 symbol))
+  (let ((a1-1 (-> this curve num-cverts))
+        (f0-3 (the float (the int arg1)))
+        )
+    (cond
+      ((< arg1 0.0)
+       (set! (-> arg0 quad) (-> this curve cverts 0 quad))
+       )
+      ((>= f0-3 (the float (+ a1-1 -1)))
+       (set! (-> arg0 quad) (-> this curve cverts (+ a1-1 -1) quad))
+       )
+      ((or (= arg2 'exact) (= f0-3 arg1))
+       (set! (-> arg0 quad) (-> this curve cverts (the int f0-3) quad))
+       )
+      (else
+        (vector-lerp!
+          arg0
+          (-> this curve cverts (the int f0-3))
+          (-> this curve cverts (the int (+ 1.0 f0-3)))
+          (- arg1 f0-3)
+          )
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for method 11 of type path-control
+;; INFO: Used lq/sq
+(defmethod get-random-point ((this path-control) (arg0 vector))
+  (with-pp
+    (cond
+      ((> (-> this curve num-cverts) 0)
+       (let ((a0-2 (rand-vu-int-count (-> this curve num-cverts))))
+         (set! (-> arg0 quad) (-> this curve cverts a0-2 quad))
+         )
+       )
+      (else
+        (format #t "WARNING: method get-random-point called on a path-control object with no vertices.~%")
+        (if pp
+            (format #t "current process is ~A~%" (-> pp name))
+            )
+        (set! (-> arg0 quad) (-> *null-vector* quad))
+        )
+      )
+    arg0
+    )
+  )
+
+;; definition for method 14 of type path-control
+(defmethod get-point-at-percent-along-path! ((this path-control) (arg0 vector) (arg1 float) (arg2 symbol))
+  (get-point-in-path! this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1))) arg2)
+  )
+
+;; definition for method 14 of type curve-control
+(defmethod get-point-at-percent-along-path! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
+  (if (not (logtest? (-> this flags) (path-control-flag not-found)))
+      (curve-evaluate!
+        arg0
+        arg1
+        (-> this curve cverts)
+        (-> this curve num-cverts)
+        (-> this curve knots)
+        (-> this curve num-knots)
+        )
+      )
+  arg0
+  )
+
+;; definition for method 10 of type curve-control
+(defmethod get-point-in-path! ((this curve-control) (arg0 vector) (arg1 float) (arg2 symbol))
+  (if (not (logtest? (-> this flags) (path-control-flag not-found)))
+      (curve-evaluate!
+        arg0
+        (/ arg1 (the float (+ (-> this curve num-cverts) -1)))
+        (-> this curve cverts)
+        (-> this curve num-cverts)
+        (-> this curve knots)
+        (-> this curve num-knots)
+        )
+      )
+  arg0
+  )
+
+;; definition for method 31 of type path-control
+(defmethod displacement-between-two-points! ((this path-control) (arg0 vector) (arg1 float) (arg2 float))
+  (let ((v1-0 (-> this curve num-cverts))
+        (f0-3 (the float (the int arg1)))
+        )
+    (cond
+      ((or (logtest? (-> this flags) (path-control-flag not-found)) (< v1-0 2) (< arg1 0.0))
+       (vector-reset! arg0)
+       )
+      (else
+        (let ((f0-4 (fmin f0-3 (the float (+ v1-0 -2)))))
+          (vector-! arg0 (-> this curve cverts (the int (+ 1.0 f0-4))) (-> this curve cverts (the int f0-4)))
+          )
+        (vector-float*! arg0 arg0 arg2)
+        )
+      )
+    )
+  arg0
+  )
+
+;; definition for method 12 of type path-control
+(defmethod path-control-method-12 ((this path-control) (arg0 vector) (arg1 float) (arg2 float))
+  (displacement-between-two-points! this arg0 arg1 arg2)
+  )
+
+;; definition for method 15 of type path-control
+(defmethod path-control-method-15 ((this path-control) (arg0 vector) (arg1 float) (arg2 float))
+  (path-control-method-12
+    this
+    arg0
+    (* arg1 (the float (+ (-> this curve num-cverts) -1)))
+    (* arg2 (the float (+ (-> this curve num-cverts) -1)))
+    )
+  )
+
+;; definition for method 13 of type path-control
+(defmethod displacement-between-two-points-normalized! ((this path-control) (arg0 vector) (arg1 float))
+  (displacement-between-two-points! this arg0 arg1 1.0)
+  (vector-normalize! arg0 1.0)
+  )
+
+;; definition for method 16 of type path-control
+(defmethod displacement-between-points-at-percent-normalized! ((this path-control) (arg0 vector) (arg1 float))
+  (displacement-between-two-points-normalized! this arg0 (* arg1 (the float (+ (-> this curve num-cverts) -1))))
+  )
+
+;; definition for method 31 of type curve-control
+(defmethod displacement-between-two-points! ((this curve-control) (arg0 vector) (arg1 float) (arg2 float))
+  (when (not (logtest? (-> this flags) (path-control-flag not-found)))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (curve-evaluate!
+        arg0
+        arg1
+        (-> this curve cverts)
+        (-> this curve num-cverts)
+        (-> this curve knots)
+        (-> this curve num-knots)
+        )
+      (cond
+        ((< arg1 (- 1.0 arg2))
+         (curve-evaluate!
+           s4-0
+           (+ arg1 arg2)
+           (-> this curve cverts)
+           (-> this curve num-cverts)
+           (-> this curve knots)
+           (-> this curve num-knots)
+           )
+         (vector-! arg0 s4-0 arg0)
+         )
+        (else
+          (curve-evaluate!
+            s4-0
+            (- arg1 arg2)
+            (-> this curve cverts)
+            (-> this curve num-cverts)
+            (-> this curve knots)
+            (-> this curve num-knots)
+            )
+          (vector-! arg0 arg0 s4-0)
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 26 of type curve-control
+(defmethod path-control-method-26 ((this curve-control) (arg0 float) (arg1 float))
+  (let* ((f30-0 0.0001)
+         (v1-2 (displacement-between-two-points! this (new 'stack-no-clear 'vector) arg0 f30-0))
+         )
+    0.0
+    0.0
+    (let* ((f0-3 (/ f30-0 (vector-length v1-2)))
+           (v1-4 (+ arg0 (* f0-3 arg1)))
+           )
+      (fmax 0.0 (fmin 1.0 v1-4))
+      )
+    )
+  )
+
+;; definition for method 12 of type curve-control
+(defmethod path-control-method-12 ((this curve-control) (arg0 vector) (arg1 float) (arg2 float))
+  (displacement-between-two-points! this arg0 (/ arg1 (the float (+ (-> this curve num-cverts) -1))) arg2)
+  )
+
+;; definition for method 15 of type curve-control
+(defmethod path-control-method-15 ((this curve-control) (arg0 vector) (arg1 float) (arg2 float))
+  (displacement-between-two-points! this arg0 arg1 arg2)
+  )
+
+;; definition for method 16 of type curve-control
+(defmethod displacement-between-points-at-percent-normalized! ((this curve-control) (arg0 vector) (arg1 float))
+  (displacement-between-two-points! this arg0 arg1 0.01)
+  (vector-normalize! arg0 1.0)
+  )
+
+;; definition for method 13 of type curve-control
+(defmethod displacement-between-two-points-normalized! ((this curve-control) (arg0 vector) (arg1 float))
+  (displacement-between-points-at-percent-normalized!
+    this
+    arg0
+    (/ arg1 (the float (+ (-> this curve num-cverts) -1)))
+    )
+  )
+
+;; definition for method 28 of type path-control
+;; INFO: Used lq/sq
+(defmethod path-control-method-28 ((this path-control) (arg0 vector) (arg1 vector) (arg2 symbol))
+  (local-vars
+    (sv-96 vector)
+    (sv-100 vector)
+    (sv-104 vector)
+    (sv-108 vector)
+    (sv-112 number)
+    (sv-116 vector)
+    (sv-120 symbol)
+    (sv-124 float)
+    )
+  (set! sv-96 (new 'stack-no-clear 'vector))
+  (set! sv-100 (new 'stack-no-clear 'vector))
+  (set! sv-104 (new 'stack-no-clear 'vector))
+  (set! sv-108 (new 'stack-no-clear 'vector))
+  (set! sv-112 -1.0)
+  (set! sv-116 (new 'stack-no-clear 'vector))
+  (set! sv-120 (the-as symbol #f))
+  (set! sv-124 (the-as float -1.0))
+  (get-point-in-path! this sv-96 0.0 'interp)
+  (set! sv-112 (gpr->fpr #x7f800000))
+  (when (not arg2)
+    (set! sv-124 (path-control-method-22 this arg0))
+    (get-point-in-path! this sv-108 sv-124 'interp)
+    (set! sv-112 (vector-vector-distance-squared sv-108 arg0))
+    )
+  (let ((s3-1 (new 'stack-no-clear 'vector)))
+    (vector+! s3-1 arg0 arg1)
+    (dotimes (s2-0 (+ (-> this curve num-cverts) -1))
+      (get-point-in-path! this sv-100 (the float (+ s2-0 1)) 'interp)
+      (vector-! sv-104 sv-100 sv-96)
+      (let ((s0-0 #f))
+        0.0
+        (let ((s1-0 (new 'stack-no-clear 'vector)))
+          (set! (-> s1-0 x) -1.0)
+          (set! (-> s1-0 y) -1.0)
+          (line-line-find-intersection-xz arg0 arg1 sv-96 sv-104 s1-0)
+          (when (>= (-> s1-0 x) 0.0)
+            (if (and (< 0.0 (-> s1-0 y)) (>= 1.0 (-> s1-0 y)))
+                (set! s0-0 #t)
+                )
+            (vector+float*! sv-116 arg0 arg1 (-> s1-0 x))
+            (cond
+              ((and s0-0 (not sv-120))
+               (set! (-> sv-108 quad) (-> sv-116 quad))
+               (set! sv-112 (vector-vector-distance-squared sv-116 arg0))
+               (set! sv-124 (lerp (the float s2-0) (the float (+ s2-0 1)) (-> s1-0 y)))
+               (set! sv-120 #t)
+               )
+              ((and s0-0 sv-120)
+               (let ((f0-22 (vector-vector-distance-squared sv-116 arg0)))
+                 (when (< f0-22 (the-as float sv-112))
+                   (set! (-> sv-108 quad) (-> sv-116 quad))
+                   (set! sv-112 f0-22)
+                   (set! sv-124 (lerp (the float s2-0) (the float (+ s2-0 1)) (-> s1-0 y)))
+                   )
+                 )
+               )
+              ((not (or s0-0 sv-120))
+               (let ((s0-1 (new 'stack-no-clear 'vector))
+                     (a3-5 (new 'stack-no-clear 'vector))
+                     )
+                 (set! (-> s1-0 y) (fmax 0.0 (fmin 1.0 (-> s1-0 y))))
+                 (vector+float*! s0-1 sv-96 sv-104 (-> s1-0 y))
+                 (let* ((f0-32 (vector-segment-distance-point! s0-1 arg0 s3-1 a3-5))
+                        (f0-33 (* f0-32 f0-32))
+                        )
+                   (when (< f0-33 (the-as float sv-112))
+                     (set! (-> sv-108 quad) (-> s0-1 quad))
+                     (set! sv-112 f0-33)
+                     (set! sv-124 (lerp (the float s2-0) (the float (+ s2-0 1)) (-> s1-0 y)))
+                     )
+                   )
+                 )
+               )
+              )
+            )
+          )
+        )
+      (set! (-> sv-96 quad) (-> sv-100 quad))
+      )
+    )
+  (set! sv-124 (/ sv-124 (the float (+ (-> this curve num-cverts) -1))))
+  sv-124
+  )
+
+;; definition for method 29 of type path-control
+(defmethod path-control-method-29 ((this path-control) (arg0 vector) (arg1 int) (arg2 float))
+  (let ((s2-0 (get-point-in-path! this (new 'stack-no-clear 'vector) (the float arg1) 'interp))
+        (a2-3 (get-point-in-path! this (new 'stack-no-clear 'vector) (the float (+ arg1 1)) 'interp))
+        )
+    (vector-segment-distance-point! arg0 s2-0 a2-3 (the-as vector arg2))
+    )
+  )
+
+;; definition for method 22 of type path-control
+;; INFO: Used lq/sq
+(defmethod path-control-method-22 ((this path-control) (arg0 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 (new 'stack-no-clear 'vector))
+        (f30-0 4096000000.0)
+        (f28-0 0.0)
+        )
+    (let ((s2-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s3-0 quad) (-> arg0 quad))
+      (set! (-> s3-0 y) 0.0)
+      (get-point-in-path! this s4-0 0.0 'interp)
+      (set! (-> s4-0 y) 0.0)
+      (dotimes (s1-0 (+ (-> this curve num-cverts) -1))
+        (set! (-> s5-0 quad) (-> s4-0 quad))
+        (get-point-in-path! this s4-0 (the float (+ s1-0 1)) 'interp)
+        (set! (-> s4-0 y) 0.0)
+        (let ((f0-5 (vector-segment-distance-point! s3-0 s5-0 s4-0 s2-0)))
+          (when (< f0-5 f30-0)
+            (set! f30-0 f0-5)
+            (set! f28-0
+                  (+ (/ (vector-vector-xz-distance s2-0 s5-0) (vector-vector-xz-distance s4-0 s5-0)) (the float s1-0))
+                  )
+            )
+          )
+        )
+      )
+    f28-0
+    )
+  )
+
+;; definition for method 24 of type path-control
+;; INFO: Used lq/sq
+(defmethod path-control-method-24 ((this path-control) (arg0 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 (new 'stack-no-clear 'vector))
+        (f30-0 4096000000.0)
+        (f28-0 0.0)
+        )
+    (let ((s2-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s3-0 quad) (-> arg0 quad))
+      (get-point-in-path! this s4-0 0.0 'interp)
+      (dotimes (s1-0 (+ (-> this curve num-cverts) -1))
+        (set! (-> s5-0 quad) (-> s4-0 quad))
+        (get-point-in-path! this s4-0 (the float (+ s1-0 1)) 'interp)
+        (let ((f0-2 (vector-segment-distance-point! s3-0 s5-0 s4-0 s2-0)))
+          (when (< f0-2 f30-0)
+            (set! f30-0 f0-2)
+            (set! f28-0 (+ (/ (vector-vector-distance s2-0 s5-0) (vector-vector-distance s4-0 s5-0)) (the float s1-0)))
+            )
+          )
+        )
+      )
+    f28-0
+    )
+  )
+
+;; definition for method 25 of type path-control
+(defmethod path-control-method-25 ((this path-control) (arg0 vector))
+  (/ (path-control-method-24 this arg0) (the float (+ (-> this curve num-cverts) -1)))
+  )
+
+;; definition for method 23 of type path-control
+(defmethod path-control-method-23 ((this path-control) (arg0 vector))
+  (/ (path-control-method-22 this arg0) (the float (+ (-> this curve num-cverts) -1)))
+  )
+
+;; definition for method 9 of type curve-control
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw ((this curve-control))
+  (cond
+    ((logtest? (-> this flags) (path-control-flag not-found))
+     (when (and (type? (-> this process) process-drawable) *display-entity-errors* (not *display-capture-mode*))
+       (let ((s5-0 add-debug-text-3d)
+             (s4-0 #t)
+             (s3-0 577)
+             )
+         (format (clear *temp-string*) "curve data error in ~S" (-> this process name))
+         (s5-0
+           s4-0
+           (the-as bucket-id s3-0)
+           *temp-string*
+           (-> this process root trans)
+           (font-color red)
+           (the-as vector2h #f)
+           )
+         )
+       )
+     )
+    ((let ((a0-5 this))
+       (and *display-path-marks* (logtest? (-> a0-5 flags) (path-control-flag display)))
+       )
+     (if (and (logtest? (-> this flags) (path-control-flag draw-line)) (> (-> this curve num-cverts) 0))
+         (add-debug-curve2
+           #t
+           (bucket-id debug-no-zbuf1)
+           (-> this curve)
+           (new 'static 'rgba :r #xff :g #x80 :a #x80)
+           #f
+           )
+         )
+     (dotimes (s5-1 (-> this curve num-cverts))
+       (let ((s4-1 (-> this curve cverts s5-1)))
+         (if (logtest? (-> this flags) (path-control-flag draw-point))
+             (add-debug-x #t (bucket-id debug-no-zbuf1) s4-1 (new 'static 'rgba :r #xff :a #x80))
+             )
+         (when (logtest? (-> this flags) (path-control-flag draw-text))
+           (let ((s3-1 add-debug-text-3d)
+                 (s2-1 #t)
+                 (s1-0 577)
+                 )
+             (format (clear *temp-string*) "~D" s5-1)
+             (s3-1 s2-1 (the-as bucket-id s1-0) *temp-string* s4-1 (font-color orange) (the-as vector2h #f))
+             )
+           )
+         )
+       )
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 27 of type path-control
+(defmethod path-control-method-27 ((this path-control) (arg0 vector))
+  (let ((s4-0 (-> this curve num-cverts)))
+    (let ((f30-0 (/ 1.0 (the float s4-0))))
+      (set-vector! arg0 0.0 0.0 0.0 0.0)
+      (dotimes (s3-0 s4-0)
+        (vector+float*!
+          arg0
+          arg0
+          (get-point-in-path! this (new 'stack-no-clear 'vector) (the float s3-0) 'interp)
+          f30-0
+          )
+        )
+      )
+    (dotimes (s3-1 s4-0)
+      (let ((f0-10
+              (vector-vector-distance arg0 (get-point-in-path! this (new 'stack-no-clear 'vector) (the float s3-1) 'interp))
+              )
+            )
+        (if (< (-> arg0 w) f0-10)
+            (set! (-> arg0 w) (+ 4096.0 f0-10))
+            )
+        )
+      )
+    )
+  arg0
+  )
+
+
+
+

@@ -159,7 +159,8 @@ class SymbolInfoMap {
   std::vector<SymbolInfo*> lookup_symbols_by_file(const std::string& file_path) const;
   std::vector<SymbolInfo*> lookup_exact_name(const std::string& name) const;
   std::vector<SymbolInfo*> lookup_symbols_starting_with(const std::string& prefix) const;
-  std::set<std::string> lookup_names_starting_with(const std::string& prefix) const;
+  std::set<std::string> lookup_names_starting_with(const std::string& prefix,
+                                                   int max_count = -1) const;
   std::vector<SymbolInfo*> get_all_symbols() const;
   int symbol_count() const;
   // Uses the per-file index to find and evict symbols globally

@@ -56,5 +56,5 @@
   "des-glider-ring-ag.go"
   "tpl-glider-ag.go"
   "tpl-glider-broken-ag.go"
-  "hanga-vis.o"
+  "hanga-vis.go"
  ))

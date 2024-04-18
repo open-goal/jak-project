@@ -1,5 +1,5 @@
 ("MIB.DGO"
- ("tpage-926.o"
+ ("tpage-926.go"
   "tpage-929.go"
   "tpage-928.go"
   "tpage-1856.go"
@@ -18,5 +18,5 @@
   "light-eco-vent-ag.go"
   "leggings-ag.go"
   "min-crane-switch-ag.go"
-  "mineb-vis.o"
+  "mineb-vis.go"
  ))

@@ -39,6 +39,8 @@ struct sceSifServeData {
   unsigned int command;  // the RPC ID
   sceSifRpcFunc func;
   void* buff;
+  // added
+  int buff_size = 0;
 };
 
 struct sceSifQueueData {
@@ -116,6 +118,7 @@ void sceSifRegisterRpc(sceSifServeData* serve,
                        unsigned int request,
                        sceSifRpcFunc func,
                        void* buff,
+                       int buff_size,
                        sceSifRpcFunc cfunc,
                        void* cbuff,
                        sceSifQueueData* qd);

@@ -18,5 +18,5 @@
   "hellcat-lowres-fma-ag.go"
   "ctypal-cable-break-ag.go"
   "searchlight-ag.go"
-  "intpfall-vis.o"
+  "intpfall-vis.go"
  ))

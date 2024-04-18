@@ -64,5 +64,5 @@
   "wascity-flag-c-ag.go"
   "wascity-flag-a-ag.go"
   "wascity-wind-fan-ag.go"
-  "waswide-vis.o"
+  "waswide-vis.go"
  ))

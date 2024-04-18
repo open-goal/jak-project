@@ -1,5 +1,5 @@
 ("GUNGAME1.DGO"
- ("tpage-2274.o"
+ ("tpage-2274.go"
   "yellow-barrel-ag.go"
-  "gungame1.o"
+  "gungame1.go"
  ))

@@ -9,5 +9,5 @@
   "interceptor-ag.go"
   "wascity-airlock-debris-ag.go"
   "beam-generator-ag.go"
-  "desjump.o"
+  "desjump.go"
  ))

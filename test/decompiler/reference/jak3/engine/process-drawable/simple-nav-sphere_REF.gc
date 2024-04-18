@@ -1,0 +1,145 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type simple-nav-sphere
+(deftype simple-nav-sphere (process-drawable)
+  ((first-time?  symbol)
+   (track-joint  int32)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  )
+
+;; definition for method 3 of type simple-nav-sphere
+(defmethod inspect ((this simple-nav-sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tfirst-time?: ~A~%" (-> this first-time?))
+  (format #t "~2Ttrack-joint: ~D~%" (-> this track-joint))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function simple-nav-sphere-event-handler
+(defbehavior simple-nav-sphere-event-handler simple-nav-sphere ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('die-fast)
+     (go empty-state)
+     )
+    (('move-trans)
+     (move-to-point! (the-as collide-shape (-> self root)) (the-as vector (-> arg3 param 0)))
+     #t
+     )
+    (('set-radius)
+     (let ((f0-0 (the-as float (-> arg3 param 0)))
+           (a0-7 (-> self root))
+           )
+       (set! (-> a0-7 nav-radius) f0-0)
+       (set! (-> (the-as collide-shape a0-7) root-prim local-sphere w) f0-0)
+       (update-transforms (the-as collide-shape a0-7))
+       )
+     #t
+     )
+    )
+  )
+
+;; definition for method 12 of type simple-nav-sphere
+(defmethod run-logic? ((this simple-nav-sphere))
+  "Should this process be run? Checked by execute-process-tree."
+  (cond
+    (*display-nav-marks*
+      #t
+      )
+    ((>= (-> this track-joint) 0)
+     #t
+     )
+    ((-> this first-time?)
+     (set! (-> this first-time?) #f)
+     #t
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (simple-nav-sphere)
+  :virtual #t
+  :event simple-nav-sphere-event-handler
+  :trans (behavior ()
+    (if *display-nav-marks*
+        (add-debug-sphere
+          #t
+          (bucket-id debug)
+          (-> self root trans)
+          (-> self root nav-radius)
+          (new 'static 'rgba :r #x80 :g #x40 :a #x80)
+          )
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate active (simple-nav-sphere)
+  :virtual #t
+  :event simple-nav-sphere-event-handler
+  :trans (behavior ()
+    (let ((v1-0 (ppointer->process (-> self parent)))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (vector<-cspace! gp-0 (-> (the-as process-drawable v1-0) node-list data (-> self track-joint)))
+      (move-to-point! (the-as collide-shape (-> self root)) gp-0)
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for function simple-nav-sphere-init-by-other
+;; INFO: Used lq/sq
+(defbehavior simple-nav-sphere-init-by-other simple-nav-sphere ((arg0 float) (arg1 vector) (arg2 nav-mesh) (arg3 int))
+  (set! (-> self track-joint) arg3)
+  (set! (-> self first-time?) #t)
+  (let ((s5-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (let ((v1-3 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec obstacle))
+      (set-vector! (-> v1-3 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-3)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-6 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-6 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-6 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-radius) arg0)
+    (set! (-> s5-0 root-prim local-sphere w) arg0)
+    (if arg1
+        (set! (-> s5-0 trans quad) (-> arg1 quad))
+        )
+    (vector-identity! (-> s5-0 scale))
+    (quaternion-identity! (-> s5-0 quat))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec))
+      )
+    0
+    (update-transforms s5-0)
+    (set! (-> self root) s5-0)
+    )
+  (logclear! (-> self mask) (process-mask actor-pause enemy))
+  (set! (-> self event-hook) simple-nav-sphere-event-handler)
+  (if arg2
+      (add-process-drawable-to-nav-mesh arg2 self #f)
+      (nav-mesh-connect-from-ent self)
+      )
+  (if (>= (-> self track-joint) 0)
+      (go-virtual active)
+      (go-virtual idle)
+      )
+  )

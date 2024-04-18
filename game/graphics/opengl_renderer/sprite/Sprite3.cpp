@@ -170,7 +170,8 @@ void Sprite3::handle_sprite_frame_setup(DmaFollower& dma,
       memcpy(&jak1_data, frame_data.data, sizeof(SpriteFrameDataJak1));
       m_frame_data.from_jak1(jak1_data);
     } break;
-    case GameVersion::Jak2: {
+    case GameVersion::Jak2:
+    case GameVersion::Jak3: {
       render_state->shaders[ShaderId::SPRITE3].activate();
       auto frame_data = dma.read_and_advance();
       ASSERT(frame_data.size_bytes == (int)sizeof(SpriteFrameData));  // very cool
@@ -392,6 +393,7 @@ void Sprite3::render(DmaFollower& dma, SharedRenderState* render_state, ScopedPr
       render_jak1(dma, render_state, prof);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       render_jak2(dma, render_state, prof);
       break;
     default:
@@ -835,7 +837,7 @@ void Sprite3::do_block_common(SpriteMode mode,
       if ((flag & 0x10) || (flag & 0x20)) {
         // these flags mean we need to swap vertex order around - not yet implemented since it's too
         // hard to get right without this code running.
-        ASSERT_NOT_REACHED();
+        // ASSERT_NOT_REACHED();
       }
     }
 

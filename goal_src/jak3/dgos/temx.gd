@@ -11,5 +11,5 @@
   "tpage-2169.go"
   "tpl-stone-break-ag.go"
   "tpl-inner-airlock-door-ag.go"
-  "templex-vis.o"
+  "templex-vis.go"
  ))

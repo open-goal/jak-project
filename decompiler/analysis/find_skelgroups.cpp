@@ -233,25 +233,30 @@ L460:
     .word 0x0        // jgeo                                                  // 36
     .word 0x0        // janim                                                 // 40
     .word 0x0        // ? (word 10)                                           // 44
-    .word 0x0        // bounds x                                              // 48
-    .word 0x0        // bounds y                                              // 52
-    .word 0x0        // bounds z                                              // 56
-    .word 0x464ccccd // bounds w/radius                                       // 60
-    .word 0x0        // mgeo 0/1                                              // 64
-    .word 0x0        // mgeo 2/3                                              // 68
-    .word 0x0        // mgeo 4/5                                              // 72
-    .word 0x0        // max-lod                                               // 76
-    .word 0x0        // lod-dist 0                                            // 80
-    .word 0x0        // lod-dist 1                                            // 84
-    .word 0x0        // lod-dist 2                                            // 88
-    .word 0x0        // lod-dist 3                                            // 92
-    .word 0x0        // lod-dist 4                                            // 96
-    .word 0x0        // lod-dist 5                                            // 100
-    .word 0x45800000 // longest-edge                                          // 104
-    .word 0x80a      // texture-level/version/shadow/sort                     // 108
-    .word 0x10303    // origin-joint-index/shadow-joint-index/light-index/pad // 112
-    .symbol #f       // clothing                                              // 116
-    .word 0x0        // global-effects                                        // 120
+    .word 0x0        // bounds x                                              // 48   11
+    .word 0x0        // bounds y                                              // 52   12
+    .word 0x0        // bounds z                                              // 56   13
+    .word 0x464ccccd // bounds w/radius                                       // 60   14
+    .word 0x0        // mgeo 0/1                                              // 64   15
+    .word 0x0        // mgeo 2/3                                              // 68   16
+    .word 0x0        // mgeo 4/5                                              // 72   17
+    .word 0x0        // max-lod                                               // 76   18
+    .word 0x0        // lod-dist 0                                            // 80   19
+    .word 0x0        // lod-dist 1                                            // 84   20
+    .word 0x0        // lod-dist 2                                            // 88   21
+    .word 0x0        // lod-dist 3                                            // 92   22
+    .word 0x0        // lod-dist 4                                            // 96   23
+    .word 0x0        // lod-dist 5                                            // 100  24
+    .word 0x45800000 // longest-edge                                          // 104  25
+    (texture-level      int8                 :offset-assert 108) ;; word 26
+    (version            int8                 :offset-assert 109)
+    (shadow             int16                :offset-assert 110)
+    (shadow-joint-index int8                 :offset-assert 112) ;; word 27
+    (origin-joint-index int8                 :offset-assert 113)
+    (sort               int8                 :offset-assert 114)
+    (light-index        uint8                :offset-assert 115)
+    (clothing           (array cloth-params) :offset-assert 116) ;; word 28
+    (global-effects     uint8                :offset-assert 120) ;; word 29
     .word 0x0        // pad
    */
 
@@ -297,15 +302,16 @@ L460:
   }
   result.tex_level = other_word.get_byte(0);
   result.version = other_word.get_byte(1);
-  result.shadow = other_word.get_byte(2);
-  result.sort = other_word.get_byte(3);
+  result.shadow = ((u32)other_word.get_byte(2)) | (((u32)other_word.get_byte(3)) << 8);
+
   auto& index_word = words.at(start_word_idx + 27);
   if (index_word.kind() != LinkedWord::PLAIN_DATA) {
     env.func->warnings.error_and_throw("Reference to skelgroup bad: invalid index data");
   }
-  result.origin_joint_index = index_word.get_byte(0);
-  result.shadow_joint_index = index_word.get_byte(1);
-  result.light_index = index_word.get_byte(2);
+  result.shadow_joint_index = index_word.get_byte(0);
+  result.origin_joint_index = index_word.get_byte(1);
+  result.sort = index_word.get_byte(2);
+  result.light_index = index_word.get_byte(3);
 
   auto& clothing = words.at(start_word_idx + 28);
   if (clothing.kind() != LinkedWord::SYM_PTR && clothing.symbol_name() != "#f") {
@@ -570,7 +576,7 @@ void inspect_cloth_data_jak3(LetElement* let, DefskelgroupElement::StaticInfo& i
         auto array_set = dynamic_cast<SetFormFormElement*>(when_body->at(0));
         if (array_set) {
           // get elements
-          auto elts = when_body->elts().size() - 2;
+          auto elts = (int)when_body->elts().size() - 2;
           for (int i = 0; i < elts; i++) {
             auto parms_form = dynamic_cast<SetFormFormElement*>(when_body->at(i + 1));
             if (parms_form) {

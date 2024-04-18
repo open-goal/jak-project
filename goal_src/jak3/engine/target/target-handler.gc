@@ -502,7 +502,7 @@
                   )
                 )
                (else
-                 (do-effect (-> self skel effect) (the-as symbol "group-spin-hit") -1.0 49)
+                 (do-effect (-> self skel effect) "group-spin-hit" -1.0 49)
                  )
                )
              (play-effect-sound
@@ -634,7 +634,7 @@
                    )
                  )
                )
-             (do-effect (-> self skel effect) (the-as symbol "group-uppercut-hit") -1.0 28)
+             (do-effect (-> self skel effect) "group-uppercut-hit" -1.0 28)
              (play-effect-sound
                (-> self skel effect)
                (the-as symbol "sound")
@@ -646,8 +646,8 @@
              (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.1))
              )
             ((or (= v1-57 'flop) (= v1-57 'flop-down))
-             (do-effect (-> self skel effect) (the-as symbol "group-flop-hit") -1.0 28)
-             (do-effect (-> self skel effect) (the-as symbol "group-flop-hit") -1.0 19)
+             (do-effect (-> self skel effect) "group-flop-hit" -1.0 28)
+             (do-effect (-> self skel effect) "group-flop-hit" -1.0 19)
              (play-effect-sound
                (-> self skel effect)
                (the-as symbol "sound")
@@ -893,11 +893,11 @@
      v0-0
      )
     (('do-effect)
-     (do-effect (-> self skel effect) (the-as symbol (-> arg3 param 0)) (the-as float (-> arg3 param 1)) -1)
+     (do-effect (-> self skel effect) (the-as string (-> arg3 param 0)) (the-as float (-> arg3 param 1)) -1)
      (if (-> self sidekick)
          (do-effect
            (-> self sidekick 0 skel effect)
-           (the-as symbol (-> arg3 param 0))
+           (the-as string (-> arg3 param 0))
            (the-as float (-> arg3 param 1))
            -1
            )
@@ -1161,7 +1161,7 @@
   )
 
 (defbehavior target-standard-event-handler target ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (local-vars (at-0 int) (v1-317 object) (a2-5 symbol))
+  (local-vars (at-0 int) (v1-317 object))
   (rlet ((vf0 :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -1330,12 +1330,7 @@
                                   (go target-board-start (process->handle (the-as process (-> arg3 param 1))))
                                   )
                               )
-                             ((begin (set! a2-5 (= v1-63 'pilot)) (or a2-5
-                                                                      (begin (set! a2-5 (= v1-63 'pilot-race)) a2-5)
-                                                                      (begin (set! a2-5 (= v1-63 'pilot-daxter)) a2-5)
-                                                                      (= v1-63 'pilot-race-daxter)
-                                                                      )
-                                     )
+                             ((or (= v1-63 'pilot) (= v1-63 'pilot-race) (= v1-63 'pilot-daxter) (= v1-63 'pilot-race-daxter))
                               (let ((s5-1 (the-as object (-> arg3 param 1))))
                                 (when (not (the-as uint s5-1))
                                   (let ((s4-0 (new 'stack 'traffic-object-spawn-params)))
@@ -1354,13 +1349,7 @@
                                     (set! (-> s4-0 position quad) (-> self control trans quad))
                                     (quaternion-copy! (-> s4-0 rotation) (-> self control quat))
                                     (set! (-> s4-0 id) (the-as uint 0))
-                                    (let ((v1-101 (vehicle-spawn
-                                                    (the-as process (-> arg3 param 2))
-                                                    (the-as type s4-0)
-                                                    (the-as traffic-object-spawn-params a2-5)
-                                                    )
-                                                  )
-                                          )
+                                    (let ((v1-101 (vehicle-spawn (the-as vehicle-type (-> arg3 param 2)) s4-0)))
                                       (if v1-101
                                           (set! s5-1 v1-101)
                                           )
@@ -1369,13 +1358,13 @@
                                   )
                                 (when s5-1
                                   (let* ((v1-102 (-> arg3 param 0))
-                                         (a2-6 (if (or (= v1-102 'pilot-daxter) (= v1-102 'pilot-race-daxter))
+                                         (a2-8 (if (or (= v1-102 'pilot-daxter) (= v1-102 'pilot-race-daxter))
                                                    #t
                                                    #f
                                                    )
                                                )
                                          )
-                                    (go target-pilot-start (process->handle s5-1) (the-as symbol (-> arg3 param 3)) a2-6)
+                                    (go target-pilot-start (process->handle s5-1) (the-as symbol (-> arg3 param 3)) a2-8)
                                     )
                                   )
                                 )

@@ -319,7 +319,7 @@ bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* rend
     memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
   }
 
-  if (render_state->version == GameVersion::Jak2) {
+  if (render_state->version >= GameVersion::Jak2) {
     // jak 2 proto visibility
     auto proto_mask_data = dma.read_and_advance();
     m_common_data.proto_vis_data = proto_mask_data.data;

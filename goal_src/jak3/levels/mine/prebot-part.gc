@@ -5,5 +5,1600 @@
 ;; name in dgo: prebot-part
 ;; dgos: MINED
 
+(define-extern *range-mine-boss-stuck-flame-color* curve-color-fast)
+(define-extern *range-mine-boss-stuck-flame-alpha* curve2d-fast)
+(define-extern *range-mine-boss-stuck-flame-scale-x* curve2d-fast)
+(define-extern *range-mine-boss-stuck-flame-scale-y* curve2d-fast)
+(define-extern *r-curve-mine-boss-stuck-flame* curve2d-fast)
+(define-extern *g-curve-mine-boss-stuck-flame* curve2d-fast)
+(define-extern *b-curve-mine-boss-stuck-flame* curve2d-fast)
+(define-extern *curve-mine-boss-stuck-flame-alpha* curve2d-fast)
+(define-extern *curve-mine-boss-stuck-flame-scale-x* curve2d-fast)
+(define-extern *curve-mine-boss-stuck-flame-scale-y* curve2d-fast)
+(define-extern *part-prebot-stuck-flame-curve-settings* particle-curve-settings)
+(define-extern *range-mine-boss-explo-color* curve-color-fast)
+(define-extern *range-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *range-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *range-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *curve-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *curve-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *curve-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *part-prebot-chasm-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-final-mine-boss-explo-color* curve-color-fast)
+(define-extern *range-final-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *range-final-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *range-final-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *curve-final-mine-boss-explo-alpha* curve2d-fast)
+(define-extern *curve-final-mine-boss-explo-scale-x* curve2d-fast)
+(define-extern *curve-final-mine-boss-explo-scale-y* curve2d-fast)
+(define-extern *part-final-prebot-chasm-explosion-texture-curve-settings* particle-curve-settings)
+
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch float vs none.
+(defun birth-func-pillar-rocks-bounce ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (set! (-> arg1 omega) (-> arg2 launchrot y))
+  (none)
+  )
+
+(defun spt-func-pillar-rocks-bounce1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (when (and (< (-> arg2 launchrot y) (-> arg1 omega)) (< (-> arg1 vel-sxvel y) 0.0))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (sp-kill-particle arg0 arg1)
+      (set-vector! s4-0 (-> arg2 launchrot x) (-> arg1 omega) (-> arg2 launchrot z) 1.0)
+      (launch-particles (-> *part-id-table* 4464) s4-0)
+      )
+    )
+  (none)
+  )
+
+(defun spt-func-pillar-rocks-bounce2 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (when (and (< (-> arg2 launchrot y) (-> arg1 omega)) (< (-> arg1 vel-sxvel y) 0.0))
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (sp-kill-particle arg0 arg1)
+      (set-vector! s4-0 (-> arg2 launchrot x) (-> arg1 omega) (-> arg2 launchrot z) 1.0)
+      (launch-particles (-> *part-id-table* 4465) s4-0)
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defun spt-func-pillar-rocks-bounce3 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (cond
+    ((or (< (-> arg1 omega) (-> arg2 launchrot y)) (< 0.0 (-> arg1 vel-sxvel y)))
+     (sparticle-texture-animate arg0 arg1 (the-as vector arg2))
+     )
+    (else
+      (set! (-> arg1 acc x) 0.0)
+      (set! (-> arg1 acc y) 0.0)
+      (set! (-> arg1 acc z) 0.0)
+      (set! (-> arg1 vel-sxvel x) (* 0.7 (-> arg1 vel-sxvel x)))
+      (set! (-> arg1 vel-sxvel z) (* 0.7 (-> arg1 vel-sxvel z)))
+      (set! (-> arg2 launchrot y) (-> arg1 omega))
+      )
+    )
+  (none)
+  )
+
+(defpartgroup group-prebot-launch-critter
+  :id 1334
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4466 :flags (sp7) :period (seconds 2) :length (seconds 0.017))
+    (sp-item 4467 :flags (sp7) :period (seconds 2) :length (seconds 0.017))
+    (sp-item 4468 :flags (sp6) :period (seconds 2) :length (seconds 0.017))
+    )
+  )
+
+(defpart 4466
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 16.0)
+    (:scale-x (meters 1.5) (meters 0.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 64.0 128.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.016666668) (meters 0.10666667))
+    (:scalevel-x (meters 0.006666667) (meters 0.013333334))
+    (:rotvel-z (degrees -0.4) (degrees 0.8))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.10666667 -0.10666667)
+    (:friction 0.95)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4467
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 48.0)
+    (:scale-x (meters 1.5) (meters 0.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 64.0 128.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.033333335) (meters 0.016666668))
+    (:scalevel-x (meters 0.006666667) (meters 0.013333334))
+    (:rotvel-z (degrees -0.4) (degrees 0.8))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.10666667 -0.10666667)
+    (:friction 0.95)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2))
+    (:conerot-x (degrees 70) (degrees 40))
+    (:conerot-y (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4468
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 4))
+    (:rot-x (degrees 45))
+    (:scale-y :copy scale-x)
+    (:r 100.0)
+    (:g 100.0)
+    (:b 255.0)
+    (:a 128.0)
+    (:omega (degrees 9011.25))
+    (:scalevel-x (meters 0.53333336))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -6.4)
+    (:timer (seconds 0.15))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 40960.0)
+    )
+  )
+
+(defpart 4469
+  :init-specs ((:texture (pal-lightning-red level-default-sprite))
+    (:birth-func 'birth-func-set-quat)
+    (:num 1.0)
+    (:scale-x (meters 1) (meters 2))
+    (:scale-y (meters 1))
+    (:r 128.0 64.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 80.0 128.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 left-multiply-quat))
+    )
+  )
+
+(defpart 4470
+  :init-specs ((:texture (radial-gradient-yellow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:rot-x (degrees 22.5))
+    (:scale-y :copy scale-x)
+    (:r 128.0 64.0)
+    (:g 80.0 20.0)
+    (:b 128.0 64.0)
+    (:a 128.0)
+    (:omega (degrees 4511.25))
+    (:rotvel-z (degrees 0.3))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpart 4471
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:y (meters 1))
+    (:scale-x (meters 1) (meters 3))
+    (:rot-z (degrees 0) (degrees 3600))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 180.0)
+    (:b 100.0)
+    (:a 200.0 55.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    )
+  )
+
+(defpartgroup group-prebot-gun-shot-trail
+  :id 1335
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4472 :flags (sp6))
+    (sp-item 4473 :fade-after (meters 120) :falloff-to (meters 120))
+    (sp-item 4474 :flags (sp6))
+    (sp-item 4475 :fade-after (meters 120) :falloff-to (meters 120))
+    )
+  )
+
+(defpart 4472
+  :init-specs ((:texture (ring level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1.5) (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 0.0)
+    (:b 255.0)
+    (:a 10.0 30.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    )
+  )
+
+(defpart 4475
+  :init-specs ((:texture (hotdot level-default-sprite))
+    (:num 1.0 6.0)
+    (:scale-x (meters 0.3) (meters 0.2))
+    (:scale-y :copy scale-x)
+    (:r 30.0 30.0)
+    (:g :copy r)
+    (:b 255.0)
+    (:a 128.0)
+    (:vel-y (meters 0) (meters 0.016666668))
+    (:fade-a -0.42666668)
+    (:accel-y (meters -0.000033333334) (meters -0.000016666667))
+    (:friction 0.96 0.01)
+    (:timer (seconds 0.5) (seconds 3.997))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.017) (seconds 0.497))
+    (:next-launcher 4476)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4476
+  :init-specs ((:r 255.0) (:g 255.0) (:b 255.0) (:next-time (seconds 0.017)) (:next-launcher 4477))
+  )
+
+(defpart 4477
+  :init-specs ((:r 30.0 30.0) (:g :copy r) (:b 255.0) (:next-time (seconds 0.017) (seconds 0.497)) (:next-launcher 4476))
+  )
+
+(defpart 4474
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 255.0)
+    (:omega (degrees 6761.25))
+    (:timer (seconds 0.067))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 3072.0)
+    (:next-time (seconds 0.035))
+    (:next-launcher 4478)
+    )
+  )
+
+(defpart 4478
+  :init-specs ((:scale-x (meters 2.5)) (:scale-y :copy scale-x) (:r 0.0) (:g 0.0) (:b 255.0) (:a 16.0) (:fade-a -1.6))
+  )
+
+(defpart 4473
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 1.0 3.0)
+    (:scale-x (meters 0.8) (meters 0.8))
+    (:rot-z (degrees 0) (degrees 3600))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 0.0)
+    (:b 255.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters 0.005) (meters 0.008333334))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 3.2)
+    (:fade-g 3.2)
+    (:fade-b -3.2)
+    (:fade-a -0.10666667 -0.10666667)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2))
+    (:userdata :data (new 'static 'boxed-array :type int32 5 1 0 #x400000 #x405c00))
+    (:next-time (seconds 0.135))
+    (:next-launcher 4479)
+    )
+  )
+
+(defpart 4479
+  :init-specs ((:r 128.0) (:g 128.0) (:b 128.0) (:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0))
+  )
+
+(defpartgroup group-prebot-eco-pillar-heat-up
+  :id 1336
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 4480) (sp-item 4481) (sp-item 4482 :flags (is-3d sp7)))
+  )
+
+(defpart 4480
+  :init-specs ((:texture (lava-drop-01 mined-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 1.0)
+    (:x (meters 1) (meters 0.2))
+    (:scale-x (meters 0.1) (meters 0.3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 80.0 60.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:vel-y (meters 0.033333335) (meters 0.033333335))
+    (:rotvel-z (degrees -2) (degrees 4))
+    (:accel-y (meters -0.0023333333))
+    (:timer (seconds 1))
+    (:flags (launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32 5 1 0 -1384120320 -1384120064 -1384119808 -1384119552))
+    (:func 'check-drop-group-center)
+    (:next-time (seconds 0.167) (seconds 0.165))
+    (:next-launcher 4483)
+    (:conerot-x (degrees 0) (degrees 20))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4483
+  :init-specs ((:fade-r -1.275) (:fade-g -0.7) (:fade-b 0.05))
+  )
+
+(defpart 4481
+  :init-specs ((:texture (water-drops level-default-sprite))
+    (:num 1.0)
+    (:x (meters -1) (meters 2))
+    (:z (meters -1) (meters 2))
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 80.0 60.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:vel-y (meters 0.016666668) (meters 0.016666668))
+    (:scalevel-x (meters 0.0033333334) (meters 0.0033333334))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.0023333333))
+    (:timer (seconds 1))
+    (:flags (launch-along-z))
+    (:func 'check-drop-group-center)
+    (:conerot-x (degrees 0) (degrees 20))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4482
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 0.1)
+    (:y (meters 1))
+    (:scale-x (meters 10) (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 80.0 60.0)
+    (:b 0.0)
+    (:a 0.0)
+    (:fade-a 1.7066667)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.25))
+    (:next-launcher 4484)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4484
+  :init-specs ((:fade-a -1.7066667))
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun spt-birth-func-brightness-prebot-eco-pillar-rocks ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (let ((s5-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 160))
+        (s3-0 (logand 0 (rand-uint31-gen *random-generator*)))
+        (s4-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 31) 60))
+        (v1-6 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 100))
+        )
+    (set! (-> arg2 rotate-x) (the float (- s5-0 (the-as int s3-0))))
+    (set! (-> arg2 rotate-y) (the float (- s5-0 s4-0)))
+    (set! (-> arg2 rotate-z) (the float (- s5-0 v1-6)))
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun spt-birth-func-brightness-prebot-eco-pillar-rocks2 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (let ((s5-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 100))
+        (s3-0 (logand 0 (rand-uint31-gen *random-generator*)))
+        (s4-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 31) 60))
+        (v1-6 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 80))
+        )
+    (set! (-> arg2 rotate-x) (the float (- s5-0 (the-as int s3-0))))
+    (set! (-> arg2 rotate-y) (the float (- s5-0 s4-0)))
+    (set! (-> arg2 rotate-z) (the float (- s5-0 v1-6)))
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun spt-birth-func-brightness-prebot-eco-pillar-rocks3 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (let ((s5-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 70))
+        (s3-0 (logand 0 (rand-uint31-gen *random-generator*)))
+        (s4-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 31) 40))
+        (v1-6 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 60))
+        )
+    (set! (-> arg2 rotate-x) (the float (- s5-0 (the-as int s3-0))))
+    (set! (-> arg2 rotate-y) (the float (- s5-0 s4-0)))
+    (set! (-> arg2 rotate-z) (the float (- s5-0 v1-6)))
+    )
+  (none)
+  )
+
+(defpartgroup group-prebot-eco-pillar-grow
+  :id 1337
+  :duration (seconds 0.017)
+  :linger-duration (seconds 10)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 4485)
+    (sp-item 4486 :flags (is-3d sp3 sp7))
+    (sp-item 4487 :period (seconds 20) :length (seconds 0.167))
+    )
+  )
+
+(defpart 4485
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:num 0.3)
+    (:x (meters 1) (meters 1))
+    (:scale-x (meters 3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 80.0)
+    (:b 0.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters 0.0033333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g 0.14166667)
+    (:fade-b 0.20833333)
+    (:fade-a -0.053333335)
+    (:accel-y (meters 0.00033333333) (meters 0.00033333333))
+    (:friction 0.95 0.01)
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4486
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:y (meters 1))
+    (:scale-x (meters 11))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 80.0 60.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:fade-a -0.08533333)
+    (:timer (seconds 5))
+    (:flags (sp-cpuinfo-flag-3))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4487
+  :init-specs ((:texture (rockbit01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-prebot-eco-pillar-rocks)
+    (:num 3.0)
+    (:x (meters 1) (meters 0.5))
+    (:y (meters 0.5))
+    (:scale-x (meters 0.3) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3) (meters 1))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.023333333) (meters 0.06666667))
+    (:rotvel-z (degrees -1) (degrees 2))
+    (:fade-r -0.33333334)
+    (:fade-g -0.33333334)
+    (:fade-b -0.33333334)
+    (:accel-y (meters -0.0033333334))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-0))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #x408b00
+                       #x408c00
+                       #x40a100
+                       #x40a200
+                       #x40a300
+                       #x40a400
+                       #x40a500
+                       #x40a600
+                       #x40a700
+                       #x40a800
+                       #x40a900
+                       #x40aa00
+                       #x40ab00
+                       #x40ac00
+                       #x40ad00
+                       #x40ae00
+                       )
+               )
+    (:func 'spt-func-part-prebot-eco-pillar-rocks)
+    (:conerot-x (degrees 20))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defun spt-birth-func-part-prebot-eco-pillar-rocks ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (birth-func-pillar-rocks-bounce arg0 arg1 arg2)
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (spt-birth-func-brightness-prebot-eco-pillar-rocks arg0 arg1 arg2)
+  (none)
+  )
+
+(defun spt-func-part-prebot-eco-pillar-rocks ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (sparticle-texture-animate arg0 arg1 (the-as vector arg2))
+  (spt-func-pillar-rocks-bounce1 arg0 arg1 arg2)
+  (none)
+  )
+
+(defpart 4464
+  :init-specs ((:texture (rockbit01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-prebot-eco-pillar-rocks-bounce1)
+    (:num 0.5)
+    (:scale-x (meters 0.3) (meters 1) :store)
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3) (meters 1))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.016666668) (meters 0.033333335))
+    (:rotvel-z (degrees -1) (degrees 2))
+    (:fade-r -0.33333334)
+    (:fade-g -0.33333334)
+    (:fade-b -0.33333334)
+    (:accel-y (meters -0.0016666667))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-0))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #x40ae00
+                       #x40ad00
+                       #x40ac00
+                       #x40ab00
+                       #x40aa00
+                       #x40a900
+                       #x40a800
+                       #x40a700
+                       #x40a600
+                       #x40a500
+                       #x40a400
+                       #x40a300
+                       #x40a200
+                       #x40a100
+                       #x408c00
+                       #x408b00
+                       )
+               )
+    (:func 'spt-func-part-prebot-eco-pillar-rocks-bounce1)
+    (:conerot-x (degrees 5) (degrees 30))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defun spt-birth-func-part-prebot-eco-pillar-rocks-bounce1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (birth-func-pillar-rocks-bounce arg0 arg1 arg2)
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (spt-birth-func-brightness-prebot-eco-pillar-rocks2 arg0 arg1 arg2)
+  (none)
+  )
+
+(defun spt-func-part-prebot-eco-pillar-rocks-bounce1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (sparticle-texture-animate arg0 arg1 (the-as vector arg2))
+  (spt-func-pillar-rocks-bounce2 arg0 arg1 arg2)
+  (none)
+  )
+
+(defpart 4465
+  :init-specs ((:texture (rockbit01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-prebot-eco-pillar-rocks-bounce2)
+    (:num 0.5)
+    (:scale-x '*sp-temp*)
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.3) (meters 1))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.01) (meters 0.016666668))
+    (:scalevel-x (meters -0.0016666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.33333334)
+    (:fade-g -0.33333334)
+    (:fade-b -0.33333334)
+    (:accel-y (meters -0.0016666667))
+    (:timer (seconds 10))
+    (:flags (sp-cpuinfo-flag-0))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #x408b00
+                       #x408c00
+                       #x40a100
+                       #x40a200
+                       #x40a300
+                       #x40a400
+                       #x40a500
+                       #x40a600
+                       #x40a700
+                       #x40a800
+                       #x40a900
+                       #x40aa00
+                       #x40ab00
+                       #x40ac00
+                       #x40ad00
+                       #x40ae00
+                       )
+               )
+    (:func 'spt-func-pillar-rocks-bounce3)
+    (:conerot-x (degrees 5) (degrees 30))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defun spt-birth-func-part-prebot-eco-pillar-rocks-bounce2 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (birth-func-pillar-rocks-bounce arg0 arg1 arg2)
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (spt-birth-func-brightness-prebot-eco-pillar-rocks3 arg0 arg1 arg2)
+  (none)
+  )
+
+(defpartgroup group-prebot-eco-pillar-cool-down
+  :id 1338
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 4488))
+  )
+
+(defpart 4488
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:num 0.3)
+    (:x (meters 1) (meters 1))
+    (:scale-x (meters 2) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 80.0)
+    (:b 0.0)
+    (:a 16.0 16.0)
+    (:scalevel-x (meters 0.0016666667) (meters 0.0016666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g 0.14166667)
+    (:fade-b 0.20833333)
+    (:fade-a -0.026666667)
+    (:accel-y (meters 0.00033333333) (meters 0.00033333333))
+    (:friction 0.95 0.01)
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4489
+  :init-specs ((:texture (radial-gradient level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5) (meters 1))
+    (:rot-x (degrees 22.725))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 150.0)
+    (:b 60.0)
+    (:a 100.0 30.0)
+    (:omega (degrees 4511.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpart 4490
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1.5))
+    (:rot-x (degrees 0.225))
+    (:rot-z (degrees -4) (degrees 8))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 0.0 64.0)
+    (:b 0.0)
+    (:a 64.0 16.0)
+    (:omega (degrees 4511.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpartgroup group-prebot-stuck-flame
+  :id 1339
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 40)
+  :parts ((sp-item 4491))
+  )
+
+(defpart 4491
+  :init-specs ((:texture (flame01 level-default-sprite))
+    (:birth-func 'birth-func-curve)
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.033333335) (meters 0.1))
+    (:friction 0.99 0.01)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-3))
+    (:userdata 0.0)
+    (:func 'live-func-curve)
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(if #t
+    (set! *range-mine-boss-stuck-flame-color* (new 'static 'curve-color-fast
+                                                :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                :ys (new 'static 'inline-array vector 4
+                                                  (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                                  (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                                  (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                                  (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                                                  )
+                                                :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                                                )
+          )
+    )
+
+(if #t
+    (set! *range-mine-boss-stuck-flame-alpha* (new 'static 'curve2d-fast
+                                                :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                :ys (new 'static 'vector :x 128.0 :y 64.0 :z 65.0 :w 66.0)
+                                                :one-over-x-deltas (new 'static 'vector :x -64.0 :y 1.0 :z 1.0 :w 1.0)
+                                                )
+          )
+    )
+
+(if #t
+    (set! *range-mine-boss-stuck-flame-scale-x* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                  :ys (new 'static 'vector :x 6.0 :y 3.0 :z 4.0 :w 5.0)
+                                                  :one-over-x-deltas (new 'static 'vector :x -3.0 :y 1.0 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(if #t
+    (set! *range-mine-boss-stuck-flame-scale-y* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                  :ys (new 'static 'vector :x 6.0 :y 3.0 :z 4.0 :w 5.0)
+                                                  :one-over-x-deltas (new 'static 'vector :x -3.0 :y 1.0 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(if #t
+    (set! *r-curve-mine-boss-stuck-flame* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -0.3 :z -0.7 :w -1.0)
+                                            :ys (new 'static 'vector :x 0.2 :y 1.0 :z 1.0 :w 1.0)
+                                            :one-over-x-deltas (new 'static 'vector :x 2.6666665 :w 1.0)
+                                            )
+          )
+    )
+
+(if #t
+    (set! *g-curve-mine-boss-stuck-flame* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -0.3 :z -0.4 :w -1.0)
+                                            :ys (new 'static 'vector :y 1.0 :z 0.5 :w 0.3)
+                                            :one-over-x-deltas (new 'static 'vector :x 3.3333333 :y -5.0000005 :z -0.3333333 :w 1.0)
+                                            )
+          )
+    )
+
+(if #t
+    (set! *b-curve-mine-boss-stuck-flame* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -0.3 :z -1.0 :w -2.0)
+                                            :ys (new 'static 'vector :x 1.0 :w 1.0)
+                                            :one-over-x-deltas (new 'static 'vector :x -3.3333333 :z 1.0 :w 1.0)
+                                            )
+          )
+    )
+
+(if #t
+    (set! *curve-mine-boss-stuck-flame-alpha* (new 'static 'curve2d-fast
+                                                :xs (new 'static 'vector :y -0.05 :z -0.7 :w -1.0)
+                                                :ys (new 'static 'vector :y 1.0 :z 0.8)
+                                                :one-over-x-deltas (new 'static 'vector :x 20.0 :y -0.3076923 :z -2.6666665 :w 1.0)
+                                                )
+          )
+    )
+
+(if #t
+    (set! *curve-mine-boss-stuck-flame-scale-x* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                  :ys (new 'static 'vector :x 1.0 :y 1.0 :z 2.0 :w 3.0)
+                                                  :one-over-x-deltas (new 'static 'vector :y 1.0 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(if #t
+    (set! *curve-mine-boss-stuck-flame-scale-y* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                  :ys (new 'static 'vector :x 1.0 :y 3.0 :z 4.0 :w 5.0)
+                                                  :one-over-x-deltas (new 'static 'vector :x 2.0 :y 1.0 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(define *part-prebot-stuck-flame-curve-settings* (new 'static 'particle-curve-settings
+                                                   :lifetime-base (seconds 0.1)
+                                                   :lifetime-offset (seconds 0.4)
+                                                   :flags (particle-curve-flags pcf1)
+                                                   )
+        )
+
+(set! (-> *part-id-table* 4491 init-specs 13 initial-valuef)
+      (the-as float *part-prebot-stuck-flame-curve-settings*)
+      )
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* color-start) *range-mine-boss-stuck-flame-color*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* alpha-start) *range-mine-boss-stuck-flame-alpha*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* scale-x-start) *range-mine-boss-stuck-flame-scale-x*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* scale-y-start) *range-mine-boss-stuck-flame-scale-y*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* r-scalar) *r-curve-mine-boss-stuck-flame*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* g-scalar) *g-curve-mine-boss-stuck-flame*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* b-scalar) *b-curve-mine-boss-stuck-flame*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* a-scalar) *curve-mine-boss-stuck-flame-alpha*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* scale-x-scalar) *curve-mine-boss-stuck-flame-scale-x*)
+
+(set! (-> *part-prebot-stuck-flame-curve-settings* scale-y-scalar) *curve-mine-boss-stuck-flame-scale-y*)
+
+(defpartgroup group-prebot-chasm-explosion
+  :id 1340
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 4492 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4493 :period (seconds 30) :length (seconds 1))
+    (sp-item 4494 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4495 :period (seconds 30) :length (seconds 0.5))
+    (sp-item 4496 :period (seconds 30) :length (seconds 0.5))
+    )
+  )
+
+(defpart 4494
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 100))
+    (:rot-x (degrees 450))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 128.0)
+    (:omega (degrees 6767.9995))
+    (:scalevel-x (meters -1.3333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -2.56)
+    (:fade-b -5.1)
+    (:timer (seconds 0.167))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpart 4492
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 150))
+    (:rot-x (degrees 225))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 128.0)
+    (:b 40.0)
+    (:a 64.0)
+    (:fade-a -0.14222223)
+    (:timer (seconds 1.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 40960.0)
+    )
+  )
+
+(defpart 4493
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 10.0)
+    (:scale-x (meters 0.05) (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:omega (degrees 0.00225))
+    (:vel-y (meters 0.33333334) (meters 1.6666666))
+    (:fade-g -0.128)
+    (:fade-b -0.42666668)
+    (:friction 0.95)
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:next-time (seconds 0.335))
+    (:next-launcher 4497)
+    (:conerot-x (degrees -20) (degrees 40))
+    (:conerot-z (degrees -20) (degrees 40))
+    )
+  )
+
+(defpart 4497
+  :init-specs ((:omega (degrees 0.0225)) (:friction 0.97))
+  )
+
+(defpart 4495
+  :init-specs ((:texture (explosion-edge level-default-sprite))
+    (:num 10.0)
+    (:scale-x (meters 5) (meters 5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 80.0 20.0)
+    (:b 30.0)
+    (:a 128.0)
+    (:vel-y (meters 1) (meters 0.33333334))
+    (:scalevel-x (meters 0.033333335) (meters 0.033333335))
+    (:scalevel-y (meters 0.06666667) (meters 0.06666667))
+    (:fade-g -0.13333334)
+    (:fade-b -0.05)
+    (:fade-a -0.21333334 -0.21333334)
+    (:friction 0.9)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3))
+    (:func 'sparticle-2d-spline-align-instant)
+    (:conerot-x (degrees 0) (degrees 30))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4496
+  :init-specs ((:texture (explo-texture level-default-sprite))
+    (:birth-func 'birth-func-curve)
+    (:num 10.0)
+    (:x (meters -1) (meters 2))
+    (:y (meters 0) (meters 2))
+    (:scale-x (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.6666667) (meters 0.33333334))
+    (:friction 0.9)
+    (:timer (seconds 1))
+    (:flags ())
+    (:userdata 0.0)
+    (:func 'live-func-curve)
+    (:conerot-x (degrees 0) (degrees 30))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(if #t
+    (set! *range-mine-boss-explo-color* (new 'static 'curve-color-fast
+                                          :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                          :ys (new 'static 'inline-array vector 4
+                                            (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                            (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                            (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                            (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                            )
+                                          :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                                          )
+          )
+    )
+
+(if #t
+    (set! *range-mine-boss-explo-alpha* (new 'static 'curve2d-fast
+                                          :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                          :ys (new 'static 'vector :x 128.0 :y 128.0 :z 129.0 :w 130.0)
+                                          :one-over-x-deltas (new 'static 'vector :y 1.0 :z 1.0 :w 1.0)
+                                          )
+          )
+    )
+
+(if #t
+    (set! *range-mine-boss-explo-scale-x* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                            :ys (new 'static 'vector :x 10.0 :y 20.0 :z 21.0 :w 22.0)
+                                            :one-over-x-deltas (new 'static 'vector :x 10.0 :y 1.0 :z 1.0 :w 1.0)
+                                            )
+          )
+    )
+
+(if #t
+    (set! *range-mine-boss-explo-scale-y* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                            :ys (new 'static 'vector :x 10.0 :y 20.0 :z 21.0 :w 22.0)
+                                            :one-over-x-deltas (new 'static 'vector :x 10.0 :y 1.0 :z 1.0 :w 1.0)
+                                            )
+          )
+    )
+
+(if #t
+    (set! *curve-mine-boss-explo-alpha* (new 'static 'curve2d-fast
+                                          :xs (new 'static 'vector :y -0.05 :z -0.7 :w -1.0)
+                                          :ys (new 'static 'vector :y 1.0 :z 0.8)
+                                          :one-over-x-deltas (new 'static 'vector :x 20.0 :y -0.3076923 :z -2.6666665 :w 1.0)
+                                          )
+          )
+    )
+
+(if #t
+    (set! *curve-mine-boss-explo-scale-x* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -0.8 :z -1.0 :w -2.0)
+                                            :ys (new 'static 'vector :y 1.0 :z 1.5 :w 2.5)
+                                            :one-over-x-deltas (new 'static 'vector :x 1.25 :y 2.5000002 :z 1.0 :w 1.0)
+                                            )
+          )
+    )
+
+(if #t
+    (set! *curve-mine-boss-explo-scale-y* (new 'static 'curve2d-fast
+                                            :xs (new 'static 'vector :y -0.8 :z -1.0 :w -2.0)
+                                            :ys (new 'static 'vector :y 1.0 :z 1.5 :w 2.5)
+                                            :one-over-x-deltas (new 'static 'vector :x 1.25 :y 2.5000002 :z 1.0 :w 1.0)
+                                            )
+          )
+    )
+
+(define *part-prebot-chasm-explosion-texture-curve-settings* (new 'static 'particle-curve-settings
+                                                               :lifetime-base (seconds 0.3)
+                                                               :lifetime-offset (seconds 0.6)
+                                                               :flags (particle-curve-flags pcf0)
+                                                               )
+        )
+
+(set! (-> *part-id-table* 4496 init-specs 16 initial-valuef)
+      (the-as float *part-prebot-chasm-explosion-texture-curve-settings*)
+      )
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* color-start) *range-mine-boss-explo-color*)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* alpha-start) *range-mine-boss-explo-alpha*)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* scale-x-start) *range-mine-boss-explo-scale-x*)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* scale-y-start) *range-mine-boss-explo-scale-y*)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* r-scalar) #f)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* g-scalar) #f)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* b-scalar) #f)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* a-scalar) *curve-mine-boss-explo-alpha*)
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* scale-x-scalar)
+      *curve-mine-boss-explo-scale-x*
+      )
+
+(set! (-> *part-prebot-chasm-explosion-texture-curve-settings* scale-y-scalar)
+      *curve-mine-boss-explo-scale-y*
+      )
+
+(defpartgroup group-final-prebot-chasm-explosion
+  :id 1341
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 2)
+  :parts ((sp-item 4498 :flags (sp3) :period (seconds 10) :length (seconds 0.017))
+    (sp-item 4499 :flags (sp3) :period (seconds 10) :length (seconds 0.017))
+    (sp-item 4500 :period (seconds 10) :length (seconds 0.085))
+    (sp-item 4501 :period (seconds 10) :length (seconds 1))
+    (sp-item 4502 :period (seconds 10) :length (seconds 1))
+    )
+  )
+
+(defpart 4498
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 30))
+    (:rot-x (degrees 450))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 128.0)
+    (:omega (degrees 6767.9995))
+    (:scalevel-x (meters -0.6666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -2.56)
+    (:fade-b -5.1)
+    (:timer (seconds 0.167))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpart 4499
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 120))
+    (:rot-x (degrees 225))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 128.0)
+    (:b 40.0)
+    (:a 64.0)
+    (:fade-a -0.14222223)
+    (:timer (seconds 1.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 40960.0)
+    )
+  )
+
+(defpart 4500
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 50.0)
+    (:scale-x (meters 0.05) (meters 0.1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:omega (degrees 0.0225))
+    (:vel-y (meters 0.06666667) (meters 0.33333334))
+    (:fade-g -1.28)
+    (:fade-b -2.56)
+    (:friction 0.9)
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:conerot-x (degrees -130) (degrees 260))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4501
+  :init-specs ((:texture (explosion-edge level-default-sprite))
+    (:num 5.0)
+    (:scale-x (meters 1) (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 80.0 20.0)
+    (:b 30.0)
+    (:a 128.0)
+    (:vel-y (meters 0.2) (meters 0.16666667))
+    (:scalevel-x (meters 0.006666667) (meters 0.016666668))
+    (:scalevel-y (meters 0.033333335) (meters 0.033333335))
+    (:fade-g -0.26666668)
+    (:fade-b -0.1)
+    (:fade-a -0.42666668 -0.42666668)
+    (:friction 0.8)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-2d-spline-align-instant)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4502
+  :init-specs ((:texture (explo-texture level-default-sprite))
+    (:birth-func 'birth-func-curve)
+    (:num 3.0)
+    (:x (meters -1) (meters 2))
+    (:y (meters 0) (meters 1))
+    (:scale-x (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.16666667))
+    (:friction 0.85 0.05)
+    (:timer (seconds 1))
+    (:flags ())
+    (:userdata 0.0)
+    (:func 'live-func-curve)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(if #t
+    (set! *range-final-mine-boss-explo-color* (new 'static 'curve-color-fast
+                                                :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                :ys (new 'static 'inline-array vector 4
+                                                  (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                                  (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                                  (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                                  (new 'static 'vector :x 255.0 :y 255.0 :z 255.0 :w 128.0)
+                                                  )
+                                                :one-over-x-deltas (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+                                                )
+          )
+    )
+
+(if #t
+    (set! *range-final-mine-boss-explo-alpha* (new 'static 'curve2d-fast
+                                                :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                :ys (new 'static 'vector :x 128.0 :y 128.0 :z 129.0 :w 130.0)
+                                                :one-over-x-deltas (new 'static 'vector :y 1.0 :z 1.0 :w 1.0)
+                                                )
+          )
+    )
+
+(if #t
+    (set! *range-final-mine-boss-explo-scale-x* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                  :ys (new 'static 'vector :x 10.0 :y 15.0 :z 16.0 :w 17.0)
+                                                  :one-over-x-deltas (new 'static 'vector :x 5.0 :y 1.0 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(if #t
+    (set! *range-final-mine-boss-explo-scale-y* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                                  :ys (new 'static 'vector :x 10.0 :y 15.0 :z 16.0 :w 17.0)
+                                                  :one-over-x-deltas (new 'static 'vector :x 5.0 :y 1.0 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(if #t
+    (set! *curve-final-mine-boss-explo-alpha* (new 'static 'curve2d-fast
+                                                :xs (new 'static 'vector :y -0.05 :z -0.7 :w -1.0)
+                                                :ys (new 'static 'vector :y 1.0 :z 0.8)
+                                                :one-over-x-deltas (new 'static 'vector :x 20.0 :y -0.3076923 :z -2.6666665 :w 1.0)
+                                                )
+          )
+    )
+
+(if #t
+    (set! *curve-final-mine-boss-explo-scale-x* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -0.8 :z -1.0 :w -2.0)
+                                                  :ys (new 'static 'vector :y 1.0 :z 1.5 :w 2.5)
+                                                  :one-over-x-deltas (new 'static 'vector :x 1.25 :y 2.5000002 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(if #t
+    (set! *curve-final-mine-boss-explo-scale-y* (new 'static 'curve2d-fast
+                                                  :xs (new 'static 'vector :y -0.8 :z -1.0 :w -2.0)
+                                                  :ys (new 'static 'vector :y 1.0 :z 1.5 :w 2.5)
+                                                  :one-over-x-deltas (new 'static 'vector :x 1.25 :y 2.5000002 :z 1.0 :w 1.0)
+                                                  )
+          )
+    )
+
+(define *part-final-prebot-chasm-explosion-texture-curve-settings* (new 'static 'particle-curve-settings
+                                                                     :lifetime-base (seconds 0.5)
+                                                                     :lifetime-offset (seconds 0.6)
+                                                                     :flags (particle-curve-flags pcf0)
+                                                                     )
+        )
+
+(set! (-> *part-id-table* 4502 init-specs 16 initial-valuef)
+      (the-as float *part-final-prebot-chasm-explosion-texture-curve-settings*)
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* color-start)
+      *range-final-mine-boss-explo-color*
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* alpha-start)
+      *range-final-mine-boss-explo-alpha*
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* scale-x-start)
+      *range-final-mine-boss-explo-scale-x*
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* scale-y-start)
+      *range-final-mine-boss-explo-scale-y*
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* r-scalar) #f)
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* g-scalar) #f)
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* b-scalar) #f)
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* a-scalar)
+      *curve-final-mine-boss-explo-alpha*
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* scale-x-scalar)
+      *curve-final-mine-boss-explo-scale-x*
+      )
+
+(set! (-> *part-final-prebot-chasm-explosion-texture-curve-settings* scale-y-scalar)
+      *curve-final-mine-boss-explo-scale-y*
+      )
+
+(defpartgroup group-prebot-chasm-explosion-comets
+  :id 1342
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 600)
+  :parts ((sp-item 4504 :flags (sp3) :binding 4503)
+    (sp-item 4504 :flags (sp3) :binding 4503)
+    (sp-item 4504 :flags (sp3) :binding 4503)
+    (sp-item 4503 :flags (sp2))
+    (sp-item 4503 :flags (sp2))
+    (sp-item 4503 :flags (sp2))
+    )
+  )
+
+(defpart 4504
+  :init-specs ((:texture (hotdot level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 1.0)
+    (:scale-x (meters 30))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 100.0)
+    (:a 1.0)
+    (:vel-y (meters 0.53333336) (meters 0.06666667))
+    (:scalevel-x (meters -0.083333336))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.1 -0.1)
+    (:fade-b -0.05 -0.05)
+    (:accel-y (meters -0.00066666666))
+    (:friction 0.99)
+    (:timer (seconds 6.667))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3))
+    (:userdata :data (new 'static 'boxed-array :type int32 20 1 0 #x405c00 #x406500 #x400000 #x400700))
+    (:conerot-x (degrees 10) (degrees 10))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4503
+  :init-specs ((:texture (explosion-nebula level-default-sprite))
+    (:birth-func 'birth-func-inherit-size)
+    (:num 1.2)
+    (:scale-x (meters 0.00024414062) (meters 0.00012207031))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 130.0)
+    (:g 60.0 20.0)
+    (:b 20.0 10.0)
+    (:a 64.0 64.0)
+    (:scalevel-x (meters 0.01))
+    (:rotvel-z (degrees -0.13333334) (degrees 0.26666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.1 -0.1)
+    (:fade-b -0.05 -0.05)
+    (:fade-a -0.016666668 -0.1)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+(defpartgroup group-prebot-gun-shot-explosion
+  :id 1343
+  :duration (seconds 2)
+  :linger-duration (seconds 1)
+  :flags (sp0 sp5)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4505 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4506 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4507 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4508 :period (seconds 30) :length (seconds 0.335))
+    )
+  )
+
+(defpart 4505
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:rot-x (degrees 22.5))
+    (:scale-y :copy scale-x)
+    (:r 64.0)
+    (:g 64.0)
+    (:b 255.0)
+    (:a 64.0)
+    (:fade-a -0.21333334)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpart 4506
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 10.0 10.0)
+    (:scale-x (meters 2) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 120.0)
+    (:g 120.0)
+    (:b 255.0)
+    (:a 128.0)
+    (:vel-y (meters 0) (meters 0.06666667))
+    (:scalevel-x (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.4)
+    (:fade-g -0.4)
+    (:fade-a -0.42666668 -0.42666668)
+    (:friction 0.9)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4507
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 20))
+    (:rot-x (degrees 2.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 60.0)
+    (:g 60.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:omega (degrees 6767.9995))
+    (:scalevel-x (meters -0.33333334))
+    (:scalevel-y :copy scalevel-x)
+    (:timer (seconds 0.135))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )
+
+(defpart 4508
+  :init-specs ((:texture (explosion-edge level-default-sprite))
+    (:num 5.0)
+    (:scale-x (meters 2) (meters 1))
+    (:rot-y (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 80.0 20.0)
+    (:g :copy r)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:scalevel-x (meters 0.013333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.26666668)
+    (:fade-g -0.26666668)
+    (:fade-a -0.42666668 -0.42666668)
+    (:friction 0.85)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3))
+    (:func 'sparticle-2d-spline-align-instant)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun spt-birth-func-brightness-prebot-pillar-shatter-rocks ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (let ((s5-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 90))
+        (s3-0 (logand 0 (rand-uint31-gen *random-generator*)))
+        (s4-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 11) 20))
+        (v1-6 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 11) 40))
+        )
+    (set! (-> arg2 rotate-x) (the float (- s5-0 (the-as int s3-0))))
+    (set! (-> arg2 rotate-y) (the float (- s5-0 s4-0)))
+    (set! (-> arg2 rotate-z) (the float (- s5-0 v1-6)))
+    )
+  (none)
+  )
+
+(defpartgroup group-prebot-pillar-shatter
+  :id 1344
+  :duration (seconds 1)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 4509 :period (seconds 20) :length (seconds 0.035)))
+  )
+
+(defpart 4509
+  :init-specs ((:texture (rockbit01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-prebot-eco-pillar-shatter)
+    (:num 30.0)
+    (:x (meters 0) (meters 1))
+    (:y (meters 0) (meters -10))
+    (:scale-x (meters 0.1) (meters 1.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.023333333) (meters 0.06666667))
+    (:scalevel-x (meters 0) (meters 0.06666667))
+    (:rotvel-z (degrees -2) (degrees 4))
+    (:scalevel-y (meters 0) (meters 0.06666667))
+    (:fade-r -0.06666667)
+    (:fade-g -0.06666667)
+    (:fade-b -0.06666667)
+    (:accel-y (meters -0.0033333334))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-0 left-multiply-quat))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #x408b00
+                       #x408c00
+                       #x40a100
+                       #x40a200
+                       #x40a300
+                       #x40a400
+                       #x40a500
+                       #x40a600
+                       #x40a700
+                       #x40a800
+                       #x40a900
+                       #x40aa00
+                       #x40ab00
+                       #x40ac00
+                       #x40ad00
+                       #x40ae00
+                       )
+               )
+    (:func 'spt-func-part-prebot-eco-pillar-shatter)
+    (:next-time (seconds 0.017))
+    (:next-launcher 4510)
+    (:conerot-x (degrees 0) (degrees 180))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4510
+  :init-specs ((:scalevel-x (meters 0)) (:scalevel-y (meters 0)))
+  )
+
+(defun spt-birth-func-part-prebot-eco-pillar-shatter ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (spt-birth-func-brightness-prebot-pillar-shatter-rocks arg0 arg1 arg2 arg3 arg4)
+  (none)
+  )
+
+(defun spt-func-part-prebot-eco-pillar-shatter ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (sparticle-texture-animate arg0 arg1 (the-as vector arg2))
+  (none)
+  )

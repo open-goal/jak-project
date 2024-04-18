@@ -239,7 +239,7 @@ void SymbolInfoMap::add_builtin(const std::string& name, const std::string& docs
 void SymbolInfoMap::add_method(const std::string& method_name,
                                const std::vector<GoalArg>& args,
                                const MethodInfo& method_info,
-                               const goos::Object& defining_form) {
+                               const goos::Object& /*defining_form*/) {
   SymbolInfo info = {
       .m_kind = Kind::METHOD,
       .m_name = method_name,
@@ -290,9 +290,10 @@ std::vector<SymbolInfo*> SymbolInfoMap::get_all_symbols() const {
   return m_symbol_map.get_all_elements();
 }
 
-std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix) const {
+std::set<std::string> SymbolInfoMap::lookup_names_starting_with(const std::string& prefix,
+                                                                int max_count) const {
   std::set<std::string> names;
-  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix);
+  const auto lookup = m_symbol_map.retrieve_with_prefix(prefix, max_count);
   for (const auto& result : lookup) {
     names.insert(result->m_name);
   }

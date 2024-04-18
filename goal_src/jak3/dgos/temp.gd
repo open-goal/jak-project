@@ -1,5 +1,5 @@
 ("TEMP.DGO"
- ("tpage-3228.o"
+ ("tpage-3228.go"
   "precursor-ship-ag.go"
-  "temp.o"
+  "temp.go"
  ))

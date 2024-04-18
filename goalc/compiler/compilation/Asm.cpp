@@ -219,12 +219,11 @@ Val* Compiler::compile_asm_load_sym(const goos::Object& form, const goos::Object
       form, args, {{}, {goos::ObjectType::SYMBOL}},
       {{"sext", {false, goos::ObjectType::SYMBOL}}, {"color", {false, goos::ObjectType::SYMBOL}}});
   auto& sym_name = args.unnamed.at(1).as_symbol();
-  auto sym_kv = m_symbol_types.find(sym_name);
-  if (sym_kv == m_symbol_types.end()) {
+  const auto* sym_ts = m_symbol_types.lookup(sym_name);
+  if (!sym_ts) {
     throw_compiler_error(form, "Cannot find a symbol named {}.", sym_name.name_ptr);
   }
-  auto ts = sym_kv->second;
-  bool sext = m_ts.lookup_type(ts)->get_load_signed();
+  bool sext = m_ts.lookup_type(*sym_ts)->get_load_signed();
   if (args.has_named("sext")) {
     sext = get_true_or_false(form, args.named.at("sext"));
   }

@@ -1,7 +1,7 @@
 ("OUTCAST3.DGO"
- ("tpage-3306.o"
+ ("tpage-3306.go"
   "tpage-3307.go"
   "torn-simple-ag.go"
   "keira-simple-ag.go"
-  "outcast3.o"
+  "outcast3.go"
  ))

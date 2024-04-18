@@ -5,5 +5,5 @@
   "jinx-ag.go"
   "krimson-wall-break-ag.go"
   "com-power-box-ag.go"
-  "ljinx.o"
+  "ljinx.go"
  ))

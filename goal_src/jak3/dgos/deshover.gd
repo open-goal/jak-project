@@ -19,5 +19,5 @@
   "snake-wheel-fma-ag.go"
   "eco-crystal-dark-ag.go"
   "particleman-ag.go"
-  "deshover.o"
+  "deshover.go"
  ))

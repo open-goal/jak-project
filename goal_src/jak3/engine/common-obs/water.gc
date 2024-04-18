@@ -963,8 +963,9 @@
             )
           )
         (dotimes (s1-2 (the-as int (+ arg3 -1)))
-          (set! (-> (the-as region-prim-area #x70000000) pos quad) (-> arg2 s1-2 sphere quad))
-          (when (and (within-area? arg1 (the-as region-prim-area (+ #x70000000 0)))
+          ;; og:preserve-this
+          (set! (-> (scratchpad-object region-prim-area) pos quad) (-> arg2 s1-2 sphere quad))
+          (when (and (within-area? arg1 (scratchpad-object region-prim-area))
                      (begin
                        (logior! (-> arg0 flags) (water-flag over-water))
                        (>= (-> arg0 trans y) (- (-> arg2 s1-2 sphere y) (-> arg2 s1-2 sphere r)))
@@ -992,9 +993,10 @@
   (set! (-> arg1 flags) (water-flag))
   (set! (-> arg1 handle) (the-as handle #f))
   (set! (-> arg2 extra-flags) (the-as uint 0))
-  (set! (-> (the-as region-prim-area #x70000000) region-prim-list num-items) 0)
-  (set! (-> (the-as region-prim-area #x70000000) region-inside-count) 0)
-  (set! (-> (the-as region-prim-area #x70000000) pos quad) (-> arg0 sphere quad))
+  ;; og:preserve-this
+  (set! (-> (scratchpad-object region-prim-area) region-prim-list num-items) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-inside-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) pos quad) (-> arg0 sphere quad))
   (dotimes (gp-0 (-> *level* length))
     (let ((v1-7 (-> *level* level gp-0)))
       (when (= (-> v1-7 status) 'active)
@@ -1008,9 +1010,10 @@
                 (if (= (-> a0-6 name) 'water)
                     (collect-regions
                       a0-6
-                      (the-as sphere (-> (the-as region-prim-area #x70000000) pos))
+                      ;; og:preserve-this
+                      (the-as sphere (-> (scratchpad-object region-prim-area) pos))
                       0
-                      (the-as region-prim-list (+ #x70000000 0))
+                      (the-as region-prim-list (scratchpad-object region-prim-area))
                       )
                     )
                 (+! s3-0 1)
@@ -1022,17 +1025,19 @@
         )
       )
     )
-  (return (nonzero? (-> (the-as region-prim-area #x70000000) region-prim-list num-items)))
+  ;; og:preserve-this
+  (return (nonzero? (-> (scratchpad-object region-prim-area) region-prim-list num-items)))
   v0-1
   )
 
 (defun find-water-2 ((arg0 (inline-array water-sphere)) (arg1 int) (arg2 water-info) (arg3 water-info) (arg4 process-drawable))
   (set! (-> arg2 prim) #f)
   (set! (-> arg3 prim) #f)
-  (countdown (s1-0 (-> (the-as region-prim-area #x70000000) region-prim-list num-items))
+  ;; og:preserve-this
+  (countdown (s1-0 (-> (scratchpad-object region-prim-area) region-prim-list num-items))
     (water-info<-region
       arg3
-      (-> (the-as region-prim-area #x70000000) region-prim-list items s1-0)
+      (-> (scratchpad-object region-prim-area) region-prim-list items s1-0)
       arg0
       (the-as collide-action arg1)
       arg4

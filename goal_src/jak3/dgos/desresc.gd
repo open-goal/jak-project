@@ -47,5 +47,5 @@
   "neo-satellite-b-ag.go"
   "eco-crystal-dark-ag.go"
   "neo-satellite-shield-ag.go"
-  "desresc.o"
+  "desresc.go"
  ))

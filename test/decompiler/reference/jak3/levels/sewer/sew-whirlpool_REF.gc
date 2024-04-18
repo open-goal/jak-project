@@ -1,0 +1,123 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type sew-whirlpool
+(deftype sew-whirlpool (process-drawable)
+  ((spool-sound-id  sound-id)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type sew-whirlpool
+(defmethod inspect ((this sew-whirlpool))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tspool-sound-id: ~D~%" (-> this spool-sound-id))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (sew-whirlpool)
+  :virtual #t
+  :trans (behavior ()
+    (when (and *target*
+               (or (logtest? (water-flag touch-water) (-> *target* water flags))
+                   (logtest? (-> *target* control status) (collide-status on-water))
+                   )
+               (not (logtest? (-> *target* focus-status) (focus-status grabbed)))
+               )
+      (let* ((gp-0 (target-pos 0))
+             (f30-0 (vector-vector-xz-distance (-> self root trans) gp-0))
+             )
+        (when (< f30-0 61440.0)
+          (let* ((f26-0 (* 0.000016276043 (- 61440.0 f30-0)))
+                 (f24-0 98304.0)
+                 (f0-6 (atan (- (-> gp-0 x) (-> self root trans x)) (- (-> gp-0 z) (-> self root trans z))))
+                 (f28-0 (* 0.5 f26-0 f24-0 (seconds-per-frame)))
+                 (f22-0 (+ f0-6 f28-0))
+                 (f26-1 (- f30-0 (fmin f30-0 (* 0.16874999 f26-0 (fabs f24-0) (seconds-per-frame)))))
+                 (s5-0 (new 'stack-no-clear 'vector))
+                 )
+            (set-vector! s5-0 (* (sin f22-0) f26-1) 0.0 (* (cos f22-0) f26-1) 1.0)
+            (vector+! s5-0 s5-0 (-> self root trans))
+            (set! (-> s5-0 x) (* (- (-> s5-0 x) (-> gp-0 x)) (-> self clock frames-per-second)))
+            (set! (-> s5-0 y) 0.0)
+            (set! (-> s5-0 z) (* (- (-> s5-0 z) (-> gp-0 z)) (-> self clock frames-per-second)))
+            (let ((gp-1 (-> *target* control)))
+              (let ((s4-1 (new 'stack-no-clear 'collide-query)))
+                (send-event (-> gp-1 process) 'rotate-y-angle f28-0)
+                (set! (-> s4-1 collide-with) (-> gp-1 root-prim prim-core collide-with))
+                (set! (-> s4-1 ignore-process0) self)
+                (set! (-> s4-1 ignore-process1) #f)
+                (set! (-> s4-1 ignore-pat)
+                      (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                      )
+                (set! (-> s4-1 action-mask) (collide-action solid))
+                (fill-cache-for-shape gp-1 8192.0 s4-1)
+                )
+              (let ((s4-2 (-> gp-1 status)))
+                (integrate-and-collide! gp-1 s5-0)
+                (set! (-> gp-1 status) s4-2)
+                )
+              )
+            )
+          (when (and (< f30-0 4096.0) (not (logtest? (-> *target* focus-status) (focus-status dead))))
+            (set-action!
+              *gui-control*
+              (gui-action play)
+              (-> self spool-sound-id)
+              (gui-channel none)
+              (gui-action none)
+              (the-as string #f)
+              (the-as (function gui-connection symbol) #f)
+              (the-as process #f)
+              )
+            (sound-params-set! *gui-control* (-> self spool-sound-id) #f -1 -1 -1 0.5)
+            (send-event
+              *target*
+              'attack
+              #f
+              (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                  (damage 2.0)
+                                                                  (vehicle-damage-factor 1.0)
+                                                                  (vehicle-impulse-factor 1.0)
+                                                                  (mode 'drown-death)
+                                                                  )
+                                  )
+              )
+            )
+          )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for method 10 of type sew-whirlpool
+(defmethod deactivate ((this sew-whirlpool))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  ((method-of-type process-drawable deactivate) this)
+  (none)
+  )
+
+;; definition for method 11 of type sew-whirlpool
+(defmethod init-from-entity! ((this sew-whirlpool) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this spool-sound-id)
+        (add-process *gui-control* this (gui-channel gun) (gui-action queue) "whrlpool" -99.0 0)
+        )
+  (go (method-of-object this idle))
+  )
+
+
+
+

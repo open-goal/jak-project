@@ -400,6 +400,8 @@ PcTextureId TexturePool::allocate_pc_port_texture(GameVersion version) {
       return PcTextureId(get_jak1_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
     case GameVersion::Jak2:
       return PcTextureId(get_jak2_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
+    case GameVersion::Jak3:
+      return PcTextureId(get_jak3_tpage_dir().size() - 1, m_next_pc_texture_to_allocate++);
     default:
       ASSERT_NOT_REACHED();
   }
@@ -410,6 +412,15 @@ std::string TexturePool::get_debug_texture_name(PcTextureId id) {
   if (it) {
     return *it;
   } else {
-    return "???";
+    return "??? (missing PC id to name mapping)";
+  }
+}
+
+std::string TexturePool::get_debug_texture_name_from_tbp(u32 tbp) {
+  auto info = lookup_gpu_texture(tbp);
+  if (!info) {
+    return "??? (bad tbp)";
+  } else {
+    return get_debug_texture_name(info->tex_id);
   }
 }

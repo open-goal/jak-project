@@ -16,5 +16,5 @@
   "light-eco-vent-ag.go"
   "terraformer-mine-ag.go"
   "desw-snake-stump-ag.go"
-  "deswalk-vis.o"
+  "deswalk-vis.go"
  ))

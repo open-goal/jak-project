@@ -46,5 +46,5 @@
   "kidmedallion-ag.go"
   "particleman-ag.go"
   "security-wall-ag.go"
-  "comba.o"
+  "comba.go"
  ))

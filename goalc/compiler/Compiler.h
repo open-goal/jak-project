@@ -101,7 +101,8 @@ class Compiler {
       const std::string& file_path) const;
   std::vector<symbol_info::SymbolInfo*> lookup_symbol_info_by_prefix(
       const std::string& prefix) const;
-  std::set<std::string> lookup_symbol_names_starting_with(const std::string& prefix) const;
+  std::set<std::string> lookup_symbol_names_starting_with(const std::string& prefix,
+                                                          int max_count = -1) const;
   std::vector<symbol_info::SymbolInfo*> lookup_exact_name_info(const std::string& name) const;
   std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
   TypeSystem& type_system() { return m_ts; };
@@ -124,10 +125,8 @@ class Compiler {
   // TODO - this should be able to be removed, these are stored in `m_symbol_info`
   std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
   // TODO - this should be able to be removed, these are stored in `m_symbol_info`
-  std::unordered_map<goos::InternedSymbolPtr, TypeSpec, goos::InternedSymbolPtr::hash>
-      m_symbol_types;
-  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
-      m_global_constants;
+  goos::InternedPtrMap<TypeSpec> m_symbol_types;
+  goos::InternedPtrMap<goos::Object> m_global_constants;
   std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
       m_inlineable_functions;
   CompilerSettings m_settings;

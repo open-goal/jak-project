@@ -30,6 +30,7 @@ set(RUNTIME_SOURCE
         graphics/gfx_test.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
+        graphics/jak3_texture_remap.cpp
         graphics/opengl_renderer/background/background_common.cpp
         graphics/opengl_renderer/background/Shrub.cpp
         graphics/opengl_renderer/background/TFragment.cpp
@@ -127,6 +128,7 @@ set(RUNTIME_SOURCE
         kernel/jak3/klink.cpp
         kernel/jak3/klisten.cpp
         kernel/jak3/kmachine.cpp
+        kernel/jak3/kmachine_extras.cpp
         kernel/jak3/kmalloc.cpp
         kernel/jak3/kmemcard.cpp
         kernel/jak3/kprint.cpp
@@ -196,6 +198,17 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/sky.cpp
         mips2c/jak3_functions/texture.cpp
         mips2c/jak3_functions/particle_curves.cpp
+        mips2c/jak3_functions/collide_cache.cpp
+        mips2c/jak3_functions/collide_hash.cpp
+        mips2c/jak3_functions/collide_edge_grab.cpp
+        mips2c/jak3_functions/collide_mesh.cpp
+        mips2c/jak3_functions/spatial_hash.cpp
+        mips2c/jak3_functions/sparticle.cpp
+        mips2c/jak3_functions/sparticle_launcher.cpp
+        mips2c/jak3_functions/nav_control.cpp
+        mips2c/jak3_functions/nav_engine.cpp
+        mips2c/jak3_functions/merc_blend_shape.cpp
+        mips2c/jak3_functions/wvehicle_part.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

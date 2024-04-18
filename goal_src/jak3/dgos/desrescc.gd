@@ -1,6 +1,6 @@
 ("DESRESCC.DGO"
- ("tpage-1717.o"
+ ("tpage-1717.go"
   "daxter-highres-ag.go"
   "jakc-highres-ag.go"
-  "desrescc.o"
+  "desrescc.go"
  ))

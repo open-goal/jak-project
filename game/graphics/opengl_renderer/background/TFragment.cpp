@@ -99,7 +99,6 @@ void TFragment::render(DmaFollower& dma,
   if (m_my_id == render_state->bucket_for_vis_copy &&
       dma.current_tag_vifcode1().kind == VifCode::Kind::PC_PORT) {
     DmaTransfer transfers[20];
-
     for (int i = 0; i < render_state->num_vis_to_copy; i++) {
       transfers[i] = dma.read_and_advance();
       auto next0 = dma.read_and_advance();

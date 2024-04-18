@@ -1,5 +1,5 @@
 ("LJKFEET.DGO"
- ("tpage-2658.o"
+ ("tpage-2658.go"
   "jakc-feet-ag.go"
-  "ljkfeet.o"
+  "ljkfeet.go"
  ))

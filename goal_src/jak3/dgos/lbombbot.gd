@@ -8,5 +8,5 @@
   "krimson-wall-break-ag.go"
   "bombbot-bomb-ag.go"
   "kg-debris-ag.go"
-  "lbombbot.o"
+  "lbombbot.go"
  ))

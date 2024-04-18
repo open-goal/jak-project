@@ -1,6 +1,6 @@
 ("LJAKKLEV.DGO"
- ("tpage-1541.o"
+ ("tpage-1541.go"
   "kleever-highres-ag.go"
   "jak-highres-ag.go"
-  "ljakklev.o"
+  "ljakklev.go"
  ))

@@ -1,5 +1,5 @@
 ("SEG.DGO"
- ("tpage-1127.o"
+ ("tpage-1127.go"
   "tpage-1133.go"
   "tpage-1128.go"
   "tpage-1126.go"
@@ -10,5 +10,5 @@
   "sew-jump-pad-ag.go"
   "sew-move-plat-ag.go"
   "kg-debris-ag.go"
-  "sewg-vis.o"
+  "sewg-vis.go"
  ))

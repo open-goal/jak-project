@@ -1,5 +1,5 @@
 ("MUSEUM4B.DGO"
- ("tpage-3417.o"
+ ("tpage-3417.go"
   "babak-ag.go"
-  "museum4b.o"
+  "museum4b.go"
  ))

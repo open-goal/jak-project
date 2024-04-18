@@ -11,5 +11,5 @@
   "com-airlock-outer-ag.go"
   "ctyinda-evil-streetlamp-ag.go"
   "vin-door-ctyinda-ag.go"
-  "ctyinda-vis.o"
+  "ctyinda-vis.go"
  ))

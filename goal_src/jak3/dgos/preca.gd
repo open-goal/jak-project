@@ -39,5 +39,5 @@
   "shield-sphere-distort-ag.go"
   "precur-generator-d-gem-ag.go"
   "shield-sphere-ag.go"
-  "precura-vis.o"
+  "precura-vis.go"
  ))

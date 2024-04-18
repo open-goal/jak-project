@@ -9,5 +9,5 @@
   "cty-door-ag.go"
   "cty-elevator-ag.go"
   "ctyslumc-flag-ag.go"
-  "ctyslumc-vis.o"
+  "ctyslumc-vis.go"
  ))

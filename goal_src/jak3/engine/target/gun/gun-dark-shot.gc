@@ -12,47 +12,46 @@
 
 ;; DECOMP BEGINS
 
-(format 0 "SKIP: gun-dark-shot removed lightning specs~%")
-;; (set! (-> *lightning-spec-id-table* 15) (new 'static 'lightning-spec
-;;                                           :name "lightning-dark-shot-attack"
-;;                                           :flags (lightning-spec-flags lsf0)
-;;                                           :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-;;                                           :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-;;                                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-;;                                           :fade-start-factor 1.0
-;;                                           :fade-time 30.0
-;;                                           :texture (new 'static 'texture-id :index #x8f :page #x4)
-;;                                           :reduction 0.42
-;;                                           :num-points 16
-;;                                           :box-size 8192.0
-;;                                           :merge-factor 0.6
-;;                                           :merge-count 2
-;;                                           :radius 3276.8
-;;                                           :duration 45.0
-;;                                           :duration-rand 60.0
-;;                                           :sound (static-sound-spec "stretched-zap" :group 1)
-;;                                           )
-;;       )
+(set! (-> *lightning-spec-id-table* 15) (new 'static 'lightning-spec
+                                          :name "lightning-dark-shot-attack"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 1.0
+                                          :fade-time 30.0
+                                          :texture (new 'static 'texture-id :index #x8f :page #x4)
+                                          :reduction 0.42
+                                          :num-points 16
+                                          :box-size 8192.0
+                                          :merge-factor 0.6
+                                          :merge-count 2
+                                          :radius 3276.8
+                                          :duration 45.0
+                                          :duration-rand 60.0
+                                          :sound (static-sound-spec "stretched-zap" :group 1)
+                                          )
+      )
 
-;; (set! (-> *lightning-spec-id-table* 16) (new 'static 'lightning-spec
-;;                                           :name "lightning-dark-shot-attack-thick"
-;;                                           :flags (lightning-spec-flags lsf0)
-;;                                           :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-;;                                           :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
-;;                                           :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
-;;                                           :fade-start-factor 1.0
-;;                                           :fade-time 30.0
-;;                                           :texture (new 'static 'texture-id :index #x3f :page #x4)
-;;                                           :reduction 0.42
-;;                                           :num-points 16
-;;                                           :box-size 8192.0
-;;                                           :merge-factor 0.6
-;;                                           :merge-count 2
-;;                                           :radius 3276.8
-;;                                           :duration 60.0
-;;                                           :sound (static-sound-spec "stretched-zap" :group 1)
-;;                                           )
-;;       )
+(set! (-> *lightning-spec-id-table* 16) (new 'static 'lightning-spec
+                                          :name "lightning-dark-shot-attack-thick"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 1.0
+                                          :fade-time 30.0
+                                          :texture (new 'static 'texture-id :index #x3f :page #x4)
+                                          :reduction 0.42
+                                          :num-points 16
+                                          :box-size 8192.0
+                                          :merge-factor 0.6
+                                          :merge-count 2
+                                          :radius 3276.8
+                                          :duration 60.0
+                                          :sound (static-sound-spec "stretched-zap" :group 1)
+                                          )
+      )
 
 (defpartgroup group-lightning-dark-shot-tip-hit
   :id 183
@@ -108,7 +107,7 @@
 
 ;; WARN: Return type mismatch float vs none.
 (defun sparticle-lightning-2d-spline-align-plus-rotz ((arg0 object) (arg1 sparticle-cpuinfo) (arg2 sprite-vec-data-2d) (arg3 object))
-  (sparticle-2d-spline-align-instant arg0 arg1 arg2 arg3)
+  (sparticle-2d-spline-align-instant arg0 arg1 arg2)
   (+! (-> arg2 flag-rot-sy z) (-> *part-id-table* 664 init-specs 4 initial-valuef))
   (none)
   )
@@ -172,7 +171,7 @@
               ((gun-nuke-sphere-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 30)
               :texture-level 10
-              :light-index 4
+              :sort 4
               )
 
 (deftype gun-dark-3-sphere (process-drawable)
@@ -337,13 +336,14 @@
   )
 
 
+;; WARN: Return type mismatch matrix vs none.
 (defmethod projectile-method-25 ((this gun-dark-3-nuke))
   (when (not (logtest? (-> this draw status) (draw-control-status no-draw)))
     (let ((s5-0 (new 'stack-no-clear 'matrix)))
       (matrix-f-u-compose s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)) *up-vector*)
       (set! (-> s5-0 trans quad) (-> this root trans quad))
-      (sparticle-launch-control-method-17 (-> this part) s5-0)
-      (sparticle-subsampler-method-10 (-> this smoke-trail) s5-0)
+      (spawn-from-mat (-> this part) s5-0)
+      (init-with-mat! (-> this smoke-trail) s5-0)
       )
     )
   (none)
@@ -3577,7 +3577,7 @@
                      )
                  (set! (-> a1-7 trans quad) (-> s4-2 start-pos quad))
                  (set! (-> a1-7 trans y) f30-2)
-                 (sparticle-launch-control-method-17 (-> self part) a1-7)
+                 (spawn-from-mat (-> self part) a1-7)
                  )
                )
              )

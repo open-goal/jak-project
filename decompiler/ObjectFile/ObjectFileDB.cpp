@@ -120,6 +120,7 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
                            const std::vector<fs::path>& object_files,
                            const std::vector<fs::path>& str_files,
                            const std::vector<fs::path>& str_tex_files,
+                           const std::vector<fs::path>& str_art_files,
                            const Config& config)
     : dts(config.game_version), m_version(config.game_version) {
   Timer timer;
@@ -234,6 +235,18 @@ ObjectFileDB::ObjectFileDB(const std::vector<fs::path>& _dgos,
       auto name = reader.get_texture_name();
       add_obj_from_dgo(name, name, reader.get_chunk(0).data(), reader.get_chunk(0).size(),
                        "TEXSPOOL", config, name);
+    }
+  }
+
+  if (!str_art_files.empty()) {
+    lg::info("-Loading {} streaming art files...", str_art_files.size());
+    for (auto& obj : str_art_files) {
+      StrFileReader reader(obj, version());
+      for (int i = 0; i < reader.chunk_count(); i++) {
+        auto name = reader.get_chunk_art_name(i);
+        add_obj_from_dgo(name, name, reader.get_chunk(i).data(), reader.get_chunk(i).size(),
+                         "ARTSPOOL", config, name);
+      }
     }
   }
 

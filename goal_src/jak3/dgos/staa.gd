@@ -20,5 +20,5 @@
   "tpage-2450.go"
   "stadium-sails-left-ag.go"
   "stadium-sails-right-ag.go"
-  "stadiuma-vis.o"
+  "stadiuma-vis.go"
  ))

@@ -7,3 +7,720 @@
 
 ;; DECOMP BEGINS
 
+(deftype gun-turret-params (structure)
+  ((normal-sg     skeleton-group)
+   (explode-sg    skeleton-group)
+   (enemy-info    enemy-info)
+   (idle-anim     int32)
+   (shoot-anim    int32)
+   (track-joint   int32)
+   (barrel-joint  int32)
+   (gun-joint     int32)
+   (hole-joints   int32  8)
+   )
+  )
+
+
+(deftype sew-laser-guard (enemy)
+  ((params                         gun-turret-params)
+   (aim-pos                        vector       :inline)
+   (smoke-part                     sparticle-launch-control)
+   (casing-part                    sparticle-launch-control)
+   (sync-orient                    sync-linear  :inline)
+   (start-orient                   quaternion   :inline)
+   (end-orient                     quaternion   :inline)
+   (last-play-sweep-dir-positive?  symbol)
+   (last-play-sweep-sync           float)
+   (sound-hum                      sound-id)
+   (sound-scorch                   sound-id)
+   )
+  (:methods
+    (sew-laser-guard-method-155 (_type_) none)
+    (sew-laser-guard-method-156 (_type_) none)
+    )
+  )
+
+
+(defpart 4935
+  :init-specs ((:texture (pal-lightning level-default-sprite))
+    (:birth-func 'birth-func-set-quat)
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:scale-y (meters 1))
+    (:r 128.0 64.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 left-multiply-quat))
+    )
+  )
+
+(defpart 4936
+  :init-specs ((:texture (colorflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1) (meters 0.2))
+    (:rot-x (degrees 2.25))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 4511.25))
+    (:rotvel-z (degrees 0.3))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 40.96)
+    )
+  )
+
+(defpart 4937
+  :init-specs ((:texture (rainbow-halo level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1.4) (meters 0.1))
+    (:rot-x (degrees 6.7500005))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 0.0 30.0)
+    (:b 128.0)
+    (:a 128.0 128.0)
+    (:omega (degrees 4511.25))
+    (:rotvel-z (degrees 0.3))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 409.6)
+    )
+  )
+
+(defpart 4938
+  :init-specs ((:texture (motion-blur-part level-default-sprite))
+    (:num 2.0 6.0)
+    (:z (meters 0.1))
+    (:scale-x (meters 0.05) (meters 0.1))
+    (:rot-x 4)
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 32.0 1 128.0)
+    (:g :copy r)
+    (:b 255.0)
+    (:a 255.0)
+    (:omega (degrees 0.03375))
+    (:vel-y (meters 0.02) (meters 0.02))
+    (:fade-a -2.56 -2.56)
+    (:friction 0.9)
+    (:timer (seconds 0.167))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 launch-along-z left-multiply-quat))
+    (:func 'sparticle-motion-blur)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4939
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-x (degrees 2.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 4511.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 40.96)
+    )
+  )
+
+(defpartgroup group-sew-laser-guard-hit
+  :id 1505
+  :duration (seconds 0.5)
+  :linger-duration (seconds 1)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4757 :period (seconds 5) :length (seconds 0.085) :offset -10)
+    (sp-item 4758 :fade-after (meters 60) :period (seconds 5) :length (seconds 0.1))
+    (sp-item 4759 :fade-after (meters 60) :falloff-to (meters 60) :period (seconds 5) :length (seconds 0.335))
+    (sp-item 4760 :fade-after (meters 200) :falloff-to (meters 200) :period (seconds 5) :length (seconds 0.167))
+    (sp-item 4761 :period (seconds 5) :length (seconds 0.017) :offset -10)
+    (sp-item 4762 :fade-after (meters 150) :falloff-to (meters 150) :period (seconds 5) :length (seconds 0.167))
+    )
+  )
+
+(deftype sew-laser-shot (projectile)
+  ()
+  )
+
+
+(defstate dissipate (sew-laser-shot)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual impact)
+    )
+  )
+
+(defmethod made-impact? ((this sew-laser-shot))
+  (let ((gp-0 (-> this root))
+        (s5-0 (new 'stack-no-clear 'collide-query))
+        )
+    (let ((v1-0 s5-0))
+      (set! (-> v1-0 radius) (-> gp-0 root-prim prim-core world-sphere w))
+      (set! (-> v1-0 collide-with) (-> gp-0 root-prim prim-core collide-with))
+      (set! (-> v1-0 ignore-process0) this)
+      (set! (-> v1-0 ignore-process1) (ppointer->process (-> this parent)))
+      (set! (-> v1-0 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-0 action-mask) (collide-action solid))
+      )
+    (let ((a0-2 (handle->process (-> this notify-handle))))
+      (when a0-2
+        (let* ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> gp-0 trans) (get-trans (the-as process-focusable a0-2) 3)))
+               (f0-2 (- (vector-length s4-1)))
+               )
+          (fill-and-try-snap-to-surface gp-0 s4-1 f0-2 0.0 -3072.0 s5-0)
+          )
+        )
+      )
+    )
+  )
+
+(defun sew-laser-shot-move ((arg0 sew-laser-shot))
+  (projectile-move-fill-line-sphere arg0)
+  (if (logtest? (-> arg0 root status) (collide-status touch-surface))
+      (go (method-of-object arg0 impact))
+      )
+  0
+  (none)
+  )
+
+(defmethod setup-collision! ((this sew-laser-shot))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate enemy-yellow-shot))
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec projectile))
+      (set! (-> v1-7 prim-core collide-with)
+            (collide-spec
+              backgnd
+              jak
+              bot
+              crate
+              civilian
+              enemy
+              obstacle
+              vehicle-sphere
+              hit-by-others-list
+              player-list
+              pusher
+              shield
+              )
+            )
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 0.0 1228.8)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 1))
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> this root) s5-0)
+    )
+  (set! (-> this root pat-ignore-mask)
+        (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noproj #x1 :noendlessfall #x1 :board #x1)
+        )
+  0
+  (none)
+  )
+
+(defmethod init-proj-settings! ((this sew-laser-shot))
+  (set! (-> this attack-mode) 'shock)
+  (set! (-> this max-speed) 131072.0)
+  (set! (-> this timeout) (seconds 0.125))
+  (set! (-> this move) sew-laser-shot-move)
+  (set! (-> this root dynam gravity y) 0.0)
+  (set! (-> this root dynam gravity-length) 0.0)
+  (set! (-> this root dynam gravity-max) 0.0)
+  (set! (-> this vehicle-damage-factor) 0.5)
+  (logior! (-> this options) (projectile-options po13))
+  0
+  (none)
+  )
+
+(defskelgroup skel-sew-laser-guard sew-laser-guard sew-laser-guard-lod0-jg sew-laser-guard-idle-ja
+              ((sew-laser-guard-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 30)
+              )
+
+(define *sew-laser-guard-enemy-info*
+  (new 'static 'enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 2
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 1
+        :param1 1
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 3
+    :hit-anim 3
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim 3
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint -1
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 150)
+    :default-hit-points 1.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info #f
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    )
+  )
+
+(set! (-> *sew-laser-guard-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defun fire-laser! ((arg0 vector) (arg1 vector) (arg2 sew-laser-guard) (arg3 float))
+  (let ((s5-0 (new 'stack-no-clear 'collide-query)))
+    (set! (-> s5-0 start-pos quad) (-> arg0 quad))
+    (vector-float*! (-> s5-0 move-dist) arg1 arg3)
+    (let ((v1-3 s5-0))
+      (set! (-> v1-3 radius) 40.96)
+      (set! (-> v1-3 collide-with) (collide-spec backgnd jak enemy obstacle hit-by-others-list player-list))
+      (set! (-> v1-3 ignore-process0) arg2)
+      (set! (-> v1-3 ignore-process1) #f)
+      (set! (-> v1-3 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-3 action-mask) (collide-action solid))
+      )
+    (let ((f0-2 (fill-and-probe-using-line-sphere *collide-cache* s5-0)))
+      (if (>= f0-2 0.0)
+          (vector-float*! (-> s5-0 move-dist) (-> s5-0 move-dist) f0-2)
+          (set! (-> s5-0 best-other-tri collide-ptr) #f)
+          )
+      )
+    (cond
+      ((and (-> s5-0 best-other-tri collide-ptr) (let ((s3-0 (-> s5-0 best-other-tri collide-ptr)))
+                                                   (if (type? s3-0 collide-shape-prim-sphere)
+                                                       s3-0
+                                                       )
+                                                   )
+            )
+       (let ((s3-1 (new 'stack-no-clear 'projectile-init-by-other-params)))
+         (set! (-> s3-1 ent) (-> arg2 entity))
+         (set! (-> s3-1 charge) 1.0)
+         (set! (-> s3-1 options) (projectile-options))
+         (logclear! (-> s3-1 options) (projectile-options po14 po15 po16))
+         (set! (-> s3-1 notify-handle) (the-as handle #f))
+         (set! (-> s3-1 owner-handle) (the-as handle #f))
+         (set! (-> s3-1 target-handle) (the-as handle #f))
+         (set! (-> s3-1 target-pos quad) (the-as uint128 0))
+         (set! (-> s3-1 ignore-handle) (process->handle arg2))
+         (let* ((v1-19 *game-info*)
+                (a0-17 (+ (-> v1-19 attack-id) 1))
+                )
+           (set! (-> v1-19 attack-id) a0-17)
+           (set! (-> s3-1 attack-id) a0-17)
+           )
+         (set! (-> s3-1 timeout) (seconds 4))
+         (set! (-> s3-1 pos quad) (-> s5-0 start-pos quad))
+         (vector-normalize-copy! (-> s3-1 vel) (-> s5-0 move-dist) 4096000.0)
+         (spawn-projectile sew-laser-shot s3-1 arg2 *default-dead-pool*)
+         )
+       (sound-play
+         "laser-hit-jak"
+         :position (vector+! (new 'stack-no-clear 'vector) (-> s5-0 start-pos) (-> s5-0 move-dist))
+         )
+       (vector-normalize! (-> s5-0 move-dist) (+ 2048.0 (vector-length (-> s5-0 move-dist))))
+       )
+      (else
+        (when arg2
+          (let ((v1-30 arg2))
+            (sound-play
+              "laser-sizzle"
+              :id (-> v1-30 sound-scorch)
+              :position (vector+! (new 'stack-no-clear 'vector) (-> s5-0 start-pos) (-> s5-0 move-dist))
+              )
+            )
+          )
+        )
+      )
+    (set! (-> *part-id-table* 4935 init-specs 4 initial-valuef) (vector-length (-> s5-0 move-dist)))
+    (draw-beam (-> *part-id-table* 4935) arg0 (-> s5-0 move-dist) #f)
+    (launch-particles (-> *part-id-table* 4936) arg0)
+    (launch-particles (-> *part-id-table* 4937) arg0)
+    (launch-particles (-> *part-id-table* 4938) (vector+! (new 'stack-no-clear 'vector) (-> s5-0 move-dist) arg0))
+    (launch-particles (-> *part-id-table* 4939) (vector+! (new 'stack-no-clear 'vector) (-> s5-0 move-dist) arg0))
+    )
+  (none)
+  )
+
+(defmethod sew-laser-guard-method-155 ((this sew-laser-guard))
+  (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 5))))
+    (new 'stack-no-clear 'vector)
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (vector-z-quaternion! s4-0 (-> this root quat))
+      (vector-normalize! s4-0 1.0)
+      (fire-laser! s5-0 s4-0 this 491520.0)
+      )
+    )
+  (none)
+  )
+
+(defstate hostile (sew-laser-guard)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (if (= proc *target*)
+           (send-event proc 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                          (damage 2.0)
+                                                                                          (vehicle-damage-factor 1.0)
+                                                                                          (vehicle-impulse-factor 1.0)
+                                                                                          (shove-back (meters 3))
+                                                                                          (shove-up (meters 1))
+                                                                                          )
+                                                          )
+                       )
+           )
+       )
+      )
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy hostile) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (ja :group! sew-laser-guard-idle-ja)
+    )
+  :trans (behavior ()
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+        (go-virtual victory)
+        )
+    (set! (-> self root penetrated-by) (get-penetrated-by self))
+    )
+  :code (behavior ()
+    (until #f
+      (let ((f30-0 (get-norm! (-> self sync-orient) 0)))
+        (cond
+          ((-> self last-play-sweep-dir-positive?)
+           (when (and (< (- f30-0 (-> self last-play-sweep-sync)) 0.0) (< 0.8 f30-0))
+             (sound-play "laser-sweep")
+             (set! (-> self last-play-sweep-dir-positive?) #f)
+             )
+           )
+          (else
+            (when (and (< 0.0 (- f30-0 (-> self last-play-sweep-sync))) (< f30-0 0.2))
+              (sound-play "laser-sweep")
+              (set! (-> self last-play-sweep-dir-positive?) #t)
+              )
+            )
+          )
+        (quaternion-slerp! (-> self root quat) (-> self start-orient) (-> self end-orient) f30-0)
+        (quaternion-normalize! (-> self root quat))
+        (set! (-> self last-play-sweep-sync) f30-0)
+        )
+      (sound-play "laser-guard" :id (-> self sound-hum))
+      (let ((t9-8 (method-of-object self sew-laser-guard-method-155))
+            (a0-9 self)
+            )
+        #t
+        (t9-8 a0-9)
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defstate stare (sew-laser-guard)
+  :virtual #t
+  :trans (behavior ()
+    (go-hostile self)
+    )
+  :code sleep-code
+  )
+
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this sew-laser-guard))
+  (the-as search-info-flag 1)
+  )
+
+(defmethod event-handler ((this sew-laser-guard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('start)
+     #f
+     )
+    (('attack)
+     #f
+     )
+    (('touched 'touch)
+     #f
+     )
+    (('stop)
+     #f
+     )
+    (('bonk)
+     (when (= (-> arg0 type) target)
+       (send-event arg0 'target-mech-get-off (seconds 0.3))
+       (send-event arg0 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                      (damage 2.0)
+                                                                                      (vehicle-damage-factor 1.0)
+                                                                                      (vehicle-impulse-factor 1.0)
+                                                                                      (shove-back (meters 2))
+                                                                                      (shove-up (meters 0.5))
+                                                                                      )
+                                                      )
+                   )
+       )
+     #f
+     )
+    (else
+      ((method-of-type enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defstate die (sew-laser-guard)
+  :virtual #t
+  :enter (behavior ()
+    (on-dying self)
+    (let ((v1-3 (-> self root root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec))
+      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+      )
+    0
+    (set! (-> self hit-points) 0.0)
+    )
+  :code (behavior ()
+    (activate! *camera-smush-control* 819.2 37 210 1.0 0.995 (-> self clock))
+    (sound-play "turret-explode")
+    (suspend)
+    (cleanup-for-death self)
+    (ja-channel-set! 0)
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-1 quad) (-> self root trans quad))
+      (+! (-> gp-1 y) 10240.0)
+      (let ((s5-1 (current-time)))
+        (until (time-elapsed? s5-1 (seconds 2))
+          (spawn (-> self part) gp-1)
+          (suspend)
+          )
+        )
+      )
+    (let ((gp-2 (current-time)))
+      (until (time-elapsed? gp-2 (seconds 1))
+        (suspend)
+        )
+      )
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defmethod init-enemy-collision! ((this sew-laser-guard))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 3686.4 0.0 7372.8)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod deactivate ((this sew-laser-guard))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this smoke-part))
+      (kill-particles (-> this smoke-part))
+      )
+  (if (nonzero? (-> this casing-part))
+      (kill-particles (-> this casing-part))
+      )
+  ((method-of-type enemy deactivate) this)
+  (none)
+  )
+
+(defmethod coin-flip? ((this sew-laser-guard))
+  #f
+  )
+
+;; WARN: Return type mismatch enemy vs sew-laser-guard.
+(defmethod relocate ((this sew-laser-guard) (offset int))
+  (the-as sew-laser-guard ((method-of-type enemy relocate) this offset))
+  )
+
+(defmethod sew-laser-guard-method-156 ((this sew-laser-guard))
+  0
+  (none)
+  )
+
+(defmethod init-enemy! ((this sew-laser-guard))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-laser-guard" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *sew-laser-guard-enemy-info*)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1505) this))
+  (let ((f30-0 (res-lump-float (-> this entity) 'rotoffset))
+        (f28-0 (res-lump-float (-> this entity) 'rotmax :default 8192.0))
+        (f26-0 (res-lump-float (-> this entity) 'rotmin :default -8192.0))
+        (s5-1 (new 'stack-no-clear 'sync-info-params))
+        )
+    (if (!= f30-0 0.0)
+        (quaternion-rotate-y! (-> this root quat) (-> this root quat) f30-0)
+        )
+    (quaternion-rotate-y! (-> this start-orient) (-> this root quat) f26-0)
+    (quaternion-rotate-y! (-> this end-orient) (-> this start-orient) (- f28-0 f26-0))
+    (let ((v1-20 0))
+      (if #t
+          (set! v1-20 (logior v1-20 1))
+          )
+      (set! (-> s5-1 sync-type) 'sync-linear)
+      (set! (-> s5-1 sync-flags) (the-as sync-flags v1-20))
+      )
+    (set! (-> s5-1 entity) (-> this entity))
+    (set! (-> s5-1 period) (the-as uint 1200))
+    (set! (-> s5-1 percent) 0.0)
+    (initialize! (-> this sync-orient) s5-1)
+    )
+  (set! (-> this last-play-sweep-dir-positive?) #t)
+  (set! (-> this last-play-sweep-sync) (get-norm! (-> this sync-orient) 0))
+  (set! (-> this sound-hum) (new-sound-id))
+  (set! (-> this sound-scorch) (new-sound-id))
+  (logclear! (-> this mask) (process-mask enemy))
+  0
+  (none)
+  )
+
+(defmethod go-idle2 ((this sew-laser-guard))
+  (go (method-of-object this hostile))
+  )
+
+(defmethod damage-enemy! ((this sew-laser-guard) (arg0 object) (arg1 event-message-block))
+  (send-event
+    (the-as process-tree arg0)
+    'shove
+    #f
+    (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                        (damage 2.0)
+                                                        (vehicle-damage-factor 1.0)
+                                                        (vehicle-impulse-factor 1.0)
+                                                        (shove-back (meters 2))
+                                                        (shove-up (meters 0.5))
+                                                        )
+                        )
+    )
+  0.0
+  )
+
+(defstate hit (sew-laser-guard)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (go-hostile self)
+    )
+  :code sleep-code
+  )

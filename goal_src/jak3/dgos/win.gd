@@ -18,5 +18,5 @@
   "tpage-1037.go"
   "des-cactus-b-ag.go"
   "des-cactus-a-ag.go"
-  "wasintro-vis.o"
+  "wasintro-vis.go"
  ))

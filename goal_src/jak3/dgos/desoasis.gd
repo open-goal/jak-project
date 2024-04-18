@@ -22,5 +22,5 @@
   "hellcat-ag.go"
   "interceptor-ag.go"
   "interceptor-b-ag.go"
-  "desoasis.o"
+  "desoasis.go"
  ))

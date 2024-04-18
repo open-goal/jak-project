@@ -35,5 +35,5 @@
   "neo-debris-ag.go"
   "shield-sphere-distort-ag.go"
   "shield-sphere-ag.go"
-  "lformach-vis.o"
+  "lformach-vis.go"
  ))

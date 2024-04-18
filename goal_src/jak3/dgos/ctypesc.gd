@@ -7,5 +7,5 @@
   "spydroid-ag.go"
   "kg-flying-turret-ag.go"
   "kg-debris-ag.go"
-  "ctypesc.o"
+  "ctypesc.go"
  ))

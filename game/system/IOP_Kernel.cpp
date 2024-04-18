@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
@@ -337,6 +338,11 @@ void IOP_Kernel::sif_rpc(s32 rpcChannel,
   ASSERT(rec->cmd.finished && rec->cmd.started);
 
   // step 3 - memcpy!
+  if (rec->qd->serve_data->buff_size < sendSize) {
+    lg::die(
+        "Buffer overflow in EE -> IOP RPC. channel {}, fno {}, requested size {}, buffer size {}\n",
+        rpcChannel, fno, sendSize, rec->qd->serve_data->buff_size);
+  }
   memcpy(rec->qd->serve_data->buff, sendBuff, sendSize);
 
   // step 4 - setup command

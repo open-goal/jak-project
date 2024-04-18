@@ -15,5 +15,5 @@
   "min-falling-step-ag.go"
   "min-door-ag.go"
   "light-eco-vent-ag.go"
-  "minec-vis.o"
+  "minec-vis.go"
  ))

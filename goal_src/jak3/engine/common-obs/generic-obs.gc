@@ -79,7 +79,7 @@
 (defskelgroup skel-spotlight spotlight spotlight-lod0-jg -1
               ((spotlight-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
-              :shadow-joint-index 5
+              :origin-joint-index 5
               )
 
 ;; WARN: Return type mismatch object vs (pointer sparticle-launch-group).
@@ -164,11 +164,12 @@
          )
        (update-anim-data (-> self skel))
        (do-joint-math (-> self draw) (-> self node-list) (-> self skel))
-       (let ((a0-22 (-> self skel effect)))
-         (if a0-22
-             (effect-control-method-9 a0-22)
-             )
-         )
+       ;; not-yet-implemented
+       ;; (let ((a0-22 (-> self skel effect)))
+       ;;   (if a0-22
+       ;;       (effect-control-method-9 a0-22)
+       ;;       )
+       ;;   )
        (if (logtest? (-> self skel status) (joint-control-status blend-shape blend-shape-valid))
            (merc-blend-shape self)
            )
@@ -863,7 +864,7 @@
        )
       (('do-effect)
        (if (and (nonzero? (-> self skel)) (-> self skel effect))
-           (do-effect (-> self skel effect) (the-as symbol (-> block param 0)) (the-as float (-> block param 1)) -1)
+           (do-effect (-> self skel effect) (the-as string (-> block param 0)) (the-as float (-> block param 1)) -1)
            )
        )
       (('no-actor-pause)
@@ -1225,17 +1226,14 @@
               (nonzero? (-> (the-as process-drawable v1-15) root))
               (nonzero? (-> (the-as process-drawable v1-15) node-list))
               )
-         (sparticle-launch-control-method-18
-           (-> self part)
-           (-> (the-as process-drawable v1-15) node-list data (-> self target-joint))
-           )
+         (spawn-from-cspace (-> self part) (-> (the-as process-drawable v1-15) node-list data (-> self target-joint)))
          (set! (-> self root trans quad) (-> self part origin trans quad))
          )
         (else
           (let ((a0-11 (-> self root trans)))
             (set! (-> self mat trans quad) (-> a0-11 quad))
             )
-          (sparticle-launch-control-method-17 (-> self part) (-> self mat))
+          (spawn-from-mat (-> self part) (-> self mat))
           )
         )
       )
@@ -1306,7 +1304,7 @@
               (nonzero? (-> (the-as process-drawable v1-15) root))
               (nonzero? (-> (the-as process-drawable v1-15) node-list))
               )
-         (sparticle-subsampler-method-10
+         (init-with-mat!
            (-> self subsampler)
            (-> (the-as process-drawable v1-15) node-list data (-> self target-joint) bone transform)
            )
@@ -1316,7 +1314,7 @@
           (let ((a0-11 (-> self root trans)))
             (set! (-> self mat trans quad) (-> a0-11 quad))
             )
-          (sparticle-subsampler-method-10 (-> self subsampler) (-> self mat))
+          (init-with-mat! (-> self subsampler) (-> self mat))
           )
         )
       )
@@ -1453,7 +1451,7 @@
   (set! (-> self part) (create-launch-control (-> arg0 group) self))
   (when (and (-> arg0 target) (logtest? (-> self part group flags) (sp-group-flag sp12 sp14)))
     (let* ((gp-0 (-> self part))
-           (s5-0 (method-of-object gp-0 sparticle-launch-control-method-20))
+           (s5-0 (method-of-object gp-0 set-local-space-info))
            (s4-0 (add-connection *part-local-space-engine* self local-space-proc-joint (-> self target-joint) 0 0))
            )
       (let ((v1-10 (process->handle (-> arg0 target))))
@@ -1470,7 +1468,7 @@
                 (part-local-space-flags)
                 )
             )
-      (s5-0 gp-0 (the-as float s4-0))
+      (s5-0 gp-0 (the-as particle-local-space-info s4-0))
       )
     )
   (set! (-> self event-hook) (-> (method-of-object self active) event))
@@ -2057,7 +2055,7 @@
   :trans (behavior ()
     (when (-> self enable)
       (when (nonzero? (-> self path))
-        (path-control-method-9 (-> self path))
+        (debug-draw (-> self path))
         (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-pos) 'interp)
         (displacement-between-points-at-percent-normalized! (-> self path) (-> self last-velocity) (-> self path-pos))
         (let ((f0-3 (+ (-> self path-pos) (* (-> self path-speed) (seconds-per-frame)))))
@@ -2081,7 +2079,7 @@
 
 (defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
   (local-vars (sv-16 string))
-  (stack-size-set! (-> this main-thread) 16)
+  (stack-size-set! (-> this main-thread) 64)
   (logior! (-> this mask) (process-mask ambient))
   (+! (-> this clock ref-count) -1)
   (+! (-> *display* part-clock ref-count) 1)
@@ -3251,7 +3249,7 @@
       )
     0
     (while (not (time-elapsed? (-> self start-time) (the-as time-frame (-> self duration))))
-      (sparticle-launch-control-method-17 (-> self part) (-> self mat))
+      (spawn-from-mat (-> self part) (-> self mat))
       (suspend)
       )
     (set-time! (-> self start-time))
@@ -4050,7 +4048,7 @@
   :virtual #t
   :trans (behavior ()
     (set! (-> self task-counter) (-> *game-info* task-counter))
-    (if *bigmap*
+    (if (and *bigmap* (nonzero? *bigmap*))
         (bigmap-method-16 *bigmap*)
         )
     (let ((gp-0 (res-lump-struct (-> self entity) 'on-running structure)))
