@@ -1,0 +1,90 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type borrow-level-hold-info
+(deftype borrow-level-hold-info (structure)
+  ((name                   symbol)
+   (mode                   borrow-hold-info-mode)
+   (expiring?              symbol)
+   (expire-start-time      time-frame)
+   (expire-wait-time       time-frame)
+   (num-remaining-objects  uint16)
+   )
+  )
+
+;; definition for method 3 of type borrow-level-hold-info
+(defmethod inspect ((this borrow-level-hold-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'borrow-level-hold-info)
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tmode: ~D~%" (-> this mode))
+  (format #t "~1Texpiring?: ~A~%" (-> this expiring?))
+  (format #t "~1Texpire-start-time: ~D~%" (-> this expire-start-time))
+  (format #t "~1Texpire-wait-time: ~D~%" (-> this expire-wait-time))
+  (format #t "~1Tnum-remaining-objects: ~D~%" (-> this num-remaining-objects))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type borrow-level-array
+(deftype borrow-level-array (inline-array-class)
+  ((data  borrow-level-hold-info  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type borrow-level-array
+(defmethod inspect ((this borrow-level-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> borrow-level-array heap-base) (the-as uint 48))
+
+;; definition of type cty-borrow-manager
+(deftype cty-borrow-manager (basic)
+  ((borrow-holds  borrow-level-array)
+   )
+  (:methods
+    (init! (_type_) none)
+    (clear-borrow-holds! (_type_) none)
+    (clear-callback! (_type_) none)
+    (cty-borrow-manager-method-12 (_type_ load-state) object)
+    (cty-borrow-manager-method-13 (_type_ symbol borrow-hold-info-mode time-frame) object)
+    (remove-by-name (_type_ symbol) object)
+    (reset-borrow-list (_type_) none)
+    (cty-borrow-manager-method-16 (_type_) symbol)
+    (cty-borrow-manager-method-17 (_type_ load-state int) symbol)
+    (cty-borrow-manager-method-18 (_type_ level-load-info) float)
+    )
+  )
+
+;; definition for method 3 of type cty-borrow-manager
+(defmethod inspect ((this cty-borrow-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tborrow-holds: ~A~%" (-> this borrow-holds))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *city-borrow-manager*, type cty-borrow-manager
+(define *city-borrow-manager* (the-as cty-borrow-manager #f))
+
+
+
+
