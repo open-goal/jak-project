@@ -99,7 +99,6 @@
 (define common-dep '("$OUT/obj/default-menu-pc.o"))
 
 ;; wascity
-(cgo-file "wwd.gd" common-dep) ;; waswide
 (cgo-file "waschase.gd" common-dep)
 (cgo-file "wasdefen.gd" common-dep)
 (cgo-file "wasleapr.gd" common-dep)
@@ -111,6 +110,7 @@
 (cgo-file "wcaseem.gd" common-dep)
 (cgo-file "wascast.gd" common-dep)
 (cgo-file "wasall.gd" common-dep)
+(cgo-file "wwd.gd" common-dep) ;; waswide
 (cgo-file "wsd.gd" common-dep) ;; wasdoors (garage)
 ; ;; arena
 (cgo-file "wasstada.gd" common-dep)
