@@ -503,7 +503,7 @@
   :code sleep-code
   )
 
-(defbehavior for-turret-blocker-init-by-other for-turret-blocker ((arg0 vector) (arg1 entity-actor))
+(defbehavior for-turret-blocker-init-by-other for-turret-blocker ((arg0 vector) (arg1 entity))
   (process-entity-set! self arg1)
   (let ((s5-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
     (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
@@ -1014,7 +1014,7 @@
     )
   )
 
-(defmethod target-turret-method-57 ((this for-turret))
+(defmethod explode-turret ((this for-turret))
   (local-vars (sv-112 matrix) (sv-116 vector) (sv-120 vector))
   (sound-play "cannon-explode")
   (set! sv-112 (new 'stack-no-clear 'matrix))
@@ -1073,7 +1073,7 @@
         )
       )
     )
-  ((method-of-type target-turret target-turret-method-57) this)
+  ((method-of-type target-turret explode-turret) this)
   (none)
   )
 
@@ -1444,7 +1444,7 @@
   *for-turret-params*
   )
 
-(defmethod target-turret-method-37 ((this for-turret))
+(defmethod init-fields! ((this for-turret))
   (local-vars (sv-16 res-tag))
   (set! (-> this focus-handle) (the-as handle #f))
   (set! (-> this current-barrel) 0)
@@ -1559,8 +1559,7 @@
                         (a3-2 #x70004000)
                         )
                     (t9-2 (the-as for-turret-blocker a0-12) a1-6 a2-2 (the-as pointer a3-2))
-                    ;; og:preserve-this passing entity arg here
-                    (run-now-in-process s5-0 for-turret-blocker-init-by-other (-> this root trans) (-> this entity))
+                    (run-now-in-process s5-0 for-turret-blocker-init-by-other (-> this root trans) (the-as none a3-2))
                     )
                   (-> s5-0 ppointer)
                   )

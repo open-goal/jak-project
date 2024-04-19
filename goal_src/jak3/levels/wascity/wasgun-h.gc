@@ -5,5 +5,193 @@
 ;; name in dgo: wasgun-h
 ;; dgos: WCB
 
+;; +++skeet-type
+(defenum skeet-type
+  :type uint8
+  (a-0 0)
+  (a-1 1)
+  (a-2 2)
+  (a-3 3)
+  (a-4 4)
+  (a-5 5)
+  (a-6 6)
+  (a-7 7)
+  (b-8 8)
+  (b-9 9)
+  (b-10 10)
+  (b-11 11)
+  (b-12 12)
+  (b-13 13)
+  (b-14 14)
+  (b-15 15)
+  (c-16 16)
+  (c-17 17)
+  (c-18 18)
+  (c-19 19)
+  (c-20 20)
+  (d-21 21)
+  (c-22 22)
+  (c-23 23)
+  (a 25)
+  (b 26)
+  (c 27)
+  )
+;; ---skeet-type
+
+
+;; +++skeet-mode
+(defenum skeet-mode
+  :type uint8
+  (a-x0 #x0)
+  (a-x1 #x1)
+  (a-x2 #x2)
+  (a-x3 #x3)
+  (a-x4 #x4)
+  (a-x5 #x5)
+  (a-x6 #x6)
+  (a-x7 #x7)
+  (b-x8 #x8)
+  (b-x9 #x9)
+  (b-xa #xa)
+  (b-xb #xb)
+  (b-xc #xc)
+  (b-xd #xd)
+  (b-xe #xe)
+  (b-xf #xf)
+  (c-x10 #x10)
+  (c-x11 #x11)
+  (c-x12 #x12)
+  (c-x13 #x13)
+  (c-x14 #x14)
+  (c-x15 #x15)
+  (c-x16 #x16)
+  (c-x17 #x17)
+  (-x18 #x18)
+  (a-x19 #x19)
+  (b-x1a #x1a)
+  (c-x1b #x1b)
+  (-x1c #x1c)
+  )
+;; ---skeet-mode
+
+
 ;; DECOMP BEGINS
 
+(deftype maker-info (structure)
+  ((pos         vector  :inline)
+   (hit-points  float)
+   (targeted    symbol)
+   )
+  )
+
+
+(deftype hud-wasgun (hud)
+  ((offscreen   uint8)
+   (numscores   uint8)
+   (head-idx    uint8)
+   (tail-idx    uint8)
+   (maker-idx   uint8)
+   (shoot-pos   vector      :inline)
+   (minfo       maker-info  15 :inline)
+   (reticle     hud-sprite  20 :inline)
+   (position    vector      14 :inline)
+   (vel         float       14)
+   (scores      int32       14)
+   (multiplier  uint8       14)
+   (scoretimes  time-frame  14 :offset 4896)
+   )
+  (:methods
+    (hud-wasgun-method-27 (_type_) none)
+    (hud-wasgun-method-28 (_type_ int int vector) none)
+    )
+  )
+
+
+(deftype maker-grenade (projectile-bounce)
+  ((minimap       connection-minimap)
+   (blast-radius  float)
+   (initial-dist  float)
+   )
+  (:methods
+    (maker-grenade-method-44 () none)
+    )
+  )
+
+
+(deftype wascity-turret-hud-position (structure)
+  ((x  float)
+   (y  float)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype wascity-turret (target-turret)
+  ((recoil                  float                        2)
+   (lerp                    float)
+   (lerp2                   float)
+   (reticle-part            sparticle-launch-control)
+   (my-fire-time            time-frame                   2)
+   (ready-to-go-active      time-frame)
+   (ready-to-go-active-sym  symbol                       :overlay-at ready-to-go-active)
+   (move-start              time-frame)
+   (facing-ocean            symbol)
+   (facing-city             symbol)
+   (reset-facing            symbol)
+   (fire-delay              symbol)
+   (left?                   symbol)
+   (fire-idx                uint8)
+   (speed-mult              float)
+   (radar-object-counter    uint16)
+   (radar-object            wascity-turret-hud-position  64 :inline)
+   (aim-dir                 vector                       :inline)
+   (reticle-dir             vector                       :inline)
+   (target-handle           handle)
+   )
+  (:methods
+    (wascity-turret-method-59 (_type_) none)
+    (vector<-fire-pos! (_type_ vector) vector)
+    (vector<-reticle-fire-pos! (_type_ vector) vector)
+    (wascity-turret-method-62 (_type_) none)
+    )
+  )
+
+
+(deftype skeet (rigid-body-object)
+  ((forw                  vector  :inline)
+   (ppos                  vector  :inline)
+   (pvel                  vector  :inline)
+   (pacc                  vector  :inline)
+   (angle                 float)
+   (disappear             symbol)
+   (rot-vel               float)
+   (rot-acc               float)
+   (initial-y             float)
+   (time-to-live          time-frame)
+   (birth-time            time-frame)
+   (mult                  uint8)
+   (score                 uint16)
+   (minimap               connection-minimap)
+   (skeet-type            skeet-type)
+   (skeet-sound           sound-id)
+   (skeet-sound-playing?  symbol)
+   (mgr                   handle)
+   (mode                  skeet-mode)
+   )
+  (:state-methods
+    flying
+    explode
+    )
+  (:methods
+    (skeet-method-58 (_type_) none)
+    (skeet-method-59 (_type_) none)
+    (skeet-method-60 (_type_) none)
+    (skeet-method-61 (_type_) none)
+    (spawn-exploder (_type_) (pointer joint-exploder))
+    )
+  )
+
+
+(deftype hud-wasdef-damage (hud)
+  ()
+  )

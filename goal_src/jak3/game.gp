@@ -356,7 +356,7 @@
 ; (cgo-file "ljkfeet.gd" common-dep)
 ; (cgo-file "ljndklev.gd" common-dep)
 ; (cgo-file "lkeira.gd" common-dep)
-; (cgo-file "lkleever.gd" common-dep)
+(cgo-file "lkleever.gd" common-dep)
 ; (cgo-file "lmech.gd" common-dep)
 ; (cgo-file "lmhca.gd" common-dep)
 ; (cgo-file "lmhcb.gd" common-dep)
