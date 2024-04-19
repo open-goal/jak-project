@@ -46852,7 +46852,7 @@
     (attack-handler (_type_ attack-info symbol) none) ;; 34
     (init! (_type_) none) ;; 35
     (target-turret-method-36 (_type_) none) ;; 36
-    (target-turret-method-37 (_type_) none) ;; 37
+    (init-fields! (_type_) none) ;; 37
     (target-turret-method-38 (_type_) none) ;; 38
     (get-params (_type_) target-turret-params) ;; 39
     (target-turret-method-40 (_type_) none) ;; 40
@@ -46872,7 +46872,7 @@
     (target-turret-method-54 (_type_) none) ;; 54
     (target-turret-method-55 (_type_) none) ;; 55
     (target-turret-method-56 (_type_ process int symbol event-message-block) object) ;; 56
-    (target-turret-method-57 (_type_) none) ;; 57
+    (explode-turret (_type_) none) ;; 57
     (target-turret-method-58 (_type_) none) ;; 58
     )
   )
@@ -46901,45 +46901,40 @@
 ;; wasgun-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype maker-info (structure)
   ((pos        vector :inline :offset-assert 0)
    (hit-points float          :offset-assert 16)
-   (targeted   basic          :offset-assert 20)
+   (targeted   symbol         :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype hud-wasgun (hud)
-  ((offscreen  uint8           :offset-assert 2756)
-   (numscores  uint8           :offset-assert 2757)
-   (head-idx   uint8           :offset-assert 2758)
-   (tail-idx   uint8           :offset-assert 2759)
-   (maker-idx  uint8           :offset-assert 2760)
-   (shoot-pos  vector  :inline :offset-assert 2768)
-   (minfo      UNKNOWN 15      :offset-assert 2784)
-   (reticle    UNKNOWN 20      :offset-assert 3264)
-   (position   UNKNOWN 14      :offset-assert 4544)
-   (vel        UNKNOWN 14      :offset-assert 4768)
-   (scores     UNKNOWN 14      :offset-assert 4824)
-   (multiplier UNKNOWN 14      :offset-assert 4880)
-   (scoretimes UNKNOWN 14      :offset-assert 4896)
+  ((offscreen  uint8                 :offset-assert 2756)
+   (numscores  uint8                 :offset-assert 2757)
+   (head-idx   uint8                 :offset-assert 2758)
+   (tail-idx   uint8                 :offset-assert 2759)
+   (maker-idx  uint8                 :offset-assert 2760)
+   (shoot-pos  vector        :inline :offset-assert 2768)
+   (minfo      maker-info 15 :inline :offset-assert 2784)
+   (reticle    hud-sprite 20 :inline :offset-assert 3264)
+   (position   vector     14 :inline :offset-assert 4544)
+   (vel        float      14         :offset-assert 4768)
+   (scores     int32      14         :offset-assert 4824)
+   (multiplier uint8      14         :offset-assert 4880)
+   (scoretimes time-frame 14         :offset 4896)
    )
   :method-count-assert 29
   :size-assert         #x1390
   :flag-assert         #x1d13101390
   (:methods
-    (hud-wasgun-method-27 () none) ;; 27
-    (hud-wasgun-method-28 () none) ;; 28
+    (hud-wasgun-method-27 (_type_) none) ;; 27
+    (hud-wasgun-method-28 (_type_ int int vector) none) ;; 28
     )
   )
-|#
 
-#|
 (deftype maker-grenade (projectile-bounce)
   ((minimap      connection-minimap  :offset-assert 548)
    (blast-radius float               :offset-assert 552)
@@ -46952,164 +46947,225 @@
     (maker-grenade-method-44 () none) ;; 44
     )
   )
-|#
 
-#|
 (deftype wascity-turret-hud-position (structure)
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype wascity-turret (target-turret)
-  ((recoil               UNKNOWN 2       :offset-assert 548)
+  ((recoil               float 2         :offset-assert 548)
    (lerp                 float           :offset-assert 556)
    (lerp2                float           :offset-assert 560)
-   (reticle-part         basic           :offset-assert 564)
-   (my-fire-time         UNKNOWN 2       :offset-assert 568)
-   (ready-to-go-active   basic           :offset-assert 584)
-   (move-start           uint64          :offset-assert 592)
-   (facing-ocean         basic           :offset-assert 600)
-   (facing-city          basic           :offset-assert 604)
-   (reset-facing         basic           :offset-assert 608)
-   (fire-delay           basic           :offset-assert 612)
-   (left?                basic           :offset-assert 616)
+   (reticle-part         sparticle-launch-control :offset-assert 564)
+   (my-fire-time         time-frame 2    :offset-assert 568)
+   (ready-to-go-active   time-frame      :offset-assert 584)
+   (ready-to-go-active-sym symbol        :offset 584) ;; added
+   (move-start           time-frame      :offset-assert 592)
+   (facing-ocean         symbol          :offset-assert 600)
+   (facing-city          symbol          :offset-assert 604)
+   (reset-facing         symbol          :offset-assert 608)
+   (fire-delay           symbol          :offset-assert 612)
+   (left?                symbol          :offset-assert 616)
    (fire-idx             uint8           :offset-assert 620)
    (speed-mult           float           :offset-assert 624)
    (radar-object-counter uint16          :offset-assert 628)
-   (radar-object         UNKNOWN 64      :offset-assert 632)
+   (radar-object         wascity-turret-hud-position 64 :inline :offset-assert 632)
    (aim-dir              vector  :inline :offset-assert 1664)
    (reticle-dir          vector  :inline :offset-assert 1680)
-   (target-handle        uint64          :offset-assert 1696)
+   (target-handle        handle          :offset-assert 1696)
    )
   :method-count-assert 63
   :size-assert         #x6a8
   :flag-assert         #x3f063006a8
   (:methods
-    (wascity-turret-method-59 () none) ;; 59
-    (wascity-turret-method-60 () none) ;; 60
-    (wascity-turret-method-61 () none) ;; 61
-    (wascity-turret-method-62 () none) ;; 62
+    (wascity-turret-method-59 (_type_) none) ;; 59
+    (vector<-fire-pos! (_type_ vector) vector) ;; 60
+    (vector<-reticle-fire-pos! (_type_ vector) vector) ;; 61
+    (wascity-turret-method-62 (_type_) none) ;; 62
     )
   )
-|#
 
-#|
+;; +++wasgun-h:skeet-mode
+(defenum skeet-mode
+  :type uint8
+  (a-x0 #x0)
+  (a-x1 #x1)
+  (a-x2 #x2)
+  (a-x3 #x3)
+  (a-x4 #x4)
+  (a-x5 #x5)
+  (a-x6 #x6)
+  (a-x7 #x7)
+  (b-x8 #x8)
+  (b-x9 #x9)
+  (b-xa #xa)
+  (b-xb #xb)
+  (b-xc #xc)
+  (b-xd #xd)
+  (b-xe #xe)
+  (b-xf #xf)
+  (c-x10 #x10)
+  (c-x11 #x11)
+  (c-x12 #x12)
+  (c-x13 #x13)
+  (c-x14 #x14)
+  (c-x15 #x15)
+  (c-x16 #x16)
+  (c-x17 #x17)
+  (-x18 #x18)
+  (a-x19 #x19)
+  (b-x1a #x1a)
+  (c-x1b #x1b)
+  (-x1c #x1c)
+  )
+;; ---wasgun-h:skeet-mode
+
+;; +++wasgun-h:skeet-type
+(defenum skeet-type
+  :type uint8
+  (a-0 0)
+  (a-1 1)
+  (a-2 2)
+  (a-3 3)
+  (a-4 4)
+  (a-5 5)
+  (a-6 6)
+  (a-7 7)
+  (b-8 8)
+  (b-9 9)
+  (b-10 10)
+  (b-11 11)
+  (b-12 12)
+  (b-13 13)
+  (b-14 14)
+  (b-15 15)
+  (c-16 16)
+  (c-17 17)
+  (c-18 18)
+  (c-19 19)
+  (c-20 20)
+  (d-21 21)
+  (c-22 22)
+  (c-23 23)
+  (a 25)
+  (b 26)
+  (c 27)
+  )
+;; ---wasgun-h:skeet-type
+
 (deftype skeet (rigid-body-object)
   ((forw                 vector             :inline :offset-assert 288)
    (ppos                 vector             :inline :offset-assert 304)
    (pvel                 vector             :inline :offset-assert 320)
    (pacc                 vector             :inline :offset-assert 336)
    (angle                float                      :offset-assert 352)
-   (disappear            basic                      :offset-assert 356)
+   (disappear            symbol                     :offset-assert 356)
    (rot-vel              float                      :offset-assert 360)
    (rot-acc              float                      :offset-assert 364)
    (initial-y            float                      :offset-assert 368)
-   (time-to-live         uint64                     :offset-assert 376)
-   (birth-time           uint64                     :offset-assert 384)
+   (time-to-live         time-frame                 :offset-assert 376)
+   (birth-time           time-frame                 :offset-assert 384)
    (mult                 uint8                      :offset-assert 392)
    (score                uint16                     :offset-assert 394)
    (minimap              connection-minimap         :offset-assert 396)
-   (skeet-type           uint8                      :offset-assert 400)
-   (skeet-sound          uint32                     :offset-assert 404)
-   (skeet-sound-playing? basic                      :offset-assert 408)
-   (mgr                  uint64                     :offset-assert 416)
-   (mode                 uint8                      :offset-assert 424)
+   (skeet-type           skeet-type                 :offset-assert 400)
+   (skeet-sound          sound-id                   :offset-assert 404)
+   (skeet-sound-playing? symbol                     :offset-assert 408)
+   (mgr                  handle                     :offset-assert 416)
+   (mode                 skeet-mode                 :offset-assert 424)
    )
   :method-count-assert 63
   :size-assert         #x1a9
   :flag-assert         #x3f013001a9
+  (:state-methods
+    flying ;; 56
+    explode ;; 57
+    )
   (:methods
-    (skeet-method-56 () none) ;; 56
-    (skeet-method-57 () none) ;; 57
-    (skeet-method-58 () none) ;; 58
-    (skeet-method-59 () none) ;; 59
-    (skeet-method-60 () none) ;; 60
-    (skeet-method-61 () none) ;; 61
-    (skeet-method-62 () none) ;; 62
+    (skeet-method-58 (_type_) none) ;; 58
+    (skeet-method-59 (_type_) none) ;; 59
+    (skeet-method-60 (_type_) none) ;; 60
+    (skeet-method-61 (_type_) none) ;; 61
+    (spawn-exploder (_type_) (pointer joint-exploder)) ;; 62
     )
   )
-|#
 
-#|
 (deftype hud-wasdef-damage (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; skeet-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-skeet-dust-color* curve-color-fast)
-;; (define-extern *range-skeet-dust-alpha* curve2d-fast)
-;; (define-extern *range-skeet-dust-scale-x* curve2d-fast)
-;; (define-extern *range-skeet-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-skeet-dust-alpha* curve2d-fast)
-;; (define-extern *curve-skeet-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-skeet-dust-scale-y* curve2d-fast)
-;; (define-extern *part-skeet-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-skeet-color* curve-color-fast)
-;; (define-extern *range-skeet-alpha* curve2d-fast)
-;; (define-extern *range-skeet-scale-x* curve2d-fast)
-;; (define-extern *range-skeet-scale-y* curve2d-fast)
-;; (define-extern *curve-skeet-alpha* curve2d-fast)
-;; (define-extern *curve-skeet-scale-x* curve2d-fast)
-;; (define-extern *curve-skeet-scale-y* curve2d-fast)
-;; (define-extern *part-skeet-explosion-texture-curve-settings* object)
-;; (define-extern *range-skeet-splash-color* curve-color-fast)
-;; (define-extern *range-skeet-splash-alpha* curve2d-fast)
-;; (define-extern *range-skeet-splash-scale-x* curve2d-fast)
-;; (define-extern *range-skeet-splash-scale-y* curve2d-fast)
-;; (define-extern *curve-skeet-splash-alpha* curve2d-fast)
-;; (define-extern *curve-skeet-splash-scale-x* curve2d-fast)
-;; (define-extern *curve-skeet-splash-scale-y* curve2d-fast)
-;; (define-extern *part-skeet-splash-curve-settings* object)
+(define-extern *range-skeet-dust-color* curve-color-fast)
+(define-extern *range-skeet-dust-alpha* curve2d-fast)
+(define-extern *range-skeet-dust-scale-x* curve2d-fast)
+(define-extern *range-skeet-dust-scale-y* curve2d-fast)
+(define-extern *curve-skeet-dust-alpha* curve2d-fast)
+(define-extern *curve-skeet-dust-scale-x* curve2d-fast)
+(define-extern *curve-skeet-dust-scale-y* curve2d-fast)
+(define-extern *part-skeet-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-skeet-color* curve-color-fast)
+(define-extern *range-skeet-alpha* curve2d-fast)
+(define-extern *range-skeet-scale-x* curve2d-fast)
+(define-extern *range-skeet-scale-y* curve2d-fast)
+(define-extern *curve-skeet-alpha* curve2d-fast)
+(define-extern *curve-skeet-scale-x* curve2d-fast)
+(define-extern *curve-skeet-scale-y* curve2d-fast)
+(define-extern *part-skeet-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-skeet-splash-color* curve-color-fast)
+(define-extern *range-skeet-splash-alpha* curve2d-fast)
+(define-extern *range-skeet-splash-scale-x* curve2d-fast)
+(define-extern *range-skeet-splash-scale-y* curve2d-fast)
+(define-extern *curve-skeet-splash-alpha* curve2d-fast)
+(define-extern *curve-skeet-splash-scale-x* curve2d-fast)
+(define-extern *curve-skeet-splash-scale-y* curve2d-fast)
+(define-extern *part-skeet-splash-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; maker-part                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-dm-robot-splash-color* curve-color-fast)
-;; (define-extern *range-dm-robot-splash-alpha* curve2d-fast)
-;; (define-extern *range-dm-robot-splash-scale-x* curve2d-fast)
-;; (define-extern *range-dm-robot-splash-scale-y* curve2d-fast)
-;; (define-extern *curve-dm-robot-splash-alpha* curve2d-fast)
-;; (define-extern *curve-dm-robot-splash-scale-x* curve2d-fast)
-;; (define-extern *curve-dm-robot-splash-scale-y* curve2d-fast)
-;; (define-extern *part-dm-robot-splash-curve-settings* object)
-;; (define-extern *range-dm-final-explo-color* curve-color-fast)
-;; (define-extern *range-dm-final-explo-alpha* curve2d-fast)
-;; (define-extern *range-dm-final-explo-scale-x* curve2d-fast)
-;; (define-extern *range-dm-final-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-dm-final-explo-alpha* curve2d-fast)
-;; (define-extern *curve-dm-final-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-dm-final-explo-scale-y* curve2d-fast)
-;; (define-extern *part-dm-final-explosion-texture-curve-settings* object)
+(define-extern *range-dm-robot-splash-color* curve-color-fast)
+(define-extern *range-dm-robot-splash-alpha* curve2d-fast)
+(define-extern *range-dm-robot-splash-scale-x* curve2d-fast)
+(define-extern *range-dm-robot-splash-scale-y* curve2d-fast)
+(define-extern *curve-dm-robot-splash-alpha* curve2d-fast)
+(define-extern *curve-dm-robot-splash-scale-x* curve2d-fast)
+(define-extern *curve-dm-robot-splash-scale-y* curve2d-fast)
+(define-extern *part-dm-robot-splash-curve-settings* particle-curve-settings)
+(define-extern *range-dm-final-explo-color* curve-color-fast)
+(define-extern *range-dm-final-explo-alpha* curve2d-fast)
+(define-extern *range-dm-final-explo-scale-x* curve2d-fast)
+(define-extern *range-dm-final-explo-scale-y* curve2d-fast)
+(define-extern *curve-dm-final-explo-alpha* curve2d-fast)
+(define-extern *curve-dm-final-explo-scale-x* curve2d-fast)
+(define-extern *curve-dm-final-explo-scale-y* curve2d-fast)
+(define-extern *part-dm-final-explosion-texture-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; dm-flyer                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dm-flyer-shot (projectile)
   ((tail-pos          vector             :inline :offset-assert 512)
    (hit-pos           vector             :inline :offset-assert 528)
    (turn-quat         quaternion         :inline :offset-assert 544)
    (minimap           connection-minimap         :offset-assert 560)
-   (hit-actor?        basic                      :offset-assert 564)
-   (last-hit-time     uint64                     :offset-assert 568)
-   (muzzle-flash-part basic                      :offset-assert 576)
-   (particle-trail    basic                      :offset-assert 580)
+   (hit-actor?        symbol                     :offset-assert 564)
+   (last-hit-time     time-frame                 :offset-assert 568)
+   (muzzle-flash-part sparticle-launch-control   :offset-assert 576)
+   (particle-trail    sparticle-launch-control   :offset-assert 580)
    (swirl             float                      :offset-assert 584)
    (swirlvel          float                      :offset-assert 588)
    )
@@ -47121,24 +47177,22 @@
     impact ;; 22
     )
   )
-|#
 
-;; (define-extern *dm-flyer-curve-linear-up-red* object)
-;; (define-extern *dm-flyer-trail-color-curve-missile* curve-color-fast)
-;; (define-extern *dm-flyer-curve-missile-linear-trail* curve2d-fast)
-;; (define-extern *dm-flyer-missile-trail* object)
-;; (define-extern dm-flyer-shot-move function)
+(define-extern *dm-flyer-curve-linear-up-red* curve2d-piecewise)
+(define-extern *dm-flyer-trail-color-curve-missile* curve-color-fast)
+(define-extern *dm-flyer-curve-missile-linear-trail* curve2d-fast)
+(define-extern *dm-flyer-missile-trail* light-trail-composition)
+(define-extern dm-flyer-shot-move (function dm-flyer-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wascity-turret-shot            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-turret-shot (guard-shot)
   ((hit-pos        vector :inline :offset-assert 544)
    (prev-smoke-pos vector :inline :offset-assert 560)
-   (smoke-part     basic          :offset-assert 576)
-   (hit-water?     basic          :offset-assert 580)
+   (smoke-part     sparticle-launch-control :offset-assert 576)
+   (hit-water?     symbol         :offset-assert 580)
    (rotangle       float          :offset-assert 584)
    (rotrad         float          :offset-assert 588)
    (right          vector :inline :offset-assert 592)
@@ -47148,245 +47202,240 @@
   :method-count-assert 42
   :size-assert         #x274
   :flag-assert         #x2a02000274
-  (:methods
-    (wascity-turret-shot-method-41 () none) ;; 41
-    )
   (:state-methods
-    moving ;; 23
     impact ;; 22
+    moving ;; 23
+    )
+  (:methods
+    (wascity-turret-shot-method-41 (_type_) none) ;; 41
     )
   )
-|#
 
-;; (define-extern *range-skeet-shot-splash-color* curve-color-fast)
-;; (define-extern *range-skeet-shot-splash-alpha* curve2d-fast)
-;; (define-extern *range-skeet-shot-splash-scale-x* curve2d-fast)
-;; (define-extern *range-skeet-shot-splash-scale-y* curve2d-fast)
-;; (define-extern *curve-skeet-shot-splash-alpha* curve2d-fast)
-;; (define-extern *curve-skeet-shot-splash-scale-x* curve2d-fast)
-;; (define-extern *curve-skeet-shot-splash-scale-y* curve2d-fast)
-;; (define-extern *part-wascity-turret-shot-hit-splash-curve-settings* object)
-;; (define-extern wascity-turret-shot-move function)
+(define-extern *range-skeet-shot-splash-color* curve-color-fast)
+(define-extern *range-skeet-shot-splash-alpha* curve2d-fast)
+(define-extern *range-skeet-shot-splash-scale-x* curve2d-fast)
+(define-extern *range-skeet-shot-splash-scale-y* curve2d-fast)
+(define-extern *curve-skeet-shot-splash-alpha* curve2d-fast)
+(define-extern *curve-skeet-shot-splash-scale-x* curve2d-fast)
+(define-extern *curve-skeet-shot-splash-scale-y* curve2d-fast)
+(define-extern *part-wascity-turret-shot-hit-splash-curve-settings* particle-curve-settings)
+(define-extern wascity-turret-shot-move (function wascity-turret-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wascity-turret                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *wascity-turret-speech-list* object)
-;; (define-extern *wascity-turret-params* object)
-;; (define-extern *wascity-turret* object)
-;; (define-extern *wascity-turret-exploder-params* joint-exploder-static-params)
-;; (define-extern *wascity-display-offset* object)
-;; (define-extern *debug-control-params* object)
-;; (define-extern wct-show-flut function)
-;; (define-extern *wascity-turret-got-out-time* object)
-;; (define-extern joint-mod-recoil function)
-;; (define-extern wascity-turret-get-fire-pos function)
-;; (define-extern wascity-turret-get-reticle-fire-pos function)
-;; (define-extern *wascity-reticle-normal-color* object)
-;; (define-extern *wascity-reticle-locked-color* object)
-;; (define-extern wascity-turret-get-reticle-color function)
-;; (define-extern wascity-turret-gun-pos function)
-;; (define-extern wascity-turret-gun-aim function)
-;; (define-extern wascity-turret-add-radar function)
+(define-extern *wascity-turret-speech-list* (inline-array talker-speech-class))
+(define-extern *wascity-turret-params* target-turret-params)
+(define-extern *wascity-turret* (pointer wascity-turret))
+(define-extern *wascity-turret-exploder-params* joint-exploder-static-params)
+(define-extern *wascity-display-offset* vector)
+(define-extern *debug-control-params* object)
+(define-extern wct-show-flut (function wascity-turret symbol none))
+(define-extern *wascity-turret-got-out-time* time-frame)
+(define-extern joint-mod-recoil (function cspace transformq none))
+(define-extern wascity-turret-get-fire-pos (function vector symbol))
+(define-extern wascity-turret-get-reticle-fire-pos (function vector symbol))
+(define-extern *wascity-reticle-normal-color* rgbaf)
+(define-extern *wascity-reticle-locked-color* rgbaf)
+(define-extern wascity-turret-get-reticle-color (function vector4w none))
+(define-extern wascity-turret-gun-pos (function vector))
+(define-extern wascity-turret-gun-aim (function none :behavior wascity-turret))
+(define-extern wascity-turret-add-radar (function vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasgun-manager                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-wascity-gungame (task-manager)
-  ((wascity-gungame-entity basic   :offset-assert 236)
-   (check-timer            uint64  :offset-assert 244)
-   (actor-group            uint32  :offset-assert 252)
-   (actor-group-count      int32   :offset-assert 256)
-   (cur-group              int8    :offset-assert 260)
-   (halfway-up?            basic   :offset-assert 264)
-   (nskeet                 int16   :offset-assert 268)
-   (hopped-out             uint64  :offset-assert 276)
-   (miss-count             int16   :offset-assert 284)
-   (last-miss-count        int16   :offset-assert 286)
-   (launch-time            uint64  :offset-assert 292)
-   (win-time               uint64  :offset-assert 300)
-   (lose-time              uint64  :offset-assert 308)
-   (last-hit-time          uint64  :offset-assert 316)
-   (added-points-time      uint64  :offset-assert 324)
-   (point-queue            int16   :offset-assert 332)
-   (skeet-hit              int16   :offset-assert 334)
-   (shot-count-at-last-hit int16   :offset-assert 336)
-   (bonus-mult             int16   :offset-assert 338)
-   (numshots               int16   :offset-assert 340)
-   (queue-time             int32   :offset-assert 344)
-   (event-length           uint64  :offset-assert 348)
-   (event-time             uint64  :offset-assert 356)
-   (shot-timer             uint64  :offset-assert 364)
-   (wct                    uint64  :offset-assert 372)
-   (wave                   int32   :offset-assert 380)
-   (event                  int32   :offset-assert 384)
-   (goal-amount            int8    :offset-assert 388)
-   (score                  int32   :offset-assert 392)
-   (hud-score              uint64  :offset-assert 396)
-   (hud-goal               uint64  :offset-assert 404)
-   (hud-miss               uint64  :offset-assert 412)
-   (hud-reticle            uint64  :offset-assert 420)
-   (hud-active?            basic   :offset-assert 428)
-   (been-out-of-turret?    basic   :offset-assert 432)
-   (won?                   basic   :offset-assert 436)
-   (lost?                  basic   :offset-assert 440)
-   (game-score             uint8   :offset-assert 444)
-   (task-gold              uint16  :offset-assert 446)
-   (task-silver            uint16  :offset-assert 448)
-   (task-bronze            uint16  :offset-assert 450)
-   (score-bronze           int32   :offset-assert 452)
-   (score-silver           int32   :offset-assert 456)
-   (score-gold             int32   :offset-assert 460)
-   (score-high             int32   :offset-assert 464)
-   (sound-id               uint32  :offset-assert 468)
+  ((wascity-gungame-entity entity  :offset-assert 240)
+   (check-timer            time-frame  :offset-assert 248)
+   (actor-group            (pointer actor-group)  :offset-assert 256)
+   (actor-group-count      int32   :offset-assert 260)
+   (cur-group              int8    :offset-assert 264)
+   (halfway-up?            symbol  :offset-assert 268)
+   (nskeet                 int16   :offset-assert 272)
+   (hopped-out             time-frame :offset-assert 280)
+   (miss-count             int16   :offset-assert 288)
+   (last-miss-count        int16   :offset-assert 290)
+   (launch-time            time-frame :offset-assert 296)
+   (win-time               time-frame :offset-assert 304)
+   (lose-time              time-frame :offset-assert 312)
+   (last-hit-time          time-frame :offset-assert 320)
+   (added-points-time      time-frame :offset-assert 328)
+   (point-queue            int16   :offset-assert 336)
+   (skeet-hit              int16   :offset-assert 338)
+   (shot-count-at-last-hit int16   :offset-assert 340)
+   (bonus-mult             int16   :offset-assert 342)
+   (numshots               int16   :offset-assert 344)
+   (queue-time             int32   :offset-assert 348)
+   (event-length           time-frame :offset-assert 352)
+   (event-time             time-frame :offset-assert 360)
+   (shot-timer             time-frame :offset-assert 368)
+   (wct                    handle  :offset-assert 376)
+   (wave                   int32   :offset-assert 384)
+   (event                  int32   :offset-assert 388)
+   (goal-amount            int8    :offset-assert 392)
+   (score                  int32   :offset-assert 396)
+   (hud-score              handle  :offset-assert 400)
+   (hud-goal               handle  :offset-assert 408)
+   (hud-miss               handle  :offset-assert 416)
+   (hud-reticle            handle  :offset-assert 424)
+   (hud-active?            symbol  :offset-assert 432)
+   (been-out-of-turret?    symbol  :offset-assert 436)
+   (won?                   symbol  :offset-assert 440)
+   (lost?                  symbol  :offset-assert 444)
+   (game-score             uint8   :offset-assert 448)
+   (task-gold              uint16  :offset-assert 450)
+   (task-silver            uint16  :offset-assert 452)
+   (task-bronze            uint16  :offset-assert 454)
+   (score-bronze           int32   :offset-assert 456)
+   (score-silver           int32   :offset-assert 460)
+   (score-gold             int32   :offset-assert 464)
+   (score-high             int32   :offset-assert 468)
+   (sound-id               sound-id :offset-assert 472)
    )
   :method-count-assert 42
   :size-assert         #x1dc
   :flag-assert         #x2a016001dc
-  (:methods
-    (task-manager-wascity-gungame-method-32 () none) ;; 32
-    (task-manager-wascity-gungame-method-33 () none) ;; 33
-    (task-manager-wascity-gungame-method-34 () none) ;; 34
-    (task-manager-wascity-gungame-method-35 () none) ;; 35
-    (task-manager-wascity-gungame-method-36 () none) ;; 36
-    (task-manager-wascity-gungame-method-37 () none) ;; 37
-    (task-manager-wascity-gungame-method-38 () none) ;; 38
-    (task-manager-wascity-gungame-method-39 () none) ;; 39
-    (task-manager-wascity-gungame-method-40 () none) ;; 40
-    (task-manager-wascity-gungame-method-41 () none) ;; 41
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (task-manager-wascity-gungame-method-32 (_type_) none) ;; 32
+    (task-manager-wascity-gungame-method-33 (_type_) none) ;; 33
+    (task-manager-wascity-gungame-method-34 (_type_) none) ;; 34
+    (task-manager-wascity-gungame-method-35 (_type_) none) ;; 35
+    (task-manager-wascity-gungame-method-36 (_type_) none) ;; 36
+    (task-manager-wascity-gungame-method-37 (_type_) none) ;; 37
+    (task-manager-wascity-gungame-method-38 (_type_) none) ;; 38
+    (task-manager-wascity-gungame-method-39 (_type_) float) ;; 39
+    (task-manager-wascity-gungame-method-40 (_type_) float) ;; 40
+    (task-manager-wascity-gungame-method-41 (_type_) float) ;; 41
+    )
   )
-|#
 
-#|
 (deftype hip-skeet-event (structure)
-  ((min-time uint32  :offset-assert 0)
-   (max-time uint32  :offset-assert 4)
-   (mode     uint8   :offset-assert 8)
-   (angle    float   :offset-assert 12)
-   (speed    float   :offset-assert 16)
+  ((min-time uint32  :offset-assert 0 :decomp-as time-frame)
+   (max-time uint32  :offset-assert 4 :decomp-as time-frame)
+   (mode     skeet-mode :offset-assert 8)
+   (angle    degrees :offset-assert 12)
+   (speed    meters  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-;; (define-extern *wasgun-speedmult* object)
-;; (define-extern *skeet-exploder-params* joint-exploder-static-params)
-;; (define-extern *skeet-b-exploder-params* joint-exploder-static-params)
-;; (define-extern *skeet-c-exploder-params* joint-exploder-static-params)
-;; (define-extern *skeet-data* array)
-;; (define-extern *skeet-rigid-body-constants* object)
-;; (define-extern wasgun-manager-shot-missed function)
-;; (define-extern skeet-standard-event-handler function)
-;; (define-extern *skeet-focus-pos* object)
-;; (define-extern skeet-init-by-other function)
-;; (define-extern spawn-skeet function)
-;; (define-extern *skeet-offset-table* array)
-;; (define-extern def-launch-circle function)
-;; (define-extern spawn-skeet-enum function)
-;; (define-extern wasgun-standard-event-handler function)
-;; (define-extern *skeet-launcher-pos* object)
-;; (define-extern *skeet-target-pos* object)
-;; (define-extern print-and-spawn-skeet function)
+(define-extern *wasgun-speedmult* float)
+(define-extern *skeet-exploder-params* joint-exploder-static-params)
+(define-extern *skeet-b-exploder-params* joint-exploder-static-params)
+(define-extern *skeet-c-exploder-params* joint-exploder-static-params)
+(define-extern *skeet-data* (array (array hip-skeet-event)))
+(define-extern *skeet-rigid-body-constants* rigid-body-object-constants)
+(define-extern wasgun-manager-shot-missed (function none))
+(def-event-handler skeet-standard-event-handler skeet)
+(define-extern *skeet-focus-pos* vector)
+(define-extern skeet-init-by-other (function task-manager-wascity-gungame skeet-mode vector float float object :behavior skeet))
+(define-extern spawn-skeet (function task-manager-wascity-gungame skeet-mode vector float float skeet))
+(define-extern *skeet-offset-table* (array vector))
+(define-extern def-launch-circle (function none))
+(define-extern spawn-skeet-enum (function task-manager-wascity-gungame skeet-mode int float float none))
+(def-event-handler wasgun-standard-event-handler task-manager-wascity-gungame)
+(define-extern *skeet-launcher-pos* vector)
+(define-extern *skeet-target-pos* vector)
+(define-extern print-and-spawn-skeet (function task-manager-wascity-gungame skeet-mode vector degrees float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; maker-projectile               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *curve-maker-linear-up-red* object)
-;; (define-extern *trail-color-curve-maker-grenade* curve-color-fast)
-;; (define-extern *curve-maker-grenade-linear-trail* curve2d-fast)
-;; (define-extern *maker-grenade-trail* object)
-;; (define-extern *range-maker-grenade-explo-dust-color* curve-color-fast)
-;; (define-extern *range-maker-grenade-explo-dust-alpha* curve2d-fast)
-;; (define-extern *range-maker-grenade-explo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-maker-grenade-explo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-maker-grenade-explo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-maker-grenade-explo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-maker-grenade-explo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-maker-grenade-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-maker-grenade-explo-color* curve-color-fast)
-;; (define-extern *range-maker-grenade-explo-alpha* curve2d-fast)
-;; (define-extern *range-maker-grenade-explo-scale-x* curve2d-fast)
-;; (define-extern *range-maker-grenade-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-maker-grenade-explo-alpha* curve2d-fast)
-;; (define-extern *curve-maker-grenade-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-maker-grenade-explo-scale-y* curve2d-fast)
-;; (define-extern *part-maker-grenade-explosion-texture-curve-settings* object)
-;; (define-extern maker-projectile-bounce-move function)
+(define-extern *curve-maker-linear-up-red* curve2d-piecewise)
+(define-extern *trail-color-curve-maker-grenade* curve-color-fast)
+(define-extern *curve-maker-grenade-linear-trail* curve2d-fast)
+(define-extern *maker-grenade-trail* light-trail-composition)
+(define-extern *range-maker-grenade-explo-dust-color* curve-color-fast)
+(define-extern *range-maker-grenade-explo-dust-alpha* curve2d-fast)
+(define-extern *range-maker-grenade-explo-dust-scale-x* curve2d-fast)
+(define-extern *range-maker-grenade-explo-dust-scale-y* curve2d-fast)
+(define-extern *curve-maker-grenade-explo-dust-alpha* curve2d-fast)
+(define-extern *curve-maker-grenade-explo-dust-scale-x* curve2d-fast)
+(define-extern *curve-maker-grenade-explo-dust-scale-y* curve2d-fast)
+(define-extern *part-maker-grenade-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-maker-grenade-explo-color* curve-color-fast)
+(define-extern *range-maker-grenade-explo-alpha* curve2d-fast)
+(define-extern *range-maker-grenade-explo-scale-x* curve2d-fast)
+(define-extern *range-maker-grenade-explo-scale-y* curve2d-fast)
+(define-extern *curve-maker-grenade-explo-alpha* curve2d-fast)
+(define-extern *curve-maker-grenade-explo-scale-x* curve2d-fast)
+(define-extern *curve-maker-grenade-explo-scale-y* curve2d-fast)
+(define-extern *part-maker-grenade-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern maker-projectile-bounce-move (function maker-grenade none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasdef-manager                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-wascity-defend (task-manager)
-  ((wascity-defend-entity  basic   :offset-assert 236)
-   (check-timer            uint64  :offset-assert 244)
-   (actor-group            uint32  :offset-assert 252)
-   (actor-group-count      int32   :offset-assert 256)
-   (cur-group              int8    :offset-assert 260)
-   (facing-city?           basic   :offset-assert 264)
-   (failed                 basic   :offset-assert 268)
-   (completed              basic   :offset-assert 272)
-   (miss-count             int16   :offset-assert 276)
-   (last-miss-count        int16   :offset-assert 278)
-   (launch-time            uint64  :offset-assert 284)
-   (win-time               uint64  :offset-assert 292)
-   (last-hit-time          uint64  :offset-assert 300)
-   (added-points-time      uint64  :offset-assert 308)
-   (point-queue            int16   :offset-assert 316)
-   (skeet-hit              int16   :offset-assert 318)
-   (shot-count-at-last-hit int16   :offset-assert 320)
-   (bonus-mult             int16   :offset-assert 322)
-   (numshots               int16   :offset-assert 324)
-   (queue-time             int32   :offset-assert 328)
-   (event-length           uint64  :offset-assert 332)
-   (event-time             uint64  :offset-assert 340)
-   (wave                   int32   :offset-assert 348)
-   (event                  int32   :offset-assert 352)
-   (wct                    uint64  :offset-assert 356)
-   (score                  int32   :offset-assert 364)
-   (hud-score              uint64  :offset-assert 372)
-   (hud-goal               uint64  :offset-assert 380)
-   (hud-miss               uint64  :offset-assert 388)
-   (hud-reticle            uint64  :offset-assert 396)
-   (hud-damage             uint64  :offset-assert 404)
-   (hud-active?            basic   :offset-assert 412)
-   (out-of-turret?         basic   :offset-assert 416)
-   (sent-event-complete?   basic   :offset-assert 420)
-   (time-out-of-turret     uint64  :offset-assert 428)
-   (start-time             uint64  :offset-assert 164)
-   (alarm                  uint32  :offset-assert 444)
+  ((wascity-defend-entity  entity  :offset-assert 240)
+   (check-timer            time-frame  :offset-assert 248)
+   (actor-group            (pointer actor-group)  :offset-assert 256)
+   (actor-group-count      int32   :offset-assert 260)
+   (cur-group              int8    :offset-assert 264)
+   (facing-city?           symbol  :offset-assert 268)
+   (failed                 basic   :offset-assert 272)
+   (completed              basic   :offset-assert 276)
+   (miss-count             int16   :offset-assert 280)
+   (last-miss-count        int16   :offset-assert 282)
+   (launch-time            time-frame :offset-assert 288)
+   (win-time               time-frame :offset-assert 296)
+   (last-hit-time          time-frame :offset-assert 304)
+   (added-points-time      time-frame :offset-assert 312)
+   (point-queue            int16   :offset-assert 320)
+   (skeet-hit              int16   :offset-assert 322)
+   (shot-count-at-last-hit int16   :offset-assert 324)
+   (bonus-mult             int16   :offset-assert 326)
+   (numshots               int16   :offset-assert 328)
+   (queue-time             int32   :offset-assert 332)
+   (event-length           time-frame  :offset-assert 336)
+   (event-time             time-frame  :offset-assert 344)
+   (wave                   int32   :offset-assert 352)
+   (event                  int32   :offset-assert 356)
+   (wct                    handle  :offset-assert 360)
+   (score                  int32   :offset-assert 368)
+   (hud-score              handle  :offset-assert 376)
+   (hud-goal               handle  :offset-assert 384)
+   (hud-miss               handle  :offset-assert 392)
+   (hud-reticle            handle  :offset-assert 400)
+   (hud-damage             handle  :offset-assert 408)
+   (hud-active?            symbol  :offset-assert 416)
+   (out-of-turret?         symbol  :offset-assert 420)
+   (sent-event-complete?   symbol  :offset-assert 424)
+   (time-out-of-turret     time-frame :offset-assert 432)
+   (alarm                  sound-id :offset 448)
    )
   :method-count-assert 36
   :size-assert         #x1c4
   :flag-assert         #x24015001c4
-  (:methods
-    (task-manager-wascity-defend-method-32 () none) ;; 32
-    (task-manager-wascity-defend-method-33 () none) ;; 33
-    (task-manager-wascity-defend-method-34 () none) ;; 34
-    (task-manager-wascity-defend-method-35 () none) ;; 35
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (task-manager-wascity-defend-method-32 (_type_) none) ;; 32
+    (task-manager-wascity-defend-method-33 (_type_) none) ;; 33
+    (task-manager-wascity-defend-method-34 (_type_) none) ;; 34
+    (task-manager-wascity-defend-method-35 (_type_) none) ;; 35
+    )
   )
-|#
 
-#|
+(defenum hip-maker-mode
+  :type uint8
+  )
+
 (deftype hip-maker-event (structure)
   ((event-length uint32  :offset-assert 0)
    (path-idx     uint32  :offset-assert 4)
-   (mode         uint8   :offset-assert 8)
+   (mode         hip-maker-mode :offset-assert 8)
    (angle        float   :offset-assert 12)
    (speed        float   :offset-assert 16)
    )
@@ -47394,23 +47443,19 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype maker-damage (structure)
-  ((part    basic          :offset-assert 0)
+  ((part    sparticle-launch-control :offset-assert 0)
    (pos     vector :inline :offset-assert 16)
    (jnt     uint8          :offset-assert 32)
-   (active  basic          :offset-assert 36)
+   (active  symbol         :offset-assert 36)
    (counter uint8          :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x29
   :flag-assert         #x900000029
   )
-|#
 
-#|
 (deftype maker (process-focusable)
   ((forw                 vector             :inline :offset-assert 208)
    (ppos                 vector             :inline :offset-assert 224)
@@ -47420,23 +47465,23 @@
    (tentacle-speed       float                      :offset-assert 276)
    (rot-vel              float                      :offset-assert 280)
    (rot-acc              float                      :offset-assert 284)
-   (visible-explode-time uint64                     :offset-assert 288)
-   (birth-time           uint64                     :offset-assert 296)
-   (footstep-time        uint64                     :offset-assert 304)
-   (last-hit-time        uint64                     :offset-assert 312)
-   (last-fire-time       uint64                     :offset-assert 320)
-   (last-laser-fire-time uint64                     :offset-assert 328)
-   (audible-explode-time uint64                     :offset-assert 336)
-   (exploded-time        uint64                     :offset-assert 344)
+   (visible-explode-time time-frame                 :offset-assert 288)
+   (birth-time           time-frame                 :offset-assert 296)
+   (footstep-time        time-frame                 :offset-assert 304)
+   (last-hit-time        time-frame                 :offset-assert 312)
+   (last-fire-time       time-frame                 :offset-assert 320)
+   (last-laser-fire-time time-frame                 :offset-assert 328)
+   (audible-explode-time time-frame                 :offset-assert 336)
+   (exploded-time        time-frame                 :offset-assert 344)
    (mult                 uint8                      :offset-assert 352)
    (score                uint16                     :offset-assert 354)
    (minimap              connection-minimap         :offset-assert 356)
-   (maker-sound          uint32                     :offset-assert 360)
-   (maker-sound-playing? basic                      :offset-assert 364)
-   (explosion-sound-id   uint32                     :offset-assert 368)
-   (made-splash?         basic                      :offset-assert 372)
+   (maker-sound          sound-id                   :offset-assert 360)
+   (maker-sound-playing? symbol                     :offset-assert 364)
+   (explosion-sound-id   sound-id                   :offset-assert 368)
+   (made-splash?         symbol                     :offset-assert 372)
    (head-rot             quaternion         :inline :offset-assert 384)
-   (head-jm              basic                      :offset-assert 400)
+   (head-jm              joint-mod                  :offset-assert 400)
    (head-tilt            float                      :offset-assert 404)
    (head-tilt-vel        float                      :offset-assert 408)
    (head-tilt-err        float                      :offset-assert 412)
@@ -47449,77 +47494,76 @@
    (num-shots            int8                       :offset-assert 440)
    (damage-idx           int8                       :offset-assert 441)
    (wait-time            uint32                     :offset-assert 444)
-   (reticle-on?          basic                      :offset-assert 448)
+   (reticle-on?          symbol                     :offset-assert 448)
    (kick-your-ass-count  uint8                      :offset-assert 452)
    (kick-your-ass-string uint8                      :offset-assert 453)
    (prim-targeted        int8                       :offset-assert 454)
-   (damage-info          UNKNOWN            5       :offset-assert 464)
+   (damage-info          maker-damage     5 :inline :offset-assert 464)
    (path-idx             int16                      :offset-assert 704)
    (path-pt              int16                      :offset-assert 706)
    (path-len             int16                      :offset-assert 708)
    (seek-pos             vector             :inline :offset-assert 720)
    (mode                 uint8                      :offset-assert 736)
-   (trail-handle         uint64                     :offset-assert 744)
+   (trail-handle         handle                     :offset-assert 744)
    )
   :method-count-assert 43
   :size-assert         #x2f0
   :flag-assert         #x2b027002f0
-  (:methods
-    (maker-method-32 () none) ;; 32
-    (maker-method-33 () none) ;; 33
-    (maker-method-34 () none) ;; 34
-    (maker-method-35 () none) ;; 35
-    (maker-method-36 () none) ;; 36
-    (maker-method-37 () none) ;; 37
-    (maker-method-38 () none) ;; 38
-    (maker-method-39 () none) ;; 39
-    (maker-method-40 () none) ;; 40
-    (maker-method-41 () none) ;; 41
-    (maker-method-42 () none) ;; 42
-    )
   (:state-methods
     explode ;; 29
     flying ;; 28
     walking ;; 30
     standup ;; 31
     )
+  (:methods
+    (maker-method-32 (_type_) none) ;; 32
+    (maker-method-33 (_type_) none) ;; 33
+    (maker-method-34 (_type_) none) ;; 34
+    (maker-method-35 (_type_) none) ;; 35
+    (maker-method-36 (_type_) none) ;; 36
+    (maker-method-37 (_type_) none) ;; 37
+    (maker-method-38 (_type_) none) ;; 38
+    (maker-method-39 (_type_) none) ;; 39
+    (maker-method-40 (_type_) none) ;; 40
+    (maker-method-41 (_type_) none) ;; 41
+    (maker-method-42 (_type_) none) ;; 42
+    )
   )
-|#
 
-;; (define-extern *maker-num-alive* object)
-;; (define-extern *maker-num-visible* object)
-;; (define-extern *maker-num-grenades* object)
-;; (define-extern *maker-last-shot-time* object)
-;; (define-extern *maker-first-hit* object)
-;; (define-extern *maker-first-kill* object)
-;; (define-extern *maker-first-missile* object)
-;; (define-extern *maker-last-vocalization* object)
-;; (define-extern *wascity-alarm-pos1* object)
-;; (define-extern *wascity-alarm-pos2* object)
-;; (define-extern *wascity-defend-speech-list* object)
-;; (define-extern *maker-debris-params* debris-static-params)
-;; (define-extern *curve-maker-entry-linear-up-red* object)
-;; (define-extern *trail-color-curve-maker-entry* curve-color-fast)
-;; (define-extern *curve-maker-entry-linear-trail* curve2d-fast)
-;; (define-extern *maker-entry-trail* object)
-;; (define-extern *maker-data* array)
-;; (define-extern *maker-rigid-body-constants* object)
-;; (define-extern *maker-damage-joint-array* array)
-;; (define-extern *maker-joint-array* array)
-;; (define-extern maker-world-to-local-vec! function)
-;; (define-extern *say-iteration-counter* object)
-;; (define-extern *say-timestamp* object)
-;; (define-extern wasdef-voiceover function)
-;; (define-extern maker-standard-event-handler function)
-;; (define-extern get-ocean-floor-height function)
-;; (define-extern *maker-close* object)
-;; (define-extern *maker-close-count* object)
-;; (define-extern *maker-traverse-paths* array)
-;; (define-extern maker-init-by-other function)
-;; (define-extern spawn-maker function)
-;; (define-extern *maker-avoid-spheres* array)
-;; (define-extern spawn-maker-enum function)
-;; (define-extern jak-out-of-turret function)
+(define-extern *maker-num-alive* int)
+(define-extern *maker-num-visible* int)
+(define-extern *maker-num-grenades* int)
+(define-extern *maker-last-shot-time* time-frame)
+(define-extern *maker-first-hit* time-frame)
+(define-extern *maker-first-kill* time-frame)
+(define-extern *maker-first-missile* time-frame)
+(define-extern *maker-last-vocalization* time-frame)
+(define-extern *wascity-alarm-pos1* vector)
+(define-extern *wascity-alarm-pos2* vector)
+(define-extern *wascity-defend-speech-list* (inline-array talker-speech-class))
+(define-extern *maker-debris-params* debris-static-params)
+(define-extern *curve-maker-entry-linear-up-red* curve2d-piecewise)
+(define-extern *trail-color-curve-maker-entry* curve-color-fast)
+(define-extern *curve-maker-entry-linear-trail* curve2d-fast)
+(define-extern *maker-entry-trail* light-trail-composition)
+(define-extern *maker-data* (array hip-maker-event))
+(define-extern *maker-rigid-body-constants* rigid-body-object-constants)
+(define-extern *maker-damage-joint-array* array)
+(define-extern *maker-joint-array* array)
+(define-extern maker-world-to-local-vec! function)
+(define-extern *say-iteration-counter* object)
+(define-extern *say-timestamp* object)
+(define-extern wasdef-voiceover function)
+(define-extern maker-standard-event-handler function)
+(define-extern get-ocean-floor-height function)
+(define-extern *maker-close* object)
+(define-extern *maker-close-count* object)
+(define-extern *maker-traverse-paths* (array path-control))
+(define-extern maker-init-by-other function)
+(define-extern spawn-maker function)
+(define-extern *maker-avoid-spheres* (array sphere))
+(define-extern spawn-maker-enum function)
+(define-extern jak-out-of-turret (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasdef-hud                     ;;
@@ -66169,7 +66213,7 @@
     idle ;; 20
     )
   (:methods
-    (wascity-flag-base-method-21 (_type_) none) ;; 21
+    (get-skel (_type_) art-group) ;; 21
     (wascity-flag-base-method-22 (_type_) none) ;; 22
     )
   )
