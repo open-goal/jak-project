@@ -31,8 +31,8 @@ class KeyboardDevice : public InputDevice {
                      const CommandBindingGroups& commands,
                      std::shared_ptr<PadData> data,
                      std::optional<InputBindAssignmentMeta>& bind_assignment) override;
-  void close_device() override{
-      // there is nothing to close
+  void close_device() override {
+    // there is nothing to close
   };
 
  private:

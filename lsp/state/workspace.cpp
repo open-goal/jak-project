@@ -379,8 +379,8 @@ void Workspace::tracked_file_will_save(const LSPSpec::DocumentUri& file_uri) {
   }
 }
 
-void Workspace::update_global_index(const GameVersion game_version){
-    // TODO - project wide indexing potentially (ie. finding references)
+void Workspace::update_global_index(const GameVersion game_version) {
+  // TODO - project wide indexing potentially (ie. finding references)
 };
 
 void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
