@@ -12798,6 +12798,7 @@
   (v-marauder-b 23)
   (test-car 25)
   (wbike-test 26)
+  (vt27 27)
   (evan-test-bike 29)
   )
 ;; ---traffic-h:vehicle-type
@@ -28913,7 +28914,8 @@
   )
 
 (deftype rigid-body-object (process-focusable)
-  ((info                  rigid-body-object-constants         :offset-assert 208)
+  ((root                  collide-shape-moving                :override)
+   (info                  rigid-body-object-constants         :offset-assert 208)
    (flags                 rigid-body-object-flag              :offset-assert 216)
    (max-time-step         float                               :offset-assert 224)
    (incoming-attack-id    uint32                              :offset-assert 228)
@@ -47665,7 +47667,7 @@
     (get-speed-limit (_type_) float) ;; 12
     (get-width (_type_) float) ;; 13
     (user-limit-reached? (_type_) symbol) ;; 14
-    (nav-branch-method-15 () none) ;; 15 ;; (dest-node-id-at-max? (_type_) symbol)
+    (dest-node-id-at-max? (_type_) symbol) ;; 15
     (nav-branch-method-16 () none) ;; 16 ;; (set-density (_type_ float) none)
     (nav-branch-method-17 () none) ;; 17 ;; (set-speed-limit (_type_ float) none)
     (nav-branch-method-18 () none) ;; 18 ;; (set-width (_type_ float) none)
@@ -48078,6 +48080,8 @@
     )
   )
 
+(declare-type traffic-find-segment-struct structure)
+
 (deftype city-level-info (structure)
   ((grid-info      grid-info                  :inline :offset-assert 0)
    (cell-array     (inline-array vis-cell)            :offset-assert 64) ;; guessed by decompiler
@@ -48279,8 +48283,8 @@
     (traffic-engine-method-17 () none) ;; 17 ;; (can-dest-be-used? (_type_ nav-branch) symbol)
     (traffic-engine-method-18 () none) ;; 18 ;; (child-killed (_type_ process) none)
     (traffic-engine-method-19 () none) ;; 19 ;; (deactivate-all-from-level (_type_ symbol) none)
-    (traffic-engine-method-20 () none) ;; 20 ;; (find-best-segment (_type_ vector vector int) nav-segment)
-    (traffic-engine-method-21 () none) ;; 21 ;; (callback-on-nav-segments-in-sphere (_type_ vector int traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none)
+    (find-best-segment (_type_ vector vector int) nav-segment) ;; 20
+    (callback-on-nav-segments-in-sphere (_type_ vector int traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none) ;; 21
     (traffic-engine-method-22 () none) ;; 22 ;; (add-danger (_type_ traffic-danger-info) none)
     (traffic-engine-method-23 () none) ;; 23 ;; (guard-count (_type_) int)
     (traffic-engine-method-24 () none) ;; 24 ;; (set-target-level (_type_ float) none)
@@ -48324,40 +48328,39 @@
 ;; height-map-h                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype xz-height-map (structure)
   ((offset        float          3 :offset-assert 0) ;; guessed by decompiler
-   (x-offset      float            :offset-assert 0)
-   (y-offset      float            :offset-assert 4)
-   (z-offset      float            :offset-assert 8)
+   (x-offset      float            :offset 0)
+   (y-offset      float            :offset 4)
+   (z-offset      float            :offset 8)
    (x-inv-spacing float            :offset-assert 12)
    (z-inv-spacing float            :offset-assert 16)
    (y-scale       float            :offset-assert 20)
    (dim           int16          2 :offset-assert 24) ;; guessed by decompiler
-   (x-dim         int16            :offset-assert 24)
-   (z-dim         int16            :offset-assert 26)
+   (x-dim         int16            :offset 24)
+   (z-dim         int16            :offset 26)
    (data          (pointer int8)   :offset-assert 28) ;; guessed by decompiler
    )
   :method-count-assert 15
   :size-assert         #x20
   :flag-assert         #xf00000020
   (:methods
-    (xz-height-map-method-9 () none) ;; 9 ;; (get-height-at-point (_type_ vector) float)
-    (xz-height-map-method-10 () none) ;; 10 ;; (debug-draw-mesh (_type_ vector) none)
-    (xz-height-map-method-11 () none) ;; 11 ;; (debug-print (_type_) none)
-    (xz-height-map-method-12 () none) ;; 12 ;; (debug-draw-at-point (_type_ vector) none)
-    (xz-height-map-method-13 () none) ;; 13 ;; (debug-draw (_type_ vector) none)
-    (xz-height-map-method-14 () none) ;; 14 ;; (debug-add-offset (_type_ vector int) none)
+    (get-height-at-point (_type_ vector) float) ;; 9
+    (debug-draw-mesh (_type_ vector) none) ;; 10
+    (debug-print (_type_) none) ;; 11
+    (debug-draw-at-point (_type_ vector) none) ;; 12
+    (debug-draw (_type_ vector) none) ;; 13
+    (debug-add-offset (_type_ vector int) none) ;; 14
     )
   )
-|#
 
-;; (define-extern get-traffic-height function) ;; (function vector float)
+(define-extern get-traffic-height (function vector float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-control                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++vehicle-control:vehicle-controller-flag
 (defenum vehicle-controller-flag
   :type uint32
   :bitfield #t
@@ -48374,7 +48377,10 @@
   (recovery-mode)
   (no-slowing-for-turns)
   )
-#|
+;; ---vehicle-control:vehicle-controller-flag
+
+(declare-type vehicle process-focusable)
+(declare-type rigid-body-vehicle-constants structure)
 (deftype vehicle-controller (structure)
   ((flags                  vehicle-controller-flag                                  :offset-assert 0)
    (traffic                traffic-engine                                           :offset-assert 4) ;; guessed by decompiler
@@ -48387,7 +48393,7 @@
    (path-prev-point        vector                                           :inline :offset-assert 32)
    (turn-enter-point       vector                                           :inline :offset-assert 48)
    (turn-exit-point        vector                                           :inline :offset-assert 64)
-   (path-dest-point        vector                                           :inline :offset-assert 64)
+   (path-dest-point        vector                                           :inline :offset 64)
    (turn-enter-dir         vector                                           :inline :offset-assert 80)
    (turn-exit-dir          vector                                           :inline :offset-assert 96)
    (dest-circle            vector                                           :inline :offset-assert 112)
@@ -48397,24 +48403,23 @@
   :size-assert         #x90
   :flag-assert         #x1600000090
   (:methods
-    (vehicle-controller-method-9 () none) ;; 9 ;; (vehicle-controller-method-9 (_type_) none)
-    (vehicle-controller-method-10 () none) ;; 10 ;; (vehicle-controller-method-10 (_type_ traffic-tracker) none)
-    (vehicle-controller-method-11 () none) ;; 11 ;; (vehicle-controller-method-11 (_type_) none)
-    (vehicle-controller-method-12 () none) ;; 12 ;; (vehicle-controller-method-12 (_type_ rigid-body-vehicle-constants vector float int float) none)
-    (vehicle-controller-method-13 () none) ;; 13 ;; (vehicle-controller-method-13 (_type_ nav-branch vector) none)
-    (vehicle-controller-method-14 () none) ;; 14 ;; (vehicle-controller-method-14 (_type_ vehicle) nav-branch)
-    (vehicle-controller-method-15 () none) ;; 15 ;; (vehicle-controller-method-15 (_type_) nav-branch)
-    (vehicle-controller-method-16 () none) ;; 16 ;; (vehicle-controller-method-16 (_type_ vector vector) none)
-    (vehicle-controller-method-17 () none) ;; 17 ;; (draw-debug-info (_type_) none)
-    (vehicle-controller-method-18 () none) ;; 18 ;; (vehicle-controller-method-18 (_type_ vector vector vehicle float) none)
-    (vehicle-controller-method-19 () none) ;; 19 ;; (vehicle-controller-method-19 (_type_ vector object vector vector) none)
-    (vehicle-controller-method-20 () none) ;; 20 ;; (vehicle-controller-method-20 (_type_ object float) none)
-    (vehicle-controller-method-21 () none) ;; 21 ;; (vehicle-controller-method-21 (_type_) none)
+    (vehicle-controller-method-9 (_type_) none) ;; 9 ;; (vehicle-controller-method-9 (_type_) none)
+    (vehicle-controller-method-10 (_type_ traffic-tracker) none) ;; 10 ;; (vehicle-controller-method-10 (_type_ traffic-tracker) none)
+    (vehicle-controller-method-11 (_type_) none) ;; 11 ;; (vehicle-controller-method-11 (_type_) none)
+    (vehicle-controller-method-12 (_type_ rigid-body-vehicle-constants vector float int float) none) ;; 12 ;; (vehicle-controller-method-12 (_type_ rigid-body-vehicle-constants vector float int float) none)
+    (vehicle-controller-method-13 (_type_ nav-branch vector) none) ;; 13 ;; (vehicle-controller-method-13 (_type_ nav-branch vector) none)
+    (vehicle-controller-method-14 (_type_ vehicle) nav-branch) ;; 14 ;; (vehicle-controller-method-14 (_type_ vehicle) nav-branch)
+    (vehicle-controller-method-15 (_type_) nav-branch) ;; 15 ;; (vehicle-controller-method-15 (_type_) nav-branch)
+    (vehicle-controller-method-16 (_type_ vector vector) none) ;; 16 ;; (vehicle-controller-method-16 (_type_ vector vector) none)
+    (draw-debug-info (_type_) none) ;; 17 ;; (draw-debug-info (_type_) none)
+    (vehicle-controller-method-18 (_type_ vector vector vehicle float) none) ;; 18 ;; (vehicle-controller-method-18 (_type_ vector vector vehicle float) none)
+    (vehicle-controller-method-19 (_type_ vector object vector vector) none) ;; 19 ;; (vehicle-controller-method-19 (_type_ vector object vector vector) none)
+    (vehicle-controller-method-20 (_type_ vector float) none) ;; 20 ;; (vehicle-controller-method-20 (_type_ object float) none)
+    (vehicle-controller-method-21 (_type_) none) ;; 21 ;; (vehicle-controller-method-21 (_type_) none)
     )
   )
-|#
 
-;; (define-extern *vehicle-control-debug-obj* object) ;; object
+(define-extern *vehicle-control-debug-obj* object)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nav-graph                      ;;
@@ -48840,7 +48845,7 @@
   )
 |#
 
-;; (define-extern *ff-squad-control* object)
+(define-extern *ff-squad-control* squad-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-squad-control-h             ;;
@@ -49485,7 +49490,6 @@
 ;; traffic-engine                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype traffic-find-segment-struct (structure)
   ((best-seg    nav-segment         :offset-assert 0)
    (best-rating float               :offset-assert 4)
@@ -49495,7 +49499,6 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
 ;; (define-extern *traffic-suppress-activation* object) ;; symbol
 ;; (define-extern get-level-nav-graph-by-id function) ;; (function int nav-graph)
@@ -53061,7 +53064,7 @@
    (rider-stance       uint8     :offset-assert 1)
    (grab-rail-count    int8      :offset-assert 2)
    (attach-point-count int8      :offset-assert 3)
-   (grab-rail-array    (pointer vehicle-grab-rail-info) :offset-assert 4)
+   (grab-rail-array    (inline-array vehicle-grab-rail-info) :offset-assert 4)
    (seat-array         vehicle-seat-info 4 :inline :offset-assert 16)
    (rider-hand-offset  vector 2 :inline :offset-assert 80)
    (attach-point-array (inline-array vehicle-attach-point) :offset-assert 112)
@@ -53344,7 +53347,7 @@
     (get-rider-in-seat (_type_ int) process) ;; 67 ;; (get-seat-count (_type_) int)
     (vehicle-method-68 (_type_) process) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
     (put-rider-in-seat (_type_ int process) none) ;; 69 ;; (get-rider-in-seat (_type_ int) process)
-    (vehicle-method-70 (_type_) none) ;; 70 ;; (vehicle-method-70 (_type_) process)
+    (vehicle-method-70 (_type_) uint) ;; 70 ;; (vehicle-method-70 (_type_) process)
     (get-best-seat (_type_ vector vehicle-seat-flag int) int) ;; 71 ;; (put-rider-in-seat (_type_ int process-focusable) none)
     (remove-riders (_type_ handle) none) ;; 72 ;; (vehicle-method-72 (_type_) uint)
     (vehicle-method-73 (_type_) none) ;; 73 ;; (get-best-seat-for-vehicle (_type_ vector int int) int)
@@ -53407,7 +53410,7 @@
     (vehicle-method-130 (_type_) none) ;; 130 ;; (vehicle-method-130 (_type_ traffic-object-spawn-params) none)
     (vehicle-method-131 (_type_) none) ;; 131
     (vehicle-method-132 (_type_ traffic-object-spawn-params) none) ;; 132
-    (vehicle-method-133 (_type_) none) ;; 133 ;; (check-player-get-on (_type_) none)
+    (vehicle-method-133 (_type_ traffic-object-spawn-params) none) ;; 133 ;; (check-player-get-on (_type_) none)
     (vehicle-method-134 (_type_) none) ;; 134 ;; (vehicle-method-134 (_type_ process) none)
     (vehicle-method-135 (_type_) none) ;; 135 ;; (vehicle-method-135 (_type_ traffic-object-spawn-params) none)
     (vehicle-method-136 (_type_) none) ;; 136 ;; (vehicle-method-136 (_type_ traffic-object-spawn-params) none)
@@ -53848,19 +53851,18 @@
 ;; height-map                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern point-in-bbox? function) ;; (function bounding-box vector symbol)
+(define-extern point-in-bbox? (function bounding-box vector symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; traffic-height-map             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *traffic-height-map* object) ;; xz-height-map
+(define-extern *traffic-height-map* xz-height-map)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hvehicle-h                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hvehicle (vehicle)
   ((flight-level-index      int8                       :offset-assert 696)
    (flight-level-index-prev int8                       :offset-assert 697)
@@ -53868,46 +53870,43 @@
    (jump-time               float                      :offset-assert 704)
    (jump-thrust             float                      :offset-assert 708)
    (engine-thrust           float                      :offset-assert 712)
-   (lift-thrust             UNKNOWN            4       :offset-assert 716)
-   (roll-thrust             UNKNOWN            2       :offset-assert 732)
-   (engine-sound-id         uint32                     :offset-assert 740)
-   (thrust-sound-id         uint32                     :offset-assert 744)
-   (roll-sound-id           uint32                     :offset-assert 748)
-   (damage-pop-sound-id     uint32                     :offset-assert 752)
-   (extra-sound-id          uint32                     :offset-assert 756)
+   (lift-thrust             float 4                    :offset-assert 716)
+   (roll-thrust             float 2                    :offset-assert 732)
+   (engine-sound-id         sound-id                   :offset-assert 740)
+   (thrust-sound-id         sound-id                   :offset-assert 744)
+   (roll-sound-id           sound-id                   :offset-assert 748)
+   (damage-pop-sound-id     sound-id                   :offset-assert 752)
+   (extra-sound-id          sound-id                   :offset-assert 756)
    (engine-sound-envelope   float                      :offset-assert 760)
    (engine-sound-factor     float                      :offset-assert 764)
    (sputter-sound-envelope  float                      :offset-assert 768)
-   (transition-time         uint64                     :offset-assert 776)
-   (transition-end-time     uint64                     :offset-assert 784)
+   (transition-time         time-frame                 :offset-assert 776)
+   (transition-end-time     time-frame                 :offset-assert 784)
    (controller              vehicle-controller :inline :offset-assert 800)
    )
   :method-count-assert 162
   :size-assert         #x3b0
   :flag-assert         #xa2033003b0
   (:methods
-    (hvehicle-method-152 () none) ;; 152
-    (hvehicle-method-153 () none) ;; 153
-    (hvehicle-method-154 () none) ;; 154
-    (hvehicle-method-155 () none) ;; 155
-    (hvehicle-method-156 () none) ;; 156
-    (hvehicle-method-157 () none) ;; 157
-    (hvehicle-method-158 () none) ;; 158
-    (hvehicle-method-159 () none) ;; 159
-    (hvehicle-method-160 () none) ;; 160
-    (hvehicle-method-161 () none) ;; 161
+    (transition-flight-level (_type_ int) none) ;; 152
+    (hvehicle-method-153 (_type_) none) ;; 153
+    (hvehicle-method-154 (_type_) none) ;; 154
+    (hvehicle-method-155 (_type_) none) ;; 155
+    (hvehicle-method-156 (_type_) none) ;; 156
+    (hvehicle-method-157 (_type_) none) ;; 157
+    (hvehicle-method-158 (_type_) none) ;; 158
+    (hvehicle-method-159 (_type_) none) ;; 159
+    (adjust-throttle (_type_ float) none) ;; 160
+    (hvehicle-method-161 (_type_ traffic-object-spawn-params) object) ;; 161
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vehicle-rider                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype vehicle-rider (process-focusable)
-  ((squad       basic  :offset-assert 208)
+  ((squad       squad-control  :offset-assert 208)
    (flags       uint8  :offset-assert 212)
    (riding-anim int32  :offset-assert 216)
    (anim-t      float  :offset-assert 220)
@@ -53931,20 +53930,17 @@
     active ;; 29, old: (taunt () _type_ :state)
     )
   )
-|#
 
-#|
 (deftype citizen-norm-rider (vehicle-rider)
   ()
   :method-count-assert 37
   :size-assert         #xe5
   :flag-assert         #x25007000e5
   )
-|#
 
 ;; (define-extern vehicle-rider-event-handler function) ;; (function process int symbol event-message-block object :behavior vehicle-rider)
 ;; (define-extern vehicle-rider-init-by-other function) ;; (function traffic-object-spawn-params none :behavior vehicle-rider)
-;; (define-extern vehicle-rider-spawn function) ;; (function vehicle type traffic-object-spawn-params process)
+(define-extern vehicle-rider-spawn (function vehicle type traffic-object-spawn-params process))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hvehicle                       ;;
@@ -53960,6 +53956,12 @@
 ;; hvehicle-effects               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftype hvehicle-effects-stack-var0 (structure)
+  ((work vehicle-thruster-work :inline :offset 0)
+   (vec0 vector :inline :offset 16)
+   (mat matrix :inline :offset 48 :score 1)
+   )
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hvehicle-physics               ;;
@@ -53970,25 +53972,22 @@
 ;; glider-h                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype glider-thermal-info (structure)
   ((pos          vector :inline :offset-assert 0)
-   (r            float          :offset-assert 12)
+   (r            float          :offset 12)
    (hheight      float          :offset-assert 16)
    (windspeed    float          :offset-assert 20)
    (curpos       float          :offset-assert 24)
-   (thermal-time uint64         :offset-assert 32)
+   (thermal-time time-frame     :offset-assert 32)
    )
   :method-count-assert 10
   :size-assert         #x28
   :flag-assert         #xa00000028
   (:methods
-    (glider-thermal-info-method-9 () none) ;; 9
+    (to-static-macro (_type_ object) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype glider-ring-info (structure)
   ((pos        vector :inline :offset-assert 0)
    (forw       vector :inline :offset-assert 16)
@@ -53996,22 +53995,20 @@
    (dist       float          :offset-assert 36)
    (xdist      float          :offset-assert 40)
    (ydist      float          :offset-assert 44)
-   (toff       uint64         :offset-assert 48)
+   (toff       time-frame     :offset-assert 48)
    (speedmod   float          :offset-assert 56)
-   (shootable  basic          :offset-assert 60)
-   (lastring   basic          :offset-assert 64)
+   (shootable  symbol         :offset-assert 60)
+   (lastring   symbol         :offset-assert 64)
    (checkpoint uint8          :offset-assert 68)
    )
   :method-count-assert 10
   :size-assert         #x45
   :flag-assert         #xa00000045
   (:methods
-    (glider-ring-info-method-9 () none) ;; 9
+    (to-static-macro (_type_ object) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype h-glider (hvehicle)
   ((minalt                  float                          :offset-assert 944)
    (curalt                  float                          :offset-assert 948)
@@ -54019,171 +54016,161 @@
    (rollerr                 float                          :offset-assert 956)
    (pitcherr                float                          :offset-assert 960)
    (alterr                  float                          :offset-assert 964)
-   (rolling                 basic                          :offset-assert 968)
+   (rolling                 symbol                         :offset-assert 968)
    (speed                   float                          :offset-assert 972)
    (poierr                  float                          :offset-assert 976)
    (poipos                  float                          :offset-assert 980)
    (poivel                  float                          :offset-assert 984)
-   (deathspin               basic                          :offset-assert 988)
-   (in-thermal              basic                          :offset-assert 992)
-   (in-thermal-time         uint64                         :offset-assert 1000)
-   (min-thermal-time        uint64                         :offset-assert 1008)
-   (thermal-start-time      uint64                         :offset-assert 1016)
+   (deathspin               symbol                         :offset-assert 988)
+   (in-thermal              symbol                         :offset-assert 992)
+   (in-thermal-time         time-frame                     :offset-assert 1000)
+   (min-thermal-time        time-frame                     :offset-assert 1008)
+   (thermal-start-time      time-frame                     :offset-assert 1016)
    (thermal-strength        float                          :offset-assert 1024)
    (deathrot                vector                 :inline :offset-assert 1040)
    (last-ring-pos           vector                 :inline :offset-assert 1056)
    (progression-plane       vector                 :inline :offset-assert 1072)
-   (birth                   uint64                         :offset-assert 1088)
-   (stop-time               uint64                         :offset-assert 1096)
-   (pitch-down-time         uint64                         :offset-assert 1104)
-   (pitch-side-time         uint64                         :offset-assert 1112)
-   (ambient-wind-sound-time uint64                         :offset-assert 1120)
-   (thermal-sound-time      uint64                         :offset-assert 1128)
+   (birth                   time-frame                     :offset-assert 1088)
+   (stop-time               time-frame                     :offset-assert 1096)
+   (pitch-down-time         time-frame                     :offset-assert 1104)
+   (pitch-side-time         time-frame                     :offset-assert 1112)
+   (ambient-wind-sound-time time-frame                     :offset-assert 1120)
+   (thermal-sound-time      time-frame                     :offset-assert 1128)
    (updraft-vel             float                          :offset-assert 1136)
    (updraft-acc             float                          :offset-assert 1140)
    (updraft-err             float                          :offset-assert 1144)
    (rel-up-vel              float                          :offset-assert 1148)
    (flap-pos                float                          :offset-assert 1152)
-   (amb-sound               uint32                         :offset-assert 1156)
-   (amb-sound-playing       basic                          :offset-assert 1160)
-   (full-speed-boost?       basic                          :offset-assert 1164)
-   (lost-lift?              basic                          :offset-assert 1168)
-   (lost-lift-time          uint64                         :offset-assert 1176)
+   (amb-sound               sound-id                       :offset-assert 1156)
+   (amb-sound-playing       symbol                         :offset-assert 1160)
+   (full-speed-boost?       symbol                         :offset-assert 1164)
+   (lost-lift?              symbol                         :offset-assert 1168)
+   (lost-lift-time          time-frame                     :offset-assert 1176)
    (right-rudder            joint-mod-rotate-local :inline :offset-assert 1184)
    (left-rudder             joint-mod-rotate-local :inline :offset-assert 1216)
    (right-alerone           joint-mod-rotate-local :inline :offset-assert 1248)
    (left-alerone            joint-mod-rotate-local :inline :offset-assert 1280)
-   (flap                    UNKNOWN                6       :offset-assert 1312)
+   (flap                    joint-mod-set-local  6 :inline :offset-assert 1312)
    )
   :method-count-assert 163
   :size-assert         #x6a0
   :flag-assert         #xa3062006a0
   (:methods
-    (h-glider-method-162 () none) ;; 162
+    (h-glider-method-162 (_type_) none) ;; 162
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glider-ring-part               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *hanga-sprite-texture-anim-array* texture-anim-array)
-;; (define-extern cloud-shadow-find-ground function)
-;; (define-extern birth-func-fader function)
-;; (define-extern sparticle-fader function)
-;; (define-extern sparticle-cloud-update function)
-;; (define-extern sparticle-shadow-update function)
+(define-extern *hanga-sprite-texture-anim-array* texture-anim-array)
+(define-extern cloud-shadow-find-ground (function vector matrix vector vector float))
+(define-extern birth-func-fader (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern sparticle-fader (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern sparticle-cloud-update (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern sparticle-shadow-update (function sparticle-system sparticle-cpuinfo vector vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glider-ring                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype light-trail-tracker-glider-ring (light-trail-tracker)
   ()
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
   )
-|#
 
-#|
 (deftype glider-prim (simple-prim)
-  ((far? basic  :offset-assert 204)
+  ((far? symbol :offset-assert 204)
    )
   :method-count-assert 26
   :size-assert         #xd0
   :flag-assert         #x1a005000d0
   )
-|#
 
-#|
 (deftype glider-ring (process-drawable)
-  ((touch-time   uint64                     :offset-assert 200)
-   (ring-prim    uint64                     :offset-assert 208)
+  ((root         collide-shape              :override)
+   (touch-time   time-frame                 :offset-assert 200)
+   (ring-prim    handle                     :offset-assert 208)
    (minimap      connection-minimap         :offset-assert 216)
-   (player-got   basic                      :offset-assert 220)
-   (persistent   basic                      :offset-assert 224)
+   (player-got   symbol                     :offset-assert 220)
+   (persistent   symbol                     :offset-assert 224)
    (id           int8                       :offset-assert 228)
    (boost        float                      :offset-assert 232)
    (plane        vector             :inline :offset-assert 240)
    (save-pos     vector             :inline :offset-assert 256)
    (up           vector             :inline :offset-assert 272)
    (right        vector             :inline :offset-assert 288)
-   (part-track   uint64                     :offset-assert 304)
+   (part-track   handle                     :offset-assert 304)
    (mat          matrix             :inline :offset-assert 320)
    (xdist        float                      :offset-assert 384)
    (ydist        float                      :offset-assert 388)
-   (toff         uint64                     :offset-assert 392)
+   (toff         time-frame                 :offset-assert 392)
    (speedmod     float                      :offset-assert 400)
-   (shootable    basic                      :offset-assert 404)
-   (lastring     basic                      :offset-assert 408)
-   (shot         basic                      :offset-assert 412)
+   (shootable    symbol                     :offset-assert 404)
+   (lastring     symbol                     :offset-assert 408)
+   (shot         symbol                     :offset-assert 412)
    (checkpoint   uint8                      :offset-assert 416)
-   (distant-part basic                      :offset-assert 420)
-   (blinky-part  basic                      :offset-assert 424)
-   (blinky-gone? basic                      :offset-assert 428)
-   (do-trails?   basic                      :offset-assert 432)
-   (trails       UNKNOWN            5       :offset-assert 440)
-   (trail-joint  UNKNOWN            5       :offset-assert 480)
+   (distant-part sparticle-launch-control   :offset-assert 420)
+   (blinky-part  sparticle-launch-control   :offset-assert 424)
+   (blinky-gone? symbol                     :offset-assert 428)
+   (do-trails?   symbol                     :offset-assert 432)
+   (trails       handle             5       :offset-assert 440)
+   (trail-joint  uint8              5       :offset-assert 480)
    (center-joint uint8                      :offset-assert 485)
    )
   :method-count-assert 26
   :size-assert         #x1e6
   :flag-assert         #x1a017001e6
-  (:methods
-    (glider-ring-method-22 () none) ;; 22
-    (glider-ring-method-23 () none) ;; 23
-    (glider-ring-method-24 () none) ;; 24
-    (glider-ring-method-25 () none) ;; 25
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 22
+    (init-fields! (_type_) none) ;; 23
+    (glider-ring-method-24 (_type_) none) ;; 24
+    (set-far (_type_ symbol) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype glider-thermal (process-drawable)
   ((id         int8           :offset-assert 200)
-   (part-track uint64         :offset-assert 208)
+   (part-track handle         :offset-assert 208)
    (mat        matrix :inline :offset-assert 224)
    )
   :method-count-assert 22
   :size-assert         #x120
   :flag-assert         #x1600a00120
-  (:methods
-    (glider-thermal-method-21 () none) ;; 21
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (init-part-and-mat! (_type_) none) ;; 21
+    )
   )
-|#
 
-;; (define-extern *curve-glider-ring-linear-up-red* object)
-;; (define-extern *trail-color-curve-glider-ring* curve-color-fast)
-;; (define-extern *curve-glider-ring-linear-trail* curve2d-fast)
-;; (define-extern *glider-ring-trail* object)
-;; (define-extern sparticle-track-joint-glider function)
-;; (define-extern glider-part-single-birth function)
-;; (define-extern glider-ring-standard-event-handler function)
-;; (define-extern *near-thermal-dist-squared* object)
-;; (define-extern glider-ring-near-thermal-dist-squared function)
-;; (define-extern glider-ring-init-by-other function)
-;; (define-extern glider-ring-spawn function)
-;; (define-extern glider-thermal-init-by-other function)
-;; (define-extern glider-thermal-spawn function)
-;; (define-extern glider-launch-mist-particle function)
+(define-extern *curve-glider-ring-linear-up-red* curve2d-piecewise)
+(define-extern *trail-color-curve-glider-ring* curve-color-fast)
+(define-extern *curve-glider-ring-linear-trail* curve2d-fast)
+(define-extern *glider-ring-trail* light-trail-composition)
+(define-extern sparticle-track-joint-glider (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern glider-part-single-birth (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(def-event-handler glider-ring-standard-event-handler glider-ring)
+(define-extern *near-thermal-dist-squared* float)
+(define-extern glider-ring-near-thermal-dist-squared (function float float))
+(define-extern glider-ring-init-by-other (function glider-ring-info int symbol object :behavior glider-ring))
+(define-extern glider-ring-spawn (function process glider-ring-info int symbol glider-ring))
+(define-extern glider-thermal-init-by-other (function glider-thermal-info int object :behavior glider-thermal))
+(define-extern glider-thermal-spawn (function process glider-thermal-info int glider-thermal))
+(define-extern glider-launch-mist-particle (function vector process none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; h-glider                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype glider-asc (structure)
   ((asc float  :offset-assert 0)
    (des float  :offset-assert 4)
@@ -54192,57 +54179,52 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern *h-glider-constants* object)
-;; (define-extern glider-impact-reduction function)
+(define-extern *h-glider-constants* rigid-body-vehicle-constants)
+(define-extern glider-impact-reduction (function time-frame float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glider-manager                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-desert-glide (task-manager)
-  ((desert-glide-entity   basic   :offset-assert 236)
-   (check-timer           uint64  :offset-assert 244)
-   (start-time            uint64  :offset-assert 164)
-   (thermal-start-time    uint64  :offset-assert 260)
-   (actor-group           uint32  :offset-assert 268)
-   (actor-group-count     int32   :offset-assert 272)
-   (cur-group             int8    :offset-assert 276)
-   (sound-id              uint32  :offset-assert 280)
-   (count                 int32   :offset-assert 284)
-   (max-count             int32   :offset-assert 288)
-   (pre-populated-clouds? basic   :offset-assert 292)
-   (creating-thermal?     basic   :offset-assert 296)
-   (hud-altitude          uint64  :offset-assert 300)
-   (hud-active?           basic   :offset-assert 308)
-   (editing?              basic   :offset-assert 312)
-   (did-want-load?        basic   :offset-assert 316)
-   (reset-too-low?        basic   :offset-assert 320)
-   (last-active-thermal   int16   :offset-assert 324)
-   (whistle-sound         uint32  :offset-assert 328)
+  ((desert-glide-entity   entity     :offset-assert 240)
+   (check-timer           time-frame :offset-assert 248)
+   (thermal-start-time    time-frame :offset 264)
+   (actor-group           (pointer actor-group)  :offset-assert 272)
+   (actor-group-count     int32   :offset-assert 276)
+   (cur-group             int8    :offset-assert 280)
+   (sound-id              sound-id :offset-assert 284)
+   (count                 int32   :offset-assert 288)
+   (max-count             int32   :offset-assert 292)
+   (pre-populated-clouds? symbol  :offset-assert 296)
+   (creating-thermal?     symbol  :offset-assert 300)
+   (hud-altitude          handle  :offset-assert 304)
+   (hud-active?           symbol  :offset-assert 312)
+   (editing?              symbol  :offset-assert 316)
+   (did-want-load?        symbol  :offset-assert 320)
+   (reset-too-low?        symbol  :offset-assert 324)
+   (last-active-thermal   int16   :offset-assert 328)
+   (whistle-sound         sound-id :offset-assert 332)
    )
   :method-count-assert 40
   :size-assert         #x150
   :flag-assert         #x2800d00150
-  (:methods
-    (task-manager-desert-glide-method-32 () none) ;; 32
-    (task-manager-desert-glide-method-33 () none) ;; 33
-    (task-manager-desert-glide-method-34 () none) ;; 34
-    (task-manager-desert-glide-method-35 () none) ;; 35
-    (task-manager-desert-glide-method-36 () none) ;; 36
-    (task-manager-desert-glide-method-37 () none) ;; 37
-    (task-manager-desert-glide-method-38 () none) ;; 38
-    (task-manager-desert-glide-method-39 () none) ;; 39
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (task-manager-desert-glide-method-32 (_type_) none) ;; 32
+    (task-manager-desert-glide-method-33 (_type_) none) ;; 33
+    (task-manager-desert-glide-method-34 (_type_) none) ;; 34
+    (task-manager-desert-glide-method-35 (_type_) none) ;; 35
+    (task-manager-desert-glide-method-36 (_type_) none) ;; 36
+    (task-manager-desert-glide-method-37 (_type_ h-glider) none) ;; 37
+    (task-manager-desert-glide-method-38 (_type_) none) ;; 38
+    (task-manager-desert-glide-method-39 (_type_ uint) none) ;; 39
+    )
   )
-|#
 
-#|
 (deftype tpl-glider (process-drawable)
   ()
   :method-count-assert 21
@@ -54252,27 +54234,26 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *cloud-cube* object)
-;; (define-extern pre-populate-clouds function)
-;; (define-extern *ring-spawn-id* object)
-;; (define-extern *desert-glide-num-rings* object)
-;; (define-extern *desert-glide-rings-tmp* object)
-;; (define-extern *desert-glide-thermal-effects* object)
-;; (define-extern *desert-glide-rings* array)
-;; (define-extern *glider-cache-index* object)
-;; (define-extern *desert-glide-thermals* array)
-;; (define-extern *desert-glide-finish-sphere* object)
-;; (define-extern glider-too-low? function)
-;; (define-extern *thermal-spawn-id* object)
-;; (define-extern *desert-glide-num-thermals* object)
-;; (define-extern *desert-glide-thermals-tmp* object)
-;; (define-extern glider-thermal-updraft-velocity function)
-;; (define-extern desert-glide-task-done function)
-;; (define-extern inside-cloudbox? function)
-;; (define-extern inside-cloudbox-xz? function)
-;; (define-extern move-pos-inside-cloudbox! function)
+(define-extern *cloud-cube* vector)
+(define-extern pre-populate-clouds (function vector process none))
+(define-extern *ring-spawn-id* int)
+(define-extern *desert-glide-num-rings* int)
+(define-extern *desert-glide-rings-tmp* (inline-array glider-ring-info))
+(define-extern *desert-glide-thermal-effects* (pointer handle))
+(define-extern *desert-glide-rings* (array glider-ring-info))
+(define-extern *glider-cache-index* int)
+(define-extern *desert-glide-thermals* (array glider-thermal-info))
+(define-extern *desert-glide-finish-sphere* sphere)
+(define-extern glider-too-low? (function vector int symbol))
+(define-extern *thermal-spawn-id* int)
+(define-extern *desert-glide-num-thermals* int)
+(define-extern *desert-glide-thermals-tmp* (inline-array glider-thermal-info))
+(define-extern glider-thermal-updraft-velocity (function h-glider none))
+(define-extern desert-glide-task-done (function symbol))
+(define-extern inside-cloudbox? (function vector symbol))
+(define-extern inside-cloudbox-xz? (function vector symbol))
+(define-extern move-pos-inside-cloudbox! (function vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; glider-hud                     ;;
@@ -54283,10 +54264,10 @@
 ;; hanga-init                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern hanga-login function)
-;; (define-extern hanga-activate function)
-;; (define-extern hanga-deactivate function)
-;; (define-extern *hanga-water-texture-anim-array* texture-anim-array)
+(define-extern hanga-login (function level none))
+(define-extern hanga-activate (function level none))
+(define-extern hanga-deactivate (function level none))
+(define-extern *hanga-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; elec-gate                      ;;

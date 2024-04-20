@@ -1008,7 +1008,11 @@ const std::unordered_map<
                                      32,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
              {"vehicle-rider-info",
-              {{"attach-point-array",
+              {{"grab-rail-array",
+                ArrayFieldDecompMeta(TypeSpec("vehicle-grab-rail-info"),
+                                     48,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)},
+               {"attach-point-array",
                 ArrayFieldDecompMeta(TypeSpec("vehicle-attach-point"),
                                      32,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INLINE_ARR)}}},
@@ -1029,6 +1033,10 @@ const std::unordered_map<
               {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
              {"forest-path-points-static",
               {{"points", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
+             {"xz-height-map",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
+                                             1,
+                                             ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
