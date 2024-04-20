@@ -12736,16 +12736,35 @@
 ;; +++traffic-h:traffic-type
 (defenum traffic-type
   :type uint8
-  (tt17 17)
-  (tt18 18)
-  (tt19 19)
-  (tt20 20)
-  (tt21 21)
-  (tt22 22)
-  (tt23 23)
-  (tt25 25)
-  (tt27 27)
-  (tt28 28)
+  (civilian-male 0)
+  (civilian-female 1)
+  (civilian-fat 2)
+  (civilian-pilot 3)
+  (guard-pilot 4)
+  (citizen-task 5)
+  (guard-a 6)
+  (guard-b 7)
+  (metalhead-grunt 8)
+  (metalhead-flitter 9)
+  (metalhead-predator 10)
+  (wlander-male 11)
+  (wlander-female 12)
+  (formation 13)
+  (roboguard 14)
+  (spydroid 15)
+  (flying-turret 16)
+  (civilian-bike-a 17)
+  (civilian-bike-b 18)
+  (civilian-bike-c 19)
+  (civilian-car-a 20)
+  (civilian-car-b 21)
+  (civilian-car-c 22)
+  (vehicle-task 23)
+  (guard-bike 24)
+  (guard-car 25)
+  (guard-transport 26)
+  (kg-pickup 27)
+  (bike-d 28)
   (invalid #xffffffff)
   )
 ;; ---traffic-h:traffic-type
@@ -47837,91 +47856,93 @@
 ;; cty-faction-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cty-faction-info (structure)
-  ((data     UNKNOWN 6 :offset-assert 0)
-   (ff-guard int8      :offset-assert 0)
-   (ff-ped   int8      :offset-assert 1)
-   (kg-guard int8      :offset-assert 2)
-   (kg-ped   int8      :offset-assert 3)
-   (mh-guard int8      :offset-assert 4)
-   (mh-ped   int8      :offset-assert 5)
+  ((data     int8 6    :offset-assert 0 :score -1)
+   (ff-guard int8      :offset 0)
+   (ff-ped   int8      :offset 1)
+   (kg-guard int8      :offset 2)
+   (kg-ped   int8      :offset 3)
+   (mh-guard int8      :offset 4)
+   (mh-ped   int8      :offset 5)
    )
   :method-count-assert 9
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype cty-faction-strength (structure)
-  ((data        UNKNOWN 3 :offset-assert 0)
-   (ff-strength int8      :offset-assert 0)
-   (kg-strength int8      :offset-assert 1)
-   (mh-strength int8      :offset-assert 2)
+  ((data        int8 3    :offset-assert 0 :score -1)
+   (ff-strength int8      :offset 0)
+   (kg-strength int8      :offset 1)
+   (mh-strength int8      :offset 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x3
   :flag-assert         #x900000003
   )
-|#
 
-#|
 (deftype territory-faction-mode (structure)
-  ((data    UNKNOWN 3 :offset-assert 0)
-   (ff-mode uint8     :offset-assert 0)
-   (kg-mode uint8     :offset-assert 1)
-   (mh-mode uint8     :offset-assert 2)
+  ((data    int8 3    :offset-assert 0 :score -1)
+   (ff-mode uint8     :offset 0)
+   (kg-mode uint8     :offset 1)
+   (mh-mode uint8     :offset 2)
    )
   :method-count-assert 9
   :size-assert         #x3
   :flag-assert         #x900000003
   )
-|#
 
-#|
 (deftype territory-faction-flag (structure)
-  ((data    UNKNOWN 3 :offset-assert 0)
-   (ff-mode uint8     :offset-assert 0)
-   (kg-mode uint8     :offset-assert 1)
-   (mh-mode uint8     :offset-assert 2)
+  ((data    int8 3    :offset-assert 0 :score -1)
+   (ff-mode uint8     :offset 0)
+   (kg-mode uint8     :offset 1)
+   (mh-mode uint8     :offset 2)
    )
   :method-count-assert 9
   :size-assert         #x3
   :flag-assert         #x900000003
   )
-|#
 
-#|
+(defenum faction-spawn-flag
+  :type uint8
+  :bitfield #t
+  )
+
 (deftype faction-spawn-info (structure)
   ((faction-type    uint8  :offset-assert 0)
    (current-level   uint8  :offset-assert 1)
    (requested-level uint8  :offset-assert 2)
-   (flags           uint8  :offset-assert 3)
+   (flags           faction-spawn-flag :offset-assert 3)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
+
+(defenum cty-faction-update-flag
+  :type uint8
+  :bitfield #t
+  )
 
 #|
 (deftype cty-faction-manager (basic)
-  ((faction-array                  UNKNOWN                30      :offset-assert 4)
-   (faction-mod-array              UNKNOWN                30      :offset-assert 124)
-   (global-faction-strength-mod    cty-faction-strength   :inline :offset-assert 604)
-   (territory-faction-strength-mod UNKNOWN                4       :offset-assert 607)
-   (permission-cache               UNKNOWN                30      :offset-assert 671)
-   (last-requested-level           basic                          :offset-assert 704)
-   (territory-faction-modes        UNKNOWN                30      :offset-assert 708)
-   (territory-flags                UNKNOWN                30      :offset-assert 1188)
-   (last-active-territories        uint32                         :offset-assert 1220)
-   (update-flags                   uint8                          :offset-assert 1224)
-   (target-exclusive-branch-index  uint8                          :offset-assert 1225)
-   (territory-faction-flags        territory-faction-flag :inline :offset-assert 1226)
-   (faction-spawn                  UNKNOWN                7       :offset-assert 1229)
-   (last-change-music-time         uint64                         :offset-assert 1344)
-   (start-fight-music-time         uint64                         :offset-assert 1352)
+  ((faction-array                  faction-spawn-info      30 :inline :offset-assert 4)
+   (faction-mod-array              cty-faction-info        30 :inline :offset-assert 124)
+   (global-faction-strength-mod    cty-faction-strength       :inline :offset-assert 604)
+   (territory-faction-strength-mod cty-faction-strength    4  :inline :offset-assert 607)
+   (permission-cache               int8                    30         :offset-assert 671)
+   (last-requested-level           symbol                             :offset-assert 704)
+   (territory-faction-modes        territory-faction-mode  30 :inline :offset-assert 708)
+   (territory-flags                territory-faction-flag  30 :inline :offset-assert 1188)
+   (last-active-territories        uint32                             :offset-assert 1220)
+   (update-flags                   cty-faction-update-flag            :offset-assert 1224)
+   (target-exclusive-branch-index  uint8                              :offset-assert 1225)
+   (territory-faction-flags        territory-faction-flag     :inline :offset-assert 1226)
+   (faction-spawn                  faction-spawn-info      7  :inline :offset-assert 1229)
+   (last-change-music-time         time-frame                         :offset-assert 1344)
+   (start-fight-music-time         time-frame                         :offset-assert 1352)
    )
   :method-count-assert 26
   :size-assert         #x550
@@ -48052,8 +48073,8 @@
     (grid-info-method-9 () none) ;; 9 ;; (setup-grid-from-bounding-box (_type_ (pointer bounding-box) int int) none)
     (grid-info-method-10 () none) ;; 10 ;; (lookup-cell-for-point (_type_ vis-grid-pos vector) none)
     (grid-info-method-11 () none) ;; 11 ;; (lookup-box-for-sphere (_type_ vis-grid-box vector) none)
-    (grid-info-method-12 () none) ;; 12 ;; (debug-draw-grid (_type_ rgba) none)
-    (grid-info-method-13 () none) ;; 13 ;; (debug-draw-cell (_type_ vis-grid-pos rgba) none)
+    (debug-draw-grid (_type_ rgba) none) ;; 12
+    (debug-draw-cell (_type_ vis-grid-pos rgba) none) ;; 13
     )
   )
 
@@ -48206,7 +48227,7 @@
     (traffic-tracker-method-12 () none) ;; 12 ;; (add-active-process (_type_ traffic-type handle) none)
     (traffic-tracker-method-13 () none) ;; 13 ;; (remove-active-process (_type_ int) handle)
     (traffic-tracker-method-14 () none) ;; 14 ;; (add-reserved-process (_type_ traffic-type handle) none)
-    (traffic-tracker-method-15 () none) ;; 15 ;; (get-from-inactive-by-type (_type_ traffic-type) handle)
+    (get-from-inactive-by-type (_type_ traffic-type) handle) ;; 15
     (traffic-tracker-method-16 () none) ;; 16 ;; (get-from-inactive-by-handle (_type_ traffic-type handle) handle)
     (traffic-tracker-method-17 () none) ;; 17 ;; (deactivate-object (_type_ int symbol) none)
     (traffic-tracker-method-18 () none) ;; 18 ;; (set-process-to-killed (_type_ process) none)
@@ -48240,15 +48261,15 @@
    (suppressor             traffic-suppressor       :inline :offset-assert 12096)
    (danger-sphere-count    int8                             :offset 12656)
    (danger-sphere-array    traffic-danger-info      4 :inline :offset-assert 12672) ;; guessed by decompiler
-   (allow-spawning?        basic                            :offset 12928)
+   (allow-spawning?        symbol                           :offset 12928)
    )
   :method-count-assert 58
   :size-assert         #x3284
   :flag-assert         #x3a00003284
   (:methods
-    (new (symbol type) _type_) ;; 0 ;; (new (symbol type) _type_)
+    (new (symbol type) _type_) ;; 0
     (traffic-engine-method-9 () none) ;; 9 ;; (update-traffic (_type_) none)
-    (traffic-engine-method-10 () none) ;; 10 ;; (reset-and-init-from-manager (_type_ process) none)
+    (reset-and-init-from-manager (_type_ process) none) ;; 10
     (traffic-engine-method-11 () none) ;; 11 ;; (stop-alarm-sound (_type_) none)
     (traffic-engine-method-12 () none) ;; 12 ;; (debug-unused (_type_) none)
     (traffic-engine-method-13 () none) ;; 13 ;; (add-object (_type_ traffic-type process) none)
@@ -49494,70 +49515,64 @@
   :size-assert         #x104
   :flag-assert         #x1700900104
   (:state-methods
-    active ;; 15, old: (active () _type_ :state)
-    idle ;; 14, old: (idle () _type_ :state)
+    idle ;; 14
+    active ;; 15
     )
   (:methods
-    (traffic-manager-method-16 () none) ;; 16 ;; (update (_type_) none)
-    (traffic-manager-method-17 () none) ;; 17 ;; (spawn-all (_type_) none)
-    (traffic-manager-method-18 () none) ;; 18 ;; (kill-excess-once (_type_) none)
-    (traffic-manager-method-19 () none) ;; 19 ;; (kill-all-inactive (_type_) none)
-    (traffic-manager-method-20 () none) ;; 20 ;; (reset-and-init (_type_) none)
-    (traffic-manager-method-21 () none) ;; 21 ;; (init-params (_type_) none)
-    (traffic-manager-method-22 () none) ;; 22
+    (traffic-manager-method-16 (_type_) none) ;; 16 ;; (update (_type_) none)
+    (traffic-manager-method-17 (_type_) none) ;; 17 ;; (spawn-all (_type_) none)
+    (traffic-manager-method-18 (_type_) none) ;; 18 ;; (kill-excess-once (_type_) none)
+    (traffic-manager-method-19 (_type_) none) ;; 19 ;; (kill-all-inactive (_type_) none)
+    (traffic-manager-method-20 (_type_) none) ;; 20 ;; (reset-and-init (_type_) none)
+    (traffic-manager-method-21 (_type_) none) ;; 21 ;; (init-params (_type_) none)
+    (traffic-manager-method-22 (_type_) none) ;; 22
     )
   )
 
-#|
 (deftype want-count-binding (structure)
-  ((obj-type uint8  :offset-assert 0)
+  ((obj-type traffic-type :offset-assert 0)
    (count    uint8  :offset-assert 1)
    )
   :method-count-assert 9
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype want-count-group (structure)
-  ((bindings basic  :offset-assert 0)
+  ((bindings (array want-count-binding) :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype want-count-level-group (structure)
-  ((want-groups basic  :offset-assert 0)
+  ((want-groups (array want-count-group)  :offset-assert 0)
    (level       uint8  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x5
   :flag-assert         #x900000005
   )
-|#
 
-;; (define-extern *traffic-engine* object) ;; traffic-engine
+(define-extern *traffic-engine* traffic-engine)
 (define-extern *traffic-fast-spawn* symbol)
-;; (define-extern draw-city-info function) ;; (function city-level-info vis-grid-pos none)
-;; (define-extern formation-spawn function)
-;; (define-extern type-from-traffic-object-type function)
-;; (define-extern citizen-spawn function) ;; (function process type traffic-object-spawn-params process-drawable)
-;; (define-extern traffic-object-spawn function) ;; (function process traffic-object-spawn-params process-drawable)
-;; (define-extern *traffic-vehicle-level-borrow-list* object)
-;; (define-extern *traffic-vehicle-level-sound-list* object)
-;; (define-extern traffic-manager-event-handler function) ;; (function process int symbol event-message-block object :behavior traffic-manager)
-;; (define-extern traffic-manager-init-by-other function) ;; (function none :behavior traffic-manager)
+(define-extern draw-city-info (function city-level-info vis-grid-pos none))
+(define-extern formation-spawn function)
+(define-extern type-from-traffic-object-type function)
+(define-extern citizen-spawn (function process type traffic-object-spawn-params process-drawable))
+(define-extern traffic-object-spawn (function process traffic-object-spawn-params process-drawable))
+(define-extern *traffic-vehicle-level-borrow-list* object)
+(define-extern *traffic-vehicle-level-sound-list* object)
+(def-event-handler traffic-manager-event-handler traffic-manager)
+(define-extern traffic-manager-init-by-other (function object :behavior traffic-manager))
 (define-extern traffic-start (function none))
 (define-extern traffic-kill (function none))
 (define-extern ctywide-entity-hack (function none))
-;; (define-extern traffic-entity-hack function)
-;; (define-extern riders-on function) ;; (function none)
-;; (define-extern riders-off function) ;; (function none)
-;; (define-extern *want-count-levels* array)
+(define-extern traffic-entity-hack (function traffic-type none))
+(define-extern riders-on (function none))
+(define-extern riders-off (function none))
+(define-extern *want-count-levels* (array want-count-level-group))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desresc-path                   ;;
