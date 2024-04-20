@@ -161,8 +161,8 @@
 (cgo-file "templee.gd" common-dep)
 (cgo-file "temx.gd" common-dep)
 ; ;; hang
-; (cgo-file "hga.gd" common-dep)
-; (cgo-file "hgb.gd" common-dep)
+(cgo-file "hga.gd" common-dep)
+(cgo-file "hgb.gd" common-dep)
 ; ;; volcano
 (cgo-file "voca.gd" common-dep)
 (cgo-file "vocx.gd" common-dep)
