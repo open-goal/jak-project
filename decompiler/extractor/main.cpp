@@ -426,7 +426,7 @@ int main(int argc, char** argv) {
 
   if (flag_decompile) {
     try {
-      decompile(iso_data_path, data_subfolder);
+      decompile(iso_data_path, data_subfolder, decomp_config_override);
     } catch (std::exception& e) {
       lg::error("Error during decompile: {}", e.what());
       return static_cast<int>(ExtractorErrorCode::DECOMPILATION_GENERIC_ERROR);
