@@ -1014,6 +1014,9 @@ const std::unordered_map<
                                              ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
              {"was-pre-game-game",
               {{"wave", ArrayFieldDecompMeta(TypeSpec("was-pre-game-wave"), 32)}}},
+             {"lizard-graph",
+              {{"point", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"edge", ArrayFieldDecompMeta(TypeSpec("lizard-graph-edge"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
