@@ -25371,7 +25371,7 @@
   )
 
 (deftype actor-reference (structure)
-  ((actor entity  :offset-assert 0) ;; guessed by decompiler
+  ((actor entity-actor :offset-assert 0) ;; guessed by decompiler
    (id    uint32  :offset-assert 4)
    )
   :pack-me
@@ -48295,7 +48295,7 @@
     (traffic-engine-method-19 () none) ;; 19 ;; (deactivate-all-from-level (_type_ symbol) none)
     (find-best-segment (_type_ vector vector int) nav-segment) ;; 20
     (callback-on-nav-segments-in-sphere (_type_ vector int traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none) ;; 21
-    (traffic-engine-method-22 () none) ;; 22 ;; (add-danger (_type_ traffic-danger-info) none)
+    (add-danger (_type_ traffic-danger-info) none) ;; 22
     (traffic-engine-method-23 () none) ;; 23 ;; (guard-count (_type_) int)
     (traffic-engine-method-24 () none) ;; 24 ;; (set-target-level (_type_ float) none)
     (traffic-engine-method-25 () none) ;; 25 ;; (set-guard-target-level (_type_ float) none)
@@ -56436,87 +56436,79 @@
 ;; flut-racer                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(define-extern civilian type)
+
 (deftype flut-racer (nav-enemy)
   ((current-ring      uint8                      :offset-assert 620)
-   (taskman           uint64                     :offset-assert 624)
+   (taskman           handle                     :offset-assert 624)
    (minimap           connection-minimap         :offset-assert 632)
    (probe             vector             :inline :offset-assert 640)
-   (last-speed-update uint64                     :offset-assert 656)
+   (last-speed-update time-frame                 :offset-assert 656)
    )
   :method-count-assert 193
   :size-assert         #x298
   :flag-assert         #xc102200298
   (:state-methods
-    halt ;; 192
     jump ;; 44
-    race ;; 191
     wait ;; 190
+    race ;; 191
+    halt ;; 192
     )
   )
-|#
 
-;; (define-extern *flut-racer-enemy-info* nav-enemy-info)
-;; (define-extern ring-hit-logic function)
+(define-extern *flut-racer-enemy-info* nav-enemy-info)
+(define-extern ring-hit-logic (function none :behavior flut-racer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; was-leaper-race                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-race-ring (process-drawable)
-  ((active?      basic                      :offset-assert 200)
+  ((active?      symbol                     :offset-assert 200)
    (mat          matrix             :inline :offset-assert 208)
-   (taskman      uint64                     :offset-assert 272)
-   (player-part  basic                      :offset-assert 280)
-   (player-ring? basic                      :offset-assert 284)
+   (taskman      handle                     :offset-assert 272)
+   (player-part  sparticle-launch-control   :offset-assert 280)
+   (player-ring? symbol                     :offset-assert 284)
    (minimap      connection-minimap         :offset-assert 288)
-   (is-final?    basic                      :offset-assert 292)
-   (part-final   basic                      :offset-assert 296)
+   (is-final?    symbol                     :offset-assert 292)
+   (part-final   sparticle-launch-control   :offset-assert 296)
    )
   :method-count-assert 24
   :size-assert         #x12c
   :flag-assert         #x1800b0012c
-  (:methods
-    (wascity-race-ring-method-22 () none) ;; 22
-    (wascity-race-ring-method-23 () none) ;; 23
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (update (_type_) none) ;; 22
+    (spawn-part (_type_) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype task-manager-wascity-leaper-race (task-manager)
-  ((ring-manager-entity     basic     :offset-assert 236)
-   (actor-group             uint32    :offset-assert 240)
-   (actor-group-count       int32     :offset-assert 244)
-   (current-ring            uint8     :offset-assert 248)
-   (challenger-current-ring UNKNOWN 3 :offset-assert 249)
-   (check-timer             uint64    :offset-assert 252)
-   (hud-position            uint64    :offset-assert 212)
-   (hint-timer              uint64    :offset-assert 260)
-   (played-speeches         uint32    :offset-assert 268)
+  ((ring-manager-entity     entity     :offset-assert 240)
+   (actor-group             (pointer actor-group) :offset-assert 244)
+   (actor-group-count       int32     :offset-assert 248)
+   (current-ring            uint8     :offset-assert 252)
+   (challenger-current-ring uint8 3   :offset-assert 253)
+   (check-timer             time-frame :offset-assert 256)
+   (hud-position            handle    :offset 216)
+   (hint-timer              time-frame :offset-assert 264)
+   (played-speeches         uint32    :offset-assert 272)
    )
   :method-count-assert 35
   :size-assert         #x114
   :flag-assert         #x2300a00114
   (:methods
-    (task-manager-wascity-leaper-race-method-32 () none) ;; 32
-    (task-manager-wascity-leaper-race-method-33 () none) ;; 33
-    (task-manager-wascity-leaper-race-method-34 () none) ;; 34
-    )
-  (:state-methods
-    fail ;; 18
-    active ;; 15
+    (get-current-ring-idx (_type_ int) int) ;; 32
+    (init-actor-group! (_type_) none) ;; 33
+    (play-speech (_type_ int) symbol) ;; 34
     )
   )
-|#
 
-;; (define-extern wascity-race-ring-cleared? function)
-;; (define-extern *was-leaper-speech-list* object)
+(define-extern wascity-race-ring-cleared? (function quaternion vector symbol))
+(define-extern *was-leaper-speech-list* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-boss-part              ;;
