@@ -104,7 +104,6 @@
 (cgo-file "wasleapr.gd" common-dep)
 (cgo-file "waspala.gd" common-dep)
 (cgo-file "wasseem.gd" common-dep)
-(cgo-file "waspgame.gd" common-dep)
 (cgo-file "wca.gd" common-dep)
 (cgo-file "wcb.gd" common-dep)
 (cgo-file "wcaseem.gd" common-dep)
@@ -112,6 +111,7 @@
 (cgo-file "wasall.gd" common-dep)
 (cgo-file "wwd.gd" common-dep) ;; waswide
 (cgo-file "wsd.gd" common-dep) ;; wasdoors (garage)
+(cgo-file "waspgame.gd" common-dep)
 ; ;; arena
 (cgo-file "wasstada.gd" common-dep)
 (cgo-file "wasstadb.gd" common-dep)

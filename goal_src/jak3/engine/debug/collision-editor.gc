@@ -936,14 +936,24 @@
 (defun collision-edit ((arg0 process))
   (stop-collision-edit)
   (when (not arg0)
-    (let ((v1-2 (process-spawn collision-editor-edited-proc :name "collision-editor-edited-proc")))
-      (set! arg0 (if v1-2
-                     (the-as process (-> v1-2 0 self))
-                     )
+    (let ((gp-1 (get-process *default-dead-pool* collision-editor-edited-proc #x4000 1)))
+      (set! arg0 (ppointer->process (when gp-1
+                                      (let ((t9-2 (method-of-type collision-editor-edited-proc activate)))
+                                        (t9-2
+                                          (the-as collision-editor-edited-proc gp-1)
+                                          *default-pool*
+                                          "collision-editor-edited-proc"
+                                          (the-as pointer #x70004000)
+                                          )
+                                        )
+                                      (run-now-in-process gp-1 collision-editor-edited-proc-init-by-other)
+                                      (-> gp-1 ppointer)
+                                      )
+                                    )
             )
       )
     )
-  (let ((gp-2 (process->handle (the-as process-tree arg0))))
+  (let ((gp-2 (process->handle arg0)))
     (process-spawn collision-editor gp-2 :name "collision-editor")
     )
   )

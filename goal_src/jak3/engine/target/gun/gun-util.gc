@@ -429,18 +429,9 @@
 (defstate hidden (gun)
   :virtual #t
   :trans (behavior ()
-    (let ((v1-0 (-> self parent)))
-      (if (not (focus-test?
-                 (the-as process-focusable (if v1-0
-                                               (the-as process-focusable (-> v1-0 0 self))
-                                               )
-                         )
-                 in-head
-                 )
-               )
-          (go-virtual idle)
-          )
-      )
+    (if (not (focus-test? (ppointer->process (-> self parent)) in-head))
+        (go-virtual idle)
+        )
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -457,7 +448,7 @@
     (set! (-> self gun-type) (-> self parent 0 game gun-type))
     (let ((a0-0 (ppointer->process (-> self parent))))
       (cond
-        ((focus-test? (the-as process-focusable a0-0) in-head)
+        ((focus-test? a0-0 in-head)
          (go-virtual hidden)
          )
         ((nonzero? (-> self parent 0 gun gun-type))
@@ -513,23 +504,13 @@
     )
   :trans (behavior ()
     (local-vars (a0-14 object))
-    (let ((v1-0 (ppointer->process (-> self parent)))
-          (a0-1 (-> self parent))
-          )
+    (let ((v1-0 (ppointer->process (-> self parent))))
       (cond
-        ((focus-test?
-           (the-as process-focusable (if a0-1
-                                         (the-as process-focusable (-> a0-1 0 self))
-                                         )
-                   )
-           in-head
-           )
+        ((focus-test? (ppointer->process (-> self parent)) in-head)
          (go-virtual hidden)
          )
         ((and (= (-> self parent 0 gun gun-type) (pickup-type none))
-              (or (not (-> (the-as process-focusable v1-0) skel top-anim frame-group))
-                  (!= (-> (the-as process-focusable v1-0) skel top-anim interp) 1.0)
-                  )
+              (or (not (-> v1-0 skel top-anim frame-group)) (!= (-> v1-0 skel top-anim interp) 1.0))
               )
          (go-virtual idle)
          )
@@ -648,11 +629,7 @@
                    ("jakb-gun-blue-fire-2" . "gun-blue-fire-2")
                    )
                  )
-           (v1-156 (-> self parent))
-           (s4-0 (if v1-156
-                     (the-as process-focusable (-> v1-156 0 self))
-                     )
-                 )
+           (s4-0 (ppointer->process (-> self parent)))
            )
       (until #f
         (let* ((v1-160 (-> s4-0 skel top-anim frame-group))
@@ -800,12 +777,7 @@
     )
   :post (behavior ()
     (gun-post)
-    (let* ((v1-0 (-> self parent))
-           (gp-0 (if v1-0
-                     (the-as process-drawable (-> v1-0 0 self))
-                     )
-                 )
-           )
+    (let ((gp-0 (ppointer->process (-> self parent))))
       (let ((s5-0
               (and (-> (the-as target gp-0) skel top-anim frame-group)
                    (not (or (focus-test? (the-as target gp-0) pilot)
