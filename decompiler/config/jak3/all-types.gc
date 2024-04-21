@@ -823,7 +823,8 @@
 
 
 (deftype process (process-tree)
-  ((pool dead-pool)
+  ((self             process                                                           :override)
+   (pool             dead-pool)
    (status           symbol                                                            :offset-assert 40) ;; guessed by decompiler
    (pid int32)
    (main-thread      cpu-thread                                                        :offset-assert 48) ;; guessed by decompiler
@@ -19119,7 +19120,8 @@
    This handles drawing, collision, animation, navigation, particles, sounds, physics, etc.
    The actual child classes will add most of the functionality, and this just serves as a common
    container for references to the `-control` objects for this object."
-  ((root        trsqv                     :offset-assert 128) ;; guessed by decompiler
+  ((self        process-drawable          :override)
+   (root        trsqv                     :offset-assert 128) ;; guessed by decompiler
    (node-list   cspace-array              :offset-assert 132) ;; guessed by decompiler
    (draw        draw-control              :offset-assert 136) ;; guessed by decompiler
    (skel        joint-control             :offset-assert 140) ;; guessed by decompiler
@@ -20840,7 +20842,8 @@
 ;; ---generic-obs-h:manipy-options
 
 (deftype manipy (process-drawable)
-  ((root                 collide-shape                   :override)
+  ((self                 manipy                          :override)
+   (root                 collide-shape                   :override)
    (new-trans-hook       (function none)        :offset-assert 200)
    (cur-trans-hook       (function none)        :offset-assert 204)
    (cur-event-hook       (function none)        :offset-assert 208)
@@ -21903,8 +21906,9 @@
 ;; ---process-focusable:focus-status
 
 (deftype process-focusable (process-drawable)
-  ((root         collide-shape :override)
-   (focus-status focus-status  :offset-assert 200) ;; focus-status
+  ((self         process-focusable :override)
+   (root         collide-shape     :override)
+   (focus-status focus-status      :offset-assert 200)
    )
   :method-count-assert 28
   :size-assert         #xd0
@@ -22553,7 +22557,8 @@
   )
 
 (deftype ragdoll-proc (process)
-  ((parent         (pointer process-drawable) :override)
+  ((self           ragdoll-proc               :override)
+   (parent         (pointer process-drawable) :override)
    (ragdoll        ragdoll :offset-assert 128)
    (last-attack-id uint32  :offset-assert 132)
    )
@@ -22859,7 +22864,8 @@
 (declare-type rigid-body-impact structure)
 
 (deftype target (process-focusable)
-  ((control                     control-info                             :offset 128 :score 1) ;; guessed by decompiler
+  ((self                        target                                   :override)
+   (control                     control-info                             :offset 128 :score 1) ;; guessed by decompiler
    (fact                        fact-info-target                         :override)
    (skel2                       joint-control                            :offset-assert 208) ;; guessed by decompiler
    (shadow-backup               shadow-geo                               :offset-assert 212) ;; guessed by decompiler
@@ -34739,7 +34745,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype wings (process-drawable)
-  ((parent        (pointer target) :override)
+  ((self          wings            :override)
+   (parent        (pointer target) :override)
    (shadow-backup shadow-geo      :offset 208)
    (ragdoll-proc  handle          :offset-assert 216)
    (lock?         symbol          :offset-assert 224)
@@ -34807,7 +34814,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype gun (process-drawable)
-  ((parent        (pointer target) :override)
+  ((self          gun              :override)
+   (parent        (pointer target) :override)
    (control       control-info   :offset 128) ;; guessed by decompiler
    (shadow-backup shadow-geo     :offset 208) ;; guessed by decompiler
    (read-scale    symbol         :offset-assert 212)
@@ -34960,7 +34968,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype board (process-drawable)
-  ((parent        (pointer target) :override)
+  ((self          board            :override)
+   (parent        (pointer target) :override)
    (control       control-info  :offset 128) ;; guessed by decompiler
    (shadow-backup shadow-geo    :offset 208) ;; guessed by decompiler
    (main          joint-mod     :offset-assert 212) ;; guessed by decompiler
@@ -36019,7 +36028,8 @@
   )
 
 (deftype freeze-watcher (process)
-  ((old-clock clock :offset-assert 128)
+  ((parent (pointer process-focusable) :override)
+   (old-clock clock :offset-assert 128)
    )
   :method-count-assert 15
   :size-assert         #x84
@@ -60711,14 +60721,13 @@
 ;; was-pre-game                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype was-pre-game-wave (structure)
   ((event-count-min  int16   :offset-assert 0)
    (event-count-max  int16   :offset-assert 2)
    (bubble-count-min int16   :offset-assert 4)
    (bubble-count-max int16   :offset-assert 6)
-   (event-interval   uint16  :offset-assert 8)
-   (delay            uint16  :offset-assert 10)
+   (event-interval   uint16  :offset-assert 8  :decomp-as time-frame)
+   (delay            uint16  :offset-assert 10 :decomp-as time-frame)
    (gravity-min      meters  :offset-assert 12)
    (gravity-max      meters  :offset-assert 16)
    (beam-offset-max  float   :offset-assert 20)
@@ -60729,54 +60738,51 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+(declare-type was-pre-game process)
+
 (deftype was-pre-game-game (structure)
   ((point-win float   :offset-assert 0)
    (miss-max  float   :offset-assert 4)
-   (wave      uint32  :offset-assert 8)
+   (wave      (inline-array was-pre-game-wave) :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype was-pre-beam-info (structure)
   ((index     int32   :offset-assert 0)
    (min       float   :offset-assert 4)
    (size      float   :offset-assert 8)
-   (fire-time uint64  :offset-assert 16)
-   (beam      uint64  :offset-assert 24)
+   (fire-time time-frame :offset-assert 16)
+   (beam      handle  :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (was-pre-beam-info-method-9 () none) ;; 9
+    (get-beam-color (_type_) uint) ;; 9
     )
   )
-|#
 
-#|
 (deftype was-pre-beam (process-drawable)
-  ((index int32  :offset-assert 200)
+  ((parent (pointer was-pre-game) :override)
+   (index int32  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
   (:state-methods
-    attack ;; 21
     idle ;; 20
+    attack ;; 21
     )
   )
-|#
 
-#|
 (deftype was-pre-heart (process-drawable)
-  ((cur-level int32  :offset-assert 200)
+  ((parent (pointer was-pre-game) :override)
+   (cur-level int32  :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xcc
@@ -60785,87 +60791,85 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype was-pre-game (process-drawable)
-  ((task             basic                     :offset-assert 200)
-   (hud-score        uint64                    :offset-assert 208)
-   (hud-goal         uint64                    :offset-assert 216)
-   (hud-miss         uint64                    :offset-assert 224)
+  ((self             was-pre-game              :override)
+   (task             game-task-control         :offset-assert 200)
+   (hud-score        handle                    :offset-assert 208)
+   (hud-goal         handle                    :offset-assert 216)
+   (hud-miss         handle                    :offset-assert 224)
    (score            float                     :offset-assert 232)
-   (score-time       uint64                    :offset-assert 240)
+   (score-time       time-frame                :offset-assert 240)
    (miss-max         int32                     :offset-assert 248)
    (miss-count       int32                     :offset-assert 252)
-   (miss-time        uint64                    :offset-assert 256)
+   (miss-time        time-frame                :offset-assert 256)
    (point-win        float                     :offset-assert 264)
    (game             was-pre-game-game         :offset-assert 268)
-   (game-start-time  uint64                    :offset-assert 272)
-   (wave-start-time  uint64                    :offset-assert 280)
-   (event-start-time uint64                    :offset-assert 288)
+   (game-start-time  time-frame                :offset-assert 272)
+   (wave-start-time  time-frame                :offset-assert 280)
+   (event-start-time time-frame                :offset-assert 288)
    (wave-index       int32                     :offset-assert 296)
    (event-index      int32                     :offset-assert 300)
    (event-count      int32                     :offset-assert 304)
    (beam-clock       float                     :offset-assert 308)
-   (speech-time      uint64                    :offset-assert 312)
+   (speech-time      time-frame                :offset-assert 312)
    (speech-count     int32                     :offset-assert 320)
-   (speech-last      UNKNOWN           4       :offset-assert 324)
+   (speech-last      int32             4       :offset-assert 324)
    (screen-matrix    matrix            :inline :offset-assert 352)
    (screen-scale     vector            :inline :offset-assert 416)
-   (spawn-time       uint64                    :offset-assert 432)
-   (beam             UNKNOWN           4       :offset-assert 440)
-   (heart            uint64                    :offset-assert 568)
+   (spawn-time       time-frame                :offset-assert 432)
+   (beam             was-pre-beam-info 4 :inline :offset-assert 440)
+   (heart            handle                    :offset-assert 568)
    )
   :method-count-assert 34
   :size-assert         #x240
   :flag-assert         #x2201c00240
-  (:methods
-    (was-pre-game-method-26 () none) ;; 26
-    (was-pre-game-method-27 () none) ;; 27
-    (was-pre-game-method-28 () none) ;; 28
-    (was-pre-game-method-29 () none) ;; 29
-    (was-pre-game-method-30 () none) ;; 30
-    (was-pre-game-method-31 () none) ;; 31
-    (was-pre-game-method-32 () none) ;; 32
-    (was-pre-game-method-33 () none) ;; 33
-    )
   (:state-methods
-    win ;; 25
-    lose ;; 24
-    active ;; 23
-    wait-for-start ;; 22
     idle ;; 20
     hide ;; 21
+    wait-for-start ;; 22
+    (active symbol) ;; 23
+    lose ;; 24
+    win ;; 25
+    )
+  (:methods
+    (handle-pad-input (_type_) none) ;; 26
+    (update-game-state (_type_) int) ;; 27
+    (start-next-wave (_type_ was-pre-game-wave) none) ;; 28
+    (pre-game-post (_type_) none) ;; 29
+    (update-score (_type_) none) ;; 30
+    (update-screen (_type_) none) ;; 31
+    (scale-to-screen! (_type_ vector float float) vector) ;; 32
+    (set-last-speech-at-idx (_type_ int int) none) ;; 33
     )
   )
-|#
 
-#|
 (deftype pre-game-bubble (process-drawable)
-  ((screen-pos        vector :inline :offset-assert 208)
+  ((parent (pointer was-pre-game) :override)
+   (screen-pos        vector :inline :offset-assert 208)
    (bubble-type       int32          :offset-assert 224)
-   (bubble-start-time uint64         :offset-assert 232)
-   (start-delay       uint64         :offset-assert 240)
+   (bubble-start-time time-frame     :offset-assert 232)
+   (start-delay       time-frame     :offset-assert 240)
    (gravity           meters         :offset-assert 248)
-   (dead?             basic          :offset-assert 252)
+   (dead?             symbol         :offset-assert 252)
    )
   :method-count-assert 22
   :size-assert         #x100
   :flag-assert         #x1600800100
   (:state-methods
-    fall ;; 21
     idle ;; 20
+    fall ;; 21
     )
   )
-|#
 
-;; (define-extern birth-func-pre-bubble-pop function)
-;; (define-extern birth-func-pre-bubble-birth-pop function)
-;; (define-extern *pre-game* object)
-;; (define-extern *pre-game-fun* object)
-;; (define-extern pre-game-bubble-init function)
-;; (define-extern was-pre-beam-init function)
-;; (define-extern was-pre-heart-init function)
+(define-extern birth-func-pre-bubble-pop (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-pre-bubble-birth-pop (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern *pre-game* was-pre-game-game)
+(define-extern *pre-game-fun* was-pre-game-game)
+(define-extern pre-game-bubble-init (function entity-actor vector int time-frame float object :behavior pre-game-bubble))
+(define-extern was-pre-beam-init (function int entity-actor object :behavior was-pre-beam))
+(define-extern was-pre-heart-init (function entity-actor object :behavior was-pre-heart))
+(define-extern *was-pre-game* (pointer was-pre-game))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; metalhead-grunt                ;;
