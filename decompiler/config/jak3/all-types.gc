@@ -22546,7 +22546,7 @@
     (ragdoll-setup! "Set up this ragdoll with the given [[ragdoll-setup]]." (_type_ process-drawable ragdoll-setup) none) ;; 16
     (ragdoll-method-17 (_type_ process-drawable) none) ;; 17
     (ragdoll-method-18 (_type_) none) ;; 18
-    (ragdoll-method-19 (_type_ vector int object vector) none) ;; 19
+    (ragdoll-method-19 (_type_ vector int object matrix) none) ;; 19
     (reset-vec! (_type_ vector) none) ;; 20
     (ragdoll-method-21 (_type_ vector vector float) vector) ;; 21
     (get-max-angle-for-joint-idx (_type_ int) degrees) ;; 22
@@ -40922,7 +40922,7 @@
    (entity                     entity             :offset-assert 32) ;; guessed by decompiler
    (directed?                  symbol             :offset-assert 36) ;; guessed by decompiler
    (no-initial-move-to-ground? symbol             :offset-assert 40) ;; guessed by decompiler
-   (art-level                  level              :offset-assert 44)
+   (art-level                  symbol             :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
@@ -41070,7 +41070,7 @@
     (init-jump-info! (_type_ enemy-jump-info) none) ;; 92
     (setup-jump! (_type_ enemy-jump-info) none) ;; 93
     (move-to-gspot! (_type_) float) ;; 94
-    (on-ground? (_type_) symbol) ;; 95
+    (on-ground? (_type_ enemy-jump-info) symbol) ;; 95
     (jump-in-air-anim (_type_ enemy-jump-info) symbol) ;; 96
     (jump-land-anim (_type_ enemy-jump-info) symbol) ;; 97
     (jump-wind-up-anim (_type_ enemy-jump-info) symbol) ;; 98
@@ -54717,51 +54717,47 @@
 ;; terraformer-drone              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype terraformer-drone (nav-enemy)
-  ((trail-part           basic                      :offset-assert 620)
-   (spinner-jm           basic                      :offset-assert 624)
+  ((trail-part           sparticle-launch-control   :offset-assert 620)
+   (spinner-jm           joint-mod                  :offset-assert 624)
    (spinner-angle        float                      :offset-assert 628)
    (minimap              connection-minimap         :offset-assert 632)
    (zigzag-counter       int8                       :offset-assert 636)
-   (zigzag-timer         uint64                     :offset-assert 640)
+   (zigzag-timer         time-frame                 :offset-assert 640)
    (zigzag-target        vector             :inline :offset-assert 656)
    (floor                float                      :offset-assert 672)
-   (engine-sound         uint32                     :offset-assert 676)
-   (engine-sound-playing basic                      :offset-assert 680)
+   (engine-sound         sound-id                   :offset-assert 676)
+   (engine-sound-playing symbol                     :offset-assert 680)
    )
   :method-count-assert 192
   :size-assert         #x2ac
   :flag-assert         #xc0023002ac
   (:state-methods
-    hostile ;; 38
-    attack ;; 190
-    stare ;; 37
-    jump ;; 44
     notice ;; 35
+    stare ;; 37
+    hostile ;; 38
+    jump ;; 44
+    attack ;; 190
     explode ;; 191
     )
   )
-|#
 
-#|
 (deftype terraformer-drone-small (terraformer-drone)
   ()
   :method-count-assert 192
   :size-assert         #x2ac
   :flag-assert         #xc0023002ac
   )
-|#
 
-;; (define-extern *range-terraformer-drone-explo-color* curve-color-fast)
-;; (define-extern *range-terraformer-drone-explo-alpha* curve2d-fast)
-;; (define-extern *range-terraformer-drone-explo-scale-x* curve2d-fast)
-;; (define-extern *range-terraformer-drone-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-terraformer-drone-explo-alpha* curve2d-fast)
-;; (define-extern *curve-terraformer-drone-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-terraformer-drone-explo-scale-y* curve2d-fast)
-;; (define-extern *part-terraformer-drone-explosion-texture-curve-settings* object)
-;; (define-extern *terraformer-drone-nav-enemy-info* nav-enemy-info)
+(define-extern *range-terraformer-drone-explo-color* curve-color-fast)
+(define-extern *range-terraformer-drone-explo-alpha* curve2d-fast)
+(define-extern *range-terraformer-drone-explo-scale-x* curve2d-fast)
+(define-extern *range-terraformer-drone-explo-scale-y* curve2d-fast)
+(define-extern *curve-terraformer-drone-explo-alpha* curve2d-fast)
+(define-extern *curve-terraformer-drone-explo-scale-x* curve2d-fast)
+(define-extern *curve-terraformer-drone-explo-scale-y* curve2d-fast)
+(define-extern *part-terraformer-drone-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *terraformer-drone-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; prebot-eco-creature            ;;
@@ -54898,41 +54894,38 @@
 ;; deswalk-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype dm-urchin (process-drawable)
-  ((hit-points         float   :offset-assert 200)
+  ((root               collide-shape :override)
+   (hit-points         float   :offset-assert 200)
    (incoming-attack-id uint32  :offset-assert 204)
    )
   :method-count-assert 22
   :size-assert         #xd0
   :flag-assert         #x16005000d0
   (:state-methods
-    idle ;; 21
     die ;; 20
+    idle ;; 21
     )
   )
-|#
 
-#|
 (deftype desw-eco-tank (process-drawable)
-  ((hit-points         float   :offset-assert 200)
+  ((root               collide-shape :override)
+   (hit-points         float   :offset-assert 200)
    (incoming-attack-id uint32  :offset-assert 204)
    )
   :method-count-assert 22
   :size-assert         #xd0
   :flag-assert         #x16005000d0
   (:state-methods
-    idle ;; 21
     die ;; 20
+    idle ;; 21
     )
   )
-|#
 
-#|
 (deftype dm-tentacle-spores (process-focusable)
   ((hit-points         float   :offset-assert 208)
    (incoming-attack-id uint32  :offset-assert 212)
-   (attack-timer       uint64  :offset-assert 216)
+   (attack-timer       time-frame :offset-assert 216)
    )
   :method-count-assert 29
   :size-assert         #xe0
@@ -54941,23 +54934,20 @@
     idle ;; 28
     )
   )
-|#
 
-#|
 (deftype dm-tentacle-ragdoll (ragdoll)
   ((chain-pos  int8    :offset-assert 11980)
-   (start-time uint64  :offset-assert 11984)
+   (start-time time-frame :offset-assert 11984)
    (mode       uint64  :offset-assert 11992)
    )
   :method-count-assert 26
   :size-assert         #x2ee0
   :flag-assert         #x1a00002ee0
   )
-|#
 
-#|
 (deftype dm-tentacle-ragdoll-proc (ragdoll-proc)
-  ((last-frame-time uint64  :offset-assert 136)
+  ((ragdoll dm-tentacle-ragdoll :override)
+   (last-frame-time time-frame :offset-assert 136)
    )
   :method-count-assert 20
   :size-assert         #x90
@@ -54966,42 +54956,64 @@
     idle ;; 14
     )
   )
-|#
 
-#|
+;; +++deswalk-obs:dm-tentacle-flag
+(defenum dm-tentacle-flag
+  :type uint32
+  :bitfield #t
+  (dt0 0)
+  (dt1 1)
+  (dt2 2)
+  (dt3 3)
+  (dt4 4)
+  (dt5 5)
+  (dt6 6)
+  (dt7 7)
+  (dt8 8)
+  )
+;; ---deswalk-obs:dm-tentacle-flag
+
 (deftype dm-tentacle (process-focusable)
   ((hit-points         float          :offset-assert 208)
    (incoming-attack-id uint32         :offset-assert 212)
-   (collision-timer    uint64         :offset-assert 216)
-   (ragdoll-proc       uint64         :offset-assert 224)
-   (flags              uint32         :offset-assert 232)
-   (attack-timer       uint64         :offset-assert 240)
+   (collision-timer    time-frame     :offset-assert 216)
+   (ragdoll-proc       handle         :offset-assert 224)
+   (flags              dm-tentacle-flag :offset-assert 232)
+   (attack-timer       time-frame     :offset-assert 240)
    (initial-position   vector :inline :offset-assert 256)
    )
   :method-count-assert 37
   :size-assert         #x110
   :flag-assert         #x2500900110
-  (:methods
-    (dm-tentacle-method-36 () none) ;; 36
-    )
   (:state-methods
-    idle ;; 35
-    extend ;; 34
-    retract ;; 33
-    spit ;; 32
-    whip ;; 31
-    sweep ;; 30
-    strike ;; 29
     die ;; 28
+    strike ;; 29
+    sweep ;; 30
+    whip ;; 31
+    spit ;; 32
+    retract ;; 33
+    extend ;; 34
+    idle ;; 35
+    )
+  (:methods
+    (normalize-heading (_type_) none) ;; 36
     )
   )
-|#
 
-#|
+;; +++deswalk-obs:dm-tentacle-attack-type
+(defenum dm-tentacle-attack-type
+  :type uint64
+  (strike 0)
+  (sweep 1)
+  (whip 2)
+  (spit 3)
+  )
+;; ---deswalk-obs:dm-tentacle-attack-type
+
 (deftype dm-tentacle-attack (structure)
-  ((attack-type uint64  :offset-assert 0)
+  ((attack-type dm-tentacle-attack-type :offset-assert 0)
    (probability float   :offset-assert 8)
-   (possible    basic   :offset-assert 12)
+   (possible    symbol  :offset-assert 12)
    (min-dist    float   :offset-assert 16)
    (max-dist    float   :offset-assert 20)
    )
@@ -55009,60 +55021,53 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype hud-deswalk (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype task-manager-deswalk (task-manager)
   ()
   :method-count-assert 32
   :size-assert         #xf0
   :flag-assert         #x20007000f0
   )
-|#
 
-#|
 (deftype desw-snake-stump (process-drawable)
-  ((actor-group       uint32  :offset-assert 196)
-   (actor-group-count int32   :offset-assert 200)
-   (up-timer          uint64  :offset-assert 204)
+  ((actor-group       (pointer actor-group)  :offset-assert 200)
+   (actor-group-count int32   :offset-assert 204)
+   (up-timer          time-frame :offset-assert 208)
    )
   :method-count-assert 24
   :size-assert         #xd8
   :flag-assert         #x18006000d8
-  (:methods
-    (desw-snake-stump-method-21 () none) ;; 21
-    )
   (:state-methods
-    moving ;; 23
-    down ;; 22
     up ;; 20
+    undefined ;; 21, not defined
+    down ;; 22
+    moving ;; 23
+    )
+  (:states
+    partway-up
     )
   )
-|#
 
-;; (define-extern *dm-urchin-exploder-params* joint-exploder-static-params)
-;; (define-extern *desw-eco-tank-exploder-params* joint-exploder-static-params)
-;; (define-extern dm-tentacle-spores-init-by-other function)
-;; (define-extern *dm-tentacle-exploder-params* joint-exploder-static-params)
-;; (define-extern *dm-tentacle-ragdoll-setup* object)
-;; (define-extern dm-tentacle-ragdoll-proc-init-by-other function)
-;; (define-extern dm-tentacle-adjust-collision function)
-;; (define-extern dm-tentacle-handler function)
-;; (define-extern *dm-tentacle-attacks* array)
-;; (define-extern dm-tentacle-start-ragdoll function)
-;; (define-extern desw-snake-stump-should-be-active? function)
-;; (define-extern desw-snake-stump-should-be-up? function)
-;; (define-extern desw-snake-stump-handler function)
-;; (define-extern partway-up state)
+(define-extern *dm-urchin-exploder-params* joint-exploder-static-params)
+(define-extern *desw-eco-tank-exploder-params* joint-exploder-static-params)
+(define-extern dm-tentacle-spores-init-by-other (function vector object :behavior dm-tentacle-spores))
+(define-extern *dm-tentacle-exploder-params* joint-exploder-static-params)
+(define-extern *dm-tentacle-ragdoll-setup* ragdoll-setup)
+(define-extern dm-tentacle-ragdoll-proc-init-by-other (function ragdoll-setup object :behavior dm-tentacle-ragdoll-proc))
+(define-extern dm-tentacle-adjust-collision (function int int none :behavior dm-tentacle))
+(def-event-handler dm-tentacle-handler dm-tentacle)
+(define-extern *dm-tentacle-attacks* (array dm-tentacle-attack))
+(define-extern dm-tentacle-start-ragdoll (function object :behavior dm-tentacle))
+(define-extern desw-snake-stump-should-be-active? (function symbol :behavior desw-snake-stump))
+(define-extern desw-snake-stump-should-be-up? (function symbol :behavior desw-snake-stump))
+(def-event-handler desw-snake-stump-handler desw-snake-stump)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; palroof-part                   ;;
@@ -60989,43 +60994,40 @@
 ;; terraformer-part               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-ter-wsplash-color* curve-color-fast)
-;; (define-extern *range-ter-wsplash-alpha* curve2d-fast)
-;; (define-extern *range-ter-wsplash-scale-x* curve2d-fast)
-;; (define-extern *range-ter-wsplash-scale-y* curve2d-fast)
-;; (define-extern *curve-ter-wsplash-alpha* curve2d-fast)
-;; (define-extern *curve-ter-wsplash-scale-x* curve2d-fast)
-;; (define-extern *curve-ter-wsplash-scale-y* curve2d-fast)
-;; (define-extern *part-ter-water-splash-curve-settings* object)
-;; (define-extern *range-ter-splash-color* curve-color-fast)
-;; (define-extern *range-ter-splash-alpha* curve2d-fast)
-;; (define-extern *range-ter-splash-scale-x* curve2d-fast)
-;; (define-extern *range-ter-splash-scale-y* curve2d-fast)
-;; (define-extern *curve-ter-splash-alpha* curve2d-fast)
-;; (define-extern *curve-ter-splash-scale-x* curve2d-fast)
-;; (define-extern *curve-ter-splash-scale-y* curve2d-fast)
-;; (define-extern *part-ter-water-splash-center-curve-settings* object)
+(define-extern *range-ter-wsplash-color* curve-color-fast)
+(define-extern *range-ter-wsplash-alpha* curve2d-fast)
+(define-extern *range-ter-wsplash-scale-x* curve2d-fast)
+(define-extern *range-ter-wsplash-scale-y* curve2d-fast)
+(define-extern *curve-ter-wsplash-alpha* curve2d-fast)
+(define-extern *curve-ter-wsplash-scale-x* curve2d-fast)
+(define-extern *curve-ter-wsplash-scale-y* curve2d-fast)
+(define-extern *part-ter-water-splash-curve-settings* particle-curve-settings)
+(define-extern *range-ter-splash-color* curve-color-fast)
+(define-extern *range-ter-splash-alpha* curve2d-fast)
+(define-extern *range-ter-splash-scale-x* curve2d-fast)
+(define-extern *range-ter-splash-scale-y* curve2d-fast)
+(define-extern *curve-ter-splash-alpha* curve2d-fast)
+(define-extern *curve-ter-splash-scale-x* curve2d-fast)
+(define-extern *curve-ter-splash-scale-y* curve2d-fast)
+(define-extern *part-ter-water-splash-center-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; terraformer-setup              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype terraformer-foot-mark-pt (structure)
   ((collision-pt vector :inline :offset-assert 0)
    (normal       vector :inline :offset-assert 16)
-   (found?       basic          :offset-assert 32)
+   (found?       symbol         :offset-assert 32)
    (angle        float          :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype terraformer-foot-mark-pt-array (basic)
-  ((points        UNKNOWN 20      :offset-assert 16)
+  ((points        terraformer-foot-mark-pt 20 :inline :offset-assert 16)
    (origin        vector  :inline :offset-assert 976)
    (radius        float           :offset-assert 992)
    (current-point int32           :offset-assert 996)
@@ -61034,29 +61036,25 @@
   :size-assert         #x3e8
   :flag-assert         #xc000003e8
   (:methods
-    (terraformer-foot-mark-pt-array-method-9 () none) ;; 9
-    (terraformer-foot-mark-pt-array-method-10 () none) ;; 10
-    (terraformer-foot-mark-pt-array-method-11 () none) ;; 11
+    (init! (_type_ vector float) none) ;; 9
+    (terraformer-foot-mark-pt-array-method-10 (_type_) int) ;; 10
+    (terraformer-foot-mark-pt-array-method-11 (_type_ process) int) ;; 11
     )
   )
-|#
 
-#|
 (deftype terraformer-node (structure)
   ((position   vector :inline :offset-assert 0)
    (edge-index int16          :offset-assert 16)
    (edge-count int16          :offset-assert 18)
-   (pos-x      float          :offset-assert 0)
-   (pos-y      float          :offset-assert 4)
-   (pos-z      float          :offset-assert 8)
+   (pos-x      float          :offset 0)
+   (pos-y      float          :offset 4)
+   (pos-z      float          :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype terraformer-edge (structure)
   ((dest-node-id uint16  :offset-assert 0)
    )
@@ -61064,22 +61062,18 @@
   :size-assert         #x2
   :flag-assert         #x900000002
   )
-|#
 
-#|
 (deftype terraformer-graph (structure)
   ((node-count uint16  :offset-assert 0)
    (edge-count uint16  :offset-assert 2)
-   (node       uint32  :offset-assert 4)
-   (edge       uint32  :offset-assert 8)
+   (node       (inline-array terraformer-node) :offset-assert 4)
+   (edge       (inline-array terraformer-edge) :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype terraformer-ik-setup (structure)
   ((elbow-index int32  :offset-assert 0)
    (hand-dist   float  :offset-assert 4)
@@ -61088,41 +61082,39 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype terraformer-foot-lock (structure)
   ((lock         cam-float-seeker :inline :offset-assert 0)
    (old-position vector           :inline :offset-assert 32)
    (old-normal   vector           :inline :offset-assert 48)
-   (initialized  basic                    :offset-assert 64)
+   (initialized  symbol                   :offset-assert 64)
    )
   :method-count-assert 9
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype terraformer (process-drawable)
-  ((graph                   terraformer-graph         :offset-assert 200)
+  ((self                    terraformer               :override)
+   (root                    collide-shape             :override)
+   (graph                   terraformer-graph         :offset-assert 200)
    (current-node            uint16                    :offset-assert 204)
-   (legs                    UNKNOWN           6       :offset-assert 208)
-   (mine-timer              uint64                    :offset-assert 256)
+   (legs                    handle 6                  :offset-assert 208)
+   (mine-timer              time-frame                :offset-assert 256)
    (mines-to-launch         int8                      :offset-assert 264)
-   (launch-drones           basic                     :offset-assert 268)
+   (launch-drones           symbol                    :offset-assert 268)
    (old-target-pos          vector            :inline :offset-assert 272)
-   (old-target-time         uint64                    :offset-assert 288)
+   (old-target-time         time-frame                :offset-assert 288)
    (older-target-pos        vector            :inline :offset-assert 304)
-   (older-target-time       uint64                    :offset-assert 320)
+   (older-target-time       time-frame                :offset-assert 320)
    (anim-speed              float                     :offset-assert 328)
-   (spooled-anim            basic                     :offset-assert 332)
+   (spooled-anim            spool-anim                :offset-assert 332)
    (desired-nav-mesh-index  int8                      :offset-assert 336)
    (current-nav-mesh-index  int8                      :offset-assert 337)
-   (mines                   UNKNOWN           10      :offset-assert 344)
-   (jumper                  uint64                    :offset-assert 424)
-   (drone                   uint64                    :offset-assert 432)
-   (drone-time              uint64                    :offset-assert 440)
+   (mines                   handle            10      :offset-assert 344)
+   (jumper                  handle                    :offset-assert 424)
+   (drone                   handle                    :offset-assert 432)
+   (drone-time              time-frame                :offset-assert 440)
    (jump-dest               vector            :inline :offset-assert 448)
    (target-rot              matrix            :inline :offset-assert 464)
    (mine-rounds-till-drones int8                      :offset-assert 528)
@@ -61131,42 +61123,40 @@
   :size-assert         #x211
   :flag-assert         #x1a01a00211
   (:state-methods
+    dormant ;; 20
+    frozen ;; 21
     stand-still-laddie! ;; 22
     idle ;; 23
     scrub-anim ;; 24
     walk ;; 25
-    frozen ;; 21
-    dormant ;; 20
     )
   )
-|#
 
-#|
 (deftype terraformer-mine (process-focusable)
-  ((src-pos               vector     :inline :offset-assert 208)
+  ((parent                (pointer terraformer) :override)
+   (src-pos               vector     :inline :offset-assert 208)
    (dest-pos              vector     :inline :offset-assert 224)
    (traj                  trajectory :inline :offset-assert 240)
    (which-trajectory      int8               :offset-assert 280)
    (x-rotate              float              :offset-assert 284)
    (y-rotate              float              :offset-assert 288)
-   (trail-part            basic              :offset-assert 292)
-   (incoming-sound-played basic              :offset-assert 296)
-   (expand-sound-played   basic              :offset-assert 300)
-   (exploded              basic              :offset-assert 304)
+   (trail-part            sparticle-launch-control :offset-assert 292)
+   (incoming-sound-played symbol             :offset-assert 296)
+   (expand-sound-played   symbol             :offset-assert 300)
+   (exploded              symbol             :offset-assert 304)
    )
   :method-count-assert 30
   :size-assert         #x134
   :flag-assert         #x1e00c00134
   (:state-methods
-    fly-to-dest ;; 29
     idle ;; 28
+    fly-to-dest ;; 29
     )
   )
-|#
 
-#|
+(declare-type terraformer-leg process-drawable)
 (deftype terraformer-target (process-focusable)
-  ()
+  ((parent (pointer terraformer-leg) :override))
   :method-count-assert 29
   :size-assert         #xd0
   :flag-assert         #x1d005000d0
@@ -61174,11 +61164,10 @@
     idle ;; 28
     )
   )
-|#
 
-#|
 (deftype terraformer-leg-minimap-dot (process-drawable)
-  ((minimap connection-minimap  :offset-assert 200)
+  ((parent  (pointer terraformer-leg) :override)
+   (minimap connection-minimap  :offset-assert 200)
    )
   :method-count-assert 21
   :size-assert         #xcc
@@ -61187,9 +61176,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype terraformer-foot-water-splash (structure)
   ((frame float  :offset-assert 0)
    )
@@ -61197,26 +61184,26 @@
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype terraformer-leg (process-drawable)
-  ((prefix                  basic                         :offset-assert 200)
+  ((parent                  (pointer terraformer)         :override)
+   (root                    collide-shape                 :override)
+   (prefix                  string                        :offset-assert 200)
    (kind                    int8                          :offset-assert 204)
    (side                    int8                          :offset-assert 205)
-   (targets                 UNKNOWN               6       :offset-assert 208)
-   (mm-handle               uint64                        :offset-assert 256)
-   (joint-ik                basic                         :offset-assert 264)
+   (targets                 handle                6       :offset-assert 208)
+   (mm-handle               handle                        :offset-assert 256)
+   (joint-ik                joint-mod-ik                  :offset-assert 264)
    (foot-lock               terraformer-foot-lock :inline :offset-assert 272)
-   (foot-marks              basic                         :offset-assert 340)
-   (collision-disable-timer uint64                        :offset-assert 344)
+   (foot-marks              terraformer-foot-mark-pt-array :offset-assert 340)
+   (collision-disable-timer time-frame                    :offset-assert 344)
    (foot-up-frame           float                         :offset-assert 352)
    (last-effect             int8                          :offset-assert 356)
-   (sand-drop-part          basic                         :offset-assert 360)
-   (water-drop-part         basic                         :offset-assert 364)
-   (splash-list             basic                         :offset-assert 368)
+   (sand-drop-part          sparticle-launch-control      :offset-assert 360)
+   (water-drop-part         sparticle-launch-control      :offset-assert 364)
+   (splash-list             (array terraformer-foot-water-splash) :offset-assert 368)
    (splash-list-index       int8                          :offset-assert 372)
-   (stepped-in-water        basic                         :offset-assert 376)
+   (stepped-in-water        symbol                        :offset-assert 376)
    )
   :method-count-assert 21
   :size-assert         #x17c
@@ -61225,59 +61212,54 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype hud-terraformer (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype task-manager-terraformer (task-manager)
-  ((pilot-mode? basic  :offset-assert 240)
+  ((pilot-mode? symbol  :offset-assert 240)
    )
   :method-count-assert 33
   :size-assert         #xf4
   :flag-assert         #x21008000f4
   (:methods
-    (task-manager-terraformer-method-32 () none) ;; 32
+    (task-manager-terraformer-method-32 (_type_) none) ;; 32
     )
   )
-|#
 
-;; (define-extern *terraformer-shadow-control* shadow-control)
-;; (define-extern *terraformer-walk-graph* object)
-;; (define-extern *terraformer-ik-setup* object)
-;; (define-extern *terraformer-lf-water-splash-list* array)
-;; (define-extern *terraformer-lm-water-splash-list* array)
-;; (define-extern *terraformer-lr-water-splash-list* array)
-;; (define-extern *terraformer-rf-water-splash-list* array)
-;; (define-extern *terraformer-rm-water-splash-list* array)
-;; (define-extern *terraformer-rr-water-splash-list* array)
-;; (define-extern terraformer-leg-minimap-dot-init-by-other function)
-;; (define-extern terraformer-mine-init-by-other function)
-;; (define-extern terraformer-mine-explode function)
-;; (define-extern terraformer-mine-handler function)
-;; (define-extern terraformer-target-init-by-other function)
-;; (define-extern terraformer-leg-frames-since-lift function)
-;; (define-extern terraformer-leg-frames-till-down function)
-;; (define-extern terraformer-leg-frames-till-up function)
-;; (define-extern terraformer-leg-should-be-up? function)
-;; (define-extern terraformer-leg-init-by-other function)
-;; (define-extern foot-impact function)
-;; (define-extern ik-adjust function) ;; (function float :behavior metalkor-legs)
-;; (define-extern terraformer-leg-deadly? function)
-;; (define-extern terraformer-leg-update-ik function)
-;; (define-extern terraformer-always function)
-;; (define-extern find-mine-dest function)
-;; (define-extern launch-mine function)
-;; (define-extern terraformer-init-mine-vars function)
-;; (define-extern terraformer-update-mine-vars function)
-;; (define-extern terraformer-handler function)
+(define-extern *terraformer-shadow-control* shadow-control)
+(define-extern *terraformer-walk-graph* terraformer-graph)
+(define-extern *terraformer-ik-setup* terraformer-ik-setup)
+(define-extern *terraformer-lf-water-splash-list* (array terraformer-foot-water-splash))
+(define-extern *terraformer-lm-water-splash-list* (array terraformer-foot-water-splash))
+(define-extern *terraformer-lr-water-splash-list* (array terraformer-foot-water-splash))
+(define-extern *terraformer-rf-water-splash-list* (array terraformer-foot-water-splash))
+(define-extern *terraformer-rm-water-splash-list* (array terraformer-foot-water-splash))
+(define-extern *terraformer-rr-water-splash-list* (array terraformer-foot-water-splash))
+(define-extern terraformer-leg-minimap-dot-init-by-other (function object :behavior terraformer-leg-minimap-dot))
+(define-extern terraformer-mine-init-by-other (function vector vector object :behavior terraformer-mine))
+(define-extern terraformer-mine-explode (function object :behavior terraformer-mine))
+(def-event-handler terraformer-mine-handler terraformer-mine)
+(define-extern terraformer-target-init-by-other (function int object :behavior terraformer-target))
+(define-extern terraformer-leg-frames-since-lift (function float :behavior terraformer-leg))
+(define-extern terraformer-leg-frames-till-down (function float :behavior terraformer-leg))
+(define-extern terraformer-leg-frames-till-up (function float :behavior terraformer-leg))
+(define-extern terraformer-leg-should-be-up? (function symbol :behavior terraformer-leg))
+(define-extern terraformer-leg-init-by-other (function string int int float object :behavior terraformer-leg))
+(define-extern foot-impact (function object :behavior terraformer-leg))
+(define-extern ik-adjust (function float :behavior terraformer-leg))
+(define-extern terraformer-leg-deadly? (function symbol :behavior terraformer-leg))
+(define-extern terraformer-leg-update-ik (function object :behavior terraformer-leg))
+(define-extern terraformer-always (function object :behavior terraformer))
+(define-extern find-mine-dest (function vector symbol :behavior terraformer))
+(define-extern launch-mine (function object :behavior terraformer))
+(define-extern terraformer-init-mine-vars (function object :behavior terraformer))
+(define-extern terraformer-update-mine-vars (function symbol object :behavior terraformer))
+(def-event-handler terraformer-handler terraformer)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; freehq-part                    ;;
@@ -74280,54 +74262,78 @@
 ;; terraformer-head               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++terraformer-head:terraformer-head-speech-instance-flag
+(defenum terraformer-head-speech-instance-flag
+  :type uint64
+  :bitfield #t
+  (thsi0 0)
+  (thsi1 1)
+  (thsi2 2)
+  (thsi3 3)
+  (thsi4 4)
+  )
+;; ---terraformer-head:terraformer-head-speech-instance-flag
+
 (deftype terraformer-head-speech-instance (structure)
   ((speech      basic   :offset-assert 0)
    (probability float   :offset-assert 4)
-   (flags       uint64  :offset-assert 8)
+   (flags       terraformer-head-speech-instance-flag :offset-assert 8)
    (play-count  uint32  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
+;; +++terraformer-head:terraformer-head-speech-info-flag
+(defenum terraformer-head-speech-info-flag
+  :type uint8
+  :bitfield #t
+  (thsi0 0)
+  (thsi1 1)
+  )
+;; ---terraformer-head:terraformer-head-speech-info-flag
+
 (deftype terraformer-head-speech-info (structure)
-  ((speeches         basic   :offset-assert 0)
-   (play-time        uint64  :offset-assert 8)
-   (current-random   uint64  :offset-assert 16)
-   (minimum-interval uint64  :offset-assert 24)
-   (random-interval  uint64  :offset-assert 32)
+  ((speeches         (array terraformer-head-speech-instance) :offset-assert 0)
+   (play-time        time-frame :offset-assert 8)
+   (current-random   time-frame :offset-assert 16)
+   (minimum-interval time-frame :offset-assert 24)
+   (random-interval  time-frame :offset-assert 32)
    (last-played      int8    :offset-assert 40)
-   (flags            uint8   :offset-assert 41)
+   (flags            terraformer-head-speech-info-flag :offset-assert 41)
    )
   :method-count-assert 9
   :size-assert         #x2a
   :flag-assert         #x90000002a
   )
-|#
 
-#|
 (deftype terraformer-head-speech-group (structure)
-  ((play-time uint64  :offset-assert 0)
-   (info      basic   :offset-assert 8)
+  ((play-time time-frame  :offset-assert 0)
+   (info      (array terraformer-head-speech-info) :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
+;; +++terraformer-head:jmod-disc-lookat-flag
+(defenum jmod-disc-lookat-flag
+  :type uint32
+  :bitfield #t
+  (blend 0)
+  (jdl1 1)
+  (jdl2 2)
+  )
+;; ---terraformer-head:jmod-disc-lookat-flag
+
 (deftype joint-mod-disc-look-at (basic)
-  ((flags             uint32         :offset-assert 4)
+  ((flags             jmod-disc-lookat-flag :offset-assert 4)
    (up                int8           :offset-assert 8)
    (nose              int8           :offset-assert 9)
    (target            vector :inline :offset-assert 16)
-   (blend-duration    uint64         :offset-assert 32)
-   (blend-start-time  uint64         :offset-assert 40)
+   (blend-duration    time-frame     :offset-assert 32)
+   (blend-start-time  time-frame     :offset-assert 40)
    (blend-start-value float          :offset-assert 48)
    (blend-max         float          :offset-assert 52)
    )
@@ -74335,18 +74341,18 @@
   :size-assert         #x38
   :flag-assert         #xe00000038
   (:methods
-    (joint-mod-disc-look-at-method-9 () none) ;; 9
-    (joint-mod-disc-look-at-method-10 () none) ;; 10
-    (joint-mod-disc-look-at-method-11 () none) ;; 11
-    (joint-mod-disc-look-at-method-12 () none) ;; 12
-    (joint-mod-disc-look-at-method-13 () none) ;; 13
+    (initialize (_type_ process-drawable int) none) ;; 9
+    (set-target! (_type_ vector) none) ;; 10
+    (blend-on! (_type_ time-frame float symbol) none) ;; 11
+    (blend-to-off! (_type_ time-frame symbol) none) ;; 12
+    (get-blend-lerped (_type_) float) ;; 13
     )
   )
-|#
 
-#|
+(declare-type terraformer-head process-focusable)
 (deftype terraformer-head-target (process-focusable)
-  ((been-hit basic  :offset-assert 208)
+  ((parent (pointer terraformer-head) :override)
+   (been-hit symbol :offset-assert 208)
    )
   :method-count-assert 29
   :size-assert         #xd4
@@ -74355,9 +74361,7 @@
     idle ;; 28
     )
   )
-|#
 
-#|
 (deftype terraformer-head-laser-projectile (projectile)
   ()
   :method-count-assert 41
@@ -74367,80 +74371,119 @@
     moving ;; 23
     )
   )
-|#
 
-#|
+;; +++terraformer-head:terraformer-head-critter-tracker-flag
+(defenum terraformer-head-critter-tracker-flag
+  :type uint32
+  :bitfield #t
+  (thct0 0)
+  (thct1 1)
+  (thct2 2)
+  )
+;; ---terraformer-head:terraformer-head-critter-tracker-flag
+
 (deftype terraformer-head-critter-tracker (structure)
-  ((handle uint64         :offset-assert 0)
-   (flags  uint32         :offset-assert 8)
+  ((handle handle         :offset-assert 0)
+   (flags  terraformer-head-critter-tracker-flag :offset-assert 8)
    (dest   vector :inline :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype terraformer-head-ammo-tracker (structure)
-  ((handle          uint64         :offset-assert 0)
+  ((handle          handle         :offset-assert 0)
    (where           vector :inline :offset-assert 16)
-   (birth-next-time basic          :offset-assert 32)
-   (timer           uint64         :offset-assert 40)
+   (birth-next-time symbol         :offset-assert 32)
+   (timer           time-frame     :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
+;; +++terraformer-head:terraformer-head-flag
+(defenum terraformer-head-flag
+  :type uint64
+  :bitfield #t
+  (th0 0)
+  (th1 1)
+  (th2 2)
+  (track-target 3)
+  (laser 4)
+  (laser-sound-playing 5)
+  (laser-warmup-sound-playing 6)
+  (th7 7)
+  (th8 8)
+  )
+;; ---terraformer-head:terraformer-head-flag
+
 (deftype terraformer-head (process-focusable)
-  ((head-aim-jm             basic                     :offset-assert 208)
-   (neck-aim-jm             basic                     :offset-assert 212)
+  ((head-aim-jm             joint-mod-polar-look-at   :offset-assert 208)
+   (neck-aim-jm             joint-mod-disc-look-at    :offset-assert 212)
    (target-spline           tracking-spline   :inline :offset-assert 224)
    (target-position         vector            :inline :offset-assert 1872)
-   (beam-projectile         uint64                    :offset-assert 1888)
+   (beam-projectile         handle                    :offset-assert 1888)
    (hit-points              float                     :offset-assert 1896)
    (stage                   uint8                     :offset-assert 1900)
    (incoming-attack-id      uint32                    :offset-assert 1904)
-   (flags                   uint64                    :offset-assert 1912)
+   (flags                   terraformer-head-flag     :offset-assert 1912)
    (initial-position        vector            :inline :offset-assert 1920)
    (position-seeker         cam-vector-seeker :inline :offset-assert 1936)
-   (actor-group             uint32                    :offset-assert 1996)
+   (actor-group             (pointer actor-group)     :offset-assert 1996)
    (actor-group-count       int32                     :offset-assert 2000)
-   (vulnerable-timer        uint64                    :offset-assert 2008)
-   (very-vulnerable-timer   uint64                    :offset-assert 2016)
+   (vulnerable-timer        time-frame                :offset-assert 2008)
+   (very-vulnerable-timer   time-frame                :offset-assert 2016)
    (num-attacks             int8                      :offset-assert 2024)
    (current-round           int8                      :offset-assert 2025)
    (command-index           int8                      :offset-assert 2026)
-   (command-timer           uint64                    :offset-assert 2032)
-   (critter                 UNKNOWN           8       :offset-assert 2048)
-   (terraformer-head-target uint64                    :offset-assert 2304)
-   (light-vent-timer        uint64                    :offset-assert 2312)
+   (command-timer           time-frame                :offset-assert 2032)
+   (critter                 terraformer-head-critter-tracker 8 :inline :offset-assert 2048)
+   (terraformer-head-target handle                    :offset-assert 2304)
+   (light-vent-timer        time-frame                :offset-assert 2312)
    (light-vent-connection   connection                :offset-assert 2320)
-   (dark-vent-timer         uint64                    :offset-assert 2328)
+   (dark-vent-timer         time-frame                :offset-assert 2328)
    (dark-vent-connection    connection                :offset-assert 2336)
-   (ammo                    UNKNOWN           20      :offset-assert 2352)
-   (laser-sound-id          uint32                    :offset-assert 3312)
-   (warmup-sound-id         uint32                    :offset-assert 3316)
+   (ammo                    terraformer-head-ammo-tracker 20 :inline :offset-assert 2352)
+   (laser-sound-id          sound-id                  :offset-assert 3312)
+   (warmup-sound-id         sound-id                  :offset-assert 3316)
    )
   :method-count-assert 33
   :size-assert         #xcf8
   :flag-assert         #x210c800cf8
   (:state-methods
-    initial-state ;; 32
-    slam ;; 31
-    swing-laser ;; 30
-    take-hit ;; 29
     run-script ;; 28
+    take-hit ;; 29
+    swing-laser ;; 30
+    slam ;; 31
+    initial-state ;; 32
     )
   )
-|#
 
-#|
+;; +++terraformer-head:terraformer-head-cmd-action
+(defenum terraformer-head-cmd-action
+  :type uint64
+  (cmd1 1)
+  (cmd2 2)
+  (cmd3 3)
+  (extend-tentacles 4)
+  (retract-tentacles 5)
+  (start-laser 6)
+  (stop-laser 7)
+  (open-light-vent 8)
+  (close-light-vent 9)
+  (open-dark-vent 10)
+  (close-dark-vent 11)
+  (slam 12)
+  (swing-laser 13)
+  (spawn-critters 14)
+  (wait 15)
+  )
+;; ---terraformer-head:terraformer-head-cmd-action
+
 (deftype terraformer-head-command (structure)
-  ((action uint64  :offset-assert 0)
+  ((action terraformer-head-cmd-action :offset-assert 0)
    (suck   float   :offset-assert 8)
    (random float   :offset-assert 12)
    (round  int8    :offset-assert 16)
@@ -74450,29 +74493,28 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-;; (define-extern *terraformer-head-speech* object)
-;; (define-extern reset-terraformer-head-speeches function)
-;; (define-extern terraformer-head-play-speech function)
-;; (define-extern joint-mod-disc-look-at-callback function)
-;; (define-extern terraformer-head-target-init-by-other function)
-;; (define-extern *terraformer-head-shadow-control* shadow-control)
-;; (define-extern terraformer-head-get-actor-group function)
-;; (define-extern terraformer-head-send-group-event function)
-;; (define-extern terraformer-head-fire-beam function)
-;; (define-extern terraformer-head-connect-tank-glows function)
-;; (define-extern terraformer-head-always function)
-;; (define-extern terraformer-head-always-handler function)
-;; (define-extern terraformer-head-handler function)
-;; (define-extern *terraformer-head-swarm-0* array)
-;; (define-extern *terraformer-head-swarm-1* array)
-;; (define-extern *terraformer-head-swarm-2* array)
-;; (define-extern terraformer-head-point-occupied? function)
-;; (define-extern terraformer-head-get-spawn-point function)
-;; (define-extern terraformer-head-launch-critter function)
-;; (define-extern terraformer-head-advance-launch-script function)
-;; (define-extern terraformer-head-check-launch-script function)
-;; (define-extern terraformer-head-target-enable function)
+(define-extern *terraformer-head-speech* terraformer-head-speech-group)
+(define-extern reset-terraformer-head-speeches (function none :behavior terraformer-head))
+(define-extern terraformer-head-play-speech (function int terraformer-head none))
+(define-extern joint-mod-disc-look-at-callback (function cspace transformq none))
+(define-extern terraformer-head-target-init-by-other (function none :behavior terraformer-head-target))
+(define-extern *terraformer-head-shadow-control* shadow-control)
+(define-extern terraformer-head-get-actor-group (function int actor-group :behavior terraformer-head))
+(define-extern terraformer-head-send-group-event (function int symbol none :behavior terraformer-head))
+(define-extern terraformer-head-fire-beam (function vector none :behavior terraformer-head))
+(define-extern terraformer-head-connect-tank-glows (function none :behavior terraformer-head))
+(define-extern terraformer-head-always (function symbol float none :behavior terraformer-head))
+(def-event-handler terraformer-head-always-handler terraformer-head)
+(def-event-handler terraformer-head-handler terraformer-head)
+(define-extern *terraformer-head-swarm-0* (array terraformer-head-command))
+(define-extern *terraformer-head-swarm-1* (array terraformer-head-command))
+(define-extern *terraformer-head-swarm-2* (array terraformer-head-command))
+(define-extern terraformer-head-point-occupied? (function vector symbol :behavior terraformer-head))
+(define-extern terraformer-head-get-spawn-point (function vector vector symbol :behavior terraformer-head))
+(define-extern terraformer-head-launch-critter (function int symbol :behavior terraformer-head))
+(define-extern terraformer-head-advance-launch-script (function none :behavior terraformer-head))
+(define-extern terraformer-head-check-launch-script (function none :behavior terraformer-head))
+(define-extern terraformer-head-target-enable (function symbol none :behavior terraformer-head))
 
 

@@ -1017,6 +1017,9 @@ const std::unordered_map<
              {"lizard-graph",
               {{"point", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
                {"edge", ArrayFieldDecompMeta(TypeSpec("lizard-graph-edge"), 16)}}},
+             {"terraformer-graph",
+              {{"node", ArrayFieldDecompMeta(TypeSpec("terraformer-node"), 32)},
+               {"edge", ArrayFieldDecompMeta(TypeSpec("terraformer-edge"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
