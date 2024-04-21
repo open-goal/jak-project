@@ -7,3 +7,1267 @@
 
 ;; DECOMP BEGINS
 
+(define *desert-lizard-almost-there-timer* (the-as time-frame 0))
+
+(deftype desert-lizard (nav-enemy)
+  ((graph         lizard-graph)
+   (minimap       connection-minimap)
+   (catch-timer   uint64)
+   (closest-dist  float)
+   (color-index   int32)
+   (talker-id     uint32)
+   )
+  (:state-methods
+    catching-daxter
+    disappear
+    )
+  (:methods
+    (can-be-mounted? (_type_ process-focusable float float float) symbol)
+    )
+  )
+
+
+(defskelgroup skel-desert-lizard flut-saddle flut-saddle-lod0-jg -1
+              ((flut-saddle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 4)
+              :shadow flut-saddle-shadow-mg
+              :sort 1
+              :origin-joint-index 3
+              )
+
+(define *desert-lizard-fact-info* (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80)))
+
+(define *desert-lizard-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x2c
+        :param0 2
+        :param1 2
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 44
+    :notice-anim 44
+    :hostile-anim 37
+    :hit-anim -1
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim -1
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim 41
+    :jump-land-anim -1
+    :neck-joint 27
+    :look-at-joint 28
+    :bullseye-joint 28
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 112.5)
+    :default-hit-points 2.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.4)
+    :ragdoll-rotate-velocity-mult 300.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :orient-tform (new 'static 'vector :x -1.0 :w 1194.157)
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :geo-tform (new 'static 'vector :x 1.0)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2629.632
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 20873.217)
+          :geo-tform (new 'static 'vector :x 1.0 :w 20873.217)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2614.4768
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.1704 :z -0.9853 :w 15569.605)
+          :geo-tform (new 'static 'vector :x -0.4274 :y -0.4868 :z 0.7617 :w 18433.893)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1610.5472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.8732 :z 0.4873 :w 15302.164)
+          :geo-tform (new 'static 'vector :x 0.7034 :y -0.6338 :z 0.3215 :w 15596.385)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5791 :z 0.8151 :w 11558.42)
+          :geo-tform (new 'static 'vector :x 0.8238 :y 0.3798 :z 0.4207 :w 42972.246)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.4571 :z -0.8893 :w 19925.455)
+          :geo-tform (new 'static 'vector :x 0.8208 :y 0.2176 :z 0.528 :w 39373.336)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1928.8064
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.561 :z 0.8278 :w 9103.351)
+          :geo-tform (new 'static 'vector :x -0.3642 :y -0.7961 :z 0.4832 :w 16043.704)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.9564 :z 0.292 :w 8776.054)
+          :geo-tform (new 'static 'vector :x 0.4435 :y 0.8705 :z 0.2128 :w 24472.58)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x -0.9673 :z -0.2533 :w 381.27386)
+          :geo-tform (new 'static 'vector :x 0.3685 :y 0.923 :z -0.1101 :w 36000.09)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.3945 :z 0.9188 :w 14214.484)
+          :geo-tform (new 'static 'vector :x 0.1731 :y 0.9462 :z -0.273 :w 22531.295)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x -0.1578 :z 0.9874 :w 15629.571)
+          :geo-tform (new 'static 'vector :x -0.4878 :y 0.5276 :z -0.6953 :w 19455.945)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1144.0128
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9425 :z -0.334 :w 15664.214)
+          :geo-tform (new 'static 'vector :x 0.6225 :y 0.6917 :z -0.366 :w 16376.664)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.4209 :z -0.907 :w 11175.945)
+          :geo-tform (new 'static 'vector :x 0.7582 :y -0.4201 :z -0.4984 :w 43130.516)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3239 :z 0.946 :w 19266.947)
+          :geo-tform (new 'static 'vector :x 0.7849 :y -0.2644 :z -0.5602 :w 40304.6)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1891.1232
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5614 :z -0.8275 :w 9708.066)
+          :geo-tform (new 'static 'vector :x -0.2414 :y 0.4469 :z 0.8613 :w 29508.95)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.8992 :z -0.4373 :w 9794.027)
+          :geo-tform (new 'static 'vector :x 0.9523 :y 0.1755 :z 0.2494 :w 41777.16)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.2004 :z -0.9797 :w 1084.0018)
+          :geo-tform (new 'static 'vector :x -0.4049 :y 0.8577 :z 0.3165 :w 14899.664)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.3111 :z -0.9503 :w 15597.714)
+          :geo-tform (new 'static 'vector :x 0.791 :y -0.3039 :z -0.5308 :w 40263.406)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x -1.0 :w 767.2809)
+          :geo-tform (new 'static 'vector :x 0.9998 :y -0.0102 :z -0.0127 :w 24633.29)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2619.8015
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6726 :z -0.7399 :w 367.54773)
+          :geo-tform (new 'static 'vector :x 0.9963 :y -0.0253 :z -0.0816 :w 24617.67)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1764.5568
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.4252 :z 0.905 :w 42117.6)
+          :geo-tform (new 'static 'vector :x 0.5688 :y 0.7764 :z 0.2711 :w 35412.523)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 22
+          :pre-tform (new 'static 'vector :x -0.1568 :z 0.9876 :w 21430.2)
+          :geo-tform (new 'static 'vector :x -0.0109 :y 0.4226 :z -0.9062 :w 21658.684)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint 22
+          :pre-tform (new 'static 'vector :x 0.8859 :z -0.4637 :w 2917.153)
+          :geo-tform (new 'static 'vector :x 0.9956 :y 0.0154 :z -0.0923 :w 20905.402)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 842.9568
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :x 1.0 :w 7957.1807)
+          :geo-tform (new 'static 'vector :x -1.0 :w 5707.4937)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 2072.9856
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 3393.8364)
+          :geo-tform (new 'static 'vector :x -1.0 :w 2313.6758)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1938.2272
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 28
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 7074.1016)
+          :geo-tform (new 'static 'vector :x 1.0 :w 3951.73)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1904.2303
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 29
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 19678.33)
+          :geo-tform (new 'static 'vector :x 1.0 :w 23076.754)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 30
+          :parent-joint 28
+          :pre-tform (new 'static 'vector :x 0.9308 :z -0.3654 :w 19295.691)
+          :geo-tform (new 'static 'vector :x -0.8961 :y 0.1035 :z 0.4314 :w 14528.53)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 356.352
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 31
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6506 :z -0.7593 :w 16957.348)
+          :geo-tform (new 'static 'vector :x -0.6503 :y 0.3658 :z 0.6657 :w 19638.062)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 405.504
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 32
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.2793 :z -0.9601 :w 15934.35)
+          :geo-tform (new 'static 'vector :x -0.6805 :y 0.1615 :z 0.7146 :w 28037.555)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 400.9984
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 33
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6208 :z -0.7839 :w 3905.4177)
+          :geo-tform (new 'static 'vector :x -0.6953 :y 0.1627 :z 0.7 :w 33562.953)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 289.1776
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 34
+          :parent-joint 28
+          :pre-tform (new 'static 'vector :x 0.9313 :z 0.364 :w 19297.22)
+          :geo-tform (new 'static 'vector :x -0.8969 :y -0.103 :z -0.4299 :w 14526.728)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 383.7952
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 35
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6531 :z 0.7572 :w 16968.672)
+          :geo-tform (new 'static 'vector :x -0.6525 :y -0.3648 :z -0.6641 :w 19626.594)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 256.0
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 36
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.2852 :z 0.9584 :w 15940.631)
+          :geo-tform (new 'static 'vector :x 0.6834 :y 0.1612 :z 0.7119 :w 37498.535)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 366.592
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 37
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6285 :z 0.7777 :w 3911.1157)
+          :geo-tform (new 'static 'vector :x 0.698 :y 0.1637 :z 0.697 :w 31968.098)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 354.7136
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 38
+          :parent-joint 26
+          :pre-tform (new 'static 'vector :x 0.3896 :z -0.9209 :w 13952.6875)
+          :geo-tform (new 'static 'vector :x 0.5118 :y 0.8282 :z 0.2281 :w 29441.027)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 777.8304
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 39
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5719 :z -0.8202 :w 12225.559)
+          :geo-tform (new 'static 'vector :x 0.1758 :y -0.9834 :z -0.043 :w 19622.133)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 40
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7708 :z 0.637 :w 3074.658)
+          :geo-tform (new 'static 'vector :x 0.3345 :y 0.8926 :z 0.3018 :w 6041.8)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 41
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6433 :z -0.7655 :w 14687.983)
+          :geo-tform (new 'static 'vector :x 0.2746 :y 0.6996 :z 0.6595 :w 12399.465)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 42
+          :parent-joint 26
+          :pre-tform (new 'static 'vector :x 0.3866 :z 0.9222 :w 13970.636)
+          :geo-tform (new 'static 'vector :x 0.2588 :y 0.4807 :z 0.8377 :w 14308.293)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 832.7168
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 43
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.62 :z 0.7845 :w 12117.4795)
+          :geo-tform (new 'static 'vector :x -0.051 :y -0.9504 :z -0.3065 :w 16217.175)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 44
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.578 :z -0.8159 :w 3575.4258)
+          :geo-tform (new 'static 'vector :x -0.0994 :y 0.992 :z 0.0766 :w 36495.305)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 45
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5459 :z 0.8378 :w 17974.248)
+          :geo-tform (new 'static 'vector :x 0.1773 :y 0.9817 :z 0.0691 :w 23538.42)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 46
+          :parent-joint 33
+          :pre-tform (new 'static 'vector :x 0.9887 :z -0.1494 :w 8738.098)
+          :geo-tform (new 'static 'vector :x 0.6711 :y -0.4186 :z -0.6118 :w 25162.291)
+          :axial-slop 2015.6871
+          :max-angle 3729.6902
+          :coll-rad 1513.472
+          )
+        )
+      )
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 48
+    :turn-anim -1
+    :run-anim 37
+    :taunt-anim -1
+    :run-travel-speed (meters 30)
+    :run-acceleration (meters 20)
+    :run-turning-acceleration (meters 80)
+    :walk-travel-speed (meters 5)
+    :walk-acceleration (meters 8)
+    :walk-turning-acceleration (meters 2)
+    :maximum-rotation-rate (degrees 2160)
+    :notice-nav-radius (meters 37.5)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *desert-lizard-enemy-info* fact-defaults) *desert-lizard-fact-info*)
+
+(defbehavior desert-lizard-flee-post desert-lizard ()
+  (let ((s4-0 (the-as process-focusable (handle->process (-> self focus handle)))))
+    (when s4-0
+      (let ((gp-0 (-> self move-dest)))
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-0 quad) (-> (get-trans s4-0 0) quad))
+          (let ((a1-3 (get-quat s4-0 0)))
+            (when (focus-test? s4-0 pilot-riding)
+              (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) a1-3))
+                    (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) s5-0))
+                    (s3-0 (new 'stack-no-clear 'vector))
+                    )
+                (vector-normalize-copy! s3-0 s2-1 1.0)
+                (let ((s1-0 (-> self nav))
+                      (f30-0 (-> self enemy-info run-travel-speed))
+                      (t9-4 lerp-scale)
+                      (a0-8 61440.0)
+                      (a1-5 0.0)
+                      (v1-15 s2-1)
+                      )
+                  (set! (-> s1-0 target-speed)
+                        (+ f30-0
+                           (t9-4 a0-8 a1-5 (sqrtf (+ (* (-> v1-15 x) (-> v1-15 x)) (* (-> v1-15 z) (-> v1-15 z)))) 81920.0 245760.0)
+                           )
+                        )
+                  )
+                0
+                (if (and (< (sqrtf (+ (* (-> s2-1 x) (-> s2-1 x)) (* (-> s2-1 z) (-> s2-1 z)))) 122880.0)
+                         (< (acos (vector-dot s4-1 s3-0)) 14563.556)
+                         )
+                    (vector+float*! s5-0 (-> self root trans) s4-1 -81920.0)
+                    )
+                )
+              )
+            )
+          (if (or (not (nav-enemy-method-166 self gp-0 s5-0)) (nav-enemy-method-174 self))
+              (go-stare2 self)
+              )
+          )
+        (let ((a0-15 (-> self nav state))
+              (a1-8 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> a1-8 quad) (-> a0-15 target-pos quad))
+          (when (< 2048.0 (vector-vector-xz-distance gp-0 a1-8))
+            (let ((v1-38 (-> self nav state)))
+              (logclear! (-> v1-38 flags) (nav-state-flag directional-mode))
+              (logior! (-> v1-38 flags) (nav-state-flag target-poly-dirty))
+              (set! (-> v1-38 target-pos quad) (-> gp-0 quad))
+              )
+            0
+            )
+          )
+        )
+      )
+    )
+  (nav-enemy-method-187 self)
+  (none)
+  )
+
+(defstate notice (desert-lizard)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy notice) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy notice) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (not (-> self graph))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'get-graph-table)
+        (let ((t9-1 send-event-function)
+              (v1-9 (-> *game-info* sub-task-list (game-task-node desert-catch-lizards-resolution)))
+              )
+          (set! (-> self graph) (the-as lizard-graph (t9-1
+                                                       (handle->process (if (-> v1-9 manager)
+                                                                            (-> v1-9 manager manager)
+                                                                            (the-as handle #f)
+                                                                            )
+                                                                        )
+                                                       a1-0
+                                                       )
+                                        )
+                )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (rnd-float-range self 1.8 2.2))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info notice-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (vector-! gp-0 (target-pos 0) (-> self root trans))
+        (seek-toward-heading-vec! (-> self root) gp-0 (-> self enemy-info maximum-rotation-rate) (seconds 0.05))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (set! (-> self catch-timer) (the-as uint (current-time)))
+    (go-best-state self)
+    )
+  )
+
+(defstate flee (desert-lizard)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy flee) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! *desert-lizard-almost-there-timer* 0)
+    (set! (-> self talker-id) (the-as uint -1))
+    )
+  :exit (behavior ()
+    (if (!= (-> self talker-id) -1)
+        (set-action!
+          *gui-control*
+          (gui-action stop)
+          (the-as sound-id (-> self talker-id))
+          (gui-channel none)
+          (gui-action none)
+          (the-as string #f)
+          (the-as (function gui-connection symbol) #f)
+          (the-as process #f)
+          )
+        )
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy flee) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (and *target* (focus-test? *target* pilot-riding))
+      (cond
+        ((can-be-mounted? self *target* 204800.0 163840.0 7281.778)
+         (persist-with-delay *setting-control* 'allow-look-around (seconds 1) 'allow-look-around #f 0.0 0)
+         (set-look-at-mode! self 1)
+         (when (and (time-elapsed? *desert-lizard-almost-there-timer* (seconds 12))
+                    (time-elapsed? (-> self state-time) (seconds 0.5))
+                    )
+           (let* ((v1-21 (rand-vu-int-range 0 7))
+                  (v1-23
+                    (cond
+                      ((= v1-21 1)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 1) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      ((= v1-21 2)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 2) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      ((= v1-21 3)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 3) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      ((= v1-21 4)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 4) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      ((= v1-21 5)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 5) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      ((= v1-21 6)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 6) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      ((= v1-21 7)
+                       (talker-spawn-func (-> *catch-lizards-speech-list* 7) *entity-pool* (target-pos 0) (the-as region #f))
+                       )
+                      )
+                    )
+                  )
+             (set! (-> self talker-id) (the-as uint v1-23))
+             )
+           (set! *desert-lizard-almost-there-timer* (current-time))
+           )
+         (when (and (can-be-mounted? self *target* 122880.0 40960.0 1820.4445)
+                    (time-elapsed? (the-as int (-> self catch-timer)) (seconds 1))
+                    (send-event *target* 'change-mode 'flut self 'wild (-> self color-index))
+                    )
+           (let ((gp-7 (the-as wvehicle (handle->process (-> *target* pilot vehicle)))))
+             (when gp-7
+               (external-target-spawn (-> gp-7 root trans) (-> gp-7 root quat) gp-7 #f (manipy-options mo2 mo3))
+               (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-15 from) (process->ppointer self))
+                 (set! (-> a1-15 num-params) 2)
+                 (set! (-> a1-15 message) 'vehicle-info)
+                 (set! (-> a1-15 param 0) (the-as uint (-> gp-7 hit-points)))
+                 (set! (-> a1-15 param 1) (the-as uint (-> gp-7 turbo-supply)))
+                 (let ((t9-22 send-event-function)
+                       (v1-59 (-> *game-info* sub-task-list (game-task-node desert-catch-lizards-resolution)))
+                       )
+                   (t9-22
+                     (handle->process (if (-> v1-59 manager)
+                                          (-> v1-59 manager manager)
+                                          (the-as handle #f)
+                                          )
+                                      )
+                     a1-15
+                     )
+                   )
+                 )
+               )
+             )
+           (go-virtual catching-daxter)
+           )
+         )
+        (else
+          (set! (-> self catch-timer) (the-as uint (current-time)))
+          (set-look-at-mode! self 2)
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja :group! (-> self draw art-group data (-> self enemy-info run-anim)))
+    (ja :num-func num-func-identity :frame-num 0.0)
+    (let ((f30-0 (rnd-float-range self 0.9 1.1)))
+      (until #f
+        (suspend)
+        (ja :num! (loop! (* f30-0 (/ (vector-length (-> self root transv)) (-> self enemy-info run-travel-speed)))))
+        )
+      )
+    #f
+    )
+  :post desert-lizard-flee-post
+  )
+
+(defstate catching-daxter (desert-lizard)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (enemy-event-handler proc argc message block)
+       )
+      )
+    )
+  :enter (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'got-lizard)
+      (let ((t9-0 send-event-function)
+            (v1-7 (-> *game-info* sub-task-list (game-task-node desert-catch-lizards-resolution)))
+            )
+        (t9-0
+          (handle->process (if (-> v1-7 manager)
+                               (-> v1-7 manager manager)
+                               (the-as handle #f)
+                               )
+                           )
+          a1-0
+          )
+        )
+      )
+    (let ((v1-13 (rand-vu-int-range 0 6)))
+      (cond
+        ((zero? v1-13)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 8) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= v1-13 1)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 9) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= v1-13 2)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 10) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= v1-13 3)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 11) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= v1-13 4)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 12) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= v1-13 5)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 14) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        ((= v1-13 6)
+         (talker-spawn-func (-> *catch-lizards-speech-list* 15) *entity-pool* (target-pos 0) (the-as region #f))
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (suspend)
+      (ja :num! (loop!))
+      )
+    #f
+    )
+  :post desert-lizard-flee-post
+  )
+
+(defstate disappear (desert-lizard)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+(defmethod can-be-mounted? ((this desert-lizard) (arg0 process-focusable) (arg1 float) (arg2 float) (arg3 float))
+  (and (>= arg1 (vector-vector-distance (get-trans arg0 0) (-> this root trans)))
+       (>= arg2 (fabs (- (vector-length (-> this root transv)) (vector-length (get-transv arg0)))))
+       (let ((s4-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> this root transv) 1.0))
+             (v1-12 (vector-normalize-copy! (new 'stack-no-clear 'vector) (get-transv arg0) 1.0))
+             )
+         (>= arg3 (acos (vector-dot s4-1 v1-12)))
+         )
+       )
+  )
+
+(defmethod nav-enemy-method-166 ((this desert-lizard) (arg0 vector) (arg1 vector))
+  (let* ((v1-1 (vector+! (new 'stack-no-clear 'vector) (-> this root trans) (-> this root transv)))
+         (s2-1 (vector-! (new 'stack-no-clear 'vector) v1-1 arg1))
+         (s1-0 (new 'stack-no-clear 'vector))
+         (f30-0 0.0)
+         (f26-0 7281.778)
+         (f24-0 f26-0)
+         )
+    (set! (-> s2-1 y) 0.0)
+    (vector-normalize-copy! s1-0 s2-1 1.0)
+    (let ((f28-0 0.0)
+          (s3-0 (new 'stack-no-clear 'vector))
+          )
+      (dotimes (s0-0 3)
+        (vector-rotate-y! s2-1 s1-0 f30-0)
+        (vector-normalize! s2-1 (-> this enemy-info run-travel-speed))
+        (vector+! s2-1 s2-1 (-> this root trans))
+        (nav-enemy-method-165 this arg0 s2-1)
+        (let ((f0-2 (vector-vector-xz-distance arg1 arg0)))
+          (when (< f28-0 f0-2)
+            (set! f28-0 f0-2)
+            (set! (-> s3-0 quad) (-> arg0 quad))
+            )
+          )
+        (set! f30-0 (cond
+                      ((= (logand s0-0 1) 1)
+                       (+! f30-0 f24-0)
+                       f30-0
+                       )
+                      (else
+                        (- f30-0 f24-0)
+                        )
+                      )
+              )
+        (+! f24-0 f26-0)
+        )
+      (when (and (!= f28-0 0.0) (< 4096.0 (vector-vector-xz-distance (-> this root trans) s3-0)))
+        (set! (-> arg0 quad) (-> s3-0 quad))
+        arg0
+        )
+      )
+    )
+  )
+
+(defmethod nav-enemy-method-165 ((this desert-lizard) (arg0 vector) (arg1 vector))
+  (local-vars (sv-160 vector) (sv-176 int) (sv-192 vector))
+  (with-pp
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s5-0 quad) (-> arg1 quad))
+      (cond
+        ((-> this graph)
+         (let ((s2-0 (-> this graph point))
+               (f30-0 0.0)
+               )
+           (let ((s1-0 -1)
+                 (s0-0 (new 'stack-no-clear 'vector))
+                 )
+             (set! sv-160 (-> this root trans))
+             (set! sv-176 0)
+             (while (< sv-176 (-> this graph edge-count))
+               (let ((v1-8 (-> this graph edge sv-176)))
+                 (set! sv-192 (new 'stack-no-clear 'vector))
+                 (let ((f0-0
+                         (vector-segment-xz-distance-point! sv-160 (-> s2-0 (-> v1-8 index 0)) (-> s2-0 (-> v1-8 index 1)) sv-192)
+                         )
+                       )
+                   (when (or (< f0-0 f30-0) (= s1-0 -1))
+                     (set! f30-0 f0-0)
+                     (set! s1-0 sv-176)
+                     (set! (-> s0-0 quad) (-> sv-192 quad))
+                     )
+                   )
+                 )
+               (set! sv-176 (+ sv-176 1))
+               )
+             (when (!= s1-0 -1)
+               (cond
+                 ((< 24576.0 f30-0)
+                  (set! (-> s5-0 quad) (-> s0-0 quad))
+                  )
+                 (else
+                   (let ((s0-1 (new 'stack-no-clear 'inline-array 'vector 1)))
+                     (vector-line-xz-distance-point!
+                       s5-0
+                       (-> s2-0 (-> this graph edge s1-0 index 0))
+                       (-> s2-0 (-> this graph edge s1-0 index 1))
+                       (-> s0-1 0)
+                       )
+                     (set! (-> s5-0 quad) (-> s0-1 0 quad))
+                     )
+                   )
+                 )
+               (set! (-> s5-0 y) (-> arg1 y))
+               )
+             )
+           (set! (-> this closest-dist) f30-0)
+           )
+         )
+        (else
+          (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-6 from) (process->ppointer pp))
+            (set! (-> a1-6 num-params) 0)
+            (set! (-> a1-6 message) 'get-graph-table)
+            (let ((t9-2 send-event-function)
+                  (v1-41 (-> *game-info* sub-task-list (game-task-node desert-catch-lizards-resolution)))
+                  )
+              (set! (-> this graph) (the-as lizard-graph (t9-2
+                                                           (handle->process (if (-> v1-41 manager)
+                                                                                (-> v1-41 manager manager)
+                                                                                (the-as handle #f)
+                                                                                )
+                                                                            )
+                                                           a1-6
+                                                           )
+                                            )
+                    )
+              )
+            )
+          )
+        )
+      (closest-point-on-mesh (-> this nav) arg0 s5-0 (the-as nav-poly #f))
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod knocked-handler ((this desert-lizard) (arg0 vector))
+  (get-knockback-dir! this arg0)
+  (case (-> this incoming knocked-type)
+    (((knocked-type vehicle))
+     (set! (-> arg0 quad) (-> this incoming attack-direction quad))
+     arg0
+     )
+    (else
+      (let ((f30-0 (rnd-float-range this 0.0 1.0)))
+        (vector-float*! arg0 arg0 (lerp 24576.0 57344.0 f30-0))
+        (let ((f0-1 (lerp 32768.0 61440.0 f30-0)))
+          (set! (-> arg0 y) f0-1)
+          (the-as vector f0-1)
+          )
+        )
+      )
+    )
+  )
+
+(defmethod jump-wind-up-anim ((this desert-lizard) (arg0 enemy-jump-info))
+  #f
+  )
+
+(defmethod jump-land-anim ((this desert-lizard) (arg0 enemy-jump-info))
+  #f
+  )
+
+(defmethod enemy-method-108 ((this desert-lizard) (arg0 process-focusable))
+  #t
+  )
+
+(defmethod get-inv-mass ((this desert-lizard))
+  1.0
+  )
+
+(defmethod on-dying ((this desert-lizard))
+  (when (-> this minimap)
+    (logior! (-> this minimap flags) (minimap-flag fade-out))
+    (set! (-> this minimap) #f)
+    )
+  ((method-of-type nav-enemy on-dying) this)
+  (none)
+  )
+
+(defmethod event-handler ((this desert-lizard) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (go (method-of-object this knocked))
+     )
+    (('touched)
+     (send-event arg0 'touch (-> arg3 param 0))
+     )
+    (('trans)
+     (let ((v0-4 (the-as object (-> arg3 param 0))))
+       (set! (-> (the-as vector v0-4) quad) (-> this root trans quad))
+       v0-4
+       )
+     )
+    (('die)
+     (send-event (ppointer->process (-> this parent)) 'child-die)
+     (go (method-of-object this disappear))
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod go-idle2 ((this desert-lizard))
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this disappear))
+      (go (method-of-object this idle))
+      )
+  )
+
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-enemy-collision! ((this desert-lizard))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 8601.6)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 8192.0 0.0 8192.0)
+      )
+    (set! (-> s5-0 nav-radius) 6144.0)
+    (let ((v1-15 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+(defmethod init-enemy! ((this desert-lizard))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-desert-lizard" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *desert-lizard-enemy-info*)
+  (set! (-> this root pause-adjust-distance) 819200.0)
+  (let ((v1-7 (-> this neck)))
+    (set! (-> v1-7 up) (the-as uint 1))
+    (set! (-> v1-7 nose) (the-as uint 2))
+    (set! (-> v1-7 ear) (the-as uint 0))
+    (set-vector! (-> v1-7 twist-max) 11832.889 11832.889 0.0 1.0)
+    (set! (-> v1-7 ignore-angle) 30947.555)
+    )
+  (setup-masks (-> this draw) 0 2)
+  (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 117) (the-as int #f) (the-as vector #t) 0))
+  (set! (-> this closest-dist) 0.0)
+  (process-entity-status! this (entity-perm-status bit-4) #t)
+  (set! (-> this color-index) (flut-random-color-index))
+  (flut-color-from-index (-> this color-index))
+  (set! (-> this graph) #f)
+  0
+  (none)
+  )
+
+(deftype desert-lizard-spawner (process)
+  ((state-time           time-frame)
+   (death-time           time-frame)
+   (lizard               handle)
+   (suppress-spawn-time  time-frame)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defstate idle (desert-lizard-spawner)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-0 object))
+    (case message
+      (('child-die)
+       (set! v0-0 (current-time))
+       (set! (-> self death-time) (the-as time-frame v0-0))
+       v0-0
+       )
+      (('lizard)
+       (handle->process (-> self lizard))
+       )
+      (('suppress-spawn)
+       (set! v0-0 (current-time))
+       (set! (-> self suppress-spawn-time) (the-as time-frame v0-0))
+       v0-0
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self death-time) 0)
+    (set! (-> self lizard) (the-as handle #f))
+    )
+  :code sleep-code
+  :post (behavior ()
+    (when (and (not (handle->process (-> self lizard)))
+               (and (time-elapsed? (-> self state-time) (seconds 0.05))
+                    (time-elapsed? (-> self suppress-spawn-time) (seconds 2))
+                    (or (not (time-elapsed? (-> self state-time) (seconds 0.5)))
+                        (and (time-elapsed? (-> self death-time) (seconds 6))
+                             (< 163840.0 (vector-vector-xz-distance (target-pos 0) (-> self entity extra trans)))
+                             *target*
+                             (let ((gp-2 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> (camera-matrix) fvec) 1.0))
+                                   (v1-25 (vector-normalize!
+                                            (vector-! (new 'stack-no-clear 'vector) (-> self entity extra trans) (get-trans *target* 0))
+                                            1.0
+                                            )
+                                          )
+                                   )
+                               (< (-> *setting-control* cam-current fov) (acos (vector-dot gp-2 v1-25)))
+                               )
+                             )
+                        )
+                    )
+               )
+      (let ((gp-3 (new 'stack-no-clear 'enemy-init-by-other-params)))
+        (let ((s5-2 (-> self entity)))
+          (set! (-> gp-3 trans quad) (-> s5-2 extra trans quad))
+          (quaternion-copy! (-> gp-3 quat) (-> s5-2 quat))
+          (set! (-> gp-3 entity) s5-2)
+          )
+        (set! (-> gp-3 directed?) #f)
+        (set! (-> gp-3 no-initial-move-to-ground?) #f)
+        (set! (-> gp-3 art-level) #f)
+        (let ((s5-3 (get-process *default-dead-pool* desert-lizard #x4000 1)))
+          (set! (-> self lizard)
+                (process->handle (ppointer->process (when s5-3
+                                                      (let ((t9-9 (method-of-type process activate)))
+                                                        (t9-9 s5-3 self "desert-lizard" (the-as pointer #x70004000))
+                                                        )
+                                                      (run-now-in-process s5-3 enemy-init-by-other self gp-3)
+                                                      (-> s5-3 ppointer)
+                                                      )
+                                                    )
+                                 )
+                )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod init-from-entity! ((this desert-lizard-spawner) (arg0 entity-actor))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this suppress-spawn-time) 0)
+  (go (method-of-object this idle))
+  )
