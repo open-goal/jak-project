@@ -102,7 +102,10 @@ std::tuple<std::optional<ISOMetadata>, ExtractorErrorCode> validate(
   };
 }
 
-void decompile(const fs::path& iso_data_path, const std::string& data_subfolder) {
+// TODO - remove code duplication, most of this is copying what happens in decompiler's `main.cpp`
+void decompile(const fs::path& iso_data_path,
+               const std::string& data_subfolder,
+               const std::string& config_override) {
   using namespace decompiler;
 
   // Determine which config to use from the database
@@ -111,7 +114,7 @@ void decompile(const fs::path& iso_data_path, const std::string& data_subfolder)
   Config config = read_config_file(file_util::get_jak_project_dir() / "decompiler" / "config" /
                                        version_info.game_name /
                                        fmt::format("{}_config.jsonc", version_info.game_name),
-                                   version_info.decomp_config_version);
+                                   version_info.decomp_config_version, config_override);
 
   std::vector<fs::path> dgos, objs, tex_strs, art_strs;
 
@@ -220,6 +223,8 @@ ExtractorErrorCode compile(const fs::path& iso_data_path, const std::string& dat
   Compiler compiler(game_name_to_version(version_info.game_name));
   compiler.make_system().set_constant("*iso-data*", absolute(iso_data_path).string());
   compiler.make_system().set_constant("*use-iso-data-path*", true);
+  file_util::set_iso_data_dir(absolute(iso_data_path));
+  lg::info("set iso_data_dir to {}", absolute(iso_data_path).string());
 
   int flags = 0;
   for (const auto& flag : version_info.flags) {
@@ -265,6 +270,7 @@ int main(int argc, char** argv) {
   bool flag_play = false;
   bool flag_folder = false;
   std::string game_name = "jak1";
+  std::string decomp_config_override = "{}";
 
   lg::initialize();
 
@@ -275,6 +281,9 @@ int main(int argc, char** argv) {
   app.add_option("--proj-path", project_path_override,
                  "Explicitly set the location of the 'data/' folder");
   app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
+  app.add_option(
+      "--decomp-config-override", decomp_config_override,
+      "JSON provided will be merged with the decompiler config, use to override options");
   app.add_flag("-a,--all", flag_runall, "Run all steps, from extraction to playing the game");
   app.add_flag("-e,--extract", flag_extract, "Extract the ISO");
   app.add_flag("-v,--validate", flag_fail_on_validation,
@@ -423,7 +432,7 @@ int main(int argc, char** argv) {
 
   if (flag_decompile) {
     try {
-      decompile(iso_data_path, data_subfolder);
+      decompile(iso_data_path, data_subfolder, decomp_config_override);
     } catch (std::exception& e) {
       lg::error("Error during decompile: {}", e.what());
       return static_cast<int>(ExtractorErrorCode::DECOMPILATION_GENERIC_ERROR);

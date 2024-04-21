@@ -332,7 +332,7 @@ class ObjectFileDB {
   void for_each_function_def_order(Func f) {
     for_each_obj([&](ObjectFileData& data) {
       for (int i = 0; i < int(data.linked_data.segments); i++) {
-        int fn = 0;
+        [[maybe_unused]] int fn = 0;
         for (size_t j = data.linked_data.functions_by_seg.at(i).size(); j-- > 0;) {
           f(data.linked_data.functions_by_seg.at(i).at(j), i, data);
           fn++;
@@ -355,7 +355,7 @@ class ObjectFileDB {
   template <typename Func>
   void for_each_function_in_seg(int seg, Func f) {
     for_each_obj([&](ObjectFileData& data) {
-      int fn = 0;
+      [[maybe_unused]] int fn = 0;
       if (data.linked_data.segments == 3) {
         for (size_t j = data.linked_data.functions_by_seg.at(seg).size(); j-- > 0;) {
           f(data.linked_data.functions_by_seg.at(seg).at(j), data);
