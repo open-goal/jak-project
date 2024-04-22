@@ -47408,14 +47408,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype task-manager-wascity-defend (task-manager)
-  ((wascity-defend-entity  entity  :offset-assert 240)
+  ((self                   task-manager-wascity-defend :override)
+   (wascity-defend-entity  entity  :offset-assert 240)
    (check-timer            time-frame  :offset-assert 248)
    (actor-group            (pointer actor-group)  :offset-assert 256)
    (actor-group-count      int32   :offset-assert 260)
    (cur-group              int8    :offset-assert 264)
    (facing-city?           symbol  :offset-assert 268)
-   (failed                 basic   :offset-assert 272)
-   (completed              basic   :offset-assert 276)
+   (failed                 symbol  :offset-assert 272)
+   (completed              symbol  :offset-assert 276)
    (miss-count             int16   :offset-assert 280)
    (last-miss-count        int16   :offset-assert 282)
    (launch-time            time-frame :offset-assert 288)
@@ -47459,9 +47460,22 @@
     )
   )
 
+;; +++wasdef-manager:hip-maker-mode
 (defenum hip-maker-mode
   :type uint8
+  (hmm0 0)
+  (hmm1 1)
+  (hmm2 2)
+  (hmm3 3)
+  (hmm4 4)
+  (hmm5 5)
+  (hmm6 6)
+  (hmm7 7)
+  (hmm8 8)
+  (hmm9 9)
+  (hmm10 10)
   )
+;; ---wasdef-manager:hip-maker-mode
 
 (deftype hip-maker-event (structure)
   ((event-length uint32  :offset-assert 0)
@@ -47488,7 +47502,9 @@
   )
 
 (deftype maker (process-focusable)
-  ((forw                 vector             :inline :offset-assert 208)
+  ((parent               (pointer task-manager-wascity-defend) :override)
+   (root                 collide-shape-moving       :override)
+   (forw                 vector             :inline :offset-assert 208)
    (ppos                 vector             :inline :offset-assert 224)
    (pvel                 vector             :inline :offset-assert 240)
    (pacc                 vector             :inline :offset-assert 256)
@@ -47541,22 +47557,22 @@
   :size-assert         #x2f0
   :flag-assert         #x2b027002f0
   (:state-methods
-    explode ;; 29
     flying ;; 28
+    explode ;; 29
     walking ;; 30
     standup ;; 31
     )
   (:methods
     (maker-method-32 (_type_) none) ;; 32
-    (maker-method-33 (_type_) none) ;; 33
+    (init-collision! (_type_) none) ;; 33
     (maker-method-34 (_type_) none) ;; 34
     (maker-method-35 (_type_) none) ;; 35
     (maker-method-36 (_type_) none) ;; 36
     (maker-method-37 (_type_) none) ;; 37
     (maker-method-38 (_type_) none) ;; 38
     (maker-method-39 (_type_) none) ;; 39
-    (maker-method-40 (_type_) none) ;; 40
-    (maker-method-41 (_type_) none) ;; 41
+    (find-ground (_type_ collide-query collide-spec float float float process symbol) pat-surface) ;; 40
+    (maker-method-41 (_type_ vector) float) ;; 41
     (maker-method-42 (_type_) none) ;; 42
     )
   )
@@ -47565,7 +47581,7 @@
 (define-extern *maker-num-visible* int)
 (define-extern *maker-num-grenades* int)
 (define-extern *maker-last-shot-time* time-frame)
-(define-extern *maker-first-hit* time-frame)
+(define-extern *maker-first-hit* symbol)
 (define-extern *maker-first-kill* time-frame)
 (define-extern *maker-first-missile* time-frame)
 (define-extern *maker-last-vocalization* time-frame)
@@ -47577,23 +47593,23 @@
 (define-extern *trail-color-curve-maker-entry* curve-color-fast)
 (define-extern *curve-maker-entry-linear-trail* curve2d-fast)
 (define-extern *maker-entry-trail* light-trail-composition)
-(define-extern *maker-data* (array hip-maker-event))
+(define-extern *maker-data* (array (array hip-maker-event)))
 (define-extern *maker-rigid-body-constants* rigid-body-object-constants)
-(define-extern *maker-damage-joint-array* array)
-(define-extern *maker-joint-array* array)
-(define-extern maker-world-to-local-vec! function)
-(define-extern *say-iteration-counter* object)
-(define-extern *say-timestamp* object)
-(define-extern wasdef-voiceover function)
-(define-extern maker-standard-event-handler function)
-(define-extern get-ocean-floor-height function)
-(define-extern *maker-close* object)
-(define-extern *maker-close-count* object)
-(define-extern *maker-traverse-paths* (array path-control))
-(define-extern maker-init-by-other function)
-(define-extern spawn-maker function)
-(define-extern *maker-avoid-spheres* (array sphere))
-(define-extern spawn-maker-enum function)
+(define-extern *maker-damage-joint-array* (array int32))
+(define-extern *maker-joint-array* (array int32))
+(define-extern maker-world-to-local-vec! (function vector vector matrix vector))
+(define-extern *say-iteration-counter* int)
+(define-extern *say-timestamp* time-frame)
+(define-extern wasdef-voiceover (function int none))
+(def-event-handler maker-standard-event-handler maker)
+(define-extern get-ocean-floor-height (function vector float))
+(define-extern *maker-close* float)
+(define-extern *maker-close-count* int)
+(define-extern *maker-traverse-paths* (array (array vector)))
+(define-extern maker-init-by-other (function int float float object :behavior maker))
+(define-extern spawn-maker (function process int float float maker))
+(define-extern *maker-avoid-spheres* (array vector))
+(define-extern spawn-maker-enum (function process int float float maker))
 (define-extern jak-out-of-turret (function symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
