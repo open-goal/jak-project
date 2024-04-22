@@ -1,0 +1,1186 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-spiky-frog spiky-frog spiky-frog-lod0-jg spiky-frog-idle0-ja
+              ((spiky-frog-lod0-mg (meters 20)) (spiky-frog-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow spiky-frog-shadow-mg
+              :origin-joint-index 13
+              )
+
+;; definition of type spiky-frog
+(deftype spiky-frog (nav-enemy)
+  ((eye-jmod        joint-mod   2)
+   (roll-transform  transformq  :inline)
+   (time-out        time-frame)
+   (sound-id        sound-id)
+   )
+  (:state-methods
+    rolling-start
+    rolling
+    rolling-stop
+    (attack vector)
+    attack-recover
+    turn
+    )
+  (:methods
+    (spiky-frog-method-196 (_type_) none)
+    (clear-roll-joint-callback (_type_) none)
+    (init-eyes! (_type_ int int) none)
+    )
+  )
+
+;; definition for method 3 of type spiky-frog
+(defmethod inspect ((this spiky-frog))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Teye-jmod[2] @ #x~X~%" (-> this eye-jmod))
+  (format #t "~2Troll-transform: #<transformq @ #x~X>~%" (-> this roll-transform))
+  (format #t "~2Ttime-out: ~D~%" (-> this time-out))
+  (format #t "~2Tsound-id: ~D~%" (-> this sound-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *fact-info-spiky-frog-defaults*, type fact-info-enemy-defaults
+(define *fact-info-spiky-frog-defaults*
+  (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80) :pickup-type 7)
+  )
+
+;; definition for symbol *spiky-frog-nav-enemy-info*, type nav-enemy-info
+(define *spiky-frog-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #t
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 5
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x4
+        :param0 2
+        :param1 3
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x5
+        :param0 1
+        :param1 2
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 4
+    :notice-anim 6
+    :hostile-anim 14
+    :hit-anim -1
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim 4
+    :die-falling-anim 4
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "frog-gethit")
+    :sound-die (static-sound-name "frog-die")
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 40)
+    :default-hit-points 1.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      generic-attack
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      flut-attack
+      board
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      knocked
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.4)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 2.87)
+    :jump-height-factor 0.1
+    :knocked-seek-ry-clamp 4551.1113
+    :knocked-soft-vxz-lo 75776.0
+    :knocked-soft-vxz-hi 75776.0
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 81920.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 79872.0
+    :knocked-hard-vxz-hi 79872.0
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 75776.0
+    :knocked-yellow-vxz-hi 75776.0
+    :knocked-yellow-vy-lo 81920.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 73728.0
+    :knocked-red-vxz-hi 73728.0
+    :knocked-red-vy-lo 96256.0
+    :knocked-red-vy-hi 96256.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :scale (new 'static 'vector :x 0.8 :y 0.8 :z 0.8)
+      :bg-collide-with (collide-spec backgnd crate obstacle)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1252.5568
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 6684.1255)
+          :geo-tform (new 'static 'vector :x 1.0 :w 21244.24)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1521.2544
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 22797.645)
+          :geo-tform (new 'static 'vector :x 1.0 :w 16705.344)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 2701.312
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 5270.46)
+          :geo-tform (new 'static 'vector :x -1.0 :w 17183.92)
+          :axial-slop 1724.2703
+          :max-angle 1461.471
+          :coll-rad 2298.6753
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint 5
+          :pre-tform (new 'static 'vector :x 0.2027 :z -0.9791 :w 17800.287)
+          :geo-tform (new 'static 'vector :x 0.4494 :y 0.7347 :z 0.5079 :w 20250.916)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9998 :z 0.0132 :w 12283.013)
+          :geo-tform (new 'static 'vector :x -0.2109 :y 0.9479 :z 0.2381 :w 17757.816)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.0794 :z 0.9967 :w 5223.7837)
+          :geo-tform (new 'static 'vector :x -0.2949 :y -0.913 :z -0.2811 :w 16537.3)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1332.8384
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint 5
+          :pre-tform (new 'static 'vector :x 0.2684 :z 0.9631 :w 17854.81)
+          :geo-tform (new 'static 'vector :x 0.4144 :y -0.7577 :z -0.5037 :w 19121.549)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9958 :z -0.0901 :w 11217.306)
+          :geo-tform (new 'static 'vector :x -0.1692 :y -0.9689 :z -0.1801 :w 16659.762)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.0037 :z -0.9998 :w 3812.32)
+          :geo-tform (new 'static 'vector :x -0.2934 :y 0.9055 :z 0.3059 :w 17493.889)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1453.6704
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x -1.0 :w 8723.114)
+          :geo-tform (new 'static 'vector :y -0.6417 :z 0.7667 :w 32767.965)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.2906 :z -0.9567 :w 16942.477)
+          :geo-tform (new 'static 'vector :x 0.0278 :y -0.9078 :z 0.418 :w 17466.91)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5928 :z 0.8051 :w 6378.0547)
+          :geo-tform (new 'static 'vector :x 0.5449 :y -0.6589 :z 0.5182 :w 19800.082)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.0188 :z 0.9998 :w 12314.014)
+          :geo-tform (new 'static 'vector :x -0.0952 :y 0.9815 :z 0.1653 :w 16805.652)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.0188 :z -0.9998 :w 10722.218)
+          :geo-tform (new 'static 'vector :x 0.0929 :y -0.9843 :z 0.1492 :w 16392.447)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1369.2928
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint 13
+          :pre-tform (new 'static 'vector :x -0.2898 :z 0.9569 :w 16941.055)
+          :geo-tform (new 'static 'vector :x 0.0274 :y 0.9078 :z -0.4183 :w 17474.627)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.594 :z -0.8042 :w 6384.044)
+          :geo-tform (new 'static 'vector :x 0.5447 :y 0.659 :z -0.5184 :w 19804.215)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.0194 :z -0.9998 :w 12314.014)
+          :geo-tform (new 'static 'vector :x -0.0953 :y -0.9814 :z -0.1653 :w 16799.406)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1119.4368
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.0194 :z 0.9998 :w 10722.218)
+          :geo-tform (new 'static 'vector :x -0.0691 :y 0.9973 :z 0.0182 :w 16279.579)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 1303.7568
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint 13
+          :pre-tform (new 'static 'vector :x -1.0 :w 621.09924)
+          :geo-tform (new 'static 'vector :x 1.0 :w 7936.155)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          :coll-rad 868.352
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x 1.0 :w 13359.914)
+          :geo-tform (new 'static 'vector :x -0.9999 :y -0.0086 :z 0.0044 :w 11414.277)
+          :axial-slop 1236.8646
+          :max-angle 1504.7793
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x -0.553 :z -0.8329 :w 3495.3445)
+          :geo-tform (new 'static 'vector :x -0.9805 :y -0.1498 :z 0.1257 :w 16458.02)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x -0.5572 :z 0.8302 :w 3471.0598)
+          :geo-tform (new 'static 'vector :x -0.9842 :y 0.1403 :z -0.1076 :w 17057.018)
+          :axial-slop 1724.2703
+          :max-angle 2760.7405
+          )
+        )
+      )
+    :shadow-size (meters 4)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #t
+    :use-pacing #t
+    :walk-anim 12
+    :turn-anim 12
+    :run-anim 14
+    :taunt-anim -1
+    :run-travel-speed (meters 16)
+    :run-acceleration (meters 10)
+    :run-turning-acceleration (meters 80)
+    :walk-travel-speed (meters 11.44)
+    :walk-acceleration (meters 5)
+    :walk-turning-acceleration (meters 20)
+    :maximum-rotation-rate (degrees 360)
+    :notice-nav-radius (meters 1.5)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *spiky-frog-nav-enemy-info* fact-defaults) *fact-info-spiky-frog-defaults*)
+
+;; definition for function spiky-frog-hop-slow-code
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior spiky-frog-hop-slow-code spiky-frog ()
+  (until #f
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (dotimes (gp-0 (set-reaction-time! self (seconds 0.007) (seconds 0.01)))
+      (cond
+        ((zero? (rnd-int self 4))
+         (let ((v1-7 (ja-group)))
+           (if (not (and v1-7 (= v1-7 spiky-frog-idle0-ja)))
+               (ja-channel-push! 1 (seconds 0.1))
+               )
+           )
+         (ja-no-eval :group! spiky-frog-idle0-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        (else
+          (let ((v1-38 (ja-group)))
+            (if (not (and v1-38 (= v1-38 spiky-frog-idle1-ja)))
+                (ja-channel-push! 1 (seconds 0.1))
+                )
+            )
+          (ja-no-eval :group! spiky-frog-idle1-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      )
+    (let ((v1-71 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-71 enemy-flags)))
+          (set! (-> v1-71 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-71 enemy-flags))))
+          )
+      (set! (-> v1-71 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-71 enemy-flags))))
+      (set! (-> v1-71 nav callback-info) (-> v1-71 enemy-info callback-info))
+      )
+    0
+    (ja-channel-push! 1 (seconds 0.035))
+    (let ((v1-74 self))
+      (set! (-> v1-74 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-74 enemy-flags))))
+      )
+    0
+    (nav-enemy-method-176 self)
+    (let ((v1-78 (-> self nav)))
+      (set! (-> v1-78 target-speed) (* 1.4 (-> self enemy-info walk-travel-speed)))
+      )
+    0
+    (let ((v1-80 self))
+      (set! (-> v1-80 enemy-flags) (the-as enemy-flag (logclear (-> v1-80 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (ja-no-eval :group! spiky-frog-hop-slow-start-ja :num! (seek! max 1.4) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 1.4))
+      )
+    (nav-enemy-method-178 self)
+    (ja-no-eval :group! spiky-frog-hop-slow-end-ja :num! (seek! max 1.4) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 1.4))
+      )
+    )
+  #f
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate notice (spiky-frog)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
+      (new 'stack-no-clear 'vector)
+      (ja-no-eval :group! spiky-frog-notice0-ja :num! (seek! max f30-0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      (ja-no-eval :group! spiky-frog-notice0-jump-ja :num! (seek! max f30-0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (seek-to-point-toward-point! (-> self root) (-> self focus-pos) (* 98304.0 f30-0) (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      (ja-no-eval :group! spiky-frog-notice0-land-ja :num! (seek! max f30-0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (go-best-state self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (spiky-frog)
+  :virtual #t
+  :code sleep-code
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate pacing (spiky-frog)
+  :virtual #t
+  :code spiky-frog-hop-slow-code
+  )
+
+;; failed to figure out what this is:
+(defstate circling (spiky-frog)
+  :virtual #t
+  :code spiky-frog-hop-slow-code
+  )
+
+;; failed to figure out what this is:
+(defstate stare (spiky-frog)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  )
+
+;; definition for method 78 of type spiky-frog
+(defmethod go-hostile ((this spiky-frog))
+  (if (get-focus! this)
+      (go (method-of-object this rolling-start))
+      (go (method-of-object this hostile))
+      )
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (spiky-frog)
+  :virtual #t
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.2))
+      (cond
+        ((get-focus! self)
+         (go-virtual rolling-start)
+         )
+        ((not (enemy-method-104 self (-> self focus-pos) 8192.0))
+         (go-virtual turn)
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! spiky-frog-idle0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate rolling-start (spiky-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag alert))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
+    (reset-penetrate! self)
+    (let* ((v1-9 *game-info*)
+           (a0-5 (+ (-> v1-9 attack-id) 1))
+           )
+      (set! (-> v1-9 attack-id) a0-5)
+      (set! (-> self attack-id) a0-5)
+      )
+    (stop-look-at! self)
+    (let ((v1-12 self))
+      (set! (-> v1-12 enemy-flags) (the-as enemy-flag (logclear (-> v1-12 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-12 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (spiky-frog-method-196 self)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((f30-0 1.5))
+      (ja-no-eval :group! spiky-frog-ball0-start-ja :num! (seek! max f30-0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      (ja-no-eval :group! spiky-frog-ball0-turn-ja :num! (seek! max f30-0) :frame-num 0.0)
+      (until (ja-done? 0)
+        (seek! (-> self roll-transform trans y) 3645.44 (* 12288.0 (seconds-per-frame)))
+        (seek-to-point-toward-point! (-> self root) (-> self focus-pos) (* 131072.0 f30-0) (seconds 0.02))
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (go-virtual rolling)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate rolling (spiky-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-3 enemy-flags))))
+      )
+    0
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (set-time! (-> self state-time))
+    (set! (-> self time-out) (seconds 1))
+    (let ((a0-16 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+          (gp-0 (-> self move-dest))
+          )
+      (vector+float*! gp-0 (-> self root trans) a0-16 65536.0)
+      (closest-point-on-mesh (-> self nav) gp-0 gp-0 (the-as nav-poly #f))
+      (let ((v1-16 (-> self nav state)))
+        (logclear! (-> v1-16 flags) (nav-state-flag directional-mode))
+        (logior! (-> v1-16 flags) (nav-state-flag target-poly-dirty))
+        (set! (-> v1-16 target-pos quad) (-> gp-0 quad))
+        )
+      )
+    0
+    (nav-enemy-method-177 self)
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (sound-stop (-> self sound-id))
+    )
+  :trans (behavior ()
+    (nav-enemy-method-171 self)
+    (when (time-elapsed? (-> self state-time) (-> self reaction-time))
+      (let ((gp-0 (-> self focus aware)))
+        (if (or (nav-enemy-method-174 self)
+                (time-elapsed? (-> self state-time) (-> self time-out))
+                (>= 2 (the-as int gp-0))
+                (not (get-focus! self))
+                (< (vector-vector-xz-distance (-> self root trans) (-> self move-dest)) 2048.0)
+                (not (get-focus! self))
+                )
+            (go-virtual rolling-stop)
+            )
+        )
+      )
+    )
+  :code (behavior ()
+    (sleep-code)
+    )
+  :post (behavior ()
+    (let* ((t9-0 lerp-scale)
+           (a0-0 0.0)
+           (a1-0 187512.44)
+           (v1-1 (-> self root transv))
+           (f0-4 (t9-0 a0-0 a1-0 (sqrtf (+ (* (-> v1-1 x) (-> v1-1 x)) (* (-> v1-1 z) (-> v1-1 z)))) 0.0 65536.0))
+           (gp-0 (new 'stack-no-clear 'quaternion))
+           )
+      (quaternion-vector-angle! gp-0 *x-vector* (* f0-4 (seconds-per-frame)))
+      (quaternion*! (-> self roll-transform quat) (-> self roll-transform quat) gp-0)
+      )
+    (sound-play "frog-roll" :id (-> self sound-id))
+    (nav-enemy-travel-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate rolling-stop (spiky-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-3 enemy-flags))))
+      )
+    0
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! spiky-frog-ball0-end-ja :num! (seek! max 0.8) :frame-num 0.0)
+    (until (ja-done? 0)
+      (seek! (-> self roll-transform trans y) 0.0 (* 5324.8 (seconds-per-frame)))
+      (quaternion-slerp!
+        (-> self roll-transform quat)
+        (-> self roll-transform quat)
+        *unity-quaternion*
+        (* 8.0 (seconds-per-frame))
+        )
+      (suspend)
+      (ja :num! (seek! max 0.8))
+      )
+    (clear-roll-joint-callback self)
+    (go-virtual stare)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate turn (spiky-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-0 enemy-flags))))
+      )
+    0
+    (ja-no-eval :group! spiky-frog-rotate-left-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((v1-26 self))
+      (set! (-> v1-26 enemy-flags) (the-as enemy-flag (logclear (-> v1-26 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (ja-no-eval :group! spiky-frog-rotate-left-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-best-state self)
+    )
+  :post (behavior ()
+    (let ((a0-0 self))
+      (if (logtest? (enemy-flag ef38) (-> a0-0 enemy-flags))
+          (seek-to-point-toward-point! (-> self root) (-> self focus-pos) 81920.0 (seconds 0.02))
+          )
+      )
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate attack (spiky-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ((arg0 vector))
+    (set-time! (-> self state-time))
+    (let ((v1-2 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-2 enemy-flags)))
+          (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-2 enemy-flags))))
+          )
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-2 enemy-flags))))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-9 *game-info*)
+           (a1-15 (+ (-> v1-9 attack-id) 1))
+           )
+      (set! (-> v1-9 attack-id) a1-15)
+      (set! (-> self attack-id) a1-15)
+      )
+    (let* ((gp-0 (-> self root trans))
+           (s5-1 (vector-! (new 'stack-no-clear 'vector) arg0 gp-0))
+           )
+      (let ((f0-0 (vector-length s5-1)))
+        (vector-normalize! s5-1 (fmin f0-0 (-> self enemy-info run-travel-speed)))
+        )
+      (let ((a0-3 (-> self nav state))
+            (v1-17 (vector+! (new 'stack-no-clear 'vector) gp-0 s5-1))
+            )
+        (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
+        (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
+        (set! (-> a0-3 target-pos quad) (-> v1-17 quad))
+        )
+      )
+    0
+    )
+  :exit (behavior ()
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    )
+  :code (behavior ((arg0 vector))
+    (ja-channel-push! 1 (seconds 0.04))
+    (nav-enemy-method-177 self)
+    (ja-no-eval :group! spiky-frog-attack0-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (nav-enemy-method-178 self)
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (go-virtual attack-recover)
+    )
+  :post nav-enemy-travel-post
+  )
+
+;; failed to figure out what this is:
+(defstate attack-recover (spiky-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logclear (-> v1-3 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  :code (behavior ()
+    (ja-no-eval :group! spiky-frog-attack0-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (cond
+      ((zero? (rnd-int self 4))
+       (let ((v1-28 (ja-group)))
+         (if (not (and v1-28 (= v1-28 spiky-frog-idle0-ja)))
+             (ja-channel-push! 1 (seconds 0.1))
+             )
+         )
+       (ja-no-eval :group! spiky-frog-idle0-ja :num! (seek!) :frame-num 0.0)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       )
+      (else
+        (let ((v1-59 (ja-group)))
+          (if (not (and v1-59 (= v1-59 spiky-frog-idle1-ja)))
+              (ja-channel-push! 1 (seconds 0.1))
+              )
+          )
+        (ja-no-eval :group! spiky-frog-idle1-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (go-best-state self)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (spiky-frog)
+  :virtual #t
+  :enter (behavior ()
+    (clear-roll-joint-callback self)
+    (let ((t9-1 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate knocked-recover (spiky-frog)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked-recover) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((a1-0 (new 'stack-no-clear 'collide-query)))
+      (set-ground-pat! self a1-0 (collide-spec backgnd) 8192.0 81920.0 1024.0 (the-as process #f))
+      )
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked-recover) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self root trans y) (-> self root gspot-pos y))
+    (deactivate-ragdoll! self)
+    )
+  :code (behavior ()
+    (cond
+      ((handle->process (-> self ragdoll-proc))
+       (ja-channel-set! 1)
+       (ja-no-eval :group! spiky-frog-ball0-end-ja
+                   :num! (identity (the float (+ (-> (the-as art-joint-anim spiky-frog-ball0-end-ja) frames num-frames) -1)))
+                   )
+       (enable-ragdoll! (-> (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))) ragdoll) self)
+       (let ((gp-0 (current-time)))
+         (until (time-elapsed? gp-0 (seconds 0.411))
+           (if (!= (-> self root gspot-pos y) -40959590.0)
+               (seek! (-> self root trans y) (-> self root gspot-pos y) (* 409600.0 (seconds-per-frame)))
+               )
+           (suspend)
+           )
+         )
+       )
+      (else
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim)) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (if (enemy-method-109 self)
+        (go-die self)
+        (go-hostile self)
+        )
+    )
+  )
+
+;; definition for method 125 of type spiky-frog
+(defmethod ragdoll-settled? ((this spiky-frog))
+  (let ((s5-0 (the-as ragdoll-proc (handle->process (-> this ragdoll-proc)))))
+    (or (not s5-0)
+        (or (ragdoll-proc-method-19 s5-0)
+            (and (time-elapsed? (-> this state-time) (seconds 0.1))
+                 (< (vector-length (-> s5-0 ragdoll ragdoll-joints 0 velocity)) (* 16384.0 (seconds-per-frame)))
+                 (< (cos (* 4551.1113 (seconds-per-frame))) (-> s5-0 ragdoll rotate-vel w))
+                 (or (= (-> this root gspot-pos y) -40959590.0)
+                     (< (- (-> this root trans y) (-> this root gspot-pos y)) 4096.0)
+                     )
+                 )
+            )
+        )
+    )
+  )
+
+;; definition for method 196 of type spiky-frog
+;; WARN: Return type mismatch int vs none.
+(defmethod spiky-frog-method-196 ((this spiky-frog))
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (.svf (&-> (-> this roll-transform) trans quad) vf0)
+    (quaternion-copy! (-> this roll-transform quat) *unity-quaternion*)
+    (let ((a0-2 (-> this node-list data 3)))
+      (set! (-> a0-2 param0)
+            (lambda ((arg0 cspace) (arg1 transformq))
+              (let ((v1-0 (-> arg0 param1)))
+                (vector+! (-> arg1 trans) (-> arg1 trans) (the-as vector (-> (the-as spiky-frog v1-0) roll-transform)))
+                (quaternion*! (-> arg1 quat) (-> arg1 quat) (-> (the-as spiky-frog v1-0) roll-transform quat))
+                )
+              (quaternion-normalize! (-> arg1 quat))
+              (cspace<-parented-transformq-joint! arg0 arg1)
+              (none)
+              )
+            )
+      (set! (-> a0-2 param1) this)
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 197 of type spiky-frog
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-roll-joint-callback ((this spiky-frog))
+  (set! (-> this node-list data 3 param0) #f)
+  0
+  (none)
+  )
+
+;; definition for method 82 of type spiky-frog
+(defmethod event-handler ((this spiky-frog) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-flinch 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (go (method-of-object this knocked))
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 59 of type spiky-frog
+;; INFO: Used lq/sq
+(defmethod enemy-common-post ((this spiky-frog))
+  (when (< 1 (the-as int (-> this focus aware)))
+    (let ((a0-3 (handle->process (-> this focus handle))))
+      (if a0-3
+          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-3) 1) quad))
+          )
+      )
+    )
+  ((method-of-type nav-enemy enemy-common-post) this)
+  (none)
+  )
+
+;; definition for method 198 of type spiky-frog
+;; WARN: Return type mismatch int vs none.
+(defmethod init-eyes! ((this spiky-frog) (arg0 int) (arg1 int))
+  (set! (-> this eye-jmod arg0) (new 'process 'joint-mod (joint-mod-mode look-at) this arg1))
+  (let ((v1-6 (-> this eye-jmod arg0)))
+    (set-vector! (-> v1-6 twist-max) 8192.0 8192.0 0.0 1.0)
+    (set! (-> v1-6 up) (the-as uint 1))
+    (set! (-> v1-6 nose) (the-as uint 2))
+    (set! (-> v1-6 ear) (the-as uint 0))
+    (set! (-> v1-6 max-dist) 102400.0)
+    (set! (-> v1-6 ignore-angle) 16384.0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 120 of type spiky-frog
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this spiky-frog))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 4096.0 0.0 8192.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4915.2 1638.4 4915.2)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action deadly))
+      (set! (-> v1-15 transform-index) 6)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 2048.0 2662.4)
+      )
+    (set! (-> s5-0 nav-radius) 4096.0)
+    (let ((v1-17 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type spiky-frog
+;; WARN: Return type mismatch nav-enemy vs spiky-frog.
+(defmethod relocate ((this spiky-frog) (offset int))
+  (dotimes (v1-0 2)
+    (if (nonzero? (-> this eye-jmod v1-0))
+        (&+! (-> this eye-jmod v1-0) offset)
+        )
+    )
+  (the-as spiky-frog ((method-of-type nav-enemy relocate) this offset))
+  )
+
+;; definition for method 10 of type spiky-frog
+(defmethod deactivate ((this spiky-frog))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (sound-stop (-> this sound-id))
+  ((method-of-type nav-enemy deactivate) this)
+  (none)
+  )
+
+;; definition for method 121 of type spiky-frog
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this spiky-frog))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-spiky-frog" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *spiky-frog-nav-enemy-info*)
+  (init-eyes! this 0 24)
+  (init-eyes! this 1 25)
+  (set! (-> this sound-id) (new-sound-id))
+  0
+  (none)
+  )
+
+
+
+

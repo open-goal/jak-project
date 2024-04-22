@@ -5,5 +5,84 @@
 ;; name in dgo: hover-formation-h
 ;; dgos: TEMA, SEA, FACC, LFORM, FACD, LPATK, TOWERA, PRECA, VOCA
 
+;; +++formation-type
+(defenum formation-type
+  :type int64
+  (unknown-0 0)
+  (unknown-1 1)
+  (unknown-2 2)
+  (unknown-3 3)
+  )
+;; ---formation-type
+
+(declare-type hover-formation process)
+
 ;; DECOMP BEGINS
 
+(deftype form-search-info (structure)
+  ((form            uint32)
+   (count           int32)
+   (pos-table       (inline-array vector))
+   (actor-position  vector  16 :inline)
+   (actor-valid?    symbol  16)
+   (index-table     uint32  16)
+   (dest-pos-table  vector  16 :inline)
+   (best-mapping    uint32  16)
+   (best-cost       float)
+   )
+  )
+
+
+(deftype hover-actor (structure)
+  ((handle  handle)
+   (offset  vector  :inline)
+   )
+  )
+
+
+(deftype hover-formation-control (basic)
+  ((search-info     form-search-info  :inline)
+   (entity          entity)
+   (anchor-proc     handle)
+   (actor-table     handle            16)
+   (flags           uint16)
+   (formation-type  formation-type)
+   (center          vector            :inline)
+   (zone-to-world   matrix            :inline)
+   (world-to-zone   matrix            :inline)
+   (offset          vector            2 :inline)
+   (focus-quat      quaternion        :inline)
+   (notice-dist     float)
+   (rotation-inc    float)
+   (sub-graph-mask  int32)
+   )
+  (:methods
+    (new (symbol type hover-formation entity float vector float handle) _type_)
+    (set-anchor-proc (_type_ handle) int)
+    (hover-formation-control-method-10 (_type_ vector vector float) symbol)
+    (hover-formation-control-method-11 (_type_) int)
+    (is-formation-type-in-range (_type_) symbol)
+    (hover-formation-control-method-13 (_type_ vector) vector)
+    (hover-formation-control-method-14 (_type_) none)
+    (hover-formation-control-method-15 (_type_ vector vector) vector)
+    (hover-formation-control-method-16 (_type_) object)
+    (hover-formation-control-method-17 (_type_ process) int)
+    (hover-formation-control-method-18 (_type_ process) int)
+    (try-update-formation-type (_type_ formation-type) int)
+    (hover-formation-control-method-20 (_type_ object object) none)
+    )
+  )
+
+
+(deftype hover-formation (process)
+  ((formation        hover-formation-control)
+   (path             path-control)
+   (formation-timer  time-frame)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (hover-formation-method-15 (_type_ vector vector) int)
+    )
+  )

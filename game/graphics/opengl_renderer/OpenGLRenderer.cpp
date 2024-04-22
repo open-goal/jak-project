@@ -141,6 +141,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
                                                BucketId::TEX_LCOM_SKY_PRE, texture_animator);
 
+    init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
+                                         BucketId::OCEAN_MID_FAR);
+
     // 10
     for (int i = 0; i < LEVEL_MAX; i++) {
 #define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
@@ -248,6 +251,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     // 461
     init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-post", BucketCategory::TEX,
                                                BucketId::TEX_LCOM_SKY_POST, texture_animator);
+    init_bucket_renderer<OceanNear>("ocean-near", BucketCategory::OCEAN, BucketId::OCEAN_NEAR);
 
     // 463
     for (int i = 0; i < LEVEL_MAX; i++) {

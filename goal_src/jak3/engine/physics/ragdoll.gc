@@ -113,7 +113,7 @@
   (none)
   )
 
-(defmethod ragdoll-method-19 ((this ragdoll) (arg0 vector) (arg1 int) (arg2 object) (arg3 vector))
+(defmethod ragdoll-method-19 ((this ragdoll) (arg0 vector) (arg1 int) (arg2 object) (arg3 matrix))
   (local-vars (v1-22 float))
   (with-pp
     (rlet ((acc :class vf)
@@ -1184,7 +1184,7 @@
                      )
                  (when (or (zero? (the-as object arg1)) (-> arg1 gravity))
                    (set! sv-320 (new 'stack-no-clear 'vector))
-                   (ragdoll-method-19 this sv-320 s1-1 arg0 (the-as vector s2-1))
+                   (ragdoll-method-19 this sv-320 s1-1 arg0 s2-1)
                    (let ((v1-93 sv-560))
                      (let ((a0-39 sv-560))
                        (.mov.vf vf6 vf0 :mask #b1000)
@@ -1537,13 +1537,7 @@
 
 (defmethod ragdoll-proc-method-15 ((this ragdoll-proc) (arg0 symbol) (arg1 vector) (arg2 symbol))
   (if (nonzero? (-> this ragdoll))
-      (ragdoll-method-10
-        (-> this ragdoll)
-        (the-as process-drawable (ppointer->process (-> this parent)))
-        arg0
-        arg1
-        arg2
-        )
+      (ragdoll-method-10 (-> this ragdoll) (ppointer->process (-> this parent)) arg0 arg1 arg2)
       )
   0
   (none)
@@ -1559,7 +1553,7 @@
 
 (defmethod ragdoll-proc-method-17 ((this ragdoll-proc) (arg0 ragdoll-edit-info))
   (if (nonzero? (-> this ragdoll))
-      (ragdoll-method-15 (-> this ragdoll) (the-as process-drawable (ppointer->process (-> this parent))) arg0)
+      (ragdoll-method-15 (-> this ragdoll) (ppointer->process (-> this parent)) arg0)
       )
   0
   (none)
@@ -1567,11 +1561,7 @@
 
 (defmethod ragdoll-proc-method-18 ((this ragdoll-proc) (arg0 ragdoll-edit-info))
   (if (and (nonzero? (-> this ragdoll)) (-> this ragdoll) (nonzero? arg0) arg0)
-      (ragdoll-edit-info-method-17
-        arg0
-        (-> this ragdoll)
-        (the-as process-drawable (ppointer->process (-> this parent)))
-        )
+      (ragdoll-edit-info-method-17 arg0 (-> this ragdoll) (ppointer->process (-> this parent)))
       )
   0
   (none)
@@ -1605,23 +1595,23 @@
                 )
                ((= proc *target*)
                 (set! (-> s4-0 quad) (-> (the-as process-drawable proc) root trans quad))
-                (vector-! s5-0 (-> (the-as process-drawable s2-0) root trans) (-> (the-as process-drawable proc) root trans))
+                (vector-! s5-0 (-> s2-0 root trans) (-> (the-as process-drawable proc) root trans))
                 (set! s3-0 #t)
                 )
                (else
-                 (when (and (-> block param 0) (type? (-> (the-as process-drawable s2-0) root) collide-shape))
+                 (when (and (-> block param 0) (type? (-> s2-0 root) collide-shape))
                    (let* ((a3-1 (the-as object (-> block param 0)))
                           (a1-10 (-> (the-as touching-prims-entry a3-1) u))
                           )
                      (get-intersect-point
                        s5-0
                        (the-as touching-prims-entry a1-10)
-                       (the-as collide-shape (-> (the-as process-drawable s2-0) root))
+                       (the-as collide-shape (-> s2-0 root))
                        (the-as touching-shapes-entry a3-1)
                        )
                      )
                    (set! (-> s4-0 quad) (-> s5-0 quad))
-                   (vector-! s5-0 (-> (the-as process-drawable s2-0) root trans) s5-0)
+                   (vector-! s5-0 (-> s2-0 root trans) s5-0)
                    (set! s3-0 #t)
                    )
                  (when (logtest? (attack-mask attacker-velocity) (-> (the-as attack-info gp-0) mask))
@@ -1665,11 +1655,7 @@
         ((and (logtest? (-> self ragdoll ragdoll-flags) (ragdoll-flag rf4))
               (or (< 0.0 (-> self ragdoll flex-blend)) (logtest? (-> self ragdoll ragdoll-flags) (ragdoll-flag rf5)))
               )
-         (ragdoll-method-15
-           (-> self ragdoll)
-           (the-as process-drawable (ppointer->process (-> self parent)))
-           (the-as ragdoll-edit-info 0)
-           )
+         (ragdoll-method-15 (-> self ragdoll) (ppointer->process (-> self parent)) (the-as ragdoll-edit-info 0))
          )
         ((and (logtest? (-> self ragdoll ragdoll-flags) (ragdoll-flag rf3))
               (and (= (-> self ragdoll flex-blend) 0.0) (not (logtest? (-> self ragdoll ragdoll-flags) (ragdoll-flag rf5))))
@@ -1686,7 +1672,7 @@
 (defmethod deactivate ((this ragdoll-proc))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this ragdoll))
-      (ragdoll-method-17 (-> this ragdoll) (the-as process-drawable (ppointer->process (-> this parent))))
+      (ragdoll-method-17 (-> this ragdoll) (ppointer->process (-> this parent)))
       )
   ((method-of-type process deactivate) this)
   (none)
@@ -1704,7 +1690,7 @@
   (set! (-> self last-attack-id) (the-as uint 0))
   (set! (-> self ragdoll) (new 'process 'ragdoll))
   (if (nonzero? (-> self ragdoll))
-      (ragdoll-setup! (-> self ragdoll) (the-as process-drawable (ppointer->process (-> self parent))) arg0)
+      (ragdoll-setup! (-> self ragdoll) (ppointer->process (-> self parent)) arg0)
       (format 0 "ERROR<gmj>: didn't have enough memory to allocate ragdoll for ragdoll-proc~%")
       )
   (go-virtual idle)

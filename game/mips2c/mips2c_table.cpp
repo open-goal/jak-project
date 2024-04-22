@@ -347,6 +347,16 @@ namespace blerc_execute { extern void link(); }
 namespace setup_blerc_chains_for_one_fragment { extern void link(); }
 namespace sparticle_motion_blur_dirt { extern void link(); }
 namespace foreground_draw_hud { extern void link(); }
+namespace ripple_matrix_scale { extern void link(); }
+namespace ripple_apply_wave_table { extern void link(); }
+namespace ripple_create_wave_table { extern void link(); }
+namespace ripple_execute_init { extern void link(); }
+namespace method_14_ocean { extern void link(); }
+namespace method_15_ocean { extern void link(); }
+namespace method_16_ocean { extern void link(); }
+namespace init_ocean_far_regs { extern void link(); }
+namespace draw_large_polygon_ocean { extern void link(); }
+namespace render_ocean_quad { extern void link(); }
 
 }
 // clang-format on
@@ -583,6 +593,14 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"merc-blend-shape",
          {jak3::blerc_execute::link, jak3::setup_blerc_chains_for_one_fragment::link}},
         {"wvehicle-part", {jak3::sparticle_motion_blur_dirt::link}},
+        {"ripple",
+         {jak3::ripple_matrix_scale::link, jak3::ripple_apply_wave_table::link,
+          jak3::ripple_create_wave_table::link, jak3::ripple_execute_init::link}},
+        {"ocean-vu0",
+         {jak3::method_14_ocean::link, jak3::method_15_ocean::link, jak3::method_16_ocean::link}},
+        {"ocean",
+         {jak3::init_ocean_far_regs::link, jak3::draw_large_polygon_ocean::link,
+          jak3::render_ocean_quad::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

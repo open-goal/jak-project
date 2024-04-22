@@ -1,0 +1,172 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "temple-climb-res"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4 scf8)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-136"
+              :art-group "scenecamera"
+              :anim "temple-climb-res"
+              :parts 11
+              :command-list '((0 (kill "tpl-glider-1"))
+                (1255 (fadeout (frame-time-30 20)))
+                (10000 (task-close! "desert-glide-introduction"))
+                )
+              :cut-list '(48 96 176 343 455 588 970 1185)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'templea
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'templea
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "h-glider"
+                  :level 'hanga
+                  :art-group "skel-h-glider"
+                  :prefix ""
+                  :draw-frames '((min 48) (96 455) (588 max))
+                  :scissor-frames '((1185 end))
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "templex-pre-hang"
+              :end-point "hanga-start"
+              :borrow '()
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :scene-task #x4b
+              :on-running '(begin (sound-play-loop "temple-mov-amb") (sound-play-loop "temple-tone-mov"))
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(defskelgroup skel-tpl-inner-airlock-door tpl-inner-airlock-door tpl-inner-airlock-door-lod0-jg tpl-inner-airlock-door-idle-ja
+              ((tpl-inner-airlock-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 22 0 22)
+              )
+
+;; definition of type tpl-inner-airlock-door
+(deftype tpl-inner-airlock-door (com-airlock)
+  ()
+  )
+
+;; definition for method 3 of type tpl-inner-airlock-door
+(defmethod inspect ((this tpl-inner-airlock-door))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type com-airlock inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type tpl-inner-airlock-door
+(defmethod init-from-entity! ((this tpl-inner-airlock-door) (arg0 entity-actor))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 24576.0 0.0 61440.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 5)
+      (set-vector! (-> v1-8 local-sphere) 0.0 24576.0 0.0 61440.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 4)
+      (set-vector! (-> v1-10 local-sphere) 0.0 24576.0 0.0 61440.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-tpl-inner-airlock-door" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (init-airlock! this)
+  (set! (-> this lock-frame) 45.0)
+  (set! (-> this open-frame) 90.0)
+  (set! (-> this sound-pre-open) (static-sound-spec "door-eye-open" :group 0))
+  (set! (-> this sound-open-loop) (static-sound-spec "door-open" :group 0))
+  (set! (-> this sound-open-stop) (static-sound-spec "door-open-hit" :group 0))
+  (set! (-> this sound-close-loop) (static-sound-spec "door-close" :group 0))
+  (set! (-> this sound-close-stop) (static-sound-spec "door-close-hit" :group 0))
+  (set! (-> this sound-post-close) (static-sound-spec "door-eye-close" :group 0))
+  (set! (-> this sound-behind?) #t)
+  (go (method-of-object this close) #t)
+  )
+
+
+
+

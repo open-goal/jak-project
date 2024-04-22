@@ -7,3 +7,84 @@
 
 ;; DECOMP BEGINS
 
+(deftype wascity-states (structure)
+  ((light  light-state   :inline)
+   (flame  flames-state  :inline)
+   )
+  )
+
+
+(defbehavior update-mood-wascity time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 1 8 1.0 0.000390625 1.5)
+    (set! (-> arg0 times 7 w) 1.0)
+    )
+  0
+  (none)
+  )
+
+(deftype wascitya-states (structure)
+  ((light  light-state   :inline)
+   (flame  flames-state  :inline)
+   )
+  )
+
+
+(defbehavior update-mood-wascitya time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (-> arg0 state)
+    (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+    (update-mood-flames arg0 6 1 8 1.0 0.000390625 1.5)
+    (set! (-> arg0 times 7 w) 1.0)
+    )
+  0
+  (none)
+  )
+
+(deftype wascityb-states (structure)
+  ((light         light-state   :inline)
+   (flame         flames-state  :inline)
+   (turret-value  float)
+   )
+  )
+
+
+(defbehavior update-mood-wascityb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((s4-1 (the-as object (-> arg0 state))))
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (update-mood-flames arg0 6 1 8 1.0 0.000390625 1.5)
+      (set! (-> arg0 times 7 w) (-> (the-as wascityb-states s4-1) turret-value))
+      (if (not (paused?))
+          (set! (-> (the-as wascityb-states s4-1) turret-value)
+                (fmax 0.0 (+ -0.2 (-> (the-as wascityb-states s4-1) turret-value)))
+                )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-wascityb-turret-flash! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'wascityb)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as wascityb-states v1-2) turret-value) 1.0)
+        )
+      )
+    )
+  (none)
+  )

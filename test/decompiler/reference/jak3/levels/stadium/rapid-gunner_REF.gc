@@ -1,0 +1,1432 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-rapid-gunner rapid-gunner 0 -1
+              ((1 (meters 20)) (2 (meters 40)) (3 (meters 999999)))
+              :bounds (static-spherem 0 1.8 0 5)
+              :shadow 4
+              )
+
+;; definition of type rapid-gunner
+(deftype rapid-gunner (nav-enemy)
+  ((dest-quat     quaternion  :inline)
+   (turret-pos    vector      :inline)
+   (turret-actor  entity-actor)
+   (scared-timer  time-frame)
+   )
+  (:state-methods
+    turret-seek
+    turret-get-on
+    turret-active
+    turret-active-shoot
+    turret-getting-off
+    turret-get-off
+    attack
+    )
+  )
+
+;; definition for method 3 of type rapid-gunner
+(defmethod inspect ((this rapid-gunner))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tdest-quat: #<quaternion @ #x~X>~%" (-> this dest-quat))
+  (format #t "~2Tturret-pos: #<vector @ #x~X>~%" (-> this turret-pos))
+  (format #t "~2Tturret-actor: ~A~%" (-> this turret-actor))
+  (format #t "~2Tscared-timer: ~D~%" (-> this scared-timer))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *rapid-gunner-nav-enemy-info*, type nav-enemy-info
+(define *rapid-gunner-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #t
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x1b
+        :param0 2
+        :param1 4
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 27
+    :notice-anim 27
+    :hostile-anim 7
+    :hit-anim -1
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim 5
+    :die-falling-anim 5
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint 7
+    :look-at-joint 8
+    :bullseye-joint 19
+    :sound-hit (static-sound-name "rapid-gunner-hi")
+    :sound-die (static-sound-name "rapid-gunner-di")
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 20)
+    :default-hit-points 5.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 5)
+    :attack-shove-up (meters 3)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 1.5)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 78643.2
+    :knocked-medium-vxz-hi 117964.8
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 135168.0
+    :knocked-hard-vy-hi 151552.0
+    :knocked-huge-vxz-lo 78643.2
+    :knocked-huge-vxz-hi 117964.8
+    :knocked-huge-vy-lo 135168.0
+    :knocked-huge-vy-hi 151552.0
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :orient-tform (new 'static 'vector :x 1.0 :w 32970.816)
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd bot obstacle player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :geo-tform (new 'static 'vector :x 1.0 :w 14.381512)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1609.728
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32759.916)
+          :geo-tform (new 'static 'vector :x -1.0 :w 6763.4243)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1818.624
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :x 1.0 :w 32759.916)
+          :geo-tform (new 'static 'vector :x 1.0)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1825.9968
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0)
+          :geo-tform (new 'static 'vector :x 1.0 :w 39735.406)
+          :axial-slop 1854.9236
+          :max-angle 1871.8174
+          :coll-rad 2342.912
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 5900.479)
+          :geo-tform (new 'static 'vector :x 1.0 :w 7763.3945)
+          :axial-slop 1854.9236
+          :max-angle 2301.2239
+          :coll-rad 1878.8352
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 7763.3765)
+          :geo-tform (new 'static 'vector :x 1.0)
+          :axial-slop 1854.9236
+          :max-angle 2924.4348
+          :coll-rad 1655.1936
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x 0.0167 :z -0.9998 :w 10754.349)
+          :geo-tform (new 'static 'vector :x 0.705 :y 0.6998 :z 0.1133 :w 35720.598)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 2088.1409
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.0411 :z -0.9991 :w 16382.289)
+          :geo-tform (new 'static 'vector :x 0.047 :y 0.9715 :z 0.2316 :w 36841.664)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9203 :z -0.3908 :w 4884.0703)
+          :geo-tform (new 'static 'vector :x -0.1324 :y 0.9715 :z 0.1956 :w 37923.844)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x 0.0451 :z 0.9988 :w 10583.391)
+          :geo-tform (new 'static 'vector :x -0.6271 :y 0.774 :z -0.0855 :w 25730.744)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1885.7983
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5321 :z 0.8465 :w 13354.853)
+          :geo-tform (new 'static 'vector :y 1.0 :w 23893.37)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.4265 :y -0.0001 :z -0.9042)
+          :geo-tform (new 'static 'vector :x -0.4326 :y -0.1411 :z 0.8902 :w 31953.46)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x 0.4605 :z -0.8874 :w 9323.406)
+          :geo-tform (new 'static 'vector :x 0.3535 :y 0.72 :z 0.5971 :w 4334.3145)
+          :axial-slop 1854.9236
+          :max-angle 1981.9178
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x 0.4806 :z 0.8767 :w 9177.953)
+          :geo-tform (new 'static 'vector :x 0.9802 :y -0.1356 :z 0.1428 :w 34288.38)
+          :axial-slop 1854.9236
+          :max-angle 1839.5045
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint 5
+          :pre-tform (new 'static 'vector :x 1.0 :w 26748.32)
+          :geo-tform (new 'static 'vector :x 1.0 :w 32024.75)
+          :axial-slop 1854.9054
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9999 :y 0.0015 :z -0.0016 :w 17402.867)
+          :geo-tform (new 'static 'vector :x -1.0 :w 16384.0)
+          :axial-slop 1854.9054
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :x 1.0 :w 16.074524)
+          :geo-tform (new 'static 'vector :x -1.0 :w 5881.4375)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1827.6353
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.0858 :z -0.9962 :w 14975.412)
+          :geo-tform (new 'static 'vector :x -0.3526 :y -0.3711 :z 0.8588 :w 16185.499)
+          :axial-slop 1854.9236
+          :max-angle 4744.8794
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6733 :z 0.739 :w 14768.556)
+          :geo-tform (new 'static 'vector :x 0.8799 :y -0.3501 :z 0.3205 :w 16794.584)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7656 :z 0.6431 :w 15463.638)
+          :geo-tform (new 'static 'vector :x -0.9093 :y -0.2511 :z -0.3312 :w 20172.8)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7656 :z -0.6431 :w 19232.996)
+          :geo-tform (new 'static 'vector :x -0.3693 :y -0.9193 :z -0.1344 :w 7868.9985)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1996.3904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 19
+          :pre-tform (new 'static 'vector :x -0.086 :z 0.9961 :w 14972.464)
+          :geo-tform (new 'static 'vector :x -0.3526 :y 0.3711 :z -0.8588 :w 16181.677)
+          :axial-slop 1854.9236
+          :max-angle 4593.6733
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6733 :z -0.7391 :w 14765.1875)
+          :geo-tform (new 'static 'vector :x 0.88 :y 0.35 :z -0.3204 :w 16793.729)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7657 :z -0.6429 :w 15463.638)
+          :geo-tform (new 'static 'vector :x -0.9094 :y 0.251 :z 0.3312 :w 20173.018)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7657 :z 0.6429 :w 19233.87)
+          :geo-tform (new 'static 'vector :x -0.3693 :y 0.9193 :z 0.1344 :w 7866.796)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1907.0977
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 28
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 1.0 :w 16126.571)
+          :geo-tform (new 'static 'vector :x -1.0 :w 16126.535)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 29
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x 0.7912 :z -0.6112 :w 10680.821)
+          :geo-tform (new 'static 'vector :x 0.493 :y -0.869 :z -0.0363 :w 8140.081)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          :coll-rad 1515.9296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 30
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x 0.9205 :z 0.3903 :w 4594.219)
+          :geo-tform (new 'static 'vector :x -0.0634 :y -0.9951 :z -0.073 :w 11203.16)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 31
+          :parent-joint 14
+          :pre-tform (new 'static 'vector :x 0.3849 :z 0.9227 :w 10190.32)
+          :geo-tform (new 'static 'vector :x 0.7377 :y 0.6583 :z 0.1486 :w 5284.313)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 32
+          :parent-joint 14
+          :pre-tform (new 'static 'vector :x 0.9945 :z 0.1029 :w 2822.417)
+          :geo-tform (new 'static 'vector :x -0.1191 :y 0.9888 :z 0.0878 :w 7063.998)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 33
+          :parent-joint 29
+          :pre-tform (new 'static 'vector :x 0.9637 :z 0.2661 :w 3947.5247)
+          :geo-tform (new 'static 'vector :x 0.1822 :y -0.8402 :z -0.5102 :w 8379.833)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 34
+          :parent-joint 30
+          :pre-tform (new 'static 'vector :x -0.1791 :z -0.9836 :w 1034.5768)
+          :geo-tform (new 'static 'vector :x -0.1092 :y -0.9921 :z -0.0589 :w 11284.371)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 35
+          :parent-joint 31
+          :pre-tform (new 'static 'vector :x 0.9994 :z 0.03 :w 3958.6292)
+          :geo-tform (new 'static 'vector :x 0.1394 :y 0.6449 :z 0.7512 :w 5862.9966)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 36
+          :parent-joint 32
+          :pre-tform (new 'static 'vector :x -0.5651 :z 0.8248 :w 1027.2222)
+          :geo-tform (new 'static 'vector :x -0.1829 :y 0.9814 :z 0.0564 :w 7100.152)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 37
+          :parent-joint 23
+          :pre-tform (new 'static 'vector :x -0.7656 :z -0.6431 :w 3031.3677)
+          :geo-tform (new 'static 'vector :x -0.7128 :y -0.6541 :z -0.2526 :w 10561.454)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 38
+          :parent-joint 23
+          :pre-tform (new 'static 'vector :x -0.3355 :z 0.9418 :w 5823.7656)
+          :geo-tform (new 'static 'vector :x -0.1563 :y -0.6707 :z 0.7247 :w 15035.705)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 39
+          :parent-joint 23
+          :pre-tform (new 'static 'vector :x 0.774 :z -0.6329 :w 7076.1772)
+          :geo-tform (new 'static 'vector :x 0.4822 :y -0.2773 :z -0.8309 :w 9562.686)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 40
+          :parent-joint 27
+          :pre-tform (new 'static 'vector :x -0.7657 :z 0.6429 :w 3031.3677)
+          :geo-tform (new 'static 'vector :x -0.7128 :y 0.654 :z 0.2526 :w 10560.344)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 41
+          :parent-joint 27
+          :pre-tform (new 'static 'vector :x -0.3366 :z -0.9414 :w 5841.3696)
+          :geo-tform (new 'static 'vector :x 0.7555 :y -0.48 :z -0.4453 :w 30614.521)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 42
+          :parent-joint 27
+          :pre-tform (new 'static 'vector :x 0.7742 :z 0.6327 :w 7061.1396)
+          :geo-tform (new 'static 'vector :x 0.9175 :y 0.3769 :z -0.1255 :w 37260.945)
+          :axial-slop 1854.9236
+          :max-angle 3679.0454
+          )
+        )
+      )
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #t
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #t
+    :use-pacing #t
+    :walk-anim 6
+    :turn-anim -1
+    :run-anim 7
+    :taunt-anim -1
+    :run-travel-speed (meters 6)
+    :run-acceleration (meters 6)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 4)
+    :walk-acceleration (meters 6)
+    :walk-turning-acceleration (meters 3)
+    :maximum-rotation-rate (degrees 360)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *rapid-gunner-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 120 of type rapid-gunner
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this rapid-gunner))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 5))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 6144.0 0.0 17408.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4096.0 0.0 4096.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> v1-15 local-sphere) 0.0 8192.0 0.0 4096.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot crate player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid deadly))
+      (set! (-> v1-17 transform-index) 11)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 3072.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot crate player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid deadly))
+      (set! (-> v1-19 transform-index) 14)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 3072.0)
+      )
+    (set! (-> s5-0 nav-radius) 8192.0)
+    (let ((v1-21 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-21 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-21 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function rapid-gunner-turret-post
+(defbehavior rapid-gunner-turret-post rapid-gunner ()
+  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) (process->ppointer self))
+    (set! (-> a1-0 num-params) 1)
+    (set! (-> a1-0 message) 'gunner-pos)
+    (set! (-> a1-0 param 0) (the-as uint (-> self root trans)))
+    (let ((t9-0 send-event-function)
+          (v1-5 (-> self turret-actor))
+          )
+      (t9-0
+        (if v1-5
+            (-> v1-5 extra process)
+            )
+        a1-0
+        )
+      )
+    )
+  (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-1 from) (process->ppointer self))
+    (set! (-> a1-1 num-params) 1)
+    (set! (-> a1-1 message) 'gunner-quat)
+    (set! (-> a1-1 param 0) (the-as uint (-> self root quat)))
+    (let ((t9-1 send-event-function)
+          (v1-13 (-> self turret-actor))
+          )
+      (t9-1
+        (if v1-13
+            (-> v1-13 extra process)
+            )
+        a1-1
+        )
+      )
+    )
+  (nav-enemy-simple-post)
+  (none)
+  )
+
+;; definition for function rapid-gunner-turret-code
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior rapid-gunner-turret-code rapid-gunner ()
+  (let ((v1-2 (ja-group)))
+    (when (not (and v1-2 (= v1-2 (-> self draw art-group data 12))))
+      (ja-channel-push! 3 (seconds 0.2))
+      (ja-no-eval :group! (-> self draw art-group data 12) :num! zero)
+      (let ((a0-6 (-> self skel root-channel 1)))
+        (let ((f0-1 0.0))
+          (set! (-> a0-6 frame-interp 1) f0-1)
+          (set! (-> a0-6 frame-interp 0) f0-1)
+          )
+        (set! (-> a0-6 frame-group) (the-as art-joint-anim (-> self draw art-group data 15)))
+        (set! (-> a0-6 frame-num) 0.0)
+        (joint-control-channel-group! a0-6 (the-as art-joint-anim (-> self draw art-group data 15)) num-func-identity)
+        )
+      (let ((a0-7 (-> self skel root-channel 2)))
+        (let ((f0-3 1.0))
+          (set! (-> a0-7 frame-interp 1) f0-3)
+          (set! (-> a0-7 frame-interp 0) f0-3)
+          )
+        (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> self draw art-group data 16)))
+        (set! (-> a0-7 frame-num) 0.0)
+        (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> self draw art-group data 16)) num-func-identity)
+        )
+      )
+    )
+  (until #f
+    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-4 from) (process->ppointer self))
+      (set! (-> a1-4 num-params) 0)
+      (set! (-> a1-4 message) 'sideways)
+      (let* ((t9-4 send-event-function)
+             (v1-33 (-> self turret-actor))
+             (a0-8 (if v1-33
+                       (-> v1-33 extra process)
+                       )
+                   )
+             (f30-0 (the-as float (t9-4 a0-8 a1-4)))
+             )
+        (let ((a0-9 (-> self skel root-channel 1)))
+          (let ((f0-6 (fmax 0.0 (- f30-0))))
+            (set! (-> a0-9 frame-interp 1) f0-6)
+            (set! (-> a0-9 frame-interp 0) f0-6)
+            )
+          (set! (-> a0-9 param 0) 0.0)
+          (set! (-> a0-9 frame-num) (-> self skel root-channel 0 frame-num))
+          (joint-control-channel-group! a0-9 (the-as art-joint-anim #f) num-func-chan)
+          )
+        (let ((a0-10 (-> self skel root-channel 2)))
+          (let ((f0-10 (fmax 0.0 f30-0)))
+            (set! (-> a0-10 frame-interp 1) f0-10)
+            (set! (-> a0-10 frame-interp 0) f0-10)
+            )
+          (set! (-> a0-10 param 0) 0.0)
+          (set! (-> a0-10 frame-num) (-> self skel root-channel 0 frame-num))
+          (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-chan)
+          )
+        )
+      )
+    (ja :num! (loop! 0.5))
+    (suspend)
+    )
+  #f
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate turret-seek (rapid-gunner)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-look-at-mode! self 2)
+    (nav-enemy-method-177 self)
+    (let ((v1-4 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-4 enemy-flags)))
+          (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-4 enemy-flags))))
+          )
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-4 enemy-flags))))
+      (set! (-> v1-4 nav callback-info) (-> v1-4 enemy-info callback-info))
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-7 enemy-flags))))
+      )
+    0
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.2))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'rider)
+        (let ((t9-0 send-event-function)
+              (v1-5 (-> self turret-actor))
+              )
+          (if (or (t9-0
+                    (if v1-5
+                        (-> v1-5 extra process)
+                        )
+                    a1-0
+                    )
+                  (< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 24576.0)
+                  )
+              (go-virtual hostile)
+              )
+          )
+        )
+      (if (and (>= 18432.0 (vector-vector-xz-distance (-> self root trans) (-> self move-dest)))
+               (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-3 from) (process->ppointer self))
+                 (set! (-> a1-3 num-params) 0)
+                 (set! (-> a1-3 message) 'grab)
+                 (let ((t9-4 send-event-function)
+                       (v1-21 (-> self turret-actor))
+                       )
+                   (t9-4
+                     (if v1-21
+                         (-> v1-21 extra process)
+                         )
+                     a1-3
+                     )
+                   )
+                 )
+               )
+          (go-virtual turret-get-on)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data 7) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'gunner-pos)
+      (set! (-> a1-0 param 0) (the-as uint (-> self move-dest)))
+      (let ((t9-0 send-event-function)
+            (v1-4 (-> self turret-actor))
+            )
+        (t9-0
+          (if v1-4
+              (-> v1-4 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (let ((a0-2 (-> self nav state))
+          (v1-8 (-> self move-dest))
+          )
+      (logclear! (-> a0-2 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-2 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-2 target-pos quad) (-> v1-8 quad))
+      )
+    0
+    (nav-enemy-travel-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate turret-get-on (rapid-gunner)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'gunner-pos)
+      (set! (-> a1-0 param 0) (the-as uint (-> self move-dest)))
+      (let ((t9-0 send-event-function)
+            (v1-4 (-> self turret-actor))
+            )
+        (t9-0
+          (if v1-4
+              (-> v1-4 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer self))
+      (set! (-> a1-1 num-params) 1)
+      (set! (-> a1-1 message) 'gunner-quat)
+      (set! (-> a1-1 param 0) (the-as uint (-> self dest-quat)))
+      (let ((t9-1 send-event-function)
+            (v1-11 (-> self turret-actor))
+            )
+        (t9-1
+          (if v1-11
+              (-> v1-11 extra process)
+              )
+          a1-1
+          )
+        )
+      )
+    (logclear! (-> self mask) (process-mask actor-pause))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 18) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+        (ja-no-eval :group! (-> self draw art-group data 19) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+            (quaternion-slerp! (-> self root quat) s5-0 (-> self dest-quat) f30-1)
+            (vector-lerp! (-> self root trans) gp-0 (-> self move-dest) f30-1)
+            )
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (ja-no-eval :group! (-> self draw art-group data 20) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-10 from) (process->ppointer self))
+      (set! (-> a1-10 num-params) 0)
+      (set! (-> a1-10 message) 'trigger)
+      (let ((t9-15 send-event-function)
+            (v1-81 (-> self turret-actor))
+            )
+        (t9-15
+          (if v1-81
+              (-> v1-81 extra process)
+              )
+          a1-10
+          )
+        )
+      )
+    (go-virtual turret-active)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate turret-active (rapid-gunner)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('fire)
+       (go-virtual turret-active-shoot)
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set-look-at-mode! self 1)
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.2))
+             (< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 24576.0)
+             (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-1 from) (process->ppointer self))
+               (set! (-> a1-1 num-params) 1)
+               (set! (-> a1-1 message) 'exit-valid)
+               (set! (-> a1-1 param 0) (the-as uint (-> self move-dest)))
+               (let ((t9-1 send-event-function)
+                     (v1-11 (-> self turret-actor))
+                     )
+                 (t9-1
+                   (if v1-11
+                       (-> v1-11 extra process)
+                       )
+                   a1-1
+                   )
+                 )
+               )
+             )
+        (go-virtual turret-getting-off)
+        )
+    )
+  :code rapid-gunner-turret-code
+  :post rapid-gunner-turret-post
+  )
+
+;; failed to figure out what this is:
+(defstate turret-active-shoot (rapid-gunner)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 17) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual turret-active)
+    )
+  :post rapid-gunner-turret-post
+  )
+
+;; failed to figure out what this is:
+(defstate turret-getting-off (rapid-gunner)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (or (time-elapsed? (-> self state-time) (seconds 1)) (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                                                               (set! (-> a1-0 from) (process->ppointer self))
+                                                               (set! (-> a1-0 num-params) 0)
+                                                               (set! (-> a1-0 message) 'exit)
+                                                               (let ((t9-0 send-event-function)
+                                                                     (v1-6 (-> self turret-actor))
+                                                                     )
+                                                                 (t9-0
+                                                                   (if v1-6
+                                                                       (-> v1-6 extra process)
+                                                                       )
+                                                                   a1-0
+                                                                   )
+                                                                 )
+                                                               )
+            )
+        (go-virtual turret-get-off)
+        )
+    )
+  :code rapid-gunner-turret-code
+  :post rapid-gunner-turret-post
+  )
+
+;; failed to figure out what this is:
+(defstate turret-get-off (rapid-gunner)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-6 *game-info*)
+           (a0-2 (+ (-> v1-6 attack-id) 1))
+           )
+      (set! (-> v1-6 attack-id) a0-2)
+      (set! (-> self attack-id) a0-2)
+      )
+    (logclear! (-> self focus-status) (focus-status in-air))
+    (let ((v1-9 self))
+      (set! (-> v1-9 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-9 enemy-flags))))
+      )
+    0
+    (let ((v1-11 self))
+      (set! (-> v1-11 enemy-flags) (the-as enemy-flag (logclear (-> v1-11 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-11 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let* ((v1-14 (-> self nav))
+           (a1-2 (-> self move-dest))
+           (f0-0 (-> v1-14 extra-nav-sphere w))
+           )
+      (set! (-> v1-14 extra-nav-sphere quad) (-> a1-2 quad))
+      (set! (-> v1-14 extra-nav-sphere w) f0-0)
+      )
+    0
+    (let ((v1-17 (-> self nav)))
+      (set! (-> v1-17 extra-nav-sphere w) (-> self nav-radius-backup))
+      )
+    0
+    (let ((v1-19 (-> self nav)))
+      (logior! (-> v1-19 shape nav-flags) (nav-flags has-extra-sphere))
+      )
+    0
+    (forward-up-nopitch->quaternion
+      (-> self dest-quat)
+      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans)) 1.0)
+      *y-vector*
+      )
+    )
+  :exit (behavior ()
+    (let ((v1-0 (-> self nav)))
+      (logclear! (-> v1-0 shape nav-flags) (nav-flags has-extra-sphere))
+      )
+    0
+    (logior! (-> self mask) (process-mask actor-pause))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 21) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (nav-enemy-simple-post)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+        (ja-no-eval :group! (-> self draw art-group data 22) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+            (quaternion-slerp! (-> self root quat) s5-0 (-> self dest-quat) f30-1)
+            (vector-lerp! (-> self root trans) gp-0 (-> self move-dest) f30-1)
+            )
+          (nav-enemy-simple-post)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (until (logtest? (-> self root status) (collide-status on-ground))
+      (suspend)
+      (nav-enemy-falling-post)
+      )
+    (go-best-state self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (rapid-gunner)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (time-elapsed? (-> self state-time) (seconds 0.2))
+      (let ((v1-7 (-> self turret-actor)))
+        (cond
+          ((and (if v1-7
+                    (-> v1-7 extra process)
+                    )
+                (< 65536.0 (vector-vector-xz-distance (-> self focus-pos) (-> self turret-pos)))
+                (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                  (set! (-> a1-1 from) (process->ppointer self))
+                  (set! (-> a1-1 num-params) 0)
+                  (set! (-> a1-1 message) 'rider)
+                  (let ((t9-2 send-event-function)
+                        (v1-14 (-> self turret-actor))
+                        )
+                    (not (t9-2
+                           (if v1-14
+                               (-> v1-14 extra process)
+                               )
+                           a1-1
+                           )
+                         )
+                    )
+                  )
+                )
+           (go-virtual turret-seek)
+           )
+          ((and (>= 20480.0 (vector-vector-distance (-> self root trans) (-> self focus-pos))) (get-focus! self))
+           (go-virtual attack)
+           )
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate attack (rapid-gunner)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let ((v1-2 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-2 enemy-flags)))
+          (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-2 enemy-flags))))
+          )
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-2 enemy-flags))))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-5 enemy-flags))))
+      )
+    0
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((v1-0 (-> self nav)))
+      (set! (-> v1-0 target-speed) 40960.0)
+      )
+    0
+    (let ((v1-2 (-> self nav)))
+      (set! (-> v1-2 acceleration) 204800.0)
+      )
+    0
+    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (nav-enemy-chase-post)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! (-> self draw art-group data 9) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (nav-enemy-simple-post)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! (-> self draw art-group data 10) :num! (seek! max 0.2) :frame-num 0.0)
+    (until (ja-done? 0)
+      (nav-enemy-simple-post)
+      (suspend)
+      (ja :num! (seek! max 0.2))
+      )
+    (go-best-state self)
+    )
+  :post #f
+  )
+
+;; failed to figure out what this is:
+(defstate knocked-recover (rapid-gunner)
+  :virtual #t
+  :code (behavior ()
+    (cond
+      ((handle->process (-> self ragdoll-proc))
+       (ja-channel-push! 1 0)
+       (let ((gp-0 (-> (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))) ragdoll)))
+         (if (< 0.0
+                (vector-dot (-> self node-list data (-> gp-0 ragdoll-joints 0 joint-index) bone transform fvec) *y-vector*)
+                )
+             (ja-no-eval :group! (-> self draw art-group data 25) :num! (seek!) :frame-num 0.0)
+             (ja-no-eval :group! (-> self draw art-group data 26) :num! (seek!) :frame-num 0.0)
+             )
+         (enable-ragdoll! gp-0 self)
+         )
+       (ja-no-eval :num! (seek!))
+       (while (not (ja-done? 0))
+         (seek-to-point-toward-point!
+           (-> self root)
+           (-> self focus-pos)
+           (-> self nav max-rotation-rate)
+           (seconds 0.02)
+           )
+         (suspend)
+         (ja-eval)
+         )
+       )
+      (else
+        (ja-channel-push! 1 (seconds 0.2))
+        (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim)) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (if (enemy-method-109 self)
+        (go-die self)
+        (go-hostile self)
+        )
+    )
+  )
+
+;; definition for method 140 of type rapid-gunner
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs process.
+(defmethod update-focus ((this rapid-gunner))
+  (with-pp
+    (let ((t9-0 (method-of-type enemy update-focus)))
+      (t9-0 this)
+      )
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer pp))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'set-focus)
+      (set! (-> a1-0 param 0) (the-as uint (-> this focus handle)))
+      (let ((t9-1 send-event-function)
+            (v1-5 (-> this turret-actor))
+            )
+        (t9-1
+          (if v1-5
+              (-> v1-5 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (let ((a0-5 (handle->process (-> this focus handle))))
+      (if a0-5
+          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-5) 1) quad))
+          )
+      )
+    (the-as process 0)
+    )
+  )
+
+;; definition for method 108 of type rapid-gunner
+;; WARN: Return type mismatch object vs symbol.
+(defmethod enemy-method-108 ((this rapid-gunner) (arg0 process-focusable))
+  (with-pp
+    (the-as symbol (or (focus-test? arg0 invulnerable)
+                       (let ((v1-3 (new 'stack-no-clear 'event-message-block)))
+                         (set! (-> v1-3 from) (process->ppointer pp))
+                         (set! (-> v1-3 num-params) 0)
+                         (set! (-> v1-3 message) 'turret-type)
+                         (or (send-event-function arg0 v1-3) (< (current-time) (-> this scared-timer)))
+                         )
+                       )
+            )
+    )
+  )
+
+;; definition for method 82 of type rapid-gunner
+(defmethod event-handler ((this rapid-gunner) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-3 from) (process->ppointer self))
+       (set! (-> a1-3 num-params) 0)
+       (set! (-> a1-3 message) 'abort)
+       (let ((t9-4 send-event-function)
+             (v1-28 (-> this turret-actor))
+             )
+         (t9-4
+           (if v1-28
+               (-> v1-28 extra process)
+               )
+           a1-3
+           )
+         )
+       )
+     (go (method-of-object this knocked))
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 122 of type rapid-gunner
+(defmethod go-idle2 ((this rapid-gunner))
+  (let ((v1-0 (-> this turret-actor)))
+    (if (if v1-0
+            (-> v1-0 extra process)
+            )
+        (go (method-of-object this turret-seek))
+        ((method-of-type nav-enemy go-idle2) this)
+        )
+    )
+  )
+
+;; definition for method 67 of type rapid-gunner
+(defmethod coin-flip? ((this rapid-gunner))
+  #f
+  )
+
+;; definition for method 121 of type rapid-gunner
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this rapid-gunner))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-rapid-gunner" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *rapid-gunner-nav-enemy-info*)
+  (let ((v1-5 (-> this neck)))
+    (set! (-> v1-5 up) (the-as uint 1))
+    (set! (-> v1-5 nose) (the-as uint 2))
+    (set! (-> v1-5 ear) (the-as uint 0))
+    (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
+    (set! (-> v1-5 ignore-angle) 30947.555)
+    )
+  (add-connection
+    *part-engine*
+    this
+    8
+    this
+    3748
+    (new 'static 'vector :x 1146.88 :y 450.56 :z 901.12 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    this
+    8
+    this
+    3749
+    (new 'static 'vector :x -1146.88 :y 450.56 :z 901.12 :w 163840.0)
+    )
+  (set! (-> this turret-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (if (-> this turret-actor)
+      (set! (-> this turret-pos quad) (-> this turret-actor extra trans quad))
+      )
+  (setup-masks (-> this draw) 0 4)
+  (logior! (-> this focus collide-with) (collide-spec bot))
+  (set! (-> this scared-timer) 0)
+  0
+  (none)
+  )
+
+;; definition for method 56 of type rapid-gunner
+;; WARN: Return type mismatch float vs object.
+(defmethod knocked-handler ((this rapid-gunner) (arg0 vector))
+  (get-knockback-dir! this arg0)
+  (let ((f30-0 (rnd-float-range this 0.0 1.0)))
+    (vector-float*! arg0 arg0 (lerp 73728.0 90112.0 f30-0))
+    (set! (-> arg0 y) (lerp 57344.0 65536.0 f30-0))
+    )
+  )
+
+
+
+

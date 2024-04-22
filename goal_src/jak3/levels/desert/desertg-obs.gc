@@ -7,3 +7,415 @@
 
 ;; DECOMP BEGINS
 
+(defpartgroup group-des-cactus-explode
+  :id 1232
+  :duration (seconds 0.017)
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 4190 :flags (sp7)) (sp-item 4191 :flags (sp7)))
+  )
+
+(defpart 4190
+  :init-specs ((:texture (cactus-bit1 desertg-sprite))
+    (:num 16.0)
+    (:y (meters 0.5) (meters 1))
+    (:scale-x (meters 0.2) (meters 0.4))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 80.0 120.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 128.0)
+    (:vel-y (meters 0.016666668) (meters 0.033333335))
+    (:rotvel-z (degrees -2) (degrees 4))
+    (:accel-y (meters -0.0016666667))
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    (:func 'check-drop-group)
+    (:conerot-x (degrees 0) (degrees 60))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4191
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:num 5.0)
+    (:y (meters 1))
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 200.0)
+    (:g 200.0)
+    (:b 200.0)
+    (:a 64.0 64.0)
+    (:vel-y (meters 0.033333335) (meters 0.016666668))
+    (:scalevel-x (meters 0.06666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -1.28 -1.28)
+    (:timer (seconds 0.335))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(define *desert-elec-gate-params* (new 'static 'elec-gate-params
+                                    :bolt-spec (new 'static 'lightning-spec
+                                      :name #f
+                                      :flags (lightning-spec-flags lsf2)
+                                      :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                      :end-color (new 'static 'rgba :a #x80)
+                                      :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                      :fade-start-factor 0.2
+                                      :fade-time 120.0
+                                      :texture (new 'static 'texture-id :index #x8f :page #x4)
+                                      :reduction 0.42
+                                      :num-points 16
+                                      :box-size 8601.6
+                                      :merge-factor 0.5
+                                      :merge-count 2
+                                      :radius 1638.4
+                                      :duration -1.0
+                                      :sound #f
+                                      )
+                                    :ring-spec #f
+                                    :ring-radius-min 1638.4
+                                    :ring-radius-max 2867.2
+                                    :speed-mult 1.0
+                                    :min-dist 573440.0
+                                    :max-dist 819200.0
+                                    :plane-expand-xz 6144.0
+                                    :plane-expand-y 81920.0
+                                    :plane-shift-z -4096.0
+                                    )
+        )
+
+(deftype desert-elec-gate (elec-gate)
+  ()
+  )
+
+
+(defmethod get-params ((this desert-elec-gate))
+  *desert-elec-gate-params*
+  )
+
+(deftype desert-eggwall (process-drawable)
+  ((task-node  game-task-node)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  (:methods
+    (desert-eggwall-method-22 () none)
+    )
+  )
+
+
+(defskelgroup skel-desert-eggwall desert-eggwall desert-eggwall-lod0-jg desert-eggwall-idle-ja
+              ((desert-eggwall-lod0-mg (meters 999999)))
+              :bounds (static-spherem 28 10 -25 40)
+              )
+
+(defstate idle (desert-eggwall)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual die)
+       )
+      )
+    )
+  :enter (behavior ()
+    (ja-no-eval :group! desert-eggwall-idle-ja :num! zero)
+    (transform-post)
+    )
+  :trans (behavior ()
+    (if (task-node-closed? (-> self task-node))
+        (go-virtual die)
+        )
+    )
+  :code sleep-code
+  )
+
+(defstate die (desert-eggwall)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+(defmethod init-from-entity! ((this desert-eggwall) (arg0 entity-actor))
+  (set! (-> this task-node) (game-task-node nest-eggs-wall))
+  (cond
+    ((task-node-closed? (-> this task-node))
+     (go (method-of-object this die))
+     )
+    (else
+      (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+        (set! (-> s4-0 penetrated-by) (penetrate))
+        (let ((v1-5 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+          (set! (-> v1-5 prim-core collide-as) (collide-spec obstacle))
+          (set! (-> v1-5 prim-core collide-with) (collide-spec jak bot player-list))
+          (set! (-> v1-5 prim-core action) (collide-action solid))
+          (set! (-> v1-5 transform-index) 3)
+          (set-vector! (-> v1-5 local-sphere) 20480.0 40960.0 61440.0 143360.0)
+          (set! (-> s4-0 total-prims) (the-as uint 1))
+          (set! (-> s4-0 root-prim) v1-5)
+          )
+        (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+        (let ((v1-8 (-> s4-0 root-prim)))
+          (set! (-> s4-0 backup-collide-as) (-> v1-8 prim-core collide-as))
+          (set! (-> s4-0 backup-collide-with) (-> v1-8 prim-core collide-with))
+          )
+        (set! (-> this root) s4-0)
+        )
+      (process-drawable-from-entity! this arg0)
+      (initialize-skeleton
+        this
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-desert-eggwall" (the-as (pointer level) #f)))
+        (the-as pair 0)
+        )
+      (go (method-of-object this idle))
+      )
+    )
+  )
+
+(deftype des-cactus-obstacle (process-focusable)
+  ((explode-time  time-frame)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-des-cactus-obstacle des-cactus-obstacle des-cactus-obstacle-lod0-jg des-cactus-obstacle-idle-ja
+              ((des-cactus-obstacle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 2 0 0 11)
+              :origin-joint-index 3
+              )
+
+(defstate idle (des-cactus-obstacle)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack 'touched)
+       (let* ((s3-0 proc)
+              (s2-0 (if (type? s3-0 process-focusable)
+                        s3-0
+                        )
+                    )
+              (s3-1 (and s2-0 (focus-test? (the-as process-focusable s2-0) flut)))
+              )
+         (cond
+           (s3-1
+             (let ((s1-0 300))
+               (if (< s1-0 (the-as int (send-event s2-0 'mode-time)))
+                   (send-event
+                     s2-0
+                     'attack
+                     (-> block param 0)
+                     (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                         (damage 2.0)
+                                                                         (vehicle-damage-factor 1.0)
+                                                                         (vehicle-impulse-factor 1.0)
+                                                                         (shove-back (meters -10))
+                                                                         (shove-up (meters 2))
+                                                                         (angle 'shove)
+                                                                         (mode 'cactus)
+                                                                         )
+                                         )
+                     )
+                   )
+               )
+             )
+           ((= s2-0 *target*)
+            (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.2))
+            (send-event
+              s2-0
+              'attack
+              (-> block param 0)
+              (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                  (damage 2.0)
+                                                                  (vehicle-damage-factor 1.0)
+                                                                  (vehicle-impulse-factor 1.0)
+                                                                  (shove-back (meters 5))
+                                                                  (shove-up (meters 2))
+                                                                  )
+                                  )
+              )
+            )
+           )
+         (when (or s3-1 (= message 'attack) (type? proc vehicle))
+           (let ((a2-6 (the-as object (-> block param 0)))
+                 (gp-1 (new 'stack-no-clear 'vector))
+                 )
+             (cond
+               ((the-as uint a2-6)
+                (let ((s5-1 (get-touched-prim
+                              (-> (the-as touching-shapes-entry a2-6) head)
+                              (-> self root)
+                              (the-as touching-shapes-entry a2-6)
+                              )
+                            )
+                      )
+                  (when s5-1
+                    (setup-masks (-> self draw) 0 (the-as int (-> s5-1 prim-id)))
+                    (set! (-> s5-1 prim-core collide-as) (collide-spec))
+                    (set! (-> gp-1 quad) (-> s5-1 prim-core world-sphere quad))
+                    )
+                  )
+                )
+               (else
+                 (setup-masks (-> self draw) 0 1022)
+                 (iterate-prims
+                   (-> self root)
+                   (lambda ((arg0 collide-shape-prim)) (set! (-> arg0 prim-core collide-as) (collide-spec)) 0 (none))
+                   )
+                 (set! (-> gp-1 quad) (-> self root root-prim prim-core world-sphere quad))
+                 )
+               )
+             (cond
+               ((logtest? (-> *part-group-id-table* 1232 flags) (sp-group-flag sp13))
+                (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+                (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1232))
+                )
+               (else
+                 (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
+                 (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1232))
+                 )
+               )
+             )
+           (sound-play "cactus-hit")
+           (set-time! (-> self explode-time))
+           #t
+           )
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self explode-time))
+    (ja-no-eval :group! des-cactus-obstacle-idle-ja :num! zero)
+    (transform-post)
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self explode-time) (seconds 10))
+      (when (and (not (logtest? (-> self draw status) (draw-control-status on-screen)))
+                 (< 327680.0 (vector-vector-xz-distance (target-pos 0) (-> self root trans)))
+                 )
+        (setup-masks (-> self draw) -1 0)
+        (iterate-prims
+          (-> self root)
+          (lambda ((arg0 collide-shape-prim))
+            (set! (-> arg0 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+            (none)
+            )
+          )
+        )
+      (set-time! (-> self explode-time))
+      )
+    )
+  :code sleep-code
+  :post (behavior ()
+    0
+    )
+  )
+
+(defmethod get-inv-mass ((this des-cactus-obstacle))
+  3.3333333
+  )
+
+(defmethod init-from-entity! ((this des-cactus-obstacle) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 penetrated-by)
+          (penetrate
+            generic-attack
+            lunge
+            flop
+            punch
+            spin
+            roll
+            uppercut
+            bonk
+            tube
+            flut-attack
+            board
+            mech-punch
+            dark-punch
+            dark-smack
+            flut
+            )
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 10))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> s3-0 prim-core action) (collide-action))
+      (set! (-> s3-0 transform-index) 0)
+      (set-vector! (-> s3-0 local-sphere) 0.0 8192.0 0.0 45056.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 2))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-7 transform-index) 0)
+      (set-vector! (-> v1-7 local-sphere) -16384.0 0.0 0.0 8192.0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 4))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-9 transform-index) 0)
+      (set-vector! (-> v1-9 local-sphere) -14336.0 0.0 -10240.0 8192.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 8))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) -8192.0 0.0 8192.0 12288.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 16))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) 5324.8 0.0 8192.0 12288.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 32))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 4096.0 0.0 -11468.8 8192.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 64))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 24576.0 0.0 -16384.0 8192.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 128))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 16384.0 0.0 -4096.0 8192.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 256))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-21 transform-index) 0)
+      (set-vector! (-> v1-21 local-sphere) 16384.0 0.0 12288.0 12288.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 512))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec obstacle obstacle-for-jak))
+      (set! (-> v1-23 transform-index) 0)
+      (set-vector! (-> v1-23 local-sphere) 36864.0 0.0 12288.0 10240.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-26 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-26 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-26 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-cactus-obstacle" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> this mask) (process-mask crate))
+  (go (method-of-object this idle))
+  )

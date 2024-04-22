@@ -1,0 +1,713 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type des-plant
+(deftype des-plant (process-focusable)
+  ((exploder-params     joint-exploder-static-params)
+   (exploder-skel       skeleton-group)
+   (exploder-anim       uint32)
+   (hit-points          float)
+   (incoming-attack-id  int32)
+   (exploder            handle)
+   (attack-vel          vector                  :inline)
+   (spring-pos          vector                  :inline)
+   (spring-vel          vector                  :inline)
+   (jmods               joint-mod-rotate-local  4 :inline)
+   )
+  (:state-methods
+    idle
+    explode
+    )
+  (:methods
+    (des-plant-method-30 (_type_) none)
+    (des-plant-method-31 (_type_) none)
+    (des-plant-method-32 (_type_) none)
+    (des-plant-method-33 (_type_ symbol attack-info) symbol)
+    (des-plant-method-34 (_type_ rigid-body-impact) symbol)
+    (des-plant-method-35 (_type_ vector) none)
+    )
+  )
+
+;; definition for method 3 of type des-plant
+(defmethod inspect ((this des-plant))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Texploder-params: ~A~%" (-> this exploder-params))
+  (format #t "~2Texploder-skel: ~A~%" (-> this exploder-skel))
+  (format #t "~2Texploder-anim: ~D~%" (-> this exploder-anim))
+  (format #t "~2Thit-points: ~f~%" (-> this hit-points))
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> this incoming-attack-id))
+  (format #t "~2Texploder: ~D~%" (-> this exploder))
+  (format #t "~2Tattack-vel: #<vector @ #x~X>~%" (-> this attack-vel))
+  (format #t "~2Tspring-pos: #<vector @ #x~X>~%" (-> this spring-pos))
+  (format #t "~2Tspring-vel: #<vector @ #x~X>~%" (-> this spring-vel))
+  (format #t "~2Tjmods[4] @ #x~X~%" (-> this jmods))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 30 of type des-plant
+;; WARN: Return type mismatch int vs none.
+(defmethod des-plant-method-30 ((this des-plant))
+  (local-vars (v1-2 float) (v1-16 float) (v1-21 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (set! (-> v1-0 x) (seconds-per-frame))
+      (set! (-> v1-0 y) 500.0)
+      (set! (-> v1-0 z) 10.0)
+      (vector+float*!
+        (-> this spring-vel)
+        (-> this spring-vel)
+        (-> this spring-pos)
+        (* -1.0 (-> v1-0 x) (-> v1-0 y))
+        )
+      (vector-float*! (-> this spring-vel) (-> this spring-vel) (fmax 0.0 (+ 1.0 (* -1.0 (-> v1-0 z) (-> v1-0 x)))))
+      (vector+float*! (-> this spring-pos) (-> this spring-pos) (-> this spring-vel) (-> v1-0 x))
+      )
+    (set! (-> this spring-pos y) 0.0)
+    (.lvf vf1 (&-> (-> this spring-pos) quad))
+    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf2 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mov v1-2 vf1)
+    (let ((f0-10 v1-2))
+      (when (< 1.0 f0-10)
+        (vector-float*! (-> this spring-pos) (-> this spring-pos) (/ 1.0 (sqrtf f0-10)))
+        (vector-reset! (-> this spring-vel))
+        )
+      )
+    (let ((s5-0 (new 'stack-no-clear 'inline-array 'quaternion 10)))
+      (quaternion-conjugate! (-> s5-0 1) (-> this root quat))
+      (quaternion->matrix (the-as matrix (-> s5-0 2)) (-> s5-0 1))
+      (set! (-> s5-0 7 x) 2730.6667)
+      (set! (-> s5-0 7 z) (sin (* 0.5 (-> s5-0 7 x))))
+      (set! (-> s5-0 7 y) (cos (* 0.5 (-> s5-0 7 x))))
+      (vector-rotate90-around-y! (the-as vector (-> s5-0 6)) (-> this spring-pos))
+      (vector-float*! (the-as vector (-> s5-0 6)) (the-as vector (-> s5-0 6)) (* -1.0 (-> s5-0 7 z)))
+      (vector-rotate*! (the-as vector (-> s5-0 6)) (the-as vector (-> s5-0 6)) (the-as matrix (-> s5-0 2)))
+      (set! (-> s5-0 0 x) (-> s5-0 6 x))
+      (set! (-> s5-0 0 y) (-> s5-0 6 y))
+      (set! (-> s5-0 0 z) (-> s5-0 6 z))
+      (let ((f0-25 1.0))
+        (.lvf vf1 (&-> (-> s5-0 6) quad))
+        (.add.w.vf vf2 vf0 vf0 :mask #b1)
+        (.mul.vf vf1 vf1 vf1)
+        (.mul.x.vf acc vf2 vf1 :mask #b1)
+        (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+        (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+        (.mov v1-16 vf1)
+        (set! (-> s5-0 0 w) (sqrtf (- f0-25 v1-16)))
+        )
+      (quaternion-copy! (-> this jmods 0 rotation) (-> s5-0 0))
+      (vector-float*! (the-as vector (-> s5-0 6)) (the-as vector (-> s5-0 6)) 1.0)
+      (set! (-> s5-0 0 x) (-> s5-0 6 x))
+      (set! (-> s5-0 0 y) (-> s5-0 6 y))
+      (set! (-> s5-0 0 z) (-> s5-0 6 z))
+      (let ((f0-32 1.0))
+        (.lvf vf1 (&-> (-> s5-0 6) quad))
+        (.add.w.vf vf2 vf0 vf0 :mask #b1)
+        (.mul.vf vf1 vf1 vf1)
+        (.mul.x.vf acc vf2 vf1 :mask #b1)
+        (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+        (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+        (.mov v1-21 vf1)
+        (set! (-> s5-0 0 w) (sqrtf (- f0-32 v1-21)))
+        )
+      (quaternion-copy! (-> this jmods 1 rotation) (-> s5-0 0))
+      (quaternion-copy! (-> this jmods 2 rotation) (-> s5-0 0))
+      (quaternion-copy! (-> this jmods 3 rotation) (-> s5-0 0))
+      )
+    (ja-post)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 31 of type des-plant
+;; WARN: Return type mismatch int vs none.
+(defmethod des-plant-method-31 ((this des-plant))
+  (iterate-prims
+    (-> this root)
+    (lambda ((arg0 collide-shape-prim))
+      (let ((v1-0 (-> arg0 prim-core prim-type)))
+        (cond
+          ((= v1-0 -1)
+           (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                    backgnd
+                                                    jak
+                                                    bot
+                                                    crate
+                                                    civilian
+                                                    enemy
+                                                    obstacle
+                                                    vehicle-sphere
+                                                    hit-by-player-list
+                                                    hit-by-others-list
+                                                    player-list
+                                                    collectable
+                                                    pusher
+                                                    shield
+                                                    vehicle-sphere-no-probe
+                                                    )
+                 )
+           (set! (-> arg0 prim-core collide-as) (collide-spec obstacle vehicle-sphere vehicle-mesh))
+           )
+          ((= v1-0 1)
+           (set! (-> arg0 prim-core collide-with) (collide-spec jak obstacle player-list))
+           (set! (-> arg0 prim-core collide-as) (collide-spec obstacle vehicle-mesh))
+           )
+          ((zero? v1-0)
+           (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                    backgnd
+                                                    jak
+                                                    bot
+                                                    crate
+                                                    civilian
+                                                    enemy
+                                                    obstacle
+                                                    vehicle-sphere
+                                                    hit-by-player-list
+                                                    hit-by-others-list
+                                                    player-list
+                                                    collectable
+                                                    pusher
+                                                    shield
+                                                    vehicle-sphere-no-probe
+                                                    )
+                 )
+           (set! (-> arg0 prim-core collide-as) (collide-spec obstacle vehicle-sphere vehicle-mesh))
+           )
+          )
+        )
+      (none)
+      )
+    )
+  (let ((s5-0 (-> this root root-prim)))
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 0 local-sphere))
+      (the-as pointer (new 'static 'vector :y 6144.0 :w 6144.0))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 1 local-sphere))
+      (the-as pointer (new 'static 'vector :y 12288.0 :w 6144.0))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 2 local-sphere))
+      (the-as pointer (new 'static 'vector :y 22528.0 :w 10240.0))
+      16
+      )
+    )
+  (logior! (-> this mask) (process-mask crate))
+  0
+  (none)
+  )
+
+;; definition for method 27 of type des-plant
+(defmethod get-inv-mass ((this des-plant))
+  0.25
+  )
+
+;; definition for method 32 of type des-plant
+;; WARN: Return type mismatch int vs none.
+(defmethod des-plant-method-32 ((this des-plant))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (let ((v1-3 (-> this root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (collide-spec))
+    (set! (-> v1-3 prim-core collide-with) (collide-spec))
+    )
+  0
+  (logior! (-> this root penetrated-by) (penetrate vehicle))
+  (go (method-of-object this explode))
+  0
+  (none)
+  )
+
+;; definition for method 35 of type des-plant
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod des-plant-method-35 ((this des-plant) (arg0 vector))
+  (set! (-> this attack-vel quad) (-> arg0 quad))
+  (if (< 81920.0 (vector-length (-> this attack-vel)))
+      (vector-normalize! (-> this attack-vel) 81920.0)
+      )
+  (vector+float*! (-> this spring-vel) (-> this spring-vel) (-> this attack-vel) 0.00024414062)
+  0
+  (none)
+  )
+
+;; definition for method 33 of type des-plant
+(defmethod des-plant-method-33 ((this des-plant) (arg0 symbol) (arg1 attack-info))
+  (vector-reset! (-> this attack-vel))
+  (let ((a1-1 (new 'stack-no-clear 'vector))
+        (f30-0 0.0)
+        )
+    (vector-reset! a1-1)
+    (when (logtest? (attack-mask attacker-velocity) (-> arg1 mask))
+      (vector-float*! a1-1 (-> arg1 attacker-velocity) 1.0)
+      (des-plant-method-35 this a1-1)
+      )
+    (when (logtest? (attack-mask damage) (-> arg1 mask))
+      (when (>= (-> arg1 damage) 2.0)
+        (set! f30-0 (-> arg1 damage))
+        (sound-play "hit-veggies")
+        )
+      )
+    (set! (-> this hit-points) (- (-> this hit-points) f30-0))
+    )
+  (if (< (-> this hit-points) 0.0)
+      (des-plant-method-32 this)
+      )
+  #t
+  )
+
+;; definition for method 34 of type des-plant
+(defmethod des-plant-method-34 ((this des-plant) (arg0 rigid-body-impact))
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (vector-float*! a1-1 (-> arg0 normal) (-> arg0 impulse))
+    (des-plant-method-35 this a1-1)
+    )
+  (if (>= (-> arg0 impulse) 40960.0)
+      (sound-play "hit-veggies")
+      )
+  (when (< 204800.0 (-> arg0 impulse))
+    (des-plant-method-32 this)
+    #t
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (des-plant)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((s4-0 (the-as object (-> block param 1))))
+         (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)
+         (when (!= (-> (the-as attack-info s4-0) id) (-> self incoming-attack-id))
+           (set! (-> self incoming-attack-id) (the-as int (-> (the-as attack-info s4-0) id)))
+           (let* ((a0-5 self)
+                  (t9-1 (method-of-object a0-5 des-plant-method-33))
+                  )
+             (-> block param 0)
+             (t9-1 a0-5 (the-as symbol proc) (the-as attack-info s4-0))
+             )
+           )
+         )
+       )
+      (('impact-impulse)
+       (let ((a1-3 (-> block param 0)))
+         (des-plant-method-34 self (the-as rigid-body-impact a1-3))
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (des-plant-method-30 self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate explode (des-plant)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    )
+  :code (behavior ()
+    (sound-play "cactus-burst")
+    (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (set! (-> gp-1 duration) (seconds 4))
+      (set! (-> gp-1 gravity) -163840.0)
+      (set! (-> gp-1 rot-speed) 10.2)
+      (vector+!
+        (-> gp-1 fountain-rand-transv-lo)
+        (new 'static 'vector :x -40960.0 :y 40960.0 :z -40960.0 :w 1.0)
+        (-> self attack-vel)
+        )
+      (vector+!
+        (-> gp-1 fountain-rand-transv-hi)
+        (new 'static 'vector :x 40960.0 :y 122880.0 :z 40960.0 :w 1.0)
+        (-> self attack-vel)
+        )
+      (let ((s5-1 (the-as process #f)))
+        (let ((v1-8 (process-spawn
+                      joint-exploder
+                      (-> self exploder-skel)
+                      (-> self exploder-anim)
+                      gp-1
+                      (-> self exploder-params)
+                      :name "joint-exploder"
+                      :to self
+                      :unk 0
+                      )
+                    )
+              )
+          (if v1-8
+              (set! s5-1 (-> v1-8 0))
+              )
+          )
+        (set! (-> self exploder) (process->handle s5-1))
+        )
+      )
+    (let ((gp-2 (handle->process (-> self exploder))))
+      (when gp-2
+        (let ((s5-2 (-> self exploder-params)))
+          (dotimes (s4-1 (-> s5-2 joints length))
+            (if (logtest? (-> *part-group-id-table* 1231 flags) (sp-group-flag sp13))
+                (part-tracker-spawn
+                  part-tracker-subsampler
+                  :to gp-2
+                  :group (-> *part-group-id-table* 1231)
+                  :target (the-as process-drawable gp-2)
+                  :mat-joint (-> s5-2 joints s4-1 joint-index)
+                  )
+                (part-tracker-spawn
+                  part-tracker
+                  :to gp-2
+                  :group (-> *part-group-id-table* 1231)
+                  :target (the-as process-drawable gp-2)
+                  :mat-joint (-> s5-2 joints s4-1 joint-index)
+                  )
+                )
+            )
+          )
+        )
+      )
+    (let ((gp-3 (current-time)))
+      (until (time-elapsed? gp-3 (seconds 2))
+        (suspend)
+        )
+      )
+    (cleanup-for-death self)
+    )
+  :post #f
+  )
+
+;; definition of type des-cactus-a
+(deftype des-cactus-a (des-plant)
+  ()
+  )
+
+;; definition for method 3 of type des-cactus-a
+(defmethod inspect ((this des-cactus-a))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type des-plant inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-cactus-a des-cactus-a des-cactus-a-lod0-jg des-cactus-a-idle-ja
+              ((des-cactus-a-lod0-mg (meters 20))
+               (des-cactus-a-lod1-mg (meters 40))
+               (des-cactus-a-lod2-mg (meters 80))
+               (des-cactus-a-lod3-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-cactus-a-explode des-cactus-a des-cactus-a-explode-lod0-jg des-cactus-a-explode-idle-ja
+              ((des-cactus-a-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+;; definition for symbol *des-cactus-a-explode-params*, type joint-exploder-static-params
+(define *des-cactus-a-explode-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 19 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 20 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 21 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 22 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 23 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 24 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 25 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    :art-level #f
+    )
+  )
+
+;; definition for method 11 of type des-cactus-a
+(defmethod init-from-entity! ((this des-cactus-a) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 26624.0 0.0 28672.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((a0-6 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> a0-6 prim-core action) (collide-action solid))
+      (set! (-> a0-6 transform-index) 0)
+      )
+    (let ((a0-8 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> a0-8 prim-core action) (collide-action solid))
+      (set! (-> a0-8 transform-index) 0)
+      )
+    (let ((a0-10 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> a0-10 prim-core action) (collide-action solid))
+      (set! (-> a0-10 transform-index) 0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-cactus-a" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this exploder-params) *des-cactus-a-explode-params*)
+  (set! (-> this exploder-skel)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-des-cactus-a-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this exploder-anim) (the-as uint 8))
+  ((method-of-type joint-mod-rotate-local init)
+   (the-as joint-mod-rotate-local (-> this jmods))
+   this
+   (the-as uint 4)
+   (joint-mod-base-flags attached)
+   )
+  (init (-> this jmods 1) this (the-as uint 5) (joint-mod-base-flags attached))
+  (init (-> this jmods 2) this (the-as uint 6) (joint-mod-base-flags attached))
+  (init (-> this jmods 3) this (the-as uint 7) (joint-mod-base-flags attached))
+  (set! (-> this hit-points) 7.0)
+  (des-plant-method-31 this)
+  (go (method-of-object this idle))
+  )
+
+;; definition of type des-cactus-b
+(deftype des-cactus-b (des-plant)
+  ()
+  )
+
+;; definition for method 3 of type des-cactus-b
+(defmethod inspect ((this des-cactus-b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type des-plant inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-cactus-b des-cactus-b des-cactus-b-lod0-jg des-cactus-b-idle-ja
+              ((des-cactus-b-lod0-mg (meters 20))
+               (des-cactus-b-lod1-mg (meters 40))
+               (des-cactus-b-lod2-mg (meters 80))
+               (des-cactus-b-lod3-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-cactus-b-explode des-cactus-b des-cactus-b-explode-lod0-jg des-cactus-b-explode-idle-ja
+              ((des-cactus-b-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6.5 0 7)
+              )
+
+;; definition for symbol *des-cactus-b-explode-params*, type joint-exploder-static-params
+(define *des-cactus-b-explode-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 19 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 20 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 21 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 22 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 23 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 24 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 25 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 26 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 27 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 28 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    :art-level #f
+    )
+  )
+
+;; definition for method 11 of type des-cactus-b
+(defmethod init-from-entity! ((this des-cactus-b) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 26624.0 0.0 28672.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((a0-6 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> a0-6 prim-core action) (collide-action solid))
+      (set! (-> a0-6 transform-index) 0)
+      )
+    (let ((a0-8 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> a0-8 prim-core action) (collide-action solid))
+      (set! (-> a0-8 transform-index) 0)
+      )
+    (let ((a0-10 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> a0-10 prim-core action) (collide-action solid))
+      (set! (-> a0-10 transform-index) 0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-cactus-b" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this exploder-params) *des-cactus-b-explode-params*)
+  (set! (-> this exploder-skel)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-des-cactus-b-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this exploder-anim) (the-as uint 8))
+  ((method-of-type joint-mod-rotate-local init)
+   (the-as joint-mod-rotate-local (-> this jmods))
+   this
+   (the-as uint 4)
+   (joint-mod-base-flags attached)
+   )
+  (init (-> this jmods 1) this (the-as uint 5) (joint-mod-base-flags attached))
+  (init (-> this jmods 2) this (the-as uint 6) (joint-mod-base-flags attached))
+  (init (-> this jmods 3) this (the-as uint 7) (joint-mod-base-flags attached))
+  (set! (-> this hit-points) 7.0)
+  (des-plant-method-31 this)
+  (go (method-of-object this idle))
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-des-big-cactus-explode
+  :id 1231
+  :duration (seconds 1)
+  :linger-duration (seconds 1)
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 12)
+  :parts ((sp-item 4188 :flags (sp3 sp7)) (sp-item 4189 :flags (sp3 sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4188
+  :init-specs ((:texture (cactus-bit1 desertd-sprite))
+    (:num 1.0 1.0)
+    (:y (meters 0.5) (meters 1))
+    (:scale-x (meters 0.2) (meters 0.6))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 60.0 120.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 128.0)
+    (:vel-y (meters 0.016666668) (meters 0.033333335))
+    (:rotvel-z (degrees -2) (degrees 4))
+    (:accel-y (meters -0.0016666667))
+    (:friction 0.99)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    (:func 'check-drop-group)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4189
+  :init-specs ((:texture (big-cloud level-default-sprite))
+    (:num 1.0)
+    (:y (meters 1))
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 190.0)
+    (:g 200.0)
+    (:b 150.0)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.033333335) (meters 0.016666668))
+    (:scalevel-x (meters 0.06666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.32)
+    (:accel-y (meters -0.0016666667))
+    (:friction 0.95)
+    (:timer (seconds 0.667))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 launch-along-z))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+
+
+
