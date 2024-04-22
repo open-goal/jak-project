@@ -200,8 +200,7 @@
 (define *led-fader-state* (new 'static 'led-fader-state :enable? #f))
 
 (define *led-darkjak-color*         (static-vector 0.5 0.0 0.5 1.0))
-(define *led-tomb-simon-off-color*  (static-vector 0.0 0.0 0.0 1.0))
-(define *led-tomb-simon-color*      (static-vector 0.0 0.0 0.0 1.0))
+(define *led-lightjak-color*        (static-vector 0.0 0.0 1.0 1.0))
 (define *led-wanted-flash-color*    (static-vector 1.0 0.0 0.0 1.0))
 
 
@@ -349,8 +348,7 @@
   (set-vector-xyz! (-> obj controller-led-color) 0.0 0.0 1.0)
 
   (when *target*
-    (let ((disable-fader? #t)
-          (simon-plat (the process #f)))
+    (let ((disable-fader? #t))
     (when (-> obj controller-led-hp?)
       ;; flicker led according to hp. lower hp = faster and more intense flicker
       (cond
@@ -378,13 +376,13 @@
         ;; gun
         ((and (nonzero? (-> *target* gun)) (focus-test? *target* gun))
           (case (-> *target* gun gun-type)
-            (((pickup-type eco-yellow))
+            (((pickup-type gun-yellow-1) (pickup-type gun-yellow-2) (pickup-type gun-yellow-3))
               (set-vector-xyz! (-> obj controller-led-color) 1.0 0.75 0.125))
-            (((pickup-type eco-red))
+            (((pickup-type gun-red-1) (pickup-type gun-red-2) (pickup-type gun-red-3))
               (set-vector-xyz! (-> obj controller-led-color) 0.65 0.0 0.0))
-            (((pickup-type eco-blue))
+            (((pickup-type gun-blue-1) (pickup-type gun-blue-2) (pickup-type gun-blue-3))
               (set-vector-xyz! (-> obj controller-led-color) 0.4375 0.8125 1.0))
-            (((pickup-type eco-dark))
+            (((pickup-type gun-dark-1) (pickup-type gun-dark-2) (pickup-type gun-dark-3))
               (set-vector-xyz! (-> obj controller-led-color) 0.6875 0.6 0.78125))
             )
           )
@@ -396,6 +394,18 @@
           (if (not (-> *led-fader-state* enable?))
               (enable *led-fader-state* (-> obj controller-led-color)))
           (if (and (-> *target* next-state) (= (-> *target* next-state name) 'target-darkjak-get-off))
+              (update *led-fader-state* 0.0 0.75)
+              (update *led-fader-state* 1.0 0.3))
+          (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
+          )
+
+        ;; lightjak
+        ((and (nonzero? (-> *target* lightjak)) (focus-test? *target* light))
+          (vector-copy! (-> *led-fader-state* end-color) *led-lightjak-color*)
+          (set! disable-fader? #f)
+          (if (not (-> *led-fader-state* enable?))
+              (enable *led-fader-state* (-> obj controller-led-color)))
+          (if (and (-> *target* next-state) (= (-> *target* next-state name) 'target-lightjak-get-off))
               (update *led-fader-state* 0.0 0.75)
               (update *led-fader-state* 1.0 0.3))
           (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
@@ -597,6 +607,7 @@
     (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
     (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
     (("smooth-minimap?") (set! (-> obj smooth-minimap?) (file-stream-read-symbol file)))
+    (("minimap-force-north") (set! (-> obj minimap-force-north) (file-stream-read-symbol file)))
     (("hires-clouds?") (set! (-> obj hires-clouds?) (file-stream-read-symbol file)))
     (("controller-led-status?") (set! (-> obj controller-led-status?) (file-stream-read-symbol file)))
     (("speedrunner-mode-custom-bind") (set! (-> obj speedrunner-mode-custom-bind) (file-stream-read-int file)))
@@ -647,6 +658,7 @@
   (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
   (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
   (format file "  (smooth-minimap? ~A)~%" (-> obj smooth-minimap?))
+  (format file "  (minimap-force-north ~A)~%" (-> obj minimap-force-north))
   (format file "  (hires-clouds? ~A)~%" (-> obj hires-clouds?))
   (format file "  (controller-led-status? ~A)~%" (-> obj controller-led-status?))
   (format file "  (speedrunner-mode-custom-bind ~D)~%" (-> obj speedrunner-mode-custom-bind))
