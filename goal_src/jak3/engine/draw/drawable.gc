@@ -1190,7 +1190,10 @@
                       (cond
                         ((>= (-> arg1 force-lod) 0)
                          (set! s4-1 (-> arg1 force-lod))
-                         (if (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) f30-0)
+                         ;; og:preserve-this force high lods
+                         (if (#if (not PC_PORT)
+                                  (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) f30-0)
+                                  (and (-> *pc-settings* ps2-lod-dist?) (< (-> arg1 lod-set lod (-> arg1 lod-set max-lod) dist) f30-0)))
                              (return #f)
                              )
                          )
@@ -1201,7 +1204,19 @@
                           )
                         )
                       )
-                    (if (and (< (-> arg1 lod-set lod s4-1 dist) f30-0) (< (-> arg1 force-lod) 0))
+                    ;; og:preserve-this lod hacks!
+                    (with-pc
+                      (when (not (-> *pc-settings* ps2-lod-dist?))
+                        (set! s4-1 (minmax (-> *pc-settings* lod-force-actor) 0 (-> arg1 lod-set max-lod)))
+                        (when (> (-> arg1 force-lod) -1)
+                          (set! s4-1 (-> arg1 force-lod))
+                          )
+                        )
+                      )
+                    (if (#if (not PC_PORT)
+                             (and (< (-> arg1 lod-set lod s4-1 dist) f30-0) (< (-> arg1 force-lod) 0))
+                             (and (-> *pc-settings* ps2-lod-dist?) (< (-> arg1 lod-set lod s4-1 dist) f30-0) (< (-> arg1 force-lod) 0))
+                             )
                         (return #f)
                         )
                     (let ((v1-49 (-> *level* level (-> arg1 level-index)))
@@ -1246,8 +1261,16 @@
                         (return #f)
                         )
                     (set! (-> pp clock) (-> sv-16 clock))
-                    (if (or (= s4-1 (-> arg1 cur-lod)) (logtest? (-> arg1 status) (draw-control-status lod-set)))
-                        (foreground-draw arg1 arg3 f30-0)
+                    ;; og:preserve-this PC port note: we ALWAYS disable the envmap hack when a process-drawable has warp effect enabled
+                    (when (or (= s4-1 (-> arg1 cur-lod)) (logtest? (-> arg1 status) (draw-control-status lod-set)))
+                        (protect ((-> *pc-settings* force-envmap?))
+                          (when (not (movie?))
+                            (dotimes (eff-i (-> arg1 mgeo header effect-count))
+                              (if (and (zero? (logand (ash 1 eff-i) (-> arg1 effect-mask)))
+                                       (logtest? (effect-bits cross-fade) (-> arg1 mgeo effect eff-i effect-bits)))
+                                  (false! (-> *pc-settings* force-envmap?)))))
+                          (foreground-draw arg1 arg3 f30-0)
+                          )
                         )
                     )
                   (when (and (< s4-1 (-> arg1 cur-lod)) (logtest? (-> arg1 status) (draw-control-status math-skel)))
@@ -2153,10 +2176,12 @@
             (set! s3-0 (the uint (+ #x10000 s3-0)))
             )
 
-        ;; track previous frame's run time. This is used to disable some extra effects if the game
-        ;; is close to lagging. We disable this.
-        ; (set! (-> arg0 frames s4-0 run-time) s3-0)
-        (set! (-> arg0 frames s4-0 run-time) 0)
+        ;; store the amount of ticks that the frame took.
+        ;; og:preserve-this
+        ;; PC PORT NOTE : the originaly game reads this field in places to check if frames are taking too long and avoid doing potentially laggy things.
+        ;; those numbers are hardcoded for 60fps, they would be a pain to adjust, and the effects in the pc port are negligible.
+        ;; so, we just pretend frames rendered in planck time.
+        (set! (-> arg0 frames s4-0 run-time) (#if PC_PORT 0 (the int s3-0)))
 
         ;; disable their vsync logic:
         ; (set! f30-1 (cond
