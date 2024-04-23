@@ -1578,7 +1578,8 @@
         )
 
 (let ((gp-0 *minimap*))
-  (set! (-> gp-0 engine) (new 'global 'engine-minimap '*minimap* 64 connection-minimap))
+      ;; og:preserve-this
+  (set! (-> gp-0 engine) (new 'global 'engine-minimap '*minimap* (#if PC_PORT 256 64) connection-minimap))
   (countdown (v1-9 6)
     (set! (-> gp-0 trail v1-9 used-by) #f)
     )
@@ -2325,7 +2326,7 @@
     (set! sv-220 (new 'stack-no-clear 'vector))
     (set! sv-224 (new 'stack-no-clear 'matrix))
     (set! sv-228 (new 'stack-no-clear 'matrix))
-    (set! (-> sv-216 quad) (-> (matrix-world->local #f #f) fvec quad))
+    (set! (-> sv-216 quad) (-> (#if PC_PORT (if (-> *pc-settings* minimap-force-north) *matrix-minimap-north* (matrix-world->local #f #f)) (matrix-world->local #f #f)) fvec quad))
     (set! (-> sv-216 y) 0.0)
     (vector-normalize! sv-216 1.0)
     (vector-z-quaternion! sv-220 (-> (the-as process-drawable sv-16) root quat))
@@ -2611,7 +2612,7 @@
       (set! sv-228 (new 'stack-no-clear 'matrix))
       (set! sv-232 (new 'stack-no-clear 'matrix))
       (when sv-212
-        (set! (-> sv-220 quad) (-> (matrix-world->local #f #f) fvec quad))
+        (set! (-> sv-220 quad) (-> (#if PC_PORT (if (-> *pc-settings* minimap-force-north) *matrix-minimap-north* (matrix-world->local #f #f)) (matrix-world->local #f #f)) fvec quad))
         (set! (-> sv-220 y) 0.0)
         (vector-normalize! sv-220 1.0)
         (vector-z-quaternion! sv-224 (-> (the-as process-drawable sv-16) root quat))
@@ -2781,7 +2782,7 @@
       (set! sv-228 (new 'stack-no-clear 'matrix))
       (set! sv-232 (new 'stack-no-clear 'matrix))
       (when sv-212
-        (set! (-> sv-220 quad) (-> (matrix-world->local #f #f) fvec quad))
+        (set! (-> sv-220 quad) (-> (#if PC_PORT (if (-> *pc-settings* minimap-force-north) *matrix-minimap-north* (matrix-world->local #f #f)) (matrix-world->local #f #f)) fvec quad))
         (set! (-> sv-220 y) 0.0)
         (vector-normalize! sv-220 1.0)
         (vector-z-quaternion! sv-224 (-> (the-as process-drawable sv-16) root quat))
@@ -2935,12 +2936,13 @@
                            (texa (new 'static 'gs-texa :ta1 #x80))
                            )
     (let ((s3-1 (-> s5-0 base)))
-      (let ((f30-0 (-> *video-params* relative-x-scale)))
+      ;; og:preserve-this this fixes minimap stretching at non-4x3 aspeect ratio
+      (let ((f30-0 (#if PC_PORT 1.0 (-> *video-params* relative-x-scale))))
         (set! (-> (the-as (pointer uint128) s3-1) 0) (-> this draw2-tmpl dma-vif quad))
         (set! (-> (the-as (pointer uint128) s3-1) 1) (-> this draw2-tmpl quad 1))
         (let ((s2-0 (new-stack-vector0)))
           (let ((s1-0 (new-stack-vector0)))
-            (set! (-> s1-0 quad) (-> (matrix-local->world #f #f) fvec quad))
+            (set! (-> s1-0 quad) (-> (#if PC_PORT (if (-> *pc-settings* minimap-force-north) *matrix-minimap-north* (matrix-local->world #f #f)) (matrix-local->world #f #f)) fvec quad))
             (set! (-> s1-0 y) 0.0)
             (vector-normalize! s1-0 1.0)
             (let ((v1-16 (-> arg0 mat)))
@@ -3236,12 +3238,13 @@
       (set! sv-48 (new-stack-vector0))
       (set! sv-52 (new-stack-vector0))
       (set! sv-56 (target-pos 0))
-      (set! (-> sv-52 quad) (-> (matrix-world->local #f #f) fvec quad))
+      (set! (-> sv-52 quad) (-> (#if PC_PORT (if (-> *pc-settings* minimap-force-north) *matrix-minimap-north* (matrix-world->local #f #f)) (matrix-world->local #f #f)) fvec quad))
       (set! (-> sv-52 y) 0.0)
       (vector-normalize! sv-52 1.0)
       (cond
         ((get-horizontal-flip-flag *blit-displays-work*)
          (let ((v1-57 (-> arg0 mat)))
+           ;; og:preserve-this
            (set! (-> v1-57 rvec x) (* (-> sv-52 z) (- f30-0)))
            (set! (-> v1-57 rvec y) 0.0)
            (set! (-> v1-57 rvec z) (- (-> sv-52 x)))
@@ -3493,15 +3496,22 @@
                   )
               (set! (-> arg0 corner 0 x) (the float (the int (- (-> s3-2 x) (* 0.5 f1-16)))))
               (set! (-> arg0 corner 0 z) (the float (the int (- (-> s3-2 z) (* 0.5 f0-53)))))
+              ;; og:preserve-this
+              (#when PC_PORT
+                ;; pc port note : don't align icons to PS2 framebuffer positions since
+                ;; it results in jagged motion on PC, since the framebuffer can be any size we want
+                (when (-> *pc-settings* smooth-minimap?)
+                  (set! (-> arg0 corner 0 x) (- (-> s3-2 x) (* 0.5 f1-16)))
+                  (set! (-> arg0 corner 0 z) (- (-> s3-2 z) (* 0.5 f0-53)))
+                  )
+                )
               (set! (-> arg0 corner 1 x) (+ (-> arg0 corner 0 x) f1-16))
               (set! (-> arg0 corner 1 z) (+ (-> arg0 corner 0 z) f0-53))
               )
-            ;; og:preserve-this
             (let* ((a3-1 (the int (+ (* (the-as uint 320) (-> arg1 class icon-xy x)) 8)))
                    (t0-1 (the int (+ (* (the-as uint 320) (-> arg1 class icon-xy y)) 8)))
-                   ;; adjusted:
-                   (a1-65 (+ a3-1 300))
-                   (a2-14 (+ t0-1 300))
+                   (a1-65 (+ a3-1 312))
+                   (a2-14 (+ t0-1 312))
                    )
               (set! (-> (the-as (pointer uint128) v1-122) 0) (-> this sprite-tmpl dma-vif quad))
               (set! (-> (the-as (pointer uint128) v1-122) 1) (-> this sprite-tmpl quad 1))
@@ -3601,6 +3611,11 @@
     (let ((s0-0 (new 'stack-no-clear 'vector))
           (f30-0 (-> *video-params* relative-x-scale))
           )
+      ;; og:preserve-this correct the icons matrix so that it doesn't stretch horizontally
+      (#when PC_PORT
+        (/! (-> gp-0 mat vector 0 x) f30-0)
+        (/! (-> gp-0 mat vector 2 x) f30-0)
+        )
       (when *target*
         (vector-z-quaternion! s0-0 (-> *target* control quat))
         (vector-xz-normalize! s0-0 1.0)
@@ -3693,6 +3708,11 @@
             (&+! (-> arg0 base) 288)
             )
           )
+        )
+      ;; og:preserve-this revert widescreen correction done earlier
+      (#when PC_PORT
+        (*! (-> gp-0 mat vector 0 x) f30-0)
+        (*! (-> gp-0 mat vector 2 x) f30-0)
         )
       )
     (if (not (paused?))
