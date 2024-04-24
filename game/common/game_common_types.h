@@ -12,7 +12,6 @@ enum class Language {
   Italian = 4,
   Japanese = 5,
   UK_English = 6,
-  // uk english?
   Portuguese = 9
 };
 

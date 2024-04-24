@@ -348,6 +348,7 @@
   "prototype.o"
   "main-collide.o"
   "video.o"
+  "capture-pc.o" ;; added
   "pckernel-common.o" ;; added
   "pckernel.o" ;; added
   "main.o"
