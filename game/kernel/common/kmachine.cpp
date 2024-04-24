@@ -990,5 +990,6 @@ void init_common_pc_port_functions(
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
   make_func_symbol_func("pc-screen-shot", (void*)pc_screen_shot);
-  make_func_symbol_func("pc-register-screen-shot-settings", (void*)pc_register_screen_shot_settings);
+  make_func_symbol_func("pc-register-screen-shot-settings",
+                        (void*)pc_register_screen_shot_settings);
 }
