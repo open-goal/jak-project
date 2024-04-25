@@ -56382,108 +56382,118 @@
 ;; factory-boss-part              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-factory-boss-shot-explo-color* curve-color-fast)
-;; (define-extern *range-factory-boss-shot-explo-alpha* curve2d-fast)
-;; (define-extern *range-factory-boss-shot-explo-scale-x* curve2d-fast)
-;; (define-extern *range-factory-boss-shot-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-factory-boss-shot-explo-alpha* curve2d-fast)
-;; (define-extern *curve-factory-boss-shot-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-factory-boss-shot-explo-scale-y* curve2d-fast)
-;; (define-extern *part-factory-boss-shot-explosion-texture-curve-settings* object)
-;; (define-extern *part-factory-boss-machine-explosion-texture-curve-settings* object)
+(define-extern *range-factory-boss-shot-explo-color* curve-color-fast)
+(define-extern *range-factory-boss-shot-explo-alpha* curve2d-fast)
+(define-extern *range-factory-boss-shot-explo-scale-x* curve2d-fast)
+(define-extern *range-factory-boss-shot-explo-scale-y* curve2d-fast)
+(define-extern *curve-factory-boss-shot-explo-alpha* curve2d-fast)
+(define-extern *curve-factory-boss-shot-explo-scale-x* curve2d-fast)
+(define-extern *curve-factory-boss-shot-explo-scale-y* curve2d-fast)
+(define-extern *part-factory-boss-shot-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *part-factory-boss-machine-explosion-texture-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-boss-setup             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++factory-boss-setup:facboss-speech-instance-flag
+(defenum facboss-speech-instance-flag
+  :type uint64
+  :bitfield #t
+  (fsi0 0)
+  (fsi1 1)
+  (fsi2 2)
+  (fsi3 3)
+  (fsi4 4)
+  )
+;; ---factory-boss-setup:facboss-speech-instance-flag
+
 (deftype factory-boss-speech-instance (structure)
-  ((speech      basic   :offset-assert 0)
+  ((speech      string  :offset-assert 0)
    (probability float   :offset-assert 4)
-   (flags       uint64  :offset-assert 8)
+   (flags       facboss-speech-instance-flag :offset-assert 8)
    (play-count  uint32  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
+;; +++factory-boss-setup:facboss-speech-info-flag
+(defenum facboss-speech-info-flag
+  :type uint8
+  :bitfield #t
+  (fsi0 0)
+  (fsi1 1)
+  )
+;; ---factory-boss-setup:facboss-speech-info-flag
+
 (deftype factory-boss-speech-info (structure)
-  ((speeches         basic   :offset-assert 0)
-   (play-time        uint64  :offset-assert 8)
-   (current-random   uint64  :offset-assert 16)
-   (minimum-interval uint64  :offset-assert 24)
-   (random-interval  uint64  :offset-assert 32)
+  ((speeches         (array factory-boss-speech-instance) :offset-assert 0)
+   (play-time        time-frame :offset-assert 8)
+   (current-random   time-frame :offset-assert 16)
+   (minimum-interval time-frame :offset-assert 24)
+   (random-interval  time-frame :offset-assert 32)
    (last-played      int8    :offset-assert 40)
-   (flags            uint8   :offset-assert 41)
+   (flags            facboss-speech-info-flag :offset-assert 41)
    )
   :method-count-assert 9
   :size-assert         #x2a
   :flag-assert         #x90000002a
   )
-|#
 
-#|
 (deftype factory-boss-speech-group (structure)
-  ((play-time uint64  :offset-assert 0)
-   (info      basic   :offset-assert 8)
+  ((play-time time-frame  :offset-assert 0)
+   (info      (array factory-boss-speech-info) :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype factory-boss-reticle-info (structure)
-  ((reticle            basic   :offset-assert 0)
-   (reticle-corner-0   basic   :offset-assert 4)
-   (reticle-corner-1   basic   :offset-assert 8)
-   (reticle-corner-2   basic   :offset-assert 12)
-   (reticle-corner-3   basic   :offset-assert 16)
-   (reticle-dot        basic   :offset-assert 20)
-   (reticle-arrow      basic   :offset-assert 24)
-   (reticle-super      basic   :offset-assert 28)
-   (reticle-super-ring basic   :offset-assert 32)
-   (lock-time          uint64  :offset-assert 40)
+  ((reticle            sparticle-launch-control :offset-assert 0)
+   (reticle-corner-0   sparticle-launch-control :offset-assert 4)
+   (reticle-corner-1   sparticle-launch-control :offset-assert 8)
+   (reticle-corner-2   sparticle-launch-control :offset-assert 12)
+   (reticle-corner-3   sparticle-launch-control :offset-assert 16)
+   (reticle-dot        sparticle-launch-control :offset-assert 20)
+   (reticle-arrow      sparticle-launch-control :offset-assert 24)
+   (reticle-super      sparticle-launch-control :offset-assert 28)
+   (reticle-super-ring sparticle-launch-control :offset-assert 32)
+   (lock-time          time-frame :offset-assert 40)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (factory-boss-reticle-info-method-9 () none) ;; 9
-    (factory-boss-reticle-info-method-10 () none) ;; 10
-    (factory-boss-reticle-info-method-11 () none) ;; 11
+    (init! (_type_ process) none) ;; 9
+    (factory-boss-reticle-info-method-10 (_type_ vector vector int int) none) ;; 10
+    (factory-boss-reticle-info-method-11 (_type_) none) ;; 11
     )
   )
-|#
 
-#|
 (deftype factory-boss-shot (projectile)
-  ((trail-part            basic              :offset-assert 512)
+  ((trail-part            sparticle-launch-control :offset-assert 512)
    (traj                  trajectory :inline :offset-assert 528)
-   (traj-time             uint64             :offset-assert 568)
+   (traj-time             time-frame         :offset-assert 568)
    (shot-dest             vector     :inline :offset-assert 576)
-   (impact-played         basic              :offset-assert 592)
-   (reticle-sound         uint32             :offset-assert 596)
-   (reticle-sound-playing basic              :offset-assert 600)
+   (impact-played         symbol             :offset-assert 592)
+   (reticle-sound         sound-id           :offset-assert 596)
+   (reticle-sound-playing symbol             :offset-assert 600)
    )
   :method-count-assert 42
   :size-assert         #x25c
   :flag-assert         #x2a01e0025c
-  (:methods
-    (factory-boss-shot-method-41 () none) ;; 41
-    )
   (:state-methods
     impact ;; 22
     moving ;; 23
     )
+  (:methods
+    (stop-reticle-sound (_type_) none) ;; 41
+    )
   )
-|#
 
-#|
 (deftype factory-boss-shockwave-bomb (factory-boss-shot)
   ()
   :method-count-assert 42
@@ -56493,18 +56503,14 @@
     impact ;; 22
     )
   )
-|#
 
-#|
 (deftype shockwave-bomb-explosion (explosion)
   ()
   :method-count-assert 23
   :size-assert         #x168
   :flag-assert         #x1700f00168
   )
-|#
 
-#|
 (deftype factory-boss-floorbuster-bomb (factory-boss-shot)
   ((targetted-group int8  :offset-assert 604)
    )
@@ -56515,9 +56521,7 @@
     impact ;; 22
     )
   )
-|#
 
-#|
 (deftype floorbuster-bomb-explosion (explosion)
   ((targetted-group int8  :offset-assert 360)
    )
@@ -56525,9 +56529,7 @@
   :size-assert         #x169
   :flag-assert         #x1700f00169
   )
-|#
 
-#|
 (deftype fac-drop-plat-nocollide (process-drawable)
   ()
   :method-count-assert 21
@@ -56537,148 +56539,167 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype fac-drop-plat (process-drawable)
-  ((x-rotation-speed float  :offset-assert 200)
+  ((root             collide-shape :override)
+   (x-rotation-speed float  :offset-assert 200)
    (y-rotation-speed float  :offset-assert 204)
-   (boss             basic  :offset-assert 208)
+   (boss             entity-actor :offset-assert 208)
    )
   :method-count-assert 23
   :size-assert         #xd4
   :flag-assert         #x17006000d4
   (:state-methods
-    done-falling ;; 22
-    fall-away ;; 21
     idle ;; 20
+    fall-away ;; 21
+    done-falling ;; 22
     )
   )
-|#
 
-#|
+;; +++factory-boss-setup:facboss-critter-tracker-flag
+(defenum facboss-critter-tracker-flag
+  :type uint32
+  :bitfield #t
+  (fct0 0)
+  (fct1 1)
+  (fct2 2)
+  )
+;; ---factory-boss-setup:facboss-critter-tracker-flag
+
 (deftype factory-boss-critter-tracker (structure)
-  ((handle uint64         :offset-assert 0)
-   (flags  uint32         :offset-assert 8)
+  ((handle handle         :offset-assert 0)
+   (flags  facboss-critter-tracker-flag :offset-assert 8)
    (dest   vector :inline :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
+;; +++factory-boss-setup:facboss-machine-state-flag
+(defenum facboss-machine-state-flag
+  :type uint8
+  :bitfield #t
+  (fms0 0)
+  (fms1 1)
+  (fms2 2)
+  (fms3 3)
+  )
+;; ---factory-boss-setup:facboss-machine-state-flag
+
 (deftype factory-boss-machine-state (structure)
-  ((damaged-low-smoke-part   basic   :offset-assert 0)
-   (damaged-high-smoke-part  basic   :offset-assert 4)
-   (damaged-left-spark-part  basic   :offset-assert 8)
-   (damaged-right-spark-part basic   :offset-assert 12)
-   (ring-part                basic   :offset-assert 16)
-   (lightning                basic   :offset-assert 20)
-   (machine-sound            uint32  :offset-assert 24)
+  ((damaged-low-smoke-part   sparticle-launch-control :offset-assert 0)
+   (damaged-high-smoke-part  sparticle-launch-control :offset-assert 4)
+   (damaged-left-spark-part  sparticle-launch-control :offset-assert 8)
+   (damaged-right-spark-part sparticle-launch-control :offset-assert 12)
+   (ring-part                sparticle-launch-control :offset-assert 16)
+   (lightning                lightning-control :offset-assert 20)
+   (machine-sound            sound-id :offset-assert 24)
    (state                    int8    :offset-assert 28)
-   (flags                    uint8   :offset-assert 29)
-   (left-spark-timer         uint64  :offset-assert 32)
-   (right-spark-timer        uint64  :offset-assert 40)
-   (ring-timer               uint64  :offset-assert 48)
+   (flags                    facboss-machine-state-flag :offset-assert 29)
+   (left-spark-timer         time-frame :offset-assert 32)
+   (right-spark-timer        time-frame :offset-assert 40)
+   (ring-timer               time-frame :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype factory-boss-lightning-gate (structure)
   ((center         vector  :inline :offset-assert 0)
    (x-off          float           :offset-assert 16)
    (z-off          float           :offset-assert 20)
-   (blocking-plane uint64          :offset-assert 24)
-   (lightning      UNKNOWN 4       :offset-assert 32)
+   (blocking-plane handle          :offset-assert 24)
+   (lightning      lightning-control 4 :offset-assert 32)
    )
   :method-count-assert 12
   :size-assert         #x30
   :flag-assert         #xc00000030
   (:methods
-    (factory-boss-lightning-gate-method-9 () none) ;; 9
-    (factory-boss-lightning-gate-method-10 () none) ;; 10
-    (factory-boss-lightning-gate-method-11 () none) ;; 11
+    (init! (_type_ int) none) ;; 9
+    (disable (_type_) none) ;; 10
+    (factory-boss-lightning-gate-method-11 (_type_ vector float float process) none) ;; 11
     )
   )
-|#
 
-#|
+;; +++factory-boss-setup:facboss-bomb-type
+(defenum facboss-bomb-type
+  :type uint64
+  (bomb0 0)
+  (bomb1 1)
+  (bomb2 2)
+  )
+;; ---factory-boss-setup:facboss-bomb-type
+
 (deftype factory-boss (process-drawable)
-  ((center                vector                      :inline :offset-assert 204)
-   (shot-timer            uint64                              :offset-assert 220)
-   (critter               UNKNOWN                     8       :offset-assert 236)
-   (ammo                  UNKNOWN                     10      :offset-assert 492)
-   (catwalk-angle         float                               :offset-assert 572)
-   (catwalk-vel           float                               :offset-assert 576)
-   (bombs-to-drop         int8                                :offset-assert 580)
-   (bomb-type             uint64                              :offset-assert 588)
-   (root-angle            float                               :offset-assert 596)
-   (machine-state         UNKNOWN                     4       :offset-assert 604)
-   (chosen-machine        int8                                :offset-assert 860)
-   (command-index         int8                                :offset-assert 861)
-   (command-timer         uint64                              :offset-assert 868)
-   (current-round         int32                               :offset-assert 876)
-   (hits-taken            int8                                :offset-assert 880)
-   (camera-timer          uint64                              :offset-assert 884)
-   (reticle-info          factory-boss-reticle-info   :inline :offset-assert 892)
-   (actor-group           uint32                              :offset-assert 940)
-   (actor-group-count     int32                               :offset-assert 944)
-   (launching-group       basic                               :offset-assert 948)
-   (floor-targets         UNKNOWN                     7       :offset-assert 952)
-   (num-floor-targets     int8                                :offset-assert 959)
-   (reticle-sound         uint32                              :offset-assert 960)
-   (reticle-sound-playing basic                               :offset-assert 964)
-   (warp-blocker          factory-boss-lightning-gate :inline :offset-assert 972)
-   (entry-blocker         factory-boss-lightning-gate :inline :offset-assert 1020)
+  ((child                 (pointer process-drawable)          :override)
+   (self                  factory-boss                        :override)
+   (center                vector                      :inline :offset-assert 208)
+   (shot-timer            time-frame                          :offset-assert 224)
+   (critter               factory-boss-critter-tracker 8 :inline :offset-assert 240)
+   (ammo                  handle                       10     :offset-assert 496)
+   (catwalk-angle         float                               :offset-assert 576)
+   (catwalk-vel           float                               :offset-assert 580)
+   (bombs-to-drop         int8                                :offset-assert 584)
+   (bomb-type             facboss-bomb-type                   :offset-assert 592)
+   (root-angle            float                               :offset-assert 600)
+   (machine-state         factory-boss-machine-state  4 :inline :offset-assert 608)
+   (chosen-machine        int8                                :offset-assert 864)
+   (command-index         int8                                :offset-assert 865)
+   (command-timer         time-frame                          :offset-assert 872)
+   (current-round         int32                               :offset-assert 880)
+   (hits-taken            int8                                :offset-assert 884)
+   (camera-timer          time-frame                          :offset-assert 888)
+   (reticle-info          factory-boss-reticle-info   :inline :offset-assert 896)
+   (actor-group           (pointer actor-group)               :offset-assert 944)
+   (actor-group-count     int32                               :offset-assert 948)
+   (launching-group       sparticle-launch-group              :offset-assert 952)
+   (floor-targets         int8                        7       :offset-assert 956)
+   (num-floor-targets     int8                                :offset-assert 963)
+   (reticle-sound         sound-id                            :offset-assert 964)
+   (reticle-sound-playing symbol                              :offset-assert 968)
+   (warp-blocker          factory-boss-lightning-gate :inline :offset-assert 976)
+   (entry-blocker         factory-boss-lightning-gate :inline :offset-assert 1024)
    )
   :method-count-assert 31
   :size-assert         #x430
   :flag-assert         #x1f03b00430
+  (:state-methods
+    beaten ;; 20
+    run-to-machine
+    get-hit
+    launch-critters
+    drop-bombs
+    hidden
+    )
   (:methods
-    (factory-boss-method-20 () none) ;; 20
-    (factory-boss-method-21 () none) ;; 21
-    (factory-boss-method-22 () none) ;; 22
-    (factory-boss-method-23 () none) ;; 23
-    (factory-boss-method-24 () none) ;; 24
-    (factory-boss-method-25 () none) ;; 25
-    (factory-boss-method-26 () none) ;; 26
-    (factory-boss-method-27 () none) ;; 27
-    (factory-boss-method-28 () none) ;; 28
-    (factory-boss-method-29 () none) ;; 29
-    (factory-boss-method-30 () none) ;; 30
+    (factory-boss-method-26 (_type_ int vector vector symbol) symbol) ;; 26
+    (factory-boss-method-27 (_type_ vector) symbol) ;; 27
+    (next-catwalk-angle (_type_ int) float) ;; 28
+    (factory-boss-method-29 (_type_ float vector) none) ;; 29
+    (factory-boss-method-30 (_type_) none) ;; 30
     )
   )
-|#
 
-#|
 (deftype hud-factory-boss (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype task-manager-factory-boss (task-manager)
-  ((button-up basic  :offset-assert 240)
+  ((button-up symbol  :offset-assert 240)
    )
   :method-count-assert 33
   :size-assert         #xf4
   :flag-assert         #x21008000f4
   (:methods
-    (task-manager-factory-boss-method-32 () none) ;; 32
+    (task-manager-factory-boss-method-32 (_type_) none) ;; 32
     )
   )
-|#
 
-#|
 (deftype fac-warp-effect (process-drawable)
   ()
   :method-count-assert 21
@@ -56688,85 +56709,109 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *factory-boss-dead-pool* object)
-;; (define-extern *factory-boss-speech* object)
-;; (define-extern reset-factory-boss-speeches function)
-;; (define-extern factory-boss-play-speech function)
-;; (define-extern fac-drop-plat-nocollide-init-by-other function)
-;; (define-extern fac-drop-plat-setup-rots function)
-;; (define-extern fac-drop-plat-rot-once function)
-;; (define-extern fac-drop-plat-init-by-other function)
-;; (define-extern factoryd-login function)
-;; (define-extern factoryd-logout function)
+(define-extern *factory-boss-dead-pool* dead-pool)
+(define-extern *factory-boss-speech* factory-boss-speech-group)
+(define-extern reset-factory-boss-speeches (function none))
+(define-extern factory-boss-play-speech (function int factory-boss none))
+(define-extern fac-drop-plat-nocollide-init-by-other (function entity-actor object :behavior fac-drop-plat-nocollide))
+(define-extern fac-drop-plat-setup-rots (function object :behavior fac-drop-plat))
+(define-extern fac-drop-plat-rot-once (function degrees object :behavior fac-drop-plat))
+(define-extern fac-drop-plat-init-by-other (function entity-actor object :behavior fac-drop-plat))
+(define-extern factoryd-login (function level none))
+(define-extern factoryd-logout (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; missile-bot                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype missile-bot (nav-enemy)
-  ((traj                    trajectory          :inline :offset-assert 624)
+  ((parent                  (pointer factory-boss)      :override)
+   (traj                    trajectory          :inline :offset-assert 624)
    (initial-y               float                       :offset-assert 664)
-   (top-spin-jm             basic                       :offset-assert 668)
+   (top-spin-jm             joint-mod                   :offset-assert 668)
    (top-angle               float                       :offset-assert 672)
-   (main-jm                 basic                       :offset-assert 676)
+   (main-jm                 joint-mod                   :offset-assert 676)
    (height-bob              bouncing-float      :inline :offset-assert 680)
    (height-bob-rand         delayed-rand-float  :inline :offset-assert 720)
    (main-wobble             oscillating-vector  :inline :offset-assert 752)
    (main-wobble-rand        delayed-rand-vector :inline :offset-assert 816)
-   (thruster-part           basic                       :offset-assert 864)
-   (lightning               UNKNOWN             6       :offset-assert 868)
-   (lightning-wobble        UNKNOWN             3       :offset-assert 896)
-   (lightning-wobble-rand   UNKNOWN             3       :offset-assert 1088)
+   (thruster-part           sparticle-launch-control    :offset-assert 864)
+   (lightning               lightning-control   6       :offset-assert 868)
+   (lightning-wobble        oscillating-vector  3 :inline :offset-assert 896)
+   (lightning-wobble-rand   delayed-rand-vector 3 :inline :offset-assert 1088)
    (lightning-mode          uint64                      :offset-assert 1232)
-   (lightning-timer         uint64                      :offset-assert 1240)
-   (lightning-sound         uint32                      :offset-assert 1248)
-   (lightning-sound-playing basic                       :offset-assert 1252)
-   (glows-on                basic                       :offset-assert 1256)
+   (lightning-timer         time-frame                  :offset-assert 1240)
+   (lightning-sound         sound-id                    :offset-assert 1248)
+   (lightning-sound-playing symbol                      :offset-assert 1252)
+   (glows-on                symbol                      :offset-assert 1256)
    (spin                    float                       :offset-assert 1260)
-   (engine-sound            uint32                      :offset-assert 1264)
-   (engine-sound-playing    basic                       :offset-assert 1268)
+   (engine-sound            sound-id                    :offset-assert 1264)
+   (engine-sound-playing    symbol                      :offset-assert 1268)
    (explosion-sound-index   int8                        :offset-assert 1272)
-   (spin-whoosh-timer       uint64                      :offset-assert 1280)
-   (will-hit-errol          basic                       :offset-assert 1288)
-   (spark-part              basic                       :offset-assert 1292)
-   (spark-part-on           basic                       :offset-assert 1296)
-   (spark-timer             uint64                      :offset-assert 1304)
+   (spin-whoosh-timer       time-frame                  :offset-assert 1280)
+   (will-hit-errol          symbol                      :offset-assert 1288)
+   (spark-part              sparticle-launch-control    :offset-assert 1292)
+   (spark-part-on           symbol                      :offset-assert 1296)
+   (spark-timer             time-frame                  :offset-assert 1304)
    )
   :method-count-assert 195
   :size-assert         #x520
   :flag-assert         #xc304a00520
-  (:methods
-    (missile-bot-method-194 () none) ;; 194
-    )
   (:state-methods
-    explode ;; 193
-    lift-off ;; 192
-    fizzle ;; 190
-    die ;; 40
-    hostile ;; 38
-    kicked ;; 191
-    notice ;; 35
     knocked ;; 31
+    notice ;; 35
+    hostile ;; 38
+    die ;; 40
     jump ;; 44
+    fizzle ;; 190
+    kicked ;; 191
+    lift-off ;; 192
+    explode ;; 193
+    )
+  (:methods
+    (toggle-glow-sprites (_type_ symbol) none) ;; 194
     )
   )
-|#
 
-;; (define-extern *missile-bot-nav-enemy-info* nav-enemy-info)
-;; (define-extern stunned? function)
-;; (define-extern missile-bot-get-kick-time function)
-;; (define-extern missile-bot-find-dest function)
+(define-extern *missile-bot-nav-enemy-info* nav-enemy-info)
+(define-extern stunned? (function object :behavior missile-bot))
+(define-extern missile-bot-get-kick-time (function float float :behavior missile-bot))
+(define-extern missile-bot-find-dest (function vector vector :behavior missile-bot))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-boss-states            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++factory-boss-states:facboss-cmd
+(defenum facboss-cmd
+  :type uint64
+  (cmd1 1)
+  (cmd2 2)
+  (cmd3 3)
+  (cmd4 4)
+  (cmd5 5)
+  (cmd6 6)
+  (cmd7 7)
+  (cmd8 8)
+  (cmd9 9)
+  (cmd10 10)
+  (cmd11 11)
+  (cmd12 12)
+  (cmd13 13)
+  (cmd14 14)
+  (cmd15 15)
+  (cmd16 16)
+  (cmd17 17)
+  (cmd18 18)
+  (cmd19 19)
+  (cmd20 20)
+  (cmd21 21)
+  )
+;; ---factory-boss-states:facboss-cmd
+
 (deftype factory-boss-command (structure)
-  ((action uint64  :offset-assert 0)
+  ((action facboss-cmd :offset-assert 0)
    (suck   float   :offset-assert 8)
    (random float   :offset-assert 12)
    (round  int8    :offset-assert 16)
@@ -56775,59 +56820,58 @@
   :size-assert         #x11
   :flag-assert         #x900000011
   )
-|#
 
-;; (define-extern factory-boss-angle-sub function)
-;; (define-extern factory-boss-target-pos function)
-;; (define-extern factory-boss-move function)
-;; (define-extern factory-boss-pick-machine function)
-;; (define-extern factory-boss-pick-camera function)
-;; (define-extern factory-boss-pick-pers-camera function)
-;; (define-extern factory-boss-machine-angle function)
-;; (define-extern factory-boss-approaching? function)
-;; (define-extern factory-boss-move-to-dest-angle function)
-;; (define-extern factory-boss-time-until-angle function)
-;; (define-extern factory-boss-get-particle-spawn-points function)
-;; (define-extern factory-boss-drop-bomb function)
-;; (define-extern factory-boss-check-bomb-timer function)
-;; (define-extern factory-boss-end-cutscene function)
-;; (define-extern factory-boss-spawn-ring function)
-;; (define-extern factory-boss-always function)
-;; (define-extern factory-boss-always-handler function)
-;; (define-extern factory-boss-handler function)
-;; (define-extern *factory-boss-swarm-0* array)
-;; (define-extern *factory-boss-swarm-1* array)
-;; (define-extern *factory-boss-swarm-2* array)
-;; (define-extern *factory-boss-swarm-3* array)
-;; (define-extern *factory-boss-swarm-4* array)
-;; (define-extern factory-boss-launch-critter-handler function)
-;; (define-extern factory-boss-advance-launch-script function)
-;; (define-extern factory-boss-check-launch-script function)
-;; (define-extern factory-boss-launch-critter function)
-;; (define-extern factory-boss-launch-critter-pick-anim function)
-;; (define-extern factory-boss-pick-floor-targets function)
+(define-extern factory-boss-angle-sub (function degrees degrees degrees :behavior factory-boss))
+(define-extern factory-boss-target-pos (function vector int int vector :behavior factory-boss))
+(define-extern factory-boss-move (function none :behavior factory-boss))
+(define-extern factory-boss-pick-machine (function none :behavior factory-boss))
+(define-extern factory-boss-pick-camera (function none :behavior factory-boss))
+(define-extern factory-boss-pick-pers-camera (function none :behavior factory-boss))
+(define-extern factory-boss-machine-angle (function float :behavior factory-boss))
+(define-extern factory-boss-approaching? (function degrees symbol :behavior factory-boss))
+(define-extern factory-boss-move-to-dest-angle (function float float symbol :behavior factory-boss))
+(define-extern factory-boss-time-until-angle (function degrees time-frame :behavior factory-boss))
+(define-extern factory-boss-get-particle-spawn-points (function int vector vector matrix none :behavior factory-boss))
+(define-extern factory-boss-drop-bomb (function int (pointer process) :behavior factory-boss))
+(define-extern factory-boss-check-bomb-timer (function int symbol :behavior factory-boss))
+(define-extern factory-boss-end-cutscene (function none :behavior factory-boss))
+(define-extern factory-boss-spawn-ring (function matrix vector factory-boss-machine-state none :behavior factory-boss))
+(define-extern factory-boss-always (function none :behavior factory-boss))
+(def-event-handler factory-boss-always-handler factory-boss)
+(def-event-handler factory-boss-handler factory-boss)
+(define-extern *factory-boss-swarm-0* (array factory-boss-command))
+(define-extern *factory-boss-swarm-1* (array factory-boss-command))
+(define-extern *factory-boss-swarm-2* (array factory-boss-command))
+(define-extern *factory-boss-swarm-3* (array factory-boss-command))
+(define-extern *factory-boss-swarm-4* (array factory-boss-command))
+(def-event-handler factory-boss-launch-critter-handler factory-boss)
+(define-extern factory-boss-advance-launch-script (function none :behavior factory-boss))
+(define-extern factory-boss-check-launch-script (function int :behavior factory-boss))
+(define-extern factory-boss-launch-critter (function int symbol :behavior factory-boss))
+(define-extern factory-boss-launch-critter-pick-anim (function int none :behavior factory-boss))
+(define-extern factory-boss-pick-floor-targets (function int int none :behavior factory-boss))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-boss-scenes            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-fbme-dust-color* curve-color-fast)
-;; (define-extern *range-fbme-dust-alpha* curve2d-fast)
-;; (define-extern *range-fbme-dust-scale-x* curve2d-fast)
-;; (define-extern *range-fbme-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-fbme-dust-alpha* curve2d-fast)
-;; (define-extern *curve-fbme-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-fbme-dust-scale-y* curve2d-fast)
-;; (define-extern *part-fac-boss-missile-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-fbme-color* curve-color-fast)
-;; (define-extern *range-fbme-alpha* curve2d-fast)
-;; (define-extern *range-fbme-scale-x* curve2d-fast)
-;; (define-extern *range-fbme-scale-y* curve2d-fast)
-;; (define-extern *curve-fbme-alpha* curve2d-fast)
-;; (define-extern *curve-fbme-scale-x* curve2d-fast)
-;; (define-extern *curve-fbme-scale-y* curve2d-fast)
-;; (define-extern *part-fac-boss-missile-explosion-texture-curve-settings* object)
-;; (define-extern spt-birth-func-part-factory-debris-trails function)
+(define-extern *range-fbme-dust-color* curve-color-fast)
+(define-extern *range-fbme-dust-alpha* curve2d-fast)
+(define-extern *range-fbme-dust-scale-x* curve2d-fast)
+(define-extern *range-fbme-dust-scale-y* curve2d-fast)
+(define-extern *curve-fbme-dust-alpha* curve2d-fast)
+(define-extern *curve-fbme-dust-scale-x* curve2d-fast)
+(define-extern *curve-fbme-dust-scale-y* curve2d-fast)
+(define-extern *part-fac-boss-missile-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-fbme-color* curve-color-fast)
+(define-extern *range-fbme-alpha* curve2d-fast)
+(define-extern *range-fbme-scale-x* curve2d-fast)
+(define-extern *range-fbme-scale-y* curve2d-fast)
+(define-extern *curve-fbme-alpha* curve2d-fast)
+(define-extern *curve-fbme-scale-x* curve2d-fast)
+(define-extern *curve-fbme-scale-y* curve2d-fast)
+(define-extern *part-fac-boss-missile-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern spt-birth-func-part-factory-debris-trails (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; nst-eggs-h                     ;;
@@ -57157,14 +57201,14 @@
 
 (define-extern update-mood-factory (function mood-context float int none :behavior time-of-day-proc))
 (define-extern update-mood-factoryd (function mood-context float int none :behavior time-of-day-proc))
-(define-extern set-factoryd-light! (function float int none))
+(define-extern set-factoryd-light! (function float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern *war-factory-vehicle-mask* int)
-(define-extern *war-factory-effects-mask* int)
+(define-extern *war-factory-vehicle-mask* uint)
+(define-extern *war-factory-effects-mask* uint)
 (define-extern *range-fac-dust-color* curve-color-fast)
 (define-extern *range-fac-dust-alpha* curve2d-fast)
 (define-extern *range-fac-dust-scale-x* curve2d-fast)
@@ -57178,19 +57222,17 @@
 ;; factoryc-manager               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-factory-assault (task-manager)
-  ((explode-car-time uint64  :offset-assert 240)
-   (daxter-done      basic   :offset-assert 248)
-   (region-hack      basic   :offset-assert 252)
+  ((explode-car-time time-frame :offset-assert 240)
+   (daxter-done      symbol :offset-assert 248)
+   (region-hack      symbol :offset-assert 252)
    )
   :method-count-assert 32
   :size-assert         #x100
   :flag-assert         #x2000800100
   )
-|#
 
-;; (define-extern factoryd-activate function)
+(define-extern factoryd-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; was-squad-control              ;;
@@ -60560,9 +60602,8 @@
 ;; lfacrm2-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fac-elevator-a (elevator)
-  ((mysound uint32  :offset-assert 416)
+  ((mysound sound-id :offset-assert 416)
    )
   :method-count-assert 52
   :size-assert         #x1a4
@@ -60570,22 +60611,16 @@
   (:state-methods
     dormant ;; 35
     waiting ;; 36
-    arrived ;; 38
     running ;; 37
+    arrived ;; 38
     )
   )
-|#
 
-#|
-(deftype lfacrm2-states (UNKNOWN)
+(deftype lfacrm2-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern update-mood-lfacrm2 function)
+(define-extern update-mood-lfacrm2 (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; was-pre-game                   ;;
@@ -63091,8 +63126,8 @@
 ;; lfaccar-init                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern lfaccar-activate function)
-;; (define-extern lfaccar-deactivate function)
+(define-extern lfaccar-activate (function level none))
+(define-extern lfaccar-deactivate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-faccar                    ;;
@@ -67361,7 +67396,6 @@
 ;; lfacrm1-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lfacrm1-states (structure)
   ((door-current-interp float  :offset-assert 0)
    (door-target-interp  float  :offset-assert 4)
@@ -67371,9 +67405,7 @@
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype lfac-hanger-door (process-drawable)
   ()
   :method-count-assert 21
@@ -67383,12 +67415,11 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern update-lfacrm1-lights function)
-;; (define-extern update-mood-lfacrm1 function)
-;; (define-extern set-lfacrm1-door! function)
-;; (define-extern lfac-hanger-door-init-by-other function)
+(define-extern update-lfacrm1-lights (function mood-context none))
+(define-extern update-mood-lfacrm1 (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-lfacrm1-door! (function float none))
+(define-extern lfac-hanger-door-init-by-other (function vector entity-actor object :behavior lfac-hanger-door))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; gun-dummy-part                 ;;
