@@ -1324,7 +1324,7 @@
 ;; definition for method 11 of type factory-elec-gate
 ;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this factory-elec-gate) (arg0 entity-actor))
-  (local-vars (r0-0 uint128) (a0-11 object) (a0-14 uint128) (a1-8 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (when (task-node-closed? (game-task-node factory-assault-get-vehicle))
     (process-entity-status! this (entity-perm-status dead) #t)
     (deactivate this)
@@ -1344,26 +1344,12 @@
       (+! s4-0 1)
       )
     )
-  (set! sv-16 0)
-  (let ((v1-20 (res-lump-data arg0 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-20 (res-lump-data arg0 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
     (cond
-      ((and v1-20 (begin
-                    (let ((a0-12 #t))
-                      (let ((a1-7 (the-as uint128 sv-16)))
-                        (.pcpyud a1-8 a1-7 r0-0)
-                        )
-                      (let ((a1-10 (the-as int (shr (* (the-as int a1-8) 2) 49))))
-                        (cmove-#f-zero a0-11 a1-10 a0-12)
-                        )
-                      )
-                    a0-11
-                    )
-            )
-       (let ((a0-13 (the-as uint128 sv-16)))
-         (.pcpyud a0-14 a0-13 r0-0)
-         )
-       (set! (-> this actor-group-count) (shr (* (the-as int a0-14) 2) 49))
-       (set! (-> this actor-group) (the-as (pointer actor-group) v1-20))
+      ((and v1-20 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) v1-20)
        )
       (else
         (set! (-> this actor-group-count) 0)
