@@ -679,7 +679,7 @@ s32 pc_sr_mode_get_practice_entries_amount() {
 
 void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (!g_speedrun_practice_entries.size() <= entry_index) {
+  if (entry_index < g_speedrun_practice_entries.size()) {
     name = g_speedrun_practice_entries.at(entry_index).name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
@@ -687,7 +687,7 @@ void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr) {
 
 void pc_sr_mode_get_practice_entry_continue_point(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (!g_speedrun_practice_entries.size() <= entry_index) {
+  if (entry_index < g_speedrun_practice_entries.size()) {
     name = g_speedrun_practice_entries.at(entry_index).continue_point_name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
@@ -864,7 +864,7 @@ s32 pc_sr_mode_get_custom_category_amount() {
 
 void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (!g_speedrun_custom_categories.size() <= entry_index) {
+  if (entry_index < g_speedrun_custom_categories.size()) {
     name = g_speedrun_custom_categories.at(entry_index).name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
@@ -872,7 +872,7 @@ void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr) {
 
 void pc_sr_mode_get_custom_category_continue_point(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (!g_speedrun_custom_categories.size() <= entry_index) {
+  if (entry_index < g_speedrun_custom_categories.size()) {
     name = g_speedrun_custom_categories.at(entry_index).continue_point_name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
