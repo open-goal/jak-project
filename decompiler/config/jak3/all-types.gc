@@ -2275,7 +2275,7 @@
 (define-extern matrix-u-r-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-f-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-u-compose (function matrix vector vector vector matrix))
-(define-extern matrix-f-compose (function matrix vector float matrix))
+(define-extern matrix-f-compose (function matrix vector matrix))
 (define-extern matrix-u-compose (function matrix vector vector vector matrix))
 (define-extern matrix-r-compose (function matrix vector vector vector matrix))
 
@@ -34555,6 +34555,7 @@
   :bitfield #t
   (pcf0 0)
   (pcf1 1)
+  (pcf2 2)
   )
 ;; ---particle-curves:particle-curve-flags
 
@@ -43005,7 +43006,7 @@
   :flag-assert         #x260000003c
   (:methods
     (new (symbol type) _type_) ;; 0
-    (nav-network-method-9 (_type_ int int) none) ;; 9
+    (alloc-nav-network-for-level! (_type_ int int) none) ;; 9
     (init-by-other! (_type_ level nav-network-data) none) ;; 10
     (nav-network-method-11 (_type_) none) ;; 11
     (reset! (_type_) none) ;; 12
@@ -50717,14 +50718,13 @@
 ;; mh-bat                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mh-bat (enemy)
   ((rotation-matrix      matrix      :inline :offset-assert 560)
    (move-curve           cubic-curve :inline :offset-assert 624)
    (start-pos            vector      :inline :offset-assert 688)
    (up-vector            vector      :inline :offset-assert 704)
    (focus-bullseye-pos   vector      :inline :offset-assert 720)
-   (focus-xz-dir         vector      :inline :offset-assert 752)
+   (focus-xz-dir         vector      :inline :offset 752)
    (target-velocity      vector      :inline :offset-assert 768)
    (target-speed         float               :offset-assert 784)
    (y-offset             float               :offset-assert 788)
@@ -50735,39 +50735,38 @@
    (bank-angle           float               :offset-assert 808)
    (pitch-angle          float               :offset-assert 812)
    (anim-speed           float               :offset-assert 816)
-   (last-off-screen-time uint64              :offset-assert 824)
-   (nav-mesh             basic               :offset-assert 832)
+   (last-off-screen-time time-frame          :offset-assert 824)
+   (nav-mesh             nav-mesh            :offset-assert 832)
    (flap-interp          float               :offset-assert 836)
    (shadow-id            int32               :offset-assert 840)
-   (move-dest            vector      :inline :offset-assert 368)
+   (move-dest            vector      :inline :offset 368)
    )
   :method-count-assert 162
   :size-assert         #x34c
   :flag-assert         #xa202d0034c
-  (:methods
-    (mh-bat-method-158 () none) ;; 158
-    (mh-bat-method-159 () none) ;; 159
-    (mh-bat-method-160 () none) ;; 160
-    (mh-bat-method-161 () none) ;; 161
-    )
   (:state-methods
+    dormant-aware ;; 29
     knocked-recover ;; 32
-    attack-1 ;; 157
-    attack-0 ;; 156
     stare ;; 37
     hostile ;; 38
-    retreat ;; 155
     ambush ;; 47
-    dormant-aware ;; 29
+    retreat ;; 155
+    attack-0 ;; 156
+    attack-1 ;; 157
+    )
+  (:methods
+    (mh-bat-method-158 (_type_) vector) ;; 158
+    (mh-bat-method-159 (_type_) none) ;; 159
+    (set-scale! (_type_ float) none) ;; 160
+    (probe-shadow (_type_) none) ;; 161
     )
   )
-|#
 
-;; (define-extern *fact-info-mh-bat-defaults* fact-info-enemy-defaults)
-;; (define-extern *mh-bat-enemy-info* enemy-info)
-;; (define-extern mh-bat-fly-code function)
-;; (define-extern mh-bat-fly-post function)
-;; (define-extern mh-bat-chase-post function)
+(define-extern *fact-info-mh-bat-defaults* fact-info-enemy-defaults)
+(define-extern *mh-bat-enemy-info* enemy-info)
+(define-extern mh-bat-fly-code (function (function object :behavior mh-bat) symbol :behavior mh-bat))
+(define-extern mh-bat-fly-post (function none :behavior mh-bat))
+(define-extern mh-bat-chase-post (function none :behavior mh-bat))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; egg-spider                     ;;
@@ -51220,38 +51219,36 @@
 ;; factory-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sparticle-torch-spline-align function)
-;; (define-extern spt-func-fact-torch function)
-;; (define-extern spt-birth-func-fact-torch function)
-;; (define-extern *range-color-fact-big-torch-flame* curve-color-fast)
-;; (define-extern *range-alpha-fact-big-torch-flame* curve2d-fast)
-;; (define-extern *range-scale-fact-big-torch-flame-x* curve2d-fast)
-;; (define-extern *range-scale-fact-big-torch-flame-y* curve2d-fast)
-;; (define-extern *r-curve-fact-big-torch-flame* curve2d-fast)
-;; (define-extern *g-curve-fact-big-torch-flame* curve2d-fast)
-;; (define-extern *b-curve-fact-big-torch-flame* curve2d-fast)
-;; (define-extern *curve-alpha-fact-big-torch-flame* curve2d-fast)
-;; (define-extern *curve-fact-big-torch-flame-x* curve2d-fast)
-;; (define-extern *curve-fact-big-torch-flame-y* curve2d-fast)
-;; (define-extern *part-fact-big-torch-flame-curve-settings* object)
+(define-extern sparticle-torch-spline-align (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
+(define-extern spt-func-fact-torch (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-birth-func-fact-torch (function sparticle-system sparticle-cpuinfo sparticle-launchinfo object object none))
+(define-extern *range-color-fact-big-torch-flame* curve-color-fast)
+(define-extern *range-alpha-fact-big-torch-flame* curve2d-fast)
+(define-extern *range-scale-fact-big-torch-flame-x* curve2d-fast)
+(define-extern *range-scale-fact-big-torch-flame-y* curve2d-fast)
+(define-extern *r-curve-fact-big-torch-flame* curve2d-fast)
+(define-extern *g-curve-fact-big-torch-flame* curve2d-fast)
+(define-extern *b-curve-fact-big-torch-flame* curve2d-fast)
+(define-extern *curve-alpha-fact-big-torch-flame* curve2d-fast)
+(define-extern *curve-fact-big-torch-flame-x* curve2d-fast)
+(define-extern *curve-fact-big-torch-flame-y* curve2d-fast)
+(define-extern *part-fact-big-torch-flame-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factoryc-mood                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype factoryc-states (structure)
-  ((electricity UNKNOWN      2       :offset-assert 0)
-   (flame       flames-state :inline :offset-assert 32)
+  ((electricity electricity-state 2 :inline :offset-assert 0)
+   (flame       flames-state :inline :offset 32)
    )
   :method-count-assert 9
   :size-assert         #x27
   :flag-assert         #x900000027
   )
-|#
 
-;; (define-extern update-mood-factoryc function)
-;; (define-extern set-factoryc-light! function)
+(define-extern update-mood-factoryc (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-factoryc-light! (function float int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factoryc-texture               ;;
@@ -51264,7 +51261,6 @@
 ;; conveyor                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype conveyor-section (structure)
   ((start      vector :inline :offset-assert 0)
    (trailing   plane  :inline :offset-assert 16)
@@ -51275,24 +51271,20 @@
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype conveyor-section-array (inline-array-class)
-  ((data conveyor-section :dynamic :offset-assert 16) ;; guessed by decompiler
+  ((data conveyor-section :dynamic :inline :offset-assert 16) ;; guessed by decompiler
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype conveyor (process-drawable)
   ((speed                float                          :offset-assert 200)
    (belt-radius          float                          :offset-assert 204)
    (pull-y-threshold     float                          :offset-assert 208)
-   (speed-mult-array     (array float)                  :offset-assert 212) ;; guessed by decompiler
+   (speed-mult-array     (pointer float)                :offset-assert 212) ;; guessed by decompiler
    (speed-mult-array-len int8                           :offset-assert 216)
    (sections             conveyor-section-array         :offset-assert 220) ;; guessed by decompiler
    (leading              plane                  :inline :offset-assert 224)
@@ -51301,39 +51293,36 @@
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
-  (:methods
-    (conveyor-method-21 () none) ;; 21 ;; (conveyor-method-21 (_type_) float)
-    (conveyor-method-22 () none) ;; 22 ;; (get-art-group (_type_) art-group)
-    (conveyor-method-23 () none) ;; 23 ;; (reset-root! (_type_) none)
-    (conveyor-method-24 () none) ;; 24 ;; (init! (_type_) none)
-    (conveyor-method-25 () none) ;; 25 ;; (set-and-get-ambient-sound! (_type_) ambient-sound)
-    (conveyor-method-26 () none) ;; 26 ;; (conveyor-method-26 (_type_ process-focusable) symbol)
-    (conveyor-method-27 () none) ;; 27 ;; (conveyor-method-27 (_type_) symbol)
-    (conveyor-method-28 () none) ;; 28
-    )
   (:state-methods
-    idle ;; 20, old: (idle () _type_ :state)
+    idle ;; 20
+    )
+  (:methods
+    (conveyor-method-21 (_type_) float) ;; 21
+    (get-skel (_type_) art-group) ;; 22
+    (alloc-trsqv! (_type_) none) ;; 23
+    (init-fields! (_type_) none) ;; 24
+    (alloc-sound! (_type_) none) ;; 25
+    (init-skel! (_type_) none) ;; 26
+    (push-focus (_type_ process-focusable) symbol) ;; 27
+    (find-pushables (_type_) symbol) ;; 28
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hover-nav-factoryc             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *factoryc-adjacency* object)
+(define-extern *factoryc-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factoryc-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype generic-spot-shadow-effect (process-drawable)
   ((focal-length    float                       :offset-assert 200)
    (near-clip       float                       :offset-assert 204)
    (far-clip        float                       :offset-assert 208)
-   (color           uint32                      :offset-assert 212)
+   (color           rgba                        :offset-assert 212)
    (pre-flicker-pos vector              :inline :offset-assert 224)
    (jmod-outer      joint-mod-add-local :inline :offset-assert 240)
    (jmod-inner      joint-mod-add-local :inline :offset-assert 304)
@@ -51341,27 +51330,25 @@
   :method-count-assert 24
   :size-assert         #x170
   :flag-assert         #x1800f00170
-  (:methods
-    (generic-spot-shadow-effect-method-22 () none) ;; 22
-    (generic-spot-shadow-effect-method-23 () none) ;; 23
-    )
   (:state-methods
-    inactive ;; 21
     idle ;; 20
+    inactive ;; 21
+    )
+  (:methods
+    (set-jmod-inner-scale! (_type_ vector) none) ;; 22
+    (set-jmod-outer-scale! (_type_ vector) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype fac-zapper (process)
-  ((on-duration  uint64  :offset-assert 128)
-   (off-duration uint64  :offset-assert 136)
-   (phase-offset uint64  :offset-assert 144)
-   (beam-is-on   basic   :offset-assert 152)
-   (bzzt-sound   uint32  :offset-assert 156)
-   (path         basic   :offset-assert 160)
-   (lightning    basic   :offset-assert 164)
-   (hilite       uint64  :offset-assert 168)
+  ((on-duration  time-frame :offset-assert 128)
+   (off-duration time-frame :offset-assert 136)
+   (phase-offset time-frame :offset-assert 144)
+   (beam-is-on   symbol  :offset-assert 152)
+   (bzzt-sound   sound-id :offset-assert 156)
+   (path         path-control :offset-assert 160)
+   (lightning    lightning-control :offset-assert 164)
+   (hilite       handle :offset-assert 168)
    )
   :method-count-assert 15
   :size-assert         #xb0
@@ -51370,17 +51357,15 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype fac-fire-torch (process-drawable)
-  ((on-duration   uint64             :offset-assert 200)
-   (off-duration  uint64             :offset-assert 208)
-   (phase-offset  uint64             :offset-assert 216)
-   (fire-is-on    basic              :offset-assert 224)
+  ((on-duration   time-frame         :offset-assert 200)
+   (off-duration  time-frame         :offset-assert 208)
+   (phase-offset  time-frame         :offset-assert 216)
+   (fire-is-on    symbol             :offset-assert 224)
    (sync          sync-eased :inline :offset-assert 232)
    (path-pos      float              :offset-assert 276)
-   (looping-sound uint32             :offset-assert 280)
+   (looping-sound sound-id           :offset-assert 280)
    (particle-hack matrix     :inline :offset-assert 288)
    )
   :method-count-assert 21
@@ -51390,94 +51375,85 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype fac-robopod (process-focusable)
-  ((my-baby           UNKNOWN 3 :offset-assert 208)
+  ((my-baby           handle 3  :offset-assert 208)
    (num-babies        uint32    :offset-assert 232)
    (subtask-countdown int32     :offset-assert 236)
-   (suppressed        basic     :offset-assert 240)
+   (suppressed        symbol    :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf4
   :flag-assert         #x20008000f4
   (:state-methods
-    already-dead ;; 31
-    die ;; 30
-    generate ;; 29
     idle ;; 28
+    generate ;; 29
+    die ;; 30
+    already-dead ;; 31
     )
   )
-|#
 
-#|
 (deftype factory-elec-gate (process)
-  ((path-l            basic     :offset-assert 124)
-   (path-r            basic     :offset-assert 128)
-   (beams             UNKNOWN 4 :offset-assert 132)
-   (beams-on          UNKNOWN 4 :offset-assert 148)
-   (bzzt-sound        uint32    :offset-assert 164)
-   (blocking-plane    uint64    :offset-assert 172)
-   (actor-group       uint32    :offset-assert 180)
-   (actor-group-count int32     :offset-assert 184)
+  ((path-l            path-control :offset-assert 128)
+   (path-r            path-control :offset-assert 132)
+   (beams             lightning-control 4 :offset-assert 136)
+   (beams-on          symbol  4 :offset-assert 152)
+   (bzzt-sound        sound-id  :offset-assert 168)
+   (blocking-plane    handle    :offset-assert 176)
+   (actor-group       (pointer actor-group) :offset-assert 184)
+   (actor-group-count int32     :offset-assert 188)
    )
   :method-count-assert 16
   :size-assert         #xc0
   :flag-assert         #x10004000c0
   (:state-methods
-    flickering ;; 15
     idle ;; 14
+    flickering ;; 15
     )
   )
-|#
 
-;; (define-extern factoryc-activate function)
-;; (define-extern factoryc-login function)
-;; (define-extern factoryc-logout function)
-;; (define-extern generic-spot-shadow-effect-init-by-other function)
-;; (define-extern generic-spot-shadow-effect-handler function)
-;; (define-extern *fac-robopod-pool-count* object)
-;; (define-extern *fac-robopod-exploder-params* joint-exploder-static-params)
-;; (define-extern fac-robopod-add-hoverbot function)
-;; (define-extern fac-robopod-invalidate-hoverbot function)
-;; (define-extern fac-robopod-base-handler function)
+(define-extern factoryc-activate (function level none))
+(define-extern factoryc-login (function level none))
+(define-extern factoryc-logout (function level none))
+(define-extern generic-spot-shadow-effect-init-by-other (function vector quaternion object :behavior generic-spot-shadow-effect))
+(def-event-handler generic-spot-shadow-effect-handler generic-spot-shadow-effect)
+(define-extern *fac-robopod-pool-count* int)
+(define-extern *fac-robopod-exploder-params* joint-exploder-static-params)
+(define-extern fac-robopod-add-hoverbot (function fac-robopod none))
+(define-extern fac-robopod-invalidate-hoverbot (function fac-robopod int none))
+(def-event-handler fac-robopod-base-handler fac-robopod)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factoryc-obs2                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fac-break-floor (process-drawable)
-  ((notify-actor basic  :offset-assert 200)
+  ((root collide-shape :override)
+   (notify-actor entity-actor :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
     )
   )
-|#
 
-#|
 (deftype fac-break-fence (process-focusable)
-  ((notify-actor basic  :offset-assert 208)
+  ((notify-actor entity-actor :offset-assert 208)
    )
   :method-count-assert 30
   :size-assert         #xd4
   :flag-assert         #x1e006000d4
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
     )
   )
-|#
 
-#|
 (deftype fac-break-fence-a (fac-break-fence)
-  ()
+  ((pad uint8 4))
   :method-count-assert 30
   :size-assert         #xd8
   :flag-assert         #x1e006000d8
@@ -51485,11 +51461,9 @@
     die ;; 29
     )
   )
-|#
 
-#|
 (deftype fac-break-fence-b (fac-break-fence)
-  ()
+  ((pad uint8 4))
   :method-count-assert 30
   :size-assert         #xd8
   :flag-assert         #x1e006000d8
@@ -51497,128 +51471,87 @@
     die ;; 29
     )
   )
-|#
 
-#|
 (deftype fac-break-fence-c (fac-break-fence)
-  ()
+  ((pad uint8 4))
   :method-count-assert 30
   :size-assert         #xd8
   :flag-assert         #x1e006000d8
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
     )
   )
-|#
 
-#|
 (deftype fac-switch (process-drawable)
-  ((actor-group       uint32                         :offset-assert 196)
-   (actor-group-count int32                          :offset-assert 200)
-   (lever-jmod        joint-mod-rotate-local :inline :offset-assert 204)
-   (part-red          basic                          :offset-assert 164)
-   (part-green        basic                          :offset-assert 236)
-   (minimap           connection-minimap             :offset-assert 240)
+  ((actor-group       (pointer actor-group)          :offset-assert 200)
+   (actor-group-count int32                          :offset-assert 204)
+   (lever-jmod        joint-mod-rotate-local :inline :offset-assert 208)
+   (part-red          sparticle-launch-control       :offset 168)
+   (part-green        sparticle-launch-control       :offset-assert 240)
+   (minimap           connection-minimap             :offset-assert 244)
    )
   :method-count-assert 23
   :size-assert         #xf8
   :flag-assert         #x17008000f8
-  (:methods
-    (fac-switch-method-22 () none) ;; 22
-    )
   (:state-methods
-    done ;; 21
     idle ;; 20
+    (done symbol) ;; 21
+    )
+  (:methods
+    (is-done? (_type_) symbol) ;; 22
     )
   )
-|#
 
-#|
 (deftype fac-move-plat-a (plat)
   ((dead-set-time float  :offset-assert 324)
    )
   :method-count-assert 40
   :size-assert         #x148
   :flag-assert         #x2800d00148
-  (:methods
-    (fac-move-plat-a-method-39 () none) ;; 39
-    )
   (:state-methods
-    locking-down ;; 38
-    plat-path-active ;; 36
     plat-idle ;; 35
+    plat-path-active ;; 36
+    locking-down ;; 38
+    )
+  (:methods
+    (fac-move-plat-a-method-39 (_type_) none) ;; 39
     )
   )
-|#
 
-#|
 (deftype fac-move-plat-b (plat)
   ()
   :method-count-assert 38
   :size-assert         #x144
   :flag-assert         #x2600d00144
   (:state-methods
-    plat-path-active ;; 36
     plat-idle ;; 35
+    plat-path-active ;; 36
     )
   )
-|#
 
-#|
 (deftype fac-rotfan (process-drawable)
-  ((motor-noise        uint32  :offset-assert 200)
+  ((root collide-shape :override)
+   (motor-noise        sound-id :offset-assert 200)
    (effect-opacity     float   :offset-assert 204)
-   (no-collision-timer uint64  :offset-assert 208)
+   (no-collision-timer time-frame :offset-assert 208)
    (attack-id          int32   :offset-assert 216)
    )
   :method-count-assert 24
   :size-assert         #xdc
   :flag-assert         #x18006000dc
-  (:methods
-    (fac-rotfan-method-23 () none) ;; 23
-    )
   (:state-methods
-    out ;; 22
-    spindown ;; 21
     idle ;; 20
+    spindown ;; 21
+    out ;; 22
+    )
+  (:methods
+    (is-out? (_type_) symbol) ;; 23
     )
   )
-|#
 
-#|
 (deftype fac-robot-ass-manager (process)
-  ((name             basic                 :offset-assert 0)
-   (mask             process-mask          :offset-assert 4)
-   (clock            basic                 :offset-assert 8)
-   (parent           uint32                :offset-assert 12)
-   (brother          uint32                :offset-assert 16)
-   (child            uint32                :offset-assert 20)
-   (ppointer         uint32                :offset-assert 24)
-   (self             basic                 :offset-assert 28)
-   (pool             basic                 :offset-assert 32)
-   (status           basic                 :offset-assert 36)
-   (pid              int32                 :offset-assert 40)
-   (main-thread      basic                 :offset-assert 44)
-   (top-thread       basic                 :offset-assert 48)
-   (entity           basic                 :offset-assert 52)
-   (level            basic                 :offset-assert 56)
-   (state            basic                 :offset-assert 60)
-   (prev-state       basic                 :offset-assert 64)
-   (next-state       basic                 :offset-assert 68)
-   (state-stack      basic                 :offset-assert 72)
-   (trans-hook       basic                 :offset-assert 76)
-   (post-hook        basic                 :offset-assert 80)
-   (event-hook       basic                 :offset-assert 84)
-   (allocated-length int32                 :offset-assert 88)
-   (heap-base        uint32                :offset-assert 92)
-   (heap-top         uint32                :offset-assert 96)
-   (heap-cur         uint32                :offset-assert 100)
-   (stack-frame-top  basic                 :offset-assert 104)
-   (heap             kheap        :inline  :offset-assert 92)
-   (connection-list  connectable  :inline  :offset-assert 108)
-   (stack            UNKNOWN      :dynamic :offset-assert 124)
-   )
+  ()
   :method-count-assert 15
   :size-assert         #x80
   :flag-assert         #xf00000080
@@ -51626,38 +51559,36 @@
     idle ;; 14
     )
   )
-|#
 
-#|
 (deftype factory-conveyor (conveyor)
   ()
   :method-count-assert 29
   :size-assert         #x100
   :flag-assert         #x1d00800100
   )
-|#
 
-#|
 (deftype fac-punch-wall (process-drawable)
-  ((notify-actor   basic   :offset-assert 200)
-   (spool-sound-id uint32  :offset-assert 204)
+  ((root           collide-shape :override)
+   (notify-actor   entity-actor :offset-assert 200)
+   (spool-sound-id sound-id :offset-assert 204)
    )
   :method-count-assert 22
   :size-assert         #xd0
   :flag-assert         #x16005000d0
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
     )
+  (:states
+    perish-immediately
+   )
   )
-|#
 
-;; (define-extern *fac-break-floor-exploder-params* joint-exploder-static-params)
-;; (define-extern *fac-break-fence-a-exploder-params* joint-exploder-static-params)
-;; (define-extern *fac-break-fence-b-exploder-params* joint-exploder-static-params)
-;; (define-extern *fac-break-fence-c-exploder-params* joint-exploder-static-params)
-;; (define-extern fac-rotfan-part-trans function)
-;; (define-extern perish-immediately state)
+(define-extern *fac-break-floor-exploder-params* joint-exploder-static-params)
+(define-extern *fac-break-fence-a-exploder-params* joint-exploder-static-params)
+(define-extern *fac-break-fence-b-exploder-params* joint-exploder-static-params)
+(define-extern *fac-break-fence-c-exploder-params* joint-exploder-static-params)
+(define-extern fac-rotfan-part-trans (function none :behavior fac-rotfan))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-indax                   ;;
@@ -57147,66 +57078,65 @@
 ;; hover-nav-factoryd             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *factoryd-adjacency* object)
+(define-extern *factoryd-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fac-part                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-ffexplo-dust-color* curve-color-fast)
-;; (define-extern *range-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-fac-fighter-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-ffexplo-color* curve-color-fast)
-;; (define-extern *range-ffexplo-alpha* curve2d-fast)
-;; (define-extern *range-ffexplo-scale-x* curve2d-fast)
-;; (define-extern *range-ffexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-ffexplo-alpha* curve2d-fast)
-;; (define-extern *curve-ffexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-ffexplo-scale-y* curve2d-fast)
-;; (define-extern *part-fac-fighter-explosion-texture-curve-settings* object)
-;; (define-extern *range-fgtexplo-color* curve-color-fast)
-;; (define-extern *range-fgtexplo-alpha* curve2d-fast)
-;; (define-extern *range-fgtexplo-scale-x* curve2d-fast)
-;; (define-extern *range-fgtexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-fgtexplo-alpha* curve2d-fast)
-;; (define-extern *curve-fgtexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-fgtexplo-scale-y* curve2d-fast)
-;; (define-extern *part-fac-tower-explosion-texture-curve-settings* object)
-;; (define-extern *range-ftexplo-dust-color* curve-color-fast)
-;; (define-extern *range-ftexplo-dust-alpha* curve2d-fast)
-;; (define-extern *range-ftexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-ftexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-ftexplo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-ftexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-ftexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-fac-tank-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-ftexplo-color* curve-color-fast)
-;; (define-extern *range-ftexplo-alpha* curve2d-fast)
-;; (define-extern *range-ftexplo-scale-x* curve2d-fast)
-;; (define-extern *range-ftexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-ftexplo-alpha* curve2d-fast)
-;; (define-extern *curve-ftexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-ftexplo-scale-y* curve2d-fast)
-;; (define-extern *part-fac-tank-explosion-texture-curve-settings* object)
-;; (define-extern *range-gthoexplo-color* curve-color-fast)
-;; (define-extern *range-gthoexplo-alpha* curve2d-fast)
-;; (define-extern *range-gthoexplo-scale-x* curve2d-fast)
-;; (define-extern *range-gthoexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-gthoexplo-alpha* curve2d-fast)
-;; (define-extern *curve-gthoexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-gthoexplo-scale-y* curve2d-fast)
-;; (define-extern *part-gun-tower-hit-object-texture-curve-settings* object)
+(define-extern *range-ffexplo-dust-color* curve-color-fast)
+(define-extern *range-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *part-fac-fighter-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-ffexplo-color* curve-color-fast)
+(define-extern *range-ffexplo-alpha* curve2d-fast)
+(define-extern *range-ffexplo-scale-x* curve2d-fast)
+(define-extern *range-ffexplo-scale-y* curve2d-fast)
+(define-extern *curve-ffexplo-alpha* curve2d-fast)
+(define-extern *curve-ffexplo-scale-x* curve2d-fast)
+(define-extern *curve-ffexplo-scale-y* curve2d-fast)
+(define-extern *part-fac-fighter-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-fgtexplo-color* curve-color-fast)
+(define-extern *range-fgtexplo-alpha* curve2d-fast)
+(define-extern *range-fgtexplo-scale-x* curve2d-fast)
+(define-extern *range-fgtexplo-scale-y* curve2d-fast)
+(define-extern *curve-fgtexplo-alpha* curve2d-fast)
+(define-extern *curve-fgtexplo-scale-x* curve2d-fast)
+(define-extern *curve-fgtexplo-scale-y* curve2d-fast)
+(define-extern *part-fac-tower-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-ftexplo-dust-color* curve-color-fast)
+(define-extern *range-ftexplo-dust-alpha* curve2d-fast)
+(define-extern *range-ftexplo-dust-scale-x* curve2d-fast)
+(define-extern *range-ftexplo-dust-scale-y* curve2d-fast)
+(define-extern *curve-ftexplo-dust-alpha* curve2d-fast)
+(define-extern *curve-ftexplo-dust-scale-x* curve2d-fast)
+(define-extern *curve-ftexplo-dust-scale-y* curve2d-fast)
+(define-extern *part-fac-tank-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-ftexplo-color* curve-color-fast)
+(define-extern *range-ftexplo-alpha* curve2d-fast)
+(define-extern *range-ftexplo-scale-x* curve2d-fast)
+(define-extern *range-ftexplo-scale-y* curve2d-fast)
+(define-extern *curve-ftexplo-alpha* curve2d-fast)
+(define-extern *curve-ftexplo-scale-x* curve2d-fast)
+(define-extern *curve-ftexplo-scale-y* curve2d-fast)
+(define-extern *part-fac-tank-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *range-gthoexplo-color* curve-color-fast)
+(define-extern *range-gthoexplo-alpha* curve2d-fast)
+(define-extern *range-gthoexplo-scale-x* curve2d-fast)
+(define-extern *range-gthoexplo-scale-y* curve2d-fast)
+(define-extern *curve-gthoexplo-alpha* curve2d-fast)
+(define-extern *curve-gthoexplo-scale-x* curve2d-fast)
+(define-extern *curve-gthoexplo-scale-y* curve2d-fast)
+(define-extern *part-gun-tower-hit-object-texture-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype factory-states (structure)
   ((light  light-state :inline :offset-assert 0)
    (blink0 float               :offset-assert 8)
@@ -57216,9 +57146,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype factoryd-states (structure)
   ((electricity electricity-state :inline :offset-assert 0)
    )
@@ -57226,26 +57154,25 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern update-mood-factory function)
-;; (define-extern update-mood-factoryd function)
-;; (define-extern set-factoryd-light! function)
+(define-extern update-mood-factory (function mood-context float int none :behavior time-of-day-proc))
+(define-extern update-mood-factoryd (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-factoryd-light! (function float int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *war-factory-vehicle-mask* object)
-;; (define-extern *war-factory-effects-mask* object)
-;; (define-extern *range-fac-dust-color* curve-color-fast)
-;; (define-extern *range-fac-dust-alpha* curve2d-fast)
-;; (define-extern *range-fac-dust-scale-x* curve2d-fast)
-;; (define-extern *range-fac-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-fac-dust-alpha* curve2d-fast)
-;; (define-extern *curve-fac-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-fac-dust-scale-y* curve2d-fast)
-;; (define-extern *part-hellcat-dust-landing-fac-curve-settings* object)
+(define-extern *war-factory-vehicle-mask* int)
+(define-extern *war-factory-effects-mask* int)
+(define-extern *range-fac-dust-color* curve-color-fast)
+(define-extern *range-fac-dust-alpha* curve2d-fast)
+(define-extern *range-fac-dust-scale-x* curve2d-fast)
+(define-extern *range-fac-dust-scale-y* curve2d-fast)
+(define-extern *curve-fac-dust-alpha* curve2d-fast)
+(define-extern *curve-fac-dust-scale-x* curve2d-fast)
+(define-extern *curve-fac-dust-scale-y* curve2d-fast)
+(define-extern *part-hellcat-dust-landing-fac-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factoryc-manager               ;;
@@ -57350,9 +57277,23 @@
   )
 ;; ---wvehicle-h:vehicle-wheel-surface-flag
 
+;; +++wvehicle-h:vehicle-wheel-surface-type
+(defenum vehicle-wheel-surface-type
+  :type uint8
+  (stone)
+  (dirt)
+  (sand)
+  (quicksand)
+  (water)
+  (wall)
+  (conveyor)
+  (none)
+  )
+;; ---wvehicle-h:vehicle-wheel-surface-type
+
 (deftype vehicle-wheel-surface (structure)
   ((flags            vehicle-wheel-surface-flag   :offset-assert 0)
-   (surface-type     uint8                        :offset-assert 1)
+   (surface-type     vehicle-wheel-surface-type   :offset-assert 1)
    (friction         float                        :offset-assert 4)
    (drag             float                        :offset-assert 8)
    (depth            float                        :offset-assert 12)
