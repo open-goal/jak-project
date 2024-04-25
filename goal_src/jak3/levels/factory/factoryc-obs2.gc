@@ -876,7 +876,7 @@
   )
 
 (defmethod init-from-entity! ((this fac-switch) (arg0 entity-actor))
-  (local-vars (r0-0 uint128) (a0-23 object) (a0-26 uint128) (a1-13 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s4-0 reaction) cshape-reaction-default)
@@ -922,25 +922,11 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-fac-switch" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (set! sv-16 0)
-  (let ((v1-26 (res-lump-data arg0 'actor-groups pointer :tag-ptr (the-as (pointer res-tag) (& sv-16)))))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-26 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
-      ((and v1-26 (begin
-                    (let ((a0-24 #t))
-                      (let ((a1-12 (the-as uint128 sv-16)))
-                        (.pcpyud a1-13 a1-12 r0-0)
-                        )
-                      (let ((a1-15 (the-as int (shr (* (the-as int a1-13) 2) 49))))
-                        (cmove-#f-zero a0-23 a1-15 a0-24)
-                        )
-                      )
-                    a0-23
-                    )
-            )
-       (let ((a0-25 (the-as uint128 sv-16)))
-         (.pcpyud a0-26 a0-25 r0-0)
-         )
-       (set! (-> this actor-group-count) (shr (* (the-as int a0-26) 2) 49))
+      ((and v1-26 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-26))
        )
       (else

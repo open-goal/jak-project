@@ -7,3 +7,162 @@
 
 ;; DECOMP BEGINS
 
+(deftype lfacrm1-states (structure)
+  ((door-current-interp  float)
+   (door-target-interp   float)
+   (blink                float)
+   )
+  )
+
+
+(defun update-lfacrm1-lights ((arg0 mood-context))
+  (let ((v1-0 (the-as object (-> arg0 state)))
+        (a1-0 (-> arg0 light-group))
+        (a2-1 (-> *level* level-default mood-context light-group))
+        )
+    (let ((a0-2 (-> a1-0 0)))
+      (set! (-> a0-2 dir0 direction x) -0.372)
+      (set! (-> a0-2 dir0 direction y) 0.853)
+      (set! (-> a0-2 dir0 direction z) 0.363)
+      (set! (-> a0-2 dir0 direction w) 0.0)
+      )
+    (set-vector! (-> a1-0 0 dir0 color) 0.65 0.855 0.82 1.0)
+    (let ((a0-4 (-> a1-0 0 dir1)))
+      (set! (-> a0-4 direction x) 0.372)
+      (set! (-> a0-4 direction y) 0.853)
+      (set! (-> a0-4 direction z) -0.363)
+      (set! (-> a0-4 direction w) 0.0)
+      )
+    (set-vector! (-> a1-0 0 dir1 color) 0.65 0.855 0.82 1.0)
+    (set-vector! (-> a1-0 0 ambi color) 0.627 0.718 1.0 1.0)
+    (set! (-> a1-0 0 dir0 extra x) 0.85)
+    (set! (-> a1-0 0 dir1 extra x) 0.3)
+    (set! (-> a1-0 0 dir2 extra x) 0.0)
+    (set! (-> a1-0 0 ambi extra x) 0.3)
+    (light-group-lerp!
+      (the-as light-group a1-0)
+      (the-as (pointer light-group) a1-0)
+      (the-as light-group a2-1)
+      (-> (the-as lfacrm1-states v1-0) door-current-interp)
+      )
+    )
+  (none)
+  )
+
+(defbehavior update-mood-lfacrm1 time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #t)
+  (update-lfacrm1-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((gp-0 (the-as object (-> arg0 state))))
+        (vector4-lerp!
+          (the-as vector (-> arg0 times))
+          (the-as vector (-> arg0 times))
+          (the-as vector (-> *level* level-default mood-context times))
+          (-> (the-as lfacrm1-states gp-0) door-current-interp)
+          )
+        (set! (-> arg0 times 1 w) 1.0)
+        (set! (-> arg0 times 2 w) (-> (the-as lfacrm1-states gp-0) blink))
+        (set! (-> arg0 times 3 w) 1.0)
+        (set! (-> arg0 times 4 w) 1.0)
+        (set! (-> arg0 times 5 w) 1.0)
+        (set! (-> arg0 times 6 w) 1.0)
+        (set! (-> arg0 times 7 w) 1.0)
+        (when (not (paused?))
+          (seek!
+            (-> (the-as lfacrm1-states gp-0) door-current-interp)
+            (-> (the-as lfacrm1-states gp-0) door-target-interp)
+            (* 0.3745 (seconds-per-frame))
+            )
+          (let ((v1-14 (-> *display* part-clock frame-counter)))
+            (if (< (* 0.2 (the float (mod v1-14 600))) 60.0)
+                (seek! (-> (the-as lfacrm1-states gp-0) blink) 0.0 (* 0.5 (seconds-per-frame)))
+                (seek! (-> (the-as lfacrm1-states gp-0) blink) 1.0 (* 0.5 (seconds-per-frame)))
+                )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun set-lfacrm1-door! ((arg0 float))
+  (let ((v1-1 (level-get *level* 'lfacrm1)))
+    (when v1-1
+      (let ((v1-2 (-> v1-1 mood-context state)))
+        (set! (-> v1-2 1) (the-as uint arg0))
+        (if (= arg0 0.0)
+            (set! (-> v1-2 0) (the-as uint arg0))
+            )
+        )
+      )
+    )
+  (let ((v1-4 (level-get *level* 'factorya)))
+    (when v1-4
+      (let ((v1-5 (the-as object (-> v1-4 mood-context state))))
+        (set! (-> (the-as lfacrm1-states v1-5) door-target-interp) arg0)
+        (if (= arg0 0.0)
+            (set! (-> (the-as lfacrm1-states v1-5) door-current-interp) arg0)
+            )
+        )
+      )
+    )
+  (none)
+  )
+
+(deftype lfac-hanger-door (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-lfac-hanger-door lfac-hanger-door lfac-hanger-door-lod0-jg lfac-hanger-door-idle-ja
+              ((lfac-hanger-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 25)
+              )
+
+(defstate idle (lfac-hanger-door)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this lfac-hanger-door) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-lfac-hanger-door" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object this idle))
+  )
+
+(defbehavior lfac-hanger-door-init-by-other lfac-hanger-door ((arg0 vector) (arg1 entity-actor))
+  (process-entity-set! self arg1)
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-lfac-hanger-door" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  )
