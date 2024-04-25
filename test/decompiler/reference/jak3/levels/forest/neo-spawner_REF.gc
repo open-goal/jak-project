@@ -5,7 +5,7 @@
 ;; WARN: Return type mismatch int vs none.
 (defun foresta-login ((arg0 level))
   (set! *nav-network* (new 'loading-level 'nav-network))
-  (nav-network-method-9 *nav-network* 128 10)
+  (alloc-nav-network-for-level! *nav-network* 128 10)
   0
   (none)
   )
@@ -684,21 +684,11 @@
     )
   :trans (-> (method-of-type neo-spawner open) trans)
   :code (behavior ()
-    (local-vars (a2-1 (function joint-control-channel float float float float :behavior process)))
     (ja-channel-push! 1 (seconds 0.1))
     (ja-no-eval :group! neo-spawner-spit-start-ja :num! (seek!) :frame-num 0.0)
     (until (ja-done? 0)
       (suspend)
-      (let ((a0-2 (-> self skel root-channel 0)))
-        (set! (-> a0-2 param 0) (the float (+ (-> a0-2 frame-group frames num-frames) -1)))
-        (set! (-> a0-2 param 1) 1.0)
-        (let ((t9-2 joint-control-channel-group-eval!)
-              (a1-2 #f)
-              )
-          (set! a2-1 num-func-seek!)
-          (t9-2 a0-2 (the-as art-joint-anim a1-2) a2-1)
-          )
-        )
+      (ja :num! (seek!))
       )
     (spawn-neo self)
     (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
@@ -719,7 +709,7 @@
       )
     (let ((gp-0 (new 'stack-no-clear 'matrix)))
       (let ((a1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
-        (matrix-f-compose gp-0 a1-5 (the-as float a2-1))
+        (matrix-f-compose gp-0 a1-5)
         )
       (set! (-> gp-0 trans quad) (-> self root trans quad))
       (if (logtest? (-> *part-group-id-table* 566 flags) (sp-group-flag sp13))
@@ -959,7 +949,3 @@
       )
     )
   )
-
-
-
-
