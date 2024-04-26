@@ -46063,21 +46063,18 @@
 ;; bombbot-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bombbot-node (structure)
   ((position    vector :inline :offset-assert 0)
    (nav-mesh-id uint32         :offset-assert 16)
-   (pos-x       float          :offset-assert 0)
-   (pos-y       float          :offset-assert 4)
-   (pos-z       float          :offset-assert 8)
+   (pos-x       float          :offset 0)
+   (pos-y       float          :offset 4)
+   (pos-z       float          :offset 8)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype bombbot-path (structure)
   ((node-count uint16                       :offset-assert 0)
    (node       (inline-array bombbot-node)  :offset-assert 4) ;; guessed by decompiler
@@ -46086,56 +46083,49 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bombbot-path                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *bombbot-path-1* object) ;; bombbot-path
-;; (define-extern *bombbot-path-2* object) ;; bombbot-path
-;; (define-extern *bombbot-path-3* object) ;; bombbot-path
+(define-extern *bombbot-path-1* bombbot-path)
+(define-extern *bombbot-path-2* bombbot-path)
+(define-extern *bombbot-path-3* bombbot-path)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; bombbot                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype bombbot-hud (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype bombbot-bomb (process-focusable)
-  ((explode-part        basic          :offset-assert 208)
+  ((explode-part        sparticle-launch-control :offset-assert 208)
    (rot-axis            vector :inline :offset-assert 224)
    (rot-angle           float          :offset-assert 240)
-   (warning-glow-part   basic          :offset-assert 244)
-   (next-countdown-tick uint64         :offset-assert 248)
-   (fizzle-timer        uint64         :offset-assert 256)
+   (warning-glow-part   sparticle-launch-control :offset-assert 244)
+   (next-countdown-tick time-frame     :offset-assert 248)
+   (fizzle-timer        time-frame     :offset-assert 256)
    )
   :method-count-assert 34
   :size-assert         #x108
   :flag-assert         #x2200900108
-  (:methods
-    (bombbot-bomb-method-32 () none) ;; 32
-    (bombbot-bomb-method-33 () none) ;; 33
-    )
   (:state-methods
     idle ;; 28
     smoke ;; 29
     explode ;; 30
     back ;; 31
     )
+  (:methods
+    (bombbot-bomb-method-32 (_type_) none) ;; 32
+    (bombbot-bomb-method-33 (_type_) none) ;; 33
+    )
   )
-|#
 
-#|
 (deftype bombbot-foot (structure)
   ((pos-offset    vector :inline :offset-assert 0)
    (joint-index   uint32         :offset-assert 16)
@@ -46152,12 +46142,13 @@
   :size-assert         #x6c
   :flag-assert         #x90000006c
   )
-|#
 
-#|
+(declare-type city-attacker-info structure)
+(declare-type mission-squad-control structure)
+
 (deftype bombbot (nav-enemy)
   ((joint-ik               joint-mod-ik                4       :offset-assert 620) ;; guessed by decompiler
-   (feet                   bombbot-foot                4       :offset-assert 640) ;; guessed by decompiler
+   (feet                   bombbot-foot                4 :inline :offset-assert 640) ;; guessed by decompiler
    (legs-strength          float                       4       :offset-assert 1088) ;; guessed by decompiler
    (last-trans             vector                      :inline :offset-assert 1104)
    (linear-speed           vector                      :inline :offset-assert 1120)
@@ -46170,11 +46161,11 @@
    (city-path              bombbot-path                        :offset-assert 1216)
    (current-node           uint32                              :offset-assert 1220)
    (shot-count             uint32                              :offset-assert 1224)
-   (next-shoot             uint64                              :offset-assert 1232)
-   (stop-shoot             uint64                              :offset-assert 1240)
-   (next-target            uint64                              :offset-assert 1248)
-   (start-target           uint64                              :offset-assert 1256)
-   (beep-time              uint64                              :offset-assert 1264) ;; time-frame
+   (next-shoot             time-frame                          :offset-assert 1232)
+   (stop-shoot             time-frame                          :offset-assert 1240)
+   (next-target            time-frame                          :offset-assert 1248)
+   (start-target           time-frame                          :offset-assert 1256)
+   (beep-time              time-frame                          :offset-assert 1264) ;; time-frame
    (target-pos             vector                      :inline :offset-assert 1280)
    (start-target-pos       vector                      :inline :offset-assert 1296)
    (start-target-vel       vector                      :inline :offset-assert 1312)
@@ -46204,42 +46195,41 @@
    (gun-type               uint32                              :offset-assert 1492)
    (drop-mask              uint32                              :offset-assert 1496)
    (attacker-info          city-attacker-info                  :offset-assert 1500)
-   (mission-squad          basic                               :offset-assert 1504)
+   (mission-squad          mission-squad-control               :offset-assert 1504)
    (max-hit-points         float                               :offset-assert 1508)
    )
   :method-count-assert 209
   :size-assert         #x5e8
   :flag-assert         #xd1057005e8
-  (:methods
-    (bombbot-method-192 () none) ;; 192
-    (bombbot-method-194 () none) ;; 194
-    (bombbot-method-195 () none) ;; 195
-    (bombbot-method-196 () none) ;; 196
-    (bombbot-method-197 () none) ;; 197
-    (bombbot-method-198 () none) ;; 198
-    (bombbot-method-199 () none) ;; 199
-    (bombbot-method-200 () none) ;; 200
-    (bombbot-method-201 () none) ;; 201
-    (bombbot-method-202 () none) ;; 202
-    (bombbot-method-203 () none) ;; 203
-    (bombbot-method-204 () none) ;; 204
-    (bombbot-method-205 () none) ;; 205
-    (bombbot-method-206 () none) ;; 206
-    (bombbot-method-207 () none) ;; 207
-    (bombbot-method-208 () none) ;; 208
-    )
   (:state-methods
-    explode ;; 190
-    die ;; 40
-    drop-bombs ;; 193
-    hostile ;; 38
-    blow-wall ;; 191
     notice ;; 35
+    hostile ;; 38
+    die ;; 40
+    explode ;; 190
+    blow-wall ;; 191
+    undefined ;; 192, not defined
+    drop-bombs ;; 193
+    )
+  (:methods
+    ; (bombbot-method-192 () none) ;; 192
+    (bombbot-method-194 (_type_) none) ;; 194
+    (bombbot-method-195 (_type_) none) ;; 195
+    (bombbot-method-196 (_type_) none) ;; 196
+    (bombbot-method-197 (_type_) none) ;; 197
+    (bombbot-method-198 (_type_) none) ;; 198
+    (bombbot-method-199 (_type_) none) ;; 199
+    (bombbot-method-200 (_type_) none) ;; 200
+    (bombbot-method-201 (_type_) none) ;; 201
+    (bombbot-method-202 (_type_) none) ;; 202
+    (bombbot-method-203 (_type_) none) ;; 203
+    (bombbot-method-204 (_type_) none) ;; 204
+    (bombbot-method-205 (_type_) none) ;; 205
+    (bombbot-method-206 (_type_) none) ;; 206
+    (bombbot-method-207 (_type_) none) ;; 207
+    (bombbot-method-208 (_type_) none) ;; 208
     )
   )
-|#
 
-#|
 (deftype bombbot-shot (guard-shot)
   ()
   :method-count-assert 41
@@ -46249,9 +46239,7 @@
     impact ;; 22
     )
   )
-|#
 
-#|
 (deftype spring-setup (structure)
   ((bpos1 vector  :offset-assert 0)
    (wpos2 vector  :offset-assert 4)
@@ -46260,13 +46248,11 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype bombbot-spawn-params (structure)
   ((position    vector       :inline :offset-assert 0)
    (quat        quaternion   :inline :offset-assert 16)
-   (nav-mesh    basic                :offset-assert 32)
+   (nav-mesh    nav-mesh             :offset-assert 32)
    (path        bombbot-path         :offset-assert 36)
    (first-node  uint32               :offset-assert 40)
    (stop-offset float                :offset-assert 44)
@@ -46275,9 +46261,7 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype bomb-bot (bombbot)
   ()
   :method-count-assert 209
@@ -46287,48 +46271,40 @@
     hostile ;; 38
     )
   )
-|#
 
-#|
 (deftype bombbot-player (bombbot)
   ((camera-x-angle float   :offset-assert 1512)
-   (hold-fire      basic   :offset-assert 1516)
-   (hold-fire-time uint64  :offset-assert 1520)
-   (health-hud     uint64  :offset-assert 1528)
+   (hold-fire      symbol  :offset-assert 1516)
+   (hold-fire-time time-frame :offset-assert 1520)
+   (health-hud     handle  :offset-assert 1528)
    )
   :method-count-assert 210
   :size-assert         #x600
   :flag-assert         #xd205800600
   (:state-methods
-    done ;; 209
-    explode ;; 190
     hostile ;; 38
+    explode ;; 190
+    done ;; 209
     )
   )
-|#
 
-#|
 (deftype task-manager-blow-barricade (task-manager)
-  ((check-timer       uint64                     :offset-assert 236)
-   (bombbot-h         uint64                     :offset-assert 244)
-   (actor-group       uint32                     :offset-assert 252)
-   (actor-group-count int32                      :offset-assert 256)
-   (done?             int32                      :offset-assert 260)
-   (minimap           connection-minimap         :offset-assert 264)
-   (wall-h            uint64                     :offset-assert 268)
-   (start-point       vector             :inline :offset-assert 284)
+  ((check-timer       time-frame                 :offset-assert 240)
+   (bombbot-h         handle                     :offset-assert 248)
+   (actor-group       uint32                     :offset-assert 256)
+   (actor-group-count int32                      :offset-assert 260)
+   (done?             int32                      :offset-assert 264)
+   (minimap           connection-minimap         :offset-assert 268)
+   (wall-h            handle                     :offset-assert 272)
+   (start-point       vector             :inline :offset-assert 288)
    )
   :method-count-assert 33
   :size-assert         #x130
   :flag-assert         #x2100b00130
   (:methods
-    (task-manager-blow-barricade-method-32 () none) ;; 32
-    )
-  (:state-methods
-    active ;; 15
+    (task-manager-blow-barricade-method-32 (_type_) none) ;; 32
     )
   )
-|#
 
 #|
 (deftype task-manager-port-fight (task-manager)
