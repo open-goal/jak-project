@@ -13,6 +13,7 @@
 #include "game/external/discord.h"
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
+#include "game/graphics/screenshot.h"
 #include "game/kernel/common/Ptr.h"
 #include "game/kernel/common/kernel_types.h"
 #include "game/kernel/common/kprint.h"
@@ -879,6 +880,14 @@ u32 pc_is_imgui_visible() {
   return bool_to_symbol(Gfx::g_debug_settings.show_imgui);
 }
 
+void pc_screen_shot() {
+  g_want_screenshot = true;
+}
+
+void pc_register_screen_shot_settings(u32 ptr) {
+  register_screen_shot_settings(Ptr<ScreenShotSettings>(ptr).c());
+}
+
 /// Initializes all functions that are common across all game versions
 /// These functions have the same implementation and do not use any game specific functions (other
 /// than the one to create a function in the first place)
@@ -980,4 +989,7 @@ void init_common_pc_port_functions(
 
   // debugging tools
   make_func_symbol_func("pc-filter-debug-string?", (void*)pc_filter_debug_string);
+  make_func_symbol_func("pc-screen-shot", (void*)pc_screen_shot);
+  make_func_symbol_func("pc-register-screen-shot-settings",
+                        (void*)pc_register_screen_shot_settings);
 }
