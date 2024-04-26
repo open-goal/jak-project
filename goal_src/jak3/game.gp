@@ -136,7 +136,7 @@
 (cgo-file "desinter.gd" common-dep)
 ; (cgo-file "desjump.gd" common-dep)
 (cgo-file "desliz.gd" common-dep)
-; (cgo-file "desoasis.gd" common-dep)
+(cgo-file "desoasis.gd" common-dep)
 (cgo-file "desrace1.gd" common-dep)
 (cgo-file "desrace2.gd" common-dep)
 (cgo-file "desrally.gd" common-dep)

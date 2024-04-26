@@ -5,5 +5,732 @@
 ;; name in dgo: bot-h
 ;; dgos: DESOASIS
 
+(declare-type bot-speech-list basic)
+(declare-type bot-speech-list-shuffle bot-speech-list)
+
+;; +++bot-task-bits
+(defenum bot-task-bits
+  :type uint32
+  :bitfield #t
+  (bb0)
+  (bb1)
+  (bb2)
+  (bb3)
+  (bb4)
+  (bb5)
+  (bb6)
+  (bb7)
+  )
+;; ---bot-task-bits
+
+
+;; +++bot-speech-info-flag
+(defenum bot-speech-info-flag
+  :type uint16
+  :bitfield #t
+  (playing)
+  (sf01)
+  (sf02)
+  (sf03)
+  (sf04)
+  (sf05)
+  (sf06)
+  (sf08)
+  (sf09)
+  (sf10)
+  (sf11)
+  (sf12)
+  (sf13)
+  (sf14)
+  (sf15)
+  )
+;; ---bot-speech-info-flag
+
+
+;; +++bot-flag
+(defenum bot-flag
+  :type uint32
+  :bitfield #t
+  (bf00 0)
+  (failed 1)
+  (bf02 2)
+  (bf03 3)
+  (bf04 4)
+  (bf05 5)
+  (bf06 6)
+  (attacked 7)
+  (too-far-fail 8)
+  (bf09 9)
+  (bf10 10)
+  (bf11 11)
+  (bf12 12)
+  (bf13 13)
+  (bf14 14)
+  (bf15 15)
+  (bf16 16)
+  (bf17 17)
+  (bf18 18)
+  (bf19 19)
+  (bf20 20)
+  (bf21 21)
+  (bf22 22)
+  (bf23 23)
+  (bf24 24)
+  (bf25 25)
+  (bf26 26)
+  (bf27 27)
+  (bf28 28)
+  (bf29 29)
+  (bf30 30)
+  (bf31 31)
+  )
+;; ---bot-flag
+
+
+;; +++waypoint-bits
+(defenum waypoint-bits
+  :bitfield #t
+  :type uint32
+  (wb0)
+  (wb1)
+  (wb2)
+  (wb3)
+  (wb4)
+  (wb5)
+  (wb6)
+  (wb7)
+  )
+;; ---waypoint-bits
+
+
+;; +++waypoint-bits-s32
+(defenum waypoint-bits-s32
+  :bitfield #t
+  :type int32
+  :copy-entries waypoint-bits
+  )
+;; ---waypoint-bits-s32
+
+
+;; +++bot-speech-list-flag
+(defenum bot-speech-list-flag
+  :type uint8
+  :bitfield #t
+  (bsl0 0)
+  (bsl1 1)
+  (bsl2 2)
+  (bsl3 3)
+  )
+;; ---bot-speech-list-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype bot-focus-info (structure)
+  ((max-los-dist      float)
+   (fproc             process-focusable)
+   (bullseye-xz-dist  float)
+   (ry-diff           float)
+   (my-facing-ry      float)
+   (bullseye-ry       float)
+   (los               int8)
+   (update-time       time-frame)
+   (bullseye          vector  :inline)
+   (pos               vector  :inline)
+   (my-facing-xz-dir  vector  :inline)
+   (bullseye-xz-dir   vector  :inline)
+   )
+  )
+
+
+(deftype bot-turn-info (structure)
+  ((facing-ry           float)
+   (targ-ry             float)
+   (ry-diff             float)
+   (predicted-ry-diff   float)
+   (predicted-targ-ry   float)
+   (facing-dir          vector      :inline)
+   (targ-pos            vector      :inline)
+   (predicted-targ-pos  vector      :inline)
+   (src-quat            quaternion  :inline)
+   )
+  )
+
+
+(deftype bot-speech-tuning (structure)
+  ((fo-min    int32)
+   (fo-max    int32)
+   (fo-curve  int8)
+   (trans?    symbol)
+   )
+  )
+
+
+(deftype bot-speech-info (structure)
+  ((flags      bot-speech-info-flag)
+   (hold-time  uint16)
+   (slave-id   int8)
+   (tuning-id  int8)
+   (name       string)
+   )
+  )
+
+
+(deftype bot-spot (structure)
+  ((center           vector  :inline)
+   (center-x         float   :overlay-at (-> center data 0))
+   (center-y         float   :overlay-at (-> center data 1))
+   (center-z         float   :overlay-at (-> center data 2))
+   (inside-xz-dist   float   :overlay-at (-> center data 3))
+   (blocked-xz-dist  float)
+   )
+  )
+
+
+(deftype bot-waypoint (basic)
+  ((waypoint-id       int16)
+   (nav-mesh-index    int8)
+   (skip-to           int8)
+   (on-set            (function bot object))
+   (on-update         (function bot object))
+   (on-skipping-here  (function bot object))
+   (check-too-far     symbol)
+   (warn-dist         float)
+   (fail-dist-delta   float)
+   )
+  )
+
+
+(deftype bot-course (basic)
+  ((course-id               uint8)
+   (speech-count            uint16)
+   (spot-count              uint16)
+   (retry-cookie            uint8)
+   (too-far-warn-speeches   bot-speech-list-shuffle)
+   (too-far-fail-speeches   bot-speech-list)
+   (attack-player-speeches  bot-speech-list)
+   (default-check-too-far   symbol)
+   (waypoints               (array bot-waypoint))
+   (speeches                (inline-array bot-speech-info))
+   (speech-tunings          (inline-array bot-speech-tuning))
+   (dirs                    (inline-array vector))
+   (spots                   (inline-array bot-spot))
+   )
+  )
+
+
+(deftype bot (nav-enemy)
+  ((bot-flags                        bot-flag)
+   (min-speed                        float)
+   (max-speed                        float)
+   (follow-offset                    float)
+   (too-far-warn-dist                float)
+   (too-far-fail-dist-delta          float)
+   (too-far-warn-dist-default        float)
+   (too-far-fail-dist-delta-default  float)
+   (travel-prev-ry                   float)
+   (travel-prev-ry1                  float)
+   (player-blocking                  float)
+   (ai-ctrl                          ai-task-control)
+   (course                           bot-course)
+   (waypoint                         bot-waypoint)
+   (waypoint-bits                    waypoint-bits)
+   (waypoint-int32a                  waypoint-bits-s32)
+   (bot-task-bits                    bot-task-bits)
+   (hit-invuln-ignore-me-delay       uint32)
+   (hit-invuln-focus-disable-delay   uint32)
+   (warn-to-fail-timeout             uint32)
+   (warn-min-delay                   uint32)
+   (warn-max-delay                   uint32)
+   (spot-color                       uint32)
+   (waypoint-request                 int16)
+   (hit-by-enemy-count               uint16)
+   (hit-by-player-count              uint16)
+   (notice-enemy-dist                float)
+   (channel                          gui-channel)
+   (focus-mode                       int8)
+   (nav-mesh-index                   int8)
+   (delay-too-far-check              int8)
+   (slave-id                         int8)
+   (vehicle-seat-index               int8)
+   (bot-health-index                 int8)
+   (task                             game-task-control)
+   (task-node                        game-task-node-info)
+   (swivel-joint-mod                 joint-mod)
+   (health-handle                    handle)
+   (poi-handle                       handle)
+   (my-simple-focus                  (pointer simple-focus))
+   (attacker-handle                  handle)
+   (scene-player-handle              handle)
+   (master-handle                    handle)
+   (vehicle-handle                   handle)
+   (hit-invuln-starting-time         time-frame)
+   (danger-time                      time-frame)
+   (attacker-time                    time-frame)
+   (started-warning-time             time-frame)
+   (waypoint-time0                   time-frame)
+   (next-too-far-warn-time           time-frame)
+   (spot                             bot-spot        :inline)
+   (follow-dir                       vector          :inline)
+   (focus-info                       bot-focus-info  :inline)
+   )
+  (:state-methods
+    failed
+    hidden
+    )
+  (:methods
+    (clear-poi (_type_) none)
+    (bot-method-193 (_type_ vector vector vector vector vector float) none)
+    (bot-method-194 (_type_ bot-turn-info process-focusable float) float)
+    (alive? (_type_) symbol)
+    (bot-method-196 (_type_) none)
+    (debug-draw-spot (_type_ bot-spot rgba) symbol)
+    (bot-method-198 (_type_ int (pointer uint8) int) symbol)
+    (bot-method-199 (_type_) none)
+    (scene-stop (_type_) symbol)
+    (bot-method-201 (_type_) process)
+    (bot-method-202 (_type_) symbol)
+    (bot-method-203 (_type_) none)
+    (bot-method-204 (_type_) none)
+    (bot-method-205 (_type_) symbol)
+    (outside-spot-radius? (_type_ bot-spot vector symbol) symbol)
+    (attacked-by-player? (_type_ process-focusable) object)
+    (set-fail-flag (_type_) none)
+    (bot-method-209 (_type_) none)
+    (set-cam-height (_type_ vector) float)
+    (cam-move-to-bot (_type_) none)
+    (bot-method-212 (_type_) none)
+    (set-next-focus! (_type_ enemy enemy-best-focus) enemy)
+    (choose-spot (_type_ int (pointer uint8)) int)
+    (play-next-speech (_type_) gui-connection)
+    (bot-method-216 (_type_) none)
+    (scene-play (_type_ scene symbol) symbol)
+    (play-speech-by-id (_type_ int) gui-connection)
+    (play-speech-by-name (_type_ string) sound-id)
+    (bot-method-220 (_type_) symbol)
+    (channel-active? (_type_ gui-channel) symbol)
+    (init-fields! (_type_) none)
+    (bot-method-223 (_type_) none)
+    (reset-warn-time (_type_) none)
+    (go-to-waypoint! (_type_ int symbol) object)
+    (bot-method-226 (_type_) object)
+    (skip-waypoint (_type_) object)
+    (bot-method-228 (_type_) none)
+    (course-speech-ended? (_type_ int) symbol)
+    (course-speech-playing? (_type_ int) symbol)
+    (player-blocking-spot? (_type_ bot-spot) symbol)
+    (bot-method-232 (_type_ gui-channel symbol) int)
+    (bot-method-233 (_type_) quaternion)
+    (bot-method-234 (_type_ vector) none)
+    (bot-method-235 (_type_ symbol) none)
+    (bot-check-too-far (_type_) symbol)
+    )
+  )
+
+
+(define *bot-task-pool* (new 'static 'ai-task-pool
+                          :anchor #f
+                          :tasks (new 'static 'array uint32 240
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            #x0
+                            )
+                          :tasks-length #x14
+                          )
+        )
+
+(ai-task-pool-method-11 *bot-task-pool*)
+
+(deftype bot-speech-list (basic)
+  ((flags             bot-speech-list-flag)
+   (retry-cookie      uint8)
+   (last-local-index  int16)
+   (speech-indexes    (array int16))
+   )
+  (:methods
+    (get-next-speech-idx (_type_ bot (inline-array bot-speech-info) bot-speech-info-flag) int)
+    (reset-index (_type_ symbol) none)
+    )
+  )
+
+
+(defmethod reset-index ((this bot-speech-list) (arg0 symbol))
+  (if arg0
+      (logclear! (-> this flags) (bot-speech-list-flag bsl0))
+      )
+  (set! (-> this last-local-index) -1)
+  (none)
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod get-next-speech-idx ((this bot-speech-list) (arg0 bot) (arg1 (inline-array bot-speech-info)) (arg2 bot-speech-info-flag))
+  (let ((v1-1 (-> arg0 course retry-cookie)))
+    (when (!= v1-1 (-> this retry-cookie))
+      (set! (-> this retry-cookie) (-> arg0 course retry-cookie))
+      (reset-index this #t)
+      )
+    )
+  (let ((s2-0 (-> this speech-indexes))
+        (s1-0 (-> this last-local-index))
+        )
+    (when (< s1-0 0)
+      (when (not (logtest? (-> this flags) (bot-speech-list-flag bsl0)))
+        (logior! (-> this flags) (bot-speech-list-flag bsl0))
+        (set! arg2 (logior arg2 (bot-speech-info-flag sf02)))
+        )
+      (reset-index this #f)
+      (if (logtest? (-> this flags) (bot-speech-list-flag bsl2))
+          (set! s1-0 (+ (rnd-int arg0 (-> s2-0 length)) -1))
+          (set! s1-0 -1)
+          )
+      )
+    (until #f
+      (when (>= s1-0 (+ (-> s2-0 length) -1))
+        (if (not (logtest? (-> this flags) (bot-speech-list-flag bsl1)))
+            (goto cfg-23)
+            )
+        (reset-index this #f)
+        (set! s1-0 -1)
+        )
+      (+! s1-0 1)
+      (let* ((s0-0 (-> s2-0 s1-0))
+             (v1-37 (-> arg1 s0-0 flags))
+             )
+        (when (and (not (logtest? arg2 v1-37))
+                   (or (not (logtest? v1-37 (bot-speech-info-flag sf11))) (not (course-speech-playing? arg0 s0-0)))
+                   )
+          (set! (-> this last-local-index) s1-0)
+          (return s0-0)
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-23)
+  -1
+  )
+
+(deftype bot-speech-list-shuffle (bot-speech-list)
+  ((history-mask       uint64)
+   (history-mask-full  uint64)
+   )
+  )
+
+
+(defmethod reset-index ((this bot-speech-list-shuffle) (arg0 symbol))
+  (let ((t9-0 (method-of-type bot-speech-list reset-index)))
+    (t9-0 this arg0)
+    )
+  (set! (-> this history-mask) (the-as uint 0))
+  (when (zero? (-> this history-mask-full))
+    (let ((v0-2 0))
+      (let ((v1-2 1))
+        (countdown (a0-3 (-> this speech-indexes length))
+          (set! v0-2 (logior v0-2 v1-2))
+          (set! v1-2 (* v1-2 2))
+          )
+        )
+      (set! (-> this history-mask-full) (the-as uint v0-2))
+      )
+    )
+  (none)
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod get-next-speech-idx ((this bot-speech-list-shuffle) (arg0 bot) (arg1 (inline-array bot-speech-info)) (arg2 bot-speech-info-flag))
+  (local-vars (sv-16 int))
+  (let ((v1-1 (-> arg0 course retry-cookie)))
+    (when (!= v1-1 (-> this retry-cookie))
+      (set! (-> this retry-cookie) (-> arg0 course retry-cookie))
+      (reset-index this #t)
+      )
+    )
+  (set! sv-16 (-> this last-local-index))
+  (when (< sv-16 0)
+    (when (not (logtest? (-> this flags) (bot-speech-list-flag bsl0)))
+      (logior! (-> this flags) (bot-speech-list-flag bsl0))
+      (set! arg2 (logior arg2 (bot-speech-info-flag sf02)))
+      )
+    (reset-index this #f)
+    )
+  (let ((s2-0 0))
+    (if (>= sv-16 0)
+        (set! s2-0 (ash 1 sv-16))
+        )
+    (if (logtest? (-> this flags) (bot-speech-list-flag bsl3))
+        (set! s2-0 (logior s2-0 (-> this history-mask)))
+        )
+    (until #f
+      (when (and (= s2-0 (-> this history-mask-full)) (logtest? (-> this flags) (bot-speech-list-flag bsl3)))
+        (if (not (logtest? (-> this flags) (bot-speech-list-flag bsl1)))
+            (return -1)
+            )
+        (reset-index this #f)
+        (if (>= sv-16 0)
+            (set! s2-0 (ash 1 sv-16))
+            (set! s2-0 0)
+            )
+        )
+      (let* ((s1-0 (enemy-method-131 arg0 (-> this speech-indexes length) s2-0))
+             (s0-0 (-> this speech-indexes s1-0))
+             (v1-47 (-> arg1 s0-0 flags))
+             )
+        (set! s2-0 (logior s2-0 (ash 1 s1-0)))
+        (when (and (not (logtest? arg2 v1-47))
+                   (or (not (logtest? v1-47 (bot-speech-info-flag sf11))) (not (course-speech-playing? arg0 s0-0)))
+                   )
+          (set! (-> this last-local-index) s1-0)
+          (logior! (-> this history-mask) (ash 1 s1-0))
+          (return s0-0)
+          )
+        )
+      )
+    )
+  #f
+  -1
+  )
+
+(deftype bot-course-table (basic)
+  ((course  bot-course  1)
+   )
+  )
+
+
+(define *bot-course-table* (new 'static 'bot-course-table))
