@@ -416,11 +416,11 @@
          (vf4 :class vf)
          (vf5 :class vf)
          )
-    (let* ((gp-0 (new 'stack-no-clear 'collide-tri-result))
+    (let* ((gp-0 (new 'stack-no-clear 'collide-query))
            (f0-1 (resolve-moving-sphere-tri
                    arg1
                    gp-0
-                   (-> this prim-core)
+                   (the-as sphere (-> this prim-core))
                    (-> arg0 move-dist)
                    (-> arg0 best-dist)
                    (-> this prim-core action)
@@ -441,13 +441,13 @@
             (b! (= v1-5 #f) cfg-5 :likely-delay (set! a2-2 (the-as collide-shape-prim #f)))
             (b! (logtest? (-> a0-3 penetrate-using) (-> v1-5 penetrated-by)) cfg-6 :delay (nop!))
             (label cfg-5)
-            (.lvf vf3 (&-> gp-0 vertex 0 quad))
-            (.lvf vf4 (&-> gp-0 vertex 1 quad))
-            (.lvf vf5 (&-> gp-0 vertex 2 quad))
-            (.lvf vf1 (&-> gp-0 intersect quad))
-            (.lvf vf2 (&-> gp-0 normal quad))
-            (let ((a0-6 (-> gp-0 pat))
-                  (a1-4 (-> gp-0 collide-ptr))
+            (.lvf vf3 (&-> gp-0 best-other-tri vertex 0 quad))
+            (.lvf vf4 (&-> gp-0 best-other-tri vertex 1 quad))
+            (.lvf vf5 (&-> gp-0 best-other-tri vertex 2 quad))
+            (.lvf vf1 (&-> gp-0 best-other-tri intersect quad))
+            (.lvf vf2 (&-> gp-0 best-other-tri normal quad))
+            (let ((a0-6 (-> gp-0 best-other-tri pat))
+                  (a1-4 (-> gp-0 best-other-tri collide-ptr))
                   )
               (set! (-> arg0 best-dist) f0-1)
               (.svf (&-> arg0 best-other-tri vertex 0 quad) vf3)
@@ -463,14 +463,7 @@
             (label cfg-6)
             (b! (not v1-5) cfg-8 :delay (empty-form))
             )
-          (add-touching-prims
-            *touching-list*
-            this
-            a2-2
-            f0-1
-            (the-as collide-tri-result #f)
-            (the-as collide-tri-result (-> gp-0 vertex))
-            )
+          (add-touching-prims *touching-list* this a2-2 f0-1 (the-as collide-tri-result #f) (-> gp-0 best-other-tri))
           )
         )
       )
@@ -520,11 +513,11 @@
          (vf4 :class vf)
          (vf5 :class vf)
          )
-    (let* ((gp-0 (new 'stack-no-clear 'collide-tri-result))
+    (let* ((gp-0 (new 'stack-no-clear 'collide-query))
            (f0-1 (resolve-moving-sphere-sphere
                    arg1
                    gp-0
-                   (-> this prim-core)
+                   (the-as sphere (-> this prim-core))
                    (-> arg0 move-dist)
                    (-> arg0 best-dist)
                    (-> arg1 prim-core action)
@@ -544,13 +537,13 @@
           (b! (zero? a1-2) cfg-4 :delay (nop!))
           (b! (logtest? (-> v1-4 penetrate-using) (-> a0-4 penetrated-by)) cfg-4 :delay (nop!))
           )
-        (.lvf vf3 (&-> gp-0 vertex 0 quad))
-        (.lvf vf4 (&-> gp-0 vertex 1 quad))
-        (.lvf vf5 (&-> gp-0 vertex 2 quad))
-        (.lvf vf1 (&-> gp-0 intersect quad))
-        (.lvf vf2 (&-> gp-0 normal quad))
-        (let ((v1-7 (-> gp-0 pat))
-              (a0-6 (-> gp-0 collide-ptr))
+        (.lvf vf3 (&-> gp-0 best-other-tri vertex 0 quad))
+        (.lvf vf4 (&-> gp-0 best-other-tri vertex 1 quad))
+        (.lvf vf5 (&-> gp-0 best-other-tri vertex 2 quad))
+        (.lvf vf1 (&-> gp-0 best-other-tri intersect quad))
+        (.lvf vf2 (&-> gp-0 best-other-tri normal quad))
+        (let ((v1-7 (-> gp-0 best-other-tri pat))
+              (a0-6 (-> gp-0 best-other-tri collide-ptr))
               )
           (set! (-> arg0 best-dist) f0-1)
           (.svf (&-> arg0 best-other-tri vertex 0 quad) vf3)
@@ -564,14 +557,7 @@
         (set! (-> arg0 best-other-prim) a2-2)
         (set! (-> arg0 best-my-prim) this)
         (label cfg-4)
-        (add-touching-prims
-          *touching-list*
-          this
-          a2-2
-          f0-1
-          (the-as collide-tri-result #f)
-          (the-as collide-tri-result (-> gp-0 vertex))
-          )
+        (add-touching-prims *touching-list* this a2-2 f0-1 (the-as collide-tri-result #f) (-> gp-0 best-other-tri))
         )
       )
     (label cfg-5)
@@ -2476,7 +2462,7 @@
           (set! *actor-list-length* 0)
           (if (logtest? s4-0 (collide-spec hit-by-others-list))
               (set! *actor-list-length*
-                    (fill-actor-list-for-box *actor-hash* (the-as bounding-box (-> this root-prim prim-core)) *actor-list* 256)
+                    (fill-actor-list-for-box *actor-hash* (the-as vector (-> this root-prim prim-core)) *actor-list* 256)
                     )
               )
           (when (logtest? s4-0 (collide-spec player-list))
@@ -2658,7 +2644,7 @@
         (set! *actor-list-length* 0)
         (b! (not (logtest? (the-as collide-spec s2-0) 512)) cfg-2 :delay (empty-form))
         (set! *actor-list-length*
-              (fill-actor-list-for-box *actor-hash* (the-as bounding-box (-> s3-0 prim-core)) *actor-list* 256)
+              (fill-actor-list-for-box *actor-hash* (the-as vector (-> s3-0 prim-core)) *actor-list* 256)
               )
         (label cfg-2)
         (b! (not (logtest? (the-as collide-spec s2-0) 1024)) cfg-11 :delay (empty-form))
