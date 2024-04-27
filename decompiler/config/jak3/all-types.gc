@@ -6789,7 +6789,8 @@
   )
 
 (deftype texture-anim-array (array)
-  ()
+  ((array-data texture-anim :dynamic :offset-assert 16)
+   )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
@@ -62342,70 +62343,61 @@
 ;; destroy-dark-eco               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-eco-egg (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype lightning-bolt-tower (lightning-bolt)
   ()
   :method-count-assert 23
   :size-assert         #x74
   :flag-assert         #x1700000074
   )
-|#
 
-#|
 (deftype tower-lightning-disc (structure)
-  ((bolt            basic              :offset-assert 0)
+  ((bolt            lightning-bolt-tower :offset-assert 0)
    (orient          quaternion :inline :offset-assert 16)
-   (cur-state       basic              :offset-assert 32)
-   (last-spawn-time uint64             :offset-assert 40)
-   (pts             UNKNOWN    8       :offset-assert 48)
+   (cur-state       symbol             :offset-assert 32)
+   (last-spawn-time time-frame         :offset-assert 40)
+   (pts             vector    8 :inline :offset-assert 48)
    (last-rot-angle  float              :offset-assert 176)
    )
   :method-count-assert 9
   :size-assert         #xb4
   :flag-assert         #x9000000b4
   )
-|#
 
-#|
 (deftype dark-eco-orb (process-focusable)
   ((last-attack-id   uint32               :offset-assert 208)
    (hit-points       float                :offset-assert 212)
-   (alt-actor        basic                :offset-assert 216)
-   (movie?           basic                :offset-assert 220)
+   (alt-actor        entity-actor         :offset-assert 216)
+   (movie?           symbol               :offset-assert 220)
    (minimap          connection-minimap   :offset-assert 224)
-   (discs            UNKNOWN            2 :offset-assert 240)
-   (shock-sound      uint32               :offset-assert 624)
-   (plasma-sound     uint32               :offset-assert 628)
-   (shock-spawn-time uint64               :offset-assert 632)
+   (discs            tower-lightning-disc 2 :inline :offset-assert 240)
+   (shock-sound      sound-id             :offset-assert 624)
+   (plasma-sound     sound-id             :offset-assert 628)
+   (shock-spawn-time time-frame           :offset-assert 632)
    )
   :method-count-assert 32
   :size-assert         #x280
   :flag-assert         #x2002000280
   (:state-methods
-    hit ;; 29
     active ;; 28
+    hit ;; 29
     die ;; 30
     die-movie ;; 31
     )
   )
-|#
 
-#|
 (deftype dark-eco-tower (process-drawable)
-  ((puffer?     basic   :offset-assert 200)
-   (puffer-h    uint64  :offset-assert 208)
+  ((puffer?     symbol  :offset-assert 200)
+   (puffer-h    handle  :offset-assert 208)
    (jump-y      float   :offset-assert 216)
    (jump-z      float   :offset-assert 220)
-   (creak-sound basic   :offset-assert 224)
+   (creak-sound ambient-sound :offset-assert 224)
    )
   :method-count-assert 21
   :size-assert         #xe4
@@ -62414,9 +62406,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype tower-wave (structure)
   ((start float  :offset-assert 0)
    (end   float  :offset-assert 4)
@@ -62427,41 +62417,32 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype task-manager-destroy-darkeco (task-manager)
-  ((actor-group       uint32     :offset-assert 236)
-   (actor-group-count int32      :offset-assert 240)
-   (handles           UNKNOWN 64 :offset-assert 244)
-   (orb-handles       UNKNOWN 8  :offset-assert 756)
-   (orb-status        UNKNOWN 8  :offset-assert 820)
-   (counter           uint32     :offset-assert 852)
-   (initial-orb       uint64     :offset-assert 860)
+  ((actor-group       (pointer actor-group) :offset-assert 240)
+   (actor-group-count int32      :offset-assert 244)
+   (handles           handle 64  :offset-assert 248)
+   (orb-handles       handle 8   :offset-assert 760)
+   (orb-status        uint32 8   :offset-assert 824)
+   (counter           uint32     :offset-assert 856)
+   (initial-orb       handle     :offset-assert 864)
    )
   :method-count-assert 32
   :size-assert         #x368
   :flag-assert         #x2002f00368
   )
-|#
 
-#|
 (deftype task-manager-dark-punch-training (task-manager)
-  ((gui-id uint32  :offset-assert 240)
+  ((gui-id sound-id :offset-assert 240)
    )
   :method-count-assert 33
   :size-assert         #xf4
   :flag-assert         #x21008000f4
   (:methods
-    (task-manager-dark-punch-training-method-32 () none) ;; 32
-    )
-  (:state-methods
-    active ;; 15
+    (print-text (_type_ text-id) none) ;; 32
     )
   )
-|#
 
-#|
 (deftype grind-electricity (process-drawable)
   ()
   :method-count-assert 21
@@ -62471,38 +62452,32 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *initial-orb-pos* object)
-;; (define-extern dark-eco-orb-event-handler function)
-;; (define-extern spawn-shock-effect function)
-;; (define-extern *dark-lightning-width* curve2d-fast)
-;; (define-extern *dark-tower-lightning* object)
-;; (define-extern dark-eco-orb-init-by-other function)
-;; (define-extern dark-eco-orb-init-by-other-pos-scale function)
-;; (define-extern *dark-eco-tower-waves* array)
-;; (define-extern dark-eco-tower-callback function)
-;; (define-extern dark-eco-tower-init-by-other function)
+(define-extern *initial-orb-pos* vector)
+(def-event-handler dark-eco-orb-event-handler dark-eco-orb)
+(define-extern spawn-shock-effect (function dark-eco-orb vector lightning-spec (function lightning-tracker none) sparticle-launcher time-frame float none))
+(define-extern *dark-lightning-width* curve2d-fast)
+(define-extern *dark-tower-lightning* lightning-appearance)
+(define-extern dark-eco-orb-init-by-other (function entity-actor object :behavior dark-eco-orb))
+(define-extern dark-eco-orb-init-by-other-pos-scale (function vector float object :behavior dark-eco-orb))
+(define-extern *dark-eco-tower-waves* (array tower-wave))
+(define-extern dark-eco-tower-callback (function cspace transformq none))
+(define-extern dark-eco-tower-init-by-other (function entity-actor object :behavior dark-eco-tower))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comb-mood                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
-(deftype comb-states (UNKNOWN)
+(deftype comb-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern init-mood-comb function)
-;; (define-extern update-mood-comb function)
-;; (define-extern *comb-field-texture-anim-array* texture-anim-array)
-;; (define-extern set-comb-field-color! function)
-;; (define-extern set-comb-field-flash! function)
-;; (define-extern set-comb-field-texture-masks! function)
+(define-extern init-mood-comb (function mood-context float))
+(define-extern update-mood-comb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern *comb-field-texture-anim-array* (texture-anim-array texture-anim))
+(define-extern set-comb-field-color! (function vector none))
+(define-extern set-comb-field-flash! (function vector none))
+(define-extern set-comb-field-texture-masks! (function vector symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comb-part                      ;;
@@ -62513,21 +62488,18 @@
 ;; comb-obs                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype comb-elevator (elevator)
   ()
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
   )
-|#
 
-#|
 (deftype comb-pillar (process-focusable)
   ((center-pos         vector :inline :offset-assert 208)
    (attack-vel         vector :inline :offset-assert 224)
-   (exploder-params    basic          :offset-assert 240)
-   (exploder-skel      basic          :offset-assert 244)
+   (exploder-params    joint-exploder-static-params :offset-assert 240)
+   (exploder-skel      skeleton-group :offset-assert 244)
    (exploder-anim      uint32         :offset-assert 248)
    (hit-points         float          :offset-assert 252)
    (incoming-attack-id int32          :offset-assert 256)
@@ -62535,76 +62507,71 @@
   :method-count-assert 36
   :size-assert         #x104
   :flag-assert         #x2400900104
-  (:methods
-    (comb-pillar-method-30 () none) ;; 30
-    (comb-pillar-method-31 () none) ;; 31
-    (comb-pillar-method-32 () none) ;; 32
-    (comb-pillar-method-33 () none) ;; 33
-    (comb-pillar-method-34 () none) ;; 34
-    (comb-pillar-method-35 () none) ;; 35
-    )
   (:state-methods
-    explode ;; 29
     idle ;; 28
+    explode ;; 29
+    )
+  (:methods
+    (update-fade (_type_) none) ;; 30
+    (set-cspec! (_type_) none) ;; 31
+    (go-explode (_type_) none) ;; 32
+    (set-attack-vel! (_type_ vector) none) ;; 33
+    (on-attack (_type_ process attack-info object) symbol) ;; 34
+    (on-impulse (_type_ rigid-body-impact) symbol) ;; 35
     )
   )
-|#
 
-#|
 (deftype comb-block (process-focusable)
   ((attack-vel         vector  :inline :offset-assert 208)
-   (exploder-params    basic           :offset-assert 224)
-   (exploder-skel      basic           :offset-assert 228)
+   (exploder-params    joint-exploder-static-params :offset-assert 224)
+   (exploder-skel      skeleton-group  :offset-assert 228)
    (exploder-anim      uint32          :offset-assert 232)
    (hit-points         float           :offset-assert 236)
    (incoming-attack-id int32           :offset-assert 240)
-   (parts              UNKNOWN 4       :offset-assert 244)
+   (parts              sparticle-launch-control 4 :offset-assert 244)
    )
   :method-count-assert 36
   :size-assert         #x104
   :flag-assert         #x2400900104
-  (:methods
-    (comb-block-method-30 () none) ;; 30
-    (comb-block-method-31 () none) ;; 31
-    (comb-block-method-32 () none) ;; 32
-    (comb-block-method-33 () none) ;; 33
-    (comb-block-method-34 () none) ;; 34
-    (comb-block-method-35 () none) ;; 35
-    )
   (:state-methods
-    explode ;; 29
     idle ;; 28
+    explode ;; 29
+    )
+  (:methods
+    (spawn-parts (_type_) none) ;; 30
+    (set-cspec! (_type_) none) ;; 31
+    (go-explode (_type_) none) ;; 32
+    (set-attack-vel! (_type_ vector) none) ;; 33
+    (on-attack (_type_ process attack-info object) symbol) ;; 34
+    (on-impact (_type_ rigid-body-impact) symbol) ;; 35
     )
   )
-|#
 
-#|
 (deftype comb-energy-ring (process-focusable)
   ((speed          float   :offset-assert 208)
-   (hum-id         uint32  :offset-assert 212)
-   (bolt           basic   :offset-assert 216)
-   (shocked-player basic   :offset-assert 220)
+   (hum-id         sound-id :offset-assert 212)
+   (bolt           lightning-bolt :offset-assert 216)
+   (shocked-player symbol  :offset-assert 220)
    )
   :method-count-assert 34
   :size-assert         #xe0
   :flag-assert         #x22006000e0
-  (:methods
-    (comb-energy-ring-method-29 () none) ;; 29
-    (comb-energy-ring-method-30 () none) ;; 30
-    (comb-energy-ring-method-31 () none) ;; 31
-    (comb-energy-ring-method-32 () none) ;; 32
-    (comb-energy-ring-method-33 () none) ;; 33
-    )
   (:state-methods
     idle ;; 28
     )
+  (:methods
+    (update-sound-and-bolt (_type_) none) ;; 29
+    (set-cspec! (_type_) none) ;; 30
+    (comb-energy-ring-method-31 (_type_) none) ;; 31
+    (init-bolt! (_type_) none) ;; 32
+    (update-bolt (_type_ vector vector) none) ;; 33
+    )
   )
-|#
 
-#|
 (deftype comb-turbo (process-drawable)
-  ((touch-time uint64         :offset-assert 200)
-   (player-got basic          :offset-assert 208)
+  ((root       collide-shape  :override)
+   (touch-time time-frame     :offset-assert 200)
+   (player-got symbol         :offset-assert 208)
    (boost      float          :offset-assert 212)
    (plane      vector :inline :offset-assert 224)
    (mat        matrix :inline :offset-assert 240)
@@ -62612,59 +62579,53 @@
   :method-count-assert 25
   :size-assert         #x130
   :flag-assert         #x1900b00130
-  (:methods
-    (comb-turbo-method-22 () none) ;; 22
-    (comb-turbo-method-23 () none) ;; 23
-    (comb-turbo-method-24 () none) ;; 24
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 22
+    (init-fields! (_type_) none) ;; 23
+    (comb-turbo-method-24 (_type_) none) ;; 24
     )
   )
-|#
 
-#|
 (deftype task-manager-lightjak-training-shield (task-manager)
-  ((gui-id uint32  :offset-assert 240)
+  ((gui-id sound-id :offset-assert 240)
    )
   :method-count-assert 33
   :size-assert         #xf4
   :flag-assert         #x21008000f4
-  (:methods
-    (task-manager-lightjak-training-shield-method-32 () none) ;; 32
-    )
   (:state-methods
     active ;; 15
     )
+  (:methods
+    (print-text (_type_ text-id) none) ;; 32
+    )
   )
-|#
 
-;; (define-extern *comb-pillar-explode-params* joint-exploder-static-params)
-;; (define-extern *comb-block-explode-params* joint-exploder-static-params)
-;; (define-extern *comb-energy-ring-lightning-width* curve2d-fast)
-;; (define-extern *comb-energy-ring-lightning* object)
+(define-extern *comb-pillar-explode-params* joint-exploder-static-params)
+(define-extern *comb-block-explode-params* joint-exploder-static-params)
+(define-extern *comb-energy-ring-lightning-width* curve2d-fast)
+(define-extern *comb-energy-ring-lightning* lightning-appearance)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comb-sentry                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype comb-sentry-shot (guard-shot)
   ()
   :method-count-assert 41
   :size-assert         #x220
   :flag-assert         #x2901a00220
   )
-|#
 
-#|
 (deftype comb-sentry (process-focusable)
   ((target-pos         vector :inline :offset-assert 208)
    (up-dir             vector :inline :offset-assert 224)
    (attack-vel         vector :inline :offset-assert 240)
-   (exploder-params    basic          :offset-assert 256)
-   (exploder-skel      basic          :offset-assert 260)
+   (exploder-params    joint-exploder-static-params :offset-assert 256)
+   (exploder-skel      skeleton-group :offset-assert 260)
    (exploder-anim      uint32         :offset-assert 264)
    (target-dist        float          :offset-assert 268)
    (path-t             float          :offset-assert 272)
@@ -62673,124 +62634,129 @@
    (incoming-attack-id int32          :offset-assert 284)
    (angle              float          :offset-assert 288)
    (spin               float          :offset-assert 292)
-   (shooting           basic          :offset-assert 296)
-   (should-attack      basic          :offset-assert 300)
+   (shooting           symbol         :offset-assert 296)
+   (should-attack      symbol         :offset-assert 300)
    (i-barrel           int8           :offset-assert 304)
-   (hum-id             uint32         :offset-assert 308)
-   (shot-time          uint64         :offset-assert 312)
-   (attack-time        uint64         :offset-assert 320)
-   (in-range-time      uint64         :offset-assert 328)
-   (player-vehicle     uint64         :offset-assert 336)
+   (hum-id             sound-id       :offset-assert 308)
+   (shot-time          time-frame     :offset-assert 312)
+   (attack-time        time-frame     :offset-assert 320)
+   (in-range-time      time-frame     :offset-assert 328)
+   (player-vehicle     handle         :offset-assert 336)
    )
   :method-count-assert 40
   :size-assert         #x158
   :flag-assert         #x2800e00158
-  (:methods
-    (comb-sentry-method-31 () none) ;; 31
-    (comb-sentry-method-32 () none) ;; 32
-    (comb-sentry-method-33 () none) ;; 33
-    (comb-sentry-method-34 () none) ;; 34
-    (comb-sentry-method-35 () none) ;; 35
-    (comb-sentry-method-36 () none) ;; 36
-    (comb-sentry-method-37 () none) ;; 37
-    (comb-sentry-method-38 () none) ;; 38
-    (comb-sentry-method-39 () none) ;; 39
-    )
   (:state-methods
-    explode ;; 30
-    path-follow ;; 29
     idle ;; 28
+    path-follow ;; 29
+    explode ;; 30
+    )
+  (:methods
+    (stop-hum (_type_) none) ;; 31
+    (sentry-post (_type_) none) ;; 32
+    (set-cspec! (_type_) none) ;; 33
+    (go-explode (_type_) none) ;; 34
+    (set-attack-vel! (_type_ vector) none) ;; 35
+    (on-attack (_type_ process attack-info object) symbol) ;; 36
+    (on-impact (_type_ rigid-body-impact) symbol) ;; 37
+    (fire-shot (_type_) (pointer comb-sentry-shot)) ;; 38
+    (draw-glow-sprites (_type_) none) ;; 39
     )
   )
-|#
 
-#|
+(deftype comb-sentry-stack-var0 (structure)
+  ((params projectile-init-by-other-params :inline :offset 0)
+   (mat  matrix :inline :offset 128)
+   (vec2 vector :inline :offset 192)
+   (vec3 vector :inline :offset 208)
+   (vec4 vector :inline :offset 224)
+   (byte0 int8          :offset 240)
+   )
+  )
+
+(deftype comb-sentry-stack-var1 (structure)
+  ((glow sprite-glow-data :inline :offset 0)
+   (mat  matrix           :inline :offset 64)
+   (vec  vector           :inline :offset 128)
+   )
+  )
+
 (deftype comb-sentinel (comb-sentry)
   ()
   :method-count-assert 40
   :size-assert         #x158
   :flag-assert         #x2800e00158
   )
-|#
 
-#|
 (deftype rail-sentinel (comb-sentry)
   ()
   :method-count-assert 40
   :size-assert         #x158
   :flag-assert         #x2800e00158
   )
-|#
 
-;; (define-extern *comb-sentry-explode-params* joint-exploder-static-params)
-;; (define-extern *comb-sentry-glow-template* object)
-;; (define-extern *comb-sentry-glow-ring-template* object)
+(define-extern *comb-sentry-explode-params* joint-exploder-static-params)
+(define-extern *comb-sentry-glow-template* sprite-glow-data)
+(define-extern *comb-sentry-glow-ring-template* sprite-glow-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comb-field                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype comb-field (process-drawable)
-  ((pass               int32          :offset-assert 200)
+  ((root collide-shape :override)
+   (pass               pickup-type    :offset-assert 200)
    (incoming-attack-id uint32         :offset-assert 204)
-   (next-message-time  uint64         :offset-assert 208)
+   (next-message-time  time-frame     :offset-assert 208)
    (message            int32          :offset-assert 216)
    (plane              plane  :inline :offset-assert 224)
    (color              vector :inline :offset-assert 240)
    (target-pos         vector :inline :offset-assert 256)
-   (hum-sound-id       uint32         :offset-assert 272)
+   (hum-sound-id       sound-id       :offset-assert 272)
    (flash              float          :offset-assert 276)
    (touch-count        int32          :offset-assert 280)
-   (touch-time         uint64         :offset-assert 288)
-   (breach             basic          :offset-assert 296)
+   (touch-time         time-frame     :offset-assert 288)
+   (breach             symbol         :offset-assert 296)
    )
   :method-count-assert 24
   :size-assert         #x12c
   :flag-assert         #x1800b0012c
-  (:methods
-    (comb-field-method-21 () none) ;; 21
-    (comb-field-method-22 () none) ;; 22
-    (comb-field-method-23 () none) ;; 23
-    )
   (:state-methods
     idle-close ;; 20
     )
+  (:methods
+    (init-collision! (_type_ path-control float) none) ;; 21
+    (on-jak-touch (_type_) none) ;; 22
+    (play-hum (_type_) none) ;; 23
+    )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comb-scenes                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern comb-lightjak-do-effect function)
-;; (define-extern death-precursor death-info) ;; death-info
-;; (define-extern start-precursor-effect function) ;; (function manipy none)
+(define-extern comb-lightjak-do-effect (function none :behavior process-drawable))
+(define-extern death-precursor death-info)
+(define-extern start-precursor-effect (function manipy none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; h-sled                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hud-sled-health (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype pre-sled (process-drawable)
   ()
   :method-count-assert 20
   :size-assert         #xc8
   :flag-assert         #x14005000c8
   )
-|#
 
-#|
 (deftype sled-shot (projectile)
   ((tail-pos vector :inline :offset-assert 512)
    )
@@ -62798,9 +62764,7 @@
   :size-assert         #x210
   :flag-assert         #x2901900210
   )
-|#
 
-#|
 (deftype h-sled-probe-work (structure)
   ((local-pos     vector :inline :offset-assert 0)
    (local-normal  vector :inline :offset-assert 16)
@@ -62817,9 +62781,7 @@
   :size-assert         #x94
   :flag-assert         #x900000094
   )
-|#
 
-#|
 (deftype h-sled-physics-work (structure)
   ((mat              matrix  :inline :offset-assert 0)
    (force            vector  :inline :offset-assert 64)
@@ -62835,8 +62797,8 @@
    (axis             vector  :inline :offset-assert 224)
    (dir              vector  :inline :offset-assert 240)
    (ground-normal    vector  :inline :offset-assert 256)
-   (edges            UNKNOWN 3       :offset-assert 272)
-   (edge-dirs        UNKNOWN 3       :offset-assert 320)
+   (edges            vector 3 :inline :offset-assert 272)
+   (edge-dirs        vector 3 :inline :offset-assert 320)
    (impulse          float           :offset-assert 368)
    (vel-dot-norm     float           :offset-assert 372)
    (friction-coef    float           :offset-assert 376)
@@ -62844,32 +62806,30 @@
    (best-len         float           :offset-assert 384)
    (len              float           :offset-assert 388)
    (i-longest        int8            :offset-assert 392)
-   (probe-work-array UNKNOWN 4       :offset-assert 400)
+   (probe-work-array h-sled-probe-work 4 :inline :offset-assert 400)
    )
   :method-count-assert 9
   :size-assert         #x410
   :flag-assert         #x900000410
   )
-|#
 
-#|
 (deftype h-sled (vehicle)
-  ((health-hud             uint64          :offset-assert 696)
-   (overturned-time        uint64          :offset-assert 704)
-   (shoot-time             uint64          :offset-assert 712)
+  ((health-hud             handle          :offset-assert 696)
+   (overturned-time        time-frame      :offset-assert 704)
+   (shoot-time             time-frame      :offset-assert 712)
    (shoot-delay            uint16          :offset-assert 720)
-   (rider-hand-joint-array UNKNOWN 2       :offset-assert 722)
+   (rider-hand-joint-array int8 2          :offset-assert 722)
    (i-barrel               int8            :offset-assert 724)
    (ai-target-speed        float           :offset-assert 728)
    (engine-thrust          float           :offset-assert 732)
    (engine-sound-envelope  float           :offset-assert 736)
-   (engine-sound-id        uint32          :offset-assert 740)
-   (steer-sound-id         uint32          :offset-assert 744)
-   (turbo-sound-id         uint32          :offset-assert 748)
-   (engine-sound-envelope  float           :offset-assert 736)
-   (in-tunnel              basic           :offset-assert 756)
-   (whoosh-time            uint64          :offset-assert 760)
-   (parts                  UNKNOWN 4       :offset-assert 768)
+   (engine-sound-id        sound-id        :offset-assert 740)
+   (steer-sound-id         sound-id        :offset-assert 744)
+   (turbo-sound-id         sound-id        :offset-assert 748)
+   ; (engine-sound-envelope  float           :offset-assert 736)
+   (in-tunnel              symbol          :offset 756)
+   (whoosh-time            time-frame      :offset-assert 760)
+   (parts                  sparticle-launch-control 4 :offset-assert 768)
    (gravity-dir            vector  :inline :offset-assert 784)
    (path-pos               vector  :inline :offset-assert 800)
    (path-dir               vector  :inline :offset-assert 816)
@@ -62881,39 +62841,53 @@
    (side-dir               vector  :inline :offset-assert 912)
    (ai-target-pos          vector  :inline :offset-assert 928)
    (whoosh-pos             vector  :inline :offset-assert 944)
-   (ground-pos-array       UNKNOWN 4       :offset-assert 960)
+   (ground-pos-array       vector 4 :inline :offset-assert 960)
    )
   :method-count-assert 153
   :size-assert         #x400
   :flag-assert         #x9903800400
-  (:methods
-    (h-sled-method-152 () none) ;; 152
-    )
   (:state-methods
     player-control ;; 58
     explode ;; 60
     )
+  (:methods
+    (fire-shot (_type_) none) ;; 152
+    )
   )
-|#
 
-;; (define-extern hud-sled-health-spawn function)
-;; (define-extern sled-find-mesh-dir function)
-;; (define-extern sled-shot-move function)
-;; (define-extern sled-shot-reaction function)
-;; (define-extern *h-sled-explosion-info* vehicle-explosion-info)
-;; (define-extern *h-sled-constants* object)
+(deftype h-sled-stack-var0 (structure)
+  ((vec    vector 3 :inline :offset 0)
+   (vec1   vector 2 :inline :offset 64)
+   (byte0  int8             :offset 128)
+   (float0 float            :offset 132)
+   (float1 float            :offset 136)
+   )
+  )
+
+(deftype h-sled-stack-var1 (structure)
+  ((vec0 vector           :inline :offset 0)
+   (mat  matrix           :inline :offset 16)
+   (glow sprite-glow-data :inline :offset 80)
+   )
+  )
+
+(define-extern hud-sled-health-spawn (function process process))
+(define-extern sled-find-mesh-dir (function vector vector collide-tri-result none))
+(define-extern sled-shot-move (function sled-shot none))
+(define-extern sled-shot-reaction (function control-info collide-query vector vector collide-status))
+(define-extern *h-sled-explosion-info* vehicle-explosion-info)
+(define-extern *h-sled-constants* rigid-body-vehicle-constants)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comb-travel                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-tube-ride (task-manager)
   ((suck-factor    float          :offset-assert 240)
    (hp-scale       float          :offset-assert 244)
    (intro-sequence basic          :offset-assert 248)
    (outro-sequence basic          :offset-assert 252)
-   (no-shoot-time  uint64         :offset-assert 256)
+   (no-shoot-time  time-frame     :offset-assert 256)
    (end-sphere     sphere :inline :offset-assert 272)
    (end-plane      vector :inline :offset-assert 288)
    (intro-sphere   sphere :inline :offset-assert 304)
@@ -62927,44 +62901,31 @@
   :size-assert         #x190
   :flag-assert         #x2101100190
   (:methods
-    (task-manager-tube-ride-method-32 () none) ;; 32
-    )
-  (:state-methods
-    complete ;; 16
-    active ;; 15
+    (set-sbanks (_type_) none) ;; 32
     )
   )
-|#
 
-#|
 (deftype task-manager-comb-travel (task-manager-tube-ride)
   ()
   :method-count-assert 33
   :size-assert         #x190
   :flag-assert         #x2101100190
-  (:state-methods
-    complete ;; 16
-    )
   )
-|#
 
-#|
 (deftype task-manager-comb-wild-ride (task-manager-tube-ride)
   ()
   :method-count-assert 33
   :size-assert         #x190
   :flag-assert         #x2101100190
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; comba-init                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern comba-login function)
-;; (define-extern comba-activate function)
-;; (define-extern comba-deactivate function)
+(define-extern comba-login (function level none))
+(define-extern comba-activate (function level none))
+(define-extern comba-deactivate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-dust-storm              ;;
