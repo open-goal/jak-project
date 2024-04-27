@@ -19122,6 +19122,7 @@
    The actual child classes will add most of the functionality, and this just serves as a common
    container for references to the `-control` objects for this object."
   ((self        process-drawable          :override)
+   (ppointer    (pointer process-drawable) :override)
    (root        trsqv                     :offset-assert 128) ;; guessed by decompiler
    (node-list   cspace-array              :offset-assert 132) ;; guessed by decompiler
    (draw        draw-control              :offset-assert 136) ;; guessed by decompiler
@@ -21908,6 +21909,7 @@
 
 (deftype process-focusable (process-drawable)
   ((self         process-focusable :override)
+   (ppointer     (pointer process-focusable) :override)
    (root         collide-shape     :override)
    (focus-status focus-status      :offset-assert 200)
    )
@@ -22866,6 +22868,7 @@
 
 (deftype target (process-focusable)
   ((self                        target                                   :override)
+   (ppointer                    (pointer target)                         :override)
    (control                     control-info                             :offset 128 :score 1) ;; guessed by decompiler
    (fact                        fact-info-target                         :override)
    (skel2                       joint-control                            :offset-assert 208) ;; guessed by decompiler
@@ -53217,7 +53220,7 @@
     (vehicle-method-88 (_type_ vehicle-controls) none) ;; 88
     (init-reverse (_type_ vehicle-controls) none) ;; 89
     (control-hook-ai (_type_ vehicle-controls) none) ;; 90
-    (control-hook-player (_type_ vehicle-controls) none) ;; 91
+    (control-hook-player (_type_) none) ;; 91
     (vehicle-method-92 (_type_ vehicle-controls) none) ;; 92
     (vehicle-method-93 (_type_) none) ;; 93
     (vehicle-method-94 (_type_) none) ;; 94
@@ -63427,7 +63430,7 @@
 ;; factoryb-init                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern factoryb-activate function)
+(define-extern factoryb-activate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mhcitya-texture                ;;
@@ -71608,54 +71611,60 @@
 ;; factory-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fac-edge-list (basic)
-  ((edge UNKNOWN 4 :offset-assert 4)
+  ((edge int16 4 :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
+;; +++factory-h:factory-inout-flag
+(defenum factory-inout-flag
+  :type uint8
+  :bitfield #t
+  (fi0 0)
+  (fi1 1)
+  (fi2 2)
+  )
+;; ---factory-h:factory-inout-flag
+
 (deftype factory-inout (structure)
   ((lpath int16  :offset-assert 0)
    (lpos  float  :offset-assert 4)
-   (flags uint8  :offset-assert 8)
+   (flags factory-inout-flag :offset-assert 8)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x9
   :flag-assert         #x900000009
   )
-|#
 
-#|
 (deftype factory-pathlist (structure)
-  ((path   UNKNOWN 200 :offset-assert 0)
-   (inout  UNKNOWN 200 :offset-assert 800)
-   (loops  UNKNOWN 200 :offset-assert 4000)
+  ((path   path-control 200 :offset-assert 0)
+   (inout  factory-inout 200 :inline :offset-assert 800)
+   (loops  int16 200   :offset-assert 4000)
    (npath  int8        :offset-assert 4400)
    (nloop  int8        :offset-assert 4401)
    (curidx int8        :offset-assert 4402)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x1133
   :flag-assert         #x900001133
   )
-|#
 
-#|
 (deftype factory-manager (process)
-  ((nfighters-spawned uint8                    :offset-assert 128)
+  ((self              factory-manager          :override)
+   (nfighters-spawned uint8                    :offset-assert 128)
    (nfighters-total   uint8                    :offset-assert 129)
    (ntanks-spawned    uint8                    :offset-assert 130)
-   (player-born       uint64                   :offset-assert 136)
-   (player-died       uint64                   :offset-assert 144)
-   (fighter-spawned   uint64                   :offset-assert 152)
-   (fighter-killed    uint64                   :offset-assert 160)
-   (tank-spawned      uint64                   :offset-assert 168)
-   (tank-killed       uint64                   :offset-assert 176)
+   (player-born       time-frame               :offset-assert 136)
+   (player-died       time-frame               :offset-assert 144)
+   (fighter-spawned   time-frame               :offset-assert 152)
+   (fighter-killed    time-frame               :offset-assert 160)
+   (tank-spawned      time-frame               :offset-assert 168)
+   (tank-killed       time-frame               :offset-assert 176)
    (fpath             factory-pathlist :inline :offset-assert 184)
    (tpath             factory-pathlist :inline :offset-assert 4588)
    (cur-wave          uint8                    :offset-assert 8991)
@@ -71663,17 +71672,18 @@
   :method-count-assert 17
   :size-assert         #x2320
   :flag-assert         #x1122a02320
+  (:state-methods
+    idle ;; 14
+    )
   (:methods
-    (factory-manager-method-14 () none) ;; 14
-    (factory-manager-method-15 () none) ;; 15
-    (factory-manager-method-16 () none) ;; 16
+    (factory-manager-method-15 (_type_) none) ;; 15
+    (init-paths-for-list! (_type_ factory-pathlist string) symbol) ;; 16
     )
   )
-|#
 
-#|
 (deftype factory-fighter (rigid-body-object)
-  ((first-time?           basic          :offset-assert 288)
+  ((parent                (pointer factory-manager) :override)
+   (first-time?           symbol         :offset-assert 288)
    (path-pos              float          :offset-assert 292)
    (forw                  vector :inline :offset-assert 304)
    (upvc                  vector :inline :offset-assert 320)
@@ -71683,56 +71693,56 @@
    (blendpath             float          :offset-assert 384)
    (newpath               int8           :offset-assert 388)
    (path-idx              int8           :offset-assert 389)
-   (last-hit-time         uint64         :offset-assert 392)
-   (disappear             basic          :offset-assert 400)
-   (last-fire             uint64         :offset-assert 408)
+   (last-hit-time         time-frame     :offset-assert 392)
+   (disappear             symbol         :offset-assert 400)
+   (last-fire             time-frame     :offset-assert 408)
    (turret-gun            int8           :offset-assert 416)
-   (light-trail           uint64         :offset-assert 424)
+   (light-trail           handle         :offset-assert 424)
    (rot-vel               float          :offset-assert 432)
    (rot-acc               float          :offset-assert 436)
-   (engine-sound          uint32         :offset-assert 440)
-   (engine-sound-playing? basic          :offset-assert 444)
-   (last-snd-cmd          uint64         :offset-assert 448)
-   (red-tip-change-time   uint64         :offset-assert 456)
-   (red-tip-on            basic          :offset-assert 464)
+   (engine-sound          sound-id       :offset-assert 440)
+   (engine-sound-playing? symbol         :offset-assert 444)
+   (last-snd-cmd          time-frame     :offset-assert 448)
+   (red-tip-change-time   time-frame     :offset-assert 456)
+   (red-tip-on            symbol         :offset-assert 464)
    )
   :method-count-assert 63
   :size-assert         #x1d4
   :flag-assert         #x3f016001d4
+  (:state-methods
+    flying ;; 56
+    explode ;; 57
+    dive ;; 58
+    die ;; 59
+    )
   (:methods
-    (factory-fighter-method-56 () none) ;; 56
-    (factory-fighter-method-57 () none) ;; 57
-    (factory-fighter-method-58 () none) ;; 58
-    (factory-fighter-method-59 () none) ;; 59
-    (factory-fighter-method-60 () none) ;; 60
-    (factory-fighter-method-61 () none) ;; 61
-    (factory-fighter-method-62 () none) ;; 62
+    (fire-shot (_type_) projectile) ;; 60
+    (factory-fighter-method-61 (_type_) none) ;; 61
+    (factory-fighter-method-62 (_type_ symbol) none) ;; 62
     )
   )
-|#
 
-#|
 (deftype fac-target (process-focusable)
   ((sync     sync-paused        :inline :offset-assert 208)
    (minimap  connection-minimap         :offset-assert 232)
-   (light-jm basic                      :offset-assert 236)
+   (light-jm joint-mod                  :offset-assert 236)
    )
   :method-count-assert 35
   :size-assert         #xf0
   :flag-assert         #x23007000f0
+  (:state-methods
+    idle ;; 28
+    die-fast ;; 29
+    retract ;; 30
+    retracted ;; 31
+    explode ;; 32
+    )
   (:methods
-    (fac-target-method-28 () none) ;; 28
-    (fac-target-method-29 () none) ;; 29
-    (fac-target-method-30 () none) ;; 30
-    (fac-target-method-31 () none) ;; 31
-    (fac-target-method-32 () none) ;; 32
-    (fac-target-method-33 () none) ;; 33
-    (fac-target-method-34 () none) ;; 34
+    (fac-target-method-33 (_type_) none) ;; 33
+    (fac-target-method-34 (_type_) none) ;; 34
     )
   )
-|#
 
-#|
 (deftype fac-gun-tower (process-focusable)
   ((yaw                  float               :offset-assert 208)
    (yawvel               float               :offset-assert 212)
@@ -71740,82 +71750,75 @@
    (pitchvel             float               :offset-assert 220)
    (dyaw                 float               :offset-assert 224)
    (dpitch               float               :offset-assert 228)
-   (last-fire            uint64              :offset-assert 232)
-   (last-hit-time        uint64              :offset-assert 240)
+   (last-fire            time-frame          :offset-assert 232)
+   (last-hit-time        time-frame          :offset-assert 240)
    (gunrot               int8                :offset-assert 248)
    (muzzle               int8                :offset-assert 249)
    (gun-idx              int8                :offset-assert 250)
    (attack-id            int32               :offset-assert 252)
-   (gun-tilt-jm          basic               :offset-assert 256)
+   (gun-tilt-jm          joint-mod           :offset-assert 256)
    (hit-points           float               :offset-assert 260)
-   (invincable           basic               :offset-assert 264)
-   (rotate-sound         uint32              :offset-assert 268)
-   (rotate-sound-playing basic               :offset-assert 272)
-   (blade-sound          uint32              :offset-assert 276)
-   (blade-sound-playing  basic               :offset-assert 280)
-   (snd-cmd-time         uint64              :offset-assert 288)
+   (invincable           symbol              :offset-assert 264)
+   (rotate-sound         sound-id            :offset-assert 268)
+   (rotate-sound-playing symbol              :offset-assert 272)
+   (blade-sound          sound-id            :offset-assert 276)
+   (blade-sound-playing  symbol              :offset-assert 280)
+   (snd-cmd-time         time-frame          :offset-assert 288)
    (minimap              connection-minimap  :offset-assert 296)
    )
   :method-count-assert 38
   :size-assert         #x12c
   :flag-assert         #x2600b0012c
+  (:state-methods
+    open ;; 28
+    idle ;; 29
+    die ;; 30
+    die-fast ;; 31
+    )
   (:methods
-    (fac-gun-tower-method-28 () none) ;; 28
-    (fac-gun-tower-method-29 () none) ;; 29
-    (fac-gun-tower-method-30 () none) ;; 30
-    (fac-gun-tower-method-31 () none) ;; 31
-    (fac-gun-tower-method-32 () none) ;; 32
-    (fac-gun-tower-method-33 () none) ;; 33
-    (fac-gun-tower-method-34 () none) ;; 34
-    (fac-gun-tower-method-35 () none) ;; 35
-    (fac-gun-tower-method-36 () none) ;; 36
-    (fac-gun-tower-method-37 () none) ;; 37
+    (fac-gun-tower-method-32 (_type_) none) ;; 32
+    (fac-gun-tower-method-33 (_type_) none) ;; 33
+    (fac-gun-tower-method-34 (_type_) none) ;; 34
+    (fire-shot (_type_) projectile) ;; 35
+    (fac-gun-tower-method-36 (_type_) none) ;; 36
+    (send-attack (_type_ process-focusable) none) ;; 37
     )
   )
-|#
 
-#|
 (deftype fac-gun-tower-break (process-drawable)
   ()
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
-  (:methods
-    (fac-gun-tower-break-method-20 () none) ;; 20
-    (fac-gun-tower-break-method-21 () none) ;; 21
+  (:state-methods
+    idle ;; 20
+    idle-stick ;; 21
     )
   )
-|#
 
-#|
 (deftype fac-gun-tower-base-broken (process-drawable)
   ()
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
-  (:methods
-    (fac-gun-tower-base-broken-method-20 () none) ;; 20
+  (:state-methods
+    idle ;; 20
     )
   )
-|#
 
-#|
 (deftype hud-factory-damage (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ffight-projectile              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ffight-shot (projectile)
-  ((hit-actor? basic          :offset-assert 512)
+  ((hit-actor? symbol         :offset-assert 512)
    (tail-pos   vector :inline :offset-assert 528)
    )
   :method-count-assert 41
@@ -71825,18 +71828,16 @@
     impact ;; 22
     )
   )
-|#
 
-;; (define-extern ffight-shot-move function)
-;; (define-extern spawn-ffight-projectile function)
+(define-extern ffight-shot-move (function ffight-shot none))
+(define-extern spawn-ffight-projectile (function process vector vector float symbol projectile))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ftank-projectile               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ftank-shot (projectile)
-  ((hit-actor? basic          :offset-assert 512)
+  ((hit-actor? symbol         :offset-assert 512)
    (tail-pos   vector :inline :offset-assert 528)
    )
   :method-count-assert 41
@@ -71846,52 +71847,46 @@
     impact ;; 22
     )
   )
-|#
 
-;; (define-extern ftank-shot-move function)
-;; (define-extern spawn-ftank-projectile function)
+(define-extern ftank-shot-move (function ftank-shot none))
+(define-extern spawn-ftank-projectile (function process vector vector float vector projectile))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fturret-projectile             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fturret-shot (projectile)
-  ((hit-actor? basic          :offset-assert 512)
+  ((hit-actor? symbol         :offset-assert 512)
    (tail-pos   vector :inline :offset-assert 528)
    )
   :method-count-assert 41
   :size-assert         #x220
   :flag-assert         #x2901a00220
   )
-|#
 
-;; (define-extern fturret-shot-move function)
-;; (define-extern spawn-fturret-projectile function)
+(define-extern fturret-shot-move (function fturret-shot none))
+(define-extern spawn-fturret-projectile (function process vector vector float vector projectile))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; warf-projectile                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype warf-explosion-sphere (process-drawable)
   ((current-alpha float  :offset-assert 200)
-   (expanding?    basic  :offset-assert 216)
+   (expanding?    symbol :offset 216)
    )
   :method-count-assert 23
   :size-assert         #xdc
   :flag-assert         #x17006000dc
-  (:methods
-    (warf-explosion-sphere-method-21 () none) ;; 21
-    (warf-explosion-sphere-method-22 () none) ;; 22
-    )
   (:state-methods
     active ;; 20
     )
+  (:methods
+    (warf-explosion-sphere-method-21 (_type_) none) ;; 21
+    (warf-explosion-sphere-method-22 (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype warf-explosion-sphere-init-params (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -71899,36 +71894,29 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype warf-projectile (projectile)
-  ((hit-actor?        basic          :offset-assert 512)
+  ((hit-actor?        symbol         :offset-assert 512)
    (tail-pos          vector :inline :offset-assert 528)
    (hit-pos           vector :inline :offset-assert 544)
-   (last-hit-time     uint64         :offset-assert 560)
-   (snd-whoosh        uint32         :offset-assert 568)
-   (muzzle-flash-part basic          :offset-assert 576)
+   (last-hit-time     time-frame     :offset-assert 560)
+   (snd-whoosh        sound-id       :offset-assert 568)
+   (muzzle-flash-part sparticle-launch-control :offset 576)
    )
   :method-count-assert 46
   :size-assert         #x244
   :flag-assert         #x2e01d00244
   (:methods
-    (warf-projectile-method-41 () none) ;; 41
-    (warf-projectile-method-42 () none) ;; 42
-    (warf-projectile-method-43 () none) ;; 43
-    (warf-projectile-method-44 () none) ;; 44
-    (warf-projectile-method-45 () none) ;; 45
-    )
-  (:state-methods
-    impact ;; 22
+    (warf-projectile-method-41 (_type_) none) ;; 41
+    (warf-projectile-method-42 (_type_ vector) none) ;; 42
+    (warf-projectile-method-43 (_type_) none) ;; 43
+    (send-attack (_type_ process-focusable) none) ;; 44
+    (warf-projectile-method-45 (_type_) none) ;; 45
     )
   )
-|#
 
-#|
 (deftype fac-gun-tower-projectile (projectile)
-  ((hit-actor? basic          :offset-assert 512)
+  ((hit-actor? symbol         :offset-assert 512)
    (tail-pos   vector :inline :offset-assert 528)
    )
   :method-count-assert 41
@@ -71938,46 +71926,42 @@
     impact ;; 22
     )
   )
-|#
 
-#|
 (deftype gun-warf-shot (projectile)
-  ((hit-actor?        basic          :offset-assert 512)
+  ((hit-actor?        symbol         :offset-assert 512)
    (tail-pos          vector :inline :offset-assert 528)
    (hit-pos           vector :inline :offset-assert 544)
-   (last-hit-time     uint64         :offset-assert 560)
-   (snd-whoosh        uint32         :offset-assert 568)
-   (muzzle-flash-part basic          :offset-assert 572)
-   (main-shot-part    basic          :offset-assert 576)
-   (shot-aim-part     basic          :offset-assert 580)
+   (last-hit-time     time-frame     :offset-assert 560)
+   (snd-whoosh        sound-id       :offset-assert 568)
+   (muzzle-flash-part sparticle-launch-control :offset-assert 572)
+   (main-shot-part    sparticle-launch-control :offset-assert 576)
+   (shot-aim-part     sparticle-launch-control :offset-assert 580)
    )
   :method-count-assert 44
   :size-assert         #x248
   :flag-assert         #x2c01d00248
   (:methods
-    (gun-warf-shot-method-41 () none) ;; 41
-    (gun-warf-shot-method-42 () none) ;; 42
-    (gun-warf-shot-method-43 () none) ;; 43
+    (gun-warf-shot-method-41 (_type_ vector vector) none) ;; 41
+    (gun-warf-shot-method-42 (_type_ float float matrix) none) ;; 42
+    (launch-part (_type_ vector) none) ;; 43
     )
   )
-|#
 
-;; (define-extern warf-explosion-sphere-init-by-other function)
-;; (define-extern warf-explosion-sphere-event-handler function)
-;; (define-extern spawn-warf-projectile function)
-;; (define-extern spawn-fac-gun-tower-projectile function)
-;; (define-extern warf-projectile-move function)
-;; (define-extern spt-func-factory-move function)
-;; (define-extern spt-func-part-crystal-torpedo-in function)
-;; (define-extern spt-func-part-crystal-torpedo-out function)
-;; (define-extern fac-gun-tower-projectile-move function)
-;; (define-extern gun-warf-shot-move function)
+(define-extern warf-explosion-sphere-init-by-other (function warf-explosion-sphere-init-params object :behavior warf-explosion-sphere))
+(def-event-handler warf-explosion-sphere-event-handler warf-explosion-sphere)
+(define-extern spawn-warf-projectile (function process vector vector float projectile))
+(define-extern spawn-fac-gun-tower-projectile (function process vector vector float projectile))
+(define-extern warf-projectile-move (function warf-projectile none))
+(define-extern spt-func-factory-move (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
+(define-extern spt-func-part-crystal-torpedo-in (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
+(define-extern spt-func-part-crystal-torpedo-out (function sparticle-system sparticle-cpuinfo sprite-vec-data-2d none))
+(define-extern fac-gun-tower-projectile-move (function fac-gun-tower-projectile none))
+(define-extern gun-warf-shot-move (function gun-warf-shot none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; h-warf                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype h-warf (hvehicle)
   ((minalt               float           :offset-assert 944)
    (curalt               float           :offset-assert 948)
@@ -71988,30 +71972,30 @@
    (pitcherr             float           :offset-assert 996)
    (straighterr          float           :offset-assert 1000)
    (alterr               float           :offset-assert 1004)
-   (rolling              basic           :offset-assert 1008)
+   (rolling              symbol          :offset-assert 1008)
    (speed                float           :offset-assert 1012)
    (poierr               float           :offset-assert 1016)
    (poipos               float           :offset-assert 1020)
    (poivel               float           :offset-assert 1024)
    (bigshotcount         int8            :offset-assert 1028)
-   (deathspin            basic           :offset-assert 1032)
+   (deathspin            symbol          :offset-assert 1032)
    (deathrot             vector  :inline :offset-assert 1040)
-   (birth                uint64          :offset-assert 1056)
-   (stop-time            uint64          :offset-assert 1064)
-   (bounce-state?        basic           :offset-assert 1072)
+   (birth                time-frame      :offset-assert 1056)
+   (stop-time            time-frame      :offset-assert 1064)
+   (bounce-state?        symbol          :offset-assert 1072)
    (bounce-angle         float           :offset-assert 1076)
-   (fire-time            UNKNOWN 4       :offset-assert 1080)
-   (l1-fire-time         uint64          :offset-assert 1112)
-   (l1-recharge-time     uint64          :offset-assert 1120)
-   (snd-cmd-time         uint64          :offset-assert 1128)
-   (damage-loop          uint32          :offset-assert 1136)
-   (damage-loop-playing? basic           :offset-assert 1140)
+   (fire-time            time-frame 4    :offset-assert 1080)
+   (l1-fire-time         time-frame      :offset-assert 1112)
+   (l1-recharge-time     time-frame      :offset-assert 1120)
+   (snd-cmd-time         time-frame      :offset-assert 1128)
+   (damage-loop          sound-id        :offset-assert 1136)
+   (damage-loop-playing? symbol          :offset-assert 1140)
    (damage-loop-index    uint8           :offset-assert 1144)
-   (engine-sound         uint32          :offset-assert 1148)
-   (engine-boost-sound   uint32          :offset-assert 1152)
-   (wind-noise-sound     uint32          :offset-assert 1156)
-   (wind-noise-playing?  basic           :offset-assert 1160)
-   (track-obj            uint64          :offset-assert 1168)
+   (engine-sound         sound-id        :offset-assert 1148)
+   (engine-boost-sound   sound-id        :offset-assert 1152)
+   (wind-noise-sound     sound-id        :offset-assert 1156)
+   (wind-noise-playing?  symbol          :offset-assert 1160)
+   (track-obj            handle          :offset-assert 1168)
    (track-joint          int8            :offset-assert 1176)
    (wind                 float           :offset-assert 1180)
    )
@@ -72019,14 +72003,19 @@
   :size-assert         #x4a0
   :flag-assert         #xa5042004a0
   (:methods
-    (h-warf-method-162 () none) ;; 162
-    (h-warf-method-163 () none) ;; 163
-    (h-warf-method-164 () none) ;; 164
+    (h-warf-method-162 (_type_ time-frame) symbol) ;; 162
+    (h-warf-method-163 (_type_ vector) float) ;; 163
+    (draw-thrusters (_type_ float vector vector) none) ;; 164
     )
   )
-|#
 
-#|
+(deftype h-warf-stack-var0 (structure)
+  ((vec0 vector :inline :offset 0)
+   (vec1 vector :inline :offset 16)
+   (mat  matrix :inline :offset 32)
+   )
+  )
+
 (deftype warf-asc (structure)
   ((asc float  :offset-assert 0)
    (des float  :offset-assert 4)
@@ -72035,24 +72024,22 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern *h-warf-center-of-level* object)
-;; (define-extern *h-warf-constants* object)
-;; (define-extern impact-reduction function)
-;; (define-extern steer-attenuation function)
-;; (define-extern ascention-atten! function)
-;; (define-extern world-to-local-vec! function)
+(define-extern *h-warf-center-of-level* vector)
+(define-extern *h-warf-constants* rigid-body-vehicle-constants)
+(define-extern impact-reduction (function int float))
+(define-extern steer-attenuation (function int float))
+(define-extern ascention-atten! (function float vector))
+(define-extern world-to-local-vec! (function vector vector matrix vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fac-gunturret                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fac-gun-tower-turret-params (structure)
-  ((normal-sg          basic  :offset-assert 0)
-   (explode-sg         basic  :offset-assert 4)
-   (enemy-info         basic  :offset-assert 8)
+  ((normal-sg          skeleton-group  :offset-assert 0)
+   (explode-sg         skeleton-group  :offset-assert 4)
+   (enemy-info         enemy-info  :offset-assert 8)
    (idle-anim          int32  :offset-assert 12)
    (shoot-anim         int32  :offset-assert 16)
    (track-joint        int32  :offset-assert 20)
@@ -72065,62 +72052,57 @@
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype fac-gunturret (enemy)
-  ((left-gun-tilt-jm     basic                               :offset-assert 552)
-   (right-gun-tilt-jm    basic                               :offset-assert 556)
+  ((left-gun-tilt-jm     joint-mod                           :offset-assert 552)
+   (right-gun-tilt-jm    joint-mod                           :offset-assert 556)
    (params               fac-gun-tower-turret-params         :offset-assert 560)
    (aim-pos              vector                      :inline :offset-assert 576)
    (gun-twist            float                               :offset-assert 592)
    (gun-tilt             float                               :offset-assert 596)
    (desired-twist        float                               :offset-assert 600)
    (desired-tilt         float                               :offset-assert 604)
-   (los-clear            basic                               :offset-assert 608)
-   (smoke-part           basic                               :offset-assert 612)
-   (casing-part          basic                               :offset-assert 616)
-   (flash-state          basic                               :offset-assert 620)
-   (can-shoot            basic                               :offset-assert 624)
-   (last-hit-time        uint64                              :offset-assert 632)
+   (los-clear            symbol                              :offset-assert 608)
+   (smoke-part           sparticle-launch-control            :offset-assert 612)
+   (casing-part          sparticle-launch-control            :offset-assert 616)
+   (flash-state          symbol                              :offset-assert 620)
+   (can-shoot            symbol                              :offset-assert 624)
+   (last-hit-time        time-frame                          :offset-assert 632)
    (init-mat             matrix                      :inline :offset-assert 640)
    (activate-distance    float                               :offset-assert 704)
    (aim-offset           vector                      :inline :offset-assert 720)
-   (use-alt-barrel       basic                               :offset-assert 736)
-   (rotate-sound         uint32                              :offset-assert 740)
-   (rotate-sound-playing basic                               :offset-assert 744)
-   (snd-cmd-time         uint64                              :offset-assert 752)
+   (use-alt-barrel       symbol                              :offset-assert 736)
+   (rotate-sound         sound-id                            :offset-assert 740)
+   (rotate-sound-playing symbol                              :offset-assert 744)
+   (snd-cmd-time         time-frame                          :offset-assert 752)
    )
   :method-count-assert 161
   :size-assert         #x2f8
   :flag-assert         #xa1028002f8
-  (:methods
-    (fac-gunturret-method-155 () none) ;; 155
-    (fac-gunturret-method-156 () none) ;; 156
-    (fac-gunturret-method-157 () none) ;; 157
-    (fac-gunturret-method-158 () none) ;; 158
-    (fac-gunturret-method-159 () none) ;; 159
-    (fac-gunturret-method-160 () none) ;; 160
-    )
   (:state-methods
-    die ;; 40
     stare ;; 37
     hostile ;; 38
+    die ;; 40
+    )
+  (:methods
+    (track-target (_type_ symbol) none) ;; 155
+    (check-los (_type_) none) ;; 156
+    (reset-aim (_type_) none) ;; 157
+    (fire-shot (_type_ symbol) none) ;; 158
+    (init-turret-params! (_type_) none) ;; 159
+    (go-explode (_type_) (pointer joint-exploder)) ;; 160
     )
   )
-|#
 
-#|
 (deftype fac-gun-tower-turret (fac-gunturret)
   ()
   :method-count-assert 161
   :size-assert         #x2f8
   :flag-assert         #xa1028002f8
   )
-|#
 
-;; (define-extern *fac-gunturret-exploder-params* joint-exploder-static-params)
-;; (define-extern *fac-gunturret-enemy-info* enemy-info)
+(define-extern *fac-gunturret-exploder-params* joint-exploder-static-params)
+(define-extern *fac-gunturret-enemy-info* enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fac-robotank-h                 ;;
@@ -72131,7 +72113,24 @@
 ;; fac-robotank-turret            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++fac-robotank-turret:fac-robotank-turret-flag
+(defenum fac-robotank-turret-flag
+  :type uint16
+  :bitfield #t
+  (frt0 0)
+  (frt1 1)
+  (frt2 2)
+  (frt3 3)
+  (frt4 4)
+  (frt5 5)
+  (frt6 6)
+  (frt7 7)
+  (frt8 8)
+  (frt9 9)
+  (frt10 10)
+  )
+;; ---fac-robotank-turret:fac-robotank-turret-flag
+
 (deftype fac-robotank-turret (process-focusable)
   ((los                 los-control :inline :offset-assert 208)
    (tank-quat           quaternion  :inline :offset-assert 384)
@@ -72144,96 +72143,99 @@
    (offset              vector      :inline :offset-assert 448)
    (sight-pos           vector      :inline :offset-assert 464)
    (firing-sight-pos    vector      :inline :offset-assert 480)
-   (aim-pos             UNKNOWN     3       :offset-assert 496)
-   (gun-timer           uint64              :offset-assert 544)
-   (gun-elev-jmod       basic               :offset-assert 552)
+   (aim-pos             vector    3 :inline :offset-assert 496)
+   (gun-timer           time-frame          :offset-assert 544)
+   (gun-elev-jmod       joint-mod           :offset-assert 552)
    (gun-elev            float               :offset-assert 556)
    (gun-elev-cam        float               :offset-assert 560)
-   (gun-joint-l         UNKNOWN     2       :offset-assert 564)
-   (gun-joint-r         UNKNOWN     2       :offset-assert 572)
+   (gun-joint-l         int32     2         :offset-assert 564)
+   (gun-joint-r         int32     2         :offset-assert 572)
    (gun-spread          float               :offset-assert 580)
    (gun-index           int32               :offset-assert 584)
-   (flags               uint16              :offset-assert 588)
-   (turn-sound-id       uint32              :offset-assert 592)
+   (flags               fac-robotank-turret-flag :offset-assert 588)
+   (turn-sound-id       sound-id            :offset-assert 592)
    )
   :method-count-assert 35
   :size-assert         #x254
   :flag-assert         #x2301e00254
-  (:methods
-    (fac-robotank-turret-method-31 () none) ;; 31
-    (fac-robotank-turret-method-32 () none) ;; 32
-    (fac-robotank-turret-method-33 () none) ;; 33
-    (fac-robotank-turret-method-34 () none) ;; 34
-    )
   (:state-methods
-    die ;; 30
-    fire ;; 29
     ready ;; 28
+    fire ;; 29
+    die ;; 30
+    )
+  (:methods
+    (fac-robotank-turret-method-31 (_type_ vector vector) object) ;; 31
+    (fac-robotank-turret-method-32 (_type_ (inline-array vector)) (pointer ftank-shot)) ;; 32
+    (fac-robotank-turret-method-33 (_type_) none) ;; 33
+    (fac-robotank-turret-method-34 (_type_ vector float) symbol) ;; 34
     )
   )
-|#
 
-#|
 (deftype fac-robotank-reticle (process-drawable)
   ((shadow-jmod  joint-mod-set-local         :offset-assert 200)
    (sight-jmod   joint-mod-set-local         :offset-assert 204)
-   (ring-jmod    UNKNOWN             3       :offset-assert 208)
-   (ring-timer   uint64                      :offset-assert 224)
+   (ring-jmod    joint-mod           3       :offset-assert 208)
+   (ring-timer   time-frame                  :offset-assert 224)
    (sight-scale  vector              :inline :offset-assert 240)
    (collide-dist float                       :offset-assert 256)
    )
   :method-count-assert 22
   :size-assert         #x104
   :flag-assert         #x1600900104
-  (:methods
-    (fac-robotank-reticle-method-20 () none) ;; 20
-    (fac-robotank-reticle-method-21 () none) ;; 21
+  (:state-methods
+    unlock ;; 20, not defined
+    lock ;; 21, not defined
     )
   )
-|#
 
-;; (define-extern fac-robotank-reticle-post function)
-;; (define-extern fac-robotank-reticle-handler function)
-;; (define-extern draw-2d-hud function) ;; (function vector symbol)
-;; (define-extern turret-post function) ;; (function none :behavior fort-robotank-turret)
-;; (define-extern robotank-turret-handler function) ;; (function process int symbol event-message-block object :behavior fort-robotank-turret)
-;; (define-extern fac-robotank-turret-init-by-other function)
+(define-extern fac-robotank-reticle-post (function none :behavior fac-robotank-reticle))
+(def-event-handler fac-robotank-reticle-handler fac-robotank-reticle)
+(define-extern draw-2d-hud (function vector symbol))
+(define-extern turret-post (function none :behavior fac-robotank-turret))
+(def-event-handler robotank-turret-handler fac-robotank-turret)
+(define-extern fac-robotank-turret-init-by-other (function vector quaternion vector float object :behavior fac-robotank-turret))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fac-robotank                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(declare-type fort-robotank process-drawable)
 (deftype fac-robotank-segment-event (structure)
   ((source     uint64  :offset-assert 0)
-   (event-type basic   :offset-assert 8)
-   (actor      basic   :offset-assert 12)
+   (event-type symbol  :offset-assert 8)
+   (actor      string  :offset-assert 12)
    (pos-norm   float   :offset-assert 16)
    (param      basic   :offset-assert 20)
+   (param-obj  object  :offset 20)
+   (param-func (function fort-robotank none) :offset 20)
+   (param-sym  symbol :offset 20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   ;; field param uses ~A with a signed load.
   )
-|#
 
-#|
+;; +++fac-robotank:robotank-segment-flag
+(defenum robotank-segment-flag
+  :type uint16
+  :bitfield #t
+  )
+;; ---fac-robotank:robotank-segment-flag
+
 (deftype fac-robotank-segment (structure)
-  ((flags              uint16  :offset-assert 0)
+  ((flags              robotank-segment-flag :offset-assert 0)
    (max-speed          float   :offset-assert 4)
    (next-segment       int32   :offset-assert 8)
    (next-segment-start float   :offset-assert 12)
    (event-count        int32   :offset-assert 16)
-   (event-tbl          uint32  :offset-assert 20)
+   (event-tbl          (inline-array fac-robotank-segment-event)  :offset-assert 20)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype fac-robotank-path-info (structure)
   ((dir           vector :inline :offset-assert 0)
    (u             float          :offset-assert 16)
@@ -72249,55 +72251,65 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype fac-robotank-path-info-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data fac-robotank-path-info :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype fac-robotank-wheel-info (structure)
-  ((jmod   basic  :offset-assert 0)
+  ((jmod   joint-mod-spinner :offset-assert 0)
    (radius float  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype fac-robotank-tread-info (structure)
-  ((wheel         UNKNOWN      7       :offset-assert 0)
-   (texture       texture-anim         :offset-assert 112)
-   (locator-joint int32                :offset-assert 116)
-   (pos           vector       :inline :offset-assert 128)
+  ((wheel         fac-robotank-wheel-info 7 :inline :offset-assert 0)
+   (texture       texture-anim                      :offset-assert 112)
+   (locator-joint int32                             :offset-assert 116)
+   (pos           vector                    :inline :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-#|
+;; +++fac-robotank:robotank-flag
+(defenum robotank-flag
+  :type uint16
+  :bitfield #t
+  (r0 0)
+  (r1 1)
+  (r2 2)
+  (r3 3)
+  (r4 4)
+  (r5 5)
+  (r6 6)
+  (r7 7)
+  )
+;; ---fac-robotank:robotank-flag
+
 (deftype fac-robotank (process-focusable)
-  ((barrel-part          basic                         :offset-assert 208)
+  ((parent               (pointer factory-manager)     :override)
+   (self                 fac-robotank                  :override)
+   (ppointer             (pointer fac-robotank)        :override)
+   (barrel-part          sparticle-launch-control      :offset-assert 208)
    (vibe-jmod            joint-mod-blend-local :inline :offset-assert 224)
-   (tread                UNKNOWN               2       :offset-assert 352)
-   (path-info            basic                         :offset-assert 640)
-   (flags                uint16                        :offset-assert 644)
-   (mgr                  uint64                        :offset-assert 648)
-   (pov-cam-offset       UNKNOWN               2       :offset-assert 656)
-   (explode-sg           basic                         :offset-assert 688)
-   (turret               uint64                        :offset-assert 696)
-   (no-collision-timer   uint64                        :offset-assert 704)
-   (buzz-timer           uint64                        :offset-assert 712)
+   (tread                fac-robotank-tread-info 2 :inline :offset-assert 352)
+   (path-info            fac-robotank-path-info-array  :offset-assert 640)
+   (flags                robotank-flag                 :offset-assert 644)
+   (mgr                  handle                        :offset-assert 648)
+   (pov-cam-offset       vector              2 :inline :offset-assert 656)
+   (explode-sg           skeleton-group                :offset-assert 688)
+   (turret               handle                        :offset-assert 696)
+   (no-collision-timer   time-frame                    :offset-assert 704)
+   (buzz-timer           time-frame                    :offset-assert 712)
    (engine-vibe-rate     float                         :offset-assert 720)
    (engine-vibe-amp      float                         :offset-assert 724)
    (attack-id            uint32                        :offset-assert 728)
@@ -72305,39 +72317,37 @@
    (path-count           int32                         :offset-assert 736)
    (continue-index       int32                         :offset-assert 740)
    (hit-points           float                         :offset-assert 744)
-   (engine-sound         uint32                        :offset-assert 748)
-   (engine-sound-playing basic                         :offset-assert 752)
-   (snd-cmd-time         uint64                        :offset-assert 760)
+   (engine-sound         sound-id                      :offset-assert 748)
+   (engine-sound-playing symbol                        :offset-assert 752)
+   (snd-cmd-time         time-frame                    :offset-assert 760)
    )
   :method-count-assert 35
   :size-assert         #x300
   :flag-assert         #x2302800300
-  (:methods
-    (fac-robotank-method-32 () none) ;; 32
-    (fac-robotank-method-33 () none) ;; 33
-    (fac-robotank-method-34 () none) ;; 34
-    )
   (:state-methods
-    die ;; 31
-    pause ;; 30
-    moving ;; 29
     turning ;; 28
+    moving ;; 29
+    pause ;; 30
+    die ;; 31
+    )
+  (:methods
+    (fac-robotank-method-32 (_type_) none) ;; 32
+    (fac-robotank-method-33 (_type_) none) ;; 33
+    (go-explode (_type_) (pointer joint-exploder)) ;; 34
     )
   )
-|#
 
-;; (define-extern *fac-robotank-exploder-params* joint-exploder-static-params)
-;; (define-extern fac-robotank-post function)
-;; (define-extern fac-robotank-handler function)
-;; (define-extern fac-robotank-birth-path function)
-;; (define-extern fac-robotank-init-by-other function)
-;; (define-extern fac-robotank-spawn function)
+(define-extern *fac-robotank-exploder-params* joint-exploder-static-params)
+(define-extern fac-robotank-post (function none :behavior fac-robotank))
+(def-event-handler fac-robotank-handler fac-robotank)
+(define-extern fac-robotank-birth-path (function factory-manager int :behavior fac-robotank))
+(define-extern fac-robotank-init-by-other (function object :behavior fac-robotank))
+(define-extern fac-robotank-spawn (function process fac-robotank))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; fac-tower                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fac-gun-tower-base (process-focusable)
   ()
   :method-count-assert 30
@@ -72348,103 +72358,89 @@
     explode ;; 29
     )
   )
-|#
 
-#|
 (deftype gun-tower-base (fac-gun-tower-base)
   ()
   :method-count-assert 30
   :size-assert         #xd0
   :flag-assert         #x1e005000d0
   )
-|#
 
-;; (define-extern *fac-tower-impact-pos* object)
-;; (define-extern *fac-gun-tower-break-anim-idx* object)
-;; (define-extern fac-gun-tower-base-broken-init-by-other function)
-;; (define-extern fac-gun-tower-break-init-by-other function)
-;; (define-extern start-destroyed-fac-gun-tower-base function)
-;; (define-extern start-destroyed-fac-gun-tower function)
-;; (define-extern fac-gun-tower-standard-event-handler function)
-;; (define-extern fac-deg-delta function)
+(define-extern *fac-tower-impact-pos* vector)
+(define-extern *fac-gun-tower-break-anim-idx* int)
+(define-extern fac-gun-tower-base-broken-init-by-other (function vector quaternion object :behavior fac-gun-tower-base-broken))
+(define-extern fac-gun-tower-break-init-by-other (function int vector quaternion object :behavior fac-gun-tower-break))
+(define-extern start-destroyed-fac-gun-tower-base (function vector quaternion process int))
+(define-extern start-destroyed-fac-gun-tower (function vector quaternion process (pointer fac-gun-tower-break)))
+(def-event-handler fac-gun-tower-standard-event-handler fac-gun-tower)
+(define-extern fac-deg-delta (function float float float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-manager                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-factory-sky-battle (task-manager)
-  ((factory-sky-battle-entity basic   :offset-assert 236)
-   (check-timer               uint64  :offset-assert 244)
-   (ended-timer               uint64  :offset-assert 252)
-   (mission-complete-time     uint64  :offset-assert 260)
-   (actor-group               uint32  :offset-assert 268)
-   (actor-group-count         int32   :offset-assert 272)
-   (cur-group                 int8    :offset-assert 276)
-   (hud-delay                 uint64  :offset-assert 284)
-   (sound-id                  uint32  :offset-assert 292)
-   (hud-damage                uint64  :offset-assert 300)
-   (hint-given                basic   :offset-assert 308)
+  ((factory-sky-battle-entity entity-actor :offset-assert 240)
+   (check-timer               time-frame :offset-assert 248)
+   (ended-timer               time-frame :offset-assert 256)
+   (mission-complete-time     time-frame :offset-assert 264)
+   (actor-group               (pointer actor-group)  :offset-assert 272)
+   (actor-group-count         int32   :offset-assert 276)
+   (cur-group                 int8    :offset-assert 280)
+   (hud-delay                 handle  :offset-assert 288)
+   (sound-id                  sound-id :offset-assert 296)
+   (hud-damage                handle  :offset-assert 304)
+   (hint-given                symbol  :offset-assert 312)
    )
   :method-count-assert 33
   :size-assert         #x13c
   :flag-assert         #x2100c0013c
   (:methods
-    (task-manager-factory-sky-battle-method-32 () none) ;; 32
-    )
-  (:state-methods
-    resolution ;; 17
+    (task-manager-factory-sky-battle-method-32 (_type_) none) ;; 32
     )
   )
-|#
 
-#|
 (deftype light-trail-tracker-vehicle (light-trail-tracker)
   ()
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac
   )
-|#
 
-#|
 (deftype factory-fighter-path (process-drawable)
   ()
   :method-count-assert 20
   :size-assert         #xc8
   :flag-assert         #x14005000c8
   )
-|#
 
-#|
 (deftype factory-tanks-path (process-drawable)
   ()
   :method-count-assert 20
   :size-assert         #xc8
   :flag-assert         #x14005000c8
   )
-|#
 
-;; (define-extern *fac-task-manager* object)
-;; (define-extern *fac-fighter-fired* object)
-;; (define-extern *fac-wave* object)
-;; (define-extern *fac-shotsleft* object)
-;; (define-extern *factory-fighter-trail* object)
-;; (define-extern fac-count-curves function)
-;; (define-extern *fac-tmp-str* object)
-;; (define-extern factory-manager-init-by-other function)
-;; (define-extern factory-manager-start function)
-;; (define-extern *fac-fighter-rigid-body-constants* object)
-;; (define-extern *fac-fighter-exploder-params* joint-exploder-static-params)
-;; (define-extern fighter-best-birth-path function)
-;; (define-extern fighter-birth-path function)
-;; (define-extern factory-fighter-standard-event-handler function)
-;; (define-extern factory-fighter-init-by-other function)
-;; (define-extern factory-fighter-spawn function)
-;; (define-extern *fac-target-exploder-params* joint-exploder-static-params)
-;; (define-extern hack-wave function)
-;; (define-extern fac-target-standard-event-handler function)
-;; (define-extern factory-shotsleft function)
+(define-extern *fac-task-manager* task-manager-factory-sky-battle)
+(define-extern *fac-fighter-fired* time-frame)
+(define-extern *fac-wave* int)
+(define-extern *fac-shotsleft* int)
+(define-extern *factory-fighter-trail* light-trail-composition)
+(define-extern fac-count-curves (function entity-actor int))
+(define-extern *fac-tmp-str* string)
+(define-extern factory-manager-init-by-other (function level object :behavior factory-manager))
+(define-extern factory-manager-start (function level none))
+(define-extern *fac-fighter-rigid-body-constants* rigid-body-object-constants)
+(define-extern *fac-fighter-exploder-params* joint-exploder-static-params)
+(define-extern fighter-best-birth-path (function factory-manager int))
+(define-extern fighter-birth-path (function factory-manager int))
+(def-event-handler factory-fighter-standard-event-handler factory-fighter)
+(define-extern factory-fighter-init-by-other (function object :behavior factory-fighter))
+(define-extern factory-fighter-spawn (function process factory-fighter))
+(define-extern *fac-target-exploder-params* joint-exploder-static-params)
+(define-extern hack-wave (function symbol))
+(def-event-handler fac-target-standard-event-handler fac-target)
+(define-extern factory-shotsleft (function int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; factory-hud                    ;;
@@ -72455,9 +72451,9 @@
 ;; factorya-init                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern factorya-login function)
-;; (define-extern factorya-activate function)
-;; (define-extern factorya-deactivate function)
+(define-extern factorya-login (function level none))
+(define-extern factorya-activate (function level none))
+(define-extern factorya-deactivate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mined-mood                     ;;
