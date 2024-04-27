@@ -1,0 +1,308 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type comb-states
+(deftype comb-states (structure)
+  ()
+  )
+
+;; definition for method 3 of type comb-states
+(defmethod inspect ((this comb-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'comb-states)
+  (label cfg-4)
+  this
+  )
+
+;; definition for function init-mood-comb
+(defun init-mood-comb ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group 1)))
+    (let ((a0-1 (-> v1-0 dir0)))
+      (set! (-> a0-1 direction x) 0.0)
+      (set! (-> a0-1 direction y) 1.0)
+      (set! (-> a0-1 direction z) 0.0)
+      (set! (-> a0-1 direction w) 0.0)
+      )
+    (set-vector! (-> v1-0 dir0 color) 0.667 0.667 0.667 1.0)
+    (set-vector! (-> v1-0 ambi color) 0.333 0.333 0.333 1.0)
+    (set! (-> v1-0 dir0 extra x) 0.75)
+    (set! (-> v1-0 dir1 extra x) 0.0)
+    (set! (-> v1-0 dir2 extra x) 0.0)
+    (set! (-> v1-0 ambi extra x) 0.25)
+    )
+  )
+
+;; definition for function update-mood-comb
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-comb time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (let* ((s5-0 (camera-pos))
+         (f0-1 (fmin
+                 (vector-vector-distance s5-0 (new 'static 'vector :x 368640.0 :z 40960.0 :w 1.0))
+                 (vector-vector-distance s5-0 (new 'static 'vector :x 14274560.0 :y -167936.0 :z 614400.0 :w 1.0))
+                 )
+               )
+         )
+    (when (< f0-1 716800.0)
+      (let ((f30-1 (fmax 0.0 (fmin 1.0 (* 0.000009765625 (- 819200.0 f0-1)))))
+            (a1-4 (-> arg0 current-fog))
+            (s5-1 (-> arg0 current-fog fog-dists))
+            )
+        (vector4-lerp!
+          (the-as vector a1-4)
+          (the-as vector a1-4)
+          (new 'static 'vector :x 30.0 :y 80.0 :z 150.0 :w 128.0)
+          f30-1
+          )
+        (vector4-lerp! s5-1 s5-1 (new 'static 'vector :x 262144.0 :y 937984.0 :z 255.0 :w 200.0) f30-1)
+        )
+      )
+    )
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (-> arg0 state)
+      (let* ((s5-2 (-> *display* part-clock frame-counter))
+             (f0-6 (* 1310.72 (the float (mod s5-2 25))))
+             (f30-2 (sin f0-6))
+             (f0-8 (* 109.22667 (the float (mod s5-2 600))))
+             (s5-3 (/ (mod s5-2 125) 25))
+             )
+        (set! (-> arg0 times 0 w) 1.0)
+        (set! (-> arg0 times 1 w) f30-2)
+        (set! (-> arg0 times 2 w) (+ 0.85 (* 0.15 (cos f0-8))))
+        (set! (-> arg0 times 3 w) (if (zero? s5-3)
+                                      f30-2
+                                      0.0
+                                      )
+              )
+        (set! (-> arg0 times 4 w) (if (= s5-3 1)
+                                      f30-2
+                                      0.0
+                                      )
+              )
+        (set! (-> arg0 times 5 w) (if (= s5-3 2)
+                                      f30-2
+                                      0.0
+                                      )
+              )
+        (set! (-> arg0 times 6 w) (if (= s5-3 3)
+                                      f30-2
+                                      0.0
+                                      )
+              )
+        (set! (-> arg0 times 7 w) (if (= s5-3 4)
+                                      f30-2
+                                      0.0
+                                      )
+              )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *comb-field-texture-anim-array*, type (texture-anim-array texture-anim)
+(define *comb-field-texture-anim-array*
+  (the-as (texture-anim-array texture-anim)
+    (new 'static 'texture-anim-array :type texture-anim
+      (new 'static 'texture-anim
+        :num-layers #x2
+        :func #f
+        :init-func #f
+        :tex #f
+        :tex-name "security-env-dest"
+        :color (new 'static 'rgba :a #x80)
+        :frame-delta 300.0
+        :frame-mod 4800.0
+        :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+        :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+        :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+        :data (new 'static 'array texture-anim-layer 2
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 4800.0
+            :tex-name "security-env-uscroll"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.0 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 4.0 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 4800.0
+            :tex-name "security-env-uscroll"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 2.0 3.0))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          )
+        )
+      (new 'static 'texture-anim
+        :num-layers #x3
+        :func #f
+        :init-func #f
+        :tex #f
+        :tex-name "security-dot-dest"
+        :color (new 'static 'rgba :a #x80)
+        :frame-delta 300.0
+        :frame-mod 600.0
+        :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+        :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+        :data (new 'static 'array texture-anim-layer 6
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 4800.0
+            :tex-name "common-white"
+            :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 600.0
+            :tex-name "security-dot-src"
+            :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.0078125 0.015625))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 1.0078125 0.015625))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'default-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 600.0
+            :tex-name "security-dot-src"
+            :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x2 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.0078125 0.140625))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 2.0078125 0.140625))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function set-comb-field-color!
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defun set-comb-field-color! ((arg0 vector))
+  (let ((v1-1 (-> *comb-field-texture-anim-array* array-data 0)))
+    (set! (-> v1-1 data 0 start-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 0 end-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 1 start-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 1 end-color quad) (-> arg0 quad))
+    )
+  (let ((v1-5 (-> *comb-field-texture-anim-array* array-data 1)))
+    (set! (-> v1-5 data 1 start-color quad) (-> arg0 quad))
+    (set! (-> v1-5 data 1 end-color quad) (-> arg0 quad))
+    (set! (-> v1-5 data 2 start-color quad) (-> arg0 quad))
+    (set! (-> v1-5 data 2 end-color quad) (-> arg0 quad))
+    )
+  (none)
+  )
+
+;; definition for function set-comb-field-flash!
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defun set-comb-field-flash! ((arg0 vector))
+  (let ((v1-1 (-> *comb-field-texture-anim-array* array-data 1)))
+    (set! (-> v1-1 data 0 start-color quad) (-> arg0 quad))
+    (set! (-> v1-1 data 0 end-color quad) (-> arg0 quad))
+    )
+  (none)
+  )
+
+;; definition for function set-comb-field-texture-masks!
+;; INFO: Used lq/sq
+(defun set-comb-field-texture-masks! ((arg0 vector))
+  (local-vars (a3-3 uint128) (a3-4 uint128))
+  (let ((v1-3 (-> *comb-field-texture-anim-array* array-data 0 data 0 tex))
+        (a1-3 (-> *comb-field-texture-anim-array* array-data 1 data 1 tex))
+        )
+    (when (and v1-3 a1-3)
+      (dotimes (a2-1 3)
+        (let ((a3-2 (-> (the-as (pointer uint128) (+ (the-as uint arg0) (* a2-1 16)))))
+              (t0-2 (-> v1-3 masks data a2-1 mask quad))
+              )
+          (.por a3-3 a3-2 t0-2)
+          )
+        (let ((t0-5 (-> a1-3 masks data a2-1 mask quad)))
+          (.por a3-4 a3-3 t0-5)
+          )
+        (set! (-> (the-as (pointer uint128) (+ (the-as uint arg0) (* a2-1 16)))) a3-4)
+        )
+      #f
+      )
+    )
+  )
+
+
+
+
