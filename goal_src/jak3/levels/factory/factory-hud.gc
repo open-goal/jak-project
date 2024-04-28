@@ -7,3 +7,47 @@
 
 ;; DECOMP BEGINS
 
+(defmethod draw ((this hud-factory-damage))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    256
+    (+ (the int (* 50.0 (-> this offset))) 376)
+    )
+  (set! (-> this sprites 0 pos z) #xfffff0)
+  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) -71 -5)
+  (set! (-> this sprites 1 pos z) #xfffff0)
+  (let ((f0-4 (fmax 0.0 (fmin 1.0 (the-as float (-> this values 0 current))))))
+    (set! (-> this sprites 1 color x) (the int (* 255.0 (- 1.0 f0-4))))
+    (set! (-> this sprites 1 color y) (the int (* 255.0 f0-4)))
+    (set! (-> this sprites 1 color z) 0)
+    (set! (-> this sprites 1 scale-x) (* 35.5 f0-4))
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-factory-damage))
+  (set! (-> this values 0 target) (the-as int (-> *game-info* health-bar-vehicle)))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-factory-damage))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center-2) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-vehicle-health-bar-01 factoryb-minimap)))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 scale-y) 1.2)
+  (set! (-> this sprites 1 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 1 flags) (hud-sprite-flags))
+  (set! (-> this sprites 1 scale-x) 0.0)
+  (set! (-> this sprites 1 scale-y) 3.0)
+  0
+  (none)
+  )

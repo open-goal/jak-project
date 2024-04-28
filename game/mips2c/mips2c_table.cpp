@@ -357,6 +357,14 @@ namespace method_16_ocean { extern void link(); }
 namespace init_ocean_far_regs { extern void link(); }
 namespace draw_large_polygon_ocean { extern void link(); }
 namespace render_ocean_quad { extern void link(); }
+namespace generic_merc_do_chain { extern void link(); }
+namespace generic_merc_execute_asm { extern void link(); }
+namespace generic_merc_death { extern void link(); }
+namespace generic_merc_query { extern void link(); }
+namespace generic_translucent { extern void link(); }
+namespace high_speed_reject { extern void link(); }
+namespace mercneric_convert { extern void link(); }
+namespace generic_merc_init_asm { extern void link(); }
 
 }
 // clang-format on
@@ -601,6 +609,11 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"ocean",
          {jak3::init_ocean_far_regs::link, jak3::draw_large_polygon_ocean::link,
           jak3::render_ocean_quad::link}},
+        {"generic-merc",
+         {jak3::generic_merc_do_chain::link, jak3::generic_merc_execute_asm::link,
+          jak3::generic_merc_death::link, jak3::generic_merc_query::link,
+          jak3::generic_translucent::link, jak3::high_speed_reject::link,
+          jak3::mercneric_convert::link, jak3::generic_merc_init_asm::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

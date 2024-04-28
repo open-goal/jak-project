@@ -1020,6 +1020,17 @@ const std::unordered_map<
              {"terraformer-graph",
               {{"node", ArrayFieldDecompMeta(TypeSpec("terraformer-node"), 32)},
                {"edge", ArrayFieldDecompMeta(TypeSpec("terraformer-edge"), 16)}}},
+             {"bombbot-path", {{"node", ArrayFieldDecompMeta(TypeSpec("bombbot-node"), 32)}}},
+             {"ai-task-pool",
+              {{"tasks", ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                              4,
+                                              ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+             {"bot-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}},
+             {"ashelin-course",
+              {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+               {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+               {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

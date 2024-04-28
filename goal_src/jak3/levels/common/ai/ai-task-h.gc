@@ -5,5 +5,245 @@
 ;; name in dgo: ai-task-h
 ;; dgos: DESOASIS
 
+(declare-type ai-task-pool basic)
+(declare-type bot nav-enemy)
+
 ;; DECOMP BEGINS
 
+(deftype ai-task (basic)
+  ((next       ai-task)
+   (prev       ai-task)
+   (pool       ai-task-pool)
+   (unique-id  uint32)
+   (bytes      int8  16 :offset  32)
+   )
+  (:methods
+    (reset-task! (_type_) none)
+    (ai-task-method-10 (_type_ bot) none)
+    (ai-task-method-11 (_type_ bot) object)
+    )
+  )
+
+
+(deftype ai-task-pool (basic)
+  ((anchor        ai-task)
+   (tasks         (pointer uint32))
+   (tasks-length  uint32)
+   (unique-id     uint32)
+   )
+  (:methods
+    (assign-ids! (_type_ type) ai-task)
+    (set-next-task! (_type_ ai-task) ai-task)
+    (ai-task-pool-method-11 (_type_) ai-task)
+    )
+  )
+
+
+(deftype ai-task-control (basic)
+  ((anchor  ai-task)
+   (pool    ai-task-pool)
+   )
+  (:methods
+    (new (symbol type ai-task-pool) _type_)
+    (ai-task-control-method-9 (_type_) symbol)
+    (ai-task-control-method-10 (_type_ bot) none)
+    (get-task-by-type (_type_ type bot) ai-task)
+    (ai-task-control-method-12 (_type_ bot) symbol)
+    (ai-task-control-method-13 (_type_ ai-task bot) ai-task)
+    (ai-task-control-method-14 (_type_ ai-task bot) none)
+    (init-task! (_type_ type bot) ai-task)
+    (set-next-task-for-pool! (_type_ ai-task) none)
+    (set-next-task! (_type_ ai-task) ai-task)
+    )
+  )
+
+
+;; WARN: Return type mismatch int vs object.
+(defmethod ai-task-method-11 ((this ai-task) (arg0 bot))
+  0
+  )
+
+(defmethod ai-task-method-10 ((this ai-task) (arg0 bot))
+  0
+  (none)
+  )
+
+(defmethod reset-task! ((this ai-task))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer uint32) vs ai-task.
+(defmethod ai-task-pool-method-11 ((this ai-task-pool))
+  (set! (-> this unique-id) (the-as uint 0))
+  (let ((t0-0 (the-as (pointer uint32) #f))
+        (a1-0 (the-as (pointer uint32) #f))
+        (v1-0 (-> this tasks))
+        )
+    (let ((a2-0 (-> this tasks-length)))
+      (dotimes (a3-0 (the-as int a2-0))
+        (set! a1-0 (&+ v1-0 (* 48 a3-0)))
+        (set! (-> a1-0 2) (the-as uint this))
+        (set! (-> a1-0 3) (the-as uint 0))
+        (set! (-> a1-0 1) (the-as uint t0-0))
+        (if t0-0
+            (set! (-> t0-0 0) (the-as uint a1-0))
+            )
+        (set! t0-0 a1-0)
+        )
+      )
+    (set! (-> a1-0 0) (the-as uint #f))
+    (let ((v0-0 (&-> v1-0 0)))
+      (set! (-> this anchor) (the-as ai-task v0-0))
+      (the-as ai-task v0-0)
+      )
+    )
+  )
+
+(defmethod assign-ids! ((this ai-task-pool) (arg0 type))
+  (let ((v1-1 (-> this anchor next)))
+    (when v1-1
+      (let ((a2-0 (-> v1-1 prev))
+            (a3-0 (-> v1-1 next))
+            )
+        (set! (-> v1-1 prev) #f)
+        (set! (-> v1-1 next) #f)
+        (let ((t0-1 (the-as int (+ (-> this unique-id) 1))))
+          (if (zero? (the-as uint t0-1))
+              (set! t0-1 1)
+              )
+          (set! (-> this unique-id) (the-as uint t0-1))
+          (set! (-> v1-1 unique-id) (the-as uint t0-1))
+          )
+        (set! (-> a2-0 next) a3-0)
+        (if a3-0
+            (set! (-> a3-0 prev) a2-0)
+            )
+        )
+      (set! (-> v1-1 type) arg0)
+      v1-1
+      )
+    )
+  )
+
+(defmethod set-next-task! ((this ai-task-pool) (arg0 ai-task))
+  (let* ((v1-0 (-> this anchor))
+         (v0-0 (-> v1-0 next))
+         )
+    (set! (-> v1-0 next) arg0)
+    (set! (-> arg0 prev) v1-0)
+    (set! (-> arg0 next) v0-0)
+    v0-0
+    )
+  )
+
+(defmethod new ai-task-control ((allocation symbol) (type-to-make type) (arg0 ai-task-pool))
+  (let ((s5-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> s5-0 pool) arg0)
+    (set! (-> s5-0 anchor) (assign-ids! arg0 ai-task))
+    s5-0
+    )
+  )
+
+(defmethod ai-task-control-method-12 ((this ai-task-control) (arg0 bot))
+  (let ((gp-0 (-> this anchor)))
+    (let ((s3-0 (-> this anchor next)))
+      (while s3-0
+        (let ((s4-0 (-> s3-0 next)))
+          (if arg0
+              (ai-task-method-10 s3-0 arg0)
+              )
+          (set-next-task! (-> s3-0 pool) s3-0)
+          (set! s3-0 s4-0)
+          )
+        )
+      )
+    (set! (-> gp-0 prev) #f)
+    (set! (-> gp-0 next) #f)
+    )
+  #f
+  )
+
+(defmethod ai-task-control-method-9 ((this ai-task-control))
+  (ai-task-control-method-12 this (the-as bot #f))
+  (let ((a1-1 (-> this anchor)))
+    (when a1-1
+      (set-next-task! (-> a1-1 pool) a1-1)
+      (set! (-> this anchor) #f)
+      #f
+      )
+    )
+  )
+
+(defmethod init-task! ((this ai-task-control) (arg0 type) (arg1 bot))
+  (let ((s5-0 (assign-ids! (-> this pool) arg0)))
+    (if s5-0
+        (reset-task! s5-0)
+        )
+    s5-0
+    )
+  )
+
+(defmethod set-next-task! ((this ai-task-control) (arg0 ai-task))
+  (let* ((v1-0 (-> this anchor))
+         (a0-1 (-> v1-0 next))
+         )
+    (set! (-> v1-0 next) arg0)
+    (set! (-> arg0 prev) v1-0)
+    (set! (-> arg0 next) a0-1)
+    )
+  arg0
+  )
+
+;; WARN: Return type mismatch ai-task vs none.
+(defmethod set-next-task-for-pool! ((this ai-task-control) (arg0 ai-task))
+  (set-next-task! (-> this pool) arg0)
+  (none)
+  )
+
+(defmethod get-task-by-type ((this ai-task-control) (arg0 type) (arg1 bot))
+  (let ((s5-0 (init-task! this arg0 arg1)))
+    (if s5-0
+        (set-next-task! this s5-0)
+        )
+    s5-0
+    )
+  )
+
+(defmethod ai-task-control-method-13 ((this ai-task-control) (arg0 ai-task) (arg1 bot))
+  (let ((gp-0 (-> arg0 prev))
+        (s5-0 (-> arg0 next))
+        )
+    (if arg1
+        (ai-task-method-10 arg0 arg1)
+        )
+    (set-next-task! (-> this pool) arg0)
+    (if gp-0
+        (set! (-> gp-0 next) s5-0)
+        )
+    (if s5-0
+        (set! (-> s5-0 prev) gp-0)
+        )
+    s5-0
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod ai-task-control-method-10 ((this ai-task-control) (arg0 bot))
+  (let ((a0-1 (-> this anchor next)))
+    (if a0-1
+        (ai-task-method-11 a0-1 arg0)
+        )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod ai-task-control-method-14 ((this ai-task-control) (arg0 ai-task) (arg1 bot))
+  (let ((a0-1 (ai-task-control-method-13 this arg0 arg1)))
+    (if a0-1
+        (ai-task-method-11 a0-1 arg1)
+        )
+    )
+  (none)
+  )
