@@ -31,6 +31,7 @@ set(RUNTIME_SOURCE
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
         graphics/jak3_texture_remap.cpp
+        graphics/screenshot.cpp
         graphics/opengl_renderer/background/background_common.cpp
         graphics/opengl_renderer/background/Shrub.cpp
         graphics/opengl_renderer/background/TFragment.cpp
@@ -209,6 +210,10 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/nav_engine.cpp
         mips2c/jak3_functions/merc_blend_shape.cpp
         mips2c/jak3_functions/wvehicle_part.cpp
+        mips2c/jak3_functions/ripple.cpp
+        mips2c/jak3_functions/ocean.cpp
+        mips2c/jak3_functions/ocean_vu0.cpp
+        mips2c/jak3_functions/generic_merc.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

@@ -492,6 +492,25 @@
   (-> arg0 level task-mask)
   )
 
+(defmethod inspect ((this entity))
+  (call-parent-method this)
+  (format #t "~Ttrans: ~`vector`P~%" (-> this trans))
+  (format #t "~Taid:   ~A~%" (-> this aid))
+  this
+  )
+
+(defmethod inspect ((this entity-actor))
+  (call-parent-method this)
+  (format #t "~Tetype:    ~A~%" (-> this etype))
+  (format #t "~Ttask:     ~d~%" (-> this task))
+  (format #t "~Tkill-mask: #x~X : (" (-> this kill-mask))
+  (bit-enum->string task-mask (-> this kill-mask) #t)
+  (format #t ")~%")
+  (format #t "~Tvis-id:   ~d~%" (-> this vis-id))
+  (format #t "~Tquat:     ~`vector`P~%" (-> this quat))
+  this
+  )
+
 (defmethod print ((this process))
   (cond
     ((and (-> this top-thread) (!= (-> this status) 'dead))
@@ -1714,7 +1733,7 @@
                 (set! sv-16 0)
                 (while (< sv-16 (-> s0-0 length))
                   (if (not (-> s0-0 data sv-16 actor))
-                      (set! (-> s0-0 data sv-16 actor) (entity-by-aid (-> s0-0 data sv-16 id)))
+                      (set! (-> s0-0 data sv-16 actor) (the-as entity-actor (entity-by-aid (-> s0-0 data sv-16 id))))
                       )
                   (set! sv-16 (+ sv-16 1))
                   )

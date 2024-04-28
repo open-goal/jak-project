@@ -255,25 +255,28 @@
   )
 
 (defmethod play-effects-from-res-lump ((this effect-control) (arg0 float) (arg1 float) (arg2 float))
-  (let ((s2-0 (-> this name)))
-    (while (= (-> s2-0 0 name) 'effect-name)
-      (let ((f0-0 (-> s2-0 0 key-frame)))
-        (when (or (and (< f0-0 arg1) (< arg0 f0-0)) (= f0-0 arg2))
-          (let* ((a0-1 this)
-                 (t9-0 (method-of-object a0-1 do-effect))
-                 (v1-7 (-> this res))
-                 (a1-1 (-> s2-0 0))
-                 )
-            (t9-0
-              a0-1
-              (the-as string (-> (the-as (pointer int32) (&+ (-> v1-7 data-base) (-> a1-1 data-offset)))))
-              f0-0
-              -1
+  ;; og:preserve-this added check
+  (when (-> this name)
+    (let ((s2-0 (-> this name)))
+      (while (= (-> s2-0 0 name) 'effect-name)
+        (let ((f0-0 (-> s2-0 0 key-frame)))
+          (when (or (and (< f0-0 arg1) (< arg0 f0-0)) (= f0-0 arg2))
+            (let* ((a0-1 this)
+                  (t9-0 (method-of-object a0-1 do-effect))
+                  (v1-7 (-> this res))
+                  (a1-1 (-> s2-0 0))
+                  )
+              (t9-0
+                a0-1
+                (the-as string (-> (the-as (pointer int32) (&+ (-> v1-7 data-base) (-> a1-1 data-offset)))))
+                f0-0
+                -1
+                )
               )
             )
           )
+        (set! s2-0 (&-> s2-0 1))
         )
-      (set! s2-0 (&-> s2-0 1))
       )
     )
   0
@@ -302,18 +305,19 @@
        (return #f)
        )
       ((string= s3-0 "script")
-       (let ((gp-1 (get-property-struct
-                     (-> this res)
-                     'effect-script
-                     'exact
-                     arg1
-                     (the-as structure #f)
-                     (the-as (pointer res-tag) #f)
-                     *res-static-buf*
-                     )
+       (let ((gp-1 (the-as pair (get-property-struct
+                                  (-> this res)
+                                  'effect-script
+                                  'exact
+                                  arg1
+                                  (the-as structure #f)
+                                  (the-as (pointer res-tag) #f)
+                                  *res-static-buf*
+                                  )
+                           )
                    )
              )
-         (script-eval (the-as pair gp-1))
+         (script-eval gp-1)
          )
        (return #f)
        )

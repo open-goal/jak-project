@@ -7,3 +7,30 @@
 
 ;; DECOMP BEGINS
 
+(defun fx-copy-buf ((arg0 dma-buffer))
+  "draw the current framebuffer to tbp #x3300 (13056)"
+  (#when PC_PORT
+    (dma-buffer-add-cnt-vif2 arg0 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm #x10) ;; kind - buffer->texture
+                                    (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm #x3300))
+    (dma-buffer-add-uint128 arg0 0)
+    )
+  (set-dirty-mask! (-> *level* level-default) 5 #xd0000 #x4c000)
+  (none)
+  )
+
+(define *warp-shader* (new 'static 'adgif-shader
+                        :reg-0 #x6
+                        :reg-1 #x14
+                        :reg-2 #x34
+                        :reg-3 #x8
+                        :reg-4 #x42
+                        :tex0 (new 'static 'gs-tex0 :tbp0 #x4c0 :tbw #x8 :tw #x9 :th #x9 :tcc #x1)
+                        :tex1 (new 'static 'gs-tex1 :mmag #x1)
+                        :clamp (new 'static 'gs-clamp
+                          :wms (gs-tex-wrap-mode region-clamp)
+                          :wmt (gs-tex-wrap-mode region-clamp)
+                          :maxu #x1ff
+                          :maxv #x19f
+                          )
+                        )
+        )

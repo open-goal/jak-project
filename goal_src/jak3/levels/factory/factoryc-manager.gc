@@ -7,3 +7,148 @@
 
 ;; DECOMP BEGINS
 
+(defun factoryd-activate ((arg0 level))
+  (if (and (nonzero? *nav-network*) *nav-network*)
+      (init-by-other! *nav-network* arg0 *factoryd-adjacency*)
+      )
+  0
+  (none)
+  )
+
+(deftype task-manager-factory-assault (task-manager)
+  ((explode-car-time  time-frame)
+   (daxter-done       symbol)
+   (region-hack       symbol)
+   )
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defmethod task-manager-method-26 ((this task-manager-factory-assault))
+  (when (< -1 (-> this explode-car-time))
+    (let* ((s4-0 (handle->process (-> *vehicle-info* handle-by-vehicle-type 21)))
+           (s5-0 (if (type? s4-0 process-focusable)
+                     (the-as process-focusable s4-0)
+                     )
+                 )
+           )
+      (when s5-0
+        (cond
+          ((and (or (focus-test? s5-0 dead) (< 245760.0 (- (-> (target-pos 0) y) (-> s5-0 root trans y))))
+                (not (task-node-closed? (game-task-node factory-assault-broke-ultimate-fence)))
+                )
+           (if (and *target* (focus-test? *target* indax))
+               (send-event
+                 *target*
+                 'attack-invinc
+                 #f
+                 (static-attack-info
+                   :mask (vehicle-impulse-factor)
+                   ((id (new-attack-id)) (damage 100.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'death))
+                   )
+                 )
+               )
+           (send-event this 'fail)
+           )
+          ((= (-> this player-vehicle) #f)
+           (set! (-> this player-vehicle) (process->handle (send-event *target* 'get-vehicle)))
+           )
+          )
+        )
+      )
+    )
+  (when (not (-> this daxter-done))
+    (cond
+      ((task-node-closed? (game-task-node factory-assault-indax-4))
+       (set! (-> this daxter-done) #t)
+       (remove-setting! 'pilot)
+       )
+      (else
+        (set-setting! 'pilot #f 0.0 0)
+        )
+      )
+    )
+  (if (and *target* (focus-test? *target* pilot-riding))
+      (task-close! "factory-assault-get-vehicle")
+      )
+  (when (and (> (-> this explode-car-time) 0) (< (-> this explode-car-time) (current-time)))
+    (let* ((s4-1 (handle->process (-> *vehicle-info* handle-by-vehicle-type 21)))
+           (s5-1 (if (type? s4-1 process-focusable)
+                     s4-1
+                     )
+                 )
+           )
+      (when s5-1
+        (cond
+          ((-> this region-hack)
+           (set! (-> this explode-car-time) 0)
+           (send-event
+             s5-1
+             'attack
+             #f
+             (static-attack-info
+               :mask (vehicle-impulse-factor)
+               ((id (new-attack-id)) (damage 250.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 0.0))
+               )
+             )
+           )
+          (else
+            (set! (-> this explode-car-time) -1)
+            (send-event *target* 'invulnerable 360)
+            (let ((v1-63 (new 'static 'vector :z 4096.0 :w 1.0)))
+              (send-event s5-1 'attack #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                              (damage 250.0)
+                                                                                              (vehicle-damage-factor 1.0)
+                                                                                              (vehicle-impulse-factor 0.1)
+                                                                                              (attacker-velocity v1-63)
+                                                                                              )
+                                                              )
+                          )
+              )
+            (task-close! "factory-assault-broke-ultimate-fence")
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: disable def twice: 18. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod taskman-event-handler ((this task-manager-factory-assault) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('vehicle-breached)
+     (set! v0-0 (+ (current-time) (seconds 1)))
+     (set! (-> this explode-car-time) (the-as time-frame v0-0))
+     v0-0
+     )
+    (('faccar-terminate)
+     (when (and *target* (focus-test? *target* pilot-riding))
+       (set! (-> this explode-car-time) (+ (current-time) (seconds 2)))
+       (set! v0-0 #t)
+       (set! (-> this region-hack) (the-as symbol v0-0))
+       v0-0
+       )
+     )
+    (else
+      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod task-manager-method-27 ((this task-manager-factory-assault))
+  (send-event (handle->process (-> this player-vehicle)) 'go-die)
+  (set! (-> this player-vehicle) (the-as handle #f))
+  ((method-of-type task-manager task-manager-method-27) this)
+  (none)
+  )
+
+(defmethod set-time-limit ((this task-manager-factory-assault))
+  (set! (-> this explode-car-time) 0)
+  (set! (-> this daxter-done) #f)
+  (set! (-> this region-hack) #f)
+  (set-setting! 'unique-vehicle-mission-critical #f 0.0 0)
+  ((method-of-type task-manager set-time-limit) this)
+  (none)
+  )

@@ -20,6 +20,10 @@
 ;; ERROR: Failed load: (set! a2-4 (l.wu (+ a2-3 2224))) at op 19
 (defun draw-string ((arg0 string) (arg1 dma-buffer) (arg2 font-context))
   (local-vars (v0-2 uint))
+  (#when PC_PORT
+    ;; debug font scaling.
+    (unless (logtest? (-> arg2 flags) (font-flags large pc-hack))
+      (*! (-> arg2 scale) (get-debug-font-scale-factor))))
   (let ((v1-1 (the int (* 128.0 (-> arg2 alpha)))))
     (-> arg2 origin quad)
     (dotimes (a0-2 45)
@@ -42,7 +46,23 @@
   (the-as draw-string-result v0-2)
   )
 
-(def-mips2c get-string-length (function string font-context draw-string-result))
+; (def-mips2c get-string-length (function string font-context draw-string-result))
+(def-mips2c get-string-length-asm (function string font-context draw-string-result))
+
+(#when PC_PORT
+;; og:preserve-this get-string-length is an asm function, but for PC port we use a trampoline in order to inject hacks more easily
+(defun get-string-length ((text string) (ctx font-context))
+  "return the length of a string, in gs framebuffer units"
+  (let ((orig-scale (-> ctx scale))
+        (result (begin (#when PC_PORT ;; debug font scaling.
+                                      (unless (logtest? (-> ctx flags) (font-flags large pc-hack))
+                                        (*! (-> ctx scale) (get-debug-font-scale-factor))))
+                       (get-string-length-asm text ctx))))
+    (set! (-> ctx scale) orig-scale)
+    result)
+  )
+
+)
 
 (defun draw-string-xy ((arg0 string) (arg1 dma-buffer) (arg2 int) (arg3 int) (arg4 font-color) (arg5 font-flags))
   (let ((s4-0 (new 'stack 'font-context *font-default-matrix* arg2 arg3 0.0 arg4 arg5)))

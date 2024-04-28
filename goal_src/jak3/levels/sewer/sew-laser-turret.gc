@@ -7,3 +7,1207 @@
 
 ;; DECOMP BEGINS
 
+(deftype gun-turret-params (structure)
+  ((normal-sg     skeleton-group)
+   (explode-sg    skeleton-group)
+   (enemy-info    enemy-info)
+   (idle-anim     int32)
+   (shoot-anim    int32)
+   (track-joint   int32)
+   (barrel-joint  int32)
+   (gun-joint     int32)
+   (hole-joints   int32  8)
+   )
+  )
+
+
+(deftype sew-laser-turret (enemy)
+  ((params            gun-turret-params)
+   (aim-pos           vector  :inline)
+   (smoke-part        sparticle-launch-control)
+   (casing-part       sparticle-launch-control)
+   (flash-state       symbol)
+   (can-shoot         symbol)
+   (last-active-time  time-frame)
+   (target-distance   float)
+   (target-on-ground  symbol)
+   (was-hit           symbol)
+   (awareness-radius  float)
+   (ring-rate         time-frame)
+   (max-num-rings     int32)
+   (last-spawn-index  int32)
+   (spin-sound-id     sound-id)
+   (last-play-time    time-frame)
+   (strip             prim-strip)
+   )
+  (:state-methods
+    alert
+    spinning-up
+    spinning-down
+    turn-off
+    )
+  (:methods
+    (start-firing (_type_ symbol int) none)
+    (sew-laser-turret-method-160 (_type_) none)
+    (generate-prim-verts! (_type_ float float) none)
+    (check-suitable-focus (_type_) symbol)
+    (sew-laser-turret-method-163 (_type_) none)
+    )
+  )
+
+
+(defpartgroup group-sew-laser-turret-hit
+  :id 1518
+  :duration (seconds 0.5)
+  :linger-duration (seconds 1)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4757 :period (seconds 5) :length (seconds 0.085) :offset -10)
+    (sp-item 4758 :fade-after (meters 60) :period (seconds 5) :length (seconds 0.1))
+    (sp-item 4759 :fade-after (meters 60) :falloff-to (meters 60) :period (seconds 5) :length (seconds 0.335))
+    (sp-item 4760 :fade-after (meters 200) :falloff-to (meters 200) :period (seconds 5) :length (seconds 0.167))
+    (sp-item 4761 :period (seconds 5) :length (seconds 0.017) :offset -10)
+    (sp-item 4762 :fade-after (meters 150) :falloff-to (meters 150) :period (seconds 5) :length (seconds 0.167))
+    )
+  )
+
+(defpart 4760
+  :init-specs ((:texture (explosion-edge level-default-sprite))
+    (:num 1.0 1.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 360) :store)
+    (:scale-y (meters 0.8) (meters 0.2))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.02) (meters 0.01))
+    (:scalevel-x (meters 0.01) (meters 0.13333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -0.36)
+    (:fade-b -4.24)
+    (:fade-a -0.22068965)
+    (:friction 0.95)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:next-time (seconds 0.085) (seconds 0.015))
+    (:next-launcher 4962)
+    (:conerot-x '*sp-temp*)
+    )
+  )
+
+(defpart 4762
+  :init-specs ((:texture (explosion-nebula level-default-sprite))
+    (:num 1.0 1.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 0.0)
+    (:vel-y (meters 0.02) (meters 0.01))
+    (:scalevel-x (meters 0.01) (meters 0.13333334))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -0.36)
+    (:fade-b -4.24)
+    (:fade-a 0.22068965)
+    (:friction 0.95)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.085) (seconds 0.015))
+    (:next-launcher 4962)
+    (:conerot-x (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 4962
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0) (:next-time (seconds 0.017) (seconds 0.065)) (:next-launcher 4963))
+  )
+
+(defpart 4963
+  :init-specs ((:scalevel-x (meters 0.016666668) (meters 0.016666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.44)
+    (:fade-g -2.36)
+    (:fade-b -2.64)
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 4964)
+    )
+  )
+
+(defpart 4964
+  :init-specs ((:scalevel-x (meters 0.008333334) (meters 0.008333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -1.2944444)
+    (:fade-g -0.7111111)
+    (:fade-b -0.094444446)
+    (:fade-a -0.06545454 -0.06545454)
+    (:next-time (seconds 0.5) (seconds 0.097))
+    (:next-launcher 4965)
+    )
+  )
+
+(defpart 4965
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0))
+  )
+
+(defpart 4761
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 96.0)
+    (:scalevel-x (meters 0.5))
+    (:rotvel-z (degrees 0.3))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -1.28)
+    (:fade-b -5.1)
+    (:fade-a 0.0)
+    (:timer (seconds 0.335))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.167))
+    (:next-launcher 4966)
+    )
+  )
+
+(defpart 4966
+  :init-specs ((:scalevel-x (meters -0.2))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -2.56)
+    (:fade-b 0.0)
+    (:fade-a -1.92)
+    )
+  )
+
+(defpart 4759
+  :init-specs ((:texture (specs level-default-sprite))
+    (:num 5.0 3.0)
+    (:x (meters 0.25))
+    (:scale-x (meters 1) (meters 0.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 16.0 48.0)
+    (:vel-y (meters 0.083333336) (meters 0.083333336))
+    (:scalevel-x (meters 0.006666667) (meters 0.0016666667))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -0.18)
+    (:fade-b -2.12)
+    (:accel-y (meters -0.00016666666) (meters -0.00033333333))
+    (:friction 0.87)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 4967)
+    (:conerot-x (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 4967
+  :init-specs ((:scalevel-x (meters 0.0016666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g 0.02)
+    (:fade-b 0.23555556)
+    (:next-time (seconds 0.15) (seconds 0.047))
+    (:next-launcher 4968)
+    )
+  )
+
+(defpart 4968
+  :init-specs ((:fade-r -0.5543478) (:fade-g -0.5543478) (:fade-a -0.13913043))
+  )
+
+(defpart 4757
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 3.0 1.0)
+    (:x (meters 0) (meters 0.6))
+    (:scale-x (meters 2) (meters 1.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 70.0 20.0)
+    (:g 70.0 20.0)
+    (:b 70.0 20.0)
+    (:a 0.0 40.0)
+    (:vel-y (meters 0) (meters 0.1))
+    (:scalevel-x (meters 0.033333335) (meters 0.016666668))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 3.3)
+    (:fade-g 3.12)
+    (:fade-b 1.18)
+    (:fade-a 1.76)
+    (:friction 0.88)
+    (:timer (seconds 2.367))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 4969)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:conerot-y (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 4969
+  :init-specs ((:scalevel-x (meters 0.0033333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.53333336)
+    (:fade-g -1.9666667)
+    (:fade-b -2.2)
+    (:fade-a -0.41666666)
+    (:next-time (seconds 0.15) (seconds 0.047))
+    (:next-launcher 4970)
+    )
+  )
+
+(defpart 4970
+  :init-specs ((:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.38833332)
+    (:fade-g -0.21333334)
+    (:fade-b -0.028333334)
+    (:fade-a -0.38833332)
+    )
+  )
+
+(defpart 4758
+  :init-specs ((:texture (motion-blur-part level-default-sprite))
+    (:num 4.0 2.0)
+    (:scale-x (meters 0.1) (meters 0.25))
+    (:rot-x 4)
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.2) (meters 0.1))
+    (:r 128.0 128.0)
+    (:g 96.0)
+    (:b 64.0)
+    (:a 64.0 64.0)
+    (:scalevel-x (meters 0.13333334) (meters 0.02))
+    (:fade-g 1.6)
+    (:fade-b 3.2)
+    (:fade-a -1.6)
+    (:timer (seconds 0.267))
+    (:flags (sp-cpuinfo-flag-2))
+    )
+  )
+
+(defpartgroup group-sew-laser-turret-smoke
+  :id 1519
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4971 :flags (sp7)))
+  )
+
+(defpart 4971
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 0.5)
+    (:scale-x (meters 0.5) (meters 0.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 64.0 64.0)
+    (:g :copy r)
+    (:b :copy g)
+    (:a 16.0)
+    (:vel-z (meters 0.006666667) (meters 0.006666667))
+    (:scalevel-x (meters 0.0033333334) (meters 0.004))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.026666667 -0.10666667)
+    (:accel-y (meters 0.0001) (meters 0.000033333334))
+    (:friction 0.98)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2))
+    (:userdata :data (new 'static 'boxed-array :type int32 40 1 0 #x400000 #x400000 #x400700))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpartgroup group-sew-laser-turret-casing
+  :id 1520
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4972 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp7))
+    (sp-item 4973 :fade-after (meters 80) :falloff-to (meters 100) :flags (sp7))
+    )
+  )
+
+(defpart 4973
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 3.0)
+    (:scale-x (meters 0.5) (meters 0.25))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 0.0)
+    (:a 32.0)
+    (:vel-z (meters 0.006666667) (meters 0.006666667))
+    (:scalevel-x (meters 0.0033333334) (meters 0.004))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -2.56)
+    (:fade-g -2.56)
+    (:fade-b 2.56)
+    (:fade-a -0.32)
+    (:accel-y (meters 0.0001) (meters 0.000033333334))
+    (:friction 0.98)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2))
+    (:userdata :data (new 'static 'boxed-array :type int32 40 1 0 #x400000 #x400000 #x400700))
+    (:next-time (seconds 0.167))
+    (:next-launcher 4974)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4974
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0) (:fade-a -0.026666667 -0.10666667))
+  )
+
+(defpart 4972
+  :init-specs ((:texture (motion-blur-part level-default-sprite))
+    (:num 1.0)
+    (:z (meters -0.4))
+    (:scale-x (meters 2.5))
+    (:rot-x 4)
+    (:scale-y (meters 0.15) (meters 0.02))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 64.0 32.0)
+    (:omega (degrees 0.03375))
+    (:vel-z (meters 0.033333335) (meters 0.06666667))
+    (:fade-b -8.0)
+    (:accel-y (meters -0.0016666667) (meters -0.0016666667))
+    (:friction 0.9 0.04)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:func 'sparticle-motion-blur)
+    (:next-time (seconds 0.05))
+    (:next-launcher 4975)
+    (:conerot-x (degrees -20) (degrees 40))
+    (:conerot-z (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpart 4975
+  :init-specs ((:r 255.0) (:g 255.0) (:b 0.0) (:fade-r 0.0) (:fade-g -2.45) (:fade-a -0.384 -0.96))
+  )
+
+(defskelgroup skel-sew-laser-turret sew-laser-turret sew-laser-turret-lod0-jg sew-laser-turret-idle-ja
+              ((sew-laser-turret-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(define *sew-laser-turret-enemy-info*
+  (new 'static 'enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 2
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 1
+        :param1 1
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 3
+    :hit-anim 3
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim 3
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint -1
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 150)
+    :default-hit-points 10.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info #f
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    )
+  )
+
+(set! (-> *sew-laser-turret-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod start-firing ((this sew-laser-turret) (arg0 symbol) (arg1 int))
+  (let ((a0-2 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data arg1))))
+    (new 'stack-no-clear 'vector)
+    (let ((a1-3 (new 'stack-no-clear 'vector)))
+      (-> a0-2 y)
+      (set! (-> a1-3 quad) (-> this node-list data arg1 bone transform fvec quad))
+      (set! (-> a1-3 y) (* 0.5 (-> a1-3 y)))
+      (fire-laser! a0-2 a1-3 (the-as sew-laser-guard this) 491520.0)
+      )
+    )
+  (if arg0
+      (sound-play "gtur-shot-fire")
+      )
+  (set! (-> this flash-state) #t)
+  (none)
+  )
+
+(defun do-spin ((arg0 sew-laser-turret) (arg1 float))
+  (let ((s5-0 (new 'stack-no-clear 'quaternion)))
+    (quaternion-vector-angle! s5-0 *up-vector* (* 182.04445 (seconds-per-frame) arg1))
+    (quaternion*! (-> arg0 root quat) (-> arg0 root quat) s5-0)
+    )
+  (quaternion-normalize! (-> arg0 root quat))
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod sew-laser-turret-method-163 ((this sew-laser-turret))
+  (let* ((s5-0 *target*)
+         (a0-2 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (cond
+      (a0-2
+        (set! (-> this target-distance) (vector-vector-xz-distance (get-trans a0-2 0) (-> this root trans)))
+        (set! (-> this target-on-ground) (logtest? (-> *target* control status) (collide-status on-surface)))
+        )
+      (else
+        (set! (-> this target-on-ground) #f)
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod check-suitable-focus ((this sew-laser-turret))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 quad) (-> this root trans quad))
+    (set! (-> s5-0 w) (-> this awareness-radius))
+    (let ((s4-0 (new 'stack-no-clear 'array 'collide-shape 384)))
+      (countdown (s3-0 (fill-actor-list-for-box *actor-hash* s5-0 s4-0 384))
+        (let* ((s2-0 (-> s4-0 s3-0))
+               (v1-4 (if (type? s2-0 collide-shape)
+                         s2-0
+                         )
+                     )
+               )
+          (when v1-4
+            (let* ((s2-1 (-> v1-4 process))
+                   (v1-5 (if (type? s2-1 process-focusable)
+                             s2-1
+                             )
+                         )
+                   )
+              (when v1-5
+                (if (and (!= this v1-5)
+                         (not (focus-test? (the-as process-focusable v1-5) inactive))
+                         (not (focus-test? (the-as process-focusable v1-5) disable))
+                         (not (focus-test? (the-as process-focusable v1-5) dead))
+                         (not (logtest? (process-mask crate) (-> v1-5 mask)))
+                         (not (logtest? (process-mask vehicle) (-> v1-5 mask)))
+                         )
+                    (return #t)
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    (let* ((s3-1 *target*)
+           (s4-1 (if (type? s3-1 process-focusable)
+                     s3-1
+                     )
+                 )
+           )
+      (when (and s4-1 (< (vector-vector-distance (get-trans s4-1 0) s5-0) (-> s5-0 w)))
+        (if (and (!= this s4-1)
+                 (not (focus-test? s4-1 inactive))
+                 (not (focus-test? s4-1 disable))
+                 (not (focus-test? s4-1 dead))
+                 (not (logtest? (process-mask crate) (-> s4-1 mask)))
+                 (not (logtest? (process-mask vehicle) (-> s4-1 mask)))
+                 )
+            (return #t)
+            )
+        )
+      )
+    )
+  #f
+  )
+
+(defun compute-ring-period ((arg0 int))
+  (/ 1.0 (the float arg0))
+  )
+
+(defun compute-ring-position ((arg0 int) (arg1 int))
+  (* (compute-ring-period arg1) (the float (- arg1 arg0)))
+  )
+
+(defun compute-num-rings-to-draw ((arg0 time-frame) (arg1 time-frame) (arg2 float) (arg3 int))
+  (if (< arg1 arg0)
+      arg3
+      (+ (the int (/ arg2 (compute-ring-period arg3))) 1)
+      )
+  )
+
+(defun compute-ring-size ((arg0 float) (arg1 float))
+  (let ((f0-1 (- arg0 (- 1.0 arg1))))
+    (if (< f0-1 0.0)
+        (set! f0-1 (+ 1.0 f0-1))
+        )
+    f0-1
+    )
+  )
+
+;; og:preserve-this decompiled manually
+(defun check-enemy ((turret sew-laser-turret) (radius float) (pfoc process-focusable))
+  (let ((dist (-> turret target-distance)))
+    (and (-> turret target-on-ground)
+         (>= dist (+ radius (meters -0.1)))
+         (>= dist (+ radius (meters 0.1)))
+         )
+    )
+  )
+
+(defstate spinning-up (sew-laser-turret)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+        (go-virtual victory)
+        )
+    (set! (-> self root penetrated-by) (get-penetrated-by self))
+    )
+  :code (behavior ()
+    (until #f
+      (if (time-elapsed? (-> self state-time) (seconds 1.2))
+          (go-hostile self)
+          )
+      (let ((f0-1 (* 0.0027777778 (the float (mod (- (current-time) (-> self state-time)) 360)))))
+        (do-spin self (* 240.0 f0-1))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post enemy-simple-post
+  )
+
+(defstate spinning-down (sew-laser-turret)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+        (go-virtual victory)
+        )
+    (set! (-> self root penetrated-by) (get-penetrated-by self))
+    )
+  :code (behavior ()
+    (until #f
+      (if (time-elapsed? (-> self state-time) (seconds 1.2))
+          (go-virtual alert)
+          )
+      (let ((f0-1 (* 0.0027777778 (the float (mod (- (current-time) (-> self state-time)) 360)))))
+        (do-spin self (* 240.0 (- 1.0 f0-1)))
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post enemy-simple-post
+  )
+
+;; WARN: Return type mismatch uint vs none.
+(defmethod generate-prim-verts! ((this sew-laser-turret) (arg0 float) (arg1 float))
+  (let ((s3-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s3-0 quad) (-> *x-vector* quad))
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s5-0 quad) (-> *z-vector* quad))
+      (let ((s4-0 (new 'stack-no-clear 'vector))
+            ;; og:preserve-this
+            ;; (s0-0 (new 'stack-no-clear 'rgbaf))
+            (s0-0 (new 'static 'rgba))
+            )
+        0.0
+        (let* ((s2-0 (* arg1 arg1))
+               (f30-0 (lerp 128.0 0.0 s2-0))
+               (s2-1 (* s2-0 s2-0))
+               (s2-2
+                 (logior (logand (logior (logand (logior (logand (logior (logand s0-0 (the-as uint -256))
+                                                                         (shr (shl (the int (lerp (the float (-> *color-red* r)) (the float (-> *color-green* r)) s2-1)) 56) 56)
+                                                                         )
+                                                                 -65281
+                                                                 )
+                                                         (shr (shl (the int (lerp (the float (-> *color-red* g)) (the float (-> *color-green* g)) s2-1)) 56) 48)
+                                                         )
+                                                 -16711681
+                                                 )
+                                         (shr (shl (the int (lerp (the float (-> *color-red* b)) (the float (-> *color-green* b)) s2-1)) 56) 40)
+                                         )
+                                 (the-as uint #xffffffff00ffffff)
+                                 )
+                         (shr (shl (-> *color-gray* a) 56) 32)
+                         )
+                 )
+               )
+          (set! (-> s3-0 y) 0.0)
+          (set! (-> s3-0 z) 0.0)
+          (vector-normalize! s3-0 arg0)
+          (vector-normalize! s5-0 arg0)
+          (vector+! s4-0 (-> this root trans) s3-0)
+          (vector+! s4-0 s4-0 s5-0)
+          (dotimes (v1-39 3)
+            (let ((a0-21 (-> this strip data (-> this strip num-verts))))
+              (set! (-> a0-21 pos quad) (-> s4-0 quad))
+              (set! (-> a0-21 stq z) (the-as float #x1))
+              )
+            (+! (-> this strip num-verts) 1)
+            )
+          (let ((v1-46 (-> this strip data (-> this strip num-verts))))
+            (set! (-> v1-46 pos quad) (-> s4-0 quad))
+            (set! (-> v1-46 stq z) 0.0)
+            (set! (-> v1-46 stq x) 0.0)
+            (set! (-> v1-46 stq y) 0.0)
+            (set! (-> v1-46 col) (the-as rgba s2-2))
+            (set! (-> v1-46 col a) (the int f30-0))
+            (let ((v1-47 (&+ v1-46 32)))
+              (vector+float*! s4-0 (-> this root trans) s3-0 -1.0)
+              (vector+! s4-0 s4-0 s5-0)
+              (set! (-> v1-47 pos quad) (-> s4-0 quad))
+              (set! (-> v1-47 stq z) 0.0)
+              (set! (-> v1-47 stq x) 1.0)
+              (set! (-> v1-47 stq y) 0.0)
+              (set! (-> v1-47 col) (the-as rgba s2-2))
+              (set! (-> v1-47 col a) (the int f30-0))
+              (let ((v1-48 (&+ v1-47 32)))
+                (vector+! s4-0 (-> this root trans) s3-0)
+                (vector+float*! s4-0 s4-0 s5-0 -1.0)
+                (set! (-> v1-48 pos quad) (-> s4-0 quad))
+                (set! (-> v1-48 stq z) 0.0)
+                (set! (-> v1-48 stq x) 0.0)
+                (set! (-> v1-48 stq y) 1.0)
+                (set! (-> v1-48 col) (the-as rgba s2-2))
+                (set! (-> v1-48 col a) (the int f30-0))
+                (let ((v1-49 (&+ v1-48 32)))
+                  (vector+float*! s4-0 (-> this root trans) s3-0 -1.0)
+                  (vector+float*! s4-0 s4-0 s5-0 -1.0)
+                  (set! (-> v1-49 pos quad) (-> s4-0 quad))
+                  (set! (-> v1-49 stq z) 0.0)
+                  (set! (-> v1-49 stq x) 1.0)
+                  (set! (-> v1-49 stq y) 1.0)
+                  (set! (-> v1-49 col) (the-as rgba s2-2))
+                  (set! (-> v1-49 col a) (the int f30-0))
+                  (&+ v1-49 32)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (+! (-> this strip num-verts) 4)
+  (none)
+  )
+
+(defstate alert (sew-laser-turret)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set! (-> self last-spawn-index) -1)
+    (set-time! (-> self state-time))
+    )
+  :exit (behavior ()
+    (set! (-> self strip num-verts) (the-as uint 0))
+    0
+    )
+  :trans (behavior ()
+    (sew-laser-turret-method-163 self)
+    (when (-> self was-hit)
+      (set! (-> self was-hit) #f)
+      (go-virtual spinning-up)
+      )
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+        (go-virtual victory)
+        )
+    (set! (-> self root penetrated-by) (get-penetrated-by self))
+    (set! (-> self strip num-verts) (the-as uint 0))
+    (set! (-> self strip alpha) (new 'static 'gs-alpha :b #x2 :d #x1))
+    (set! (-> self strip adnops 0 cmds) (gs-reg64 test-1))
+    (set! (-> self strip data0) (new 'static 'gs-test
+                                  :ate #x1
+                                  :atst (gs-atest greater-equal)
+                                  :aref #x80
+                                  :afail #x1
+                                  :zte #x1
+                                  :ztst (gs-ztest greater-equal)
+                                  )
+          )
+    (setup-dma-and-tex (-> self strip) (-> self draw))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (set! (-> gp-0 w) (-> self awareness-radius))
+      (let* ((s5-0 (new 'stack-no-clear 'array 'collide-shape 384))
+             (s4-0 (fill-actor-list-for-box *actor-hash* gp-0 s5-0 384))
+             (f30-0 (/ (the float (mod (- (current-time) (-> self state-time)) (-> self ring-rate)))
+                       (the float (-> self ring-rate))
+                       )
+                    )
+             (s3-1 (min (-> self max-num-rings) (compute-num-rings-to-draw
+                                                  (- (current-time) (-> self state-time))
+                                                  (-> self ring-rate)
+                                                  f30-0
+                                                  (-> self max-num-rings)
+                                                  )
+                        )
+                   )
+             )
+        (dotimes (s2-0 s3-1)
+          (let* ((f0-3 (compute-ring-position s2-0 (-> self max-num-rings)))
+                 (f26-0 (compute-ring-size f0-3 f30-0))
+                 (f28-0 (* (-> self awareness-radius) f26-0))
+                 )
+            (generate-prim-verts! self (* 1.15 f28-0) f26-0)
+            (when (and (!= (-> self last-spawn-index) s2-0) (< f26-0 0.1))
+              (set! (-> self last-spawn-index) s2-0)
+              (sound-play "las-tur-sonar")
+              )
+            (if (and (< 0.1 f26-0) (= (-> self last-spawn-index) s2-0))
+                (set! (-> self last-spawn-index) -1)
+                )
+            (when (< f26-0 0.9)
+              (countdown (s1-1 s4-0)
+                (let* ((s0-1 (-> s5-0 s1-1))
+                       (v1-53 (if (type? s0-1 collide-shape)
+                                  s0-1
+                                  )
+                              )
+                       )
+                  (when v1-53
+                    (let* ((s0-2 (-> v1-53 process))
+                           (a2-4 (if (type? s0-2 process-focusable)
+                                     s0-2
+                                     )
+                                 )
+                           )
+                      (when a2-4
+                        (when (and (!= self a2-4)
+                                   (not (focus-test? (the-as process-focusable a2-4) inactive))
+                                   (not (focus-test? (the-as process-focusable a2-4) disable))
+                                   (not (focus-test? (the-as process-focusable a2-4) dead))
+                                   (not (logtest? (process-mask crate) (-> a2-4 mask)))
+                                   (not (logtest? (process-mask vehicle) (-> a2-4 mask)))
+                                   )
+                          (if (check-enemy self f28-0 (the-as process-focusable a2-4))
+                              (go-virtual spinning-up)
+                              )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              (let* ((s0-3 *target*)
+                     (s1-2 (if (type? s0-3 process-focusable)
+                               s0-3
+                               )
+                           )
+                     )
+                (when (and s1-2 (< (vector-vector-distance (get-trans s1-2 0) gp-0) (-> gp-0 w)))
+                  (when (and (!= self s1-2)
+                             (not (focus-test? s1-2 inactive))
+                             (not (focus-test? s1-2 disable))
+                             (not (focus-test? s1-2 dead))
+                             (not (logtest? (process-mask crate) (-> s1-2 mask)))
+                             (not (logtest? (process-mask vehicle) (-> s1-2 mask)))
+                             )
+                    (if (check-enemy self f28-0 s1-2)
+                        (go-virtual spinning-up)
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post enemy-simple-post
+  )
+
+(defstate turn-off (sew-laser-turret)
+  :virtual #t
+  :code sleep-code
+  :post ja-post
+  )
+
+(defstate hostile (sew-laser-turret)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (sound-play "las-tur-whoosh")
+    (set-time! (-> self last-play-time))
+    (set! (-> self spin-sound-id) (new-sound-id))
+    (set-sewd-light! 1.0)
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy hostile) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self flash-state) #f)
+    (if (not (and (-> self next-state) (= (-> self next-state name) 'hit)))
+        (set! (-> self was-hit) #f)
+        )
+    (if (nonzero? (-> self spin-sound-id))
+        (sound-stop (-> self spin-sound-id))
+        )
+    (set! (-> self spin-sound-id) (new 'static 'sound-id))
+    (set-sewd-light! 0.0)
+    )
+  :trans (behavior ()
+    (sew-laser-turret-method-163 self)
+    (if (check-suitable-focus self)
+        (set-time! (-> self state-time))
+        )
+    (sound-play "las-tur-loop" :id (-> self spin-sound-id))
+    (if (time-elapsed? (-> self state-time) (seconds 4))
+        (go-virtual spinning-down)
+        )
+    (when (time-elapsed? (-> self last-play-time) (seconds 0.5))
+      (sound-play "las-tur-whoosh")
+      (set-time! (-> self last-play-time))
+      )
+    (set! (-> self root penetrated-by) (get-penetrated-by self))
+    )
+  :code (behavior ()
+    (let ((f30-0 0.0))
+      (until #f
+        (do-spin self 240.0)
+        (start-firing self #t 5)
+        (start-firing self #t 7)
+        (start-firing self #t 9)
+        (+! f30-0 (seconds-per-frame))
+        (suspend)
+        )
+      )
+    #f
+    )
+  )
+
+(defmethod event-handler ((this sew-laser-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('start)
+     (let ((v0-0 (the-as object #t)))
+       (set! (-> this can-shoot) (the-as symbol v0-0))
+       v0-0
+       )
+     )
+    (('attack)
+     (set! (-> this was-hit) #t)
+     ((method-of-type enemy event-handler) this arg0 arg1 arg2 arg3)
+     )
+    (('stop)
+     (set! (-> this can-shoot) #f)
+     #f
+     )
+    (('open)
+     (go (method-of-object this turn-off))
+     )
+    (('bonk)
+     (send-event arg0 'target-mech-get-off (seconds 0.3))
+     (send-event arg0 'shove #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                    (damage 2.0)
+                                                                                    (vehicle-damage-factor 1.0)
+                                                                                    (vehicle-impulse-factor 1.0)
+                                                                                    (shove-back (meters 2))
+                                                                                    (shove-up (meters 0.5))
+                                                                                    )
+                                                    )
+                 )
+     #f
+     )
+    (('flash-state)
+     (-> this flash-state)
+     )
+    (else
+      ((method-of-type enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defstate die (sew-laser-turret)
+  :virtual #t
+  :enter (behavior ()
+    (if (nonzero? (-> self spin-sound-id))
+        (sound-stop (-> self spin-sound-id))
+        )
+    (set! (-> self spin-sound-id) (new 'static 'sound-id))
+    (on-dying self)
+    (let ((v1-6 (-> self root root-prim)))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec))
+      )
+    0
+    (set! (-> self hit-points) 0.0)
+    (play-communicator-speech! (-> *talker-speech* 49))
+    )
+  :code (behavior ()
+    (new 'stack 'joint-exploder-tuning (the-as uint 0))
+    (activate! *camera-smush-control* 819.2 37 210 1.0 0.995 (-> *display* camera-clock))
+    (sound-play "laser-tur-explo")
+    (suspend)
+    (cleanup-for-death self)
+    (ja-channel-set! 0)
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-1 quad) (-> self root trans quad))
+      (+! (-> gp-1 y) 10240.0)
+      (let ((s5-1 (current-time)))
+        (until (time-elapsed? s5-1 (seconds 2))
+          (spawn (-> self part) gp-1)
+          (suspend)
+          )
+        )
+      )
+    (let ((gp-2 (current-time)))
+      (until (time-elapsed? gp-2 (seconds 1))
+        (suspend)
+        )
+      )
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defmethod init-enemy-collision! ((this sew-laser-turret))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((v1-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-7 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-7 transform-index) 3)
+      (set-vector! (-> v1-7 local-sphere) 0.0 -2048.0 0.0 10240.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-7)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod deactivate ((this sew-laser-turret))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this smoke-part))
+      (kill-particles (-> this smoke-part))
+      )
+  (if (nonzero? (-> this casing-part))
+      (kill-particles (-> this casing-part))
+      )
+  (if (nonzero? (-> this spin-sound-id))
+      (sound-stop (-> this spin-sound-id))
+      )
+  ((method-of-type enemy deactivate) this)
+  (none)
+  )
+
+(defmethod coin-flip? ((this sew-laser-turret))
+  #f
+  )
+
+;; WARN: Return type mismatch enemy vs sew-laser-turret.
+(defmethod relocate ((this sew-laser-turret) (offset int))
+  (if (nonzero? (-> this smoke-part))
+      (&+! (-> this smoke-part) offset)
+      )
+  (if (nonzero? (-> this casing-part))
+      (&+! (-> this casing-part) offset)
+      )
+  (if (nonzero? (-> this strip))
+      (&+! (-> this strip) offset)
+      )
+  (the-as sew-laser-turret ((method-of-type enemy relocate) this offset))
+  )
+
+(defmethod sew-laser-turret-method-160 ((this sew-laser-turret))
+  0
+  (none)
+  )
+
+(defmethod init-enemy! ((this sew-laser-turret))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sew-laser-turret" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *sew-laser-turret-enemy-info*)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1518) this))
+  (set! (-> this smoke-part) (create-launch-control (-> *part-group-id-table* 1519) this))
+  (set! (-> this casing-part) (create-launch-control (-> *part-group-id-table* 1520) this))
+  (set! (-> this max-num-rings)
+        (res-lump-value (-> this entity) 'sdt-num-rings int :default (the-as uint128 2) :time -1000000000.0)
+        )
+  (set! (-> this ring-rate)
+        (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'sdt-ring-rate :default 4.0))))
+        )
+  (set! (-> this awareness-radius) (res-lump-float (-> this entity) 'sdt-awareness-radius :default 90112.0))
+  (let ((s5-1 (* 7 (-> this max-num-rings))))
+    (set! (-> this strip)
+          (new 'process 'prim-strip s5-1 (lookup-texture-id-by-name "sonar-wave" (the-as string #f)) (the-as string #f))
+          )
+    )
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable))
+  (set! (-> this flash-state) #f)
+  (set! (-> this can-shoot) #t)
+  (set! (-> this was-hit) #f)
+  0
+  (none)
+  )
+
+(defmethod go-idle2 ((this sew-laser-turret))
+  (go (method-of-object this alert))
+  )
+
+(defmethod go-hostile ((this sew-laser-turret))
+  (cond
+    ((and (not (and (-> this next-state) (let ((v1-3 (-> this next-state name)))
+                                           (or (= v1-3 'spinning-up) (= v1-3 'hostile))
+                                           )
+                    )
+               )
+          (not (-> this was-hit))
+          )
+     (go (method-of-object this spinning-up))
+     )
+    ((not (and (-> this next-state) (= (-> this next-state name) 'hostile)))
+     (go (method-of-object this hostile))
+     )
+    )
+  )

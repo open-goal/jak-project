@@ -1,0 +1,331 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type for-break-bridge-board
+(deftype for-break-bridge-board (process-drawable)
+  ((root  collide-shape-moving :override)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  (:methods
+    (get-skel (_type_) art-group)
+    (init-collision! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type for-break-bridge-board
+(defmethod inspect ((this for-break-bridge-board))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-break-bridge-board-explode for-break-bridge for-break-bridge-board-explode-lod0-jg for-break-bridge-board-explode-idle-ja
+              ((for-break-bridge-board-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 200)
+              :origin-joint-index 3
+              )
+
+;; definition for symbol *for-break-bridge-board-exploder-params*, type joint-exploder-static-params
+(define *for-break-bridge-board-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+;; definition for method 23 of type for-break-bridge-board
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this for-break-bridge-board))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 24576.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-12 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-12 prim-core action) (collide-action solid))
+      (set! (-> v1-12 transform-index) 2)
+      (set-vector! (-> v1-12 local-sphere) 0.0 0.0 0.0 24576.0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-14 transform-index) 2)
+      (set-vector! (-> v1-14 local-sphere) 0.0 8192.0 -8192.0 8192.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-16 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-16 transform-index) 2)
+      (set-vector! (-> v1-16 local-sphere) 0.0 8192.0 8192.0 8192.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-19 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (for-break-bridge-board)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual die)
+       )
+      (('attack)
+       (let* ((v1-5 (the-as object (-> block param 1)))
+              (gp-0 (the-as touching-shapes-entry (-> block param 0)))
+              (s5-0 (-> gp-0 head))
+              (s4-0 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 1))
+              (s3-0 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 2))
+              )
+         (case (-> (the-as attack-info v1-5) mode)
+           (('uppercut 'flop 'board)
+            (while s5-0
+              (case (get-touched-prim s5-0 (-> self root) gp-0)
+                ((s4-0 s3-0)
+                 (logclear! (-> self mask) (process-mask actor-pause))
+                 (go-virtual die)
+                 )
+                )
+              (set! s5-0 (-> s5-0 next))
+              )
+            #f
+            )
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (transform-and-sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (for-break-bridge-board)
+  :virtual #t
+  :enter (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (sound-play "bridge-break")
+    (let ((gp-1 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+      (set! (-> gp-1 fountain-rand-transv-lo quad) (-> self root trans quad))
+      (set! (-> gp-1 fountain-rand-transv-hi x) 4096.0)
+      (set! (-> gp-1 fountain-rand-transv-hi y) 40960.0)
+      (set! (-> gp-1 fountain-rand-transv-hi z) 4096.0)
+      (set! (-> gp-1 fountain-rand-transv-hi w) 102400.0)
+      (cond
+        ((logtest? (-> *part-group-id-table* 577 flags) (sp-group-flag sp13))
+         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (part-tracker-spawn
+           part-tracker-subsampler
+           :to *entity-pool*
+           :group (-> *part-group-id-table* 577)
+           :duration (seconds 0.085)
+           )
+         )
+        (else
+          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 577)
+            :duration (seconds 0.085)
+            )
+          )
+        )
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-for-break-bridge-board-explode" (the-as (pointer level) #f))
+        14
+        gp-1
+        *for-break-bridge-board-exploder-params*
+        :name "joint-exploder"
+        :to self
+        :unk 0
+        )
+      )
+    )
+  :code (behavior ()
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (ja-post)
+    (while (and (-> self child) *target* (focus-test? *target* board))
+      (suspend)
+      )
+    (cleanup-for-death self)
+    )
+  )
+
+;; definition for method 11 of type for-break-bridge-board
+(defmethod init-from-entity! ((this for-break-bridge-board) (arg0 entity-actor))
+  (stack-size-set! (-> this main-thread) 64)
+  (when (task-node-closed? (game-task-node forest-kill-plants-resolution))
+    (cleanup-for-death this)
+    (return #f)
+    )
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (go (method-of-object this idle))
+  )
+
+;; definition of type for-break-bridge-board-a
+(deftype for-break-bridge-board-a (for-break-bridge-board)
+  ()
+  )
+
+;; definition for method 3 of type for-break-bridge-board-a
+(defmethod inspect ((this for-break-bridge-board-a))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type for-break-bridge-board inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-break-bridge-board-a for-break-bridge for-break-bridge-board-a-lod0-jg for-break-bridge-board-a-idle-ja
+              ((for-break-bridge-board-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :origin-joint-index 3
+              )
+
+;; definition for method 22 of type for-break-bridge-board-a
+(defmethod get-skel ((this for-break-bridge-board-a))
+  (art-group-get-by-name *level* "skel-for-break-bridge-board-a" (the-as (pointer level) #f))
+  )
+
+;; definition of type for-break-bridge-board-b
+(deftype for-break-bridge-board-b (for-break-bridge-board)
+  ()
+  )
+
+;; definition for method 3 of type for-break-bridge-board-b
+(defmethod inspect ((this for-break-bridge-board-b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type for-break-bridge-board inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-break-bridge-board-b for-break-bridge for-break-bridge-board-b-lod0-jg for-break-bridge-board-b-idle-ja
+              ((for-break-bridge-board-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :origin-joint-index 3
+              )
+
+;; definition for method 22 of type for-break-bridge-board-b
+(defmethod get-skel ((this for-break-bridge-board-b))
+  (art-group-get-by-name *level* "skel-for-break-bridge-board-b" (the-as (pointer level) #f))
+  )
+
+;; definition of type for-break-bridge-board-c
+(deftype for-break-bridge-board-c (for-break-bridge-board)
+  ()
+  )
+
+;; definition for method 3 of type for-break-bridge-board-c
+(defmethod inspect ((this for-break-bridge-board-c))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type for-break-bridge-board inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-break-bridge-board-c for-break-bridge for-break-bridge-board-c-lod0-jg for-break-bridge-board-c-idle-ja
+              ((for-break-bridge-board-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :origin-joint-index 3
+              )
+
+;; definition for method 22 of type for-break-bridge-board-c
+(defmethod get-skel ((this for-break-bridge-board-c))
+  (art-group-get-by-name *level* "skel-for-break-bridge-board-c" (the-as (pointer level) #f))
+  )
+
+;; definition of type for-break-bridge-board-d
+(deftype for-break-bridge-board-d (for-break-bridge-board)
+  ()
+  )
+
+;; definition for method 3 of type for-break-bridge-board-d
+(defmethod inspect ((this for-break-bridge-board-d))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type for-break-bridge-board inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-for-break-bridge-board-d for-break-bridge for-break-bridge-board-d-lod0-jg for-break-bridge-board-d-idle-ja
+              ((for-break-bridge-board-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :origin-joint-index 3
+              )
+
+;; definition for method 22 of type for-break-bridge-board-d
+(defmethod get-skel ((this for-break-bridge-board-d))
+  (art-group-get-by-name *level* "skel-for-break-bridge-board-d" (the-as (pointer level) #f))
+  )
+
+
+
+

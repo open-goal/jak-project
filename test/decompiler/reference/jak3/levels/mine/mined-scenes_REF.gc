@@ -1,0 +1,2544 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function prebot-darken
+;; WARN: Return type mismatch int vs none.
+(defbehavior prebot-darken prebot ()
+  (when (-> self entity)
+    (let* ((v1-3 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node prebot-lod0-jg main)))
+           (f0-2 (lerp-scale 0.0 1.0 (- (-> self entity extra trans y) (-> v1-3 y)) 532480.0 266240.0))
+           )
+      (set-vector! (-> self draw color-mult) f0-2 f0-2 f0-2 1.0)
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cav-airlock-door cav-airlock-door cav-airlock-door-lod0-jg cav-airlock-door-idle-ja
+              ((cav-airlock-door-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 17)
+              :origin-joint-index 3
+              )
+
+;; definition of type cav-airlock-door
+(deftype cav-airlock-door (com-airlock)
+  ()
+  )
+
+;; definition for method 3 of type cav-airlock-door
+(defmethod inspect ((this cav-airlock-door))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type com-airlock inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-blue-two-upgrade blue-two-upgrade blue-two-upgrade-lod0-jg blue-two-upgrade-idle-ja
+              ((blue-two-upgrade-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 20)
+              :origin-joint-index 3
+              )
+
+;; definition for method 11 of type cav-airlock-door
+(defmethod init-from-entity! ((this cav-airlock-door) (arg0 entity-actor))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 40960.0 0.0 102400.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 3)
+      (set-vector! (-> v1-8 local-sphere) 0.0 40960.0 0.0 102400.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-cav-airlock-door" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-airlock! this)
+  (go (method-of-object this close) #t)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cav-prebot-break cav-prebot-break cav-prebot-break-lod0-jg cav-prebot-break-idle-ja
+              ((cav-prebot-break-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1000)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cav-prebot-break-a cav-prebot-break cav-prebot-break-a-lod0-jg cav-prebot-break-a-idle-ja
+              ((cav-prebot-break-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1000)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "mine-boss-intro"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-133"
+              :art-group "scenecamera"
+              :anim "mine-boss-intro"
+              :parts 57
+              :command-list '((0
+                  (kill "cav-break-bridge-1")
+                  (kill "cav-exit-door-1")
+                  (kill "cav-airlock-door-1")
+                  (kill "prebot-2")
+                  (setting-reset rain mode 'abs value (new 'static 'bfloat))
+                  )
+                (27
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "q"
+                    track
+                    #t
+                    duration
+                    (frame-range 27 47)
+                    )
+                  )
+                (32
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "d"
+                    track
+                    #t
+                    duration
+                    (frame-range 32 52)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "g"
+                    track
+                    #t
+                    duration
+                    (frame-range 32 52)
+                    )
+                  )
+                (33
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "e"
+                    track
+                    #t
+                    duration
+                    (frame-range 33 53)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "h"
+                    track
+                    #t
+                    duration
+                    (frame-range 33 53)
+                    )
+                  )
+                (34
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "p"
+                    track
+                    #t
+                    duration
+                    (frame-range 34 54)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "r"
+                    track
+                    #t
+                    duration
+                    (frame-range 34 54)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "s"
+                    track
+                    #t
+                    duration
+                    (frame-range 34 54)
+                    )
+                  )
+                (38
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "m"
+                    track
+                    #t
+                    duration
+                    (frame-range 38 58)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "n"
+                    track
+                    #t
+                    duration
+                    (frame-range 38 58)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "o"
+                    track
+                    #t
+                    duration
+                    (frame-range 38 58)
+                    )
+                  )
+                (43
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "c"
+                    track
+                    #t
+                    duration
+                    (frame-range 43 63)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "k"
+                    track
+                    #t
+                    duration
+                    (frame-range 43 63)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "l"
+                    track
+                    #t
+                    duration
+                    (frame-range 43 63)
+                    )
+                  )
+                (45
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "b"
+                    track
+                    #t
+                    duration
+                    (frame-range 45 65)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "f"
+                    track
+                    #t
+                    duration
+                    (frame-range 45 65)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "j"
+                    track
+                    #t
+                    duration
+                    (frame-range 45 65)
+                    )
+                  )
+                (47
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "i"
+                    track
+                    #t
+                    duration
+                    (frame-range 47 67)
+                    )
+                  )
+                (54
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-break-bridge"
+                    joint
+                    "t"
+                    track
+                    #t
+                    duration
+                    (frame-range 54 74)
+                    )
+                  )
+                (840
+                  (part-tracker
+                    "group-veger-staff-sparkles"
+                    entity
+                    "particleman"
+                    joint
+                    "particleA"
+                    track
+                    #t
+                    duration
+                    (frame-range 840 1090)
+                    )
+                  )
+                (2835
+                  (part-tracker
+                    "group-veger-staff-glow"
+                    entity
+                    "particleman"
+                    joint
+                    "particleA"
+                    track
+                    #t
+                    duration
+                    (frame-range 2835 2837)
+                    )
+                  )
+                (2968
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "j"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "a"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "ag"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "g"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "z"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "t"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "v"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "y"
+                    track
+                    #f
+                    duration
+                    (frame-range 2968 2980)
+                    )
+                  )
+                (2971
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "r"
+                    track
+                    #t
+                    duration
+                    (frame-range 2971 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "aq"
+                    track
+                    #t
+                    duration
+                    (frame-range 2971 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "b"
+                    track
+                    #t
+                    duration
+                    (frame-range 2971 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "f"
+                    track
+                    #t
+                    duration
+                    (frame-range 2971 3013)
+                    )
+                  )
+                (2972
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "u"
+                    track
+                    #t
+                    duration
+                    (frame-range 2972 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "zz"
+                    track
+                    #t
+                    duration
+                    (frame-range 2972 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "a"
+                    track
+                    #t
+                    duration
+                    (frame-range 2972 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "aj"
+                    track
+                    #t
+                    duration
+                    (frame-range 2972 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "ao"
+                    track
+                    #t
+                    duration
+                    (frame-range 2972 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "ap"
+                    track
+                    #t
+                    duration
+                    (frame-range 2972 3013)
+                    )
+                  )
+                (2973
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "p"
+                    track
+                    #t
+                    duration
+                    (frame-range 2973 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "aa"
+                    track
+                    #t
+                    duration
+                    (frame-range 2973 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "al"
+                    track
+                    #t
+                    duration
+                    (frame-range 2973 3013)
+                    )
+                  )
+                (2974
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "q"
+                    track
+                    #t
+                    duration
+                    (frame-range 2974 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "ac"
+                    track
+                    #t
+                    duration
+                    (frame-range 2974 3013)
+                    )
+                  (part-tracker
+                    "group-mine-bridge-fma-dust-trailer"
+                    entity
+                    "cav-prebot-break"
+                    joint
+                    "am"
+                    track
+                    #t
+                    duration
+                    (frame-range 2974 3013)
+                    )
+                  )
+                (3245
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "cf"
+                    track
+                    #f
+                    duration
+                    (frame-range 3245 3255)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "cc"
+                    track
+                    #f
+                    duration
+                    (frame-range 3245 3255)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "as"
+                    track
+                    #f
+                    duration
+                    (frame-range 3245 3255)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "at"
+                    track
+                    #f
+                    duration
+                    (frame-range 3245 3255)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "av"
+                    track
+                    #f
+                    duration
+                    (frame-range 3245 3255)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "aw"
+                    track
+                    #f
+                    duration
+                    (frame-range 3245 3255)
+                    )
+                  )
+                (3296
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "ba"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "be"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "bf"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "bk"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "bl"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "ce"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  (part-tracker
+                    "group-mine-boss-fma-dust2"
+                    entity
+                    "cav-prebot-break-a"
+                    joint
+                    "ch"
+                    track
+                    #f
+                    duration
+                    (frame-range 3296 3305)
+                    )
+                  )
+                (10000 (task-close! "mine-boss-introduction"))
+                )
+              :cut-list '(42
+                 70
+                 156
+                 225
+                 417
+                 552
+                 623
+                 806
+                 934
+                 1053
+                 1165
+                 1285
+                 1380
+                 1612
+                 1657
+                 1791
+                 1891
+                 2162
+                 2234
+                 2253
+                 2307
+                 2396
+                 2688
+                 3014
+                 3058
+                 3215
+                 )
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'mined
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '(156 157)
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'mined
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "veger-highres"
+                  :level 'mined
+                  :art-group "skel-veger-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '((3032 2059))
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "prebot"
+                  :level 'mined
+                  :art-group "skel-prebot"
+                  :prefix ""
+                  :draw-frames '((2970 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cav-break-bridge"
+                  :level 'mined
+                  :art-group "skel-cav-break-bridge"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :light-index #x1
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cav-airlock-door"
+                  :level 'mined
+                  :art-group "skel-cav-airlock-door"
+                  :prefix ""
+                  :draw-frames '((min 70) (156 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cav-exit-door"
+                  :level 'mined
+                  :art-group "skel-cav-exit-door"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cav-prebot-break"
+                  :level 'mined
+                  :art-group "skel-cav-prebot-break"
+                  :prefix ""
+                  :draw-frames '((min 806) (932 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cav-prebot-break-a"
+                  :level 'mined
+                  :art-group "skel-cav-prebot-break-a"
+                  :prefix "a-"
+                  :draw-frames '((min 806) (932 max))
+                  :scissor-frames '((2396 3014))
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'mined
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "prebot-intro"
+              :end-point "prebot-fight"
+              :borrow '()
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :on-running #f
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-1
+  :id 1345
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4511 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4511
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-2
+  :id 1346
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4512 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4512
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-3
+  :id 1347
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4513 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4513
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 128.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-4
+  :id 1348
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4514 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4514
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-5
+  :id 1349
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4515 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4515
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 0.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-6
+  :id 1350
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4516 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4516
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-7
+  :id 1351
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4517 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4517
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-temp-8
+  :id 1352
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4518 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4518
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+;; definition for function scene-prebot-gun-spawn
+;; WARN: Return type mismatch int vs none.
+(defun scene-prebot-gun-spawn ((arg0 process-drawable))
+  (process-spawn prebot-gun "gun-" (-> arg0 root trans) :name "prebot-gun" :to arg0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "prebot-hit-a"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-133"
+              :art-group "scenecamera"
+              :anim "prebot-hit-a"
+              :parts 1
+              :command-list '((0 (kill "prebot-2"))
+                (1
+                  (joint-eval scene-prebot-gun-spawn entity "prebot" joint "main")
+                  (send-event "prebot" 'trans-hook prebot-darken)
+                  )
+                (30 (part-tracker
+                      "group-prebot-chasm-explosion"
+                      entity
+                      "particleman"
+                      joint
+                      "particleA"
+                      track
+                      #f
+                      duration
+                      (frame-range 30 75)
+                      )
+                    )
+                (42
+                  (joint-eval
+                    ,(lambda :behavior scene-player
+                       ((arg0 process-drawable) (arg1 vector))
+                       (let ((s5-0 (new 'stack-no-clear 'explosion-init-params)))
+                         (set! (-> s5-0 spawn-point quad) (-> arg1 quad))
+                         (quaternion-identity! (-> s5-0 spawn-quat))
+                         (set! (-> s5-0 radius) 8192.0)
+                         (set! (-> s5-0 scale) 1.0)
+                         (set! (-> s5-0 group) #f)
+                         (set! (-> s5-0 collide-with) (collide-spec))
+                         (set! (-> s5-0 damage) 2.0)
+                         (set! (-> s5-0 damage-scale) 1.0)
+                         (set! (-> s5-0 vehicle-damage-factor) 1.0)
+                         (set! (-> s5-0 vehicle-impulse-factor) 1.0)
+                         (set! (-> s5-0 ignore-proc) (process->handle #f))
+                         (explosion-spawn s5-0 (the-as process-drawable *default-pool*))
+                         )
+                       (logior! (-> arg0 draw global-effect) (draw-control-global-effect title-light))
+                       (none)
+                       )
+                    entity
+                    "particleman"
+                    joint
+                    "particleY"
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleA"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleB"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleC"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleD"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleE"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleF"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleG"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleH"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleI"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleJ"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleK"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleL"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleM"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleN"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleO"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleP"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleQ"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleR"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleS"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleT"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleU"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleV"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleW"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleX"
+                    track
+                    #t
+                    duration
+                    (frame-range 42 85)
+                    )
+                  )
+                )
+              :cut-list '()
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "prebot"
+                  :level 'mined
+                  :art-group "skel-prebot"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'mined
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'mined
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'mined
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "prebot-fight"
+              :end-point "prebot-fight"
+              :borrow '()
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume 1.0
+              :on-running #f
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "prebot-hit-b"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-133"
+              :art-group "scenecamera"
+              :anim "prebot-hit-b"
+              :parts 1
+              :command-list '((0 (kill "prebot-2"))
+                (1
+                  (joint-eval scene-prebot-gun-spawn entity "prebot" joint "main")
+                  (send-event "prebot" 'trans-hook prebot-darken)
+                  (part-tracker
+                    "group-prebot-chasm-explosion"
+                    entity
+                    "particleman"
+                    joint
+                    "particleA"
+                    track
+                    #f
+                    duration
+                    (frame-range 1 30)
+                    )
+                  )
+                (2
+                  (joint-eval
+                    ,(lambda :behavior scene-player
+                       ((arg0 process-drawable) (arg1 vector))
+                       (let ((s5-0 (new 'stack-no-clear 'explosion-init-params)))
+                         (set! (-> s5-0 spawn-point quad) (-> arg1 quad))
+                         (quaternion-identity! (-> s5-0 spawn-quat))
+                         (set! (-> s5-0 radius) 8192.0)
+                         (set! (-> s5-0 scale) 1.0)
+                         (set! (-> s5-0 group) (-> *part-group-id-table* 217))
+                         (set! (-> s5-0 collide-with) (collide-spec))
+                         (set! (-> s5-0 damage) 2.0)
+                         (set! (-> s5-0 damage-scale) 1.0)
+                         (set! (-> s5-0 vehicle-damage-factor) 1.0)
+                         (set! (-> s5-0 vehicle-impulse-factor) 1.0)
+                         (set! (-> s5-0 ignore-proc) (process->handle #f))
+                         (explosion-spawn s5-0 (the-as process-drawable *default-pool*))
+                         )
+                       (logior! (-> arg0 draw global-effect) (draw-control-global-effect title-light))
+                       (none)
+                       )
+                    entity
+                    "particleman"
+                    joint
+                    "particleY"
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleA"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleB"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleC"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleD"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleE"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleF"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleG"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleH"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleI"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleJ"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleK"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleL"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleM"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleN"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleO"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleP"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleQ"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleR"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleS"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleT"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleU"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleV"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleW"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  (part-tracker
+                    "group-prebot-stuck-flame"
+                    entity
+                    "particleman"
+                    joint
+                    "particleX"
+                    track
+                    #t
+                    duration
+                    (frame-range 2 42)
+                    )
+                  )
+                )
+              :cut-list '()
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "prebot"
+                  :level 'mined
+                  :art-group "skel-prebot"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'mined
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'mined
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'mined
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "prebot-fight"
+              :end-point "prebot-fight"
+              :borrow '()
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume 1.0
+              :on-running #f
+              :on-complete #f
+              )
+            )
+
+;; failed to figure out what this is:
+(load-scene (new 'static 'scene
+              :name "mine-boss-res"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-133"
+              :art-group "scenecamera"
+              :anim "mine-boss-res"
+              :parts 5
+              :command-list '((0 (kill "prebot-2"))
+                (1
+                  (joint-eval scene-prebot-gun-spawn entity "prebot" joint "main")
+                  (send-event "prebot" 'trans-hook prebot-darken)
+                  )
+                (105 (part-tracker
+                       "group-final-prebot-chasm-explosion"
+                       entity
+                       "particleman"
+                       joint
+                       "particleA"
+                       track
+                       #f
+                       duration
+                       (frame-range 105 140)
+                       )
+                     )
+                (515 (fadeout (frame-time-30 20)))
+                (10000
+                  (send-event
+                    self
+                    'user-data-set!
+                    (or (task-closed? "mine-boss-resolution") (eq? *kernel-boot-message* 'preview))
+                    )
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (case *kernel-boot-message*
+                              (('preview)
+                               (if (-> self scene)
+                                   (logclear! (-> self scene scene-flags) (scene-flags scf4))
+                                   )
+                               (set! (-> self end-point) "title-restart")
+                               )
+                              )
+                            (none)
+                            )
+                         )
+                  )
+                )
+              :cut-list '(88 141 161 406 445)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'mined
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'mined
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'mined
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "gun"
+                  :level #f
+                  :art-group "skel-gun"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "blue-two-upgrade"
+                  :level 'mined
+                  :art-group "skel-blue-two-upgrade"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "prebot-fight"
+              :end-point "prebot-beaten"
+              :borrow '()
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-delay 1500.0
+              :on-running #f
+              :on-complete '(unless (send-event self 'user-data) (talker-spawn "powup009"))
+              )
+            )
+
+;; definition for function spt-birth-func-brightness-mine-boss-fma-dust-trailer
+;; WARN: Return type mismatch float vs none.
+(defun spt-birth-func-brightness-mine-boss-fma-dust-trailer ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (let ((s5-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 101) 80))
+        (s3-0 (logand 0 (rand-uint31-gen *random-generator*)))
+        (s4-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 31) 20))
+        (v1-6 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 31) 60))
+        )
+    (set! (-> arg2 rotate-x) (the float (- s5-0 (the-as int s3-0))))
+    (set! (-> arg2 rotate-y) (the float (- s5-0 s4-0)))
+    (set! (-> arg2 rotate-z) (the float (- s5-0 v1-6)))
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-mine-bridge-fma-dust-trailer
+  :id 1353
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4519))
+  )
+
+;; failed to figure out what this is:
+(defpart 4519
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:birth-func 'spt-birth-func-brightness-mine-boss-fma-dust-trailer)
+    (:num 0.5)
+    (:x (meters -0.3) (meters 0.6))
+    (:z (meters -0.3) (meters 0.6))
+    (:scale-x (meters 1) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 0.0)
+    (:scalevel-x (meters 0.0033333334) (meters 0.006666667))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a 0.16 0.16)
+    (:accel-y (meters -0.000033333334) (meters -0.00016666666))
+    (:friction 0.98)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    (:next-time (seconds 0.5))
+    (:next-launcher 4520)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4520
+  :init-specs ((:fade-a -0.10666667 -0.10666667))
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-mine-boss-fma-dust-trailer
+  :id 1354
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4521))
+  )
+
+;; failed to figure out what this is:
+(defpart 4521
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:birth-func 'spt-birth-func-brightness-mine-boss-fma-dust-trailer)
+    (:num 0.5)
+    (:x (meters -0.3) (meters 0.6))
+    (:z (meters -0.3) (meters 0.6))
+    (:scale-x (meters 1) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 24.0 24.0)
+    (:scalevel-x (meters 0.0033333334) (meters 0.006666667))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.32 -0.32)
+    (:accel-y (meters -0.000033333334) (meters -0.00016666666))
+    (:friction 0.98)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    )
+  )
+
+;; definition for function spt-birth-func-brightness-mine-boss-fma-dust
+;; WARN: Return type mismatch float vs none.
+(defun spt-birth-func-brightness-mine-boss-fma-dust ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (let ((s5-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 101) 80))
+        (s3-0 (logand 0 (rand-uint31-gen *random-generator*)))
+        (s4-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 21) 10))
+        (v1-6 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 31) 60))
+        )
+    (set! (-> arg2 rotate-x) (the float (- s5-0 (the-as int s3-0))))
+    (set! (-> arg2 rotate-y) (the float (- s5-0 s4-0)))
+    (set! (-> arg2 rotate-z) (the float (- s5-0 v1-6)))
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-mine-boss-fma-dust
+  :id 1355
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4522 :flags (sp7)) (sp-item 4523 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4522
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-mine-boss-fma-dust)
+    (:num 10.0 10.0)
+    (:x (meters -2) (meters 4))
+    (:z (meters -2) (meters 4))
+    (:scale-x (meters 1) (meters 3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 32.0 32.0)
+    (:vel-z (meters 0.016666668) (meters 0.06666667))
+    (:scalevel-x (meters 0.0033333334) (meters 0.01))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.21333334 -0.21333334)
+    (:accel-y (meters -0.00033333333) (meters -0.0016666667))
+    (:friction 0.9)
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32 20 1 0 #x405c00 #x404a00))
+    (:conerot-x (degrees 0) (degrees 30))
+    (:rotate-x (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0))
+    (:rotate-z (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition for function spt-birth-func-part-mine-boss-fma-dust
+(defun spt-birth-func-part-mine-boss-fma-dust ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (spt-birth-func-brightness-mine-boss-fma-dust arg0 arg1 arg2 arg3 arg4)
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpart 4523
+  :init-specs ((:texture (rockbit01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-mine-boss-fma-rocks)
+    (:num 2.0)
+    (:x (meters 3) (meters 2))
+    (:y (meters 0.5))
+    (:scale-x (meters 1) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 1) (meters 2))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:rotvel-z (degrees -1) (degrees 2))
+    (:accel-y (meters -0.0033333334))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-13 launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #x408b00
+                       #x408c00
+                       #x40a100
+                       #x40a200
+                       #x40a300
+                       #x40a400
+                       #x40a500
+                       #x40a600
+                       #x40a700
+                       #x40a800
+                       #x40a900
+                       #x40aa00
+                       #x40ab00
+                       #x40ac00
+                       #x40ad00
+                       #x40ae00
+                       )
+               )
+    (:func 'sparticle-texture-animate)
+    (:conerot-x (degrees 20))
+    (:rotate-x (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition for function spt-birth-func-part-mine-boss-fma-rocks
+(defun spt-birth-func-part-mine-boss-fma-rocks ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (spt-birth-func-brightness-mine-boss-fma-dust arg0 arg1 arg2 arg3 arg4)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-mine-boss-fma-dust2
+  :id 1356
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4524 :flags (sp7)) (sp-item 4525 :flags (sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4524
+  :init-specs ((:texture (dirtpuff01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-mine-boss-fma-dust2)
+    (:num 5.0 5.0)
+    (:x (meters -2) (meters 4))
+    (:z (meters -2) (meters 4))
+    (:scale-x (meters 1) (meters 3))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 32.0 32.0)
+    (:vel-z (meters 0.016666668) (meters 0.06666667))
+    (:scalevel-x (meters 0.0033333334) (meters 0.01))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.21333334 -0.21333334)
+    (:accel-y (meters -0.00033333333) (meters -0.0016666667))
+    (:friction 0.9)
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32 20 1 0 #x405c00 #x404a00))
+    (:conerot-x (degrees 0) (degrees 30))
+    (:rotate-x (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0))
+    (:rotate-z (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition for function spt-birth-func-part-mine-boss-fma-dust2
+(defun spt-birth-func-part-mine-boss-fma-dust2 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (spt-birth-func-brightness-mine-boss-fma-dust arg0 arg1 arg2 arg3 arg4)
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpart 4525
+  :init-specs ((:texture (rockbit01 level-default-sprite))
+    (:birth-func 'spt-birth-func-part-mine-boss-fma-rocks2)
+    (:num 0.5)
+    (:x (meters 1) (meters 2))
+    (:y (meters 0.5))
+    (:scale-x (meters 0.5) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y (meters 0.5) (meters 1))
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.06666667) (meters 0.06666667))
+    (:rotvel-z (degrees -1) (degrees 2))
+    (:accel-y (meters -0.0033333334))
+    (:timer (seconds 4))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-13 launch-along-z))
+    (:userdata :data (new 'static 'boxed-array :type int32
+                       10
+                       1
+                       0
+                       #x408b00
+                       #x408c00
+                       #x40a100
+                       #x40a200
+                       #x40a300
+                       #x40a400
+                       #x40a500
+                       #x40a600
+                       #x40a700
+                       #x40a800
+                       #x40a900
+                       #x40aa00
+                       #x40ab00
+                       #x40ac00
+                       #x40ad00
+                       #x40ae00
+                       )
+               )
+    (:func 'sparticle-texture-animate)
+    (:conerot-x (degrees 20))
+    (:rotate-x (degrees 0) (degrees 3600))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition for function spt-birth-func-part-mine-boss-fma-rocks2
+(defun spt-birth-func-part-mine-boss-fma-rocks2 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo) (arg3 object) (arg4 object))
+  (birth-func-texture-group-2d arg0 arg1 arg2 arg3 arg4)
+  (spt-birth-func-brightness-mine-boss-fma-dust arg0 arg1 arg2 arg3 arg4)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-veger-staff-sparkles
+  :id 1357
+  :flags (sp0 sp4 sp12)
+  :bounds (static-bspherem 0 0 0 10)
+  :parts ((sp-item 4526 :flags (sp6 sp7)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4526
+  :init-specs ((:texture (starflash level-default-sprite))
+    (:num 0.2 0.2)
+    (:x (meters -0.03) (meters 0.06))
+    (:y (meters -0.01) (meters 0.03))
+    (:z (meters -0.03) (meters 0.06))
+    (:scale-x (meters 0.05) (meters 0.1))
+    (:rot-x (degrees 0.9))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 0.0 128.0)
+    (:b 0.0 128.0)
+    (:a 0.0)
+    (:vel-z (meters 0))
+    (:fade-a 0.64 0.64)
+    (:timer (seconds 0.667))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 0.4096)
+    (:func 'spt-func-relative-pos)
+    (:next-time (seconds 0.167) (seconds 0.165))
+    (:next-launcher 4527)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4527
+  :init-specs ((:fade-a -1.28 -1.28))
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-veger-staff-glow
+  :id 1358
+  :flags (sp0 sp4 sp12)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4528 :flags (sp3)) (sp-item 4529 :flags (sp3)))
+  )
+
+;; failed to figure out what this is:
+(defpart 4528
+  :init-specs ((:texture (ring level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 2))
+    (:rot-x (degrees 4.5))
+    (:rot-z (degrees -17))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 10.0)
+    (:omega (degrees 4511.25))
+    (:scalevel-x (meters 0.006666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.016666668)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 1638.4)
+    (:func 'spt-func-relative-pos)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4529
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:rot-x (degrees 9))
+    (:rot-z (degrees -17))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 80.0)
+    (:b 80.0)
+    (:a 128.0)
+    (:omega (degrees 2715.75))
+    (:scalevel-x (meters -0.016666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-g -0.17777778)
+    (:fade-b -0.17777778)
+    (:fade-a -0.28444445)
+    (:timer (seconds 1.5))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 819.2)
+    (:func 'spt-func-relative-pos)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+
+
+

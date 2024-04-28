@@ -190,6 +190,30 @@ This is updated from the entity system used in Crash 2, which had most of these 
   (the-as int (+ (-> this type psize) (* (-> this allocated-length) 16) (-> this data-size)))
   )
 
+(defmethod inspect ((this res-lump))
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~Textra: ~A~%" (-> this extra))
+  (format #t "~Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~Tlength: ~D~%" (-> this length))
+  (format #t "~Tdata-base: #x~X~%" (-> this data-base))
+  (format #t "~Tdata-top: #x~X~%" (-> this data-top))
+  (format #t "~Tdata-size: #x~X~%" (-> this data-size))
+  (format #t "~Ttag[~D]: @ #x~X~%" (-> this allocated-length) (-> this tag))
+  (dotimes (i (-> this length))
+    (format #t "~T  [~D] " i)
+    (print (-> (-> this tag) i))
+    (format #t " @ #x~X" (get-tag-index-data this i))
+    (cond
+      ((res-ref? (-> this tag i))
+        (format #t " = ~A~%" (deref basic (get-tag-index-data this i)))
+        )
+      (else
+        (format #t "~%")
+        )
+      )
+    )
+  this
+  )
 
 ;; WARN: Return type mismatch int vs res-tag-pair.
 (defmethod lookup-tag-idx ((this res-lump) (arg0 symbol) (arg1 symbol) (arg2 float))

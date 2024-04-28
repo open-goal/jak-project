@@ -760,6 +760,10 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
               break;
             }
 
+            if (entries_matched == m_entry_matchers.size()) {
+              break;
+            }
+
             if (m_entry_matchers.at(entries_matched)
                     .do_match(let_body->entries().at(0), maps_out, env)) {
               entries_matched++;

@@ -1,0 +1,523 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *indax-hang-walk-mods*, type surface
+(define *indax-hang-walk-mods* (new 'static 'surface
+                                 :name 'run
+                                 :turnv 131072.0
+                                 :turnvf 30.0
+                                 :turnvv 524288.0
+                                 :turnvvf 30.0
+                                 :tiltv 65536.0
+                                 :tiltvf 150.0
+                                 :tiltvv 262144.0
+                                 :tiltvvf 15.0
+                                 :transv-max 16384.0
+                                 :target-speed 16384.0
+                                 :seek0 1.0
+                                 :seek90 1.0
+                                 :seek180 1.0
+                                 :fric 1.0
+                                 :nonlin-fric-dist 1.0
+                                 :slip-factor 1.0
+                                 :slide-factor 1.0
+                                 :slope-up-factor 1.0
+                                 :slope-down-factor 1.0
+                                 :slope-slip-angle 1.0
+                                 :impact-fric 1.0
+                                 :bend-factor 1.0
+                                 :bend-speed 1.0
+                                 :alignv 1.0
+                                 :slope-up-traction 1.0
+                                 :align-speed 1.0
+                                 :flags (surface-flag gun-off gun-fast-exit)
+                                 )
+        )
+
+;; definition for symbol *indax-hang-dodge-mods*, type surface
+(define *indax-hang-dodge-mods* (new 'static 'surface
+                                  :name 'run
+                                  :tiltv 65536.0
+                                  :tiltvf 150.0
+                                  :tiltvv 262144.0
+                                  :tiltvvf 15.0
+                                  :fric 1.0
+                                  :nonlin-fric-dist 1.0
+                                  :slip-factor 1.0
+                                  :slide-factor 1.0
+                                  :slope-up-factor 1.0
+                                  :slope-down-factor 1.0
+                                  :slope-slip-angle 1.0
+                                  :impact-fric 1.0
+                                  :bend-factor 1.0
+                                  :bend-speed 1.0
+                                  :slope-up-traction 1.0
+                                  :flags (surface-flag gun-off gun-fast-exit)
+                                  )
+        )
+
+;; failed to figure out what this is:
+(let ((v1-3 (copy *attack-mods* 'loading-level)))
+  (set! (-> v1-3 flags) (surface-flag attack spin gun-off gun-fast-exit))
+  (set! (-> v1-3 target-speed) 16384.0)
+  (set! (-> v1-3 transv-max) 16384.0)
+  (set! (-> v1-3 seek90) 0.0)
+  (set! (-> v1-3 seek180) 0.0)
+  (set! *indax-hang-attack-mods* v1-3)
+  )
+
+;; failed to figure out what this is:
+(defstate target-indax-hang (target)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'change-mode) (= (-> block param 0) 'hang))
+        #f
+        (target-indax-handler proc argc message block)
+        )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self control dynam gravity-length) (- (-> self control standard-dynamics gravity-length)))
+    (when (not (logtest? (target-flags tf27) (-> self target-flags)))
+      (set-time! (-> self indax indax-hang-start-time))
+      (set-setting! 'string-max-length 'low (meters 4) 0)
+      (set-setting! 'string-min-length 'low (meters 4) 0)
+      (let ((a0-4 (-> self current-level)))
+        (case (if a0-4
+                  (-> a0-4 info taskname)
+                  )
+          (('volcano)
+           (set-setting! 'string-max-height 'low (meters 1.5) 0)
+           (set-setting! 'string-min-height 'low (meters 1.5) 0)
+           )
+          (else
+            (format #t "definitely hitting this code~%")
+            (set-setting! 'string-max-height 'low (meters -1.4) 0)
+            (set-setting! 'string-min-height 'low (meters -4.1) 0)
+            )
+          )
+        )
+      (set-setting! 'fov 'abs (degrees 84.0) 0)
+      (set-setting! 'head-offset 'abs (meters 1) 0)
+      (set-setting! 'foot-offset 'abs (meters -1) 0)
+      (set-setting! 'target-height 'abs (meters 1.5) 0)
+      (logior! (-> self target-flags) (target-flags tf26 tf27))
+      )
+    )
+  :exit (behavior ()
+    (when (not (or (and (-> self next-state)
+                        (begin (-> self next-state name) (state-type? (-> self next-state) 'target-indax-hang))
+                        )
+                   (and (-> self next-state) (= (-> self next-state name) 'target-indax-hit))
+                   )
+               )
+      (logclear! (-> self target-flags) (target-flags tf26 tf27))
+      (set! (-> self control dynam gravity-max) (-> self control standard-dynamics gravity-max))
+      (set! (-> self control dynam gravity-length) (-> self control standard-dynamics gravity-length))
+      (target-indax-reset)
+      )
+    (target-indax-exit)
+    )
+  :code nothing
+  :post (behavior ()
+    (target-indax-post)
+    (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+      (let ((v1-0 gp-0))
+        (set! (-> v1-0 radius) 819.2)
+        (set! (-> v1-0 collide-with)
+              (logclear (-> self control root-prim prim-core collide-with) (collide-spec water))
+              )
+        (set! (-> v1-0 ignore-process0) self)
+        (set! (-> v1-0 ignore-process1) #f)
+        (set! (-> v1-0 ignore-pat)
+              (logior (new 'static 'pat-surface :noendlessfall #x1) (-> self control pat-ignore-mask))
+              )
+        (set! (-> v1-0 action-mask) (collide-action solid))
+        )
+      (set! (-> gp-0 start-pos quad) (-> self control trans quad))
+      (vector-reset! (-> gp-0 move-dist))
+      (set! (-> gp-0 move-dist y) 40960.0)
+      (when (not (and (>= (fill-and-probe-using-line-sphere *collide-cache* gp-0) 0.0)
+                      (= (-> gp-0 best-other-tri pat event) (pat-event hang))
+                      )
+                 )
+        (let ((v1-11 (new-stack-vector0)))
+          (let ((f0-4 (vector-dot (-> self control dynam gravity-normal) (-> self control transv))))
+            0.0
+            (vector-! v1-11 (-> self control transv) (vector-float*! v1-11 (-> self control dynam gravity-normal) f0-4))
+            )
+          (let* ((f0-5 (vector-length v1-11))
+                 (f1-2 f0-5)
+                 (f2-0 0.0)
+                 )
+            (vector+!
+              (-> self control transv)
+              (vector-float*! (-> self control transv) (-> self control dynam gravity-normal) f2-0)
+              (vector-float*! v1-11 v1-11 (/ f0-5 f1-2))
+              )
+            )
+          )
+        (go target-indax-falling #f)
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-indax-hang-stance (target)
+  :parent target-indax-hang
+  :enter (behavior ()
+    (let ((a0-0 (-> self state parent)))
+      (when a0-0
+        (let ((t9-0 (-> a0-0 enter)))
+          (if t9-0
+              ((the-as (function none) t9-0))
+              )
+          )
+        )
+      )
+    (set! (-> self control mod-surface) *indax-hang-walk-mods*)
+    )
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
+             (not (logtest? (-> self target-flags) (target-flags prevent-jump)))
+             )
+        (go target-indax-falling #f)
+        )
+    (when (move-legs?)
+      (set! (-> self control bend-target) 0.0)
+      (logclear! (-> self target-flags) (target-flags lleg-still rleg-still))
+      (go target-indax-hang-walk)
+      )
+    (if (cpad-hold? (-> self control cpad number) l1)
+        (go target-indax-hang-dodge)
+        )
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons circle)
+                       )
+             (can-feet? #t)
+             )
+        (go target-indax-hang-attack)
+        )
+    )
+  :code (behavior ()
+    (let ((v1-2 (ja-group)))
+      (cond
+        ((and v1-2 (= v1-2 jakb-dummy-58-ja))
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja-no-eval :group! jakb-ladder-stance-to-down-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        ((not (time-elapsed? (-> self indax indax-hang-start-time) (seconds 0.1)))
+         (ja-channel-push! 1 (seconds 0.1))
+         (ja-no-eval :group! jakb-ladder-down-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          )
+        )
+      )
+    (until #f
+      (ja-no-eval :group! jakb-dummy-57-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self control trans quad))
+      (let ((a0-0 (-> self state parent)))
+        (when a0-0
+          (let ((t9-0 (-> a0-0 post)))
+            (if t9-0
+                ((the-as (function none) t9-0))
+                )
+            )
+          )
+        )
+      (when (not (move-legs?))
+        (set! (-> gp-0 y) (-> self control trans y))
+        (move-to-point! (-> self control) gp-0)
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-indax-hang-walk (target)
+  :parent target-indax-hang
+  :enter (-> target-indax-hang-stance enter)
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
+             (not (logtest? (-> self target-flags) (target-flags prevent-jump)))
+             )
+        (go target-indax-falling #f)
+        )
+    (if (not (move-legs?))
+        (go target-indax-hang-stance)
+        )
+    (if (cpad-hold? (-> self control cpad number) l1)
+        (go target-indax-hang-dodge)
+        )
+    (when (and (turn-around?) (time-elapsed? (-> self state-time) (seconds 0.3)))
+      (set! (-> self control transv quad)
+            (-> self control transv-history (-> self control idx-of-fastest-xz-vel) quad)
+            )
+      (set! (-> self control transv w) 1.0)
+      (go target-indax-hang-turn-around)
+      )
+    )
+  :code (behavior ()
+    (let ((f30-0 0.0))
+      (let ((v1-2 (ja-group)))
+        (cond
+          ((and v1-2 (= v1-2 jakb-dummy-58-ja))
+           (set! f30-0 (ja-frame-num 0))
+           )
+          (else
+            (ja-channel-push! 1 (seconds 0.05))
+            (ja-no-eval :group! jakb-dummy-59-ja :num! (seek!) :frame-num 0.0)
+            (until (ja-done? 0)
+              (compute-alignment! (-> self align))
+              (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
+              (suspend)
+              (ja :num! (seek!))
+              )
+            )
+          )
+        )
+      (ja-no-eval :group! jakb-dummy-58-ja :num! (loop!) :dist 4096.0 :frame-num f30-0)
+      )
+    (until #f
+      (suspend)
+      (let* ((f0-10 (* (current-cycle-distance (-> self skel)) (-> self control scale x)))
+             (f0-12 (/ (* 30.0 (-> self control ctrl-xz-vel)) (* 60.0 f0-10)))
+             )
+        (ja :num! (loop! f0-12))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-indax-hang-dodge (target)
+  :parent target-indax-hang
+  :enter (behavior ()
+    (let ((a0-0 (-> self state parent)))
+      (when a0-0
+        (let ((t9-0 (-> a0-0 enter)))
+          (if t9-0
+              ((the-as (function none) t9-0))
+              )
+          )
+        )
+      )
+    (set! (-> self control mod-surface) *indax-hang-dodge-mods*)
+    )
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
+             (not (logtest? (-> self target-flags) (target-flags prevent-jump)))
+             )
+        (go target-indax-falling #f)
+        )
+    (set-forward-vel 0.0)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! jakb-ladder-stance-to-up-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja :group! jakb-ladder-up-ja :num! min)
+    (while (cpad-hold? (-> self control cpad number) l1)
+      (suspend)
+      (ja :num! (loop!))
+      )
+    (ja-no-eval :group! jakb-ladder-up-to-stance-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go target-indax-hang-stance)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-indax-hang-attack (target)
+  :parent target-indax-hang
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'change-mode) (= (-> block param 0) 'hang))
+        #f
+        (target-indax-dangerous-event-handler proc argc message block)
+        )
+    )
+  :enter (behavior ()
+    (let ((a0-0 (-> self state parent)))
+      (when a0-0
+        (let ((t9-0 (-> a0-0 enter)))
+          (if t9-0
+              ((the-as (function none) t9-0))
+              )
+          )
+        )
+      )
+    ((-> target-attack enter))
+    (set! (-> self control mod-surface) *indax-hang-attack-mods*)
+    )
+  :exit (behavior ()
+    ((-> target-attack exit))
+    (let ((v1-2 (-> self prev-state parent)))
+      (when v1-2
+        (let ((t9-1 (-> v1-2 exit)))
+          (if t9-1
+              (t9-1)
+              )
+          )
+        )
+      )
+    )
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
+             (not (logtest? (-> self target-flags) (target-flags prevent-jump)))
+             )
+        (go target-indax-falling #f)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja-no-eval :group! jakb-ladder-stance-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (compute-alignment! (-> self align))
+      (let ((v1-19 (and (>= (ja-aframe-num 0) 4.0) (>= 9.0 (ja-aframe-num 0)))))
+        (if v1-19
+            (align! (-> self align) (align-opts adjust-xz-vel) 1.0 1.0 1.0)
+            (set-forward-vel 0.0)
+            )
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go target-indax-hang-stance)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate target-indax-hang-turn-around (target)
+  :parent target-indax-hang
+  :enter (behavior ()
+    (let ((a0-0 (-> self state parent)))
+      (when a0-0
+        (let ((t9-0 (-> a0-0 enter)))
+          (if t9-0
+              ((the-as (function none) t9-0))
+              )
+          )
+        )
+      )
+    (vector-turn-to (-> self control transv))
+    (set! (-> self control mod-surface) *turn-around-mods*)
+    (set! (-> self control bend-target) 1.0)
+    (set-forward-vel 0.0)
+    )
+  :exit (behavior ()
+    (set-forward-vel 0.0)
+    (set! (-> self control ctrl-xz-vel) 0.0)
+    (set-quaternion! (-> self control) (-> self control dir-targ))
+    (set! (-> self control bend-target) 0.0)
+    (let ((v1-6 (-> self prev-state parent)))
+      (when v1-6
+        (let ((t9-2 (-> v1-6 exit)))
+          (if t9-2
+              (t9-2)
+              )
+          )
+        )
+      )
+    )
+  :trans (behavior ()
+    (if (and (logtest? (logior (logior (-> *cpad-list* cpads (-> self control cpad number) button0-rel 0)
+                                       (-> *cpad-list* cpads (-> self control cpad number) button0-rel 1)
+                                       )
+                               (-> *cpad-list* cpads (-> self control cpad number) button0-rel 2)
+                               )
+                       (pad-buttons x)
+                       )
+             (not (logtest? (-> self control current-surface flags) (surface-flag no-jump)))
+             (not (logtest? (-> self target-flags) (target-flags prevent-jump)))
+             )
+        (go target-indax-falling #f)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.04))
+    (ja :group! jakb-ladder-get-on-ja :num! min)
+    (quaternion-rotate-y! (-> self control dir-targ) (-> self control dir-targ) 32768.0)
+    (compute-alignment! (-> self align))
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 2.0))
+      (compute-alignment! (-> self align))
+      (align! (-> self align) (align-opts adjust-quat) 1.0 1.0 1.0)
+      )
+    (remove-exit)
+    (let ((a0-8 target-indax-hang))
+      (when a0-8
+        (let ((t9-9 (-> a0-8 exit)))
+          (if t9-9
+              (t9-9)
+              )
+          )
+        )
+      )
+    (set! (-> self control ctrl-xz-vel) 16384.0)
+    (set-forward-vel (-> self control ctrl-xz-vel))
+    (go target-indax-hang-walk)
+    )
+  )
+
+
+
+

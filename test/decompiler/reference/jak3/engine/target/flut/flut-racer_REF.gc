@@ -1,0 +1,754 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type flut-racer
+(deftype flut-racer (nav-enemy)
+  ((current-ring       uint8)
+   (taskman            handle)
+   (minimap            connection-minimap)
+   (probe              vector  :inline)
+   (last-speed-update  time-frame)
+   )
+  (:state-methods
+    wait
+    race
+    halt
+    )
+  )
+
+;; definition for method 3 of type flut-racer
+(defmethod inspect ((this flut-racer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcurrent-ring: ~D~%" (-> this current-ring))
+  (format #t "~2Ttaskman: ~D~%" (-> this taskman))
+  (format #t "~2Tminimap: #<connection-minimap @ #x~X>~%" (-> this minimap))
+  (format #t "~2Tprobe: #<vector @ #x~X>~%" (-> this probe))
+  (format #t "~2Tlast-speed-update: ~D~%" (-> this last-speed-update))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-flut-racer flut-wild flut-wild-lod0-jg flut-wild-idle-ja
+              ((flut-wild-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow flut-wild-shadow-mg
+              )
+
+;; definition for symbol *flut-racer-enemy-info*, type nav-enemy-info
+(define *flut-racer-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #t
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 2
+        :param1 2
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 6
+    :hit-anim 3
+    :knocked-anim -1
+    :knocked-land-anim -1
+    :die-anim -1
+    :die-falling-anim -1
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim 8
+    :jump-land-anim 10
+    :neck-joint 27
+    :look-at-joint 28
+    :bullseye-joint 28
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 15)
+    :default-hit-points 100.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'shove
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info #f
+    :shadow-size (meters 1)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -20)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 4
+    :turn-anim -1
+    :run-anim 6
+    :taunt-anim -1
+    :run-travel-speed (meters 35)
+    :run-acceleration (meters 5.8333335)
+    :run-turning-acceleration (meters 100)
+    :walk-travel-speed (meters 5)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 100)
+    :maximum-rotation-rate (degrees 720)
+    :notice-nav-radius (meters 1)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *flut-racer-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for function ring-hit-logic
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch uint vs none.
+(defbehavior ring-hit-logic flut-racer ()
+  (let* ((v1-2 (-> *game-info* sub-task-list (game-task-node wascity-leaper-race-resolution)))
+         (gp-0 (if (-> v1-2 manager)
+                   (-> v1-2 manager manager)
+                   (the-as handle #f)
+                   )
+               )
+         (a1-0 (new 'stack-no-clear 'event-message-block))
+         )
+    (set! (-> a1-0 from) (process->ppointer self))
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'challenger-current-ring-ent)
+    (let* ((a0-6 (the-as entity (send-event-function (handle->process gp-0) a1-0)))
+           (v1-9 (if a0-6
+                     (-> a0-6 extra process)
+                     )
+                 )
+           )
+      (when v1-9
+        (let ((a1-1 (new 'stack-no-clear 'vector)))
+          (set! (-> a1-1 quad) (-> self root trans quad))
+          (let ((a0-11 (-> (the-as process-drawable v1-9) root quat)))
+            (new 'stack-no-clear 'vector)
+            (+! (-> a1-1 y) 8192.0)
+            (vector-! a1-1 a1-1 (-> (the-as process-drawable v1-9) root trans))
+            (when (wascity-race-ring-cleared? a0-11 a1-1)
+              (sound-play "ring-pass" :vol 50)
+              (send-event (handle->process gp-0) 'ring-hit 'challenger (-> self current-ring))
+              (+! (-> self current-ring) 1)
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate wait (flut-racer)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (ja :num-func num-func-identity
+        :frame-num (the float (mod (the-as uint (&-> self entity)) (the-as uint (ja-num-frames 0))))
+        )
+    )
+  :trans (behavior ()
+    (ja :num! (loop!))
+    )
+  :code (behavior ()
+    (sleep-code)
+    )
+  :post (behavior ()
+    (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
+        (set-time! (-> self last-draw-time))
+        )
+    (update-focus self)
+    (ja-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate race (flut-racer)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (nav-enemy-method-177 self)
+    (nav-enemy-method-181 self)
+    (nav-enemy-method-183 self)
+    (when (zero? (-> self taskman))
+      (let ((v1-12 (-> *game-info* sub-task-list (game-task-node wascity-leaper-race-resolution))))
+        (set! (-> self taskman) (if (-> v1-12 manager)
+                                    (-> v1-12 manager manager)
+                                    (the-as handle #f)
+                                    )
+              )
+        )
+      )
+    (if (not (-> self minimap))
+        (set! (-> self minimap) (add-icon! *minimap* self (the-as uint 10) (the-as int #f) (the-as vector #t) 0))
+        )
+    (vector-reset! (-> self probe))
+    )
+  :trans (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'challenger-current-ring)
+      (let ((gp-0 (the-as int (send-event-function (handle->process (-> self taskman)) a1-0)))
+            (a1-1 (new 'stack-no-clear 'event-message-block))
+            )
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 0)
+        (set! (-> a1-1 message) 'target-current-ring)
+        (let ((s5-0 (the-as int (send-event-function (handle->process (-> self taskman)) a1-1))))
+          (when (and gp-0 s5-0)
+            (when (time-elapsed? (-> self last-speed-update) (seconds 4))
+              (let ((s4-0 (-> self nav)))
+                (set! (-> s4-0 target-speed)
+                      (* 143360.0 (rand-vu-float-range 0.75 1.0) (lerp-scale 1.225 0.5 (the float (- gp-0 s5-0)) -2.0 2.0))
+                      )
+                )
+              0
+              (set-time! (-> self last-speed-update))
+              )
+            0
+            )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((f26-0 0.0)
+          (f30-0 0.0)
+          (f28-0 0.0)
+          )
+      (let ((gp-0 22))
+        (let ((v1-2 (ja-group)))
+          (cond
+            ((and v1-2 (= v1-2 flut-wild-idle-ja))
+             (set! gp-0 60)
+             )
+            ((let ((v1-9 (ja-group)))
+               (and v1-9 (or (= v1-9 flut-wild-jump-ja) (= v1-9 flut-wild-jump-loop-ja)))
+               )
+             (ja-channel-push! 1 (seconds 0.08))
+             (ja-no-eval :group! flut-wild-run-squash-ja :num! (seek!) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!))
+               )
+             )
+            )
+          )
+        (let ((v1-39 (ja-group)))
+          (set! f28-0
+                (cond
+                  ((and v1-39 (= v1-39 flut-wild-run-squash-ja))
+                   (ja-channel-set! 3)
+                   (set! f30-0 1.0)
+                   1.0
+                   )
+                  (else
+                    (let ((v1-47 (ja-group)))
+                      (cond
+                        ((and v1-47 (= v1-47 flut-wild-walk-ja))
+                         (set! f26-0 (ja-frame-num 0))
+                         (set! f30-0 (-> self skel root-channel 1 frame-interp (-> self skel active-frame-interp)))
+                         (-> self skel root-channel 2 frame-interp (-> self skel active-frame-interp))
+                         )
+                        (else
+                          (ja-channel-push! 3 (the-as time-frame gp-0))
+                          f28-0
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+          )
+        )
+      (ja-no-eval :group! flut-wild-walk-ja :num! (loop!) :dist 20480.0 :frame-num f26-0)
+      (ja-no-eval :chan 1
+                  :group! flut-wild-jog-ja
+                  :num! (identity f26-0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :dist 47104.0
+                  )
+      (ja-no-eval :chan 2
+                  :group! flut-wild-run-ja
+                  :num! (identity f26-0)
+                  :frame-interp0 f28-0
+                  :frame-interp1 f28-0
+                  :dist 53248.0
+                  )
+      (until #f
+        (suspend)
+        (let ((f24-0 (lerp-scale 0.0 1.0 (-> self nav state speed) 36864.0 40960.0))
+              (f26-1 (lerp-scale 0.0 1.0 (-> self nav state speed) 49152.0 77824.0))
+              )
+          (set! f30-0 (seek f30-0 f24-0 (* 4.0 (seconds-per-frame))))
+          (set! f28-0 (seek f28-0 f26-1 (seconds-per-frame)))
+          )
+        (ja :chan 1 :frame-interp0 f30-0 :frame-interp1 f30-0)
+        (ja :chan 2 :frame-interp0 f28-0 :frame-interp1 f28-0)
+        (let* ((f0-17 (* (current-cycle-distance (-> self skel)) (-> self root scale x)))
+               (f0-19 (/ (* 58.0 (-> self nav state speed)) (* 60.0 f0-17)))
+               )
+          (ja :num! (loop! f0-19))
+          )
+        (ja :chan 1 :num! (chan 0))
+        (ja :chan 2 :num! (chan 0))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'challenger-current-ring-ent)
+      (let ((a0-5 (the-as entity-actor (send-event-function (handle->process (-> self taskman)) a1-0)))
+            (gp-0 (new 'stack-no-clear 'vector))
+            )
+        (b! (not a0-5) cfg-20 :delay (nop!))
+        (set! (-> gp-0 quad) (-> a0-5 extra trans quad))
+        (let ((f0-0 (vector-vector-xz-distance gp-0 (-> self root trans)))
+              (f30-0 (- (-> gp-0 y) (-> self root trans y)))
+              )
+          (let ((a0-10 (-> self nav state))
+                (v1-9 gp-0)
+                )
+            (logclear! (-> a0-10 flags) (nav-state-flag directional-mode))
+            (logior! (-> a0-10 flags) (nav-state-flag target-poly-dirty))
+            (set! (-> a0-10 target-pos quad) (-> v1-9 quad))
+            )
+          0
+          (when (and (< f0-0 40960.0) (< 24576.0 (+ -8192.0 f30-0)))
+            (let ((a0-13 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+              (vector+! gp-0 gp-0 (vector-normalize! a0-13 40960.0))
+              )
+            (set! (-> gp-0 y) (-> self root trans y))
+            (set! (-> self enemy-info jump-height-min) (* 0.8 f30-0))
+            (set! (-> self enemy-flags)
+                  (the-as enemy-flag (logior (enemy-flag jump-check-blocked) (-> self enemy-flags)))
+                  )
+            (send-event self 'jump 0 gp-0)
+            #t
+            (b! #t cfg-22 :delay (nop!))
+            (the-as none 0)
+            )
+          )
+        )
+      )
+    (ring-hit-logic)
+    (b! #t cfg-21 :delay (nop!))
+    (label cfg-20)
+    0
+    (label cfg-21)
+    (nav-enemy-travel-post)
+    (label cfg-22)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate jump (flut-racer)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy jump) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logclear! (-> self focus-status) (focus-status dangerous))
+    )
+  :post (behavior ()
+    (ring-hit-logic)
+    (let ((t9-1 (-> (method-of-type nav-enemy jump) post)))
+      (if t9-1
+          ((the-as (function none) t9-1))
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate halt (flut-racer)
+  :virtual #t
+  :code sleep-code
+  )
+
+;; definition for method 97 of type flut-racer
+(defmethod jump-land-anim ((this flut-racer) (arg0 enemy-jump-info))
+  #f
+  )
+
+;; definition for method 98 of type flut-racer
+(defmethod jump-wind-up-anim ((this flut-racer) (arg0 enemy-jump-info))
+  #f
+  )
+
+;; definition for method 102 of type flut-racer
+(defmethod go-directed2 ((this flut-racer))
+  (go (method-of-object this race))
+  )
+
+;; definition for method 108 of type flut-racer
+(defmethod enemy-method-108 ((this flut-racer) (arg0 process-focusable))
+  #t
+  )
+
+;; definition for method 167 of type flut-racer
+;; WARN: Return type mismatch symbol vs vector.
+(defmethod nav-enemy-method-167 ((this flut-racer))
+  (the-as vector #f)
+  )
+
+;; definition for method 62 of type flut-racer
+(defmethod get-damage-from-attack ((this flut-racer) (arg0 object) (arg1 event-message-block))
+  0.0
+  )
+
+;; definition for method 122 of type flut-racer
+(defmethod go-idle2 ((this flut-racer))
+  (go (method-of-object this wait))
+  )
+
+;; definition for method 99 of type flut-racer
+;; WARN: Return type mismatch object vs symbol.
+;; WARN: disable def twice: 5. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod jump-anim-handler ((this flut-racer) (arg0 int) (arg1 enemy-jump-info))
+  (let ((v1-0 arg0))
+    (the-as symbol (cond
+                     ((= v1-0 4)
+                      (when (not (focus-test? this dangerous))
+                        (let ((v0-0 (the-as object (logior (-> this focus-status) (focus-status dangerous)))))
+                          (set! (-> this focus-status) (the-as focus-status v0-0))
+                          v0-0
+                          )
+                        )
+                      )
+                     (else
+                       ((method-of-type nav-enemy jump-anim-handler) this arg0 arg1)
+                       )
+                     )
+            )
+    )
+  )
+
+;; definition for method 82 of type flut-racer
+(defmethod event-handler ((this flut-racer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('trigger)
+     (if (and (-> this next-state) (= (-> this next-state name) 'wait))
+         (go (method-of-object this race))
+         )
+     )
+    (('touch)
+     (send-shoves (-> this root) arg0 (the-as touching-shapes-entry (-> arg3 param 0)) 0.7 6144.0 16384.0)
+     )
+    (('stop)
+     (go (method-of-object this halt))
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 187 of type flut-racer
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-enemy-method-187 ((this flut-racer))
+  (local-vars (v1-26 float) (v1-40 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((t9-0 (method-of-type nav-enemy nav-enemy-method-187)))
+      (t9-0 this)
+      )
+    (let ((s5-0 (new 'stack 'traffic-danger-info)))
+      (set! (-> s5-0 danger-type) (the-as uint 8))
+      (set! (-> s5-0 sphere quad) (-> this root trans quad))
+      (set! (-> s5-0 sphere r) 122880.0)
+      (copy-nav-state-vel! this (-> s5-0 velocity))
+      (vector-normalize! (-> s5-0 velocity) 122880.0)
+      (set! (-> s5-0 danger-level) 0.5)
+      (set! (-> s5-0 notify-radius) 491520.0)
+      (set! (-> s5-0 decay-rate) 0.0)
+      (add-danger *traffic-engine* s5-0)
+      )
+    (let ((s5-1 (new 'stack-no-clear 'vector)))
+      (vector-normalize!
+        (vector-z-quaternion! s5-1 (-> this root quat))
+        (* (-> this nav target-speed) (seconds-per-frame) (seconds-per-frame))
+        )
+      (vector+! s5-1 s5-1 (-> this root trans))
+      (set! (-> s5-1 w) 16384.0)
+      (let ((s4-1 (new 'stack-no-clear 'array 'collide-shape 384)))
+        (countdown (s3-0 (fill-actor-list-for-box *actor-hash* s5-1 s4-1 384))
+          (let* ((s2-0 (-> s4-1 s3-0))
+                 (v1-21 (if (type? s2-0 collide-shape)
+                            s2-0
+                            )
+                        )
+                 )
+            (when v1-21
+              (let* ((s1-0 (-> v1-21 process))
+                     (s2-1 (if (type? s1-0 process-focusable)
+                               s1-0
+                               )
+                           )
+                     )
+                (when s2-1
+                  (when (and (!= *target* s2-1) (type? s2-1 civilian))
+                    (let ((v1-25 (vector-! (new 'stack-no-clear 'vector) (-> s2-1 root trans) s5-1)))
+                      0.0
+                      (.lvf vf1 (&-> v1-25 quad))
+                      )
+                    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                    (.mul.vf vf1 vf1 vf1)
+                    (.mul.x.vf acc vf2 vf1 :mask #b1)
+                    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                    (.mov v1-26 vf1)
+                    (let ((f0-10 v1-26)
+                          (f1-2 (-> s5-1 w))
+                          )
+                      (when (>= (* f1-2 f1-2) f0-10)
+                        (set! (-> this enemy-info attack-damage) 15)
+                        (send-attack this s2-1 (the-as touching-shapes-entry #f) (-> this attack-id))
+                        (set! (-> this enemy-info attack-damage) 0)
+                        0
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (let* ((s3-1 *target*)
+             (s4-2 (if (type? s3-1 process-focusable)
+                       s3-1
+                       )
+                   )
+             )
+        (when (and s4-2 (< (vector-vector-distance (get-trans s4-2 0) s5-1) (-> s5-1 w)))
+          (when (and (!= *target* s4-2) (type? s4-2 civilian))
+            (let ((v1-39 (vector-! (new 'stack-no-clear 'vector) (-> s4-2 control trans) s5-1)))
+              0.0
+              (.lvf vf1 (&-> v1-39 quad))
+              )
+            (.add.w.vf vf2 vf0 vf0 :mask #b1)
+            (.mul.vf vf1 vf1 vf1)
+            (.mul.x.vf acc vf2 vf1 :mask #b1)
+            (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+            (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+            (.mov v1-40 vf1)
+            (let ((f0-13 v1-40)
+                  (f1-6 (-> s5-1 w))
+                  )
+              (when (>= (* f1-6 f1-6) f0-13)
+                (set! (-> this enemy-info attack-damage) 15)
+                (send-attack this s4-2 (the-as touching-shapes-entry #f) (-> this attack-id))
+                (set! (-> this enemy-info attack-damage) 0)
+                0
+                )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 121 of type flut-racer
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this flut-racer))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-flut-racer" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *flut-racer-enemy-info*)
+  (let ((v1-5 (-> this neck)))
+    (set! (-> v1-5 up) (the-as uint 1))
+    (set! (-> v1-5 nose) (the-as uint 2))
+    (set! (-> v1-5 ear) (the-as uint 0))
+    (set-vector! (-> v1-5 twist-max) 11832.889 11832.889 0.0 1.0)
+    (set! (-> v1-5 ignore-angle) 30947.555)
+    )
+  (set! (-> this current-ring) (the-as uint 0))
+  (logclear! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask bot))
+  (logclear! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
+  (let ((v1-13 (-> this nav)))
+    (set! (-> v1-13 sphere-mask) (the-as uint #x1000fe))
+    )
+  0
+  (let ((v1-15 (-> this nav)))
+    (set! (-> v1-15 nav-cull-radius) 143360.0)
+    )
+  0
+  (set! (-> this minimap) #f)
+  (flut-color-from-index (flut-random-color-index))
+  (let ((s5-2 (process-spawn
+                manipy
+                :init manipy-init
+                (-> this root trans)
+                (-> this entity)
+                (art-group-get-by-name *level* "skel-monk" (the-as (pointer level) #f))
+                'collide-shape-moving
+                0
+                :name "manipy"
+                :to this
+                :stack-size #x20000
+                )
+              )
+        )
+    0
+    (when s5-2
+      (let* ((v1-24 (res-lump-value
+                      (-> this entity)
+                      'extra-id
+                      uint128
+                      :default (the-as uint128 (rand-vu-int-range 0 5))
+                      :time -1000000000.0
+                      )
+                    )
+             (gp-2 (cond
+                     ((zero? v1-24)
+                      4171
+                      )
+                     ((= (the-as uint v1-24) 1)
+                      8357
+                      )
+                     ((= (the-as uint v1-24) 2)
+                      #x4113
+                      )
+                     ((= (the-as uint v1-24) 3)
+                      #x8225
+                      )
+                     ((= (the-as uint v1-24) 4)
+                      #x10407
+                      )
+                     ((= (the-as uint v1-24) 5)
+                      #x20825
+                      )
+                     )
+                   )
+             )
+        (send-event (ppointer->process s5-2) 'no-actor-pause)
+        (send-event (ppointer->process s5-2) 'segment 0 -8)
+        (send-event (ppointer->process s5-2) 'segment (* gp-2 8) 0)
+        )
+      (send-event (ppointer->process s5-2) 'anim-mode 'clone-anim)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 120 of type flut-racer
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-enemy-collision! ((this flut-racer))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec bot))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 4915.2)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec bot))
+      (set! (-> v1-12 prim-core collide-with)
+            (collide-spec backgnd jak crate enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-12 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-12 local-sphere) 0.0 8192.0 0.0 4915.2)
+      )
+    (set! (-> s5-0 nav-radius) 5324.8)
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
