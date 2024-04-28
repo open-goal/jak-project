@@ -256,6 +256,7 @@ int main(int argc, char** argv) {
 
   fs::path input_file_path;
   fs::path project_path_override;
+  fs::path extraction_path;
   bool flag_runall = false;
   bool flag_extract = false;
   bool flag_fail_on_validation = false;
@@ -268,12 +269,14 @@ int main(int argc, char** argv) {
 
   lg::initialize();
 
-  CLI::App app{"OpenGOAL Level Extraction Tool"};
+  CLI::App app{"OpenGOAL Extractor (ISO Tools + Decompiler + Compiler)"};
   app.add_option("game-files-path", input_file_path,
                  "The path to the folder with the ISO extracted or the ISO itself")
       ->required();
   app.add_option("--proj-path", project_path_override,
                  "Explicitly set the location of the 'data/' folder");
+  app.add_option("--extract-path", extraction_path,
+                 "Explicitly set the location for where the ISO should be extracted");
   app.add_option("-g,--game", game_name, "Specify the game name, defaults to 'jak1'");
   app.add_option(
       "--decomp-config-override", decomp_config_override,
@@ -285,7 +288,7 @@ int main(int argc, char** argv) {
   app.add_flag("-d,--decompile", flag_decompile, "Decompile the game data");
   app.add_flag("-c,--compile", flag_compile, "Compile the game");
   app.add_flag("-p,--play", flag_play, "Play the game");
-  app.add_flag("-f,--folder", flag_folder, "Extract from folder");
+  app.add_flag("-f,--folder", flag_folder, "Take ISO input from a folder");
   define_common_cli_arguments(app);
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv);
@@ -350,6 +353,10 @@ int main(int argc, char** argv) {
   if (flag_extract) {
     // we extract to a temporary location because we don't know what we're extracting yet!
     fs::path temp_iso_extract_location = file_util::get_jak_project_dir() / "iso_data" / "_temp";
+    if (!extraction_path.empty()) {
+      temp_iso_extract_location = extraction_path / "_temp";
+    }
+    lg::info("Extracting ISO to temporary dir at: {}", temp_iso_extract_location.string());
     if (input_file_path != temp_iso_extract_location) {
       // in case input is also output, don't just wipe everything (weird)
       fs::remove_all(temp_iso_extract_location);
@@ -382,12 +389,18 @@ int main(int argc, char** argv) {
         // We know the version since we just extracted it, so the user didn't need to provide this
         // explicitly
         data_subfolder = data_subfolders.at(version_info->game_name);
-        iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
+        if (!extraction_path.empty()) {
+          iso_data_path = extraction_path / data_subfolder;
+        } else {
+          iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
+        }
         if (fs::exists(iso_data_path)) {
           fs::remove_all(iso_data_path);
         }
 
         // std::filesystem doesn't have a rename for dirs...
+        // TODO - potential disaster here, don't do either if the directories are the same location
+        // or don't copy if the temp location is _inside_ the destination directory
         fs::copy(temp_iso_extract_location, iso_data_path, fs::copy_options::recursive);
         fs::remove_all(temp_iso_extract_location);
       }
@@ -421,7 +434,11 @@ int main(int argc, char** argv) {
   } else {
     // If we did not extract, we have no clue what game the user is trying to decompile / compile
     // this is why the user has to specify this!
-    iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
+    if (flag_folder) {
+      iso_data_path = input_file_path;
+    } else {
+      iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
+    }
   }
 
   if (flag_decompile) {
