@@ -1,5 +1,5 @@
 ("ARENACST.DGO"
- ("tpage-1484.o"
+ ("tpage-1484.go"
   "tpage-1245.go"
   "tpage-1248.go"
   "tpage-1246.go"
@@ -14,5 +14,5 @@
   "blue-gun-mod-one-ag.go"
   "wstd-gate-pass-ag.go"
   "yellow-barrel-ag.go"
-  "arenacst.o"
+  "arenacst.go"
  ))

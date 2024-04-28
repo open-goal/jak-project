@@ -949,7 +949,7 @@ void Merc2::handle_merc_chain(DmaFollower& dma,
 
   auto init = dma.read_and_advance();
   int skip_count = 2;
-  if (render_state->version == GameVersion::Jak2) {
+  if (render_state->version >= GameVersion::Jak2) {
     skip_count = 1;
   }
 

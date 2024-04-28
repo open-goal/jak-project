@@ -25,8 +25,9 @@ Compiler::Compiler(GameVersion version,
     : m_version(version),
       m_goos(user_profile),
       m_debugger(&m_listener, &m_goos.reader, version),
+      m_make(repl_config, user_profile),
       m_repl(std::move(repl)),
-      m_make(repl_config, user_profile) {
+      m_symbol_info(&m_goos.reader.db) {
   m_listener.add_debugger(&m_debugger);
   m_listener.set_default_port(version);
   m_ts.add_builtin_types(m_version);
@@ -57,9 +58,7 @@ Compiler::Compiler(GameVersion version,
 
   // add built-in forms to symbol info
   for (const auto& [builtin_name, builtin_info] : g_goal_forms) {
-    SymbolInfo::Metadata sym_meta;
-    sym_meta.docstring = builtin_info.first;
-    m_symbol_info.add_builtin(builtin_name, sym_meta);
+    m_symbol_info.add_builtin(builtin_name, builtin_info.first);
   }
 
   // load auto-complete history, only if we are running in the interactive mode.
@@ -196,6 +195,8 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
       bool term;
       auto loc_info = m_goos.reader.db.get_info_for(code, &term);
       if (term) {
+        lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Function:\n");
+        lg::print("{}\n", env->function_env()->name());
         lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
         lg::print("{}", loc_info);
       }
@@ -223,6 +224,8 @@ Val* Compiler::compile_error_guard(const goos::Object& code, Env* env) {
     bool term;
     auto loc_info = m_goos.reader.db.get_info_for(code, &term);
     if (term) {
+      lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Function:\n");
+      lg::print("{}\n", env->function_env()->name());
       lg::print(fg(fmt::color::yellow) | fmt::emphasis::bold, "Location:\n");
       lg::print("{}", loc_info);
     }
@@ -459,6 +462,10 @@ void Compiler::asm_file(const CompilationOptions& options) {
     file_path = candidate_paths.at(0).string();
   }
 
+  // Evict any symbols we have indexed for this file, this is what
+  // helps to ensure we have an up to date and accurate symbol index
+  m_symbol_info.evict_symbols_using_file_index(file_path);
+
   auto code = m_goos.reader.read_from_file({file_path});
 
   std::string obj_file_name = file_path;
@@ -485,7 +492,7 @@ void Compiler::asm_file(const CompilationOptions& options) {
     if (options.disassemble) {
       codegen_and_disassemble_object_file(obj_file, &data, &disasm, options.disasm_code_only);
       if (options.disassembly_output_file.empty()) {
-        printf("%s\n", disasm.c_str());
+        lg::print("{}\n", disasm);
       } else {
         file_util::write_text_file(options.disassembly_output_file, disasm);
       }
@@ -498,7 +505,7 @@ void Compiler::asm_file(const CompilationOptions& options) {
       if (m_listener.is_connected()) {
         m_listener.send_code(data, obj_file_name);
       } else {
-        printf("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
+        lg::print("WARNING - couldn't load because listener isn't connected\n");  // todo log warn
       }
     }
 
@@ -511,15 +518,15 @@ void Compiler::asm_file(const CompilationOptions& options) {
     }
   } else {
     if (options.load) {
-      printf("WARNING - couldn't load because coloring is not enabled\n");
+      lg::print("WARNING - couldn't load because coloring is not enabled\n");
     }
 
     if (options.write) {
-      printf("WARNING - couldn't write because coloring is not enabled\n");
+      lg::print("WARNING - couldn't write because coloring is not enabled\n");
     }
 
     if (options.disassemble) {
-      printf("WARNING - couldn't disassemble because coloring is not enabled\n");
+      lg::print("WARNING - couldn't disassemble because coloring is not enabled\n");
     }
   }
 }

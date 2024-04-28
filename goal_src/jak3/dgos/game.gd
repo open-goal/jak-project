@@ -30,6 +30,9 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
+  "pckernel-h.o" ;; added
+  "pckernel-impl.o" ;; added
+  "pc-debug-common.o" ;; added
   "pad.o"
   "gs.o"
   "display-h.o"
@@ -246,6 +249,7 @@
   "sky-data.o"
   "sky-tng.o"
   "load-state.o"
+  "pc-debug-methods.o" ;; added
   "level-info.o"
   "level.o"
   "text.o"
@@ -344,6 +348,9 @@
   "prototype.o"
   "main-collide.o"
   "video.o"
+  "capture-pc.o" ;; added
+  "pckernel-common.o" ;; added
+  "pckernel.o" ;; added
   "main.o"
   "collide-cache.o"
   "collide-debug.o"
@@ -402,6 +409,7 @@
   "visvol-edit.o"
   "collision-editor.o"
   "speech-manager.o"
+  "default-menu-pc.o" ;; added
   "dir-tpages.go"
   "tpage-1.go"
   "tpage-2.go"

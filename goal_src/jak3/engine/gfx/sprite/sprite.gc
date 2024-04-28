@@ -287,7 +287,7 @@ The glow and distort renderers will pull sprites from here."
                                         )
         )
   (set! (-> arg0 screen-shader prims 9) (gs-reg64 alpha-1))
-  (set! (-> arg0 screen-shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+  (set! (-> arg0 screen-shader alpha) (new 'static 'gs-miptbp :tbp1 #x44))
   (set! (-> arg0 sincos-01 z) 0.999998)
   (set! (-> arg0 sincos-23 z) -0.16666014)
   (set! (-> arg0 sincos-45 z) 0.008326521)
@@ -332,7 +332,7 @@ The glow and distort renderers will pull sprites from here."
   (none)
   )
 
-(define sprite-vu1-block (new 'static 'vu-function :length #x37b :qlength #x1be))
+(define sprite-vu1-block (new 'static 'vu-function #|:length #x37b :qlength #x1be|#))
 
 (defmethod new sprite-array-2d ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int))
   (let* ((v1-0 (+ arg0 arg1))
@@ -652,7 +652,9 @@ The glow and distort renderers will pull sprites from here."
     (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
                                  (bucket-id particles)
                                  )
-      (when (or (zero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1))
+      ;; run the distorters
+      ;; og:preserve-this the distorters messed with the framebuffer on PS2 when taking screenshots, but it's OK for us
+      (when #t ;; (not-screenshot?)
         (sprite-init-distorter s4-0)
         (sprite-draw-distorters s4-0)
         )

@@ -5,5 +5,351 @@
 ;; name in dgo: vehicle-manager
 ;; dgos: HGA, LPATK, RAILA, LFACCAR, CWI, WASALL, LFACTORY, COMBA
 
+(define-extern type-from-vehicle-type (function vehicle-type type))
+
+(define-extern h-bike-a type)
+(declare-type h-bike-a vehicle)
+(define-extern h-bike-b type)
+(declare-type h-bike-b vehicle)
+(define-extern h-bike-c type)
+(declare-type h-bike-c vehicle)
+(define-extern h-bike-d type)
+(declare-type h-bike-d vehicle)
+(define-extern h-car-a type)
+(declare-type h-car-a vehicle)
+(define-extern h-car-b type)
+(declare-type h-car-b vehicle)
+(define-extern h-car-c type)
+(declare-type h-car-c vehicle)
+(define-extern h-car-d type)
+(declare-type h-car-d vehicle)
+(define-extern h-hellcat type)
+(declare-type h-hellcat vehicle)
+(define-extern h-warf type)
+(declare-type h-warf vehicle)
+(define-extern h-glider type)
+(declare-type h-glider vehicle)
+(define-extern h-sled type)
+(declare-type h-sled vehicle)
+(define-extern h-kg-pickup type)
+(declare-type h-kg-pickup vehicle)
+(define-extern v-turtle type)
+(declare-type v-turtle vehicle)
+(define-extern v-snake type)
+(declare-type v-snake vehicle)
+(define-extern v-scorpion type)
+(declare-type v-scorpion vehicle)
+(define-extern v-toad type)
+(declare-type v-toad vehicle)
+(define-extern v-fox type)
+(declare-type v-fox vehicle)
+(define-extern v-rhino type)
+(declare-type v-rhino vehicle)
+(define-extern v-mirage type)
+(declare-type v-mirage vehicle)
+(define-extern v-x-ride type)
+(declare-type v-x-ride vehicle)
+(declare-type v-marauder vehicle)
+(define-extern v-faccar type)
+(declare-type v-faccar vehicle)
+(define-extern v-catapult type)
+(declare-type v-catapult vehicle)
+(define-extern v-marauder-b type)
+(declare-type v-marauder-b vehicle)
+(define-extern evan-test-bike type)
+(declare-type evan-test-bike vehicle)
+(define-extern wbike-test type)
+(declare-type wbike-test vehicle)
+(define-extern test-car type)
+(declare-type test-car vehicle)
+
 ;; DECOMP BEGINS
 
+(define *vehicle-rigid-body-queue* (new 'static 'rigid-body-queue))
+
+(define *vehicle-info* (new 'static 'vehicle-info))
+
+(dotimes (v1-2 44)
+  (set! (-> *vehicle-info* handle-by-vehicle-type v1-2) (the-as handle #f))
+  )
+
+(defun vehicle-entity-hack ((arg0 int))
+  (with-pp
+    (case arg0
+      ((27)
+       (set! (-> pp level) (-> *traffic-info* vehicle-level))
+       )
+      (else
+        (set! (-> pp level) (level-get *level* (-> *traffic-info* vehicle-levels arg0)))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(deftype vehicle-manager (process)
+  ()
+  (:state-methods
+    idle
+    active
+    )
+  (:methods
+    (vehicle-manager-method-16 (_type_) none)
+    (vehicle-manager-method-17 (_type_) none)
+    )
+  )
+
+
+;; WARN: Return type mismatch process vs vehicle-manager.
+(defmethod relocate ((this vehicle-manager) (offset int))
+  (set! *vehicle-manager* this)
+  (if *vehicle-manager*
+      (set! *vehicle-manager* (&+ *vehicle-manager* offset))
+      )
+  (the-as vehicle-manager ((method-of-type process relocate) this offset))
+  )
+
+(defmethod deactivate ((this vehicle-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *vehicle-manager* #f)
+  (remove-setting *setting-control* this 'task-mask)
+  (apply-settings *setting-control*)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+(defmethod vehicle-manager-method-17 ((this vehicle-manager))
+  0
+  (none)
+  )
+
+(defbehavior vehicle-manager-event-handler vehicle-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('no-extra-bank)
+     (remove-setting! 'extra-bank)
+     )
+    (('extra-bank)
+     (let ((a3-1 (-> arg3 param 0)))
+       (set-setting! 'extra-bank a3-1 0.0 0)
+       )
+     )
+    )
+  )
+
+(defbehavior vehicle-manager-init-by-other vehicle-manager ()
+  (stack-size-set! (-> self main-thread) 128)
+  (vehicle-entity-hack 27)
+  (set! *vehicle-manager* self)
+  (vehicle-manager-method-17 self)
+  (add-setting! 'task-mask 'clear 0.0 (task-mask vehicle))
+  (set! (-> self event-hook) vehicle-manager-event-handler)
+  (set! *rigid-body-queue-manager*
+        (the-as rigid-body-queue-manager (rigid-body-queue-manager-spawn *vehicle-rigid-body-queue* self))
+        )
+  (go-virtual idle)
+  )
+
+(defstate idle (vehicle-manager)
+  :virtual #t
+  :event vehicle-manager-event-handler
+  :code (behavior ()
+    (suspend)
+    (suspend)
+    (go-virtual active)
+    )
+  )
+
+(defstate active (vehicle-manager)
+  :virtual #t
+  :event vehicle-manager-event-handler
+  :code sleep-code
+  )
+
+(defun vehicle-manager-start ((arg0 process))
+  (if *vehicle-manager*
+      (change-parent *vehicle-manager* arg0)
+      (process-spawn vehicle-manager :name "vehicle-manager" :to arg0)
+      )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defun vehicle-manager-kill ()
+  (kill-by-type vehicle-manager *active-pool*)
+  (none)
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defbehavior vehicle-init-by-other vehicle ((arg0 int) (arg1 traffic-object-spawn-params))
+  (stack-size-set! (-> self main-thread) 16)
+  (logior! (-> self mask) (process-mask vehicle))
+  (init-collision! self)
+  (set! (-> self root trans quad) (-> arg1 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg1 rotation))
+  (set! (-> self root transv quad) (-> arg1 velocity quad))
+  (if (logtest? (-> arg1 flags) (traffic-spawn-flags tsf6))
+      (vehicle-method-149 self)
+      )
+  (if (not (logtest? (-> arg1 flags) (traffic-spawn-flags tsf0)))
+      (vehicle-entity-hack arg0)
+      )
+  (init-rbody-control! self)
+  (rigid-body-queue-method-11 *vehicle-rigid-body-queue* self)
+  (if (logtest? (-> arg1 flags) (traffic-spawn-flags tsf5))
+      (set! (-> self v-flags) (the-as vehicle-flag (logior (vehicle-flag unique) (-> self v-flags))))
+      )
+  (set! (-> self traffic-priority-id) (the-as int (-> arg1 id)))
+  (vehicle-method-132 self arg1)
+  )
+
+;; WARN: Return type mismatch process vs vehicle.
+(defun vehicle-spawn-hack ((arg0 type) (arg1 traffic-object-spawn-params) (arg2 process))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((s3-0 (get-process *default-dead-pool* arg0 #x4000 1))
+           (v1-1 (when s3-0
+                   (let ((t9-1 (method-of-type process activate)))
+                     (t9-1 s3-0 arg2 "vehicle" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 vehicle-init-by-other 27 arg1)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (when v1-1
+        (set! gp-0 (-> v1-1 0))
+        (change-parent gp-0 *vehicle-manager*)
+        )
+      )
+    (if (and gp-0 (logtest? (-> arg1 flags) (traffic-spawn-flags tsf1)))
+        (vehicle-method-133 (the-as vehicle gp-0) arg1)
+        )
+    (the-as vehicle gp-0)
+    )
+  )
+
+;; WARN: Return type mismatch process vs process-drawable.
+(defun vehicle-spawn ((arg0 vehicle-type) (arg1 traffic-object-spawn-params))
+  (let ((gp-0 (the-as process #f)))
+    (cond
+      ((level-get *level* (-> *traffic-info* vehicle-levels arg0))
+       (let* ((a1-3 (type-from-vehicle-type arg0))
+              (s3-0 (get-process *default-dead-pool* a1-3 #x4000 1))
+              (a0-4 (when s3-0
+                      (let ((t9-3 (method-of-type process activate)))
+                        (t9-3 s3-0 *vehicle-manager* "vehicle" (the-as pointer #x70004000))
+                        )
+                      (run-now-in-process s3-0 vehicle-init-by-other arg0 arg1)
+                      (-> s3-0 ppointer)
+                      )
+                    )
+              )
+         (when a0-4
+           (set! gp-0 (-> a0-4 0))
+           (when (logtest? (-> arg1 flags) (traffic-spawn-flags tsf5))
+             (send-event (handle->process (-> *vehicle-info* handle-by-vehicle-type arg0)) 'go-die)
+             (set! (-> *vehicle-info* handle-by-vehicle-type arg0) (process->handle gp-0))
+             )
+           )
+         )
+       )
+      (else
+        0
+        )
+      )
+    (if (and gp-0 (logtest? (-> arg1 flags) (traffic-spawn-flags tsf1)))
+        (vehicle-method-133 (the-as vehicle gp-0) arg1)
+        )
+    (the-as process-drawable gp-0)
+    )
+  )
+
+(defun type-from-vehicle-type ((arg0 vehicle-type))
+  (case arg0
+    (((vehicle-type h-bike-a))
+     h-bike-a
+     )
+    (((vehicle-type h-bike-b))
+     h-bike-b
+     )
+    (((vehicle-type h-bike-c))
+     h-bike-c
+     )
+    (((vehicle-type h-bike-d))
+     h-bike-d
+     )
+    (((vehicle-type h-car-a))
+     h-car-a
+     )
+    (((vehicle-type h-car-b))
+     h-car-b
+     )
+    (((vehicle-type h-car-c))
+     h-car-c
+     )
+    (((vehicle-type h-hellcat))
+     h-hellcat
+     )
+    (((vehicle-type h-warf))
+     h-warf
+     )
+    (((vehicle-type h-glider))
+     h-glider
+     )
+    (((vehicle-type h-sled))
+     h-sled
+     )
+    (((vehicle-type h-kg-pickup))
+     h-kg-pickup
+     )
+    (((vehicle-type v-turtle))
+     v-turtle
+     )
+    (((vehicle-type v-snake))
+     v-snake
+     )
+    (((vehicle-type v-scorpion))
+     v-scorpion
+     )
+    (((vehicle-type v-toad))
+     v-toad
+     )
+    (((vehicle-type v-fox))
+     v-fox
+     )
+    (((vehicle-type v-rhino))
+     v-rhino
+     )
+    (((vehicle-type v-mirage))
+     v-mirage
+     )
+    (((vehicle-type v-x-ride))
+     v-x-ride
+     )
+    (((vehicle-type v-marauder))
+     v-marauder
+     )
+    (((vehicle-type v-faccar))
+     v-faccar
+     )
+    (((vehicle-type v-catapult))
+     v-catapult
+     )
+    (((vehicle-type v-marauder-b))
+     v-marauder-b
+     )
+    (((vehicle-type evan-test-bike))
+     evan-test-bike
+     )
+    (((vehicle-type wbike-test))
+     wbike-test
+     )
+    (((vehicle-type test-car))
+     test-car
+     )
+    (else
+      (the-as type #f)
+      )
+    )
+  )

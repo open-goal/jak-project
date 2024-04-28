@@ -10,5 +10,5 @@
   "wstd-trapdoor-ag.go"
   "wstd-flag-ag.go"
   "arena-token-ag.go"
-  "wasstadb.o"
+  "wasstadb.go"
  ))

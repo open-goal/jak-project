@@ -116,7 +116,7 @@ void decompile(const fs::path& iso_data_path,
                                        fmt::format("{}_config.jsonc", version_info.game_name),
                                    version_info.decomp_config_version, config_override);
 
-  std::vector<fs::path> dgos, objs, tex_strs;
+  std::vector<fs::path> dgos, objs, tex_strs, art_strs;
 
   // grab all DGOS we need (level + common)
   // TODO - Jak 2 - jak 1 specific code?
@@ -144,8 +144,13 @@ void decompile(const fs::path& iso_data_path,
     tex_strs.push_back(iso_data_path / str_name);
   }
 
+  for (const auto& str_name : config.str_art_file_names) {
+    art_strs.push_back(iso_data_path / str_name);
+  }
+
   // set up objects
-  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, tex_strs, config);
+  ObjectFileDB db(dgos, fs::path(config.obj_file_name_map_file), objs, {}, tex_strs, art_strs,
+                  config);
 
   // save object files
   auto out_folder = file_util::get_jak_project_dir() / "decompiler_out" / data_subfolder;
@@ -172,9 +177,10 @@ void decompile(const fs::path& iso_data_path,
   // textures
   decompiler::TextureDB tex_db;
   auto textures_out = out_folder / "textures";
+  auto dump_out = out_folder / "import";
   file_util::create_dir_if_needed(textures_out);
   file_util::write_text_file(textures_out / "tpage-dir.txt",
-                             db.process_tpages(tex_db, textures_out, config));
+                             db.process_tpages(tex_db, textures_out, config, dump_out));
 
   // texture merges
   // TODO - put all this stuff in somewhere common

@@ -30,6 +30,8 @@ set(RUNTIME_SOURCE
         graphics/gfx_test.cpp
         graphics/gfx.cpp
         graphics/jak2_texture_remap.cpp
+        graphics/jak3_texture_remap.cpp
+        graphics/screenshot.cpp
         graphics/opengl_renderer/background/background_common.cpp
         graphics/opengl_renderer/background/Shrub.cpp
         graphics/opengl_renderer/background/TFragment.cpp
@@ -83,6 +85,7 @@ set(RUNTIME_SOURCE
         graphics/sceGraphicsInterface.cpp
         graphics/texture/jak1_tpage_dir.cpp
         graphics/texture/jak2_tpage_dir.cpp
+        graphics/texture/jak3_tpage_dir.cpp
         graphics/texture/TextureConverter.cpp
         graphics/texture/TexturePool.cpp
         ${OG_ASM_FUNCS_FILE}
@@ -126,6 +129,7 @@ set(RUNTIME_SOURCE
         kernel/jak3/klink.cpp
         kernel/jak3/klisten.cpp
         kernel/jak3/kmachine.cpp
+        kernel/jak3/kmachine_extras.cpp
         kernel/jak3/kmalloc.cpp
         kernel/jak3/kmemcard.cpp
         kernel/jak3/kprint.cpp
@@ -185,7 +189,30 @@ set(RUNTIME_SOURCE
         mips2c/jak2_functions/texture.cpp
         mips2c/jak2_functions/vortex.cpp
         mips2c/jak3_functions/collide_func.cpp
+        mips2c/jak3_functions/debug.cpp
+        mips2c/jak3_functions/font.cpp
+        mips2c/jak3_functions/foreground.cpp
+        mips2c/jak3_functions/generic_effect.cpp
+        mips2c/jak3_functions/joint.cpp
         mips2c/jak3_functions/lights.cpp
+        mips2c/jak3_functions/prim.cpp
+        mips2c/jak3_functions/sky.cpp
+        mips2c/jak3_functions/texture.cpp
+        mips2c/jak3_functions/particle_curves.cpp
+        mips2c/jak3_functions/collide_cache.cpp
+        mips2c/jak3_functions/collide_hash.cpp
+        mips2c/jak3_functions/collide_edge_grab.cpp
+        mips2c/jak3_functions/collide_mesh.cpp
+        mips2c/jak3_functions/spatial_hash.cpp
+        mips2c/jak3_functions/sparticle.cpp
+        mips2c/jak3_functions/sparticle_launcher.cpp
+        mips2c/jak3_functions/nav_control.cpp
+        mips2c/jak3_functions/nav_engine.cpp
+        mips2c/jak3_functions/merc_blend_shape.cpp
+        mips2c/jak3_functions/wvehicle_part.cpp
+        mips2c/jak3_functions/ripple.cpp
+        mips2c/jak3_functions/ocean.cpp
+        mips2c/jak3_functions/ocean_vu0.cpp
         mips2c/mips2c_table.cpp
         overlord/common/dma.cpp
         overlord/common/fake_iso.cpp

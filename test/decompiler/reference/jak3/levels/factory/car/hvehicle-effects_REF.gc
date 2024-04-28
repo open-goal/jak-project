@@ -1,0 +1,158 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 78 of type hvehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-78 ((this hvehicle))
+  (let ((t9-0 (method-of-type vehicle vehicle-method-78)))
+    (t9-0 this)
+    )
+  (when (logtest? (-> this rbody flags) (rigid-body-flag enable-physics))
+    (when (< 0.0 (-> this info particles thruster-flame-length))
+      (let ((s5-0 (new 'stack-no-clear 'hvehicle-effects-stack-var0)))
+        (let* ((v1-7 (-> s5-0 mat))
+               (a3-0 (-> this node-list data 0 bone transform))
+               (a0-4 (-> a3-0 rvec quad))
+               (a1-0 (-> a3-0 uvec quad))
+               (a2-0 (-> a3-0 fvec quad))
+               (a3-1 (-> a3-0 trans quad))
+               )
+          (set! (-> v1-7 rvec quad) a0-4)
+          (set! (-> v1-7 uvec quad) a1-0)
+          (set! (-> v1-7 fvec quad) a2-0)
+          (set! (-> v1-7 trans quad) a3-1)
+          )
+        (set! (-> s5-0 work vec0 y) (-> this info particles thruster-flame-width))
+        (set! (-> s5-0 work vec0 z) (-> this info particles thruster-flame-length))
+        (set! (-> s5-0 work vec0 x)
+              (fmax 0.0 (* (-> this power-level) (-> this force-scale) (-> this engine-thrust)))
+              )
+        (set! (-> s5-0 work vec0 w) (-> this fog-fade))
+        (quaternion-rotate-local-z! (the-as quaternion (-> s5-0 work)) (-> this root quat) 5461.3335)
+        (dotimes (s4-0 2)
+          (vector-matrix*! (-> s5-0 vec0) (-> this info particles thruster-local-pos s4-0) (-> s5-0 mat))
+          (vehicle-draw-thruster (-> this info particle-common) (the-as vehicle-draw-thruster-params (-> s5-0 work)))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 106 of type hvehicle
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-106 ((this hvehicle))
+  (let ((t9-0 (method-of-type vehicle vehicle-method-106)))
+    (t9-0 this)
+    )
+  (sound-stop (-> this engine-sound-id))
+  (sound-stop (-> this thrust-sound-id))
+  (set! (-> this engine-sound-envelope) 0.0)
+  0
+  (none)
+  )
+
+;; definition for method 38 of type hvehicle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-38 ((this hvehicle))
+  (let ((t9-0 (method-of-type vehicle rigid-body-object-method-38)))
+    (t9-0 this)
+    )
+  (if (logtest? (vehicle-flag ignition) (-> this v-flags))
+      (seek! (-> this engine-sound-envelope) 1.0 (* 2.0 (seconds-per-frame)))
+      (seek! (-> this engine-sound-envelope) 0.0 (seconds-per-frame))
+      )
+  (cond
+    ((< 0.0 (* (-> this force-scale) (-> this engine-sound-envelope)))
+     (when (zero? (-> this engine-sound-id))
+       (set! (-> this engine-sound-id) (new-sound-id))
+       (set! (-> this extra-sound-id) (new-sound-id))
+       )
+     (let* ((f30-0 (fabs (* (+ (fabs (-> this engine-thrust)) (* 0.25 (fabs (-> this controls steering))))
+                            (-> this power-level)
+                            (-> this force-scale)
+                            )
+                         )
+                   )
+            (f28-0 (* (-> this engine-sound-envelope) (+ 0.6 (* 0.4 f30-0))))
+            (f26-0 (doppler-pitch-shift (-> this root trans) (-> this root transv)))
+            (f0-20 (+ (-> this info sound engine-pitch-offset)
+                      (* (-> this info sound engine-pitch-scale) f30-0)
+                      (* (-> this info sound engine-pitch-mod-amp)
+                         (sin (* 109.22667 (the float (- (current-time) (-> this state-time)))))
+                         )
+                      f26-0
+                      )
+                   )
+            (a0-8 (static-sound-spec "vehicle-engine" :group 0 :volume 0.0 :mask (pitch reg0)))
+            )
+       (set! (-> this engine-sound-factor) f30-0)
+       (set! (-> a0-8 volume) (the int (* 1024.0 f28-0)))
+       (set! (-> a0-8 pitch-mod) (the int (* 1524.0 f0-20)))
+       (set! (-> a0-8 reg 0) (the-as uint (-> this info sound engine-sound-select)))
+       (set! (-> a0-8 reg 1) (the-as uint (the int (* 127.0 (-> this hit-points)))))
+       (sound-play-by-spec a0-8 (-> this engine-sound-id) (-> this root trans))
+       )
+     0
+     )
+    (else
+      (when (nonzero? (-> this engine-sound-id))
+        (sound-stop (-> this engine-sound-id))
+        (set! (-> this engine-sound-id) (new 'static 'sound-id))
+        0
+        )
+      )
+    )
+  (when (or (logtest? (vehicle-flag player-driving) (-> this v-flags)) (nonzero? (-> this thrust-sound-id)))
+    (if (zero? (-> this thrust-sound-id))
+        (set! (-> this thrust-sound-id) (new-sound-id))
+        )
+    (seek! (-> this sputter-sound-envelope) 0.0 (* 2.0 (seconds-per-frame)))
+    (cond
+      ((logtest? (vehicle-flag player-driving) (-> this v-flags))
+       (set! (-> this sputter-sound-envelope) (fmax (-> this sputter-sound-envelope) (-> this power-level)))
+       (let ((f1-24
+               (fmin
+                 1.0
+                 (* 0.7
+                    (-> this force-scale)
+                    (-> this sputter-sound-envelope)
+                    (+ (-> this engine-sound-factor) (-> this jump-thrust))
+                    )
+                 )
+               )
+             (f0-33 0.0)
+             )
+         (sound-play-by-name
+           (-> this info sound thrust-sound)
+           (-> this thrust-sound-id)
+           (the int (* 1024.0 f1-24))
+           (the int (* 1524.0 f0-33))
+           0
+           (sound-group)
+           #t
+           )
+         )
+       )
+      (else
+        (when (= (-> this sputter-sound-envelope) 0.0)
+          (sound-stop (-> this thrust-sound-id))
+          (set! (-> this thrust-sound-id) (new 'static 'sound-id))
+          0
+          )
+        )
+      )
+    )
+  (if (< (rand-vu) (-> this power-fluctuation-factor))
+      (sound-play "damage-pops" :id (-> this damage-pop-sound-id))
+      )
+  0
+  (none)
+  )
+
+
+
+

@@ -73,6 +73,7 @@ s32 iso_thread;
 s32 dgo_thread;
 s32 str_thread;
 s32 play_thread;
+constexpr int kRpcBuffSize = sizeof(RPC_Dgo_Cmd);
 static RPC_Dgo_Cmd sRPCBuff[1];
 DgoCommand sLoadDGO;  // renamed from scmd to sLoadDGO in Jak 2
 
@@ -281,7 +282,8 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, kRpcBuffSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

@@ -48,13 +48,14 @@ function choice(...elements) {
 }
 
 function optional(value) {
-  checkArguments(arguments.length, optional, 'optional');
+  checkArguments(arguments, arguments.length, optional, 'optional');
   return choice(value, blank());
 }
 
 function prec(number, rule) {
   checkPrecedence(number);
   checkArguments(
+    arguments,
     arguments.length - 1,
     prec,
     'prec',
@@ -76,6 +77,7 @@ prec.left = function(number, rule) {
 
   checkPrecedence(number);
   checkArguments(
+    arguments,
     arguments.length - 1,
     prec.left,
     'prec.left',
@@ -97,6 +99,7 @@ prec.right = function(number, rule) {
 
   checkPrecedence(number);
   checkArguments(
+    arguments,
     arguments.length - 1,
     prec.right,
     'prec.right',
@@ -113,6 +116,7 @@ prec.right = function(number, rule) {
 prec.dynamic = function(number, rule) {
   checkPrecedence(number);
   checkArguments(
+    arguments,
     arguments.length - 1,
     prec.dynamic,
     'prec.dynamic',
@@ -127,7 +131,7 @@ prec.dynamic = function(number, rule) {
 }
 
 function repeat(rule) {
-  checkArguments(arguments.length, repeat, 'repeat');
+  checkArguments(arguments, arguments.length, repeat, 'repeat');
   return {
     type: "REPEAT",
     content: normalize(rule)
@@ -135,7 +139,7 @@ function repeat(rule) {
 }
 
 function repeat1(rule) {
-  checkArguments(arguments.length, repeat1, 'repeat1');
+  checkArguments(arguments, arguments.length, repeat1, 'repeat1');
   return {
     type: "REPEAT1",
     content: normalize(rule)
@@ -157,6 +161,7 @@ function sym(name) {
 }
 
 function token(value) {
+  checkArguments(arguments, arguments.length, token, 'token', '', 'literal');
   return {
     type: "TOKEN",
     content: normalize(value)
@@ -164,6 +169,7 @@ function token(value) {
 }
 
 token.immediate = function(value) {
+  checkArguments(arguments, arguments.length, token.immediate, 'token.immediate', '', 'literal');
   return {
     type: "IMMEDIATE_TOKEN",
     content: normalize(value)
@@ -181,7 +187,11 @@ function normalize(value) {
         value
       };
     case RegExp:
-      return {
+      return value.flags ? {
+        type: 'PATTERN',
+        value: value.source,
+        flags: value.flags
+      } : {
         type: 'PATTERN',
         value: value.source
       };
@@ -225,6 +235,8 @@ function grammar(baseGrammar, options) {
       supertypes: [],
       precedences: [],
     };
+  } else {
+    baseGrammar = baseGrammar.grammar;
   }
 
   let externals = baseGrammar.externals;
@@ -304,6 +316,10 @@ function grammar(baseGrammar, options) {
     if (typeof word != 'string') {
       throw new Error("Grammar's 'word' property must be a named rule.");
     }
+
+    if (word === 'ReferenceError') {
+      throw new Error("Grammar's 'word' property must be a valid rule name.");
+    }
   }
 
   let conflicts = baseGrammar.conflicts;
@@ -341,7 +357,17 @@ function grammar(baseGrammar, options) {
       throw new Error("Grammar's inline must be an array of rules.");
     }
 
-    inline = inlineRules.map(symbol => symbol.name);
+    inline = inlineRules.filter((symbol, index, self) => {
+      if (self.findIndex(s => s.name === symbol.name) !== index) {
+        console.log(`Warning: duplicate inline rule '${symbol.name}'`);
+        return false;
+      }
+      if (symbol.name === 'ReferenceError') {
+        console.log(`Warning: inline rule '${symbol.symbol.name}' is not defined.`);
+        return false;
+      }
+      return true;
+    }).map(symbol => symbol.name);
   }
 
   let supertypes = baseGrammar.supertypes;
@@ -381,14 +407,19 @@ function grammar(baseGrammar, options) {
     throw new Error("Grammar must have at least one rule.");
   }
 
-  return {name, word, rules, extras, conflicts, precedences, externals, inline, supertypes};
+  return { grammar: { name, word, rules, extras, conflicts, precedences, externals, inline, supertypes } };
 }
 
-function checkArguments(ruleCount, caller, callerName, suffix = '') {
-  if (ruleCount > 1) {
+function checkArguments(args, ruleCount, caller, callerName, suffix = '', argType = 'rule') {
+  // Allow for .map() usage where additional arguments are index and the entire array.
+  const isMapCall = ruleCount === 3 && typeof args[1] === 'number' && Array.isArray(args[2]);
+  if (isMapCall) {
+    ruleCount = typeof args[2] === 'number' ? 1 : args[2].length;
+  }
+  if (ruleCount > 1 && !isMapCall) {
     const error = new Error([
-      `The \`${callerName}\` function only takes one rule argument${suffix}.`,
-      'You passed multiple rules. Did you mean to call `seq`?\n'
+      `The \`${callerName}\` function only takes one ${argType} argument${suffix}.`,
+      `You passed in multiple ${argType}s. Did you mean to call \`seq\`?\n`
     ].join('\n'));
     Error.captureStackTrace(error, caller);
     throw error
@@ -415,4 +446,4 @@ global.grammar = grammar;
 global.field = field;
 
 const result = require(process.env.TREE_SITTER_GRAMMAR_PATH);
-console.log(JSON.stringify(result, null, 2));
+process.stdout.write(JSON.stringify(result.grammar, null, null));

@@ -8,5 +8,5 @@
   "mh-plant-ag.go"
   "egg-spider-ag.go"
   "shoulder-plates-ag.go"
-  "lforplnt-vis.o"
+  "lforplnt-vis.go"
  ))

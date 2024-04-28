@@ -21,7 +21,7 @@
   )
 
 ;; definition for method 35 of type projectile
-(defmethod event-handler! ((this projectile) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+(defmethod proj-event-handler ((this projectile) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   (case arg2
     (('tracked)
      (let ((v0-0 (the-as object (process->handle (the-as process (-> arg3 param 0))))))
@@ -41,7 +41,7 @@
 ;; definition for function projectile-event-handler
 ;; WARN: Return type mismatch object vs projectile.
 (defbehavior projectile-event-handler projectile ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
-  (the-as projectile (event-handler! self arg0 arg1 arg2 arg3))
+  (the-as projectile (proj-event-handler self arg0 arg1 arg2 arg3))
   )
 
 ;; definition for method 37 of type projectile
@@ -401,7 +401,7 @@
 
 ;; definition for method 31 of type projectile
 ;; WARN: Return type mismatch int vs none.
-(defmethod projectile-method-31 ((this projectile))
+(defmethod init-proj-settings! ((this projectile))
   0
   (none)
   )
@@ -538,7 +538,7 @@
     )
   (set! (-> self target-pos quad) (-> self base-target-pos quad))
   (set! (-> self event-hook) projectile-event-handler)
-  (projectile-method-31 self)
+  (init-proj-settings! self)
   (update-transforms (-> self root))
   (projectile-method-24 self)
   (play-impact-sound self (projectile-options))
@@ -582,20 +582,20 @@
     (projectile-bounce-update-velocity self)
     (set! (-> s5-0 quad) (-> gp-0 trans quad))
     (vector-v++! s5-0 (-> gp-0 transv))
-    (let* ((a0-4 gp-0)
-           (t9-2 (method-of-object a0-4 find-ground))
-           (a2-0 #x100249)
-           (a3-0 4096.0)
-           (t0-0 81920.0)
-           (t1-0 1024.0)
-           )
-      (when (t9-2 a0-4 s4-0 (the-as collide-spec a2-0) a3-0 t0-0 t1-0)
-        (let ((f30-0 (+ (-> gp-0 gspot-pos y) (-> self root root-prim local-sphere w))))
-          (when (>= f30-0 (-> s5-0 y))
-            (projectile-bounce-method-43 self)
-            (set! (-> s5-0 y) f30-0)
-            (vector-reset! (-> gp-0 transv))
+    (when (find-ground
+            gp-0
+            s4-0
+            (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+            4096.0
+            81920.0
+            1024.0
+            (the-as process #f)
             )
+      (let ((f30-0 (+ (-> gp-0 gspot-pos y) (-> self root root-prim local-sphere w))))
+        (when (>= f30-0 (-> s5-0 y))
+          (projectile-bounce-method-43 self)
+          (set! (-> s5-0 y) f30-0)
+          (vector-reset! (-> gp-0 transv))
           )
         )
       )
@@ -727,7 +727,7 @@
 
 ;; definition for method 31 of type projectile-bounce
 ;; WARN: Return type mismatch int vs none.
-(defmethod projectile-method-31 ((this projectile-bounce))
+(defmethod init-proj-settings! ((this projectile-bounce))
   (set! (-> this max-speed) 450560.0)
   (set! (-> this timeout) (seconds 1.6))
   (set! (-> this update-velocity) projectile-bounce-update-velocity)

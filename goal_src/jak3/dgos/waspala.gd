@@ -22,5 +22,5 @@
   "urn-a-ag.go"
   "particleman-ag.go"
   "waspala-blocker-ag.go"
-  "waspala.o"
+  "waspala.go"
  ))

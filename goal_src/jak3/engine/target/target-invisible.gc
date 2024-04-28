@@ -53,7 +53,7 @@
   )
 
 (defpart 661
-  :init-specs ((:texture (new 'static 'texture-id :index #x4b :page #x4))
+  :init-specs ((:texture (starflash level-default-sprite))
     (:num 1.0)
     (:scale-x (meters 5))
     (:rot-x (degrees 2250))
@@ -73,7 +73,7 @@
   )
 
 (defpart 662
-  :init-specs ((:texture (new 'static 'texture-id :index #x3d :page #x4))
+  :init-specs ((:texture (middot level-default-sprite))
     (:num 200.0)
     (:scale-x (meters 0.05) (meters 0.05))
     (:scale-y :copy scale-x)
@@ -94,7 +94,7 @@
   )
 
 (defpart 663
-  :init-specs ((:texture (new 'static 'texture-id :index #xa0 :page #x4))
+  :init-specs ((:texture (big-cloud level-default-sprite))
     (:num 30.0)
     (:scale-x (meters 1) (meters 2))
     (:rot-z (degrees 0) (degrees 360))
@@ -325,7 +325,7 @@
 (defskelgroup skel-dark-maker-idol dark-maker-idol dark-maker-idol-lod0-jg dark-maker-idol-idle-ja
               ((dark-maker-idol-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 1 0 2)
-              :shadow-joint-index 3
+              :origin-joint-index 3
               )
 
 (defstate idle (dark-maker-idol)
@@ -365,7 +365,13 @@
                 )
           )
         (set! (-> gp-0 flags) (font-flags shadow kerning large))
-        (print-game-text (lookup-text! *common-text* (text-id text-0083) #f) gp-0 #f 44 (bucket-id bucket579))
+        (print-game-text
+          (lookup-text! *common-text* (text-id text-0083) #f)
+          gp-0
+          #f
+          44
+          (bucket-id hud-draw-hud-alpha)
+          )
         )
       (if (and (cpad-pressed? 0 triangle)
                (send-event
@@ -416,7 +422,7 @@
             )
         (set! (-> a1-2 trans quad) (-> s5-1 quad))
         (if (and (nonzero? (-> self part)) (not gp-0))
-            (sparticle-launch-control-method-17 (-> self part) a1-2)
+            (spawn-from-mat (-> self part) a1-2)
             )
         )
       (update-vol! (-> self humming-sound) (if gp-0
@@ -444,50 +450,11 @@
     (cond
       ((logtest? (-> *part-group-id-table* 182 flags) (sp-group-flag sp13))
        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
-       (let ((gp-1 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
-         (when gp-1
-           (let ((t9-1 (method-of-type part-tracker-subsampler activate)))
-             (t9-1 (the-as part-tracker-subsampler gp-1) self "part-tracker-subsampler" (the-as pointer #x70004000))
-             )
-           (let ((t9-2 run-function-in-process)
-                 (a0-5 gp-1)
-                 (a1-2 part-tracker-subsampler-init)
-                 )
-             (set! (-> *part-tracker-subsampler-params-default* group) (-> *part-group-id-table* 182))
-             (set! (-> *part-tracker-subsampler-params-default* duration) 0)
-             (set! (-> *part-tracker-subsampler-params-default* callback) #f)
-             (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
-             (set! (-> *part-tracker-subsampler-params-default* target) #f)
-             (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
-             (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
-             ((the-as (function object object object none) t9-2) a0-5 a1-2 *part-tracker-subsampler-params-default*)
-             )
-           (-> gp-1 ppointer)
-           )
-         )
+       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 182))
        )
       (else
         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
-        (let ((gp-2 (get-process *default-dead-pool* part-tracker #x4000 0)))
-          (when gp-2
-            (let ((t9-4 (method-of-type part-tracker activate)))
-              (t9-4 (the-as part-tracker gp-2) self "part-tracker" (the-as pointer #x70004000))
-              )
-            (let ((t9-5 run-function-in-process)
-                  (a0-11 gp-2)
-                  (a1-5 part-tracker-init)
-                  )
-              (set! (-> *part-tracker-params-default* group) (-> *part-group-id-table* 182))
-              (set! (-> *part-tracker-params-default* duration) 0)
-              (set! (-> *part-tracker-params-default* callback) #f)
-              (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-              (set! (-> *part-tracker-params-default* target) #f)
-              (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
-              ((the-as (function object object object none) t9-5) a0-11 a1-5 *part-tracker-params-default*)
-              )
-            (-> gp-2 ppointer)
-            )
-          )
+        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 182))
         )
       )
     (if *target*
@@ -524,7 +491,7 @@
             (a1-4 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat)))
             )
         (set! (-> a1-4 trans quad) (-> gp-2 quad))
-        (sparticle-launch-control-method-17 (-> self part) a1-4)
+        (spawn-from-mat (-> self part) a1-4)
         )
       )
     (ja-post)
@@ -556,9 +523,9 @@
     (the-as skeleton-group (art-group-get-by-name *level* "skel-dark-maker-idol" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (if (task-node-closed? (game-task-node volcano-darkeco-resolution))
-      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 82) this))
-      )
+  ;; (if (task-node-closed? (game-task-node volcano-darkeco-resolution))
+  ;;     (set! (-> this part) (create-launch-control (-> *part-group-id-table* 82) this))
+  ;;     )
   (set! (-> this humming-sound) (new 'process 'ambient-sound "dark-maker-amb" (-> this root trans) 0.0))
   (set-falloff-far! (-> this humming-sound) 122880.0)
   (update-vol! (-> this humming-sound) 0.8)

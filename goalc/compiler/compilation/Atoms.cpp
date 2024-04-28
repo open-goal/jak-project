@@ -388,13 +388,13 @@ SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
 Val* Compiler::compile_get_symbol_value(const goos::Object& form,
                                         const std::string& name,
                                         Env* env) {
-  auto existing_symbol = m_symbol_types.find(m_goos.intern_ptr(name));
-  if (existing_symbol == m_symbol_types.end()) {
+  auto existing_symbol = m_symbol_types.lookup(m_goos.intern_ptr(name));
+  if (!existing_symbol) {
     throw_compiler_error(
         form, "The symbol {} was looked up as a global variable, but it does not exist.", name);
   }
 
-  auto ts = existing_symbol->second;
+  const auto& ts = *existing_symbol;
   auto sext = m_ts.lookup_type_allow_partial_def(ts)->get_load_signed();
   auto fe = env->function_env();
   auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
@@ -431,20 +431,20 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
     return lexical;
   }
 
-  auto global_constant = m_global_constants.find(form.as_symbol());
-  auto existing_symbol = m_symbol_types.find(form.as_symbol());
+  auto global_constant = m_global_constants.lookup(form.as_symbol());
+  auto existing_symbol = m_symbol_types.lookup(form.as_symbol());
 
   // see if it's a constant
-  if (global_constant != m_global_constants.end()) {
+  if (global_constant) {
     // check there is no symbol with the same name
-    if (existing_symbol != m_symbol_types.end()) {
+    if (existing_symbol) {
       throw_compiler_error(form,
                            "Ambiguous symbol: {} is both a global variable and a constant and it "
                            "is not clear which should be used here.");
     }
 
     // got a global constant
-    return compile_error_guard(global_constant->second, env);
+    return compile_error_guard(*global_constant, env);
   }
 
   // none of those, so get a global symbol.

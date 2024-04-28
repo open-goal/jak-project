@@ -1,5 +1,5 @@
 ("LTOWB.DGO"
- ("tpage-2647.o"
+ ("tpage-2647.go"
   "tpage-2653.go"
   "tpage-2648.go"
   "tpage-2649.go"
@@ -14,5 +14,5 @@
   "tow-warp-effect-ag.go"
   "eco-crystal-dark-ag.go"
   "particleman-ag.go"
-  "ltowerb-vis.o"
+  "ltowerb-vis.go"
  ))

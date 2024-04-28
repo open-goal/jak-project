@@ -49,6 +49,7 @@ int ext_resume = 0;
 
 CmdDgo sLoadDgo;  // renamed from scmd to sLoadDGO in Jak 2
 static RPC_Dgo_Cmd sRPCBuff[1];
+constexpr int kRpcBuffSize = sizeof(RPC_Dgo_Cmd);
 VagDir gVagDir;
 
 /// The main buffer used for reading data and doing blzo decompression.
@@ -676,7 +677,11 @@ u32 ISOThread() {
       pLVar14 = (VagStrListNode*)NewStreamsList.next;
       do {
         if (pLVar14->id != 0) {
-          QueueVAGStream(pLVar14);
+          if (g_game_version != GameVersion::Jak3) {
+            // doesn't work.
+            printf("jak3 skipping vag stream\n");
+            QueueVAGStream(pLVar14);
+          }
         }
         pLVar14 = (VagStrListNode*)pLVar14->list.next;
         iVar4 = iVar4 + 1;
@@ -1097,7 +1102,8 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, kRpcBuffSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

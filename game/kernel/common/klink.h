@@ -32,6 +32,13 @@ struct ObjectFileHeader {
   uint32_t link_block_length;
 };
 
+struct SegmentInfoV5 {
+  uint32_t relocs;  // offset of relocation table
+  uint32_t data;    // offset of segment data
+  uint32_t size;    // segment data size (0 if segment doesn't exist)
+  uint32_t magic;   // always 0
+};
+
 void klink_init_globals();
 /*!
  * Stores the state of the linker. Used for multi-threaded linking, so it can be suspended.
@@ -65,6 +72,8 @@ struct link_control {
   bool m_on_global_heap = false;
   LinkHeaderV5Core* m_link_hdr = nullptr;
   bool m_moved_link_block = false;
+  int m_n_segments = 0;
+  SegmentInfoV5* m_link_segments_table = nullptr;
 
   void jak1_jak2_begin(Ptr<uint8_t> object_file,
                        const char* name,
@@ -89,6 +98,7 @@ struct link_control {
   uint32_t jak2_work_v3();
   uint32_t jak2_work_v2();
 
+  uint32_t jak3_work_v2_v4();
   uint32_t jak3_work_v5();
   uint32_t jak3_work_opengoal();
 

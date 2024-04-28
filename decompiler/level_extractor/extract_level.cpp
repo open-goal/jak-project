@@ -92,7 +92,6 @@ tfrag3::Texture make_texture(u32 id,
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,
                                  const TextureDB& tex_db) {
-  ASSERT(lev.textures.empty());
   const auto& level_it = tex_db.texture_ids_per_level.find(level_name);
   if (level_it != tex_db.texture_ids_per_level.end()) {
     for (auto id : level_it->second) {
@@ -125,12 +124,14 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
                                    const std::string& dgo_name,
                                    tfrag3::Level& level_data,
                                    std::map<std::string, level_tools::ArtData>& art_group_data) {
-  const auto& files = db.obj_files_by_dgo.at(dgo_name);
-  for (const auto& file : files) {
-    if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
-      const auto& ag_file = db.lookup_record(file);
-      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
-      extract_joint_group(ag_file, db.dts, db.version(), art_group_data);
+  if (db.obj_files_by_dgo.count(dgo_name)) {
+    const auto& files = db.obj_files_by_dgo.at(dgo_name);
+    for (const auto& file : files) {
+      if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
+        const auto& ag_file = db.lookup_record(file);
+        extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
+        extract_joint_group(ag_file, db.dts, db.version(), art_group_data);
+      }
     }
   }
 }
@@ -280,6 +281,9 @@ void extract_common(const ObjectFileDB& db,
   std::map<std::string, level_tools::ArtData> art_group_data;
   add_all_textures_from_level(tfrag_level, dgo_name, tex_db);
   extract_art_groups_from_level(db, tex_db, {}, dgo_name, tfrag_level, art_group_data);
+
+  add_all_textures_from_level(tfrag_level, "ARTSPOOL", tex_db);
+  extract_art_groups_from_level(db, tex_db, {}, "ARTSPOOL", tfrag_level, art_group_data);
 
   std::set<std::string> textures_we_have;
 

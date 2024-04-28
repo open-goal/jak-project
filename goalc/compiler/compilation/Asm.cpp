@@ -219,12 +219,11 @@ Val* Compiler::compile_asm_load_sym(const goos::Object& form, const goos::Object
       form, args, {{}, {goos::ObjectType::SYMBOL}},
       {{"sext", {false, goos::ObjectType::SYMBOL}}, {"color", {false, goos::ObjectType::SYMBOL}}});
   auto& sym_name = args.unnamed.at(1).as_symbol();
-  auto sym_kv = m_symbol_types.find(sym_name);
-  if (sym_kv == m_symbol_types.end()) {
+  const auto* sym_ts = m_symbol_types.lookup(sym_name);
+  if (!sym_ts) {
     throw_compiler_error(form, "Cannot find a symbol named {}.", sym_name.name_ptr);
   }
-  auto ts = sym_kv->second;
-  bool sext = m_ts.lookup_type(ts)->get_load_signed();
+  bool sext = m_ts.lookup_type(*sym_ts)->get_load_signed();
   if (args.has_named("sext")) {
     sext = get_true_or_false(form, args.named.at("sext"));
   }
@@ -1233,17 +1232,17 @@ Val* Compiler::compile_asm_div_vf(const goos::Object& form, const goos::Object& 
   // Why do we even bother using VDIVPS instead of FDIV? Because otherwise in x86, you have to use
   // the FPU stack Registers are nicer.
 
-  // Save one temp reg, use the destination as one
-  auto temp_reg = env->make_vfr(dest->type());
+  auto temp_reg1 = env->make_vfr(dest->type());
+  auto temp_reg2 = env->make_vfr(dest->type());
 
-  // Splat src1's value into the dest reg, keep it simple, this way no matter which vector component
+  // Splat src1's value into a temp reg, keep it simple, this way no matter which vector component
   // is accessed from the final result will be the correct answer
-  env->emit_ir<IR_SplatVF>(form, color, dest, src1, ftf_fsf_to_vector_element(fsf));
+  env->emit_ir<IR_SplatVF>(form, color, temp_reg1, src1, ftf_fsf_to_vector_element(fsf));
   // Splat src1's value into the the temp reg
-  env->emit_ir<IR_SplatVF>(form, color, temp_reg, src2, ftf_fsf_to_vector_element(ftf));
+  env->emit_ir<IR_SplatVF>(form, color, temp_reg2, src2, ftf_fsf_to_vector_element(ftf));
 
   // Perform the Division
-  env->emit_ir<IR_VFMath3Asm>(form, color, dest, dest, temp_reg, IR_VFMath3Asm::Kind::DIV);
+  env->emit_ir<IR_VFMath3Asm>(form, color, dest, temp_reg1, temp_reg2, IR_VFMath3Asm::Kind::DIV);
   return get_none();
 }
 

@@ -382,8 +382,8 @@ struct ExecutionContext {
 
   void sq(int src, int offset, int addr) {
     auto s = gpr_src(src);
-    ASSERT((offset & 15) == 0);
-    memcpy(g_ee_main_mem + gpr_addr(addr) + offset, &s.du32[0], 16);
+    // ASSERT((offset & 15) == 0);
+    memcpy(g_ee_main_mem + ((gpr_addr(addr) + offset) & (~15)), &s.du32[0], 16);
   }
 
   void sqc2(int src, int offset, int addr) {
@@ -1165,16 +1165,48 @@ struct ExecutionContext {
     }
   }
 
+  void mfhi(int dst) { gprs[dst].du64[0] = hi.du64[0]; }
+  void mflo(int dst) { gprs[dst].du64[0] = lo.du64[0]; }
+
   void mult3(int dst, int src0, int src1) {
-    u32 result = gpr_src(src0).ds32[0] * gpr_src(src1).ds32[0];
-    s32 sresult = result;
-    gprs[dst].ds64[0] = sresult;
+    s64 result = (s64)gpr_src(src0).ds32[0] * gpr_src(src1).ds32[0];
+
+    lo.ds64[0] = (s32)(result & 0xffffffff);
+    hi.ds64[0] = (s32)(result >> 32);
+
+    gprs[dst].du64[0] = lo.du64[0];
   }
 
   void multu3(int dst, int src0, int src1) {
-    u32 result = gpr_src(src0).du32[0] * gpr_src(src1).du32[0];
-    s32 sresult = result;
-    gprs[dst].ds64[0] = sresult;
+    u64 result = (u64)gpr_src(src0).du32[0] * gpr_src(src1).du32[0];
+
+    lo.ds64[0] = (s32)(result & 0xffffffff);
+    hi.ds64[0] = (s32)(result >> 32);
+
+    gprs[dst].du64[0] = lo.du64[0];
+  }
+
+  void div(int dst, int src) {
+    if (gprs[dst].du32[0] == 0x80000000 && gprs[src].du32[0] == 0xffffffff) {
+      lo.ds64[0] = (s32)0x80000000;
+      lo.ds64[0] = (s32)0x0;
+    } else if (gprs[src].ds32[0] != 0) {
+      lo.ds64[0] = gprs[dst].ds32[0] / gprs[src].ds32[0];
+      hi.ds64[0] = gprs[dst].ds32[0] % gprs[src].ds32[0];
+    } else {
+      lo.ds64[0] = gprs[dst].ds32[0] < 0 ? 1 : -1;
+      hi.ds64[0] = gprs[dst].ds32[0];
+    }
+  }
+
+  void divu(int dst, int src) {
+    if (gprs[dst].du32[0] != 0) {
+      lo.ds64[0] = (s32)(gprs[dst].du32[0] / gprs[src].du32[0]);
+      hi.ds64[0] = (s32)(gprs[dst].du32[0] % gprs[src].du32[0]);
+    } else {
+      lo.ds64[0] = -1;
+      hi.ds64[0] = gprs[dst].ds32[0];
+    }
   }
 
   void xori(int dest, int src, u64 imm) { gprs[dest].du64[0] = gpr_src(src).du64[0] ^ imm; }

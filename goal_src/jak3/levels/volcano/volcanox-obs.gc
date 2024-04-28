@@ -7,3 +7,651 @@
 
 ;; DECOMP BEGINS
 
+(defpartgroup group-vol-holo-halo
+  :id 1407
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4639 :flags (sp6 sp7)) (sp-item 4640 :flags (sp6 sp7)))
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun sparticle-vol-holo-halo0 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (let* ((v1-2 (-> *display* part-clock frame-counter))
+         (f0-1 (* 0.00020833334 (the float (mod v1-2 4800))))
+         )
+    (set! (-> arg2 conerot z) (* 65536.0 f0-1))
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defun sparticle-vol-holo-halo1 ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 sparticle-launchinfo))
+  (let* ((v1-2 (-> *display* part-clock frame-counter))
+         (f0-1 (* 0.00020833334 (the float (mod v1-2 4800))))
+         )
+    (set! (-> arg2 conerot z) (* -65536.0 f0-1))
+    )
+  (none)
+  )
+
+(defpart 4639
+  :init-specs ((:texture (colorflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 14))
+    (:rot-z (degrees 0))
+    (:scale-y (meters 14))
+    (:r 125.0)
+    (:g 100.0)
+    (:b 150.0)
+    (:a 48.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-3))
+    (:func 'sparticle-vol-holo-halo0)
+    )
+  )
+
+(defpart 4640
+  :init-specs ((:texture (colorflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 14))
+    (:rot-z (degrees 0))
+    (:scale-y (meters 14))
+    (:r 125.0)
+    (:g 100.0)
+    (:b 150.0)
+    (:a 48.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-3))
+    (:func 'sparticle-vol-holo-halo1)
+    )
+  )
+
+(deftype vol-holo-eye (process-drawable)
+  ((eyeball-jmod        joint-mod-set-world-no-trans  :inline)
+   (other-eyeball-jmod  joint-mod-set-world           :inline)
+   (next-blink-time     time-frame)
+   (trigger-radius      float)
+   (idle-clock          time-frame)
+   (actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (triggered?          symbol)
+   (untriggered?        symbol)
+   (kill-quat           quaternion                    :inline)
+   (kill-angle          float)
+   (kill-speed          float)
+   (init-trans          vector                        :inline)
+   (perm-part           handle)
+   )
+  (:state-methods
+    idle
+    alert
+    close
+    die
+    die-fast
+    )
+  (:methods
+    (track-target (_type_) none)
+    )
+  )
+
+
+(defskelgroup skel-vol-holo-eye vol-holo-eye vol-holo-eye-lod0-jg vol-holo-eye-idle-ja
+              ((vol-holo-eye-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defmethod track-target ((this vol-holo-eye))
+  (let* ((s4-1 (quaternion-look-at!
+                 (new 'stack-no-clear 'quaternion)
+                 (vector-normalize-copy!
+                   (new 'stack-no-clear 'vector)
+                   (vector-!
+                     (new 'stack-no-clear 'vector)
+                     (get-trans *target* 3)
+                     (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 4))
+                     )
+                   1.0
+                   )
+                 *up-vector*
+                 )
+               )
+         (s5-2 (quaternion*!
+                 (new 'stack-no-clear 'quaternion)
+                 s4-1
+                 (quaternion-conjugate! (new 'stack-no-clear 'quaternion) (-> this root quat))
+                 )
+               )
+         )
+    (cond
+      ((>= (-> s5-2 w) 0.81915206)
+       (quaternion-copy! (-> this eyeball-jmod transform quat) s4-1)
+       )
+      (else
+        (if (< (-> s5-2 w) 0.0)
+            (quaternion-negate! s5-2 s5-2)
+            )
+        (vector-normalize! (the-as vector (&-> s5-2 x)) 0.57357645)
+        (set! (-> s5-2 w) 0.81915206)
+        (quaternion*! (-> this eyeball-jmod transform quat) (-> this root quat) s5-2)
+        )
+      )
+    )
+  (quaternion-copy! (-> this other-eyeball-jmod transform quat) (-> this eyeball-jmod transform quat))
+  (set! (-> this other-eyeball-jmod transform trans quad) (-> this node-list data 4 bone transform trans quad))
+  0
+  (none)
+  )
+
+(defstate idle (vol-holo-eye)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (let ((v0-0 (the-as object #t)))
+         (set! (-> self triggered?) (the-as symbol v0-0))
+         v0-0
+         )
+       )
+      (('kill)
+       (go-virtual die)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self triggered?) #f)
+    (set! (-> self next-blink-time)
+          (the-as time-frame (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 2101) 900 (current-time)))
+          )
+    )
+  :trans (behavior ()
+    (local-vars (v1-4 symbol))
+    (when *target*
+      (set! v1-4
+            (or (logtest? (target-flags invisible) (-> *target* target-flags))
+                (begin (b! (< 40960.0 (- (-> (target-pos 0) y) (-> self root trans y))) cfg-5 :delay (set! v1-4 #t)) #f)
+                )
+            )
+      (label cfg-5)
+      (b! (not v1-4) cfg-7 :delay (nop!))
+      (quaternion-copy! (-> self eyeball-jmod transform quat) (-> self root quat))
+      (quaternion-copy! (-> self other-eyeball-jmod transform quat) (-> self root quat))
+      (set! (-> self other-eyeball-jmod transform trans quad) (-> self node-list data 4 bone transform trans quad))
+      (b! #t cfg-16 :delay (nop!))
+      (label cfg-7)
+      (track-target self)
+      (if (or (-> self triggered?) (< (if *target*
+                                          (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))
+                                          4096000.0
+                                          )
+                                      (-> self trigger-radius)
+                                      )
+              )
+          (go-virtual alert)
+          )
+      )
+    (label cfg-16)
+    (+! (-> self idle-clock) (- (current-time) (-> self clock old-frame-counter)))
+    (let ((f30-1 (* 0.0003030303 (the float (mod (-> self idle-clock) 3300))))
+          (f0-5 (* 0.00025641025 (the float (mod (-> self idle-clock) 3900))))
+          (s4-0 (-> self root trans))
+          (gp-0 (-> self init-trans))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> s5-0 x) 0.0)
+      (set! (-> s5-0 y) (* 8192.0 (cos (* 65536.0 f0-5)) (sin (* 65536.0 f30-1))))
+      (set! (-> s5-0 z) 0.0)
+      (set! (-> s5-0 w) 1.0)
+      (vector+! s4-0 gp-0 s5-0)
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! vol-holo-eye-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (when (< (-> self next-blink-time) (current-time))
+        (set! (-> self next-blink-time)
+              (the-as time-frame (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 2101) 900 (current-time)))
+              )
+        (ja-no-eval :group! vol-holo-eye-blink-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate alert (vol-holo-eye)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('untrigger)
+       (let ((v0-0 (the-as object #t)))
+         (set! (-> self untriggered?) (the-as symbol v0-0))
+         v0-0
+         )
+       )
+      (('kill)
+       (go-virtual die)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self untriggered?) #f)
+    )
+  :exit (behavior ()
+    (when (and (nonzero? (-> self actor-group)) (-> self actor-group 0))
+      (let ((gp-0 (-> self actor-group 0)))
+        (dotimes (s5-0 (-> gp-0 length))
+          (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-0 from) (process->ppointer self))
+            (set! (-> a1-0 num-params) 0)
+            (set! (-> a1-0 message) 'down)
+            (let ((t9-0 send-event-function)
+                  (v1-8 (-> gp-0 data s5-0 actor))
+                  )
+              (t9-0
+                (if v1-8
+                    (-> v1-8 extra process)
+                    )
+                a1-0
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  :trans (behavior ()
+    (cond
+      ((and *target*
+            (not (logtest? (target-flags invisible) (-> *target* target-flags)))
+            (< (- (-> (target-pos 0) y) (-> self root trans y)) 40960.0)
+            )
+       (track-target self)
+       (if (or (and (-> self triggered?) (-> self untriggered?))
+               (and (not (-> self triggered?))
+                    (< (-> self trigger-radius) (if *target*
+                                                    (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))
+                                                    4096000.0
+                                                    )
+                       )
+                    )
+               )
+           (go-virtual close)
+           )
+       )
+      (else
+        (go-virtual close)
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-no-eval :group! vol-holo-eye-openeye-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (when (and (nonzero? (-> self actor-group)) (-> self actor-group 0))
+      (let ((gp-0 (-> self actor-group 0)))
+        (dotimes (s5-0 (-> gp-0 length))
+          (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-2 from) (process->ppointer self))
+            (set! (-> a1-2 num-params) 0)
+            (set! (-> a1-2 message) 'up)
+            (let ((t9-3 send-event-function)
+                  (v1-33 (-> gp-0 data s5-0 actor))
+                  )
+              (t9-3
+                (if v1-33
+                    (-> v1-33 extra process)
+                    )
+                a1-2
+                )
+              )
+            )
+          )
+        )
+      )
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+(defstate close (vol-holo-eye)
+  :virtual #t
+  :enter (behavior ()
+    (sound-play "holo-eye-close")
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! vol-holo-eye-shuteye-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual idle)
+    )
+  :post ja-post
+  )
+
+(defstate die (vol-holo-eye)
+  :virtual #t
+  :enter (behavior ()
+    (quaternion-copy! (-> self kill-quat) (-> self root quat))
+    (set! (-> self kill-angle) 0.0)
+    (set! (-> self kill-speed) 0.0)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (let ((t0-1 (res-lump-struct (-> self entity) 'camera-name structure)))
+      (when t0-1
+        (persist-with-delay *setting-control* 'entity-name (seconds 2) 'entity-name (the-as symbol t0-1) 0.0 0)
+        (until (process-grab? *target* #f)
+          (suspend)
+          )
+        (let ((gp-0 (current-time)))
+          (until (time-elapsed? gp-0 (seconds 1))
+            (suspend)
+            )
+          )
+        )
+      )
+    (set-time! (-> self state-time))
+    (until #f
+      (seek! (-> self kill-speed) 182044.44 (* 182044.44 (seconds-per-frame)))
+      (+! (-> self kill-angle) (* (-> self kill-speed) (seconds-per-frame)))
+      (let ((a2-4 (quaternion-vector-angle! (new 'stack-no-clear 'quaternion) *y-vector* (-> self kill-angle))))
+        (quaternion*! (-> self root quat) (-> self kill-quat) a2-4)
+        )
+      (set! (-> self other-eyeball-jmod transform scale quad) (-> self root scale quad))
+      (set! (-> self eyeball-jmod transform scale quad) (-> self root scale quad))
+      (let* ((f0-9 (lerp-scale 1.0 0.0 (the float (- (current-time) (-> self state-time))) 0.0 60.0))
+             (f0-11 (* f0-9 f0-9))
+             )
+        (set! (-> self root scale x) (* f0-11 f0-11))
+        )
+      (set! (-> self root scale y) (+ 1.0 (* 0.5 (-> self root scale x))))
+      (set! (-> self root scale z) (-> self root scale x))
+      (when (= (-> self root scale x) 0.0)
+        (send-event (handle->process (-> self perm-part)) 'die)
+        (let ((gp-1 (current-time)))
+          (until (time-elapsed? gp-1 (seconds 1))
+            (suspend)
+            )
+          )
+        (until (process-release? *target*)
+          (suspend)
+          )
+        (go-virtual die-fast)
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate die-fast (vol-holo-eye)
+  :virtual #t
+  :code (behavior ()
+    (send-event (handle->process (-> self perm-part)) 'die)
+    (when (and (nonzero? (-> self actor-group)) (>= (-> self actor-group-count) 2) (-> self actor-group 1))
+      (let ((gp-0 (-> self actor-group 1)))
+        (dotimes (s5-0 (-> gp-0 length))
+          (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-1 from) (process->ppointer self))
+            (set! (-> a1-1 num-params) 0)
+            (set! (-> a1-1 message) 'open)
+            (let ((t9-1 send-event-function)
+                  (v1-16 (-> gp-0 data s5-0 actor))
+                  )
+              (t9-1
+                (if v1-16
+                    (-> v1-16 extra process)
+                    )
+                a1-1
+                )
+              )
+            )
+          )
+        )
+      )
+    (while (-> self child)
+      (suspend)
+      )
+    (process-entity-status! self (entity-perm-status dead) #t)
+    )
+  )
+
+(defmethod init-from-entity! ((this vol-holo-eye) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-vol-holo-eye" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this trigger-radius) 110592.0)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-6 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-6 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-6))
+       )
+      (else
+        (format 0 "ERROR: ~s: entity missing actor-group!~%" (-> this name))
+        )
+      )
+    )
+  (set! (-> this init-trans quad) (-> this root trans quad))
+  (init (-> this eyeball-jmod) this (the-as uint 4) (joint-mod-base-flags attached scale))
+  (init (-> this other-eyeball-jmod) this (the-as uint 9) (joint-mod-base-flags attached trans quat scale))
+  (set! (-> this perm-part)
+        (ppointer->handle (if (logtest? (-> *part-group-id-table* 1407 flags) (sp-group-flag sp13))
+                              (part-tracker-spawn
+                                part-tracker-subsampler
+                                :to this
+                                :group (-> *part-group-id-table* 1407)
+                                :duration -1
+                                :target this
+                                :mat-joint (the-as object 0)
+                                )
+                              (part-tracker-spawn
+                                part-tracker
+                                :to this
+                                :group (-> *part-group-id-table* 1407)
+                                :duration -1
+                                :target this
+                                :mat-joint (the-as object 0)
+                                )
+                              )
+                          )
+        )
+  (set! (-> this idle-clock) 0)
+  (set! (-> this triggered?) #f)
+  (set! (-> this untriggered?) #f)
+  (go (method-of-object this idle))
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod deactivate ((this vol-holo-eye))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (let ((t9-0 (method-of-type process-focusable deactivate)))
+    (t9-0 (the-as process-focusable this))
+    )
+  (send-event (handle->process (-> this perm-part)) 'die)
+  (none)
+  )
+
+(deftype tpl-glider-broken (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-tpl-glider-broken tpl-glider-broken tpl-glider-broken-lod0-jg tpl-glider-broken-idle-ja
+              ((tpl-glider-broken-lod0-mg (meters 999999)))
+              :bounds (static-spherem 8 0 -3 18)
+              :origin-joint-index 3
+              )
+
+(defstate idle (tpl-glider-broken)
+  :virtual #t
+  :enter (behavior ()
+    (ja-no-eval :group! tpl-glider-broken-idle-ja :num! zero)
+    (transform-post)
+    )
+  :code sleep-code
+  )
+
+(defmethod init-from-entity! ((this tpl-glider-broken) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 32768.0 0.0 -12288.0 73728.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tpl-glider-broken" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object this idle))
+  )
+
+(deftype dm-spines (process-drawable)
+  ((alt-actor  entity-actor)
+   )
+  (:state-methods
+    open
+    closed
+    opening
+    )
+  )
+
+
+(defskelgroup skel-dm-spines dm-spines dm-spines-lod0-jg dm-spines-idle-ja
+              ((dm-spines-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 10)
+              )
+
+(defstate open (dm-spines)
+  :virtual #t
+  :enter (behavior ()
+    (ja-no-eval :group! dm-spines-idle-ja :num! zero)
+    (ja-post)
+    )
+  :trans (behavior ()
+    (if (and *target*
+             (not (focus-test? *target* ignore))
+             (and (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 61440.0)
+                  (or (not (-> self alt-actor))
+                      (not (logtest? (-> self alt-actor extra perm status) (entity-perm-status dead)))
+                      )
+                  )
+             )
+        (go-virtual closed)
+        )
+    0
+    )
+  :code sleep-code
+  )
+
+(defstate closed (dm-spines)
+  :virtual #t
+  :enter (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 2)))
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (vector-x-quaternion! s5-0 (-> self root quat))
+        (vector+float*! (-> gp-0 0) (-> self root trans) s5-0 -28672.0)
+        (vector+float*! (-> gp-0 1) (-> self root trans) s5-0 28672.0)
+        )
+      (blocking-plane-spawn (the-as curve-control #f) gp-0 122880.0)
+      )
+    (let ((gp-1 (-> self child)))
+      (while gp-1
+        (let ((s5-1 (ppointer->process gp-1)))
+          (if (type? s5-1 blocking-plane)
+              (send-event s5-1 'attack-mode 'eco-dark)
+              )
+          )
+        (set! gp-1 (-> gp-1 0 brother))
+        )
+      )
+    (sound-play "sworddoor-close")
+    )
+  :exit (behavior ()
+    (blocking-plane-destroy)
+    )
+  :trans (behavior ()
+    (if (or (not *target*) (< 81920.0 (vector-vector-xz-distance (target-pos 0) (-> self root trans))))
+        (go-virtual opening)
+        )
+    )
+  :code (behavior ()
+    (ja-no-eval :group! dm-spines-idle-ja :num! (seek! max 0.25) :frame-num 0.0)
+    (until (ja-done? 0)
+      (ja-post)
+      (suspend)
+      (ja :num! (seek! max 0.25))
+      )
+    (sleep-code)
+    )
+  )
+
+(defstate opening (dm-spines)
+  :virtual #t
+  :enter (behavior ()
+    (sound-play "sworddoor-open")
+    )
+  :code (behavior ()
+    (ja-no-eval :group! dm-spines-idle-ja :num! (identity 1.0))
+    (until (>= 0.0 (-> self skel root-channel 0 frame-num))
+      (ja-post)
+      (suspend)
+      (ja :num! (seek! 0.0 0.1))
+      )
+    (go-virtual open)
+    )
+  )
+
+(defmethod init-from-entity! ((this dm-spines) (arg0 entity-actor))
+  (set! (-> this level) (level-get *level* 'volcanox))
+  (set! (-> this alt-actor) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  "init for the auto spawner"
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dm-spines" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object this open))
+  )

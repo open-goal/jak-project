@@ -12,5 +12,5 @@
   "mecha-daxter-ag.go"
   "air-train-ag.go"
   "hip-door-a-ag.go"
-  "ctyport-vis.o"
+  "ctyport-vis.go"
  ))

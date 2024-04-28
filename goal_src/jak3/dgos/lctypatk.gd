@@ -9,5 +9,5 @@
   "cty-port-mine-ag.go"
   "ctyport-mine-ag.go"
   "cty-dax-missile-ag.go"
-  "lctypatk.o"
+  "lctypatk.go"
  ))

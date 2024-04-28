@@ -1,5 +1,5 @@
 ("CTYPEPB.DGO"
- ("tpage-958.o"
+ ("tpage-958.go"
   "predator-ag.go"
-  "ctypepb.o"
+  "ctypepb.go"
  ))

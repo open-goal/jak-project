@@ -1,5 +1,5 @@
 ("TOWB.DGO"
- ("tpage-2650.o"
+ ("tpage-2650.go"
   "tpage-2948.go"
   "tpage-2652.go"
   "tpage-2651.go"
@@ -10,5 +10,5 @@
   "tow-energy-bridge-ag.go"
   "tow-tentacle-ag.go"
   "neo-debris-ag.go"
-  "towerb-vis.o"
+  "towerb-vis.go"
  ))

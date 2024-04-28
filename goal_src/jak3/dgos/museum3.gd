@@ -1,5 +1,5 @@
 ("MUSEUM3.DGO"
- ("museum-3-anims+0-ag.o"
+ ("museum-3-anims+0-ag.go"
   "tpage-3360.go"
   "tpage-3362.go"
   "tpage-3361.go"
@@ -10,5 +10,5 @@
   "samos-highres-ag.go"
   "red-crimson-guard-highres-ag.go"
   "youngsamos-highres-ag.go"
-  "museum3.o"
+  "museum3.go"
  ))

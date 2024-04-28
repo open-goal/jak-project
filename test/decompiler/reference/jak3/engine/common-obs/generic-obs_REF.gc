@@ -11,7 +11,7 @@
 (defskelgroup skel-spotlight spotlight spotlight-lod0-jg -1
               ((spotlight-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
-              :shadow-joint-index 5
+              :origin-joint-index 5
               )
 
 ;; definition for function entity-lookup-part-group
@@ -1239,7 +1239,7 @@
        )
       (('do-effect)
        (if (and (nonzero? (-> self skel)) (-> self skel effect))
-           (do-effect (-> self skel effect) (the-as symbol (-> block param 0)) (the-as float (-> block param 1)) -1)
+           (do-effect (-> self skel effect) (the-as string (-> block param 0)) (the-as float (-> block param 1)) -1)
            )
        )
       (('no-actor-pause)
@@ -1460,7 +1460,7 @@
                                        0.0
                                        614400.0
                                        (the-as vector #f)
-                                       0.000000000000000000000000000000000000000000084
+                                       (shadow-flags shdf02 shdf03 shdf04 disable-draw)
                                        245760.0
                                        )
           )
@@ -1607,17 +1607,14 @@
               (nonzero? (-> (the-as process-drawable v1-15) root))
               (nonzero? (-> (the-as process-drawable v1-15) node-list))
               )
-         (sparticle-launch-control-method-18
-           (-> self part)
-           (-> (the-as process-drawable v1-15) node-list data (-> self target-joint))
-           )
+         (spawn-from-cspace (-> self part) (-> (the-as process-drawable v1-15) node-list data (-> self target-joint)))
          (set! (-> self root trans quad) (-> self part origin trans quad))
          )
         (else
           (let ((a0-11 (-> self root trans)))
             (set! (-> self mat trans quad) (-> a0-11 quad))
             )
-          (sparticle-launch-control-method-17 (-> self part) (-> self mat))
+          (spawn-from-mat (-> self part) (-> self mat))
           )
         )
       )
@@ -1691,7 +1688,7 @@
               (nonzero? (-> (the-as process-drawable v1-15) root))
               (nonzero? (-> (the-as process-drawable v1-15) node-list))
               )
-         (sparticle-subsampler-method-10
+         (init-with-mat!
            (-> self subsampler)
            (-> (the-as process-drawable v1-15) node-list data (-> self target-joint) bone transform)
            )
@@ -1701,7 +1698,7 @@
           (let ((a0-11 (-> self root trans)))
             (set! (-> self mat trans quad) (-> a0-11 quad))
             )
-          (sparticle-subsampler-method-10 (-> self subsampler) (-> self mat))
+          (init-with-mat! (-> self subsampler) (-> self mat))
           )
         )
       )
@@ -1791,7 +1788,7 @@
 
 ;; failed to figure out what this is:
 (defpart 57
-  :init-specs ((:texture (new 'static 'texture-id :index #x3d :page #x4))
+  :init-specs ((:texture (middot level-default-sprite))
     (:num 1.0)
     (:scale-x (meters 1))
     (:scale-y :copy scale-x)
@@ -1843,7 +1840,7 @@
   (set! (-> self part) (create-launch-control (-> arg0 group) self))
   (when (and (-> arg0 target) (logtest? (-> self part group flags) (sp-group-flag sp12 sp14)))
     (let* ((gp-0 (-> self part))
-           (s5-0 (method-of-object gp-0 sparticle-launch-control-method-20))
+           (s5-0 (method-of-object gp-0 set-local-space-info))
            (s4-0 (add-connection *part-local-space-engine* self local-space-proc-joint (-> self target-joint) 0 0))
            )
       (let ((v1-10 (process->handle (-> arg0 target))))
@@ -1860,7 +1857,7 @@
                 (part-local-space-flags)
                 )
             )
-      (s5-0 gp-0 (the-as float s4-0))
+      (s5-0 gp-0 (the-as particle-local-space-info s4-0))
       )
     )
   (set! (-> self event-hook) (-> (method-of-object self active) event))
@@ -2096,7 +2093,7 @@
                   )
               )
             )
-          (set! (-> self sound) (sound-play-by-spec (the-as sound-spec gp-1) (new-sound-id) s5-1))
+          (set! (-> self sound) (sound-play-by-spec gp-1 (new-sound-id) s5-1))
           )
         )
       )
@@ -2485,7 +2482,7 @@
   :trans (behavior ()
     (when (-> self enable)
       (when (nonzero? (-> self path))
-        (path-control-method-9 (-> self path))
+        (debug-draw (-> self path))
         (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-pos) 'interp)
         (displacement-between-points-at-percent-normalized! (-> self path) (-> self last-velocity) (-> self path-pos))
         (let ((f0-3 (+ (-> self path-pos) (* (-> self path-speed) (seconds-per-frame)))))
@@ -2509,9 +2506,10 @@
 
 ;; definition for method 11 of type part-spawner
 ;; INFO: Used lq/sq
+;; INFO: Process stack size was changed from 16 to 64
 (defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
   (local-vars (sv-16 string))
-  (stack-size-set! (-> this main-thread) 16)
+  (stack-size-set! (-> this main-thread) 64)
   (logior! (-> this mask) (process-mask ambient))
   (+! (-> this clock ref-count) -1)
   (+! (-> *display* part-clock ref-count) 1)
@@ -2670,7 +2668,7 @@
 
 ;; failed to figure out what this is:
 (defpart 59
-  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+  :init-specs ((:texture (hotdot level-default-sprite))
     (:num 1.0)
     (:x (meters 0) (meters 1.8))
     (:scale-x (meters 0.2))
@@ -2691,7 +2689,7 @@
 
 ;; failed to figure out what this is:
 (defpart 60
-  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+  :init-specs ((:texture (hotdot level-default-sprite))
     (:num 2.0)
     (:x (meters 1.8) (meters 1))
     (:scale-x (meters 0.2))
@@ -2712,7 +2710,7 @@
 
 ;; failed to figure out what this is:
 (defpart 61
-  :init-specs ((:texture (new 'static 'texture-id :index #x50 :page #x4))
+  :init-specs ((:texture (woodchip level-default-sprite))
     (:num 1.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2737,7 +2735,7 @@
 
 ;; failed to figure out what this is:
 (defpart 62
-  :init-specs ((:texture (new 'static 'texture-id :page #x4))
+  :init-specs ((:texture (bigpuff level-default-sprite))
     (:num 0.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2780,7 +2778,7 @@
 
 ;; failed to figure out what this is:
 (defpart 65
-  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+  :init-specs ((:texture (hotdot level-default-sprite))
     (:num 1.0)
     (:x (meters 0) (meters 1.4))
     (:scale-x (meters 0.2))
@@ -2801,7 +2799,7 @@
 
 ;; failed to figure out what this is:
 (defpart 66
-  :init-specs ((:texture (new 'static 'texture-id :index #x18 :page #x4))
+  :init-specs ((:texture (hotdot level-default-sprite))
     (:num 2.0)
     (:x (meters 1.4) (meters 0.9))
     (:scale-x (meters 0.2))
@@ -2822,7 +2820,7 @@
 
 ;; failed to figure out what this is:
 (defpart 67
-  :init-specs ((:texture (new 'static 'texture-id :page #x4))
+  :init-specs ((:texture (bigpuff level-default-sprite))
     (:num 0.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -2860,7 +2858,7 @@
 
 ;; failed to figure out what this is:
 (defpart 68
-  :init-specs ((:texture (new 'static 'texture-id :page #x4))
+  :init-specs ((:texture (bigpuff level-default-sprite))
     (:num 0.5)
     (:x (meters 2.9) (meters 2.5))
     (:y (meters -0.5))
@@ -3561,12 +3559,12 @@
 
 ;; definition for function explosion-spawn
 ;; WARN: Return type mismatch process vs none.
-(defun explosion-spawn ((arg0 process-drawable) (arg1 type) (arg2 explosion-init-params))
+(defun explosion-spawn ((arg0 explosion-init-params) (arg1 process-drawable))
   (let* ((gp-0 (the-as process #f))
          (s3-0 (get-process *default-dead-pool* explosion #x4000 1))
          (v1-1 (when s3-0
                  (let ((t9-1 (method-of-type explosion activate)))
-                   (t9-1 (the-as explosion s3-0) (the-as process-tree arg1) "explosion" (the-as pointer #x70004000))
+                   (t9-1 (the-as explosion s3-0) arg1 "explosion" (the-as pointer #x70004000))
                    )
                  (run-now-in-process s3-0 explosion-init-by-other arg0)
                  (-> s3-0 ppointer)
@@ -3738,7 +3736,7 @@
       )
     0
     (while (not (time-elapsed? (-> self start-time) (the-as time-frame (-> self duration))))
-      (sparticle-launch-control-method-17 (-> self part) (-> self mat))
+      (spawn-from-mat (-> self part) (-> self mat))
       (suspend)
       )
     (set-time! (-> self start-time))
@@ -4006,7 +4004,7 @@
                                 :ztst (gs-ztest greater-equal)
                                 )
         )
-  (set! (-> this strip bucket) (bucket-id bucket569))
+  (set! (-> this strip bucket) (bucket-id generic-sprite-1))
   (set! (-> this strip sink) (the-as uint 65))
   (none)
   )
@@ -4243,11 +4241,7 @@
     (dotimes (s3-0 (-> this actor-group s4-0 length))
       (set! sv-32 "#f")
       (set! (-> this particle-launchers (-> this particle-launchers length))
-            (entity-lookup-part-group
-              (the-as entity-actor (-> this actor-group s4-0 data s3-0 actor))
-              (& sv-32)
-              'art-name
-              )
+            (entity-lookup-part-group (-> this actor-group s4-0 data s3-0 actor) (& sv-32) 'art-name)
             )
       (+! (-> this particle-launchers length) 1)
       )
@@ -4298,56 +4292,18 @@
           (cond
             ((logtest? (-> self particle-launchers (-> self current-part-index) 0 flags) (sp-group-flag sp13))
              (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
-             (let ((gp-2 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
-               (when gp-2
-                 (let ((t9-4 (method-of-type part-tracker-subsampler activate)))
-                   (t9-4
-                     (the-as part-tracker-subsampler gp-2)
-                     *entity-pool*
-                     "part-tracker-subsampler"
-                     (the-as pointer #x70004000)
-                     )
-                   )
-                 (let ((t9-5 run-function-in-process)
-                       (a0-18 gp-2)
-                       (a1-3 part-tracker-subsampler-init)
-                       )
-                   (set! (-> *part-tracker-subsampler-params-default* group)
-                         (-> self particle-launchers (-> self current-part-index) 0)
-                         )
-                   (set! (-> *part-tracker-subsampler-params-default* duration) 0)
-                   (set! (-> *part-tracker-subsampler-params-default* callback) #f)
-                   (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
-                   (set! (-> *part-tracker-subsampler-params-default* target) #f)
-                   (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
-                   (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
-                   ((the-as (function object object object none) t9-5) a0-18 a1-3 *part-tracker-subsampler-params-default*)
-                   )
-                 (-> gp-2 ppointer)
-                 )
+             (part-tracker-spawn
+               part-tracker-subsampler
+               :to *entity-pool*
+               :group (-> self particle-launchers (-> self current-part-index) 0)
                )
              )
             (else
               (set! (-> *launch-matrix* trans quad) (-> gp-1 quad))
-              (let ((gp-3 (get-process *default-dead-pool* part-tracker #x4000 0)))
-                (when gp-3
-                  (let ((t9-7 (method-of-type part-tracker activate)))
-                    (t9-7 (the-as part-tracker gp-3) *entity-pool* "part-tracker" (the-as pointer #x70004000))
-                    )
-                  (let ((t9-8 run-function-in-process)
-                        (a0-23 gp-3)
-                        (a1-6 part-tracker-init)
-                        )
-                    (set! (-> *part-tracker-params-default* group) (-> self particle-launchers (-> self current-part-index) 0))
-                    (set! (-> *part-tracker-params-default* duration) 0)
-                    (set! (-> *part-tracker-params-default* callback) #f)
-                    (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-                    (set! (-> *part-tracker-params-default* target) #f)
-                    (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
-                    ((the-as (function object object object none) t9-8) a0-23 a1-6 *part-tracker-params-default*)
-                    )
-                  (-> gp-3 ppointer)
-                  )
+              (part-tracker-spawn
+                part-tracker
+                :to *entity-pool*
+                :group (-> self particle-launchers (-> self current-part-index) 0)
                 )
               )
             )
@@ -4451,11 +4407,7 @@
        (go-virtual die)
        )
       (('reset)
-       (-> self sync)
-       (let ((t9-1 (method-of-type sync-linear sync-info-method-15)))
-         0
-         (t9-1)
-         )
+       (sync-now! (-> self sync) 0.0)
        )
       (('play)
        (sound-play-by-name (-> self spawn-sound) (new-sound-id) 1024 0 0 (sound-group) (-> self pos))

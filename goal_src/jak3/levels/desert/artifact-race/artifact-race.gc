@@ -5,5 +5,937 @@
 ;; name in dgo: artifact-race
 ;; dgos: DESRACE2, DESRACE1
 
+;; +++artifact-type
+(defenum artifact-type
+  :type uint8
+  (artifact-a)
+  (artifact-b)
+  (artifact-c)
+  (artifact-d)
+  )
+;; ---artifact-type
+
+
 ;; DECOMP BEGINS
 
+(deftype artifact-info (structure)
+  ((pos            vector  :inline)
+   (time           uint32)
+   (artifact-type  artifact-type)
+   )
+  )
+
+
+(defskelgroup skel-was-artifact was-artifact was-artifact-lod0-jg was-artifact-idle-ja
+              ((was-artifact-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-pre-artifact-a pre-artifact-a pre-artifact-a-lod0-jg pre-artifact-a-idle-ja
+              ((pre-artifact-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-pre-artifact-b pre-artifact-b pre-artifact-b-lod0-jg pre-artifact-b-idle-ja
+              ((pre-artifact-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-pre-artifact-c pre-artifact-c pre-artifact-c-lod0-jg pre-artifact-c-idle-ja
+              ((pre-artifact-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-pre-artifact-d pre-artifact-d pre-artifact-d-lod0-jg pre-artifact-d-idle-ja
+              ((pre-artifact-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-gauntlets gauntlets gauntlets-lod0-jg gauntlets-idle-ja
+              ((gauntlets-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(deftype was-artifact (process-drawable)
+  ((root  collide-shape :override)
+   (pos   vector         :inline)
+   (angs  vector         :inline)
+   )
+  (:state-methods
+    idle
+    sink
+    die
+    )
+  (:methods
+    (find-ground (_type_) symbol)
+    (check-pickup (_type_) none)
+    (rotate (_type_) none)
+    )
+  )
+
+
+(defmethod find-ground ((this was-artifact))
+  (let ((s4-0 #f))
+    (let ((gp-0 (new 'stack-no-clear 'cquery-with-vec)))
+      (set! (-> gp-0 vec0 quad) (-> this root trans quad))
+      (set! (-> gp-0 cquery start-pos quad) (-> gp-0 vec0 quad))
+      (+! (-> gp-0 cquery start-pos y) 40960.0)
+      (vector-reset! (-> gp-0 vec1))
+      (set! (-> gp-0 vec1 y) 1.0)
+      (set-vector! (-> gp-0 cquery move-dist) 0.0 -81920.0 0.0 1.0)
+      (let ((v1-6 (-> gp-0 cquery)))
+        (set! (-> v1-6 radius) 1024.0)
+        (set! (-> v1-6 collide-with) (collide-spec backgnd))
+        (set! (-> v1-6 ignore-process0) #f)
+        (set! (-> v1-6 ignore-process1) #f)
+        (set! (-> v1-6 ignore-pat)
+              (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        (set! (-> v1-6 action-mask) (collide-action solid))
+        )
+      (let ((f0-8 (fill-and-probe-using-line-sphere *collide-cache* (-> gp-0 cquery))))
+        (when (>= f0-8 0.0)
+          (vector+float*! (-> gp-0 vec0) (-> gp-0 cquery start-pos) (-> gp-0 cquery move-dist) f0-8)
+          (set! (-> gp-0 vec1 quad) (-> gp-0 cquery best-other-tri normal quad))
+          (set! s4-0 #t)
+          (format #t "was-artifact::find-ground: ground y ~M~%" (-> gp-0 vec0 y))
+          )
+        )
+      (set! (-> this root trans quad) (-> gp-0 vec0 quad))
+      (forward-up-nopitch->quaternion (-> this root quat) (new 'static 'vector :z 1.0 :w 1.0) (-> gp-0 vec1))
+      )
+    s4-0
+    )
+  )
+
+(defmethod check-pickup ((this was-artifact))
+  (let ((v1-0 *target*)
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (when v1-0
+      (set! (-> s5-0 quad) (-> v1-0 control trans quad))
+      (set! (-> s5-0 w) 4096.0)
+      (when (focus-test? v1-0 pilot)
+        (let ((a1-4 (handle->process (-> v1-0 pilot vehicle))))
+          (set! (-> s5-0 quad)
+                (-> (the-as collide-shape (-> (the-as process-drawable a1-4) root)) root-prim prim-core world-sphere quad)
+                )
+          )
+        )
+      (let ((f0-1 (vector-vector-xz-distance-squared (-> this root trans) s5-0))
+            (f1-2 (fabs (- (-> s5-0 y) (-> this root trans y))))
+            (f2-2 (+ 8192.0 (-> s5-0 w)))
+            )
+        (when (and (>= (* f2-2 f2-2) f0-1) (< f1-2 32768.0))
+          (sound-play "artifact-pickup")
+          (+! (-> *game-info* counter) -1.0)
+          (go (method-of-object this die))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod rotate ((this was-artifact))
+  (let ((gp-0 (new 'stack-no-clear 'matrix)))
+    (set! (-> gp-0 fvec x) (seconds-per-frame))
+    (+! (-> this angs x) (* 32768.0 (-> gp-0 fvec x)))
+    (+! (-> this angs y) (* 23665.777 (-> gp-0 fvec x)))
+    (+! (-> this angs z) (* 20024.889 (-> gp-0 fvec x)))
+    (+! (-> this angs w) (* 22755.555 (-> gp-0 fvec x)))
+    (dotimes (v1-5 4)
+      (if (< 32768.0 (-> this angs data v1-5))
+          (+! (-> this angs data v1-5) -65536.0)
+          )
+      (if (< (-> this angs data v1-5) -32768.0)
+          (+! (-> this angs data v1-5) 65536.0)
+          )
+      )
+    (vector-reset! (-> gp-0 rvec))
+    (set! (-> gp-0 rvec y) (+ 4915.2 (* 2048.0 (sin (-> this angs x)))))
+    (set! (-> gp-0 rvec x) (* 1024.0 (sin (-> this angs y))))
+    (set! (-> gp-0 rvec z) (* 1024.0 (cos (-> this angs y))))
+    (vector+! (-> this root trans) (-> this pos) (-> gp-0 rvec))
+    (vector-reset! (-> gp-0 uvec))
+    (set! (-> gp-0 uvec z) (* 5461.3335 (sin (-> this angs z))))
+    (set! (-> gp-0 uvec y) (-> this angs w))
+    (quaternion-zxy! (-> this root quat) (-> gp-0 uvec))
+    )
+  (ja-post)
+  0
+  (none)
+  )
+
+(defstate idle (was-artifact)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('sink)
+       (go-virtual sink)
+       )
+      )
+    )
+  :trans (behavior ()
+    (check-pickup self)
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
+      (let ((v1-0 (new 'stack-no-clear 'vector)))
+        (set! (-> v1-0 quad) (-> self root trans quad))
+        (set! (-> gp-0 pos quad) (-> v1-0 quad))
+        )
+      (quaternion-identity! (-> gp-0 quat))
+      (set! (-> gp-0 flags) (task-arrow-flags))
+      (set! (-> gp-0 map-icon) (the-as uint 13))
+      (task-arrow-spawn gp-0 self)
+      )
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (rotate self)
+    )
+  )
+
+(defstate sink (was-artifact)
+  :virtual #t
+  :trans (behavior ()
+    (check-pickup self)
+    (+! (-> self pos y) (* -1024.0 (seconds-per-frame)))
+    )
+  :code (behavior ()
+    (cond
+      ((logtest? (-> *part-group-id-table* 333 flags) (sp-group-flag sp13))
+       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 333))
+       )
+      (else
+        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 333))
+        )
+      )
+    (set-time! (-> self state-time))
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (rotate self)
+    )
+  )
+
+(defstate die (was-artifact)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+(defbehavior was-artifact-init-by-other was-artifact ((arg0 artifact-info))
+  (set! (-> self level) (level-get *level* 'desrace1))
+  (let ((s5-0 (new 'process 'collide-shape-moving self (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 transform-index) 0)
+      (set-vector! (-> v1-8 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) 16384.0)
+    (let ((v1-10 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-10 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-10 prim-core collide-with))
+      )
+    (set! (-> self root) s5-0)
+    )
+  (let ((v1-13 (-> self root root-prim)))
+    (set! (-> v1-13 prim-core collide-as) (collide-spec))
+    (set! (-> v1-13 prim-core collide-with) (collide-spec))
+    )
+  0
+  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (quaternion-identity! (-> self root quat))
+  (set-vector! (-> self root scale) 3.0 3.0 3.0 1.0)
+  (find-ground self)
+  (set! (-> self pos quad) (-> self root trans quad))
+  (let* ((v1-23 (-> arg0 artifact-type))
+         (a1-6 (cond
+                 ((= v1-23 (artifact-type artifact-a))
+                  (art-group-get-by-name *level* "skel-pre-artifact-a" (the-as (pointer level) #f))
+                  )
+                 ((= v1-23 (artifact-type artifact-b))
+                  (art-group-get-by-name *level* "skel-pre-artifact-b" (the-as (pointer level) #f))
+                  )
+                 ((= v1-23 (artifact-type artifact-c))
+                  (art-group-get-by-name *level* "skel-pre-artifact-c" (the-as (pointer level) #f))
+                  )
+                 ((= v1-23 (artifact-type artifact-d))
+                  (art-group-get-by-name *level* "skel-pre-artifact-d" (the-as (pointer level) #f))
+                  )
+                 (else
+                   (art-group-get-by-name *level* "skel-gauntlets" (the-as (pointer level) #f))
+                   )
+                 )
+               )
+         )
+    (initialize-skeleton self (the-as skeleton-group a1-6) (the-as pair 0))
+    )
+  (if (-> self draw shadow)
+      (set! (-> self draw shadow-ctrl) (new
+                                         'process
+                                         'shadow-control
+                                         -12288.0
+                                         12288.0
+                                         614400.0
+                                         (the-as vector #f)
+                                         (shadow-flags shdf00 shdf04)
+                                         245760.0
+                                         )
+            )
+      )
+  (let ((a0-31 (find-nearest-nav-mesh (-> self pos) (the-as float #x7f800000))))
+    (if a0-31
+        (add-process-drawable-to-nav-mesh a0-31 self #f)
+        )
+    )
+  (go-virtual idle)
+  )
+
+;; WARN: Return type mismatch process vs was-artifact.
+(defun was-artifact-spawn ((arg0 process) (arg1 artifact-info))
+  (let ((gp-0 (the-as process #f)))
+    (let ((v1-1 (process-spawn was-artifact arg1 :name "was-artifact" :to arg0)))
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as was-artifact gp-0)
+    )
+  )
+
+(deftype task-manager-desert-artifact-race (task-manager)
+  ((count               int8)
+   (max-count           int8)
+   (death-count         uint8)
+   (target-count        int8)
+   (target-speed        float)
+   (slave               handle)
+   (speech-time         time-frame)
+   (final-time          uint32)
+   (suck-factor         float)
+   (extra-suck-time     float)
+   (hit-point-scale     float)
+   (dust-begin          float)
+   (dust-last-artifact  float)
+   (dust-end            float)
+   (ent                 entity-actor)
+   (speech-callback     (function task-manager int none))
+   (begin-pos           vector         :inline)
+   (end-pos             vector         :inline)
+   (door-plane          vector         :inline)
+   (objs                artifact-info  32 :inline)
+   )
+  (:methods
+    (set-fog-interp (_type_ float) none)
+    (speech-callback0 (_type_ int) none)
+    (speech-callback1 (_type_ int) none)
+    )
+  )
+
+
+(define *artifact-race-speech-list* (new 'static 'inline-array talker-speech-class 16
+                                      (new 'static 'talker-speech-class :name "none")
+                                      (new 'static 'talker-speech-class
+                                        :name "dax128"
+                                        :channel (gui-channel daxter)
+                                        :speech #x1
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax163"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x2
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax164"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x3
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax165"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x4
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax166"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x5
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax167"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x6
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax168"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x7
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax169"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x8
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax170"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #x9
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax171"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #xa
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax172"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #xb
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax173"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #xc
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax174"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #xd
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax175"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #xe
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      (new 'static 'talker-speech-class
+                                        :name "dax176"
+                                        :channel (gui-channel daxter)
+                                        :flags (talker-flags tf0)
+                                        :speech #xf
+                                        :text-duration (seconds 1)
+                                        :neg #x1
+                                        :on-close #f
+                                        :camera #f
+                                        )
+                                      )
+        )
+
+(defmethod speech-callback0 ((this task-manager-desert-artifact-race) (arg0 int))
+  (cond
+    ((zero? arg0)
+     (talker-spawn-func (-> *artifact-race-speech-list* 17) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    ((and (>= arg0 1) (>= 4 arg0))
+     (when (< (rand-vu) 0.5)
+       (let ((v1-6 (rand-vu-int-count 2)))
+         (cond
+           ((zero? v1-6)
+            (talker-spawn-func (-> *artifact-race-speech-list* 18) *entity-pool* (target-pos 0) (the-as region #f))
+            )
+           ((= v1-6 1)
+            (talker-spawn-func (-> *artifact-race-speech-list* 19) *entity-pool* (target-pos 0) (the-as region #f))
+            )
+           )
+         )
+       )
+     )
+    ((= arg0 (+ (-> this max-count) -1))
+     (talker-spawn-func (-> *artifact-race-speech-list* 24) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    ((and (= arg0 (+ (-> this max-count) -2)) (< (rand-vu) 0.5))
+     (talker-spawn-func (-> *artifact-race-speech-list* 23) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    (else
+      (when (< (rand-vu) 0.25)
+        (let ((v1-24 (rand-vu-int-count 4)))
+          (cond
+            ((zero? v1-24)
+             (talker-spawn-func (-> *artifact-race-speech-list* 20) *entity-pool* (target-pos 0) (the-as region #f))
+             )
+            ((= v1-24 1)
+             (talker-spawn-func (-> *artifact-race-speech-list* 21) *entity-pool* (target-pos 0) (the-as region #f))
+             )
+            ((= v1-24 2)
+             (talker-spawn-func (-> *artifact-race-speech-list* 22) *entity-pool* (target-pos 0) (the-as region #f))
+             )
+            ((= v1-24 3)
+             (talker-spawn-func (-> *artifact-race-speech-list* 25) *entity-pool* (target-pos 0) (the-as region #f))
+             )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod speech-callback1 ((this task-manager-desert-artifact-race) (arg0 int))
+  (cond
+    ((zero? arg0)
+     (talker-spawn-func (-> *artifact-race-speech-list* 17) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    ((and (>= arg0 1) (>= 4 arg0))
+     (when (< (rand-vu) 0.5)
+       (let ((v1-6 (rand-vu-int-count 2)))
+         (cond
+           ((zero? v1-6)
+            (talker-spawn-func (-> *artifact-race-speech-list* 18) *entity-pool* (target-pos 0) (the-as region #f))
+            )
+           ((= v1-6 1)
+            (talker-spawn-func (-> *artifact-race-speech-list* 19) *entity-pool* (target-pos 0) (the-as region #f))
+            )
+           )
+         )
+       )
+     )
+    ((= arg0 (+ (-> this max-count) -1))
+     (talker-spawn-func (-> *talker-speech* 129) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    ((and (= arg0 (+ (-> this max-count) -2)) (< (rand-vu) 0.5))
+     (talker-spawn-func (-> *artifact-race-speech-list* 23) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    (else
+      (when (< (rand-vu) 0.25)
+        (let ((v1-24 (rand-vu-int-count 2)))
+          (cond
+            ((zero? v1-24)
+             (talker-spawn-func (-> *artifact-race-speech-list* 21) *entity-pool* (target-pos 0) (the-as region #f))
+             )
+            ((= v1-24 1)
+             (talker-spawn-func (-> *artifact-race-speech-list* 25) *entity-pool* (target-pos 0) (the-as region #f))
+             )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod set-time-limit ((this task-manager-desert-artifact-race))
+  (local-vars (sv-16 res-tag))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set-setting! 'pilot-exit #f 0.0 0)
+  (set-setting! 'pilot-death #t 0.0 0)
+  (set-setting! 'scarf 'abs 1.0 0)
+  (set-setting! 'goggles 'abs 1.0 0)
+  (set! (-> this dust-begin) 0.1)
+  (set! (-> this dust-last-artifact) 0.3)
+  (set! (-> this dust-end) 0.6)
+  (set! (-> this slave) (the-as handle #f))
+  (set! (-> this hit-point-scale) 1.0)
+  (set! (-> this start-time) 0)
+  (set! (-> this time-limit) (seconds 180))
+  (set! (-> this count) -1)
+  (let ((a2-4 (-> this node-info death-count)))
+    (set! (-> this death-count) a2-4)
+    (set! (-> this suck-factor) (cond
+                                  ((< a2-4 (the-as uint 5))
+                                   0.0
+                                   )
+                                  ((< a2-4 (the-as uint 10))
+                                   0.25
+                                   )
+                                  (else
+                                    (fmin 1.0 (* 0.05 (the float a2-4)))
+                                    )
+                                  )
+          )
+    (format #t "artifact-race::initialize death-count ~d, suck-factor ~f~%" a2-4 (-> this suck-factor))
+    )
+  (set! (-> this extra-suck-time) (* 16.0 (-> this suck-factor)))
+  (set! (-> this begin-pos quad) (-> (new 'static 'vector :x 9263923.0 :y 129024.0 :z 1077248.0 :w 1.0) quad))
+  (set! (-> this end-pos quad) (-> (new 'static 'vector :x 9277440.0 :y 127795.2 :z 890880.0 :w 1.0) quad))
+  (set! (-> this door-plane quad) (-> (new 'static 'vector :z 1.0 :w 1.0) quad))
+  (set! (-> this door-plane w)
+        (- (vector-dot (-> this door-plane) (new 'static 'vector :x 9277440.0 :y 125747.2 :z 957235.2 :w 1.0)))
+        )
+  (cond
+    ((= (-> this node-info task) (game-task desert-artifact-race-1))
+     (set! (-> this final-time) (the-as uint (the int (* 300.0 (+ 63.0 (* 1.5 (-> this extra-suck-time)))))))
+     (set! (-> this target-count) 1)
+     (set! (-> this target-speed) 143360.0)
+     (set! (-> this ent) (the-as entity-actor (entity-by-name "artifact-1")))
+     (set! (-> this speech-callback) (method-of-object this speech-callback0))
+     )
+    (else
+      (set! (-> this final-time) (the-as uint (the int (* 300.0 (+ 23.0 (* 1.5 (-> this extra-suck-time)))))))
+      (set! (-> this target-count) 2)
+      (set! (-> this hit-point-scale) 1.25)
+      (set! (-> this target-speed) 204800.0)
+      (set! (-> this ent) (the-as entity-actor (entity-by-name "artifact-13")))
+      (set! (-> this speech-callback) (method-of-object this speech-callback1))
+      )
+    )
+  (let ((a0-18 (-> this ent)))
+    (when a0-18
+      (set! sv-16 (new 'static 'res-tag))
+      (let ((s5-0 (res-lump-data a0-18 'actor-groups (pointer actor-group) :tag-ptr (& sv-16))))
+        (cond
+          ((and s5-0 (nonzero? (-> sv-16 elt-count)))
+           (set! (-> this max-count) (-> s5-0 0 length))
+           (dotimes (s4-0 (-> this max-count))
+             (let ((s3-0 (-> s5-0 0 data s4-0 actor))
+                   (s2-0 (-> this objs s4-0))
+                   )
+               (set! (-> s2-0 pos quad) (-> s3-0 extra trans quad))
+               (set! (-> s2-0 time)
+                     (the-as uint (the int (* 300.0 (+ (res-lump-float s3-0 'timeout :default 60.0) (-> this extra-suck-time)))))
+                     )
+               (set! (-> s2-0 artifact-type) (res-lump-value s3-0 'extra-id artifact-type :time -1000000000.0))
+               )
+             )
+           )
+          (else
+            (format 0 "ERROR: task-manager-desert-artifact-race: missing actor-group!~%")
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod task-manager-method-25 ((this task-manager-desert-artifact-race))
+  (set! (-> *was-squad-control* target-count) 0)
+  0
+  ((method-of-type task-manager task-manager-method-25) this)
+  (none)
+  )
+
+(defmethod set-fog-interp ((this task-manager-desert-artifact-race) (arg0 float))
+  (set-setting! 'fog-special-interp-targ #f arg0 0)
+  0
+  (none)
+  )
+
+(defmethod task-manager-method-26 ((this task-manager-desert-artifact-race))
+  (let ((t9-0 (method-of-type task-manager task-manager-method-26)))
+    (t9-0 this)
+    )
+  (hud-timer-handler this)
+  0
+  (none)
+  )
+
+(defstate active (task-manager-desert-artifact-race)
+  :virtual #t
+  :code (behavior ()
+    (local-vars (v1-40 symbol))
+    (set-fog-interp self (-> self dust-begin))
+    (send-event (handle->process (-> *game-info* dust-storm)) 'set-intensity (-> self dust-begin))
+    (set-setting! 'fog-special-interp-rate #f 0.01 0)
+    (while (!= (status-of-level-and-borrows *level* 'desert #f) 'active)
+      (suspend)
+      )
+    (while (or (not *target*) (not (logtest? (-> *target* focus-status) (focus-status pilot-riding))))
+      (suspend)
+      )
+    (set! (-> self player-vehicle) (-> *target* pilot vehicle))
+    (send-event
+      (handle->process (-> self player-vehicle))
+      'scale-max-hit-points
+      (* (-> self hit-point-scale) (+ 1.0 (-> self suck-factor)))
+      )
+    (set-setting! 'music 'desrace 0.0 0)
+    (wasall-kill-duplicate-vehicle)
+    (suspend)
+    (until (< 61440.0 (vector4-dot (target-pos 0) (-> self door-plane)))
+      (suspend)
+      )
+    (until (or v1-40 (and *target* (focus-test? *target* pilot)))
+      (suspend)
+      (let ((f0-6 143360.0))
+        (set! v1-40 (< (* f0-6 f0-6) (vector-vector-distance-squared (-> self begin-pos) (target-pos 0))))
+        )
+      )
+    (set-setting! 'airlock #f 0.0 0)
+    (set! (-> self count) 0)
+    (set-time! (-> self start-time))
+    (set-time! (-> self speech-time))
+    (was-squad-manager-start self)
+    (let ((v1-51 *was-squad-control*))
+      (set! (-> v1-51 target-count) (-> self target-count))
+      (set! (-> v1-51 reserve-count) 40)
+      (set! (-> v1-51 target-speed) (-> self target-speed))
+      )
+    (until #f
+      (b! (not (handle->process (-> self slave))) cfg-56 :delay (nop!))
+      (if (< (- (-> self time-limit) (- (current-time) (-> self start-time))) (seconds 10))
+          (send-event (handle->process (-> self slave)) 'sink)
+          )
+      (if (and (= (-> self count) 1) (time-elapsed? (-> self speech-time) (seconds 10)))
+          (set-time! (-> self speech-time))
+          )
+      (b! #t cfg-67 :delay (nop!))
+      (label cfg-56)
+      (let ((gp-2 (-> self count)))
+        (b! (>= gp-2 (-> self max-count)) cfg-66)
+        (let ((s5-1 (-> self objs gp-2)))
+          (let ((a0-40 (was-artifact-spawn self s5-1)))
+            (b! (not a0-40) cfg-65 :delay (empty-form))
+            (set! (-> self slave) (process->handle a0-40))
+            )
+          (set! (-> self time-limit) (the-as time-frame (-> s5-1 time)))
+          )
+        (set-time! (-> self start-time))
+        (+! (-> self count) 1)
+        (set-fog-interp
+          self
+          (+ (-> self dust-begin)
+             (* (/ (- (-> self dust-last-artifact) (-> self dust-begin)) (the float (+ (-> self max-count) 1)))
+                (the float (-> self count))
+                )
+             )
+          )
+        (let ((v1-91 *was-squad-control*))
+          (set! (-> v1-91 target-count) (max 0 (min 3 (+ (-> self target-count) (/ (-> self count) 3)))))
+          )
+        (set-time! (-> self speech-time))
+        (if (> gp-2 0)
+            ((-> self speech-callback) self (+ gp-2 -1))
+            )
+        )
+      (label cfg-65)
+      (b! #t cfg-67 :delay (nop!))
+      (label cfg-66)
+      (nop!)
+      (b! #t cfg-68 :delay (nop!))
+      (label cfg-67)
+      (suspend)
+      )
+    #f
+    (label cfg-68)
+    (open! (-> self node-info) 'event)
+    (remove-setting! 'airlock)
+    (let ((gp-3 (new 'stack-no-clear 'inline-array 'task-arrow-params 1)))
+      (set! (-> gp-3 0 pos quad) (-> self end-pos quad))
+      (quaternion-identity! (-> gp-3 0 quat))
+      (set! (-> gp-3 0 flags) (task-arrow-flags))
+      (set! (-> gp-3 0 map-icon) (the-as uint 13))
+      (-> gp-3 0)
+      (let ((a0-54 (task-arrow-spawn (-> gp-3 0) self)))
+        (when a0-54
+          (set! (-> self arrow) (process->handle a0-54))
+          (set! (-> self time-limit) (the-as time-frame (-> self final-time)))
+          (set-time! (-> self start-time))
+          )
+        )
+      )
+    (set-time! (-> self speech-time))
+    ((-> self speech-callback) self (+ (-> self max-count) -1))
+    (until #f
+      (let ((f0-14 (/ (the float (- (current-time) (-> self start-time))) (the float (-> self time-limit)))))
+        (set-fog-interp
+          self
+          (+ (-> self dust-last-artifact) (* (- (-> self dust-end) (-> self dust-last-artifact)) f0-14))
+          )
+        )
+      (let ((s5-2 (handle->process (-> self player-vehicle))))
+        (when s5-2
+          (let ((gp-4 (new 'stack-no-clear 'matrix)))
+            (set! (-> gp-4 trans x) (vector-vector-xz-distance (-> self end-pos) (target-pos 0)))
+            (when (and (< 2048000.0 (-> gp-4 trans x)) (time-elapsed? (-> self speech-time) (seconds 4)))
+              (vector-! (-> gp-4 uvec) (-> self end-pos) (-> (the-as process-drawable s5-2) root trans))
+              (vector-normalize! (-> gp-4 uvec) 1.0)
+              (set! (-> gp-4 rvec quad) (-> (the-as process-drawable s5-2) node-list data 0 bone transform fvec quad))
+              (set! (-> gp-4 fvec quad) (-> (the-as process-drawable s5-2) root transv quad))
+              (when (and (< (vector-dot (-> gp-4 uvec) (-> gp-4 rvec)) (cos 10922.667))
+                         (< (vector-dot (-> gp-4 uvec) (-> (the-as process-drawable s5-2) root transv)) 0.0)
+                         (< 81920.0 (vector-length (-> gp-4 fvec)))
+                         )
+                (let ((v1-146 (rand-vu-int-count 3)))
+                  (cond
+                    ((zero? v1-146)
+                     (talker-spawn-func (-> *artifact-race-speech-list* 1) *entity-pool* (target-pos 0) (the-as region #f))
+                     )
+                    ((= v1-146 1)
+                     (talker-spawn-func (-> *artifact-race-speech-list* 28) *entity-pool* (target-pos 0) (the-as region #f))
+                     )
+                    ((= v1-146 2)
+                     (talker-spawn-func (-> *artifact-race-speech-list* 30) *entity-pool* (target-pos 0) (the-as region #f))
+                     )
+                    )
+                  )
+                (set-time! (-> self speech-time))
+                )
+              )
+            (cond
+              ((< (-> gp-4 trans x) 102400.0)
+               (when (< (vector4-dot (-> (the-as process-drawable s5-2) root trans) (-> self door-plane)) -28672.0)
+                 (sound-play "special-pickup")
+                 (go-virtual complete)
+                 )
+               )
+              ((< (-> gp-4 trans x) 614400.0)
+               )
+              ((< (-> gp-4 trans x) 1228800.0)
+               (when (time-elapsed? (-> self speech-time) (seconds 4))
+                 (talker-spawn-func (-> *artifact-race-speech-list* 29) *entity-pool* (target-pos 0) (the-as region #f))
+                 (set-time! (-> self speech-time))
+                 )
+               )
+              ((< (-> gp-4 trans x) 3072000.0)
+               (when (time-elapsed? (-> self speech-time) (seconds 6))
+                 (let ((v1-185 (rand-vu-int-count 2)))
+                   (cond
+                     ((zero? v1-185)
+                      (talker-spawn-func (-> *artifact-race-speech-list* 26) *entity-pool* (target-pos 0) (the-as region #f))
+                      )
+                     ((= v1-185 1)
+                      (talker-spawn-func (-> *artifact-race-speech-list* 27) *entity-pool* (target-pos 0) (the-as region #f))
+                      )
+                     )
+                   )
+                 (set-time! (-> self speech-time))
+                 )
+               )
+              )
+            )
+          )
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defstate complete (task-manager-desert-artifact-race)
+  :virtual #t
+  :code (behavior ()
+    (send-event (handle->process (-> self hud-timer)) 'hide-and-die)
+    (set! (-> *was-squad-control* target-count) 0)
+    0
+    (when (= (-> self node-info task) (game-task desert-artifact-race-1))
+      (send-event *target* 'end-mode 'pilot)
+      (let ((gp-0 (current-time)))
+        (until (time-elapsed? gp-0 (seconds 0.5))
+          (suspend)
+          )
+        )
+      )
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 0.5))
+        (suspend)
+        )
+      )
+    (let ((t9-3 (-> (find-parent-state) code)))
+      (if t9-3
+          ((the-as (function none) t9-3))
+          )
+      )
+    )
+  )
+
+(defstate fail (task-manager-desert-artifact-race)
+  :virtual #t
+  :enter (behavior ((arg0 resetter-params))
+    (set! (-> *was-squad-control* target-count) 0)
+    0
+    (kill-all-children self)
+    (let* ((t9-1 find-parent-method)
+           (a0-2 task-manager-desert-artifact-race)
+           (t9-2 (-> (the-as (state resetter-params task-manager) (t9-1 a0-2 18)) enter))
+           )
+      (if t9-2
+          (t9-2 (the-as resetter-params a0-2))
+          )
+      )
+    )
+  )

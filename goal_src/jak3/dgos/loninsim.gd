@@ -1,5 +1,5 @@
 ("LONINSIM.DGO"
- ("tpage-3271.o"
+ ("tpage-3271.go"
   "onin-simple-ag.go"
-  "loninsim.o"
+  "loninsim.go"
  ))

@@ -7,5 +7,5 @@
   "rail-gun-dark-ag.go"
   "rail-oracle-door-ag.go"
   "rail-oracle-eyes-ag.go"
-  "railx.o"
+  "railx.go"
  ))

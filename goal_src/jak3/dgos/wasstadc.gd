@@ -18,5 +18,5 @@
   "wstd-fight-plat-box-ag.go"
   "pre-artifact-b-ag.go"
   "pre-artifact-c-ag.go"
-  "wasstadc.o"
+  "wasstadc.go"
  ))

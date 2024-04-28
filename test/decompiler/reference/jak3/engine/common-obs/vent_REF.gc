@@ -13,7 +13,7 @@
    (pickup-handle        handle)
    )
   (:methods
-    (init! (_type_ entity-actor int) object)
+    (init! (_type_ entity-actor pickup-type) object)
     )
   (:states
     vent-blocked
@@ -44,7 +44,7 @@
 
 ;; definition for method 20 of type vent
 ;; INFO: Used lq/sq
-(defmethod init! ((this vent) (arg0 entity-actor) (arg1 int))
+(defmethod init! ((this vent) (arg0 entity-actor) (arg1 pickup-type))
   (stack-size-set! (-> this main-thread) 128)
   (logior! (-> this mask) (process-mask actor-pause))
   (let ((s3-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
@@ -65,7 +65,7 @@
   (set! (-> this root trans quad) (-> arg0 extra trans quad))
   (update-transforms (-> this root))
   (set! (-> this root pause-adjust-distance) 409600.0)
-  (set! (-> this fact) (new 'process 'fact-info this (the-as pickup-type arg1) (-> *FACT-bank* eco-full-inc)))
+  (set! (-> this fact) (new 'process 'fact-info this arg1 (-> *FACT-bank* eco-full-inc)))
   (set! (-> this block-func) (the-as (function vent symbol) true-func))
   (case (-> this fact pickup-type)
     (((pickup-type eco-blue))
@@ -235,98 +235,35 @@
                   (cond
                     ((logtest? (-> self collect-effect flags) (sp-group-flag sp13))
                      (set! (-> *launch-matrix* trans quad) (-> v1-9 root-prim prim-core world-sphere quad))
-                     (let ((s5-2 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
-                       (when s5-2
-                         (let ((t9-3 (method-of-type part-tracker-subsampler activate)))
-                           (t9-3 (the-as part-tracker-subsampler s5-2) gp-0 "part-tracker-subsampler" (the-as pointer #x70004000))
-                           )
-                         (let ((t9-4 run-function-in-process)
-                               (a0-13 s5-2)
-                               (a1-10 part-tracker-subsampler-init)
-                               )
-                           (set! (-> *part-tracker-subsampler-params-default* group) (-> self collect-effect))
-                           (set! (-> *part-tracker-subsampler-params-default* duration) 0)
-                           (set! (-> *part-tracker-subsampler-params-default* callback) part-tracker-track-target)
-                           (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
-                           (set! (-> *part-tracker-subsampler-params-default* target) #f)
-                           (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
-                           (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
-                           ((the-as (function object object object none) t9-4) a0-13 a1-10 *part-tracker-subsampler-params-default*)
-                           )
-                         (-> s5-2 ppointer)
-                         )
+                     (part-tracker-spawn
+                       part-tracker-subsampler
+                       :to gp-0
+                       :group (-> self collect-effect)
+                       :callback part-tracker-track-target
                        )
                      )
                     (else
                       (set! (-> *launch-matrix* trans quad) (-> v1-9 root-prim prim-core world-sphere quad))
-                      (let ((s5-3 (get-process *default-dead-pool* part-tracker #x4000 0)))
-                        (when s5-3
-                          (let ((t9-6 (method-of-type part-tracker activate)))
-                            (t9-6 (the-as part-tracker s5-3) gp-0 "part-tracker" (the-as pointer #x70004000))
-                            )
-                          (let ((t9-7 run-function-in-process)
-                                (a0-18 s5-3)
-                                (a1-13 part-tracker-init)
-                                )
-                            (set! (-> *part-tracker-params-default* group) (-> self collect-effect))
-                            (set! (-> *part-tracker-params-default* duration) 0)
-                            (set! (-> *part-tracker-params-default* callback) part-tracker-track-target)
-                            (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-                            (set! (-> *part-tracker-params-default* target) #f)
-                            (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
-                            ((the-as (function object object object none) t9-7) a0-18 a1-13 *part-tracker-params-default*)
-                            )
-                          (-> s5-3 ppointer)
-                          )
-                        )
+                      (part-tracker-spawn part-tracker :to gp-0 :group (-> self collect-effect) :callback part-tracker-track-target)
                       )
                     )
                   (cond
                     ((logtest? (-> self collect-effect2 flags) (sp-group-flag sp13))
                      (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
-                     (let ((gp-1 (get-process *default-dead-pool* part-tracker-subsampler #x4000 0)))
-                       (when gp-1
-                         (let ((t9-9 (method-of-type part-tracker-subsampler activate)))
-                           (t9-9 (the-as part-tracker-subsampler gp-1) self "part-tracker-subsampler" (the-as pointer #x70004000))
-                           )
-                         (let ((t9-10 run-function-in-process)
-                               (a0-25 gp-1)
-                               (a1-16 part-tracker-subsampler-init)
-                               )
-                           (set! (-> *part-tracker-subsampler-params-default* group) (-> self collect-effect2))
-                           (set! (-> *part-tracker-subsampler-params-default* duration) 0)
-                           (set! (-> *part-tracker-subsampler-params-default* callback) part-tracker-move-to-target)
-                           (set! (-> *part-tracker-subsampler-params-default* userdata) (the-as uint #f))
-                           (set! (-> *part-tracker-subsampler-params-default* target) #f)
-                           (set! (-> *part-tracker-subsampler-params-default* mat-joint) *launch-matrix*)
-                           (set! (-> *part-tracker-subsampler-params-default* subsample-num) 1.0)
-                           ((the-as (function object object object none) t9-10) a0-25 a1-16 *part-tracker-subsampler-params-default*)
-                           )
-                         (-> gp-1 ppointer)
-                         )
+                     (part-tracker-spawn
+                       part-tracker-subsampler
+                       :to self
+                       :group (-> self collect-effect2)
+                       :callback part-tracker-move-to-target
                        )
                      )
                     (else
                       (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
-                      (let ((gp-2 (get-process *default-dead-pool* part-tracker #x4000 0)))
-                        (when gp-2
-                          (let ((t9-12 (method-of-type part-tracker activate)))
-                            (t9-12 (the-as part-tracker gp-2) self "part-tracker" (the-as pointer #x70004000))
-                            )
-                          (let ((t9-13 run-function-in-process)
-                                (a0-32 gp-2)
-                                (a1-19 part-tracker-init)
-                                )
-                            (set! (-> *part-tracker-params-default* group) (-> self collect-effect2))
-                            (set! (-> *part-tracker-params-default* duration) 0)
-                            (set! (-> *part-tracker-params-default* callback) part-tracker-move-to-target)
-                            (set! (-> *part-tracker-params-default* userdata) (the-as uint #f))
-                            (set! (-> *part-tracker-params-default* target) #f)
-                            (set! (-> *part-tracker-params-default* mat-joint) *launch-matrix*)
-                            ((the-as (function object object object none) t9-13) a0-32 a1-19 *part-tracker-params-default*)
-                            )
-                          (-> gp-2 ppointer)
-                          )
+                      (part-tracker-spawn
+                        part-tracker
+                        :to self
+                        :group (-> self collect-effect2)
+                        :callback part-tracker-move-to-target
                         )
                       )
                     )
@@ -362,7 +299,7 @@
 
 ;; definition for method 11 of type ecovent
 (defmethod init-from-entity! ((this ecovent) (arg0 entity-actor))
-  (init! this arg0 5)
+  (init! this arg0 (pickup-type eco-green))
   )
 
 ;; definition of type light-eco-vent
@@ -457,7 +394,7 @@
       )
     )
   :trans (behavior ()
-    (if (not (logtest? (the-as game-feature (logand (game-feature feature57) (-> *setting-control* user-current features)))
+    (if (not (logtest? (the-as game-feature (logand (game-feature lighteco) (-> *setting-control* user-current features)))
                        (-> *game-info* features)
                        )
              )
@@ -507,7 +444,7 @@
 (defstate close (light-eco-vent)
   :virtual #t
   :trans (behavior ()
-    (if (logtest? (the-as game-feature (logand (game-feature feature57) (-> *setting-control* user-current features)))
+    (if (logtest? (the-as game-feature (logand (game-feature lighteco) (-> *setting-control* user-current features)))
                   (-> *game-info* features)
                   )
         (go-virtual open #f)
@@ -581,7 +518,7 @@
   (set! (-> this sound) (new 'process 'ambient-sound "eco-bg-light" (-> this root trans) 0.0))
   (set-falloff-far! (-> this sound) 81920.0)
   (set-falloff-mode! (-> this sound) 9)
-  (if (logtest? (the-as game-feature (logand (game-feature feature57) (-> *setting-control* user-current features)))
+  (if (logtest? (the-as game-feature (logand (game-feature lighteco) (-> *setting-control* user-current features)))
                 (-> *game-info* features)
                 )
       (go (method-of-object this open) #t)
@@ -681,7 +618,7 @@
       )
     )
   :trans (behavior ()
-    (if (not (logtest? (the-as game-feature (logand (game-feature feature58) (-> *setting-control* user-current features)))
+    (if (not (logtest? (the-as game-feature (logand (game-feature darkeco) (-> *setting-control* user-current features)))
                        (-> *game-info* features)
                        )
              )
@@ -731,7 +668,7 @@
 (defstate close (dark-eco-vent)
   :virtual #t
   :trans (behavior ()
-    (if (logtest? (the-as game-feature (logand (game-feature feature58) (-> *setting-control* user-current features)))
+    (if (logtest? (the-as game-feature (logand (game-feature darkeco) (-> *setting-control* user-current features)))
                   (-> *game-info* features)
                   )
         (go-virtual open #f)
@@ -808,3 +745,7 @@
   (set-falloff-mode! (-> this sound) 9)
   (go (method-of-object this open) #t)
   )
+
+
+
+

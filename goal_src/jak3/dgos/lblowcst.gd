@@ -11,5 +11,5 @@
   "bt-sig-ag.go"
   "bt-jinx-ag.go"
   "cty-explode-barrel-ag.go"
-  "lblowcst.o"
+  "lblowcst.go"
  ))

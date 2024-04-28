@@ -27,5 +27,5 @@
   "neo-debris-ag.go"
   "shield-sphere-distort-ag.go"
   "shield-sphere-ag.go"
-  "towera.o"
+  "towera.go"
  ))

@@ -112,15 +112,15 @@
     )
   )
 
-(defmacro copy-go (name)
-  (let* ((path (string-append "$DECOMP/raw_obj/" name ".go")))
+(defmacro copy-obj (name)
+  (let* ((path (string-append "$DECOMP/raw_obj/" name)))
     `(defstep :in ,path
               :tool 'copy
-              :out '(,(string-append "$OUT/obj/" name ".go")))))
+              :out '(,(string-append "$OUT/obj/" name)))))
 
-(defmacro copy-gos (&rest gos)
+(defmacro copy-objs (&rest gos)
   `(begin
-    ,@(apply (lambda (x) `(copy-go ,x)) gos)
+    ,@(apply (lambda (x) `(copy-obj ,x)) gos)
     )
   )
 
@@ -167,7 +167,7 @@
       (set! curr-elt (cdr curr-elt)))
     new-list))
 
-(defmacro cgo-file (dgo-file-name deps)
+(defmacro cgo-file (dgo-file-name deps &key (bsp-file-name #f))
   ;; First read in the DGO file, it has pretty much everything we need
   (let ((dgo-data (car (read-data-file (string-append "goal_src/jak3/dgos/" dgo-file-name)))))
     ;; Get the name of the DGO
@@ -175,7 +175,7 @@
           (files (cadr dgo-data))
           (gsrc-seq-args '())
           (textures '())
-          (gos '()))
+          (objs '()))
       ;; create the dgo step
       (cgo dgo-name dgo-file-name)
       ;; Now we iterate through the list of files, skipping ones we've already processed
@@ -186,7 +186,9 @@
           (when (not (car (hash-table-try-ref *file-entry-map* file-name)))
             ;; Depending on the type of file, generate the appropriate steps
             (cond
-              ((string-ends-with? file-name ".o")
+              ((and (string-ends-with? file-name ".o")
+                    (neq? file-name bsp-file-name)
+                    )
                ;; build up a list of all gsrc files needing to be compiled
                (let ((base-name (symbol->string (first (string-split file-name ".")))))
                   (cond
@@ -211,23 +213,25 @@
                ;; copy textures
                (let ((tpage-id (second (string-split (symbol->string (first (string-split file-name "."))) "-"))))
                 (set! textures (cons tpage-id textures))))
-              ((string-ends-with? file-name ".go")
+              ((or (string-ends-with? file-name ".go")
+                   (eq? file-name bsp-file-name)
+                   )
                ;; copy art files
-               (set! gos (cons (stem file-name) gos))))
+               (set! objs (cons file-name objs))))
             ;; Update the map so this file isn't processed again
             (hash-table-set! *file-entry-map* file-name #f)))
         (set! files (cdr files)))
       ;; TODO - need an `append`!, reverse lists by re-cons'ing them for now
       (set! gsrc-seq-args (reverse-list gsrc-seq-args))
       (set! textures (reverse-list textures))
-      (set! gos (reverse-list gos))
+      (set! objs (reverse-list objs))
       `(begin
         ;; macros can't return nothing, so these macros assume they will be given a non-empty list
         (when (not (null? '(,@gsrc-seq-args)))
           (goal-src-sequence "" :deps ,(eval deps) ,@gsrc-seq-args))
         (when (not (null? '(,@textures)))
           (copy-textures ,@textures))
-        (when (not (null? '(,@gos)))
-          (copy-gos ,@gos)))
+        (when (not (null? '(,@objs)))
+          (copy-objs ,@objs)))
       )
     ))

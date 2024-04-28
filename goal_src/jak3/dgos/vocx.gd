@@ -26,5 +26,5 @@
   "urn-c-ag.go"
   "urn-a-ag.go"
   "particleman-ag.go"
-  "volcanox.o"
+  "volcanox.go"
  ))

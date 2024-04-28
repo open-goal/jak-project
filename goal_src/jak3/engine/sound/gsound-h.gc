@@ -60,6 +60,20 @@
   (set-stereo-mode)
   )
 
+(defenum sound-bank-mode
+  :type uint32
+  (none 0)
+  (unknown 1)
+  (common 2)
+  (mode 3)
+  (full 4)
+  (half 5)
+  (halfa 6)
+  (halfb 7)
+  (halfc 8)
+  (virtual 9)
+  )
+
 ;; +++sound-group
 (defenum sound-group
   :bitfield #t
@@ -94,6 +108,7 @@
   (reg1)
   (reg2)
   (unk)
+  (unk2)
   )
 
 (defenum stream-status
@@ -193,8 +208,8 @@
   )
 
 (deftype sound-name (uint128)
-  ((lo  uint64  :offset 0) ;; added to help with cases where they access it by u64.
-   (hi  uint64  :offset 64)
+  ((lo uint64 :offset   0 :size  64)
+   (hi uint64 :offset  64 :size  64)
    )
   )
 
@@ -208,17 +223,17 @@
 
 
 (deftype sound-play-params (structure)
-  ((mask       uint16)
-   (pitch-mod  int16)
-   (bend       int16)
-   (fo-min     int16)
-   (fo-max     int16)
-   (fo-curve   int8)
-   (priority   int8)
-   (volume     int32)
-   (trans      int32  3)
-   (group      uint8)
-   (reg        uint8  3)
+  ((mask           uint16)
+   (pitch-mod      int16)
+   (bend           int16)
+   (fo-min         int16)
+   (fo-max         int16)
+   (fo-curve       int8)
+   (priority       int8)
+   (volume         int32)
+   (trans          int32   3)
+   (group          uint8)
+   (reg            uint8   3)
    (group-and-reg  uint32  :overlay-at group)
    )
   :pack-me
@@ -452,7 +467,7 @@
 
 (deftype sound-bank-state (structure)
   ((name  symbol)
-   (mode  uint32)
+   (mode  sound-bank-mode)
    )
   :pack-me
   )

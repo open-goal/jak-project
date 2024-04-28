@@ -1,0 +1,1791 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type battle-info
+(deftype battle-info (basic)
+  ((id                                 int8)
+   (notice-spec                        uint64)
+   (pick-logic                         int8)
+   (notice-distance                    float)
+   (dont-spawn-initial-until-notice?   symbol)
+   (play-battle-music                  symbol)
+   (min-battle-spawn-delay             uint32)
+   (max-battle-spawn-delay             uint32)
+   (min-spawner-notice-attack-delay    uint32)
+   (max-spawner-notice-attack-delay    uint32)
+   (spawner-blocked-by-player-xz       float)
+   (spawner-blocked-by-collide-radius  float)
+   (pick-spawner-max-dist              float)
+   (max-count                          uint32)
+   (desired-alive-count                uint8)
+   (spawner-collide-with               collide-spec)
+   )
+  )
+
+;; definition for method 3 of type battle-info
+(defmethod inspect ((this battle-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Tnotice-spec: ~D~%" (-> this notice-spec))
+  (format #t "~1Tpick-logic: ~D~%" (-> this pick-logic))
+  (format #t "~1Tnotice-distance: ~f~%" (-> this notice-distance))
+  (format #t "~1Tdont-spawn-initial-until-notice?: ~A~%" (-> this dont-spawn-initial-until-notice?))
+  (format #t "~1Tplay-battle-music: ~A~%" (-> this play-battle-music))
+  (format #t "~1Tmin-battle-spawn-delay: ~D~%" (-> this min-battle-spawn-delay))
+  (format #t "~1Tmax-battle-spawn-delay: ~D~%" (-> this max-battle-spawn-delay))
+  (format #t "~1Tmin-spawner-notice-attack-delay: ~D~%" (-> this min-spawner-notice-attack-delay))
+  (format #t "~1Tmax-spawner-notice-attack-delay: ~D~%" (-> this max-spawner-notice-attack-delay))
+  (format #t "~1Tspawner-blocked-by-player-xz: ~f~%" (-> this spawner-blocked-by-player-xz))
+  (format #t "~1Tspawner-blocked-by-collide-radius: ~f~%" (-> this spawner-blocked-by-collide-radius))
+  (format #t "~1Tpick-spawner-max-dist: ~f~%" (-> this pick-spawner-max-dist))
+  (format #t "~1Tmax-count: ~D~%" (-> this max-count))
+  (format #t "~1Tdesired-alive-count: ~D~%" (-> this desired-alive-count))
+  (format #t "~1Tspawner-collide-with: ~D~%" (-> this spawner-collide-with))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type battle-ally
+(deftype battle-ally (structure)
+  ((entity  entity-actor)
+   )
+  )
+
+;; definition for method 3 of type battle-ally
+(defmethod inspect ((this battle-ally))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'battle-ally)
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type battle-ally-array
+(deftype battle-ally-array (inline-array-class)
+  ((data  battle-ally  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type battle-ally-array
+(defmethod inspect ((this battle-ally-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> battle-ally-array heap-base) (the-as uint 16))
+
+;; definition of type battle-breed
+(deftype battle-breed (structure)
+  ((breed-type  type)
+   (percent     float)
+   )
+  )
+
+;; definition for method 3 of type battle-breed
+(defmethod inspect ((this battle-breed))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'battle-breed)
+  (format #t "~1Tbreed-type: ~A~%" (-> this breed-type))
+  (format #t "~1Tpercent: ~f~%" (-> this percent))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type battle-breed-array
+(deftype battle-breed-array (inline-array-class)
+  ((data  battle-breed  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type battle-breed-array
+(defmethod inspect ((this battle-breed-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> battle-breed-array heap-base) (the-as uint 16))
+
+;; definition of type battle-spawner
+(deftype battle-spawner (structure)
+  ((flags                battle-spawner-flags)
+   (entity               entity-actor)
+   (breeds               battle-breed-array)
+   (creature-index       int8)
+   (ready-index          int8)
+   (attack-index         int8)
+   (mode                 uint8)
+   (intro-path           path-control)
+   (notice-attack-delay  uint32)
+   (creature             handle)
+   (last-spawn-time      time-frame)
+   (noticed-attack-time  time-frame)
+   (attack-pos           vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type battle-spawner
+(defmethod inspect ((this battle-spawner))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'battle-spawner)
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tbreeds: ~A~%" (-> this breeds))
+  (format #t "~1Tcreature-index: ~D~%" (-> this creature-index))
+  (format #t "~1Tready-index: ~D~%" (-> this ready-index))
+  (format #t "~1Tattack-index: ~D~%" (-> this attack-index))
+  (format #t "~1Tmode: ~D~%" (-> this mode))
+  (format #t "~1Tintro-path: ~A~%" (-> this intro-path))
+  (format #t "~1Tnotice-attack-delay: ~D~%" (-> this notice-attack-delay))
+  (format #t "~1Tcreature: ~D~%" (-> this creature))
+  (format #t "~1Tlast-spawn-time: ~D~%" (-> this last-spawn-time))
+  (format #t "~1Tnoticed-attack-time: ~D~%" (-> this noticed-attack-time))
+  (format #t "~1Tattack-pos: #<vector @ #x~X>~%" (-> this attack-pos))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type battle-spawner-array
+(deftype battle-spawner-array (inline-array-class)
+  ((data  battle-spawner  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type battle-spawner-array
+(defmethod inspect ((this battle-spawner-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> battle-spawner-array heap-base) (the-as uint 80))
+
+;; definition of type battle
+(deftype battle (process-drawable)
+  ((info                      battle-info)
+   (flags                     battle-flags)
+   (spawn-initial-creatures?  symbol)
+   (next-spawn-delay          uint32)
+   (on-notice                 basic)
+   (on-hostile                basic)
+   (on-beaten                 basic)
+   (max-count                 uint32)
+   (count                     uint32)
+   (die-count                 uint32)
+   (stat-child-count          uint16)
+   (cant-spawn-time           time-frame)
+   (jammed-starting-time      time-frame)
+   (spawners                  battle-spawner-array)
+   (allies                    battle-ally-array)
+   )
+  (:state-methods
+    idle
+    undefined
+    notice
+    hostile
+    beaten
+    )
+  (:methods
+    (spawner-blocked? (_type_ battle-spawner) symbol)
+    (spawner-blocked-by-collide? (_type_ battle-spawner) symbol)
+    (draw-battle-marks (_type_) none)
+    (initialize-enemy-lists (_type_) none)
+    (initialize-spawner-breeds (_type_ battle-spawner entity-actor) none)
+    (get-spawner-for-enemy (_type_ process) battle-spawner)
+    (initialize-ally (_type_ battle-ally entity-actor) none)
+    (initialize-spawner (_type_ battle-spawner entity-actor) none)
+    (initialize-battle (_type_) none)
+    (init-go (_type_) int)
+    (get-spawn-delay (_type_) int)
+    (get-best-spawner (_type_) battle-spawner)
+    (spawner-free? (_type_ battle-spawner) symbol)
+    (spawn-from-breed (_type_ battle-breed enemy-init-by-other-params) handle)
+    (spawn-from-spawner (_type_ battle-spawner symbol) none)
+    (spawn-initial-creatures (_type_) none)
+    (get-random-breed (_type_ battle-spawner) battle-breed)
+    (spawner-hit (_type_ battle-spawner process) symbol)
+    (spawner-try-jump (_type_ battle-spawner enemy) symbol)
+    (spawner-do-jump (_type_ battle-spawner) int)
+    (spawner-hittable? (_type_ battle-spawner) symbol)
+    (spawner-in-intro? (_type_ battle-spawner) symbol)
+    (set-battle-music (_type_) none)
+    (unset-battle-music (_type_) none)
+    (update-allies-list (_type_) int)
+    (beaten? (_type_) symbol)
+    (spawner-active? (_type_ battle-spawner symbol) symbol)
+    (spawner-active-count (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type battle
+(defmethod inspect ((this battle))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tinfo: ~A~%" (-> this info))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Tspawn-initial-creatures?: ~A~%" (-> this spawn-initial-creatures?))
+  (format #t "~2Tnext-spawn-delay: ~D~%" (-> this next-spawn-delay))
+  (format #t "~2Ton-notice: ~A~%" (-> this on-notice))
+  (format #t "~2Ton-hostile: ~A~%" (-> this on-hostile))
+  (format #t "~2Ton-beaten: ~A~%" (-> this on-beaten))
+  (format #t "~2Tmax-count: ~D~%" (-> this max-count))
+  (format #t "~2Tcount: ~D~%" (-> this count))
+  (format #t "~2Tdie-count: ~D~%" (-> this die-count))
+  (format #t "~2Tstat-child-count: ~D~%" (-> this stat-child-count))
+  (format #t "~2Tcant-spawn-time: ~D~%" (-> this cant-spawn-time))
+  (format #t "~2Tjammed-starting-time: ~D~%" (-> this jammed-starting-time))
+  (format #t "~2Tspawners: ~A~%" (-> this spawners))
+  (format #t "~2Tallies: ~A~%" (-> this allies))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *battles*, type (array battle-info)
+(define *battles* (new 'static 'boxed-array :type battle-info
+                    (new 'static 'battle-info
+                      :notice-spec #x2
+                      :notice-distance 163840.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x384
+                      :max-battle-spawn-delay #x708
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #xa
+                      :desired-alive-count #x2
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 1
+                      :notice-spec #x2
+                      :notice-distance 163840.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x4b0
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #xf
+                      :desired-alive-count #x2
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 2
+                      :notice-spec #x2
+                      :notice-distance 204800.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x4b0
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x11
+                      :desired-alive-count #x4
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 3
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x1
+                      :desired-alive-count #x1
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 4
+                      :notice-spec #x2
+                      :notice-distance 245760.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x4b0
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x14
+                      :desired-alive-count #x6
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 6
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x1e
+                      :desired-alive-count #xf
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 7
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x3c
+                      :max-battle-spawn-delay #x96
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x32
+                      :desired-alive-count #xf
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 8
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #xc
+                      :desired-alive-count #x4
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 9
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #xc
+                      :desired-alive-count #x3
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 10
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x8
+                      :desired-alive-count #x4
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 11
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x32
+                      :desired-alive-count #x6
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 12
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x1e
+                      :desired-alive-count #x8
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 13
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x20000000
+                      :desired-alive-count #x8
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 14
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #xc
+                      :desired-alive-count #x6
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 15
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x28
+                      :desired-alive-count #xf
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 16
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x12c
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x4
+                      :desired-alive-count #x3
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 17
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x7
+                      :desired-alive-count #x4
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 18
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x8
+                      :desired-alive-count #x3
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 19
+                      :notice-spec #x1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x22
+                      :desired-alive-count #x4
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 20
+                      :notice-spec #x1
+                      :pick-logic 1
+                      :notice-distance 122880.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music #f
+                      :min-battle-spawn-delay #x12c
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x14
+                      :desired-alive-count #x8
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 21
+                      :notice-spec #x2
+                      :notice-distance 1228800.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music 'wasfight
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x20000000
+                      :desired-alive-count #x6
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    (new 'static 'battle-info
+                      :id 22
+                      :notice-spec #x2
+                      :notice-distance 819200.0
+                      :dont-spawn-initial-until-notice? #f
+                      :play-battle-music 'wasfight
+                      :min-battle-spawn-delay #x96
+                      :max-battle-spawn-delay #x258
+                      :max-spawner-notice-attack-delay #x78
+                      :spawner-blocked-by-player-xz 24576.0
+                      :pick-spawner-max-dist 163840.0
+                      :max-count #x20000000
+                      :desired-alive-count #x6
+                      :spawner-collide-with (collide-spec enemy hit-by-others-list)
+                      )
+                    )
+        )
+
+;; definition for function battle-event-handler
+;; WARN: disable def twice: 9. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 19. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 29. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defbehavior battle-event-handler battle ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('query)
+     (case (-> arg3 param 0)
+       (('beaten)
+        (and (-> self next-state) (= (-> self next-state name) 'beaten))
+        )
+       (('hostile)
+        (and (-> self next-state) (= (-> self next-state name) 'hostile))
+        )
+       (('idle)
+        (and (-> self next-state) (= (-> self next-state name) 'idle))
+        )
+       (('die-count)
+        (-> self die-count)
+        )
+       (else
+         #f
+         )
+       )
+     )
+    (('child-die)
+     (+! (-> self die-count) 1)
+     (let ((v1-14 (get-spawner-for-enemy self arg0)))
+       (when v1-14
+         (set! (-> v1-14 creature) (the-as handle #f))
+         #f
+         )
+       )
+     )
+    (('child-hit)
+     (let ((a1-3 (get-spawner-for-enemy self arg0)))
+       (when a1-3
+         (logior! (-> a1-3 flags) (battle-spawner-flags hit))
+         (spawner-hit self a1-3 arg0)
+         )
+       )
+     )
+    (('child-jumped)
+     (let ((a1-5 (get-spawner-for-enemy self arg0)))
+       (if a1-5
+           (spawner-do-jump self a1-5)
+           )
+       )
+     )
+    (('trigger)
+     (if (and (-> self next-state) (= (-> self next-state name) 'idle))
+         (go-virtual notice)
+         )
+     )
+    (('untrigger)
+     (if (not (and (-> self next-state) (= (-> self next-state name) 'idle)))
+         (go-virtual idle)
+         )
+     )
+    (('beaten)
+     (logior! (-> self flags) (battle-flags beaten))
+     (if (and (-> self next-state) (= (-> self next-state name) 'idle))
+         (go-virtual beaten)
+         )
+     )
+    (('resume)
+     (logclear! (-> self flags) (battle-flags beaten))
+     (process-entity-status! self (entity-perm-status subtask-complete) #f)
+     (if (and (-> self next-state) (= (-> self next-state name) 'beaten))
+         (go-virtual hostile)
+         )
+     )
+    )
+  )
+
+;; definition for method 27 of type battle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-battle-marks ((this battle))
+  (local-vars (sv-16 string) (sv-32 string))
+  (let ((s4-0 (-> this root trans))
+        (s5-0 (the-as int (-> this max-count)))
+        )
+    (if (= (the-as uint s5-0) #x20000000)
+        (set! s5-0 0)
+        )
+    (add-debug-x #t (bucket-id debug-no-zbuf1) s4-0 (new 'static 'rgba :g #xff :b #xff :a #x80))
+    (let ((s3-0 add-debug-text-3d)
+          (s2-0 #t)
+          (s1-0 577)
+          )
+      (format
+        (clear *temp-string*)
+        "~%~S~%count ~d/~d~%child ~d~%ally ~d~%die count ~d"
+        (-> this name)
+        (-> this count)
+        s5-0
+        (-> this stat-child-count)
+        (-> this allies length)
+        (-> this die-count)
+        )
+      (s3-0 s2-0 (the-as bucket-id s1-0) *temp-string* s4-0 (font-color orange) (the-as vector2h #f))
+      )
+    )
+  (dotimes (s5-1 (-> this spawners length))
+    (let ((s4-1 (-> this spawners data s5-1)))
+      (let ((a0-6 (-> s4-1 intro-path)))
+        (if a0-6
+            (debug-draw a0-6)
+            )
+        )
+      (add-debug-x
+        #t
+        (bucket-id debug-no-zbuf1)
+        (-> s4-1 entity extra trans)
+        (new 'static 'rgba :g #xff :b #xff :a #x80)
+        )
+      (let ((s3-1 add-debug-text-3d)
+            (s2-1 #t)
+            (s1-1 577)
+            )
+        (let ((s0-1 format))
+          (set! sv-16 (clear *temp-string*))
+          (set! sv-32 "~%spawner~%~S")
+          (let ((a2-5 (res-lump-struct (-> s4-1 entity) 'name structure)))
+            (s0-1 sv-16 sv-32 a2-5)
+            )
+          )
+        (s3-1
+          s2-1
+          (the-as bucket-id s1-1)
+          *temp-string*
+          (-> s4-1 entity extra trans)
+          (font-color yellow)
+          (the-as vector2h #f)
+          )
+        )
+      )
+    0
+    )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type battle
+;; INFO: Used lq/sq
+(defmethod spawner-blocked-by-collide? ((this battle) (arg0 battle-spawner))
+  (local-vars (a2-5 float) (a2-12 float))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (let ((gp-0 (new 'stack-no-clear 'vector))
+          (f0-0 (-> this info spawner-blocked-by-collide-radius))
+          )
+      (set! (-> gp-0 quad) (-> arg0 attack-pos quad))
+      (set! (-> gp-0 w) f0-0)
+      (let ((s5-0 (-> this info spawner-collide-with))
+            (f30-0 (* f0-0 f0-0))
+            )
+        (set! *actor-list-length* 0)
+        (if (logtest? s5-0 (collide-spec hit-by-others-list))
+            (set! *actor-list-length* (fill-actor-list-for-box *actor-hash* gp-0 *actor-list* 256))
+            )
+        (when (logtest? s5-0 (collide-spec player-list))
+          (let ((a0-2 (-> *collide-player-list* alive-list next0)))
+            *collide-player-list*
+            (let ((v1-15 (-> a0-2 next0)))
+              (while (!= a0-2 (-> *collide-player-list* alive-list-end))
+                (let* ((a0-3 (-> (the-as connection a0-2) param1))
+                       (a1-4 (-> (the-as collide-shape a0-3) root-prim))
+                       )
+                  (when (logtest? s5-0 (-> a1-4 prim-core collide-as))
+                    (let ((a1-5 (-> a1-4 prim-core)))
+                      (let ((a2-4 a1-5)
+                            (a3-1 gp-0)
+                            )
+                        (.lvf vf2 (&-> a2-4 world-sphere quad))
+                        (.lvf vf3 (&-> a3-1 quad))
+                        )
+                      (.sub.vf vf1 vf3 vf2)
+                      (.mul.vf vf1 vf1 vf1)
+                      (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                      (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                      (.mov a2-5 vf1)
+                      (let ((f0-2 a2-5)
+                            (f1-1 (+ (-> a1-5 world-sphere w) (-> gp-0 w)))
+                            )
+                        (when (< f0-2 (* f1-1 f1-1))
+                          (when (< *actor-list-length* 256)
+                            (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-3))
+                            (set! *actor-list-length* (+ *actor-list-length* 1))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                (set! a0-2 v1-15)
+                *collide-player-list*
+                (set! v1-15 (-> v1-15 next0))
+                )
+              )
+            )
+          )
+        (when (logtest? s5-0 (collide-spec hit-by-player-list))
+          (let ((a0-5 (-> *collide-hit-by-player-list* alive-list next0)))
+            *collide-hit-by-player-list*
+            (let ((v1-23 (-> a0-5 next0)))
+              (while (!= a0-5 (-> *collide-hit-by-player-list* alive-list-end))
+                (let* ((a0-6 (-> (the-as connection a0-5) param1))
+                       (a1-16 (-> (the-as collide-shape a0-6) root-prim))
+                       )
+                  (when (logtest? s5-0 (-> a1-16 prim-core collide-as))
+                    (let ((a1-17 (-> a1-16 prim-core)))
+                      (let ((a2-11 a1-17)
+                            (a3-2 gp-0)
+                            )
+                        (.lvf vf2 (&-> a2-11 world-sphere quad))
+                        (.lvf vf3 (&-> a3-2 quad))
+                        )
+                      (.sub.vf vf1 vf3 vf2)
+                      (.mul.vf vf1 vf1 vf1)
+                      (.add.y.vf vf1 vf1 vf1 :mask #b1)
+                      (.add.z.vf vf1 vf1 vf1 :mask #b1)
+                      (.mov a2-12 vf1)
+                      (let ((f0-3 a2-12)
+                            (f1-5 (+ (-> a1-17 world-sphere w) (-> gp-0 w)))
+                            )
+                        (when (< f0-3 (* f1-5 f1-5))
+                          (when (< *actor-list-length* 256)
+                            (set! (-> *actor-list* *actor-list-length*) (the-as collide-shape a0-6))
+                            (set! *actor-list-length* (+ *actor-list-length* 1))
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                (set! a0-5 v1-23)
+                *collide-hit-by-player-list*
+                (set! v1-23 (-> v1-23 next0))
+                )
+              )
+            )
+          )
+        (dotimes (s4-0 *actor-list-length*)
+          (let ((v1-28 (-> *actor-list* s4-0)))
+            (when (logtest? s5-0 (-> v1-28 root-prim prim-core collide-as))
+              (if (>= f30-0 (vector-vector-xz-distance-squared gp-0 (-> v1-28 trans)))
+                  (return #t)
+                  )
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for method 25 of type battle
+(defmethod spawner-blocked? ((this battle) (arg0 battle-spawner))
+  (when (not (logtest? (-> this flags) (battle-flags no-spawner-block)))
+    (let ((f0-0 (-> this info spawner-blocked-by-player-xz)))
+      (if (and (< 0.0 f0-0) (>= (* f0-0 f0-0) (vector-vector-xz-distance-squared (target-pos 0) (-> arg0 attack-pos))))
+          (return #t)
+          )
+      )
+    (let ((f0-3 (-> this info spawner-blocked-by-collide-radius)))
+      (if (and (< 0.0 f0-3) (spawner-blocked-by-collide? this arg0))
+          (return #t)
+          )
+      )
+    )
+  #f
+  )
+
+;; definition for method 37 of type battle
+(defmethod spawner-free? ((this battle) (arg0 battle-spawner))
+  (and (not (handle->process (-> arg0 creature)))
+       (and (not (-> *setting-control* user-current nuke-active?))
+            (or (>= (-> arg0 ready-index) 0) (not (spawner-blocked? this arg0)))
+            )
+       )
+  )
+
+;; definition for method 36 of type battle
+(defmethod get-best-spawner ((this battle))
+  (if (-> *setting-control* user-current nuke-active?)
+      (return (the-as battle-spawner #f))
+      )
+  (let ((s5-0 (-> this spawners length))
+        (v1-6 (-> this info pick-logic))
+        )
+    (if (not *target*)
+        (set! v1-6 0)
+        )
+    (cond
+      ((zero? v1-6)
+       (let ((s3-0 (rand-vu-int-count s5-0)))
+         (dotimes (s4-0 s5-0)
+           (let ((s2-0 (-> this spawners data s3-0)))
+             (if (spawner-free? this s2-0)
+                 (return s2-0)
+                 )
+             )
+           (set! s3-0 (mod (+ s3-0 1) s5-0))
+           )
+         )
+       )
+      ((= v1-6 1)
+       (let ((s4-1 0)
+             (f30-0 -1.0)
+             )
+         (while (nonzero? s5-0)
+           (+! s5-0 -1)
+           (let ((s3-1 (-> this spawners data s5-0)))
+             (when (spawner-free? this s3-1)
+               (let ((f0-0 (vector-vector-distance (target-pos 0) (-> s3-1 entity extra trans))))
+                 (when (and (>= (-> this info pick-spawner-max-dist) f0-0) (or (< f30-0 0.0) (< f0-0 f30-0)))
+                   (set! s4-1 s5-0)
+                   (set! f30-0 f0-0)
+                   )
+                 )
+               )
+             )
+           )
+         (if (< 0.0 f30-0)
+             (return (-> this spawners data s4-1))
+             )
+         )
+       )
+      )
+    )
+  (the-as battle-spawner #f)
+  )
+
+;; definition for method 41 of type battle
+(defmethod get-random-breed ((this battle) (arg0 battle-spawner))
+  (let ((f0-0 (rand-vu))
+        (v1-0 0)
+        )
+    (let ((a0-2 (-> arg0 breeds length)))
+      (dotimes (a1-1 a0-2)
+        (when (>= f0-0 0.0)
+          (set! f0-0 (- f0-0 (-> arg0 breeds data a1-1 percent)))
+          (if (< f0-0 0.0)
+              (set! v1-0 a1-1)
+              )
+          )
+        )
+      )
+    (-> arg0 breeds data v1-0)
+    )
+  )
+
+;; definition for method 38 of type battle
+;; WARN: Return type mismatch int vs handle.
+(defmethod spawn-from-breed ((this battle) (arg0 battle-breed) (arg1 enemy-init-by-other-params))
+  (let* ((a1-1 (-> arg0 breed-type))
+         (s4-0 (get-process *default-dead-pool* a1-1 #x4000 1))
+         (v1-1 (when s4-0
+                 (let ((t9-1 (method-of-type process activate)))
+                   (t9-1 s4-0 this "battle-slave" (the-as pointer #x70004000))
+                   )
+                 (run-now-in-process s4-0 enemy-init-by-other this arg1)
+                 (-> s4-0 ppointer)
+                 )
+               )
+         )
+    (if (not v1-1)
+        (return (the-as handle #f))
+        )
+    (+! (-> this count) 1)
+    (the-as handle (ppointer->handle v1-1))
+    )
+  )
+
+;; definition for method 39 of type battle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch handle vs none.
+(defmethod spawn-from-spawner ((this battle) (arg0 battle-spawner) (arg1 symbol))
+  (let ((s3-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'quaternion))
+        (s2-0 (-> arg0 intro-path))
+        )
+    (cond
+      (s2-0
+        (let ((s1-0 0))
+          (when arg1
+            (set! s1-0 (-> arg0 ready-index))
+            (set! s1-0 (cond
+                         ((>= s1-0 0)
+                          (empty)
+                          s1-0
+                          )
+                         (else
+                           (-> arg0 attack-index)
+                           )
+                         )
+                  )
+            )
+          (set! (-> arg0 creature-index) s1-0)
+          (get-point-in-path! s2-0 s3-0 (the float s1-0) 'exact)
+          (let ((s0-0 (new 'stack-no-clear 'vector)))
+            (displacement-between-two-points-normalized! s2-0 s0-0 (the float s1-0))
+            (set! (-> s0-0 y) 0.0)
+            (vector-normalize! s0-0 1.0)
+            (forward-up->quaternion s4-0 s0-0 *up-vector*)
+            )
+          )
+        )
+      (else
+        (set! (-> arg0 creature-index) 0)
+        (let ((v1-7 (-> arg0 entity)))
+          (set! (-> s3-0 quad) (-> v1-7 extra trans quad))
+          (quaternion-copy! s4-0 (-> v1-7 quat))
+          )
+        )
+      )
+    (let ((s1-1 (new 'stack-no-clear 'enemy-init-by-other-params))
+          (s2-1 (!= s2-0 #f))
+          (s0-1 (get-random-breed this arg0))
+          )
+      (set! (-> s1-1 trans quad) (-> s3-0 quad))
+      (quaternion-copy! (-> s1-1 quat) s4-0)
+      (set! (-> s1-1 entity) (-> arg0 entity))
+      (set! (-> s1-1 directed?) #t)
+      (set! (-> s1-1 no-initial-move-to-ground?) s2-1)
+      (set! (-> s1-1 art-level) #f)
+      (let ((v0-7 (spawn-from-breed this s0-1 s1-1)))
+        (when (handle->process v0-7)
+          (set! (-> arg0 creature) v0-7)
+          (set! (-> arg0 mode) (the-as uint 1))
+          (set-time! (-> arg0 last-spawn-time))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 30 of type battle
+(defmethod get-spawner-for-enemy ((this battle) (arg0 process))
+  (let ((v1-0 (if (type? arg0 nav-enemy)
+                  (the-as nav-enemy arg0)
+                  )
+              )
+        )
+    (when v1-0
+      (dotimes (a0-3 (-> this spawners length))
+        (let* ((a1-5 (-> this spawners data a0-3))
+               (a2-2 (handle->process (-> a1-5 creature)))
+               )
+          (when (and a2-2 (= a2-2 v1-0))
+            (when (not (logtest? (enemy-flag directed) (-> (the-as nav-enemy a2-2) enemy-flags)))
+              (set! (-> a1-5 creature) (the-as handle #f))
+              (set! a1-5 (the-as battle-spawner #f))
+              )
+            (return a1-5)
+            )
+          )
+        )
+      )
+    )
+  (the-as battle-spawner #f)
+  )
+
+;; definition for method 51 of type battle
+(defmethod spawner-active? ((this battle) (arg0 battle-spawner) (arg1 symbol))
+  (when (and (logtest? (-> this flags) (battle-flags active)) (not (logtest? (-> this flags) (battle-flags beaten))))
+    (let ((v1-5 (-> arg0 noticed-attack-time)))
+      (cond
+        ((zero? v1-5)
+         (set-time! (-> arg0 noticed-attack-time))
+         )
+        (else
+          (if (time-elapsed? v1-5 (the-as time-frame (-> arg0 notice-attack-delay)))
+              (logior! (-> arg0 flags) (battle-spawner-flags hit))
+              )
+          )
+        )
+      )
+    )
+  (let ((s4-0 (handle->process (-> arg0 creature))))
+    (when s4-0
+      (when (not (logtest? (enemy-flag directed) (-> (the-as nav-enemy s4-0) enemy-flags)))
+        (set! (-> arg0 creature) (the-as handle #f))
+        (return #f)
+        )
+      (let ((v1-20 (-> arg0 mode)))
+        (cond
+          ((= v1-20 1)
+           (set! (-> arg0 mode) (the-as uint 0))
+           0
+           )
+          ((zero? v1-20)
+           (when (or (logtest? (enemy-flag directed-ready) (-> (the-as nav-enemy s4-0) enemy-flags)) (not arg1))
+             (cond
+               ((spawner-in-intro? this arg0)
+                (if (not (spawner-try-jump this arg0 (the-as enemy s4-0)))
+                    (return #t)
+                    )
+                )
+               ((spawner-hittable? this arg0)
+                (spawner-hit this arg0 s4-0)
+                )
+               )
+             )
+           )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 46 of type battle
+(defmethod spawner-in-intro? ((this battle) (arg0 battle-spawner))
+  (when (-> arg0 intro-path)
+    (let ((v1-1 (-> arg0 creature-index))
+          (a0-1 (-> arg0 attack-index))
+          )
+      (or (< v1-1 (-> arg0 ready-index)) (and (< v1-1 a0-1) (logtest? (-> arg0 flags) (battle-spawner-flags hit))))
+      )
+    )
+  )
+
+;; definition for method 43 of type battle
+(defmethod spawner-try-jump ((this battle) (arg0 battle-spawner) (arg1 enemy))
+  (let ((s3-0 (+ (-> arg0 creature-index) 1))
+        (s4-0 (new 'stack-no-clear 'vector))
+        )
+    (if (and (= s3-0 (-> arg0 attack-index)) (spawner-blocked? this arg0))
+        (return #f)
+        )
+    (get-point-in-path! (-> arg0 intro-path) s4-0 (the float s3-0) 'exact)
+    (let ((s3-1 (-> arg0 mode)))
+      (set! (-> arg0 mode) (the-as uint 2))
+      (set! (-> arg1 enemy-flags)
+            (the-as enemy-flag (logclear (-> arg1 enemy-flags) (enemy-flag jump-check-blocked)))
+            )
+      (cond
+        ((send-event arg1 'jump 3 s4-0)
+         #t
+         )
+        (else
+          (set! (-> arg0 mode) s3-1)
+          #f
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 45 of type battle
+(defmethod spawner-hittable? ((this battle) (arg0 battle-spawner))
+  (when (logtest? (-> arg0 flags) (battle-spawner-flags hit))
+    (if (-> arg0 intro-path)
+        (>= (-> arg0 creature-index) (-> arg0 attack-index))
+        #t
+        )
+    )
+  )
+
+;; definition for method 42 of type battle
+(defmethod spawner-hit ((this battle) (arg0 battle-spawner) (arg1 process))
+  (let ((s5-0 (-> arg0 creature)))
+    (set! (-> arg0 creature) (the-as handle #f))
+    (cond
+      ((send-event arg1 'cue-chase)
+       #t
+       )
+      (else
+        (set! (-> arg0 creature) s5-0)
+        #f
+        )
+      )
+    )
+  )
+
+;; definition for method 44 of type battle
+(defmethod spawner-do-jump ((this battle) (arg0 battle-spawner))
+  (when (= (-> arg0 mode) 2)
+    (+! (-> arg0 creature-index) 1)
+    (set! (-> arg0 mode) (the-as uint 0))
+    (spawner-active? this arg0 #f)
+    )
+  0
+  )
+
+;; definition for method 52 of type battle
+(defmethod spawner-active-count ((this battle))
+  (let ((gp-0 0))
+    (dotimes (s4-0 (-> this spawners length))
+      (if (spawner-active? this (-> this spawners data s4-0) #t)
+          (+! gp-0 1)
+          )
+      )
+    gp-0
+    )
+  )
+
+;; definition for method 40 of type battle
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-initial-creatures ((this battle))
+  (set! (-> this spawn-initial-creatures?) #f)
+  (let ((s5-0 (-> this spawners)))
+    (dotimes (s4-0 (-> s5-0 length))
+      (let ((s3-0 (-> s5-0 data s4-0)))
+        (when (spawner-free? this s3-0)
+          (let ((v1-7 (res-lump-value (-> s3-0 entity) 'enemy-options uint128 :time -1000000000.0)))
+            (when (logtest? #x100000 v1-7)
+              (spawn-from-spawner this s3-0 #t)
+              (+! (-> this stat-child-count) 1)
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 35 of type battle
+(defmethod get-spawn-delay ((this battle))
+  (let ((v1-0 (-> this info)))
+    (rand-vu-int-range
+      (the-as int (-> v1-0 min-battle-spawn-delay))
+      (the-as int (-> v1-0 max-battle-spawn-delay))
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (battle)
+  :virtual #t
+  :event battle-event-handler
+  :enter (behavior ()
+    (if (and (-> self spawn-initial-creatures?) (not (-> self info dont-spawn-initial-until-notice?)))
+        (spawn-initial-creatures self)
+        )
+    (unset-battle-music self)
+    )
+  :trans (behavior ()
+    (let ((v1-1 (-> self info notice-spec)))
+      (when (not (logtest? v1-1 1))
+        (let ((gp-0 #t))
+          (if (and (logtest? v1-1 2)
+                   (not (and *target*
+                             (and (>= (-> self info notice-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                  (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                                  )
+                             )
+                        )
+                   )
+              (set! gp-0 #f)
+              )
+          (if gp-0
+              (go-virtual notice)
+              )
+          )
+        )
+      )
+    (if *display-battle-marks*
+        (draw-battle-marks self)
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate notice (battle)
+  :virtual #t
+  :event battle-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((gp-0 (-> self on-notice)))
+      (if gp-0
+          (script-eval (the-as pair gp-0) :vector (-> self root trans))
+          )
+      )
+    (set-battle-music self)
+    (if (-> self spawn-initial-creatures?)
+        (spawn-initial-creatures self)
+        )
+    (if (logtest? (-> self flags) (battle-flags noticed))
+        (go-virtual hostile)
+        )
+    (logior! (-> self flags) (battle-flags noticed))
+    )
+  :trans (behavior ()
+    (if *display-battle-marks*
+        (draw-battle-marks self)
+        )
+    )
+  :code (behavior ()
+    (go-virtual hostile)
+    )
+  )
+
+;; definition for method 49 of type battle
+(defmethod update-allies-list ((this battle))
+  (with-pp
+    (let ((v1-0 (-> this allies))
+          (gp-0 (-> this allies length))
+          )
+      (when (> gp-0 0)
+        (let* ((a1-4 (mod (-> pp clock integral-frame-counter) gp-0))
+               (a3-0 (-> v1-0 data a1-4))
+               )
+          (when (logtest? (-> a3-0 entity extra perm status) (entity-perm-status dead))
+            (+! (-> this die-count) 1)
+            (+! gp-0 -1)
+            (set! (-> v1-0 length) gp-0)
+            (if (and (nonzero? gp-0) (!= a1-4 gp-0))
+                (mem-copy! (the-as pointer a3-0) (the-as pointer (-> v1-0 data gp-0)) 4)
+                )
+            )
+          )
+        )
+      gp-0
+      )
+    )
+  )
+
+;; definition for method 50 of type battle
+(defmethod beaten? ((this battle))
+  (let ((s5-0 (spawner-active-count this))
+        (v1-2 (update-allies-list this))
+        (a1-0 (-> this child))
+        (a0-3 0)
+        )
+    (while a1-0
+      (+! a0-3 1)
+      (set! a1-0 (-> a1-0 0 brother))
+      (nop!)
+      (nop!)
+      )
+    (set! (-> this stat-child-count) (the-as uint a0-3))
+    (let ((a0-4 (+ v1-2 a0-3))
+          (v1-4 (-> this max-count))
+          )
+      (if (>= (-> this die-count) v1-4)
+          (return #t)
+          )
+      (logclear! (-> this flags) (battle-flags no-spawner-block))
+      (cond
+        ((and (> s5-0 0) (>= s5-0 (the-as int (- v1-4 (-> this die-count)))))
+         (let ((a1-10 (-> this jammed-starting-time)))
+           (cond
+             ((zero? (-> this jammed-starting-time))
+              (set-time! (-> this jammed-starting-time))
+              )
+             (else
+               (if (time-elapsed? a1-10 (seconds 3.5))
+                   (logior! (-> this flags) (battle-flags no-spawner-block))
+                   )
+               )
+             )
+           )
+         )
+        (else
+          (set! (-> this jammed-starting-time) 0)
+          0
+          )
+        )
+      (cond
+        ((and (not (logtest? (-> this flags) (battle-flags beaten)))
+              (> (-> this spawners length) 0)
+              (< a0-4 (the-as int (-> this info desired-alive-count)))
+              (< (-> this count) v1-4)
+              )
+         (when (time-elapsed? (-> this cant-spawn-time) (the-as time-frame (-> this next-spawn-delay)))
+           (let ((a1-25 (get-best-spawner this)))
+             (cond
+               (a1-25
+                 (spawn-from-spawner this a1-25 #f)
+                 (set! (-> this next-spawn-delay) (the-as uint (get-spawn-delay this)))
+                 (set-time! (-> this cant-spawn-time))
+                 )
+               (else
+                 (set-time! (-> this cant-spawn-time))
+                 )
+               )
+             )
+           )
+         )
+        (else
+          (set-time! (-> this cant-spawn-time))
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (battle)
+  :virtual #t
+  :event battle-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logior! (-> self flags) (battle-flags active))
+    (logclear! (-> self flags) (battle-flags no-spawner-block))
+    (set! (-> self jammed-starting-time) 0)
+    (set! (-> self cant-spawn-time) 0)
+    (set! (-> self next-spawn-delay) (the-as uint 0))
+    (set-battle-music self)
+    (let ((gp-0 (-> self on-hostile)))
+      (if gp-0
+          (script-eval (the-as pair gp-0) :vector (-> self root trans))
+          )
+      )
+    )
+  :trans (behavior ()
+    (if (beaten? self)
+        (go-virtual beaten)
+        )
+    (if *display-battle-marks*
+        (draw-battle-marks self)
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate beaten (battle)
+  :virtual #t
+  :event battle-event-handler
+  :enter (behavior ()
+    (when (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status subtask-complete)))
+               )
+      (let ((gp-0 (-> self on-beaten)))
+        (if gp-0
+            (script-eval (the-as pair gp-0) :vector (-> self root trans))
+            )
+        )
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (unset-battle-music self)
+    )
+  :code sleep-code
+  )
+
+;; definition for method 47 of type battle
+;; WARN: Return type mismatch battle-flags vs none.
+(defmethod set-battle-music ((this battle))
+  (let ((a3-0 (-> this info play-battle-music)))
+    (when (and a3-0 (not (logtest? (-> this flags) (battle-flags battle-music-set))))
+      (case a3-0
+        (('sound-mode)
+         (set-setting! 'sound-mode #f 0.0 1)
+         )
+        (else
+          (set-setting! 'music a3-0 0.0 0)
+          )
+        )
+      (logior! (-> this flags) (battle-flags battle-music-set))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 48 of type battle
+;; WARN: Return type mismatch int vs none.
+(defmethod unset-battle-music ((this battle))
+  (when (logtest? (-> this flags) (battle-flags battle-music-set))
+    (remove-setting! 'sound-mode)
+    (remove-setting! 'music)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type battle-spawner-array
+(defmethod relocate ((this battle-spawner-array) (offset int))
+  (dotimes (v1-0 (-> this length))
+    (let ((a2-3 (-> this data v1-0)))
+      (&+! (-> a2-3 breeds) offset)
+      (if (-> a2-3 intro-path)
+          (&+! (-> a2-3 intro-path) offset)
+          )
+      )
+    )
+  this
+  )
+
+;; definition for method 7 of type battle
+(defmethod relocate ((this battle) (offset int))
+  (&+! (-> this spawners) offset)
+  (&+! (-> this allies) offset)
+  (call-parent-method this offset)
+  )
+
+;; definition for method 29 of type battle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-spawner-breeds ((this battle) (arg0 battle-spawner) (arg1 entity-actor))
+  (local-vars (sv-16 res-tag) (sv-32 res-tag))
+  (let ((s2-0 0)
+        (s5-0 0)
+        (s4-0 0)
+        )
+    (set! sv-16 (new 'static 'res-tag))
+    (let ((s1-0 (res-lump-data arg1 'spawn-types pointer :tag-ptr (& sv-16))))
+      (dotimes (s0-0 2)
+        (set! s2-0 0)
+        (when s1-0
+          (set! s4-0 (the-as int (-> sv-16 elt-count)))
+          (dotimes (v1-5 s4-0)
+            (let ((a0-4 (-> (the-as (pointer uint32) (&+ s1-0 (* v1-5 4))))))
+              (when (nonzero? a0-4)
+                (set! s5-0 (logior s5-0 (ash 1 v1-5)))
+                (+! s2-0 1)
+                (when (= s0-0 1)
+                  (let ((a1-10 (-> arg0 breeds data (+ s2-0 -1))))
+                    (set! (-> a1-10 breed-type) (the-as type a0-4))
+                    (set! (-> a1-10 percent) 1.0)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (if (zero? s0-0)
+            (set! (-> arg0 breeds) (new 'process 'battle-breed-array (max 1 s2-0)))
+            )
+        )
+      )
+    (cond
+      ((zero? s2-0)
+       (let ((v1-15 (-> arg0 breeds data)))
+         (set! (-> v1-15 0 breed-type) (-> arg1 etype))
+         (set! (-> v1-15 0 percent) 1.0)
+         )
+       )
+      (else
+        (set! sv-32 (new 'static 'res-tag))
+        (let ((v1-18 (res-lump-data arg1 'spawn-percs pointer :tag-ptr (& sv-32))))
+          (when v1-18
+            (let ((a0-16 (min (the-as int (-> sv-32 elt-count)) s4-0))
+                  (a1-14 0)
+                  (a2-7 (-> arg0 breeds))
+                  )
+              (dotimes (a3-2 a0-16)
+                (when (logtest? s5-0 (ash 1 a3-2))
+                  (let ((t0-8 (-> a2-7 data a1-14)))
+                    (set! (-> t0-8 percent) (-> (the-as (pointer float) (&+ v1-18 (* a3-2 4)))))
+                    )
+                  (+! a1-14 1)
+                  )
+                )
+              )
+            )
+          )
+        (let ((f30-0 0.0)
+              (s5-1 (-> arg0 breeds))
+              )
+          (dotimes (v1-20 (-> s5-1 length))
+            (+! f30-0 (-> s5-1 data v1-20 percent))
+            )
+          (when (!= f30-0 1.0)
+            (format
+              0
+              "WARNING: battle spawner ~A has spawn percents that don't sum to 1.0.~%"
+              (res-lump-struct (-> arg0 entity) 'name structure)
+              )
+            (dotimes (v1-26 (-> s5-1 length))
+              (let ((a0-27 (-> s5-1 data v1-26)))
+                (set! (-> a0-27 percent) (/ (-> a0-27 percent) f30-0))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 32 of type battle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod initialize-spawner ((this battle) (arg0 battle-spawner) (arg1 entity-actor))
+  (set! (-> arg0 flags) (battle-spawner-flags))
+  (set! (-> arg0 entity) arg1)
+  (set! (-> arg0 creature-index) 0)
+  (set! (-> arg0 ready-index) -1)
+  (set! (-> arg0 attack-index) 0)
+  (set! (-> arg0 intro-path) #f)
+  (set! (-> arg0 notice-attack-delay)
+        (the-as uint (rand-vu-int-range
+                       (the-as int (-> this info min-spawner-notice-attack-delay))
+                       (the-as int (-> this info max-spawner-notice-attack-delay))
+                       )
+                )
+        )
+  (set! (-> arg0 creature) (the-as handle #f))
+  (set! (-> arg0 last-spawn-time) 0)
+  (set! (-> arg0 noticed-attack-time) 0)
+  (initialize-spawner-breeds this arg0 arg1)
+  (let ((a0-4 (new 'process 'path-control this 'intro 0.0 arg1 #t)))
+    (cond
+      ((nonzero? a0-4)
+       (set! (-> arg0 intro-path) a0-4)
+       (logior! (-> a0-4 flags) (path-control-flag display draw-line draw-point draw-text))
+       (let ((s5-1 (-> a0-4 curve num-cverts)))
+         (let ((v1-9 (+ s5-1 -1)))
+           (set! (-> arg0 attack-index) v1-9)
+           (get-point-in-path! a0-4 (-> arg0 attack-pos) (the float v1-9) 'exact)
+           )
+         (let ((v0-4 -1))
+           (if (< 2 s5-1)
+               (set! v0-4 1)
+               )
+           (set! (-> arg0 ready-index) v0-4)
+           )
+         )
+       )
+      (else
+        (set! (-> arg0 attack-pos quad) (-> arg0 entity extra trans quad))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 31 of type battle
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-ally ((this battle) (arg0 battle-ally) (arg1 entity-actor))
+  (set! (-> arg0 entity) arg1)
+  0
+  (none)
+  )
+
+;; definition for method 28 of type battle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-enemy-lists ((this battle))
+  (local-vars (v0-4 battle-ally-array) (sv-16 res-tag) (sv-32 entity-actor))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v0-0 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (when (and v0-0 (nonzero? (-> sv-16 elt-count)))
+      (let* ((s5-0 (-> (the-as (pointer actor-group) v0-0) 0))
+             (s4-0 (-> s5-0 length))
+             )
+        (dotimes (s3-0 2)
+          (let ((s1-0 0)
+                (s2-0 0)
+                )
+            (dotimes (s0-0 s4-0)
+              (set! sv-32 (-> s5-0 data s0-0 actor))
+              (when sv-32
+                (let ((v0-1 (res-lump-value sv-32 'enemy-options uint128 :time -1000000000.0)))
+                  (cond
+                    ((logtest? #x80000 v0-1)
+                     (+! s1-0 1)
+                     (cond
+                       ((zero? s3-0)
+                        0
+                        )
+                       (else
+                         (let ((a1-2 (-> this spawners data (+ s1-0 -1))))
+                           (initialize-spawner this a1-2 sv-32)
+                           )
+                         )
+                       )
+                     )
+                    (else
+                      (when (not (logtest? (-> sv-32 extra perm status) (entity-perm-status dead)))
+                        (+! s2-0 1)
+                        (cond
+                          ((zero? s3-0)
+                           0
+                           )
+                          (else
+                            (let ((a1-3 (-> this allies data (+ s2-0 -1))))
+                              (initialize-ally this a1-3 sv-32)
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            (set! v0-4 (when (zero? s3-0)
+                         (set! (-> this spawners) (new 'process 'battle-spawner-array s1-0))
+                         (set! v0-4 (new 'process 'battle-ally-array s2-0))
+                         (set! (-> this allies) v0-4)
+                         v0-4
+                         )
+                  )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 33 of type battle
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-battle ((this battle))
+  (set! (-> this spawn-initial-creatures?) #t)
+  (set! (-> this count) (the-as uint 0))
+  (set! (-> this die-count) (the-as uint 0))
+  (set! (-> this stat-child-count) (the-as uint 0))
+  (let ((v1-2 (res-lump-value (-> this entity) 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0))
+        (a0-2 *battles*)
+        )
+    (dotimes (a1-1 (-> a0-2 length))
+      (let ((a2-3 (-> a0-2 a1-1)))
+        (when (= (the-as uint v1-2) (-> a2-3 id))
+          (set! (-> this info) a2-3)
+          (goto cfg-7)
+          )
+        )
+      )
+    )
+  (go process-drawable-art-error "bad battle id")
+  (label cfg-7)
+  (set! (-> this on-notice) (res-lump-struct (-> this entity) 'on-notice basic))
+  (set! (-> this on-hostile) (res-lump-struct (-> this entity) 'on-hostile basic))
+  (set! (-> this on-beaten) (res-lump-struct (-> this entity) 'on-beaten basic))
+  (initialize-enemy-lists this)
+  (+! (-> this count) (-> this allies length))
+  (let ((v1-16 (-> this info max-count)))
+    (cond
+      ((and (= v1-16 #x20000000) (zero? (-> this spawners length)))
+       (set! v1-16 (-> this count))
+       )
+      ((< v1-16 (-> this count))
+       (set! v1-16 (-> this count))
+       )
+      )
+    (set! (-> this max-count) v1-16)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 34 of type battle
+(defmethod init-go ((this battle))
+  (if (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+      (go (method-of-object this beaten))
+      (go (method-of-object this idle))
+      )
+  0
+  )
+
+;; definition for method 11 of type battle
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs object.
+(defmethod init-from-entity! ((this battle) (arg0 entity-actor))
+  (logior! (-> this mask) (process-mask enemy))
+  (let ((s4-0 (new 'process 'trsqv)))
+    (set! (-> this root) s4-0)
+    (set! (-> s4-0 trans quad) (-> arg0 extra trans quad))
+    (quaternion-copy! (-> s4-0 quat) (-> arg0 quat))
+    (vector-identity! (-> s4-0 scale))
+    )
+  (initialize-battle this)
+  (init-go this)
+  )

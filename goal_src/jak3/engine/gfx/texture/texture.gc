@@ -347,9 +347,11 @@
     )
   (set! (-> this common-page-mask) 0)
   (set! (-> this texture-enable-user-menu)
-        (texture-enable-mask tex0 tex1 tex2 tex3 tex4 tex5 tex6 tex7 sky tex9)
+        (texture-enable-mask tfrag all-pris shrub alpha water warp sprite hud sky hfrag)
         )
-  (set! (-> this texture-enable-user) (texture-enable-mask tex0 tex1 tex2 tex3 tex4 tex5 tex6 tex7 sky tex9))
+  (set! (-> this texture-enable-user)
+        (texture-enable-mask tfrag all-pris shrub alpha water warp sprite hud sky hfrag)
+        )
   (dotimes (v1-13 128)
     (set! (-> this ids v1-13) (the-as uint 0))
     )
@@ -714,6 +716,10 @@
 ;; WARN: Return type mismatch symbol vs none.
 (defun upload-vram-data ((dma-buf dma-buffer) (dest int) (data-ptr pointer) (h int) (w int))
   "Add DMA to later upload a texture, by reference. Sets up the GIF for receiving the texture."
+  (#when PC_PORT
+    ;; disabled.
+    (return #f)
+    )
   (let ((v1-0 *display*)
         (a0-2 (* 96 (+ (sar h 11) 1)))
         )
@@ -827,6 +833,13 @@
               (+! s5-0 sv-32)
               )
             (dma-buffer-add-gs-set s3-0 (texflush 1))
+
+            (#when PC_PORT
+              (dma-buffer-add-cnt-vif2 s3-0 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
+              (dma-buffer-add-uint64 s3-0 page)
+              (dma-buffer-add-uint64 s3-0 mode)
+              )
+
             (let ((a3-3 (-> s3-0 base)))
               (when (!= s4-0 a3-3)
                 (let ((v1-56 (the-as dma-packet (-> s3-0 base))))
@@ -898,6 +911,76 @@
               )
             )
           )
+        )
+      )
+    )
+  0
+  )
+
+;; og:preserve-this pc port function
+(defun upload-vram-pages-pris-pc ((pool texture-pool)
+                                  (dest-seg texture-pool-segment)
+                                  (tpage texture-page)
+                                  (bucket bucket-id)
+                                  (mask (pointer int32))
+                                  )
+  "Build DMA for uploading the given texture-page in pc format.
+  We don't use the mask system of the original game properly."
+  (if (not tpage)
+      (return 0)
+      )
+  (let* ((dma-buf (-> *display* frames (-> *display* on-screen) global-buf))
+         (s4-0 (-> dma-buf base))
+         (any-uploads #f)
+         (vram-ptr (shr (-> tpage segment 0 dest) 12))
+         (tpage-num-chunks (the-as int (-> tpage size)))
+         (tpage-id (-> tpage id))
+         )
+    ;; align and truncate
+    (set! tpage-num-chunks (shr (min (the-as int (-> dest-seg size)) (the-as int (+ tpage-num-chunks 4095))) 12))
+
+    ;; loop over chunks, seeing if any need to be uploaded.
+    (dotimes (chunk-idx tpage-num-chunks)
+      (let ((mask-work (-> mask (/ chunk-idx 32))))
+        (when (logtest? mask-work (ash 1 (logand chunk-idx 31)))
+          (set! any-uploads #t)
+          )
+        )
+      )
+
+    ;; not used at all. we don't set merc masks on PC, so this should happen most of the time.
+    ; (when (not any-uploads)
+    ;   (return 0)
+    ;   )
+
+    ;; but non-merc users of this function (like map/hud) will get here
+
+    ;; upload everything in the tpage.
+    ;; uploads are "free" on PC, so no harm, but we have to tell the game we're doing this
+    ;; otherwise it might think that an old texture was left behind and skip a later upload
+    (dotimes (chunk-idx tpage-num-chunks)
+      (let ((chunk-dest (+ vram-ptr chunk-idx)))
+        (set! (-> pool ids chunk-dest) tpage-id)
+        )
+      )
+
+    ;; tell pc port we upload everything.
+    (dma-buffer-add-cnt-vif2 dma-buf 1 (new 'static 'vif-tag :cmd (vif-cmd pc-port)) (the-as vif-tag 3))
+    (dma-buffer-add-uint64 dma-buf tpage)
+    (dma-buffer-add-uint64 dma-buf -1)
+
+    (let ((a3-5 (-> dma-buf base)))
+      (let ((v1-43 (the-as dma-packet (-> dma-buf base))))
+        (set! (-> v1-43 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+        (set! (-> v1-43 vif0) (new 'static 'vif-tag))
+        (set! (-> v1-43 vif1) (new 'static 'vif-tag))
+        (set! (-> dma-buf base) (the-as pointer (&+ v1-43 16)))
+        )
+      (dma-bucket-insert-tag
+        (-> *display* frames (-> *display* on-screen) bucket-group)
+        bucket
+        s4-0
+        (the-as (pointer dma-tag) a3-5)
         )
       )
     )
@@ -1201,7 +1284,7 @@
     (-> lev closest-object category)
     (when (and a2-1 (nonzero? a2-1))
       (case category
-        (((tpage-category tc0))
+        (((tpage-category tfrag))
          (let ((v1-7 (-> lev texture-mask))
                (a0-2 (-> lev texture-mask 12))
                )
@@ -1218,7 +1301,7 @@
                                         )
                )
          )
-        (((tpage-category tc2))
+        (((tpage-category shrub))
          (let ((v1-11 (-> lev texture-mask 2))
                (a0-6 (-> lev texture-mask 14))
                )
@@ -1235,7 +1318,7 @@
                                         )
                )
          )
-        (((tpage-category tc3))
+        (((tpage-category alpha))
          (cond
            ((= (-> lev index) 10)
             (if (not (-> *bigmap* auto-save-icon-flag))
@@ -1259,8 +1342,8 @@
              )
            )
          )
-        (((tpage-category tc1))
-         (set! (-> lev upload-size 1) (upload-vram-pages-pris
+        (((tpage-category pris))
+         (set! (-> lev upload-size 1) (upload-vram-pages-pris-pc
                                         pool
                                         (-> pool segment-common)
                                         a2-1
@@ -1269,7 +1352,7 @@
                                         )
                )
          )
-        (((tpage-category tc4))
+        (((tpage-category water))
          (cond
            ((= (-> lev index) 10)
             (set! (-> lev upload-size 8)
@@ -1295,7 +1378,7 @@
                (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
                )
          )
-        (((tpage-category tc6))
+        (((tpage-category pris2))
          (if (= (-> lev index) 10)
              (+! (-> lev upload-size 8)
                  (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
@@ -1326,88 +1409,93 @@
              (let ((t0-22 (-> lev texture-mask category)))
                (set! (-> t0-22 mask quad) (the-as uint128 -1))
                (set! (-> lev upload-size 8)
-                     (upload-vram-pages-pris pool (-> pool segment-common) a2-1 bucket (the-as (pointer int32) t0-22))
+                     (upload-vram-pages-pris-pc pool (-> pool segment-common) a2-1 bucket (the-as (pointer int32) t0-22))
                      )
                )
              )
            )
          )
-        (((tpage-category tc9))
+        (((tpage-category sky))
          (set! (-> lev upload-size 9)
                (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
                )
          )
-        (((tpage-category tc10))
-         (set! (-> lev upload-size 10)
-               (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
-               )
+        (((tpage-category hfrag))
+         ;; for PC: disable hfrag texture uploads since we're going to rewrite the renderer.
+         ;; this saves us from creating the bucket renderer and processing uploads.
+         ; (set! (-> lev upload-size 10)
+         ;       (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+         ;       )
          )
         )
-      (let ((a1-26 (-> lev texture-anim-array category)))
-        (cond
-          ((= category (tpage-category warp))
-           (when (= (-> lev index) 10)
-             (dotimes (s2-1 11)
-               (let ((v1-55 (-> *level* level s2-1)))
-                 (when (or (= (-> v1-55 status) 'active) (= (-> v1-55 status) 'reserved))
-                   (let ((a1-30 (-> v1-55 texture-anim-array 5)))
-                     (if a1-30
-                         (update-texture-anim bucket a1-30)
-                         )
+      ;; added nonzero check.
+      (when (nonzero? update-texture-anim)
+        (let ((a1-26 (-> lev texture-anim-array category)))
+          (cond
+            ((= category (tpage-category warp))
+             (when (= (-> lev index) 10)
+               (dotimes (s2-1 11)
+                 (let ((v1-55 (-> *level* level s2-1)))
+                   (when (or (= (-> v1-55 status) 'active) (= (-> v1-55 status) 'reserved))
+                     (let ((a1-30 (-> v1-55 texture-anim-array 5)))
+                       (if a1-30
+                           (update-texture-anim bucket a1-30)
+                           )
+                       )
                      )
                    )
                  )
                )
              )
-           )
-          ((= category (tpage-category sprite))
-           (when (= (-> lev index) 10)
-             (dotimes (s2-2 11)
-               (let ((v1-64 (-> *level* level s2-2)))
-                 (when (or (= (-> v1-64 status) 'active) (= (-> v1-64 status) 'reserved))
-                   (let ((a1-34 (-> v1-64 texture-anim-array 7)))
-                     (if a1-34
-                         (update-texture-anim bucket a1-34)
-                         )
+            ((= category (tpage-category sprite))
+             (when (= (-> lev index) 10)
+               (dotimes (s2-2 11)
+                 (let ((v1-64 (-> *level* level s2-2)))
+                   (when (or (= (-> v1-64 status) 'active) (= (-> v1-64 status) 'reserved))
+                     (let ((a1-34 (-> v1-64 texture-anim-array 7)))
+                       (if a1-34
+                           (update-texture-anim bucket a1-34)
+                           )
+                       )
                      )
                    )
                  )
                )
              )
-           )
-          ((= category (tpage-category hud))
-           (when (= (-> lev index) 10)
-             (dotimes (s2-3 11)
-               (let ((v1-73 (-> *level* level s2-3)))
-                 (when (or (= (-> v1-73 status) 'active) (= (-> v1-73 status) 'reserved))
-                   (let ((a1-38 (-> v1-73 texture-anim-array 8)))
-                     (if a1-38
-                         (update-texture-anim bucket a1-38)
-                         )
+            ((= category (tpage-category hud))
+             (when (= (-> lev index) 10)
+               (dotimes (s2-3 11)
+                 (let ((v1-73 (-> *level* level s2-3)))
+                   (when (or (= (-> v1-73 status) 'active) (= (-> v1-73 status) 'reserved))
+                     (let ((a1-38 (-> v1-73 texture-anim-array 8)))
+                       (if a1-38
+                           (update-texture-anim bucket a1-38)
+                           )
+                       )
                      )
                    )
                  )
                )
              )
-           )
-          ((= category (tpage-category tc9))
-           (when (-> *time-of-day-context* sky)
-             (if a1-26
-                 (update-texture-anim bucket a1-26)
-                 )
+            ((= category (tpage-category sky))
+             (when (-> *time-of-day-context* sky)
+               (if a1-26
+                   (update-texture-anim bucket a1-26)
+                   )
+               )
              )
-           )
-          ((= bucket (bucket-id bucket461))
-           (when (and (-> *time-of-day-context* sky) *ocean-map*)
-             (if a1-26
-                 (update-texture-anim bucket a1-26)
-                 )
+            ((= bucket (bucket-id tex-lcom-sky-post))
+             (when (and (-> *time-of-day-context* sky) *ocean-map*)
+               (if a1-26
+                   (update-texture-anim bucket a1-26)
+                   )
+               )
              )
-           )
-          (else
-            (if a1-26
-                (update-texture-anim bucket a1-26)
-                )
+            (else
+              (if a1-26
+                  (update-texture-anim bucket a1-26)
+                  )
+              )
             )
           )
         )
@@ -1434,9 +1522,9 @@
   "Turn on masks for skull gem textures, so they will be uploaded."
   (local-vars (v0-3 uint128) (v1-2 uint128) (v1-3 uint128))
   (let ((gp-0 (-> *level* level-default texture-mask)))
-    (let* ((s5-0 (lookup-texture-by-id (new 'static 'texture-id :index #x17 :page #x6)))
-           (s4-0 (lookup-texture-by-id (new 'static 'texture-id :index #x18 :page #x6)))
-           (a0-4 (lookup-texture-by-id (new 'static 'texture-id :index #x19 :page #x6)))
+    (let* ((s5-0 (get-texture skull-gem-alpha-00 level-default-tfrag))
+           (s4-0 (get-texture skull-gem-alpha-01 level-default-tfrag))
+           (a0-4 (get-texture skull-gem-alpha-02 level-default-tfrag))
            (v1-1 (-> gp-0 0 mask quad))
            (a1-0 (-> s5-0 masks data 0 mask quad))
            (a2-0 (-> s4-0 masks data 0 mask quad))
@@ -1454,7 +1542,8 @@
 (defun upload-textures ((pool texture-pool))
   "Set up DMA for all texture uploads for this frame."
   (cond
-    ((not (get-screen-copied *blit-displays-work*))
+    ;; added the nonzero check here.
+    ((and (nonzero? *blit-displays-work*) (not (get-screen-copied *blit-displays-work*)))
      (set-skull-gem-masks)
      (set! (-> *level* level-default texture-anim-array 0) *skull-gem-texture-anim-array*)
      )
@@ -1488,7 +1577,7 @@
            (add-level-tpage-dma pool s3-0 (the-as tpage-category (-> s4-0 level-texture-page)) (-> s4-0 bucket))
            )
           (else
-            (if (not (get-menu-mode *blit-displays-work*))
+            (if (or (zero? *blit-displays-work*) (not (get-menu-mode *blit-displays-work*))) ;; added or check.
                 (add-level-tpage-dma pool s3-0 (the-as tpage-category (-> s4-0 level-texture-page)) (-> s4-0 bucket))
                 )
             )
@@ -1518,6 +1607,12 @@
 
 (defmethod upload-now! ((this texture-page) (mode tex-upload-mode))
   "Upload a texture to VRAM immediately, wait for DMA to finish."
+
+   ;; og:preserve-this
+   (#when PC_PORT
+     ;; load it to the PC Port's texture pool.
+     (__pc-texture-upload-now this mode)
+     )
   (let ((gp-0 *txt-dma-list*))
     (let ((v1-0 gp-0))
       (set! (-> v1-0 base) (-> v1-0 data))
@@ -1532,7 +1627,10 @@
       (set! (-> (the-as (pointer uint64) a0-7) 1) (the-as uint 0))
       (set! (-> v1-6 base) (&+ a0-7 16))
       )
-    (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+    ;; the actual send
+    (#unless PC_PORT
+             (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+             )
     )
   (dma-sync (the-as pointer #x1000a000) 0 0)
   (none)
@@ -1570,6 +1668,13 @@
 
 (defun texture-relocate ((dma-buf dma-buffer) (tex texture) (dest int) (tex-format gs-psm) (clut-dest int))
   "Move a texture in VRAM."
+
+     ;; og:preserve-this
+   (#when PC_PORT
+     ;; as far as I know this is only used for fonts which have 1 mip level.
+     (__pc-texture-relocate (/ dest 64) (-> tex dest 0) tex-format)
+     (return dma-buf)
+     )
   (dotimes (v1-0 (the-as int (-> tex num-mips)))
     (let ((t1-1 (ash (-> tex w) (- v1-0)))
           (t2-3 (ash (-> tex h) (- v1-0)))
@@ -1653,7 +1758,7 @@
           (set! (-> v1-6 base) (-> v1-6 data))
           (set! (-> v1-6 end) (the-as pointer (+ (+ (-> v1-6 allocated-length) 28) (the-as int v1-6))))
           )
-        (let ((s2-0 (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #xc)))
+        (let ((s2-0 (get-texture font.12lo gamefont))
               (s1-0 #xc2000)
               (s0-0 36)
               )
@@ -1662,7 +1767,7 @@
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-0-tmpl)) s2-0 s1-0 s0-0 sv-20)
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-2-tmpl)) s2-0 s1-0 s0-0 sv-20)
           )
-        (let ((s3-1 (lookup-texture-by-id (new 'static 'texture-id :page #xc)))
+        (let ((s3-1 (get-texture font.12hi gamefont))
               (s2-1 #xc2000)
               (s1-1 44)
               )
@@ -1671,7 +1776,7 @@
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-1-tmpl)) s3-1 s2-1 s1-1 sv-20)
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-3-tmpl)) s3-1 s2-1 s1-1 sv-20)
           )
-        (let ((s3-2 (lookup-texture-by-id (new 'static 'texture-id :index #x4 :page #xc)))
+        (let ((s3-2 (get-texture font.24lo gamefont))
               (s2-2 #x90000)
               (s1-2 36)
               )
@@ -1679,7 +1784,7 @@
           (texture-relocate s4-0 s3-2 s2-2 (the-as gs-psm s1-2) -1)
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-0-tmpl)) s3-2 s2-2 s1-2 sv-20)
           )
-        (let ((s3-3 (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #xc)))
+        (let ((s3-3 (get-texture font.24hi gamefont))
               (s2-3 #x90000)
               (s1-3 44)
               )
@@ -1687,7 +1792,7 @@
           (texture-relocate s4-0 s3-3 s2-3 (the-as gs-psm s1-3) -1)
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-1-tmpl)) s3-3 s2-3 s1-3 sv-20)
           )
-        (let ((s3-4 (lookup-texture-by-id (new 'static 'texture-id :index #x5 :page #xc)))
+        (let ((s3-4 (get-texture font.24lo2 gamefont))
               (s2-4 #x5e000)
               (s1-4 36)
               )
@@ -1695,7 +1800,7 @@
           (texture-relocate s4-0 s3-4 s2-4 (the-as gs-psm s1-4) -1)
           (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-2-tmpl)) s3-4 s2-4 s1-4 sv-20)
           )
-        (let ((s3-5 (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #xc)))
+        (let ((s3-5 (get-texture font.24hi2 gamefont))
               (s2-5 #x5e000)
               (s1-5 44)
               )
@@ -1711,7 +1816,9 @@
           (set! (-> (the-as (pointer uint64) a0-32) 1) (the-as uint 0))
           (set! (-> v1-30 base) (&+ a0-32 16))
           )
-        (dma-buffer-send-chain (the-as dma-bank-source #x10009000) s4-0)
+        (#unless PC_PORT
+                 (dma-buffer-send-chain (the-as dma-bank-source #x10009000) s4-0)
+                 )
         )
       (dma-sync (the-as pointer #x10009000) 0 0)
       (if (and s5-0 (-> s5-0 page) (= (-> this cur) (+ sv-16 (-> s5-0 page size))))
@@ -1797,6 +1904,20 @@
         )
       (set! (-> this segment 1 dest) (-> this segment 0 size))
       (set! (-> this segment 2 dest) (+ (-> this segment 0 size) (-> this segment 1 size)))
+
+      ;; og:preserve-this added texture remap
+      (dotimes (texture-idx (-> this length))
+        (let ((tex (-> this data texture-idx)))
+          (when (and tex (nonzero? tex))
+            (let ((offset (__pc-get-tex-remap (the int (-> this id)) texture-idx)))
+              (when (nonzero? offset)
+                )
+              (+! (-> tex dest 0) offset)
+              )
+            )
+          )
+        )
+
       (set! (-> this vram-size) (-> this size))
       (let* ((a3-0 (-> this id))
              (s4-0 (-> *texture-page-dir* entries a3-0))
@@ -2240,7 +2361,12 @@
     )
   )
 
-(when (not *debug-segment*)
+;; modified for PC port: never bother with the debug-mode texture login.
+;; it will never work on PC, and it causes problems with custom levels, due to the way that it allocates the link
+;; array for texture-pages that don't exist, which are never then set to false, causing them to be referenced
+;; after the level is unloaded. This probably works fine if you are playing one level at a time, or if the backup
+;; texture page loading actually works.
+(when (or (not *debug-segment*) PC_PORT)
   (set! adgif-shader-login adgif-shader-login-fast)
   (set! adgif-shader-login-no-remap adgif-shader-login-no-remap-fast)
   )
@@ -2254,7 +2380,7 @@
       (adgif-shader<-texture! shader tex)
       )
   (set! (-> shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
-  (set! (-> shader alpha) (new 'static 'gs-alpha :b #x1 :d #x1))
+  (set! (-> shader alpha) (new 'static 'gs-miptbp :tbp1 #x44))
   (set! (-> shader prims 1) (gs-reg64 tex0-1))
   (set! (-> shader prims 3) (gs-reg64 tex1-1))
   (set! (-> shader prims 5) (gs-reg64 miptbp1-1))
@@ -2388,5 +2514,47 @@
   (none)
   )
 
+(defun adgif-shader<-texture! ((arg0 adgif-shader) (arg1 texture))
+  "Set up an adgif-shader from a texture."
+  (set! (-> arg0 tex1 mxl) (+ (-> arg1 num-mips) -1))
+  (set! (-> arg0 tex1 l) (-> arg1 mip-shift))
+  (set! (-> arg0 tex1 mmag) (logand (-> arg1 tex1-control) 1))
+  (set! (-> arg0 tex1 mmin) (shr (-> arg1 tex1-control) 1))
+  (set! (-> arg0 tex0) (new 'static 'gs-tex0
+                         :tcc #x1
+                         :cld #x1
+                         :cpsm (-> arg1 clutpsm)
+                         :cbp (-> arg1 clutdest)
+                         :tfx (-> arg0 tex0 tfx)
+                         :th (log2 (-> arg1 h))
+                         :tw (log2 (-> arg1 w))
+                         :tbw (-> arg1 width 0)
+                         :tbp0 (-> arg1 dest 0)
+                         :psm (the-as int (-> arg1 psm))
+                         )
+        )
+  (set! (-> arg0 miptbp1) (new 'static 'gs-miptbp
+                            :tbp1 (-> arg1 dest 1)
+                            :tbw1 (-> arg1 width 1)
+                            :tbp2 (-> arg1 dest 2)
+                            :tbw2 (-> arg1 width 2)
+                            :tbp3 (-> arg1 dest 3)
+                            :tbw3 (-> arg1 width 3)
+                            )
+        )
+  (when (< (the-as uint 4) (-> arg1 num-mips))
+    (set! (-> arg0 alpha-as-miptb2) (new 'static 'gs-miptbp
+                                      :tbp1 (-> arg1 dest 4)
+                                      :tbw1 (-> arg1 width 4)
+                                      :tbp2 (-> arg1 dest 5)
+                                      :tbw2 (-> arg1 width 5)
+                                      :tbp3 (-> arg1 dest 6)
+                                      :tbw3 (-> arg1 width 6)
+                                      )
+          )
+    (set! (-> (&-> arg0 reg-4-u32) 0) (gs-reg32 miptbp2-1))
+    )
+  arg0
+  )
 
 (define *texture-pool* (new 'global 'texture-pool))

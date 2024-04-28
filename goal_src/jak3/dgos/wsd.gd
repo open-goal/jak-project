@@ -11,5 +11,5 @@
   "interceptor-wheel-fma-ag.go"
   "wascity-airlock-small-ag.go"
   "particleman-ag.go"
-  "wasdoors-vis.o"
+  "wasdoors-vis.go"
  ))

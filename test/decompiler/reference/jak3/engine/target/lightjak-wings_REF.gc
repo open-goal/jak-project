@@ -3,7 +3,7 @@
 
 ;; failed to figure out what this is:
 (defpart 623
-  :init-specs ((:texture (new 'static 'texture-id :index #xf :page #x4))
+  :init-specs ((:texture (glow-soft level-default-sprite))
     (:num 1.0)
     (:scale-x (meters 3))
     (:rot-x (degrees 2.25))
@@ -392,12 +392,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defbehavior wings-post wings ()
-  (let* ((a0-0 (-> self parent))
-         (v1-0 (if a0-0
-                   (the-as process-drawable (-> a0-0 0 self))
-                   )
-               )
-         )
+  (let ((v1-0 (ppointer->process (-> self parent))))
     (set! (-> self draw light-index) (-> (the-as process-focusable v1-0) draw light-index))
     (set-vector! (-> self draw color-mult) 0.0 0.0 0.0 0.0)
     (set-vector! (-> self draw color-emissive) 1.0 1.0 1.0 1.0)
@@ -496,18 +491,9 @@
 (defstate hidden (wings)
   :virtual #t
   :trans (behavior ()
-    (let ((v1-0 (-> self parent)))
-      (if (not (focus-test?
-                 (the-as process-focusable (if v1-0
-                                               (the-as process-focusable (-> v1-0 0 self))
-                                               )
-                         )
-                 in-head
-                 )
-               )
-          (go-virtual idle #f)
-          )
-      )
+    (if (not (focus-test? (ppointer->process (-> self parent)) in-head))
+        (go-virtual idle #f)
+        )
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -537,33 +523,16 @@
   :exit (behavior ()
     (let ((a0-1 (handle->process (-> self ragdoll-proc))))
       (if a0-1
-          (ragdoll-proc-method-16 (the-as ragdoll-proc a0-1) 60)
+          (disable-for-duration (the-as ragdoll-proc a0-1) (seconds 0.2))
           )
       )
     )
   :trans (behavior ()
-    (let ((v1-0 (-> self parent)))
-      (b!
-        (not (focus-test?
-               (the-as process-focusable (if v1-0
-                                             (the-as process-focusable (-> v1-0 0 self))
-                                             )
-                       )
-               in-head
-               )
-             )
-        cfg-4
-        :delay (empty-form)
-        )
-      )
+    (b! (not (focus-test? (ppointer->process (-> self parent)) in-head)) cfg-4 :delay (empty-form))
     (go-virtual hidden)
     (b! #t cfg-27 :delay (nop!))
     (label cfg-4)
-    (if (and (not (-> self lock?)) (let* ((a0-1 (-> self parent))
-                                          (v1-10 (if a0-1
-                                                     (the-as process-drawable (-> a0-1 0 self))
-                                                     )
-                                                 )
+    (if (and (not (-> self lock?)) (let* ((v1-10 (ppointer->process (-> self parent)))
                                           (a0-4 (if (> (-> v1-10 skel active-channels) 0)
                                                     (-> v1-10 skel root-channel 0 frame-group)
                                                     )
@@ -631,7 +600,7 @@
               )
         (set! a0-17 (handle->process (-> self ragdoll-proc)))
         )
-      (if (and a0-17 (-> (the-as process-drawable a0-17) root))
+      (if (and (the-as ragdoll-proc a0-17) (-> (the-as ragdoll-proc a0-17) ragdoll))
           (logior! (-> (the-as ragdoll-proc a0-17) ragdoll ragdoll-flags) (ragdoll-flag rf3 rf4 rf10))
           )
       (ragdoll-proc-method-15 (the-as ragdoll-proc a0-17) #f (the-as vector #f) #t)
@@ -683,31 +652,23 @@
       )
     )
   :trans (behavior ()
-    (let ((v1-0 (ppointer->process (-> self parent)))
-          (a0-1 (-> self parent))
-          )
+    (let ((v1-0 (ppointer->process (-> self parent))))
       (cond
-        ((focus-test?
-           (the-as process-focusable (if a0-1
-                                         (the-as process-focusable (-> a0-1 0 self))
-                                         )
-                   )
-           in-head
-           )
+        ((focus-test? (ppointer->process (-> self parent)) in-head)
          (go-virtual hidden)
          )
-        ((let ((a0-8 (if (> (-> (the-as process-focusable v1-0) skel active-channels) 0)
-                         (-> (the-as process-focusable v1-0) skel root-channel 0 frame-group)
+        ((let ((a0-8 (if (> (-> v1-0 skel active-channels) 0)
+                         (-> v1-0 skel root-channel 0 frame-group)
                          )
                      )
                )
-           (not (and a0-8 (or (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 493))
-                              (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 494))
-                              (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 495))
-                              (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 496))
-                              (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 482))
-                              (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 485))
-                              (= a0-8 (-> (the-as process-focusable v1-0) draw art-group data 483))
+           (not (and a0-8 (or (= a0-8 (-> v1-0 draw art-group data 493))
+                              (= a0-8 (-> v1-0 draw art-group data 494))
+                              (= a0-8 (-> v1-0 draw art-group data 495))
+                              (= a0-8 (-> v1-0 draw art-group data 496))
+                              (= a0-8 (-> v1-0 draw art-group data 482))
+                              (= a0-8 (-> v1-0 draw art-group data 485))
+                              (= a0-8 (-> v1-0 draw art-group data 483))
                               )
                      )
                 )
@@ -753,7 +714,7 @@
          (a0-6 (-> self node-list data))
          )
     (set! (-> a0-6 0 param0) (the-as (function cspace transformq none) cspace<-cspace-normalized!))
-    (set! (-> a0-6 0 param1) (the-as basic (-> (the-as process-drawable v1-6) node-list data 6)))
+    (set! (-> a0-6 0 param1) (the-as basic (-> v1-6 node-list data 6)))
     (set! (-> a0-6 0 param2) #f)
     )
   (set! (-> self ragdoll-proc) (the-as handle #f))
@@ -825,7 +786,7 @@
 ;; definition for method 19 of type wings-ragdoll
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch vector vs none.
-(defmethod ragdoll-method-19 ((this wings-ragdoll) (arg0 vector) (arg1 int) (arg2 object) (arg3 vector))
+(defmethod ragdoll-method-19 ((this wings-ragdoll) (arg0 vector) (arg1 int) (arg2 object) (arg3 matrix))
   (let ((s3-0 (new 'stack-no-clear 'vector)))
     (set! (-> s3-0 quad) (-> this gravity quad))
     (let ((s1-0 (-> this ragdoll-joints arg1))
@@ -854,25 +815,19 @@
            )
           )
         )
-      (vector-float*! (-> this gravity) (&+ arg3 16) f30-0)
+      (vector-float*! (-> this gravity) (-> arg3 uvec) f30-0)
       (let ((t9-0 (method-of-type ragdoll ragdoll-method-19)))
         (t9-0 this arg0 arg1 arg2 arg3)
         )
       (when (= (-> s1-0 parent-joint) -1)
-        (let* ((f0-4
-                 (+ (* 54.613335 (the float (current-time)))
-                    (* 10922.667 (the float (-> this chain-pos)))
-                    (* 29127.111 (the float (-> this which-chain)))
-                    )
-                 )
+        (let* ((f0-4 (+ (* 54.613335 (the float (current-time)))
+                        (* 10922.667 (the float (-> this chain-pos)))
+                        (* 29127.111 (the float (-> this which-chain)))
+                        )
+                     )
                (f0-5 (- f0-4 (* (the float (the int (/ f0-4 65536.0))) 65536.0)))
                )
-          (vector+float*!
-            arg0
-            arg0
-            (the-as vector (&-> arg3 x))
-            (* 5.0 (cos f0-5) f30-0 (the float (-> this chain-pos)))
-            )
+          (vector+float*! arg0 arg0 (-> arg3 rvec) (* 5.0 (cos f0-5) f30-0 (the float (-> this chain-pos))))
           )
         )
       )
@@ -923,11 +878,7 @@
   (set! (-> self last-attack-id) (the-as uint 0))
   (set! (-> self ragdoll) (new 'process 'wings-ragdoll))
   (if (nonzero? (-> self ragdoll))
-      (ragdoll-setup!
-        (-> self ragdoll)
-        (the-as process-drawable (ppointer->process (-> self parent)))
-        (the-as ragdoll-setup arg0)
-        )
+      (ragdoll-setup! (-> self ragdoll) (ppointer->process (-> self parent)) (the-as ragdoll-setup arg0))
       (format 0 "ERROR<gmj>: didn't have enough memory to allocate wings-ragdoll for wings-ragdoll-proc~%")
       )
   (go-virtual idle)

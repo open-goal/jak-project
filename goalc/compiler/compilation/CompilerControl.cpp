@@ -14,8 +14,8 @@
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
-#include "goalc/compiler/SymbolInfo.h"
 #include "goalc/compiler/docs/DocTypes.h"
+#include "goalc/compiler/symbol_info.h"
 #include "goalc/data_compiler/dir_tpages.h"
 #include "goalc/data_compiler/game_count.h"
 #include "goalc/data_compiler/game_text_common.h"
@@ -358,35 +358,36 @@ Val* Compiler::compile_reload(const goos::Object& form, const goos::Object& rest
   return get_none();
 }
 
-std::string Compiler::make_symbol_info_description(const SymbolInfo& info) {
-  switch (info.kind()) {
-    case SymbolInfo::Kind::GLOBAL_VAR:
+std::string Compiler::make_symbol_info_description(const symbol_info::SymbolInfo* info) {
+  switch (info->m_kind) {
+    case symbol_info::Kind::GLOBAL_VAR:
       return fmt::format("[Global Variable] Type: {} Defined: {}",
-                         m_symbol_types.at(m_goos.intern_ptr(info.name())).print(),
-                         m_goos.reader.db.get_info_for(info.src_form()));
-    case SymbolInfo::Kind::LANGUAGE_BUILTIN:
-      return fmt::format("[Built-in Form] {}\n", info.name());
-    case SymbolInfo::Kind::METHOD:
+                         m_symbol_types.lookup(m_goos.intern_ptr(info->m_name))->print(),
+                         m_goos.reader.db.get_info_for(info->m_def_form));
+    case symbol_info::Kind::LANGUAGE_BUILTIN:
+      return fmt::format("[Built-in Form] {}\n", info->m_name);
+    case symbol_info::Kind::METHOD:
       return fmt::format("[Method] Type: {} Method Name: {} Defined: {}",
-                         info.method_info().defined_in_type, info.name(),
-                         m_goos.reader.db.get_info_for(info.src_form()));
-    case SymbolInfo::Kind::TYPE:
-      return fmt::format("[Type] Name: {} Defined: {}", info.name(),
-                         m_goos.reader.db.get_info_for(info.src_form()));
-    case SymbolInfo::Kind::MACRO:
-      return fmt::format("[Macro] Name: {} Defined: {}", info.name(),
-                         m_goos.reader.db.get_info_for(info.src_form()));
-    case SymbolInfo::Kind::CONSTANT:
+                         info->m_method_info.defined_in_type, info->m_name,
+                         m_goos.reader.db.get_info_for(info->m_def_form));
+    case symbol_info::Kind::TYPE:
+      return fmt::format("[Type] Name: {} Defined: {}", info->m_name,
+                         m_goos.reader.db.get_info_for(info->m_def_form));
+    case symbol_info::Kind::MACRO:
+      return fmt::format("[Macro] Name: {} Defined: {}", info->m_name,
+                         m_goos.reader.db.get_info_for(info->m_def_form));
+    case symbol_info::Kind::CONSTANT:
       return fmt::format(
-          "[Constant] Name: {} Value: {} Defined: {}", info.name(),
-          m_global_constants.at(m_goos.reader.symbolTable.intern(info.name().c_str())).print(),
-          m_goos.reader.db.get_info_for(info.src_form()));
-    case SymbolInfo::Kind::FUNCTION:
-      return fmt::format("[Function] Name: {} Defined: {}", info.name(),
-                         m_goos.reader.db.get_info_for(info.src_form()));
-    case SymbolInfo::Kind::FWD_DECLARED_SYM:
-      return fmt::format("[Forward-Declared] Name: {} Defined: {}", info.name(),
-                         m_goos.reader.db.get_info_for(info.src_form()));
+          "[Constant] Name: {} Value: {} Defined: {}", info->m_name,
+          m_global_constants.lookup(m_goos.reader.symbolTable.intern(info->m_name.c_str()))
+              ->print(),
+          m_goos.reader.db.get_info_for(info->m_def_form));
+    case symbol_info::Kind::FUNCTION:
+      return fmt::format("[Function] Name: {} Defined: {}", info->m_name,
+                         m_goos.reader.db.get_info_for(info->m_def_form));
+    case symbol_info::Kind::FWD_DECLARED_SYM:
+      return fmt::format("[Forward-Declared] Name: {} Defined: {}", info->m_name,
+                         m_goos.reader.db.get_info_for(info->m_def_form));
     default:
       ASSERT(false);
       return {};
@@ -398,11 +399,11 @@ Val* Compiler::compile_get_info(const goos::Object& form, const goos::Object& re
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
-  auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol().name_ptr);
-  if (!result) {
+  const auto result = m_symbol_info.lookup_exact_name(args.unnamed.at(0).as_symbol().name_ptr);
+  if (result.empty()) {
     lg::print("No results found.\n");
   } else {
-    for (auto& info : *result) {
+    for (const auto& info : result) {
       lg::print("{}", make_symbol_info_description(info));
     }
   }
@@ -437,9 +438,12 @@ replxx::Replxx::completions_t Compiler::find_symbols_or_object_file_by_prefix(
       completions.push_back(fmt::format("\"{}\")", match));
     }
   } else {
+    // TODO - GOAL's method calling syntax sucks for method name auto-completion
+    // maybe something that could be improved? Though it would be a radical departure from
+    // the syntax
     const auto [token, stripped_leading_paren] = m_repl->get_current_repl_token(context);
     // Otherwise, look for symbols
-    auto possible_forms = lookup_symbol_infos_starting_with(token);
+    auto possible_forms = lookup_symbol_names_starting_with(token, 100);
 
     for (auto& x : possible_forms) {
       completions.push_back(stripped_leading_paren ? "(" + x : x);
@@ -456,7 +460,7 @@ replxx::Replxx::hints_t Compiler::find_hints_by_prefix(std::string const& contex
   (void)contextLen;
   (void)user_data;
   auto token = m_repl->get_current_repl_token(context);
-  auto possible_forms = lookup_symbol_infos_starting_with(token.first);
+  auto possible_forms = lookup_symbol_names_starting_with(token.first, 100);
 
   replxx::Replxx::hints_t hints;
 
@@ -497,9 +501,8 @@ void Compiler::repl_coloring(
         curr_symbol.second.erase(0, 1);
         curr_symbol.first++;
       }
-      std::vector<SymbolInfo>* sym_match = lookup_exact_name_info(curr_symbol.second);
-      if (sym_match != nullptr && sym_match->size() == 1) {
-        SymbolInfo sym_info = sym_match->at(0);
+      const auto matching_symbols = lookup_exact_name_info(curr_symbol.second);
+      if (matching_symbols.size() == 1) {
         for (int pos = curr_symbol.first; pos <= int(i); pos++) {
           // TODO - currently just coloring all types brown/gold
           // - would be nice to have a different color for globals, functions, etc
@@ -541,7 +544,7 @@ void Compiler::repl_coloring(
     }
   }
 
-  // TODO - general syntax highlighting with regexes (quotes, symbols, etc)
+  // TODO - general syntax highlighting with AST
 }
 
 Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object& rest, Env* env) {
@@ -550,7 +553,7 @@ Val* Compiler::compile_autocomplete(const goos::Object& form, const goos::Object
   va_check(form, args, {goos::ObjectType::SYMBOL}, {});
 
   Timer timer;
-  auto result = m_symbol_info.lookup_symbols_starting_with(args.unnamed.at(0).as_symbol().name_ptr);
+  auto result = m_symbol_info.lookup_names_starting_with(args.unnamed.at(0).as_symbol().name_ptr);
   auto time = timer.getMs();
 
   for (auto& x : result) {
@@ -581,34 +584,213 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
 
   auto arg_spec = m_goos.parse_arg_spec(form, args.unnamed.at(2));
   m_macro_specs[name] = arg_spec;
-
-  SymbolInfo::Metadata sym_meta;
-  sym_meta.docstring = args.unnamed.at(1).as_string()->data;
-  m_symbol_info.add_macro(name, form, sym_meta);
+  m_symbol_info.add_macro(name, arg_spec, form, args.unnamed.at(1).as_string()->data);
   return get_none();
 }
 
-std::set<std::string> Compiler::lookup_symbol_infos_starting_with(const std::string& prefix) const {
+std::vector<symbol_info::SymbolInfo*> Compiler::lookup_symbol_info_by_file(
+    const std::string& file_path) const {
+  return m_symbol_info.lookup_symbols_by_file(file_path);
+}
+
+std::vector<symbol_info::SymbolInfo*> Compiler::lookup_symbol_info_by_prefix(
+    const std::string& prefix) const {
+  return m_symbol_info.lookup_symbols_starting_with(prefix);
+}
+
+std::set<std::string> Compiler::lookup_symbol_names_starting_with(const std::string& prefix,
+                                                                  int max_count) const {
   if (m_goos.reader.check_string_is_valid(prefix)) {
-    return m_symbol_info.lookup_symbols_starting_with(prefix);
+    return m_symbol_info.lookup_names_starting_with(prefix, max_count);
   }
   return {};
 }
 
-std::vector<SymbolInfo>* Compiler::lookup_exact_name_info(const std::string& name) const {
+std::vector<symbol_info::SymbolInfo*> Compiler::lookup_exact_name_info(
+    const std::string& name) const {
   if (m_goos.reader.check_string_is_valid(name)) {
     return m_symbol_info.lookup_exact_name(name);
   } else {
-    return nullptr;
+    return {};
   }
 }
 
 std::optional<TypeSpec> Compiler::lookup_typespec(const std::string& symbol_name) {
-  const auto& it = m_symbol_types.find(m_goos.intern_ptr(symbol_name));
-  if (it != m_symbol_types.end()) {
-    return it->second;
+  const auto it = m_symbol_types.lookup(m_goos.intern_ptr(symbol_name));
+  if (it) {
+    return *it;
   }
   return {};
+}
+
+std::tuple<std::unordered_map<std::string, Docs::SymbolDocumentation>,
+           std::unordered_map<std::string, Docs::FileDocumentation>>
+Compiler::generate_per_file_symbol_info() {
+  // TODO - remove this function, all required information has been consolidated into `SymbolInfo`
+  // it just has to be serialized in the same way, I will do it later
+  const auto symbols = m_symbol_info.get_all_symbols();
+
+  std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols;
+  std::unordered_map<std::string, Docs::FileDocumentation> file_docs;
+
+  lg::info("Processing {} symbols...", symbols.size());
+  int count = 0;
+  for (const auto& sym_info : symbols) {
+    count++;
+    if (count % 100 == 0 || count == (int)symbols.size()) {
+      lg::info("Processing [{}/{}] symbols...", count, symbols.size());
+    }
+    std::optional<Docs::DefinitionLocation> def_loc;
+    const auto& goos_info = m_goos.reader.db.get_short_info_for(sym_info->m_def_form);
+    if (goos_info) {
+      Docs::DefinitionLocation new_def_loc;
+      new_def_loc.filename = file_util::convert_to_unix_path_separators(file_util::split_path_at(
+          goos_info->filename, {"goal_src", version_to_game_name(m_version)}));
+      new_def_loc.line_idx = goos_info->line_idx_to_display;
+      new_def_loc.char_idx = goos_info->pos_in_line;
+      def_loc = new_def_loc;
+    }
+
+    Docs::SymbolDocumentation sym_doc;
+    sym_doc.name = sym_info->m_name;
+    sym_doc.description = sym_info->m_docstring;
+    sym_doc.kind = sym_info->m_kind;
+    sym_doc.def_location = def_loc;
+
+    if (all_symbols.count(sym_info->m_name) > 1) {
+      lg::error("A symbol was defined twice, how did this happen? {}", sym_info->m_name);
+    } else {
+      all_symbols.emplace(sym_info->m_name, sym_doc);
+    }
+
+    Docs::FileDocumentation file_doc;
+    std::string file_doc_key;
+    if (!goos_info) {
+      file_doc_key = "unknown";
+    } else {
+      file_doc_key = file_util::convert_to_unix_path_separators(
+          file_util::split_path_at(goos_info->filename, {"goal_src"}));
+    }
+
+    if (file_docs.count(file_doc_key) != 0) {
+      file_doc = file_docs.at(file_doc_key);
+    } else {
+      file_doc = Docs::FileDocumentation();
+    }
+
+    // TODO - states / enums / built-ins
+    if (sym_info->m_kind == symbol_info::Kind::GLOBAL_VAR ||
+        sym_info->m_kind == symbol_info::Kind::CONSTANT) {
+      Docs::VariableDocumentation var;
+      var.name = sym_info->m_name;
+      var.description = sym_info->m_docstring;
+      if (sym_info->m_kind == symbol_info::Kind::CONSTANT) {
+        var.type = "unknown";  // Unfortunately, constants are not properly typed
+      } else {
+        var.type = m_symbol_types.lookup(m_goos.intern_ptr(var.name))->base_type();
+      }
+      var.def_location = def_loc;
+      if (sym_info->m_kind == symbol_info::Kind::GLOBAL_VAR) {
+        file_doc.global_vars.push_back(var);
+      } else {
+        file_doc.constants.push_back(var);
+      }
+    } else if (sym_info->m_kind == symbol_info::Kind::FUNCTION) {
+      Docs::FunctionDocumentation func;
+      func.name = sym_info->m_name;
+      func.description = sym_info->m_docstring;
+      func.def_location = def_loc;
+      func.args = Docs::get_args_from_docstring(sym_info->m_args, func.description);
+      // The last arg in the typespec is the return type
+      const auto func_type = m_symbol_types.lookup(m_goos.intern_ptr(func.name));
+      func.return_type = func_type->last_arg().base_type();
+      file_doc.functions.push_back(func);
+    } else if (sym_info->m_kind == symbol_info::Kind::TYPE) {
+      Docs::TypeDocumentation type;
+      type.name = sym_info->m_name;
+      type.description = sym_info->m_docstring;
+      type.def_location = def_loc;
+      const auto& type_info = m_ts.lookup_type(type.name);
+      type.parent_type = type_info->get_parent();
+      type.size = type_info->get_size_in_memory();
+      type.method_count = type_info->get_methods_defined_for_type().size();
+      if (m_ts.typecheck_and_throw(m_ts.make_typespec("structure"), m_ts.make_typespec(type.name),
+                                   "", false, false, false)) {
+        auto struct_info = dynamic_cast<StructureType*>(type_info);
+        for (const auto& field : struct_info->fields()) {
+          Docs::FieldDocumentation field_doc;
+          field_doc.name = field.name();
+          field_doc.description = "";
+          field_doc.type = field.type().base_type();
+          field_doc.is_array = field.is_array();
+          field_doc.is_inline = field.is_inline();
+          field_doc.is_dynamic = field.is_dynamic();
+          type.fields.push_back(field_doc);
+        }
+      }
+      for (const auto& method : type_info->get_methods_defined_for_type()) {
+        // Check to see if it's a state
+        if (m_ts.typecheck_and_throw(m_ts.make_typespec("state"), method.type, "", false, false,
+                                     false)) {
+          Docs::TypeStateDocumentation state_doc;
+          state_doc.id = method.id;
+          state_doc.is_virtual = true;
+          state_doc.name = method.name;
+          type.states.push_back(state_doc);
+        } else {
+          Docs::TypeMethodDocumentation method_doc;
+          method_doc.id = method.id;
+          method_doc.name = method.name;
+          method_doc.is_override = method.overrides_parent;
+          type.methods.push_back(method_doc);
+        }
+      }
+      for (const auto& [state_name, state_info] : type_info->get_states_declared_for_type()) {
+        Docs::TypeStateDocumentation state_doc;
+        state_doc.name = state_name;
+        state_doc.is_virtual = false;
+        type.states.push_back(state_doc);
+      }
+      file_doc.types.push_back(type);
+    } else if (sym_info->m_kind == symbol_info::Kind::MACRO) {
+      Docs::MacroDocumentation macro_doc;
+      macro_doc.name = sym_info->m_name;
+      macro_doc.description = sym_info->m_docstring;
+      macro_doc.def_location = def_loc;
+      const auto& arg_spec = m_macro_specs[macro_doc.name];
+      for (const auto& arg : arg_spec.unnamed) {
+        macro_doc.args.push_back(arg);
+      }
+      for (const auto& arg : arg_spec.named) {
+        std::optional<std::string> def_value;
+        if (arg.second.has_default) {
+          def_value = arg.second.default_value.print();
+        }
+        macro_doc.kwargs.push_back({arg.first, def_value});
+      }
+      if (!arg_spec.rest.empty()) {
+        macro_doc.variadic_arg = arg_spec.rest;
+      }
+      file_doc.macros.push_back(macro_doc);
+    } else if (sym_info->m_kind == symbol_info::Kind::METHOD) {
+      Docs::MethodDocumentation method_doc;
+      method_doc.name = sym_info->m_name;
+      method_doc.description = sym_info->m_docstring;
+      method_doc.def_location = def_loc;
+      const auto& method_info = sym_info->m_method_info;
+      method_doc.id = method_info.id;
+      method_doc.type = sym_info->m_method_info.defined_in_type;
+      method_doc.is_override = method_info.overrides_parent;
+      method_doc.args = Docs::get_args_from_docstring(sym_info->m_args, method_doc.description);
+      // The last arg in the typespec is the return type
+      const auto& method_type = method_info.type;
+      method_doc.return_type = method_type.last_arg().base_type();
+      method_doc.is_builtin = method_doc.id <= 9;
+      file_doc.methods.push_back(method_doc);
+    }
+    file_docs[file_doc_key] = file_doc;
+  }
+  return {all_symbols, file_docs};
 }
 
 Val* Compiler::compile_load_project(const goos::Object& form, const goos::Object& rest, Env*) {
@@ -660,168 +842,7 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
   const auto& doc_path = fs::path(args.unnamed.at(0).as_string()->data);
   lg::info("Saving docs to: {}", doc_path.string());
 
-  const auto symbols = m_symbol_info.get_all_symbols();
-
-  std::unordered_map<std::string, Docs::SymbolDocumentation> all_symbols;
-  std::unordered_map<std::string, Docs::FileDocumentation> file_docs;
-
-  lg::info("Processing {} symbols...", symbols.size());
-  int count = 0;
-  for (const auto& sym_info : symbols) {
-    count++;
-    if (count % 100 == 0 || count == (int)symbols.size()) {
-      lg::info("Processing [{}/{}] symbols...", count, symbols.size());
-    }
-    std::optional<Docs::DefinitionLocation> def_loc;
-    const auto& goos_info = m_goos.reader.db.get_short_info_for(sym_info.src_form());
-    if (goos_info) {
-      Docs::DefinitionLocation new_def_loc;
-      new_def_loc.filename = file_util::convert_to_unix_path_separators(file_util::split_path_at(
-          goos_info->filename, {"goal_src", version_to_game_name(m_version)}));
-      new_def_loc.line_idx = goos_info->line_idx_to_display;
-      new_def_loc.char_idx = goos_info->pos_in_line;
-      def_loc = new_def_loc;
-    }
-
-    Docs::SymbolDocumentation sym_doc;
-    sym_doc.name = sym_info.name();
-    sym_doc.description = sym_info.meta().docstring;
-    sym_doc.kind = sym_info.kind();
-    sym_doc.def_location = def_loc;
-
-    if (all_symbols.count(sym_info.name()) > 1) {
-      lg::error("A symbol was defined twice, how did this happen? {}", sym_info.name());
-    } else {
-      all_symbols.emplace(sym_info.name(), sym_doc);
-    }
-
-    Docs::FileDocumentation file_doc;
-    std::string file_doc_key;
-    if (!goos_info) {
-      file_doc_key = "unknown";
-    } else {
-      file_doc_key = file_util::convert_to_unix_path_separators(
-          file_util::split_path_at(goos_info->filename, {"goal_src"}));
-    }
-
-    if (file_docs.count(file_doc_key) != 0) {
-      file_doc = file_docs.at(file_doc_key);
-    } else {
-      file_doc = Docs::FileDocumentation();
-    }
-
-    // TODO - states / enums / built-ins
-    if (sym_info.kind() == SymbolInfo::Kind::GLOBAL_VAR ||
-        sym_info.kind() == SymbolInfo::Kind::CONSTANT) {
-      Docs::VariableDocumentation var;
-      var.name = sym_info.name();
-      var.description = sym_info.meta().docstring;
-      if (sym_info.kind() == SymbolInfo::Kind::CONSTANT) {
-        var.type = "unknown";  // Unfortunately, constants are not properly typed
-      } else {
-        var.type = m_symbol_types.at(m_goos.intern_ptr(var.name)).base_type();
-      }
-      var.def_location = def_loc;
-      if (sym_info.kind() == SymbolInfo::Kind::GLOBAL_VAR) {
-        file_doc.global_vars.push_back(var);
-      } else {
-        file_doc.constants.push_back(var);
-      }
-    } else if (sym_info.kind() == SymbolInfo::Kind::FUNCTION) {
-      Docs::FunctionDocumentation func;
-      func.name = sym_info.name();
-      func.description = sym_info.meta().docstring;
-      func.def_location = def_loc;
-      func.args = Docs::get_args_from_docstring(sym_info.args(), func.description);
-      // The last arg in the typespec is the return type
-      const auto& func_type = m_symbol_types.at(m_goos.intern_ptr(func.name));
-      func.return_type = func_type.last_arg().base_type();
-      file_doc.functions.push_back(func);
-    } else if (sym_info.kind() == SymbolInfo::Kind::TYPE) {
-      Docs::TypeDocumentation type;
-      type.name = sym_info.name();
-      type.description = sym_info.meta().docstring;
-      type.def_location = def_loc;
-      const auto& type_info = m_ts.lookup_type(type.name);
-      type.parent_type = type_info->get_parent();
-      type.size = type_info->get_size_in_memory();
-      type.method_count = type_info->get_methods_defined_for_type().size();
-      if (m_ts.typecheck_and_throw(m_ts.make_typespec("structure"), m_ts.make_typespec(type.name),
-                                   "", false, false, false)) {
-        auto struct_info = dynamic_cast<StructureType*>(type_info);
-        for (const auto& field : struct_info->fields()) {
-          Docs::FieldDocumentation field_doc;
-          field_doc.name = field.name();
-          field_doc.description = "";
-          field_doc.type = field.type().base_type();
-          field_doc.is_array = field.is_array();
-          field_doc.is_inline = field.is_inline();
-          field_doc.is_dynamic = field.is_dynamic();
-          type.fields.push_back(field_doc);
-        }
-      }
-      for (const auto& method : type_info->get_methods_defined_for_type()) {
-        // Check to see if it's a state
-        if (m_ts.typecheck_and_throw(m_ts.make_typespec("state"), method.type, "", false, false,
-                                     false)) {
-          Docs::TypeStateDocumentation state_doc;
-          state_doc.id = method.id;
-          state_doc.is_virtual = true;
-          state_doc.name = method.name;
-          type.states.push_back(state_doc);
-        } else {
-          Docs::TypeMethodDocumentation method_doc;
-          method_doc.id = method.id;
-          method_doc.name = method.name;
-          method_doc.is_override = method.overrides_parent;
-          type.methods.push_back(method_doc);
-        }
-      }
-      for (const auto& [state_name, state_info] : type_info->get_states_declared_for_type()) {
-        Docs::TypeStateDocumentation state_doc;
-        state_doc.name = state_name;
-        state_doc.is_virtual = false;
-        type.states.push_back(state_doc);
-      }
-      file_doc.types.push_back(type);
-    } else if (sym_info.kind() == SymbolInfo::Kind::MACRO) {
-      Docs::MacroDocumentation macro_doc;
-      macro_doc.name = sym_info.name();
-      macro_doc.description = sym_info.meta().docstring;
-      macro_doc.def_location = def_loc;
-      const auto& arg_spec = m_macro_specs[macro_doc.name];
-      for (const auto& arg : arg_spec.unnamed) {
-        macro_doc.args.push_back(arg);
-      }
-      for (const auto& arg : arg_spec.named) {
-        std::optional<std::string> def_value;
-        if (arg.second.has_default) {
-          def_value = arg.second.default_value.print();
-        }
-        macro_doc.kwargs.push_back({arg.first, def_value});
-      }
-      if (!arg_spec.rest.empty()) {
-        macro_doc.variadic_arg = arg_spec.rest;
-      }
-      file_doc.macros.push_back(macro_doc);
-    } else if (sym_info.kind() == SymbolInfo::Kind::METHOD) {
-      Docs::MethodDocumentation method_doc;
-      method_doc.name = sym_info.name();
-      method_doc.description = sym_info.meta().docstring;
-      method_doc.def_location = def_loc;
-      const auto& method_info = sym_info.method_info();
-      method_doc.id = method_info.id;
-      method_doc.type = sym_info.method_info().defined_in_type;
-      method_doc.is_override = method_info.overrides_parent;
-      method_doc.args = Docs::get_args_from_docstring(sym_info.args(), method_doc.description);
-      // The last arg in the typespec is the return type
-      const auto& method_type = method_info.type;
-      method_doc.return_type = method_type.last_arg().base_type();
-      method_doc.is_builtin = method_doc.id <= 9;
-      file_doc.methods.push_back(method_doc);
-    }
-    file_docs[file_doc_key] = file_doc;
-  }
+  const auto [all_symbols, file_docs] = generate_per_file_symbol_info();
 
   json symbol_map_data(all_symbols);
   file_util::write_text_file(

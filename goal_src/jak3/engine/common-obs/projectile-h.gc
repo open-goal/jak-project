@@ -84,7 +84,7 @@
    (sound-id                sound-id)
    (stop-speed              meters)
    (invinc-time             time-frame)
-   (desired-target          uint64)
+   (desired-target          handle)
    (desired-target-pos      vector                      :inline)
    )
   (:state-methods
@@ -101,11 +101,11 @@
     (play-impact-sound (_type_ projectile-options) none)
     (projectile-method-29 (_type_) none)
     (setup-collision! (_type_) none)
-    (projectile-method-31 (_type_) none)
+    (init-proj-settings! (_type_) none)
     (projectile-method-32 (_type_) none)
     (go-impact! (_type_) none)
     (projectile-method-34 (_type_) none)
-    (event-handler! (_type_ process int symbol event-message-block) object)
+    (proj-event-handler (_type_ process int symbol event-message-block) object)
     (handle-proj-hit! (_type_ process event-message-block) object)
     (deal-damage! (_type_ process event-message-block) symbol)
     (made-impact? (_type_) symbol)
@@ -119,7 +119,7 @@
   ((pos                     vector  :inline)
    (vel                     vector  :inline)
    (target-pos              vector  :inline)
-   (target-handle           uint64)
+   (target-handle           handle)
    (ent                     entity)
    (charge                  float)
    (attack-id               uint32)
@@ -137,15 +137,7 @@
 
 (defun spawn-projectile ((proj-type type) (params projectile-init-by-other-params) (parent-proc-tree process-tree) (pool dead-pool))
   "Create a new process for a projectile of the given type."
-  (let ((s4-0 (get-process pool proj-type #x4000 1)))
-    (when s4-0
-      (let ((t9-1 (method-of-type process activate)))
-        (t9-1 s4-0 parent-proc-tree "projectile" (the-as pointer #x70004000))
-        )
-      (run-now-in-process s4-0 projectile-init-by-other params)
-      (-> s4-0 ppointer)
-      )
-    )
+  (process-spawn proj-type :runtime #t :name "projectile" :from pool :to parent-proc-tree :init projectile-init-by-other params)
   )
 
 (deftype projectile-bounce (projectile)

@@ -1,0 +1,1517 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 15 of type hud-map
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-map))
+  (set-hud-piece-position!
+    (-> this sprites 1)
+    (the int (+ (- 512.0 (* 20.0 (-> *video-params* relative-x-scale))) (* 140.0 (-> this offset))))
+    (the int (+ 281.0 (* 140.0 (-> this offset))))
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 1)) 11 -11)
+  (set! (-> this sprites 0 color w)
+        (the int (+ 70.0 (* 70.0 (sin (* 182.04445 (the float (-> this values 1 current)))))))
+        )
+  (set! (-> *minimap* color y)
+        (the int (- 96.0 (* 32.0 (sin (* 182.04445 (the float (-> this values 1 current)))))))
+        )
+  (set! (-> *minimap* color z)
+        (the int (- 96.0 (* 32.0 (sin (* 182.04445 (the float (-> this values 1 current)))))))
+        )
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (cond
+    ((>= (-> *setting-control* user-current race-minimap) 1)
+     (set! (-> this sprites 1 scale-x) 0.0)
+     (set! (-> this sprites 1 scale-y) 0.0)
+     )
+    (else
+      (set! (-> this sprites 1 scale-x) 0.85)
+      (set! (-> this sprites 1 scale-y) 0.85)
+      )
+    )
+  (let ((t9-5 (method-of-type hud draw)))
+    (t9-5 this)
+    )
+  (cond
+    ((zero? (-> *setting-control* user-current race-minimap))
+     (with-dma-buffer-add-bucket ((s4-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                  (bucket-id hud-draw-hud-alpha)
+                                  )
+       (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) 2 -3)
+       (draw-1 *minimap* s4-0 (the-as vector4w (-> this sprites 2)) #t)
+       )
+     )
+    ((= (-> *setting-control* user-current race-minimap) 1)
+     0
+     )
+    ((= (-> *setting-control* user-current race-minimap) 2)
+     (let ((s5-1 (level-get *level* 'destrack)))
+       (when (and s5-1 (= (-> s5-1 status) 'active))
+         (set-race-texture *minimap* (get-texture map-desert-race destrack-minimap) 32768.0 s5-1)
+         (set-race-corner *minimap* 11321344.0 -1261568.0)
+         (with-dma-buffer-add-bucket ((s4-2 (-> *display* frames (-> *display* on-screen) global-buf))
+                                      (bucket-id hud-draw-hud-alpha)
+                                      )
+           (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) 0 -20)
+           (draw-sprite2 *minimap* s4-2 (the-as vector4w (-> this sprites 2)) #t)
+           )
+         )
+       )
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-map
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-map))
+  (cond
+    ((update! *minimap*)
+     (logior! (-> this flags) (hud-flags show))
+     (let ((t9-1 (method-of-type hud update-values!)))
+       (t9-1 this)
+       )
+     )
+    (else
+      (send-event this 'force-hide)
+      )
+    )
+  (when (not (paused?))
+    (let ((v1-10 8))
+      (if (and (< (-> this values 1 target) 270) (< 270 (+ (-> this values 1 target) v1-10)))
+          (set! (-> this values 1 target) 270)
+          )
+      (if (or (-> *game-info* wanted-flash) (!= (-> this values 1 target) 270))
+          (set! (-> this values 1 target) (mod (+ (-> this values 1 target) v1-10) 360))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-map
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-map))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-lower-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-mapring-alarm-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 0.0)
+  (set! (-> this sprites 0 scale-y) 0.0)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 0 pos z) #xffff00)
+  (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-mapring-01 level-default-minimap)))
+  (set! (-> this sprites 1 scale-x) 0.85)
+  (set! (-> this sprites 1 scale-y) 0.85)
+  (set! (-> this sprites 1 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 1 pos z) #xffff00)
+  (set! (-> this values 0 current) 0)
+  (update! *minimap*)
+  0
+  (none)
+  )
+
+;; definition for method 25 of type hud-health
+;; WARN: Return type mismatch int vs none.
+(defmethod update-value-callback ((this hud-health) (arg0 int) (arg1 int))
+  (if (and (= arg0 4) (> arg1 0))
+      (sound-play "inc-pickup" :pitch 0.5)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-health
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-health))
+  (set-hud-piece-position!
+    (-> this sprites 3)
+    (the int (+ (* -130.0 (-> this offset)) (* 18.0 (-> *video-params* relative-x-scale))))
+    (the int (+ 305.0 (* 130.0 (-> this offset))))
+    )
+  (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites 3)) 21 23)
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 3)) 20 20)
+  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 3)) 10 64)
+  (set! (-> this sprites 1 scale-y) (* -0.098000005 (the float (-> this values 5 current))))
+  (cond
+    ((nonzero? (-> this values 5 current))
+     (let ((f30-1
+             (the float
+                  (+ (the int (* 127.0 (sin (* 182.04445 (the float (-> *display* game-clock frame-counter)))))) 127)
+                  )
+             )
+           )
+       (set! (-> this sprites 1 color x) (the int (lerp-scale 96.0 128.0 f30-1 0.0 255.0)))
+       (set! (-> this sprites 1 color y) (the int (lerp-scale 128.0 128.0 f30-1 0.0 255.0)))
+       (set! (-> this sprites 1 color z) (the int (lerp-scale 128.0 128.0 f30-1 0.0 255.0)))
+       )
+     )
+    (else
+      (set! (-> this sprites 1 color x) 128)
+      (set! (-> this sprites 1 color y) 128)
+      (set! (-> this sprites 1 color z) 128)
+      )
+    )
+  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 3)) 40 59)
+  (set! (-> this sprites 2 scale-y) (* -0.096999995 (the float (-> this values 2 current))))
+  (cond
+    ((nonzero? (-> this values 2 current))
+     (let ((f0-27
+             (+ 0.5
+                (* 0.5
+                   (sin
+                     (* 182.04445 (the float (* (if (>= (-> this values 2 current) (the int (-> *FACT-bank* darkjak-bomb-min)))
+                                                    2
+                                                    1
+                                                    )
+                                                (-> *display* game-clock frame-counter)
+                                                )
+                                       )
+                        )
+                     )
+                   )
+                )
+             )
+           (f1-17 (if (>= (-> this values 2 current) (the int (-> *FACT-bank* darkjak-bomb-min)))
+                      255.0
+                      128.0
+                      )
+                  )
+           )
+       (set! (-> this sprites 2 color x) (the int (* 0.35 f1-17 f0-27)))
+       (set! (-> this sprites 2 color y) (the int (* 0.1 f1-17 f0-27)))
+       (set! (-> this sprites 2 color z) (the int (* 0.8 f1-17 f0-27)))
+       )
+     )
+    (else
+      (set! (-> this sprites 2 color x) 44)
+      (set! (-> this sprites 2 color y) 12)
+      (set! (-> this sprites 2 color z) 102)
+      )
+    )
+  (let ((s5-0 (-> this values 4 current)))
+    (dotimes (s4-0 s5-0)
+      (let ((v1-38
+              (-> (new 'static 'inline-array vector 16
+                    (new 'static 'vector :x 23.0 :y 5.0 :w 1.0)
+                    (new 'static 'vector :x 36.0 :y 2.0 :w 1.0)
+                    (new 'static 'vector :x 49.0 :y 5.0 :w 1.0)
+                    (new 'static 'vector :x 60.0 :y 12.0 :w 1.0)
+                    (new 'static 'vector :x 67.0 :y 23.0 :w 1.0)
+                    (new 'static 'vector :x 70.0 :y 36.0 :w 1.0)
+                    (new 'static 'vector :x 67.0 :y 49.0 :w 1.0)
+                    (new 'static 'vector :x 60.0 :y 60.0 :w 1.0)
+                    (new 'static 'vector :x 49.0 :y 67.0 :w 1.0)
+                    (new 'static 'vector :x 36.0 :y 70.0 :w 1.0)
+                    (new 'static 'vector :x 23.0 :y 67.0 :w 1.0)
+                    (new 'static 'vector :x 12.0 :y 60.0 :w 1.0)
+                    (new 'static 'vector :x 5.0 :y 49.0 :w 1.0)
+                    (new 'static 'vector :x 2.0 :y 36.0 :w 1.0)
+                    (new 'static 'vector :x 5.0 :y 23.0 :w 1.0)
+                    (new 'static 'vector :x 12.0 :y 12.0 :w 1.0)
+                    )
+                  (logand (+ (- 20 (/ s5-0 2)) s4-0) 15)
+                  )
+              )
+            )
+        (set-as-offset-from!
+          (-> this sprites (+ s4-0 7))
+          (the-as vector4w (-> this sprites 3))
+          (the int (-> v1-38 x))
+          (+ (the int (-> v1-38 y)) 1)
+          )
+        )
+      (if (>= s4-0 (-> this values 0 current))
+          (set! (-> this sprites (+ s4-0 7) tid)
+                (the-as texture-id (get-texture hud-newhud-reddot-01 level-default-minimap))
+                )
+          (set! (-> this sprites (+ s4-0 7) tid)
+                (the-as texture-id (get-texture hud-newhud-greendot-01 level-default-minimap))
+                )
+          )
+      )
+    (let ((s4-1 15))
+      (while (>= s4-1 s5-0)
+        (set-as-offset-from! (-> this sprites (+ s5-0 7)) (the-as vector4w (-> this sprites 3)) -200 0)
+        (+! s5-0 1)
+        )
+      )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-health
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-health))
+  (set! (-> this values 0 target) (the int (-> *target* fact health)))
+  (set! (-> this values 1 target) (the-as int (-> *target* fact health-pickup-time)))
+  (set! (-> this values 2 target) (min 100 (the int (+ 0.5 (-> *target* game eco-pill-dark)))))
+  (set! (-> this values 3 target) (the-as int (-> *target* fact eco-pill-dark-pickup-time)))
+  (set! (-> this values 4 target) (the int (-> *target* fact health-max)))
+  (set! (-> this values 5 target) (min 100 (the int (+ 0.5 (-> *target* game eco-pill-light)))))
+  (set! (-> this values 6 target) (the-as int (-> *target* fact eco-pill-light-pickup-time)))
+  (if (focus-test? *target* dark)
+      (+! (-> this values 7 target) 1)
+      )
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-health
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-health))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-lower-left-1) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 0 pos z) #xfffff1)
+  (set! (-> this sprites 0 scale-x) 11.0)
+  (set! (-> this sprites 0 scale-y) 11.0)
+  (set! (-> this sprites 0 color x) 30)
+  (set! (-> this sprites 0 color y) 30)
+  (set! (-> this sprites 0 color z) 20)
+  (set! (-> this sprites 1 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 1 pos z) #xfffff2)
+  (set! (-> this sprites 1 scale-x) 8.0)
+  (set! (-> this sprites 1 scale-y) 8.0)
+  (set! (-> this sprites 2 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 2 pos z) #xfffff3)
+  (set! (-> this sprites 2 scale-x) 8.0)
+  (set! (-> this sprites 2 scale-y) 8.0)
+  (set! (-> this sprites 3 tid) (the-as texture-id (get-texture hud-newhud-01 level-default-minimap)))
+  (set! (-> this sprites 4 tid) (the-as texture-id (get-texture hud-newhud-shine-01 level-default-minimap)))
+  (set! (-> this sprites 4 scale-x) 1.3)
+  (dotimes (s5-0 16)
+    (set! (-> this sprites (+ s5-0 7) tid)
+          (the-as texture-id (get-texture hud-newhud-greendot-01 level-default-minimap))
+          )
+    )
+  (logior! (-> this values 2 flags) 1)
+  (set! (-> this values 2 inc-time) (the-as uint 3))
+  (set! (-> this values 2 inc-unit) (the-as uint 1))
+  (logior! (-> this values 5 flags) 1)
+  (set! (-> this values 5 inc-time) (the-as uint 3))
+  (set! (-> this values 5 inc-unit) (the-as uint 1))
+  (logior! (-> this values 4 flags) 1)
+  (set! (-> this values 4 inc-time) (the-as uint 300))
+  (set! (-> this values 4 inc-unit) (the-as uint 1))
+  0
+  (none)
+  )
+
+;; definition for symbol *hud-skullgem*, type (pointer hud-skullgem)
+(define *hud-skullgem* (the-as (pointer hud-skullgem) #f))
+
+;; definition for method 15 of type hud-skullgem
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-skullgem))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this icons 0 pos))
+    (the int (+ (* -130.0 (-> this offset)) (* 60.0 (-> *video-params* relative-x-scale))))
+    150
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (-> this icons 0 pos) -28 20)
+  (set! (-> this sprites 0 scale-x) 0.86)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this icons 0 pos) 0 45)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-skullgem
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-skullgem))
+  (set! (-> this values 0 target) (the int (-> *target* game gem)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-skullgem
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-skullgem))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-center-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (hud-create-icon this 0 (the-as int (art-group-get-by-name *level* "skel-gem" (the-as (pointer level) #f))))
+  (set! (-> this icons 0 scale-x) 0.025)
+  (set! (-> this icons 0 scale-y) 0.035)
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-egg-glow level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 0.86)
+  (set! (-> this sprites 0 scale-y) 1.05)
+  (set! (-> this sprites 0 pos z) #xfff9ff)
+  (logior! (-> this values 0 flags) 11)
+  (set! (-> this values 0 inc-time) (the-as uint 45))
+  (set! (-> this values 0 inc-unit) (the-as uint 1))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 scale) 0.5)
+  0
+  (none)
+  )
+
+;; definition for method 25 of type hud-skullgem
+;; WARN: Return type mismatch int vs none.
+(defmethod update-value-callback ((this hud-skullgem) (arg0 int) (arg1 int))
+  (let ((v1-3 (- (-> this values arg0 target) (-> this values arg0 current))))
+    (cond
+      ((< 20 v1-3)
+       (set! (-> this values arg0 current) (-> this values arg0 target))
+       )
+      ((> v1-3 0)
+       (sound-play "inc-pickup" :pitch 0.5)
+       )
+      (else
+        (sound-play "gem-spawn" :vol 80 :pitch 0.4)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-skill
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-skill))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this icons 0 pos))
+    (the int (+ (* -130.0 (-> this offset)) (* 60.0 (-> *video-params* relative-x-scale))))
+    270
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (-> this icons 0 pos) -20 -39)
+  (set! (-> this sprites 0 scale-x) 0.62)
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (-> this icons 0 pos) 0 -5)
+  (when (not (paused?))
+    (let ((s5-1 (new 'stack-no-clear 'quaternion)))
+      (quaternion-axis-angle! s5-1 0.0 1.0 0.0 364.0889)
+      (quaternion*! (-> this icons 0 icon 0 root quat) s5-1 (-> this icons 0 icon 0 root quat))
+      )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-skill
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-skill))
+  (set! (-> this values 0 target) (the int (-> *target* game skill)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-skill
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-skill))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (hud-create-icon this 0 (the-as int (art-group-get-by-name *level* "skel-skill" (the-as (pointer level) #f))))
+  (set! (-> this icons 0 scale-x) 0.009)
+  (set! (-> this icons 0 scale-y) -0.018)
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-egg-glow level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 0.62)
+  (set! (-> this sprites 0 scale-y) 1.34)
+  (set! (-> this sprites 0 pos z) #xfff9ff)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 scale) 0.5)
+  (logior! (-> this values 0 flags) 9)
+  (set! (-> this values 0 inc-time) (the-as uint 45))
+  (set! (-> this values 0 inc-unit) (the-as uint 1))
+  0
+  (none)
+  )
+
+;; definition for method 25 of type hud-skill
+;; WARN: Return type mismatch int vs none.
+(defmethod update-value-callback ((this hud-skill) (arg0 int) (arg1 int))
+  (if (> arg1 0)
+      (sound-play "inc-pickup" :pitch 0.5)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-score
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-score))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ (- 512.0 (* 32.0 (-> *video-params* relative-x-scale))) (* 130.0 (-> this offset))))
+    140
+    )
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -12 8)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-score
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-score))
+  (set! (-> this values 0 target) (the int (-> *game-info* score)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-score
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-score))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-center-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.5)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf2))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning right large))
+  (set! (-> this strings 0 color) (font-color red))
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-timer
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-timer))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (+ (the int (* 8.0 (-> *video-params* relative-x-scale))) 256)
+    (the int (+ 50.0 (* -100.0 (-> this offset))))
+    )
+  (format (clear (-> this strings 0 text)) "~1,'0D" (/ (-> this values 0 current) 10))
+  (format (clear (-> this strings 1 text)) "~1,'0D" (mod (-> this values 0 current) 10))
+  (format (clear (-> this strings 2 text)) ":")
+  (format (clear (-> this strings 3 text)) "~1,'0D" (/ (-> this values 1 current) 10))
+  (format (clear (-> this strings 4 text)) "~1,'0D" (mod (-> this values 1 current) 10))
+  (let ((s5-5 20)
+        (s4-0 -42)
+        )
+    (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) s4-0 -24)
+    (let ((s4-1 (+ s4-0 s5-5)))
+      (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) s4-1 -24)
+      (let ((s4-2 (+ s4-1 16)))
+        (set-as-offset-from! (the-as hud-sprite (-> this strings 2 pos)) (the-as vector4w (-> this sprites)) s4-2 -24)
+        (let ((s4-3 (+ s4-2 16)))
+          (set-as-offset-from! (the-as hud-sprite (-> this strings 3 pos)) (the-as vector4w (-> this sprites)) s4-3 -24)
+          (let ((a2-13 (+ s4-3 s5-5)))
+            (set-as-offset-from!
+              (the-as hud-sprite (-> this strings 4 pos))
+              (the-as vector4w (-> this sprites))
+              a2-13
+              -24
+              )
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 18 of type hud-timer
+;; WARN: Return type mismatch uint vs object.
+(defmethod event-callback ((this hud-timer) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('alert)
+     (let ((v0-0 (-> arg3 param 0)))
+       (set! (-> this values 3 target) (the-as int v0-0))
+       v0-0
+       )
+     )
+    )
+  )
+
+;; definition for method 16 of type hud-timer
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-timer))
+  (set! (-> this values 0 target) (/ (-> *game-info* timer) #x4650))
+  (set! (-> this values 1 target) (/ (mod (-> *game-info* timer) #x4650) 300))
+  (let ((v1-8 (abs (- (-> this values 1 target) (-> this values 2 target)))))
+    (when (> v1-8 0)
+      (set! (-> this values 2 target) (-> this values 1 target))
+      (cond
+        ((<= (-> this values 3 target) 0)
+         (if (and (< (-> this values 0 target) 1)
+                  (< (-> this values 1 target) (the-as int (-> *setting-control* user-current timer-warn-seconds)))
+                  )
+             (sound-play "timer-warn")
+             (sound-play "timer-beep")
+             )
+         )
+        ((= (-> this values 3 target) 1)
+         (sound-play "warn-beep1")
+         )
+        ((= (-> this values 3 target) 2)
+         (sound-play "warn-beep2")
+         )
+        ((>= (-> this values 3 target) 3)
+         (sound-play "warn-beep3")
+         )
+        )
+      )
+    )
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-timer
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-timer))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-timerboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 0 scale-x) 2.2)
+  (set! (-> this sprites 0 scale-y) 2.0)
+  (dotimes (s5-0 5)
+    (alloc-string-if-needed this s5-0)
+    (set! (-> this strings s5-0 scale) 0.8)
+    (set! (-> this strings s5-0 flags) (font-flags kerning middle large))
+    (set! (-> this strings s5-0 color) (font-color green))
+    )
+  (set! (-> this values 2 target) (-> this values 1 target))
+  (set! (-> this values 3 target) 0)
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-big-score
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-big-score))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (+ (the int (* 8.0 (-> *video-params* relative-x-scale))) 256)
+    (the int (+ 50.0 (* -100.0 (-> this offset))))
+    )
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -7 -24)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-big-score
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-big-score))
+  (set! (-> this values 0 target) (the int (-> *game-info* score)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-big-score
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-big-score))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-timerboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 0 scale-x) 2.7)
+  (set! (-> this sprites 0 scale-y) 2.0)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.8)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color green))
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-goal
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-goal))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ (* -130.0 (-> this offset)) (* 65.0 (-> *video-params* relative-x-scale))))
+    70
+    )
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) -40 -40)
+  (let ((v1-4 (-> *setting-control* user-default language)))
+    (set! (-> this strings 1 scale) (cond
+                                      ((= v1-4 (language-enum korean))
+                                       0.75
+                                       )
+                                      ((= v1-4 (language-enum russian))
+                                       0.75
+                                       )
+                                      (else
+                                        0.65
+                                        )
+                                      )
+          )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-goal
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-goal))
+  (set! (-> this values 0 target) (the int (-> *game-info* goal)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-goal
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-goal))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color red))
+  (alloc-string-if-needed this 1)
+  (set! (-> this strings 1 scale) 0.65)
+  (set! (-> this strings 1 flags) (font-flags kerning large))
+  (set! (-> this strings 1 color) (font-color red))
+  (let ((s5-0 format)
+        (gp-1 (clear (-> this strings 1 text)))
+        (s4-0 "~S")
+        )
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0136) #f))
+    (s5-0 gp-1 s4-0 *temp-string*)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-miss
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-miss))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 448.0 (* 130.0 (-> this offset))))
+    70
+    )
+  (format (clear (-> this strings 0 text)) "~D/~D" (-> this values 0 current) (-> this values 1 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) 40 -40)
+  (let ((v1-3 (-> *setting-control* user-default language)))
+    (set! (-> this strings 1 scale) (cond
+                                      ((= v1-3 (language-enum korean))
+                                       0.75
+                                       )
+                                      ((= v1-3 (language-enum russian))
+                                       0.75
+                                       )
+                                      (else
+                                        0.65
+                                        )
+                                      )
+          )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-miss
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-miss))
+  (set! (-> this values 0 target) (the int (-> *game-info* miss)))
+  (set! (-> this values 1 target) (the int (-> *game-info* miss-max)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-miss
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-miss))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color red))
+  (alloc-string-if-needed this 1)
+  (set! (-> this strings 1 scale) 0.65)
+  (set! (-> this strings 1 flags) (font-flags kerning right large))
+  (set! (-> this strings 1 color) (font-color red))
+  (let ((s5-0 format)
+        (gp-1 (clear (-> this strings 1 text)))
+        (s4-0 "~S")
+        )
+    (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-0546) #f))
+    (s5-0 gp-1 s4-0 *temp-string*)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type hud-progress
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-progress))
+  (with-pp
+    (let ((f0-0 (if (process-by-name "hud-timer" *active-pool*)
+                    65.0
+                    35.0
+                    )
+                )
+          )
+      (seek! (-> this sprites 2 scale-y) f0-0 (* 2.0 (-> pp clock time-adjust-ratio)))
+      )
+    (set-hud-piece-position!
+      (the-as hud-sprite (-> this sprites))
+      256
+      (the int (+ (* -100.0 (-> this offset)) (-> this sprites 2 scale-y)))
+      )
+    (set-as-offset-from!
+      (-> this sprites 1)
+      (the-as vector4w (-> this sprites))
+      (+ (the int (* 0.09 (the float (-> this values 0 current)))) -42)
+      0
+      )
+    ((method-of-type hud draw) this)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 16 of type hud-progress
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-progress))
+  (set! (-> this values 0 target) (the int (* 1000.0 (-> *game-info* distance))))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-progress
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-progress))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center-2) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id))))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 0 scale-x) 1.2)
+  (set! (-> this sprites 0 scale-y) 1.2)
+  (set! (-> this sprites 1 tid) (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id))))
+  (set! (-> this sprites 1 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 1 scale-x) 1.8)
+  (set! (-> this sprites 1 scale-y) 1.8)
+  (set! (-> this sprites 2 scale-y) (if (process-by-name "hud-timer" *active-pool*)
+                                        65.0
+                                        35.0
+                                        )
+        )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type hud-sprite
+;; WARN: Return type mismatch int vs none.
+(defmethod hud-sprite-method-11 ((this hud-sprite) (arg0 hud-sprite) (arg1 vector4w) (arg2 int) (arg3 int))
+  (set! (-> this tid) (the-as texture-id (lookup-texture-by-id (-> arg0 tid))))
+  (set! (-> this scale-x) (-> arg0 scale-x))
+  (set! (-> this scale-y) (-> arg0 scale-y))
+  (set-as-offset-from!
+    (the-as hud-sprite (-> this pos))
+    arg1
+    (+ arg2 (the int (-> arg0 offset-x)))
+    (+ arg3 (the int (-> arg0 offset-y)))
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *gun-arrow-table*, type (inline-array hud-sprite)
+(define *gun-arrow-table* (new 'static 'inline-array hud-sprite 24
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y -1047003136)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x5 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y -1047003136)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x36 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y -1044381696)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x4d :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y -1044381696)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x4e :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1053818880 :y -1040187392)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x4d :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1053818880 :y -1040187392)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x4e :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y #x41980000)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x2 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y #x41980000)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x33 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y #x41c00000)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x47 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1056964608 :y #x41c00000)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x48 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1053818880 :y #x41e80000)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x47 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1053818880 :y #x41e80000)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x48 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1047003136 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x3 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1047003136 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x34 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1044381696 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x49 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1044381696 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x4a :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1040187392 :y -1053818880)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x49 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x -1040187392 :y -1053818880)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x4a :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x #x41980000 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x4 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x #x41980000 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x35 :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x #x41c00000 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x4b :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x #x41c00000 :y -1056964608)
+                              :scale-x 1.0
+                              :scale-y 1.0
+                              :tid (new 'static 'texture-id :index #x4c :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x #x41e80000 :y -1053818880)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x4b :page #x9)
+                              )
+                            (new 'static 'hud-sprite
+                              :pos (new 'static 'vector4w :x #x41e80000 :y -1053818880)
+                              :scale-x 1.21
+                              :scale-y 1.21
+                              :tid (new 'static 'texture-id :index #x4c :page #x9)
+                              )
+                            )
+        )
+
+;; definition for method 15 of type hud-gun
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-gun))
+  (local-vars
+    (sv-32 int)
+    (sv-40 int)
+    (sv-48 int)
+    (sv-56 int)
+    (sv-64 hud-sprite)
+    (sv-72 int)
+    (sv-80 int)
+    (sv-88 int)
+    (sv-96 int)
+    (sv-104 int)
+    (sv-112 int)
+    )
+  (set! sv-32 0)
+  (set! sv-40 0)
+  (set! sv-48 0)
+  (set! sv-56 0)
+  (set! sv-64 (new 'stack-no-clear 'hud-sprite))
+  (set! sv-72 (the int (get-max-ammo-for-gun *game-info* (the-as pickup-type (-> this values 0 current)))))
+  (set! sv-80 20)
+  (set! sv-88 -1)
+  (set! sv-96 -1)
+  (set! sv-104 -1)
+  (set! sv-112 -1)
+  (case (gun->eco (the-as pickup-type (-> this values 0 current)))
+    (((pickup-type eco-yellow))
+     (let ((v1-10 (-> this sprites 15 color-ptr)))
+       (set! (-> v1-10 0) 128)
+       (set! (-> v1-10 1) 128)
+       (set! (-> v1-10 2) 96)
+       (set! (-> v1-10 3) 128)
+       )
+     (set! sv-96 (+ (-> this values 0 current) -29))
+     (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-gunyellow-common-01 level-default-minimap)))
+     (set! (-> this sprites 14 tid)
+           (the-as texture-id (get-texture hud-gun-yellow-shell-01 level-default-minimap))
+           )
+     (set! (-> this sprites 0 scale-x) 1.8)
+     (set! (-> this sprites 0 scale-y) 1.8)
+     (set! (-> this sprites 1 scale-x) 1.8)
+     (set! (-> this sprites 1 scale-y) 1.8)
+     (set! sv-32 10)
+     (set! sv-40 7)
+     )
+    (((pickup-type eco-dark))
+     (let ((v1-19 (-> this sprites 15 color-ptr)))
+       (set! (-> v1-19 0) 128)
+       (set! (-> v1-19 1) 96)
+       (set! (-> v1-19 2) 128)
+       (set! (-> v1-19 3) 128)
+       )
+     (set! sv-112 (+ (-> this values 0 current) -35))
+     (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-gunpurple-common-01 level-default-minimap)))
+     (set! (-> this sprites 14 tid)
+           (the-as texture-id (get-texture hud-gun-purple-shell-01 level-default-minimap))
+           )
+     (set! (-> this sprites 0 scale-x) 1.6)
+     (set! (-> this sprites 0 scale-y) 1.6)
+     (set! (-> this sprites 1 scale-x) 1.6)
+     (set! (-> this sprites 1 scale-y) 1.6)
+     (set! sv-32 23)
+     (set! sv-80 10)
+     )
+    (((pickup-type eco-blue))
+     (let ((v1-28 (-> this sprites 15 color-ptr)))
+       (set! (-> v1-28 0) 96)
+       (set! (-> v1-28 1) 128)
+       (set! (-> v1-28 2) 128)
+       (set! (-> v1-28 3) 128)
+       )
+     (set! sv-104 (+ (-> this values 0 current) -32))
+     (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-gunblue-common-01 level-default-minimap)))
+     (set! (-> this sprites 14 tid) (the-as texture-id (get-texture hud-gun-blue-shell-01 level-default-minimap)))
+     (set! (-> this sprites 0 scale-x) 1.7)
+     (set! (-> this sprites 0 scale-y) 1.7)
+     (set! (-> this sprites 1 scale-x) 1.7)
+     (set! (-> this sprites 1 scale-y) 1.7)
+     (set! sv-32 6)
+     (set! sv-40 13)
+     )
+    (else
+      (let ((v1-37 (-> this sprites 15 color-ptr)))
+        (set! (-> v1-37 0) 128)
+        (set! (-> v1-37 1) 64)
+        (set! (-> v1-37 2) 64)
+        (set! (-> v1-37 3) 128)
+        )
+      (set! sv-88 (+ (-> this values 0 current) -26))
+      (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-gunred-common-01 level-default-minimap)))
+      (set! (-> this sprites 14 tid) (the-as texture-id (get-texture hud-gun-red-shell-01 level-default-minimap)))
+      (set! (-> this sprites 0 scale-x) 1.6)
+      (set! (-> this sprites 0 scale-y) 1.6)
+      (set! (-> this sprites 1 scale-x) 1.6)
+      (set! (-> this sprites 1 scale-y) 1.6)
+      (set! sv-32 23)
+      (set! sv-40 -2)
+      (set! sv-80 20)
+      )
+    )
+  (case (-> this values 0 current)
+    ((26)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunred-01a level-default-minimap)))
+     (set! sv-48 -102)
+     )
+    ((27)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunred-02a level-default-minimap)))
+     (set! sv-48 -153)
+     )
+    ((28)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunred-03a level-default-minimap)))
+     (set! sv-48 -153)
+     )
+    ((29)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunyellow-01a level-default-minimap)))
+     (set! sv-48 -172)
+     )
+    ((30)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunyellow-02a level-default-minimap)))
+     (set! sv-48 -172)
+     )
+    ((31)
+     (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-gunyellow-03b level-default-minimap)))
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunyellow-03a level-default-minimap)))
+     (set! sv-48 -172)
+     )
+    ((32)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunblue-01a level-default-minimap)))
+     (set! sv-48 -135)
+     )
+    ((33)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunblue-02a level-default-minimap)))
+     (set! sv-48 -162)
+     (set! sv-56 -49)
+     )
+    ((34)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunblue-03a level-default-minimap)))
+     (set! sv-48 -162)
+     (set! sv-56 -49)
+     )
+    ((35)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunpurple-01a level-default-minimap)))
+     (set! sv-48 -153)
+     )
+    ((36)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunpurple-02a level-default-minimap)))
+     (set! sv-48 -153)
+     )
+    ((37)
+     (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-gunpurple-03a level-default-minimap)))
+     (set! sv-48 -153)
+     )
+    )
+  (set-hud-piece-position!
+    sv-64
+    (- (the int (+ 507.0 (* 130.0 (-> this offset)))) (the int (* 80.0 (-> *video-params* relative-x-scale))))
+    (the int (+ 40.0 (* -100.0 (-> this offset))))
+    )
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (- (the int (+ 507.0 (* 130.0 (-> this offset))))
+       (the int (* (the float sv-32) (-> *video-params* relative-x-scale)))
+       )
+    (the int (+ (- 25.0 (the float sv-40)) (* -100.0 (-> this offset))))
+    )
+  (let ((f30-0 1.0))
+    (cond
+      ((zero? (-> this values 0 current))
+       (set! f30-0 0.0)
+       (set! (-> this strings 0 pos x) 0)
+       (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) -3 0)
+       )
+      (else
+        (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) sv-48 sv-56)
+        (set-as-offset-from!
+          (the-as hud-sprite (-> this strings 0 pos))
+          (the-as vector4w (-> this sprites))
+          (+ sv-32 -70)
+          (+ sv-40 61)
+          )
+        (set-as-offset-from!
+          (-> this sprites 14)
+          (the-as vector4w (-> this sprites))
+          (+ sv-32 -68)
+          (+ (if (= sv-80 20)
+                 122
+                 97
+                 )
+             sv-40
+             )
+          )
+        (set! (-> this sprites 14 scale-x) 1.0)
+        (let ((s5-0 (the int (+ 0.1 (* (the float sv-80) (/ (the float (-> this values 1 current)) (the float sv-72)))))))
+          (if (and (zero? s5-0) (nonzero? (-> this values 1 current)))
+              (set! s5-0 1)
+              )
+          (when (not (-> *setting-control* user-current gun-special-mode))
+            (with-dma-buffer-add-bucket ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                                         (bucket-id hud-draw-hud-alpha)
+                                         )
+              (dotimes (s2-0 sv-80)
+                (if (= s2-0 s5-0)
+                    (set! (-> this sprites 14 tid) (the-as texture-id (get-texture hud-gun-empty-shell-01 level-default-minimap)))
+                    )
+                (draw (-> this sprites 14) s3-0 (-> this level) #f)
+                (+! (-> this sprites 14 pos y) -5)
+                (if (= s2-0 (+ (/ sv-80 2) -1))
+                    (set-as-offset-from!
+                      (-> this sprites 14)
+                      (the-as vector4w (-> this sprites))
+                      (+ sv-32 -83)
+                      (+ (if (= sv-80 20)
+                             122
+                             97
+                             )
+                         sv-40
+                         )
+                      )
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    (set! (-> this sprites 14 scale-x) 0.0)
+    (set-as-offset-from! (-> this sprites 15) (the-as vector4w sv-64) -4 -4)
+    (dotimes (v1-125 12)
+      (set! (-> this sprites (+ v1-125 2) scale-x) 0.0)
+      )
+    (let ((s5-1
+            (+ (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-red-1))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-red-2))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-red-3))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               )
+            )
+          )
+      (dotimes (s4-1 s5-1)
+        (let ((s3-1 (- 10 s4-1)))
+          (hud-sprite-method-11
+            (-> this sprites s3-1)
+            (if (>= sv-88 s4-1)
+                (-> *gun-arrow-table* (+ (* s4-1 2) 1))
+                (-> *gun-arrow-table* (* s4-1 2))
+                )
+            (the-as vector4w sv-64)
+            0
+            0
+            )
+          (if (= f30-0 0.0)
+              (set! (-> this sprites s3-1 scale-x) f30-0)
+              )
+          )
+        )
+      )
+    (let ((s5-2
+            (+ (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (-> *setting-control* user-current gun)
+                        (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow-1))
+                                  (-> *target* game features)
+                                  )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow-2))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-yellow-3))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               )
+            )
+          )
+      (dotimes (s4-2 s5-2)
+        (let ((s3-2 (- 13 s4-2)))
+          (hud-sprite-method-11
+            (-> this sprites s3-2)
+            (if (>= sv-96 s4-2)
+                (-> *gun-arrow-table* (+ (* s4-2 2) 7))
+                (-> *gun-arrow-table* (+ (* s4-2 2) 6))
+                )
+            (the-as vector4w sv-64)
+            0
+            0
+            )
+          (if (= f30-0 0.0)
+              (set! (-> this sprites s3-2 scale-x) f30-0)
+              )
+          )
+        )
+      )
+    (let ((s5-3
+            (+ (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (-> *setting-control* user-current gun)
+                        (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-blue-1))
+                                  (-> *target* game features)
+                                  )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-blue-2))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-blue-3))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               )
+            )
+          )
+      (dotimes (s4-3 s5-3)
+        (let ((s3-3 (- 4 s4-3)))
+          (hud-sprite-method-11
+            (-> this sprites s3-3)
+            (if (>= sv-104 s4-3)
+                (-> *gun-arrow-table* (+ (* s4-3 2) 13))
+                (-> *gun-arrow-table* (+ (* s4-3 2) 12))
+                )
+            (the-as vector4w sv-64)
+            0
+            0
+            )
+          (if (= f30-0 0.0)
+              (set! (-> this sprites s3-3 scale-x) f30-0)
+              )
+          )
+        )
+      )
+    (let ((s5-4
+            (+ (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (-> *setting-control* user-current gun)
+                        (logtest? (logand (-> *setting-control* user-current features) (game-feature gun-dark-1))
+                                  (-> *target* game features)
+                                  )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (game-feature gun-dark-2) (-> *setting-control* user-current features))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               (if (and (logtest? (-> *target* game features) (game-feature gun))
+                        (and (-> *setting-control* user-current gun)
+                             (logtest? (logand (game-feature gun-dark-3) (-> *setting-control* user-current features))
+                                       (-> *target* game features)
+                                       )
+                             )
+                        )
+                   1
+                   0
+                   )
+               )
+            )
+          )
+      (dotimes (s4-4 s5-4)
+        (let ((s3-4 (- 7 s4-4)))
+          (hud-sprite-method-11
+            (-> this sprites s3-4)
+            (if (>= sv-112 s4-4)
+                (-> *gun-arrow-table* (+ (* s4-4 2) 19))
+                (-> *gun-arrow-table* (+ (* s4-4 2) 18))
+                )
+            (the-as vector4w sv-64)
+            0
+            0
+            )
+          (if (= f30-0 0.0)
+              (set! (-> this sprites s3-4 scale-x) f30-0)
+              )
+          )
+        )
+      )
+    )
+  (format (clear (-> this strings 0 text)) "~D/~D" (-> this values 1 current) sv-72)
+  (if (and *target*
+           (nonzero? (-> *target* gun))
+           (< (-> this values 1 current) (the int (-> *target* gun ammo-required)))
+           )
+      (set! (-> this strings 0 color) (font-color red))
+      (set! (-> this strings 0 color) (font-color white))
+      )
+  (if (and (-> *setting-control* user-current gun-special-mode) (= (-> this values 0 current) 29))
+      (clear (-> this strings 0 text))
+      )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-gun
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-gun))
+  (cond
+    ((focus-test? *target* gun)
+     (let ((v1-2 (-> this values 0 target)))
+       (set! (-> this values 0 target) (the-as int (-> *target* gun using-gun-type)))
+       (if (!= v1-2 (-> this values 0 target))
+           (sound-play "gun-switch")
+           )
+       )
+     (set! (-> this values 1 target)
+           (the int (-> *target* game gun-ammo (+ (gun->ammo (-> *target* gun using-gun-type)) -15)))
+           )
+     (logclear! (-> this flags) (hud-flags disable))
+     (logior! (-> this flags) (hud-flags show))
+     )
+    (else
+      (logior! (-> this flags) (hud-flags disable))
+      (logclear! (-> this flags) (hud-flags show))
+      (send-event this 'hide)
+      )
+    )
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-gun
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-gun))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf2))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 scale) 0.4)
+  (set! (-> this sprites 15 tid) (the-as texture-id (get-texture hud-gun-reticle level-default-minimap)))
+  (set! (-> this sprites 15 scale-x) 1.0)
+  (set! (-> this sprites 15 scale-y) 1.0)
+  (logior! (-> this flags) (hud-flags disable))
+  0
+  (none)
+  )
+
+;; definition for function activate-hud
+;; WARN: Return type mismatch int vs none.
+(defun activate-hud ((arg0 target))
+  (process-spawn hud-health :init hud-init-by-other :name "hud-health" :to arg0)
+  (process-spawn hud-map :init hud-init-by-other :name "hud-map" :to arg0)
+  (set! *hud-skullgem* (process-spawn hud-skullgem :init hud-init-by-other :name "hud-skullgem" :to arg0))
+  (process-spawn hud-skill :init hud-init-by-other :name "hud-skill" :to arg0)
+  (process-spawn hud-gun :init hud-init-by-other :name "hud-gun" :to arg0)
+  0
+  (none)
+  )

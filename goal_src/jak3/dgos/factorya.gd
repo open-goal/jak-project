@@ -19,5 +19,5 @@
   "fac-fma-breaking-bits-ag.go"
   "lfac-hanger-door-ag.go"
   "particleman-ag.go"
-  "factorya.o"
+  "factorya.go"
  ))

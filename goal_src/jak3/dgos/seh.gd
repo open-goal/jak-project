@@ -13,5 +13,5 @@
   "sew-grate-plat-ag.go"
   "sew-move-plat-ag.go"
   "kg-debris-ag.go"
-  "sewh-vis.o"
+  "sewh-vis.go"
  ))

@@ -7,5 +7,5 @@
   "jakc-highres-ag.go"
   "com-airlock-inner-ag.go"
   "sew-elevator-ag.go"
-  "minee.o"
+  "minee.go"
  ))

@@ -8,5 +8,5 @@
   "desert-eggwall-ag.go"
   "des-cactus-obstacle-ag.go"
   "particleman-ag.go"
-  "desertg-vis.o"
+  "desertg-vis.go"
  ))

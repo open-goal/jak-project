@@ -1898,7 +1898,7 @@
          (set! (-> this vehicles) (the-as game-vehicles (-> (the-as game-save-tag s4-0) user-uint64)))
          )
         (((game-save-elt vehicle))
-         (set! (-> this current-vehicle) (-> (the-as game-save-tag s4-0) user-uint8 0))
+         (set! (-> this current-vehicle) (the-as game-vehicle-u8 (-> (the-as game-save-tag s4-0) user-uint8 0)))
          )
         (((game-save-elt items))
          (set! (-> this items) (the-as game-items (-> (the-as game-save-tag s4-0) user-uint64)))
@@ -2267,7 +2267,7 @@
         )
       (set! (-> gp-0 flags) (font-flags shadow kerning))
       (format (clear *temp-string*) "~S / ~S ~D~%" (-> self mode) (-> self state name) (-> self which))
-      (print-game-text *temp-string* gp-0 #f 44 (bucket-id bucket579))
+      (print-game-text *temp-string* gp-0 #f 44 (bucket-id hud-draw-hud-alpha))
       )
     )
   (when (and (= (-> self mode) 'auto-save) (not (and (-> self next-state) (= (-> self next-state name) 'done))))
@@ -2289,22 +2289,31 @@
                  (and (-> self next-state) (= (-> self next-state name) 'save))
                  (begin
                    (if (zero? (-> self message-gui-id))
-                       (set! (-> self message-gui-id) (the-as uint (add-process
-                                                                     *gui-control*
-                                                                     self
-                                                                     (gui-channel hud-auto-save-message)
-                                                                     (gui-action play)
-                                                                     (-> self name)
-                                                                     81920.0
-                                                                     0
-                                                                     )
-                                                              )
+                       (set! (-> self message-gui-id)
+                             (the-as
+                               uint
+                               (add-process
+                                 *gui-control*
+                                 self
+                                 (gui-channel hud-auto-save-message)
+                                 (gui-action play)
+                                 (-> self name)
+                                 81920.0
+                                 0
+                                 )
+                               )
                              )
                        )
                    (= (get-status *gui-control* (the-as sound-id (-> self message-gui-id))) (gui-status active))
                    )
                  )
-        (print-game-text (lookup-text! *common-text* (text-id text-00a0) #f) gp-1 #f 44 (bucket-id bucket579))
+        (print-game-text
+          (lookup-text! *common-text* (text-id progress-memcard-saving) #f)
+          gp-1
+          #f
+          44
+          (bucket-id hud-draw-hud-alpha)
+          )
         (set! (-> gp-1 origin x) 20.0)
         (set! (-> gp-1 origin y) 130.0)
         (let ((v1-37 gp-1))
@@ -2314,8 +2323,8 @@
           (set! (-> v1-38 height) (the float 200))
           )
         (let ((s5-2 print-game-text))
-          (format (clear *temp-string*) (lookup-text! *common-text* (text-id text-00a4) #f) 1)
-          (s5-2 *temp-string* gp-1 #f 44 (bucket-id bucket579))
+          (format (clear *temp-string*) (lookup-text! *common-text* (text-id progress-memcard-remove-warn) #f) 1)
+          (s5-2 *temp-string* gp-1 #f 44 (bucket-id hud-draw-hud-alpha))
           )
         )
       )
@@ -2325,13 +2334,7 @@
       (let* ((s5-3 (-> *display* frames (-> *display* on-screen) global-buf))
              (gp-2 (-> s5-3 base))
              )
-        (let ((a0-39 (-> self icon))
-              (t9-14 (method-of-type hud-sprite draw))
-              (a1-12 s5-3)
-              (a2-10 (-> self level))
-              )
-          (t9-14 a0-39 a1-12 a2-10)
-          )
+        (draw (-> self icon) s5-3 (-> self level) #f)
         (let ((a3-8 (-> s5-3 base)))
           (when (!= gp-2 a3-8)
             (let ((v1-55 (the-as object (-> s5-3 base))))
@@ -2342,7 +2345,7 @@
               )
             (dma-bucket-insert-tag
               (-> *display* frames (-> *display* on-screen) bucket-group)
-              (bucket-id bucket579)
+              (bucket-id hud-draw-hud-alpha)
               gp-2
               (the-as (pointer dma-tag) a3-8)
               )
@@ -2394,7 +2397,12 @@
     )
   (set! (-> self starting-auto-save-status) (the-as basic (-> *setting-control* user-default auto-save)))
   (set! (-> *setting-control* user-default auto-save) #f)
-  (set-vector! (-> self icon color) 128 128 128 128)
+  (let ((v1-61 (-> self icon color-ptr)))
+    (set! (-> v1-61 0) 128)
+    (set! (-> v1-61 1) 128)
+    (set! (-> v1-61 2) 128)
+    (set! (-> v1-61 3) 128)
+    )
   (set! (-> self icon pos x) 440)
   (set! (-> self icon pos y) 210)
   (set! (-> self icon pos z) #xffffff)
@@ -2402,8 +2410,8 @@
   (set! (-> self icon scale-x) 2.0)
   (set! (-> self icon scale-y) 2.0)
   (set! (-> self icon angle) 0.0)
-  (set! (-> self icon flags) (the-as uint 0))
-  (set! (-> self icon tex) (lookup-texture-by-id (new 'static 'texture-id :page #x9)))
+  (set! (-> self icon flags) (hud-sprite-flags))
+  (set! (-> self icon tid) (the-as texture-id (get-texture checkpoint level-default-minimap)))
   (go-virtual get-heap)
   )
 
@@ -2990,6 +2998,8 @@
     (else
       (case *kernel-boot-message*
         (('play 'preview)
+         (#when PC_PORT
+             (pc-settings-save))
          (auto-save-command 'auto-save 0 0 *default-pool* #f)
          )
         )

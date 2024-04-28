@@ -10,5 +10,5 @@
   "kg-robot-transport-ag.go"
   "cty-homing-missile-ag.go"
   "kg-robot-transport-bomb-ag.go"
-  "lctyprot.o"
+  "lctyprot.go"
  ))

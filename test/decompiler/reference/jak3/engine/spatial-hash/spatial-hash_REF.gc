@@ -1,0 +1,997 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type grid-hash-work
+(deftype grid-hash-work (basic)
+  ((result-words       uint8   32 :offset  16)
+   (result-bits        uint8   32 :overlay-at (-> result-words 0))
+   (object-id          int32)
+   (temp-box-min       vector  :inline)
+   (temp-box-max       vector  :inline)
+   (visit-count        int32)
+   (temp-time          uint32)
+   (queue-object-time  uint32)
+   (make-hash-time     uint32)
+   (search-time        uint32)
+   (add-object-time    uint32)
+   )
+  )
+
+;; definition for method 3 of type grid-hash-work
+(defmethod inspect ((this grid-hash-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tresult-words[32] @ #x~X~%" (-> this result-words))
+  (format #t "~1Tresult-bits[32] @ #x~X~%" (-> this result-words))
+  (format #t "~1Tobject-id: ~D~%" (-> this object-id))
+  (format #t "~1Ttemp-box-min: #<vector @ #x~X>~%" (-> this temp-box-min))
+  (format #t "~1Ttemp-box-max: #<vector @ #x~X>~%" (-> this temp-box-max))
+  (format #t "~1Tvisit-count: ~D~%" (-> this visit-count))
+  (format #t "~1Ttemp-time: ~D~%" (-> this temp-time))
+  (format #t "~1Tqueue-object-time: ~D~%" (-> this queue-object-time))
+  (format #t "~1Tmake-hash-time: ~D~%" (-> this make-hash-time))
+  (format #t "~1Tsearch-time: ~D~%" (-> this search-time))
+  (format #t "~1Tadd-object-time: ~D~%" (-> this add-object-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *grid-hash-work*, type grid-hash-work
+(define *grid-hash-work* (new 'static 'grid-hash-work))
+
+;; definition for method 0 of type grid-hash
+;; WARN: Return type mismatch object vs grid-hash.
+(defmethod new grid-hash ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((gp-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+    (when (zero? (the-as grid-hash gp-0))
+      (set! gp-0 0)
+      (goto cfg-4)
+      )
+    (set! (-> (the-as grid-hash gp-0) work) *grid-hash-work*)
+    (set! (-> (the-as grid-hash gp-0) object-count) 0)
+    (set! (-> (the-as grid-hash gp-0) bucket-memory-size) arg0)
+    (set! (-> (the-as grid-hash gp-0) vertical-cell-count) 1)
+    (set! (-> (the-as grid-hash gp-0) min-cell-size) 16384.0)
+    (set! (-> (the-as grid-hash gp-0) mem-bucket-array)
+          (the-as (pointer grid-hash-word) (malloc allocation arg0))
+          )
+    (set! (-> (the-as grid-hash gp-0) spr-bucket-array) (the-as (pointer grid-hash-word) #x70000000))
+    (set! (-> (the-as grid-hash gp-0) bucket-array) (-> (the-as grid-hash gp-0) mem-bucket-array))
+    (set! (-> (the-as grid-hash gp-0) debug-draw) #f)
+    (set! (-> (the-as grid-hash gp-0) use-scratch-ram) #f)
+    (label cfg-4)
+    (the-as grid-hash gp-0)
+    )
+  )
+
+;; definition for method 16 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod verify-bits-in-bucket ((this grid-hash) (arg0 grid-hash-box) (arg1 grid-hash-box))
+  (let ((s5-0 0))
+    0
+    (let ((v1-1 8)
+          (a0-1 (-> this object-count))
+          (a1-2 (* (-> this bucket-size) 8))
+          )
+      (while (< a0-1 a1-2)
+        (let ((a3-0 (- a0-1 (* (/ a0-1 v1-1) v1-1))))
+          (set! s5-0 (logior s5-0 (ash 1 a3-0)))
+          )
+        (+! a0-1 1)
+        )
+      )
+    (dotimes (s4-0 (-> this bucket-count))
+      (let ((a3-2 (-> this bucket-array (+ (-> this bucket-size) -1 (* s4-0 (-> this bucket-size))))))
+        (when (logtest? a3-2 s5-0)
+          (format 0 "bad bits in bucket ~d bucket-word ~8x test-word ~8x~%" s4-0 a3-2 s5-0)
+          (break!)
+          0
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod box-of-everything ((this grid-hash) (arg0 object) (arg1 grid-hash-box))
+  (dotimes (v1-0 3)
+    (set! (-> arg1 min v1-0) (-> this dimension-array v1-0))
+    (set! (-> arg1 max v1-0) -1)
+    )
+  (let* ((v1-3 (-> this bucket-size))
+         (a3-4 (* (-> this dimension-array 0) v1-3))
+         (t0-3 (* (-> this dimension-array 2) a3-4))
+         (t1-0 (-> this dimension-array 0))
+         (t2-0 (-> this dimension-array 2))
+         (t3-0 (-> this dimension-array 1))
+         (a0-2 (&-> (-> this bucket-array) (/ (the-as int arg0) 8)))
+         (a1-2 (ash 1 (logand (the-as int arg0) 7)))
+         )
+    (dotimes (t4-3 t3-0)
+      (let ((t5-0 a0-2))
+        (dotimes (t6-0 t2-0)
+          (let ((t7-0 t5-0))
+            (dotimes (t8-0 t1-0)
+              (when (logtest? (-> t7-0 0) a1-2)
+                (set! (-> arg1 min 0) (min (-> arg1 min 0) t8-0))
+                (set! (-> arg1 min 1) (min (-> arg1 min 1) t4-3))
+                (set! (-> arg1 min 2) (min (-> arg1 min 2) t6-0))
+                (set! (-> arg1 max 0) (max (-> arg1 max 0) t8-0))
+                (set! (-> arg1 max 1) (max (-> arg1 max 1) t4-3))
+                (set! (-> arg1 max 2) (max (-> arg1 max 2) t6-0))
+                )
+              (&+! t7-0 v1-3)
+              )
+            )
+          (&+! t5-0 a3-4)
+          )
+        )
+      (&+! a0-2 t0-3)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition (debug) for function validate-bucket-bits
+;; WARN: Return type mismatch int vs symbol.
+(defun-debug validate-bucket-bits ((arg0 grid-hash) (arg1 (pointer grid-hash-word)))
+  (let ((s3-0 (-> arg0 object-count))
+        (s2-0 (* (-> arg0 bucket-size) 8))
+        (gp-0 0)
+        (s5-0 0)
+        )
+    (while (< s3-0 s2-0)
+      (let* ((s1-0 (/ s3-0 8))
+             (a0-1 (- s3-0 (* s1-0 8)))
+             )
+        (when (logtest? (-> arg1 s1-0) (ash 1 a0-1))
+          (format 0 "bit ~d, " s3-0)
+          (+! gp-0 1)
+          (set! s5-0 (the-as int (-> arg1 s1-0)))
+          )
+        )
+      (+! s3-0 1)
+      )
+    (when (> gp-0 0)
+      (format 0 "~%~d bad bits found~%" gp-0)
+      (format 0 "bad-word ~x~%" s5-0)
+      (break!)
+      0
+      )
+    )
+  (the-as symbol 0)
+  )
+
+;; definition for method 18 of type grid-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 18 grid-hash)" 18 grid-hash)
+
+;; definition for method 19 of type grid-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 19 grid-hash)" 19 grid-hash)
+
+;; definition for method 20 of type grid-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 20 grid-hash)" 20 grid-hash)
+
+;; definition for method 21 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod set-up-box ((this grid-hash) (arg0 grid-hash-box) (arg1 vector) (arg2 vector))
+  (dotimes (v1-0 3)
+    (set! (-> arg0 min v1-0)
+          (the int
+               (fmax
+                 0.0
+                 (fmin
+                   (* (- (-> arg1 data v1-0) (-> this box-min v1-0)) (-> this axis-scale v1-0))
+                   (the float (+ (-> this dimension-array v1-0) -1))
+                   )
+                 )
+               )
+          )
+    (set! (-> arg0 max v1-0)
+          (the int (fmax 0.0 (fmin
+                               (* (- (-> arg2 data v1-0) (-> this box-min v1-0)) (-> this axis-scale v1-0))
+                               (the float (+ (-> this dimension-array v1-0) -1))
+                               )
+                         )
+               )
+          )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 22 of type grid-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 22 grid-hash)" 22 grid-hash)
+
+;; definition for method 23 of type grid-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod line-sphere-to-grid-box ((this grid-hash) (arg0 grid-hash-box) (arg1 vector) (arg2 vector) (arg3 float))
+  (let ((s4-0 (new 'stack-no-clear 'grid-hash-box))
+        (s5-0 (new 'stack-no-clear 'grid-hash-box))
+        )
+    (let ((v1-0 (new 'stack-no-clear 'vector))
+          (s2-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> v1-0 quad) (-> arg1 quad))
+      (vector+! s2-0 arg1 arg2)
+      (set! (-> v1-0 w) arg3)
+      (set! (-> s2-0 w) arg3)
+      (sphere-to-grid-box this s4-0 (the-as sphere v1-0))
+      (sphere-to-grid-box this s5-0 (the-as sphere s2-0))
+      )
+    (set! (-> arg0 min 0) (min (-> s4-0 min 0) (-> s5-0 min 0)))
+    (set! (-> arg0 min 1) (min (-> s4-0 min 1) (-> s5-0 min 1)))
+    (set! (-> arg0 min 2) (min (-> s4-0 min 2) (-> s5-0 min 2)))
+    (set! (-> arg0 max 0) (max (-> s4-0 max 0) (-> s5-0 max 0)))
+    (set! (-> arg0 max 1) (max (-> s4-0 max 1) (-> s5-0 max 1)))
+    (set! (-> arg0 max 2) (max (-> s4-0 max 2) (-> s5-0 max 2)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type grid-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-bucket-array ((this grid-hash))
+  (let ((v1-5 (/ (+ (* (* (* (-> this dimension-array 0) (-> this dimension-array 1)) (-> this dimension-array 2))
+                       (-> this bucket-size)
+                       )
+                    15
+                    )
+                 16
+                 )
+              )
+        (a0-1 (the-as (pointer uinteger) (-> this bucket-array)))
+        )
+    (while (nonzero? v1-5)
+      (+! v1-5 -1)
+      (set! (-> (the-as (pointer uint128) a0-1) 0) (the-as uint128 0))
+      (set! a0-1 (&-> (the-as (pointer grid-hash-word) a0-1) 16))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 24 of type grid-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod update-grid ((this grid-hash))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (dotimes (a0-1 3)
+      (set! (-> v1-0 data a0-1) (fmax (-> this min-cell-size) (- (-> this box-max a0-1) (-> this box-min a0-1))))
+      )
+    (b!
+      (and (> (-> this object-count) 0) (< 0.0 (-> v1-0 x)) (< 0.0 (-> v1-0 y)) (< 0.0 (-> v1-0 z)))
+      cfg-23
+      :delay (empty-form)
+      )
+    (set! (-> this bucket-count) 1)
+    (set! (-> this bucket-size) 1)
+    (dotimes (v1-3 3)
+      (set! (-> this box-min v1-3) 0.0)
+      (set! (-> this box-max v1-3) 0.0)
+      (set! (-> this axis-scale v1-3) 0.0)
+      (set! (-> this dimension-array v1-3) 1)
+      )
+    (let ((v1-11
+            (/ (+ (* (* (* (-> this dimension-array 0) (-> this dimension-array 1)) (-> this dimension-array 2))
+                     (-> this bucket-size)
+                     )
+                  15
+                  )
+               16
+               )
+            )
+          (a0-19 (the-as (pointer uinteger) (-> this bucket-array)))
+          )
+      (while (nonzero? v1-11)
+        (+! v1-11 -1)
+        (set! (-> (the-as (pointer uint128) a0-19) 0) (the-as uint128 0))
+        (set! a0-19 (&-> (the-as (pointer grid-hash-word) a0-19) 16))
+        )
+      )
+    0
+    (b! #t cfg-46 :delay (nop!))
+    (label cfg-23)
+    (let ((a0-20 8))
+      (set! (-> this bucket-size) (/ (+ a0-20 -1 (-> this object-count)) a0-20))
+      )
+    (set! (-> this bucket-count)
+          (min (* (-> this object-count) 16) (/ (-> this bucket-memory-size) (-> this bucket-size)))
+          )
+    (let ((f0-11
+            (sqrtf
+              (/ (the float (-> this bucket-count)) (* (-> v1-0 x) (-> v1-0 z) (the float (-> this vertical-cell-count))))
+              )
+            )
+          )
+      (let ((a0-29 (min 126 (+ (-> this bucket-count) -1))))
+        (set! (-> this dimension-array 0) (max 1 (min (the int (* f0-11 (-> v1-0 x))) a0-29)))
+        (set! (-> this dimension-array 1) (-> this vertical-cell-count))
+        (set! (-> this dimension-array 2) (max 1 (min (the int (* f0-11 (-> v1-0 z))) a0-29)))
+        )
+      (let* ((f1-15 (* f0-11 (-> v1-0 z)))
+             (f1-17 (- f1-15 (the float (the int f1-15))))
+             (f0-12 (* f0-11 (-> v1-0 x)))
+             )
+        (cond
+          ((< f1-17 (- f0-12 (the float (the int f0-12))))
+           (if (>= (-> this bucket-count)
+                   (* (* (+ (-> this dimension-array 0) 1) (-> this dimension-array 1)) (-> this dimension-array 2))
+                   )
+               (+! (-> this dimension-array 0) 1)
+               )
+           )
+          (else
+            (if (>= (-> this bucket-count)
+                    (* (* (-> this dimension-array 0) (-> this dimension-array 1)) (+ (-> this dimension-array 2) 1))
+                    )
+                (+! (-> this dimension-array 2) 1)
+                )
+            )
+          )
+        )
+      )
+    (dotimes (a0-42 2)
+      (let* ((a1-26 (* a0-42 2))
+             (a2-12 (max 1 (the int (/ (-> v1-0 data a1-26) (-> this min-cell-size)))))
+             )
+        (set! (-> (the-as (pointer uint8) (+ a1-26 (the-as int this))) 24)
+              (the-as uint (min (-> (the-as (pointer int8) (+ a1-26 (the-as int this))) 24) a2-12))
+              )
+        )
+      )
+    (dotimes (a0-45 3)
+      (set! (-> this axis-scale a0-45) (/ (the float (-> this dimension-array a0-45)) (-> v1-0 data a0-45)))
+      )
+    )
+  (let ((a2-13 (* (* (-> this dimension-array 0) (-> this dimension-array 1)) (-> this dimension-array 2))))
+    (b! (< (-> this bucket-count) a2-13) cfg-40)
+    (let* ((v1-20 this)
+           (a0-53
+             (/ (+ (* (* (* (-> v1-20 dimension-array 0) (-> v1-20 dimension-array 1)) (-> v1-20 dimension-array 2))
+                      (-> v1-20 bucket-size)
+                      )
+                   15
+                   )
+                16
+                )
+             )
+           (v1-21 (the-as (pointer uinteger) (-> v1-20 bucket-array)))
+           )
+      (while (nonzero? a0-53)
+        (+! a0-53 -1)
+        (set! (-> (the-as (pointer uint128) v1-21) 0) (the-as uint128 0))
+        (set! v1-21 (&-> (the-as (pointer grid-hash-word) v1-21) 16))
+        )
+      )
+    0
+    (b! #t cfg-46 :delay (nop!))
+    (label cfg-40)
+    (when *debug-segment*
+      (format
+        *stdcon*
+        "grid-hash::update-grid: bucket overflow! ~d dim ~d ~d ~d~%"
+        a2-13
+        (-> this dimension-array 0)
+        (-> this dimension-array 1)
+        (-> this dimension-array 2)
+        )
+      (break!)
+      0
+      )
+    )
+  (set! (-> this bucket-count) 1)
+  (set! (-> this bucket-size) 1)
+  (dotimes (v1-30 3)
+    (set! (-> this axis-scale v1-30) 0.0)
+    (set! (-> this dimension-array v1-30) 1)
+    )
+  (label cfg-46)
+  0
+  (none)
+  )
+
+;; definition for method 9 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod update-grid-for-objects-in-box ((this grid-hash) (arg0 int) (arg1 vector) (arg2 vector))
+  (set! (-> this object-count) arg0)
+  (dotimes (v1-0 3)
+    (set! (-> this box-min v1-0) (-> arg1 data v1-0))
+    (set! (-> this box-max v1-0) (-> arg2 data v1-0))
+    )
+  (update-grid this)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-search-box ((this grid-hash) (arg0 int) (arg1 vector) (arg2 vector) (arg3 vector))
+  (let ((v1-0 (new 'stack-no-clear 'vector))
+        (t1-0 (new 'stack-no-clear 'vector))
+        )
+    (dotimes (t2-0 3)
+      (set! (-> v1-0 data t2-0) (fmin (fmin (-> arg1 data t2-0) (-> arg2 data t2-0)) (-> arg3 data t2-0)))
+      (set! (-> t1-0 data t2-0) (fmax (fmax (-> arg1 data t2-0) (-> arg2 data t2-0)) (-> arg3 data t2-0)))
+      )
+    (let ((a2-3 this)
+          (a3-1 (-> this search-box))
+          )
+      (dotimes (t0-1 3)
+        (set! (-> a3-1 min t0-1)
+              (the int
+                   (fmax
+                     0.0
+                     (fmin
+                       (* (- (-> v1-0 data t0-1) (-> a2-3 box-min t0-1)) (-> a2-3 axis-scale t0-1))
+                       (the float (+ (-> a2-3 dimension-array t0-1) -1))
+                       )
+                     )
+                   )
+              )
+        (set! (-> a3-1 max t0-1)
+              (the int (fmax 0.0 (fmin
+                                   (* (- (-> t1-0 data t0-1) (-> a2-3 box-min t0-1)) (-> a2-3 axis-scale t0-1))
+                                   (the float (+ (-> a2-3 dimension-array t0-1) -1))
+                                   )
+                             )
+                   )
+              )
+        )
+      )
+    )
+  0
+  (set! (-> this work object-id) arg0)
+  (let* ((t1-1 this)
+         (t2-21 (-> this search-box))
+         (a3-2 arg0)
+         (v1-5 (-> t1-1 bucket-size))
+         (a0-2 (* (-> t1-1 dimension-array 0) v1-5))
+         (a1-2 (* (-> t1-1 dimension-array 2) a0-2))
+         (a2-6 (+ (- 1 (-> t2-21 min 0)) (-> t2-21 max 0)))
+         (t0-6 (+ (- 1 (-> t2-21 min 2)) (-> t2-21 max 2)))
+         (t3-22 (+ (- 1 (-> t2-21 min 1)) (-> t2-21 max 1)))
+         (t1-3 (the-as
+                 object
+                 (+ (+ (* (-> t2-21 min 0) v1-5) (* (-> t2-21 min 1) a1-2) (* (-> t2-21 min 2) a0-2) (/ a3-2 8) 0)
+                    (the-as int (the-as pointer (-> t1-1 bucket-array)))
+                    )
+                 )
+               )
+         (a3-4 (ash 1 (logand a3-2 7)))
+         (t2-28 t3-22)
+         )
+    (label cfg-10)
+    (let ((t3-23 t0-6)
+          (t4-6 t1-3)
+          )
+      (label cfg-11)
+      (let ((t5-2 a2-6)
+            (t6-0 t4-6)
+            )
+        (label cfg-12)
+        (nop!)
+        (let ((t7-0 (-> (the-as (pointer uint8) t6-0))))
+          (nop!)
+          (let ((t7-1 (logior t7-0 a3-4)))
+            (+! t5-2 -1)
+            (set! (-> (the-as (pointer uint8) t6-0)) t7-1)
+            )
+          )
+        (b! (nonzero? t5-2) cfg-12 :delay (set! t6-0 (+ (the-as pointer t6-0) v1-5)))
+        )
+      (+! t3-23 -1)
+      (nop!)
+      (b! (nonzero? t3-23) cfg-11 :delay (set! t4-6 (+ (the-as pointer t4-6) a0-2)))
+      )
+    (+! t2-28 -1)
+    (nop!)
+    (b! (nonzero? t2-28) cfg-10 :delay (set! t1-3 (+ (the-as pointer t1-3) a1-2)))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for method 12 of type grid-hash
+(defmethod search-for-point ((this grid-hash) (arg0 vector))
+  (let ((v1-0 this)
+        (a0-1 (-> this search-box))
+        (a2-0 arg0)
+        )
+    (dotimes (a3-0 3)
+      (set! (-> a0-1 min a3-0)
+            (the int
+                 (fmax
+                   0.0
+                   (fmin
+                     (* (- (-> a2-0 data a3-0) (-> v1-0 box-min a3-0)) (-> v1-0 axis-scale a3-0))
+                     (the float (+ (-> v1-0 dimension-array a3-0) -1))
+                     )
+                   )
+                 )
+            )
+      (set! (-> a0-1 max a3-0)
+            (the int (fmax 0.0 (fmin
+                                 (* (- (-> arg0 data a3-0) (-> v1-0 box-min a3-0)) (-> v1-0 axis-scale a3-0))
+                                 (the float (+ (-> v1-0 dimension-array a3-0) -1))
+                                 )
+                           )
+                 )
+            )
+      )
+    )
+  0
+  (do-search! this (-> this search-box) (-> this work result-words))
+  (-> this work result-words)
+  )
+
+;; definition for method 13 of type grid-hash
+;; WARN: Found some very strange gotos. Check result carefully, this is not well tested.
+;; INFO: Used lq/sq
+(defmethod search-for-sphere ((this grid-hash) (arg0 vector) (arg1 float))
+  (let ((v1-0 (new 'stack-no-clear 'sphere)))
+    (set! (-> v1-0 quad) (-> arg0 quad))
+    (set! (-> v1-0 r) arg1)
+    (sphere-to-grid-box this (-> this search-box) v1-0)
+    )
+  (let ((s5-0 (-> this work result-words))
+        (s4-0 0)
+        )
+    (label cfg-1)
+    (do-search! this (-> this search-box) s5-0)
+    (dotimes (v1-5 (-> this bucket-size))
+      (set! s4-0 (logior s4-0 (-> s5-0 v1-5)))
+      )
+    (when (zero? s4-0)
+      (when (or (> (-> this search-box min 0) 0)
+                (> (-> this search-box min 2) 0)
+                (< (-> this search-box max 0) (+ (-> this dimension-array 0) -1))
+                (< (-> this search-box max 2) (+ (-> this dimension-array 2) -1))
+                )
+        (set! (-> this search-box min 0) (max 0 (+ (-> this search-box min 0) -1)))
+        (set! (-> this search-box min 2) (max 0 (+ (-> this search-box min 2) -1)))
+        (set! (-> this search-box max 0) (min (+ (-> this dimension-array 0) -1) (+ (-> this search-box max 0) 1)))
+        (set! (-> this search-box max 2) (min (+ (-> this dimension-array 2) -1) (+ (-> this search-box max 2) 1)))
+        (goto cfg-1)
+        )
+      )
+    )
+  (-> this work result-words)
+  )
+
+;; definition (debug) for function draw-grid
+;; WARN: Return type mismatch int vs none.
+(defun-debug draw-grid ((arg0 vector) (arg1 vector) (arg2 (pointer int8)) (arg3 rgba))
+  (local-vars (sv-64 vector) (sv-68 vector) (sv-72 vector))
+  (set! sv-64 (new 'stack-no-clear 'vector))
+  (set! sv-68 (new 'stack-no-clear 'vector))
+  (set! sv-72 (new 'stack-no-clear 'vector))
+  (dotimes (v1-3 3)
+    (set! (-> sv-64 data v1-3) (/ (- (-> arg1 data v1-3) (-> arg0 data v1-3)) (the float (-> arg2 v1-3))))
+    )
+  (set! (-> sv-68 x) (-> arg0 x))
+  (set! (-> sv-72 x) (-> arg1 x))
+  (dotimes (s2-0 (+ (-> arg2 1) 1))
+    (set! (-> sv-68 y) (+ (-> arg0 y) (* (the float s2-0) (-> sv-64 y))))
+    (set! (-> sv-72 y) (-> sv-68 y))
+    (dotimes (s1-0 (+ (-> arg2 2) 1))
+      (set! (-> sv-68 z) (+ (-> arg0 z) (* (the float s1-0) (-> sv-64 z))))
+      (set! (-> sv-72 z) (-> sv-68 z))
+      (add-debug-line #t (bucket-id debug) sv-68 sv-72 arg3 #f (the-as rgba -1))
+      )
+    )
+  (set! (-> sv-68 z) (-> arg0 z))
+  (set! (-> sv-72 z) (-> arg1 z))
+  (dotimes (s2-1 (+ (-> arg2 1) 1))
+    (set! (-> sv-68 y) (+ (-> arg0 y) (* (the float s2-1) (-> sv-64 y))))
+    (set! (-> sv-72 y) (-> sv-68 y))
+    (dotimes (s1-1 (+ (-> arg2 0) 1))
+      (set! (-> sv-68 x) (+ (-> arg0 x) (* (the float s1-1) (-> sv-64 x))))
+      (set! (-> sv-72 x) (-> sv-68 x))
+      (add-debug-line #t (bucket-id debug) sv-68 sv-72 arg3 #f (the-as rgba -1))
+      )
+    )
+  (set! (-> sv-68 y) (-> arg0 y))
+  (set! (-> sv-72 y) (-> arg1 y))
+  (dotimes (s3-1 (+ (-> arg2 0) 1))
+    (set! (-> sv-68 x) (+ (-> arg0 x) (* (the float s3-1) (-> sv-64 x))))
+    (set! (-> sv-72 x) (-> sv-68 x))
+    (dotimes (s2-2 (+ (-> arg2 2) 1))
+      (set! (-> sv-68 z) (+ (-> arg0 z) (* (the float s2-2) (-> sv-64 z))))
+      (set! (-> sv-72 z) (-> sv-68 z))
+      (add-debug-line #t (bucket-id debug) sv-68 sv-72 arg3 #f (the-as rgba -1))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this grid-hash) (arg0 rgba))
+  (let ((v1-0 (new 'stack-no-clear 'vector))
+        (t0-0 (new 'stack-no-clear 'vector))
+        )
+    (dotimes (a2-0 3)
+      (set! (-> v1-0 data a2-0) (-> this box-min a2-0))
+      (set! (-> t0-0 data a2-0) (-> this box-max a2-0))
+      )
+    (draw-grid v1-0 t0-0 (-> this dimension-array) arg0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 15 of type grid-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod dump-grid-info ((this grid-hash))
+  (if (-> this debug-draw)
+      (draw this *color-light-blue*)
+      )
+  (format
+    *stdcon*
+    "bucket memory ~d, bucket-size ~d, word-size ~d bits~%"
+    (-> this bucket-memory-size)
+    (-> this bucket-size)
+    8
+    )
+  (format
+    *stdcon*
+    "bucket dimensions ~d ~d ~d~%"
+    (-> this dimension-array 0)
+    (-> this dimension-array 1)
+    (-> this dimension-array 2)
+    )
+  (format *stdcon* "object-count ~d, bucket-count ~d~%" (-> this object-count) (-> this bucket-count))
+  0
+  (none)
+  )
+
+;; definition (debug) for function draw-sphere-box
+;; WARN: Return type mismatch int vs none.
+(defun-debug draw-sphere-box ((arg0 sphere) (arg1 rgba))
+  (let ((a2-0 (new 'stack-no-clear 'vector))
+        (a3-0 (new 'stack-no-clear 'vector))
+        )
+    (dotimes (v1-0 3)
+      (set! (-> a2-0 data v1-0) (- (-> arg0 data v1-0) (-> arg0 r)))
+      (set! (-> a3-0 data v1-0) (+ (-> arg0 data v1-0) (-> arg0 r)))
+      )
+    (add-debug-box #t (bucket-id debug-no-zbuf1) a2-0 a3-0 arg1)
+    )
+  0
+  (none)
+  )
+
+;; definition (debug) for function draw-line-sphere
+;; WARN: Return type mismatch int vs none.
+(defun-debug draw-line-sphere ((arg0 vector) (arg1 vector) (arg2 float) (arg3 rgba))
+  (let ((gp-0 (new 'stack-no-clear 'vector)))
+    (vector+! gp-0 arg0 arg1)
+    (add-debug-sphere #t (bucket-id debug-no-zbuf1) arg0 arg2 arg3)
+    (add-debug-sphere #t (bucket-id debug-no-zbuf1) gp-0 arg2 arg3)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 0 of type sphere-hash
+;; WARN: Return type mismatch object vs sphere-hash.
+(defmethod new sphere-hash ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int))
+  (let ((s5-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+    (when (zero? (the-as sphere-hash s5-0))
+      (set! s5-0 0)
+      (goto cfg-4)
+      )
+    (set! (-> (the-as sphere-hash s5-0) work) *grid-hash-work*)
+    (set! (-> (the-as sphere-hash s5-0) object-count) 0)
+    (set! (-> (the-as sphere-hash s5-0) bucket-memory-size) arg0)
+    (set! (-> (the-as sphere-hash s5-0) vertical-cell-count) 1)
+    (set! (-> (the-as sphere-hash s5-0) min-cell-size) 16384.0)
+    (set! (-> (the-as sphere-hash s5-0) mem-bucket-array)
+          (the-as (pointer grid-hash-word) (malloc allocation arg0))
+          )
+    (set! (-> (the-as sphere-hash s5-0) spr-bucket-array) (the-as (pointer grid-hash-word) #x70000000))
+    (set! (-> (the-as sphere-hash s5-0) bucket-array) (-> (the-as sphere-hash s5-0) mem-bucket-array))
+    (set! (-> (the-as sphere-hash s5-0) debug-draw) #f)
+    (set! (-> (the-as sphere-hash s5-0) use-scratch-ram) #f)
+    (set! (-> (the-as sphere-hash s5-0) max-object-count) arg1)
+    (set! (-> (the-as sphere-hash s5-0) mem-sphere-array) (the-as uint (malloc allocation (* arg1 16))))
+    (set! (-> (the-as sphere-hash s5-0) spr-sphere-array) (the-as uint (+ #x70000000 arg0)))
+    (set! (-> (the-as sphere-hash s5-0) sphere-array)
+          (the-as (inline-array sphere) (-> (the-as sphere-hash s5-0) mem-sphere-array))
+          )
+    (label cfg-4)
+    (the-as sphere-hash s5-0)
+    )
+  )
+
+;; definition for method 25 of type sphere-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-objects! ((this sphere-hash))
+  (set! (-> this object-count) 0)
+  (dotimes (v1-0 3)
+    (set! (-> this box-min v1-0) 10000000000000000000000000000000000000.0)
+    (set! (-> this box-max v1-0) -10000000000000000000000000000000000000.0)
+    )
+  (cond
+    ((-> this use-scratch-ram)
+     (set! (-> this sphere-array) (the-as (inline-array sphere) (-> this spr-sphere-array)))
+     (set! (-> this bucket-array) (-> this spr-bucket-array))
+     )
+    (else
+      (set! (-> this sphere-array) (the-as (inline-array sphere) (-> this mem-sphere-array)))
+      (set! (-> this bucket-array) (-> this mem-bucket-array))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 28 of type sphere-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 28 sphere-hash)" 28 sphere-hash)
+
+;; definition for method 26 of type sphere-hash
+(defmethod add-a-sphere ((this sphere-hash) (arg0 vector))
+  (let ((gp-0 (-> this object-count)))
+    (cond
+      ((< gp-0 (-> this max-object-count))
+       (let ((a0-2 (-> this sphere-array gp-0)))
+         (mem-copy! (the-as pointer a0-2) (the-as pointer arg0) 16)
+         )
+       (dotimes (v1-2 3)
+         (set! (-> this box-min v1-2) (fmin (-> this box-min v1-2) (- (-> arg0 data v1-2) (-> arg0 w))))
+         (set! (-> this box-max v1-2) (fmax (-> this box-max v1-2) (+ (-> arg0 data v1-2) (-> arg0 w))))
+         )
+       (+! (-> this object-count) 1)
+       gp-0
+       )
+      (else
+        -1
+        )
+      )
+    )
+  )
+
+;; definition for method 27 of type sphere-hash
+(defmethod add-a-sphere-with-flag ((this sphere-hash) (arg0 vector) (arg1 int))
+  (let ((gp-0 (-> this object-count)))
+    (cond
+      ((< gp-0 (-> this max-object-count))
+       (let ((s2-0 (the-as object (-> this sphere-array gp-0))))
+         (mem-copy! (the-as pointer s2-0) (the-as pointer arg0) 16)
+         (dotimes (v1-2 3)
+           (set! (-> this box-min v1-2) (fmin (-> this box-min v1-2) (- (-> arg0 data v1-2) (-> arg0 w))))
+           (set! (-> this box-max v1-2) (fmax (-> this box-max v1-2) (+ (-> arg0 data v1-2) (-> arg0 w))))
+           )
+         (set! (-> (the-as (pointer int8) s2-0) 12) arg1)
+         )
+       (+! (-> this object-count) 1)
+       gp-0
+       )
+      (else
+        -1
+        )
+      )
+    )
+  )
+
+;; definition for method 32 of type sphere-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 32 sphere-hash)" 32 sphere-hash)
+
+;; definition for method 29 of type sphere-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 29 sphere-hash)" 29 sphere-hash)
+
+;; definition for method 30 of type sphere-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 30 sphere-hash)" 30 sphere-hash)
+
+;; definition for method 31 of type sphere-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 31 sphere-hash)" 31 sphere-hash)
+
+;; definition for method 15 of type sphere-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod dump-grid-info ((this sphere-hash))
+  (call-parent-method this)
+  (new 'stack-no-clear 'vector)
+  (let ((f30-0 6144.0))
+    (set! (-> this work temp-box-min quad) (-> (target-pos 0) quad))
+    (+! (-> this work temp-box-min y) f30-0)
+    )
+  (set! (-> this work temp-box-max quad) (-> this work temp-box-min quad))
+  (set! (-> this work visit-count) 0)
+  (set! (-> this debug-draw) #t)
+  (set! (-> this work add-object-time) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition for method 0 of type spatial-hash
+;; WARN: Return type mismatch object vs spatial-hash.
+(defmethod new spatial-hash ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int))
+  (let ((gp-0 (the-as object (object-new allocation type-to-make (the-as int (-> type-to-make size))))))
+    (when (zero? (the-as spatial-hash gp-0))
+      (set! gp-0 0)
+      (goto cfg-4)
+      )
+    (set! (-> (the-as spatial-hash gp-0) work) *grid-hash-work*)
+    (set! (-> (the-as spatial-hash gp-0) object-count) 0)
+    (set! (-> (the-as spatial-hash gp-0) bucket-memory-size) arg0)
+    (set! (-> (the-as spatial-hash gp-0) vertical-cell-count) 1)
+    (set! (-> (the-as spatial-hash gp-0) min-cell-size) 16384.0)
+    (set! (-> (the-as spatial-hash gp-0) mem-bucket-array)
+          (the-as (pointer grid-hash-word) (malloc allocation arg0))
+          )
+    (set! (-> (the-as spatial-hash gp-0) spr-bucket-array) (the-as (pointer grid-hash-word) #x70000000))
+    (set! (-> (the-as spatial-hash gp-0) bucket-array) (-> (the-as spatial-hash gp-0) mem-bucket-array))
+    (set! (-> (the-as spatial-hash gp-0) debug-draw) #f)
+    (set! (-> (the-as spatial-hash gp-0) use-scratch-ram) #f)
+    (set! (-> (the-as spatial-hash gp-0) max-object-count) arg1)
+    (set! (-> (the-as spatial-hash gp-0) mem-sphere-array) (the-as uint (malloc allocation (* arg1 16))))
+    (set! (-> (the-as spatial-hash gp-0) mem-object-array)
+          (the-as (inline-array hash-object-info) (malloc allocation (* arg1 16)))
+          )
+    (set! (-> (the-as spatial-hash gp-0) spr-sphere-array) (the-as uint (+ #x70000000 arg0)))
+    (set! (-> (the-as spatial-hash gp-0) spr-object-array)
+          (the-as (inline-array hash-object-info) (+ #x70000000 (* arg1 16) arg0))
+          )
+    (set! (-> (the-as spatial-hash gp-0) sphere-array)
+          (the-as (inline-array sphere) (-> (the-as spatial-hash gp-0) mem-sphere-array))
+          )
+    (set! (-> (the-as spatial-hash gp-0) object-array) (-> (the-as spatial-hash gp-0) mem-object-array))
+    (label cfg-4)
+    (the-as spatial-hash gp-0)
+    )
+  )
+
+;; definition for method 25 of type spatial-hash
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-objects! ((this spatial-hash))
+  (set! (-> this object-count) 0)
+  (dotimes (v1-0 3)
+    (set! (-> this box-min v1-0) 10000000000000000000000000000000000000.0)
+    (set! (-> this box-max v1-0) -10000000000000000000000000000000000000.0)
+    )
+  (cond
+    ((-> this use-scratch-ram)
+     (set! (-> this sphere-array) (the-as (inline-array sphere) (-> this spr-sphere-array)))
+     (set! (-> this object-array) (-> this spr-object-array))
+     (set! (-> this bucket-array) (-> this spr-bucket-array))
+     )
+    (else
+      (set! (-> this sphere-array) (the-as (inline-array sphere) (-> this mem-sphere-array)))
+      (set! (-> this object-array) (-> this mem-object-array))
+      (set! (-> this bucket-array) (-> this mem-bucket-array))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 32 of type spatial-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 32 spatial-hash)" 32 spatial-hash)
+
+;; definition for method 33 of type spatial-hash
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spatial-hash-method-33 ((this spatial-hash) (arg0 vector) (arg1 hash-object-info))
+  (rlet ((vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((v0-0 (-> this object-count)))
+      (cond
+        ((< v0-0 (-> this max-object-count))
+         (let ((v1-2 (-> this sphere-array v0-0))
+               (a3-2 (-> this object-array v0-0))
+               )
+           (let ((t0-1 (new 'stack-no-clear 'inline-array 'vector 2)))
+             (let ((t2-0 (-> t0-1 0)))
+               (let ((t1-0 arg0))
+                 (let ((t3-0 (- (-> arg0 w))))
+                   (.mov vf6 t3-0)
+                   )
+                 (.lvf vf4 (&-> t1-0 quad))
+                 )
+               (.add.x.vf vf5 vf0 vf0 :mask #b1000)
+               (.add.x.vf vf5 vf4 vf6 :mask #b111)
+               (.svf (&-> t2-0 quad) vf5)
+               )
+             (let ((t2-1 (-> t0-1 1)))
+               (let ((t1-1 arg0))
+                 (let ((t3-1 (-> arg0 w)))
+                   (.mov vf6 t3-1)
+                   )
+                 (.lvf vf4 (&-> t1-1 quad))
+                 )
+               (.add.x.vf vf5 vf0 vf0 :mask #b1000)
+               (.add.x.vf vf5 vf4 vf6 :mask #b111)
+               (.svf (&-> t2-1 quad) vf5)
+               )
+             (dotimes (t1-2 3)
+               (set! (-> this box-min t1-2) (fmin (-> this box-min t1-2) (-> (&-> t0-1 0 data t1-2) 0)))
+               (set! (-> this box-max t1-2) (fmax (-> this box-max t1-2) (-> (&-> t0-1 0 data t1-2) 4)))
+               )
+             )
+           (set! (-> v1-2 quad) (-> arg0 quad))
+           (set! (-> a3-2 object) (the-as basic arg1))
+           )
+         (+! (-> this object-count) 1)
+         )
+        (else
+          -1
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 38 of type spatial-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 38 spatial-hash)" 38 spatial-hash)
+
+;; definition for method 35 of type spatial-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 35 spatial-hash)" 35 spatial-hash)
+
+;; definition for method 36 of type spatial-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 36 spatial-hash)" 36 spatial-hash)
+
+;; definition for method 34 of type spatial-hash
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 34 spatial-hash)" 34 spatial-hash)
+
+;; definition for method 37 of type spatial-hash
+;; INFO: Used lq/sq
+(defmethod fill-actor-list-for-line-sphere ((this spatial-hash)
+                                           (arg0 vector)
+                                           (arg1 vector)
+                                           (arg2 float)
+                                           (arg3 (pointer collide-shape))
+                                           (arg4 int)
+                                           (arg5 int)
+                                           )
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (set! (-> v1-0 quad) (-> arg0 quad))
+    (set! (-> v1-0 w) 0.0)
+    (fill-actor-list-for-box this v1-0 (the-as (pointer collide-shape) arg1) (the-as int arg2))
+    )
+  )
+
+;; definition for method 39 of type spatial-hash
+(defmethod spatial-hash-method-39 ((this spatial-hash) (arg0 object) (arg1 hash-object-info))
+  (dotimes (s5-0 (-> this object-count))
+    (let ((a0-2 (-> this object-array s5-0 object)))
+      (when (not (valid? a0-2 basic "" #t 0))
+        (break!)
+        0
+        )
+      )
+    )
+  0
+  )

@@ -14,5 +14,5 @@
   "tpage-2847.go"
   "hellcat-tower-ag.go"
   "kg-pickup-ag.go"
-  "lctyblow.o"
+  "lctyblow.go"
  ))

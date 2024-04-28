@@ -58,5 +58,5 @@
   "toad-ag.go"
   "rhino-ag.go"
   "vehicle-explosion-ag.go"
-  "wasall.o"
+  "wasall.go"
  ))

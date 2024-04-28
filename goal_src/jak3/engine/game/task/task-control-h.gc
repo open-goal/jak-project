@@ -43,6 +43,19 @@
   )
 ;; ---task-manager-mask
 
+(declare-type editable-player process)
+(define-extern *editable* (pointer editable-player))
+
+;; temporarily forward declared as symbols
+(define-extern *cty-faction-manager* symbol)
+(define-extern *cty-attack-controller* symbol)
+(set! *cty-faction-manager* #f)
+(set! *cty-attack-controller* #f)
+
+(define-extern cty-attack-reset (function symbol symbol symbol none))
+(define-extern setup-city-task-faction (function object))
+(define-extern cty-faction-evaluate-commands (function pair object))
+
 (define-extern update-task-masks (function symbol int))
 (define-extern task-resolution-close! (function game-task symbol))
 (define-extern task-node-closed? (function game-task-node symbol))
@@ -51,6 +64,17 @@
 (define-extern game-task-node->string (function game-task-node string))
 (define-extern task-close! (function string symbol))
 (define-extern task-node-index-by-name (function string int))
+(define-extern task-node-close! (function game-task-node symbol int))
+(define-extern task-node-open? (function game-task-node symbol))
+
+(define-extern restart-mission (function int))
+(define-extern play-task (function game-task symbol symbol string))
+(define-extern play-clean (function symbol int))
+
+(declare-type task-manager process)
+(declare-type game-task-node-info basic)
+(declare-type traffic-engine basic)
+(define-extern task-manager-init-by-other (function game-task-node-info symbol object :behavior task-manager))
 
 ;; DECOMP BEGINS
 
@@ -1420,11 +1444,11 @@
    (faction-commands  pair)
    )
   (:methods
-    (game-task-node-info-method-9 () none)
+    (get-idx-in-task-list (_type_) int)
     (open! (_type_ symbol) int)
-    (game-task-node-info-method-11 () none)
+    (game-task-node-info-method-11 (_type_ symbol) none)
     (game-task-node-info-method-12 (_type_) symbol)
-    (game-task-node-info-method-13 () none)
+    (eval-game-task-cmd! (_type_) none)
     )
   )
 
@@ -1434,13 +1458,13 @@
    (text-name            text-id)
    (pre-play-node        game-task-node)
    (kiosk-play-node      game-task-node)
-   (pre-play-continue    string)
+   (pre-play-continue    object)
    (play-node            game-task-node)
    (play-continue        string)
    (kiosk-play-continue  object)
    )
   (:methods
-    (game-task-info-method-9 (_type_) none)
+    (get-play-list-idx (_type_) int)
     )
   )
 
@@ -1476,25 +1500,27 @@
    (hud-counter     handle  :overlay-at (-> hud 1))
    (intro-time      time-frame)
    )
+  (:state-methods
+    wait
+    active
+    complete
+    resolution
+    (fail resetter-params)
+    (restart symbol)
+    )
   (:methods
-    (task-manager-method-14 () none)
-    (task-manager-method-15 () none)
-    (task-manager-method-16 () none)
-    (task-manager-method-17 () none)
-    (task-manager-method-18 () none)
-    (task-manager-method-19 () none)
-    (task-manager-method-20 () none)
-    (task-manager-method-21 () none)
-    (task-manager-method-22 () none)
-    (task-manager-method-23 () none)
-    (task-manager-method-24 () none)
-    (task-manager-method-25 () none)
-    (task-manager-method-26 () none)
-    (task-manager-method-27 () none)
-    (task-manager-method-28 () none)
-    (task-manager-method-29 () none)
-    (task-manager-method-30 () none)
-    (task-manager-method-31 (_type_ symbol) resetter-spec)
+    (init! (_type_) none)
+    (set-time-limit (_type_) none)
+    (kill-all-children (_type_) none)
+    (hud-timer-handler (_type_) none)
+    (ready? (_type_) object)
+    (task-manager-method-25 (_type_) none)
+    (task-manager-method-26 (_type_) none)
+    (task-manager-method-27 (_type_) none)
+    (task-manager-method-28 (_type_) none)
+    (go-fail (_type_) object)
+    (taskman-event-handler (_type_ process int symbol event-message-block) object)
+    (on-fail (_type_ symbol) resetter-params)
     )
   )
 
@@ -1513,4 +1539,4 @@
   )
 
 
-(define *traffic-engine* #f)
+(define *traffic-engine* (the-as traffic-engine #f))

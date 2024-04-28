@@ -42,35 +42,49 @@ void LSPRequester::send_notification(const json& params, const std::string& meth
   std::cout << request.c_str() << std::flush;
 }
 
-void LSPRequester::send_progress_create_request(const std::string& token,
-                                                const std::string& title) {
-  LSPSpec::WorkDoneProgressCreateParams params;
-  params.token = token;
-  send_request(params, "window/workDoneProgress/create");
-  LSPSpec::ProgressPayloadBegin beginPayload;
+void LSPRequester::send_progress_create_request(const std::string& title,
+                                                const std::string& message,
+                                                const int percentage) {
+  const std::string token = fmt::format("opengoal/{}", title);
+  LSPSpec::WorkDoneProgressCreateParams createRequest;
+  createRequest.token = token;
+  send_request(createRequest, "window/workDoneProgress/create");
+  LSPSpec::WorkDoneProgressBegin beginPayload;
   beginPayload.title = title;
-  LSPSpec::ProgressParamsBegin beginParams;
-  beginParams.token = token;
-  beginParams.value = beginPayload;
-  send_notification(beginParams, "$/progress");
+  beginPayload.cancellable = false;  // TODO - maybe one day
+  beginPayload.message = message;
+  if (percentage > 0) {
+    beginPayload.percentage = percentage;
+  }
+  LSPSpec::ProgressNotificationPayload notification;
+  notification.token = token;
+  notification.beginValue = beginPayload;
+  send_notification(notification, "$/progress");
 }
 
-void LSPRequester::send_progress_update_request(const std::string& token,
-                                                const std::string& message) {
-  LSPSpec::ProgressPayloadReport reportPayload;
+void LSPRequester::send_progress_update_request(const std::string& title,
+                                                const std::string& message,
+                                                const int percentage) {
+  const std::string token = fmt::format("opengoal/{}", title);
+  LSPSpec::WorkDoneProgressReport reportPayload;
+  reportPayload.cancellable = false;  // TODO - maybe one day
   reportPayload.message = message;
-  LSPSpec::ProgressParamsReport reportParams;
-  reportParams.token = token;
-  reportParams.value = reportPayload;
-  send_notification(reportParams, "$/progress");
+  if (percentage > 0) {
+    reportPayload.percentage = percentage;
+  }
+  LSPSpec::ProgressNotificationPayload notification;
+  notification.token = token;
+  notification.reportValue = reportPayload;
+  send_notification(notification, "$/progress");
 }
 
-void LSPRequester::send_progress_finish_request(const std::string& token,
+void LSPRequester::send_progress_finish_request(const std::string& title,
                                                 const std::string& message) {
-  LSPSpec::ProgressPayloadEnd endPayload;
+  const std::string token = fmt::format("opengoal/{}", title);
+  LSPSpec::WorkDoneProgressEnd endPayload;
   endPayload.message = message;
-  LSPSpec::ProgressParamsEnd endParams;
-  endParams.token = token;
-  endParams.value = endPayload;
-  send_notification(endParams, "$/progress");
+  LSPSpec::ProgressNotificationPayload notification;
+  notification.token = token;
+  notification.endValue = endPayload;
+  send_notification(notification, "$/progress");
 }

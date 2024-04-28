@@ -13,5 +13,5 @@
   "rhino-wheel-fma-ag.go"
   "kidmedallion-ag.go"
   "particleman-ag.go"
-  "rublcst-vis.o"
+  "rublcst-vis.go"
  ))

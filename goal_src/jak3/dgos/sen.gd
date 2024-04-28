@@ -1,5 +1,5 @@
 ("SEN.DGO"
- ("tpage-1971.o"
+ ("tpage-1971.go"
   "tpage-1973.go"
   "tpage-1972.go"
   "tpage-1970.go"
@@ -8,5 +8,5 @@
   "com-airlock-inner-ag.go"
   "sew-fan-ag.go"
   "sew-pipe-ag.go"
-  "sewn-vis.o"
+  "sewn-vis.go"
  ))

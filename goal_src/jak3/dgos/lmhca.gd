@@ -1,4 +1,4 @@
 ("LMHCA.DGO"
- ("tpage-3142.o"
-  "lmhcitya-vis.o"
+ ("tpage-3142.go"
+  "lmhcitya-vis.go"
  ))

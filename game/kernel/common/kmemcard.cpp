@@ -173,6 +173,10 @@ bool file_is_present(int id, int bank = 0) {
  */
 void pc_update_card() {
   // int highest_save_count = 0;
+  // TODO handle jak 3
+  if (g_game_version == GameVersion::Jak3) {
+    return;
+  }
   mc_last_file = -1;
   for (s32 file = 0; file < 4; file++) {
     auto bankname = mc_get_filename(g_game_version, 4 + file * 2);

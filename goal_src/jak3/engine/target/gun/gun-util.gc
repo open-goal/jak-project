@@ -5,6 +5,9 @@
 ;; name in dgo: gun-util
 ;; dgos: GAME
 
+(defmacro pc-check-focus-fix (focusable)
+  `(#if PC_PORT (or (not (-> *pc-settings* fix-projectile-focus)) (logtest? (collide-action solid) (-> ,focusable root root-prim prim-core action))) #t))
+
 ;; DECOMP BEGINS
 
 (deftype gun-eject (projectile-bounce)
@@ -12,7 +15,7 @@
   )
 
 
-(defmethod projectile-method-31 ((this gun-eject))
+(defmethod init-proj-settings! ((this gun-eject))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-gun" (the-as (pointer level) #f)))
@@ -22,7 +25,7 @@
   (let ((v1-5 (-> this skel root-channel 0)))
     (set! (-> v1-5 frame-group) (-> this parent 0 skel channel 0 frame-group))
     )
-  (let ((t9-3 (method-of-type projectile-bounce projectile-method-31)))
+  (let ((t9-3 (method-of-type projectile-bounce init-proj-settings!)))
     (t9-3 this)
     )
   (quaternion-copy! (-> this root quat) (-> this parent 0 root quat))
@@ -38,13 +41,13 @@
   )
 
 
-(defmethod projectile-method-31 ((this gun-mag-yellow))
+(defmethod init-proj-settings! ((this gun-mag-yellow))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-yellow" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (let ((t9-2 (method-of-type projectile-bounce projectile-method-31)))
+  (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
     (t9-2 this)
     )
   (set! (-> this timeout) (seconds 4))
@@ -58,13 +61,13 @@
   )
 
 
-(defmethod projectile-method-31 ((this gun-mag-red))
+(defmethod init-proj-settings! ((this gun-mag-red))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-red" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (let ((t9-2 (method-of-type projectile-bounce projectile-method-31)))
+  (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
     (t9-2 this)
     )
   (set! (-> this timeout) (seconds 4))
@@ -78,13 +81,13 @@
   )
 
 
-(defmethod projectile-method-31 ((this gun-mag-blue))
+(defmethod init-proj-settings! ((this gun-mag-blue))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-blue" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (let ((t9-2 (method-of-type projectile-bounce projectile-method-31)))
+  (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
     (t9-2 this)
     )
   (set! (-> this timeout) (seconds 4))
@@ -98,13 +101,13 @@
   )
 
 
-(defmethod projectile-method-31 ((this gun-mag-dark))
+(defmethod init-proj-settings! ((this gun-mag-dark))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-dark" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
-  (let ((t9-2 (method-of-type projectile-bounce projectile-method-31)))
+  (let ((t9-2 (method-of-type projectile-bounce init-proj-settings!)))
     (t9-2 this)
     )
   (set! (-> this timeout) (seconds 4))
@@ -362,7 +365,7 @@
              )
            (set! (-> s5-2 notify-handle) (the-as handle #f))
            (set! (-> s5-2 owner-handle) (the-as handle #f))
-           (set! (-> s5-2 target-handle) (the-as uint #f))
+           (set! (-> s5-2 target-handle) (the-as handle #f))
            (set! (-> s5-2 target-pos quad) (the-as uint128 0))
            (set! (-> s5-2 ignore-handle) (process->handle self))
            (let* ((v1-133 *game-info*)
@@ -429,18 +432,9 @@
 (defstate hidden (gun)
   :virtual #t
   :trans (behavior ()
-    (let ((v1-0 (-> self parent)))
-      (if (not (focus-test?
-                 (the-as process-focusable (if v1-0
-                                               (the-as process-focusable (-> v1-0 0 self))
-                                               )
-                         )
-                 in-head
-                 )
-               )
-          (go-virtual idle)
-          )
-      )
+    (if (not (focus-test? (ppointer->process (-> self parent)) in-head))
+        (go-virtual idle)
+        )
     )
   :code (behavior ()
     (ja-channel-set! 0)
@@ -457,7 +451,7 @@
     (set! (-> self gun-type) (-> self parent 0 game gun-type))
     (let ((a0-0 (ppointer->process (-> self parent))))
       (cond
-        ((focus-test? (the-as process-focusable a0-0) in-head)
+        ((focus-test? a0-0 in-head)
          (go-virtual hidden)
          )
         ((nonzero? (-> self parent 0 gun gun-type))
@@ -513,23 +507,13 @@
     )
   :trans (behavior ()
     (local-vars (a0-14 object))
-    (let ((v1-0 (ppointer->process (-> self parent)))
-          (a0-1 (-> self parent))
-          )
+    (let ((v1-0 (ppointer->process (-> self parent))))
       (cond
-        ((focus-test?
-           (the-as process-focusable (if a0-1
-                                         (the-as process-focusable (-> a0-1 0 self))
-                                         )
-                   )
-           in-head
-           )
+        ((focus-test? (ppointer->process (-> self parent)) in-head)
          (go-virtual hidden)
          )
         ((and (= (-> self parent 0 gun gun-type) (pickup-type none))
-              (or (not (-> (the-as process-focusable v1-0) skel top-anim frame-group))
-                  (!= (-> (the-as process-focusable v1-0) skel top-anim interp) 1.0)
-                  )
+              (or (not (-> v1-0 skel top-anim frame-group)) (!= (-> v1-0 skel top-anim interp) 1.0))
               )
          (go-virtual idle)
          )
@@ -648,11 +632,7 @@
                    ("jakb-gun-blue-fire-2" . "gun-blue-fire-2")
                    )
                  )
-           (v1-156 (-> self parent))
-           (s4-0 (if v1-156
-                     (the-as process-focusable (-> v1-156 0 self))
-                     )
-                 )
+           (s4-0 (ppointer->process (-> self parent)))
            )
       (until #f
         (let* ((v1-160 (-> s4-0 skel top-anim frame-group))
@@ -800,12 +780,7 @@
     )
   :post (behavior ()
     (gun-post)
-    (let* ((v1-0 (-> self parent))
-           (gp-0 (if v1-0
-                     (the-as process-drawable (-> v1-0 0 self))
-                     )
-                 )
-           )
+    (let ((gp-0 (ppointer->process (-> self parent))))
       (let ((s5-0
               (and (-> (the-as target gp-0) skel top-anim frame-group)
                    (not (or (focus-test? (the-as target gp-0) pilot)
@@ -899,7 +874,7 @@
         )
       (set! (-> gp-0 notify-handle) (the-as handle #f))
       (set! (-> gp-0 owner-handle) (the-as handle #f))
-      (set! (-> gp-0 target-handle) (the-as uint #f))
+      (set! (-> gp-0 target-handle) (the-as handle #f))
       (set! (-> gp-0 target-pos quad) (the-as uint128 0))
       (set! (-> gp-0 ignore-handle) (process->handle self))
       (let* ((v1-16 *game-info*)
@@ -1116,7 +1091,7 @@
   )
 
 ;; WARN: Return type mismatch object vs float.
-(defun adjust-player-ammo ((arg0 int) (arg1 pickup-type))
+(defun adjust-player-ammo ((arg0 float) (arg1 pickup-type))
   (if (and *target*
            (and (focus-test? *target* light) (nonzero? (-> *target* lightjak)))
            (not (logtest? (-> *target* lightjak stage) (lightjak-stage ls1)))
@@ -1130,7 +1105,7 @@
   (let* ((f0-2 (* 0.0033333334 (the float arg0) arg1))
          (f30-0 (fmin (fmax 0.0 f0-2) arg3))
          )
-    (adjust-player-ammo (the-as int (- f30-0)) arg2)
+    (adjust-player-ammo (- f30-0) arg2)
     f30-0
     )
   )
@@ -1140,7 +1115,7 @@
   (let* ((f0-0 (get-remaining-player-ammo arg0))
          (f0-1 (- f0-0 (the float (the int f0-0))))
          )
-    (adjust-player-ammo (the-as int (- f0-1)) arg0)
+    (adjust-player-ammo (- f0-1) arg0)
     )
   (none)
   )

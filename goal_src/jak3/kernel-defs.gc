@@ -132,10 +132,11 @@
 (define-extern scf-get-aspect "Defined in the kernel" (function uint))
 (define-extern scf-get-timeout (function int))
 (define-extern scf-get-inactive-timeout (function int))
-(define-extern kernel-shutdown (function none))
+(define-extern kernel-shutdown (function int none))
 (define-extern *boot-video-mode* "Defined in the kernel" int)
 (define-extern *kernel-boot-message* symbol)
 (define-extern *kernel-symbol-warnings* symbol)
+(define-extern *kernel-boot-art-group* string)
 (define-extern symbol->string (function symbol string))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -183,7 +184,9 @@
 (define-extern pc-waiting-for-bind? (function symbol))
 (define-extern pc-set-waiting-for-bind! (function int symbol symbol int none))
 (define-extern pc-stop-waiting-for-bind! (function none))
+(define-extern pc-get-controller-index (function int int))
 (define-extern pc-set-controller! (function int int none))
+(define-extern pc-get-keyboard-enabled? (function symbol))
 (define-extern pc-set-keyboard-enabled! (function symbol none))
 (define-extern pc-set-mouse-options! (function symbol symbol symbol none))
 (define-extern pc-set-mouse-camera-sens! (function float float none))
@@ -196,16 +199,18 @@
 
 ;; Display Related Functions
 (define-extern pc-get-display-mode (function symbol))
-(define-extern pc-get-active-display-size (function (pointer int32) (pointer int32) none))
+(define-extern pc-get-active-display-size (function (pointer int64) (pointer int64) none))
 (define-extern pc-get-active-display-refresh-rate (function int))
 (define-extern pc-get-display-count (function int))
-(define-extern pc-get-display-name (function int string))
+(define-extern pc-get-display-name (function int string symbol))
 (define-extern pc-get-os (function symbol))
-(define-extern pc-get-window-size (function (pointer int32) (pointer int32) none))
+(define-extern pc-get-window-size (function (pointer int64) (pointer int64) none))
 (define-extern pc-get-window-scale (function (pointer float) (pointer float) none))
 (define-extern pc-set-window-size (function int int none))
 (define-extern pc-set-fullscreen-display (function int none))
 (define-extern pc-set-display-mode (function symbol none))
+(define-extern pc-get-num-resolutions (function int))
+(define-extern pc-get-resolution (function int (pointer int64) (pointer int64) none))
 
 (define-extern pc-set-frame-rate (function int none))
 (define-extern pc-set-vsync (function symbol none))
@@ -230,6 +235,9 @@
 (define-extern pc-set-gfx-hack (function pc-gfx-hack symbol none))
 (define-extern pc-get-unix-timestamp (function int))
 (define-extern pc-filter-debug-string? (function string float symbol))
+(define-extern pc-screen-shot (function none))
+(declare-type screen-shot-settings structure)
+(define-extern pc-register-screen-shot-settings (function screen-shot-settings none))
 (define-extern pc-treat-pad0-as-pad1 (function symbol none))
 (define-extern pc-is-imgui-visible? (function symbol))
 (define-extern pc-rand (function int))
@@ -327,6 +335,8 @@
 
 (define-extern __pc-texture-upload-now (function object object none))
 (define-extern __pc-texture-relocate (function object object object none))
+(define-extern __pc-set-levels (function (pointer string) none))
+(define-extern __pc-set-active-levels (function (pointer string) none))
 
 (define-extern link-resume (function int))
 (define-extern unload (function string none))

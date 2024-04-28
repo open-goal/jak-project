@@ -422,6 +422,141 @@
 
 (def-mips2c bones-mtx-calc (function int pointer pointer int object none))
 
+(defmacro .cross.vf (out a b)
+  `(begin
+     (.outer.product.a.vf acc ,a ,b)
+     (.outer.product.b.vf ,out ,b ,a acc)
+     )
+  )
+
+(defun new-bones-mtx-calc-asm ((output (inline-array pris-mtx)) (joints (inline-array joint)) (bones (inline-array bone)) (cam matrix) (count int))
+  "Compute skinning matrices."
+  ;; (declare (print-asm))
+  (dotimes (i (- count 1))
+    (let ((b (-> bones (+ i 1) transform))
+          (j (-> joints i bind-pose))
+          (out (-> output (+ i 1)))
+          )
+      (rlet (
+             (tmat0 :class vf)
+             (tmat1 :class vf)
+             (tmat2 :class vf)
+             (tmat3 :class vf)
+             (nmat0 :class vf)
+             (nmat1 :class vf)
+             (nmat2 :class vf)
+             (nmat3 :class vf)
+             (acc :class vf  )
+             (vf0 :class vf  )
+             (cam0 :class vf )
+             (cam1 :class vf )
+             (cam2 :class vf )
+             (cam3 :class vf )
+             )
+
+            (init-vf0-vector)
+
+            ;; load bind-pose to tmat:
+            (.lvf tmat0 (&-> j quad 0))
+            (.lvf tmat1 (&-> j quad 1))
+            (.lvf tmat2 (&-> j quad 2))
+            (.lvf tmat3 (&-> j quad 3))
+
+            ;; load bone to nmat
+            (.lvf nmat0 (&-> b quad 0))
+            (.lvf nmat1 (&-> b quad 1))
+            (.lvf nmat2 (&-> b quad 2))
+            (.lvf nmat3 (&-> b quad 3))
+
+            ;; multiply bone and bind pose, store in tmat
+            (.mul.x.vf acc nmat0 tmat0)
+            (.add.mul.y.vf acc nmat1 tmat0 acc)
+            (.add.mul.z.vf acc nmat2 tmat0 acc)
+            (.add.mul.w.vf tmat0 nmat3 tmat0 acc)
+            (.mul.x.vf acc nmat0 tmat1)
+            (.add.mul.y.vf acc nmat1 tmat1 acc)
+            (.add.mul.z.vf acc nmat2 tmat1 acc)
+            (.add.mul.w.vf tmat1 nmat3 tmat1 acc)
+            (.mul.x.vf acc nmat0 tmat2)
+            (.add.mul.y.vf acc nmat1 tmat2 acc)
+            (.add.mul.z.vf acc nmat2 tmat2 acc)
+            (.add.mul.w.vf tmat2 nmat3 tmat2 acc)
+            (.mul.x.vf acc nmat0 tmat3)
+            (.add.mul.y.vf acc nmat1 tmat3 acc)
+            (.add.mul.z.vf acc nmat2 tmat3 acc)
+            (.add.mul.w.vf tmat3 nmat3 tmat3 acc)
+
+            ;; compute inverse transpose, storing in nmat.
+            (.cross.vf nmat0 tmat1 tmat2)
+            (.cross.vf nmat1 tmat2 tmat0)
+            (.cross.vf nmat2 tmat0 tmat1)
+
+            ;; dot nmat0 and tmat0
+            (.mul.vf acc nmat0 tmat0)
+            (.add.y.vf acc acc acc :mask #b1)
+            (.add.z.vf acc acc acc :mask #b1)
+
+            ;; divide!
+            (.div.vf acc vf0 acc :fsf #b11 :ftf #b0)
+
+            ;; scale nmat:
+            (.mul.x.vf nmat0 nmat0 acc)
+            (.mul.x.vf nmat1 nmat1 acc)
+            (.mul.x.vf nmat2 nmat2 acc)
+
+            ;; load camera
+            (.lvf cam0 (&-> cam quad 0))
+            (.lvf cam1 (&-> cam quad 1))
+            (.lvf cam2 (&-> cam quad 2))
+            (.lvf cam3 (&-> cam quad 3))
+
+            ;; multiply tmat by camera
+            (.mul.x.vf acc cam0 tmat0)
+            (.add.mul.y.vf acc cam1 tmat0 acc)
+            (.add.mul.z.vf acc cam2 tmat0 acc)
+            (.add.mul.w.vf tmat0 cam3 tmat0 acc)
+            (.mul.x.vf acc cam0 tmat1)
+            (.add.mul.y.vf acc cam1 tmat1 acc)
+            (.add.mul.z.vf acc cam2 tmat1 acc)
+            (.add.mul.w.vf tmat1 cam3 tmat1 acc)
+            (.mul.x.vf acc cam0 tmat2)
+            (.add.mul.y.vf acc cam1 tmat2 acc)
+            (.add.mul.z.vf acc cam2 tmat2 acc)
+            (.add.mul.w.vf tmat2 cam3 tmat2 acc)
+            (.mul.x.vf acc cam0 tmat3)
+            (.add.mul.y.vf acc cam1 tmat3 acc)
+            (.add.mul.z.vf acc cam2 tmat3 acc)
+            (.add.mul.w.vf tmat3 cam3 tmat3 acc)
+
+            ;; store tmat
+            (.svf (&-> out t-mtx quad 0) tmat0)
+            (.svf (&-> out t-mtx quad 1) tmat1)
+            (.svf (&-> out t-mtx quad 2) tmat2)
+            (.svf (&-> out t-mtx quad 3) tmat3)
+
+            ;; multiply nmat
+            (.mul.x.vf acc cam0 nmat0)
+            (.add.mul.y.vf acc cam1 nmat0 acc)
+            (.add.mul.z.vf nmat0 cam2 nmat0 acc)
+            (.mul.x.vf acc cam0 nmat1)
+            (.add.mul.y.vf acc cam1 nmat1 acc)
+            (.add.mul.z.vf nmat1 cam2 nmat1 acc)
+            (.mul.x.vf acc cam0 nmat2)
+            (.add.mul.y.vf acc cam1 nmat2 acc)
+            (.add.mul.z.vf nmat2 cam2 nmat2 acc)
+
+            ;; store nmat
+            (.svf (&-> out n-mtx quad 0) nmat0)
+            (.svf (&-> out n-mtx quad 1) nmat1)
+            (.svf (&-> out n-mtx quad 2) nmat2)
+            )
+      )
+    )
+  (none)
+  )
+
+(define *use-new-bones* #t)
+
 (defun bones-mtx-calc-execute ()
   "Do all pending bone calculations"
   (local-vars (v1-14 float))
@@ -481,13 +616,20 @@
         (.mov v1-14 vf27)
         ;; hack??
 
-
-        (bones-mtx-calc
-          (the-as int (-> s4-0 matrix-area))
-          (the-as pointer (-> s4-0 joints))
-          (the-as pointer (-> s4-0 bones))
-          (the-as int (-> s4-0 num-bones))
-          v1-13 ;; hack, added
+        (if *use-new-bones*
+          (new-bones-mtx-calc-asm
+            (the (inline-array pris-mtx) (-> s4-0 matrix-area))
+            (-> s4-0 joints)
+            (-> s4-0 bones)
+            v1-13
+            (the int (-> s4-0 num-bones)))
+          (bones-mtx-calc
+            (the-as int (-> s4-0 matrix-area))
+            (the-as pointer (-> s4-0 joints))
+            (the-as pointer (-> s4-0 bones))
+            (the-as int (-> s4-0 num-bones))
+            v1-13 ;; hack, added
+            )
           )
         )
         (when (logtest? (-> s4-0 flags) (bone-calc-flags bncfl00))

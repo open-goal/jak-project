@@ -3,5 +3,5 @@
   "des-bush-time-chase.o"
   "tpage-3378.go"
   "tpage-3325.go"
-  "lbbtcha1.o"
+  "lbbtcha1.go"
  ))

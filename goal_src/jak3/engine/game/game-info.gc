@@ -55,12 +55,12 @@
   )
 
 (defmethod subtask-index-by-name ((this game-info) (arg0 string))
-  (let ((s5-0 (-> *game-info* sub-task-list)))
-    (dotimes (s4-0 (-> s5-0 length))
-      (when (nonzero? s4-0)
-        (let ((v1-4 (-> s5-0 s4-0)))
+  (let ((subtasks (-> *game-info* sub-task-list)))
+    (dotimes (i (-> subtasks length))
+      (when (nonzero? i)
+        (let ((v1-4 (-> subtasks i)))
           (if (string= arg0 (-> v1-4 name))
-              (return s4-0)
+              (return i)
               )
           )
         )
@@ -202,7 +202,7 @@
       (set! (-> continue-rot 8) (the int (* 32767.0 (-> rot fvec z))))
       )
     )
-  (load-state-method-21 arg0)
+  (add-borrow-levels arg0)
   this
   )
 
@@ -382,12 +382,7 @@
                 (when (or (and (-> subtask manager) (handle->process (-> subtask manager manager)))
                           (and (-> subtask manager)
                                (-> subtask manager level)
-                               (let* ((a0-8 *level*)
-                                      (t9-2 (method-of-object a0-8 level-group-method-26))
-                                      (a1-1 (-> subtask manager level))
-                                      )
-                                 (= (t9-2 a0-8 a1-1) 'active)
-                                 )
+                               (= (status-of-level-and-borrows *level* (-> subtask manager level) #f) 'active)
                                )
                           (and (not (-> subtask manager)) (= (-> level info taskname) (-> subtask level)))
                           )
@@ -481,7 +476,7 @@
      (set! (-> this old-vehicles) (game-vehicles))
      (set! (-> this secrets) (game-secrets))
      (set! (-> this purchase-secrets) (game-secrets))
-     (set! (-> this current-vehicle) (the-as uint 27))
+     (set! (-> this current-vehicle) (game-vehicle-u8 v-turtle v-snake v-toad v-fox))
      (set-continue!
        this
        (cond
@@ -592,7 +587,10 @@
      (dotimes (v1-96 (-> this game-score length))
        (set! (-> this game-score v1-96) 0.0)
        )
-     ((method-of-object *bigmap* bigmap-method-9))
+     (when (nonzero? *bigmap*)  ;; og:preserve-this not-yet-implemented check
+       (format 0 "skipping bigmap init in game-info~%")
+       ((method-of-object *bigmap* bigmap-method-9))
+       )
      )
     )
   (case mode
@@ -689,13 +687,17 @@
                                     (get-current-continue-forced this)
                                     )
                                 )
+                          (t1-3 arg2)
+                          (t2-0 reset-spec)
                           )
-                      ((the-as (function symbol symbol continue-point game-save resetter-spec none :behavior process) s0-2)
-                       (the-as symbol sv-128)
-                       (the-as symbol sv-144)
-                       (the-as continue-point sv-160)
-                       (the-as game-save mode)
-                       (the-as resetter-spec t0-4)
+                      ((the-as (function cpu-thread function symbol symbol continue-point game-save resetter-spec none) s0-2)
+                       sv-128
+                       sv-144
+                       sv-160
+                       mode
+                       (the-as continue-point t0-4)
+                       t1-3
+                       t2-0
                        )
                       )
                     )
@@ -1399,6 +1401,10 @@
 
 (defmethod copy-perms-to-level! ((this game-info) (arg0 level))
   (let ((s5-0 (-> arg0 bsp level entity)))
+    (when (not s5-0)  ;; og:preserve-this not-yet-implemented check
+      (format #t "skipping copy-perms-to-level! since we have no entity links (needs entity.gc)~%")
+      (return 0)
+      )
     (dotimes (s4-0 (-> s5-0 length))
       (let* ((s3-0 (-> s5-0 data s4-0 entity extra perm))
              (v1-7 (actor-perm this (-> s3-0 aid)))
@@ -1898,7 +1904,10 @@
 
 (defmethod adjust-to-screen-flip ((this cpad-info))
   (if (and (not (paused?)) (zero? (-> this number)) (-> *setting-control* user-current player-control-override))
-      (override-player-controls)
+      (when (nonzero? override-player-controls)  ;; og:preserve-this not-yet-implemented check
+        ;; added nonzero check, but I suspect there's a bug we're even getting here...
+        (override-player-controls)
+        )
       )
   (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
     (set! (-> this leftx) (- 255 (the-as int (-> this leftx))))
@@ -1964,39 +1973,39 @@
     )
   )
 
-(defmethod get-rank ((this highscore-info) (arg0 float))
-  (let ((v0-0 0))
+(defmethod get-rank ((this highscore-info) (score float))
+  (let ((place 0))
     (cond
       ((logtest? (-> this flags) (highscore-flags time))
        (cond
-         ((= arg0 0.0)
+         ((= score 0.0)
           )
-         ((>= (-> this gold-score) arg0)
-          (set! v0-0 3)
+         ((>= (-> this gold-score) score)
+          (set! place 3)
           )
-         ((>= (-> this silver-score) arg0)
-          (set! v0-0 2)
+         ((>= (-> this silver-score) score)
+          (set! place 2)
           )
-         ((>= (-> this bronze-score) arg0)
-          (set! v0-0 1)
+         ((>= (-> this bronze-score) score)
+          (set! place 1)
           )
          )
        )
       (else
         (cond
-          ((>= arg0 (-> this gold-score))
-           (set! v0-0 3)
+          ((>= score (-> this gold-score))
+           (set! place 3)
            )
-          ((>= arg0 (-> this silver-score))
-           (set! v0-0 2)
+          ((>= score (-> this silver-score))
+           (set! place 2)
            )
-          ((>= arg0 (-> this bronze-score))
-           (set! v0-0 1)
+          ((>= score (-> this bronze-score))
+           (set! place 1)
            )
           )
         )
       )
-    v0-0
+    place
     )
   )
 
@@ -2140,7 +2149,7 @@
                              board
                              sidekick
                              board-launch
-                             feature39
+                             board-zap
                              darkjak
                              darkjak-smack
                              darkjak-bomb0
@@ -2153,9 +2162,9 @@
                              lightjak-freeze
                              lightjak-shield
                              artifact-invis
-                             feature56
-                             feature57
-                             feature58
+                             jakc
+                             lighteco
+                             darkeco
                              )
         )
   (set! (-> gp-0 vehicles) (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride))
@@ -2180,7 +2189,7 @@
   (set! (-> gp-0 distance) 0.0)
   (set! (-> gp-0 health-bar-vehicle) 0.0)
   (set! (-> gp-0 dust-storm) (the-as handle #f))
-  (set! (-> gp-0 current-vehicle) (the-as uint 27))
+  (set! (-> gp-0 current-vehicle) (game-vehicle-u8 v-turtle v-snake v-toad v-fox))
   )
 
 0

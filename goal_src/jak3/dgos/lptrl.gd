@@ -1,5 +1,5 @@
 ("LPTRL.DGO"
- ("tpage-3280.o"
+ ("tpage-3280.go"
   "tpage-3279.go"
   "mantis-ag.go"
   "spyder-ag.go"
@@ -8,5 +8,5 @@
   "dark-eco-vent-ag.go"
   "light-eco-vent-ag.go"
   "dm-mine-spider-spawner-ag.go"
-  "lppatrol-vis.o"
+  "lppatrol-vis.go"
  ))

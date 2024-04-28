@@ -7,3 +7,1110 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-sewer-frog sewer-frog sewer-frog-lod0-jg -1
+              ((sewer-frog-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow sewer-frog-shadow-mg
+              :origin-joint-index 19
+              )
+
+(deftype sewer-frog (nav-enemy)
+  ((scared-timer  time-frame)
+   )
+  (:state-methods
+    attack
+    turn-to-face-focus
+    )
+  (:methods
+    (sewer-frog-method-192 (_type_) none)
+    )
+  )
+
+
+(define *fact-info-sewer-frog-defaults*
+  (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80) :pickup-type 9)
+  )
+
+(define *sewer-frog-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 1
+        :param1 1
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 9
+    :hostile-anim 5
+    :hit-anim 17
+    :knocked-anim 17
+    :knocked-land-anim 3
+    :die-anim 17
+    :die-falling-anim 17
+    :victory-anim -1
+    :jump-wind-up-anim -1
+    :jump-in-air-anim -1
+    :jump-land-anim -1
+    :neck-joint 13
+    :look-at-joint 14
+    :bullseye-joint 4
+    :sound-hit (static-sound-name "frog-hit")
+    :sound-die (static-sound-name "frog-die")
+    :notice-distance (meters 40)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 20)
+    :default-hit-points 1.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.96
+    :attack-shove-back (meters 5)
+    :attack-shove-up (meters 3)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.5)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 364.0889
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :orient-tform (new 'static 'vector :x 0.0676 :y -0.6016 :z 0.7959 :w 30666.041)
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.1444 :z 0.9894 :w 28642.4)
+          :geo-tform (new 'static 'vector :x 0.0925 :y -0.3416 :z 0.9349 :w 31829.453)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1984.512
+          :hit-sound (static-sound-name "frog-bf")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9735 :z -0.2274 :w 40103.246)
+          :geo-tform (new 'static 'vector :x 0.6954 :y -0.5427 :z 0.4701 :w 20942.34)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 2285.9775
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9656 :z -0.2587 :w 9536.927)
+          :geo-tform (new 'static 'vector :x 0.1274 :y -0.3552 :z 0.9257 :w 31935.02)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 2165.5552
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9743 :z -0.2249 :w 4085.8784)
+          :geo-tform (new 'static 'vector :x 0.1327 :y -0.1756 :z 0.9751 :w 32268.125)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1615.4624
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5322 :z 0.8462 :w 9507.29)
+          :geo-tform (new 'static 'vector :x 0.2871 :y 0.8561 :z 0.4289 :w 28150.988)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9435 :z -0.3305 :w 10984.38)
+          :geo-tform (new 'static 'vector :x -0.1293 :y 0.9912 :z -0.0126 :w 27502.092)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 318.6688
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint 13
+          :pre-tform (new 'static 'vector :x -0.9599 :z 0.2795 :w 8485.092)
+          :geo-tform (new 'static 'vector :x 0.0847 :y 0.7561 :z 0.6485 :w 34826.777)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1267.3024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.2587 :z 0.9657 :w 16383.618)
+          :geo-tform (new 'static 'vector :x -0.0125 :y -0.0002 :z 0.9998 :w 15964.989)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9998 :z -0.0125 :w 16512.342)
+          :geo-tform (new 'static 'vector :x -0.4189 :y -0.8113 :z -0.4067 :w 18265.03)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.0273 :z -0.9994 :w 9645.098)
+          :geo-tform (new 'static 'vector :x 0.3147 :y -0.9196 :z 0.2348 :w 17491.832)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1064.96
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.0536 :z -0.9983 :w 10284.383)
+          :geo-tform (new 'static 'vector :y 1.0 :w 16905.375)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 363.3152
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x -0.2587 :z -0.9657 :w 16384.346)
+          :geo-tform (new 'static 'vector :x -0.3909 :y 0.397 :z -0.8299 :w 18671.133)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7246 :z 0.6887 :w 16217.065)
+          :geo-tform (new 'static 'vector :x -0.1156 :y 0.9519 :z 0.2825 :w 24950.34)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7086 :z 0.7052 :w 5922.1064)
+          :geo-tform (new 'static 'vector :x -0.3934 :y 0.2208 :z 0.8921 :w 31601.842)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1087.488
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.66 :z 0.7508 :w 11664.098)
+          :geo-tform (new 'static 'vector :y -1.0 :w 8004.1665)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 452.608
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :x 0.9763 :z -0.2153 :w 10854.364)
+          :geo-tform (new 'static 'vector :x -0.0517 :y 0.8422 :z -0.536 :w 34465.51)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1393.4592
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9814 :z -0.1916 :w 12053.145)
+          :geo-tform (new 'static 'vector :x 0.0117 :y 0.992 :z 0.1236 :w 34765.535)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1039.9744
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.2473 :z 0.9686 :w 14074.312)
+          :geo-tform (new 'static 'vector :x 0.4625 :y 0.8439 :z 0.2713 :w 24201.445)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.8453 :z -0.5342 :w 10724.566)
+          :geo-tform (new 'static 'vector :x -0.4236 :y -0.3812 :z 0.8213 :w 36821.477)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5795 :z 0.8146 :w 41836.6)
+          :geo-tform (new 'static 'vector :x -0.3352 :y 0.2062 :z 0.9189 :w 30666.19)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1061.6832
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.6926 :z 0.721 :w 27957.91)
+          :geo-tform (new 'static 'vector :x -0.148 :y 0.9414 :z 0.302 :w 23747.88)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 562.7904
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 19
+          :pre-tform (new 'static 'vector :x -0.1352 :z -0.9905 :w 14070.961)
+          :geo-tform (new 'static 'vector :x 0.304 :y -0.8482 :z -0.4328 :w 20045.35)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9968 :z -0.0763 :w 9360.489)
+          :geo-tform (new 'static 'vector :x 0.5934 :y -0.3585 :z 0.7204 :w 26778.32)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 806.5024
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.1915 :z 0.9814 :w 23136.174)
+          :geo-tform (new 'static 'vector :x 0.4151 :y 0.3163 :z 0.8526 :w 36129.96)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 1043.2512
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5995 :z 0.8 :w 40254.598)
+          :geo-tform (new 'static 'vector :x 0.1548 :y 0.9404 :z 0.3018 :w 42156.035)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 652.0832
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 28
+          :parent-joint 14
+          :pre-tform (new 'static 'vector :x 0.0201 :z -0.9995 :w 9496.604)
+          :geo-tform (new 'static 'vector :x 0.4419 :y -0.494 :z 0.7483 :w 35945.93)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 547.6352
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 29
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9733 :z -0.2282 :w 11187.232)
+          :geo-tform (new 'static 'vector :x 0.5046 :y 0.0354 :z 0.8622 :w 30183.021)
+          :axial-slop 1939.356
+          :max-angle 4553.2773
+          :coll-rad 349.3888
+          :hit-sound (static-sound-name "frog-rgdoll")
+          )
+        )
+      )
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 7
+    :turn-anim -1
+    :run-anim 5
+    :taunt-anim 3
+    :run-travel-speed (meters 11.6667)
+    :run-acceleration (meters 6)
+    :run-turning-acceleration (meters 0.5)
+    :walk-travel-speed (meters 5)
+    :walk-acceleration (meters 6)
+    :walk-turning-acceleration (meters 0.2)
+    :maximum-rotation-rate (degrees 360)
+    :notice-nav-radius (meters 2)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *sewer-frog-nav-enemy-info* fact-defaults) *fact-info-sewer-frog-defaults*)
+
+(defmethod init-enemy-collision! ((this sewer-frog))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 4915.2 0.0 10240.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-13 transform-index) 4)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-15 transform-index) 18)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 1228.8)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core action) (collide-action solid deadly no-standon))
+      (set! (-> v1-17 transform-index) 14)
+      (set-vector! (-> v1-17 local-sphere) 0.0 409.6 1228.8 4096.0)
+      )
+    (set! (-> s5-0 nav-radius) 8192.0)
+    (let ((v1-19 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defbehavior sewer-frog-hop sewer-frog ()
+  (let ((a1-0 (-> self nav state))
+        (a0-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> a0-0 quad) (-> a1-0 target-pos quad))
+    (let* ((f0-0 (vector-vector-xz-distance a0-0 (-> self root trans)))
+           (gp-0 (-> self enemy-info))
+           (f30-0 (lerp-scale 0.0 1.0 f0-0 12288.0 28672.0))
+           (f28-0 1.0)
+           )
+      (let ((s5-0 (-> self nav)))
+        (set! (-> s5-0 target-speed) (lerp (-> gp-0 walk-travel-speed) (-> gp-0 run-travel-speed) f30-0))
+        )
+      0
+      (let ((s5-1 (-> self nav)))
+        (set! (-> s5-1 acceleration) (lerp (-> gp-0 walk-acceleration) (-> gp-0 run-acceleration) f30-0))
+        )
+      0
+      (let ((v1-6 (-> self nav)))
+        (set! (-> v1-6 turning-acceleration) (-> gp-0 run-turning-acceleration))
+        )
+      0
+      (ja-channel-push! 2 (seconds 0.01))
+      (ja-no-eval :group! sewer-frog-hop-small-start-ja :num! (seek! max f28-0) :frame-num 0.0)
+      (ja-no-eval :chan 1
+                  :group! sewer-frog-hop0-start-ja
+                  :num! (chan 0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((a0-7 (-> self skel root-channel 0)))
+          (let ((f0-14 (- 1.0 f30-0)))
+            (set! (-> a0-7 frame-interp 1) f0-14)
+            (set! (-> a0-7 frame-interp 0) f0-14)
+            )
+          (set! (-> a0-7 param 0) (the float (+ (-> a0-7 frame-group frames num-frames) -1)))
+          (set! (-> a0-7 param 1) f28-0)
+          (joint-control-channel-group-eval! a0-7 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
+        )
+      (nav-enemy-method-178 self)
+      (ja-no-eval :group! sewer-frog-hop-small-end-ja :num! (seek! max f28-0) :frame-num 0.0)
+      (ja-no-eval :chan 1
+                  :group! sewer-frog-hop0-end-ja
+                  :num! (chan 0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (let ((a0-13 (-> self skel root-channel 0)))
+          (let ((f0-24 (- 1.0 f30-0)))
+            (set! (-> a0-13 frame-interp 1) f0-24)
+            (set! (-> a0-13 frame-interp 0) f0-24)
+            )
+          (set! (-> a0-13 param 0) (the float (+ (-> a0-13 frame-group frames num-frames) -1)))
+          (set! (-> a0-13 param 1) f28-0)
+          (joint-control-channel-group-eval! a0-13 (the-as art-joint-anim #f) num-func-seek!)
+          )
+        (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defbehavior sewer-frog-turn-to-face sewer-frog ((arg0 vector))
+  (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> self root trans)))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+        (gp-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+        )
+    (vector-normalize-copy! s4-0 s2-1 1.0)
+    (let* ((f0-1 (vector-dot s4-0 s3-0))
+           (f30-0 (vector-dot s4-0 gp-0))
+           (gp-1 (the int (+ 0.5 (* 0.00012207031 (acos f0-1)))))
+           )
+      (cond
+        ((>= (the-as uint gp-1) (the-as uint 3))
+         (ja-channel-push! 1 (seconds 0.08))
+         (dotimes (s4-1 (+ (shr gp-1 2) 1))
+           (cond
+             ((< 0.0 f30-0)
+              (ja-no-eval :group! sewer-frog-turn-left-180-ja :num! (seek!) :frame-num 0.0)
+              (until (ja-done? 0)
+                (seek-to-point-toward-point! (-> self root) arg0 49152.0 (seconds 0.02))
+                (suspend)
+                (ja :num! (seek!))
+                )
+              )
+             (else
+               (ja-no-eval :group! sewer-frog-turn-right-180-ja :num! (seek!) :frame-num 0.0)
+               (until (ja-done? 0)
+                 (seek-to-point-toward-point! (-> self root) arg0 49152.0 (seconds 0.02))
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               )
+             )
+           )
+         )
+        ((> (the-as uint gp-1) 0)
+         (ja-channel-push! 1 (seconds 0.1))
+         (dotimes (s5-1 (+ gp-1 1))
+           (cond
+             ((< 0.0 f30-0)
+              (ja-no-eval :group! sewer-frog-turn-left-45-ja :num! (seek!) :frame-num 0.0)
+              (until (ja-done? 0)
+                (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 20480.0 (seconds-per-frame)))
+                (suspend)
+                (ja :num! (seek!))
+                )
+              )
+             (else
+               (ja-no-eval :group! sewer-frog-turn-right-45-ja :num! (seek!) :frame-num 0.0)
+               (until (ja-done? 0)
+                 (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* -20480.0 (seconds-per-frame)))
+                 (suspend)
+                 (ja :num! (seek!))
+                 )
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate turn-to-face-focus (sewer-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (nav-enemy-method-182 self)
+    (nav-enemy-method-184 self)
+    (set-look-at-mode! self 1)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (sewer-frog-turn-to-face (-> self focus-pos))
+    (go-stare self)
+    )
+  :post nav-enemy-simple-post
+  )
+
+(defstate active (sewer-frog)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy active) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (nav-enemy-method-182 self)
+    )
+  :trans #f
+  :code (behavior ()
+    (until #f
+      (when (or (logtest? (-> self nav state flags) (nav-state-flag at-target)) (nav-enemy-method-174 self))
+        (nav-enemy-method-164 self)
+        (nav-enemy-method-173 self)
+        )
+      (let ((t9-3 sewer-frog-turn-to-face)
+            (a1-0 (-> self nav state))
+            (a0-3 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a0-3 quad) (-> a1-0 target-pos quad))
+        (t9-3 a0-3)
+        )
+      ((-> (method-of-type nav-enemy active) trans))
+      (nav-enemy-method-181 self)
+      (sewer-frog-hop)
+      (nav-enemy-method-182 self)
+      (let ((gp-0 (the int (* 300.0 (rnd-float-range self 1.0 3.0)))))
+        (ja-channel-push! 1 (seconds 0.2))
+        (let ((s5-0 (current-time))
+              (f30-1 1.0)
+              )
+          (ja-no-eval :group! sewer-frog-idle0-ja :num! (loop! f30-1) :frame-num 0.0)
+          (until (time-elapsed? s5-0 gp-0)
+            ((-> (method-of-type nav-enemy active) trans))
+            (suspend)
+            (ja :num! (loop! f30-1))
+            )
+          )
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (nav-enemy-travel-post)
+    )
+  )
+
+(defstate stare (sewer-frog)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (nav-enemy-method-184 self)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy stare) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (and (time-elapsed? (-> self state-time) (-> self reaction-time))
+             (not (enemy-method-104 self (-> self focus-pos) 10012.444))
+             )
+        (go-virtual turn-to-face-focus)
+        )
+    )
+  )
+
+(defstate hostile (sewer-frog)
+  :virtual #t
+  :enter (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag alert))
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (nav-enemy-method-184 self)
+    (nav-enemy-method-182 self)
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.12))
+    (let ((gp-0 (current-time))
+          (s5-0 60)
+          (f30-0 1.0)
+          )
+      (ja-no-eval :group! sewer-frog-idle0-ja :num! (loop! f30-0) :frame-num 0.0)
+      (until (time-elapsed? gp-0 s5-0)
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    (sewer-frog-method-192 self)
+    (until #f
+      (let ((t9-4 sewer-frog-turn-to-face)
+            (a1-3 (-> self nav state))
+            (a0-4 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a0-4 quad) (-> a1-3 target-pos quad))
+        (t9-4 a0-4)
+        )
+      (sewer-frog-method-192 self)
+      (nav-enemy-method-181 self)
+      (sewer-frog-hop)
+      (nav-enemy-method-182 self)
+      )
+    #f
+    )
+  )
+
+(defstate attack (sewer-frog)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (nav-enemy-method-181 self)
+    (nav-enemy-method-184 self)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((gp-0 (-> self enemy-info)))
+      (nav-enemy-method-178 self)
+      (ja-no-eval :group! sewer-frog-attack0-start-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (let ((v1-26 (-> self nav)))
+        (set! (-> v1-26 target-speed) 122880.0)
+        )
+      0
+      (let ((v1-28 (-> self nav)))
+        (set! (-> v1-28 acceleration) (-> gp-0 run-acceleration))
+        )
+      0
+      (let ((v1-30 (-> self nav)))
+        (set! (-> v1-30 turning-acceleration) (-> gp-0 run-turning-acceleration))
+        )
+      )
+    0
+    (let* ((a0-6 (-> self root root-prim))
+           (v1-34 (-> (the-as collide-shape-prim-group a0-6) child 2))
+           )
+      (+! (-> a0-6 local-sphere w) 4096.0)
+      (set! (-> v1-34 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-34 prim-core collide-with) (collide-spec jak bot player-list))
+      )
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (ja-no-eval :group! sewer-frog-attack0-mid-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (if (logtest? (-> self water flags) (water-flag active))
+        (spawn-ripples (-> self water) 1.0 (-> self root trans) 1 *null-vector* #f)
+        )
+    (let* ((v1-69 (-> self root root-prim))
+           (a0-14 (-> (the-as collide-shape-prim-group v1-69) child 2))
+           )
+      (+! (-> v1-69 local-sphere w) -4096.0)
+      (set! (-> a0-14 prim-core collide-as) (collide-spec))
+      (set! (-> a0-14 prim-core collide-with) (collide-spec))
+      )
+    0
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (nav-enemy-method-178 self)
+    (ja-no-eval :group! sewer-frog-attack0-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set! (-> self scared-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range self 3.8 5.6)))))
+    (go-best-state self)
+    )
+  :post nav-enemy-chase-post
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior sewer-frog-check-hop sewer-frog ()
+  (let ((a1-0 (new 'stack-no-clear 'vector)))
+    (set! (-> a1-0 quad) (-> self move-dest quad))
+    (set! (-> a1-0 w) (-> self nav-radius-backup))
+    (if (add-root-sphere-to-hash! (-> self nav) a1-0 #x100068)
+        (go-virtual stare)
+        )
+    )
+  (none)
+  )
+
+(defstate flee (sewer-frog)
+  :virtual #t
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (nav-enemy-method-182 self)
+    (ja-channel-push! 1 (seconds 0.12))
+    (let ((gp-0 (current-time))
+          (s5-0 60)
+          (f30-0 1.0)
+          )
+      (ja-no-eval :group! sewer-frog-idle0-ja :num! (loop! f30-0) :frame-num 0.0)
+      (until (time-elapsed? gp-0 s5-0)
+        (suspend)
+        (ja :num! (loop! f30-0))
+        )
+      )
+    ((-> (method-of-type nav-enemy flee) trans))
+    (until #f
+      (let ((t9-5 sewer-frog-turn-to-face)
+            (a1-3 (-> self nav state))
+            (a0-4 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a0-4 quad) (-> a1-3 target-pos quad))
+        (t9-5 a0-4)
+        )
+      ((-> (method-of-type nav-enemy flee) trans))
+      (sewer-frog-check-hop)
+      (nav-enemy-method-181 self)
+      (sewer-frog-hop)
+      (nav-enemy-method-182 self)
+      )
+    #f
+    )
+  )
+
+(defstate knocked (sewer-frog)
+  :virtual #t
+  :post (behavior ()
+    (let ((v1-1 (handle->process (-> self ragdoll-proc))))
+      (when v1-1
+        (if (< 0.0 (-> self root transv y))
+            (logior! (-> (the-as ragdoll-proc v1-1) ragdoll ragdoll-flags) (ragdoll-flag rf11))
+            (logtest? (-> (the-as ragdoll-proc v1-1) ragdoll ragdoll-flags) (ragdoll-flag rf11))
+            )
+        )
+      )
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch symbol vs vector.
+(defmethod nav-enemy-method-167 ((this sewer-frog))
+  (let ((a0-2 (handle->process (-> this focus handle)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (the-as
+      vector
+      (when (and a0-2 (nav-enemy-method-166 this s5-0 (get-trans (the-as process-focusable a0-2) 0)))
+        (set! (-> s5-0 w) (-> this nav-radius-backup))
+        (not (add-root-sphere-to-hash! (-> this nav) s5-0 #x100068))
+        )
+      )
+    )
+  )
+
+(defmethod go-stare2 ((this sewer-frog))
+  (if (not (enemy-method-104 this (-> this focus-pos) 6371.5557))
+      (go (method-of-object this turn-to-face-focus))
+      (go (method-of-object this stare))
+      )
+  )
+
+(defmethod sewer-frog-method-192 ((this sewer-frog))
+  ((-> (method-of-type nav-enemy hostile) trans))
+  (let* ((a0-1 (-> this focus-pos))
+         (v1-3 (vector-! (new 'stack-no-clear 'vector) a0-1 (-> this root trans)))
+         (f0-4 (sqrtf (+ (* (-> v1-3 x) (-> v1-3 x)) (* (-> v1-3 z) (-> v1-3 z)))))
+         )
+    (when (< f0-4 40960.0)
+      (if (< 12288.0 f0-4)
+          (go (method-of-object this attack))
+          (set! (-> this scared-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range this 1.8 3.6)))))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod ragdoll-settled? ((this sewer-frog))
+  (let ((a0-2 (handle->process (-> this ragdoll-proc))))
+    (or (not a0-2)
+        (ragdoll-proc-method-19 (the-as ragdoll-proc a0-2))
+        (time-elapsed? (-> this state-time) (seconds 5))
+        )
+    )
+  )
+
+;; WARN: disable def twice: 22. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod enemy-method-108 ((this sewer-frog) (arg0 process-focusable))
+  (or (< (current-time) (-> this scared-timer))
+      (let ((v1-4 (handle->process (-> this focus handle))))
+        (if v1-4
+            (and (focus-test? (the-as process-focusable v1-4) disable dead ignore grabbed)
+                 (< (vector-vector-xz-distance (-> this focus-pos) (-> this root trans)) 163840.0)
+                 )
+            #f
+            )
+        )
+      )
+  )
+
+(defmethod play-damage-sound ((this sewer-frog) (arg0 int))
+  (case arg0
+    ((2)
+     (if (and (-> this next-state) (= (-> this next-state name) 'knocked))
+         (sound-play "frog-splash")
+         (sound-play "frog-waterhop")
+         )
+     )
+    (else
+      ((method-of-type nav-enemy play-damage-sound) this arg0)
+      )
+    )
+  )
+
+(defmethod enemy-common-post ((this sewer-frog))
+  (when (< 1 (the-as int (-> this focus aware)))
+    (let ((a0-3 (handle->process (-> this focus handle))))
+      (if a0-3
+          (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-3) 3) quad))
+          )
+      )
+    )
+  (water-control-method-10 (-> this water))
+  ((method-of-type nav-enemy enemy-common-post) this)
+  (none)
+  )
+
+(defmethod event-handler ((this sewer-frog) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (go (method-of-object this knocked))
+     #t
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod init-enemy! ((this sewer-frog))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-sewer-frog" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *sewer-frog-nav-enemy-info*)
+  (set! (-> this water) (new 'process 'water-control this 0 4096.0 8192.0 2048.0))
+  (set! (-> this water flags)
+        (water-flag active use-water-anim touch-water part-splash part-drip part-rings part-water find-water)
+        )
+  (set! (-> this water height) (res-lump-float (-> this entity) 'water-height))
+  (let ((name (static-sound-name "frog-waterhop")))
+    (set! (-> this water enter-water-sound) (the-as sound-name name))
+    )
+  (let ((v1-11 (-> this neck)))
+    (set! (-> v1-11 up) (the-as uint 1))
+    (set! (-> v1-11 nose) (the-as uint 2))
+    (set! (-> v1-11 ear) (the-as uint 0))
+    (set-vector! (-> v1-11 twist-max) 11832.889 15473.777 0.0 1.0)
+    (set! (-> v1-11 ignore-angle) 30947.555)
+    )
+  (set! (-> this scared-timer) 0)
+  0
+  (none)
+  )

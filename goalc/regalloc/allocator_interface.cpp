@@ -24,7 +24,7 @@ void print_allocate_input(const AllocationInput& in) {
     }
   } else {
     for (const auto& instruction : in.instructions) {
-      lg::print(" [{:3d}] {}\n", instruction.print());
+      lg::print(" {}\n", instruction.print());
     }
   }
   lg::print("[RegAlloc] Debug Input Constraints:\n");

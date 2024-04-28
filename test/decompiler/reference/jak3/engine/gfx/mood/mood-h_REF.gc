@@ -4,7 +4,7 @@
 ;; definition of type mood-channel
 (deftype mood-channel (structure)
   ((data  float    24)
-   (vecs  vector4  6 :overlay-at (-> data 0))
+   (vecs  vector4  6 :inline :overlay-at (-> data 0))
    )
   )
 
@@ -71,7 +71,8 @@
 
 ;; definition of type mood-fog-table
 (deftype mood-fog-table (structure)
-  ((data  mood-fog  8 :inline)
+  ((data   mood-fog  8 :inline)
+   (_data  uint128   24 :overlay-at data)
    )
   )
 
@@ -127,7 +128,8 @@
 
 ;; definition of type mood-color-table
 (deftype mood-color-table (structure)
-  ((data  mood-color  8 :inline)
+  ((data   mood-color  8 :inline)
+   (_data  uint128     16 :overlay-at data)
    )
   )
 
@@ -308,6 +310,7 @@
   ((time  float)
    (fade  float)
    )
+  :pack-me
   )
 
 ;; definition for method 3 of type light-state
@@ -328,6 +331,7 @@
   ((flicker-off  uint8)
    (flicker-on   uint8)
    )
+  :allow-misaligned
   )
 
 ;; definition for method 3 of type flicker-state
@@ -370,6 +374,7 @@
   ((value  float)
    (scale  float)
    )
+  :pack-me
   )
 
 ;; definition for method 3 of type electricity-state
@@ -392,6 +397,7 @@
    (target-brightness  float)
    (speed              float)
    )
+  :pack-me
   )
 
 ;; definition for method 3 of type pulse-state
@@ -434,6 +440,7 @@
    (length  uint8)
    (height  uint8)
    )
+  :pack-me
   )
 
 ;; definition for method 3 of type flames-state
@@ -528,6 +535,7 @@
 (deftype mood-context (mood-context-core3)
   ((itimes  vector4w  4 :inline)
    (state   uint32    32)
+   (data    uint128   123 :overlay-at (-> current-fog fog-color data 0))
    )
   )
 
@@ -624,22 +632,22 @@
    (clouds                  mood-clouds         9)
    )
   (:methods
-    (mood-control-method-9 () none)
-    (mood-control-method-10 () none)
-    (mood-control-method-11 () none)
-    (mood-control-method-12 () none)
+    (init-weather! (_type_) none)
+    (set-cloud-and-fog-interp! (_type_ float float float float) none)
+    (update-mood-range! (_type_ float float float float) none)
+    (set-time-for-random-weather! (_type_ float float) none)
     (set-special-interps! (_type_ float float symbol) none)
     (weather-event-concluded? (_type_) symbol)
-    (mood-control-method-15 () none)
-    (mood-control-method-16 () none)
-    (mood-control-method-17 () none)
-    (mood-control-method-18 () none)
-    (mood-control-method-19 () none)
-    (mood-control-method-20 () none)
-    (mood-control-method-21 () none)
-    (mood-control-method-22 () none)
-    (mood-control-method-23 () none)
-    (mood-control-method-24 () none)
+    (set-lightning-time! (_type_ int int float) none)
+    (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
+    (apply-mood-fog (_type_ mood-control-work mood-color-table mood-color-table mood-color-table float) none)
+    (apply-fog-height (_type_ mood-control-work float float float float) none)
+    (apply-mood-colors (_type_ mood-control-work) none)
+    (mood-control-method-20 (_type_ mood-control-work mood-color-table mood-color-table mood-color-table float) none)
+    (apply-mood-channels (_type_ mood-control-work) none)
+    (adjust-num-clouds (_type_ mood-control-work) none)
+    (gen-lightning-and-thunder! (_type_ int) none)
+    (play-or-stop-lightning-sfx! (_type_ sound-spec vector) none)
     )
   )
 

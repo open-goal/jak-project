@@ -9,5 +9,5 @@
   "robo-hover-ag.go"
   "fac-elevator-a-ag.go"
   "kg-debris-ag.go"
-  "lfacrm2.o"
+  "lfacrm2.go"
  ))

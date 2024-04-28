@@ -7,3 +7,1619 @@
 
 ;; DECOMP BEGINS
 
+(deftype task-manager-desert-glide (task-manager)
+  ((desert-glide-entity    entity)
+   (check-timer            time-frame)
+   (thermal-start-time     time-frame  :offset 264)
+   (actor-group            (pointer actor-group))
+   (actor-group-count      int32)
+   (cur-group              int8)
+   (sound-id               sound-id)
+   (count                  int32)
+   (max-count              int32)
+   (pre-populated-clouds?  symbol)
+   (creating-thermal?      symbol)
+   (hud-altitude           handle)
+   (hud-active?            symbol)
+   (editing?               symbol)
+   (did-want-load?         symbol)
+   (reset-too-low?         symbol)
+   (last-active-thermal    int16)
+   (whistle-sound          sound-id)
+   )
+  (:methods
+    (task-manager-desert-glide-method-32 (_type_) none)
+    (task-manager-desert-glide-method-33 (_type_) none)
+    (task-manager-desert-glide-method-34 (_type_) none)
+    (task-manager-desert-glide-method-35 (_type_) none)
+    (task-manager-desert-glide-method-36 (_type_) none)
+    (task-manager-desert-glide-method-37 (_type_ h-glider) none)
+    (task-manager-desert-glide-method-38 (_type_) none)
+    (task-manager-desert-glide-method-39 (_type_ uint) none)
+    )
+  )
+
+
+(define *cloud-cube* (new 'static 'vector))
+
+;; WARN: Return type mismatch symbol vs none.
+(defun pre-populate-clouds ((arg0 vector) (arg1 process))
+  (let ((s4-0 (new 'stack-no-clear 'vector)))
+    (dotimes (s3-0 57)
+      (set! (-> s4-0 quad) (-> arg0 quad))
+      (let* ((f30-0 -1228800.0)
+             (f28-0 2457600.0)
+             (v1-4 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-5 (the-as number (logior #x3f800000 v1-4)))
+             )
+        (set! (-> s4-0 x) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-5))) (-> s4-0 x)))
+        )
+      (let* ((f30-1 -1228800.0)
+             (f28-1 2457600.0)
+             (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-11 (the-as number (logior #x3f800000 v1-10)))
+             )
+        (set! (-> s4-0 y) (+ f30-1 (* f28-1 (+ -1.0 (the-as float v1-11))) (-> s4-0 y)))
+        )
+      (let* ((f30-2 -1228800.0)
+             (f28-2 2457600.0)
+             (v1-16 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-17 (the-as number (logior #x3f800000 v1-16)))
+             )
+        (set! (-> s4-0 z) (+ f30-2 (* f28-2 (+ -1.0 (the-as float v1-17))) (-> s4-0 z)))
+        )
+      (glider-launch-mist-particle s4-0 arg1)
+      )
+    )
+  (none)
+  )
+
+(defstate active (task-manager-desert-glide)
+  :virtual #t
+  :code (behavior ()
+    (local-vars (v1-1 object))
+    (suspend)
+    (until v1-1
+      (suspend)
+      (set! v1-1 (and *target* (focus-test? *target* pilot)))
+      )
+    (pre-populate-clouds *cloud-cube* self)
+    (until #f
+      (when *debug-segment*
+        )
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(define *ring-spawn-id* 0)
+
+(define *desert-glide-num-rings* 0)
+
+(define *desert-glide-rings-tmp* (new 'static 'inline-array glider-ring-info 80
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   (new 'static 'glider-ring-info)
+                                   )
+        )
+
+(define *desert-glide-thermal-effects* (new 'static 'array handle 128
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         (new 'static 'handle)
+                                         )
+        )
+
+(define *desert-glide-rings* (new 'static 'boxed-array :type glider-ring-info
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 16791184.0 :y 1172643.9 :z 16610468.0)
+                                 :forw (new 'static 'vector :x -0.695 :y -0.066 :z -0.715)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 16394732.0 :y 1153802.2 :z 16120832.0)
+                                 :forw (new 'static 'vector :x -0.459 :y -0.021 :z -0.887)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 16143933.0 :y 1158021.1 :z 15603098.0)
+                                 :forw (new 'static 'vector :x -0.393 :y -0.025 :z -0.918)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 15940076.0 :y 1113210.9 :z 14883021.0)
+                                 :forw (new 'static 'vector :x -0.188 :y -0.03 :z -0.981)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 0.8
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 15865324.0 :y 1105633.2 :z 14551327.0)
+                                 :forw (new 'static 'vector :x -0.352 :y -0.024 :z -0.935)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 15630828.0 :y 1096908.8 :z 14166999.0)
+                                 :forw (new 'static 'vector :x -0.586 :y -0.02 :z -0.809)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :ydist 32768.0
+                                 :speedmod 0.8
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 15327601.0 :y 1087406.1 :z 13775462.0)
+                                 :forw (new 'static 'vector :x -0.717 :y -0.022 :z -0.696)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 15023227.0 :y 1079910.4 :z 13539492.0)
+                                 :forw (new 'static 'vector :x -0.737 :y -0.021 :z -0.675)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 14693294.0 :y 1038868.5 :z 13145416.0)
+                                 :forw (new 'static 'vector :x -0.605 :y -0.108 :z -0.788)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 14503936.0 :y 1007820.8 :z 12817080.0)
+                                 :forw (new 'static 'vector :x -0.339 :y -0.131 :z -0.931)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 14377370.0 :y 948142.06 :z 12387205.0)
+                                 :forw (new 'static 'vector :x -0.325 :y 0.071 :z -0.942)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :ydist 24576.0
+                                 :speedmod 0.8
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 13934305.0 :y 966082.56 :z 12149228.0)
+                                 :forw (new 'static 'vector :x -0.998 :y -0.01 :z 0.045)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 13375242.0 :y 990167.06 :z 12190269.0)
+                                 :forw (new 'static 'vector :x -0.996 :y 0.015 :z -0.082)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 12349030.0 :y 1183088.6 :z 11949875.0)
+                                 :forw (new 'static 'vector :x -0.932 :z -0.36)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 11969946.0 :y 1176207.4 :z 11734344.0)
+                                 :forw (new 'static 'vector :x -0.834 :y -0.012 :z -0.55)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 11721892.0 :y 1170595.9 :z 11530404.0)
+                                 :forw (new 'static 'vector :x -0.684 :y -0.014 :z -0.729)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 11453891.0 :y 1156669.5 :z 11237499.0)
+                                 :forw (new 'static 'vector :x -0.756 :y -0.024 :z -0.653)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :toff (seconds 2)
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 10882990.0 :y 1096622.1 :z 11018322.0)
+                                 :forw (new 'static 'vector :x -0.973 :y -0.203 :z -0.107)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 10430546.0 :y 1059020.8 :z 11029955.0)
+                                 :forw (new 'static 'vector :x -0.982 :y -0.034 :z 0.182)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :ydist 24576.0
+                                 :speedmod 0.8
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 8876769.0 :y 1088962.5 :z 11356119.0)
+                                 :forw (new 'static 'vector :x -0.895 :y -0.013 :z 0.444)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 8405524.0 :y 1078763.5 :z 11718902.0)
+                                 :forw (new 'static 'vector :x -0.851 :y -0.021 :z 0.523)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :ydist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 7794852.0 :y 1067581.5 :z 11881431.0)
+                                 :forw (new 'static 'vector :x -0.999 :y -0.021 :z -0.007)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 7215145.0 :y 1053614.1 :z 11282637.0)
+                                 :forw (new 'static 'vector :x -0.046 :y -0.015 :z -0.998)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 7250084.0 :y 959651.8 :z 10654024.0)
+                                 :forw (new 'static 'vector :x -0.083 :y -0.175 :z -0.98)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 6904094.5 :y 935280.6 :z 10293617.0)
+                                 :forw (new 'static 'vector :x -0.974 :y -0.015 :z -0.222)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 6545490.0 :y 929914.9 :z 10235494.0)
+                                 :forw (new 'static 'vector :x -0.978 :y -0.021 :z -0.206)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 6084362.0 :y 919674.9 :z 9882747.0)
+                                 :forw (new 'static 'vector :x -0.342 :y -0.023 :z -0.939)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5760409.5 :y 1075773.5 :z 8726692.0)
+                                 :forw (new 'static 'vector :x -0.579 :y -0.018 :z -0.814)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 :checkpoint #x1
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5531361.5 :y 1068769.2 :z 8485233.0)
+                                 :forw (new 'static 'vector :x -0.731 :y -0.018 :z -0.681)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5001421.0 :y 1102520.4 :z 8103076.0)
+                                 :forw (new 'static 'vector :x -0.89 :z -0.454)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 4785561.5 :y 1106985.0 :z 7375667.0)
+                                 :forw (new 'static 'vector :x 0.325 :y -0.018 :z -0.945)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5034148.0 :y 1114890.2 :z 6986506.0)
+                                 :forw (new 'static 'vector :x 0.699 :y 0.011 :z -0.714)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5393449.0 :y 1128734.8 :z 6287278.0)
+                                 :forw (new 'static 'vector :x 0.547 :y -0.024 :z -0.836)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5127004.0 :y 1044766.75 :z 5604106.0)
+                                 :forw (new 'static 'vector :x -0.637 :y -0.124 :z -0.76)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :ydist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 4619387.0 :y 1009213.44 :z 5163786.0)
+                                 :forw (new 'static 'vector :x -0.783 :y 0.004 :z -0.621)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :ydist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 4121927.8 :y 1208033.2 :z 4484628.5)
+                                 :forw (new 'static 'vector :x -0.435 :y -0.009 :z -0.9)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 3985490.0 :y 1195417.6 :z 3901112.2)
+                                 :forw (new 'static 'vector :x -0.033 :y -0.018 :z -0.999)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :toff (seconds 2)
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 4349829.0 :y 1181859.9 :z 3271925.8)
+                                 :forw (new 'static 'vector :x 0.76 :y -0.02 :z -0.649)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5076869.0 :y 1154826.2 :z 3138314.2)
+                                 :forw (new 'static 'vector :x 0.995 :y -0.051 :z 0.073)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :toff (seconds 6)
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 5805875.0 :y 1067499.5 :z 3017277.5)
+                                 :forw (new 'static 'vector :x 0.878 :y -0.108 :z -0.465)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 6400532.5 :y 1044234.25 :z 2552995.8)
+                                 :forw (new 'static 'vector :x 0.84 :y -0.016 :z -0.541)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :ydist 24576.0
+                                 :toff (seconds 1)
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 7232348.0 :y 1029160.94 :z 2367488.0)
+                                 :forw (new 'static 'vector :x 0.99 :y -0.019 :z 0.137)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 8894341.0 :y 1317847.0 :z 2419916.8)
+                                 :forw (new 'static 'vector :x 0.989 :y 0.011 :z 0.144)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 9156567.0 :y 1327964.1 :z 2756198.5)
+                                 :forw (new 'static 'vector :x 0.079 :y -0.017 :z 0.996)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #t
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 8881111.0 :y 1534689.2 :z 3905699.8)
+                                 :forw (new 'static 'vector :x -0.637 :y -0.013 :z 0.77)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.2
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 8382914.5 :y 1438474.2 :z 4410818.5)
+                                 :forw (new 'static 'vector :x -0.63 :y -0.019 :z 0.776)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :xdist 24576.0
+                                 :speedmod 1.2
+                                 :shootable #f
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 8186839.0 :y 1500733.5 :z 4962713.5)
+                                 :forw (new 'static 'vector :x -0.241 :y 0.341 :z 0.908)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 7952875.5 :y 1593466.9 :z 5652807.5)
+                                 :forw (new 'static 'vector :x -0.224 :y -0.012 :z 0.974)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #t
+                                 :lastring #f
+                                 )
+                               (new 'static 'glider-ring-info
+                                 :pos (new 'static 'vector :x 7825408.0 :y 1461575.6 :z 6422282.0)
+                                 :forw (new 'static 'vector :x -0.215 :y -0.188 :z 0.958)
+                                 :boost 1.0
+                                 :dist 819200.0
+                                 :speedmod 1.0
+                                 :shootable #f
+                                 :lastring #t
+                                 )
+                               )
+        )
+
+(define *glider-cache-index* 0)
+
+(define *desert-glide-thermals*
+  (new 'static 'boxed-array :type glider-thermal-info
+    (new 'static 'glider-thermal-info
+      :pos (new 'static 'vector :x 13236838.0 :y 1003683.8 :z 12190884.0 :w 102400.0)
+      :hheight 409600.0
+      :windspeed 327680.0
+      :thermal-time (seconds 1.437)
+      )
+    (new 'static 'glider-thermal-info
+      :pos (new 'static 'vector :x 9624740.0 :y 985702.4 :z 11211162.0 :w 102400.0)
+      :hheight 409600.0
+      :windspeed 327680.0
+      :thermal-time (seconds 0.827)
+      )
+    (new 'static 'glider-thermal-info
+      :pos (new 'static 'vector :x 6018457.5 :y 1030389.75 :z 9400607.0 :w 102400.0)
+      :hheight 409600.0
+      :windspeed 327680.0
+      :thermal-time (seconds 0.437)
+      )
+    (new 'static 'glider-thermal-info
+      :pos (new 'static 'vector :x 4466934.0 :y 1054228.5 :z 4986183.5 :w 102400.0)
+      :hheight 409600.0
+      :windspeed 327680.0
+      :thermal-time (seconds 0.71)
+      )
+    (new 'static 'glider-thermal-info
+      :pos (new 'static 'vector :x 7432519.5 :y 1103585.2 :z 2388009.0 :w 102400.0)
+      :hheight 409600.0
+      :windspeed 327680.0
+      :thermal-time (seconds 1.735)
+      )
+    (new 'static 'glider-thermal-info
+      :pos (new 'static 'vector :x 9122324.0 :y 1379696.6 :z 3044556.8 :w 102400.0)
+      :hheight 409600.0
+      :windspeed 327680.0
+      :thermal-time (seconds 1.245)
+      )
+    )
+  )
+
+(define *desert-glide-finish-sphere* (new 'static 'sphere :x 7786496.0 :y 1421312.0 :z 6627328.0 :r 122880.0))
+
+;; WARN: Return type mismatch connection-minimap vs none.
+(defmethod task-manager-desert-glide-method-32 ((this task-manager-desert-glide))
+  (dotimes (s5-0 (length *desert-glide-rings*))
+    (add-icon! *minimap* this (the-as uint 150) (the-as int #f) (-> *desert-glide-rings* s5-0 pos) 0)
+    )
+  (dotimes (s5-1 (length *desert-glide-thermals*))
+    (add-icon! *minimap* this (the-as uint 151) (the-as int #f) (-> *desert-glide-thermals* s5-1 pos) 0)
+    )
+  (add-icon! *minimap* this (the-as uint 130) (the-as int #f) *desert-glide-finish-sphere* 0)
+  (none)
+  )
+
+(defun glider-too-low? ((arg0 vector) (arg1 int))
+  (when arg1
+    (set! *glider-cache-index* 0)
+    0
+    )
+  (let ((f30-0 (vector-vector-distance (-> *desert-glide-rings* 0 pos) arg0))
+        (s5-0 0)
+        )
+    (let ((s3-0 *glider-cache-index*)
+          (s2-0 (+ (length *desert-glide-rings*) -1))
+          )
+      (b! #t cfg-21 :delay (nop!))
+      (label cfg-3)
+      (let ((f0-0 (vector-vector-distance (-> *desert-glide-rings* s3-0 pos) arg0))
+            (v1-10 (vector-! (new 'stack-no-clear 'vector) arg0 (-> *desert-glide-rings* s3-0 pos)))
+            )
+        0.0
+        (let ((f1-2 (vector-dot v1-10 (-> *desert-glide-rings* s3-0 forw))))
+          (when (and (>= f1-2 0.0) (>= f30-0 f0-0))
+            (set! f30-0 f0-0)
+            (set! s5-0 s3-0)
+            )
+          (b! (and (not arg1) (or (< f1-2 0.0) (< f30-0 f0-0))) cfg-23 :delay (nop!))
+          )
+        )
+      (+! s3-0 1)
+      (label cfg-21)
+      (b! (>= (the-as uint s2-0) (the-as uint s3-0)) cfg-3)
+      )
+    (label cfg-23)
+    (if (and (!= *glider-cache-index* s5-0) (not arg1) (> (-> *desert-glide-rings* s5-0 checkpoint) 0))
+        (task-node-close! (game-task-node desert-glide-templetop) 'event)
+        )
+    (set! *glider-cache-index* s5-0)
+    (let ((f1-3 (vector-vector-xz-distance (-> *desert-glide-thermals* 1 pos) (target-pos 0)))
+          (f0-1 0.0)
+          )
+      (if (< f1-3 450560.0)
+          (set! f0-1 (* 2.0 (- 450560.0 f1-3)))
+          )
+      (< (-> arg0 y) (- (-> *desert-glide-rings* s5-0 pos y) (+ 204800.0 f0-1)))
+      )
+    )
+  )
+
+(define *thermal-spawn-id* 0)
+
+(define *desert-glide-num-thermals* 0)
+
+(define *desert-glide-thermals-tmp* (new 'static 'inline-array glider-thermal-info 16
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      (new 'static 'glider-thermal-info)
+                                      )
+        )
+
+(defmethod task-manager-desert-glide-method-34 ((this task-manager-desert-glide))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 *desert-glide-rings*)
+        )
+    (if (= (-> this max-count) -1)
+        (set! (-> this max-count) (-> s4-0 length))
+        )
+    (set! (-> s5-0 quad) (-> (target-pos 0) quad))
+    (while (< (-> this count) (-> this max-count))
+      (let ((s3-1 (-> s4-0 (-> this count))))
+        (let ((f0-0 8192000.0))
+          (b! (< (* f0-0 f0-0) (vector-vector-distance-squared s5-0 (-> s3-1 pos))) cfg-8)
+          )
+        (if (glider-ring-spawn this s3-1 (-> this count) #f)
+            (+! (-> this count) 1)
+            )
+        )
+      )
+    )
+  (label cfg-8)
+  0
+  (none)
+  )
+
+(defmethod task-manager-desert-glide-method-39 ((this task-manager-desert-glide) (arg0 uint))
+  (b! (not (task-node-closed? (game-task-node desert-glide-templetop))) cfg-11 :delay (nop!))
+  (set! (-> this count) 0)
+  (if (= (-> this max-count) -1)
+      (set! (-> this max-count) (-> *desert-glide-rings* length))
+      )
+  (b! #t cfg-6 :delay (nop!))
+  (label cfg-4)
+  (b! (>= (-> *desert-glide-rings* (-> this count) checkpoint) arg0) cfg-11)
+  (+! (-> this count) 1)
+  (label cfg-6)
+  (b! (and (> arg0 0) (< (-> this count) (-> this max-count))) cfg-4 :delay (nop!))
+  (label cfg-11)
+  0
+  (none)
+  )
+
+(defmethod task-manager-desert-glide-method-35 ((this task-manager-desert-glide))
+  (when (zero? *thermal-spawn-id*)
+    (dotimes (s5-0 (-> *desert-glide-thermals* length))
+      (mem-copy!
+        (the-as pointer (-> *desert-glide-thermals-tmp* s5-0))
+        (the-as pointer (-> *desert-glide-thermals* s5-0))
+        40
+        )
+      (set! (-> *desert-glide-thermal-effects* s5-0)
+            (process->handle (glider-thermal-spawn this (-> *desert-glide-thermals* s5-0) s5-0))
+            )
+      )
+    (set! *thermal-spawn-id* (-> *desert-glide-thermals* length))
+    (set! *desert-glide-num-thermals* (-> *desert-glide-thermals* length))
+    )
+  0
+  (none)
+  )
+
+(defmethod to-static-macro ((this glider-thermal-info) (arg0 object))
+  (format arg0 "     (static-glider-thermal-info~%")
+  (format
+    arg0
+    "       :pos       (~8,,2M ~8,,2M ~8,,2M ~8,,2M)~%"
+    (-> this pos x)
+    (-> this pos y)
+    (-> this pos z)
+    (-> this pos w)
+    )
+  (format arg0 "       :hheight   ~5,,1M~%" (-> this hheight))
+  (format arg0 "       :windspeed ~5,,1M~%" (-> this windspeed))
+  (format arg0 "       :thermal-time ~f~%" (* 0.0033333334 (the float (-> this thermal-time))))
+  (format arg0 "       )~%")
+  0
+  (none)
+  )
+
+(defmethod task-manager-desert-glide-method-36 ((this task-manager-desert-glide))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (if (and (cpad-hold? 0 triangle) (cpad-hold? 0 up))
+        (set! (-> this editing?) #t)
+        )
+    (when (and *target* (focus-test? *target* pilot) (cpad-hold? 0 triangle) (cpad-pressed? 0 r1))
+      (set! (-> this editing?) #t)
+      (let ((s5-0 (new 'stack 'glider-ring-info)))
+        (let* ((s3-0 (handle->process (-> *target* pilot vehicle)))
+               (s4-0 (if (type? s3-0 hvehicle)
+                         (the-as hvehicle s3-0)
+                         )
+                     )
+               )
+          (b! (not s4-0) cfg-86 :delay (nop!))
+          (set! (-> s5-0 pos quad) (-> s4-0 rbody matrix trans quad))
+          (set! (-> s5-0 forw quad) (-> s4-0 rbody matrix fvec quad))
+          (set! (-> s5-0 shootable) #f)
+          (set! (-> s5-0 speedmod) 1.0)
+          (cond
+            ((cpad-hold? 0 down)
+             (set! (-> s5-0 boost) 0.25)
+             )
+            ((cpad-hold? 0 left)
+             (set! (-> s5-0 boost) 0.5)
+             )
+            ((cpad-hold? 0 up)
+             (set! (-> s5-0 boost) 0.75)
+             )
+            ((cpad-hold? 0 right)
+             (set! (-> s5-0 boost) 0.0)
+             )
+            (else
+              (set! (-> s5-0 boost) 1.0)
+              )
+            )
+          (set! (-> s5-0 dist) 819200.0)
+          (glider-ring-spawn this s5-0 *ring-spawn-id* #f)
+          (send-event s4-0 'turbo-ring (-> s5-0 boost))
+          )
+        (mem-copy! (the-as pointer (-> *desert-glide-rings-tmp* *ring-spawn-id*)) (the-as pointer s5-0) 69)
+        )
+      (set! *ring-spawn-id* (+ *ring-spawn-id* 1))
+      )
+    (when (and *target* (focus-test? *target* pilot) (cpad-hold? 0 triangle) (cpad-pressed? 0 r2))
+      (when (not (-> this creating-thermal?))
+        (set! (-> this creating-thermal?) #t)
+        (set-time! (-> this thermal-start-time))
+        )
+      (set! (-> this editing?) #t)
+      (let ((s5-1 (new 'stack 'glider-thermal-info)))
+        (let* ((s4-1 (handle->process (-> *target* pilot vehicle)))
+               (v1-85 (if (type? s4-1 hvehicle)
+                          (the-as hvehicle s4-1)
+                          )
+                      )
+               )
+          (b! (not v1-85) cfg-86 :delay (nop!))
+          (set! (-> s5-1 pos quad) (-> v1-85 rbody matrix trans quad))
+          (set! (-> s5-1 pos w) 40960.0)
+          (set! (-> s5-1 thermal-time) 0)
+          (let ((a0-42 (new 'stack-no-clear 'vector)))
+            (let ((a2-2 a0-42))
+              (let ((a1-13 (-> s5-1 pos)))
+                (let ((v1-87 (-> v1-85 rbody matrix fvec)))
+                  (let ((a3-1 (-> s5-1 pos w)))
+                    (.mov vf7 a3-1)
+                    )
+                  (.lvf vf5 (&-> v1-87 quad))
+                  )
+                (.lvf vf4 (&-> a1-13 quad))
+                )
+              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+              (.mul.x.vf acc vf5 vf7 :mask #b111)
+              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.svf (&-> a2-2 quad) vf6)
+              )
+            (set! (-> a0-42 w) (-> s5-1 pos w))
+            (set! (-> s5-1 pos quad) (-> a0-42 quad))
+            )
+          )
+        (set! (-> s5-1 hheight) 409600.0)
+        (set! (-> s5-1 curpos) 0.0)
+        (set! (-> s5-1 windspeed) 327680.0)
+        (mem-copy! (the-as pointer (-> *desert-glide-thermals-tmp* *thermal-spawn-id*)) (the-as pointer s5-1) 40)
+        )
+      (set! *thermal-spawn-id* (+ *thermal-spawn-id* 1))
+      (set! *desert-glide-num-thermals* (+ *desert-glide-num-thermals* 1))
+      )
+    (when (-> this creating-thermal?)
+      (let* ((s5-2 (-> *desert-glide-thermals-tmp* (+ *thermal-spawn-id* -1)))
+             (s4-2 (handle->process (-> *target* pilot vehicle)))
+             (s3-1 (if (type? s4-2 hvehicle)
+                       (the-as hvehicle s4-2)
+                       )
+                   )
+             (s4-3 (new 'stack-no-clear 'vector))
+             )
+        0.0
+        0.0
+        (b! (not s3-1) cfg-86 :delay (nop!))
+        (let ((f0-16 (vector-vector-xz-distance (-> s3-1 rbody matrix trans) (-> s5-2 pos))))
+          (let ((f1-1 (- (-> s3-1 rbody matrix trans y) (-> s5-2 pos y))))
+            (if (< (* 0.5 (-> s5-2 hheight)) f1-1)
+                (set! (-> s5-2 hheight) (* 2.0 f1-1))
+                )
+            )
+          (if (< (-> s5-2 pos w) (+ 4096.0 f0-16))
+              (set! (-> s5-2 pos w) (+ 4096.0 f0-16))
+              )
+          (when (not (cpad-hold? 0 r2))
+            (vector+! s4-3 (-> s3-1 rbody matrix trans) (-> s5-2 pos))
+            (vector-float*! (-> s5-2 pos) s4-3 0.5)
+            (set! (-> s5-2 pos w) (* 0.5 f0-16))
+            (set! (-> s5-2 thermal-time) (- (current-time) (-> this thermal-start-time)))
+            (set! (-> this creating-thermal?) #f)
+            )
+          )
+        )
+      )
+    (when (and (cpad-pressed? 0 l1) (cpad-hold? 0 up))
+      (dotimes (gp-1 (-> *desert-glide-rings* length))
+        (to-static-macro (-> *desert-glide-rings* gp-1) #t)
+        )
+      (dotimes (gp-2 *ring-spawn-id*)
+        (to-static-macro (-> *desert-glide-rings-tmp* gp-2) #t)
+        )
+      )
+    (when (and (cpad-pressed? 0 l2) (cpad-hold? 0 up))
+      (dotimes (gp-3 *desert-glide-num-thermals*)
+        (to-static-macro (-> *desert-glide-thermals-tmp* gp-3) #t)
+        )
+      )
+    (label cfg-86)
+    0
+    (none)
+    )
+  )
+
+(defmethod task-manager-desert-glide-method-38 ((this task-manager-desert-glide))
+  (when #f
+    (dotimes (s5-0 *desert-glide-num-thermals*)
+      (let ((s4-0 (-> *desert-glide-thermals-tmp* s5-0))
+            (s3-0 (new 'stack-no-clear 'vector))
+            )
+        0.0
+        (let ((f30-0 (- (-> s4-0 pos y) (- (-> s4-0 hheight) (-> s4-0 pos w)))))
+          (if (< (-> s4-0 hheight) (-> s4-0 pos w))
+              (set! f30-0 (-> s4-0 pos y))
+              )
+          (+! (-> s4-0 curpos) (* (-> s4-0 windspeed) (seconds-per-frame)))
+          (until (>= f30-0 (+ (-> s4-0 pos y) (- (-> s4-0 hheight) (-> s4-0 pos w))))
+            (set-vector! s3-0 (-> s4-0 pos x) f30-0 (-> s4-0 pos z) (-> s4-0 pos w))
+            (+! (-> s3-0 y) (-> s4-0 curpos))
+            (if (< (+ (-> s4-0 pos y) (- (-> s4-0 hheight) (-> s4-0 pos w))) (-> s3-0 y))
+                (set! (-> s3-0 y) (- (-> s3-0 y) (* 2.0 (-> s4-0 hheight))))
+                )
+            (add-debug-sphere
+              #t
+              (bucket-id debug-no-zbuf1)
+              s3-0
+              (-> s4-0 pos w)
+              (new 'static 'rgba :g #xff :b #xff :a #xff)
+              )
+            (+! f30-0 (* 2.0 (-> s4-0 pos w)))
+            (while (< (* 2.0 (-> s4-0 hheight)) (-> s4-0 curpos))
+              (set! (-> s4-0 curpos) (- (-> s4-0 curpos) (* 2.0 (-> s4-0 hheight))))
+              )
+            )
+          )
+        )
+      )
+    )
+  (when (-> this editing?)
+    (add-debug-sphere
+      #t
+      (bucket-id debug-no-zbuf1)
+      *desert-glide-finish-sphere*
+      (-> *desert-glide-finish-sphere* r)
+      (new 'static 'rgba :r #xff :b #xff :a #xff)
+      )
+    (let ((a2-2 (new 'stack-no-clear 'vector)))
+      (set-vector! a2-2 5760409.5 1075773.5 8726692.0 1.0)
+      (add-debug-sphere #t (bucket-id debug-no-zbuf1) a2-2 (meters 3) (new 'static 'rgba :r #xff :a #xff))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod task-manager-desert-glide-method-37 ((this task-manager-desert-glide) (arg0 h-glider))
+  (when (and *target* (focus-test? *target* pilot))
+    (let* ((s4-0 (handle->process (-> *target* pilot vehicle)))
+           (v1-8 (if (type? s4-0 hvehicle)
+                     s4-0
+                     )
+                 )
+           )
+      0.0
+      (let* ((f0-1 81920000.0)
+             (f30-0 (* f0-1 f0-1))
+             )
+        (let ((s4-1 (-> arg0 root trans)))
+          (b! (not v1-8) cfg-46 :delay (nop!))
+          (let ((s2-0 0))
+            (b! #t cfg-31 :delay (nop!))
+            (label cfg-13)
+            (let ((s3-0 (-> *desert-glide-thermals-tmp* s2-0)))
+              (let ((f0-3 (vector-vector-xz-distance-squared s4-1 (-> s3-0 pos))))
+                (set! f30-0 (fmin f30-0 f0-3))
+                (b!
+                  (not (and (< f0-3 (* (-> s3-0 pos w) (-> s3-0 pos w)))
+                            (< (- (-> s3-0 pos y) (-> s3-0 hheight)) (-> s4-1 y))
+                            (< (-> s4-1 y) (+ (-> s3-0 pos y) (-> s3-0 hheight)))
+                            )
+                       )
+                  cfg-30
+                  :delay (empty-form)
+                  )
+                )
+              (when (not (-> arg0 in-thermal))
+                (set! (-> arg0 in-thermal) #t)
+                (set-time! (-> arg0 thermal-start-time))
+                (set! (-> arg0 min-thermal-time) (-> s3-0 thermal-time))
+                (set! (-> this last-active-thermal) s2-0)
+                )
+              (if (< (-> s4-1 y) (- (+ (-> s3-0 pos y) (-> s3-0 hheight)) (* 0.5 (-> s3-0 hheight))))
+                  (set! (-> arg0 thermal-strength) 1.0)
+                  (set! (-> arg0 thermal-strength)
+                        (/ (- (+ (-> s3-0 pos y) (-> s3-0 hheight)) (-> s4-1 y)) (* 0.5 (-> s3-0 hheight)))
+                        )
+                  )
+              )
+            (b! #t cfg-46 :delay (nop!))
+            (label cfg-30)
+            (set! s2-0 (+ s2-0 1))
+            (label cfg-31)
+            (b! (< s2-0 *desert-glide-num-thermals*) cfg-13)
+            )
+          )
+        (glider-ring-near-thermal-dist-squared f30-0)
+        )
+      )
+    (when (or (-> this editing?) (time-elapsed? (-> arg0 thermal-start-time) (-> arg0 min-thermal-time)))
+      (when (-> arg0 in-thermal)
+        (let ((s4-2 (-> this last-active-thermal)))
+          (vector-reset! (-> *desert-glide-thermals-tmp* (-> this last-active-thermal) pos))
+          (if (not (-> this editing?))
+              (deactivate (handle->process (-> *desert-glide-thermal-effects* s4-2)))
+              )
+          (set! (-> *desert-glide-thermal-effects* s4-2) (the-as handle #f))
+          )
+        )
+      (set! (-> arg0 in-thermal) #f)
+      (set! (-> arg0 thermal-strength) 0.0)
+      )
+    (label cfg-46)
+    0
+    )
+  (none)
+  )
+
+(defun glider-thermal-updraft-velocity ((arg0 h-glider))
+  (let* ((v1-2 (-> *game-info* sub-task-list (game-task-node desert-glide-templetop)))
+         (v1-5 (handle->process (if (-> v1-2 manager)
+                                    (-> v1-2 manager manager)
+                                    (the-as handle #f)
+                                    )
+                                )
+               )
+         )
+    (if v1-5
+        (task-manager-desert-glide-method-37 (the-as task-manager-desert-glide v1-5) arg0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs symbol.
+(defun desert-glide-task-done ()
+  (with-pp
+    (when (not (scene-select?))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer pp))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'fail)
+        (let ((t9-1 send-event-function)
+              (v1-5 (-> *game-info* sub-task-list (game-task-node desert-glide-templetop)))
+              )
+          (t9-1
+            (handle->process (if (-> v1-5 manager)
+                                 (-> v1-5 manager manager)
+                                 (the-as handle #f)
+                                 )
+                             )
+            a1-0
+            )
+          )
+        )
+      )
+    (the-as symbol 0)
+    )
+  )
+
+(defun inside-cloudbox? ((arg0 vector))
+  (and (>= (-> arg0 x) (+ -1228800.0 (-> *cloud-cube* x)))
+       (>= (+ 1228800.0 (-> *cloud-cube* x)) (-> arg0 x))
+       (>= (-> arg0 y) (+ -1228800.0 (-> *cloud-cube* y)))
+       (>= (+ 1228800.0 (-> *cloud-cube* y)) (-> arg0 y))
+       (>= (-> arg0 z) (+ -1228800.0 (-> *cloud-cube* z)))
+       (>= (+ 1228800.0 (-> *cloud-cube* z)) (-> arg0 z))
+       )
+  )
+
+(defun inside-cloudbox-xz? ((arg0 vector))
+  (and (>= (-> arg0 x) (+ -1228800.0 (-> *cloud-cube* x)))
+       (>= (+ 1228800.0 (-> *cloud-cube* x)) (-> arg0 x))
+       (>= (-> arg0 z) (+ -1228800.0 (-> *cloud-cube* z)))
+       (>= (+ 1228800.0 (-> *cloud-cube* z)) (-> arg0 z))
+       )
+  )
+
+(defun move-pos-inside-cloudbox! ((arg0 vector))
+  (while (< (-> arg0 x) (+ -1228800.0 (-> *cloud-cube* x)))
+    (+! (-> arg0 x) 2457600.0)
+    )
+  (while (< (+ 1228800.0 (-> *cloud-cube* x)) (-> arg0 x))
+    (+! (-> arg0 x) -2457600.0)
+    )
+  (while (< (-> arg0 y) (+ -1228800.0 (-> *cloud-cube* y)))
+    (+! (-> arg0 y) 2457600.0)
+    )
+  (while (< (+ 1228800.0 (-> *cloud-cube* y)) (-> arg0 y))
+    (+! (-> arg0 y) -2457600.0)
+    )
+  (while (< (-> arg0 z) (+ -1228800.0 (-> *cloud-cube* z)))
+    (+! (-> arg0 z) 2457600.0)
+    )
+  (while (< (+ 1228800.0 (-> *cloud-cube* z)) (-> arg0 z))
+    (+! (-> arg0 z) -2457600.0)
+    )
+  0
+  (none)
+  )
+
+(defmethod task-manager-method-26 ((this task-manager-desert-glide))
+  (with-pp
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (task-manager-desert-glide-method-35 this)
+      (if (glider-too-low? (target-pos 0) (the-as int (-> this reset-too-low?)))
+          (desert-glide-task-done)
+          )
+      (when (and (zero? (-> this whistle-sound)) (time-elapsed? (-> this start-time) (seconds 0.2)))
+        (set! (-> this whistle-sound) (new-sound-id))
+        (sound-play "whistling-wind" :id (-> this whistle-sound))
+        )
+      (set! (-> this reset-too-low?) #f)
+      (when (and *target* (focus-test? *target* pilot))
+        (let* ((s4-0 (handle->process (-> *target* pilot vehicle)))
+               (s5-1 (if (type? s4-0 hvehicle)
+                         s4-0
+                         )
+                     )
+               )
+          (when (and s5-1
+                     (let ((f0-0
+                             (vector-vector-distance-squared (-> (the-as hvehicle s5-1) rbody matrix trans) *desert-glide-finish-sphere*)
+                             )
+                           (f1-0 (-> *desert-glide-finish-sphere* r))
+                           )
+                       (< f0-0 (* f1-0 f1-0))
+                       )
+                     )
+            (if (not (-> this editing?))
+                (send-event this 'complete)
+                )
+            (when (-> this editing?)
+              (dotimes (s4-1 (-> *desert-glide-rings* length))
+                (to-static-macro (-> *desert-glide-rings* s4-1) #t)
+                )
+              (dotimes (s4-2 *ring-spawn-id*)
+                (to-static-macro (-> *desert-glide-rings-tmp* s4-2) #t)
+                )
+              (dotimes (s4-3 *desert-glide-num-thermals*)
+                (to-static-macro (-> *desert-glide-thermals-tmp* s4-3) #t)
+                )
+              (send-event this 'complete)
+              )
+            )
+          (when (and s5-1
+                     (not (-> this did-want-load?))
+                     (let ((f0-1
+                             (vector-vector-distance-squared (-> (the-as hvehicle s5-1) rbody matrix trans) *desert-glide-finish-sphere*)
+                             )
+                           (f1-4 (+ 1228800.0 (-> *desert-glide-finish-sphere* r)))
+                           )
+                       (< f0-1 (* f1-4 f1-4))
+                       )
+                     )
+            (let ((a1-13 (new 'stack-no-clear 'array 'symbol 10)))
+              (set! (-> a1-13 9) #f)
+              (set! (-> a1-13 8) #f)
+              (set! (-> a1-13 7) #f)
+              (set! (-> a1-13 6) #f)
+              (set! (-> a1-13 5) #f)
+              (set! (-> a1-13 4) #f)
+              (set! (-> a1-13 3) #f)
+              (set! (-> a1-13 2) 'volcanox)
+              (set! (-> a1-13 1) 'hangb)
+              (set! (-> a1-13 0) 'hanga)
+              (want-levels *load-state* a1-13)
+              )
+            (want-display-level *load-state* 'volcanox 'display)
+            (set! (-> this did-want-load?) #t)
+            )
+          )
+        (let ((s5-2 (new 'stack-no-clear 'vector)))
+          (let ((s4-4 (camera-matrix)))
+            (set! (-> s5-2 quad) (-> (camera-pos) quad))
+            (let ((a0-29 s5-2))
+              (let ((v1-73 s5-2))
+                (let ((a1-15 (-> s4-4 fvec)))
+                  (let ((a2-3 1187840.0))
+                    (.mov vf7 a2-3)
+                    )
+                  (.lvf vf5 (&-> a1-15 quad))
+                  )
+                (.lvf vf4 (&-> v1-73 quad))
+                )
+              (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+              (.mul.x.vf acc vf5 vf7 :mask #b111)
+              (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+              (.svf (&-> a0-29 quad) vf6)
+              )
+            )
+          (set! (-> *cloud-cube* quad) (-> s5-2 quad))
+          )
+        (set! (-> *cloud-cube* w) 2457600.0)
+        (task-manager-desert-glide-method-34 this)
+        )
+      (task-manager-desert-glide-method-38 this)
+      (when (time-elapsed? (-> this check-timer) (seconds 0.1))
+        (if (not (-> this desert-glide-entity))
+            (task-manager-desert-glide-method-33 this)
+            )
+        (when (< (-> this cur-group) (-> this actor-group-count))
+          (let ((s5-3 (-> this actor-group (-> this cur-group))))
+            (dotimes (s4-5 (-> s5-3 length))
+              (let ((a1-16 (new 'stack-no-clear 'event-message-block)))
+                (set! (-> a1-16 from) (process->ppointer pp))
+                (set! (-> a1-16 num-params) 0)
+                (set! (-> a1-16 message) 'trigger)
+                (let ((t9-21 send-event-function)
+                      (v1-98 (-> s5-3 data s4-5 actor))
+                      )
+                  (t9-21
+                    (if v1-98
+                        (-> v1-98 extra process)
+                        )
+                    a1-16
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (if (< 1.0 (-> *game-info* counter))
+            (set! (-> this sound-id)
+                  (add-process *gui-control* this (gui-channel background) (gui-action queue) "miss001" -99.0 0)
+                  )
+            )
+        (set! (-> *game-info* counter) 0.0)
+        (set-time! (-> this check-timer))
+        )
+      0
+      (none)
+      )
+    )
+  )
+
+(defmethod task-manager-desert-glide-method-33 ((this task-manager-desert-glide))
+  (local-vars (sv-16 res-tag))
+  (let ((a0-2 (entity-by-name "desert-glide-manager-1")))
+    (when a0-2
+      (set! (-> this desert-glide-entity) a0-2)
+      (set! sv-16 (new 'static 'res-tag))
+      (let ((v1-2 (res-lump-data a0-2 'actor-groups pointer :tag-ptr (& sv-16))))
+        (cond
+          ((and v1-2 (nonzero? (-> sv-16 elt-count)))
+           (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+           (set! (-> this actor-group) (the-as (pointer actor-group) v1-2))
+           )
+          (else
+            )
+          )
+        )
+      (set! (-> this cur-group) 0)
+      0
+      )
+    )
+  (if (zero? (-> this hud-altitude))
+      (set! (-> this hud-altitude)
+            (ppointer->handle
+              (process-spawn hud-glider-altitude :init hud-init-by-other :name "hud-glider-altitude" :to this)
+              )
+            )
+      )
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod task-manager-method-25 ((this task-manager-desert-glide))
+  (let ((t9-0 (method-of-type task-manager task-manager-method-25)))
+    (t9-0 this)
+    )
+  (set-action!
+    *gui-control*
+    (gui-action stop)
+    (-> this sound-id)
+    (gui-channel none)
+    (gui-action none)
+    (the-as string #f)
+    (the-as (function gui-connection symbol) #f)
+    (the-as process #f)
+    )
+  (sound-stop (-> this whistle-sound))
+  (when (= (-> this hud-active?) #t)
+    (send-event (handle->process (-> this hud-altitude)) 'hide-and-die)
+    (set! (-> this hud-active?) #f)
+    )
+  (none)
+  )
+
+(defmethod set-time-limit ((this task-manager-desert-glide))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set-setting! 'music 'desglide 0.0 0)
+  (set-setting! 'gun-eject #f 0.0 0)
+  (set-setting! 'allow-look-around #f 0.0 0)
+  (set! (-> this hud-altitude) (the-as handle #f))
+  (set! (-> this hud-active?) #f)
+  (set! (-> this editing?) #f)
+  (set! (-> this did-want-load?) #f)
+  (set! (-> this reset-too-low?) #t)
+  (set! *ring-spawn-id* 0)
+  (set! *thermal-spawn-id* 0)
+  (set! *desert-glide-num-rings* 0)
+  (set! *desert-glide-num-thermals* 0)
+  (set! (-> this desert-glide-entity) #f)
+  (set! (-> this cur-group) 0)
+  (set! (-> this actor-group-count) 0)
+  (set! (-> this check-timer) (+ (current-time) (seconds 1)))
+  (set-time! (-> this start-time))
+  (set! (-> this max-count) -1)
+  (set! (-> this count) 0)
+  (set! (-> this pre-populated-clouds?) #f)
+  (set! (-> this creating-thermal?) #f)
+  (set! (-> this hud-altitude) (new 'static 'handle))
+  (set! (-> this last-active-thermal) 0)
+  (set! (-> this whistle-sound) (new 'static 'sound-id))
+  (adjust-player-ammo 200.0 (pickup-type ammo-yellow))
+  (task-manager-desert-glide-method-39 this (the-as uint 1))
+  (task-manager-desert-glide-method-32 this)
+  (none)
+  )
+
+(defskelgroup skel-tpl-glider tpl-glider tpl-glider-lod0-jg tpl-glider-idle-ja
+              ((tpl-glider-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              :origin-joint-index 3
+              )
+
+(deftype tpl-glider (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defstate idle (tpl-glider)
+  :virtual #t
+  :code sleep-code
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this tpl-glider) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-6 prim-core action) (collide-action solid))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-6)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tpl-glider" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (if (task-node-closed? (game-task-node temple-climb-resolution))
+      (cleanup-for-death this)
+      (go (method-of-object this idle))
+      )
+  )

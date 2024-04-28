@@ -18,5 +18,5 @@
   "handcuffs-ag.go"
   "beacon-ag.go"
   "particleman-ag.go"
-  "introcst.o"
+  "introcst.go"
  ))

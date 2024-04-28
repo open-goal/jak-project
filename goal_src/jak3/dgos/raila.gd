@@ -38,5 +38,5 @@
   "comb-rail-rider-ag.go"
   "comb-energy-ring-ag.go"
   "vehicle-explosion-ag.go"
-  "raila.o"
+  "raila.go"
  ))

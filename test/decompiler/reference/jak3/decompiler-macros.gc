@@ -213,6 +213,13 @@
          ;; This way it can check the individual function types, make sure they make sense, and create
          ;; a state with the appropriate type.
          ,(cond
+           ((and virtual parent)
+            `(begin
+              (inherit-state ,new-state ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
+              (set! (-> ,new-state parent) ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
+              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+            )
            (virtual
             `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
             )
@@ -224,7 +231,10 @@
               )
             )
            (#t
-            `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+            `(begin
+              (set! (-> ,new-state parent) #f)
+              (define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
             )
            )
          )
@@ -970,7 +980,6 @@
     )
   )
 
-;; og:preserve-this
 ;; look up the index of an art element in an art group.
 (desfun art-elt-index (ag-name elt-name)
   (if (number? elt-name)
@@ -1126,9 +1135,11 @@
               &key (num! #f)
               &key (param0 #f)
               &key (param1 #f)
+              &key (param2 #f)
               &key (num-func #f)
               &key (frame-num #f)
-              &key (frame-interp #f)
+              &key (frame-interp0 #f)
+              &key (frame-interp1 #f)
               &key (dist #f)
               &key (eval? #t)
               )
@@ -1141,8 +1152,10 @@
    num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
    param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
    param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param2       = 3rd parameter for the playback function. ONLY USE THESE WITH num-func !!
    frame-num    = set the frame-num field.
-   frame-interp = set the frame-interp field.
+   frame-interp0 = set the first value of the frame-interp array.
+   frame-interp1 = set the second value of the frame-interp array.
    dist         = set the dist field.
    available num! functions:
    - (+!)       = advance anim.
@@ -1198,6 +1211,10 @@
                 (cond
                   ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
                   )))
+        (p2 (if param2 param2
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
         (frame-num (cond
                       ((eq? 'max frame-num) (if group!
                                                 `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
@@ -1208,11 +1225,13 @@
         (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
       )
   `(let ((ja-ch (-> self skel root-channel ,chan)))
-      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
+      ,(if frame-interp0 `(set! (-> ja-ch frame-interp 0) ,frame-interp0) `(none))
+      ,(if frame-interp1 `(set! (-> ja-ch frame-interp 1) ,frame-interp1) `(none))
       ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
       ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
       ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
       ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if p2 `(set! (-> ja-ch param 2) ,p2) `(none))
       ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
       ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
       ,(if nf
@@ -1225,7 +1244,7 @@
                              `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) frames num-frames))))
                              `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group frames num-frames))))
                              ))
-        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        ((and (eq? num! 'identity) (not (null? num-args))) `(set! (-> ja-ch frame-num) ,(car num-args)))
         (#t `(none))
         )
       ))
@@ -1236,12 +1255,14 @@
                       &key (num! #f)
                       &key (param0 #f)
                       &key (param1 #f)
+                      &key (param2 #f)
                       &key (num-func #f)
                       &key (frame-num #f)
-                      &key (frame-interp #f)
+                      &key (frame-interp0 #f)
+                      &key (frame-interp1 #f)
                       &key (dist #f)
                       )
-  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :param2 ,param2 :num-func ,num-func :frame-num ,frame-num :frame-interp0 ,frame-interp0 :frame-interp1 ,frame-interp1 :dist ,dist)
   )
 
 (defmacro script-eval (script &key (key (process->ppointer PP)) &key (proc PP) &key (vector (the-as vector #f)))
@@ -1380,7 +1401,10 @@
                           `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@param0) :random-mult 1)
                           )
                         ((eq? field-name 'texture)
-                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                          (if (eq? (car param0) 'new)
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,(string->symbol-format "{}-{}" (car param0) (cadr param0)) :flags (sp-flag int))
+                            )
                           )
                         ((eq? field-name 'next-launcher)
                           `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,param0 :flags (sp-flag launcher))
@@ -1539,3 +1563,160 @@
 (defmacro current-frame ()
   `(-> *display* frames (-> *display* on-screen))
   )
+
+(defmacro vftoi4.xyzw (dst src)
+  "convert to 28.4 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 16.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
+  )
+
+(defmacro .movz (result value check original)
+  `(if (= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro get-texture (name tpage)
+  `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage))
+  )
+
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000244140625)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
+
+(defmacro set-part-tracker-params (type group duration callback userdata target mat-joint subsample-num)
+  `(case ,type
+    ((part-tracker)
+     (set! (-> *part-tracker-params-default* group) ,group)
+     (set! (-> *part-tracker-params-default* duration) ,duration)
+     (set! (-> *part-tracker-params-default* callback) ,callback)
+     (set! (-> *part-tracker-params-default* userdata) ,userdata)
+     (set! (-> *part-tracker-params-default* target) ,target)
+     (set! (-> *part-tracker-params-default* mat-joint) ,mat-joint)
+     )
+    (else
+     (set! (-> *part-tracker-subsampler-params-default* group) ,group)
+     (set! (-> *part-tracker-subsampler-params-default* duration) ,duration)
+     (set! (-> *part-tracker-subsampler-params-default* callback) ,callback)
+     (set! (-> *part-tracker-subsampler-params-default* userdata) ,userdata)
+     (set! (-> *part-tracker-subsampler-params-default* target) ,target)
+     (set! (-> *part-tracker-subsampler-params-default* mat-joint) ,mat-joint)
+     (set! (-> *part-tracker-subsampler-params-default* subsample-num) ,subsample-num)
+     )
+    )
+  )
+
+(defmacro part-tracker-spawn (type &key (group #f)
+                                   &key (to #f)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 0)
+                                   &key (duration (seconds 0))
+                                   &key (callback #f)
+                                   &key (userdata (the uint #f))
+                                   &key (target #f)
+                                   &key (mat-joint *launch-matrix*)
+                                   &key (subsample-num 1.0))
+  "Specialized `process-spawn` macro for [[part-tracker]]s.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+  (with-gensyms (new-tracker)
+    `(let ((,new-tracker (the-as ,type (get-process *default-dead-pool* ,type ,stack-size ,unk))))
+        (when ,new-tracker
+          ((method-of-type ,type activate) ,new-tracker ,to ,(if name name `(symbol->string (quote ,type))) ,stack)
+          (set-part-tracker-params ,type ,group ,duration ,callback ,userdata ,target ,mat-joint ,subsample-num)
+          (run-now-in-process ,new-tracker
+            (if (= ,type part-tracker) part-tracker-init part-tracker-subsampler-init)
+            (if (= ,type part-tracker) *part-tracker-params-default* *part-tracker-subsampler-params-default*))
+          (the (pointer ,type) (-> ,new-tracker ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro .sll (result in sa)
+  `(set! ,result (sext32 (the-as int (shl (logand ,in #xffffffff) ,sa))))
+  )
+
+(defmacro vftoi12.xyzw (dst src)
+  "convert to 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 4096.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof15.xyzw (dst src)
+  "convert from a 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000030517578125)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
+
+(import "goal_src/jak3/engine/data/tpages.gc")
+(import "goal_src/jak3/engine/data/textures.gc")

@@ -52,5 +52,5 @@
   "vol-rising-step-c-ag.go"
   "vol-bouncer-ag.go"
   "vol-stone-lid-ag.go"
-  "volcanoa-vis.o"
+  "volcanoa-vis.go"
  ))

@@ -23,6 +23,7 @@
 #include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
+#include "game/graphics/screenshot.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/runtime.h"
 #include "game/sce/libscf.h"
@@ -73,7 +74,7 @@ struct GraphicsData {
   FrameLimiter frame_limiter;
   Timer engine_timer;
   double last_engine_time = 1. / 60.;
-  float pmode_alp = 0.f;
+  float pmode_alp = 1.f;
 
   std::string imgui_log_filename, imgui_filename;
   GameVersion version;
@@ -399,18 +400,20 @@ void render_game_frame(int game_width,
       options.quick_screenshot = true;
       options.screenshot_path = file_util::make_screenshot_filepath(g_game_version);
     }
-    if (g_gfx_data->debug_gui.get_screenshot_flag()) {
+    // note : it's important we call get_screenshot_flag first because it modifies state
+    if (g_gfx_data->debug_gui.get_screenshot_flag() || g_want_screenshot) {
+      g_want_screenshot = false;
       options.save_screenshot = true;
       options.internal_res_screenshot = true;
-      options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
-      options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.game_res_w = g_screen_shot_settings->width;
+      options.game_res_h = g_screen_shot_settings->height;
       options.window_framebuffer_width = options.game_res_w;
       options.window_framebuffer_height = options.game_res_h;
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
-      options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
-      options.screenshot_path = file_util::make_screenshot_filepath(
-          g_game_version, g_gfx_data->debug_gui.screenshot_name());
+      options.msaa_samples = g_screen_shot_settings->msaa;
+      options.screenshot_path =
+          file_util::make_screenshot_filepath(g_game_version, get_screen_shot_name());
     }
 
     options.draw_small_profiler_window =

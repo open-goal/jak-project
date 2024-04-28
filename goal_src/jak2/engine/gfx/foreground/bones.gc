@@ -120,16 +120,224 @@ this is done by a linked list of "bone calculations", which is stashed in the dm
 ;; see the C++ code for more details.
 (def-mips2c bones-mtx-calc (function (inline-array pris-mtx) (inline-array joint) (inline-array bone) uint object none))
 
+(defun matrix-*float! ((output matrix3) (input matrix3) (x float))
+  (dotimes (i 12)
+    (set! (-> output data i) (* x (-> input data i)))
+    )
+  output
+  )
+
+(defun matrix*!-first-three ((arg0 matrix3) (arg1 matrix3) (arg2 matrix))
+  "Set dst = src1 * src2. It is okay for any arguments to be the same data.
+   This is a moderately efficient implementation."
+  (rlet ((acc :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf12 :class vf)
+         (vf14 :class vf)
+         (vf15 :class vf)
+         (vf16 :class vf)
+         (vf18 :class vf)
+         (vf19 :class vf)
+         (vf20 :class vf)
+         )
+    (.lvf vf10 (&-> arg1 quad 0))
+    (.lvf vf14 (&-> arg2 quad 0))
+    (.lvf vf15 (&-> arg2 quad 1))
+    (.lvf vf16 (&-> arg2 quad 2))
+    (.lvf vf11 (&-> arg1 quad 1))
+    (.lvf vf12 (&-> arg1 quad 2))
+    (.mul.x.vf acc vf14 vf10)
+    (.add.mul.y.vf acc vf15 vf10 acc)
+    (.add.mul.z.vf vf18 vf16 vf10 acc)
+    (.mul.x.vf acc vf14 vf11)
+    (.add.mul.y.vf acc vf15 vf11 acc)
+    (.add.mul.z.vf vf19 vf16 vf11 acc)
+    (.mul.x.vf acc vf14 vf12)
+    (.add.mul.y.vf acc vf15 vf12 acc)
+    (.add.mul.z.vf vf20 vf16 vf12 acc)
+    (.svf (&-> arg0 quad 0) vf18)
+    (.svf (&-> arg0 quad 1) vf19)
+    (.svf (&-> arg0 quad 2) vf20)
+    arg0
+    )
+  )
+
+(defun new-bones-mtx-calc ((output (inline-array pris-mtx)) (joints (inline-array joint)) (bones (inline-array bone)) (cam matrix) (count int))
+  (dotimes (i (- count 1))
+    (let ((b (-> bones (+ i 1) transform))
+          (j (-> joints i bind-pose))
+          (out (-> output (+ i 1)))
+          )
+
+      ;; multiply by bind pose
+      ;; mult swaps the args
+      (matrix*! (-> out t-mtx) j b)
+
+      ;; clever way to compute inverse transpose of a 3x3:
+      (vector-cross! (-> out n-mtx vector 0)
+                     (-> out t-mtx vector 1)
+                     (-> out t-mtx vector 2)
+                     )
+      (vector-cross! (-> out n-mtx vector 1)
+                     (-> out t-mtx vector 2)
+                     (-> out t-mtx vector 0)
+                     )
+      (vector-cross! (-> out n-mtx vector 2)
+                     (-> out t-mtx vector 0)
+                     (-> out t-mtx vector 1)
+                     )
+      (let ((scale (/ 1. (vector-dot (-> out n-mtx vector 0) (-> out t-mtx vector 0)))))
+        (matrix-*float! (-> out n-mtx) (-> out n-mtx) scale)
+        )
+
+      ;; multiply by camera
+      (matrix*! (-> out t-mtx) (-> out t-mtx) cam)
+      (matrix*!-first-three (-> out n-mtx) (-> out n-mtx) cam) ;; WRONG!!
+      )
+    )
+  )
+
+(defmacro .cross.vf (out a b)
+  `(begin
+     (.outer.product.a.vf acc ,a ,b)
+     (.outer.product.b.vf ,out ,b ,a acc)
+     )
+  )
+
+(defun new-bones-mtx-calc-asm ((output (inline-array pris-mtx)) (joints (inline-array joint)) (bones (inline-array bone)) (cam matrix) (count int))
+  ;; (declare (print-asm))
+  (dotimes (i (- count 1))
+    (let ((b (-> bones (+ i 1) transform))
+          (j (-> joints i bind-pose))
+          (out (-> output (+ i 1)))
+          )
+      (rlet (
+             (tmat0 :class vf)
+             (tmat1 :class vf)
+             (tmat2 :class vf)
+             (tmat3 :class vf)
+             (nmat0 :class vf)
+             (nmat1 :class vf)
+             (nmat2 :class vf)
+             (nmat3 :class vf)
+             (acc :class vf  )
+             (vf0 :class vf  )
+             (cam0 :class vf )
+             (cam1 :class vf )
+             (cam2 :class vf )
+             (cam3 :class vf )
+             )
+
+            (init-vf0-vector)
+
+            ;; load bind-pose to tmat:
+            (.lvf tmat0 (&-> j quad 0))
+            (.lvf tmat1 (&-> j quad 1))
+            (.lvf tmat2 (&-> j quad 2))
+            (.lvf tmat3 (&-> j quad 3))
+
+            ;; load bone to nmat
+            (.lvf nmat0 (&-> b quad 0))
+            (.lvf nmat1 (&-> b quad 1))
+            (.lvf nmat2 (&-> b quad 2))
+            (.lvf nmat3 (&-> b quad 3))
+
+            ;; multiply, store in tmat
+            (.mul.x.vf acc nmat0 tmat0)
+            (.add.mul.y.vf acc nmat1 tmat0 acc)
+            (.add.mul.z.vf acc nmat2 tmat0 acc)
+            (.add.mul.w.vf tmat0 nmat3 tmat0 acc)
+            (.mul.x.vf acc nmat0 tmat1)
+            (.add.mul.y.vf acc nmat1 tmat1 acc)
+            (.add.mul.z.vf acc nmat2 tmat1 acc)
+            (.add.mul.w.vf tmat1 nmat3 tmat1 acc)
+            (.mul.x.vf acc nmat0 tmat2)
+            (.add.mul.y.vf acc nmat1 tmat2 acc)
+            (.add.mul.z.vf acc nmat2 tmat2 acc)
+            (.add.mul.w.vf tmat2 nmat3 tmat2 acc)
+            (.mul.x.vf acc nmat0 tmat3)
+            (.add.mul.y.vf acc nmat1 tmat3 acc)
+            (.add.mul.z.vf acc nmat2 tmat3 acc)
+            (.add.mul.w.vf tmat3 nmat3 tmat3 acc)
+
+            ;; compute inverse transpose, storing in nmat
+            (.cross.vf nmat0 tmat1 tmat2)
+            (.cross.vf nmat1 tmat2 tmat0)
+            (.cross.vf nmat2 tmat0 tmat1)
+
+            ;; dot nmat0 and tmat0
+            (.mul.vf acc nmat0 tmat0)
+            (.add.y.vf acc acc acc :mask #b1)
+            (.add.z.vf acc acc acc :mask #b1)
+
+            ;; divide!
+            (.div.vf acc vf0 acc :fsf #b11 :ftf #b0)
+
+            ;; scale nmat:
+            (.mul.x.vf nmat0 nmat0 acc)
+            (.mul.x.vf nmat1 nmat1 acc)
+            (.mul.x.vf nmat2 nmat2 acc)
+
+            ;; load camera
+            (.lvf cam0 (&-> cam quad 0))
+            (.lvf cam1 (&-> cam quad 1))
+            (.lvf cam2 (&-> cam quad 2))
+            (.lvf cam3 (&-> cam quad 3))
+
+            ;; multiply tmat by camera
+            (.mul.x.vf acc cam0 tmat0)
+            (.add.mul.y.vf acc cam1 tmat0 acc)
+            (.add.mul.z.vf acc cam2 tmat0 acc)
+            (.add.mul.w.vf tmat0 cam3 tmat0 acc)
+            (.mul.x.vf acc cam0 tmat1)
+            (.add.mul.y.vf acc cam1 tmat1 acc)
+            (.add.mul.z.vf acc cam2 tmat1 acc)
+            (.add.mul.w.vf tmat1 cam3 tmat1 acc)
+            (.mul.x.vf acc cam0 tmat2)
+            (.add.mul.y.vf acc cam1 tmat2 acc)
+            (.add.mul.z.vf acc cam2 tmat2 acc)
+            (.add.mul.w.vf tmat2 cam3 tmat2 acc)
+            (.mul.x.vf acc cam0 tmat3)
+            (.add.mul.y.vf acc cam1 tmat3 acc)
+            (.add.mul.z.vf acc cam2 tmat3 acc)
+            (.add.mul.w.vf tmat3 cam3 tmat3 acc)
+
+            ;; store tmat
+            (.svf (&-> out t-mtx quad 0) tmat0)
+            (.svf (&-> out t-mtx quad 1) tmat1)
+            (.svf (&-> out t-mtx quad 2) tmat2)
+            (.svf (&-> out t-mtx quad 3) tmat3)
+
+            ;; multiply nmat
+            (.mul.x.vf acc cam0 nmat0)
+            (.add.mul.y.vf acc cam1 nmat0 acc)
+            (.add.mul.z.vf nmat0 cam2 nmat0 acc)
+            (.mul.x.vf acc cam0 nmat1)
+            (.add.mul.y.vf acc cam1 nmat1 acc)
+            (.add.mul.z.vf nmat1 cam2 nmat1 acc)
+            (.mul.x.vf acc cam0 nmat2)
+            (.add.mul.y.vf acc cam1 nmat2 acc)
+            (.add.mul.z.vf nmat2 cam2 nmat2 acc)
+
+            ;; store nmat
+            (.svf (&-> out n-mtx quad 0) nmat0)
+            (.svf (&-> out n-mtx quad 1) nmat1)
+            (.svf (&-> out n-mtx quad 2) nmat2)
+            )
+      )
+    )
+  (none)
+  )
+
+
+(define *use-new-bones* #t)
+(define *display-bone-stats* #f)
+(define *num-bones* 0)
+
 (defun bones-mtx-calc-execute ()
   "Execute all bone matrix calculations."
   (rlet ((vf1 :class vf)
-         (vf25 :class vf)
-         (vf26 :class vf)
-         (vf27 :class vf)
-         (vf28 :class vf)
-         (vf29 :class vf)
-         (vf30 :class vf)
-         (vf31 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
          (vf6 :class vf)
@@ -157,6 +365,7 @@ this is done by a linked list of "bone calculations", which is stashed in the dm
                  (s5-1 (-> *math-camera* camera-rot))
                  (s4-1 (-> v1-26 first))
                  )
+            (set! *num-bones* 0)
             (while (nonzero? s4-1) ;; loop
 
               ;; pick correct matrix. The pris-mtx includes camera rotation, so all that's needed in the final
@@ -167,23 +376,19 @@ this is done by a linked list of "bone calculations", which is stashed in the dm
                                )
                            )
                     )
-                (.lvf vf28 (&-> v1-29 quad 0))
-                (.lvf vf29 (&-> v1-29 quad 1))
-                (.lvf vf30 (&-> v1-29 quad 2))
-                (.lvf vf31 (&-> v1-29 trans quad))
-                (.lvf vf25 (&-> v1-29 quad 0))
-                (.lvf vf26 (&-> v1-29 quad 1))
-                (.lvf vf27 (&-> v1-29 quad 2))
-
                 ;; calculate!
-                (bones-mtx-calc
-                  (-> s4-1 matrix-area)
-                  (-> s4-1 joints)
-                  (-> s4-1 bones)
-                  (-> s4-1 num-bones)
-                  v1-29 ;; hack, to pass matrix to bones-mtx-calc in a better way.
-                  )
+                (if *use-new-bones*
+                    (new-bones-mtx-calc-asm (-> s4-1 matrix-area) (-> s4-1 joints) (-> s4-1 bones) v1-29 (the int (-> s4-1 num-bones)))
+                    (bones-mtx-calc
+                      (-> s4-1 matrix-area)
+                      (-> s4-1 joints)
+                      (-> s4-1 bones)
+                      (-> s4-1 num-bones)
+                      v1-29 ;; hack, to pass matrix to bones-mtx-calc in a better way.
+                      )
+                    )
                 )
+              (+! *num-bones* (-> s4-1 num-bones))
 
               ;; there is an optional post-processing step for ripple.
               (when (logtest? (-> s4-1 flags) (bone-calc-flags write-ripple-data))
@@ -226,6 +431,10 @@ this is done by a linked list of "bone calculations", which is stashed in the dm
                 )
               (set! s4-1 (-> s4-1 next))
               )
+            )
+
+          (when *display-bone-stats*
+            (format *stdcon* "num-bones: ~D~%" *num-bones*)
             )
 
           ;; reset sqwc

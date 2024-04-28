@@ -1,0 +1,130 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *prim-work*, type prim-work
+(define *prim-work*
+  (new 'static 'prim-work
+    :vertex-tmpl (new 'static 'inline-array dma-packet 3
+      (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x9 :cmd (vif-cmd unpack-v4-32))
+        )
+      (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x120 :cmd (vif-cmd unpack-v4-32))
+        )
+      (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x237 :cmd (vif-cmd unpack-v4-32))
+        )
+      )
+    :control-tmpl (new 'static 'inline-array dma-packet 2
+      (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xc :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x345 :num #xc :cmd (vif-cmd unpack-v4-32))
+        )
+      (new 'static 'dma-packet
+        :dma (new 'static 'dma-tag :qwc #xc :id (dma-tag-id cnt))
+        :vif1 (new 'static 'vif-tag :imm #x363 :num #xc :cmd (vif-cmd unpack-v4-32))
+        )
+      )
+    :giftag (new 'static 'generic-gif-tag
+      :fan-prim (new 'static 'gif-tag-prim
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-fan) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+        :nreg #x3
+        )
+      :str-prim (new 'static 'gif-tag-prim
+        :pre #x1
+        :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1 :abe #x1)
+        :nreg #x3
+        )
+      :regs (new 'static 'gif-tag-regs-32 :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+      :num-strips #x1
+      )
+    :call-scissor (new 'static 'dma-packet
+      :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
+      :vif0 (new 'static 'vif-tag :imm #x6 :cmd (vif-cmd mscalf) :msk #x1)
+      )
+    :call-noclip (new 'static 'dma-packet
+      :dma (new 'static 'dma-tag :id (dma-tag-id cnt))
+      :vif0 (new 'static 'vif-tag :imm #x8 :cmd (vif-cmd mscalf) :msk #x1)
+      )
+    :mask (new 'static 'vector4w :x -2 :y -1 :z -1)
+    )
+  )
+
+;; definition for method 9 of type prim-work
+;; WARN: Return type mismatch int vs none.
+(defmethod reset! ((this prim-work))
+  "Reset all pending vertex/control data."
+  (dotimes (v1-0 68)
+    (let ((a1-2 (-> this sinks v1-0)))
+      (set! (-> a1-2 vertex-count) (the-as uint 0))
+      (set! (-> a1-2 control-count) (the-as uint 0))
+      )
+    0
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type prim-strip
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 9 prim-strip)" 9 prim-strip)
+
+;; definition for method 10 of type prim-strip
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-dma-and-tex ((this prim-strip) (arg0 draw-control))
+  "Set up the bucket, prim sink, and texture."
+  (let ((s5-0 (-> *level* level (-> arg0 level-index))))
+    (let ((s2-0 (-> s5-0 draw-index))
+          (s4-0 (-> arg0 default-texture-page))
+          )
+      (let ((s3-0 (vu1-bucket-map s2-0 (the-as int s4-0) (merc-mode mercneric2)))
+            (v1-3 (vu1-bucket-map s2-0 (the-as int s4-0) (merc-mode mm5)))
+            )
+        (set! (-> this bucket) s3-0)
+        (set! (-> this sink) (the-as uint v1-3))
+        )
+      (set! (-> this level) s5-0)
+      (set! (-> this texture-index) s4-0)
+      )
+    (when (not (logtest? (-> this flags) (prim-flags no-texture-name)))
+      (set! (-> this tex-id)
+            (lookup-level-texture-id-by-name (the-as string (-> this tex-name)) s5-0 (the-as int (-> this texture-index)))
+            )
+      (logior! (-> this flags) (prim-flags no-texture-name))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function prim-engine-execute
+;; WARN: Return type mismatch int vs none.
+(defun prim-engine-execute ()
+  "Generate all prim DMA."
+  (when (logtest? (-> *display* vu1-enable-user) (vu1-renderer-mask generic))
+    (when (not (get-menu-mode *blit-displays-work*))
+      (let* ((gp-0 *prim-engine*)
+             (s5-0 (-> *math-camera* camera-temp))
+             (v1-9 (-> gp-0 alive-list next0))
+             (s4-0 (-> (the-as connection v1-9) next0))
+             )
+        (while (!= v1-9 (-> gp-0 alive-list-end))
+          (-> (the-as connection v1-9) param1)
+          (generate-dma! (the-as prim-strip (-> (the-as connection v1-9) param2)) s5-0)
+          (set! v1-9 s4-0)
+          (set! s4-0 (-> s4-0 next0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

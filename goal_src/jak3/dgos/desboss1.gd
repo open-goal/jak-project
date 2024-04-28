@@ -19,5 +19,5 @@
   "terraformer-mine-ag.go"
   "particleman-ag.go"
   "terraformer-target-ag.go"
-  "desboss1.o"
+  "desboss1.go"
  ))

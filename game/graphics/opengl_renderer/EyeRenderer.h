@@ -8,6 +8,7 @@
 
 constexpr int EYE_BASE_BLOCK_JAK1 = 8160;
 constexpr int EYE_BASE_BLOCK_JAK2 = 3968;
+constexpr int EYE_BASE_BLOCK_JAK3 = 504;
 constexpr int NUM_EYE_PAIRS = 20;
 constexpr int SINGLE_EYE_SIZE = 32;
 

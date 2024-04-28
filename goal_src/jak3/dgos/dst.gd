@@ -20,5 +20,5 @@
   "tentacle-ag.go"
   "des-burning-bush-ag.go"
   "wascity-burning-bush-ag.go"
-  "desert-vis.o"
+  "desert-vis.go"
  ))

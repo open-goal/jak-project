@@ -7,6 +7,7 @@
 
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
+#include "game/graphics/screenshot.h"
 #include "game/system/hid/sdl_util.h"
 
 #include "fmt/core.h"
@@ -114,10 +115,11 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     if (ImGui::BeginMenu("Tools")) {
       if (ImGui::BeginMenu("Screenshot")) {
         ImGui::MenuItem("Screenshot Next Frame!", nullptr, &m_want_screenshot);
-        ImGui::InputText("File", m_screenshot_save_name, 50);
-        ImGui::InputInt("Width", &screenshot_width);
-        ImGui::InputInt("Height", &screenshot_height);
-        ImGui::InputInt("MSAA", &screenshot_samples);
+        ImGui::InputText("File", g_screen_shot_settings->name,
+                         sizeof(g_screen_shot_settings->name));
+        ImGui::InputInt("Width", &g_screen_shot_settings->width);
+        ImGui::InputInt("Height", &g_screen_shot_settings->height);
+        ImGui::InputInt("MSAA", &g_screen_shot_settings->msaa);
         ImGui::Checkbox("Quick-Screenshot on F2", &screenshot_hotkey_enabled);
         ImGui::EndMenu();
       }

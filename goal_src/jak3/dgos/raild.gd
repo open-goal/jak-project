@@ -1,6 +1,6 @@
 ("RAILD.DGO"
- ("tpage-2486.o"
+ ("tpage-2486.go"
   "blocking-plane-ag.go"
   "spotlight-ag.go"
-  "raild.o"
+  "raild.go"
  ))

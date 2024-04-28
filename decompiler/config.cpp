@@ -7,9 +7,22 @@
 #include "decompiler/util/config_parsers.h"
 
 #include "fmt/core.h"
-#include "third-party/json.hpp"
 
 namespace decompiler {
+
+void from_json(const nlohmann::json& j, TexInfo& info) {
+  j.at("name").get_to(info.name);
+  j.at("tpage_name").get_to(info.tpage_name);
+  j.at("idx").get_to(info.idx);
+}
+
+void to_json(nlohmann::json& j, const TexInfo& info) {
+  j = {
+      {"name", info.name},
+      {"tpage_name", info.tpage_name},
+      {"idx", info.idx},
+  };
+}
 
 namespace {
 /*!
@@ -35,13 +48,20 @@ Config make_config_via_json(nlohmann::json& json) {
   config.all_types_file = json.at("all_types_file").get<std::string>();
 
   auto inputs_json = read_json_file_from_config(json, "inputs_file");
-  config.dgo_names = inputs_json.at("dgo_names").get<std::vector<std::string>>();
+  config.dgo_names = json.contains("dgo_names")
+                         ? json.at("dgo_names").get<std::vector<std::string>>()
+                         : inputs_json.at("dgo_names").get<std::vector<std::string>>();
   config.object_file_names = inputs_json.at("object_file_names").get<std::vector<std::string>>();
   config.str_file_names = inputs_json.at("str_file_names").get<std::vector<std::string>>();
 
   if (inputs_json.contains("str_texture_file_names")) {
     config.str_texture_file_names =
         inputs_json.at("str_texture_file_names").get<std::vector<std::string>>();
+  }
+
+  if (inputs_json.contains("str_art_file_names")) {
+    config.str_art_file_names =
+        inputs_json.at("str_art_file_names").get<std::vector<std::string>>();
   }
 
   config.audio_dir_file_name = inputs_json.at("audio_dir_file_name").get<std::string>();
@@ -64,6 +84,13 @@ Config make_config_via_json(nlohmann::json& json) {
     config.jg_info_dump = serialized;
   }
 
+  if (json.contains("tex_dump_file")) {
+    auto json_data = file_util::read_text_file(
+        file_util::get_file_path({json.at("tex_dump_file").get<std::string>()}));
+    std::unordered_map<u32, TexInfo> serialized = parse_commented_json(json_data, "tex_dump_file");
+    config.texture_info_dump = serialized;
+  }
+
   if (json.contains("obj_file_name_map_file")) {
     config.obj_file_name_map_file = json.at("obj_file_name_map_file").get<std::string>();
   }
@@ -73,6 +100,7 @@ Config make_config_via_json(nlohmann::json& json) {
   config.write_scripts = json.at("write_scripts").get<bool>();
   config.disassemble_data = json.at("disassemble_data").get<bool>();
   config.process_tpages = json.at("process_tpages").get<bool>();
+  config.write_tpage_imports = json.at("write_tpage_imports").get<bool>();
   config.process_game_text = json.at("process_game_text").get<bool>();
   config.process_game_count = json.at("process_game_count").get<bool>();
   config.process_art_groups = json.at("process_art_groups").get<bool>();
@@ -84,6 +112,7 @@ Config make_config_via_json(nlohmann::json& json) {
   }
   config.dump_art_group_info = json.at("dump_art_group_info").get<bool>();
   config.dump_joint_geo_info = json.at("dump_joint_geo_info").get<bool>();
+  config.dump_tex_info = json.at("dump_tex_info").get<bool>();
   config.hexdump_code = json.at("hexdump_code").get<bool>();
   config.hexdump_data = json.at("hexdump_data").get<bool>();
   config.find_functions = json.at("find_functions").get<bool>();
@@ -359,9 +388,9 @@ Config read_config_file(const fs::path& path_to_config_file,
 
   // Then, update any config overrides
   if (override_json != "{}" && !override_json.empty()) {
-    lg::info("Config Overide: '{}'", override_json);
+    lg::info("Config Override: '{}'", override_json);
     auto cfg_override = parse_commented_json(override_json, "");
-    json.update(cfg_override);
+    json.update(cfg_override, true);
   }
 
   // debugging, dump the JSON config to a file

@@ -1,0 +1,803 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type flamer-hover
+(deftype flamer-hover (hover-enemy)
+  ((shot-trajectory  trajectory           :inline)
+   (last-fire-time   uint64)
+   (sync-off         uint32)
+   (flit-joint       joint-mod-set-local  :inline)
+   (flit-angle       float)
+   (flit-timer       uint64)
+   (sound-volume     float)
+   (path-u           float)
+   )
+  (:state-methods
+    attack
+    )
+  )
+
+;; definition for method 3 of type flamer-hover
+(defmethod inspect ((this flamer-hover))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hover-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tshot-trajectory: #<trajectory @ #x~X>~%" (-> this shot-trajectory))
+  (format #t "~2Tlast-fire-time: ~D~%" (-> this last-fire-time))
+  (format #t "~2Tsync-off: ~D~%" (-> this sync-off))
+  (format #t "~2Tflit-joint: #<joint-mod-set-local @ #x~X>~%" (-> this flit-joint))
+  (format #t "~2Tflit-angle: ~f~%" (-> this flit-angle))
+  (format #t "~2Tflit-timer: ~D~%" (-> this flit-timer))
+  (format #t "~2Tsound-volume: ~f~%" (-> this sound-volume))
+  (format #t "~2Tpath-u: ~f~%" (-> this path-u))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-flamer-hover flamer-lava flamer-lava-lod0-jg -1
+              ((flamer-lava-lod0-mg (meters 20)) (flamer-lava-lod1-mg (meters 40)) (flamer-lava-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7.5)
+              :shadow flamer-lava-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-flamer-hover-explode flamer-lava flamer-lava-explode-lod0-jg flamer-lava-explode-idle-ja
+              ((flamer-lava-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7.5)
+              :origin-joint-index 3
+              )
+
+;; definition for symbol *flamer-hover-exploder-params*, type joint-exploder-static-params
+(define *flamer-hover-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+;; definition for symbol *flamer-hover-enemy-info*, type enemy-info
+(define *flamer-hover-enemy-info* (new 'static 'enemy-info
+                                    :use-die-falling #t
+                                    :use-victory #f
+                                    :use-jump-blocked #f
+                                    :debug-draw-neck #f
+                                    :jump-debug-draw #f
+                                    :move-to-ground #f
+                                    :hover-if-no-ground #f
+                                    :idle-anim-script #f
+                                    :idle-anim 5
+                                    :notice-anim 5
+                                    :hostile-anim 5
+                                    :hit-anim 13
+                                    :knocked-anim 13
+                                    :knocked-land-anim 16
+                                    :die-anim 16
+                                    :die-falling-anim 16
+                                    :victory-anim 5
+                                    :jump-wind-up-anim -1
+                                    :jump-in-air-anim -1
+                                    :jump-land-anim -1
+                                    :neck-joint 19
+                                    :look-at-joint 19
+                                    :bullseye-joint 19
+                                    :sound-hit (static-sound-name "flamer-hit")
+                                    :sound-die (static-sound-name "flamer-die")
+                                    :notice-distance (meters 70)
+                                    :notice-distance-delta (meters 10)
+                                    :proximity-notice-distance (meters 55)
+                                    :default-hit-points 6.0
+                                    :gnd-collide-with (collide-spec backgnd)
+                                    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+                                    :movement-gravity (meters -100)
+                                    :friction 0.8
+                                    :attack-shove-back (meters 3)
+                                    :attack-shove-up (meters 2)
+                                    :attack-mode 'generic
+                                    :attack-damage 2
+                                    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+                                    :knocked-can-land-timeout (seconds 0.1)
+                                    :knocked-recover-timeout (seconds 2)
+                                    :ragdoll-blend-out-time (seconds 0.25)
+                                    :ragdoll-rotate-velocity-mult 1.0
+                                    :jump-height-min (meters 3)
+                                    :jump-height-factor 0.5
+                                    :knocked-seek-ry-clamp 2730.6667
+                                    :knocked-soft-vxz-lo 72089.6
+                                    :knocked-soft-vxz-hi 108134.4
+                                    :knocked-soft-vy-lo 81920.0
+                                    :knocked-soft-vy-hi 122880.0
+                                    :knocked-medium-vxz-lo 147456.0
+                                    :knocked-medium-vxz-hi 196608.0
+                                    :knocked-medium-vy-lo 135168.0
+                                    :knocked-medium-vy-hi 151552.0
+                                    :knocked-hard-vxz-lo 53248.0
+                                    :knocked-hard-vxz-hi 101580.8
+                                    :knocked-hard-vy-lo 60620.8
+                                    :knocked-hard-vy-hi 95027.2
+                                    :knocked-huge-vxz-lo 164659.2
+                                    :knocked-huge-vxz-hi 249036.8
+                                    :knocked-huge-vy-lo 183500.8
+                                    :knocked-huge-vy-hi 217907.2
+                                    :knocked-yellow-vxz-lo 40960.0
+                                    :knocked-yellow-vxz-hi 49152.0
+                                    :knocked-yellow-vy-lo 57344.0
+                                    :knocked-yellow-vy-hi 81920.0
+                                    :knocked-red-vxz-lo 24576.0
+                                    :knocked-red-vxz-hi 196608.0
+                                    :knocked-red-vy-lo 94208.0
+                                    :knocked-red-vy-hi 151552.0
+                                    :knocked-blue-vxz-lo 40960.0
+                                    :knocked-blue-vxz-hi 49152.0
+                                    :knocked-blue-vy-lo 24576.0
+                                    :knocked-blue-vy-hi 81920.0
+                                    :ragdoll-info #f
+                                    :shadow-size (meters 2)
+                                    :shadow-max-y (meters 10)
+                                    :shadow-min-y (meters -20)
+                                    :shadow-locus-dist (meters 150)
+                                    :gem-joint 19
+                                    :gem-offset (new 'static 'sphere :r 163840.0)
+                                    :knocked-off #t
+                                    )
+        )
+
+;; failed to figure out what this is:
+(set! (-> *flamer-hover-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 160 of type flamer-hover
+(defmethod hover-enemy-method-160 ((this flamer-hover))
+  (let ((t9-0 (method-of-type hover-enemy hover-enemy-method-160)))
+    (or (t9-0 this) (and (logtest? (-> this path flags) (path-control-flag not-found))
+                         (time-elapsed? (-> this state-time) (seconds 2))
+                         )
+        )
+    )
+  )
+
+;; definition for method 59 of type flamer-hover
+;; INFO: Used lq/sq
+(defmethod enemy-common-post ((this flamer-hover))
+  (when (time-elapsed? (the-as int (-> this flit-timer)) (rand-vu-int-range (seconds 1.2) (seconds 3)))
+    (set! (-> this flit-angle)
+          (the float
+               (sar (shl (the int (+ (-> this flit-angle) (* 182.04445 (rand-vu-float-range 160.0 200.0)))) 48) 48)
+               )
+          )
+    (set! (-> this flit-timer) (the-as uint (current-time)))
+    )
+  (let ((s5-1 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-1 quad) (-> *up-vector* quad))
+    (vector-normalize! s5-1 2048.0)
+    (vector/! s5-1 s5-1 (-> this root scale))
+    (vector-rotate-around-z! s5-1 s5-1 (-> this flit-angle))
+    (vector-seek! (the-as vector (-> this flit-joint transform)) s5-1 (* 32768.0 (seconds-per-frame)))
+    )
+  (update-trans! (-> this sound) (-> this root trans))
+  (update-vol! (-> this sound) (-> this sound-volume))
+  (update! (-> this sound))
+  (hover-enemy-method-169 this)
+  ((method-of-type hover-enemy enemy-common-post) this)
+  (none)
+  )
+
+;; definition for method 169 of type flamer-hover
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod hover-enemy-method-169 ((this flamer-hover))
+  (cond
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-control-status on-screen))
+          )
+     (new 'stack-no-clear 'vector)
+     (new 'stack-no-clear 'vector)
+     (let ((s4-0 (new 'stack-no-clear 'collide-query))
+           (gp-0 (-> this draw shadow-ctrl settings shadow-dir))
+           (f30-0 122880.0)
+           )
+       (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+       (vector-normalize-copy! (-> s4-0 move-dist) gp-0 f30-0)
+       (let ((v1-12 s4-0))
+         (set! (-> v1-12 radius) 3276.8)
+         (set! (-> v1-12 collide-with) (collide-spec backgnd))
+         (set! (-> v1-12 ignore-process0) this)
+         (set! (-> v1-12 ignore-process1) #f)
+         (set! (-> v1-12 ignore-pat)
+               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+               )
+         (set! (-> v1-12 action-mask) (collide-action solid))
+         )
+       (let ((f0-1 (fill-and-probe-using-line-sphere *collide-cache* s4-0)))
+         (cond
+           ((>= f0-1 0.0)
+            (let ((v1-16 (-> this draw shadow-ctrl)))
+              (logclear! (-> v1-16 settings flags) (shadow-flags disable-draw))
+              )
+            0
+            (-> s4-0 best-other-tri intersect)
+            (let ((a1-3 (-> this root trans)))
+              (-> a1-3 y)
+              (let ((f1-2 (* f0-1 f30-0)))
+                (shadow-control-method-14
+                  (-> this draw shadow-ctrl)
+                  a1-3
+                  gp-0
+                  (fmax 32768.0 (* 409600.0 f0-1))
+                  (+ -12288.0 f1-2)
+                  (+ 12288.0 f1-2)
+                  )
+                )
+              )
+            )
+           (else
+             (let ((v1-27 (-> this draw shadow-ctrl)))
+               (logior! (-> v1-27 settings flags) (shadow-flags disable-draw))
+               )
+             0
+             )
+           )
+         )
+       )
+     )
+    (else
+      (let ((v1-29 (-> this draw shadow-ctrl)))
+        (logior! (-> v1-29 settings flags) (shadow-flags disable-draw))
+        )
+      0
+      )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate ambush (flamer-hover)
+  :virtual #t
+  :enter (behavior ()
+    (sound-play "flamer-ambush")
+    (cond
+      ((logtest? (-> self path flags) (path-control-flag not-found))
+       (logior! (-> self enemy-flags) (enemy-flag alert))
+       (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
+       (hover-enemy-method-159 self #f)
+       (point-toward-point! (-> self root) (target-pos 0))
+       (set-time! (-> self scale-timer))
+       (cond
+         ((not (logtest? (-> self fact enemy-options) (enemy-option user0)))
+          (logclear! (-> self enemy-flags) (enemy-flag vulnerable))
+          (hover-enemy-method-162 self 0.0)
+          )
+         (else
+           (hover-enemy-method-162 self 1.0)
+           )
+         )
+       (hover-enemy-method-165 self)
+       (set-time! (-> self state-time))
+       (hover-enemy-method-174 self)
+       )
+      (else
+        (let ((t9-9 (-> (method-of-type hover-enemy ambush) enter)))
+          (if t9-9
+              (t9-9)
+              )
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    (let ((t9-1 (-> (find-parent-state) exit)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    (hover-enemy-method-162 self 1.0)
+    )
+  :code hover-enemy-fly-code
+  :post (behavior ()
+    (local-vars (v1-19 enemy-flag))
+    (when (not (logtest? (-> self fact enemy-options) (enemy-option user0)))
+      (let ((f0-1 (the float (- (current-time) (-> self scale-timer))))
+            (f1-0 600.0)
+            )
+        (when (< f0-1 f1-0)
+          (let ((f30-0 (fmin 1.0 (/ (+ 30.0 f0-1) f1-0))))
+            (hover-enemy-method-162 self f30-0)
+            (when (and (not (logtest? (-> self enemy-flags) (enemy-flag vulnerable))) (>= f30-0 1.0))
+              (let ((v1-18 (-> self enemy-flags)))
+                (if (logtest? v1-18 (enemy-flag vulnerable-backup))
+                    (set! v1-19 (logior v1-18 (enemy-flag vulnerable)))
+                    (set! v1-19 (logclear v1-18 (enemy-flag vulnerable)))
+                    )
+                )
+              (set! (-> self enemy-flags) v1-19)
+              )
+            )
+          )
+        )
+      )
+    (set! (-> self last-fire-time) (the-as uint (current-time)))
+    (if (not (logtest? (-> self path flags) (path-control-flag not-found)))
+        (hover-nav-control-method-12 (-> self hover) (the-as vector #f))
+        )
+    (hover-enemy-hostile-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (flamer-hover)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type hover-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (and (time-elapsed? (the-as int (-> self last-fire-time)) (seconds 3))
+             (and (< (vector-vector-distance (-> self focus-pos) (-> self root trans)) 245760.0)
+                  (get-focus! self)
+                  (enemy-method-104 self (-> self focus-pos) 910.2222)
+                  )
+             )
+        (go-virtual attack)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate attack (flamer-hover)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('event-attack)
+       (let ((s5-0 (handle->process (-> self focus handle))))
+         (when s5-0
+           (let ((gp-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data 9))))
+             (let ((a2-1 (get-trans (the-as process-focusable s5-0) 3))
+                   (s5-1 (new 'stack-no-clear 'vector))
+                   )
+               (setup-from-to-xz-vel! (-> self shot-trajectory) gp-0 a2-1 122880.0 -102400.0)
+               (set! (-> s5-1 quad) (-> self shot-trajectory initial-velocity quad))
+               (vector-normalize! s5-1 1638.4)
+               (vector+! gp-0 gp-0 s5-1)
+               )
+             (let ((a1-6 (new 'stack-no-clear 'projectile-init-by-other-params)))
+               (set! (-> a1-6 ent) (-> self entity))
+               (set! (-> a1-6 charge) 1.0)
+               (set! (-> a1-6 options) (projectile-options))
+               (logclear! (-> a1-6 options) (projectile-options po14 po15 po16))
+               (set! (-> a1-6 pos quad) (-> gp-0 quad))
+               (set! (-> a1-6 vel quad) (-> self shot-trajectory initial-velocity quad))
+               (set! (-> a1-6 notify-handle) (process->handle self))
+               (set! (-> a1-6 owner-handle) (the-as handle #f))
+               (set! (-> a1-6 target-handle) (the-as handle #f))
+               (set! (-> a1-6 target-pos quad) (the-as uint128 0))
+               (set! (-> a1-6 ignore-handle) (process->handle self))
+               (let* ((v1-24 *game-info*)
+                      (a0-25 (+ (-> v1-24 attack-id) 1))
+                      )
+                 (set! (-> v1-24 attack-id) a0-25)
+                 (set! (-> a1-6 attack-id) a0-25)
+                 )
+               (set! (-> a1-6 timeout) (seconds 4))
+               (spawn-projectile metalhead-grenade-shot a1-6 self *default-dead-pool*)
+               )
+             )
+           )
+         )
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (cond
+      ((zero? (rand-vu-int-range 0 2))
+       (ja-no-eval :group! (-> self draw art-group data 12) :num! (seek!) :frame-num 0.0)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       )
+      (else
+        (ja-no-eval :group! (-> self draw art-group data 11) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (set! (-> self last-fire-time) (the-as uint (current-time)))
+    (go-virtual hostile)
+    )
+  :post hover-enemy-hostile-post
+  )
+
+;; failed to figure out what this is:
+(defstate knocked-recover (flamer-hover)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (local-vars (v1-32 enemy-flag) (v1-34 enemy-flag) (v1-36 enemy-flag))
+    (ja-channel-push! 1 (seconds 0.5))
+    (ja-no-eval :group! (-> self draw art-group data 8) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set! (-> self restart-fly-anims) #t)
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (let ((v1-31 (-> self enemy-flags)))
+      (if (logtest? v1-31 (enemy-flag vulnerable-backup))
+          (set! v1-32 (logior v1-31 (enemy-flag vulnerable)))
+          (set! v1-32 (logclear v1-31 (enemy-flag vulnerable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-32)
+    (let ((v1-33 (-> self enemy-flags)))
+      (if (logtest? v1-33 (enemy-flag attackable-backup))
+          (set! v1-34 (logior v1-33 (enemy-flag attackable)))
+          (set! v1-34 (logclear v1-33 (enemy-flag attackable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-34)
+    (let ((v1-35 (-> self enemy-flags)))
+      (if (logtest? (enemy-flag trackable-backup) v1-35)
+          (set! v1-36 (logior (enemy-flag trackable) v1-35))
+          (set! v1-36 (logclear v1-35 (enemy-flag trackable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-36)
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (logclear! (-> self focus-status) (focus-status hit))
+    (hover-nav-control-method-20 (-> self hover))
+    (go-hostile self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate flying-death-explode (flamer-hover)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (on-dying self)
+    (let ((v1-3 (-> self root root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec))
+      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+      )
+    0
+    (set! (-> self hit-points) 0.0)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! (-> self draw art-group data 16) :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (send-event self 'death-end)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    )
+  :post enemy-falling-post
+  )
+
+;; definition for method 50 of type flamer-hover
+;; WARN: Return type mismatch int vs none.
+(defmethod enemy-method-50 ((this flamer-hover) (arg0 int))
+  (let ((v1-0 arg0))
+    (cond
+      ((= v1-0 1)
+       (let ((v1-2 (-> this root root-prim)))
+         (let ((a0-1 v1-2))
+           (set! (-> a0-1 prim-core action) (collide-action solid deadly))
+           (set! (-> a0-1 prim-core collide-with) (collide-spec backgnd jak bot obstacle hit-by-others-list player-list))
+           )
+         (let ((a0-2 (-> (the-as collide-shape-prim-group v1-2) child 0)))
+           (set! (-> a0-2 prim-core action) (collide-action solid deadly))
+           (set! (-> a0-2 prim-core collide-with) (collide-spec backgnd jak bot obstacle hit-by-others-list player-list))
+           )
+         )
+       )
+      ((or (= v1-0 2) (zero? v1-0))
+       (let ((v1-8 (-> this root root-prim)))
+         (let ((a0-3 v1-8))
+           (set! (-> a0-3 prim-core action) (collide-action semi-solid deadly))
+           (set! (-> a0-3 prim-core collide-with) (collide-spec jak bot player-list))
+           )
+         (let ((a0-4 (-> (the-as collide-shape-prim-group v1-8) child 0)))
+           (set! (-> a0-4 prim-core action) (collide-action semi-solid deadly))
+           (set! (-> a0-4 prim-core collide-with) (collide-spec jak bot player-list))
+           )
+         )
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 85 of type flamer-hover
+;; WARN: Return type mismatch object vs symbol.
+(defmethod knocked-anim ((this flamer-hover) (arg0 enemy-knocked-info))
+  (let ((v1-0 (-> this incoming knocked-type)))
+    (the-as
+      symbol
+      (cond
+        ((= v1-0 (knocked-type blue-shot))
+         (let* ((a0-2 '((flamer-hover-blue-hit0-ja) (flamer-hover-blue-hit1-ja) (flamer-hover-blue-hit2-ja)))
+                (a1-3 ((method-of-type (rtype-of a0-2) length) a0-2))
+                (s4-0 (new 'static 'array uint64 3 #x12 #x13 #x14))
+                (s3-0 (new 'static 'array int32 4 0 0 0 0))
+                (a2-0 (ash 1 (-> s3-0 0)))
+                (v1-6 (enemy-method-131 this a1-3 a2-0))
+                (s4-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-6 8) (the-as int s4-0))))))
+                )
+           (set! (-> s3-0 0) v1-6)
+           (let ((v1-9 (if (> (-> this skel active-channels) 0)
+                           (-> this skel root-channel 0 frame-group)
+                           )
+                       )
+                 )
+             (if (and v1-9 (= v1-9 (-> this draw art-group data 16)))
+                 (ja-channel-push! 1 (seconds 0.17))
+                 (ja-channel-push! 1 (seconds 0.02))
+                 )
+             )
+           (let ((a0-17 (-> this skel root-channel 0)))
+             (set! (-> a0-17 frame-group) (the-as art-joint-anim s4-1))
+             (set! (-> a0-17 param 0) (the float (+ (-> (the-as art-joint-anim s4-1) frames num-frames) -1)))
+             (set! (-> a0-17 param 1) (-> arg0 anim-speed))
+             (set! (-> a0-17 frame-num) 0.0)
+             (joint-control-channel-group! a0-17 (the-as art-joint-anim s4-1) num-func-seek!)
+             )
+           )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (let ((a1-10 (-> this draw art-group data (-> this enemy-info knocked-anim)))
+                (a0-21 (-> this skel root-channel 0))
+                )
+            (set! (-> a0-21 frame-group) (the-as art-joint-anim a1-10))
+            (set! (-> a0-21 param 0) (the float (+ (-> (the-as art-joint-anim a1-10) frames num-frames) -1)))
+            (set! (-> a0-21 param 1) (-> arg0 anim-speed))
+            (set! (-> a0-21 frame-num) 0.0)
+            (joint-control-channel-group! a0-21 (the-as art-joint-anim a1-10) num-func-seek!)
+            )
+          #t
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 67 of type flamer-hover
+(defmethod coin-flip? ((this flamer-hover))
+  #f
+  )
+
+;; definition for method 120 of type flamer-hover
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this flamer-hover))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 8))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid semi-solid deadly))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 26624.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-14 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-14 local-sphere) 0.0 -6553.6 0.0 3481.6)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-16 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-16 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-16 local-sphere) 0.0 -3276.8 0.0 3481.6)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-18 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-18 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-18 local-sphere) 0.0 0.0 0.0 3481.6)
+      )
+    (let ((v1-20 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-20 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-20 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-20 prim-core action) (collide-action semi-solid deadly))
+      (set! (-> v1-20 transform-index) 3)
+      (set-vector! (-> v1-20 local-sphere) 0.0 0.0 0.0 3481.6)
+      )
+    (let ((v1-22 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-22 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-22 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-22 prim-core action) (collide-action semi-solid deadly))
+      (set! (-> v1-22 transform-index) 19)
+      (set-vector! (-> v1-22 local-sphere) 0.0 0.0 0.0 3072.0)
+      )
+    (let ((v1-24 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-24 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-24 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-24 prim-core action) (collide-action deadly))
+      (set! (-> v1-24 transform-index) 6)
+      (set-vector! (-> v1-24 local-sphere) 0.0 0.0 0.0 3072.0)
+      )
+    (let ((v1-26 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-26 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-26 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-26 prim-core action) (collide-action deadly))
+      (set! (-> v1-26 transform-index) 9)
+      (set-vector! (-> v1-26 local-sphere) 0.0 0.0 0.0 3072.0)
+      )
+    (set! (-> s5-0 nav-radius) 6144.0)
+    (let ((v1-28 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-28 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-28 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 170 of type flamer-hover
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-170 ((this flamer-hover))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-flamer-hover" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 171 of type flamer-hover
+(defmethod get-enemy-info ((this flamer-hover))
+  *flamer-hover-enemy-info*
+  )
+
+;; definition for method 172 of type flamer-hover
+(defmethod get-hover-info ((this flamer-hover))
+  (new 'static 'hover-enemy-info
+    :fly-forward-anim 8
+    :fly-backward-anim 9
+    :fly-left-anim 7
+    :fly-right-anim 6
+    :shoot-anim 11
+    :main-joint 3
+    :gun-base 10
+    :hover-y-offset 26624.0
+    :hover-xz-offset 61440.0
+    :use-flying-death #f
+    :fly-x-anim-seek 1.3
+    :fly-z-anim-seek 1.3
+    )
+  )
+
+;; definition for method 173 of type flamer-hover
+(defmethod get-hover-params ((this flamer-hover))
+  (new 'static 'hover-nav-params
+    :max-speed 57344.0
+    :max-acceleration 81920.0
+    :max-rotation-rate 94663.11
+    :friction 0.05
+    )
+  )
+
+;; definition for method 121 of type flamer-hover
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this flamer-hover))
+  (hover-enemy-method-170 this)
+  (init-enemy-defaults! this (get-enemy-info this))
+  (hover-enemy-method-176 this)
+  (set! (-> this neck up) (the-as uint 1))
+  (set! (-> this neck nose) (the-as uint 2))
+  (set! (-> this neck ear) (the-as uint 0))
+  (set! (-> this scale) 1.3)
+  (hover-enemy-method-162 this 1.0)
+  (set! (-> this flit-angle) 0.0)
+  (set! (-> this flit-timer) (the-as uint 0))
+  (set! (-> this knocked-fall-dist) 0.0)
+  (set! (-> this path) (new 'process 'curve-control this 'intro -1000000000.0))
+  (set! (-> this path-u) 0.0)
+  (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+  (init (-> this flit-joint) this (the-as uint 3) (joint-mod-base-flags attached trans))
+  (set! (-> this sound)
+        (new 'process 'ambient-sound (static-sound-spec "flamer-loop" :group 0 :fo-max 80) (-> this root trans) 0.0)
+        )
+  (set! (-> this sound-volume) 1.0)
+  (add-connection
+    *part-engine*
+    this
+    19
+    this
+    468
+    (new 'static 'vector :x 819.2 :y -1187.84 :z 2088.96 :w 163840.0)
+    )
+  (add-connection
+    *part-engine*
+    this
+    19
+    this
+    468
+    (new 'static 'vector :x -819.2 :y -1187.84 :z 2088.96 :w 163840.0)
+    )
+  (add-connection *part-engine* this 9 this 2665 (new 'static 'vector :w 163840.0))
+  0
+  (none)
+  )
+
+
+
+

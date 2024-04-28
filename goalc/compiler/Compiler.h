@@ -12,7 +12,8 @@
 #include "goalc/compiler/CompilerSettings.h"
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
-#include "goalc/compiler/SymbolInfo.h"
+#include "goalc/compiler/docs/DocTypes.h"
+#include "goalc/compiler/symbol_info.h"
 #include "goalc/data_compiler/game_text_common.h"
 #include "goalc/debugger/Debugger.h"
 #include "goalc/emitter/Register.h"
@@ -96,9 +97,20 @@ class Compiler {
                      std::vector<std::pair<std::string, replxx::Replxx::Color>> const& user_data);
   bool knows_object_file(const std::string& name);
   MakeSystem& make_system() { return m_make; }
-  std::set<std::string> lookup_symbol_infos_starting_with(const std::string& prefix) const;
-  std::vector<SymbolInfo>* lookup_exact_name_info(const std::string& name) const;
+  std::vector<symbol_info::SymbolInfo*> lookup_symbol_info_by_file(
+      const std::string& file_path) const;
+  std::vector<symbol_info::SymbolInfo*> lookup_symbol_info_by_prefix(
+      const std::string& prefix) const;
+  std::set<std::string> lookup_symbol_names_starting_with(const std::string& prefix,
+                                                          int max_count = -1) const;
+  std::vector<symbol_info::SymbolInfo*> lookup_exact_name_info(const std::string& name) const;
   std::optional<TypeSpec> lookup_typespec(const std::string& symbol_name);
+  TypeSystem& type_system() { return m_ts; };
+  // TODO - rename these types / namespaces -- consolidate with SymbolInfo and whatever else tries
+  // to also do this work
+  std::tuple<std::unordered_map<std::string, Docs::SymbolDocumentation>,
+             std::unordered_map<std::string, Docs::FileDocumentation>>
+  generate_per_file_symbol_info();
 
  private:
   GameVersion m_version;
@@ -110,19 +122,19 @@ class Compiler {
   listener::Listener m_listener;
   goos::Interpreter m_goos;
   Debugger m_debugger;
+  // TODO - this should be able to be removed, these are stored in `m_symbol_info`
   std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
-  std::unordered_map<goos::InternedSymbolPtr, TypeSpec, goos::InternedSymbolPtr::hash>
-      m_symbol_types;
-  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
-      m_global_constants;
+  // TODO - this should be able to be removed, these are stored in `m_symbol_info`
+  goos::InternedPtrMap<TypeSpec> m_symbol_types;
+  goos::InternedPtrMap<goos::Object> m_global_constants;
   std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
       m_inlineable_functions;
   CompilerSettings m_settings;
   bool m_throw_on_define_extern_redefinition = false;
   std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
-  SymbolInfoMap m_symbol_info;
-  std::unique_ptr<REPL::Wrapper> m_repl;
   MakeSystem m_make;
+  std::unique_ptr<REPL::Wrapper> m_repl;
+  symbol_info::SymbolInfoMap m_symbol_info;
 
   struct DebugStats {
     int num_spills = 0;
@@ -307,7 +319,7 @@ class Compiler {
                                 int offset,
                                 Env* env);
 
-  std::string make_symbol_info_description(const SymbolInfo& info);
+  std::string make_symbol_info_description(const symbol_info::SymbolInfo* info);
 
   MathMode get_math_mode(const TypeSpec& ts);
   bool is_number(const TypeSpec& ts);

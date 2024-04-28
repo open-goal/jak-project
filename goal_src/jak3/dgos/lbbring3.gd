@@ -2,5 +2,5 @@
  ("des-bush-part.o"
   "des-bush.o"
   "tpage-2859.go"
-  "lbbring3.o"
+  "lbbring3.go"
  ))

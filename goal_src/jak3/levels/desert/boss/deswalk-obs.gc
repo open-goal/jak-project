@@ -5,5 +5,2175 @@
 ;; name in dgo: deswalk-obs
 ;; dgos: DESW
 
+(declare-type terraformer-head-laser-projectile projectile)
+
+;; +++dm-tentacle-flag
+(defenum dm-tentacle-flag
+  :type uint32
+  :bitfield #t
+  (dt0 0)
+  (dt1 1)
+  (dt2 2)
+  (dt3 3)
+  (dt4 4)
+  (dt5 5)
+  (dt6 6)
+  (dt7 7)
+  (dt8 8)
+  )
+;; ---dm-tentacle-flag
+
+
+;; +++dm-tentacle-attack-type
+(defenum dm-tentacle-attack-type
+  :type uint64
+  (strike 0)
+  (sweep 1)
+  (whip 2)
+  (spit 3)
+  )
+;; ---dm-tentacle-attack-type
+
+
 ;; DECOMP BEGINS
 
+(defskelgroup skel-dm-urchin dm-urchin dm-urchin-lod0-jg dm-urchin-pulse-ja
+              ((dm-urchin-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 9)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-dm-urchin-explode dm-urchin dm-urchin-explode-lod0-jg dm-urchin-explode-idle-ja
+              ((dm-urchin-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
+
+(define *dm-urchin-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+(deftype dm-urchin (process-drawable)
+  ((root                collide-shape :override)
+   (hit-points          float)
+   (incoming-attack-id  uint32)
+   )
+  (:state-methods
+    die
+    idle
+    )
+  )
+
+
+(defstate die (dm-urchin)
+  :virtual #t
+  :enter (behavior ()
+    (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-dm-urchin-explode" (the-as (pointer level) #f))
+        7
+        gp-0
+        *dm-urchin-exploder-params*
+        :name "joint-exploder"
+        :to self
+        :unk 0
+        )
+      )
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+      (vector<-cspace+vector! gp-1 (joint-node dm-urchin-lod0-jg main) (new 'static 'vector :y 8192.0 :w 1.0))
+      (spawn (-> self part) gp-1)
+      )
+    (let ((v1-10 (-> self root root-prim)))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (transform-post)
+    )
+  :trans (behavior ()
+    (when (not (-> self child))
+      (cleanup-for-death self)
+      (deactivate self)
+      )
+    )
+  :code sleep-code
+  )
+
+(defstate idle (dm-urchin)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'bonk)
+       (if (and (= proc *target*) (not (logtest? (focus-status dark) (-> *target* focus-status))))
+           (send-event
+             *target*
+             'attack
+             #f
+             (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                 (damage 2.0)
+                                                                 (vehicle-damage-factor 1.0)
+                                                                 (vehicle-impulse-factor 1.0)
+                                                                 (shove-up (meters 1))
+                                                                 (shove-back (meters 3))
+                                                                 )
+                                 )
+             )
+           )
+       #t
+       )
+      (('attack)
+       (when (and (= proc *target*) (not (logtest? (focus-status dark) (-> *target* focus-status))))
+         (send-event
+           *target*
+           'attack
+           #f
+           (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                               (damage 2.0)
+                                                               (vehicle-damage-factor 1.0)
+                                                               (vehicle-impulse-factor 1.0)
+                                                               (shove-up (meters 1))
+                                                               (shove-back (meters 3))
+                                                               )
+                               )
+           )
+         (return (the-as object #f))
+         )
+       (let ((v1-20 (the-as attack-info (-> block param 1)))
+             (f0-10 1.0)
+             )
+         (when (or (not (logtest? (-> v1-20 mask) (attack-mask id))) (!= (-> self incoming-attack-id) (-> v1-20 id)))
+           (if (logtest? (-> v1-20 mask) (attack-mask id))
+               (set! (-> self incoming-attack-id) (-> v1-20 id))
+               )
+           (if (logtest? (attack-mask damage) (-> v1-20 mask))
+               (set! f0-10 (-> v1-20 damage))
+               )
+           (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+               (set! f0-10 (* 0.6666667 f0-10))
+               )
+           (set! (-> self hit-points) (fmax 0.0 (- (-> self hit-points) f0-10)))
+           (when (< 0.0 f0-10)
+             (ja-channel-push! 1 (seconds 0.05))
+             (ja :group! dm-urchin-shudder-ja :num! min)
+             )
+           (if (= (-> self hit-points) 0.0)
+               (go-virtual die)
+               )
+           )
+         )
+       #t
+       )
+      (else
+        #f
+        )
+      )
+    )
+  :trans (behavior ()
+    (let ((v1-2 (ja-group)))
+      (cond
+        ((and v1-2 (= v1-2 dm-urchin-shudder-ja))
+         (ja :num! (seek!))
+         (when (ja-done? 0)
+           (ja-channel-push! 1 (seconds 0.1))
+           (ja :group! dm-urchin-pulse-ja :num! min)
+           )
+         )
+        (else
+          (ja :num! (loop!))
+          )
+        )
+      )
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+(defmethod init-from-entity! ((this dm-urchin) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 25332.531 626.2784 43573.656)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dm-urchin" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this hit-points) 10.0)
+  (set! (-> this incoming-attack-id) (the-as uint 0))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 442) this))
+  (go (method-of-object this idle))
+  )
+
+(defskelgroup skel-desw-eco-tank desw-eco-tank desw-eco-tank-lod0-jg desw-eco-tank-idle-ja
+              ((desw-eco-tank-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 -6 8)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-desw-eco-tank-explode desw-eco-tank desw-eco-tank-debris-lod0-jg desw-eco-tank-debris-idle-ja
+              ((desw-eco-tank-debris-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
+
+(define *desw-eco-tank-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 19 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 20 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 21 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 22 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 23 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 24 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 25 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 26 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 27 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 28 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 29 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 30 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+(deftype desw-eco-tank (process-drawable)
+  ((root                collide-shape :override)
+   (hit-points          float)
+   (incoming-attack-id  uint32)
+   )
+  (:state-methods
+    die
+    idle
+    )
+  )
+
+
+(defstate die (desw-eco-tank)
+  :virtual #t
+  :enter (behavior ()
+    (setup-masks (-> self draw) 0 2)
+    (let* ((v1-2 (-> self root))
+           (a0-1 (-> v1-2 root-prim))
+           )
+      (dotimes (a1-1 (the-as int (+ (-> v1-2 total-prims) -1)))
+        (&+! a0-1 80)
+        (case (-> a0-1 prim-id)
+          ((1)
+           (set! (-> a0-1 prim-core action) (collide-action))
+           (set! (-> a0-1 prim-core collide-as) (collide-spec))
+           (set! (-> a0-1 prim-core collide-with) (collide-spec))
+           0
+           )
+          )
+        )
+      )
+    (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (vector+!
+        (-> gp-0 fountain-rand-transv-lo)
+        (-> gp-0 fountain-rand-transv-lo)
+        (new 'static 'vector :x -40960.0 :y 61440.0 :z -40960.0 :w 1.0)
+        )
+      (vector+!
+        (-> gp-0 fountain-rand-transv-hi)
+        (-> gp-0 fountain-rand-transv-hi)
+        (new 'static 'vector :x 40960.0 :y 61440.0 :z 40960.0 :w 1.0)
+        )
+      (process-spawn
+        joint-exploder
+        (art-group-get-by-name *level* "skel-desw-eco-tank-explode" (the-as (pointer level) #f))
+        5
+        gp-0
+        *desw-eco-tank-exploder-params*
+        :name "joint-exploder"
+        :to self
+        :unk 0
+        )
+      )
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+      (vector<-cspace+vector!
+        gp-1
+        (joint-node desw-eco-tank-lod0-jg main)
+        (new 'static 'vector :y 4096.0 :z -24576.0 :w 1.0)
+        )
+      (spawn (-> self part) gp-1)
+      )
+    (transform-post)
+    )
+  :code sleep-code
+  )
+
+(defstate idle (desw-eco-tank)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'bonk)
+       (if (and (= proc *target*) (not (logtest? (focus-status dark) (-> *target* focus-status))))
+           (send-event
+             *target*
+             'attack
+             #f
+             (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                 (damage 2.0)
+                                                                 (vehicle-damage-factor 1.0)
+                                                                 (vehicle-impulse-factor 1.0)
+                                                                 (shove-up (meters 1))
+                                                                 (shove-back (meters 3))
+                                                                 )
+                                 )
+             )
+           )
+       #t
+       )
+      (('attack)
+       (when (and (= proc *target*) (not (logtest? (focus-status dark) (-> *target* focus-status))))
+         (send-event
+           *target*
+           'attack
+           #f
+           (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                               (damage 2.0)
+                                                               (vehicle-damage-factor 1.0)
+                                                               (vehicle-impulse-factor 1.0)
+                                                               (shove-up (meters 1))
+                                                               (shove-back (meters 3))
+                                                               )
+                               )
+           )
+         (return (the-as object #f))
+         )
+       (let ((v1-20 (the-as attack-info (-> block param 1)))
+             (f30-0 1.0)
+             )
+         (when (or (not (logtest? (-> v1-20 mask) (attack-mask id))) (!= (-> self incoming-attack-id) (-> v1-20 id)))
+           (if (logtest? (-> v1-20 mask) (attack-mask id))
+               (set! (-> self incoming-attack-id) (-> v1-20 id))
+               )
+           (if (logtest? (attack-mask damage) (-> v1-20 mask))
+               (set! f30-0 (-> v1-20 damage))
+               )
+           (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+               (set! f30-0 (* 0.6666667 f30-0))
+               )
+           (if (type? proc terraformer-head-laser-projectile)
+               (set! f30-0 (-> self hit-points))
+               )
+           (set! (-> self hit-points) (fmax 0.0 (- (-> self hit-points) f30-0)))
+           (if (= (-> self hit-points) 0.0)
+               (go-virtual die)
+               )
+           )
+         )
+       #t
+       )
+      (else
+        #f
+        )
+      )
+    )
+  :enter (behavior ()
+    (transform-post)
+    )
+  :trans (behavior ()
+    (ja :num! (loop!))
+    )
+  :code sleep-code
+  )
+
+(defmethod init-from-entity! ((this desw-eco-tank) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 -24515.79 30692.967)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 0.0 -24515.79 30692.967)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 -2751.6929 18416.025)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 -46561.69 18416.025)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-desw-eco-tank" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this hit-points) 10.0)
+  (set! (-> this incoming-attack-id) (the-as uint 0))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 441) this))
+  (go (method-of-object this idle))
+  )
+
+(deftype dm-tentacle-spores (process-focusable)
+  ((hit-points          float)
+   (incoming-attack-id  uint32)
+   (attack-timer        time-frame)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defstate idle (dm-tentacle-spores)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touched)
+       (when #t
+         (send-event proc 'attack #f (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                         (damage 2.0)
+                                                                                         (vehicle-damage-factor 1.0)
+                                                                                         (vehicle-impulse-factor 1.0)
+                                                                                         (shove-up (meters 1))
+                                                                                         (shove-back (meters 3))
+                                                                                         )
+                                                         )
+                     )
+         (deactivate self)
+         )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (time-elapsed? (-> self state-time) (seconds 5))
+        (deactivate self)
+        )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> (target-pos 0) quad))
+      (if *target*
+          (set! (-> gp-0 quad) (-> (get-trans *target* 3) quad))
+          )
+      (vector-! gp-0 gp-0 (-> self root trans))
+      (let ((f0-0 (vector-normalize-ret-len! gp-0 1.0)))
+        (vector-float*! gp-0 gp-0 (fmin (* 819.2 (-> self clock time-adjust-ratio)) f0-0))
+        )
+      (vector+! (-> self root trans) (-> self root trans) gp-0)
+      )
+    (spawn (-> self part) (-> self root trans))
+    (update-transforms (-> self root))
+    )
+  :code sleep-code
+  )
+
+(defbehavior dm-tentacle-spores-init-by-other dm-tentacle-spores ((arg0 vector))
+  (let ((s5-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> self root) s5-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 444) self))
+  (go-virtual idle)
+  )
+
+(defskelgroup skel-dm-tentacle dm-tentacle dm-tentacle-lod0-jg dm-tentacle-idle-ja
+              ((dm-tentacle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              :shadow dm-tentacle-shadow-mg
+              :origin-joint-index 10
+              :global-effects 32
+              )
+
+(defskelgroup skel-dm-tentacle-explode dm-tentacle dm-tentacle-explode-lod0-jg dm-tentacle-explode-idle-ja
+              ((dm-tentacle-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              )
+
+(define *dm-tentacle-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    :collide-sound (static-sound-name "snake-pieces")
+    :collide-sound-interval (seconds 0.2)
+    )
+  )
+
+(define *dm-tentacle-ragdoll-setup* (new 'static 'ragdoll-setup
+                                      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+                                      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 3
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 7536.2305
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 4
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 7536.2305
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 5
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 7498.1377
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 6
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 6559.3345
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 7
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 7115.5713
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 8
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 5237.555
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 9
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 4661.248
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 10
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 3764.224
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 11
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 3059.3025
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 12
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 2461.2864
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 13
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 2170.4705
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 14
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 1788.3136
+                                          )
+                                        (new 'static 'ragdoll-joint-setup
+                                          :joint-index 15
+                                          :parent-joint -1
+                                          :axial-slop 2239.5835
+                                          :max-angle 5512.688
+                                          :coll-rad 1866.9568
+                                          )
+                                        )
+                                      )
+        )
+
+(deftype dm-tentacle-ragdoll (ragdoll)
+  ((chain-pos   int8)
+   (start-time  time-frame)
+   (mode        uint64)
+   )
+  )
+
+
+(defmethod ragdoll-method-19 ((this dm-tentacle-ragdoll) (arg0 vector) (arg1 int) (arg2 object) (arg3 matrix))
+  (local-vars (f30-0 float) (sv-48 vector))
+  (rlet ((vf0 :class vf))
+    (init-vf0-vector)
+    (let ((a0-1 (-> this ragdoll-joints arg1)))
+      (vector-float*! (-> a0-1 velocity) (-> a0-1 velocity) 0.5)
+      )
+    (cond
+      ((zero? (-> this chain-pos))
+       (.svf (&-> arg0 quad) vf0)
+       )
+      (else
+        (let ((s5-0 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-0 quad) (-> this gravity quad))
+          (let ((s2-0 (-> this ragdoll-joints arg1)))
+            (let ((f0-1 5.0))
+              (case (-> this mode)
+                ((1)
+                 (set! f30-0 2.0)
+                 (set! (-> this gravity quad) (-> arg3 uvec quad))
+                 )
+                ((2)
+                 (set! f30-0 0.0)
+                 (set-vector! (-> this gravity) 0.0 4096.0 0.0 1.0)
+                 )
+                ((3)
+                 (set! f30-0 0.0)
+                 (set-vector! (-> this gravity) 0.0 4096.0 0.0 1.0)
+                 )
+                (else
+                  (let ((f0-10 (* f0-1 (the float (-> this chain-pos)))))
+                    (set! f30-0 (* 100.0 f0-10))
+                    )
+                  (vector-float*! (-> this gravity) (-> arg3 uvec) 100.0)
+                  )
+                )
+              )
+            (let ((t9-0 (method-of-type ragdoll ragdoll-method-19)))
+              (t9-0 this arg0 arg1 arg2 arg3)
+              )
+            (when (= (-> s2-0 parent-joint) -1)
+              (let* ((f0-13 (* 54.613335 (the float (- (current-time) (-> this start-time)))))
+                     (f28-0
+                       (+ (- f0-13 (* (the float (the int (/ f0-13 65536.0))) 65536.0)) (* 3640.889 (the float (-> this chain-pos))))
+                       )
+                     )
+                (let ((s1-0 arg0)
+                      (s0-0 arg0)
+                      )
+                  (set! sv-48 (-> arg3 rvec))
+                  (let ((f0-16 (* f30-0 (cos f28-0))))
+                    (vector+float*! s1-0 s0-0 sv-48 f0-16)
+                    )
+                  )
+                (vector+float*! arg0 arg0 (-> arg3 fvec) (* f30-0 (sin f28-0)))
+                )
+              )
+            (case (-> this mode)
+              ((1)
+               (let ((s3-3 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> s2-0 position))))
+                 (vector-normalize! s3-3 1.0)
+                 (cond
+                   ((< (-> this chain-pos) 4)
+                    (vector+float*! arg0 arg0 s3-3 -4000.0)
+                    )
+                   ((< (-> this chain-pos) 6)
+                    (+! (-> arg0 y) 2000.0)
+                    (vector+float*! arg0 arg0 s3-3 2000.0)
+                    )
+                   ((< (-> this chain-pos) 7)
+                    (vector+float*! arg0 arg0 s3-3 4000.0)
+                    )
+                   ((< (-> this chain-pos) 10)
+                    (+! (-> arg0 y) -16000.0)
+                    )
+                   (else
+                     (vector+float*! arg0 arg0 s3-3 16000.0)
+                     )
+                   )
+                 )
+               )
+              )
+            )
+          (set! (-> this gravity quad) (-> s5-0 quad))
+          )
+        )
+      )
+    (+! (-> this chain-pos) 1)
+    (none)
+    )
+  )
+
+(defmethod ragdoll-method-18 ((this dm-tentacle-ragdoll))
+  (let ((t9-0 (method-of-type ragdoll ragdoll-method-18)))
+    (t9-0 this)
+    )
+  (set! (-> this chain-pos) 0)
+  0
+  (none)
+  )
+
+(defmethod ragdoll-setup! ((this dm-tentacle-ragdoll) (arg0 process-drawable) (arg1 ragdoll-setup))
+  "Set up this ragdoll with the given [[ragdoll-setup]]."
+  (let ((t9-0 (method-of-type ragdoll ragdoll-setup!)))
+    (t9-0 this arg0 arg1)
+    )
+  (set! (-> this stretch-vel) 0.7)
+  (set! (-> this stretch-vel-parallel) 0.8)
+  (set! (-> this compress-vel) 0.85)
+  (set! (-> this compress-vel-parallel) 0.75)
+  (set! (-> this momentum) 0.001)
+  (set! (-> this maximum-stretch) 1.5)
+  (set-time! (-> this start-time))
+  (if (-> arg0 entity)
+      (+! (-> this start-time) (the int (* 300.0 (res-lump-float (-> arg0 entity) 'offset-time))))
+      )
+  (set! (-> this mode) (the-as uint 0))
+  0
+  (none)
+  )
+
+(deftype dm-tentacle-ragdoll-proc (ragdoll-proc)
+  ((ragdoll          dm-tentacle-ragdoll :override)
+   (last-frame-time  time-frame)
+   )
+  )
+
+
+(defbehavior dm-tentacle-ragdoll-proc-init-by-other dm-tentacle-ragdoll-proc ((arg0 ragdoll-setup))
+  (set! (-> self last-attack-id) (the-as uint 0))
+  (set-time! (-> self last-frame-time))
+  (set! (-> self ragdoll) (new 'process 'dm-tentacle-ragdoll))
+  (if (nonzero? (-> self ragdoll))
+      (ragdoll-setup! (-> self ragdoll) (ppointer->process (-> self parent)) arg0)
+      (format
+        0
+        "ERROR<gmj>: didn't have enough memory to allocate dm-tentacle-ragdoll for dm-tentacle-ragdoll-proc~%"
+        )
+      )
+  (go-virtual idle)
+  )
+
+(defstate idle (dm-tentacle-ragdoll-proc)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (-> self ragdoll) (nonzero? (-> self ragdoll)))
+        (set! (-> self ragdoll ragdoll-joints 0 position quad)
+              (-> (ppointer->process (-> self parent)) root trans quad)
+              )
+        )
+    (cond
+      ((or (not (-> self ragdoll)) (zero? (-> self ragdoll)))
+       )
+      ((and (-> (ppointer->process (-> self parent)) next-state)
+            (let ((v1-17 (-> (ppointer->process (-> self parent)) next-state name)))
+              (or (= v1-17 'die) (= v1-17 'retract))
+              )
+            )
+       (set! (-> self ragdoll mode) (the-as uint 2))
+       )
+      ((and (-> (ppointer->process (-> self parent)) next-state)
+            (= (-> (ppointer->process (-> self parent)) next-state name) 'extend)
+            )
+       (set! (-> self ragdoll mode) (the-as uint 3))
+       )
+      (else
+        (let ((f0-0 81920.0))
+          (cond
+            ((< (* f0-0 f0-0)
+                (vector-vector-xz-distance-squared (target-pos 0) (-> self ragdoll ragdoll-joints 0 position))
+                )
+             (set! (-> self ragdoll mode) (the-as uint 0))
+             0
+             )
+            (else
+              (if (zero? (-> self ragdoll mode))
+                  (sound-play "snake-twist" :position (-> self ragdoll ragdoll-joints 0 position))
+                  )
+              (set! (-> self ragdoll mode) (the-as uint 1))
+              )
+            )
+          )
+        )
+      )
+    (cond
+      ((run-logic? (ppointer->process (-> self parent)))
+       (let ((t9-5 (-> (method-of-type ragdoll-proc idle) trans)))
+         (if t9-5
+             (t9-5)
+             )
+         )
+       )
+      ((and (-> self ragdoll) (nonzero? (-> self ragdoll)))
+       (+! (-> self ragdoll start-time) (- (current-time) (-> self last-frame-time)))
+       )
+      )
+    (set-time! (-> self last-frame-time))
+    )
+  )
+
+(deftype dm-tentacle (process-focusable)
+  ((hit-points          float)
+   (incoming-attack-id  uint32)
+   (collision-timer     time-frame)
+   (ragdoll-proc        handle)
+   (flags               dm-tentacle-flag)
+   (attack-timer        time-frame)
+   (initial-position    vector  :inline)
+   )
+  (:state-methods
+    die
+    strike
+    sweep
+    whip
+    spit
+    retract
+    extend
+    idle
+    )
+  (:methods
+    (normalize-heading (_type_) none)
+    )
+  )
+
+
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this dm-tentacle))
+  (the-as search-info-flag (if (and (-> this next-state) (= (-> this next-state name) 'die))
+                               1
+                               16
+                               )
+          )
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior dm-tentacle-adjust-collision dm-tentacle ((arg0 int) (arg1 int))
+  (let* ((v1-0 (-> self root))
+         (a2-0 (-> v1-0 root-prim))
+         )
+    (dotimes (a3-0 (the-as int (+ (-> v1-0 total-prims) -1)))
+      (&+! a2-0 80)
+      (cond
+        ((logtest? arg0 (-> a2-0 prim-id))
+         (set! (-> a2-0 prim-core action) (collide-action solid))
+         (set! (-> a2-0 prim-core collide-as) (collide-spec enemy))
+         (set! (-> a2-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+         )
+        ((logtest? arg1 (-> a2-0 prim-id))
+         (set! (-> a2-0 prim-core action) (collide-action solid))
+         (set! (-> a2-0 prim-core collide-as) (collide-spec enemy))
+         (set! (-> a2-0 prim-core collide-with) (collide-spec hit-by-others-list player-list))
+         )
+        (else
+          (set! (-> a2-0 prim-core action) (collide-action))
+          (set! (-> a2-0 prim-core collide-as) (collide-spec))
+          (set! (-> a2-0 prim-core collide-with) (collide-spec))
+          0
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod normalize-heading ((this dm-tentacle))
+  (when (not (logtest? (-> this flags) (dm-tentacle-flag dt5)))
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (target-pos 0))))
+      (set! (-> s5-1 y) 0.0)
+      (vector-normalize! s5-1 1.0)
+      (quaternion-set! (-> this root quat) 0.0 (- (-> s5-1 z)) 0.0 (+ 1.0 (-> s5-1 x)))
+      )
+    (quaternion-normalize! (-> this root quat))
+    )
+  (when (and (nonzero? (-> this collision-timer)) (time-elapsed? (-> this collision-timer) (seconds 0.5)))
+    (dm-tentacle-adjust-collision 12 0)
+    (set! (-> this collision-timer) 0)
+    0
+    )
+  0
+  (none)
+  )
+
+(defmethod get-trans ((this dm-tentacle) (arg0 int))
+  "Get the `trans` for this process."
+  (if (or (= arg0 2) (= arg0 3))
+      (vector<-cspace! (new 'static 'vector) (-> this node-list data 15))
+      ((method-of-type process-focusable get-trans) this arg0)
+      )
+  )
+
+;; WARN: disable def twice: 97. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defbehavior dm-tentacle-handler dm-tentacle ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('extend)
+     (if (and (-> self next-state) (let ((v1-4 (-> self next-state name)))
+                                     (or (= v1-4 'die) (= v1-4 'retract))
+                                     )
+              )
+         (go-virtual extend)
+         )
+     )
+    (('retract)
+     (if (not (and (-> self next-state) (let ((v1-10 (-> self next-state name)))
+                                          (or (= v1-10 'die) (= v1-10 'retract))
+                                          )
+                   )
+              )
+         (go-virtual retract)
+         )
+     )
+    (('touch)
+     (when (and (logtest? (-> self flags) (dm-tentacle-flag dt4)) (not (type? arg0 dm-tentacle)))
+       (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+         (set! (-> a1-4 from) (process->ppointer self))
+         (set! (-> a1-4 num-params) 2)
+         (set! (-> a1-4 message) 'attack)
+         (set! (-> a1-4 param 0) (-> arg3 param 0))
+         (set! (-> a1-4 param 1)
+               (the-as uint (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                                (damage 2.0)
+                                                                                (vehicle-damage-factor 1.0)
+                                                                                (vehicle-impulse-factor 1.0)
+                                                                                (shove-up (meters 1))
+                                                                                (shove-back (meters 3))
+                                                                                )
+                                                )
+                       )
+               )
+         (when (and (send-event-function arg0 a1-4) (= arg0 *target*))
+           (logclear! (-> self flags) (dm-tentacle-flag dt4))
+           (dm-tentacle-adjust-collision 0 12)
+           (let ((v0-0 (the-as object (current-time))))
+             (set! (-> self collision-timer) (the-as time-frame v0-0))
+             v0-0
+             )
+           )
+         )
+       )
+     )
+    (('attack)
+     (let ((v1-27 (the-as object (-> arg3 param 1)))
+           (s5-1 (-> arg3 param 0))
+           (f30-0 1.0)
+           )
+       (when (or (not (logtest? (-> (the-as attack-info v1-27) mask) (attack-mask id)))
+                 (!= (-> self incoming-attack-id) (-> (the-as attack-info v1-27) id))
+                 )
+         (if (logtest? (-> (the-as attack-info v1-27) mask) (attack-mask id))
+             (set! (-> self incoming-attack-id) (-> (the-as attack-info v1-27) id))
+             )
+         (if (logtest? (attack-mask damage) (-> (the-as attack-info v1-27) mask))
+             (set! f30-0 (-> (the-as attack-info v1-27) damage))
+             )
+         (if (and (logtest? (-> (the-as attack-info v1-27) mask) (attack-mask mode))
+                  (= (-> (the-as attack-info v1-27) mode) 'board)
+                  )
+             (return #f)
+             )
+         (when (and s5-1 (not (type? arg0 terraformer-head-laser-projectile)))
+           (let ((gp-1 ((method-of-type touching-shapes-entry prims-touching?)
+                        (the-as touching-shapes-entry s5-1)
+                        (-> self root)
+                        (the-as uint 12)
+                        )
+                       )
+                 )
+             (when gp-1
+               (let ((s4-0 (get-touched-prim gp-1 (-> self root) (the-as touching-shapes-entry s5-1)))
+                     (s5-2 (the-as dm-tentacle-ragdoll-proc (handle->process (-> self ragdoll-proc))))
+                     )
+                 (when s4-0
+                   (when (and s5-2 (-> s5-2 ragdoll) (nonzero? (-> s5-2 ragdoll)))
+                     (let ((v1-46 (get-middle-of-bsphere-overlap gp-1 (new 'stack-no-clear 'vector)))
+                           (gp-2 (new 'stack-no-clear 'vector))
+                           (s5-3 (-> s5-2 ragdoll))
+                           )
+                       (vector-! gp-2 (the-as vector (-> s4-0 prim-core)) v1-46)
+                       (set! (-> gp-2 y) 0.0)
+                       (vector-normalize! gp-2 (lerp-scale 4096.0 16384.0 f30-0 2.0 16.0))
+                       (dotimes (v1-47 (the-as int (-> s5-3 num-joints)))
+                         (when (< 4 v1-47)
+                           (let ((a1-16 (-> s5-3 ragdoll-joints v1-47)))
+                             (vector+! (-> a1-16 velocity) (-> a1-16 velocity) gp-2)
+                             )
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
+             (set! f30-0 (* 0.6666667 f30-0))
+             )
+         (set! (-> self hit-points) (fmax 0.0 (- (-> self hit-points) f30-0)))
+         (if (= (-> self hit-points) 0.0)
+             (go-virtual die)
+             )
+         (if (< 0.0 f30-0)
+             (sound-play "flesh-impact" :position (-> self initial-position))
+             )
+         (< 0.0 f30-0)
+         )
+       )
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+(defstate die (dm-tentacle)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('extend)
+       (go-virtual extend)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self collision-timer) 0)
+    (dm-tentacle-adjust-collision 0 0)
+    (when (not (logtest? (-> self flags) (dm-tentacle-flag dt7)))
+      (sound-play "snake-blow" :position (-> self initial-position))
+      (activate! *camera-smush-control* 819.2 60 300 0.995 0.9 (-> *display* camera-clock))
+      (if (logtest? (-> *part-group-id-table* 443 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 4 bone transform)
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 4 bone transform)
+            )
+          )
+      (if (logtest? (-> *part-group-id-table* 443 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 6 bone transform)
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 6 bone transform)
+            )
+          )
+      (if (logtest? (-> *part-group-id-table* 443 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 8 bone transform)
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 8 bone transform)
+            )
+          )
+      (if (logtest? (-> *part-group-id-table* 443 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 10 bone transform)
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 10 bone transform)
+            )
+          )
+      (if (logtest? (-> *part-group-id-table* 443 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 12 bone transform)
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 12 bone transform)
+            )
+          )
+      (if (logtest? (-> *part-group-id-table* 443 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 14 bone transform)
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 443)
+            :duration (seconds 1)
+            :mat-joint (-> self node-list data 14 bone transform)
+            )
+          )
+      (let ((gp-13 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+        (process-spawn
+          joint-exploder
+          (art-group-get-by-name *level* "skel-dm-tentacle-explode" (the-as (pointer level) #f))
+          11
+          gp-13
+          *dm-tentacle-exploder-params*
+          :name "joint-exploder"
+          :to self
+          :unk 0
+          )
+        )
+      )
+    (let ((a0-46 (handle->process (-> self ragdoll-proc))))
+      (if a0-46
+          (deactivate a0-46)
+          )
+      )
+    (logclear! (-> self flags) (dm-tentacle-flag dt2 dt3))
+    (set! (-> self root trans y) (+ -122880.0 (-> self initial-position y)))
+    (ja-channel-push! 0 0)
+    (transform-post)
+    )
+  :exit (behavior ()
+    (ja-channel-push! 1 0)
+    (ja :group! dm-tentacle-idle-ja :num! min)
+    (dm-tentacle-adjust-collision 12 0)
+    (logclear! (-> self flags) (dm-tentacle-flag dt7))
+    (set! (-> self hit-points) 10.0)
+    )
+  :code sleep-code
+  )
+
+(defstate strike (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (let ((a0-1 (the-as dm-tentacle-ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+      (when a0-1
+        (disable-for-duration a0-1 (seconds 0.5))
+        (logclear! (-> self flags) (dm-tentacle-flag dt2))
+        )
+      )
+    (sound-play "snake-whoosh" :position (-> self root trans))
+    )
+  :exit (behavior ()
+    (logclear! (-> self flags) (dm-tentacle-flag dt4 dt5))
+    )
+  :trans (behavior ()
+    (let ((v1-2 (ja-group)))
+      (cond
+        ((and v1-2 (= v1-2 dm-tentacle-strike-ja))
+         (ja :num! (seek!))
+         (let ((f0-3 (ja-aframe-num 0)))
+           (cond
+             ((< 30.0 f0-3)
+              (logior! (-> self flags) (dm-tentacle-flag dt4))
+              )
+             ((< 25.0 f0-3)
+              (logior! (-> self flags) (dm-tentacle-flag dt4))
+              )
+             ((< 10.0 f0-3)
+              (logior! (-> self flags) (dm-tentacle-flag dt5))
+              )
+             )
+           )
+         (if (ja-done? 0)
+             (go-virtual idle)
+             )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja :group! dm-tentacle-strike-ja :num! min)
+          )
+        )
+      )
+    (if (nonzero? (-> self collision-timer))
+        (set-time! (-> self collision-timer))
+        )
+    (normalize-heading self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (do-push-aways (-> self root))
+    )
+  )
+
+(defstate sweep (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (let ((a0-1 (the-as dm-tentacle-ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+      (when a0-1
+        (disable-for-duration a0-1 (seconds 0.5))
+        (logclear! (-> self flags) (dm-tentacle-flag dt2))
+        )
+      )
+    (sound-play "snake-whoosh" :position (-> self root trans))
+    )
+  :exit (behavior ()
+    (logclear! (-> self flags) (dm-tentacle-flag dt4))
+    )
+  :trans (behavior ()
+    (let ((v1-2 (ja-group)))
+      (cond
+        ((and v1-2 (= v1-2 dm-tentacle-sweep-ja))
+         (ja :num! (seek!))
+         (let ((f0-3 (ja-aframe-num 0)))
+           (cond
+             ((>= f0-3 31.0)
+              (logclear! (-> self flags) (dm-tentacle-flag dt4))
+              )
+             ((>= f0-3 26.0)
+              (logior! (-> self flags) (dm-tentacle-flag dt4))
+              )
+             )
+           )
+         (if (ja-done? 0)
+             (go-virtual idle)
+             )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja :group! dm-tentacle-sweep-ja :num! min)
+          )
+        )
+      )
+    (if (nonzero? (-> self collision-timer))
+        (set-time! (-> self collision-timer))
+        )
+    (normalize-heading self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (do-push-aways (-> self root))
+    )
+  )
+
+(defstate whip (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (let ((a0-1 (the-as dm-tentacle-ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+      (when a0-1
+        (disable-for-duration a0-1 (seconds 0.5))
+        (logclear! (-> self flags) (dm-tentacle-flag dt2 dt8))
+        )
+      )
+    (sound-play "snake-whoosh" :position (-> self root trans))
+    )
+  :exit (behavior ()
+    (logclear! (-> self flags) (dm-tentacle-flag dt4 dt5))
+    )
+  :trans (behavior ()
+    (let ((v1-2 (ja-group)))
+      (cond
+        ((and v1-2 (= v1-2 dm-tentacle-whip-ja))
+         (ja :num! (seek!))
+         (let ((f30-0 (ja-aframe-num 0)))
+           (when (and (>= f30-0 39.0) (not (logtest? (-> self flags) (dm-tentacle-flag dt8))))
+             (logior! (-> self flags) (dm-tentacle-flag dt8))
+             (let ((gp-0 (new 'stack-no-clear 'vector)))
+               (vector<-cspace! gp-0 (joint-node dm-tentacle-lod0-jg i))
+               (spawn (-> self part) gp-0)
+               (vector<-cspace! gp-0 (joint-node dm-tentacle-lod0-jg j))
+               (spawn (-> self part) gp-0)
+               (vector<-cspace! gp-0 (joint-node dm-tentacle-lod0-jg k))
+               (spawn (-> self part) gp-0)
+               )
+             (activate! *camera-smush-control* 409.6 45 300 0.995 0.9 (-> *display* camera-clock))
+             )
+           (cond
+             ((>= f30-0 40.0)
+              (logclear! (-> self flags) (dm-tentacle-flag dt4))
+              )
+             ((>= f30-0 35.0)
+              (logior! (-> self flags) (dm-tentacle-flag dt4))
+              )
+             ((>= f30-0 10.0)
+              (logior! (-> self flags) (dm-tentacle-flag dt5))
+              )
+             )
+           )
+         (if (ja-done? 0)
+             (go-virtual idle)
+             )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja :group! dm-tentacle-whip-ja :num! min)
+          )
+        )
+      )
+    (if (nonzero? (-> self collision-timer))
+        (set-time! (-> self collision-timer))
+        )
+    (normalize-heading self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (do-push-aways (-> self root))
+    )
+  )
+
+(defstate spit (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (let ((a0-1 (the-as dm-tentacle-ragdoll-proc (handle->process (-> self ragdoll-proc)))))
+      (when a0-1
+        (disable-for-duration a0-1 (seconds 0.5))
+        (logclear! (-> self flags) (dm-tentacle-flag dt2))
+        )
+      )
+    (logior! (-> self flags) (dm-tentacle-flag dt6))
+    )
+  :trans (behavior ()
+    (let ((v1-2 (ja-group)))
+      (cond
+        ((and v1-2 (= v1-2 dm-tentacle-spit-ja))
+         (ja :num! (seek!))
+         (let ((f0-3 (ja-aframe-num 0)))
+           (when (and (logtest? (-> self flags) (dm-tentacle-flag dt6)) (>= f0-3 28.0))
+             (logclear! (-> self flags) (dm-tentacle-flag dt6))
+             (let ((gp-0 (vector<-cspace! (new-stack-vector0) (joint-node dm-tentacle-lod0-jg l))))
+               (process-spawn dm-tentacle-spores gp-0 :name "dm-tentacle-spores" :to self)
+               )
+             )
+           )
+         (if (ja-done? 0)
+             (go-virtual idle)
+             )
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja :group! dm-tentacle-spit-ja :num! min)
+          )
+        )
+      )
+    (normalize-heading self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (do-push-aways (-> self root))
+    )
+  )
+
+(deftype dm-tentacle-attack (structure)
+  ((attack-type  dm-tentacle-attack-type)
+   (probability  float)
+   (possible     symbol)
+   (min-dist     float)
+   (max-dist     float)
+   )
+  )
+
+
+(define *dm-tentacle-attacks*
+  (new 'static 'boxed-array :type dm-tentacle-attack
+    (new 'static 'dm-tentacle-attack :probability 1.0 :min-dist 12288.0 :max-dist 73728.0)
+    (new 'static 'dm-tentacle-attack
+      :attack-type (dm-tentacle-attack-type sweep)
+      :probability 1.0
+      :min-dist 32768.0
+      :max-dist 61440.0
+      )
+    (new 'static 'dm-tentacle-attack
+      :attack-type (dm-tentacle-attack-type whip)
+      :probability 1.0
+      :min-dist 40960.0
+      :max-dist 73728.0
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defbehavior dm-tentacle-start-ragdoll dm-tentacle ()
+  (when (logtest? (-> self flags) (dm-tentacle-flag dt3))
+    (let ((gp-0 (handle->process (-> self ragdoll-proc))))
+      (when (not gp-0)
+        (set! (-> self ragdoll-proc) (ppointer->handle (process-spawn
+                                                         dm-tentacle-ragdoll-proc
+                                                         *dm-tentacle-ragdoll-setup*
+                                                         :name "dm-tentacle-ragdoll-proc"
+                                                         :to self
+                                                         :stack-size #x5000
+                                                         )
+                                                       )
+              )
+        (set! gp-0 (handle->process (-> self ragdoll-proc)))
+        (when (and (the-as dm-tentacle-ragdoll-proc gp-0)
+                   (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll)
+                   (nonzero? (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll))
+                   )
+          (logior! (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll ragdoll-flags) (ragdoll-flag rf4 rf10))
+          (logclear! (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll ragdoll-flags) (ragdoll-flag rf3 rf7))
+          )
+        )
+      (when (the-as dm-tentacle-ragdoll-proc gp-0)
+        (when (not (logtest? (-> self flags) (dm-tentacle-flag dt2)))
+          (ragdoll-proc-method-15 (the-as dm-tentacle-ragdoll-proc gp-0) #f (the-as vector #f) #t)
+          (logior! (-> self flags) (dm-tentacle-flag dt2))
+          )
+        (when (and (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll)
+                   (nonzero? (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll))
+                   )
+          (logclear! (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll ragdoll-flags) (ragdoll-flag rf2))
+          (set! (-> (the-as dm-tentacle-ragdoll-proc gp-0) ragdoll allow-destabilize) (the-as uint 0))
+          0
+          )
+        )
+      )
+    )
+  )
+
+(defstate retract (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (sound-play "snake-spawn" :position (-> self initial-position))
+    (let ((gp-1 (new 'stack-no-clear 'matrix)))
+      (matrix-identity! gp-1)
+      (set! (-> gp-1 trans quad) (-> self initial-position quad))
+      (if (logtest? (-> *part-group-id-table* 446 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 446)
+            :duration (seconds 1)
+            :mat-joint gp-1
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 446)
+            :duration (seconds 1)
+            :mat-joint gp-1
+            )
+          )
+      )
+    )
+  :trans (behavior ()
+    (set! (-> self root trans y) (- (-> self root trans y) (* 8192.0 (-> self clock time-adjust-ratio))))
+    (when (>= (+ -122880.0 (-> self initial-position y)) (-> self root trans y))
+      (logior! (-> self flags) (dm-tentacle-flag dt7))
+      (activate! *camera-smush-control* 409.6 45 300 0.995 0.9 (-> *display* camera-clock))
+      (go-virtual die)
+      )
+    (dm-tentacle-start-ragdoll)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (logior! (-> self flags) (dm-tentacle-flag dt3))
+    (do-push-aways (-> self root))
+    )
+  )
+
+(defstate extend (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((gp-0 (new 'stack-no-clear 'matrix)))
+      (matrix-identity! gp-0)
+      (set! (-> gp-0 trans quad) (-> self initial-position quad))
+      (if (logtest? (-> *part-group-id-table* 445 flags) (sp-group-flag sp13))
+          (part-tracker-spawn
+            part-tracker-subsampler
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 445)
+            :duration (seconds 1)
+            :mat-joint gp-0
+            )
+          (part-tracker-spawn
+            part-tracker
+            :to *entity-pool*
+            :group (-> *part-group-id-table* 445)
+            :duration (seconds 1)
+            :mat-joint gp-0
+            )
+          )
+      )
+    (sound-play "snake-spawn" :position (-> self initial-position))
+    )
+  :trans (behavior ()
+    (+! (-> self root trans y) (* 8192.0 (-> self clock time-adjust-ratio)))
+    (cond
+      ((>= (-> self root trans y) (-> self initial-position y))
+       (set! (-> self root trans y) (-> self initial-position y))
+       (when (time-elapsed? (-> self state-time) (seconds 0.1))
+         (activate! *camera-smush-control* 409.6 45 300 0.995 0.9 (-> *display* camera-clock))
+         (go-virtual idle)
+         )
+       )
+      (else
+        (set-time! (-> self state-time))
+        )
+      )
+    (dm-tentacle-start-ragdoll)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (logior! (-> self flags) (dm-tentacle-flag dt3))
+    (do-push-aways (-> self root))
+    )
+  )
+
+(defstate idle (dm-tentacle)
+  :virtual #t
+  :event dm-tentacle-handler
+  :enter (behavior ()
+    (let* ((f30-0 300.0)
+           (v1-2 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-3 (the-as number (logior #x3f800000 v1-2)))
+           )
+      (set! (-> self attack-timer)
+            (the-as time-frame (+ (the int (* f30-0 (+ -1.0 (the-as float v1-3)))) 1500 (current-time)))
+            )
+      )
+    )
+  :trans (behavior ()
+    (dm-tentacle-start-ragdoll)
+    (when (>= (- (current-time) (-> self attack-timer)) 0)
+      (let ((f0-0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
+            (f30-0 0.0)
+            )
+        (dotimes (v1-5 (-> *dm-tentacle-attacks* length))
+          (let ((a0-5 (-> *dm-tentacle-attacks* v1-5)))
+            (cond
+              ((and (< f0-0 (-> a0-5 max-dist)) (< (-> a0-5 min-dist) f0-0))
+               (set! (-> a0-5 possible) #t)
+               (+! f30-0 (-> a0-5 probability))
+               )
+              (else
+                (set! (-> a0-5 possible) #f)
+                )
+              )
+            )
+          )
+        (let* ((v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+               (v1-10 (the-as number (logior #x3f800000 v1-9)))
+               (f30-1 (* f30-0 (+ -1.0 (the-as float v1-10))))
+               )
+          (dotimes (gp-1 (-> *dm-tentacle-attacks* length))
+            (let ((s5-1 (-> *dm-tentacle-attacks* gp-1)))
+              (when (and (-> s5-1 possible) (>= (-> s5-1 probability) f30-1))
+                (case (-> s5-1 attack-type)
+                  (((dm-tentacle-attack-type strike))
+                   (go-virtual strike)
+                   )
+                  (((dm-tentacle-attack-type sweep))
+                   (go-virtual sweep)
+                   )
+                  (((dm-tentacle-attack-type whip))
+                   (go-virtual whip)
+                   )
+                  (((dm-tentacle-attack-type spit))
+                   (go-virtual spit)
+                   )
+                  (else
+                    (format #t "OOPS!<gmj>: unknown dm-tentacle attack type~%")
+                    )
+                  )
+                )
+              (set! f30-1 (- f30-1 (-> s5-1 probability)))
+              )
+            )
+          )
+        )
+      )
+    (let ((v1-38 (ja-group)))
+      (cond
+        ((and v1-38 (= v1-38 dm-tentacle-idle2-ja))
+         (ja :num! (loop!))
+         )
+        (else
+          (ja-channel-push! 1 (seconds 0.1))
+          (ja :group! dm-tentacle-idle2-ja :num! min)
+          )
+        )
+      )
+    (normalize-heading self)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    (logior! (-> self flags) (dm-tentacle-flag dt3))
+    (do-push-aways (-> self root))
+    )
+  )
+
+(defmethod init-from-entity! ((this dm-tentacle) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 9) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 10))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 10)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 61440.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 8))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 15)
+      (set-vector! (-> v1-9 local-sphere) 0.0 1750.2208 0.0 4178.7393)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 8))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 14)
+      (set-vector! (-> v1-11 local-sphere) 0.0 1674.4448 0.0 5032.3457)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 8))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 13)
+      (set-vector! (-> v1-13 local-sphere) 0.0 2908.16 0.0 5032.3457)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 6) (the-as uint 8))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 12)
+      (set-vector! (-> v1-15 local-sphere) 0.0 4084.5312 0.0 5032.3457)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 7) (the-as uint 8))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 11)
+      (set-vector! (-> v1-17 local-sphere) 0.0 5389.5166 0.0 5032.3457)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 8) (the-as uint 4))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 10)
+      (set-vector! (-> v1-19 local-sphere) 0.0 4945.92 0.0 7587.84)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 9) (the-as uint 4))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-21 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 8)
+      (set-vector! (-> v1-21 local-sphere) 0.0 7755.776 0.0 11759.616)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 10) (the-as uint 4))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-23 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 6)
+      (set-vector! (-> v1-23 local-sphere) 0.0 8046.592 0.0 12967.117)
+      )
+    (let ((v1-25 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 11) (the-as uint 4))))
+      (set! (-> v1-25 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-25 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-25 prim-core action) (collide-action solid))
+      (set! (-> v1-25 transform-index) 4)
+      (set-vector! (-> v1-25 local-sphere) 0.0 4096.0 0.0 16400.793)
+      )
+    (set! (-> s4-0 nav-radius) 12288.0)
+    (let ((v1-27 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-27 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-27 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dm-tentacle" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this initial-position quad) (-> this root trans quad))
+  (logior! (-> this mask) (process-mask enemy))
+  (set! (-> this hit-points) 10.0)
+  (set! (-> this incoming-attack-id) (the-as uint 0))
+  (set! (-> this collision-timer) 0)
+  (set! (-> this ragdoll-proc) (the-as handle #f))
+  (set! (-> this flags) (dm-tentacle-flag))
+  (if (-> this entity)
+      (set! (-> this flags)
+            (res-lump-value (-> this entity) 'dm-tentacle-flags dm-tentacle-flag :time -1000000000.0)
+            )
+      )
+  (logclear! (-> this flags) (dm-tentacle-flag dt2 dt3 dt4 dt5 dt7))
+  (logior! (-> this draw global-effect) (draw-control-global-effect disable-envmap))
+  (let ((a0-70 (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 0)))
+    (if a0-70
+        (change-to a0-70 this)
+        )
+    )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 447) this))
+  (go (method-of-object this idle))
+  )
+
+(deftype hud-deswalk (hud)
+  ()
+  )
+
+
+(defmethod draw ((this hud-deswalk))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 472.0 (* 130.0 (-> this offset))))
+    160
+    )
+  (let ((f30-0 (the float (-> this values 0 current))))
+    (set-as-offset-from! (-> this sprites 4) (the-as vector4w (-> this sprites)) 8 67)
+    (set! (-> this sprites 4 scale-x) (* 0.164 f30-0))
+    (cond
+      ((< 90.0 f30-0)
+       (set! (-> this sprites 4 color x) 0)
+       (set! (-> this sprites 4 color y) 255)
+       (set! (-> this sprites 4 color z) 0)
+       0
+       )
+      ((< 50.0 f30-0)
+       (set! (-> this sprites 4 color x) (the int (lerp-scale 0.0 128.0 f30-0 100.0 50.0)))
+       (set! (-> this sprites 4 color y) (the int (lerp-scale 255.0 128.0 f30-0 100.0 50.0)))
+       (set! (-> this sprites 4 color z) 0)
+       0
+       )
+      ((< 20.0 f30-0)
+       (set! (-> this sprites 4 color x) (the int (lerp-scale 128.0 255.0 f30-0 50.0 20.0)))
+       (set! (-> this sprites 4 color y) (the int (lerp-scale 128.0 0.0 f30-0 50.0 20.0)))
+       (set! (-> this sprites 4 color z) 0)
+       0
+       )
+      (else
+        (set! (-> this sprites 4 color x) 255)
+        (set! (-> this sprites 4 color y) 0)
+        (set! (-> this sprites 4 color z) 0)
+        0
+        )
+      )
+    )
+  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites)) 9 66)
+  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites)) -51 66)
+  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) 4 66)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-deswalk))
+  (set! (-> this values 0 target) (the int (* 100.0 (-> *game-info* counter))))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-deswalk))
+  (set! (-> this level) (level-get *level* 'deswalk))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-middle-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :page #xd39)))
+        )
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 4 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x1 :page #xd39)))
+        )
+  (set! (-> this sprites 4 scale-x) 1.0)
+  (set! (-> this sprites 4 scale-y) 1.4)
+  (set! (-> this sprites 4 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 3 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #xd39)))
+        )
+  (set! (-> this sprites 3 scale-x) 1.0)
+  (set! (-> this sprites 3 scale-y) 1.0)
+  (set! (-> this sprites 3 flags) (hud-sprite-flags hsf0 hsf2))
+  (set! (-> this sprites 2 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x2 :page #xd39)))
+        )
+  (set! (-> this sprites 2 scale-x) 1.0)
+  (set! (-> this sprites 2 scale-y) 1.0)
+  (set! (-> this sprites 2 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 1 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :index #x3 :page #xd39)))
+        )
+  (set! (-> this sprites 1 scale-x) 15.0)
+  (set! (-> this sprites 1 scale-y) 1.0)
+  (set! (-> this sprites 1 flags) (hud-sprite-flags hsf2))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.6)
+  (set! (-> this strings 0 flags) (font-flags shadow kerning right large))
+  0
+  (none)
+  )
+
+(deftype task-manager-deswalk (task-manager)
+  ()
+  )
+
+
+(defmethod task-manager-method-25 ((this task-manager-deswalk))
+  (let ((t9-0 (method-of-type task-manager task-manager-method-25)))
+    (t9-0 this)
+    )
+  (send-event (handle->process (-> this hud-counter)) 'hide-and-die)
+  (remove-setting! 'exclusive-load)
+  (none)
+  )
+
+;; WARN: Return type mismatch connection vs none.
+(defmethod set-time-limit ((this task-manager-deswalk))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this hud-counter)
+        (ppointer->handle (process-spawn hud-deswalk :init hud-init-by-other :name "hud-deswalk" :to this))
+        )
+  (send-event *vehicle-manager* 'no-extra-bank)
+  (set-setting! 'extra-bank '((desert1 fnlboss1) (desert2 fnlboss2) (wasall1 fnlboss3)) 0.0 0)
+  (set-setting! 'border-mode #f 0.0 0)
+  (set-setting! 'music 'finboss2 0.0 0)
+  (set-setting! 'fog-special-interp-rate #f 0.03 0)
+  (set-setting! 'fog-special-interp-targ #f 0.5 0)
+  (set-setting! 'dust-storm-sound-scalar #f 0.5 0)
+  (set-setting! 'exclusive-task #f 0.0 (-> this node-info task))
+  (set-setting! 'minimap 'clear 0.0 (minimap-flag minimap))
+  (none)
+  )
+
+(defskelgroup skel-desw-snake-stump desw-snake-stump desw-snake-stump-lod0-jg desw-snake-stump-idle-ja
+              ((desw-snake-stump-lod0-mg (meters 999999)))
+              :bounds (static-spherem 2.3 3 0 6.5)
+              :origin-joint-index 3
+              )
+
+(deftype desw-snake-stump (process-drawable)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (up-timer           time-frame)
+   )
+  (:state-methods
+    up
+    undefined
+    down
+    moving
+    )
+  (:states
+    partway-up
+    )
+  )
+
+
+(defbehavior desw-snake-stump-should-be-active? desw-snake-stump ()
+  (when (task-node-closed? (game-task-node desert-final-boss-climb))
+    (set! (-> self up-timer) 0)
+    (return #f)
+    )
+  (when (> (-> self actor-group-count) 0)
+    (dotimes (v1-4 (-> self actor-group 0 length))
+      (let ((a0-4 (-> self actor-group 0 data v1-4 actor)))
+        (when (and a0-4 (-> a0-4 extra process))
+          (set! (-> self up-timer) 0)
+          (return #f)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+(defbehavior desw-snake-stump-should-be-up? desw-snake-stump ()
+  (and (nonzero? (-> self up-timer)) (not (time-elapsed? (-> self up-timer) (seconds 1.5))))
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defbehavior desw-snake-stump-handler desw-snake-stump ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('ridden)
+     (when (desw-snake-stump-should-be-active?)
+       (let ((v1-4 (handle->process (-> (the-as focus (-> arg3 param 0)) handle))))
+         (if (= (-> v1-4 type) target)
+             (set-time! (-> self up-timer))
+             )
+         )
+       )
+     #t
+     )
+    )
+  )
+
+(defstate up (desw-snake-stump)
+  :virtual #t
+  :event desw-snake-stump-handler
+  :trans (behavior ()
+    (if (not (desw-snake-stump-should-be-up?))
+        (go-virtual moving)
+        )
+    (rider-trans)
+    (rider-post)
+    )
+  :code sleep-code
+  )
+
+(defstate partway-up (desw-snake-stump)
+  :event desw-snake-stump-handler
+  :trans (behavior ()
+    (if (or (desw-snake-stump-should-be-up?) (not (desw-snake-stump-should-be-active?)))
+        (go-virtual moving)
+        )
+    (rider-trans)
+    (rider-post)
+    )
+  :code sleep-code
+  )
+
+(defstate down (desw-snake-stump)
+  :virtual #t
+  :event desw-snake-stump-handler
+  :trans (behavior ()
+    (if (desw-snake-stump-should-be-active?)
+        (go-virtual moving)
+        )
+    (rider-trans)
+    (rider-post)
+    )
+  :code sleep-code
+  )
+
+(defstate moving (desw-snake-stump)
+  :virtual #t
+  :event desw-snake-stump-handler
+  :enter (behavior ()
+    (sound-play "squishy-plat" :position (-> self root trans))
+    )
+  :exit (behavior ()
+    (remove-setting! 'target-height)
+    )
+  :trans (behavior ()
+    (local-vars (sv-16 float) (sv-32 meters))
+    (cond
+      ((desw-snake-stump-should-be-up?)
+       (ja :num! (seek! max 0.5))
+       (rider-trans)
+       (rider-post)
+       (cond
+         ((< (ja-aframe-num 0) 6.0)
+          (let* ((gp-0 *setting-control*)
+                 (s5-0 (method-of-object gp-0 set-setting))
+                 (s4-0 self)
+                 (s3-0 'target-height)
+                 (s2-0 'abs)
+                 (s1-0 lerp-scale)
+                 (s0-0 (-> *CAMERA_MASTER-bank* target-height))
+                 )
+            (set! sv-16 (the-as float 14336.0))
+            (let ((a2-1 (ja-aframe-num 0))
+                  (a3-0 2.0)
+                  (t0-0 6.0)
+                  )
+              (s5-0 gp-0 s4-0 s3-0 s2-0 (s1-0 s0-0 sv-16 a2-1 a3-0 t0-0) 0)
+              )
+            )
+          )
+         (else
+           (let* ((gp-1 *setting-control*)
+                  (s5-1 (method-of-object gp-1 set-setting))
+                  (s4-1 self)
+                  (s3-1 'target-height)
+                  (s2-1 'abs)
+                  (s1-1 lerp-scale)
+                  (s0-1 14336.0)
+                  )
+             (set! sv-32 (-> *CAMERA_MASTER-bank* target-height))
+             (let ((a2-3 (ja-aframe-num 0))
+                   (a3-2 11.0)
+                   (t0-2 15.0)
+                   )
+               (s5-1 gp-1 s4-1 s3-1 s2-1 (s1-1 s0-1 sv-32 a2-3 a3-2 t0-2) 0)
+               )
+             )
+           )
+         )
+       (if (ja-done? 0)
+           (go-virtual up)
+           )
+       )
+      ((desw-snake-stump-should-be-active?)
+       (ja :num! (seek! 2.0 0.5))
+       (rider-trans)
+       (rider-post)
+       (if (ja-done? 0)
+           (go partway-up)
+           )
+       )
+      (else
+        (ja :num! (seek! 0.0 0.5))
+        (rider-trans)
+        (rider-post)
+        (if (ja-done? 0)
+            (go-virtual down)
+            )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+(defmethod init-from-entity! ((this desw-snake-stump) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 9420.8 12288.0 0.0 26624.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (pusher-init s4-0)
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-desw-snake-stump" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this actor-group-count) 0)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-22 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-22 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-22))
+       )
+      (else
+        (format 0 "ERROR: ~S: entity missing actor-group!~%" (-> this name))
+        )
+      )
+    )
+  (set! (-> this up-timer) 0)
+  (go (method-of-object this moving))
+  )

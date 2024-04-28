@@ -10,8 +10,11 @@
 (define-extern paused? (function symbol))
 (define-extern demo? (function symbol))
 (define-extern kiosk? (function symbol))
+(define-extern scene-select? (function symbol))
 (define-extern set-blackout-frames (function time-frame none))
 (define-extern set-master-mode (function symbol none))
+(define-extern on (function symbol process))
+(define-extern toggle-pause (function int))
 
 ;; +++main-h:collide-spec
 (defenum collide-spec
@@ -76,16 +79,16 @@
 (defenum scene-controls
   :type int64
   :bitfield #t
-  ; (channel)
-  ; (anim-name)
-  ; (dma-size)
-  ; (bounds-spheres)
-  ; (actors)
-  ; (actor-marks)
-  ; (special-fma-spheres)
-  ; (scene-controls-7)
-  ; (scene-controls-8)
-  ; (display-controls)
+  (channel)
+  (anim-name)
+  (dma-size)
+  (bounds-spheres)
+  (actors)
+  (actor-marks)
+  (special-fma-spheres)
+  (scene-controls-7)
+  (scene-controls-8)
+  (display-controls)
   )
 ;; ---main-h:scene-controls
 
@@ -115,35 +118,26 @@
 ;; +++main-h:race-marks-controls
 (defenum race-marks-controls
   :type int64
-  ; (all-off 0)
-  ; (path0-red 1)
-  ; (path1-green 2)
-  ; (path2-blue 4)
-  ; (path3-yellow 8)
-  ; (path4-cyan 16)
-  ; (path5-violet 32)
-  ; (path6-orange 64)
-  ; (path7-black 128)
-  ; (all-paths-on 255)
-  ; (rmc2040 2040)
+  (all-off 0)
+  (path0-red 1)
+  (path1-green 2)
+  (path2-blue 4)
+  (path3-yellow 8)
+  (path4-cyan 16)
+  (path5-violet 32)
+  (path6-orange 64)
+  (path7-black 128)
+  (all-paths-on 255)
+  (rmc2040 2040)
   )
 ;; ---main-h:race-marks-controls
 
 ;; +++main-h:race-selection
 (defenum race-selection
   :type int64
-  ; (kiera-class3 0)
-  ; (kiera-class2 1)
-  ; (kiera-class1 2)
-  ; (errol 3)
-  ; (bush-class3 4)
-  ; (bush-class2 5)
-  ; (bush-class1 6)
-  ; (bush-errol 7)
-  ; (bush-port 8)
-  ; (bush-class3-reverse 9)
-  ; (bush-class2-reverse 10)
-  ; (bush-class1-reverse 11)
+  (desertb-race-record 0)
+  (rs1 1)
+  (desrally-record 2)
   )
 ;; ---main-h:race-selection
 
@@ -167,6 +161,9 @@
   ; (sewer-lo 6)
   )
 ;; ---main-h:ocean-height-hack
+
+(define-extern *progress-cheat* symbol)
+(define-extern *last-master-mode* symbol)
 
 ;; DECOMP BEGINS
 
@@ -354,7 +351,7 @@
 
 (define *debug-player-vehicle-unkillable* #f)
 
-(define *debug-actor* (the-as object #f))
+(define *debug-actor* (the-as process #f))
 
 (define *gun-marks* #f)
 
@@ -417,7 +414,7 @@
 
 (deftype screen-filter (basic)
   ((draw?           symbol)
-   (bucket          int32)
+   (bucket          bucket-id)
    (depth           int32)
    (ztest           uint64)
    (color           vector  :inline)
@@ -426,11 +423,11 @@
    (extra           vector  :inline)
    (speed           float   :overlay-at (-> extra data 0))
    (current-interp  float   :overlay-at (-> extra data 1))
-   (lock-vsync?     basic)
+   (lock-vsync?     symbol)
    )
   (:methods
     (draw (_type_) none)
-    (setup (_type_ vector vector float bucket-id) none)
+    (setup (_type_ vector vector float bucket-id int int symbol) none)
     (disable (_type_) none)
     )
   )
@@ -451,7 +448,7 @@
    (camera-to-bbox-dist  float)
    )
   (:methods
-    (col-rend-method-9 () none)
+    (draw (_type_) none)
     )
   )
 

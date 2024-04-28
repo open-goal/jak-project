@@ -36,5 +36,5 @@
   "market-basket-a-ag.go"
   "wascity-awning-b-ag.go"
   "cty-fruit-stand-ag.go"
-  "wascityb-vis.o"
+  "wascityb-vis.go"
  ))

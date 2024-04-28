@@ -5,5 +5,955 @@
 ;; name in dgo: collision-editor
 ;; dgos: GAME
 
+;; +++collision-editor-func
+(defenum collision-editor-func
+  :type uint64
+  (analog 0)
+  (edit 1)
+  (print-collision 2)
+  (stop-editor 3)
+  )
+;; ---collision-editor-func
+
+
 ;; DECOMP BEGINS
 
+;; this file is debug only
+(declare-file (debug))
+
+(defskelgroup skel-collision-editor sew-rove-plat sew-rove-plat-lod0-jg sew-rove-plat-idle-ja
+              ((sew-rove-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 100)
+              )
+
+(deftype collision-editor-default-proc (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defstate idle (collision-editor-default-proc)
+  :virtual #t
+  :trans (behavior ()
+    (deactivate self)
+    )
+  :code sleep-code
+  )
+
+(defbehavior collision-editor-default-proc-init-by-other collision-editor-default-proc ()
+  (let ((gp-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere gp-0 (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 4096000.0)
+      (set! (-> gp-0 total-prims) (the-as uint 1))
+      (set! (-> gp-0 root-prim) v1-2)
+      )
+    (set! (-> gp-0 nav-radius) (* 0.75 (-> gp-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> gp-0 root-prim)))
+      (set! (-> gp-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> gp-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> self root) gp-0)
+    )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-collision-editor" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (transform-post)
+  (go-virtual idle)
+  )
+
+(deftype collision-editor-edited-proc (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defstate idle (collision-editor-edited-proc)
+  :virtual #t
+  :code sleep-code
+  :post (behavior ()
+    (transform-post)
+    )
+  )
+
+(defbehavior collision-editor-edited-proc-init-by-other collision-editor-edited-proc ()
+  (let ((gp-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere gp-0 (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot hit-by-others-list player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 4096.0)
+      (set! (-> gp-0 total-prims) (the-as uint 1))
+      (set! (-> gp-0 root-prim) v1-2)
+      )
+    (set! (-> gp-0 nav-radius) (* 0.75 (-> gp-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> gp-0 root-prim)))
+      (set! (-> gp-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> gp-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> self root) gp-0)
+    )
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-collision-editor" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go-virtual idle)
+  )
+
+(define *collision-editor-mesh-names* (new 'static 'boxed-array :type string "moveplat"))
+
+(define *collision-editor-art-group-name* "sew-rove-plat")
+
+(defun collision-editor-add-mesh-to-ccache ((arg0 collide-shape-prim-group) (arg1 collide-cache))
+  (set! (-> arg1 collide-box4w min x) -409600000)
+  (set! (-> arg1 collide-box4w min y) -409600000)
+  (set! (-> arg1 collide-box4w min z) -409600000)
+  (set! (-> arg1 collide-box4w max x) #x186a0000)
+  (set! (-> arg1 collide-box4w max y) #x186a0000)
+  (set! (-> arg1 collide-box4w max z) #x186a0000)
+  (set! (-> arg1 num-tris) 0)
+  (set! (-> arg1 num-prims) 0)
+  (set! (-> arg1 collide-with) (the-as collide-spec -1))
+  (set! (-> arg1 ignore-mask) (new 'static 'pat-surface))
+  (add-fg-prim-using-box arg0 arg1)
+  (none)
+  )
+
+;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 272 mismatch: defined as size 4, got size 16
+;; ERROR: Stack slot load at 288 mismatch: defined as size 4, got size 16
+(defun print-default-collision ((arg0 process-drawable))
+  (local-vars (sv-224 matrix) (sv-240 symbol) (sv-256 string) (sv-272 float) (sv-288 float))
+  (let ((gp-0 (process-spawn collision-editor-default-proc :name "collision-editor-default-proc")))
+    (when gp-0
+      (when (and (nonzero? (-> (the-as process-drawable (-> gp-0 0)) draw))
+                 (-> (the-as process-drawable (-> gp-0 0)) draw jgeo)
+                 )
+        (format #t "(group (#f~%")
+        (format #t "        :action (solid)~%")
+        (format #t "        :collide-as enemy~%")
+        (format #t "        :collide-with (player-list hit-by-others-list jak bot)~%")
+        (format #t "        :sphere ((meters 0.0) (meters 0.0) (meters 0.0) (meters 2.0))~%")
+        (format
+          #t
+          "        :transform-index (joint-node-index ~S ~S)~%"
+          *collision-editor-art-group-name*
+          (-> (the-as process-drawable (-> gp-0 0)) node-list data 3 joint name)
+          )
+        (format #t "        :children (~%")
+        (let* ((t9-10 (method-of-type res-lump get-property-struct))
+               (a0-11 (-> (the-as process-drawable (-> gp-0 0)) draw jgeo extra))
+               (a1-10 'collide-mesh-group)
+               (a2-3 'interp)
+               (a3-3 -1000000000.0)
+               (t0-0 (the-as float #f))
+               (s5-1 (the-as
+                       (array collide-mesh)
+                       (t9-10 a0-11 a1-10 a2-3 a3-3 (the-as structure t0-0) (the-as (pointer res-tag) #f) *res-static-buf*)
+                       )
+                     )
+               )
+          (cond
+            ((and s5-1 (> (length s5-1) 0))
+             (dotimes (s4-0 (length s5-1))
+               (format
+                 #t
+                 "                   (mesh ((la-collide-mesh ~S ~S)~%"
+                 *collision-editor-art-group-name*
+                 (-> *collision-editor-mesh-names* s4-0)
+                 )
+               (format #t "                          :action solid~%")
+               (format #t "                          :collide-as enemy~%")
+               (format #t "                          :collide-with (player-list hit-by-others-list jak bot)~%")
+               (let ((v1-22 (-> s5-1 s4-0 joint-id)))
+                 (cond
+                   ((= v1-22 -1)
+                    (format #t "                          ;;:transform-index JOINT_ID_NO_TRANSFORM~%")
+                    )
+                   ((= v1-22 -2)
+                    (format #t "                          ;;:transform-index JOINT_ID_ROOT_TRANSLATION~%")
+                    )
+                   ((= v1-22 -3)
+                    (format #t "                          ;;:transform-index JOINT_ID_ROOT_TRANSFORM~%")
+                    )
+                   (else
+                     (let ((t9-19 format)
+                           (a0-23 #t)
+                           (a1-18 "                          :transform-index (joint-node-index ~S ~S)~%")
+                           (a2-5 *collision-editor-art-group-name*)
+                           (a3-12 (-> (the-as process-drawable (-> gp-0 0)) node-list data (+ (-> s5-1 s4-0 joint-id) 1) joint name))
+                           )
+                       (t9-19 a0-23 a1-18 a2-5 a3-12)
+                       (let ((s0-0 (new 'stack 'collide-shape-prim-mesh (the-as collide-shape 0) (the-as uint a3-12) (the-as uint t0-0))))
+                         (set! (-> s0-0 cshape) (the-as collide-shape (-> (the-as process-drawable (-> gp-0 0)) root)))
+                         (set! (-> s0-0 transform-index) (+ (-> s5-1 s4-0 joint-id) 1))
+                         (set! (-> s0-0 prim-core prim-type) 1)
+                         (set! (-> s0-0 local-sphere w) 1.0)
+                         (set! (-> s0-0 mesh) (-> s5-1 s4-0))
+                         (set! (-> s0-0 mesh-cache-id) (the-as uint 0))
+                         (set! (-> s0-0 mesh-id) s4-0)
+                         (collision-editor-add-mesh-to-ccache (the-as collide-shape-prim-group s0-0) *collide-cache*)
+                         (let ((a0-26 (the-as object (-> *collide-cache* tris)))
+                               (v1-41 (new 'stack-no-clear 'vector))
+                               (s2-0 (new 'stack-no-clear 'vector))
+                               (s3-0 (new 'stack-no-clear 'vector))
+                               (s1-0 (new 'stack-no-clear 'vector))
+                               )
+                           (when (nonzero? (-> *collide-cache* num-tris))
+                             (set! (-> v1-41 quad) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 quad))
+                             (set! (-> s2-0 quad) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 quad))
+                             )
+                           (countdown (a1-27 (-> *collide-cache* num-tris))
+                             (set! (-> v1-41 x) (fmin
+                                                  (fmin
+                                                    (fmin (-> v1-41 x) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 x))
+                                                    (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 1 x)
+                                                    )
+                                                  (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 2 x)
+                                                  )
+                                   )
+                             (set! (-> v1-41 y) (fmin
+                                                  (fmin
+                                                    (fmin (-> v1-41 y) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 y))
+                                                    (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 1 y)
+                                                    )
+                                                  (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 2 y)
+                                                  )
+                                   )
+                             (set! (-> v1-41 z) (fmin
+                                                  (fmin
+                                                    (fmin (-> v1-41 z) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 z))
+                                                    (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 1 z)
+                                                    )
+                                                  (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 2 z)
+                                                  )
+                                   )
+                             (set! (-> s2-0 x) (fmax
+                                                 (fmax
+                                                   (fmax (-> s2-0 x) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 x))
+                                                   (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 1 x)
+                                                   )
+                                                 (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 2 x)
+                                                 )
+                                   )
+                             (set! (-> s2-0 y) (fmax
+                                                 (fmax
+                                                   (fmax (-> s2-0 y) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 y))
+                                                   (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 1 y)
+                                                   )
+                                                 (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 2 y)
+                                                 )
+                                   )
+                             (set! (-> s2-0 z) (fmax
+                                                 (fmax
+                                                   (fmax (-> s2-0 z) (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 0 z))
+                                                   (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 1 z)
+                                                   )
+                                                 (-> (the-as (inline-array collide-cache-tri) a0-26) 0 vertex 2 z)
+                                                 )
+                                   )
+                             (set! a0-26 (-> (the-as (inline-array collide-cache-tri) a0-26) 1))
+                             )
+                           (vector+! s3-0 v1-41 s2-0)
+                           (vector-float*! s3-0 s3-0 0.5)
+                           (vector<-cspace! s1-0 (-> (the-as process-drawable (-> gp-0 0)) node-list data (-> s0-0 transform-index)))
+                           (vector-! s1-0 s3-0 s1-0)
+                           (set! sv-224 (new 'stack-no-clear 'matrix))
+                           (let* ((a0-35 (-> (the-as process-drawable (-> gp-0 0)) node-list data (-> s0-0 transform-index) bone transform))
+                                  (a2-11 (-> a0-35 rvec quad))
+                                  (a1-36 (-> a0-35 uvec quad))
+                                  (v1-53 (-> a0-35 fvec quad))
+                                  (a0-36 (-> a0-35 trans quad))
+                                  )
+                             (set! (-> sv-224 rvec quad) a2-11)
+                             (set! (-> sv-224 uvec quad) a1-36)
+                             (set! (-> sv-224 fvec quad) v1-53)
+                             (set! (-> sv-224 trans quad) a0-36)
+                             )
+                           (vector-reset! (-> sv-224 trans))
+                           (matrix-transpose! sv-224 sv-224)
+                           (vector-matrix*! s1-0 s1-0 sv-224)
+                           (let ((s0-1 format))
+                             (set! sv-240 #t)
+                             (set! sv-256 "                          :sphere ((meters ~M) (meters ~M) (meters ~M) (meters ~M))~%")
+                             (set! sv-272 (-> s1-0 x))
+                             (set! sv-288 (-> s1-0 y))
+                             (let ((s1-1 (-> s1-0 z))
+                                   (t1-1 (* 1.0001 (vector-vector-distance s3-0 s2-0)))
+                                   )
+                               (set! t0-0 s1-1)
+                               (s0-1 sv-240 sv-256 sv-272 sv-288 t0-0 t1-1)
+                               )
+                             )
+                           )
+                         )
+                       )
+                     )
+                   )
+                 )
+               (format #t "                          ))~%")
+               )
+             #f
+             )
+            (else
+              (format #t "                   (sphere (#f~%")
+              (format #t "                            :action solid~%")
+              (format #t "                            :collide-as enemy~%")
+              (format #t "                            :collide-with (player-list hit-by-others-list jak bot)~%")
+              (format
+                #t
+                "                            :transform-index (joint-node-index ~S ~S)~%"
+                *collision-editor-art-group-name*
+                (-> (the-as process-drawable (-> gp-0 0)) node-list data 3 joint name)
+                )
+              (format #t "                            :sphere ((meters 0.0) (meters 0.0) (meters 0.0) (meters 1.0))~%")
+              (format #t "                            ))~%")
+              )
+            )
+          )
+        (format #t "        )))~%")
+        )
+      )
+    (deactivate (-> gp-0 0))
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defun print-actual-collision ((arg0 process-drawable))
+  (format #t "~%~%")
+  (when arg0
+    (when (type? (-> arg0 root) collide-shape)
+      (let ((s5-0 (-> (the-as collide-shape (-> arg0 root)) root-prim))
+            (s4-0 0)
+            )
+        (let ((v1-3 (-> s5-0 prim-core prim-type)))
+          (cond
+            ((or (= v1-3 1) (= v1-3 -1))
+             (set! s4-0 1)
+             )
+            ((zero? v1-3)
+             (let ((s4-1 s5-0))
+               (format #t "(group (#f~%")
+               (format #t "        ;;:action (solid)~%")
+               (format #t "        ;;:collide-as enemy~%")
+               (format #t "        ;;:collide-with (player-list hit-by-others-list jak bot)~%")
+               (format
+                 #t
+                 "        :sphere ((meters ~M) (meters ~M) (meters ~M) (meters ~M))~%"
+                 (-> s5-0 local-sphere x)
+                 (-> s5-0 local-sphere y)
+                 (-> s5-0 local-sphere z)
+                 (-> s5-0 local-sphere w)
+                 )
+               (format
+                 #t
+                 "        :transform-index (joint-node-index ~S ~S)~%"
+                 *collision-editor-art-group-name*
+                 (-> arg0 node-list data (-> s4-1 transform-index) joint name)
+                 )
+               (format #t "        :children (~%")
+               (set! s4-0 (the-as int (-> s4-1 specific 1)))
+               )
+             (&+! s5-0 80)
+             )
+            )
+          )
+        (dotimes (s3-0 s4-0)
+          (case (-> s5-0 prim-core prim-type)
+            ((1)
+             (let ((v1-11 s5-0))
+               (format
+                 #t
+                 "                   (mesh ((la-collide-mesh ~S ~S)~%"
+                 *collision-editor-art-group-name*
+                 (-> (the-as
+                       (array string)
+                       (+ (* (-> (the-as collide-shape-prim-mesh v1-11) mesh-id) 4) (the-as int *collision-editor-mesh-names*))
+                       )
+                     0
+                     )
+                 )
+               )
+             (format #t "                          ;;:action solid~%")
+             (format #t "                          ;;:collide-as enemy~%")
+             (format #t "                          ;;:collide-with (player-list hit-by-others-list jak bot)~%")
+             (format
+               #t
+               "                          :transform-index (joint-node-index ~S ~S)~%"
+               *collision-editor-art-group-name*
+               (-> arg0 node-list data (-> s5-0 transform-index) joint name)
+               )
+             (format
+               #t
+               "                          :sphere ((meters ~M) (meters ~M) (meters ~M) (meters ~M))~%"
+               (-> s5-0 local-sphere x)
+               (-> s5-0 local-sphere y)
+               (-> s5-0 local-sphere z)
+               (-> s5-0 local-sphere w)
+               )
+             (format #t "                          ))~%")
+             )
+            ((-1)
+             (format #t "                   (sphere (#f~%")
+             (format #t "                            ;;:action solid~%")
+             (format #t "                            ;;:collide-as enemy~%")
+             (format #t "                            ;;:collide-with (player-list hit-by-others-list jak bot)~%")
+             (format
+               #t
+               "                            :transform-index (joint-node-index ~S ~S)~%"
+               *collision-editor-art-group-name*
+               (-> arg0 node-list data (-> s5-0 transform-index) joint name)
+               )
+             (format
+               #t
+               "                            :sphere ((meters ~M) (meters ~M) (meters ~M) (meters ~M))~%"
+               (-> s5-0 local-sphere x)
+               (-> s5-0 local-sphere y)
+               (-> s5-0 local-sphere z)
+               (-> s5-0 local-sphere w)
+               )
+             (format #t "                            ))~%")
+             )
+            )
+          (&+! s5-0 80)
+          )
+        )
+      (if (zero? (-> (the-as collide-shape (-> arg0 root)) root-prim prim-core prim-type))
+          (format #t "        )))~%")
+          )
+      )
+    )
+  (format #t "~%~%")
+  (none)
+  )
+
+(deftype collision-editor (process)
+  ((proc  handle)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+(defmethod inspect ((this collision-editor))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tproc: ~D~%" (-> this proc))
+  (label cfg-4)
+  this
+  )
+
+(deftype collision-edit-info (structure)
+  ((editing       symbol)
+   (current-func  collision-editor-func)
+   (analog-func   collision-editor-func)
+   (current-prim  int32)
+   )
+  (:methods
+    (collision-edit-info-method-9 (_type_) none)
+    (draw-menu (_type_ process-drawable) none)
+    (collision-edit-info-method-11 (_type_ process-drawable) none)
+    )
+  )
+
+(defmethod inspect ((this collision-edit-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'collision-edit-info)
+  (format #t "~1Tediting: ~A~%" (-> this editing))
+  (format #t "~1Tcurrent-func: ~D~%" (-> this current-func))
+  (format #t "~1Tanalog-func: ~D~%" (-> this analog-func))
+  (format #t "~1Tcurrent-prim: ~D~%" (-> this current-prim))
+  (label cfg-4)
+  this
+  )
+
+(defun collision-edit-get-max-prim ((arg0 process-drawable))
+  (let ((gp-0 0))
+    (when (and arg0 (type? (-> arg0 root) collide-shape))
+      (let ((v1-3 (-> (the-as collide-shape (-> arg0 root)) root-prim)))
+        (if (zero? (-> v1-3 prim-core prim-type))
+            (set! gp-0 (the-as int (-> v1-3 specific 1)))
+            )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; WARN: Return type mismatch int vs collide-shape-prim.
+(defun collision-edit-get-prim ((arg0 process-drawable) (arg1 int))
+  (when (and arg0 (type? (-> arg0 root) collide-shape))
+    (let ((s5-0 (-> (the-as collide-shape (-> arg0 root)) root-prim))
+          (v1-3 (collision-edit-get-max-prim arg0))
+          )
+      (if (and s5-0 (>= v1-3 arg1))
+          (return (the-as collide-shape-prim (+ (the-as uint s5-0) (* 80 arg1))))
+          )
+      )
+    )
+  (the-as collide-shape-prim #f)
+  )
+
+(defmethod collision-edit-info-method-9 ((this collision-edit-info))
+  (if (cpad-pressed? 0 up)
+      (+! (-> this current-func) -1)
+      )
+  (if (cpad-pressed? 0 left)
+      (+! (-> this current-func) -4)
+      )
+  (if (cpad-pressed? 0 down)
+      (+! (-> this current-func) 1)
+      )
+  (if (cpad-pressed? 0 right)
+      (+! (-> this current-func) 4)
+      )
+  (cond
+    ((< (the-as int (-> this current-func)) 0)
+     (set! (-> this current-func) (collision-editor-func stop-editor))
+     )
+    ((>= (the-as int (-> this current-func)) 4)
+     (set! (-> this current-func) (collision-editor-func analog))
+     0
+     )
+    )
+  (none)
+  )
+
+(defmethod collision-edit-info-method-11 ((this collision-edit-info) (arg0 process-drawable))
+  (local-vars (s5-0 int))
+  (when (not arg0)
+    (set! s5-0 (the-as int #f))
+    (goto cfg-14)
+    )
+  (set! s5-0 (-> this current-prim))
+  (let ((v1-2 (collision-edit-get-max-prim arg0)))
+    (when (cpad-pressed? 0 r1)
+      (+! s5-0 1)
+      (if (cpad-hold? 0 l1)
+          (+! s5-0 4)
+          )
+      )
+    (when (cpad-pressed? 0 l1)
+      (+! s5-0 -1)
+      (if (cpad-hold? 0 r1)
+          (+! s5-0 -4)
+          )
+      )
+    (if (< s5-0 0)
+        (set! s5-0 v1-2)
+        )
+    (if (< v1-2 s5-0)
+        (set! s5-0 0)
+        )
+    )
+  (set! (-> this current-prim) s5-0)
+  (label cfg-14)
+  (none)
+  )
+
+(defmethod draw-menu ((this collision-edit-info) (arg0 process-drawable))
+  (local-vars (a3-0 string))
+  (when (cpad-pressed? 0 l2)
+    (set! (-> this editing) (not (-> this editing)))
+    (cond
+      ((-> this editing)
+       (set! *external-cam-mode* 'locked)
+       )
+      (*target*
+        (set! *external-cam-mode* #f)
+        )
+      (else
+        (set! *external-cam-mode* 'pad-0)
+        )
+      )
+    )
+  (cond
+    ((or (not (-> this editing)) (cpad-hold? 0 r2))
+     (if (not (-> this editing))
+         (format *stdcon* "press l2 to edit collision~%")
+         (format *stdcon* "release r2 to continue editing collision~%")
+         )
+     (if (or (cpad-hold? 0 r2) (not *target*))
+         (set! *external-cam-mode* 'pad-0)
+         )
+     )
+    (else
+      (set! *external-cam-mode* 'locked)
+      (collision-edit-info-method-9 this)
+      (collision-edit-info-method-11 this arg0)
+      (let ((s3-0 ">")
+            (s4-0 " ")
+            )
+        (if (not (logtest? (-> *display* real-frame-clock integral-frame-counter) 8))
+            (set! s3-0 " ")
+            )
+        (format *stdcon* " r2/l2: move camera~%")
+        (let ((s2-0 (-> this current-prim)))
+          "??"
+          (let ((v1-38 (collision-edit-get-prim arg0 0)))
+            (when v1-38
+              (if (zero? (-> v1-38 prim-core prim-type))
+                  (+! s2-0 -1)
+                  )
+              )
+            )
+          (cond
+            ((= s2-0 -1)
+             (set! a3-0 "*group*")
+             )
+            ((= (-> (collision-edit-get-prim arg0 s2-0) prim-core prim-type) 1)
+             (set! a3-0 (-> *collision-editor-mesh-names* s2-0))
+             )
+            (else
+              (set! a3-0 "*sphere*")
+              )
+            )
+          )
+        (format *stdcon* " r1/l1: select prim ~D ~S~%" (-> this current-prim) a3-0)
+        (format *stdcon* " dpad: select function~%")
+        (format *stdcon* " x, tri: toggle/call~%")
+        (format *stdcon* "------------------------~%")
+        (format
+          *stdcon*
+          " ~S analog: ~S~%"
+          (if (= (-> this current-func) (collision-editor-func analog))
+              s3-0
+              s4-0
+              )
+          (if (= (-> this analog-func) (collision-editor-func analog))
+              "adjust sphere"
+              "???"
+              )
+          )
+        (let ((v1-50 (collision-edit-get-prim arg0 (-> this current-prim)))
+              (a3-2 (the-as basic "??"))
+              )
+          (if (zero? (-> v1-50 transform-index))
+              (set! a3-2 "*root*")
+              )
+          (if (and v1-50
+                   (< (-> v1-50 transform-index) (-> arg0 node-list length))
+                   (-> arg0 node-list data (-> v1-50 transform-index) joint)
+                   )
+              (set! a3-2 (-> arg0 node-list data (-> v1-50 transform-index) joint name))
+              )
+          (format
+            *stdcon*
+            " ~S change sphere joint ~S~%"
+            (if (= (-> this current-func) (collision-editor-func edit))
+                s3-0
+                s4-0
+                )
+            a3-2
+            )
+          )
+        (format
+          *stdcon*
+          " ~S print to listener~%"
+          (if (= (-> this current-func) (collision-editor-func print-collision))
+              s3-0
+              s4-0
+              )
+          )
+        (format *stdcon* " ~S quit~%" (cond
+                                        ((= (-> this current-func) (collision-editor-func stop-editor))
+                                         (empty)
+                                         s3-0
+                                         )
+                                        (else
+                                          s4-0
+                                          )
+                                        )
+                )
+        )
+      (let ((s4-1 0))
+        (if (cpad-pressed? 0 x)
+            (+! s4-1 1)
+            )
+        (if (cpad-pressed? 0 triangle)
+            (+! s4-1 -1)
+            )
+        (when (nonzero? s4-1)
+          (case (-> this current-func)
+            (((collision-editor-func analog))
+             (+! (-> this analog-func) s4-1)
+             )
+            (((collision-editor-func edit))
+             (let ((v1-75 (collision-edit-get-prim arg0 (-> this current-prim))))
+               (when (and v1-75 (!= (-> v1-75 prim-core prim-type) 1))
+                 (let* ((a0-41 (-> v1-75 transform-index))
+                        (a1-25 (+ (-> arg0 node-list length) -1))
+                        (a0-42 (+ a0-41 s4-1))
+                        )
+                   (if (< a0-42 0)
+                       (set! a0-42 a1-25)
+                       )
+                   (while (or (= a0-42 1) (= a0-42 2))
+                     (+! a0-42 s4-1)
+                     )
+                   (if (< a1-25 a0-42)
+                       (set! a0-42 0)
+                       )
+                   (set! (-> v1-75 transform-index) a0-42)
+                   )
+                 )
+               )
+             )
+            (((collision-editor-func print-collision))
+             (print-actual-collision arg0)
+             )
+            (((collision-editor-func stop-editor))
+             (kill-by-type collision-editor-edited-proc *active-pool*)
+             (kill-by-type collision-editor *active-pool*)
+             )
+            (else
+              (format 0 "~%ERROR<GMJ>: bad collision-edit-func~%")
+              )
+            )
+          )
+        )
+      (cond
+        ((< (the-as int (-> this analog-func)) 0)
+         (set! (-> this analog-func) (collision-editor-func analog))
+         0
+         )
+        ((>= (the-as int (-> this analog-func)) 1)
+         (set! (-> this analog-func) (collision-editor-func analog))
+         0
+         )
+        )
+      (when arg0
+        (let ((f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 1.0))
+              (f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 48.0 110.0 1.0))
+              (f26-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 1.0))
+              (f24-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 1.0))
+              )
+          (when (or (!= f30-0 0.0) (!= f28-0 0.0) (!= f26-0 0.0) (!= f24-0 0.0))
+            (when (= (-> this analog-func) (collision-editor-func analog))
+              (set! f30-0 (* -409.6 f30-0))
+              (set! f28-0 (* -409.6 f28-0))
+              (let ((f0-8 (+ (* 0.01 f24-0) (* -0.01 f26-0))))
+                (set! f24-0 (+ 1.0 f0-8))
+                )
+              (set! f26-0 0.0)
+              )
+            (when (= (-> this analog-func) (collision-editor-func analog))
+              (let ((s4-2 (collision-edit-get-prim arg0 (-> this current-prim))))
+                (when s4-2
+                  (set! (-> s4-2 local-sphere w) (* (-> s4-2 local-sphere w) f24-0))
+                  (let ((s3-1 (new 'stack-no-clear 'matrix)))
+                    (let* ((a2-17 (matrix-local->world #f #f))
+                           (v1-107 (-> a2-17 rvec quad))
+                           (a0-58 (-> a2-17 uvec quad))
+                           (a1-37 (-> a2-17 fvec quad))
+                           (a2-18 (-> a2-17 trans quad))
+                           )
+                      (set! (-> s3-1 rvec quad) v1-107)
+                      (set! (-> s3-1 uvec quad) a0-58)
+                      (set! (-> s3-1 fvec quad) a1-37)
+                      (set! (-> s3-1 trans quad) a2-18)
+                      )
+                    (let ((s2-1 (new 'stack-no-clear 'matrix)))
+                      (let* ((a2-19 (-> arg0 node-list data (-> s4-2 transform-index) bone transform))
+                             (v1-111 (-> a2-19 rvec quad))
+                             (a0-61 (-> a2-19 uvec quad))
+                             (a1-38 (-> a2-19 fvec quad))
+                             (a2-20 (-> a2-19 trans quad))
+                             )
+                        (set! (-> s2-1 rvec quad) v1-111)
+                        (set! (-> s2-1 uvec quad) a0-61)
+                        (set! (-> s2-1 fvec quad) a1-38)
+                        (set! (-> s2-1 trans quad) a2-20)
+                        )
+                      (let ((s1-1 (new 'stack-no-clear 'vector)))
+                        (set! (-> s1-1 x) f30-0)
+                        (set! (-> s1-1 y) f28-0)
+                        (set! (-> s1-1 z) f26-0)
+                        (set! (-> s1-1 w) 1.0)
+                        (vector-reset! (-> s3-1 trans))
+                        (vector-matrix*! s1-1 s1-1 s3-1)
+                        (vector-reset! (-> s2-1 trans))
+                        (matrix-transpose! s2-1 s2-1)
+                        (vector-matrix*! s1-1 s1-1 s2-1)
+                        (+! (-> s4-2 local-sphere x) (-> s1-1 x))
+                        (+! (-> s4-2 local-sphere y) (-> s1-1 y))
+                        (+! (-> s4-2 local-sphere z) (-> s1-1 z))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (let ((s5-1 (collision-edit-get-prim arg0 (-> this current-prim))))
+    (cond
+      (s5-1
+        (show-maya-skeleton arg0 (-> s5-1 transform-index) #x45800000)
+        (let ((gp-1 (shl #x80ff 16)))
+          (let ((v1-117 (-> s5-1 prim-core prim-type)))
+            (cond
+              ((= v1-117 1)
+               (collision-editor-add-mesh-to-ccache (the-as collide-shape-prim-group s5-1) *collide-cache*)
+               (debug-draw *collide-cache*)
+               (let ((s4-3 (the-as object (-> *collide-cache* tris))))
+                 (countdown (s3-2 (-> *collide-cache* num-tris))
+                   (when (< (-> s5-1 prim-core world-sphere w)
+                            (vector-vector-distance
+                              (the-as vector (-> s5-1 prim-core))
+                              (the-as vector (-> (the-as collide-cache-tri s4-3) vertex))
+                              )
+                            )
+                     (add-debug-x
+                       #t
+                       (bucket-id debug-no-zbuf1)
+                       (the-as vector (-> (the-as collide-cache-tri s4-3) vertex))
+                       (new 'static 'rgba :r #xff :g #xff :a #x80)
+                       )
+                     (set! gp-1 (the-as int (the-as uint #x800000ff)))
+                     )
+                   (when (< (-> s5-1 prim-core world-sphere w)
+                            (vector-vector-distance (the-as vector (-> s5-1 prim-core)) (-> (the-as collide-cache-tri s4-3) vertex 1))
+                            )
+                     (add-debug-x
+                       #t
+                       (bucket-id debug-no-zbuf1)
+                       (-> (the-as collide-cache-tri s4-3) vertex 1)
+                       (new 'static 'rgba :r #xff :g #xff :a #x80)
+                       )
+                     (set! gp-1 (the-as int (the-as uint #x800000ff)))
+                     )
+                   (when (< (-> s5-1 prim-core world-sphere w)
+                            (vector-vector-distance (the-as vector (-> s5-1 prim-core)) (-> (the-as collide-cache-tri s4-3) vertex 2))
+                            )
+                     (add-debug-x
+                       #t
+                       (bucket-id debug-no-zbuf1)
+                       (-> (the-as collide-cache-tri s4-3) vertex 2)
+                       (new 'static 'rgba :r #xff :g #xff :a #x80)
+                       )
+                     (set! gp-1 (the-as int (the-as uint #x800000ff)))
+                     )
+                   (set! s4-3 (&+ (the-as collide-cache-tri s4-3) 64))
+                   )
+                 )
+               )
+              ((= v1-117 -1)
+               )
+              ((zero? v1-117)
+               )
+              )
+            )
+          (add-debug-sphere
+            #t
+            (bucket-id debug-no-zbuf1)
+            (the-as vector (-> s5-1 prim-core))
+            (-> s5-1 prim-core world-sphere w)
+            (the-as rgba gp-1)
+            )
+          )
+        )
+      (else
+        (show-maya-skeleton arg0 1000 #x45800000)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(define *collision-edit-info* (the-as collision-edit-info 0))
+
+(define *collision-edit-info*
+  (new 'static 'collision-edit-info :editing #t :current-func (collision-editor-func print-collision))
+  )
+
+(defstate idle (collision-editor)
+  :virtual #t
+  :exit (behavior ()
+    (set! *external-cam-mode* #f)
+    )
+  :trans (behavior ()
+    (let ((gp-0 *collision-edit-info*)
+          (s5-0 (method-of-type collision-edit-info draw-menu))
+          (s4-0 (handle->process (-> self proc)))
+          )
+      (s5-0 gp-0 (the-as process-drawable (if (type? s4-0 process-drawable)
+                                              s4-0
+                                              )
+                         )
+            )
+      )
+    )
+  :code sleep-code
+  )
+
+(defbehavior collision-editor-init-by-other collision-editor ((arg0 handle))
+  (set! (-> self proc) arg0)
+  (go-virtual idle)
+  )
+
+(defun stop-collision-edit ()
+  (kill-by-type collision-editor-edited-proc *active-pool*)
+  (kill-by-type collision-editor *active-pool*)
+  0
+  (none)
+  )
+
+(defun collision-edit ((arg0 process))
+  (stop-collision-edit)
+  (when (not arg0)
+    (let ((gp-1 (get-process *default-dead-pool* collision-editor-edited-proc #x4000 1)))
+      (set! arg0 (ppointer->process (when gp-1
+                                      (let ((t9-2 (method-of-type collision-editor-edited-proc activate)))
+                                        (t9-2
+                                          (the-as collision-editor-edited-proc gp-1)
+                                          *default-pool*
+                                          "collision-editor-edited-proc"
+                                          (the-as pointer #x70004000)
+                                          )
+                                        )
+                                      (run-now-in-process gp-1 collision-editor-edited-proc-init-by-other)
+                                      (-> gp-1 ppointer)
+                                      )
+                                    )
+            )
+      )
+    )
+  (let ((gp-2 (process->handle arg0)))
+    (process-spawn collision-editor gp-2 :name "collision-editor")
+    )
+  )
