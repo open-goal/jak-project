@@ -42,7 +42,7 @@ void setup_logging(const std::string& game_name, bool verbose, bool disable_ansi
     lg::set_flush_level(lg::level::debug);
   } else {
     lg::set_file_level(lg::level::debug);
-    lg::set_stdout_level(lg::level::warn);
+    lg::set_stdout_level(lg::level::info);
     lg::set_flush_level(lg::level::warn);
   }
   if (disable_ansi_colors) {
@@ -141,9 +141,11 @@ int main(int argc, char** argv) {
   // Override the user's config dir, potentially (either because it was explicitly provided
   // or because it's portable mode)
   if (enable_portable) {
+    lg::info("Portable mod enabled");
     user_config_dir_override = file_util::get_current_executable_path();
   }
   if (!user_config_dir_override.empty()) {
+    lg::info("Overriding config directory with: {}", user_config_dir_override.string());
     file_util::override_user_config_dir(user_config_dir_override, !disable_save_location_override);
   }
 
