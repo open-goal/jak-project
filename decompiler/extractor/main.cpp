@@ -394,15 +394,20 @@ int main(int argc, char** argv) {
         } else {
           iso_data_path = file_util::get_jak_project_dir() / "iso_data" / data_subfolder;
         }
-        if (fs::exists(iso_data_path)) {
+        if (fs::exists(iso_data_path) && iso_data_path != temp_iso_extract_location) {
           fs::remove_all(iso_data_path);
         }
 
         // std::filesystem doesn't have a rename for dirs...
-        // TODO - potential disaster here, don't do either if the directories are the same location
+        // NOTE - potential disaster here, don't do either if the directories are the same location
         // or don't copy if the temp location is _inside_ the destination directory
-        fs::copy(temp_iso_extract_location, iso_data_path, fs::copy_options::recursive);
-        fs::remove_all(temp_iso_extract_location);
+        if (!file_util::is_dir_in_dir(iso_data_path, temp_iso_extract_location)) {
+          fs::copy(temp_iso_extract_location, iso_data_path, fs::copy_options::recursive);
+        }
+        if (iso_data_path != temp_iso_extract_location) {
+          // in case input is also output, don't just wipe everything (weird)
+          fs::remove_all(temp_iso_extract_location);
+        }
       }
     } else if (fs::is_directory(input_file_path)) {
       if (!flag_folder) {

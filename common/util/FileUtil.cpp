@@ -760,4 +760,9 @@ std::string get_majority_file_line_endings(const std::string& file_contents) {
   return "\n";
 }
 
+bool is_dir_in_dir(const fs::path& parent, const fs::path& child) {
+  // Check if the parent path is a prefix of the child path
+  return child.has_parent_path() && child.parent_path().lexically_relative(parent) == fs::path(".");
+}
+
 }  // namespace file_util
