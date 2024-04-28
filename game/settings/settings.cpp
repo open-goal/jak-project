@@ -33,7 +33,9 @@ void from_json(const json& j, DebugSettings& obj) {
   json_deserialize_if_exists(hide_imgui_key);
 }
 
-DebugSettings::DebugSettings() {
+DebugSettings::DebugSettings() {}
+
+void DebugSettings::load_settings() {
   try {
     std::string file_path =
         (file_util::get_user_misc_dir(g_game_version) / "debug-settings.json").string();
@@ -71,7 +73,9 @@ void from_json(const json& j, DisplaySettings& obj) {
   json_deserialize_if_exists(window_ypos);
 }
 
-DisplaySettings::DisplaySettings() {
+DisplaySettings::DisplaySettings() {}
+
+void DisplaySettings::load_settings() {
   try {
     std::string file_path =
         (file_util::get_user_settings_dir(g_game_version) / "display-settings.json").string();
@@ -114,7 +118,9 @@ void from_json(const json& j, InputSettings& obj) {
   json_deserialize_if_exists(keyboard_enabled);
 }
 
-InputSettings::InputSettings() {
+InputSettings::InputSettings() {}
+
+void InputSettings::load_settings() {
   try {
     keyboard_binds = DEFAULT_KEYBOARD_BINDS;
     mouse_binds = DEFAULT_MOUSE_BINDS;
@@ -131,6 +137,7 @@ InputSettings::InputSettings() {
     lg::error("Error encountered when attempting to load input settings {}", e.what());
   }
 }
+
 void InputSettings::save_settings() {
   json data = *this;
   auto file_path = file_util::get_user_settings_dir(g_game_version) / "input-settings.json";

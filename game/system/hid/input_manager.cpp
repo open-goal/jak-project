@@ -22,6 +22,7 @@ InputManager::InputManager()
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("input_manager::init");
+    m_settings->load_settings();
     {
       auto p = scoped_prof("input_manager::init::sdl_init_subsystem");
       // initializing the controllers on startup can sometimes take a very long time

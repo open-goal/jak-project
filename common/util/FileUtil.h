@@ -41,8 +41,11 @@ void set_iso_data_dir(const fs::path& directory);
 bool create_dir_if_needed(const fs::path& path);
 bool create_dir_if_needed_for_file(const std::string& path);
 bool create_dir_if_needed_for_file(const fs::path& path);
+std::string get_current_executable_path();
 std::optional<std::string> try_get_project_path_from_path(const std::string& path);
 bool setup_project_path(std::optional<fs::path> project_path_override);
+void override_user_config_dir(fs::path user_config_dir_override,
+                              bool use_overridden_config_dir_for_saves);
 std::string get_file_path(const std::vector<std::string>& path);
 void write_binary_file(const std::string& name, const void* data, size_t size);
 void write_binary_file(const fs::path& name, const void* data, size_t size);

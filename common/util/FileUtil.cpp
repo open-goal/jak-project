@@ -57,6 +57,14 @@ fs::path get_user_home_dir() {
 #endif
 }
 
+struct {
+  bool initialized = false;
+  fs::path path_to_data_folder;
+  fs::path user_config_dir_override = "";
+  // by default - if the config dir is overridden, we don't use the default save location
+  bool use_overridden_config_dir_for_saves = true;
+} g_file_path_info;
+
 fs::path get_user_config_dir() {
   fs::path config_base_path;
 #ifdef _WIN32
@@ -80,35 +88,51 @@ fs::path get_user_config_dir() {
 
 fs::path get_user_settings_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
-  return get_user_config_dir() / game_version_name / "settings";
+  auto config_dir = get_user_config_dir();
+  if (!g_file_path_info.user_config_dir_override.empty()) {
+    config_dir = g_file_path_info.user_config_dir_override / "OpenGOAL";
+  }
+  return config_dir / game_version_name / "settings";
 }
 
 fs::path get_user_memcard_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
-  return get_user_config_dir() / game_version_name / "saves";
+  auto config_dir = get_user_config_dir();
+  if (!g_file_path_info.user_config_dir_override.empty() &&
+      g_file_path_info.use_overridden_config_dir_for_saves) {
+    config_dir = g_file_path_info.user_config_dir_override / "OpenGOAL";
+  }
+  return config_dir / game_version_name / "saves";
 }
 
 fs::path get_user_screenshots_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
-  return get_user_config_dir() / game_version_name / "screenshots";
+  auto config_dir = get_user_config_dir();
+  if (!g_file_path_info.user_config_dir_override.empty()) {
+    config_dir = g_file_path_info.user_config_dir_override / "OpenGOAL";
+  }
+  return config_dir / game_version_name / "screenshots";
 }
 
 fs::path get_user_misc_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
-  return get_user_config_dir() / game_version_name / "misc";
+  auto config_dir = get_user_config_dir();
+  if (!g_file_path_info.user_config_dir_override.empty()) {
+    config_dir = g_file_path_info.user_config_dir_override / "OpenGOAL";
+  }
+  return config_dir / game_version_name / "misc";
 }
 
 fs::path get_user_features_dir(GameVersion game_version) {
   auto game_version_name = game_version_names[game_version];
-  auto path = get_user_config_dir() / game_version_name / "features";
+  auto config_dir = get_user_config_dir();
+  if (!g_file_path_info.user_config_dir_override.empty()) {
+    config_dir = g_file_path_info.user_config_dir_override / "OpenGOAL";
+  }
+  auto path = config_dir / game_version_name / "features";
   file_util::create_dir_if_needed(path);
   return path;
 }
-
-struct {
-  bool initialized = false;
-  fs::path path_to_data;
-} gFilePathInfo;
 
 fs::path g_iso_data_directory = "";
 
@@ -173,29 +197,30 @@ std::optional<fs::path> try_get_data_dir() {
 }
 
 bool setup_project_path(std::optional<fs::path> project_path_override) {
-  if (gFilePathInfo.initialized) {
+  if (g_file_path_info.initialized) {
     return true;
   }
 
   if (project_path_override) {
-    gFilePathInfo.path_to_data = fs::absolute(project_path_override.value());
-    gFilePathInfo.initialized = true;
-    lg::info("Using explicitly set project path: {}", gFilePathInfo.path_to_data.string());
+    g_file_path_info.path_to_data_folder = fs::absolute(project_path_override.value());
+    g_file_path_info.initialized = true;
+    lg::info("Using explicitly set project path: {}",
+             g_file_path_info.path_to_data_folder.string());
     return true;
   }
 
   auto data_path = try_get_data_dir();
   if (data_path) {
-    gFilePathInfo.path_to_data = *data_path;
-    gFilePathInfo.initialized = true;
+    g_file_path_info.path_to_data_folder = *data_path;
+    g_file_path_info.initialized = true;
     lg::info("Using data path: {}", data_path->string());
     return true;
   }
 
   auto development_repo_path = try_get_jak_project_path();
   if (development_repo_path) {
-    gFilePathInfo.path_to_data = *development_repo_path;
-    gFilePathInfo.initialized = true;
+    g_file_path_info.path_to_data_folder = *development_repo_path;
+    g_file_path_info.initialized = true;
     lg::info("Using development repo path: {}", *development_repo_path);
     return true;
   }
@@ -204,9 +229,15 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   return false;
 }
 
+void override_user_config_dir(fs::path user_config_dir_override,
+                              bool use_overridden_config_dir_for_saves) {
+  g_file_path_info.user_config_dir_override = user_config_dir_override;
+  g_file_path_info.use_overridden_config_dir_for_saves = use_overridden_config_dir_for_saves;
+}
+
 fs::path get_jak_project_dir() {
-  ASSERT(gFilePathInfo.initialized);
-  return gFilePathInfo.path_to_data;
+  ASSERT(g_file_path_info.initialized);
+  return g_file_path_info.path_to_data_folder;
 }
 
 fs::path get_iso_dir_for_game(GameVersion game_version) {
