@@ -5,5 +5,287 @@
 ;; name in dgo: hover-nav-control-h
 ;; dgos: TEMA, SEA, FACC, LFORM, FACD, LPATK, TOWERA, PRECA, VOCA
 
+;; +++net-path-node-status
+(defenum net-path-node-status
+  :type uint16
+  (none)
+  (open)
+  (closed)
+  )
+;; ---net-path-node-status
+
+
+;; +++hover-nav-flags
+(defenum hover-nav-flags
+  :type uint16
+  :bitfield #t
+  (hnf0)
+  (hnf1)
+  (hnf2)
+  (hnf3)
+  (hnf4)
+  (hnf5)
+  (hnf6)
+  (hnf7)
+  )
+;; ---hover-nav-flags
+
+
 ;; DECOMP BEGINS
 
+(define *debug-hover* #f)
+
+(deftype nav-network-adjacency (structure)
+  ((index  int32)
+   (dist   float)
+   )
+  )
+
+
+(deftype nav-network-adjacency-array (inline-array-class)
+  ((data  nav-network-adjacency  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> nav-network-adjacency-array heap-base) (the-as uint 16))
+
+(deftype list-node (structure)
+  ((next  list-node)
+   (prev  list-node)
+   )
+  )
+
+
+(deftype nav-network-path-node (list-node)
+  ((row-index      int32)
+   (status         net-path-node-status)
+   (parent         nav-network-path-node)
+   (cost-to-start  float)
+   (cost-to-end    float)
+   )
+  )
+
+
+(deftype nav-network-info (structure)
+  ((path-node  nav-network-path-node  :inline)
+   (pos        vector                 :inline)
+   (index      int32)
+   (sub-graph  int32)
+   (count      int32)
+   (adjacency  (inline-array nav-network-adjacency))
+   )
+  )
+
+
+(deftype nav-network-info-array (inline-array-class)
+  ((data  nav-network-info  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> nav-network-info-array heap-base) (the-as uint 64))
+
+(deftype nav-network-edge (structure)
+  ((start-index  int32)
+   (end-index    int32)
+   (radius       float)
+   (sub-graph    int32)
+   )
+  )
+
+
+(deftype hover-nav-sphere (list-node)
+  ((sphere  sphere  :inline)
+   (handle  handle)
+   (timer   time-frame)
+   )
+  )
+
+
+(deftype hover-nav-path-segment (list-node)
+  ((curve-matrix  matrix  :inline)
+   (pos-index     int32   2)
+   (dist          float)
+   (du            float)
+   )
+  (:methods
+    (set-du (_type_ float) none)
+    )
+  )
+
+
+(defmethod set-du ((this hover-nav-path-segment) (arg0 float))
+  (set! (-> this du) (/ arg0 (-> this dist)))
+  0
+  (none)
+  )
+
+(deftype hover-nav-path-info (structure)
+  ((segment-list  hover-nav-path-segment)
+   (tail-segment  hover-nav-path-segment)
+   (curr-segment  hover-nav-path-segment)
+   )
+  :pack-me
+  (:methods
+    (hover-nav-path-info-method-9 (_type_) none)
+    )
+  )
+
+
+(deftype nav-network-data (structure)
+  ((node-array  (array nav-network-info))
+   (edge-array  (array nav-network-edge))
+   )
+  )
+
+
+(define *dummy-adjacency* (new 'static 'nav-network-data
+                            :node-array (new 'static 'boxed-array :type nav-network-info)
+                            :edge-array (new 'static 'boxed-array :type nav-network-edge)
+                            )
+        )
+
+(deftype path-index-array (inline-array-class)
+  ((data  int8  :dynamic)
+   )
+  )
+
+
+(set! (-> path-index-array heap-base) (the-as uint 4))
+
+(deftype nav-network (basic)
+  ((network            (array nav-network-info))
+   (edge               (array nav-network-edge))
+   (control-handle     handle)
+   (list-table         list-node               5 :offset  32)
+   (open-list          nav-network-path-node     :overlay-at (-> list-table 0))
+   (closed-list        nav-network-path-node     :overlay-at (-> list-table 1))
+   (sphere-list        hover-nav-sphere          :overlay-at (-> list-table 3))
+   (free-segment-list  hover-nav-path-segment    :overlay-at (-> list-table 2))
+   (free-sphere-list   hover-nav-sphere          :overlay-at (-> list-table 4))
+   (segment-pool       (pointer hover-nav-path-segment))
+   (sphere-pool        (pointer hover-nav-sphere))
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (alloc-nav-network-for-level! (_type_ int int) none)
+    (init-by-other! (_type_ level nav-network-data) none)
+    (nav-network-method-11 (_type_) none)
+    (reset! (_type_) none)
+    (nav-network-method-13 (_type_ int nav-network-path-node) nav-network-path-node)
+    (nav-network-method-14 (_type_ int nav-network-path-node) object)
+    (nav-network-method-15 (_type_ nav-network-path-node) object)
+    (nav-network-method-16 (_type_ nav-network-path-node) none)
+    (nav-network-method-17 (_type_) nav-network-path-node)
+    (close-node! (_type_ nav-network-path-node) net-path-node-status)
+    (nav-network-method-19 (_type_ nav-network-path-node) none)
+    (nav-network-method-20 (_type_ nav-network-path-node vector) none)
+    (nav-network-method-21 (_type_ int vector) none)
+    (nav-network-method-22 (_type_ object int int) none)
+    (nav-network-method-23 (_type_ hover-nav-path-info vector vector int int) hover-nav-path-segment)
+    (nav-network-method-24 (_type_ hover-nav-path-info) none)
+    (nav-network-method-25 (_type_ hover-nav-path-info int int int vector) symbol)
+    (nav-network-method-26 (_type_ process collide-prim-core) none)
+    (nav-network-method-27 (_type_ vector process vector vector float) vector)
+    (nav-network-method-28 (_type_) none)
+    (inspect-lists (_type_) none)
+    (nav-network-method-30 (_type_) none)
+    (get-network-info (_type_) (array nav-network-info))
+    (nav-network-method-32 (_type_ vector int) int)
+    (nav-network-method-33 (_type_ vector vector int) int)
+    (nav-network-method-34 (_type_ vector vector int) int)
+    (nav-network-method-35 (_type_ vector vector int) symbol)
+    (nav-network-method-36 (_type_ bounding-box) none)
+    (print-vis-bbox (_type_ string) none)
+    )
+  )
+
+
+(defmethod get-network-info ((this nav-network))
+  (-> this network)
+  )
+
+(deftype hover-nav-params (structure)
+  ((max-speed               float)
+   (max-acceleration        float)
+   (max-rotation-rate       float)
+   (friction                float)
+   (nav-collide-prim-index  int32)
+   )
+  )
+
+
+(deftype hover-fixed-path-info (structure)
+  ((path           path-control)
+   (start-index    int32)
+   (end-index      int32)
+   (current-index  int32)
+   (step           int32)
+   )
+  :pack-me
+  )
+
+
+(deftype hover-nav-control (basic)
+  ((root                         collide-shape-moving)
+   (fixed-path-info              hover-fixed-path-info  :inline)
+   (path-info                    hover-nav-path-info    :inline)
+   (transvv                      vector                 :inline)
+   (dest-pos                     vector                 :inline)
+   (dest-vel                     vector                 :inline)
+   (dest-move-dir                vector                 :inline)
+   (dest-offset                  vector                 :inline)
+   (move-dir                     vector                 :inline)
+   (nav-collide-impulse          vector                 :inline)
+   (nav                          nav-network)
+   (flags                        hover-nav-flags)
+   (params                       hover-nav-params)
+   (path-timer                   time-frame)
+   (sub-graph                    int32)
+   (nav-collide-impulse-len      float)
+   (dest-speed                   float)
+   (local-dist                   float)
+   (speed                        float)
+   (max-los-speed                float)
+   (target-speed                 float)
+   (target-acceleration          float)
+   (u-param                      float)
+   (speed-dest                   float)
+   (curr-dest-pt                 int32)
+   (max-speed-multiplier         float)
+   (max-acceleration-multiplier  float)
+   )
+  (:methods
+    (new (symbol type process collide-shape-moving hover-nav-params) _type_)
+    (hover-nav-control-method-9 (_type_) none)
+    (hover-nav-control-method-10 (_type_ vector vector vector) none)
+    (hover-nav-control-method-11 (_type_) none)
+    (hover-nav-control-method-12 (_type_ vector) none)
+    (hover-nav-control-method-13 (_type_) none)
+    (set-multipliers (_type_ float float) none)
+    (hover-nav-control-method-15 (_type_ vector) vector)
+    (hover-nav-control-method-16 (_type_ vector) vector)
+    (hover-nav-control-method-17 (_type_) collide-prim-core)
+    (hover-nav-control-method-18 (_type_ path-control int int) none)
+    (hover-nav-control-method-19 (_type_) none)
+    (hover-nav-control-method-20 (_type_) none)
+    (get-curr-segment (_type_) hover-nav-path-segment)
+    (hover-nav-control-method-22 (_type_) symbol)
+    (hover-nav-control-method-23 (_type_ vector) float)
+    (hover-nav-control-method-24 (_type_ vector vector) symbol)
+    (hover-nav-control-method-25 (_type_) none)
+    (probe-background (_type_ vector vector float) symbol)
+    (hover-nav-control-method-27 (_type_ vector vector) int)
+    (hover-nav-control-method-28 (_type_ vector vector) int)
+    (hover-nav-control-method-29 (_type_ vector vector) symbol)
+    (hover-nav-control-method-30 (_type_ vector vector) float)
+    (hover-nav-control-method-31 (_type_) float)
+    (hover-nav-control-method-32 (_type_ vector) none)
+    (hover-nav-control-method-33 (_type_) float)
+    (hover-nav-control-method-34 (_type_) float)
+    )
+  )
+
+
+(define *hover-nav-time-offset* 0)

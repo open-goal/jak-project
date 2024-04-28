@@ -7,3 +7,158 @@
 
 ;; DECOMP BEGINS
 
+(define mercneric-vu0-block (new 'static 'vu-function #|:length #xbe :origin #x118 :qlength 95|#))
+
+(deftype invinitdata (structure)
+  ((count      uint8)
+   (init-data  uint8)
+   (init-addr  uint16)
+   )
+  :pack-me
+  )
+
+
+(define *inv-init-table* (new 'static 'inline-array invinitdata 8
+                           (new 'static 'invinitdata :count #x48 :init-addr #x1)
+                           (new 'static 'invinitdata :count #x43 :init-data #xc :init-addr #x11)
+                           (new 'static 'invinitdata :count #x3d :init-data #x18 :init-addr #x21)
+                           (new 'static 'invinitdata :count #x38 :init-data #x22 :init-addr #xe0)
+                           (new 'static 'invinitdata :count #x38 :init-data #x24 :init-addr #xe1)
+                           (new 'static 'invinitdata :count #x33 :init-data #x30 :init-addr #xf1)
+                           (new 'static 'invinitdata :count #x2e :init-data #x3a :init-addr #x190)
+                           (new 'static 'invinitdata :count #x2d :init-data #x3c :init-addr #x191)
+                           )
+        )
+
+(def-mips2c generic-merc-init-asm (function none))
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; ERROR: function has no type analysis. Cannot decompile.
+
+(def-mips2c mercneric-convert function)
+
+(def-mips2c high-speed-reject function)
+
+(def-mips2c generic-translucent (function gsf-buffer none))
+
+(def-mips2c generic-merc-query function)
+
+(def-mips2c generic-merc-death function)
+
+(def-mips2c generic-merc-execute-asm function)
+
+(def-mips2c generic-merc-do-chain (function mercneric-chain dma-buffer pointer))
+
+(defun generic-merc-execute-all ((arg0 dma-buffer))
+  (local-vars (a0-24 int) (a0-26 int))
+  (let ((s4-0 (-> *foreground* foreground-grid))
+        (gp-0 (-> *display* frames (-> *display* on-screen) global-buf base))
+        )
+    (when *debug-segment*
+      (let ((s3-0 (-> *display* frames (-> *display* on-screen) profile-array data 0))
+            (v1-14 'generic)
+            (s2-0 *profile-generic-color*)
+            )
+        (when (and *dproc* *debug-segment*)
+          (let ((s1-0 (-> s3-0 data (-> s3-0 count))))
+            (let ((s0-0 (-> s3-0 base-time)))
+              (set! (-> s1-0 name) v1-14)
+              (set! (-> s1-0 start-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s0-0))))
+              )
+            (set! (-> s1-0 depth) (the-as uint (-> s3-0 depth)))
+            (set! (-> s1-0 color) s2-0)
+            (set! (-> s3-0 segment (-> s3-0 depth)) s1-0)
+            )
+          (set! (-> s3-0 count) (min 1023 (+ (-> s3-0 count) 1)))
+          (+! (-> s3-0 depth) 1)
+          (set! (-> s3-0 max-depth) (max (-> s3-0 max-depth) (-> s3-0 depth)))
+          )
+        )
+      0
+      )
+    (let* ((v1-28 (-> *perf-stats* data 38))
+           (a0-12 (-> v1-28 ctrl))
+           )
+      (+! (-> v1-28 count) 1)
+      (b! (zero? a0-12) cfg-9 :delay (nop!))
+      (.mtc0 Perf 0)
+      (.sync.l)
+      (.sync.p)
+      (.mtpc pcr0 0)
+      (.mtpc pcr1 0)
+      (.sync.l)
+      (.sync.p)
+      (.mtc0 Perf a0-12)
+      )
+    (.sync.l)
+    (.sync.p)
+    (label cfg-9)
+    0
+    ;; og:preserve-this
+    (set! (-> (scratchpad-object generic-work) saves to-vu0-waits) (the-as uint 0))
+    (set! (-> (scratchpad-object generic-work) saves to-spr-waits) (the-as uint 0))
+    (set! (-> (scratchpad-object generic-work) saves from-spr-waits) (the-as uint 0))
+    (flush-cache 0)
+    (generic-initialize-without-sync (-> *math-camera* perspective) *default-lights*)
+    (generic-merc-init-asm)
+    (set! (-> (scratchpad-object generic-work) in-buf merc shadow write-limit)
+          (the-as int (&+ (-> arg0 end) -262144))
+          )
+    (dotimes (s3-1 11)
+      (dotimes (s2-1 7)
+        (generic-merc-do-chain (-> s4-0 level-buckets s3-1 data s2-1 mercneric) arg0)
+        )
+      )
+    (generic-merc-do-chain (-> s4-0 warp-chain) arg0)
+    (let ((v1-43 (-> *perf-stats* data 38)))
+      (b! (zero? (-> v1-43 ctrl)) cfg-17 :delay (nop!))
+      (.mtc0 Perf 0)
+      (.sync.l)
+      (.sync.p)
+      (.mfpc a0-24 pcr0)
+      (+! (-> v1-43 accum0) a0-24)
+      (.mfpc a0-26 pcr1)
+      (+! (-> v1-43 accum1) a0-26)
+      )
+    (label cfg-17)
+    0
+    (update-wait-stats
+      (-> *perf-stats* data 38)
+      ;; og:preserve-this
+      (-> (scratchpad-object generic-work) saves to-vu0-waits)
+      (-> (scratchpad-object generic-work) saves to-spr-waits)
+      (-> (scratchpad-object generic-work) saves from-spr-waits)
+      )
+    (when *debug-segment*
+      (let ((s5-1 (-> *display* frames (-> *display* on-screen) profile-array data 0)))
+        (when (and *dproc* *debug-segment*)
+          (let* ((v1-61 (+ (-> s5-1 depth) -1))
+                 (s4-1 (-> s5-1 segment v1-61))
+                 (s3-2 (-> s5-1 base-time))
+                 )
+            (when (>= v1-61 0)
+              (set! (-> s4-1 end-time) (the-as int (- (timer-count (the-as timer-bank #x10000800)) (the-as uint s3-2))))
+              (+! (-> s5-1 depth) -1)
+              )
+            )
+          )
+        )
+      0
+      )
+    (let ((v1-66 *dma-mem-usage*))
+      (when (nonzero? v1-66)
+        (set! (-> v1-66 length) (max 91 (-> v1-66 length)))
+        (set! (-> v1-66 data 90 name) "pris-generic")
+        (+! (-> v1-66 data 90 count) 1)
+        (+! (-> v1-66 data 90 used)
+            (&- (-> *display* frames (-> *display* on-screen) global-buf base) (the-as uint gp-0))
+            )
+        (set! (-> v1-66 data 90 total) (-> v1-66 data 90 used))
+        )
+      )
+    )
+  (none)
+  )

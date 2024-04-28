@@ -7,3 +7,831 @@
 
 ;; DECOMP BEGINS
 
+(defun foresta-login ((arg0 level))
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  (alloc-nav-network-for-level! *nav-network* 128 10)
+  0
+  (none)
+  )
+
+(defun foresta-logout ((arg0 level))
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )
+
+(defun foresta-activate ((arg0 level))
+  (init-by-other! *nav-network* arg0 *foresta-adjacency*)
+  0
+  (none)
+  )
+
+(deftype hud-neo-spawner-health (hud)
+  ()
+  )
+
+
+(defmethod draw ((this hud-neo-spawner-health))
+  (let ((f0-1 (fmax 0.0 (fmin 1.0 (* 0.1 (the float (-> this values 0 current)))))))
+    (set! (-> this sprites 1 color x) (the int (* 255.0 (- 1.0 f0-1))))
+    (set! (-> this sprites 1 color y) (the int (* 255.0 f0-1)))
+    (set! (-> this sprites 1 color z) 0)
+    (set! (-> this sprites 1 scale-x) (* 7.5 f0-1))
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod event-callback ((this hud-neo-spawner-health) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('set-health)
+     (set! v0-0 (-> arg3 param 0))
+     (set! (-> this values 0 target) (the-as int v0-0))
+     v0-0
+     )
+    (('set-hud-pos)
+     (set-hud-piece-position!
+       (the-as hud-sprite (-> this sprites))
+       (the-as int (+ (-> arg3 param 0) -16))
+       (the-as int (-> arg3 param 1))
+       )
+     (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) 2 2)
+     (set! (-> this sprites 0 pos z) (the-as int (-> arg3 param 2)))
+     (set! v0-0 (+ (-> this sprites 0 pos z) 1))
+     (set! (-> this sprites 1 pos z) (the-as int v0-0))
+     v0-0
+     )
+    (else
+      ((method-of-type hud event-callback) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod update-values! ((this hud-neo-spawner-health))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-neo-spawner-health))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center) (gui-action play) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture common-white common)))
+  (set! (-> this sprites 0 flags) (hud-sprite-flags))
+  (set! (-> this sprites 0 scale-x) 8.0)
+  (set! (-> this sprites 0 scale-y) 2.5)
+  (set! (-> this sprites 0 color quad) (the-as uint128 0))
+  (set! (-> this sprites 0 color w) 64)
+  (set! (-> this sprites 1 tid) (-> this sprites 0 tid))
+  (set! (-> this sprites 1 flags) (hud-sprite-flags))
+  (set! (-> this sprites 1 scale-x) 0.0)
+  (set! (-> this sprites 1 scale-y) 1.5)
+  (set! (-> this sprites 1 color w) 96)
+  0
+  (none)
+  )
+
+(deftype neo-spawner-manager (process)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (total-spawned      int32)
+   (max-spawned        int32)
+   (suppress-spawn     symbol)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defstate idle (neo-spawner-manager)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-0 object))
+    (case message
+      (('hover-spawn)
+       (set! v0-0 (+ (-> self total-spawned) 1))
+       (set! (-> self total-spawned) (the-as int v0-0))
+       v0-0
+       )
+      (('hover-die)
+       (set! v0-0 (+ (-> self total-spawned) -1))
+       (set! (-> self total-spawned) (the-as int v0-0))
+       v0-0
+       )
+      (('going-dormant)
+       (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+         (set! v0-0 (-> *event-queue* data (-> *event-queue* length)))
+         (+! (-> *event-queue* length) 1)
+         (set! (-> (the-as event-message-block v0-0) from-handle) (process->handle self))
+         (set! (-> (the-as event-message-block v0-0) to-handle) (process->handle proc))
+         (set! (-> (the-as event-message-block v0-0) num-params) 0)
+         (set! (-> (the-as event-message-block v0-0) message) 'die-fast)
+         v0-0
+         )
+       )
+      (('can-spawn?)
+       (and (not (-> self suppress-spawn)) (< (-> self total-spawned) (-> self max-spawned)))
+       )
+      (('suppress-spawn)
+       (set! v0-0 (-> block param 0))
+       (set! (-> self suppress-spawn) (the-as symbol v0-0))
+       v0-0
+       )
+      (('set-max-enemies)
+       (set! v0-0 (-> block param 0))
+       (set! (-> self max-spawned) (the-as int v0-0))
+       v0-0
+       )
+      (('die)
+       (go empty-state)
+       )
+      )
+    )
+  :trans (behavior ()
+    (if (task-node-closed? (game-task-node forest-turn-on-machine-resolution))
+        (go empty-state)
+        )
+    )
+  :code sleep-code
+  )
+
+(defmethod init-from-entity! ((this neo-spawner-manager) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! (-> this total-spawned) 0)
+  (set! (-> this max-spawned) 0)
+  (set! (-> this suppress-spawn) #f)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-1 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (go (method-of-object this idle))
+  )
+
+(set! (-> *lightning-spec-id-table* 25) (new 'static 'lightning-spec
+                                          :name "neo-spawner-lightning"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 1.5
+                                          :fade-time 30.0
+                                          :texture (new 'static 'texture-id :index #x3a :page #x4)
+                                          :reduction 0.52
+                                          :num-points 32
+                                          :box-size 20480.0
+                                          :merge-factor 0.8
+                                          :merge-count 2
+                                          :radius 3276.8
+                                          :duration 150.0
+                                          :duration-rand 60.0
+                                          :sound #f
+                                          )
+      )
+
+(deftype neo-spawner-type (structure)
+  ((spawn-type  type)
+   (count       uint32)
+   )
+  )
+
+
+(define *neo-spawner-info*
+  (new 'static 'boxed-array :type neo-spawner-type
+    (new 'static 'neo-spawner-type :spawn-type (type-ref neo-wasp :method-count 185) :count #x1)
+    )
+  )
+
+(deftype neo-spawner (process-focusable)
+  ((info                neo-spawner-type)
+   (actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (manager-entity      entity)
+   (turret-entity       entity)
+   (minimap             connection-minimap)
+   (incoming-attack-id  int32)
+   (health              float)
+   (health-hud-timer    float)
+   (open-time           time-frame)
+   (triggered?          symbol)
+   (hud-health          handle)
+   (lightning-time      time-frame)
+   (dead-part           sparticle-launch-control)
+   (last-spawn-time     time-frame)
+   (pad                 uint8  8)
+   )
+  (:state-methods
+    closed
+    opening
+    open
+    spawn-enemy
+    vulnerable
+    die
+    dead
+    )
+  (:methods
+    (spawn-neo (_type_) none)
+    (neo-spawner-method-36 () none)
+    )
+  )
+
+
+(defskelgroup skel-neo-spawner neo-spawner neo-spawner-lod0-jg neo-spawner-idle-ja
+              ((neo-spawner-lod0-mg (meters 20)) (neo-spawner-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 -2 7)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-neo-spawner-explode-inner neo-spawner neo-spawner-explode-inner-lod0-jg -1
+              ((neo-spawner-explode-inner-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              )
+
+(defskelgroup skel-neo-spawner-explode-outer neo-spawner neo-spawner-explode-outer-lod0-jg -1
+              ((neo-spawner-explode-outer-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 15)
+              )
+
+(define *neo-spawner-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params :parent-joint-index 8 :group "skel-neo-spawner-explode-outer")
+      (new 'static 'debris-static-joint-params :parent-joint-index 11 :group "skel-neo-spawner-explode-outer")
+      (new 'static 'debris-static-joint-params :parent-joint-index 14 :group "skel-neo-spawner-explode-outer")
+      (new 'static 'debris-static-joint-params :parent-joint-index 17 :group "skel-neo-spawner-explode-outer")
+      (new 'static 'debris-static-joint-params :parent-joint-index 20 :group "skel-neo-spawner-explode-outer")
+      )
+    :collide-spec (collide-spec backgnd jak bot enemy obstacle hit-by-others-list player-list)
+    :sound-hit (static-sound-name "robo-bf")
+    )
+  )
+
+(defbehavior neo-spawner-handler neo-spawner ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('trigger)
+     (set! (-> self triggered?) #t)
+     (if (and (-> self next-state) (= (-> self next-state name) 'closed))
+         (go-virtual opening)
+         )
+     )
+    (('going-dormant)
+     (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+       (set! v0-0 (-> *event-queue* data (-> *event-queue* length)))
+       (+! (-> *event-queue* length) 1)
+       (set! (-> (the-as event-message-block v0-0) from-handle) (process->handle self))
+       (set! (-> (the-as event-message-block v0-0) to-handle) (process->handle arg0))
+       (set! (-> (the-as event-message-block v0-0) num-params) 0)
+       (set! (-> (the-as event-message-block v0-0) message) 'die-fast)
+       v0-0
+       )
+     )
+    (('test-eggs)
+     #f
+     )
+    (('attack)
+     (let ((gp-0 (the-as attack-info (-> arg3 param 1))))
+       (when (!= (-> gp-0 id) (-> self incoming-attack-id))
+         (when (= (-> gp-0 mode) 'for-turret-shot)
+           (sound-play "neo-take-hit")
+           (seek! (-> self health) 0.0 0.075)
+           (when (= (-> self health) 0.0)
+             (process-entity-status! self (entity-perm-status subtask-complete) #t)
+             (go-virtual die)
+             )
+           (set! (-> self health-hud-timer) 3.0)
+           (set! v0-0 (-> gp-0 id))
+           (set! (-> self incoming-attack-id) (the-as int v0-0))
+           v0-0
+           )
+         )
+       )
+     )
+    (('die)
+     (process-entity-status! self (entity-perm-status subtask-complete) #t)
+     (go-virtual die)
+     )
+    )
+  )
+
+(defbehavior neo-spawner-active-post neo-spawner ()
+  (cond
+    ((< 0.0 (-> self health-hud-timer))
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (send-event (handle->process (-> self hud-health)) 'set-health (the int (+ 0.5 (* 10.0 (-> self health)))))
+     (let ((s5-0 (new 'stack-no-clear 'vector))
+           (gp-0 (new 'stack-no-clear 'vector4w))
+           )
+       (set! (-> gp-0 quad) (the-as uint128 0))
+       (set! (-> s5-0 quad) (-> self node-list data 3 bone transform trans quad))
+       (+! (-> s5-0 y) -6144.0)
+       (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (camera-pos) s5-0)))
+         (vector-normalize! s4-1 9420.8)
+         (vector+! s5-0 s5-0 s4-1)
+         )
+       (cond
+         ((transform-point-qword! gp-0 s5-0)
+          (send-event
+            (handle->process (-> self hud-health))
+            'set-hud-pos
+            (+ (/ (-> gp-0 x) 16) -1792)
+            (+ (/ (-> gp-0 y) 16) -1840)
+            (/ (-> gp-0 z) 16)
+            )
+          (send-event (handle->process (-> self hud-health)) 'force-show)
+          )
+         (else
+           (send-event (handle->process (-> self hud-health)) 'force-hide)
+           (send-event (handle->process (-> self hud-health)) 'hide-quick)
+           )
+         )
+       )
+     (seek! (-> self health-hud-timer) 0.0 (seconds-per-frame))
+     )
+    (else
+      (logior! (-> self mask) (process-mask actor-pause))
+      (send-event (handle->process (-> self hud-health)) 'force-hide)
+      (send-event (handle->process (-> self hud-health)) 'hide-quick)
+      )
+    )
+  (when (< (-> self lightning-time) (current-time))
+    (process-spawn
+      lightning-tracker
+      :init lightning-tracker-init
+      (-> *lightning-spec-id-table* 25)
+      (the int (* 300.0 (rand-vu-float-range 0.3 0.8)))
+      #f
+      #f
+      (-> self root trans)
+      (new 'static 'vector :x -2967242.0 :y 269998.5 :z 4145753.2 :w 1.0)
+      :name "lightning-tracker"
+      :to self
+      :unk 0
+      )
+    (set! (-> self lightning-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 6.2 9.9)))))
+    )
+  (ja-post)
+  (none)
+  )
+
+(defstate closed (neo-spawner)
+  :virtual #t
+  :event neo-spawner-handler
+  :enter (behavior ()
+    (set! (-> self minimap) (add-icon! *minimap* self (the-as uint 129) (the-as int #f) (the-as vector #t) 0))
+    (set! (-> self open-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 8.0)))))
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.2))
+             (task-node-closed? (game-task-node forest-turn-on-machine-spawners))
+             )
+        (go-virtual die)
+        )
+    (if (< (-> self open-time) (current-time))
+        (go-virtual opening)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-set! 1)
+    (until #f
+      (ja-no-eval :group! neo-spawner-closed-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (if (and *target* (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 204800.0))
+          (go-virtual opening)
+          )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate opening (neo-spawner)
+  :virtual #t
+  :exit (behavior ()
+    (set-time! (-> self lightning-time))
+    (set! (-> self hud-health)
+          (ppointer->handle
+            (process-spawn hud-neo-spawner-health :init hud-init-by-other :name "hud-neo-spawner-health" :to self)
+            )
+          )
+    )
+  :code (behavior ()
+    (set! (-> self health-hud-timer) 0.0)
+    (ja-channel-set! 1)
+    (ja-no-eval :group! neo-spawner-open-ja :num! (seek! max 0.75) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.75))
+      )
+    (go-virtual open)
+    )
+  :post ja-post
+  )
+
+(defstate open (neo-spawner)
+  :virtual #t
+  :event neo-spawner-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self last-spawn-time) (+ (current-time) (seconds -3)))
+    )
+  :trans (behavior ()
+    (if (task-node-closed? (game-task-node forest-turn-on-machine-spawners))
+        (go-virtual die)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! neo-spawner-open-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (if (and *target*
+               (not (-> *setting-control* user-current nuke-active?))
+               (time-elapsed? (-> self last-spawn-time) (seconds 6))
+               (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-3 from) (process->ppointer self))
+                 (set! (-> a1-3 num-params) 0)
+                 (set! (-> a1-3 message) 'can-spawn?)
+                 (let ((t9-4 send-event-function)
+                       (v1-32 (-> self manager-entity))
+                       )
+                   (t9-4
+                     (if v1-32
+                         (-> v1-32 extra process)
+                         )
+                     a1-3
+                     )
+                   )
+                 )
+               (or (< (vector-vector-distance (target-pos 0) (-> self root trans)) 204800.0)
+                   (-> self triggered?)
+                   (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+                     (set! (-> a1-5 from) (process->ppointer self))
+                     (set! (-> a1-5 num-params) 0)
+                     (set! (-> a1-5 message) 'get-turret)
+                     (let ((v1-41 (the-as handle (send-event-function *target* a1-5))))
+                       (if v1-41
+                           (send-event (handle->process v1-41) 'valid-neo-spawner)
+                           )
+                       )
+                     )
+                   )
+               )
+          (go-virtual spawn-enemy)
+          )
+      )
+    #f
+    )
+  :post neo-spawner-active-post
+  )
+
+(defmethod spawn-neo ((this neo-spawner))
+  (let* ((s5-0 (new 'stack-no-clear 'enemy-init-by-other-params))
+         (v1-0 (-> this manager-entity))
+         (s4-0 (if v1-0
+                   (-> v1-0 extra process)
+                   )
+               )
+         )
+    (when s4-0
+      (set! (-> s5-0 trans quad) (-> this root trans quad))
+      (quaternion-copy! (-> s5-0 quat) (-> this root quat))
+      (set! (-> s5-0 entity) (-> this entity))
+      (set! (-> s5-0 directed?) #f)
+      (set! (-> s5-0 no-initial-move-to-ground?) #f)
+      (set! (-> s5-0 art-level) #f)
+      (let ((s3-0 (get-process *default-dead-pool* neo-wasp #x4000 1)))
+        (when s3-0
+          (let ((t9-2 (method-of-type process activate)))
+            (t9-2 s3-0 s4-0 "neo-wasp" (the-as pointer #x70004000))
+            )
+          (run-now-in-process s3-0 enemy-init-by-other this s5-0)
+          (-> s3-0 ppointer)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defstate spawn-enemy (neo-spawner)
+  :virtual #t
+  :event neo-spawner-handler
+  :enter (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'suppress-spawn)
+      (set! (-> a1-0 param 0) (the-as uint #t))
+      (let ((t9-0 send-event-function)
+            (v1-4 (-> self manager-entity))
+            )
+        (t9-0
+          (if v1-4
+              (-> v1-4 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'suppress-spawn)
+      (set! (-> a1-0 param 0) (the-as uint #f))
+      (let ((t9-0 send-event-function)
+            (v1-3 (-> self manager-entity))
+            )
+        (t9-0
+          (if v1-3
+              (-> v1-3 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    )
+  :trans (-> (method-of-type neo-spawner open) trans)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! neo-spawner-spit-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (spawn-neo self)
+    (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-3 from) (process->ppointer self))
+      (set! (-> a1-3 num-params) 1)
+      (set! (-> a1-3 message) 'suppress-spawn)
+      (set! (-> a1-3 param 0) (the-as uint #f))
+      (let ((t9-5 send-event-function)
+            (v1-29 (-> self manager-entity))
+            )
+        (t9-5
+          (if v1-29
+              (-> v1-29 extra process)
+              )
+          a1-3
+          )
+        )
+      )
+    (let ((gp-0 (new 'stack-no-clear 'matrix)))
+      (let ((a1-5 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+        (matrix-f-compose gp-0 a1-5)
+        )
+      (set! (-> gp-0 trans quad) (-> self root trans quad))
+      (if (logtest? (-> *part-group-id-table* 566 flags) (sp-group-flag sp13))
+          (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 566) :mat-joint gp-0)
+          (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 566) :mat-joint gp-0)
+          )
+      )
+    (set-time! (-> self last-spawn-time))
+    (ja-no-eval :group! neo-spawner-spit-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual open)
+    )
+  :post neo-spawner-active-post
+  )
+
+(defstate vulnerable (neo-spawner)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack 'die)
+       (process-entity-status! self (entity-perm-status subtask-complete) #t)
+       (go-virtual die)
+       )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! neo-spawner-open-angry-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate die (neo-spawner)
+  :virtual #t
+  :enter (behavior ()
+    (let ((gp-0 (-> self child)))
+      (while gp-0
+        (send-event (ppointer->process gp-0) 'die)
+        (set! gp-0 (-> gp-0 0 brother))
+        )
+      )
+    (send-event (handle->process (-> self hud-health)) 'hide-and-die)
+    (when (-> self minimap)
+      (kill-callback (-> *minimap* engine) (-> self minimap))
+      (set! (-> self minimap) #f)
+      )
+    (let ((f0-0 (vector-vector-distance (target-pos 0) (-> self root trans)))
+          (f1-0 163840.0)
+          )
+      (if (>= f1-0 f0-0)
+          (activate!
+            *camera-smush-control*
+            (lerp-scale 0.0 1638.4 f0-0 f1-0 61440.0)
+            15
+            75
+            1.0
+            0.94
+            (-> *display* camera-clock)
+            )
+          )
+      )
+    (let ((a1-7 (new 'stack 'debris-tuning (the-as uint 1))))
+      (new 'stack-no-clear 'vector)
+      (set! (-> a1-7 hit-xz-reaction) 0.95)
+      (set! (-> a1-7 hit-y-reaction) 0.6)
+      (set! (-> a1-7 fountain-rand-transv-lo quad) (-> self root trans quad))
+      (set! (-> a1-7 fountain-rand-transv-hi x) 24576.0)
+      (set! (-> a1-7 fountain-rand-transv-hi y) 163840.0)
+      (set! (-> a1-7 fountain-rand-transv-hi z) 24576.0)
+      (set! (-> a1-7 fountain-rand-transv-hi w) -24576.0)
+      (set! (-> a1-7 max-probe-width) 40960.0)
+      (debris-spawn self a1-7 *neo-spawner-debris-params* (the-as process-drawable #f))
+      )
+    (cond
+      ((logtest? (-> *part-group-id-table* 565 flags) (sp-group-flag sp13))
+       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 565))
+       )
+      (else
+        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 565))
+        )
+      )
+    (sound-play "neo-spwnr-xpld")
+    (go-virtual dead)
+    )
+  :code sleep-code
+  )
+
+(defstate dead (neo-spawner)
+  :virtual #t
+  :enter (behavior ()
+    (setup-masks (-> self draw) 0 27)
+    (setup-masks (-> self draw) 4 0)
+    (ja-channel-set! 1)
+    (ja-no-eval :group! neo-spawner-idle-ja
+                :num! (identity (the float (+ (-> (the-as art-joint-anim neo-spawner-idle-ja) frames num-frames) -1)))
+                )
+    (transform-post)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'matrix)))
+      (let* ((v1-0 a1-0)
+             (t0-0 (-> self node-list data 3 bone transform))
+             (a0-2 (-> t0-0 rvec quad))
+             (a2-0 (-> t0-0 uvec quad))
+             (a3-0 (-> t0-0 fvec quad))
+             (t0-1 (-> t0-0 trans quad))
+             )
+        (set! (-> v1-0 rvec quad) a0-2)
+        (set! (-> v1-0 uvec quad) a2-0)
+        (set! (-> v1-0 fvec quad) a3-0)
+        (set! (-> v1-0 trans quad) t0-1)
+        )
+      (vector+float*! (-> a1-0 trans) (-> a1-0 trans) (-> a1-0 fvec) 8192.0)
+      (spawn-from-mat (-> self dead-part) a1-0)
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this neo-spawner))
+  (the-as search-info-flag 1)
+  )
+
+(defmethod deactivate ((this neo-spawner))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this dead-part))
+      (kill-particles (-> this dead-part))
+      )
+  ((method-of-type process-focusable deactivate) this)
+  (none)
+  )
+
+;; WARN: Return type mismatch process-focusable vs neo-spawner.
+(defmethod relocate ((this neo-spawner) (offset int))
+  (if (nonzero? (-> this dead-part))
+      (&+! (-> this dead-part) offset)
+      )
+  (the-as neo-spawner ((method-of-type process-focusable relocate) this offset))
+  )
+
+(defmethod init-from-entity! ((this neo-spawner) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker special-obstacle))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 32768.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle special-obstacle))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 0.0 6144.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec camera-blocker))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 31948.8)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-neo-spawner" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-22 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-22 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-22))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (if (< (-> this actor-group-count) 1)
+      (go process-drawable-art-error "missing actor-group(s)")
+      )
+  (set! (-> this info) (the-as neo-spawner-type *neo-spawner-info*))
+  (set! (-> this root pause-adjust-distance) 286720.0)
+  (set! (-> this dead-part) (create-launch-control (-> *part-group-id-table* 567) this))
+  (set! (-> this manager-entity) (entity-actor-lookup (-> this entity) 'alt-actor 1))
+  (set! (-> this turret-entity) (entity-actor-lookup (-> this entity) 'alt-actor 2))
+  (set! (-> this minimap) #f)
+  (set! (-> this health) 1.0)
+  (set! (-> this health-hud-timer) 0.0)
+  (set! (-> this triggered?) #f)
+  (set! (-> this hud-health) (the-as handle #f))
+  (setup-masks (-> this draw) 0 4)
+  (setup-masks (-> this draw) 27 0)
+  (cond
+    ((logtest? (-> this turret-entity extra perm status) (entity-perm-status subtask-complete))
+     (process-entity-status! this (entity-perm-status subtask-complete) #t)
+     (go (method-of-object this dead))
+     )
+    (else
+      (go (method-of-object this closed))
+      )
+    )
+  )

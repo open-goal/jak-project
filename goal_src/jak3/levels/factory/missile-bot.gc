@@ -7,3 +7,1298 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-missile-bot missile-bot missile-bot-lod0-jg missile-bot-idle-ja
+              ((missile-bot-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow missile-bot-shadow-mg
+              :origin-joint-index 3
+              )
+
+(deftype missile-bot (nav-enemy)
+  ((parent                   (pointer factory-boss) :override)
+   (traj                     trajectory              :inline)
+   (initial-y                float)
+   (top-spin-jm              joint-mod)
+   (top-angle                float)
+   (main-jm                  joint-mod)
+   (height-bob               bouncing-float          :inline)
+   (height-bob-rand          delayed-rand-float      :inline)
+   (main-wobble              oscillating-vector      :inline)
+   (main-wobble-rand         delayed-rand-vector     :inline)
+   (thruster-part            sparticle-launch-control)
+   (lightning                lightning-control       6)
+   (lightning-wobble         oscillating-vector      3 :inline)
+   (lightning-wobble-rand    delayed-rand-vector     3 :inline)
+   (lightning-mode           uint64)
+   (lightning-timer          time-frame)
+   (lightning-sound          sound-id)
+   (lightning-sound-playing  symbol)
+   (glows-on                 symbol)
+   (spin                     float)
+   (engine-sound             sound-id)
+   (engine-sound-playing     symbol)
+   (explosion-sound-index    int8)
+   (spin-whoosh-timer        time-frame)
+   (will-hit-errol           symbol)
+   (spark-part               sparticle-launch-control)
+   (spark-part-on            symbol)
+   (spark-timer              time-frame)
+   )
+  (:state-methods
+    fizzle
+    kicked
+    lift-off
+    explode
+    )
+  (:methods
+    (toggle-glow-sprites (_type_ symbol) none)
+    )
+  )
+
+
+(define *missile-bot-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 100
+        :param1 100
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 3
+    :hit-anim 3
+    :knocked-anim 3
+    :knocked-land-anim 3
+    :die-anim 3
+    :die-falling-anim 3
+    :victory-anim 3
+    :jump-wind-up-anim 3
+    :jump-in-air-anim 3
+    :jump-land-anim 3
+    :neck-joint -1
+    :look-at-joint 3
+    :bullseye-joint 3
+    :notice-distance (meters 150)
+    :notice-distance-delta (meters 20)
+    :proximity-notice-distance (meters 30)
+    :default-hit-points 8.0
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list)
+    :overlaps-others-collide-with-filter (collide-spec jak bot enemy hit-by-others-list player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 5)
+    :attack-shove-up (meters 3)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 0.5)
+    :jump-height-factor 0.1
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 20480.0
+    :knocked-soft-vxz-hi 28672.0
+    :knocked-soft-vy-lo 36864.0
+    :knocked-soft-vy-hi 45056.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 49152.0
+    :knocked-hard-vxz-hi 57344.0
+    :knocked-hard-vy-lo 49152.0
+    :knocked-hard-vy-hi 57344.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 20480.0
+    :knocked-yellow-vxz-hi 28672.0
+    :knocked-yellow-vy-lo 36864.0
+    :knocked-yellow-vy-hi 4096.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 114688.0
+    :knocked-red-vy-lo 53248.0
+    :knocked-red-vy-hi 69632.0
+    :knocked-blue-vxz-lo 16384.0
+    :knocked-blue-vxz-hi 20480.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :ragdoll-info #f
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 3
+    :turn-anim 3
+    :run-anim 3
+    :taunt-anim -1
+    :run-travel-speed (meters 8)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 30)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 360)
+    :notice-nav-radius (meters 16)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *missile-bot-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defbehavior stunned? missile-bot ()
+  (and (-> self next-state) (let ((v1-2 (-> self next-state name)))
+                              (or (= v1-2 'fizzle) (= v1-2 'kicked) (= v1-2 'lift-off))
+                              )
+       )
+  )
+
+(defmethod event-handler ((this missile-bot) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('lift-off)
+     (go (method-of-object this lift-off))
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod enemy-method-63 ((this missile-bot) (arg0 float))
+  (fmax 0.0 (fmin arg0 (-> this hit-points)))
+  )
+
+;; WARN: Return type mismatch connection vs none.
+(defmethod toggle-glow-sprites ((this missile-bot) (arg0 symbol))
+  (cond
+    ((stunned?)
+     (when (-> this glows-on)
+       (set! (-> this glows-on) #f)
+       (set! arg0 #t)
+       )
+     )
+    ((not (-> this glows-on))
+     (set! (-> this glows-on) #t)
+     (set! arg0 #t)
+     )
+    )
+  (when arg0
+    (remove-from-process *part-engine* this)
+    (when (-> this glows-on)
+      (add-connection *part-engine* this 7 this 4557 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 8 this 4557 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 10 this 4557 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 9 this 4557 (new 'static 'vector :w 163840.0))
+      (add-connection *part-engine* this 11 this 4556 (new 'static 'vector :w 163840.0))
+      )
+    )
+  (none)
+  )
+
+(defbehavior missile-bot-get-kick-time missile-bot ((arg0 float))
+  (fmax 30.0 (* 0.0018310547 arg0))
+  )
+
+(defbehavior missile-bot-find-dest missile-bot ((arg0 vector))
+  (local-vars (v1-22 float) (a2-3 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node missile-bot-lod0-jg main))))
+      (set! (-> arg0 quad) (-> s4-0 quad))
+      (let* ((s5-1 (vector-! (new 'stack-no-clear 'vector) s4-0 (target-pos 0)))
+             (s2-0 (ppointer->process (-> self parent)))
+             (s3-1 (if (type? s2-0 factory-boss)
+                       s2-0
+                       )
+                   )
+             (s0-0 (new 'stack-no-clear 'vector))
+             (s2-1 (new 'stack-no-clear 'vector))
+             (s1-0 (new 'stack-no-clear 'vector))
+             )
+        (when s3-1
+          (set! (-> s5-1 y) 0.0)
+          (vector-normalize! s5-1 1.0)
+          (vector-! s0-0 (-> s3-1 center) s4-0)
+          (set! (-> s0-0 y) 0.0)
+          (vector-float*! s2-1 s5-1 (vector-dot s5-1 s0-0))
+          (vector-! s1-0 s2-1 s0-0)
+          (let* ((v1-10 arg0)
+                 (a0-11 s2-1)
+                 (a1-7 s5-1)
+                 (f0-4 110592.0)
+                 (f0-6 (* f0-4 f0-4))
+                 )
+            (.lvf vf1 (&-> s1-0 quad))
+            (.add.w.vf vf2 vf0 vf0 :mask #b1)
+            (.mul.vf vf1 vf1 vf1)
+            (.mul.x.vf acc vf2 vf1 :mask #b1)
+            (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+            (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+            (.mov a2-3 vf1)
+            (vector+float*! v1-10 a0-11 a1-7 (sqrtf (- f0-6 a2-3)))
+            )
+          (if (< (vector-dot s5-1 arg0) 0.0)
+              (vector-reset! arg0)
+              )
+          (vector+! s2-1 s2-1 s4-0)
+          (vector+! arg0 arg0 s4-0)
+          (let ((s2-3 (vector-! (new 'stack-no-clear 'vector) (-> s3-1 root trans) arg0)))
+            0.0
+            (let ((f0-13 (* -0.5 (vector-vector-distance arg0 s4-0))))
+              (set! (-> s2-3 y) 0.0)
+              (.lvf vf1 (&-> s2-3 quad))
+              (.add.w.vf vf2 vf0 vf0 :mask #b1)
+              (.mul.vf vf1 vf1 vf1)
+              (.mul.x.vf acc vf2 vf1 :mask #b1)
+              (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+              (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+              (.mov v1-22 vf1)
+              (let ((f1-3 v1-22)
+                    (f2-0 20480.0)
+                    )
+                (if (< (* f2-0 f2-0) f1-3)
+                    (vector-float*! s2-3 s2-3 (/ 20480.0 (sqrtf f1-3)))
+                    )
+                )
+              (let ((f1-7 (vector-dot s2-3 s5-1)))
+                (if (< f1-7 f0-13)
+                    (vector-float*! s2-3 s2-3 (/ f0-13 f1-7))
+                    )
+                )
+              )
+            (vector+! arg0 arg0 s2-3)
+            )
+          )
+        )
+      )
+    arg0
+    )
+  )
+
+(defstate jump (missile-bot)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       #f
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  )
+
+(defstate knocked (missile-bot)
+  :virtual #t
+  :enter (behavior ()
+    (let* ((v1-1 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-2 (the-as number (logior #x3f800000 v1-1)))
+           )
+      (if (< (+ -1.0 (the-as float v1-2)) 0.5)
+          (set! (-> self spin) 7281.778)
+          (set! (-> self spin) -7281.778)
+          )
+      )
+    (set! (-> self lightning-timer) 0)
+    (set! (-> self lightning-mode) (the-as uint 0))
+    (set! (-> self spin-whoosh-timer) 0)
+    (let ((t9-1 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (>= (- (current-time) (-> self spin-whoosh-timer)) 0)
+      (sound-play "mb-spin-whoosh" :position (-> self root trans))
+      (let* ((gp-1 (current-time))
+             (f30-0 300.0)
+             (f28-0 0.2)
+             (f26-0 0.049999997)
+             (v1-14 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+             (v1-15 (the-as number (logior #x3f800000 v1-14)))
+             )
+        (set! (-> self spin-whoosh-timer)
+              (+ gp-1 (the int (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-15)))))))
+              )
+        )
+      )
+    )
+  :post (behavior ()
+    (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (-> self spin))
+    (let ((t9-1 (-> (method-of-type nav-enemy knocked) post)))
+      (if t9-1
+          ((the-as (function none) t9-1))
+          )
+      )
+    )
+  )
+
+(defstate notice (missile-bot)
+  :virtual #t
+  :code (behavior ()
+    (ja-no-eval :group! missile-bot-idle-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-best-state self)
+    )
+  )
+
+(defstate hostile (missile-bot)
+  :virtual #t
+  :trans (behavior ()
+    (nav-enemy-method-172 self)
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
+        (go-virtual victory)
+        )
+    (when (time-elapsed? (-> self state-time) (-> self reaction-time))
+      (let ((gp-0 (-> self focus aware)))
+        (cond
+          ((>= 1 (the-as int gp-0))
+           (if (-> self enemy-info use-stop-chase)
+               (go-virtual stop-chase)
+               (go-virtual active)
+               )
+           )
+          ((or (>= 2 (the-as int gp-0)) (not (get-focus! self)))
+           (go-stare self)
+           )
+          ((= gp-0 (enemy-aware ea4))
+           (go-flee self)
+           )
+          )
+        )
+      (when (and (-> self enemy-info use-frustration) (logtest? (enemy-flag ef40) (-> self enemy-flags)))
+        (if (-> self enemy-info use-stop-chase)
+            (go-virtual stop-chase)
+            (go-stare self)
+            )
+        )
+      )
+    (let ((f30-0 (vector-vector-xz-distance-squared (-> self root trans) (target-pos 0))))
+      (let* ((gp-2 (-> self nav))
+             (t9-11 lerp-scale)
+             (a0-13 0.0)
+             (a1-2 (-> self enemy-info run-travel-speed))
+             (a2-0 f30-0)
+             (f0-1 12288.0)
+             (a3-0 (* f0-1 f0-1))
+             (f0-3 16384.0)
+             )
+        (set! (-> gp-2 target-speed) (t9-11 a0-13 a1-2 a2-0 a3-0 (* f0-3 f0-3)))
+        )
+      0
+      (let ((f0-6 16384.0))
+        (cond
+          ((< f30-0 (* f0-6 f0-6))
+           (when (zero? (-> self lightning-timer))
+             (set! (-> self lightning-mode) (the-as uint 1))
+             (set-time! (-> self lightning-timer))
+             )
+           )
+          ((let ((f0-9 24576.0))
+             (and (< (* f0-9 f0-9) f30-0) (>= (+ (current-time) (seconds -1)) (-> self lightning-timer)))
+             )
+           (set! (-> self lightning-mode) (the-as uint 0))
+           (set! (-> self lightning-timer) 0)
+           0
+           )
+          )
+        )
+      )
+    )
+  )
+
+(defstate die (missile-bot)
+  :virtual #t
+  :code (behavior ()
+    (go-virtual fizzle)
+    )
+  )
+
+(defstate fizzle (missile-bot)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (when (= (-> proc type) target)
+         (let ((gp-0 (new 'stack-no-clear 'vector)))
+           (let ((t9-0 missile-bot-find-dest)
+                 (a0-2 gp-0)
+                 )
+             360
+             (t9-0 a0-2)
+             )
+           (vector-! gp-0 gp-0 (-> self root trans))
+           (let ((s5-0 missile-bot-find-dest)
+                 (s4-0 gp-0)
+                 )
+             (+ (the int (missile-bot-get-kick-time (vector-length gp-0))) 360)
+             (s5-0 s4-0)
+             )
+           (vector-! gp-0 gp-0 (-> self root trans))
+           (let* ((f0-2 (vector-length gp-0))
+                  (f30-0 (fmin 16384.0 (* 0.2 f0-2)))
+                  (f0-3 (missile-bot-get-kick-time f0-2))
+                  )
+             (vector+! gp-0 gp-0 (-> self root trans))
+             (setup-from-to-duration-and-height! (-> self traj) (-> self root trans) gp-0 f0-3 f30-0)
+             )
+           )
+         (go-virtual kicked)
+         )
+       )
+      (('lift-off)
+       (go-virtual lift-off)
+       )
+      )
+    )
+  :enter (behavior ()
+    (local-vars (v1-11 enemy-flag) (v1-13 enemy-flag) (v1-15 enemy-flag))
+    (set! (-> self root penetrate-using)
+          (the-as penetrate (logclear (-> self root penetrate-using) (penetrate knocked)))
+          )
+    (enemy-method-50 self 2)
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (let ((v1-10 (-> self enemy-flags)))
+      (if (logtest? v1-10 (enemy-flag vulnerable-backup))
+          (set! v1-11 (logior v1-10 (enemy-flag vulnerable)))
+          (set! v1-11 (logclear v1-10 (enemy-flag vulnerable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-11)
+    (let ((v1-12 (-> self enemy-flags)))
+      (if (logtest? v1-12 (enemy-flag attackable-backup))
+          (set! v1-13 (logior v1-12 (enemy-flag attackable)))
+          (set! v1-13 (logclear v1-12 (enemy-flag attackable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-13)
+    (let ((v1-14 (-> self enemy-flags)))
+      (if (logtest? (enemy-flag trackable-backup) v1-14)
+          (set! v1-15 (logior (enemy-flag trackable) v1-14))
+          (set! v1-15 (logclear v1-14 (enemy-flag trackable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-15)
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (logclear! (-> self focus-status) (focus-status hit))
+    (set-time! (-> self state-time))
+    (let ((v1-23 (-> self root root-prim)))
+      (set! (-> v1-23 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-23 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (set! (-> self lightning-mode) (the-as uint 0))
+    (set! (-> self lightning-timer) 0)
+    (if (send-event (ppointer->process (-> self parent)) 'round? 3)
+        (factory-boss-play-speech 7 (the-as factory-boss self))
+        )
+    )
+  :trans (behavior ()
+    (spawn
+      (-> self part)
+      (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node missile-bot-lod0-jg rotating_ring))
+      )
+    (cond
+      ((-> self spark-part-on)
+       (format *stdebug* "spark-on~%")
+       (spawn
+         (-> self spark-part)
+         (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node missile-bot-lod0-jg rotating_ring))
+         )
+       (when (>= (- (current-time) (-> self spark-timer)) 0)
+         (let* ((gp-2 (current-time))
+                (f30-0 300.0)
+                (s5-2 lerp-scale)
+                (s4-0 0.3)
+                (s3-0 0.5)
+                (v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                (v1-16 (the-as number (logior #x3f800000 v1-15)))
+                )
+           (set! (-> self spark-timer)
+                 (+ gp-2 (the int (* f30-0 (s5-2 s4-0 s3-0 (+ -1.0 (the-as float v1-16)) 0.0 1.0))))
+                 )
+           )
+         (set! (-> self spark-part-on) #f)
+         )
+       )
+      ((>= (- (current-time) (-> self spark-timer)) 0)
+       (let* ((gp-3 (current-time))
+              (f30-1 300.0)
+              (s5-3 lerp-scale)
+              (s4-1 0.2)
+              (s3-1 0.4)
+              (v1-27 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+              (v1-28 (the-as number (logior #x3f800000 v1-27)))
+              )
+         (set! (-> self spark-timer)
+               (+ gp-3 (the int (* f30-1 (s5-3 s4-1 s3-1 (+ -1.0 (the-as float v1-28)) 0.0 1.0))))
+               )
+         )
+       (set! (-> self spark-part-on) #t)
+       )
+      )
+    (if (time-elapsed? (-> self state-time) (seconds 4))
+        (go-virtual lift-off)
+        )
+    )
+  :code sleep-code
+  :post nav-enemy-simple-post
+  )
+
+(defstate kicked (missile-bot)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('lift-off)
+       (go-virtual lift-off)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (compute-trans-at-time
+      (-> self traj)
+      (fmin (-> self traj time) (the float (- (current-time) (-> self state-time))))
+      (-> self root trans)
+      )
+    (if (time-elapsed? (-> self state-time) (the int (-> self traj time)))
+        (go-virtual lift-off)
+        )
+    )
+  :code sleep-code
+  :post nav-enemy-simple-post
+  )
+
+(defstate lift-off (missile-bot)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self state-time) 0)
+    (set! (-> self traj time) 0.0)
+    (set! (-> self initial-y) (-> self root trans y))
+    (set! (-> self explosion-sound-index) 0)
+    (set! (-> self will-hit-errol) #f)
+    (let* ((gp-0 (ppointer->process (-> self parent)))
+           (v1-3 (if (type? gp-0 factory-boss)
+                     gp-0
+                     )
+                 )
+           )
+      (when v1-3
+        (let ((f0-2 (vector-vector-xz-distance-squared (-> self root trans) (-> v1-3 root trans)))
+              (f1-0 20480.0)
+              )
+          (set! (-> self will-hit-errol) (< f0-2 (* f1-0 f1-0)))
+          )
+        )
+      )
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (the int (-> self traj time)))
+      (let ((gp-0 (new 'stack-no-clear 'vector))
+            (f30-0 (rand-vu-float-range 1228.8 2048.0))
+            (f28-0 (rand-vu-float-range 30.0 120.0))
+            )
+        (set! (-> gp-0 quad) (-> self root trans quad))
+        (+! (-> gp-0 y) (rand-vu-float-range 6144.0 10240.0))
+        (setup-from-to-duration-and-height! (-> self traj) (-> self root trans) gp-0 f28-0 f30-0)
+        )
+      (cond
+        ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
+         (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+         (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
+         )
+        (else
+          (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+          (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
+          )
+        )
+      (when (not (send-event (ppointer->process (-> self parent)) 'in-cutscene?))
+        (let ((v1-46 (-> self explosion-sound-index)))
+          (cond
+            ((zero? v1-46)
+             (sound-play "mb-expl-1")
+             )
+            ((= v1-46 1)
+             (sound-play "mb-expl-2")
+             )
+            ((= v1-46 2)
+             (sound-play "mb-expl-3")
+             )
+            ((= v1-46 3)
+             (sound-play "mb-expl-4")
+             )
+            (else
+              (sound-play "mb-expl-4")
+              )
+            )
+          )
+        )
+      (+! (-> self explosion-sound-index) 1)
+      (set-time! (-> self state-time))
+      )
+    (compute-trans-at-time
+      (-> self traj)
+      (fmin (-> self traj time) (the float (- (current-time) (-> self state-time))))
+      (-> self root trans)
+      )
+    (if (and (-> self will-hit-errol) (< (+ 40960.0 (-> self initial-y)) (-> self root trans y)))
+        (send-event (ppointer->process (-> self parent)) 'gonna-getcha)
+        )
+    (if (< (+ 49152.0 (-> self initial-y)) (-> self root trans y))
+        (go-virtual explode)
+        )
+    )
+  :code sleep-code
+  :post nav-enemy-simple-post
+  )
+
+(defstate explode (missile-bot)
+  :virtual #t
+  :enter (behavior ()
+    (if (not (send-event (ppointer->process (-> self parent)) 'in-cutscene?))
+        (sound-play "mb-expl-4")
+        )
+    (let ((v1-9 (-> self root root-prim)))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (set! (-> self root root-prim local-sphere w) 491520.0)
+    (cond
+      ((logtest? (-> *part-group-id-table* 217 flags) (sp-group-flag sp13))
+       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 217))
+       )
+      (else
+        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 217))
+        )
+      )
+    (when (-> self will-hit-errol)
+      (send-event (ppointer->process (-> self parent)) 'gonna-getcha)
+      (send-event (ppointer->process (-> self parent)) 'gotcha)
+      )
+    )
+  :trans (behavior ()
+    (when (not (-> self child))
+      (cleanup-for-death self)
+      (deactivate self)
+      )
+    )
+  :code sleep-code
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod enemy-common-post ((this missile-bot))
+  (local-vars (sv-272 vector) (sv-288 vector) (sv-304 vector))
+  (with-pp
+    (cond
+      ((stunned?)
+       (when (-> this engine-sound-playing)
+         (sound-stop (-> this engine-sound))
+         (set! (-> this engine-sound-playing) #f)
+         )
+       )
+      (else
+        (+! (-> this top-angle) (* 1747.6267 (-> pp clock time-adjust-ratio)))
+        (if (< 65536.0 (-> this top-angle))
+            (+! (-> this top-angle) -65536.0)
+            )
+        (sound-play "mb-engine-loop" :id (-> this engine-sound) :position (-> this root trans))
+        (set! (-> this engine-sound-playing) #t)
+        )
+      )
+    (quaternion-axis-angle! (-> this top-spin-jm quat) 0.0 1.0 0.0 (-> this top-angle))
+    (update! (-> this height-bob-rand))
+    (cond
+      ((stunned?)
+       (set! (-> this height-bob osc target) 0.0)
+       (set! (-> this height-bob osc max-vel) 0.1)
+       (update! (-> this height-bob) 0.0)
+       )
+      (else
+        (set! (-> this height-bob osc target) 1.0)
+        (set! (-> this height-bob osc max-vel) 0.05)
+        (update! (-> this height-bob) (-> this height-bob-rand value))
+        )
+      )
+    (set! (-> this main-jm trans y) (* 8192.0 (-> this height-bob osc value)))
+    (update-with-delay! (-> this main-wobble-rand))
+    (when (not (stunned?))
+      (let ((a1-4 (new 'stack-no-clear 'vector)))
+        (set! (-> a1-4 quad) (-> this main-wobble-rand value quad))
+        (vector+! a1-4 a1-4 (new 'static 'vector :y 1.0))
+        (update! (-> this main-wobble) a1-4)
+        )
+      )
+    (let ((a2-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this main-wobble)) 1.0)))
+      (quaternion-from-two-vectors! (-> this main-jm quat) (new 'static 'vector :y 1.0) a2-5)
+      )
+    (let ((t9-13 (method-of-type nav-enemy enemy-common-post)))
+      (t9-13 this)
+      )
+    (toggle-glow-sprites this #f)
+    (cond
+      ((stunned?)
+       (set! (-> this lightning-timer) 0)
+       (set! (-> this lightning-mode) (the-as uint 0))
+       0
+       )
+      (else
+        (set! (-> *part-id-table* 4558 init-specs 12 initial-valuef) 0.0)
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 7))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 8))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 10))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 9))
+        (set! (-> *part-id-table* 4558 init-specs 12 initial-valuef) 10922.667)
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 7))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 8))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 10))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 9))
+        (set! (-> *part-id-table* 4558 init-specs 12 initial-valuef) 21845.334)
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 7))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 8))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 10))
+        (spawn-from-cspace (-> this thruster-part) (-> this node-list data 9))
+        )
+      )
+    (dotimes (s5-0 3)
+      (update-with-delay! (-> this lightning-wobble-rand s5-0))
+      (let ((a1-20 (new 'stack-no-clear 'vector)))
+        (set! (-> a1-20 quad)
+              (-> (the-as (pointer uint128) (+ (the-as uint (-> this lightning-wobble-rand 0 value)) (* 48 s5-0))))
+              )
+        (update! (-> this lightning-wobble s5-0) a1-20)
+        )
+      )
+    (let ((s5-1 (new 'stack-no-clear 'vector))
+          (s4-0 (new 'stack-no-clear 'vector))
+          (s3-0 (new 'stack-no-clear 'vector))
+          (s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 5)))
+          (s1-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 6)))
+          )
+      (dotimes (s0-0 6)
+        (let ((v1-85 s0-0))
+          (cond
+            ((zero? v1-85)
+             (vector<-cspace! s5-1 (-> this node-list data 3))
+             (+! (-> s5-1 y) 8192.0)
+             (let ((v0-33
+                     (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this lightning-wobble)) 819.2)
+                     )
+                   )
+               (vector+! s5-1 s5-1 v0-33)
+               )
+             (set! sv-304 s4-0)
+             (let ((v1-90 (-> s2-0 quad)))
+               (set! (-> sv-304 quad) v1-90)
+               )
+             )
+            ((= v1-85 1)
+             (set! sv-304 s4-0)
+             (let ((v1-92 (-> s1-0 quad)))
+               (set! (-> sv-304 quad) v1-92)
+               )
+             )
+            ((= v1-85 2)
+             (set! sv-272 s3-0)
+             (let ((v1-93 (-> (target-pos 8) quad)))
+               (set! (-> sv-272 quad) v1-93)
+               )
+             (vector-! s5-1 s3-0 s2-0)
+             (set! (-> s5-1 y) 0.0)
+             (vector-normalize! s5-1 4096.0)
+             (vector+! s5-1 s5-1 s2-0)
+             (+! (-> s5-1 y) 4096.0)
+             (let ((v0-36
+                     (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this lightning-wobble 1)) 819.2)
+                     )
+                   )
+               (vector+! s5-1 s5-1 v0-36)
+               )
+             (set! sv-304 s4-0)
+             (let ((v1-99 (-> s2-0 quad)))
+               (set! (-> sv-304 quad) v1-99)
+               )
+             )
+            ((= v1-85 3)
+             (set! sv-304 s4-0)
+             (let ((v1-101 (-> s3-0 quad)))
+               (set! (-> sv-304 quad) v1-101)
+               )
+             )
+            ((= v1-85 4)
+             (set! sv-288 s3-0)
+             (let ((v1-102 (-> (target-pos 8) quad)))
+               (set! (-> sv-288 quad) v1-102)
+               )
+             (vector-! s5-1 s3-0 s1-0)
+             (set! (-> s5-1 y) 0.0)
+             (vector-normalize! s5-1 4096.0)
+             (vector+! s5-1 s5-1 s1-0)
+             (+! (-> s5-1 y) 4096.0)
+             (let ((v0-39
+                     (vector-normalize-copy! (new 'stack-no-clear 'vector) (the-as vector (-> this lightning-wobble 2)) 819.2)
+                     )
+                   )
+               (vector+! s5-1 s5-1 v0-39)
+               )
+             (set! sv-304 s4-0)
+             (let ((v1-108 (-> s1-0 quad)))
+               (set! (-> sv-304 quad) v1-108)
+               )
+             )
+            (else
+              (set! sv-304 s4-0)
+              (let ((v1-109 (-> (target-pos 6) quad)))
+                (set! (-> sv-304 quad) v1-109)
+                )
+              )
+            )
+          )
+        (let ((a0-64 (-> this lightning s0-0))
+              (v1-112 s5-1)
+              )
+          (set! (-> a0-64 state meet data 0 quad) (-> v1-112 quad))
+          )
+        (let ((a0-67 (-> this lightning s0-0))
+              (v1-116 s4-0)
+              )
+          (set! (-> a0-67 state meet data (+ (-> a0-67 state points-to-draw) -1) quad) (-> v1-116 quad))
+          )
+        (cond
+          ((or (= (-> this lightning-mode) 2) (and (= (-> this lightning-mode) 1) (< s0-0 2)))
+           (let ((v1-126 (-> this lightning s0-0 state mode)))
+             (when (or (zero? v1-126) (= v1-126 3))
+               (let ((v1-130 (-> this lightning s0-0))
+                     (a0-74 1)
+                     )
+                 (let ((a1-45 (!= a0-74 (-> v1-130 state mode))))
+                   (case a0-74
+                     ((3)
+                      (if a1-45
+                          (set! (-> v1-130 state counter) 0.0)
+                          )
+                      )
+                     ((1)
+                      (set! (-> v1-130 state start-color) (-> v1-130 spec start-color))
+                      (set! (-> v1-130 state end-color) (-> v1-130 spec end-color))
+                      )
+                     )
+                   )
+                 (set! (-> v1-130 state mode) (the-as uint a0-74))
+                 )
+               )
+             )
+           )
+          (else
+            (let ((v1-134 (-> this lightning s0-0 state mode)))
+              (cond
+                ((or (zero? v1-134) (= v1-134 3))
+                 )
+                (else
+                  (let ((v1-138 (-> this lightning s0-0))
+                        (a0-77 3)
+                        )
+                    (let ((a1-55 (!= a0-77 (-> v1-138 state mode))))
+                      (case a0-77
+                        ((3)
+                         (if a1-55
+                             (set! (-> v1-138 state counter) 0.0)
+                             )
+                         )
+                        ((1)
+                         (set! (-> v1-138 state start-color) (-> v1-138 spec start-color))
+                         (set! (-> v1-138 state end-color) (-> v1-138 spec end-color))
+                         )
+                        )
+                      )
+                    (set! (-> v1-138 state mode) (the-as uint a0-77))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (cond
+          ((or (zero? (-> this lightning-timer)) (zero? (-> this lightning-mode)))
+           (when (-> this lightning-sound-playing)
+             (sound-stop (-> this lightning-sound))
+             (set! (-> this lightning-sound-playing) #f)
+             )
+           )
+          (else
+            (let ((f0-26 (if (= (-> this lightning-mode) 1)
+                             0.5
+                             1.0
+                             )
+                         )
+                  )
+              (sound-play-by-name
+                (static-sound-name "mb-arc")
+                (-> this lightning-sound)
+                (the int (* 1024.0 f0-26))
+                0
+                0
+                (sound-group)
+                (-> this root trans)
+                )
+              )
+            (set! (-> this lightning-sound-playing) #t)
+            (cond
+              ((>= (+ (current-time) (seconds -4)) (-> this lightning-timer))
+               (set! (-> this lightning-timer) 0)
+               (set! (-> this lightning-mode) (the-as uint 0))
+               0
+               )
+              ((>= (+ (current-time) (seconds -3.4)) (-> this lightning-timer))
+               (send-event
+                 *target*
+                 'attack
+                 #f
+                 (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                                     (damage 2.0)
+                                                                     (vehicle-damage-factor 1.0)
+                                                                     (vehicle-impulse-factor 1.0)
+                                                                     (mode 'shock)
+                                                                     (shove-up (meters 2))
+                                                                     (shove-back (meters 4))
+                                                                     )
+                                     )
+                 )
+               )
+              ((>= (+ (current-time) (seconds -3)) (-> this lightning-timer))
+               (set! (-> this lightning-mode) (the-as uint 2))
+               )
+              )
+            )
+          )
+        )
+      )
+    (none)
+    )
+  )
+
+(defmethod coin-flip? ((this missile-bot))
+  #f
+  )
+
+;; WARN: Return type mismatch nav-enemy vs missile-bot.
+(defmethod relocate ((this missile-bot) (offset int))
+  (if (nonzero? (-> this top-spin-jm))
+      (&+! (-> this top-spin-jm) offset)
+      )
+  (if (nonzero? (-> this main-jm))
+      (&+! (-> this main-jm) offset)
+      )
+  (if (nonzero? (-> this thruster-part))
+      (&+! (-> this thruster-part) offset)
+      )
+  (if (nonzero? (-> this spark-part))
+      (&+! (-> this spark-part) offset)
+      )
+  (dotimes (v1-16 6)
+    (if (nonzero? (-> this lightning v1-16))
+        (&+! (-> this lightning v1-16) offset)
+        )
+    )
+  (the-as missile-bot ((method-of-type nav-enemy relocate) this offset))
+  )
+
+(defmethod deactivate ((this missile-bot))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (when (-> this engine-sound-playing)
+    (sound-stop (-> this engine-sound))
+    (set! (-> this engine-sound-playing) #f)
+    )
+  (when (-> this lightning-sound-playing)
+    (sound-stop (-> this lightning-sound))
+    (set! (-> this lightning-sound-playing) #f)
+    )
+  (if (nonzero? (-> this thruster-part))
+      (kill-particles (-> this thruster-part))
+      )
+  (if (nonzero? (-> this spark-part))
+      (kill-particles (-> this spark-part))
+      )
+  ((method-of-type nav-enemy deactivate) this)
+  (none)
+  )
+
+(defmethod enemy-method-50 ((this missile-bot) (arg0 int))
+  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0))
+        (a0-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1))
+        )
+    (cond
+      ((or (zero? arg0) (= arg0 2))
+       (set! (-> v1-3 prim-core action) (collide-action))
+       (set! (-> v1-3 prim-core collide-as) (collide-spec))
+       (set! (-> v1-3 prim-core collide-with) (collide-spec))
+       (set! (-> a0-4 prim-core action) (collide-action solid no-standon))
+       (set! (-> a0-4 prim-core collide-as) (collide-spec enemy))
+       (set! (-> a0-4 prim-core collide-with)
+             (collide-spec backgnd jak bot enemy obstacle hit-by-others-list player-list)
+             )
+       )
+      ((= arg0 1)
+       (set! (-> v1-3 prim-core action) (collide-action solid))
+       (set! (-> v1-3 prim-core collide-as) (collide-spec enemy))
+       (set! (-> v1-3 prim-core collide-with) (collide-spec backgnd obstacle hit-by-others-list))
+       (set! (-> a0-4 prim-core action) (collide-action))
+       (set! (-> a0-4 prim-core collide-as) (collide-spec))
+       (set! (-> a0-4 prim-core collide-with) (collide-spec))
+       0
+       )
+      )
+    )
+  (none)
+  )
+
+(defmethod init-enemy-collision! ((this missile-bot))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy los-blocker))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot enemy obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid semi-solid deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec))
+      (set! (-> v1-12 prim-core collide-with) (collide-spec))
+      (set! (-> v1-12 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-12 local-sphere) 0.0 5734.4 0.0 5734.4)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with)
+            (collide-spec backgnd jak bot enemy obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-14 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-14 transform-index) 3)
+      (set-vector! (-> v1-14 local-sphere) 0.0 0.0 0.0 6144.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core collide-as) (collide-spec los-blocker))
+      (set! (-> v1-16 prim-core action) (collide-action semi-solid))
+      (set-vector! (-> v1-16 local-sphere) 0.0 8192.0 0.0 11468.8)
+      )
+    (set! (-> s5-0 nav-radius) 8192.0)
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! ((this missile-bot))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-missile-bot" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this enemy-flags)
+        (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
+        )
+  (init-enemy-defaults! this *missile-bot-nav-enemy-info*)
+  (set! (-> this top-angle) 0.0)
+  (set! (-> this top-spin-jm) (new 'process 'joint-mod (joint-mod-mode joint-set*) this 4))
+  (set! (-> this top-spin-jm track-mode) (track-mode no-trans no-scale))
+  (set! (-> this main-jm) (new 'process 'joint-mod (joint-mod-mode joint-set*) this 3))
+  (set! (-> this main-jm track-mode) (track-mode no-scale))
+  (set-params! (-> this height-bob) 0.0 2.0 0.0 0.7 0.08 0.1 0.9)
+  (set-params! (-> this height-bob-rand) 90 180 0.02)
+  (set-params! (-> this main-wobble) (the-as vector #f) 0.01 0.1 0.9)
+  (set-params! (-> this main-wobble-rand) 30 60 0.1 0.1)
+  (dotimes (s5-1 3)
+    (set-params! (-> this lightning-wobble s5-1) (the-as vector #f) 0.1 0.2 0.7)
+    (set-params! (-> this lightning-wobble-rand s5-1) 3 15 0.1 0.1)
+    )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1368) this))
+  (set! (-> this thruster-part) (create-launch-control (-> *part-group-id-table* 1370) this))
+  (set! (-> this spark-part) (create-launch-control (-> *part-group-id-table* 1369) this))
+  (logior! (-> this skel status) (joint-control-status sync-math))
+  (set! (-> this glows-on) #f)
+  (toggle-glow-sprites this #t)
+  (set! (-> this lightning-mode) (the-as uint 0))
+  (set! (-> this lightning-timer) 0)
+  (dotimes (s5-2 6)
+    (set! (-> this lightning s5-2) (new
+                                     'process
+                                     'lightning-control
+                                     (new 'static 'lightning-spec
+                                       :name #f
+                                       :flags (lightning-spec-flags lsf0)
+                                       :start-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                       :end-color (new 'static 'rgba :r #x80 :g #x80 :b #x80 :a #x80)
+                                       :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                       :fade-start-factor 0.2
+                                       :fade-time 120.0
+                                       :texture (new 'static 'texture-id :index #x3f :page #x4)
+                                       :reduction 0.42
+                                       :num-points 8
+                                       :box-size 8192.0
+                                       :merge-factor 0.5
+                                       :merge-count 2
+                                       :radius 512.0
+                                       :duration -1.0
+                                       :sound #f
+                                       )
+                                     this
+                                     0.0
+                                     )
+          )
+    (let ((v1-50 (-> this lightning s5-2))
+          (a0-21 0)
+          )
+      (let ((a1-17 (!= a0-21 (-> v1-50 state mode))))
+        (case a0-21
+          ((3)
+           (if a1-17
+               (set! (-> v1-50 state counter) 0.0)
+               )
+           )
+          ((1)
+           (set! (-> v1-50 state start-color) (-> v1-50 spec start-color))
+           (set! (-> v1-50 state end-color) (-> v1-50 spec end-color))
+           )
+          )
+        )
+      (set! (-> v1-50 state mode) (the-as uint a0-21))
+      )
+    )
+  (set! (-> this engine-sound) (new-sound-id))
+  (set! (-> this engine-sound-playing) #f)
+  (set! (-> this lightning-sound) (new-sound-id))
+  (set! (-> this lightning-sound-playing) #f)
+  (set! (-> this event-hook) enemy-event-handler)
+  0
+  (none)
+  )

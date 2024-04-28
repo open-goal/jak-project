@@ -5,5 +5,186 @@
 ;; name in dgo: factory-h
 ;; dgos: LFACTORY
 
+;; +++factory-inout-flag
+(defenum factory-inout-flag
+  :type uint8
+  :bitfield #t
+  (fi0 0)
+  (fi1 1)
+  (fi2 2)
+  )
+;; ---factory-inout-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype fac-edge-list (basic)
+  ((edge  int16  4)
+   )
+  )
+
+
+(deftype factory-inout (structure)
+  ((lpath  int16)
+   (lpos   float)
+   (flags  factory-inout-flag)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype factory-pathlist (structure)
+  ((path    path-control   200)
+   (inout   factory-inout  200 :inline)
+   (loops   int16          200)
+   (npath   int8)
+   (nloop   int8)
+   (curidx  int8)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype factory-manager (process)
+  ((self               factory-manager  :override)
+   (nfighters-spawned  uint8)
+   (nfighters-total    uint8)
+   (ntanks-spawned     uint8)
+   (player-born        time-frame)
+   (player-died        time-frame)
+   (fighter-spawned    time-frame)
+   (fighter-killed     time-frame)
+   (tank-spawned       time-frame)
+   (tank-killed        time-frame)
+   (fpath              factory-pathlist  :inline)
+   (tpath              factory-pathlist  :inline)
+   (cur-wave           uint8)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (factory-manager-method-15 (_type_) none)
+    (init-paths-for-list! (_type_ factory-pathlist string) symbol)
+    )
+  )
+
+
+(deftype factory-fighter (rigid-body-object)
+  ((parent                 (pointer factory-manager) :override)
+   (first-time?            symbol)
+   (path-pos               float)
+   (forw                   vector                     :inline)
+   (upvc                   vector                     :inline)
+   (ppos                   vector                     :inline)
+   (pvel                   vector                     :inline)
+   (pacc                   vector                     :inline)
+   (blendpath              float)
+   (newpath                int8)
+   (path-idx               int8)
+   (last-hit-time          time-frame)
+   (disappear              symbol)
+   (last-fire              time-frame)
+   (turret-gun             int8)
+   (light-trail            handle)
+   (rot-vel                float)
+   (rot-acc                float)
+   (engine-sound           sound-id)
+   (engine-sound-playing?  symbol)
+   (last-snd-cmd           time-frame)
+   (red-tip-change-time    time-frame)
+   (red-tip-on             symbol)
+   )
+  (:state-methods
+    flying
+    explode
+    dive
+    die
+    )
+  (:methods
+    (fire-shot (_type_) projectile)
+    (factory-fighter-method-61 (_type_) none)
+    (factory-fighter-method-62 (_type_ symbol) none)
+    )
+  )
+
+
+(deftype fac-target (process-focusable)
+  ((sync      sync-paused  :inline)
+   (minimap   connection-minimap)
+   (light-jm  joint-mod)
+   )
+  (:state-methods
+    idle
+    die-fast
+    retract
+    retracted
+    explode
+    )
+  (:methods
+    (fac-target-method-33 (_type_) none)
+    (fac-target-method-34 (_type_) none)
+    )
+  )
+
+
+(deftype fac-gun-tower (process-focusable)
+  ((yaw                   float)
+   (yawvel                float)
+   (pitch                 float)
+   (pitchvel              float)
+   (dyaw                  float)
+   (dpitch                float)
+   (last-fire             time-frame)
+   (last-hit-time         time-frame)
+   (gunrot                int8)
+   (muzzle                int8)
+   (gun-idx               int8)
+   (attack-id             int32)
+   (gun-tilt-jm           joint-mod)
+   (hit-points            float)
+   (invincable            symbol)
+   (rotate-sound          sound-id)
+   (rotate-sound-playing  symbol)
+   (blade-sound           sound-id)
+   (blade-sound-playing   symbol)
+   (snd-cmd-time          time-frame)
+   (minimap               connection-minimap)
+   )
+  (:state-methods
+    open
+    idle
+    die
+    die-fast
+    )
+  (:methods
+    (fac-gun-tower-method-32 (_type_) none)
+    (fac-gun-tower-method-33 (_type_) none)
+    (fac-gun-tower-method-34 (_type_) none)
+    (fire-shot (_type_) projectile)
+    (fac-gun-tower-method-36 (_type_) none)
+    (send-attack (_type_ process-focusable) none)
+    )
+  )
+
+
+(deftype fac-gun-tower-break (process-drawable)
+  ()
+  (:state-methods
+    idle
+    idle-stick
+    )
+  )
+
+
+(deftype fac-gun-tower-base-broken (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(deftype hud-factory-damage (hud)
+  ()
+  )

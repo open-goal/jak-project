@@ -1,0 +1,1109 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *current-hover-id*, type int
+(define *current-hover-id* 0)
+
+;; definition for method 82 of type hover-enemy
+;; INFO: Used lq/sq
+(defmethod event-handler ((this hover-enemy) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked 'hit-flinch)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (hover-nav-control-method-19 (-> this hover))
+     (hover-enemy-method-159 this #t)
+     (cond
+       ((= (-> this hit-points) 0.0)
+        (if (and (-> this hover-info use-flying-death) (rnd-chance? this 0.4))
+            (go (method-of-object this flying-death))
+            (go (method-of-object this flying-death-explode))
+            )
+        )
+       (else
+         (go (method-of-object this knocked))
+         )
+       )
+     #t
+     )
+    (('update-formation)
+     (let ((v1-42 (the-as object (-> arg3 param 0)))
+           (v0-10 (the-as object (-> this offset)))
+           )
+       (set! (-> (the-as vector v0-10) quad) (-> (the-as vector v1-42) quad))
+       v0-10
+       )
+     )
+    (('get-hover-nav-sphere)
+     (if (not (and (-> this next-state) (let ((v1-47 (-> this next-state name)))
+                                          (or (= v1-47 'dormant) (= v1-47 'dormant-aware))
+                                          )
+                   )
+              )
+         (-> (the-as collide-shape-prim-group (-> this root root-prim))
+             child
+             (-> this hover params nav-collide-prim-index)
+             prim-core
+             )
+         )
+     )
+    (else
+      ((method-of-type enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for function hover-enemy-dest-post
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defbehavior hover-enemy-dest-post hover-enemy ()
+  (local-vars (at-0 int) (at-1 int))
+  (rlet ((vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((a1-1 (hover-nav-control-method-16 (-> self hover) (new 'stack-no-clear 'vector)))
+          (gp-0 (new 'stack-no-clear 'vector))
+          (f26-0 0.3)
+          )
+      (vector-flatten! gp-0 a1-1 *y-vector*)
+      (let ((f28-0 (lerp-scale 0.0 10922.667 (-> gp-0 z) f26-0 1.0))
+            (f24-0 (lerp-scale 0.0 -10922.667 (-> gp-0 z) (- f26-0) -1.0))
+            (f30-0 (lerp-scale 0.0 -10922.667 (-> gp-0 x) f26-0 1.0))
+            (f26-1 (lerp-scale 0.0 10922.667 (-> gp-0 x) (- f26-0) -1.0))
+            )
+        (set! (-> self rotation-vec x)
+              (deg-seek (-> self rotation-vec x) (+ f28-0 f24-0) (* 4551.1113 (seconds-per-frame)))
+              )
+        (set! (-> self rotation-vec z)
+              (deg-seek (-> self rotation-vec z) (+ f30-0 f26-1) (* 5461.3335 (seconds-per-frame)))
+              )
+        )
+      )
+    (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans))))
+      (vector-normalize! s4-1 1.0)
+      (set! (-> self rotation-vec y) (deg-seek
+                                       (-> self rotation-vec y)
+                                       (vector-y-angle s4-1)
+                                       (* (-> (get-hover-params self) max-rotation-rate) (seconds-per-frame))
+                                       )
+            )
+      )
+    (hover-enemy-method-167 self)
+    (hover-nav-control-method-13 (-> self hover))
+    (enemy-common-post self)
+    (let ((a0-18
+            (vector<-cspace! (new 'stack-no-clear 'vector) (-> self node-list data (-> self hover-info main-joint)))
+            )
+          (v1-22 (new 'stack-no-clear 'vector))
+          )
+      (let ((a1-12 (new 'stack-no-clear 'vector)))
+        (vector-! v1-22 a0-18 (the-as vector (-> self main-joint-movement)))
+        (let ((a2-9 v1-22))
+          (.lvf vf1 (&-> v1-22 quad))
+          (let ((f0-20 (-> self clock frames-per-second)))
+            (.mov at-0 f0-20)
+            )
+          (.mov vf2 at-0)
+          (.mov.vf vf1 vf0 :mask #b1000)
+          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.svf (&-> a2-9 quad) vf1)
+          )
+        (vector-! a1-12 v1-22 (-> self main-joint-movement 1))
+        (let ((a2-11 (-> self main-joint-movement 2)))
+          (.lvf vf1 (&-> a1-12 quad))
+          (let ((f0-21 (-> self clock frames-per-second)))
+            (.mov at-1 f0-21)
+            )
+          (.mov vf2 at-1)
+          (.mov.vf vf1 vf0 :mask #b1000)
+          (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+          (.svf (&-> a2-11 quad) vf1)
+          )
+        )
+      (set! (-> self main-joint-movement 0 quad) (-> a0-18 quad))
+      (set! (-> self main-joint-movement 1 quad) (-> v1-22 quad))
+      )
+    0
+    (hover-enemy-method-163 self)
+    0
+    (none)
+    )
+  )
+
+;; definition for function hover-enemy-hostile-post
+;; INFO: Used lq/sq
+(defbehavior hover-enemy-hostile-post hover-enemy ()
+  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) (process->ppointer self))
+    (set! (-> a1-0 num-params) 0)
+    (set! (-> a1-0 message) 'get-formation)
+    (let* ((t9-0 send-event-function)
+           (v1-2 (-> self formation-entity))
+           (a0-2 (the-as hover-formation (t9-0
+                                           (if v1-2
+                                               (-> v1-2 extra process)
+                                               )
+                                           a1-0
+                                           )
+                         )
+                 )
+           (gp-0 (-> self dest-pos))
+           )
+      (cond
+        (a0-2
+          (hover-formation-method-15 a0-2 gp-0 (-> self offset))
+          )
+        (else
+          (let ((s5-0 (handle->process (-> self focus handle))))
+            (cond
+              ((if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               (let* ((s5-1 (-> self focus-pos))
+                      (a0-8 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) s5-1))
+                      )
+                 (vector+! gp-0 s5-1 (vector-rotate-y! (new 'stack-no-clear 'vector) (-> self offset) (vector-y-angle a0-8)))
+                 )
+               )
+              (else
+                (set! (-> gp-0 quad) (-> self root trans quad))
+                )
+              )
+            )
+          )
+        )
+      (hover-nav-control-method-12 (-> self hover) gp-0)
+      )
+    )
+  (hover-enemy-dest-post)
+  (none)
+  )
+
+;; definition for method 163 of type hover-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-163 ((this hover-enemy))
+  0
+  (none)
+  )
+
+;; definition for method 174 of type hover-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-174 ((this hover-enemy))
+  (let* ((v1-0 (-> this formation-entity))
+         (a0-1 (if v1-0
+                   (-> v1-0 extra process)
+                   )
+               )
+         )
+    (if a0-1
+        (send-event a0-1 'join)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 175 of type hover-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-175 ((this hover-enemy))
+  (let* ((v1-0 (-> this formation-entity))
+         (a0-1 (if v1-0
+                   (-> v1-0 extra process)
+                   )
+               )
+         )
+    (if a0-1
+        (send-event a0-1 'leave)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 67 of type hover-enemy
+(defmethod coin-flip? ((this hover-enemy))
+  #f
+  )
+
+;; definition for method 165 of type hover-enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-165 ((this hover-enemy))
+  (set! (-> this main-joint-movement 0 quad) (-> this root trans quad))
+  (set! (-> this main-joint-movement 1 quad) (the-as uint128 0))
+  (set! (-> this main-joint-movement 2 quad) (the-as uint128 0))
+  (set! (-> this thrust 0) 0.0)
+  (set! (-> this thrust 1) 0.0)
+  0
+  (none)
+  )
+
+;; definition for method 107 of type hover-enemy
+(defmethod is-pfoc-in-mesh? ((this hover-enemy) (arg0 process-focusable) (arg1 vector))
+  (if (not arg1)
+      (set! arg1 (get-trans arg0 1))
+      )
+  (let ((f0-0 (hover-nav-control-method-23 (-> this hover) arg1)))
+    (>= (-> this enemy-info notice-distance) f0-0)
+    )
+  )
+
+;; definition for method 166 of type hover-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod play-fly-anim ((this hover-enemy) (arg0 int) (arg1 float) (arg2 int) (arg3 int))
+  (local-vars (v1-1 int))
+  0
+  (if (< 0.0 arg1)
+      (set! v1-1 arg2)
+      (set! v1-1 arg3)
+      )
+  (let ((a3-5 (-> this skel root-channel arg0)))
+    (let ((f0-2 (fabs arg1)))
+      (set! (-> a3-5 frame-interp 1) f0-2)
+      (set! (-> a3-5 frame-interp 0) f0-2)
+      )
+    (set! (-> a3-5 frame-group) (the-as art-joint-anim (-> this draw art-group data v1-1)))
+    (set! (-> a3-5 param 0) 0.0)
+    (set! (-> a3-5 frame-num) (-> this skel root-channel 0 frame-num))
+    (joint-control-channel-group! a3-5 (the-as art-joint-anim (-> this draw art-group data v1-1)) num-func-chan)
+    )
+  (none)
+  )
+
+;; definition for method 59 of type hover-enemy
+;; INFO: Used lq/sq
+(defmethod enemy-common-post ((this hover-enemy))
+  (hover-enemy-method-169 this)
+  (when (< 1 (the-as int (-> this focus aware)))
+    (let ((s5-0 (handle->process (-> this focus handle))))
+      (when s5-0
+        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable s5-0) 1) quad))
+        (los-control-method-9
+          (-> this los)
+          (the-as process-focusable s5-0)
+          (get-trans (the-as process-focusable s5-0) 3)
+          819.2
+          4096.0
+          )
+        )
+      )
+    )
+  (when (not (logtest? (-> this fact enemy-options) (enemy-option user0)))
+    (let ((f1-0 (the float (- (current-time) (-> this scale-timer))))
+          (f2-0 600.0)
+          )
+      (when (< f1-0 f2-0)
+        (let ((f0-2 (fmax 0.0 (fmin 1.0 (/ (+ 30.0 f1-0) f2-0)))))
+          (hover-enemy-method-162 this f0-2)
+          )
+        )
+      )
+    )
+  (let ((t9-5 (method-of-type enemy enemy-common-post)))
+    (t9-5 this)
+    )
+  (hover-nav-control-method-11 (-> this hover))
+  (none)
+  )
+
+;; definition for method 169 of type hover-enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-169 ((this hover-enemy))
+  (local-vars (sv-592 vector) (sv-596 vector) (sv-600 collide-query) (sv-604 vector) (sv-608 float))
+  (cond
+    ((and (-> this draw shadow) (logtest? (-> this draw status) (draw-control-status on-screen)))
+     (when (= (logand (-> this hover-id) 15) (logand (-> *display* frame-clock integral-frame-counter) 15))
+       (set! sv-592 (new 'stack-no-clear 'vector))
+       (set! sv-596 (new 'stack-no-clear 'vector))
+       (set! sv-600 (new 'stack-no-clear 'collide-query))
+       (set! sv-604 (-> this draw shadow-ctrl settings shadow-dir))
+       (set! sv-608 (the-as float 61440.0))
+       (set! (-> sv-600 start-pos quad) (-> this root trans quad))
+       (vector-normalize-copy! (-> sv-600 move-dist) sv-604 sv-608)
+       (let ((v1-19 sv-600))
+         (set! (-> v1-19 radius) 819.2)
+         (set! (-> v1-19 collide-with) (collide-spec backgnd))
+         (set! (-> v1-19 ignore-process0) this)
+         (set! (-> v1-19 ignore-process1) #f)
+         (set! (-> v1-19 ignore-pat)
+               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+               )
+         (set! (-> v1-19 action-mask) (collide-action solid))
+         )
+       (let ((f0-3 (fill-and-probe-using-line-sphere *collide-cache* sv-600)))
+         (cond
+           ((>= f0-3 0.0)
+            (let ((v1-23 (-> this draw shadow-ctrl)))
+              (logclear! (-> v1-23 settings flags) (shadow-flags disable-draw))
+              )
+            0
+            (-> sv-600 best-other-tri intersect)
+            (let ((a1-3 (-> this root trans)))
+              (-> a1-3 y)
+              (let ((f0-4 (* f0-3 sv-608)))
+                (shadow-control-method-14
+                  (-> this draw shadow-ctrl)
+                  a1-3
+                  sv-604
+                  (- (+ 81920.0 sv-608))
+                  (+ -12288.0 f0-4)
+                  (+ 12288.0 f0-4)
+                  )
+                )
+              )
+            )
+           (else
+             (let ((v1-35 (-> this draw shadow-ctrl)))
+               (logior! (-> v1-35 settings flags) (shadow-flags disable-draw))
+               )
+             0
+             )
+           )
+         )
+       )
+     )
+    (else
+      (let ((v1-38 (-> this draw shadow-ctrl)))
+        (logior! (-> v1-38 settings flags) (shadow-flags disable-draw))
+        )
+      0
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function hover-enemy-fly-code
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior hover-enemy-fly-code hover-enemy ()
+  (let ((gp-0 (-> self draw art-group data (-> self enemy-info idle-anim))))
+    (cond
+      ((-> self restart-fly-anims)
+       (ja-channel-push! 3 (seconds 0.2))
+       (let ((a0-3 (-> self skel root-channel 0)))
+         (let ((f0-0 1.0))
+           (set! (-> a0-3 frame-interp 1) f0-0)
+           (set! (-> a0-3 frame-interp 0) f0-0)
+           )
+         (set! (-> a0-3 frame-group) (the-as art-joint-anim gp-0))
+         (set! (-> a0-3 param 0) (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
+         (set! (-> a0-3 param 1) (-> self fly-anim-speed))
+         (set! (-> a0-3 frame-num) 0.0)
+         (joint-control-channel-group! a0-3 (the-as art-joint-anim gp-0) num-func-seek!)
+         )
+       (let ((a0-4 (-> self skel root-channel 1)))
+         (let ((f0-5 0.0))
+           (set! (-> a0-4 frame-interp 1) f0-5)
+           (set! (-> a0-4 frame-interp 0) f0-5)
+           )
+         (set! (-> a0-4 frame-group) (the-as art-joint-anim gp-0))
+         (set! (-> a0-4 param 0) (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
+         (set! (-> a0-4 param 1) (-> self fly-anim-speed))
+         (set! (-> a0-4 frame-num) 0.0)
+         (joint-control-channel-group! a0-4 (the-as art-joint-anim gp-0) num-func-seek!)
+         )
+       (let ((a0-5 (-> self skel root-channel 2)))
+         (let ((f0-10 0.0))
+           (set! (-> a0-5 frame-interp 1) f0-10)
+           (set! (-> a0-5 frame-interp 0) f0-10)
+           )
+         (set! (-> a0-5 frame-group) (the-as art-joint-anim gp-0))
+         (set! (-> a0-5 param 0) (the float (+ (-> (the-as art-joint-anim gp-0) frames num-frames) -1)))
+         (set! (-> a0-5 param 1) (-> self fly-anim-speed))
+         (set! (-> a0-5 frame-num) 0.0)
+         (joint-control-channel-group! a0-5 (the-as art-joint-anim gp-0) num-func-seek!)
+         )
+       (set! (-> self restart-fly-anims) #f)
+       )
+      (else
+        (let ((a0-6 (-> self skel root-channel 0)))
+          (let ((f0-15 1.0))
+            (set! (-> a0-6 frame-interp 1) f0-15)
+            (set! (-> a0-6 frame-interp 0) f0-15)
+            )
+          (set! (-> a0-6 frame-group) (the-as art-joint-anim gp-0))
+          (set! (-> a0-6 param 0) (-> self fly-anim-speed))
+          (joint-control-channel-group! a0-6 (the-as art-joint-anim gp-0) num-func-loop!)
+          )
+        (let ((a0-7 (-> self skel root-channel 1)))
+          (let ((f0-17 0.0))
+            (set! (-> a0-7 frame-interp 1) f0-17)
+            (set! (-> a0-7 frame-interp 0) f0-17)
+            )
+          (set! (-> a0-7 frame-group) (the-as art-joint-anim gp-0))
+          (set! (-> a0-7 param 0) (-> self fly-anim-speed))
+          (joint-control-channel-group! a0-7 (the-as art-joint-anim gp-0) num-func-loop!)
+          )
+        (let ((a0-8 (-> self skel root-channel 2)))
+          (let ((f0-19 0.0))
+            (set! (-> a0-8 frame-interp 1) f0-19)
+            (set! (-> a0-8 frame-interp 0) f0-19)
+            )
+          (set! (-> a0-8 frame-group) (the-as art-joint-anim gp-0))
+          (set! (-> a0-8 param 0) (-> self fly-anim-speed))
+          (joint-control-channel-group! a0-8 (the-as art-joint-anim gp-0) num-func-loop!)
+          )
+        (ja :num! (loop!))
+        )
+      )
+    )
+  (until #f
+    (let ((s5-0 (hover-nav-control-method-16 (-> self hover) (new 'stack-no-clear 'vector)))
+          (gp-1 (-> self hover-info))
+          )
+      (seek! (-> self local-dir x) (-> s5-0 x) (* (-> gp-1 fly-x-anim-seek) (seconds-per-frame)))
+      (seek! (-> self local-dir z) (-> s5-0 z) (* (-> gp-1 fly-z-anim-seek) (seconds-per-frame)))
+      (play-fly-anim self 1 (-> self local-dir x) (-> gp-1 fly-left-anim) (-> gp-1 fly-right-anim))
+      (play-fly-anim self 2 (-> self local-dir z) (-> gp-1 fly-forward-anim) (-> gp-1 fly-backward-anim))
+      )
+    (suspend)
+    (ja :num! (loop! (-> self fly-anim-speed)))
+    )
+  #f
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate dormant-aware (hover-enemy)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (-> self state-timeout)) (< 1 (the-as int (-> self focus aware))))
+        (go-ambush-delay self)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate ambush (hover-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self enemy-flags) (enemy-flag alert))
+    (logior! (-> self enemy-flags) (enemy-flag cam-attack-mode))
+    (logclear! (-> self enemy-flags) (enemy-flag use-notice-distance))
+    (hover-enemy-method-159 self #f)
+    (if (or (zero? (-> self path)) (logtest? (-> self path flags) (path-control-flag not-found)))
+        (go process-drawable-art-error "no path")
+        )
+    (set-time! (-> self scale-timer))
+    (let* ((gp-0 *target*)
+           (s1-0 (if (type? gp-0 process-focusable)
+                     gp-0
+                     )
+                 )
+           (gp-1 (new 'stack-no-clear 'vector))
+           (s2-0 (new 'stack-no-clear 'vector))
+           (s4-0 (-> self root))
+           (s5-0 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) 0.0 'interp))
+           )
+      (let ((s0-0 (get-point-at-percent-along-path! (-> self path) (new 'stack-no-clear 'vector) 1.0 'interp))
+            (s3-1
+              (-> (the-as collide-shape-prim-group (-> self root root-prim))
+                  child
+                  (-> (get-hover-params self) nav-collide-prim-index)
+                  local-sphere
+                  )
+              )
+            )
+        (if s1-0
+            (set! (-> self focus-pos quad) (-> (get-trans s1-0 3) quad))
+            (set! (-> self focus-pos quad) (-> s0-0 quad))
+            )
+        (vector-! s2-0 (-> self focus-pos) (-> s4-0 trans))
+        (vector-normalize! s2-0 1.0)
+        (set-vector! (-> self rotation-vec) (- (vector-x-angle s2-0)) (vector-y-angle s2-0) 0.0 0.0)
+        (hover-enemy-method-167 self)
+        (set! (-> s4-0 trans quad) (-> s5-0 quad))
+        (if (logtest? (-> self fact enemy-options) (enemy-option user0))
+            (vector-!
+              (-> s4-0 trans)
+              (-> s4-0 trans)
+              (vector-orient-by-quat! (new 'stack-no-clear 'vector) s3-1 (-> s4-0 quat))
+              )
+            )
+        )
+      (displacement-between-points-at-percent-normalized! (-> self path) gp-1 0.0)
+      (hover-nav-control-method-10
+        (-> self hover)
+        s5-0
+        gp-1
+        (vector-normalize-copy! (new 'stack-no-clear 'vector) gp-1 (* 0.8 (-> self hover params max-speed)))
+        )
+      )
+    (hover-enemy-method-165 self)
+    (hover-nav-control-method-18 (-> self hover) (-> self path) -1 -1)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (when (hover-enemy-method-160 self)
+      (hover-enemy-method-161 self)
+      (go-virtual hostile)
+      )
+    )
+  :code hover-enemy-fly-code
+  :post (behavior ()
+    (hover-nav-control-method-12 (-> self hover) (the-as vector #f))
+    (hover-enemy-dest-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate land-approach (hover-enemy)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (if (or (zero? (-> self path)) (logtest? (-> self path flags) (path-control-flag not-found)))
+        (set! (-> self dest-pos quad) (-> self entity extra trans quad))
+        (get-point-in-path! (-> self path) (-> self dest-pos) 1.0 'interp)
+        )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (if (hover-nav-control-method-24 (-> self hover) gp-0 (-> self dest-pos))
+          (set! (-> self dest-pos quad) (-> gp-0 quad))
+          )
+      )
+    (hover-enemy-method-175 self)
+    )
+  :trans (behavior ()
+    (if (< (vector-vector-distance (-> self root trans) (-> self dest-pos)) 20480.0)
+        (go-virtual land)
+        )
+    )
+  :code hover-enemy-fly-code
+  :post (behavior ()
+    (hover-nav-control-method-12 (-> self hover) (-> self dest-pos))
+    (hover-enemy-dest-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate land (hover-enemy)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (let ((f30-0 (lerp-scale 0.0 1.0 (the float (- (current-time) (-> self state-time))) 1500.0 300.0)))
+      (hover-enemy-method-162 self f30-0)
+      (when (= f30-0 0.0)
+        (if (logtest? (enemy-option dormant-aware) (-> self fact enemy-options))
+            (go-dormant-aware self)
+            (go-dormant self)
+            )
+        )
+      )
+    )
+  :code hover-enemy-fly-code
+  :post (behavior ()
+    (hover-nav-control-method-12 (-> self hover) (-> self dest-pos))
+    (hover-enemy-dest-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate notice (hover-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy notice) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((gp-0 (new 'stack-no-clear 'vector))
+          (v1-4 *target*)
+          (s5-0 (-> self root trans))
+          )
+      (if v1-4
+          (vector-normalize! (vector-! gp-0 (-> self focus-pos) s5-0) 1.0)
+          (vector-z-quaternion! gp-0 (-> self root quat))
+          )
+      (hover-nav-control-method-10 (-> self hover) s5-0 gp-0 (the-as vector #t))
+      )
+    (hover-enemy-method-165 self)
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy notice) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (hover-enemy-method-174 self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (hover-enemy)
+  :virtual #t
+  :code hover-enemy-fly-code
+  :post hover-enemy-hostile-post
+  )
+
+;; failed to figure out what this is:
+(defstate stare (hover-enemy)
+  :virtual #t
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
+      (let ((v1-3 (-> self focus aware)))
+        (cond
+          ((>= 1 (the-as int v1-3))
+           (go-virtual land-approach)
+           )
+          ((and (= v1-3 (enemy-aware ea3)) (get-focus! self))
+           (go-hostile self)
+           )
+          )
+        )
+      )
+    )
+  :code hover-enemy-fly-code
+  :post hover-enemy-hostile-post
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (hover-enemy)
+  :virtual #t
+  :code hover-enemy-fly-code
+  :post hover-enemy-hostile-post
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (hover-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (hover-enemy-method-161 self)
+    (let ((t9-1 (-> (method-of-type enemy knocked) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    (set! (-> self hit-surface?) #f)
+    (set! (-> self knocked-start-level) (-> self root trans y))
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy knocked) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self hit-surface?) #f)
+    )
+  :trans (behavior ()
+    (let ((gp-0 (-> self root)))
+      (when (logtest? (-> gp-0 status) (collide-status on-surface))
+        (when (not (-> self hit-surface?))
+          (set! (-> self hit-surface?) #t)
+          (set! (-> self surface-normal quad) (-> gp-0 poly-normal quad))
+          )
+        )
+      (when (and (-> self hit-surface?) (= (-> self hit-points) 0.0))
+        (let ((s4-0 (new 'stack-no-clear 'quaternion)))
+          (let ((s5-0 (new 'stack-no-clear 'vector)))
+            (vector-z-quaternion! s5-0 (-> gp-0 quat))
+            (forward-up->quaternion s4-0 s5-0 (-> self surface-normal))
+            )
+          (quaternion-slerp! (-> gp-0 quat) (-> gp-0 quat) s4-0 0.25)
+          )
+        )
+      )
+    (if (and (!= (-> self hit-points) 0.0)
+             (and (zero? (-> self fated-time))
+                  (time-elapsed? (-> self state-time) (seconds 0.2))
+                  (< (-> self root trans y) (- (-> self knocked-start-level) (-> self knocked-fall-dist)))
+                  )
+             )
+        (go-virtual knocked-recover)
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate knocked-recover (hover-enemy)
+  :virtual #t
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type enemy knocked-recover) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self restart-fly-anims) #t)
+    )
+  :post hover-enemy-hostile-post
+  )
+
+;; failed to figure out what this is:
+(defstate flying-death (hover-enemy)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'touched 'attack)
+       (if (time-elapsed? (-> self state-time) (seconds 0.5))
+           (go-virtual flying-death-explode)
+           )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (on-dying self)
+    (stop-look-at! self)
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logclear! (-> self focus-status) (focus-status dangerous))
+    (logclear! (-> self enemy-flags) (enemy-flag trackable))
+    (set! (-> self root penetrate-using) (penetrate lunge vehicle knocked))
+    (let ((gp-0 (-> self flying-death-transv)))
+      (let ((a1-0 (handle->process (-> self incoming attacker-handle))))
+        (if a1-0
+            (vector-! gp-0 (-> (the-as process-drawable a1-0) root trans) (-> self root trans))
+            (vector-! gp-0 (-> self incoming attacker-pos) (-> self root trans))
+            )
+        )
+      (set! (-> gp-0 y) 0.0)
+      (vector-normalize! gp-0 1.0)
+      (vector-rotate90-around-y! gp-0 gp-0)
+      (if (rnd-chance? self 0.5)
+          (vector-negate! gp-0 gp-0)
+          )
+      (let ((f30-0 (rnd-float-range self 0.0 1.0)))
+        (vector-float*! gp-0 gp-0 (lerp 98304.0 172032.0 f30-0))
+        (set! (-> gp-0 y) (lerp 8192.0 98304.0 f30-0))
+        )
+      (let ((v1-29 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+        (cond
+          ((< 0.0 (vector-dot gp-0 v1-29))
+           (set! (-> self flying-death-anim) (-> self hover-info fly-left-anim))
+           (set! (-> self flying-death-engine) (-> self hover-info engine-left))
+           (set! (-> self flying-death-thrust-rotate) (-> self hover-info thrust-rotate-left))
+           (set! (-> self flying-death-spin-dest) -524288.0)
+           )
+          (else
+            (set! (-> self flying-death-anim) (-> self hover-info fly-right-anim))
+            (set! (-> self flying-death-engine) (-> self hover-info engine-right))
+            (set! (-> self flying-death-thrust-rotate) (-> self hover-info thrust-rotate-right))
+            (set! (-> self flying-death-spin-dest) 524288.0)
+            )
+          )
+        )
+      )
+    (set! (-> self flying-death-spin-axis quad) (-> *y-vector* quad))
+    (vector-rotate-x!
+      (-> self flying-death-spin-axis)
+      (-> self flying-death-spin-axis)
+      (* 182.04445 (rand-vu-float-range -120.0 120.0))
+      )
+    (set-gravity-length (-> self root dynam) 163840.0)
+    (set! (-> self hover speed) 0.2)
+    (set! (-> self flying-death-spin) 0.0)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (or (logtest? (-> self root status)
+                      (collide-status touch-surface touch-wall touch-ceiling touch-actor impact-surface touch-background)
+                      )
+            (time-elapsed? (-> self state-time) (seconds 4))
+            )
+        (go-virtual flying-death-explode)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data (-> self flying-death-anim)) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (seek! (-> self flying-death-spin) (-> self flying-death-spin-dest) (* 196608.0 (seconds-per-frame)))
+    (let ((gp-0 (-> self root)))
+      (let ((a2-2
+              (quaternion-vector-angle!
+                (new 'stack-no-clear 'quaternion)
+                (-> self flying-death-spin-axis)
+                (* (-> self flying-death-spin) (seconds-per-frame))
+                )
+              )
+            )
+        (quaternion*! (-> gp-0 quat) (-> gp-0 quat) a2-2)
+        )
+      (vector-v++!
+        (-> self flying-death-transv)
+        (compute-acc-due-to-gravity gp-0 (new 'stack-no-clear 'vector) 0.8)
+        )
+      (let ((v1-6 (get-hover-params self)))
+        (seek!
+          (-> self hover speed)
+          (* 2.0 (-> v1-6 max-speed))
+          (* 0.8 (seconds-per-frame) (-> v1-6 max-acceleration))
+          )
+        )
+      (vector-normalize-copy! (-> gp-0 transv) (-> self flying-death-transv) (-> self hover speed))
+      (let ((a2-8 (new 'stack-no-clear 'collide-query)))
+        (set! (-> a2-8 collide-with) (-> gp-0 root-prim prim-core collide-with))
+        (set! (-> a2-8 ignore-process0) (-> gp-0 process))
+        (set! (-> a2-8 ignore-process1) #f)
+        (set! (-> a2-8 ignore-pat) (-> gp-0 pat-ignore-mask))
+        (set! (-> a2-8 action-mask) (collide-action solid))
+        (fill-cache-integrate-and-collide gp-0 (-> gp-0 transv) a2-8 (meters 0))
+        )
+      )
+    (enemy-simple-post)
+    (hover-enemy-method-164 self (-> self flying-death-engine) (-> self flying-death-thrust-rotate))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate flying-death-explode (hover-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (on-dying self)
+    (let ((v1-3 (-> self root root-prim)))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec))
+      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    )
+  :code (behavior ()
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate gun-dark-2-stretch (hover-enemy)
+  :virtual #t
+  :enter (behavior ()
+    (hover-enemy-method-175 self)
+    (let ((t9-1 (-> (method-of-type enemy gun-dark-2-stretch) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :exit (behavior ()
+    (hover-enemy-method-174 self)
+    (let ((t9-1 (-> (method-of-type enemy gun-dark-2-stretch) exit)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  )
+
+;; definition for method 160 of type hover-enemy
+;; WARN: Return type mismatch symbol vs object.
+(defmethod hover-enemy-method-160 ((this hover-enemy))
+  (hover-nav-control-method-22 (-> this hover))
+  )
+
+;; definition for method 161 of type hover-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-161 ((this hover-enemy))
+  (local-vars (v1-5 enemy-flag))
+  (hover-nav-control-method-19 (-> this hover))
+  (hover-enemy-method-159 this #t)
+  (let ((v1-4 (-> this enemy-flags)))
+    (if (logtest? v1-4 (enemy-flag vulnerable-backup))
+        (set! v1-5 (logior v1-4 (enemy-flag vulnerable)))
+        (set! v1-5 (logclear v1-4 (enemy-flag vulnerable)))
+        )
+    )
+  (set! (-> this enemy-flags) v1-5)
+  (hover-enemy-method-174 this)
+  0
+  (none)
+  )
+
+;; definition for method 68 of type hover-enemy
+(defmethod get-enemy-aware ((this hover-enemy) (arg0 enemy-aware))
+  arg0
+  )
+
+;; definition for method 73 of type hover-enemy
+(defmethod go-idle ((this hover-enemy))
+  (go (method-of-object this land-approach))
+  )
+
+;; definition for method 80 of type hover-enemy
+(defmethod go-best-state ((this hover-enemy))
+  (let ((s5-0 (-> this focus aware)))
+    (cond
+      ((and (= s5-0 (enemy-aware ea3)) (get-focus! this))
+       (go-hostile this)
+       )
+      ((>= 1 (the-as int s5-0))
+       (go (method-of-object this land-approach))
+       )
+      ((= s5-0 (enemy-aware ea4))
+       (go-flee this)
+       )
+      (else
+        (go-stare this)
+        )
+      )
+    )
+  )
+
+;; definition for method 167 of type hover-enemy
+;; WARN: Return type mismatch quaternion vs none.
+(defmethod hover-enemy-method-167 ((this hover-enemy))
+  (let ((gp-0 (new 'stack-no-clear 'matrix)))
+    (matrix-rotate-zxy! gp-0 (-> this rotation-vec))
+    (matrix->quaternion (-> this root quat) gp-0)
+    )
+  (none)
+  )
+
+;; definition for method 168 of type hover-enemy
+;; WARN: Return type mismatch float vs none.
+(defmethod hover-enemy-method-168 ((this hover-enemy))
+  (let ((s5-0 (-> this root quat))
+        (gp-0 (-> this rotation-vec))
+        )
+    (set! (-> gp-0 z) (quaternion-z-angle s5-0))
+    (set! (-> gp-0 y) (quaternion-y-angle s5-0))
+    (set! (-> gp-0 x) (quaternion-x-angle s5-0))
+    )
+  (none)
+  )
+
+;; definition for method 159 of type hover-enemy
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-159 ((this hover-enemy) (arg0 symbol))
+  (let ((v1-0 0)
+        (a0-2 (-> this root root-prim))
+        )
+    (if arg0
+        (set! v1-0 545)
+        )
+    (set! (-> (the-as collide-shape-prim-group a0-2) child 0 prim-core collide-with) (the-as collide-spec v1-0))
+    (set! (-> (the-as collide-shape-prim-group a0-2) child 1 prim-core collide-with) (the-as collide-spec v1-0))
+    (set! (-> (the-as collide-shape-prim-group a0-2) child 2 prim-core collide-with) (the-as collide-spec v1-0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 89 of type hover-enemy
+(defmethod within-gspot-range? ((this hover-enemy))
+  #f
+  )
+
+;; definition for method 125 of type hover-enemy
+;; WARN: Return type mismatch symbol vs object.
+(defmethod ragdoll-settled? ((this hover-enemy))
+  #f
+  )
+
+;; definition for method 162 of type hover-enemy
+(defmethod hover-enemy-method-162 ((this hover-enemy) (arg0 float))
+  (let ((f0-1 (* (-> this scale) arg0))
+        (v0-0 (-> this root scale))
+        )
+    (set! (-> v0-0 x) (* 1.2 f0-1))
+    (set! (-> v0-0 y) (* 0.9 f0-1))
+    (set! (-> v0-0 z) f0-1)
+    (set! (-> v0-0 w) 1.0)
+    v0-0
+    )
+  )
+
+;; definition for method 143 of type hover-enemy
+(defmethod on-dying ((this hover-enemy))
+  (when (not (logtest? (enemy-flag called-dying) (-> this enemy-flags)))
+    (process-entity-status! this (entity-perm-status subtask-complete) #t)
+    (hover-enemy-method-175 this)
+    ((method-of-type enemy on-dying) this)
+    )
+  (none)
+  )
+
+;; definition for method 10 of type hover-enemy
+(defmethod deactivate ((this hover-enemy))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this hover))
+      (hover-nav-control-method-9 (-> this hover))
+      )
+  (send-event (ppointer->process (-> this parent)) 'hover-die)
+  ((method-of-type enemy deactivate) this)
+  (none)
+  )
+
+;; definition for method 7 of type hover-enemy
+;; WARN: Return type mismatch enemy vs hover-enemy.
+(defmethod relocate ((this hover-enemy) (offset int))
+  (if (nonzero? (-> this hover))
+      (&+! (-> this hover) offset)
+      )
+  (the-as hover-enemy ((method-of-type enemy relocate) this offset))
+  )
+
+;; definition for method 176 of type hover-enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod hover-enemy-method-176 ((this hover-enemy))
+  (set! (-> this hover-info) (get-hover-info this))
+  (set! (-> this fly-anim-speed) (rnd-float-range this 0.8 1.2))
+  (init-los!
+    (-> this los)
+    this
+    (seconds 0.1)
+    (-> this enemy-info notice-distance)
+    (collide-spec obstacle hit-by-others-list los-blocker)
+    )
+  (vector-reset! (-> this rotation-vec))
+  (vector-reset! (-> this dest-pos))
+  (vector-reset! (-> this local-dir))
+  (set! (-> this scale) 1.0)
+  (hover-enemy-method-162 this 1.0)
+  (set! (-> this hover-id) *current-hover-id*)
+  (set! *current-hover-id* (+ *current-hover-id* 1))
+  (set! (-> this formation-entity) (entity-actor-lookup (-> this entity) 'alt-actor 0))
+  (logior! (-> this skel status) (joint-control-status sync-math))
+  (let ((t0-1 (get-hover-params this)))
+    (set! (-> this hover) (new 'process 'hover-nav-control this (-> this root) t0-1))
+    )
+  (let ((v1-22 (-> this hover-info))
+        (s5-0 (-> this offset))
+        (t9-7 (method-of-type res-lump get-property-struct))
+        (a0-10 (-> this entity))
+        (a1-5 'trans-offset)
+        (a2-4 'interp)
+        (a3-2 -1000000000.0)
+        (t0-2 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> t0-2 x) 0.0)
+    (set! (-> t0-2 y) (-> v1-22 hover-y-offset))
+    (set! (-> t0-2 z) (-> v1-22 hover-xz-offset))
+    (set! (-> t0-2 w) 1.0)
+    (set! (-> s5-0 quad)
+          (-> (the-as vector (t9-7 a0-10 a1-5 a2-4 a3-2 t0-2 (the-as (pointer res-tag) #f) *res-static-buf*)) quad)
+          )
+    )
+  (set! (-> this restart-fly-anims) #t)
+  (set! (-> this knocked-fall-dist) 2048.0)
+  (send-event (ppointer->process (-> this parent)) 'hover-spawn)
+  0
+  (none)
+  )

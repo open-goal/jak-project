@@ -346,6 +346,25 @@ namespace nav_dma_send_to_spr_no_flush { extern void link(); }
 namespace blerc_execute { extern void link(); }
 namespace setup_blerc_chains_for_one_fragment { extern void link(); }
 namespace sparticle_motion_blur_dirt { extern void link(); }
+namespace foreground_draw_hud { extern void link(); }
+namespace ripple_matrix_scale { extern void link(); }
+namespace ripple_apply_wave_table { extern void link(); }
+namespace ripple_create_wave_table { extern void link(); }
+namespace ripple_execute_init { extern void link(); }
+namespace method_14_ocean { extern void link(); }
+namespace method_15_ocean { extern void link(); }
+namespace method_16_ocean { extern void link(); }
+namespace init_ocean_far_regs { extern void link(); }
+namespace draw_large_polygon_ocean { extern void link(); }
+namespace render_ocean_quad { extern void link(); }
+namespace generic_merc_do_chain { extern void link(); }
+namespace generic_merc_execute_asm { extern void link(); }
+namespace generic_merc_death { extern void link(); }
+namespace generic_merc_query { extern void link(); }
+namespace generic_translucent { extern void link(); }
+namespace high_speed_reject { extern void link(); }
+namespace mercneric_convert { extern void link(); }
+namespace generic_merc_init_asm { extern void link(); }
 
 }
 // clang-format on
@@ -540,7 +559,7 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"joint", {jak3::cspace_parented_transformq_joint::link}},
         {"foreground",
          {jak3::foreground_check_longest_edge_asm::link, jak3::foreground_generic_merc::link,
-          jak3::foreground_merc::link}},
+          jak3::foreground_merc::link, jak3::foreground_draw_hud::link}},
         {"particle-curves", {jak3::live_func_curve::link, jak3::birth_func_curve::link}},
         {"collide-hash",
          {jak3::method_11_collide_hash::link, jak3::method_12_collide_hash::link,
@@ -582,6 +601,19 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
         {"merc-blend-shape",
          {jak3::blerc_execute::link, jak3::setup_blerc_chains_for_one_fragment::link}},
         {"wvehicle-part", {jak3::sparticle_motion_blur_dirt::link}},
+        {"ripple",
+         {jak3::ripple_matrix_scale::link, jak3::ripple_apply_wave_table::link,
+          jak3::ripple_create_wave_table::link, jak3::ripple_execute_init::link}},
+        {"ocean-vu0",
+         {jak3::method_14_ocean::link, jak3::method_15_ocean::link, jak3::method_16_ocean::link}},
+        {"ocean",
+         {jak3::init_ocean_far_regs::link, jak3::draw_large_polygon_ocean::link,
+          jak3::render_ocean_quad::link}},
+        {"generic-merc",
+         {jak3::generic_merc_do_chain::link, jak3::generic_merc_execute_asm::link,
+          jak3::generic_merc_death::link, jak3::generic_merc_query::link,
+          jak3::generic_translucent::link, jak3::high_speed_reject::link,
+          jak3::mercneric_convert::link, jak3::generic_merc_init_asm::link}},
     }};
 
 void LinkedFunctionTable::reg(const std::string& name, u64 (*exec)(void*), u32 stack_size) {

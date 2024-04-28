@@ -106,7 +106,9 @@
         )
 
 ;; The stack for running user code.
+(define *canary-1* (the-as (pointer uint64) (malloc 'global 8)))
 (define *dram-stack* (the-as (pointer uint8) (malloc 'global DPROCESS_STACK_SIZE)))
+(define *canary-2* (the-as (pointer uint64) (malloc 'global 8)))
 (defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
 
 ;; The kernel can also run code using the scratchpad as the stack.
@@ -130,41 +132,47 @@
 ;; DECOMP DEVIATION
 (#cond
   (PC_PORT
+  (define *canary-4* (the-as (pointer uint64) (malloc 'global 8)))
   ;; we'll create a fake scratchpad:
   ;; make sure the scratchpad is 64kb aligned, and make it 32 kB so we can big stacks on it.
   ;; some (partially buggy) code in generic tie relies on 64 kB alignment.
-  (let* ((mem (new 'global 'array 'uint8 (* 128 1024)))
+  (define *fake-scratchpad-size* (* 128 1024))
+  (let* ((mem (new 'global 'array 'uint8 (* 2 *fake-scratchpad-size*)))
          )
-      (define *fake-scratchpad-data* (the pointer (align-n mem (* 64 1024))))
+      (define *fake-scratchpad-alloc* mem)
+      (define *fake-scratchpad-data* (the pointer (align-n mem *fake-scratchpad-size*)))
     )
 
   ;; use the same memory for the scratchpad stacks.
   ;; defining it as a separate thing so we can split them for debugging stack corruption easily.
   (define *fake-scratchpad-stack* *fake-scratchpad-data*)
-  ;; (define *canary-3* (the-as (pointer uint64) (malloc 'global 8)))
+  (define *canary-3* (the-as (pointer uint64) (malloc 'global 8)))
 
   (defmacro scratchpad-start ()
     "Get the start of the scratchpad. At least 64kB aligned."
     '*fake-scratchpad-data*
+    )
+  (defmacro scratchpad-end ()
+    "Get the start of the scratchpad. At least 64kB aligned."
+    `(&+ (scratchpad-start) *fake-scratchpad-size*)
     )
   )
   (else
     (defmacro scratchpad-start ()
       #x70000000
       )
+    (defmacro scratchpad-end ()
+      "Get the start of the scratchpad. At least 64kB aligned."
+      `(&+ (scratchpad-start) (* 16 1024))
+      )
     )
-  )
-
-(defmacro scratchpad-end ()
-  "Get the end of the scratchpad memory"
-  `(&+ (scratchpad-start) (* 16 1024))
   )
 
 (defmacro in-scratchpad? (x)
   "Is the given address in the scratchpad?"
   `(and
      (>= (the-as int ,x) (scratchpad-start))
-     (< (the-as int ,x) (scratchpad-end))
+     (<= (the-as int ,x) (scratchpad-end))
      )
   )
 
@@ -362,7 +370,7 @@
     (set! (-> (the-as process v0-0) brother) (the-as (pointer process-tree) #f))
     (set! (-> (the-as process v0-0) child) (the-as (pointer process-tree) #f))
     (set! (-> (the-as process v0-0) self) (the-as process v0-0))
-    (set! (-> (the-as process v0-0) ppointer) (the-as (pointer process) (&-> (the-as process v0-0) self)))
+    (set! (-> (the-as process v0-0) ppointer) (&-> (the-as process v0-0) self))
     (the-as process v0-0)
     )
   )
@@ -1525,6 +1533,10 @@
   (execute-process-tree
     *active-pool*
     (lambda ((arg0 process))
+      ;; (+! (-> *canary-1*) 1)
+      ;; (+! (-> *canary-2*) 1)
+      ;; (+! (-> *canary-3*) 1)
+      ;; (+! (-> *canary-4*) 1)
       (let ((s5-0 *kernel-context*))
         (case (-> arg0 status)
           (('waiting-to-run 'suspended)
@@ -1539,6 +1551,8 @@
                (set! *debug-draw-pauseable* #f)
                )
              )
+           ;; run the trans function.
+          ;;  (format 0 "Trans | Proc ~A | C1: ~X C2: ~X C3: ~X C4: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*) (-> *canary-4*))
            (when (-> arg0 trans-hook)
              (let ((s4-0 (new 'process 'cpu-thread arg0 'trans 256 (-> arg0 main-thread stack-top))))
                (reset-and-call s4-0 (-> arg0 trans-hook))
@@ -1549,21 +1563,28 @@
                (return 'dead)
                )
              )
+           ;; run the main thread!
+          ;;  (format 0 "Code | Proc ~A | C1: ~X C2: ~X C3: ~X C4: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*) (-> *canary-4*))
            (if (logtest? (-> arg0 mask) (process-mask sleep-code))
                (set! (-> arg0 status) 'suspended)
                ((-> arg0 main-thread resume-hook) (-> arg0 main-thread))
                )
+          ;;  (format 0 "Finished Code | Proc ~A | C1: ~X C2: ~X C3: ~X C4: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*) (-> *canary-4*))
            (cond
              ((= (-> arg0 status) 'dead)
               (set! (-> s5-0 current-process) #f)
               'dead
               )
              (else
+               ;; run post.
+               ;; NOTE: post always runs on the dram stack, so you can use ja-post and use the scratchpad for anims.
                (when (-> arg0 post-hook)
+                ;;  (format 0 "Post | Proc ~A | C1: ~X C2: ~X C3: ~X C4: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*) (-> *canary-4*))
                  (let ((s4-1 (new 'process 'cpu-thread arg0 'post 256 *kernel-dram-stack*)))
                    (reset-and-call s4-1 (-> arg0 post-hook))
                    (delete s4-1)
                    )
+                ;;  (format 0 "Finished Post | Proc ~A | C1: ~X C2: ~X C3: ~X C4: ~X~%" (-> arg0 name) (-> *canary-1*) (-> *canary-2*) (-> *canary-3*) (-> *canary-4*))
                  (when (= (-> arg0 status) 'dead)
                    (set! (-> s5-0 current-process) #f)
                    (return 'dead)
@@ -2029,7 +2050,7 @@
   ;; if we got the scratchpad stack, move to the fake scratchpad.
   (#when PC_PORT
     (when (= stack-pointer *scratch-memory-top*)
-      (set! stack-pointer (&+ *fake-scratchpad-stack* (* 32 1024)))
+      (set! stack-pointer (scratchpad-end))
       )
     )
   (set! (-> this mask)

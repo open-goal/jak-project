@@ -7,3 +7,76 @@
 
 ;; DECOMP BEGINS
 
+(defmethod reset-task! ((this asht-wait-spot))
+  (set! (-> this check-done) #f)
+  (set! (-> this which-spot) -1)
+  (set! (-> this num-spots) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch none vs object.
+(defmethod ai-task-method-11 ((this asht-wait-spot) (arg0 bot))
+  (let ((s4-0 (-> this which-spot)))
+    (when (>= s4-0 0)
+      (let ((s3-0 (-> arg0 course spots (-> this spot-indexes s4-0))))
+        (if (and (not (outside-spot-radius? arg0 s3-0 (the-as vector #f) #f)) (player-blocking-spot? arg0 s3-0))
+            (set! s4-0 -1)
+            )
+        )
+      )
+    (when (< s4-0 0)
+      (set! s4-0 (choose-spot arg0 (the-as int (-> this num-spots)) (-> this spot-indexes)))
+      (set! (-> this which-spot) s4-0)
+      (mem-copy!
+        (the-as pointer (-> arg0 spot))
+        (the-as pointer (-> arg0 course spots (-> this spot-indexes s4-0)))
+        20
+        )
+      )
+    (if (logtest? *display-bot-marks* (bot-marks-controls bmc16))
+        (bot-method-198
+          arg0
+          (the-as int (-> this num-spots))
+          (-> this spot-indexes)
+          (the-as int (-> this spot-indexes s4-0))
+          )
+        )
+    )
+  (when (not ((-> this check-done) this (the-as ashelin arg0)))
+    (let ((a1-10 (handle->process (-> arg0 focus handle))))
+      (when (and a1-10
+                 (attacked-by-player? arg0 (the-as process-focusable a1-10))
+                 (not (logtest? (-> arg0 focus-status) (focus-status grabbed)))
+                 )
+        (get-task-by-type (-> arg0 ai-ctrl) asht-fight-focus arg0)
+        (ai-task-control-method-10 (-> arg0 ai-ctrl) arg0)
+        )
+      )
+    )
+  )
+
+(defmethod ai-task-method-11 ((this asht-fight-focus) (arg0 bot))
+  (let ((a1-1 (handle->process (-> arg0 focus handle))))
+    (cond
+      ((and a1-1
+            (attacked-by-player? arg0 (the-as process-focusable a1-1))
+            (not (logtest? (-> arg0 focus-status) (focus-status grabbed)))
+            )
+       (let ((v0-1 (the-as object (logior (-> arg0 bot-flags) (bot-flag bf00)))))
+         (set! (-> arg0 bot-flags) (the-as bot-flag v0-1))
+         v0-1
+         )
+       )
+      (else
+        (ai-task-control-method-14 (-> arg0 ai-ctrl) this arg0)
+        )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch bot-flag vs none.
+(defmethod ai-task-method-10 ((this asht-fight-focus) (arg0 bot))
+  (logclear! (-> arg0 bot-flags) (bot-flag bf00))
+  (none)
+  )

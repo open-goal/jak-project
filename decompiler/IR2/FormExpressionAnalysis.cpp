@@ -6586,6 +6586,10 @@ bool try_vector_reset_inline(const Env& env,
   RegisterAccess orig;
   store = repop_passthrough_arg(store, stack, env, &orig, &got_orig);
 
+  if (!store) {
+    return false;
+  }
+
   // create the actual  form
   Form* new_thing = pool.form<GenericElement>(
       GenericOperator::make_function(pool.form<ConstantTokenElement>("vector-reset!")),
