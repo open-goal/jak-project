@@ -176,8 +176,10 @@ the other is being read/written by overlord."
   "Add an element. If the buffer is full, flush it!"
   (let ((v1-0 (-> this current)))
     (when (= (-> v1-0 elt-used) (-> v1-0 elt-count))
-      (if (zero? (-> this rpc-port))
+      (when (zero? (-> this rpc-port))
+          ;; if we're RPC 0, this is evidently a situation to warn about.
           (format 0 "WARNING: too many sound commands queued~%")
+          (sound-buffer-dump) ;; og:preserve-this added for debugging
           )
       (call this (the-as uint 0) (the-as pointer 0) (the-as uint 0))
       (set! v1-0 (-> this current))
