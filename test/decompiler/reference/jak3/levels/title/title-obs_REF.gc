@@ -1,16 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: title-obs.gc
-;; name in dgo: title-obs
-;; dgos: TITLE
-
-;; DECOMP BEGINS
-
-(declare-type title-control process)
-(define-extern *title-control* (pointer title-control))
-(define-extern *credits-ids* (array text-id))
-
+;; definition of type title-control
 (deftype title-control (process)
   ((selected     int32)
    (sprites      hud-sprite           2 :inline)
@@ -36,7 +27,37 @@
     )
   )
 
+;; definition for method 3 of type title-control
+(defmethod inspect ((this title-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tselected: ~D~%" (-> this selected))
+  (format #t "~2Tsprites[2] @ #x~X~%" (-> this sprites))
+  (format #t "~2Tsprite-pos: ~`vector`P~%" (-> this sprite-pos))
+  (format #t "~2Tsprite-draw: ~D~%" (-> this sprite-draw))
+  (format #t "~2Tbuffer[2] @ #x~X~%" (-> this buffer))
+  (dotimes (s5-0 2)
+    (format #t "~T  [~D]~2Tbuffer: ~A~%" s5-0 (-> this buffer s5-0))
+    )
+  (format #t "~2Twant[2] @ #x~X~%" (-> this want))
+  (format #t "~2Twant-name[2] @ #x~X~%" (-> this want-name))
+  (format #t "~2Thave[2] @ #x~X~%" (-> this have))
+  (format #t "~2Tdraw: ~D~%" (-> this draw))
+  (format #t "~2Tdraw-name: ~A~%" (-> this draw-name))
+  (format #t "~2Tactive: ~A~%" (-> this active))
+  (format #t "~2Tspark-time: ~D~%" (-> this spark-time))
+  (format #t "~2Tgui-id: ~D~%" (-> this gui-id))
+  (format #t "~2Tlogo: #x~X~%" (-> this logo))
+  (label cfg-7)
+  this
+  )
 
+;; definition for method 7 of type title-control
 ;; WARN: Return type mismatch process vs title-control.
 (defmethod relocate ((this title-control) (offset int))
   (dotimes (v1-0 2)
@@ -47,6 +68,7 @@
   (the-as title-control ((method-of-type process relocate) this offset))
   )
 
+;; definition for method 10 of type title-control
 (defmethod deactivate ((this title-control))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (send-event (handle->process (-> *game-info* dust-storm)) 'set-intro #f)
@@ -61,11 +83,13 @@
   (none)
   )
 
+;; failed to figure out what this is:
 (defskelgroup skel-jakthreelogo jakthreelogo jakthreelogo-lod0-jg jakthreelogo-idle-ja
               ((jakthreelogo-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 50)
               )
 
+;; definition for function title-screen-change
 (defbehavior title-screen-change title-control ((arg0 string) (arg1 int) (arg2 string) (arg3 int) (arg4 symbol) (arg5 symbol))
   (when arg5
     (let ((s1-0 (the-as int (-> *setting-control* user-current language))))
@@ -136,6 +160,7 @@
   0
   )
 
+;; definition for function wait-for-press
 (defun wait-for-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
   (let ((s2-0 (current-time))
         (s3-0 #f)
@@ -155,6 +180,7 @@
     )
   )
 
+;; definition for function direction-press
 (defun direction-press ((arg0 time-frame) (arg1 time-frame) (arg2 symbol))
   (let ((s2-0 (current-time))
         (s3-0 #f)
@@ -177,6 +203,8 @@
     )
   )
 
+;; definition for function title-menu
+;; WARN: Return type mismatch int vs integer.
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior title-menu title-control ()
   (local-vars (sv-112 font-context))
@@ -245,6 +273,7 @@
   -1
   )
 
+;; definition for function title-fade-out
 (defun title-fade-out ((arg0 float))
   (setup
     *screen-filter*
@@ -276,6 +305,7 @@
   0
   )
 
+;; definition for function title-progress
 (defun title-progress ((arg0 symbol))
   (setup
     *screen-filter*
@@ -305,6 +335,7 @@
   0
   )
 
+;; failed to figure out what this is:
 (defstate startup (title-control)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -559,6 +590,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate wait (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -617,6 +649,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; failed to figure out what this is:
 (defstate idle (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -641,6 +674,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; definition for symbol *scrap-book-1*, type (array int16)
 (define *scrap-book-1* (new 'static 'boxed-array :type int16
                          82
                          83
@@ -774,6 +808,7 @@
                          )
         )
 
+;; definition for symbol *scrap-book-2*, type (array int16)
 (define *scrap-book-2* (new 'static 'boxed-array :type int16
                          1
                          2
@@ -869,6 +904,7 @@
                          )
         )
 
+;; failed to figure out what this is:
 (defstate scrap-book (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -930,6 +966,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; failed to figure out what this is:
 (defstate control-spec (title-control)
   :virtual #t
   :event (-> (method-of-type title-control startup) event)
@@ -1015,6 +1052,7 @@
   :post (-> (method-of-type title-control startup) post)
   )
 
+;; definition for function title-control-init
 (defbehavior title-control-init title-control ()
   (stack-size-set! (-> self main-thread) 2048)
   (logclear! (-> self mask) (process-mask freeze pause menu progress actor-pause))
@@ -1127,6 +1165,7 @@
   (go-virtual startup)
   )
 
+;; failed to figure out what this is:
 (defstate target-title (target)
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
@@ -1184,6 +1223,7 @@
   :post target-no-move-post
   )
 
+;; definition of type museum-char
 (deftype museum-char (structure)
   ((skel                     basic)
    (anim                     uint32)
@@ -1200,7 +1240,30 @@
    )
   )
 
+;; definition for method 3 of type museum-char
+(defmethod inspect ((this museum-char))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'museum-char)
+  (format #t "~1Tskel: ~A~%" (-> this skel))
+  (format #t "~1Tanim: ~D~%" (-> this anim))
+  (format #t "~1Theight-min: ~f~%" (-> this height-min))
+  (format #t "~1Theight-max: ~f~%" (-> this height-max))
+  (format #t "~1Tzoom-min: ~f~%" (-> this zoom-min))
+  (format #t "~1Tzoom-max: ~f~%" (-> this zoom-max))
+  (format #t "~1Tscale: ~f~%" (-> this scale))
+  (format #t "~1Ttext-id: ~D~%" (-> this text-id))
+  (format #t "~1Tcloth-reset-time: ~D~%" (-> this cloth-reset-time))
+  (format #t "~1Tuse-orient-cloth-reset?: ~A~%" (-> this use-orient-cloth-reset?))
+  (format #t "~1Touttake-num: ~D~%" (-> this outtake-num))
+  (format #t "~1Touttake: ~A~%" (-> this outtake))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type hirez-viewer
 (deftype hirez-viewer (process-drawable)
   ((angley                   float)
    (anglex                   float)
@@ -1220,7 +1283,32 @@
     )
   )
 
+;; definition for method 3 of type hirez-viewer
+(defmethod inspect ((this hirez-viewer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tangley: ~f~%" (-> this angley))
+  (format #t "~2Tanglex: ~f~%" (-> this anglex))
+  (format #t "~2Tupdown: ~f~%" (-> this updown))
+  (format #t "~2Tzoom: ~f~%" (-> this zoom))
+  (format #t "~2Tchar: #<museum-char @ #x~X>~%" (-> this char))
+  (format #t "~2Tpos-x: ~f~%" (-> this pos-x))
+  (format #t "~2Tdest-pos-x: ~f~%" (-> this dest-pos-x))
+  (format #t "~2Talpha: ~f~%" (-> this alpha))
+  (format #t "~2Tcloth-reset-time: ~D~%" (-> this cloth-reset-time))
+  (format #t "~2Tuse-orient-cloth-reset?: ~A~%" (-> this use-orient-cloth-reset?))
+  (format #t "~2Tid: ~D~%" (-> this id))
+  (format #t "~2Tcredits: ~A~%" (-> this credits))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (defstate idle (hirez-viewer)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -1453,6 +1541,7 @@
     )
   )
 
+;; definition for function hirez-viewer-init-by-other
 (defbehavior hirez-viewer-init-by-other hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 uint32))
   (set! (-> self credits) (the-as basic arg2))
   (set! (-> self char) arg0)
@@ -1488,12 +1577,18 @@
   (go-virtual idle)
   )
 
+;; definition for function spawn-hirez-viewer
+;; WARN: Return type mismatch int vs handle.
 (defun spawn-hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 symbol))
-  (ppointer->handle
-    (process-spawn hirez-viewer arg0 arg1 arg2 :name "hirez-viewer" :to *entity-pool* :stack-size #x20000)
+  (the-as
+    handle
+    (ppointer->handle
+      (process-spawn hirez-viewer arg0 arg1 arg2 :name "hirez-viewer" :to *entity-pool* :stack-size #x20000)
+      )
     )
   )
 
+;; definition for symbol *museum-1*, type (array museum-char)
 (define *museum-1*
   (new 'static 'boxed-array :type museum-char
     (new 'static 'museum-char
@@ -1743,6 +1838,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defskelgroup skel-jak-one jak-one jak-one-lod0-jg jak-one-idle-ja
               ((jak-one-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 3.2)
@@ -1752,72 +1848,84 @@
               :shadow-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-brutter-highres brutter-highres brutter-highres-lod0-jg brutter-highres-brutter-idle-ja
               ((brutter-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-baron-highres baron-highres baron-highres-lod0-jg baron-highres-idle-ja
               ((baron-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-crocadog-highres crocadog-highres crocadog-highres-lod0-jg crocadog-highres-idle-ja
               ((crocadog-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-red-crimson-guard-highres red-crimson-guard-highres red-crimson-guard-highres-lod0-jg red-crimson-guard-highres-red-crimson-guard-walk-ja
               ((red-crimson-guard-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-kid-highres kid-highres kid-highres-lod0-jg kid-highres-kid-walk-ja
               ((kid-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-kor-highres kor-highres kor-highres-lod0-jg kor-highres-idle-ja
               ((kor-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-errol-highres errol-highres errol-highres-lod0-jg errol-highres-errol-walk-ja
               ((errol-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-youngsamos-highres youngsamos-highres youngsamos-highres-lod0-jg youngsamos-highres-youngsamos-idle-ja
               ((youngsamos-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-krew krew krew-lod0-jg krew-idle-ja
               ((krew-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-vin vin vin-lod0-jg vin-idle-ja
               ((vin-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-daxter-highres daxter-highres daxter-highres-lod0-jg daxter-highres-daxter-walk-ja
               ((daxter-highres-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; definition for symbol *museum-2*, type (array museum-char)
 (define *museum-2*
   (new 'static 'boxed-array :type museum-char
     (new 'static 'museum-char
@@ -1957,132 +2065,154 @@
     )
   )
 
+;; failed to figure out what this is:
 (defskelgroup skel-flutflut flutflut flutflut-lod0-jg flutflut-flutflut-walk-ja
               ((flutflut-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-sidekick-human sidekick-human sidekick-human-lod0-jg sidekick-human-sidekick-human-idle-ja
               ((sidekick-human-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-yellowsage yellowsage yellowsage-lod0-jg yellowsage-yellowsage-idle-ja
               ((yellowsage-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-redsage redsage redsage-lod0-jg redsage-redsage-idle-ja
               ((redsage-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-sculptor sculptor sculptor-lod0-jg sculptor-sculptor-idle-ja
               ((sculptor-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-ogreboss ogreboss ogreboss-lod0-jg ogreboss-ogreboss-idle-ja
               ((ogreboss-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-minershort minershort minershort-lod0-jg minershort-minershort-idle-ja
               ((minershort-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-minertall minertall minertall-lod0-jg minertall-minertall-idle-ja
               ((minertall-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-mayor mayor mayor-lod0-jg mayor-mayor-pace-ja
               ((mayor-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-geologist geologist geologist-lod0-jg geologist-geologist-idle-ja
               ((geologist-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-gambler gambler gambler-lod0-jg gambler-gambler-idle-ja
               ((gambler-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-fisher fisher fisher-lod0-jg fisher-fisher-idle-ja
               ((fisher-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-farmer farmer farmer-lod0-jg farmer-farmer-idle-ja
               ((farmer-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-billy billy billy-lod0-jg billy-billy-idle-ja
               ((billy-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-bluesage bluesage bluesage-lod0-jg bluesage-bluesage-idle-ja
               ((bluesage-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-babak babak babak-lod0-jg babak-babak-idle-ja
               ((babak-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-bird-lady bird-lady bird-lady-lod0-jg bird-lady-bird-lady-idle-ja
               ((bird-lady-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-evilbro evilbro evilbro-lod0-jg evilbro-evilbro-idle-ja
               ((evilbro-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-evilsis evilsis evilsis-lod0-jg evilsis-evilsis-idle-ja
               ((evilsis-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-explorer explorer explorer-lod0-jg explorer-explorer-idle-ja
               ((explorer-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; failed to figure out what this is:
 (defskelgroup skel-warrior warrior warrior-lod0-jg warrior-warrior-idle-ja
               ((warrior-lod0-mg (meters 999999)))
               :bounds (static-spherem 0 0 0 10)
               :origin-joint-index 3
               )
 
+;; definition for symbol *museum-3*, type (array museum-char)
 (define *museum-3* (new 'static 'boxed-array :type museum-char
                      (new 'static 'museum-char
                        :skel "skel-jak-one"
@@ -2306,6 +2436,7 @@
                      )
         )
 
+;; definition of type highres-viewer-manager
 (deftype highres-viewer-manager (process)
   ((current     int32)
    (next        int32)
@@ -2320,15 +2451,32 @@
     )
   )
 
+;; definition for method 3 of type highres-viewer-manager
+(defmethod inspect ((this highres-viewer-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tcurrent: ~D~%" (-> this current))
+  (format #t "~2Tnext: ~D~%" (-> this next))
+  (format #t "~2Thandle: ~D~%" (-> this handle))
+  (format #t "~2Tleft-right: ~A~%" (-> this left-right))
+  (format #t "~2Tmuseum: ~A~%" (-> this museum))
+  (format #t "~2Tnext-time: ~D~%" (-> this next-time))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (defstate idle (highres-viewer-manager)
   :virtual #t
   :trans (behavior ()
     (when (!= (-> self current) (-> self next))
       (set! (-> self current) (-> self next))
-      (set! (-> self handle)
-            (the-as handle (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #f))
-            )
+      (set! (-> self handle) (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #f))
       )
     (let ((a0-3 (-> *cpad-list* cpads 0)))
       (cond
@@ -2350,15 +2498,14 @@
   :code sleep-code
   )
 
+;; failed to figure out what this is:
 (defstate credits (highres-viewer-manager)
   :virtual #t
   :trans (behavior ()
     (when (!= (-> self current) (-> self next))
       (set-time! (-> self next-time))
       (set! (-> self current) (-> self next))
-      (set! (-> self handle)
-            (the-as handle (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #t))
-            )
+      (set! (-> self handle) (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #t))
       )
     (when (time-elapsed? (-> self next-time) (seconds 20))
       (set! (-> self left-right) #f)
@@ -2414,6 +2561,7 @@
   :code sleep-code
   )
 
+;; definition for function hvm-init-by-other
 (defbehavior hvm-init-by-other highres-viewer-manager ((arg0 basic) (arg1 symbol))
   (set-setting! 'entity-name "camera-311" 0.0 0)
   (set! (-> self museum) (the-as (array museum-char) arg0))
@@ -2427,20 +2575,24 @@
       )
   )
 
+;; definition for function spawn-hirez-viewer-manager
+;; WARN: Return type mismatch int vs handle.
 (defun spawn-hirez-viewer-manager ((arg0 basic) (arg1 symbol))
   (kill-by-type highres-viewer-manager *active-pool*)
-  (ppointer->handle (process-spawn
-                      highres-viewer-manager
-                      :init hvm-init-by-other
-                      arg0
-                      arg1
-                      :name "highres-viewer-manager"
-                      :to *entity-pool*
-                      :stack-size 4096
-                      )
-                    )
+  (the-as handle (ppointer->handle (process-spawn
+                                     highres-viewer-manager
+                                     :init hvm-init-by-other
+                                     arg0
+                                     arg1
+                                     :name "highres-viewer-manager"
+                                     :to *entity-pool*
+                                     :stack-size 4096
+                                     )
+                                   )
+          )
   )
 
+;; definition for function draw-end-credits
 (defun draw-end-credits ((arg0 level) (arg1 float))
   (let* ((f26-0 (lerp-scale 0.75 0.75 arg1 800.0 900.0))
          (f30-0 (- 416.0 (* 0.75 arg1)))
@@ -2517,6 +2669,7 @@
     )
   )
 
+;; failed to figure out what this is:
 (defstate target-credits (target)
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
     (case message
