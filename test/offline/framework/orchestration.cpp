@@ -113,14 +113,14 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
   for (const auto& [dgo, work] : work_colls) {
     total_files += work.source_files.size();
   }
-  int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
+  // int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
 
   // Divide up the work
   int file_idx = 0;
   for (const auto& [dgo, work] : work_colls) {
     // source files
     for (auto& source_file : work.source_files) {
-      auto& wg = work_groups.at(file_idx / divisor);
+      auto& wg = work_groups.at(file_idx % work_groups.size());
       wg.dgo_set.insert(dgo);
       wg.work_collection.source_files.push_back(source_file);
       file_idx++;

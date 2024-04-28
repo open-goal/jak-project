@@ -9,7 +9,6 @@ namespace method_10_collide_edge_hold_list {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   // bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
   c->daddiu(a2, a0, 1552);                          // daddiu a2, a0, 1552
@@ -831,7 +830,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
@@ -979,7 +977,7 @@ block_15:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
   // daddiu a1, fp, L119                               // daddiu a1, fp, L119
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
   // c->jalr(call_addr);                               // jalr ra, t9
   printf("ERROR: Exceeded max # of grabbable tris!\n");
@@ -1275,7 +1273,6 @@ block_40:
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // bool cop1_bc = false;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
@@ -1380,7 +1377,7 @@ block_41:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
   // daddiu a1, fp, L118                               // daddiu a1, fp, L118
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
   // c->jalr(call_addr);                               // jalr ra, t9
   printf("ERROR: Too many edge verts found in edge grab!\n");
@@ -1393,7 +1390,7 @@ block_42:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
   // daddiu a1, fp, L117                               // daddiu a1, fp, L117
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
   // c->jalr(call_addr);                               // jalr ra, t9
   printf("ERROR: Too many edges found in edge grab!\n");

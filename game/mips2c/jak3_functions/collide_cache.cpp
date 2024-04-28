@@ -267,7 +267,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
@@ -307,7 +306,7 @@ block_2:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
   // daddiu a1, fp, L185                               // daddiu a1, fp, L185
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
   // c->jalr(call_addr);                               // jalr ra, t9
   printf("ERROR: Exceeded max number of collide-cache prims!\n");
@@ -693,7 +692,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -16);                           // daddiu sp, sp, -16
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sd(fp, 8, sp);                                 // sd fp, 8(sp)
@@ -733,7 +731,7 @@ block_2:
   c->load_symbol2(t9, cache.format);                // lw t9, format(s7)
   c->addiu(a0, r0, 0);                              // addiu a0, r0, 0
   // daddiu a1, fp, L185                               // daddiu a1, fp, L185
-  call_addr = c->gprs[t9].du32[0];                  // function call:
+  // call_addr = c->gprs[t9].du32[0];                  // function call:
   c->sll(v0, ra, 0);                                // sll v0, ra, 0
   // c->jalr(call_addr);                               // jalr ra, t9
   printf("ERROR: Exceeded max number of collide-cache prims!\n");
@@ -1729,7 +1727,6 @@ namespace method_10_collide_puss_work {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 116, a2);                              // lwu v1, 116(a2)

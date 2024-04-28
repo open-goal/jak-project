@@ -15,6 +15,6 @@ void register_screen_shot_settings(ScreenShotSettings* settings) {
   g_screen_shot_settings = settings;
 }
 
-const char* const get_screen_shot_name() {
+const char* get_screen_shot_name() {
   return g_screen_shot_settings->name;
 }
