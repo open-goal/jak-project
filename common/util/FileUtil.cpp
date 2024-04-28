@@ -110,6 +110,8 @@ struct {
   fs::path path_to_data;
 } gFilePathInfo;
 
+fs::path g_iso_data_directory = "";
+
 /*!
  * Get the path to the current executable.
  */
@@ -205,6 +207,28 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
 fs::path get_jak_project_dir() {
   ASSERT(gFilePathInfo.initialized);
   return gFilePathInfo.path_to_data;
+}
+
+fs::path get_iso_dir_for_game(GameVersion game_version) {
+  if (!g_iso_data_directory.empty()) {
+    return g_iso_data_directory;
+  }
+  // Find the location based on the game version
+  std::string expected_subdir = "jak1";
+  if (game_version == GameVersion::Jak2) {
+    expected_subdir = "jak2";
+  } else if (game_version == GameVersion::Jak3) {
+    expected_subdir = "jak3";
+  }
+  const auto temp_dir = get_jak_project_dir() / "iso_data" / expected_subdir;
+  if (fs::exists(temp_dir)) {
+    g_iso_data_directory = temp_dir;
+  }
+  return g_iso_data_directory;
+}
+
+void set_iso_data_dir(const fs::path& directory) {
+  g_iso_data_directory = directory;
 }
 
 std::string get_file_path(const std::vector<std::string>& input) {
@@ -755,6 +779,11 @@ std::pair<int, std::string> get_majority_file_line_endings_and_count(
     return {lf_count + crlf_count, "\r\n"};
   }
   return {lf_count + crlf_count, "\n"};
+}
+
+bool is_dir_in_dir(const fs::path& parent, const fs::path& child) {
+  // Check if the parent path is a prefix of the child path
+  return child.has_parent_path() && child.parent_path().lexically_relative(parent) == fs::path(".");
 }
 
 }  // namespace file_util
