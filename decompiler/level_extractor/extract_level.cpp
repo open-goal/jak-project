@@ -12,6 +12,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_actors.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
+#include "decompiler/level_extractor/extract_hfrag.h"
 #include "decompiler/level_extractor/extract_joint_group.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "decompiler/level_extractor/extract_shrub.h"
@@ -249,6 +250,10 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
     ASSERT(!got_collide);
     extract_collide_frags(bsp_header.collide_hash, all_ties, config,
                           fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data);
+  }
+
+  if (bsp_header.hfrag) {
+    extract_hfrag(*bsp_header.hfrag, dgo_name, bsp_header.texture_remap_table, tex_db, &level_data);
   }
   level_data.level_name = level_name;
 

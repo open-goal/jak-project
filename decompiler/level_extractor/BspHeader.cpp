@@ -47,6 +47,17 @@ void Matrix4h::read_from_file(Ref ref) {
   }
 }
 
+void TimeOfDayPalette::read_from_file(Ref ref) {
+  width = deref_u32(ref, 0);
+  ASSERT(width == 8);
+  height = deref_u32(ref, 1);
+  pad = deref_u32(ref, 2);
+  ASSERT(pad == 0);
+  for (int i = 0; i < int(8 * height); i++) {
+    colors.push_back(deref_u32(ref, 3 + i));
+  }
+}
+
 std::string Vector::print(int indent) const {
   std::string is(indent, ' ');
   std::string result;
@@ -842,16 +853,7 @@ void DrawableTreeTfrag::read_from_file(TypedRef ref,
     throw Error("misaligned data array");
   }
 
-  auto palette = deref_label(get_field_ref(ref, "time-of-day-pal", dts));
-  time_of_day.width = deref_u32(palette, 0);
-
-  ASSERT(time_of_day.width == 8);
-  time_of_day.height = deref_u32(palette, 1);
-  time_of_day.pad = deref_u32(palette, 2);
-  ASSERT(time_of_day.pad == 0);
-  for (int i = 0; i < int(8 * time_of_day.height); i++) {
-    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
-  }
+  time_of_day.read_from_file(deref_label(get_field_ref(ref, "time-of-day-pal", dts)));
 
   for (int idx = 0; idx < length; idx++) {
     Ref array_slot_ref = data_ref;
@@ -1060,16 +1062,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
   }
 
   // get the colors
-  auto palette = deref_label(get_field_ref(ref, "tie-colors", dts));
-  time_of_day.width = deref_u32(palette, 0);
-
-  ASSERT(time_of_day.width == 8);
-  time_of_day.height = deref_u32(palette, 1);
-  time_of_day.pad = deref_u32(palette, 2);
-  ASSERT(time_of_day.pad == 0);
-  for (int i = 0; i < int(8 * time_of_day.height); i++) {
-    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
-  }
+  time_of_day.read_from_file(deref_label(get_field_ref(ref, "tie-colors", dts)));
 
   auto fr = get_field_ref(ref, "envmap-shader", dts);
   const auto& word = fr.data->words_by_seg.at(fr.seg).at(fr.byte_offset / 4);
@@ -1429,15 +1422,7 @@ void DrawableTreeInstanceShrub::read_from_file(TypedRef ref,
   info.read_from_file(typed_ref_from_basic(pt, dts), dts, stats, version);
 
   // time of day palette. we'll want these colors in the FR3 file.
-  auto palette = deref_label(get_field_ref(ref, "colors-added", dts));
-  time_of_day.width = deref_u32(palette, 0);
-  ASSERT(time_of_day.width == 8);
-  time_of_day.height = deref_u32(palette, 1);
-  time_of_day.pad = deref_u32(palette, 2);
-  ASSERT(time_of_day.pad == 0);
-  for (int i = 0; i < int(8 * time_of_day.height); i++) {
-    time_of_day.colors.push_back(deref_u32(palette, 3 + i));
-  }
+  time_of_day.read_from_file(deref_label(get_field_ref(ref, "colors-added", dts)));
 }
 
 std::string DrawableTreeInstanceShrub::my_type() const {
@@ -2032,6 +2017,36 @@ void CollideHash::read_from_file(TypedRef ref,
   item_array = deref_label(get_field_ref(ref, "item-array", dts));
 }
 
+void HFragment::read_from_file(TypedRef ref,
+                               const decompiler::DecompilerTypeSystem& dts,
+                               level_tools::DrawStats* stats,
+                               GameVersion version) {
+  start_corner.read_from_file(get_field_ref(ref, "start-corner", dts));
+  spheres.resize(kNumCorners);
+  auto spheres_ptr = deref_label(get_field_ref(ref, "spheres", dts));
+  for (int i = 0; i < kNumCorners; i++) {
+    spheres[i].read_from_file(spheres_ptr);
+    spheres_ptr.byte_offset += 16;
+  }
+
+  vis_ids.resize(kNumCorners);
+  memcpy_plain_data((u8*)vis_ids.data(), deref_label(get_field_ref(ref, "visids", dts)),
+                    sizeof(s16) * kNumCorners);
+  // shader
+  colors.read_from_file(deref_label(get_field_ref(ref, "colors", dts)));
+  // montage
+  // bucket
+  verts.resize(kNumVerts);
+  memcpy_plain_data((u8*)verts.data(), deref_label(get_field_ref(ref, "verts", dts)),
+                    sizeof(u32) * kNumVerts);
+  // pat-array
+  // pat-len
+  num_buckets_far = read_plain_data_field<u16>(ref, "num-buckets-far", dts);
+  num_buckets_mid = read_plain_data_field<u16>(ref, "num-buckets-mid", dts);
+  num_buckets_near = read_plain_data_field<u16>(ref, "num-buckets-near", dts);
+  size = read_plain_data_field<u32>(ref, "size", dts);
+}
+
 void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
                                const decompiler::DecompilerTypeSystem& dts,
                                DrawStats* stats,
@@ -2095,6 +2110,14 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
       get_word_kind_for_field(ref, "collide-hash", dts) == decompiler::LinkedWord::PTR) {
     collide_hash.read_from_file(
         get_and_check_ref_to_basic(ref, "collide-hash", "collide-hash", dts), dts, stats, version);
+  }
+
+  if (version == GameVersion::Jak3) {
+    if (get_word_kind_for_field(ref, "hfrag-drawable", dts) == decompiler::LinkedWord::PTR) {
+      hfrag.emplace();
+      hfrag->read_from_file(get_and_check_ref_to_basic(ref, "hfrag-drawable", "hfragment", dts),
+                            dts, stats, version);
+    }
   }
 }
 

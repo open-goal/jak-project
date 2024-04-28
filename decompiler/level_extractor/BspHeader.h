@@ -73,6 +73,7 @@ struct TimeOfDayPalette {
   u32 height;
   u32 pad;
   std::vector<u32> colors;
+  void read_from_file(Ref ref);
 };
 
 /////////////////////
@@ -818,6 +819,54 @@ struct CollideHash {
                       GameVersion version);
 };
 
+/*
+((start-corner     vector :inline :offset-assert 32)
+ (spheres          (inline-array vector)         :offset-assert 48)
+ (visids           (pointer int16)         :offset-assert 52)
+ (shaders          (inline-array adgif-shader) :offset-assert 56)
+ (colors           time-of-day-palette       :offset-assert 60)
+ (montage          uint32         :offset-assert 64)
+ (buckets-far      (inline-array hfrag-bucket)   :offset-assert 68)
+ (buckets-mid      (inline-array hfrag-bucket)         :offset-assert 72)
+ (buckets-near     (inline-array hfrag-bucket)         :offset-assert 76)
+ (verts            (inline-array hfrag-vertex) :offset-assert 80) ;; wrong type? 8288
+ (pat-array        (pointer pat-surface) :offset-assert 84)
+ (pat-length       uint16         :offset-assert 88)
+ (num-buckets-far  uint16         :offset-assert 90)
+ (num-buckets-mid  uint16         :offset-assert 92)
+ (num-buckets-near uint16         :offset-assert 94)
+ (size             uint32         :offset 44 :score 1)
+ */
+
+struct HFragment {
+  void read_from_file(TypedRef ref,
+                      const decompiler::DecompilerTypeSystem& dts,
+                      DrawStats* stats,
+                      GameVersion version);
+
+  static constexpr int kCornersPerEdge = 32;
+  static constexpr int kNumCorners = kCornersPerEdge * kCornersPerEdge;
+
+  static constexpr int kVertsPerEdge = 512;
+  static constexpr int kNumVerts = 512 * 512;
+
+
+  level_tools::Vector start_corner;          // location of corner (0, 0)
+  std::vector<level_tools::Vector> spheres;  // array of bspheres for each "corner"
+  std::vector<s16> vis_ids;                  // precomputed vis id for each "corner"
+  // shaders??
+  TimeOfDayPalette colors;
+  // montage??
+  // buckets??
+  std::vector<u32> verts;
+  // pat-array
+  // pat-length
+  u16 num_buckets_far = 0;
+  u16 num_buckets_mid = 0;
+  u16 num_buckets_near = 0;
+  u32 size = 0;
+};
+
 ////////////////////////////////
 // Main Level Type (bsp-header)
 ////////////////////////////////
@@ -908,6 +957,9 @@ struct BspHeader {
 
   // jak 2 only
   CollideHash collide_hash;
+
+  // jak 3 only
+  std::optional<HFragment> hfrag;
 
   void read_from_file(const decompiler::LinkedObjectFile& file,
                       const decompiler::DecompilerTypeSystem& dts,
