@@ -14,6 +14,8 @@
 (defconstant RPC-LOAD-STR 4) ;; called STR in IOP code
 (defconstant RPC-PLAY-STR 5) ;; called PLAY in IOP code
 
+(defun-extern sound-buffer-dump int)
+
 ;; DECOMP BEGINS
 
 ;; an RPC buffer is a container of elements to send to the IOP.
@@ -208,8 +210,9 @@
       (when (zero? (-> this rpc-port))
           ;; if we're RPC 0, this is evidently a situation to warn about.
           (format 0 "WARNING: too many sound commands queued~%")
-          ;;(sound-buffer-dump)
+          (sound-buffer-dump) ;; og:preserve-this added for debugging
           )
+      (format 0 "WARNING: flushing RPC port #~D~%" (-> this rpc-port)) ;; og:preserve-this
       ;; otherwise we just flush
       ;; seems kinda dangerous. these could be the wrong parameters...
       (call this (the-as uint 0) (the-as pointer 0) (the-as uint 0))
