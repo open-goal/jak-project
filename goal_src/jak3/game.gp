@@ -199,7 +199,7 @@
 ; (cgo-file "gungame1.gd" common-dep)
 ; (cgo-file "gungame2.gd" common-dep)
 ; (cgo-file "powergd.gd" common-dep)
-; (cgo-file "freehq.gd" common-dep)
+(cgo-file "freehq.gd" common-dep)
 ; (cgo-file "vin.gd" common-dep)
 ; (cgo-file "freecast.gd" common-dep)
 ; (cgo-file "citycast.gd" common-dep)
@@ -273,12 +273,12 @@
 ; (cgo-file "precc.gd" common-dep)
 ; (cgo-file "precd.gd" common-dep)
 ; ;; title/intro
-; (cgo-file "win.gd" common-dep) ;; wasintro
-; (cgo-file "title.gd" common-dep)
-; (cgo-file "inttitle.gd" common-dep)
+(cgo-file "win.gd" common-dep) ;; wasintro
+(cgo-file "title.gd" common-dep)
+(cgo-file "inttitle.gd" common-dep)
 ; (cgo-file "intpalrf.gd" common-dep) ;; intro-palace-roof
 ; (cgo-file "ipf.gd" common-dep) ;; intro-palace-fall
-; (cgo-file "introcst.gd" common-dep)
+(cgo-file "introcst.gd" common-dep)
 ; ;; outro
 ; (cgo-file "outcast3.gd" common-dep)
 ; (cgo-file "outrocst.gd" common-dep)
@@ -340,7 +340,7 @@
 (cgo-file "lform.gd" common-dep)
 (cgo-file "lforp.gd" common-dep)
 ; (cgo-file "lforring.gd" common-dep)
-; (cgo-file "lfreeout.gd" common-dep)
+(cgo-file "lfreeout.gd" common-dep)
 ; (cgo-file "lgunnorm.gd" common-dep)
 ; (cgo-file "lgunrnc.gd" common-dep)
 ; (cgo-file "ljak.gd" common-dep)
@@ -381,7 +381,7 @@
 ; (cgo-file "lsnkwhls.gd" common-dep)
 ; (cgo-file "ltnfxhip.gd" common-dep)
 ; (cgo-file "ltnjxhip.gd" common-dep)
-; (cgo-file "ltorn.gd" common-dep)
+(cgo-file "ltorn.gd" common-dep)
 ; (cgo-file "ltornjnx.gd" common-dep)
 ; (cgo-file "ltornsam.gd" common-dep)
 (cgo-file "ltowa.gd" common-dep)
