@@ -9,7 +9,6 @@
 
 (declare-type title-control process)
 (define-extern *title-control* (pointer title-control))
-(define-extern *credits-ids* (array text-id))
 
 (deftype title-control (process)
   ((selected     int32)
@@ -177,6 +176,7 @@
     )
   )
 
+;; WARN: Return type mismatch int vs object.
 ;; WARN: new jak 2 until loop case, check carefully
 (defbehavior title-menu title-control ()
   (local-vars (sv-112 font-context))
@@ -351,7 +351,8 @@
         )
       (when (and (not (kiosk?)) (not (demo?)))
         (label cfg-8)
-        (let ((gp-0 (the-as mc-slot-info (new 'stack-no-clear 'event-message-block))))
+        ;; og:preserve-this manual patch - stack memory here is reused as both mc-slot-info and event-message-block
+        (let ((gp-0 (new 'stack-no-clear 'mc-slot-info)))
           (mc-get-slot-info 0 gp-0)
           (when (zero? (-> gp-0 known))
             (set-blackout-frames (seconds 0.05))
@@ -548,10 +549,7 @@
           (set! (-> t0-2 y) 1.0)
           (set! (-> t0-2 z) 0.0)
           (set! (-> t0-2 w) 1.0)
-          (let ((t1-1 (-> self level)))
-            8
-            (t9-6 (the-as bucket-id a0-31) (the-as art-group a1-15) (the-as int a2-5) a3-7 t0-2 (the-as int t1-1))
-            )
+          (t9-6 (the-as bucket-id a0-31) (the-as art-group a1-15) (the-as int a2-5) a3-7 t0-2 (-> self level) 8)
           )
         (set! (-> self active) #t)
         )
@@ -1185,15 +1183,15 @@
   )
 
 (deftype museum-char (structure)
-  ((skel                     basic)
+  ((skel                     string)
    (anim                     uint32)
    (height-min               float)
    (height-max               float)
    (zoom-min                 float)
    (zoom-max                 float)
    (scale                    float)
-   (text-id                  uint32)
-   (cloth-reset-time         uint64)
+   (text-id                  text-id)
+   (cloth-reset-time         time-frame)
    (use-orient-cloth-reset?  symbol)
    (outtake-num              uint32)
    (outtake                  (array string))
@@ -1210,10 +1208,10 @@
    (pos-x                    float)
    (dest-pos-x               float)
    (alpha                    float)
-   (cloth-reset-time         uint64)
+   (cloth-reset-time         time-frame)
    (use-orient-cloth-reset?  symbol)
-   (id                       uint32)
-   (credits                  basic)
+   (id                       sound-id)
+   (credits                  symbol)
    )
   (:state-methods
     idle
@@ -1235,7 +1233,7 @@
     )
   :enter (behavior ()
     (set-time! (-> self state-time))
-    (set! (-> self id) (the-as uint 0))
+    (set! (-> self id) (new 'static 'sound-id))
     (when (and (not (-> self credits))
                (nonzero? (-> self char outtake))
                (or (= (-> *setting-control* user-default subtitle-language) (language-enum english))
@@ -1246,29 +1244,17 @@
                    )
                )
       (add-setting! 'music-volume 'rel 0.25 0)
-      (set! (-> self id)
-            (the-as
-              uint
-              (add-process
-                *gui-control*
-                self
-                (gui-channel hal)
-                (gui-action play)
-                (-> self char outtake (-> self char outtake-num))
-                -99.0
-                0
-                )
-              )
+      (set! (-> self id) (add-process
+                           *gui-control*
+                           self
+                           (gui-channel hal)
+                           (gui-action play)
+                           (-> self char outtake (-> self char outtake-num))
+                           -99.0
+                           0
+                           )
             )
-      (sound-params-set!
-        *gui-control*
-        (the-as sound-id (-> self id))
-        #f
-        -1
-        -1
-        -1
-        (-> *setting-control* user-current talker-volume)
-        )
+      (sound-params-set! *gui-control* (-> self id) #f -1 -1 -1 (-> *setting-control* user-current talker-volume))
       (+! (-> self char outtake-num) 1)
       (when (= (-> self char outtake length) (-> self char outtake-num))
         (set! (-> self char outtake-num) (the-as uint 0))
@@ -1280,7 +1266,7 @@
     (set-action!
       *gui-control*
       (gui-action stop)
-      (the-as sound-id (-> self id))
+      (-> self id)
       (gui-channel none)
       (gui-action none)
       (the-as string #f)
@@ -1297,8 +1283,8 @@
            (vf7 :class vf)
            )
       (init-vf0-vector)
-      (when (and (nonzero? (-> self id)) (zero? (get-status *gui-control* (the-as sound-id (-> self id)))))
-        (set! (-> self id) (the-as uint 0))
+      (when (and (nonzero? (-> self id)) (zero? (get-status *gui-control* (-> self id))))
+        (set! (-> self id) (new 'static 'sound-id))
         (remove-setting! 'music-volume)
         )
       (let ((v1-7 (-> *cpad-list* cpads 0)))
@@ -1340,7 +1326,7 @@
           (seek! (-> self alpha) 0.0 (* 2.0 (seconds-per-frame)))
           )
       (cond
-        ((not (time-elapsed? (-> self state-time) (the-as time-frame (-> self cloth-reset-time))))
+        ((not (time-elapsed? (-> self state-time) (-> self cloth-reset-time)))
          (process-drawable-cloth-command self '(reset))
          )
         ((-> self use-orient-cloth-reset?)
@@ -1423,7 +1409,7 @@
           )
         (set! (-> gp-5 flags) (font-flags shadow kerning large))
         (let ((s5-2 print-game-text))
-          (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id (-> self char text-id)) #f))
+          (format (clear *temp-string*) (lookup-text! *common-text* (-> self char text-id) #f))
           (s5-2 *temp-string* gp-5 #f 44 (bucket-id hud-draw-hud-alpha))
           )
         )
@@ -1453,14 +1439,14 @@
     )
   )
 
-(defbehavior hirez-viewer-init-by-other hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 uint32))
-  (set! (-> self credits) (the-as basic arg2))
+(defbehavior hirez-viewer-init-by-other hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 symbol))
+  (set! (-> self credits) arg2)
   (set! (-> self char) arg0)
   (set! (-> self root) (new 'process 'trsqv))
   (set-vector! (-> self root scale) (-> arg0 scale) (-> arg0 scale) (-> arg0 scale) 1.0)
   (set! (-> self cloth-reset-time) (-> arg0 cloth-reset-time))
   (set! (-> self use-orient-cloth-reset?) (-> arg0 use-orient-cloth-reset?))
-  (let ((s4-1 (art-group-get-by-name *level* (the-as string (-> arg0 skel)) (the-as (pointer level) #f))))
+  (let ((s4-1 (art-group-get-by-name *level* (-> arg0 skel) (the-as (pointer level) #f))))
     (when s4-1
       (when (art-group-get-by-name *level* (the-as string (-> s4-1 data 0)) (&-> self level))
         (initialize-skeleton self (the-as skeleton-group s4-1) (the-as pair 0))
@@ -1488,9 +1474,13 @@
   (go-virtual idle)
   )
 
+;; WARN: Return type mismatch int vs handle.
 (defun spawn-hirez-viewer ((arg0 museum-char) (arg1 symbol) (arg2 symbol))
-  (ppointer->handle
-    (process-spawn hirez-viewer arg0 arg1 arg2 :name "hirez-viewer" :to *entity-pool* :stack-size #x20000)
+  (the-as
+    handle
+    (ppointer->handle
+      (process-spawn hirez-viewer arg0 arg1 arg2 :name "hirez-viewer" :to *entity-pool* :stack-size #x20000)
+      )
     )
   )
 
@@ -1504,8 +1494,8 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.4
-      :text-id #x7bd
-      :cloth-reset-time #x1e
+      :text-id (text-id text-07bd)
+      :cloth-reset-time (seconds 0.1)
       :use-orient-cloth-reset? #f
       :outtake (new 'static 'boxed-array :type string "jakout01" "jakout02" "jakout03" "jakout04")
       )
@@ -1517,7 +1507,7 @@
       :zoom-min 8192.0
       :zoom-max 20480.0
       :scale 1.0
-      :text-id #x7c1
+      :text-id (text-id text-07c1)
       :outtake (new 'static 'boxed-array :type string
         "ashout01"
         "ashout02"
@@ -1536,7 +1526,7 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.0
-      :text-id #x7fa
+      :text-id (text-id text-07fa)
       )
     (new 'static 'museum-char
       :skel "skel-kleever-highres"
@@ -1546,8 +1536,8 @@
       :zoom-min 10240.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x7f7
-      :cloth-reset-time #x1e
+      :text-id (text-id text-07f7)
+      :cloth-reset-time (seconds 0.1)
       :use-orient-cloth-reset? #f
       )
     (new 'static 'museum-char
@@ -1558,7 +1548,7 @@
       :zoom-min 8192.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x801
+      :text-id (text-id text-0801)
       )
     (new 'static 'museum-char
       :skel "skel-ottsel-daxpants"
@@ -1568,7 +1558,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x7be
+      :text-id (text-id text-07be)
       :outtake (new 'static 'boxed-array :type string
         "daxout01"
         "daxout02"
@@ -1587,7 +1577,7 @@
       :zoom-min 8192.0
       :zoom-max 16384.0
       :scale 1.0
-      :text-id #x7bf
+      :text-id (text-id text-07bf)
       :outtake (new 'static 'boxed-array :type string "pekout01")
       )
     (new 'static 'museum-char
@@ -1598,7 +1588,7 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.0
-      :text-id #x7f8
+      :text-id (text-id text-07f8)
       )
     (new 'static 'museum-char
       :skel "skel-seem-highres"
@@ -1608,8 +1598,8 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.0
-      :text-id #x7f9
-      :cloth-reset-time #x1e
+      :text-id (text-id text-07f9)
+      :cloth-reset-time (seconds 0.1)
       :use-orient-cloth-reset? #t
       )
     (new 'static 'museum-char
@@ -1620,7 +1610,7 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.0
-      :text-id #x7c2
+      :text-id (text-id text-07c2)
       :outtake (new 'static 'boxed-array :type string "tesout01" "tesout02" "tesout03" "tesout04" "tesout05")
       )
     (new 'static 'museum-char
@@ -1631,7 +1621,7 @@
       :zoom-min 8192.0
       :zoom-max 20480.0
       :scale 1.0
-      :text-id #x7c0
+      :text-id (text-id text-07c0)
       :outtake (new 'static 'boxed-array :type string "torout01" "torout02")
       )
     (new 'static 'museum-char
@@ -1642,7 +1632,7 @@
       :zoom-min 8192.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x804
+      :text-id (text-id text-0804)
       )
     (new 'static 'museum-char
       :skel "skel-jinx-highres"
@@ -1652,7 +1642,7 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.0
-      :text-id #x803
+      :text-id (text-id text-0803)
       )
     (new 'static 'museum-char
       :skel "skel-damus-highres"
@@ -1662,8 +1652,8 @@
       :zoom-min 8192.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x802
-      :cloth-reset-time #x78
+      :text-id (text-id text-0802)
+      :cloth-reset-time (seconds 0.4)
       :use-orient-cloth-reset? #f
       )
     (new 'static 'museum-char
@@ -1674,7 +1664,7 @@
       :zoom-min 8192.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x7fd
+      :text-id (text-id text-07fd)
       )
     (new 'static 'museum-char
       :skel "skel-veger-highres"
@@ -1684,8 +1674,8 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.0
-      :text-id #x805
-      :cloth-reset-time #x78
+      :text-id (text-id text-0805)
+      :cloth-reset-time (seconds 0.4)
       :use-orient-cloth-reset? #f
       )
     (new 'static 'museum-char
@@ -1696,7 +1686,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x7fb
+      :text-id (text-id text-07fb)
       )
     (new 'static 'museum-char
       :skel "skel-ottsel-leader"
@@ -1706,8 +1696,8 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x7fe
-      :cloth-reset-time #x1e
+      :text-id (text-id text-07fe)
+      :cloth-reset-time (seconds 0.1)
       :use-orient-cloth-reset? #f
       )
     (new 'static 'museum-char
@@ -1718,7 +1708,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x7ff
+      :text-id (text-id text-07ff)
       )
     (new 'static 'museum-char
       :skel "skel-ottsel-tess"
@@ -1728,7 +1718,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x7fc
+      :text-id (text-id text-07fc)
       )
     (new 'static 'museum-char
       :skel "skel-ottsel-veger"
@@ -1738,7 +1728,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x800
+      :text-id (text-id text-0800)
       )
     )
   )
@@ -1828,7 +1818,7 @@
       :zoom-min 8192.0
       :zoom-max 18432.0
       :scale 1.4
-      :text-id #x7bc
+      :text-id (text-id text-07bc)
       :outtake (new 'static 'boxed-array :type string "jakout01" "jakout02" "jakout03" "jakout04")
       )
     (new 'static 'museum-char
@@ -1839,7 +1829,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x7be
+      :text-id (text-id text-07be)
       :outtake (new 'static 'boxed-array :type string
         "daxout01"
         "daxout02"
@@ -1859,7 +1849,7 @@
       :zoom-min 12288.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x894
+      :text-id (text-id text-0894)
       :outtake (new 'static 'boxed-array :type string "vinout01" "vinout02" "vinout03")
       )
     (new 'static 'museum-char
@@ -1870,7 +1860,7 @@
       :zoom-min 12288.0
       :zoom-max 28672.0
       :scale 1.0
-      :text-id #x893
+      :text-id (text-id text-0893)
       :outtake (new 'static 'boxed-array :type string "krwout01" "krwout02" "krwout03" "krwout04" "krwout05")
       )
     (new 'static 'museum-char
@@ -1881,7 +1871,7 @@
       :zoom-min 8192.0
       :zoom-max 20480.0
       :scale 1.0
-      :text-id #x830
+      :text-id (text-id text-0830)
       )
     (new 'static 'museum-char
       :skel "skel-youngsamos-highres"
@@ -1891,7 +1881,7 @@
       :zoom-min 8192.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x817
+      :text-id (text-id text-0817)
       )
     (new 'static 'museum-char
       :skel "skel-kor-highres"
@@ -1901,7 +1891,7 @@
       :zoom-min 8192.0
       :zoom-max 16384.0
       :scale 1.0
-      :text-id #x82f
+      :text-id (text-id text-082f)
       )
     (new 'static 'museum-char
       :skel "skel-kid-highres"
@@ -1911,7 +1901,7 @@
       :zoom-min 4096.0
       :zoom-max 12288.0
       :scale 1.0
-      :text-id #x82e
+      :text-id (text-id text-082e)
       )
     (new 'static 'museum-char
       :skel "skel-baron-highres"
@@ -1921,7 +1911,7 @@
       :zoom-min 8192.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x816
+      :text-id (text-id text-0816)
       :outtake (new 'static 'boxed-array :type string "barout01" "barout02" "barout03" "barout04" "barout05")
       )
     (new 'static 'museum-char
@@ -1932,7 +1922,7 @@
       :zoom-min 12288.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x819
+      :text-id (text-id text-0819)
       )
     (new 'static 'museum-char
       :skel "skel-brutter-highres"
@@ -1942,7 +1932,7 @@
       :zoom-min 8192.0
       :zoom-max 24576.0
       :scale 1.0
-      :text-id #x818
+      :text-id (text-id text-0818)
       )
     (new 'static 'museum-char
       :skel "skel-crocadog-highres"
@@ -1952,7 +1942,7 @@
       :zoom-min 12288.0
       :zoom-max 16384.0
       :scale 1.0
-      :text-id #x82d
+      :text-id (text-id text-082d)
       )
     )
   )
@@ -2092,7 +2082,7 @@
                        :zoom-min 4096.0
                        :zoom-max 18432.0
                        :scale 1.4
-                       :text-id #x7bb
+                       :text-id (text-id text-07bb)
                        )
                      (new 'static 'museum-char
                        :skel "skel-warrior"
@@ -2102,7 +2092,7 @@
                        :zoom-min 12288.0
                        :zoom-max 32768.0
                        :scale 1.0
-                       :text-id #x820
+                       :text-id (text-id text-0820)
                        )
                      (new 'static 'museum-char
                        :skel "skel-evilsis"
@@ -2112,7 +2102,7 @@
                        :zoom-min 6144.0
                        :zoom-max 18432.0
                        :scale 0.8
-                       :text-id #x829
+                       :text-id (text-id text-0829)
                        )
                      (new 'static 'museum-char
                        :skel "skel-evilbro"
@@ -2121,7 +2111,7 @@
                        :zoom-min 6144.0
                        :zoom-max 18432.0
                        :scale 0.8
-                       :text-id #x828
+                       :text-id (text-id text-0828)
                        )
                      (new 'static 'museum-char
                        :skel "skel-bird-lady"
@@ -2131,7 +2121,7 @@
                        :zoom-min 8192.0
                        :zoom-max 20480.0
                        :scale 0.8
-                       :text-id #x826
+                       :text-id (text-id text-0826)
                        )
                      (new 'static 'museum-char
                        :skel "skel-explorer"
@@ -2141,7 +2131,7 @@
                        :zoom-min 4096.0
                        :zoom-max 16384.0
                        :scale 0.8
-                       :text-id #x82a
+                       :text-id (text-id text-082a)
                        )
                      (new 'static 'museum-char
                        :skel "skel-billy"
@@ -2151,7 +2141,7 @@
                        :zoom-min 8192.0
                        :zoom-max 16384.0
                        :scale 0.8
-                       :text-id #x832
+                       :text-id (text-id text-0832)
                        )
                      (new 'static 'museum-char
                        :skel "skel-farmer"
@@ -2161,7 +2151,7 @@
                        :zoom-min 12288.0
                        :zoom-max 28672.0
                        :scale 0.8
-                       :text-id #x82b
+                       :text-id (text-id text-082b)
                        )
                      (new 'static 'museum-char
                        :skel "skel-fisher"
@@ -2171,7 +2161,7 @@
                        :zoom-min 8192.0
                        :zoom-max 20480.0
                        :scale 0.8
-                       :text-id #x82c
+                       :text-id (text-id text-082c)
                        )
                      (new 'static 'museum-char
                        :skel "skel-mayor"
@@ -2181,7 +2171,7 @@
                        :zoom-min 8192.0
                        :zoom-max 16384.0
                        :scale 0.8
-                       :text-id #x81b
+                       :text-id (text-id text-081b)
                        )
                      (new 'static 'museum-char
                        :skel "skel-minershort"
@@ -2191,7 +2181,7 @@
                        :zoom-min 8192.0
                        :zoom-max 16384.0
                        :scale 0.8
-                       :text-id #x823
+                       :text-id (text-id text-0823)
                        )
                      (new 'static 'museum-char
                        :skel "skel-minertall"
@@ -2201,7 +2191,7 @@
                        :zoom-min 8192.0
                        :zoom-max 20480.0
                        :scale 0.8
-                       :text-id #x824
+                       :text-id (text-id text-0824)
                        )
                      (new 'static 'museum-char
                        :skel "skel-gambler"
@@ -2211,7 +2201,7 @@
                        :zoom-min 8192.0
                        :zoom-max 16384.0
                        :scale 0.8
-                       :text-id #x822
+                       :text-id (text-id text-0822)
                        )
                      (new 'static 'museum-char
                        :skel "skel-ogreboss"
@@ -2221,7 +2211,7 @@
                        :zoom-min 8192.0
                        :zoom-max 16384.0
                        :scale 0.1
-                       :text-id #x825
+                       :text-id (text-id text-0825)
                        )
                      (new 'static 'museum-char
                        :skel "skel-sculptor"
@@ -2231,7 +2221,7 @@
                        :zoom-min 8192.0
                        :zoom-max 24576.0
                        :scale 1.0
-                       :text-id #x81d
+                       :text-id (text-id text-081d)
                        )
                      (new 'static 'museum-char
                        :skel "skel-redsage"
@@ -2241,7 +2231,7 @@
                        :zoom-min 10240.0
                        :zoom-max 22528.0
                        :scale 0.8
-                       :text-id #x81c
+                       :text-id (text-id text-081c)
                        )
                      (new 'static 'museum-char
                        :skel "skel-yellowsage"
@@ -2251,7 +2241,7 @@
                        :zoom-min 10240.0
                        :zoom-max 20480.0
                        :scale 0.8
-                       :text-id #x81f
+                       :text-id (text-id text-081f)
                        )
                      (new 'static 'museum-char
                        :skel "skel-sidekick-human"
@@ -2261,7 +2251,7 @@
                        :zoom-min 4096.0
                        :zoom-max 16384.0
                        :scale 0.8
-                       :text-id #x81e
+                       :text-id (text-id text-081e)
                        )
                      (new 'static 'museum-char
                        :skel "skel-geologist"
@@ -2271,7 +2261,7 @@
                        :zoom-min 4096.0
                        :zoom-max 20480.0
                        :scale 0.8
-                       :text-id #x821
+                       :text-id (text-id text-0821)
                        )
                      (new 'static 'museum-char
                        :skel "skel-bluesage"
@@ -2281,7 +2271,7 @@
                        :zoom-min 8192.0
                        :zoom-max 24576.0
                        :scale 0.8
-                       :text-id #x827
+                       :text-id (text-id text-0827)
                        )
                      (new 'static 'museum-char
                        :skel "skel-babak"
@@ -2291,7 +2281,7 @@
                        :zoom-min 12288.0
                        :zoom-max 22528.0
                        :scale 0.8
-                       :text-id #x831
+                       :text-id (text-id text-0831)
                        )
                      (new 'static 'museum-char
                        :skel "skel-flutflut"
@@ -2301,7 +2291,7 @@
                        :zoom-min 10240.0
                        :zoom-max 20480.0
                        :scale 0.8
-                       :text-id #x81a
+                       :text-id (text-id text-081a)
                        )
                      )
         )
@@ -2326,9 +2316,7 @@
   :trans (behavior ()
     (when (!= (-> self current) (-> self next))
       (set! (-> self current) (-> self next))
-      (set! (-> self handle)
-            (the-as handle (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #f))
-            )
+      (set! (-> self handle) (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #f))
       )
     (let ((a0-3 (-> *cpad-list* cpads 0)))
       (cond
@@ -2356,9 +2344,7 @@
     (when (!= (-> self current) (-> self next))
       (set-time! (-> self next-time))
       (set! (-> self current) (-> self next))
-      (set! (-> self handle)
-            (the-as handle (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #t))
-            )
+      (set! (-> self handle) (spawn-hirez-viewer (-> self museum (-> self current)) (-> self left-right) #t))
       )
     (when (time-elapsed? (-> self next-time) (seconds 20))
       (set! (-> self left-right) #f)
@@ -2414,9 +2400,9 @@
   :code sleep-code
   )
 
-(defbehavior hvm-init-by-other highres-viewer-manager ((arg0 basic) (arg1 symbol))
+(defbehavior hvm-init-by-other highres-viewer-manager ((arg0 (array museum-char)) (arg1 symbol))
   (set-setting! 'entity-name "camera-311" 0.0 0)
-  (set! (-> self museum) (the-as (array museum-char) arg0))
+  (set! (-> self museum) arg0)
   (set! (-> self next) 0)
   (set! (-> self current) -1)
   (set! (-> self handle) (the-as handle #f))
@@ -2427,18 +2413,20 @@
       )
   )
 
-(defun spawn-hirez-viewer-manager ((arg0 basic) (arg1 symbol))
+;; WARN: Return type mismatch int vs handle.
+(defun spawn-hirez-viewer-manager ((arg0 (array museum-char)) (arg1 symbol))
   (kill-by-type highres-viewer-manager *active-pool*)
-  (ppointer->handle (process-spawn
-                      highres-viewer-manager
-                      :init hvm-init-by-other
-                      arg0
-                      arg1
-                      :name "highres-viewer-manager"
-                      :to *entity-pool*
-                      :stack-size 4096
-                      )
-                    )
+  (the-as handle (ppointer->handle (process-spawn
+                                     highres-viewer-manager
+                                     :init hvm-init-by-other
+                                     arg0
+                                     arg1
+                                     :name "highres-viewer-manager"
+                                     :to *entity-pool*
+                                     :stack-size 4096
+                                     )
+                                   )
+          )
   )
 
 (defun draw-end-credits ((arg0 level) (arg1 float))
