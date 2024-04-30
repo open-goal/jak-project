@@ -362,7 +362,7 @@ void extract_from_level(const ObjectFileDB& db,
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
            100.f * compressed.size() / ser.get_save_result().second);
   file_util::write_binary_file(output_folder / fmt::format("{}.fr3", level_data.level_name),
-      compressed.data(), compressed.size());
+                               compressed.data(), compressed.size());
 
   if (config.rip_levels) {
     auto back_file_path = file_util::get_jak_project_dir() / "glb_out" /
