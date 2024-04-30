@@ -188,8 +188,7 @@ void Loader::loader_thread() {
       // load the fr3 file
       prof().begin_event("read-file");
       Timer disk_timer;
-      auto data =
-          file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", uppercase_string(lev)));
+      auto data = file_util::read_binary_file(m_base_path / fmt::format("{}.fr3", lev));
       double disk_load_time = disk_timer.getSeconds();
       prof().end_event();
 
