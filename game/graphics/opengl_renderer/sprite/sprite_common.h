@@ -205,6 +205,7 @@ enum SpriteProgMem {
   Sprites2dGrp0 = 3,        // world space 2d sprites
   Sprites2dHud_Jak1 = 109,  // hud sprites
   Sprites2dHud_Jak2 = 115,
+  Sprites2dHud_Jak3 = 143,
   Sprites3d = 211  // 3d sprites
 };
 
