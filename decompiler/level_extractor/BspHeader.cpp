@@ -2045,6 +2045,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
 
   file_info.read_from_file(get_and_check_ref_to_basic(ref, "info", "file-info", dts), dts);
   bsphere.read_from_file(get_field_ref(ref, "bsphere", dts));
+  name = read_symbol_field(ref, "name", dts);
 
   texture_remap_table.clear();
   s32 tex_remap_len = read_plain_data_field<s32>(ref, "texture-remap-table-len", dts);

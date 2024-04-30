@@ -9,6 +9,7 @@
 #include "third-party/sse2neon/sse2neon.h"
 #endif
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 namespace tfrag3 {
@@ -795,8 +796,8 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
 
   for (const auto& x : known_categories) {
     if (x.second) {
-      fmt::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
-                 100.f * (float)x.second / uncompressed_data_size);
+      lg::print("{:30s} : {:6d} kB {:3.1f}%\n", x.first, x.second / 1024,
+                100.f * (float)x.second / uncompressed_data_size);
     }
   }
 }
