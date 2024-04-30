@@ -787,7 +787,6 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
         // there's no eye control.
         if (debug_name != "kor-break-lod0" && debug_name != "errol-lowres-lod1" &&
             debug_name != "kleever-rider-lod0") {
-          fmt::print("no eye ctrl, but expected one");
           ASSERT(false);
         }
       }
