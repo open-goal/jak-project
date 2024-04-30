@@ -379,9 +379,11 @@ void Workspace::tracked_file_will_save(const LSPSpec::DocumentUri& file_uri) {
   }
 }
 
-void Workspace::update_global_index(const GameVersion game_version){
-    // TODO - project wide indexing potentially (ie. finding references)
+// clang-format off
+void Workspace::update_global_index(const GameVersion game_version) {
+  // TODO - project wide indexing potentially (ie. finding references)
 };
+// clang-format on
 
 void Workspace::stop_tracking_file(const LSPSpec::DocumentUri& file_uri) {
   m_tracked_ir_files.erase(file_uri);

@@ -885,6 +885,7 @@ struct BspHeader {
   //  (unk-zero-0 basic :offset-assert 68)
   //
   //  (name symbol :offset-assert 72)
+  std::string name;
   //  (nickname symbol :offset-assert 76)
   //  (vis-info level-vis-info 8 :offset-assert 80)
   //  (actors drawable-inline-array-actor :offset-assert 112)

@@ -12,6 +12,7 @@ DisplayManager::DisplayManager(SDL_Window* window)
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("display_manager::init");
+    m_display_settings.load_settings();
 #ifdef _WIN32
     // Windows hint to disable OS level forced scaling and allow native resolution at non 100%
     // scales

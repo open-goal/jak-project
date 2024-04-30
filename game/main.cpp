@@ -42,7 +42,7 @@ void setup_logging(const std::string& game_name, bool verbose, bool disable_ansi
     lg::set_flush_level(lg::level::debug);
   } else {
     lg::set_file_level(lg::level::debug);
-    lg::set_stdout_level(lg::level::warn);
+    lg::set_stdout_level(lg::level::info);
     lg::set_flush_level(lg::level::warn);
   }
   if (disable_ansi_colors) {
@@ -96,11 +96,14 @@ int main(int argc, char** argv) {
   bool disable_avx2 = false;
   bool disable_display = false;
   bool enable_profiling = false;
+  bool enable_portable = false;
+  bool disable_save_location_override = false;
   std::string profile_until_event = "";
   std::string gpu_test = "";
   std::string gpu_test_out_path = "";
   int port_number = -1;
   fs::path project_path_override;
+  fs::path user_config_dir_override;
   std::vector<std::string> game_args;
   CLI::App app{"OpenGOAL Game Runtime"};
   app.add_flag("--version", show_version, "Display the built revision");
@@ -112,6 +115,12 @@ int main(int argc, char** argv) {
   app.add_flag("--no-avx2", disable_avx2, "Disable AVX2 for testing");
   app.add_flag("--no-display", disable_display, "Disable video display");
   app.add_flag("--profile", enable_profiling, "Enables profiling immediately from startup");
+  app.add_flag("--portable", enable_portable,
+               "Save settings and saves relative to the game's executable, takes precedence over "
+               "--config-path");
+  app.add_flag("--disable_save_location_override", disable_save_location_override,
+               "If --config-path is provided along with this flag, saves will still be loaded and "
+               "stored to the default location");
   app.add_option("--profile-until-event", profile_until_event,
                  "Stops recording profile events once an event with this name is seen");
   app.add_option("--gpu-test", gpu_test,
@@ -120,12 +129,25 @@ int main(int argc, char** argv) {
                  "Where to store the gpu test result file");
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
+  app.add_option("--config-path", user_config_dir_override,
+                 "Override the location where all user configuration and saves are saved");
   app.footer(game_arg_documentation());
   app.add_option("Game Args", game_args,
                  "Remaining arguments (after '--') that are passed-through to the game itself");
   define_common_cli_arguments(app);
   app.allow_extras();
   CLI11_PARSE(app, argc, argv);
+
+  // Override the user's config dir, potentially (either because it was explicitly provided
+  // or because it's portable mode)
+  if (enable_portable) {
+    lg::info("Portable mod enabled");
+    user_config_dir_override = file_util::get_current_executable_path();
+  }
+  if (!user_config_dir_override.empty()) {
+    lg::info("Overriding config directory with: {}", user_config_dir_override.string());
+    file_util::override_user_config_dir(user_config_dir_override, !disable_save_location_override);
+  }
 
   if (show_version) {
     lg::print("{}", build_revision());

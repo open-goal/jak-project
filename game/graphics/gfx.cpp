@@ -55,6 +55,7 @@ u32 Init(GameVersion version) {
   prof().instant_event("ROOT");
 
   g_debug_settings = game_settings::DebugSettings();
+  g_debug_settings.load_settings();
   {
     auto p = scoped_prof("startup::gfx::get_renderer");
     g_global_settings.renderer = GetRenderer(GfxPipeline::OpenGL);
