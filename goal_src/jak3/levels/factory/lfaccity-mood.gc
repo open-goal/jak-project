@@ -7,8 +7,10 @@
 
 ;; DECOMP BEGINS
 
-;; definition for symbol *faccity-part-updater*, type object
-(define *faccity-part-updater* (the-as object #f))
+(declare-type lfaccity-pparticle-mover process-drawable) ;; added
+
+;; definition for symbol *faccity-part-updater*, type lfaccity-pparticle-mover
+(define *faccity-part-updater* (the-as lfaccity-pparticle-mover #f))
 
 ;; definition of type lfaccity-states
 (deftype lfaccity-states (structure)
@@ -59,7 +61,7 @@
            )
          (let ((s3-0 (new 'stack-no-clear 'vector)))
            (set-vector! s3-0 -409600.0 0.0 0.0 1.0)
-           (vector-rotate-y! s3-0 s3-0 (-> (the-as mood-context gp-1) current-fog fog-color z))
+           (vector-rotate-y! s3-0 s3-0 (-> (the-as lfaccity-states gp-1) roty))
            (vector+! (-> *math-camera* trans-other) (-> *math-camera* trans-other) s3-0)
            )
          )
@@ -67,7 +69,7 @@
          (set-vector!
            (-> *math-camera* trans-other)
            696320.0
-           (+ -614400.0 (-> (the-as mood-context gp-1) current-fog fog-dists z))
+           (+ -614400.0 (-> (the-as lfaccity-states gp-1) bob))
            -368640.0
            1.0
            )
@@ -79,32 +81,32 @@
           (let ((s3-1 (new 'stack-no-clear 'quaternion))
                 (s4-1 (new 'stack-no-clear 'quaternion))
                 )
-            (quaternion-vector-angle! s3-1 *y-vector* (-> (the-as mood-context gp-1) current-fog fog-color z))
-            (quaternion-vector-angle! s4-1 *z-vector* (-> (the-as mood-context gp-1) current-fog fog-dists y))
+            (quaternion-vector-angle! s3-1 *y-vector* (-> (the-as lfaccity-states gp-1) roty))
+            (quaternion-vector-angle! s4-1 *z-vector* (-> (the-as lfaccity-states gp-1) wobble))
             (quaternion*! (-> s5-1 quat-other) s4-1 s3-1)
             )
-          (let ((f0-17 (+ (-> (the-as mood-context gp-1) current-fog fog-color z) (* 910.2222 (seconds-per-frame)))))
+          (let ((f0-17 (+ (-> (the-as lfaccity-states gp-1) roty) (* 910.2222 (seconds-per-frame)))))
             (set! (-> (the-as (pointer uint32) gp-1) 2)
                   (the-as uint (- f0-17 (* (the float (the int (/ f0-17 65536.0))) 65536.0)))
                   )
             )
-          (let ((f0-20 (+ (-> (the-as mood-context gp-1) current-fog fog-color w) (* 8192.0 (seconds-per-frame)))))
+          (let ((f0-20 (+ (-> (the-as lfaccity-states gp-1) rotz) (* 8192.0 (seconds-per-frame)))))
             (set! (-> (the-as (pointer uint32) gp-1) 3)
                   (the-as uint (- f0-20 (* (the float (the int (/ f0-20 65536.0))) 65536.0)))
                   )
             )
           (set! (-> (the-as (pointer uint32) gp-1) 5)
-                (the-as uint (* 910.2222 (sin (-> (the-as mood-context gp-1) current-fog fog-color w))))
+                (the-as uint (* 910.2222 (sin (-> (the-as lfaccity-states gp-1) rotz))))
                 )
-          (let ((f0-26 (+ (-> (the-as mood-context gp-1) current-fog fog-dists x) (* 16384.0 (seconds-per-frame)))))
+          (let ((f0-26 (+ (-> (the-as lfaccity-states gp-1) rot-bob) (* 16384.0 (seconds-per-frame)))))
             (set! (-> (the-as (pointer uint32) gp-1) 4)
                   (the-as uint (- f0-26 (* (the float (the int (/ f0-26 65536.0))) 65536.0)))
                   )
             )
           (set! (-> (the-as (pointer uint32) gp-1) 6)
-                (the-as uint (+ -40960.0 (* 40960.0 (sin (-> (the-as mood-context gp-1) current-fog fog-dists x)))))
+                (the-as uint (+ -40960.0 (* 40960.0 (sin (-> (the-as lfaccity-states gp-1) rot-bob)))))
                 )
-          (send-event (the-as process-tree *faccity-part-updater*) 'mood-update)
+          (send-event *faccity-part-updater* 'mood-update)
           )
         )
       )
@@ -115,7 +117,7 @@
 ;; definition of type faccity-pparticle-info
 (deftype faccity-pparticle-info (structure)
   ((original-pos  vector  :inline)
-   (inited?       basic)
+   (inited?       symbol)
    )
   )
 
@@ -134,7 +136,7 @@
 
 ;; definition of type faccity-pparticle-array
 (deftype faccity-pparticle-array (inline-array-class)
-  ((data  faccity-pparticle-info  :dynamic)
+  ((data  faccity-pparticle-info  :inline :dynamic)
    )
   )
 
@@ -157,15 +159,15 @@
 
 ;; definition of type lfaccity-pparticle-mover
 (deftype lfaccity-pparticle-mover (process-drawable)
-  ((actor-group        uint32)
+  ((actor-group        (pointer actor-group))
    (actor-group-count  int32)
-   (particles          basic)
+   (particles          faccity-pparticle-array)
    )
   (:state-methods
     active
     )
   (:methods
-    (lfaccity-pparticle-mover-method-21 (_type_) none)
+    (lfaccity-pparticle-mover-method-21 (_type_) symbol)
     )
   )
 
@@ -180,12 +182,7 @@
     )
   (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
   (dotimes (s5-0 (-> this actor-group-count))
-    (format
-      #t
-      "~T  [~D]~2Tactor-group: ~`actor-group`P~%"
-      s5-0
-      (-> (the-as lfaccity-pparticle-mover (+ (-> this actor-group) (* s5-0 4))) name)
-      )
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
     )
   (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
   (format #t "~2Tparticles: ~A~%" (-> this particles))
@@ -212,14 +209,14 @@
                    a0-2
                    )
             )
-       (set! (-> this actor-group) (the-as uint v1-1))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
        (let ((v1-2 (the-as uint128 sv-16)))
          (.pcpyud v1-3 v1-2 r0-0)
          )
        (set! (-> this actor-group-count) (shr (* (the-as int v1-3) 2) 49))
        )
       (else
-        (set! (-> this actor-group) (the-as uint #f))
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
         (set! (-> this actor-group-count) 0)
         0
         )
@@ -230,23 +227,17 @@
       (go process-drawable-art-error "actor group")
       )
   (set! (-> this entity extra vis-dist) 40960000000000.0)
-  (set! (-> this particles)
-        (new
-          'process
-          'faccity-pparticle-array
-          (-> (the-as lfaccity-pparticle-mover (-> this actor-group)) name allocated-length)
-          )
-        )
-  (dotimes (v1-18 (the-as int (-> (the-as lfaccity-pparticle-mover (-> this particles)) name)))
-    (set! (-> (the-as lfaccity-pparticle-mover (+ (the-as uint (-> this particles)) (* v1-18 32))) self) #f)
+  (set! (-> this particles) (new 'process 'faccity-pparticle-array (-> this actor-group 0 length)))
+  (dotimes (v1-18 (-> this particles length))
+    (set! (-> this particles data v1-18 inited?) #f)
     )
   (set! *faccity-part-updater* this)
   (go (method-of-object this active))
   )
 
 ;; definition for function lfaccity-pparticle-mover-init-by-other
-(defbehavior lfaccity-pparticle-mover-init-by-other lfaccity-pparticle-mover ((arg0 vector) (arg1 quaternion) (arg2 vector) (arg3 float))
-  (init-from-entity! self (the-as entity-actor arg0))
+(defbehavior lfaccity-pparticle-mover-init-by-other lfaccity-pparticle-mover ((arg0 entity-actor))
+  (init-from-entity! self arg0)
   )
 
 ;; failed to figure out what this is:
@@ -271,14 +262,13 @@
 ;; definition for method 10 of type lfaccity-pparticle-mover
 (defmethod deactivate ((this lfaccity-pparticle-mover))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
-  (set! *faccity-part-updater* (the-as object #f))
+  (set! *faccity-part-updater* #f)
   (call-parent-method this)
   (none)
   )
 
 ;; definition for method 21 of type lfaccity-pparticle-mover
 ;; INFO: Used lq/sq
-;; WARN: Return type mismatch symbol vs none.
 (defmethod lfaccity-pparticle-mover-method-21 ((this lfaccity-pparticle-mover))
   (let ((s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> *math-camera* quat-other))))
     (dotimes (s4-0 (the-as int (-> (the-as lfaccity-pparticle-mover (-> this particles)) name)))
@@ -340,14 +330,14 @@
         )
       )
     )
-  (none)
+  #f
   )
 
 ;; definition for method 7 of type lfaccity-pparticle-mover
 (defmethod relocate ((this lfaccity-pparticle-mover) (offset int))
   (set! *faccity-part-updater* this)
   (if *faccity-part-updater*
-      (set! *faccity-part-updater* (+ (the-as uint *faccity-part-updater*) offset))
+      (set! *faccity-part-updater* (&+ *faccity-part-updater* offset))
       )
   (if (nonzero? (-> this particles))
       (&+! (-> this particles) offset)
