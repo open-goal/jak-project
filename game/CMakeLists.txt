@@ -260,6 +260,7 @@ set(RUNTIME_SOURCE
         overlord/jak3/sbank.cpp
         overlord/jak3/srpc.cpp
         overlord/jak3/ssound.cpp
+        overlord/jak3/stream.cpp
         overlord/jak3/vblank_handler.cpp
         runtime.cpp
         sce/deci2.cpp
