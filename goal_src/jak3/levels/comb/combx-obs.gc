@@ -7,15 +7,14 @@
 
 ;; DECOMP BEGINS
 
-;; definition of type combx-elevator
 (deftype combx-elevator (process-drawable)
   ()
   (:state-methods
     idle
     )
   (:methods
-    (init-collission! (_type_) none)
-    (combx-elevator-method-22 (_type_) none) ;; I couldn't decompile it, but I don't think it's necessary.
+    (init-collision! (_type_) none)
+    (combx-elevator-method-22 (_type_) none)
     )
   )
 
@@ -35,7 +34,7 @@
 ;; failed to figure out what this is:
 (defstate idle (combx-elevator)
   :virtual #t
-  :code (behavior () 
+  :code (behavior ()
     (until #f
       (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
       (until (ja-done? 0)
@@ -56,7 +55,7 @@
 
 ;; definition for method 21 of type combx-elevator
 ;; WARN: Return type mismatch collide-shape-moving vs none.
-(defmethod init-collission! ((this combx-elevator))
+(defmethod init-collision! ((this combx-elevator))
   (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
     (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
     (set! (-> s5-0 reaction) cshape-reaction-default)
@@ -95,16 +94,26 @@
   (none)
   )
 
-;; definition for method 11 of type combx-elevator
-(defmethod init-from-entity! ((this combx-elevator) (arg0 entity-actor))
-  (init-collission! this)
-  (process-drawable-from-entity! this arg0)
-  ;;(set! (-> this draw light-index) (the-as uint 1)) ;; This causes the game to crash
+;; definition for method 22 of type combx-elevator
+;; WARN: Return type mismatch int vs none.
+(defmethod combx-elevator-method-22 ((this combx-elevator))
   (initialize-skeleton
     this
     (the-as skeleton-group (art-group-get-by-name *level* "skel-combx-elevator" (the-as (pointer level) #f)))
     (the-as pair 0)
     )
+  (setup-masks (-> this draw) 1 2)
+  ; (update-transforms (-> this root))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type combx-elevator
+(defmethod init-from-entity! ((this combx-elevator) (arg0 entity-actor))
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (combx-elevator-method-22 this)
+  (set! (-> this draw light-index) (the-as uint 1))
   (go (method-of-object this idle))
   )
 
