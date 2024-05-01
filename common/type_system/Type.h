@@ -29,7 +29,9 @@ struct MethodInfo {
   TypeSpec type;
   std::string defined_in_type;
   bool no_virtual = false;
+  // TODO - this is no longer used anymore...but was not removed from th4e struct?
   bool overrides_parent = false;
+  // TODO - this is no longer used anymore...but was not removed from th4e struct?
   bool only_overrides_docstring = false;
   std::optional<std::string> docstring;
   std::optional<std::string> overlay_name;

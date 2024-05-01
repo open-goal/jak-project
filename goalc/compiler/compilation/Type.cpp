@@ -3,6 +3,7 @@
 #include "common/type_system/deftype.h"
 #include "common/type_system/state.h"
 #include "common/util/math_util.h"
+#include <common/util/string_util.h>
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
@@ -86,6 +87,20 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
     } else {
       throw_compiler_error(form, "Type {} has no method {}", compile_time_type.print(),
                            method_name);
+    }
+  }
+  const auto& symbol_info =
+      m_symbol_info.lookup_exact_method_name(method_info.name, compile_time_type.base_type());
+  if (!symbol_info.empty()) {
+    const auto& result = symbol_info.at(0);
+    if (result->m_def_location.has_value() &&
+        !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
+        env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+            env->file_env()->m_required_files.end() &&
+        !str_util::ends_with(result->m_def_location->file_path, env->file_env()->name() + ".gc")) {
+      lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+               result->m_def_location->file_path, method_info.name);
+      env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
     }
   }
 

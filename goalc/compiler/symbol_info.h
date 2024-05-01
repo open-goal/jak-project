@@ -12,22 +12,31 @@
 
 namespace symbol_info {
 
-  // Require statement todo:
-  // - [x] enums
-  // - [x] constants
-  // - [x] variables
-  // - [x] decls (atleast for types)
-  // - [x] types
-  // - [] functions
-  // - [] macros
-  // - [] methods/states
-  // - [] compilation speed report
-  // - [] make it all conditional
-  // - [] potentially remove redundant map in compiler, try to get my symbol info trie more efficient (assuming its not).  Some sort of lookup cache, etc.
+// Require statement todo:
+// - [x] enums
+// - [x] constants
+// - [x] variables
+// - [x] decls (atleast for types)
+// - [x] types
+// - [x] functions
+// - [] macros
+//   - can't do macros right now because unfortunately, getting their definition location is still
+//   an outlier, look into this eventually.
+//   - However, the expanded macro would be checked appropriately which is kinda what matters more
+//   anyway.
+//   - if i only have to do one type (macros) i can break down and statically analyze the code for
+//   it
+// - [x] methods
+// - [] states
+// - [] compilation speed report
+// - [] make it all conditional
+// - [] potentially remove redundant map in compiler, try to get my symbol info trie more efficient
+// (assuming its not).  Some sort of lookup cache, etc.
+// - [] replace most unordered_maps with robin-maps atleast a 2x improvement (benchmark it)
+// - [] get rid of old docstring code
+// - [] support enums and states
+// - [x] better lookup call, allow passing the symbol kind
 
-
-// TODO - states
-// TODO - enums
 enum class Kind {
   GLOBAL_VAR,
   FWD_DECLARED_SYM,
@@ -172,6 +181,11 @@ class SymbolInfoMap {
                   const goos::Object& defining_form);
   std::vector<SymbolInfo*> lookup_symbols_by_file(const std::string& file_path) const;
   std::vector<SymbolInfo*> lookup_exact_name(const std::string& name) const;
+  std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_name(const std::string& name,
+                                                            const Kind sym_kind) const;
+  std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_method_name(
+      const std::string& name,
+      const std::string& defining_type_name) const;
   std::vector<SymbolInfo*> lookup_symbols_starting_with(const std::string& prefix) const;
   std::set<std::string> lookup_names_starting_with(const std::string& prefix,
                                                    int max_count = -1) const;

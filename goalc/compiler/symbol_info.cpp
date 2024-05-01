@@ -239,10 +239,11 @@ void SymbolInfoMap::add_builtin(const std::string& name, const std::string& docs
 void SymbolInfoMap::add_method(const std::string& method_name,
                                const std::vector<GoalArg>& args,
                                const MethodInfo& method_info,
-                               const goos::Object& /*defining_form*/) {
+                               const goos::Object& defining_form) {
   SymbolInfo info = {
       .m_kind = Kind::METHOD,
       .m_name = method_name,
+      .m_def_form = defining_form,
       .m_method_info = method_info,
       .m_method_builtin = method_info.id <= 9,
   };
@@ -274,6 +275,32 @@ std::vector<SymbolInfo*> SymbolInfoMap::lookup_symbols_by_file(const std::string
 
 std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_name(const std::string& name) const {
   return m_symbol_map.retrieve_with_exact(name);
+}
+
+std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_name(const std::string& name,
+                                                          const Kind sym_kind) const {
+  const auto query_results = m_symbol_map.retrieve_with_exact(name);
+  std::vector<SymbolInfo*> filtered_results = {};
+  for (const auto& result : query_results) {
+    if (result->m_kind == sym_kind) {
+      filtered_results.push_back(result);
+    }
+  }
+  return filtered_results;
+}
+
+std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_method_name(
+    const std::string& name,
+    const std::string& defining_type_name) const {
+  const auto query_results = m_symbol_map.retrieve_with_exact(name);
+  std::vector<SymbolInfo*> filtered_results = {};
+  for (const auto& result : query_results) {
+    if (result->m_kind == Kind::METHOD &&
+        result->m_method_info.defined_in_type == defining_type_name) {
+      filtered_results.push_back(result);
+    }
+  }
+  return filtered_results;
 }
 
 std::vector<SymbolInfo*> SymbolInfoMap::lookup_symbols_starting_with(

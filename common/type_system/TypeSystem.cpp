@@ -709,8 +709,10 @@ MethodInfo TypeSystem::define_method(Type* type,
   // look up the method
   MethodInfo existing_info;
   bool got_existing = try_lookup_method(type, method_name, &existing_info);
-
   if (got_existing) {
+    // The lookup will return a parents method, but the type should be equal
+    // to the type in question (it's a child)
+    existing_info.defined_in_type = type->get_name();
     // Update the docstring
     existing_info.docstring = docstring;
     int bad_arg_idx = -99;
