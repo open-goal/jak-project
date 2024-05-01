@@ -6,6 +6,11 @@ namespace jak3 {
 /* TODO check values */
 enum class EFileComp { MODE0, MODE1, KNOWN_NOT_BLZO };
 
+struct ISOBuffer {
+  void AdjustDataLength(int);
+  void AdvanceCurrentData(int);
+};
+
 struct VagDirEntryJak3 {
   union {
     u64 data;

@@ -13,35 +13,21 @@ namespace jak3 {
 using namespace iop;
 
 CBaseFileSystem* g_pFileSystem;
+int g_nISOThreadID;
 int g_nDGOThreadID;
 int g_nSTRThreadID;
 int g_nPlayThreadID;
+int g_nISOMbx;
 
 static int s_nISOInitFlag;
 static ISO_LoadDGO s_LoadDGO;
 static int s_nSyncMbx;
 static MsgPacket s_MsgPacket_NotOnStackSync[2];
 static RPC_Dgo_Cmd s_aISO_RPCBuf[1];
+static int s_nDGOMbx;
 
-static void* RPC_DGO(u32 fno, void* data, int size) {
-  lg::error("RPC_DGO UNIMPLEMENTED");
-  return nullptr;
-}
-
-static u32 DGOThread() {
-  sceSifQueueData dq;
-  sceSifServeData serve;
-
-  CpuDisableIntr();
-  sceSifInitRpc(0);
-  sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, 0xfab3, RPC_DGO, s_aISO_RPCBuf, sizeof(s_aISO_RPCBuf), nullptr, nullptr,
-                    &dq);
-  CpuEnableIntr();
-  sceSifRpcLoop(&dq);
-
-  return 0;
-}
+static u32 DGOThread();
+u32 ISOThread();
 
 /* COMPLETE */
 void InitDriver() {
@@ -79,6 +65,25 @@ int InitISOFS(const char* fs_mode, const char* loading_sceeen) {
   s_nISOInitFlag = 1;
   g_pFileSystem = &g_FakeISOCDFileSystem;
 
+  mbx.attr = 0;
+  mbx.option = 0;
+  g_nISOMbx = CreateMbx(&mbx);
+
+  mbx.attr = 0;
+  mbx.option = 0;
+  s_nDGOMbx = CreateMbx(&mbx);
+
+  mbx.attr = 0;
+  mbx.option = 0;
+  s_nSyncMbx = CreateMbx(&mbx);
+
+  thp.attr = TH_C;
+  thp.entry = ISOThread;
+  thp.initPriority = 0x37;
+  thp.option = 0;
+  thp.stackSize = 0x1100;
+  g_nISOThreadID = CreateThread(&thp);
+
   thp.attr = TH_C;
   thp.entry = DGOThread;
   thp.initPriority = 0x38;
@@ -100,12 +105,75 @@ int InitISOFS(const char* fs_mode, const char* loading_sceeen) {
   thp.stackSize = 0x900;
   g_nPlayThreadID = CreateThread(&thp);
 
+  StartThread(g_nISOThreadID, 0);
   StartThread(g_nDGOThreadID, 0);
   StartThread(g_nSTRThreadID, 0);
   StartThread(g_nPlayThreadID, 0);
 
   return s_nISOInitFlag;
 }
+
+u32 ISOThread() {
+  while (true) {
+    DelayThread(4000);
+  }
+
+  return 0;
+}
+
+static void ISO_LoadDGO(RPC_Dgo_Cmd* msg);
+static void ISO_LoadNextDGO(RPC_Dgo_Cmd* msg);
+static void ISO_CancelDGO(RPC_Dgo_Cmd* msg);
+
+static void* RPC_DGO(u32 fno, void* data, int size) {
+  auto* msg = static_cast<RPC_Dgo_Cmd*>(data);
+
+  switch (fno) {
+    case 0:
+      ISO_LoadDGO(msg);
+      break;
+    case 1:
+      ISO_LoadNextDGO(msg);
+      break;
+    case 2:
+      ISO_CancelDGO(msg);
+      break;
+    default:
+      msg->result = 1;
+      break;
+  }
+  return data;
+}
+
+static u32 DGOThread() {
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, 0xfab3, RPC_DGO, s_aISO_RPCBuf, sizeof(s_aISO_RPCBuf), nullptr, nullptr,
+                    &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
+
+  return 0;
+}
+
+static void ISO_LoadDGO(RPC_Dgo_Cmd* msg) {
+  auto* def = g_pFileSystem->Find(msg->name);
+  if (def == nullptr) {
+    msg->result = 1;
+    return;
+  }
+
+  msg->buffer1 = msg->buffer_heap_top;
+  msg->result = 0;
+}
+
+static void ISO_LoadNextDGO(RPC_Dgo_Cmd* msg) {}
+
+static void ISO_CancelDGO(RPC_Dgo_Cmd* msg) {}
 
 /* COMPLETE */
 const ISOFileDef* FindISOFile(char* name) {

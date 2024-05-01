@@ -1,6 +1,5 @@
 #pragma once
 
-#include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/iso_structs.h"
 #include "game/overlord/jak3/overlord.h"
 
