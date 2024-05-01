@@ -583,7 +583,6 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
   auto& name = args.unnamed.at(0).as_symbol().name_ptr;
 
   auto arg_spec = m_goos.parse_arg_spec(form, args.unnamed.at(2));
-  m_macro_specs[name] = arg_spec;
   m_symbol_info.add_macro(name, arg_spec, form, args.unnamed.at(1).as_string()->data);
   return get_none();
 }
@@ -757,7 +756,8 @@ Compiler::generate_per_file_symbol_info() {
       macro_doc.name = sym_info->m_name;
       macro_doc.description = sym_info->m_docstring;
       macro_doc.def_location = def_loc;
-      const auto& arg_spec = m_macro_specs[macro_doc.name];
+      // TODO - rewrite all of this to use the new symbol map, make sure macros work
+      /*const auto& arg_spec = m_macro_specs[macro_doc.name];
       for (const auto& arg : arg_spec.unnamed) {
         macro_doc.args.push_back(arg);
       }
@@ -770,7 +770,7 @@ Compiler::generate_per_file_symbol_info() {
       }
       if (!arg_spec.rest.empty()) {
         macro_doc.variadic_arg = arg_spec.rest;
-      }
+      }*/
       file_doc.macros.push_back(macro_doc);
     } else if (sym_info->m_kind == symbol_info::Kind::METHOD) {
       Docs::MethodDocumentation method_doc;

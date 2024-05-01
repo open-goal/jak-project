@@ -1464,7 +1464,8 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   (void)form;
   (void)env;
 
-  parse_defenum(rest, &m_ts, {});
+  const auto new_enum = parse_defenum(rest, &m_ts, {});
+  new_enum->m_metadata.definition_info = m_goos.reader.db.get_short_info_for(form);
   return get_none();
 }
 
@@ -1477,7 +1478,8 @@ u64 Compiler::enum_lookup(const goos::Object& form,
   if (e->is_bitfield()) {
     uint64_t value = 0;
     for_each_in_list(rest, [&](const goos::Object& o) {
-      auto kv = e->entries().find(symbol_string(o));
+      const auto test = symbol_string(o);
+      auto kv = e->entries().find(test);
       if (kv == e->entries().end()) {
         if (throw_on_error) {
           throw_compiler_error(form, "The value {} was not found in enum.", o.print());

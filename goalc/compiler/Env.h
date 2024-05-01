@@ -130,6 +130,10 @@ class FileEnv : public Env {
 
   void cleanup_after_codegen();
 
+  // TODO - privatize these eventually
+  std::unordered_set<std::string> m_required_files;          // TODO - a string for now
+  std::unordered_set<std::string> m_missing_required_files;  // TODO - a string for now
+
  protected:
   std::string m_name;
   std::vector<std::unique_ptr<FunctionEnv>> m_functions;

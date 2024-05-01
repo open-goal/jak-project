@@ -12,6 +12,20 @@
 
 namespace symbol_info {
 
+  // Require statement todo:
+  // - [x] enums
+  // - [x] constants
+  // - [x] variables
+  // - [x] decls (atleast for types)
+  // - [x] types
+  // - [] functions
+  // - [] macros
+  // - [] methods/states
+  // - [] compilation speed report
+  // - [] make it all conditional
+  // - [] potentially remove redundant map in compiler, try to get my symbol info trie more efficient (assuming its not).  Some sort of lookup cache, etc.
+
+
 // TODO - states
 // TODO - enums
 enum class Kind {

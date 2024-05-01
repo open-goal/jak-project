@@ -45,8 +45,6 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
       env->function_env()->alloc_env<MacroExpandEnv>(env, name.as_symbol(), macro->body, o);
   try {
     const auto& compile_result = compile(goos_result, compile_env_for_macro);
-    // TODO - is this critical (do the args and such change?)?
-    m_macro_specs.emplace(macro->name, macro->args);
     return compile_result;
   } catch (CompilerException& ce) {
     if (ce.print_err_stack) {
@@ -209,6 +207,7 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
                              existing->print(), value.print());
     }
     m_global_constants.set(sym, value);
+    m_global_constant_info.set(sym, {.definition_info = m_goos.reader.db.get_short_info_for(form)});
   }
 
   // GOOS constant
