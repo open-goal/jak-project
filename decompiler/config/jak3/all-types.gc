@@ -30946,7 +30946,7 @@
 (define-extern *darkjak-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern set-darkjak-texture-morph! (function float none))
 (define-extern *darkjak-highres-texture-anim-array* (texture-anim-array texture-anim))
-;; (define-extern set-darkjak-highres-texture-morph! function) ;; (function float symbol)
+(define-extern set-darkjak-highres-texture-morph! (function float symbol)) ;; (function float symbol)
 (define-extern *skull-gem-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *default-water-texture-anim-array* (texture-anim-array texture-anim))
 (define-extern *default-warp-texture-anim-array* (texture-anim-array texture-anim))
@@ -64188,7 +64188,7 @@
 
 (define-extern spt-func-match-part-def (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 (define-extern spt-func-part-rub-elec-gate (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
-(define-extern rub-elec-gate-adjust-particles (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern rub-elec-gate-adjust-particles (function float float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rubble-obs                     ;;
@@ -64930,7 +64930,7 @@
 
 (deftype faccity-pparticle-info (structure)
   ((original-pos vector :inline :offset-assert 0)
-   (inited?      basic          :offset-assert 16)
+   (inited?      symbol          :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
@@ -64938,7 +64938,7 @@
   )
 
 (deftype faccity-pparticle-array (inline-array-class)
-  ((data faccity-pparticle-info :dynamic :offset-assert 16)
+  ((data faccity-pparticle-info :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -64946,9 +64946,9 @@
   )
 
 (deftype lfaccity-pparticle-mover (process-drawable)
-  ((actor-group       uint32  :offset-assert 200)
+  ((actor-group       (pointer actor-group) :offset-assert 200)
    (actor-group-count int32   :offset-assert 204)
-   (particles         basic   :offset-assert 208)
+   (particles         faccity-pparticle-array   :offset-assert 208)
    )
   :method-count-assert 22
   :size-assert         #xd4
@@ -64957,13 +64957,13 @@
     active ;; 20
     )
   (:methods
-    (lfaccity-pparticle-mover-method-21 (_type_) none) ;; 21
+    (lfaccity-pparticle-mover-method-21 (_type_) symbol) ;; 21
     )
   )
 
-(define-extern *faccity-part-updater* object)
+(define-extern *faccity-part-updater* lfaccity-pparticle-mover)
 (define-extern update-mood-lfaccity (function mood-context float int none :behavior time-of-day-proc))
-(define-extern lfaccity-pparticle-mover-init-by-other (function vector quaternion vector float object :behavior lfaccity-pparticle-mover))
+(define-extern lfaccity-pparticle-mover-init-by-other (function entity-actor object :behavior lfaccity-pparticle-mover))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-sniper-battery             ;;
@@ -66309,12 +66309,13 @@
 
 (deftype wlander-anim-info (structure)
   ((anim-index       int32 2 :offset-assert 0)
-   (anim-index-front int32     :offset-assert 8)
-   (anim-index-back  int32     :offset-assert 12)
+   (anim-index-front int32     :offset 0)
+   (anim-index-back  int32     :offset 4)
    )
+  :pack-me
   :method-count-assert 9
-  :size-assert         #x10 ;; x8
-  :flag-assert         #x900000010 ;; x900000008
+  :size-assert         #x8
+  :flag-assert         #x900000008
   )
 
 (deftype wlander-global-info (basic)
@@ -66322,17 +66323,17 @@
    (prev-blue-hit           int8      :offset-assert 5)
    (knocked                 int32 2 :offset-assert 8)
    (knocked-land            int32 2 :offset-assert 16)
-   (anim-knocked-front      int32     :offset-assert 24)
-   (anim-knocked-back       int32     :offset-assert 28)
-   (anim-knocked-front-land int32     :offset-assert 32)
-   (anim-knocked-back-land  int32     :offset-assert 36)
-   (yellow-hit-anim         int32 2 :offset-assert 40)
-   (yellow-land-anim        int32 2 :offset-assert 48)
-   (blue-hit-anim           int32 1 :offset-assert 56)
-   )
+   (anim-knocked-front      int32     :offset 8)
+   (anim-knocked-back       int32     :offset 12)
+   (anim-knocked-front-land int32     :offset 16)
+   (anim-knocked-back-land  int32     :offset 20)
+   (yellow-hit-anim         wlander-anim-info 2 :inline :offset-assert 24)
+   (yellow-land-anim        wlander-anim-info 2 :inline :offset-assert 40)
+   (blue-hit-anim           wlander-anim-info 1 :inline :offset-assert 56)
+  )
   :method-count-assert 9
-  :size-assert         #x3c ;; x40 
-  :flag-assert         #x90000003c ;; x900000040
+  :size-assert         #x40
+  :flag-assert         #x900000040
   )
 
 
