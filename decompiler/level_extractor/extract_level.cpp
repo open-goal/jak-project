@@ -180,6 +180,11 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
   bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
   ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
 
+  if (db.version() == GameVersion::Jak1 && dgo_name == "TIT.DGO" && bsp_header.name == "intro") {
+    // grrr.....
+    bsp_header.name = "title";
+  }
+
   /*
   level_tools::PrintSettings settings;
   settings.expand_collide = true;
