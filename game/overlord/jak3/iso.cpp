@@ -2,7 +2,11 @@
 
 #include <cstring>
 
+#include "common/log/log.h"
+
+#include "game/common/dgo_rpc_types.h"
 #include "game/overlord/jak3/basefilesystem.h"
+#include "game/overlord/jak3/iso_fake.h"
 
 namespace jak3 {
 using namespace iop;
@@ -12,6 +16,27 @@ static ISO_LoadDGO s_LoadDGO;
 int s_nSyncMbx;
 CBaseFileSystem* g_pFileSystem;
 MsgPacket s_MsgPacket_NotOnStackSync[2];
+RPC_Dgo_Cmd s_aISO_RPCBuf[1];
+
+static void* RPC_DGO(u32 fno, void* data, int size) {
+  lg::error("RPC_DGO UNIMPLEMENTED");
+  return nullptr;
+}
+
+static u32 DGOThread() {
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, 0xfab3, RPC_DGO, s_aISO_RPCBuf, sizeof(s_aISO_RPCBuf), nullptr, nullptr,
+                    &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
+
+  return 0;
+}
 
 /* COMPLETE */
 void InitDriver() {
@@ -47,6 +72,7 @@ int InitISOFS(const char* fs_mode, const char* loading_sceeen) {
 
   memset(&s_LoadDGO, 0, sizeof(s_LoadDGO));
   s_nISOInitFlag = 1;
+  g_pFileSystem = &g_FakeISOCDFileSystem;
 
   return s_nISOInitFlag;
 }

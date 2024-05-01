@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/iso_structs.h"
 #include "game/overlord/jak3/overlord.h"
 
@@ -11,9 +12,8 @@ class CBaseFile {
   virtual EIsoStatus SyncRead() = 0;
   virtual void Close() = 0;
 
-    /* unk return values */
+  /* unk return values */
   virtual void Unk1() = 0;
   virtual void Unk2() = 0;
 };
 }  // namespace jak3
-

@@ -24,7 +24,7 @@ struct VagDirJak3 {
   u32 version;
   u32 count;
   VagDirEntryJak3 entries[0];
-} dir;
+};
 
 struct VagDirEntry {};
 

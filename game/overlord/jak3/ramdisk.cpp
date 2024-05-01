@@ -23,7 +23,8 @@ u32 Thread_Server() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, 0xfab2, RPC_Ramdisk, gRamDisk_RPCBUF, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, 0xfab2, RPC_Ramdisk, gRamDisk_RPCBUF, sizeof(gRamDisk_RPCBUF), nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
 

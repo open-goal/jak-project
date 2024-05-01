@@ -21,4 +21,5 @@ struct ISO_Msg : ISO_Hdr {};
 
 struct ISO_LoadDGO : ISO_Msg {};
 
+int InitISOFS(const char* fs_mode, const char* loading_sceeen);
 }  // namespace jak3

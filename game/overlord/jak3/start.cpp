@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstring>
 
+#include "iso.h"
 #include "overlord.h"
 #include "ramdisk.h"
 #include "sbank.h"
@@ -70,7 +71,7 @@ int start_overlord(int argc, const char* const* argp) {
     return 1;
   }
 
-  //CDvdDriver::Initialize(&g_DvdDriver);
+  // CDvdDriver::Initialize(&g_DvdDriver);
   InitISOFS(argp[1], argp[2]);
 
   StartThread(g_nServerThreadID, 0);

@@ -30,7 +30,8 @@ u32 Thread_Player() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, 0xfab0, RPC_Player, s_anSRPC_PlayerBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, 0xfab0, RPC_Player, s_anSRPC_PlayerBuf, sizeof(s_anSRPC_PlayerBuf),
+                    nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
 
@@ -44,7 +45,8 @@ u32 Thread_Loader() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, 0xfab1, RPC_Loader, s_anSRPC_LoaderBuf, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, 0xfab1, RPC_Loader, s_anSRPC_LoaderBuf, sizeof(s_anSRPC_LoaderBuf),
+                    nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
 
