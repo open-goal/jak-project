@@ -25,6 +25,7 @@ endif()
 set(RUNTIME_SOURCE
         external/discord_jak1.cpp
         external/discord_jak2.cpp
+        external/discord_jak3.cpp
         external/discord.cpp
         graphics/display.cpp
         graphics/gfx_test.cpp

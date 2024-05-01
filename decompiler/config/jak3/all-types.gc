@@ -7599,7 +7599,7 @@
   )
 
 (deftype level-load-info (basic)
-  ((name-list         symbol           6       :offset-assert 4) ;; guessed by decompiler
+  ((name-list         symbol           6       :offset-assert 4 :score -1) ;; guessed by decompiler
    (name              symbol                   :offset 4) ;; guessed by decompiler
    (visname           symbol                   :offset 8) ;; guessed by decompiler
    (nickname          symbol                   :offset 12) ;; guessed by decompiler
@@ -10004,6 +10004,10 @@
   (credits-08b4 #x08b4)
   (credits-08b5 #x08b5)
   (credits-08b6 #x08b6)
+
+  ;; PC port IDs START
+  (discord-rpc-not-in-mission #x1200)
+  (discord-rpc-in-side-mission #x1201)
   )
 ;; ---text-h:text-id
 
@@ -13237,6 +13241,13 @@
   (evan-test-bike 29)
   )
 ;; ---traffic-h:vehicle-type
+
+;; +++traffic-h:vehicle-type-u8
+(defenum vehicle-type-u8
+  :type uint8
+  :copy-entries vehicle-type
+  )
+;; ---traffic-h:vehicle-type-u8
 
 (deftype traffic-danger-info (structure)
   ((sphere        sphere :inline :offset-assert 0)
@@ -17272,7 +17283,7 @@
    (dust-storm             handle                    :offset-assert 768)
    (flut-count             int32                     :offset-assert 776)
    (death-resetter         resetter-spec     :inline :offset-assert 780)
-   (current-vehicle        game-vehicle-u8           :offset-assert 796)
+   (current-vehicle        vehicle-type-u8           :offset-assert 796)
    (vehicle-turbo-ready    float                     :offset-assert 800)
    (percent-complete       float                     :offset-assert 804)
    )
@@ -53385,13 +53396,6 @@
     )
   )
 
-;; +++vehicle-h:vehicle-type-u8
-(defenum vehicle-type-u8
-  :type uint8
-  :copy-entries vehicle-type
-  )
-;; ---vehicle-h:vehicle-type-u8
-
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags               uint32                               :offset-assert 208)
    (object-type         uint8                                :offset-assert 212)
@@ -58396,8 +58400,8 @@
    )
   )
 
-(define-extern have-earned-vehicle-v-type? (function int symbol))
-(define-extern have-vehicle-v-type? (function int symbol))
+(define-extern have-earned-vehicle-v-type? (function vehicle-type symbol))
+(define-extern have-vehicle-v-type? (function vehicle-type symbol))
 (define-extern kill-player-process-init-by-other (function process symbol object :behavior kill-player-process))
 (define-extern kill-player-process-spawn (function process process symbol kill-player-process))
 
@@ -73234,7 +73238,7 @@
   )
 
 (deftype prebot-gun-shot (projectile)
-  ((whoosh-sound uint32  :offset-assert 512)
+  ((whoosh-sound sound-id  :offset-assert 512)
    )
   :method-count-assert 41
   :size-assert         #x204
