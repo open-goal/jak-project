@@ -36,6 +36,77 @@ CPageManager::CPage::CPage(u8* start, u8* end, int page_id) {
   m_nUnk2 = 0;
 }
 
+int CPageManager::CPage::AddRef() {
+  int state, ret = -1;
+
+  CpuSuspendIntr(&state);
+
+  if (m_nAllocState == 1 && m_pPageList != nullptr) {
+    m_pPageList->m_nRefCount++;
+    m_nRefCount++;
+    ret = m_nRefCount;
+  }
+
+  CpuResumeIntr(state);
+
+  return ret;
+}
+
+int CPageManager::CPage::ReleaseRef() {
+  int state, ret = -1;
+
+  CpuSuspendIntr(&state);
+
+  if (m_nAllocState == 1 && m_pPageList != nullptr) {
+    m_pPageList->m_nRefCount--;
+    m_nRefCount--;
+    ret = m_nRefCount;
+  }
+
+  CpuResumeIntr(state);
+
+  return ret;
+}
+
+int CPageManager::CPage::AddDmaRef() {
+  int state, ret = -1;
+
+  CpuSuspendIntr(&state);
+
+  if (m_nAllocState == 1 && m_pPageList != nullptr) {
+    m_pPageList->m_nDmaRefCount++;
+    m_nDmaRefCount++;
+    ret = m_nDmaRefCount;
+  }
+
+  CpuResumeIntr(state);
+
+  return ret;
+}
+
+int CPageManager::CPage::ReleaseDmaRef() {
+  int state, ret = -1;
+
+  CpuSuspendIntr(&state);
+
+  if (m_nAllocState == 1 && m_pPageList != nullptr) {
+    m_pPageList->m_nDmaRefCount--;
+    m_nDmaRefCount--;
+    ret = m_nDmaRefCount;
+  }
+
+  CpuResumeIntr(state);
+
+  return ret;
+}
+
+void CPageManager::CPage::FromPagesCopy(u8* pInPageData, u8* pDest, int nNumBytes) {
+  if (nNumBytes <= 0) {
+    return;
+  }
+
+}
+
 void CPageManager::Initialize() {
   m_Cache.Initialize();
 }

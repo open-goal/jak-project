@@ -24,18 +24,25 @@ class CPageManager {
     CPageList* m_pPageList;
     u8* m_pData;
     u8* m_pEnd;  // maybe
-    u32 m_nRefCount;
-    u32 m_nDmaRefCount;
+    int m_nRefCount;
+    int m_nDmaRefCount;
     int m_nPageID;
     int m_nAllocState;
     int m_nUnk2;
   };
 
   class CPageList {
+    friend class CPage;
+
+   public:
     int AddActivePages(int);
     int CancelActivePages();
     CPage* StepActivePage();
     void GarbageCollect();
+
+   private:
+    int m_nRefCount;
+    int m_nDmaRefCount;
   };
 
   void Initialize();
