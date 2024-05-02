@@ -5,9 +5,11 @@
 #include "common/log/log.h"
 
 #include "game/common/dgo_rpc_types.h"
+#include "game/overlord/common/isocommon.h"
 #include "game/overlord/jak3/basefilesystem.h"
 #include "game/overlord/jak3/iso_api.h"
 #include "game/overlord/jak3/iso_fake.h"
+#include "game/overlord/jak3/iso_queue.h"
 #include "game/overlord/jak3/stream.h"
 
 namespace jak3 {
@@ -20,6 +22,8 @@ int g_nSTRThreadID;
 int g_nPlayThreadID;
 int g_nISOMbx;
 VagDirJak3 g_VagDir;
+char g_szCurrentMusicName[16];
+char g_szTargetMusicName[16];
 
 static int s_nISOInitFlag;
 static ISO_LoadDGO s_LoadDGO;
@@ -30,6 +34,7 @@ static int s_nDGOMbx;
 
 static u32 DGOThread();
 u32 ISOThread();
+int NullCallback(ISO_Msg* msg);
 
 /* COMPLETE */
 void InitDriver() {
@@ -135,9 +140,35 @@ const ISOFileDef* FindIsoFile(const char* name) {
 }
 
 u32 ISOThread() {
+  ISO_Msg* msg;
+
+  g_szCurrentMusicName[0] = '\0';
+  g_szTargetMusicName[0] = '\0';
+  InitBuffers();
+  // InitVagCmds();
+
   InitDriver();
 
   while (true) {
+    int res = PollMbx((MsgPacket**)&msg, g_nISOMbx);
+    if (res == KE_OK) {
+      msg->SetActive(false);
+      msg->SetUnk1(false);
+      msg->SetUnk2(false);
+      msg->file = nullptr;
+      msg->callback = NullCallback;
+
+      switch (msg->msg_kind) {
+        case LOAD_TO_EE_CMD_ID:
+        case LOAD_TO_IOP_CMD_ID:
+        case LOAD_TO_EE_OFFSET_CMD_ID:
+          break;
+        default:
+          lg::error("unhandled iso msg type {:x}", msg->msg_kind);
+          break;
+      }
+    }
+
     DelayThread(4000);
   }
 
@@ -206,6 +237,39 @@ const ISOFileDef* FindISOFile(char* name) {
 /* COMPLETE */
 s32 GetISOFileLength(const ISOFileDef* fd) {
   return g_pFileSystem->GetLength(fd);
+}
+
+int NullCallback(ISO_Msg* msg) {
+  return 7;
+}
+
+void ISO_Hdr::SetActive(bool b) {
+  m_bActive = b;
+}
+
+void ISO_Hdr::SetUnk1(bool b) {
+  unk1 = b;
+}
+
+void ISO_Hdr::SetUnk2(bool b) {
+  unk2 = b;
+}
+
+void ISOBuffer::AdjustDataLength(int size) {
+  int state;
+
+  CpuSuspendIntr(&state);
+  decompressed_size -= size;
+  CpuResumeIntr(state);
+}
+
+void ISOBuffer::AdvanceCurrentData(int size) {
+  int state;
+
+  CpuSuspendIntr(&state);
+  decomp_buffer += size;
+  decompressed_size -= size;
+  CpuResumeIntr(state);
 }
 
 }  // namespace jak3

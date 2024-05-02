@@ -254,6 +254,7 @@ set(RUNTIME_SOURCE
         overlord/jak3/start.cpp
         overlord/jak3/iso_api.cpp
         overlord/jak3/iso_fake.cpp
+        overlord/jak3/iso_queue.cpp
         overlord/jak3/iso.cpp
         overlord/jak3/overlord.cpp
         overlord/jak3/pagemanager.cpp

@@ -11,7 +11,7 @@ using namespace iop;
 u32 LoadISOFileToIOP(const ISOFileDef* file, void* addr, u32 length) {
   ISO_LoadSingle msg;
 
-  msg.cmd_kind = 0x101;
+  msg.msg_kind = 0x101;
   msg.mbx_to_reply = 0;
   msg.thread_id = GetThreadId();
   msg.fd = file;

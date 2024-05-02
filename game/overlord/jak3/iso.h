@@ -13,16 +13,16 @@ struct ISO_Hdr {
   bool unk1;
   bool unk2;
 
-  void SetActive();
-  void SetUnk1();
-  void SetUnk2();
+  void SetActive(bool b);
+  void SetUnk1(bool b);
+  void SetUnk2(bool b);
 };
 
 struct ISO_Msg : ISO_Hdr {
-  u32 cmd_kind;
+  u32 msg_kind;
   int mbx_to_reply;
   int thread_id;
-  void* callback;
+  int (*callback)(ISO_Msg*);
   CBaseFile* file;
 };
 

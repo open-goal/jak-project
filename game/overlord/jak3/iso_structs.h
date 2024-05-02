@@ -10,7 +10,7 @@ enum class EFileComp { MODE0, MODE1, KNOWN_NOT_BLZO };
 
 struct ISOBuffer {
   CPageManager::CPageList* m_pActivePages;
-  void* decomp_buffer;
+  u8* decomp_buffer;
   int decompressed_size;
 
   void AdjustDataLength(int);
