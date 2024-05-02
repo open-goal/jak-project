@@ -196,9 +196,7 @@ s32 SendMbx(s32 mbxid, void* sendmsg) {
 }
 
 s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid) {
-  ASSERT(false);
-  // TODO
-  return 0;
+  return iop->kernel.ReceiveMbx((void**)recvmsg, mbxid);
 }
 
 s32 PollMbx(MsgPacket** recvmsg, int mbxid) {

@@ -30,6 +30,12 @@
 #define SA_THFIFO 0
 #define SA_THPRI 1
 
+// Message box attributes
+#define MBA_THFIFO 0x000
+#define MBA_THPRI 0x001
+#define MBA_MSFIFO 0x000
+#define MBA_MSPRI 0x004
+
 class IOP;
 
 namespace iop {
