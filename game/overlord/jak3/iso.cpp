@@ -6,6 +6,7 @@
 
 #include "game/common/dgo_rpc_types.h"
 #include "game/overlord/jak3/basefilesystem.h"
+#include "game/overlord/jak3/iso_api.h"
 #include "game/overlord/jak3/iso_fake.h"
 #include "game/overlord/jak3/stream.h"
 
@@ -18,6 +19,7 @@ int g_nDGOThreadID;
 int g_nSTRThreadID;
 int g_nPlayThreadID;
 int g_nISOMbx;
+VagDirJak3 g_VagDir;
 
 static int s_nISOInitFlag;
 static ISO_LoadDGO s_LoadDGO;
@@ -58,13 +60,17 @@ static void WaitMbx(int mbx) {
 
 /* TODO unfinished */
 int InitISOFS(const char* fs_mode, const char* loading_sceeen) {
+  const ISOFileDef* fd;
   ThreadParam thp;
   MbxParam mbx;
 
   memset(&s_LoadDGO, 0, sizeof(s_LoadDGO));
+  /* TODO INIT s_LoadDgo fields */
+
   s_nISOInitFlag = 1;
   g_pFileSystem = &g_FakeISOCDFileSystem;
 
+  /* Lets not bother error checking the Create* calls */
   mbx.attr = 0;
   mbx.option = 0;
   g_nISOMbx = CreateMbx(&mbx);
@@ -110,10 +116,27 @@ int InitISOFS(const char* fs_mode, const char* loading_sceeen) {
   StartThread(g_nSTRThreadID, 0);
   StartThread(g_nPlayThreadID, 0);
 
+  WaitMbx(s_nSyncMbx);
+
+  /* Originally VAGDIR is only loaded for the CD filesystem
+   * Presumably there was different mechanism for fakeiso,
+   * but we need it regardless */
+
+  fd = FindIsoFile("VAGDIR.AYB");
+  LoadISOFileToIOP(fd, &g_VagDir, sizeof(g_VagDir));
+
+  /* Skip getting the loading screen thing? */
+
   return s_nISOInitFlag;
 }
 
+const ISOFileDef* FindIsoFile(const char* name) {
+  return g_pFileSystem->Find(name);
+}
+
 u32 ISOThread() {
+  InitDriver();
+
   while (true) {
     DelayThread(4000);
   }

@@ -2,11 +2,17 @@
 
 #include "common/common_types.h"
 
+#include "game/overlord/jak3/pagemanager.h"
+
 namespace jak3 {
 /* TODO check values */
 enum class EFileComp { MODE0, MODE1, KNOWN_NOT_BLZO };
 
 struct ISOBuffer {
+  CPageManager::CPageList* m_pActivePages;
+  void* decomp_buffer;
+  int decompressed_size;
+
   void AdjustDataLength(int);
   void AdvanceCurrentData(int);
 };
@@ -24,11 +30,13 @@ struct VagDirEntryJak3 {
   };
 };
 
+static constexpr int MAX_VAGDIR_ENTRIES = 4096;
+
 struct VagDirJak3 {
   u32 id[2];
   u32 version;
   u32 count;
-  VagDirEntryJak3 entries[0];
+  VagDirEntryJak3 entries[MAX_VAGDIR_ENTRIES];
 };
 
 struct VagDirEntry {};

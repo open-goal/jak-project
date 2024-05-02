@@ -13,8 +13,8 @@ class CFakeISOCDFileSystem : public CBaseFileSystem {
   const ISOFileDef* Find(const char* name) override;
   const ISOFileDef* FindIN(const char* name) override;
   int GetLength(const ISOFileDef* def) override;
-  int Open(const ISOFileDef* def, int offset, EFileComp mode) override;
-  int OpenWad(const ISOFileDef* def, int offset) override;
+  CBaseFile* Open(const ISOFileDef* def, int offset, EFileComp mode) override;
+  CBaseFile* OpenWad(const ISOFileDef* def, int offset) override;
   VagDirEntryJak3* FindVagFile(const char* name) override;
 };
 

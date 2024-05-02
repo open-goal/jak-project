@@ -21,12 +21,12 @@ int CFakeISOCDFileSystem::GetLength(const ISOFileDef* def) {
   return 0;
 }
 
-int CFakeISOCDFileSystem::Open(const ISOFileDef* def, int offset, EFileComp mode) {
-  return 0;
+CBaseFile* CFakeISOCDFileSystem::Open(const ISOFileDef* def, int offset, EFileComp mode) {
+  return nullptr;
 }
 
-int CFakeISOCDFileSystem::OpenWad(const ISOFileDef* def, int offset) {
-  return 0;
+CBaseFile* CFakeISOCDFileSystem::OpenWad(const ISOFileDef* def, int offset) {
+  return nullptr;
 }
 
 VagDirEntryJak3* CFakeISOCDFileSystem::FindVagFile(const char* name) {

@@ -252,6 +252,7 @@ set(RUNTIME_SOURCE
         overlord/jak2/streamlist.cpp
         overlord/jak2/vag.cpp
         overlord/jak3/start.cpp
+        overlord/jak3/iso_api.cpp
         overlord/jak3/iso_fake.cpp
         overlord/jak3/iso.cpp
         overlord/jak3/overlord.cpp
