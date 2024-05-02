@@ -183,7 +183,8 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
   // grrr.....
   if (db.version() == GameVersion::Jak1 && dgo_name == "TIT.DGO" && bsp_header.name == "intro") {
     bsp_header.name = "title";
-  } else if (db.version() == GameVersion::Jak1 && dgo_name == "DEM.DGO" && bsp_header.name == "intro") {
+  } else if (db.version() == GameVersion::Jak1 && dgo_name == "DEM.DGO" &&
+             bsp_header.name == "intro") {
     bsp_header.name = "demo";
   }
 
