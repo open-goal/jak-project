@@ -159,6 +159,9 @@ void FlushDcache();
 u32 sceSifCheckInit();
 void sceSifInit();
 
+s32 CpuSuspendIntr(int* old_state);
+s32 CpuResumeIntr(int old_state);
+
 void LIBRARY_INIT();
 void LIBRARY_register(::IOP* i);
 void LIBRARY_kill();

@@ -251,4 +251,14 @@ s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* /
   return iop->kernel.RegisterVblankHandler(handler);
 }
 
+s32 CpuSuspendIntr(int* old_state) {
+  (void)old_state;
+  return KE_OK;
+}
+
+s32 CpuResumeIntr(int old_state) {
+  (void)old_state;
+  return KE_OK;
+}
+
 }  // namespace iop
