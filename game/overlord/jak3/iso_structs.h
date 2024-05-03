@@ -9,12 +9,17 @@ namespace jak3 {
 enum class EFileComp { MODE0, MODE1, KNOWN_NOT_BLZO };
 
 struct ISOBuffer {
+ public:
+  void AdjustDataLength(int);
+  void AdvanceCurrentData(int);
+  void SetDataLength(int length) { m_nDataLength = length; }
+  int GetDataLength() { return m_nDataLength; }
+
+ private:
   CPageManager::CPageList* m_pActivePages;
   u8* decomp_buffer;
   int decompressed_size;
-
-  void AdjustDataLength(int);
-  void AdvanceCurrentData(int);
+  int m_nDataLength;
 };
 
 struct VagDirEntryJak3 {
