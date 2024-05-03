@@ -640,7 +640,7 @@ s32 pc_sr_mode_get_practice_entries_amount() {
 
   g_speedrun_practice_entries = *file_contents;
 
-  for (int i = 0; i < g_speedrun_practice_entries.size(); i++) {
+  for (size_t i = 0; i < g_speedrun_practice_entries.size(); i++) {
     const auto& entry = g_speedrun_practice_entries.at(i);
     s32 last_session_id = -1;
     s32 total_attempts = 0;
@@ -679,7 +679,7 @@ s32 pc_sr_mode_get_practice_entries_amount() {
 
 void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (entry_index < g_speedrun_practice_entries.size()) {
+  if (entry_index < (int)g_speedrun_practice_entries.size()) {
     name = g_speedrun_practice_entries.at(entry_index).name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
@@ -687,7 +687,7 @@ void pc_sr_mode_get_practice_entry_name(s32 entry_index, u32 name_str_ptr) {
 
 void pc_sr_mode_get_practice_entry_continue_point(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (entry_index < g_speedrun_practice_entries.size()) {
+  if (entry_index < (int)g_speedrun_practice_entries.size()) {
     name = g_speedrun_practice_entries.at(entry_index).continue_point_name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
@@ -757,7 +757,7 @@ u64 pc_sr_mode_record_practice_entry_attempt(s32 entry_index, u32 success_bool, 
 }
 
 void pc_sr_mode_init_practice_info(s32 entry_index, u32 speedrun_practice_obj_ptr) {
-  if (entry_index >= g_speedrun_practice_entries.size()) {
+  if (entry_index >= (int)g_speedrun_practice_entries.size()) {
     return;
   }
 
@@ -864,7 +864,7 @@ s32 pc_sr_mode_get_custom_category_amount() {
 
 void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (entry_index < g_speedrun_custom_categories.size()) {
+  if (entry_index < (int)g_speedrun_custom_categories.size()) {
     name = g_speedrun_custom_categories.at(entry_index).name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
@@ -872,14 +872,14 @@ void pc_sr_mode_get_custom_category_name(s32 entry_index, u32 name_str_ptr) {
 
 void pc_sr_mode_get_custom_category_continue_point(s32 entry_index, u32 name_str_ptr) {
   std::string name = "";
-  if (entry_index < g_speedrun_custom_categories.size()) {
+  if (entry_index < (int)g_speedrun_custom_categories.size()) {
     name = g_speedrun_custom_categories.at(entry_index).continue_point_name;
   }
   strcpy(Ptr<String>(name_str_ptr).c()->data(), name.c_str());
 }
 
 void pc_sr_mode_init_custom_category_info(s32 entry_index, u32 speedrun_custom_category_ptr) {
-  if (entry_index >= g_speedrun_custom_categories.size()) {
+  if (entry_index >= (int)g_speedrun_custom_categories.size()) {
     return;
   }
 

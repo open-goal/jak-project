@@ -13,7 +13,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   float acc;
   get_fake_spad_addr2(at, cache.fake_scratchpad_data, 0, c);// lui at, 28672
@@ -348,7 +347,6 @@ static_assert(sizeof(MercBucketInfo) == 0x27c);
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -128);                          // daddiu sp, sp, -128
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s0, 16, sp);                                // sq s0, 16(sp)
@@ -714,7 +712,7 @@ block_1:
     goto block_4;
   }
 
-block_3:
+//block_3:
   c->dsll(a0, s4, 3);                               // dsll a0, s4, 3
   c->daddu(v1, v1, a0);                             // daddu v1, v1, a0
   c->lbu(v1, 128, v1);                              // lbu v1, 128(v1)
@@ -1002,7 +1000,7 @@ block_35:
     goto block_40;
   }
 
-block_37:
+//block_37:
   c->lhu(a0, 4, gp);                                // lhu a0, 4(gp)
   c->andi(a0, a0, 2048);                            // andi a0, a0, 2048
   if (((s64)c->sgpr64(a0)) == ((s64)0)) {           // beql a0, r0, L137
@@ -1010,7 +1008,7 @@ block_37:
     goto block_40;
   }
 
-block_39:
+//block_39:
   c->daddiu(a0, s7, 4);                             // daddiu a0, s7, 4
   c->lbu(a1, 17, s2);                               // lbu a1, 17(s2)
   c->andi(a1, a1, 64);                              // andi a1, a1, 64
@@ -1034,7 +1032,7 @@ block_42:
     goto block_45;
   }
 
-block_44:
+//block_44:
   c->daddiu(a0, s7, 4);                             // daddiu a0, s7, 4
   c->dsll(a1, s4, 5);                               // dsll a1, s4, 5
   c->daddu(a1, s5, a1);                             // daddu a1, s5, a1
@@ -1106,14 +1104,14 @@ block_54:
     goto block_59;
   }
 
-block_56:
+//block_56:
   c->lwu(v1, 80, gp);                               // lwu v1, 80(gp)
   if (((s64)c->sgpr64(s7)) == ((s64)c->sgpr64(v1))) {// beql s7, v1, L145
     c->mov64(v1, v1);                               // or v1, v1, r0
     goto block_59;
   }
 
-block_58:
+//block_58:
   c->lwu(v1, 80, gp);                               // lwu v1, 80(gp)
   c->lwu(v1, 28, v1);                               // lwu v1, 28(v1)
 
@@ -1200,7 +1198,7 @@ block_68:
     goto block_71;
   }
 
-block_70:
+//block_70:
   c->daddiu(a0, s7, 4);                             // daddiu a0, s7, 4
   c->lwu(a1, 28, s2);                               // lwu a1, 28(s2)
   c->lbu(a1, 1, a1);                                // lbu a1, 1(a1)

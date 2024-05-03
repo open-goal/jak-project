@@ -24,4 +24,4 @@ extern ScreenShotSettings* g_screen_shot_settings;
 extern bool g_want_screenshot;
 
 void register_screen_shot_settings(ScreenShotSettings* settings);
-const char* const get_screen_shot_name();
+const char* get_screen_shot_name();

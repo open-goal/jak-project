@@ -13,7 +13,6 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
   c->mov64(v1, a2);                                 // or v1, a2, r0
   c->mov64(v1, a3);                                 // or v1, a3, r0
