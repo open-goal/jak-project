@@ -343,7 +343,7 @@
 (defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
   "Add PC-port specific tfrag data"
   (let ((packet (the-as dma-packet (-> dma-buf base))))
-    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 24))
+    (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 25))
     (set! (-> packet vif0) (new 'static 'vif-tag))
     (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
     (set! (-> dma-buf base) (the pointer (&+ packet 16)))
@@ -379,9 +379,11 @@
     (set! (-> data-ptr 20) (-> *math-camera* perspective vector 1 quad))
     (set! (-> data-ptr 21) (-> *math-camera* perspective vector 2 quad))
     (set! (-> data-ptr 22) (-> *math-camera* perspective vector 3 quad))
-    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (-> lev nickname)))
+    (if (<= 32 (length (symbol->string (bsp-name lev))))
+        (format #t "level name ~a is too long!! must be shorter than 32 characters~%" (bsp-name lev)))
+    (charp<-string (the (pointer uint8) (&-> data-ptr 23)) (symbol->string (bsp-name lev)))
     )
-  (&+! (-> dma-buf base) (* 16 24))
+  (&+! (-> dma-buf base) (* 16 25))
   )
 
 ;;;;;;;;;;;;;;;;;;;;;

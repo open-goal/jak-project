@@ -35,12 +35,17 @@ fs::path get_user_screenshots_dir(GameVersion game_version);
 fs::path get_user_misc_dir(GameVersion game_version);
 fs::path get_user_features_dir(GameVersion game_version);
 fs::path get_jak_project_dir();
+fs::path get_iso_dir_for_game(GameVersion game_version);
+void set_iso_data_dir(const fs::path& directory);
 
 bool create_dir_if_needed(const fs::path& path);
 bool create_dir_if_needed_for_file(const std::string& path);
 bool create_dir_if_needed_for_file(const fs::path& path);
+std::string get_current_executable_path();
 std::optional<std::string> try_get_project_path_from_path(const std::string& path);
 bool setup_project_path(std::optional<fs::path> project_path_override);
+void override_user_config_dir(fs::path user_config_dir_override,
+                              bool use_overridden_config_dir_for_saves);
 std::string get_file_path(const std::vector<std::string>& path);
 void write_binary_file(const std::string& name, const void* data, size_t size);
 void write_binary_file(const fs::path& name, const void* data, size_t size);
@@ -74,4 +79,5 @@ std::string make_screenshot_filepath(const GameVersion game_version, const std::
 std::string get_majority_file_line_endings(const std::string& file_contents);
 std::pair<int, std::string> get_majority_file_line_endings_and_count(
     const std::string& file_contents);
+bool is_dir_in_dir(const fs::path& parent, const fs::path& child);
 }  // namespace file_util
