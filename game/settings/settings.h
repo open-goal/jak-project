@@ -25,6 +25,7 @@ struct DebugSettings {
   float text_max_range = 0;
   u32 hide_imgui_key = SDLK_LALT;
 
+  void load_settings();
   void save_settings();
 };
 void to_json(json& j, const DebugSettings& obj);
@@ -39,6 +40,7 @@ struct DisplaySettings {
   int window_ypos = 50;
   int display_id = 0;
 
+  void load_settings();
   void save_settings();
 };
 
@@ -60,6 +62,7 @@ struct InputSettings {
   bool keyboard_temp_enabled =
       false;  // not saved or restored, flips on if no controllers are detected
 
+  void load_settings();
   void save_settings();
 };
 

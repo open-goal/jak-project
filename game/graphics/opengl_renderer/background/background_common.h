@@ -19,9 +19,9 @@ struct GoalBackgroundCameraData {
 // the GOAL code assumes this memory layout.
 struct TfragPcPortData {
   GoalBackgroundCameraData camera;
-  char level_name[16];
+  char level_name[32];
 };
-static_assert(sizeof(TfragPcPortData) == 16 * 24);
+static_assert(sizeof(TfragPcPortData) == 16 * 25);
 
 // inputs to background renderers.
 struct TfragRenderSettings {

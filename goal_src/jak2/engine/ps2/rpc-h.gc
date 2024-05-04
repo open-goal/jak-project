@@ -5,6 +5,8 @@
 ;; name in dgo: rpc-h
 ;; dgos: ENGINE, GAME
 
+(defun-extern sound-buffer-dump int)
+
 ;; DECOMP BEGINS
 
 (deftype rpc-buffer (basic)
@@ -168,9 +170,12 @@
 (defmethod add-element ((this rpc-buffer-pair))
   (let ((v1-0 (-> this current)))
     (when (= (-> v1-0 elt-used) (-> v1-0 elt-count))
-      (if (zero? (-> this rpc-port))
+      (when (zero? (-> this rpc-port))
+          ;; if we're RPC 0, this is evidently a situation to warn about.
           (format 0 "WARNING: too many sound commands queued~%")
+          (sound-buffer-dump) ;; og:preserve-this added for debugging
           )
+      (format 0 "WARNING: flushing RPC port #~D~%" (-> this rpc-port)) ;; og:preserve-this
       (call this (the-as uint 0) (the-as pointer 0) (the-as uint 0))
       (set! v1-0 (-> this current))
       )

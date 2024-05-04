@@ -10,9 +10,9 @@
   ;; NOTE : we compile using the fixed v2 encoding because it's what we use.
   (file "$DECOMP/assets/game_text.txt") ;; this is the decompiler-generated file!
   ;; add custom files down here
-  (file-json 0 jak2 "common" '("game/assets/jak3/text/game_custom_text_en-US.json"))
-  (file-json 5 jak2 "common" '("game/assets/jak3/text/game_custom_text_ja-JP.json"))
-  (file-json 7 jak2 "common" '("game/assets/jak3/text/game_custom_text_en-GB.json"))
+  (file-json 0 jak3 "common" '("game/assets/jak3/text/game_custom_text_en-US.json"))
+  (file-json 6 jak3 "common" '("game/assets/jak3/text/game_custom_text_ja-JP.json"))
+  (file-json 11 jak3 "common" '("game/assets/jak3/text/game_custom_text_en-GB.json"))
   )
 
 

@@ -214,7 +214,6 @@ namespace method_14_collide_mesh {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 12, a0);                               // lwu v1, 12(a0)
@@ -419,7 +418,6 @@ namespace method_15_collide_mesh {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lwu(v1, 12, a0);                               // lwu v1, 12(a0)

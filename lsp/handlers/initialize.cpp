@@ -1,7 +1,7 @@
 #include "initialize.h"
 
 namespace lsp_handlers {
-std::optional<json> initialize(Workspace& workspace, int id, json params) {
+std::optional<json> initialize(Workspace& /*workspace*/, int /*id*/, json /*params*/) {
   json text_document_sync{
       {"openClose", true},
       {"change", 1},  // Full sync
