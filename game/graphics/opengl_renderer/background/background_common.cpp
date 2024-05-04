@@ -171,7 +171,7 @@ DoubleDraw setup_tfrag_shader(SharedRenderState* render_state, DrawMode mode, Sh
   return draw_settings;
 }
 
-void first_tfrag_draw_setup(const TfragRenderSettings& settings,
+void first_tfrag_draw_setup(const GoalBackgroundCameraData& settings,
                             SharedRenderState* render_state,
                             ShaderId shader) {
   const auto& sh = render_state->shaders[shader];
@@ -180,14 +180,12 @@ void first_tfrag_draw_setup(const TfragRenderSettings& settings,
   glUniform1i(glGetUniformLocation(id, "gfx_hack_no_tex"), Gfx::g_global_settings.hack_no_tex);
   glUniform1i(glGetUniformLocation(id, "decal"), false);
   glUniform1i(glGetUniformLocation(id, "tex_T0"), 0);
-  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE,
-                     settings.camera.camera[0].data());
-  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.camera.hvdf_off[0],
-              settings.camera.hvdf_off[1], settings.camera.hvdf_off[2],
-              settings.camera.hvdf_off[3]);
-  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.camera.fog.x());
-  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.camera.fog.y());
-  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.camera.fog.z());
+  glUniformMatrix4fv(glGetUniformLocation(id, "camera"), 1, GL_FALSE, settings.camera[0].data());
+  glUniform4f(glGetUniformLocation(id, "hvdf_offset"), settings.hvdf_off[0], settings.hvdf_off[1],
+              settings.hvdf_off[2], settings.hvdf_off[3]);
+  glUniform1f(glGetUniformLocation(id, "fog_constant"), settings.fog.x());
+  glUniform1f(glGetUniformLocation(id, "fog_min"), settings.fog.y());
+  glUniform1f(glGetUniformLocation(id, "fog_max"), settings.fog.z());
   glUniform4f(glGetUniformLocation(id, "fog_color"), render_state->fog_color[0] / 255.f,
               render_state->fog_color[1] / 255.f, render_state->fog_color[2] / 255.f,
               render_state->fog_intensity / 255);

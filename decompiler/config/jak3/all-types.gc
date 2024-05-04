@@ -24565,7 +24565,7 @@
 (deftype hfrag-bucket (structure)
   ((next                 pointer  :offset-assert 0)
    (count                uint16  :offset-assert 4)
-   (vertex-count         uint16  :offset-assert 6)
+   (vertex-count         uint16  :offset-assert 6) ;; toggles between 32 and 16???
    (next-scissor         pointer  :offset-assert 8)
    (count-scissor        uint16  :offset-assert 12)
    (vertex-count-scissor uint16  :offset-assert 14)
@@ -24594,8 +24594,8 @@
 
 (deftype hfrag-vert-index (structure)
   ((pos    vector2ub :inline :offset-assert 0)
-   (index0 uint16            :offset 2) ;; these are shifted right 2
-   (index1 uint16            :offset 4)
+   (index0 uint16            :offset 2) ;; high lod
+   (index1 uint16            :offset 4) ;; average between this and index2 for low-lod
    (index2 uint16            :offset 6)
    )
   :pack-me
@@ -24839,16 +24839,16 @@
    (visids           (pointer int16)         :offset-assert 52)
    (shaders          (inline-array adgif-shader) :offset-assert 56)
    (colors           time-of-day-palette       :offset-assert 60)
-   (montage          uint32         :offset-assert 64)
-   (buckets-far      (inline-array hfrag-bucket)   :offset-assert 68)
-   (buckets-mid      (inline-array hfrag-bucket)         :offset-assert 72)
-   (buckets-near     (inline-array hfrag-bucket)         :offset-assert 76)
+   (montage          uint32         :offset-assert 64) ;; 8272
+   (buckets-far      (inline-array hfrag-bucket)   :offset-assert 68) ;; 8276
+   (buckets-mid      (inline-array hfrag-bucket)         :offset-assert 72) ;; 8280
+   (buckets-near     (inline-array hfrag-bucket)         :offset-assert 76) ;; 8284
    (verts            (inline-array hfrag-vertex) :offset-assert 80) ;; 8288
-   (pat-array        (pointer pat-surface) :offset-assert 84)
-   (pat-length       uint16         :offset-assert 88)
-   (num-buckets-far  uint16         :offset-assert 90)
-   (num-buckets-mid  uint16         :offset-assert 92)
-   (num-buckets-near uint16         :offset-assert 94)
+   (pat-array        (pointer pat-surface) :offset-assert 84) ;; 8292
+   (pat-length       uint16         :offset-assert 88) ;; 8296
+   (num-buckets-far  uint16         :offset-assert 90) ;; 8298
+   (num-buckets-mid  uint16         :offset-assert 92) ;; 8300
+   (num-buckets-near uint16         :offset-assert 94) ;; 8302
    (size             uint32         :offset 44 :score 1)
    )
   :method-count-assert 22
@@ -24975,7 +24975,7 @@
    (poly-mid25             (inline-array hfrag-poly25) :offset-assert 8376)
    (poly-mid               (inline-array hfrag-poly9)  :offset-assert 8380)
    (poly-near              (inline-array hfrag-poly9)   :offset-assert 8384)
-   (far-texture            uint32                     :offset-assert 8388)
+   (far-texture            pointer                     :offset-assert 8388)
    (near-textures          uint16            16      :offset-assert 8392)
    (draw-table             int16            1024    :offset 8456)
    ;; 32 x 32 grid, (z * 32 + x)
@@ -24988,7 +24988,7 @@
     (initialize-renderer! (_type_) none) ;; 9
     (init-work-from-current-hfrag! (_type_) none) ;; 10
     (pick-level-of-detail! (_type_ level) none) ;; 11 (unk argument)
-    (generate-dma! (_type_) none) ;; 12
+    (generate-vertices! (_type_) none) ;; 12
     (finalize-dma! (_type_) none) ;; 13, calls shader funcs and calls init buf
     (setup-far-vertex-index! (_type_ hfrag-vert-index int int) none) ;; 14
     (setup-mid-vertex-index! (_type_ hfrag-vert-index int int) none) ;; 15
@@ -24999,7 +24999,7 @@
     (hfrag-work-method-20 () none) ;; 20
     (asm-near-mid-scissor (_type_ dma-buffer int) none) ;; 21
     (hfrag-work-method-22 () none) ;; 22 asm
-    (hfrag-work-method-23 (_type_) none) ;; 23, also asm
+    (generate-montage-texture (_type_) none) ;; 23, also asm
     (hfrag-work-method-24 (_type_ dma-buffer) none) ;; 24 scissor related, spad dma?
     (hfrag-work-method-25 (_type_ dma-buffer) none) ;; 25 scissor related, spad dma
     (hfrag-work-method-26 (_type_ dma-buffer) none) ;; 26 scissor related, spad dma

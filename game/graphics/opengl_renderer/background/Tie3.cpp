@@ -546,7 +546,7 @@ void Tie3::draw_matching_draws_for_tree(int idx,
   auto shader_id = use_envmap ? ShaderId::ETIE_BASE : ShaderId::TFRAG3;
 
   // setup OpenGL shader
-  first_tfrag_draw_setup(settings, render_state, shader_id);
+  first_tfrag_draw_setup(settings.camera, render_state, shader_id);
 
   if (use_envmap) {
     // if we use envmap, use the envmap-style math for the base draw to avoid rounding issue.
@@ -648,7 +648,7 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof,
                                    tfrag3::TieCategory category) {
-  first_tfrag_draw_setup(settings, render_state, ShaderId::ETIE);
+  first_tfrag_draw_setup(settings.camera, render_state, ShaderId::ETIE);
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,

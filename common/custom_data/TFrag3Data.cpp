@@ -422,6 +422,29 @@ void ShrubTree::serialize(Serializer& ser) {
   ser.from_string_vector(&proto_names);
 }
 
+void HfragmentBucket::serialize(Serializer& ser) {
+  ser.from_pod_vector(&corners);
+  ser.from_ptr(&montage_table);
+}
+
+void Hfragment::serialize(Serializer& ser) {
+  ser.from_pod_vector(&vertices);
+  ser.from_pod_vector(&indices);
+  ser.from_pod_vector(&corners);
+
+  if (ser.is_saving()) {
+    ser.save<size_t>(buckets.size());
+  } else {
+    buckets.resize(ser.load<size_t>());
+  }
+  for (auto& x : buckets) {
+    x.serialize(ser);
+  }
+  ser.from_pod_vector(&time_of_day_colors);
+  ser.from_ptr(&wang_tree_tex_id);
+  ser.from_ptr(&draw_mode);
+}
+
 void BVH::serialize(Serializer& ser) {
   ser.from_ptr(&first_leaf_node);
   ser.from_ptr(&last_leaf_node);
@@ -604,6 +627,8 @@ void Level::serialize(Serializer& ser) {
     tree.serialize(ser);
   }
 
+  hfrag.serialize(ser);
+
   collision.serialize(ser);
   merc_data.serialize(ser);
 
@@ -720,6 +745,14 @@ void IndexTexture::memory_usage(MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::SPECIAL_TEXTURE, 256 * 4);  // clut
 }
 
+void Hfragment::memory_usage(tfrag3::MemoryUsageTracker* tracker) const {
+  tracker->add(MemoryUsageCategory::HFRAG_VERTS, vertices.size() * sizeof(HfragmentVertex));
+  tracker->add(MemoryUsageCategory::HFRAG_INDEX, indices.size() * sizeof(u32));
+  tracker->add(MemoryUsageCategory::HFRAG_TIME_OF_DAY,
+               time_of_day_colors.size() * sizeof(TimeOfDayColor));
+  tracker->add(MemoryUsageCategory::HFRAG_CORNERS, corners.size() * sizeof(HfragmentCorner));
+}
+
 void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& texture : textures) {
     texture.memory_usage(tracker);
@@ -740,6 +773,7 @@ void Level::memory_usage(MemoryUsageTracker* tracker) const {
   for (const auto& tree : shrub_trees) {
     tree.memory_usage(tracker);
   }
+  hfrag.memory_usage(tracker);
   collision.memory_usage(tracker);
   merc_data.memory_usage(tracker);
 }
@@ -783,6 +817,11 @@ void print_memory_usage(const tfrag3::Level& lev, int uncompressed_data_size) {
       {"merc-mod-draw-1", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_1]},
       {"merc-mod-draw-2", mem_use.data[tfrag3::MemoryUsageCategory::MERC_MOD_DRAW_2]},
       {"blerc", mem_use.data[tfrag3::MemoryUsageCategory::BLERC]},
+      {"hfrag-verts", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_VERTS]},
+      {"hfrag-index", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_INDEX]},
+      {"hfrag-time-of-day", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_TIME_OF_DAY]},
+      {"hfrag-corners", mem_use.data[tfrag3::MemoryUsageCategory::HFRAG_CORNERS]}
+
   };
   for (auto& known : known_categories) {
     total_accounted += known.second;

@@ -1,3 +1,31 @@
+# C++ Plan
+
+- Write the extractor:
+  - giant mesh vertex data (position, color, texture coordinates per vertex)
+  - giant mesh index data (a chunk of indices per corner)
+  - list of buckets, each contains a list of corners in the bucket, and montage table
+  - Each corner has a vis ID for precomputed vis, bsphere for view frustum culling, and index group
+  - time-of-day colors
+  - Draw mode for textures (HACK: get the un-animated textures in here too, just for debug)
+
+- Write the loader
+  - load mesh and colors to GPU
+
+- Write the C++ renderer
+  - skip texture for now.
+
+- Write the GOAL renderer code (send camera data/visibility data to C++)
+
+- Debug!
+
+- Add textures (un-animated)
+
+# Vertex
+
+- hfragment
+- buckets: collection of corners, likely using shared texture?
+- "corners": smallest thing that can be processed by vertex generation asm
+- "polyN": square grid of vertices, culled together
 
 # Far Vertices
 
@@ -178,6 +206,51 @@ Then 6 shared poly9's
 4
 5
 6
+
+# Texture Stuff
+
+```lisp
+(defmethod login ((this hfragment))
+  "Initialize the object after it is loaded."
+  (dotimes (s5-0 3)
+    (adgif-shader-login (-> this shaders s5-0))
+    (if (> s5-0 0)
+        (set! (-> this shaders s5-0 tex0 tcc) 0)
+        )
+    (set! (-> this shaders 1 tex0 cbp) 3904)
+    (set! (-> this shaders 2 tex0 cbp) 3904)
+    )
+  this
+  )
+```
+
+# Method 23 near texture data summary:
+
+- `work.frame-tmpl`: 4 a+d data setup
+- `work.frames[0]`:  a+d for frame (hard-coded fbp), scissor 0x7f, xyoffset 0, test (no zbuf, always pass)
+- `work.adgif-tmpl`: usual adgif direct template
+- `hfrag.shaders[2]`: the whole thing.
+
+Loop over montage (16x?)
+- `hfrag.sprite-tmpl`: 2 qw (template rgba, st, xyz, st, xyz)
+- `colors[0] = 0x80, 0x80, 0x80, 0x80`
+- `montage-tex-coords[montage[m]].st0`
+- `near-data[2 * m]`
+- `montage-tex-coords[montage[m]].st1`
+- `near-data[2 * m + 1]`
+
+- `work.frame-tmpl`
+- `work.frames[1]`: half size frame, seems like the MIP data
+
+
+# C++ version of texture stuff:
+
+```c++
+struct Bucket {
+    std::vector<int> corners;
+    u16 montage_table[16];
+};
+```
 
 # `asm-near`
 
@@ -4628,4 +4701,1646 @@ L57:
     lq s4, 16(sp)
     jr ra
     daddiu sp, sp, 64
+```
+
+# Unknown Method 23 (texture DMA generation?)
+```
+L219:
+    daddiu sp, sp, -64
+    sd ra, 0(sp)
+    sq s4, 16(sp)
+    sq s5, 32(sp)
+    sq gp, 48(sp)
+B0:
+    lw v1, *display*(s7)
+    lw v1, 0(v1)
+    dsll v1, v1, 2
+    lw a1, *display*(s7)
+    daddu v1, v1, a1
+    lwu v1, 8(v1)        ;; load the on-screen display frame
+    lwu a2, 36(v1)       ;; global-buf for DMA
+    sll r0, r0, 0
+    sll r0, r0, 0
+    lw a1, 4(a2)         ;; dma-buffer base
+    lui v1, 4096
+    sw a2, 8148(a0)      ;; stash buffer in work.
+    sync.l
+    cache dxwbin a1, 0
+    sync.l
+    cache dxwbin a1, 1
+    sync.l
+    lui a2, 28672       ;; a2 = scratchpad
+    ori a3, v1, 53248   ;; a3 = spr-from dma control register
+    vmaxw.xyzw vf11, vf0, vf0 ;; vf11 = [1, 1, 1, 1]
+    ori v1, a2, 2720    ;; v1 = spad output buffer
+    sw r0, 1736(a0)     ;; modify dma return template
+    addiu a2, r0, 0     ;; a2 = 0
+    sw a3, 8196(a0)     ;; stash spr-from reg
+    or a3, v1, r0       ;; a3 = spad output
+    sw a1, 8152(a0)     ;; stash global dma (EE) ptr
+    sll r0, r0, 0
+    lqc2 vf29, 1728(a0) ;; vf29 = ret-tmpl
+    sll r0, r0, 0
+    lw t0, 8152(a0)     ;; t0 = global dma ptr
+    sll r0, r0, 0
+    lw a1, 8264(a0)     ;; a1 = work.hfragment.shaders
+    sll r0, r0, 0
+    sw t0, 8388(a0)     ;; far-texture = global dma ptr
+    daddiu t0, a2, -200
+    sll r0, r0, 0
+    blez t0, L222
+    sll r0, r0, 0
+
+B1: ;; if full, dma from transfer.
+    lw t0, 8196(a0)
+    sll r0, r0, 0
+B2:
+L220:
+    lw a3, 0(t0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a3, a3, 256
+    sll r0, r0, 0
+    beq a3, r0, L221
+    sll r0, r0, 0
+
+B3:
+    sll r0, r0, 0
+    lw a3, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a3, a3, 1
+    sll r0, r0, 0
+    sw a3, 8160(a0)
+    beq r0, r0, L220
+    sll r0, r0, 0
+
+B4:
+L221:
+    lw a3, 8152(a0) ;; dma buffer swap
+    sll r0, r0, 0
+    sw v1, 128(t0)
+    xori v1, v1, 4720
+    sw a3, 16(t0)
+    sll t1, a2, 4
+    addu t1, a3, t1
+    or a3, v1, r0
+    sw a2, 32(t0)
+    addiu a2, r0, 256
+    sw a2, 0(t0)
+    addiu a2, r0, 0
+    sw t1, 8152(a0)
+    sll r0, r0, 0
+B5:
+L222:
+    sll r0, r0, 0 ;; set up the 1 far-texture bucket.
+    lq t1, 1776(a0)
+    sll r0, r0, 0
+    lq t2, 1792(a0)
+    sll r0, r0, 0
+    lq t3, 1936(a0)
+    sll r0, r0, 0
+    lq t4, 1952(a0)
+    sll r0, r0, 0
+    lq t5, 1968(a0)
+    sll r0, r0, 0
+    lq t0, 1984(a0)
+    sq t1, 0(a3)
+    sll r0, r0, 0
+    sq t2, 16(a3)
+    sll r0, r0, 0
+    sq t3, 32(a3)
+    sll r0, r0, 0
+    sq t4, 48(a3)
+    sll r0, r0, 0
+    sq t5, 64(a3)
+    daddiu a2, a2, 6
+    sq t0, 80(a3)
+    daddiu a3, a3, 96
+    sll r0, r0, 0
+    lq t0, 2128(a0)
+    sll r0, r0, 0
+    lq t1, 2144(a0)
+    sll r0, r0, 0
+    lq t2, 80(a1)
+    sll r0, r0, 0
+    lq t3, 96(a1)
+    sll r0, r0, 0
+    lq t4, 112(a1)
+    sll r0, r0, 0
+    lq t5, 128(a1)
+    sll r0, r0, 0
+    lq t6, 144(a1)
+    sq t0, 0(a3)
+    sll r0, r0, 0
+    sq t1, 16(a3)
+    sll r0, r0, 0
+    sq t2, 32(a3)
+    sll r0, r0, 0
+    sq t3, 48(a3)
+    sll r0, r0, 0
+    sq t4, 64(a3)
+    sll r0, r0, 0
+    sq t5, 80(a3)
+    daddiu a1, a2, 7
+    sq t6, 96(a3)
+    daddiu a2, a3, 112
+    sll r0, r0, 0
+    lq t0, 2192(a0)
+    sll r0, r0, 0
+    lq t1, 2208(a0)
+    sll r0, r0, 0
+    lq t2, 2256(a0)
+    sll r0, r0, 0
+    lq t3, 3360(a0)
+    sll r0, r0, 0
+    lq t4, 2352(a0)
+    sll r0, r0, 0
+    lq t5, 3360(a0)
+    sll r0, r0, 0
+    lq a3, 2368(a0)
+    sq t0, 0(a2)
+    sll r0, r0, 0
+    sq t1, 16(a2)
+    sll r0, r0, 0
+    sq t2, 32(a2)
+    sll r0, r0, 0
+    sq t3, 48(a2)
+    sll r0, r0, 0
+    sq t4, 64(a2)
+    sll r0, r0, 0
+    sq t5, 80(a2)
+    daddiu a1, a1, 7
+    sq a3, 96(a2)
+    daddiu a2, a2, 112
+    sll r0, r0, 0
+    lq t0, 1776(a0)
+    sll r0, r0, 0
+    lq t1, 1792(a0)
+    sll r0, r0, 0
+    lq t2, 2064(a0)
+    sll r0, r0, 0
+    lq t3, 2080(a0)
+    sll r0, r0, 0
+    lq t4, 2096(a0)
+    sll r0, r0, 0
+    lq a3, 2112(a0)
+    sq t0, 0(a2)
+    sll r0, r0, 0
+    sq t1, 16(a2)
+    sll r0, r0, 0
+    sq t2, 32(a2)
+    sll r0, r0, 0
+    sq t3, 48(a2)
+    sll r0, r0, 0
+    sq t4, 64(a2)
+    daddiu a1, a1, 6
+    sq a3, 80(a2)
+    daddiu a2, a2, 96
+    sll r0, r0, 0
+    daddiu t2, a1, 1
+    sqc2 vf29, 0(a2)
+    daddiu t3, a2, 16
+    or a1, a0, r0
+    lw a2, 8284(a0) ;; a2 = hfragment.buckets-near
+    sll r0, r0, 0
+    lw a3, 8272(a0) ;; a3 = hfragment.montage
+    sll r0, r0, 0
+    lhu t0, 8302(a0) ;; t0 = hfragment.num-buckets-near
+    beq r0, r0, L230
+    lw t1, 8264(a0)  ;; t1 = hfragment.shaders
+
+B6:
+L223:
+    daddu t5, t4, t5 ;; t5 = count + count-scissor
+    lw t4, 8152(a0)  ;; t4 = dma-buffer.base
+    beq t5, r0, L230 ;; skip ahead to L230 if no near buckets
+    dsll t5, t2, 4   ;; t5 = qw offset in EE memory dma buffer??
+
+B7:
+    daddu t4, t5, t4  ;; t4 = output for this texture DMA
+    sw t4, 8392(a1)   ;; store dma ptr in work.near-textures[bucket-idx]
+    daddiu t4, t2, -102
+    sll r0, r0, 0
+    blez t4, L226
+    sll r0, r0, 0
+
+B8:                  ;; copy back from scratchpad to main memory
+    lw t4, 8196(a0)
+    sll r0, r0, 0
+B9:
+L224:
+    lw t3, 0(t4)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi t3, t3, 256
+    sll r0, r0, 0
+    beq t3, r0, L225
+    sll r0, r0, 0
+
+B10:
+    sll r0, r0, 0
+    lw t3, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu t3, t3, 1
+    sll r0, r0, 0
+    sw t3, 8160(a0)
+    beq r0, r0, L224
+    sll r0, r0, 0
+
+B11:
+L225:
+    lw t3, 8152(a0) ;; swap dma buffers
+    sll r0, r0, 0
+    sw v1, 128(t4)
+    xori v1, v1, 4720
+    sw t3, 16(t4)
+    sll t5, t2, 4
+    addu t5, t3, t5
+    or t3, v1, r0
+    sw t2, 32(t4)
+    addiu t2, r0, 256
+    sw t2, 0(t4)
+    addiu t2, r0, 0
+    sw t5, 8152(a0)
+    sll r0, r0, 0
+B12:
+L226:
+    sll r0, r0, 0
+    lq t5, 1776(a0) ;; t5 = work.frame-tmpl[0]
+    sll r0, r0, 0
+    lq t6, 1792(a0) ;; t6 = work.frame-tmpl[1]
+    sll r0, r0, 0
+    lq t7, 1808(a0) ;; t7 = work.frames[0].ad[0] (frame)
+    sll r0, r0, 0
+    lq t8, 1824(a0) ;; t8 = work.frames[0].ad[1] (scissor, 0x7f)
+    sll r0, r0, 0
+    lq t9, 1840(a0) ;; t9 = work.frames[0].ad[2] (xyoffset)
+    sll r0, r0, 0
+    lq t4, 1856(a0) ;; t4 = work.frames[0].ad[3] (test)
+
+    ;; store the frame template for frames[0]
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    daddiu t2, t2, 6   ;; inc offset
+    sq t4, 80(t3)
+    daddiu t3, t3, 96  ;; inc offset
+    sll r0, r0, 0
+
+    lq t5, 2128(a0)    ;; t5 = adgif-tmpl[0]
+    sll r0, r0, 0
+    lq t6, 2144(a0)    ;; t6 = adgif-tmpl[1]
+    sll r0, r0, 0
+    lq t7, 160(t1)     ;; t7 = shaders[2][0]
+    sll r0, r0, 0
+    lq t8, 176(t1)     ;; t8 = shaders[2][1]
+    sll r0, r0, 0
+    lq t9, 192(t1)     ;; t9 = shaders[2][2]
+    sll r0, r0, 0
+    lq ra, 208(t1)     ;; ra = shaders[2][3]
+    sll r0, r0, 0
+    lq t4, 224(t1)     ;; t4 = shaders[2][4]
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7   ;; inc offset
+    sq t4, 96(t3)
+    daddiu t3, t3, 112 ;; inc offset
+    sll r0, r0, 0
+
+;; montage 0
+    lhu t5, 0(a3)     ;; t5 = montage[0]
+    sll r0, r0, 0
+    lq t4, 2192(a0)   ;; t4 = sprite-tmpl[0]
+    daddu t9, t5, a0  ;; t9 = work + montage value
+    lq t5, 2208(a0)   ;; t5 = sprite-tmpl[1]
+    sll r0, r0, 0
+    lq t6, 2256(a0)   ;; t6 = color[0] = [0x80, 0x80, 0x80, 0x80]
+    sll r0, r0, 0
+    lq t7, 3456(t9)   ;; load montage-tex-coords + montage[0]
+    sll r0, r0, 0
+    lq t8, 2384(a0)   ;; t8 = near-data[0]
+    sll r0, r0, 0
+    lq ra, 3472(t9)   ;; load second montage tex coords + montage[0]
+    sll r0, r0, 0
+    lq t9, 2400(a0)   ;; t9 = near-data[1]
+    sq t4, 0(t3)      ;; store sprite[0]
+    sll r0, r0, 0
+    sq t5, 16(t3)     ;; store sprite[1]
+    sll r0, r0, 0
+    sq t6, 32(t3)     ;; store color 0x80, 0x80, 0x80, 0x80
+    sll r0, r0, 0
+    sq t7, 48(t3)     ;; store first tex coords
+    sll r0, r0, 0
+    sq t8, 64(t3)     ;; store first position
+    sll r0, r0, 0
+    sq ra, 80(t3)     ;; store second text coords
+    daddiu t2, t2, 7
+    sq t9, 96(t3)     ;; store second position
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 1
+    lhu t5, 2(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2416(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2432(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 2
+    lhu t5, 4(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2448(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2464(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 3
+    lhu t5, 6(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2480(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2496(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 4
+    lhu t5, 8(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2512(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2528(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 5
+    lhu t5, 10(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2544(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2560(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 6
+    lhu t5, 12(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2576(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2592(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 7
+    lhu t5, 14(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2608(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2624(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 8
+    lhu t5, 16(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2640(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2656(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 9
+    lhu t5, 18(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2672(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2688(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 10
+    lhu t5, 20(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2704(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2720(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 11
+    lhu t5, 22(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2736(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2752(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 12
+    lhu t5, 24(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2768(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2784(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 13
+    lhu t5, 26(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2800(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2816(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 14
+    lhu t5, 28(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2832(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2848(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+
+;; montage 15
+    lhu t5, 30(a3)
+    sll r0, r0, 0
+    lq t4, 2192(a0)
+    daddu t9, t5, a0
+    lq t5, 2208(a0)
+    sll r0, r0, 0
+    lq t6, 2256(a0)
+    sll r0, r0, 0
+    lq t7, 3456(t9)
+    sll r0, r0, 0
+    lq t8, 2864(a0)
+    sll r0, r0, 0
+    lq ra, 3472(t9)
+    sll r0, r0, 0
+    lq t9, 2880(a0)
+    sq t4, 0(t3)
+    sll r0, r0, 0
+    sq t5, 16(t3)
+    sll r0, r0, 0
+    sq t6, 32(t3)
+    sll r0, r0, 0
+    sq t7, 48(t3)
+    sll r0, r0, 0
+    sq t8, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t9, 96(t3)
+    daddiu t3, t3, 112
+
+    daddiu t4, t2, -138
+    sll r0, r0, 0
+    blez t4, L229 ;; see if we need dma transfer
+    sll r0, r0, 0
+
+B13:
+    lw t4, 8196(a0)
+    sll r0, r0, 0
+B14:
+L227:
+    lw t3, 0(t4)   ;; dma wait
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi t3, t3, 256
+    sll r0, r0, 0
+    beq t3, r0, L228
+    sll r0, r0, 0
+
+B15:
+    sll r0, r0, 0
+    lw t3, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu t3, t3, 1
+    sll r0, r0, 0
+    sw t3, 8160(a0)
+    beq r0, r0, L227
+    sll r0, r0, 0
+
+B16:
+L228:
+    lw t3, 8152(a0)  ;; dma buffer swap
+    sll r0, r0, 0
+    sw v1, 128(t4)
+    xori v1, v1, 4720
+    sw t3, 16(t4)
+    sll t5, t2, 4
+    addu t5, t3, t5
+    or t3, v1, r0
+    sw t2, 32(t4)
+    addiu t2, r0, 256
+    sw t2, 0(t4)
+    addiu t2, r0, 0
+    sw t5, 8152(a0)
+    sll r0, r0, 0
+B17:
+L229:
+    sll r0, r0, 0
+    lq t5, 1776(a0) ;; t5 = work.frame-tmpl[0]
+    sll r0, r0, 0
+    lq t6, 1792(a0) ;; t6 = work.frame-tmpl[1]
+    sll r0, r0, 0
+    lq t7, 1872(a0)  ;; t7 = work.frames[1].ad[0] (frame)
+    sll r0, r0, 0
+    lq t8, 1888(a0) ;; t8 = work.frames[1].ad[1] (scissor, 0x3f)
+    sll r0, r0, 0
+    lq t9, 1904(a0) ;; t9 = work.frames[0].ad[2] (xyoffset)
+    sll r0, r0, 0
+    lq t4, 1920(a0) ;; t4 = work.frames[0].ad[3] (test)
+
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    daddiu t2, t2, 6
+    sq t4, 80(t3)
+    daddiu t3, t3, 96
+    sll r0, r0, 0
+
+    lq t5, 2224(a0) ;; t5 = mip-tmpl (different!)
+    sll r0, r0, 0
+    lq t6, 2240(a0) ;; t6 = mip-tmpl[2]
+    sll r0, r0, 0
+    lq t7, 3120(a0) ;; t7 = tex-data[0][0]
+    sll r0, r0, 0
+    lq t8, 3136(a0) ;; t8 = tex-data[0][1]
+    sll r0, r0, 0
+    lq t9, 3152(a0) ;; t9 = tex-data[0][2]
+    sll r0, r0, 0
+    lq ra, 2256(a0) ;; ra = color[0] = [0x80, 0x80, 0x80, 0x80]
+    sll r0, r0, 0
+    lq gp, 3360(a0) ;; gp = tex[0]
+    sll r0, r0, 0
+    lq s5, 2896(a0) ;; s5 = mip-data[0]
+    sll r0, r0, 0
+    lq s4, 3376(a0) ;; s4 = tex[1]
+    sll r0, r0, 0
+
+    lq t4, 2912(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    sll r0, r0, 0
+    sq gp, 96(t3)
+    sll r0, r0, 0
+    sq s5, 112(t3)
+    sll r0, r0, 0
+    sq s4, 128(t3)
+    daddiu t2, t2, 10
+    sq t4, 144(t3)
+    daddiu t3, t3, 160
+    sll r0, r0, 0
+    lq t5, 1776(a0)
+    sll r0, r0, 0
+    lq t6, 1792(a0)
+    sll r0, r0, 0
+    lq t7, 1936(a0)
+    sll r0, r0, 0
+    lq t8, 1952(a0)
+    sll r0, r0, 0
+    lq t9, 1968(a0)
+    sll r0, r0, 0
+    lq t4, 1984(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    daddiu t2, t2, 6
+    sq t4, 80(t3)
+    daddiu t3, t3, 96
+    sll r0, r0, 0
+    lq t5, 2128(a0)
+    sll r0, r0, 0
+    lq t6, 2144(a0)
+    sll r0, r0, 0
+    lq t7, 80(t1)
+    sll r0, r0, 0
+    lq t8, 96(t1)
+    sll r0, r0, 0
+    lq t9, 112(t1)
+    sll r0, r0, 0
+    lq ra, 128(t1)
+    sll r0, r0, 0
+    lq t4, 144(t1)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t4, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+    lq t5, 2192(a0)
+    sll r0, r0, 0
+    lq t6, 2208(a0)
+    sll r0, r0, 0
+    lq t7, 2256(a0)
+    sll r0, r0, 0
+    lq t8, 3360(a0)
+    sll r0, r0, 0
+    lq t9, 3088(a0)
+    sll r0, r0, 0
+    lq ra, 3360(a0)
+    sll r0, r0, 0
+    lq t4, 3104(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    daddiu t2, t2, 7
+    sq t4, 96(t3)
+    daddiu t3, t3, 112
+    sll r0, r0, 0
+    lq t5, 1776(a0)
+    sll r0, r0, 0
+    lq t6, 1792(a0)
+    sll r0, r0, 0
+    lq t7, 2000(a0)
+    sll r0, r0, 0
+    lq t8, 2016(a0)
+    sll r0, r0, 0
+    lq t9, 2032(a0)
+    sll r0, r0, 0
+    lq t4, 2048(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    daddiu t2, t2, 6
+    sq t4, 80(t3)
+    daddiu t3, t3, 96
+    sll r0, r0, 0
+    lq t5, 2224(a0)
+    sll r0, r0, 0
+    lq t6, 2240(a0)
+    sll r0, r0, 0
+    lq t7, 3168(a0)
+    sll r0, r0, 0
+    lq t8, 3184(a0)
+    sll r0, r0, 0
+    lq t9, 3200(a0)
+    sll r0, r0, 0
+    lq ra, 2272(a0)
+    sll r0, r0, 0
+    lq gp, 3360(a0)
+    sll r0, r0, 0
+    lq s5, 2928(a0)
+    sll r0, r0, 0
+    lq s4, 3392(a0)
+    sll r0, r0, 0
+    lq t4, 2944(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    sll r0, r0, 0
+    sq gp, 96(t3)
+    sll r0, r0, 0
+    sq s5, 112(t3)
+    sll r0, r0, 0
+    sq s4, 128(t3)
+    daddiu t2, t2, 10
+    sq t4, 144(t3)
+    daddiu t3, t3, 160
+    sll r0, r0, 0
+    lq t5, 2224(a0)
+    sll r0, r0, 0
+    lq t6, 2240(a0)
+    sll r0, r0, 0
+    lq t7, 3216(a0)
+    sll r0, r0, 0
+    lq t8, 3232(a0)
+    sll r0, r0, 0
+    lq t9, 3248(a0)
+    sll r0, r0, 0
+    lq ra, 2288(a0)
+    sll r0, r0, 0
+    lq gp, 3360(a0)
+    sll r0, r0, 0
+    lq s5, 2960(a0)
+    sll r0, r0, 0
+    lq s4, 3408(a0)
+    sll r0, r0, 0
+    lq t4, 2976(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    sll r0, r0, 0
+    sq gp, 96(t3)
+    sll r0, r0, 0
+    sq s5, 112(t3)
+    sll r0, r0, 0
+    sq s4, 128(t3)
+    daddiu t2, t2, 10
+    sq t4, 144(t3)
+    daddiu t3, t3, 160
+    sll r0, r0, 0
+    lq t5, 2224(a0)
+    sll r0, r0, 0
+    lq t6, 2240(a0)
+    sll r0, r0, 0
+    lq t7, 3264(a0)
+    sll r0, r0, 0
+    lq t8, 3280(a0)
+    sll r0, r0, 0
+    lq t9, 3296(a0)
+    sll r0, r0, 0
+    lq ra, 2304(a0)
+    sll r0, r0, 0
+    lq gp, 3360(a0)
+    sll r0, r0, 0
+    lq s5, 2992(a0)
+    sll r0, r0, 0
+    lq s4, 3424(a0)
+    sll r0, r0, 0
+    lq t4, 3008(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    sll r0, r0, 0
+    sq gp, 96(t3)
+    sll r0, r0, 0
+    sq s5, 112(t3)
+    sll r0, r0, 0
+    sq s4, 128(t3)
+    daddiu t2, t2, 10
+    sq t4, 144(t3)
+    daddiu t3, t3, 160
+    sll r0, r0, 0
+    lq t5, 2224(a0)
+    sll r0, r0, 0
+    lq t6, 2240(a0)
+    sll r0, r0, 0
+    lq t7, 3312(a0)
+    sll r0, r0, 0
+    lq t8, 3328(a0)
+    sll r0, r0, 0
+    lq t9, 3344(a0)
+    sll r0, r0, 0
+    lq ra, 2320(a0)
+    sll r0, r0, 0
+    lq gp, 3360(a0)
+    sll r0, r0, 0
+    lq s5, 3024(a0)
+    sll r0, r0, 0
+    lq s4, 3440(a0)
+    sll r0, r0, 0
+    lq t4, 3040(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    sll r0, r0, 0
+    sq ra, 80(t3)
+    sll r0, r0, 0
+    sq gp, 96(t3)
+    sll r0, r0, 0
+    sq s5, 112(t3)
+    sll r0, r0, 0
+    sq s4, 128(t3)
+    daddiu t2, t2, 10
+    sq t4, 144(t3)
+    daddiu t3, t3, 160
+    sll r0, r0, 0
+    lq t5, 1776(a0)
+    sll r0, r0, 0
+    lq t6, 1792(a0)
+    sll r0, r0, 0
+    lq t7, 2064(a0)
+    sll r0, r0, 0
+    lq t8, 2080(a0)
+    sll r0, r0, 0
+    lq t9, 2096(a0)
+    sll r0, r0, 0
+    lq t4, 2112(a0)
+    sq t5, 0(t3)
+    sll r0, r0, 0
+    sq t6, 16(t3)
+    sll r0, r0, 0
+    sq t7, 32(t3)
+    sll r0, r0, 0
+    sq t8, 48(t3)
+    sll r0, r0, 0
+    sq t9, 64(t3)
+    daddiu t2, t2, 6
+    sq t4, 80(t3)
+    daddiu t3, t3, 96
+    sll r0, r0, 0
+    daddiu t2, t2, 1
+    sqc2 vf29, 0(t3)
+    daddiu t3, t3, 16
+B18:
+L230:
+    daddiu a2, a2, 16 ;; advance bucket
+    daddiu a3, a3, 32 ;; advange montage
+    daddiu t0, t0, -1 ;; decrement remaining bucket count.
+    lhu t4, 4(a2)     ;; t4 = this-bucket.count (num tags?)
+    daddiu a1, a1, 4  ;; work-offset += 4
+    lhu t5, 12(a2)    ;; t5 = this-bucket.count-scissor (ignore)
+    bgtz t0, L223     ;; go back
+    sll r0, r0, 0
+
+
+;;;;;;;;;;;;;;;;;;;;;;;; End near texture stuff
+
+B19:
+    beq t2, r0, L233
+    sll r0, r0, 0
+
+B20:
+    lw a1, 8196(a0)
+    sll r0, r0, 0
+B21:
+L231:
+    lw a2, 0(a1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a2, a2, 256
+    sll r0, r0, 0
+    beq a2, r0, L232
+    sll r0, r0, 0
+
+B22:
+    sll r0, r0, 0
+    lw a2, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a2, a2, 1
+    sll r0, r0, 0
+    sw a2, 8160(a0)
+    beq r0, r0, L231
+    sll r0, r0, 0
+
+B23:
+L232:
+    lw a2, 8152(a0)
+    sll r0, r0, 0
+    sw v1, 128(a1)
+    xori a3, v1, 4720
+    sw a2, 16(a1)
+    sll v1, t2, 4
+    addu v1, a2, v1
+    or a2, a3, r0
+    sw t2, 32(a1)
+    addiu a2, r0, 256
+    sw a2, 0(a1)
+    addiu a1, r0, 0
+    sw v1, 8152(a0)
+    sll r0, r0, 0
+B24:
+L233:
+    lw v1, 8196(a0)
+    sll r0, r0, 0
+B25:
+L234:
+    lw a1, 0(v1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a1, a1, 256
+    sll r0, r0, 0
+    beq a1, r0, L235
+    sll r0, r0, 0
+
+B26:
+    sll r0, r0, 0
+    lw a1, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a1, a1, 1
+    sll r0, r0, 0
+    sw a1, 8160(a0)
+    beq r0, r0, L234
+    sll r0, r0, 0
+
+B27:
+L235:
+    lw v1, 8152(a0)
+    sll r0, r0, 0
+    lw a0, 8148(a0)
+    sll r0, r0, 0
+    sw v1, 4(a0)
+    sll r0, r0, 0
+    or v1, r0, r0
+    or v0, r0, r0
+    ld ra, 0(sp)
+    lq gp, 48(sp)
+    lq s5, 32(sp)
+    lq s4, 16(sp)
+    jr ra
+    daddiu sp, sp, 64
+
+    sll r0, r0, 0
+```
+
+# Method 34
+```
+vf6, vf7, vf8, vf9, vf10 have shader-near.
+
+    sll r0, r0, 0
+    sll r0, r0, 0
+    lw a2, 4(a1)    ;; a2 = dma ptr
+    lui v1, 4096
+    sw a1, 8148(a0) ;; stash dma buffer
+    sync.l
+    cache dxwbin a2, 0
+    sync.l
+    cache dxwbin a2, 1
+    sync.l
+    lui a3, 28672
+    ori a1, v1, 53248
+    vmaxw.xyzw vf11, vf0, vf0
+    ori v1, a3, 2720
+    sw r0, 1736(a0)
+    addiu t0, r0, 0
+    sw a1, 8196(a0)
+    or t1, v1, r0
+    sw a2, 8152(a0)
+    sll r0, r0, 0
+    lqc2 vf29, 1728(a0) ;; vf29 = ret-tmpl
+    or a1, a0, r0       ;; a1 is offset work
+    lw a2, 8284(a0)     ;; a2 = work.hfragment.buckets-near
+    sll r0, r0, 0
+    lhu a3, 8302(a0)    ;; a3 = work.hfragment.num-buckets-near
+    beq r0, r0, L195
+    lhu t2, 4(a2)       ;; t2 = this-bucket.count
+
+B1:
+L188:
+    sll r0, r0, 0
+    lw t2, 8392(a1)   ;; t2 = near-textures[bucket-idx]
+    beq t3, r0, L195  ;; skip if nothing in bucket.
+    sll r0, r0, 0
+
+B2:
+    sll r0, r0, 0
+    sw t2, 1716(a0)  ;; put near-textures in call
+    daddiu t2, t0, -226
+    sll r0, r0, 0
+    blez t2, L191 ;; maybe dma out
+    sll r0, r0, 0
+
+B3: ;; dma wait
+    lw t2, 8196(a0)
+    sll r0, r0, 0
+B4:
+L189:
+    lw t1, 0(t2)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi t1, t1, 256
+    sll r0, r0, 0
+    beq t1, r0, L190
+    sll r0, r0, 0
+
+B5:
+    sll r0, r0, 0
+    lw t1, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu t1, t1, 1
+    sll r0, r0, 0
+    sw t1, 8160(a0)
+    beq r0, r0, L189
+    sll r0, r0, 0
+
+B6:
+L190: ;; dma swap
+    lw t1, 8152(a0)
+    sll r0, r0, 0
+    sw v1, 128(t2)
+    xori v1, v1, 4720
+    sw t1, 16(t2)
+    sll t3, t0, 4
+    addu t3, t1, t3
+    or t1, v1, r0
+    sw t0, 32(t2)
+    addiu t0, r0, 256
+    sw t0, 0(t2)
+    addiu t0, r0, 0
+    sw t3, 8152(a0)
+    sll r0, r0, 0
+B7:
+L191:
+    lq t2, 7584(a0)   ;; t2 = call-abort-vu1
+    daddiu t0, t0, 1
+    sq t2, 0(t1)
+    daddiu t2, t1, 16
+    daddiu t1, t0, -215
+    sll r0, r0, 0
+    blez t1, L194
+    sll r0, r0, 0
+
+B8:
+    lw t1, 8196(a0) ;; dma out of scratchpad if needed
+    sll r0, r0, 0
+B9:
+L192:
+    lw t2, 0(t1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi t2, t2, 256
+    sll r0, r0, 0
+    beq t2, r0, L193
+    sll r0, r0, 0
+
+B10:
+    sll r0, r0, 0
+    lw t2, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu t2, t2, 1
+    sll r0, r0, 0
+    sw t2, 8160(a0)
+    beq r0, r0, L192
+    sll r0, r0, 0
+
+B11:
+L193: ;; swap dma buffer
+    lw t2, 8152(a0)
+    sll r0, r0, 0
+    sw v1, 128(t1)
+    xori v1, v1, 4720
+    sw t2, 16(t1)
+    sll t3, t0, 4
+    addu t3, t2, t3
+    or t2, v1, r0
+    sw t0, 32(t1)
+    addiu t0, r0, 256
+    sw t0, 0(t1)
+    addiu t0, r0, 0
+    sw t3, 8152(a0)
+    sll r0, r0, 0
+B12:
+L194:
+    sll r0, r0, 0
+    lqc2 vf30, 1712(a0) ;; vf30 = call
+    sll r0, r0, 0
+    daddiu t0, t0, 1
+    sqc2 vf30, 0(t2)
+    daddiu t1, t2, 16
+    sll r0, r0, 0
+    lq t2, 2160(a0) ;; t2 = adgif2[0]
+    sll r0, r0, 0
+    lq t3, 2176(a0) ;; t3 = adgif2[1]
+    sq t2, 0(t1)
+    sll r0, r0, 0
+    sq t3, 16(t1)
+    sll r0, r0, 0
+
+    sqc2 vf6, 32(t1)
+    sll r0, r0, 0
+    sqc2 vf7, 48(t1)
+    sll r0, r0, 0
+    sqc2 vf8, 64(t1)
+    sll r0, r0, 0
+    sqc2 vf9, 80(t1)
+    sll r0, r0, 0
+    sqc2 vf10, 96(t1)
+    daddiu t0, t0, 8
+    sqc2 vf5, 112(t1) ;; plus the texflush!
+    daddiu t1, t1, 128
+    sll r0, r0, 0
+    lh t3, 6(a2) ;; t3 = vertex count
+    sll r0, r0, 0
+    lw t2, 0(a2) ;; t2 = bucket.next (vertex uploads for bucket)
+    dsll t4, t3, 1 ;; t4 = vertex-count * 2
+    sll r0, r0, 0
+    daddu t3, t4, t3 ;; t3 = vertex-count * 3 = 48 or 96
+    sll r0, r0, 0
+    daddu t5, t3, a0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    lq t3, 1552(t5) ;; 1648 or 1600
+    sll r0, r0, 0
+    lq t4, 1568(t5)
+    sll r0, r0, 0
+    lq t5, 1584(t5)
+    sq t3, 0(t1)
+    sll r0, r0, 0
+    sq t4, 16(t1)
+    sll r0, r0, 0
+    sq t5, 32(t1)
+    daddiu t0, t0, 3
+    sw t2, 4(t1)
+    daddiu t1, t1, 48
+B13:
+L195:
+    daddiu a2, a2, 16 ;; inc bucket
+    daddiu a1, a1, 4  ;; inc offset work
+    daddiu a3, a3, -1  ;; dec bucket count
+    lhu t3, 4(a2)     ;; load count in bucket
+    bgtz a3, L188     ;; go back
+    sll r0, r0, 0
+
+B14:
+    beq t0, r0, L198
+    sll r0, r0, 0
+
+B15:
+    lw a1, 8196(a0)
+    sll r0, r0, 0
+B16:
+L196:
+    lw a2, 0(a1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a2, a2, 256
+    sll r0, r0, 0
+    beq a2, r0, L197
+    sll r0, r0, 0
+
+B17:
+    sll r0, r0, 0
+    lw a2, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a2, a2, 1
+    sll r0, r0, 0
+    sw a2, 8160(a0)
+    beq r0, r0, L196
+    sll r0, r0, 0
+
+B18:
+L197:
+    lw a2, 8152(a0)
+    sll r0, r0, 0
+    sw v1, 128(a1)
+    xori a3, v1, 4720
+    sw a2, 16(a1)
+    sll v1, t0, 4
+    addu v1, a2, v1
+    or a2, a3, r0
+    sw t0, 32(a1)
+    addiu a2, r0, 256
+    sw a2, 0(a1)
+    addiu a1, r0, 0
+    sw v1, 8152(a0)
+    sll r0, r0, 0
+B19:
+L198:
+    lw v1, 8196(a0)
+    sll r0, r0, 0
+B20:
+L199:
+    lw a1, 0(v1)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    andi a1, a1, 256
+    sll r0, r0, 0
+    beq a1, r0, L200
+    sll r0, r0, 0
+
+B21:
+    sll r0, r0, 0
+    lw a1, 8160(a0)
+    sll r0, r0, 0
+    sll r0, r0, 0
+    sll r0, r0, 0
+    daddiu a1, a1, 1
+    sll r0, r0, 0
+    sw a1, 8160(a0)
+    beq r0, r0, L199
+    sll r0, r0, 0
+
+B22:
+L200:
+    lw v1, 8152(a0)
+    sll r0, r0, 0
+    lw a0, 8148(a0)
+    sll r0, r0, 0
+    sw v1, 4(a0)
+    sll r0, r0, 0
+    or v0, r0, r0
+    jr ra
+    daddu sp, sp, r0
+
 ```

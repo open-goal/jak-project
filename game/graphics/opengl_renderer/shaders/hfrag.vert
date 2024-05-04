@@ -1,0 +1,65 @@
+#version 410 core
+
+layout (location = 0) in float position_in;
+layout (location = 3) in int time_of_day_index;
+
+uniform vec4 hvdf_offset;
+uniform mat4 camera;
+uniform float fog_constant;
+uniform float fog_min;
+uniform float fog_max;
+uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
+// uniform int decal;
+uniform float fog_hack_threshold;
+
+out vec4 fragment_color;
+// out vec3 tex_coord;
+out float fogginess;
+
+void main() {
+  int vx = gl_VertexID % 512;
+  int vz = gl_VertexID / 512;
+
+  vec4 transformed = -camera[3];
+  transformed -= camera[0] * 32768.f * vx;
+  transformed -= camera[1] * position_in;
+  transformed -= camera[2] * 32768.f * vz;
+
+  float Q = fog_constant / transformed.w;
+
+   fogginess = 255 - clamp(-transformed.w + hvdf_offset.w, fog_min, fog_max);
+
+  transformed.xyz *= Q;
+  // offset
+  transformed.xyz += hvdf_offset.xyz;
+  // correct xy offset
+  transformed.xy -= (2048.);
+  // correct z scale
+  transformed.z /= (8388608);
+  transformed.z -= 1;
+  // correct xy scale
+  transformed.x /= (256);
+  transformed.y /= -(128);
+  transformed.xyz *= transformed.w;
+  // scissoring area adjust
+  transformed.y *= SCISSOR_ADJUST * HEIGHT_SCALE;
+  gl_Position = transformed;
+
+  // time of day lookup
+  fragment_color = texelFetch(tex_T10, time_of_day_index, 0);
+  fragment_color.a = 1.0;
+
+  // color adjustment
+  // fragment_color *= 2;
+//  fragment_color.a *= 2;
+//
+//
+//  // fog hack
+//  if (fragment_color.r < fog_hack_threshold &&
+//  fragment_color.g < fog_hack_threshold &&
+//  fragment_color.b < fog_hack_threshold) {
+//    fogginess = 0;
+//  }
+
+  // tex_coord = tex_coord_in;
+}

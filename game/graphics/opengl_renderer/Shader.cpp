@@ -128,6 +128,7 @@ ShaderLibrary::ShaderLibrary(GameVersion version) {
   at(ShaderId::TEX_ANIM) = {"tex_anim", version};
   at(ShaderId::GLOW_DEPTH_COPY) = {"glow_depth_copy", version};
   at(ShaderId::GLOW_PROBE_ON_GRID) = {"glow_probe_on_grid", version};
+  at(ShaderId::HFRAG) = {"hfrag", version};
 
   for (auto& shader : m_shaders) {
     ASSERT_MSG(shader.okay(), "error compiling shader");

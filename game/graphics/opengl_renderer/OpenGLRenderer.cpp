@@ -14,6 +14,7 @@
 #include "game/graphics/opengl_renderer/TextureUploadHandler.h"
 #include "game/graphics/opengl_renderer/VisDataHandler.h"
 #include "game/graphics/opengl_renderer/Warp.h"
+#include "game/graphics/opengl_renderer/background/Hfrag.h"
 #include "game/graphics/opengl_renderer/background/Shrub.h"
 #include "game/graphics/opengl_renderer/background/TFragment.h"
 #include "game/graphics/opengl_renderer/background/Tie3.h"
@@ -143,6 +144,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
 
     init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                          BucketId::OCEAN_MID_FAR);
+
+    // 8 (in tfrag category for now, just for stat reporting.)
+    init_bucket_renderer<Hfrag>("hfrag", BucketCategory::TFRAG, BucketId::HFRAG);
 
     // 10
     for (int i = 0; i < LEVEL_MAX; i++) {

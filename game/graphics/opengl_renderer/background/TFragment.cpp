@@ -436,7 +436,7 @@ void TFragment::render_tree(int geom,
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
                   m_color_result.data());
 
-  first_tfrag_draw_setup(settings, render_state, ShaderId::TFRAG3);
+  first_tfrag_draw_setup(settings.camera, render_state, ShaderId::TFRAG3);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);

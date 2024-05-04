@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 39;
+constexpr int TFRAG3_VERSION = 40;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -60,6 +60,11 @@ enum MemoryUsageCategory {
   MERC_MOD_IND,
   MERC_MOD_TABLE,
   BLERC,
+
+  HFRAG_VERTS,
+  HFRAG_INDEX,
+  HFRAG_TIME_OF_DAY,
+  HFRAG_CORNERS,
 
   COLLISION,
 
@@ -441,6 +446,37 @@ struct ShrubTree {
   void unpack();
 };
 
+struct HfragmentVertex {
+  float height = 0;
+  u16 color_index = 0;
+  u16 pad = 0;
+};
+
+struct HfragmentCorner {
+  math::Vector<float, 4> bsphere;
+  u32 vis_id = 0;
+};
+
+struct HfragmentBucket {
+  std::vector<u32> corners;
+  std::array<u16, 16> montage_table;
+  void serialize(Serializer& ser);
+};
+
+struct Hfragment {
+  std::vector<HfragmentVertex> vertices;
+  std::vector<u32> indices;
+  std::vector<HfragmentCorner> corners;
+  std::vector<HfragmentBucket> buckets;
+  std::vector<TimeOfDayColor> time_of_day_colors;
+
+  std::array<s32, 4> wang_tree_tex_id;
+  DrawMode draw_mode;
+
+  void serialize(Serializer& ser);
+  void memory_usage(MemoryUsageTracker* tracker) const;
+};
+
 struct CollisionMesh {
   struct Vertex {
     float x, y, z;
@@ -566,6 +602,7 @@ struct Level {
   std::array<std::vector<TfragTree>, TFRAG_GEOS> tfrag_trees;
   std::array<std::vector<TieTree>, TIE_GEOS> tie_trees;
   std::vector<ShrubTree> shrub_trees;
+  Hfragment hfrag;
   CollisionMesh collision;
   MercModelGroup merc_data;
   u16 version2 = TFRAG3_VERSION;

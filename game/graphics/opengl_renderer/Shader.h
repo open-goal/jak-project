@@ -61,6 +61,7 @@ enum class ShaderId {
   TEX_ANIM = 34,
   GLOW_DEPTH_COPY = 35,
   GLOW_PROBE_ON_GRID = 36,
+  HFRAG = 37,
   MAX_SHADERS
 };
 

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 
+namespace decompiler {
 u32 clean_up_vertex_indices(std::vector<u32>& idx) {
   std::vector<u32> fixed;
   u32 num_tris = 0;
@@ -44,3 +45,16 @@ u32 clean_up_vertex_indices(std::vector<u32>& idx) {
 
   return num_tris;
 }
+
+std::vector<tfrag3::TimeOfDayColor> pack_colors(const level_tools::TimeOfDayPalette& in) {
+  std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;
+  time_of_day_colors.resize(in.height);
+  for (int k = 0; k < (int)in.height; k++) {
+    for (int j = 0; j < 8; j++) {
+      memcpy(time_of_day_colors[k].rgba[j].data(), &in.colors[k * 8 + j], 4);
+    }
+  }
+  return time_of_day_colors;
+}
+
+}  // namespace decompiler
