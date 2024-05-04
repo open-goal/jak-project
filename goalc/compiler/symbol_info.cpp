@@ -106,7 +106,6 @@ void SymbolInfoMap::add_function(const std::string& name,
   for (const auto& goal_arg : args) {
     ArgumentInfo arg_info;
     arg_info.name = goal_arg.name;
-    arg_info.type_spec = goal_arg.type;
     // TODO - is this reliable?
     arg_info.type = goal_arg.type.base_type();
     info.m_args.push_back(arg_info);
@@ -253,7 +252,6 @@ void SymbolInfoMap::add_method(const std::string& method_name,
   for (const auto& goal_arg : args) {
     ArgumentInfo arg_info;
     arg_info.name = goal_arg.name;
-    arg_info.type_spec = goal_arg.type;
     // TODO - is this reliable?
     arg_info.type = goal_arg.type.base_type();
     info.m_args.push_back(arg_info);
@@ -261,6 +259,29 @@ void SymbolInfoMap::add_method(const std::string& method_name,
   info.update_args_from_docstring();
   info.set_definition_location(m_textdb);
   const auto inserted_symbol = m_symbol_map.insert(method_name, info);
+  if (info.m_def_location) {
+    add_symbol_to_file_index(info.m_def_location->file_path, inserted_symbol);
+  }
+}
+
+void SymbolInfoMap::add_state(const std::string& name,
+                              const std::string& related_type,
+                              const bool is_virtual,
+                              const std::vector<ArgumentInfo>& code_args,
+                              const goos::Object& defining_form,
+                              const std::string& docstring) {
+  SymbolInfo info = {
+      .m_kind = Kind::STATE,
+      .m_name = name,
+      .m_def_form = defining_form,
+      .m_docstring = docstring,
+      .m_state_related_type = related_type,
+      .m_state_virtual = is_virtual,
+  };
+  // TODO - split up docstring into individual handlers
+  // TODO - update args from docstring
+  info.set_definition_location(m_textdb);
+  const auto inserted_symbol = m_symbol_map.insert(name, info);
   if (info.m_def_location) {
     add_symbol_to_file_index(info.m_def_location->file_path, inserted_symbol);
   }
@@ -297,6 +318,20 @@ std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_method_name(
   for (const auto& result : query_results) {
     if (result->m_kind == Kind::METHOD &&
         result->m_method_info.defined_in_type == defining_type_name) {
+      filtered_results.push_back(result);
+    }
+  }
+  return filtered_results;
+}
+
+std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_virtual_state_name(
+    const std::string& name,
+    const std::string& defining_type_name) const {
+  const auto query_results = m_symbol_map.retrieve_with_exact(name);
+  std::vector<SymbolInfo*> filtered_results = {};
+  for (const auto& result : query_results) {
+    if (result->m_kind == Kind::STATE && result->m_state_virtual &&
+        result->m_state_related_type == defining_type_name) {
       filtered_results.push_back(result);
     }
   }

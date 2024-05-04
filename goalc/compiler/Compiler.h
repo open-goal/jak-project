@@ -648,6 +648,7 @@ class Compiler {
                                           const goos::Object& rest,
                                           Env* env);
   Val* compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_export_requires(const goos::Object& form, const goos::Object& rest, Env*);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);

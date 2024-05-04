@@ -89,8 +89,18 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
                            method_name);
     }
   }
-  const auto& symbol_info =
+
+  std::vector<symbol_info::SymbolInfo*> symbol_info =
       m_symbol_info.lookup_exact_method_name(method_info.name, compile_time_type.base_type());
+  // TODO - check for virtual state requirement, if i could track the defining form!
+  // if (symbol_info.empty()) {
+  //  // maybe it's a virtual state
+  //  symbol_info = m_symbol_info.lookup_exact_virtual_state_name(method_info.name,
+  //                                                              compile_time_type.base_type());
+  //  if (!symbol_info.empty()) {
+  //    int x = 0;
+  //  }
+  //}
   if (!symbol_info.empty()) {
     const auto& result = symbol_info.at(0);
     if (result->m_def_location.has_value() &&

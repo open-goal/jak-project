@@ -856,6 +856,25 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
   return get_none();
 }
 
+Val* Compiler::compile_export_requires(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& export_path = fs::path(args.unnamed.at(0).as_string()->data);
+  lg::info("Saving require map to: {}", export_path.string());
+
+  json export_map;
+  for (const auto& file : m_global_env->get_files()) {
+    export_map[file->name()] = file->m_missing_required_files;
+  }
+
+  file_util::write_text_file(
+      export_path / fmt::format("{}-missing-requires.json", version_to_game_name(m_version)),
+      export_map.dump());
+
+  return get_none();
+}
+
 Val* Compiler::compile_gc_text(const goos::Object&, const goos::Object&, Env*) {
   m_goos.reader.db.clear_info();
   return get_none();
