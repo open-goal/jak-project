@@ -153,7 +153,7 @@ std::optional<std::pair<TypeSpec, Type*>> Workspace::get_symbol_typeinfo(
 }
 
 std::optional<symbol_info::DefinitionLocation> Workspace::get_symbol_def_location(
-    const WorkspaceOGFile& file,
+    const WorkspaceOGFile& /*file*/,
     const symbol_info::SymbolInfo* symbol_info) {
   const auto& def_loc = symbol_info->m_def_location;
   if (!def_loc) {
@@ -553,7 +553,7 @@ WorkspaceIRFile::WorkspaceIRFile(const std::string& content) {
   m_lines = str_util::split_string(content, line_ending);
 
   bool in_opengoal_block = false;
-  for (int i = 0; i < m_lines.size(); i++) {
+  for (size_t i = 0; i < m_lines.size(); i++) {
     const auto& line = m_lines.at(i);
     if (m_all_types_uri == "") {
       find_all_types_path(line);
@@ -631,7 +631,7 @@ void WorkspaceIRFile::find_function_symbol(const uint32_t line_num_zero_based,
 
 void WorkspaceIRFile::identify_diagnostics(const uint32_t line_num_zero_based,
                                            const std::string& line,
-                                           const bool in_opengoal_block) {
+                                           const bool /*in_opengoal_block*/) {
   std::regex info_regex(";; INFO: (.*)");
   std::regex warn_regex(";; WARN: (.*)");
   std::regex error_regex(";; ERROR: (.*)");

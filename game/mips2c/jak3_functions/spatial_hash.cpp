@@ -9,7 +9,6 @@ namespace method_18_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lh(v1, 10, a0);                                // lh v1, 10(a0)
   c->lb(a3, 24, a0);                                // lb a3, 24(a0)
   c->mult3(a3, a3, v1);                             // mult3 a3, a3, v1
@@ -118,7 +117,6 @@ namespace method_19_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->lh(v1, 10, a0);                                // lh v1, 10(a0)
   c->lb(a3, 24, a0);                                // lb a3, 24(a0)
   c->mult3(a3, a3, v1);                             // mult3 a3, a3, v1
@@ -227,7 +225,6 @@ namespace method_20_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   c->daddiu(sp, sp, -48);                           // daddiu sp, sp, -48
   c->sd(ra, 0, sp);                                 // sd ra, 0(sp)
   c->sq(s5, 16, sp);                                // sq s5, 16(sp)
@@ -358,7 +355,6 @@ namespace method_22_grid_hash {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   // bool bc = false;
-  u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   // nop                                            // sll r0, r0, 0
   c->lq(v1, 0, a2);                                 // lq v1, 0(a2)

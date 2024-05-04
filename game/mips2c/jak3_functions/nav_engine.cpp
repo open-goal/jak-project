@@ -230,7 +230,7 @@ struct Cache {
 } cache;
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
+  // bool bc = false;
   c->lwu(a2, 0, a1);                                // lwu a2, 0(a1)
   c->lwu(v1, 4, a1);                                // lwu v1, 4(a1)
   c->lwu(a0, 8, a1);                                // lwu a0, 8(a1)

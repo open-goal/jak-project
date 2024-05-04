@@ -51,7 +51,7 @@ block_2:
     goto block_10;
   }
 
-block_4:
+// block_4:
   c->lwc1(f0, 20, s4);                              // lwc1 f0, 20(s4)
   c->mtc1(f1, r0);                                  // mtc1 f1, r0
   cop1_bc = c->fprs[f0] == c->fprs[f1];             // c.eq.s f0, f1
@@ -67,7 +67,7 @@ block_6:
     goto block_10;
   }
 
-block_8:
+// block_8:
   c->lwc1(f0, 24, s4);                              // lwc1 f0, 24(s4)
   c->mtc1(f1, r0);                                  // mtc1 f1, r0
   cop1_bc = c->fprs[f0] == c->fprs[f1];             // c.eq.s f0, f1
@@ -83,7 +83,7 @@ block_10:
     goto block_13;
   }
 
-block_12:
+// block_12:
   c->load_symbol2(t9, cache.transform_point_qword); // lw t9, transform-point-qword!(s7)
   c->daddiu(a0, s5, 32);                            // daddiu a0, s5, 32
   c->daddu(a1, r0, s5);                             // daddu a1, r0, s5

@@ -33,7 +33,6 @@ namespace clip_polygon_against_positive_hyperplane {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
   c->mov64(t1, t0);                                 // or t1, t0, r0
@@ -321,7 +320,6 @@ namespace clip_polygon_against_negative_hyperplane {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
   bool cop1_bc = false;
   // nop                                            // sll r0, r0, 0
   c->mov64(t1, t0);                                 // or t1, t0, r0
