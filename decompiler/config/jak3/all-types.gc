@@ -20,6 +20,7 @@
 (define-extern uint16 type)
 (define-extern uint32 type)
 (define-extern int8 type)
+(define-extern int16 type)
 (define-extern int32 type)
 (define-extern int64 type)
 (define-extern uint8 type)
@@ -13204,7 +13205,8 @@
   (guard-transport 26)
   (kg-pickup 27)
   (bike-d 28)
-  (invalid #xffffffff)
+  (invalid -1)
+  ; (invalid #xffffffff)
   )
 ;; ---traffic-h:traffic-type
 
@@ -13281,7 +13283,7 @@
   )
 
 (deftype traffic-object-spawn-params (structure)
-  ((object-type   uint8                       :offset-assert 0) ;; traffic-type
+  ((object-type   traffic-type                :offset-assert 0) ;; traffic-type
    (behavior      uint64                      :offset-assert 8)
    (id            uint32                      :offset-assert 16)
    (nav-mesh      nav-mesh                    :offset-assert 20) ;; guessed by decompiler
@@ -13290,7 +13292,7 @@
    (rotation      quaternion          :inline :offset-assert 48)
    (velocity      vector              :inline :offset-assert 64)
    (handle        handle                      :offset-assert 80) ;; handle
-   (handle-parent uint64                      :offset-assert 88)
+   (handle-parent handle                      :offset-assert 88)
    (guard-type    uint8                       :offset-assert 96)
    (user-data     uint32                      :offset-assert 100)
    (entity        basic                       :offset-assert 104)
@@ -29154,7 +29156,7 @@
     (fill-actor-list-for-box (_type_ vector (pointer collide-shape) int) int) ;; 35
     (fill-actor-list-for-sphere (_type_ vector vector float (pointer collide-shape) int int) int) ;; 36
     (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int) ;; 37
-    (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape) int) int) ;; 38
+    (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape)) int) ;; 38
     (spatial-hash-method-39 (_type_ object hash-object-info) int) ;; 39
     )
   )
@@ -41487,7 +41489,7 @@
     (get-damage-from-attack (_type_ object event-message-block) float) ;; 62
     (enemy-method-63 (_type_ float) float) ;; 63
     (update-awareness! (_type_ process-focusable enemy-best-focus) enemy-aware) ;; 64
-    (penetrate->next-state (_type_) symbol) ;; 65
+    (penetrate->next-state (_type_ process event-message-block float) symbol) ;; 65
     (get-penetrated-by (_type_) penetrate) ;; 66
     (coin-flip? (_type_) symbol) ;; 67
     (get-enemy-aware (_type_ enemy-aware) enemy-aware) ;; 68
@@ -48284,7 +48286,7 @@
    (kg-strength int8      :offset 1)
    (mh-strength int8      :offset 2)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x3
   :flag-assert         #x900000003
@@ -48303,7 +48305,7 @@
   )
 
 (deftype territory-faction-flag (structure)
-  ((data    int8 3    :offset-assert 0 :score -1)
+  ((data    uint8 3   :offset-assert 0 :score -1)
    (ff-mode uint8     :offset 0)
    (kg-mode uint8     :offset 1)
    (mh-mode uint8     :offset 2)
@@ -48317,6 +48319,10 @@
 (defenum faction-spawn-flag
   :type uint8
   :bitfield #t
+  (fs0 0)
+  (fs1 1)
+  (fs2 2)
+  (fs3 3)
   )
 
 (deftype faction-spawn-info (structure)
@@ -48325,7 +48331,7 @@
    (requested-level uint8  :offset-assert 2)
    (flags           faction-spawn-flag :offset-assert 3)
    )
-  :pack-me
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -48334,17 +48340,63 @@
 (defenum cty-faction-update-flag
   :type uint8
   :bitfield #t
+  (cfu0 0)
+  )
+
+(defenum cty-faction-level
+  (pesc 0)
+  (pesb 1)
+  (pesa 2)
+  (pepa 3)
+  (car 4)
+  (pepc 5)
+  (pepb 6)
+  )
+
+(defenum nav-territory-type
+  :type uint8
+  (port-ff-deep 0)
+  (port-ff-near-kg 1)
+  (port-ff-kg-border 2)
+  (inda-kg-ff-border 3)
+  (inda-kg 4)
+  (inda-kg-deep 5)
+  (indb-kg-deep 6)
+  (indb-kg 7)
+  (indb-kg-ff-border 8)
+  (sluma-ff-kg-border 9)
+  (sluma-ff 10)
+  (sluma-ff-deep 11)
+  (slumb-ff-deep 12)
+  (slumc-ff-deep 13)
+  (genc-border 14)
+  (genc 15)
+  (port-ff-near-mh 16)
+  (port-ff-mh-border 17)
+  (mhcity-mh-ff-border 18)
+  (mhcity-mh 19)
+  (mhcity-mh-deep 20)
+  (special0 21)
+  (special1 22)
+  (special2 23)
+  (special3 24)
+  (special4 25)
+  (special5 26)
+  (special6 27)
+  (special7 28)
+  (special8 29)
+  (invalid 128)
   )
 
 (deftype cty-faction-manager (basic)
-  ((faction-array                  faction-spawn-info      30 :inline :offset-assert 4)
+  ((faction-array                  cty-faction-info        30         :offset-assert 4)
    (faction-mod-array              cty-faction-info        30 :inline :offset-assert 124)
    (global-faction-strength-mod    cty-faction-strength       :inline :offset-assert 604)
    (territory-faction-strength-mod cty-faction-strength    4  :inline :offset-assert 607)
-   (permission-cache               int8                    30         :offset 671)
+   (permission-cache               uint8                   30         :offset 671)
    (last-requested-level           symbol                             :offset-assert 704)
    (territory-faction-modes        territory-faction-mode  30 :inline :offset-assert 708)
-   (territory-flags                int8                    30         :offset-assert 1188)
+   (territory-flags                uint8                   30         :offset-assert 1188)
    (last-active-territories        uint32                             :offset-assert 1220)
    (update-flags                   cty-faction-update-flag            :offset-assert 1224)
    (target-exclusive-branch-index  uint8                              :offset-assert 1225)
@@ -48359,21 +48411,21 @@
   (:methods
     (cty-faction-manager-method-9 (_type_ int symbol) int) ;; 9
     (cty-faction-manager-method-10 (_type_ int symbol) int) ;; 10
-    (cty-faction-manager-method-11 (_type_) none) ;; 11
+    (cty-faction-manager-method-11 (_type_ int) uint) ;; 11
     (cty-faction-manager-method-12 (_type_ int int) int) ;; 12
-    (cty-faction-manager-method-13 (_type_) none) ;; 13
-    (cty-faction-manager-method-14 (_type_) none) ;; 14
-    (cty-faction-manager-method-15 (_type_) none) ;; 15
-    (cty-faction-manager-method-16 (_type_) none) ;; 16
-    (cty-faction-manager-method-17 (_type_) none) ;; 17
+    (cty-faction-manager-method-13 (_type_) symbol) ;; 13
+    (cty-faction-manager-method-14 (_type_ nav-territory-type int int) int) ;; 14
+    (restore-defaults (_type_) cty-faction-update-flag) ;; 15
+    (cty-faction-manager-method-16 (_type_ nav-territory-type) int) ;; 16
+    (cty-faction-manager-method-17 (_type_ symbol) int) ;; 17
     (cty-faction-manager-method-18 (_type_ symbol) int) ;; 18
-    (cty-faction-manager-method-19 (_type_) none) ;; 19
-    (cty-faction-manager-method-20 (_type_) none) ;; 20
-    (cty-faction-manager-method-21 (_type_) none) ;; 21
-    (cty-faction-manager-method-22 (_type_) none) ;; 22
-    (cty-faction-manager-method-23 (_type_) none) ;; 23
-    (cty-faction-manager-method-24 (_type_) none) ;; 24
-    (cty-faction-manager-method-25 (_type_) none) ;; 25
+    (cty-faction-manager-method-19 (_type_) symbol) ;; 19
+    (cty-faction-manager-method-20 (_type_ uint) int) ;; 20
+    (cty-faction-manager-method-21 (_type_ int) symbol) ;; 21
+    (cty-faction-manager-method-22 (_type_) cty-faction-update-flag) ;; 22
+    (cty-faction-manager-method-23 (_type_ uint) symbol) ;; 23
+    (cty-faction-manager-method-24 (_type_) symbol) ;; 24
+    (faction-spawn (_type_ int int symbol symbol) faction-spawn-flag) ;; 25
     )
   )
 
@@ -48708,40 +48760,40 @@
     (callback-on-nav-segments-in-sphere (_type_ vector int traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none) ;; 21
     (add-danger (_type_ traffic-danger-info) none) ;; 22
     (target-count (_type_ float) none) ;; 23
-    (deactivate-all (_type_) none) ;; 24 ;; (set-target-level (_type_ float) none)
-    (deactivate-by-type (_type_ traffic-type) none) ;; 25 ;; (set-guard-target-level (_type_ float) none)
-    (traffic-engine-method-26 (_type_) none) ;; 26
+    (deactivate-all (_type_) none) ;; 24
+    (deactivate-by-type (_type_ traffic-type) none) ;; 25
+    (restore-default-settings (_type_) none) ;; 26
     (set-object-target-level (_type_ int float) none) ;; 27
-    (set-object-target-count (_type_ int int) none) ;; 28 ;; (maybe-increase-guard-aim-count (_type_) symbol)
-    (set-object-reserve-count (_type_ int uint) none) ;; 29 ;; (restore-default-settings (_type_) none)
-    (get-object-reserve-count (_type_ int) uint) ;; 30 ;; (increase-alert-level (_type_ int target) none)
-    (get-object-remaining-count (_type_ int) int) ;; 31 ;; (decrease-alert-level (_type_ int) none)
-    (activate-object (_type_ traffic-object-spawn-params) none) ;; 32 ;; (set-alert-level (_type_ int) none)
-    (activate-by-handle (_type_ traffic-object-spawn-params) none) ;; 33 ;; (set-max-alert-level (_type_ int) none)
-    (set-parking-spot-prob (_type_ int float) none) ;; 34 ;; (set-alert-duration (_type_ time-frame) none)
-    (get-random-parking-spot-type (_type_) traffic-type) ;; 35 ;; (get-alert-level (_type_) int)
-    (new-suppression-box (_type_ traffic-suppression-params) none) ;; 36 ;; (get-target (_type_) target)
+    (set-object-target-count (_type_ int int) none) ;; 28
+    (set-object-reserve-count (_type_ int uint) none) ;; 29
+    (get-object-reserve-count (_type_ int) uint) ;; 30 ;;
+    (get-object-remaining-count (_type_ int) int) ;; 31 ;;
+    (activate-object (_type_ traffic-object-spawn-params) none) ;; 32
+    (activate-by-handle (_type_ traffic-object-spawn-params) none) ;; 33
+    (set-parking-spot-prob (_type_ int float) none) ;; 34
+    (get-random-parking-spot-type (_type_) traffic-type) ;; 35
+    (new-suppression-box (_type_ traffic-suppression-params) none) ;; 36
     (remove-suppression-box (_type_ traffic-suppression-params) none) ;; 37
     (update-suppression-box (_type_ traffic-suppression-params) none) ;; 38
-    (traffic-engine-method-39 (_type_) none) ;; 39
+    (stub1 (_type_) none) ;; 39
     (for-all-active-processes (_type_ (function process-focusable traffic-object-type-info none)) none) ;; 40
-    (traffic-engine-method-41 (_type_ int symbol) none) ;; 41
-    (traffic-engine-method-42 (_type_) none) ;; 42
-    (traffic-engine-method-43 (_type_) none) ;; 43
-    (traffic-engine-method-44 (_type_) none) ;; 44
-    (traffic-engine-method-45 (_type_) none) ;; 45
-    (traffic-engine-method-46 (_type_) none) ;; 46
-    (traffic-engine-method-47 (_type_) none) ;; 47
-    (traffic-engine-method-48 (_type_) none) ;; 48
-    (traffic-engine-method-49 (_type_) none) ;; 49 ;; (traffic-engine-method-49 (_type_ vector int traffic-target-status) traffic-target-status)
-    (traffic-engine-method-50 (_type_) none) ;; 50 ;; (find-closest-to-with-collide-lists (_type_ process-drawable collide-spec) process-focusable)
-    (traffic-engine-method-51 (_type_) none) ;; 51
-    (traffic-engine-method-52 (_type_) none) ;; 52 ;; (send-alert-events (_type_) none)
-    (traffic-engine-method-53 (_type_) none) ;; 53 ;; (end-pursuit-by-type (_type_ traffic-type) none)
-    (traffic-engine-method-54 (_type_) none) ;; 54 ;; (get-traffic-guard-type-settings (_type_ int) traffic-guard-type-settings)
-    (traffic-engine-method-55 (_type_) none) ;; 55 ;; (get-guard-type-for-traffic-obj (_type_ int) uint)
-    (traffic-engine-method-56 (_type_) none) ;; 56 ;; (get-traffic-guard-change-to-type (_type_ int) uint)
-    (traffic-engine-method-57 (_type_) none) ;; 57 ;; (set-guard-target-count-range (_type_ int int int) none)
+    (set-object-auto-activate (_type_ int symbol) none) ;; 41
+    (check-proc-in-tracker (_type_ process int) none) ;; 42
+    (kill-traffic-sphere (_type_ vector) none) ;; 43
+    (level-link (_type_ level) none) ;; 44
+    (level-unlink (_type_ level) none) ;; 45
+    (add-squad-ctrl (_type_ squad-control) none) ;; 46
+    (stub2 (_type_) none) ;; 47
+    (stub3 (_type_) none) ;; 48
+    (handle-new-vis-cell (_type_ vis-cell) none) ;; 49
+    (init-sync-masks (_type_) none) ;; 50
+    (stub4 (_type_) none) ;; 51
+    (update-traffic-amount (_type_) none) ;; 52
+    (update-danger (_type_) none) ;; 53
+    (update-danger-from-target (_type_) none) ;; 54
+    (stub5 (_type_) none) ;; 55
+    (update-suppressor (_type_) none) ;; 56
+    (recompute-suppressions (_type_) none) ;; 57
     )
   )
 
@@ -48825,7 +48877,7 @@
   :flag-assert         #x1600000090
   (:methods
     (vehicle-controller-method-9 (_type_) none) ;; 9 ;; (vehicle-controller-method-9 (_type_) none)
-    (vehicle-controller-method-10 (_type_ traffic-tracker) none) ;; 10 ;; (vehicle-controller-method-10 (_type_ traffic-tracker) none)
+    (vehicle-controller-method-10 (_type_ nav-branch) none) ;; 10 ;; (vehicle-controller-method-10 (_type_ traffic-tracker) none)
     (vehicle-controller-method-11 (_type_) none) ;; 11 ;; (vehicle-controller-method-11 (_type_) none)
     (vehicle-controller-method-12 (_type_ rigid-body-vehicle-constants vector float int float) none) ;; 12 ;; (vehicle-controller-method-12 (_type_ rigid-body-vehicle-constants vector float int float) none)
     (vehicle-controller-method-13 (_type_ nav-branch vector) none) ;; 13 ;; (vehicle-controller-method-13 (_type_ nav-branch vector) none)
@@ -48865,6 +48917,7 @@
    (rand-burst-delay uint16  :offset-assert 14 :decomp-as time-frame)
    (rand-shot-delay  uint16  :offset-assert 16 :decomp-as time-frame)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x12
   :flag-assert         #x900000012
@@ -49018,6 +49071,8 @@
   (cai1 1)
   (cai2 2)
   (cai3 3)
+  (cai4 4)
+  (cai5 5)
   )
 ;; ---mission-squad-control-h:city-attacker-info-flag
 
@@ -49032,23 +49087,24 @@
    (enemy-type              int16   :offset-assert 30)
    (self-index              int16   :offset-assert 32)
    (enemy-index             int16   :offset-assert 34)
-   (callback                function :offset-assert 36)
-   (hatred-map-callback     function :offset-assert 40)
+   (callback                (function process int) :offset-assert 36)
+   (hatred-map-callback     (function process int) :offset-assert 40)
    )
   :method-count-assert 11
   :size-assert         #x2c
   :flag-assert         #xb0000002c
   (:methods
-    (city-attacker-info-method-9 (_type_) none) ;; 9
-    (city-attacker-info-method-10 (_type_) none) ;; 10
+    (init! (_type_ process int) none) ;; 9
+    (reset! (_type_) none) ;; 10
     )
   )
 
 (deftype city-attacker-cache (structure)
   ((pos         vector  :offset-assert 0)
-   (proc        basic   :offset-assert 4)
+   (proc        process :offset-assert 4)
    (attackable? symbol  :offset-assert 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
@@ -49058,6 +49114,8 @@
 (defenum city-hatred-info-flag
   :type uint16
   :bitfield #t
+  (chi0 0)
+  (chi1 1)
   )
 ;; ---mission-squad-control-h:city-hatred-info-flag
 
@@ -49071,6 +49129,7 @@
    (index             uint8   :offset-assert 22)
    (pad               uint8   :offset-assert 23)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
@@ -49102,9 +49161,9 @@
 
 (deftype mission-squad-control (basic)
   ((attackers            city-attacker-array :offset-assert 4)
-   (unused-list          basic               :offset-assert 8)
-   (hatred-vals          basic               :offset-assert 12)
-   (hatred-indices       basic               :offset-assert 16)
+   (unused-list          (array int16)       :offset-assert 8)
+   (hatred-vals          city-hatred-array   :offset-assert 12)
+   (hatred-indices       (array uint8)       :offset-assert 16)
    (attacker-cache       city-attacker-cache-array :offset-assert 20)
    (target-attacker      city-attacker-info  :offset-assert 24)
    (max-num-object-types int32               :offset-assert 28)
@@ -49113,21 +49172,21 @@
   :size-assert         #x20
   :flag-assert         #x1800000020
   (:methods
-    (mission-squad-control-method-9 (_type_) none) ;; 9
-    (mission-squad-control-method-10 (_type_) none) ;; 10
-    (mission-squad-control-method-11 (_type_) none) ;; 11
-    (mission-squad-control-method-12 (_type_) none) ;; 12
-    (mission-squad-control-method-13 (_type_) none) ;; 13
-    (mission-squad-control-method-14 (_type_) none) ;; 14
-    (mission-squad-control-method-15 (_type_) none) ;; 15
+    (init! (_type_ int int int) none) ;; 9
+    (allocate-attacker (_type_) city-attacker-info) ;; 10
+    (remove-attacker (_type_ city-attacker-info) none) ;; 11
+    (mission-squad-control-method-12 (_type_) symbol) ;; 12
+    (mission-squad-control-method-13 (_type_ city-attacker-info) int) ;; 13
+    (init-attackers (_type_) none) ;; 14
+    (init-attack-controller (_type_) none) ;; 15
     (mission-squad-control-method-16 (_type_) none) ;; 16
-    (mission-squad-control-method-17 (_type_) none) ;; 17
-    (mission-squad-control-method-18 (_type_) none) ;; 18
-    (mission-squad-control-method-19 (_type_) none) ;; 19
-    (mission-squad-control-method-20 (_type_) none) ;; 20
-    (mission-squad-control-method-21 (_type_) none) ;; 21
-    (mission-squad-control-method-22 (_type_) none) ;; 22
-    (mission-squad-control-method-23 (_type_) none) ;; 23
+    (set-hatred-indices-for-all (_type_ int city-hatred-info city-hatred-info int) symbol) ;; 17
+    (get-attacker-at-idx (_type_ int) city-attacker-info) ;; 18
+    (push-back-hatred (_type_) city-hatred-info) ;; 19
+    (set-hatred-indices (_type_ city-hatred-info int int) uint) ;; 20
+    (get-hatred-at-idx (_type_ int int) city-hatred-info) ;; 21
+    (update-attack-target (_type_) none) ;; 22
+    (reset-hatred (_type_) none) ;; 23
     )
   )
 
@@ -49156,13 +49215,15 @@
   )
 
 (deftype citizen (nav-enemy)
-  ((flags                   citizen-flag               :offset-assert 620)
+  ((self                    citizen                    :override)
+   (ppointer                (pointer citizen)          :override)
+   (flags                   citizen-flag               :offset-assert 620)
    (traffic-id              int8                       :offset-assert 622)
    (hit-by-player-count     int8                       :offset-assert 623)
    (gnd-height              float                      :offset-assert 624)
    (speed-scale             float                      :offset-assert 628)
    (controller              vehicle-controller :inline :offset-assert 640)
-   (squad                   basic                      :offset-assert 784)
+   (squad                   squad-control              :offset-assert 784)
    (danger-pos              sphere             :inline :offset-assert 800)
    (dest-point              vector             :inline :offset 704 :score 1)
    (vehicle                 handle                     :offset-assert 816) ;; handle
@@ -49187,8 +49248,8 @@
    (cp-valid?               symbol                     :offset-assert 920) ;; guessed by decompiler
    (cp-sphere               sphere             :inline :offset-assert 928)
    (cp-vec                  vector             :inline :offset-assert 944)
-   (cp-next-time            uint64                     :offset-assert 960) ;; time-frame
-   (cp-exit-time            uint64                     :offset-assert 968) ;; time-frame
+   (cp-next-time            time-frame                 :offset-assert 960) ;; time-frame
+   (cp-exit-time            time-frame                 :offset-assert 968) ;; time-frame
    (cp-force                vector             :inline :offset-assert 976)
    (cp-plane                plane              :inline :offset-assert 992)
    (cp-factor               float                      :offset-assert 1008)
@@ -49201,33 +49262,36 @@
   :size-assert         #x404
   :flag-assert         #xd803900404
   ;; field citizen-flag is likely a value type.
+  (:state-methods
+    wait ;; 190
+    inactive ;; 191
+    in-ditch ;; 192
+    )
   (:methods
-    (citizen-method-190 () none) ;; 190 ;; (citizen-method-190 (_type_ vector) none)
-    (citizen-method-191 () none) ;; 191 ;; (gen-clear-path (_type_) nav-segment)
-    (citizen-method-192 () none) ;; 192 ;; (citizen-method-192 (_type_) none)
-    (citizen-method-193 () none) ;; 193 ;; (throw-off-vehicle (_type_) none)
-    (citizen-method-194 () none) ;; 194 ;; (gen-new-dir (_type_ vector float) nav-segment)
-    (citizen-method-195 () none) ;; 195 ;; (citizen-method-195 (_type_ vector) symbol)
-    (citizen-method-196 () none) ;; 196 ;; (get-run-anim (_type_) int)
-    (citizen-method-197 () none) ;; 197 ;; (trigger-alert (_type_ int target) none)
-    (citizen-method-198 () none) ;; 198 ;; (decrease-alert (_type_ object) none)
-    (citizen-method-199 () none) ;; 199 ;; (set-behavior! (_type_ traffic-object-spawn-params) none)
-    (citizen-method-200 () none) ;; 200 ;; (citizen-method-200 (_type_) none)
-    (citizen-method-201 () none) ;; 201
-    (citizen-method-202 () none) ;; 202
-    (citizen-method-203 () none) ;; 203
-    (citizen-method-204 () none) ;; 204
-    (citizen-method-205 () none) ;; 205
-    (citizen-method-206 () none) ;; 206
-    (citizen-method-207 () none) ;; 207
-    (citizen-method-208 () none) ;; 208
-    (citizen-method-209 () none) ;; 209
-    (citizen-method-210 () none) ;; 210
-    (citizen-method-211 () none) ;; 211
-    (citizen-method-212 () none) ;; 212
-    (citizen-method-213 () none) ;; 213
-    (citizen-method-214 () none) ;; 214
-    (citizen-method-215 () none) ;; 215
+    (init-enemy-defaults! (_type_ nav-enemy-info) none :replace)
+    (set-squad (_type_) none) ;; 193
+    (citizen-method-194 (_type_) none) ;; 194
+    (citizen-method-195 (_type_) none) ;; 195
+    (go-inactive (_type_) none) ;; 196
+    (find-segment (_type_ vector vector) nav-segment) ;; 197
+    (nav-segment-callback (_type_ vector traffic-find-segment-struct (function traffic-find-segment-struct nav-segment none)) none) ;; 198
+    (citizen-method-199 (_type_ nav-segment) none) ;; 199
+    (citizen-method-200 (_type_) symbol) ;; 200 ;;
+    (citizen-method-201 (_type_ vector) none) ;; 201
+    (citizen-method-202 (_type_ vector vector) none) ;; 202
+    (citizen-method-203 (_type_ vector) none) ;; 203
+    (gen-clear-path (_type_) nav-segment) ;; 204
+    (citizen-method-205 (_type_) none) ;; 205
+    (citizen-method-206 (_type_) none) ;; 206
+    (citizen-method-207 (_type_ vector float) nav-segment) ;; 207
+    (citizen-method-208 (_type_ vector) none) ;; 208
+    (get-run-anim (_type_) int) ;; 209
+    (citizen-method-210 (_type_ int process) none) ;; 210
+    (set-alert-level (_type_ int) none) ;; 211
+    (go-from-behavior (_type_ traffic-object-spawn-params) none) ;; 212
+    (citizen-method-213 (_type_) none) ;; 213
+    (citizen-method-214 (_type_ nav-control vector) none) ;; 214
+    (citizen-method-215 (_type_) none) ;; 215
     )
   )
 
@@ -49266,17 +49330,14 @@
 ;; kg-squad-control-h             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype handle-array (inline-array-class-uint64)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data handle :dynamic :override)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype kg-squad-member-settings (structure)
   ((object-type              uint8  :offset-assert 0)
    (max-target-count         int8   :offset-assert 1)
@@ -49290,21 +49351,18 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype kg-squad-settings (structure)
   ((roboguard-settings       kg-squad-member-settings :inline :offset-assert 0)
    (roboguard-giant-settings kg-squad-member-settings :inline :offset-assert 16)
    (flying-turret-settings   kg-squad-member-settings :inline :offset-assert 32)
    (spydroid-settings        kg-squad-member-settings :inline :offset-assert 48)
-   (kg-enemy-settings        UNKNOWN                  4       :offset-assert 0)
+   (kg-enemy-settings        kg-squad-member-settings 4 :inline :offset 0 :score -1)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
 #|
 (deftype kg-squad-control (squad-control-city)
@@ -49351,91 +49409,85 @@
 ;; ff-squad-control-h             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype traffic-guard-type-info (structure)
-  ((object-type      uint8  :offset-assert 0) ;; traffic-type
+  ((object-type      traffic-type  :offset-assert 0) ;; traffic-type
    (max-target-count int8   :offset-assert 1)
    (min-target-count int8   :offset-assert 2)
    (target-count     int8   :offset-assert 3)
    (count            int8   :offset-assert 4)
-   (change-to-type   uint8  :offset-assert 5)
+   (change-to-type   traffic-type  :offset-assert 5)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x6
   :flag-assert         #x900000006
   )
-|#
 
-#|
 (deftype traffic-guard-type-array (structure)
-  ((data               UNKNOWN                 3       :offset-assert 0)
-   (guard-info-normal  traffic-guard-type-info :inline :offset-assert 0)
-   (guard-info-war     traffic-guard-type-info :inline :offset-assert 16)
-   (guard-info-mission traffic-guard-type-info :inline :offset-assert 32)
+  ((data               traffic-guard-type-info 3 :inline :offset-assert 0 :score -1)
+   (guard-info-normal  traffic-guard-type-info   :inline :offset 0)
+   (guard-info-war     traffic-guard-type-info   :inline :offset 16)
+   (guard-info-mission traffic-guard-type-info   :inline :offset 32)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype squad-alert-state-settings (structure)
-  ((guard-settings-array UNKNOWN             10      :offset-assert 0)
-   (ped-tazer            squad-unit-settings :inline :offset-assert 0)
-   (ped-rifle            squad-unit-settings :inline :offset-assert 32)
-   (ped-grenade          squad-unit-settings :inline :offset-assert 64)
-   (ped-waster           squad-unit-settings :inline :offset-assert 96)
-   (bike-turret          squad-unit-settings :inline :offset-assert 128)
-   (hellcat-turret       squad-unit-settings :inline :offset-assert 160)
+  ((guard-settings-array squad-unit-settings 10 :inline :offset-assert 0 :score -1)
+   (ped-tazer            squad-unit-settings :inline :offset 0)
+   (ped-rifle            squad-unit-settings :inline :offset 32)
+   (ped-grenade          squad-unit-settings :inline :offset 64)
+   (ped-waster           squad-unit-settings :inline :offset 96)
+   (bike-turret          squad-unit-settings :inline :offset 128)
+   (hellcat-turret       squad-unit-settings :inline :offset 160)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x140
   :flag-assert         #x900000140
   )
-|#
 
-#|
 (deftype traffic-target-formation (structure)
-  ((circle-range UNKNOWN 16 :offset-assert 0)
+  ((circle-range int32 16 :offset-assert 0)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
-#|
 (deftype ff-squad-control (squad-control-city)
-  ((squad-settings                   UNKNOWN                    3       :offset-assert 824)
-   (settings                         squad-alert-state-settings :inline :offset-assert 824)
-   (settings-war                     squad-alert-state-settings :inline :offset-assert 1144)
-   (settings-mission                 squad-alert-state-settings :inline :offset-assert 1464)
-   (guard-type-info-array            UNKNOWN                    10      :offset-assert 1784)
-   (guard-type-mask-from-object-type UNKNOWN                    29      :offset-assert 2264)
-   (target-formation-array           UNKNOWN                    3       :offset-assert 2380)
+  ((squad-settings                   squad-alert-state-settings    3  :inline :offset 824 :score -1)
+   (settings                         squad-alert-state-settings       :inline :offset 824)
+   (settings-war                     squad-alert-state-settings       :inline :offset 1144)
+   (settings-mission                 squad-alert-state-settings       :inline :offset 1464)
+   (guard-type-info-array            traffic-guard-type-array      10 :inline :offset-assert 1784)
+   (guard-type-mask-from-object-type int32                         29         :offset-assert 2264)
+   (target-formation-array           traffic-target-formation      3 :inline :offset-assert 2380)
    )
   :method-count-assert 57
   :size-assert         #xa0c
   :flag-assert         #x3900000a0c
   (:methods
-    (ff-squad-control-method-45 () none) ;; 45
-    (ff-squad-control-method-46 () none) ;; 46
-    (ff-squad-control-method-47 () none) ;; 47
-    (ff-squad-control-method-48 () none) ;; 48
-    (ff-squad-control-method-49 () none) ;; 49
-    (ff-squad-control-method-50 () none) ;; 50
-    (ff-squad-control-method-51 () none) ;; 51
-    (ff-squad-control-method-52 () none) ;; 52
-    (ff-squad-control-method-53 () none) ;; 53
-    (ff-squad-control-method-54 () none) ;; 54
-    (ff-squad-control-method-55 () none) ;; 55
-    (ff-squad-control-method-56 () none) ;; 56
+    (ff-squad-control-method-45 (_type_) none) ;; 45
+    (ff-squad-control-method-46 (_type_) none) ;; 46
+    (ff-squad-control-method-47 (_type_) none) ;; 47
+    (ff-squad-control-method-48 (_type_) none) ;; 48
+    (ff-squad-control-method-49 (_type_) none) ;; 49
+    (ff-squad-control-method-50 (_type_) none) ;; 50
+    (ff-squad-control-method-51 (_type_) none) ;; 51
+    (ff-squad-control-method-52 (_type_) none) ;; 52
+    (ff-squad-control-method-53 (_type_) none) ;; 53
+    (ff-squad-control-method-54 (_type_) none) ;; 54
+    (ff-squad-control-method-55 (_type_) none) ;; 55
+    (ff-squad-control-method-56 (_type_) none) ;; 56
     )
   )
-|#
 
-(define-extern *ff-squad-control* squad-control)
+(define-extern *ff-squad-control* ff-squad-control)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-squad-control-h             ;;
@@ -49498,148 +49550,152 @@
 ;; cty-faction                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+(defenum exclusive-nav-info-mask
+  :type uint8
+  :bitfield #t
+  (eni0 0)
+  (eni1 1)
+  (eni2 2)
+  (eni3 3)
+  (eni4 4)
+  (eni5 5)
+  (eni6 6)
+  (eni7 7)
+  )
+
 (deftype exclusive-nav-mesh-info (structure)
-  ((aid            uint32  :offset-assert 0)
-   (exclusive-mask uint8   :offset-assert 4)
+  ((aid            uint32                  :offset-assert 0)
+   (exclusive-mask exclusive-nav-info-mask :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x5
   :flag-assert         #x900000005
   )
-|#
 
-;; (define-extern *territory-list* array)
-;; (define-extern *default-faction-info* array)
-;; (define-extern *default-faction-mod* object)
-;; (define-extern *default-faction-strength-mod* object)
+(define-extern *territory-list* (array pair))
+(define-extern *default-faction-info* (array cty-faction-info))
+(define-extern *default-faction-mod* cty-faction-info)
+(define-extern *default-faction-strength-mod* cty-faction-strength)
 (define-extern setup-city-task-faction (function object))
-;; (define-extern *exclusive-nav-mesh-list* array)
-;; (define-extern map-symbol-to-nav-territory-type function)
+(define-extern *exclusive-nav-mesh-list* (array exclusive-nav-mesh-info))
+(define-extern map-symbol-to-nav-territory-type (function symbol nav-territory-type))
 (define-extern cty-faction-evaluate-commands (function pair object))
-;; (define-extern is-faction-level-loaded? function)
+(define-extern is-faction-level-loaded? (function cty-faction-level symbol))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; formations                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype formation-info (structure)
-  ((composition basic  :offset-assert 0)
-   (layout      basic  :offset-assert 4)
+  ((composition (array uint8)  :offset-assert 0)
+   (layout      (array vector) :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype formation-layout (basic)
-  ((formation-points     UNKNOWN 10 :offset-assert 16)
+  ((formation-points     vector 10 :inline :offset-assert 16)
    (num-formation-points int8       :offset-assert 176)
    (leader-index         int8       :offset-assert 177)
    (__pad                int16      :offset-assert 178)
    (scale-factor         float      :offset-assert 180)
    (estimated-radius     float      :offset-assert 184)
-   (composition          basic      :offset-assert 188)
+   (composition          (array uint8) :offset-assert 188)
    )
   :method-count-assert 10
   :size-assert         #xc0
   :flag-assert         #xa000000c0
   (:methods
-    (formation-layout-method-9 () none) ;; 9
+    (init! (_type_ formation-info) none) ;; 9
     )
   )
-|#
 
-;; (define-extern *formation-layout-cross* array)
-;; (define-extern *formation-composition-cross* array)
-;; (define-extern *formation-layout-wedge* array)
-;; (define-extern *formation-composition-wedge* array)
-;; (define-extern *formation-list* object)
+(define-extern *formation-layout-cross* (array vector))
+(define-extern *formation-composition-cross* (array uint8))
+(define-extern *formation-layout-wedge* (array vector))
+(define-extern *formation-composition-wedge* (array uint8))
+(define-extern *formation-list* (inline-array formation-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; formation-object               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; handle-array is already defined!
+(defenum formation-object-flag
+  :type uint8
+  :bitfield #t
+  (fo0)
+  )
 
-#|
 (deftype formation-object (process-focusable)
-  ((object-list         basic                      :offset-assert 208)
+  ((object-list         handle-array               :offset-assert 208)
    (num-objects         int8                       :offset-assert 212)
-   (formation           basic                      :offset-assert 216)
-   (flags               uint8                      :offset-assert 220)
+   (formation           formation-layout           :offset-assert 216)
+   (flags               formation-object-flag      :offset-assert 220)
    (controller          vehicle-controller :inline :offset-assert 224)
-   (alert-time-offset   uint64                     :offset-assert 368)
+   (alert-time-offset   time-frame                 :offset-assert 368)
    (dest-position       vector             :inline :offset-assert 384)
    (formation-transform matrix             :inline :offset-assert 400)
    )
   :method-count-assert 48
   :size-assert         #x1d0
   :flag-assert         #x30015001d0
-  (:methods
-    (formation-object-method-30 () none) ;; 30
-    (formation-object-method-31 () none) ;; 31
-    (formation-object-method-32 () none) ;; 32
-    (formation-object-method-33 () none) ;; 33
-    (formation-object-method-34 () none) ;; 34
-    (formation-object-method-35 () none) ;; 35
-    (formation-object-method-36 () none) ;; 36
-    (formation-object-method-37 () none) ;; 37
-    (formation-object-method-38 () none) ;; 38
-    (formation-object-method-39 () none) ;; 39
-    (formation-object-method-40 () none) ;; 40
-    (formation-object-method-41 () none) ;; 41
-    (formation-object-method-42 () none) ;; 42
-    (formation-object-method-43 () none) ;; 43
-    (formation-object-method-44 () none) ;; 44
-    (formation-object-method-45 () none) ;; 45
-    (formation-object-method-46 () none) ;; 46
-    (formation-object-method-47 () none) ;; 47
-    )
   (:state-methods
     active ;; 28
     inactive ;; 29
     )
+  (:methods
+    (formation-object-method-30 (_type_) symbol) ;; 30
+    (formation-object-method-31 (_type_) float) ;; 31
+    (formation-object-method-32 (_type_) float) ;; 32
+    (formation-object-method-33 (_type_) float) ;; 33
+    (formation-object-method-34 (_type_) float) ;; 34
+    (formation-object-method-35 (_type_) symbol) ;; 35
+    (get-leader-handle (_type_) handle) ;; 36
+    (formation-object-method-37 (_type_) symbol) ;; 37
+    (get-target-speed (_type_ process-focusable int) float) ;; 38
+    (init-collision! (_type_) none) ;; 39
+    (formation-object-method-40 (_type_ vector vector int) vector) ;; 40
+    (formation-event-handler (_type_ process int symbol event-message-block) object) ;; 41
+    (formation-object-method-42 (_type_ handle) symbol) ;; 42
+    (formation-object-method-43 (_type_ int) none) ;; 43
+    (formation-object-method-44 (_type_ int) object) ;; 44
+    (formation-object-method-45 (_type_) symbol) ;; 45
+    (clear-objects! (_type_) none) ;; 46
+    (formation-object-method-47 (_type_ handle) object) ;; 47
+    )
   )
-|#
 
-#|
 (deftype msg-get-num-inactive (structure)
-  ((obj-type         uint8  :offset-assert 0)
+  ((obj-type         traffic-type :offset-assert 0)
    (num-inactive-out int32  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype msg-get-inactive-objects (structure)
-  ((object-type-info-array uint32  :offset-assert 0)
+  ((object-type-info-array (inline-array traffic-object-type-info)  :offset-assert 0)
    )
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-;; (define-extern formation-init-by-other function)
-;; (define-extern foo-hack object)
-;; (define-extern formation-object-event-handler function)
-;; (define-extern random-var object)
+(define-extern formation-init-by-other (function traffic-object-spawn-params object :behavior formation-object))
+(define-extern foo-hack symbol)
+(def-event-handler formation-object-event-handler formation-object)
+(define-extern random-var int)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctywide-obs-h                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype city-race-ring-info (structure)
   ((pos   vector :inline :offset-assert 0)
-   (angle float          :offset-assert 12)
+   (angle float          :offset 12)
    (boost float          :offset-assert 16)
    (dist  float          :offset-assert 20)
    )
@@ -49650,20 +49706,16 @@
     (city-race-ring-info-method-9 () none) ;; 9 ;; (city-race-ring-info-method-9 (_type_ symbol) none)
     )
   )
-|#
 
-#|
 (deftype city-ambush-spot (structure)
   ((pos      vector :inline :offset-assert 0)
-   (obj-type uint8          :offset-assert 16)
+   (obj-type traffic-type   :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x11
   :flag-assert         #x900000011
   )
-|#
 
-#|
 (deftype city-ambush-info (structure)
   ((count int16                            :offset-assert 0)
    (array (inline-array city-ambush-spot)  :offset-assert 4) ;; guessed by decompiler
@@ -49675,8 +49727,6 @@
     (city-ambush-info-method-9 () none) ;; 9 ;; (city-ambush-info-method-9 (_type_ traffic-object-spawn-params) none)
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mission-squad-control          ;;
@@ -49695,36 +49745,58 @@
   :flag-assert         #x1800000021
   )
 
-;; (define-extern city-target-type->cty-faction function)
-;; (define-extern city-target-type->traffic-object-type function)
-;; (define-extern symbol->city-target-type function)
+(defenum city-target-type
+  (a 1)
+  (b 2)
+  (guard-tazer 3)
+  (guard-rifle 4)
+  (guard-grenade 5)
+  (grunt 6)
+  (flitter 7)
+  (unknown 8)
+  (roboguard 9)
+  (turret 10)
+  (spydroid 11)
+  (roboguard-giant 12)
+  )
+
+(defenum cty-faction
+  :type uint8
+  (ff 0)
+  (kg 1)
+  (mh 2)
+  (invalid 128)
+  )
+
+(define-extern city-target-type->cty-faction (function city-target-type cty-faction))
+(define-extern city-target-type->traffic-object-type (function city-target-type traffic-type))
+(define-extern symbol->city-target-type (function symbol city-target-type))
 (define-extern *cty-attack-controller* cty-attack-controller)
-;; (define-extern initialize-cty-attack-controller function)
-(define-extern cty-attack-reset (function symbol symbol symbol none))
+(define-extern initialize-cty-attack-controller (function none))
+(define-extern cty-attack-reset (function symbol none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flee-info                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; (deftype flee-info (structure)
-;   ()
-;   :method-count-assert 14
-;   :flag-assert #xe00000000
-;   (:methods
-;     (flee-info-method-9 (_type_) none) ;; 9
-;     (flee-info-method-10 (_type_) none) ;; 10
-;     (flee-info-method-11 (_type_) none) ;; 11
-;     (flee-info-method-12 (_type_) none) ;; 12
-;     (flee-info-method-13 (_type_) none) ;; 13
-;     )
-;   )
+(deftype flee-info (structure)
+  ()
+  :method-count-assert 14
+  :flag-assert #xe00000000
+  (:methods
+    (flee-info-method-9 (_type_) none) ;; 9
+    (flee-info-method-10 (_type_) none) ;; 10
+    (flee-info-method-11 (_type_) none) ;; 11
+    (flee-info-method-12 (_type_) none) ;; 12
+    (flee-info-method-13 (_type_) none) ;; 13
+    )
+  )
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; citizen                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype iter-seg (structure)
   ((self        citizen             :offset-assert 0) ;; guessed by decompiler
    (score       float               :offset-assert 4)
@@ -49736,42 +49808,39 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern *citizen-debug* object) ;; symbol
-;; (define-extern citizen-init-by-other function) ;; (function traffic-object-spawn-params none :behavior citizen)
-;; (define-extern citizen-travel-anim function) ;; (function int int symbol :behavior citizen)
-;; (define-extern iter-seg-clear-path function) ;; (function iter-seg nav-segment symbol)
-;; (define-extern iter-seg-new-dir function) ;; (function iter-seg nav-segment none)
+(define-extern *citizen-debug* symbol)
+(define-extern citizen-init-by-other (function traffic-object-spawn-params none :behavior citizen))
+(define-extern citizen-travel-anim (function int int symbol :behavior citizen))
+(define-extern iter-seg-clear-path (function iter-seg nav-segment symbol))
+(define-extern iter-seg-new-dir (function iter-seg nav-segment nav-segment))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; civilian                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype civilian-anim-info (structure)
   ((anim-index       int32 2 :offset-assert 0) ;; guessed by decompiler
-   (anim-index-front int32   :offset-assert 0)
-   (anim-index-back  int32   :offset-assert 4)
+   (anim-index-front int32   :offset 0)
+   (anim-index-back  int32   :offset 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype civilian-global-info (basic)
   ((prev-yellow-hit                int8                 :offset-assert 4)
    (prev-blue-hit                  int8                 :offset-assert 5)
    (knocked                        int32              2 :offset-assert 8) ;; guessed by decompiler
-   (anim-knocked-front             int32                :offset-assert 8)
-   (anim-knocked-back              int32                :offset-assert 12)
+   (anim-knocked-front             int32                :offset 8)
+   (anim-knocked-back              int32                :offset 12)
    (knocked-land                   int32              2 :offset-assert 16) ;; guessed by decompiler
-   (anim-knocked-front-land        int32                :offset-assert 16)
-   (anim-knocked-back-land         int32                :offset-assert 20)
-   (yellow-hit-anim                civilian-anim-info 1 :offset-assert 24) ;; guessed by decompiler
-   (blue-hit-anim                  civilian-anim-info 3 :offset-assert 32) ;; guessed by decompiler
+   (anim-knocked-front-land        int32                :offset 16)
+   (anim-knocked-back-land         int32                :offset 20)
+   (yellow-hit-anim                civilian-anim-info 1 :inline :offset-assert 24) ;; guessed by decompiler
+   (blue-hit-anim                  civilian-anim-info 3 :inline :offset-assert 32) ;; guessed by decompiler
    (anim-cover-head-start          int32                :offset-assert 56)
    (anim-cover-head-loop           int32                :offset-assert 60)
    (anim-cover-head-end            int32                :offset-assert 64)
@@ -49793,9 +49862,7 @@
   :size-assert         #x5d
   :flag-assert         #x90000005d
   )
-|#
 
-#|
 (deftype civilian (citizen)
   ((info              civilian-global-info         :offset-assert 1028) ;; guessed by decompiler
    (anim-panic-run    int32                        :offset-assert 1032)
@@ -49805,7 +49872,7 @@
    (anim-get-up-back  int32                        :offset-assert 1048)
    (last-second-pos   vector               :inline :offset-assert 1056)
    (last-distance     float                        :offset-assert 1072)
-   (next-time         uint64                       :offset-assert 1080) ;; time-frame
+   (next-time         time-frame                   :offset-assert 1080) ;; time-frame
    (dive-target-point vector               :inline :offset-assert 1088)
    (dive-reaction     float                        :offset-assert 1104)
    (allow-dive        symbol                       :offset-assert 1108) ;; guessed by decompiler
@@ -49816,42 +49883,41 @@
   :method-count-assert 234
   :size-assert         #x464
   :flag-assert         #xea03f00464
-  (:methods
-    (civilian-method-229 () none) ;; 229
-    (civilian-method-230 () none) ;; 230
-    (civilian-method-231 () none) ;; 231
-    (civilian-method-232 () none) ;; 232
-    (civilian-method-233 () none) ;; 233
-    )
   (:state-methods
-    wait-at-dest ;; 228
-    exit-vehicle ;; 227
-    ride ;; 226
-    board-vehicle ;; 225
-    avoid-danger ;; 216, old: (go-dive (_type_) none)
-    flee ;; 36
-    on-ground ;; 218
-    clear-path ;; 217, old: (civilian-method-217 (_type_ vector) symbol)
-    wait ;; 190
-    dive ;; 219
-    cower-ground ;; 222
+    knocked ;; 31
     knocked-recover ;; 32
+    flee ;; 36
+    wait ;; 190
+    avoid-danger ;; 216
+    clear-path ;; 217
+    on-ground ;; 218
+    dive ;; 219
     get-up-front ;; 220
     get-up-back ;; 221
-    knocked ;; 31
+    cower-ground ;; 222
     wait-for-ride ;; 223
     move-to-vehicle ;; 224
+    board-vehicle ;; 225
+    ride ;; 226
+    exit-vehicle ;; 227
+    wait-at-dest ;; 228
+    )
+  (:methods
+    (civilian-method-229 (_type_ nav-branch int vector float) float) ;; 229
+    (civilian-method-230 (_type_ vector) nav-segment) ;; 230
+    (civilian-method-231 (_type_) none) ;; 231
+    (civilian-method-232 (_type_ vector) symbol) ;; 232
+    (start-ragdoll (_type_ art-joint-anim) none) ;; 233
     )
   )
-|#
 
-;; (define-extern civilian-flee-post function) ;; (function none :behavior civilian)
-;; (define-extern civilian-avoid-danger-post function) ;; (function none :behavior civilian)
-;; (define-extern civilian-avoid-danger-post2 function) ;; (function none :behavior civilian)
-;; (define-extern civilian-clear-path-post function) ;; (function none :behavior civilian)
-;; (define-extern civilian-clear-path-post2 function) ;; (function none :behavior civilian)
-;; (define-extern civilian-falling-post function) ;; (function none :behavior civilian)
-;; (define-extern do-spline2 function) ;; (function vector vector vector vector vector float vector)
+(define-extern civilian-flee-post (function none :behavior civilian))
+(define-extern civilian-avoid-danger-post (function none :behavior civilian))
+(define-extern civilian-avoid-danger-post2 (function none :behavior civilian))
+(define-extern civilian-clear-path-post (function none :behavior civilian))
+(define-extern civilian-clear-path-post2 (function none :behavior civilian))
+(define-extern civilian-falling-post (function none :behavior civilian))
+(define-extern do-spline2 (function vector vector vector vector vector float vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; guard-h                        ;;
@@ -50155,11 +50221,36 @@
   :flag-assert         #x900000005
   )
 
+(declare-type citizen-norm citizen)
+(define-extern citizen-norm type)
+(declare-type citizen-chick citizen)
+(define-extern citizen-chick type)
+(declare-type citizen-fat citizen)
+(define-extern citizen-fat type)
+(declare-type metalhead-predator citizen)
+(define-extern metalhead-predator type)
+(declare-type metalhead-grunt citizen)
+(define-extern metalhead-grunt type)
+(declare-type metalhead-flitter citizen)
+(define-extern metalhead-flitter type)
+(declare-type wlander-male citizen)
+(define-extern wlander-male type)
+(declare-type wlander-female citizen)
+(define-extern wlander-female type)
+(declare-type crimson-guard citizen)
+(define-extern crimson-guard type)
+(declare-type roboguard-city citizen)
+(define-extern roboguard-city type)
+(declare-type flying-turret citizen)
+(define-extern flying-turret type)
+(declare-type spydroid citizen)
+(define-extern spydroid type)
+
 (define-extern *traffic-engine* traffic-engine)
 (define-extern *traffic-fast-spawn* symbol)
 (define-extern draw-city-info (function city-level-info vis-grid-pos none))
-(define-extern formation-spawn function)
-(define-extern type-from-traffic-object-type function)
+(define-extern formation-spawn (function process type formation-info formation-object))
+(define-extern type-from-traffic-object-type (function traffic-type type))
 (define-extern citizen-spawn (function process type traffic-object-spawn-params process-drawable))
 (define-extern traffic-object-spawn (function process traffic-object-spawn-params process-drawable))
 (define-extern *traffic-vehicle-level-borrow-list* object)
@@ -53432,7 +53523,7 @@
 
 (deftype rigid-body-vehicle-constants (rigid-body-object-constants)
   ((flags               uint32                               :offset-assert 208)
-   (object-type         uint8                                :offset-assert 212)
+   (object-type         traffic-type                         :offset-assert 212)
    (guard-type          uint8                                :offset-assert 213)
    (vehicle-type        vehicle-type-u8                      :offset-assert 214)
    (engine              vehicle-engine-info          :inline :offset-assert 216)
