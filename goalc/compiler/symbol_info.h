@@ -42,6 +42,7 @@ namespace symbol_info {
 // - [x] as well as states
 // - [x] better lookup call, allow passing the symbol kind
 // - [] reduce empty fields in SymbolInfo
+// - [] some paths are stored differently for some reason, there's some inconsistent path separators somewhere
 
 enum class Kind {
   GLOBAL_VAR,
