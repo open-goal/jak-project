@@ -1,0 +1,1949 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *citizen-debug*, type symbol
+(define *citizen-debug* #f)
+
+;; definition for method 193 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod set-squad ((this citizen))
+  (set! (-> this squad) #f)
+  0
+  (none)
+  )
+
+;; definition for method 195 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-195 ((this citizen))
+  (let ((v1-0 (-> this nav)))
+    (logclear! (-> v1-0 flags) (nav-control-flag limit-rotation-rate output-sphere-hash))
+    (logclear! (-> this nav flags) (nav-control-flag update-heading-from-facing))
+    (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag ef44))))
+    (let ((a1-6 v1-0))
+      (set! (-> a1-6 sphere-mask) (the-as uint #x1000fe))
+      )
+    0
+    (let ((a1-8 v1-0))
+      (set! (-> a1-8 nav-cull-radius) 12288.0)
+      )
+    0
+    (logclear! (-> v1-0 flags) (nav-control-flag output-sphere-hash))
+    )
+  (set! (-> this enemy-info callback-info) *physics-nav-callback-info*)
+  (let ((v1-2 this))
+    (if (not (logtest? (enemy-flag ef37) (-> v1-2 enemy-flags)))
+        (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-2 enemy-flags))))
+        )
+    (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-2 enemy-flags))))
+    (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for method 194 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-194 ((this citizen))
+  (remove-from-process *part-engine* this)
+  (set! (-> this faction-mode) (the-as uint 0))
+  (logior! (-> this fact enemy-options) (enemy-option knocked-into-water))
+  (if (-> this skel effect)
+      (logclear! (-> this skel effect flags) (effect-control-flag ecf2))
+      )
+  (set! (-> this draw death-draw-overlap) (the-as uint 0))
+  (set! (-> this draw death-timer) (the-as uint 0))
+  (set! (-> this draw death-timer-org) (the-as uint 0))
+  (set! (-> this draw death-vertex-skip) (the-as uint 0))
+  (set! (-> this draw death-effect) (the-as uint 0))
+  (logclear! (-> this focus-status) (focus-status disable dead inactive hit))
+  (logclear! (-> this flags) (citizen-flag persistent in-pursuit hostile))
+  (clear-focused (-> this focus))
+  (logand! (-> this enemy-flags) (enemy-flag drawn-mirrored))
+  (logclear! (-> this draw status) (draw-control-status no-draw lod-set))
+  (set! (-> this draw death-timer) (the-as uint 0))
+  (logior! (-> this root nav-flags) (nav-flags has-root-sphere))
+  (let ((v1-29 (-> this root root-prim)))
+    (set! (-> v1-29 prim-core collide-as) (-> this root backup-collide-as))
+    (set! (-> v1-29 prim-core collide-with) (-> this root backup-collide-with))
+    )
+  (set! (-> this root penetrated-by) (penetrate
+                                       generic-attack
+                                       lunge
+                                       flop
+                                       punch
+                                       spin
+                                       roll
+                                       uppercut
+                                       bonk
+                                       tube
+                                       vehicle
+                                       flut-attack
+                                       board
+                                       mech-punch
+                                       dark-punch
+                                       dark-smack
+                                       flut
+                                       )
+        )
+  (enemy-setup-gem)
+  (logior! (-> this enemy-flags) (enemy-flag vulnerable vulnerable-backup))
+  (logior! (-> this focus-status) (focus-status dangerous))
+  (logior! (-> this enemy-flags) (enemy-flag dangerous-backup))
+  (logior! (-> this enemy-flags) (enemy-flag trackable trackable-backup))
+  (logior! (-> this enemy-flags) (enemy-flag attackable attackable-backup))
+  (set! (-> this hit-points) (-> this enemy-info default-hit-points))
+  (set! (-> this fated-time) 0)
+  (set! (-> this probe-counter) (the-as uint 0))
+  (set! (-> this hit-by-player-count) 0)
+  (set-vector! (-> this draw color-mult) 1.0 1.0 1.0 1.0)
+  (set-vector! (-> this draw color-emissive) 0.0 0.0 0.0 1.0)
+  (update-transforms (-> this root))
+  (citizen-method-215 this)
+  0
+  (none)
+  )
+
+;; definition for method 64 of type citizen
+;; WARN: Return type mismatch int vs enemy-aware.
+(defmethod update-awareness! ((this citizen) (arg0 process-focusable) (arg1 enemy-best-focus))
+  (when arg1
+    (let ((f0-0 (vector-vector-distance (get-trans arg0 0) (-> this root trans))))
+      (when (< f0-0 (-> arg1 rating))
+        (set! (-> arg1 rating) f0-0)
+        (set! (-> arg1 proc) arg0)
+        (set! (-> arg1 aware) (enemy-aware ea3))
+        )
+      )
+    )
+  (the-as enemy-aware 3)
+  )
+
+;; definition for method 68 of type citizen
+;; WARN: Return type mismatch int vs enemy-aware.
+(defmethod get-enemy-aware ((this citizen) (arg0 enemy-aware))
+  (the-as enemy-aware 3)
+  )
+
+;; definition for method 75 of type citizen
+(defmethod go-stare ((this citizen))
+  (go (method-of-object this flee))
+  )
+
+;; definition for method 78 of type citizen
+;; WARN: Return type mismatch none vs object.
+(defmethod go-hostile ((this citizen))
+  (go-inactive this)
+  )
+
+;; definition for method 79 of type citizen
+(defmethod go-flee ((this citizen))
+  (go (method-of-object this flee))
+  )
+
+;; definition for method 80 of type citizen
+(defmethod go-best-state ((this citizen))
+  (go (method-of-object this active))
+  )
+
+;; definition for method 65 of type citizen
+(defmethod penetrate->next-state ((this citizen) (arg0 process) (arg1 event-message-block) (arg2 float))
+  (if (logtest? (penetrate jak-dark-nuke) (-> this incoming penetrate-using))
+      'traffic-off-force
+      (call-parent-method this arg0 arg1 arg2)
+      )
+  )
+
+;; definition for method 81 of type citizen
+;; WARN: Return type mismatch none vs object.
+(defmethod go-die ((this citizen))
+  (send-event (ppointer->process (-> this parent)) 'child-killed)
+  (go-inactive this)
+  )
+
+;; definition for method 17 of type citizen
+(defmethod cleanup-for-death ((this citizen))
+  (send-event (ppointer->process (-> this parent)) 'child-killed)
+  (go-inactive this)
+  (none)
+  )
+
+;; definition for method 196 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod go-inactive ((this citizen))
+  (cond
+    ((and (-> this mission-squad) (-> this attacker-info))
+     (remove-attacker (-> this mission-squad) (-> this attacker-info))
+     (set! (-> this attacker-info) #f)
+     (set! (-> this mission-squad) #f)
+     )
+    (else
+      )
+    )
+  (vehicle-controller-method-11 (-> this controller))
+  (logclear! (-> this flags) (citizen-flag persistent in-formation))
+  (set! (-> this vehicle) (the-as handle #f))
+  (let ((s5-0 (-> this child)))
+    (while s5-0
+      (send-event (ppointer->process s5-0) 'notice 'die)
+      (set! s5-0 (-> s5-0 0 brother))
+      )
+    )
+  (set! (-> this shield-handle) (the-as handle #f))
+  (logior! (-> this focus-status) (focus-status inactive))
+  (set! (-> this event-hook) (-> (method-of-object this inactive) event))
+  (go (method-of-object this inactive))
+  0
+  (none)
+  )
+
+;; definition for method 63 of type citizen
+(defmethod enemy-method-63 ((this citizen) (arg0 float))
+  (let ((v0-1 (call-parent-method this arg0)))
+    (when (and (logtest? (-> this incoming penetrate-using) (penetrate board))
+               (not (logtest? (-> this incoming penetrate-using) (penetrate spin)))
+               )
+      (let ((v1-6 (handle->process (-> this incoming attacker-handle))))
+        (when (= (-> (the-as target v1-6) type) target)
+          (cond
+            ((and (-> this next-state) (let ((a0-14 (-> this next-state name)))
+                                         (or (= a0-14 'get-up-front) (= a0-14 'get-up-back) (= a0-14 'knocked))
+                                         )
+                  )
+             (set! v0-1 0.000000000000000000000000000000000000000000001)
+             )
+            ((and (logtest? (-> (the-as target v1-6) control mod-surface flags) (surface-flag air))
+                  (not (logtest? (-> (the-as target v1-6) control status) (collide-status on-surface)))
+                  )
+             (set! v0-1 0.0)
+             )
+            )
+          )
+        )
+      )
+    v0-1
+    )
+  )
+
+;; definition for method 210 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-210 ((this citizen) (arg0 int) (arg1 process))
+  (let ((a0-1 (-> this squad)))
+    (when (and a0-1 arg1)
+      (if #t
+          (squad-control-method-18 a0-1 arg0 arg1)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 211 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod set-alert-level ((this citizen) (arg0 int))
+  (let ((a0-1 (-> this squad)))
+    (if a0-1
+        (set-alert-level0 a0-1 arg0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 27 of type citizen
+(defmethod get-inv-mass ((this citizen))
+  1.0
+  )
+
+;; definition for method 197 of type citizen
+(defmethod find-segment ((this citizen) (arg0 vector) (arg1 vector))
+  (find-best-segment (-> this controller traffic) arg0 arg1 1)
+  )
+
+;; definition for method 198 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-segment-callback ((this citizen)
+                                (arg0 vector)
+                                (arg1 traffic-find-segment-struct)
+                                (arg2 (function traffic-find-segment-struct nav-segment none))
+                                )
+  (callback-on-nav-segments-in-sphere (-> this controller traffic) arg0 1 arg1 arg2)
+  0
+  (none)
+  )
+
+;; definition for method 199 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-199 ((this citizen) (arg0 nav-segment))
+  (vehicle-controller-method-11 (-> this controller))
+  (vehicle-controller-method-13 (-> this controller) (-> arg0 branch) (the-as vector (-> arg0 vertex)))
+  0
+  (none)
+  )
+
+;; definition for method 200 of type citizen
+(defmethod citizen-method-200 ((this citizen))
+  (let* ((v1-0 (-> this controller))
+         (gp-1 (vector-! (new 'stack-no-clear 'vector) (-> v1-0 turn-exit-point) (-> v1-0 path-prev-point)))
+         (s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (-> v1-0 turn-exit-point)))
+         )
+    (set! (-> s5-1 y) 0.0)
+    (set! (-> gp-1 y) 0.0)
+    (vector-xz-normalize! gp-1 1.0)
+    (< -16384.0 (vector-dot s5-1 gp-1))
+    )
+  )
+
+;; definition for method 212 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod go-from-behavior ((this citizen) (arg0 traffic-object-spawn-params))
+  (let ((v1-0 (-> arg0 behavior)))
+    (cond
+      ((zero? v1-0)
+       (go (method-of-object this idle))
+       )
+      ((= v1-0 2)
+       (go (method-of-object this active))
+       )
+      ((= v1-0 3)
+       (go (method-of-object this hostile))
+       )
+      (else
+        (go-inactive this)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 82 of type citizen
+;; INFO: Used lq/sq
+;; WARN: disable def twice: 164. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod event-handler ((this citizen) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-3 object))
+  (case arg2
+    (('hit 'hit-flinch 'hit-knocked)
+     (let ((v1-1 #f))
+       (case (-> this incoming knocked-type)
+         (((knocked-type yellow-shot)
+           (knocked-type blue-shot)
+           (knocked-type red-shot)
+           (knocked-type explode-or-darkjak)
+           )
+          (set! v1-1 #t)
+          )
+         (((knocked-type none))
+          (+! (-> this hit-by-player-count) 1)
+          (set! v1-1 (>= (-> this hit-by-player-count) 2))
+          )
+         )
+       (when v1-1
+         (let* ((s5-0 (handle->process (-> this incoming attacker-handle)))
+                (a2-5 (if (type? s5-0 process-focusable)
+                          s5-0
+                          )
+                      )
+                )
+           (if a2-5
+               (citizen-method-210 this 1 a2-5)
+               )
+           )
+         )
+       )
+     (freeze-hit-begin)
+     (go (method-of-object this knocked))
+     )
+    (('traffic-off)
+     (if (not (logtest? (-> this flags) (citizen-flag persistent)))
+         (go-inactive this)
+         )
+     )
+    (('formation-set-destination)
+     (when (and (-> this next-state) (let ((v1-20 (-> this next-state name)))
+                                       (or (= v1-20 'active) (= v1-20 'wait))
+                                       )
+                )
+       (let ((v1-21 (the-as object (-> arg3 param 0)))
+             (a0-20 (-> this nav state))
+             )
+         (logclear! (-> a0-20 flags) (nav-state-flag directional-mode))
+         (logior! (-> a0-20 flags) (nav-state-flag target-poly-dirty))
+         (set! (-> a0-20 target-pos quad) (-> (the-as vector v1-21) quad))
+         )
+       0
+       (if (and (and (-> this next-state) (= (-> this next-state name) 'wait)) (-> this wait-return-state))
+           (go (-> this wait-return-state))
+           )
+       )
+     )
+    (('formation-exit)
+     (logclear! (-> this flags) (citizen-flag in-formation))
+     (set! (-> this vehicle) (the-as handle #f))
+     #f
+     )
+    (('go-invulnerable)
+     (set! v0-3 (logclear (-> this enemy-flags) (enemy-flag vulnerable)))
+     (set! (-> this enemy-flags) (the-as enemy-flag v0-3))
+     v0-3
+     )
+    (('go-vulnerable)
+     (when (not (and (-> this next-state)
+                     (let ((v1-36 (-> this next-state name)))
+                       (or (= v1-36 'inactive) (= v1-36 'dying) (= v1-36 'die-falling) (= v1-36 'die-fast))
+                       )
+                     )
+                )
+       (set! v0-3 (logior (-> this enemy-flags) (enemy-flag vulnerable)))
+       (set! (-> this enemy-flags) (the-as enemy-flag v0-3))
+       v0-3
+       )
+     )
+    (('impact-impulse)
+     #f
+     )
+    (('traffic-off-force)
+     (go-inactive this)
+     )
+    (('traffic-activate)
+     (if (not (focus-test? this inactive))
+         (return #f)
+         )
+     (set! (-> this controller traffic) (the-as traffic-engine (-> arg3 param 1)))
+     (let ((s5-1 (the-as traffic-object-spawn-params (-> arg3 param 0))))
+       (cond
+         ((logtest? (-> s5-1 flags) (traffic-spawn-flags tsf4))
+          (logior! (-> this flags) (citizen-flag in-formation))
+          (set! (-> this vehicle) (-> s5-1 handle-parent))
+          (set! (-> this formation-index) (the-as int (-> s5-1 user-data)))
+          (set! (-> this speed-scale) 1.0)
+          )
+         (else
+           (logclear! (-> this flags) (citizen-flag in-formation))
+           (set! (-> this speed-scale) (rnd-float-range this 0.9 1.1))
+           )
+         )
+       (if (logtest? (-> s5-1 flags) (traffic-spawn-flags tsf7))
+           (logior! (-> this flags) (citizen-flag in-mission))
+           (logclear! (-> this flags) (citizen-flag in-mission))
+           )
+       (set! (-> this root penetrated-by) (get-penetrated-by this))
+       (set! (-> this root trans quad) (-> s5-1 position quad))
+       (quaternion-copy! (-> this root quat) (-> s5-1 rotation))
+       (set! (-> this root transv quad) (-> s5-1 velocity quad))
+       (let ((a0-46 (-> s5-1 nav-mesh)))
+         (when a0-46
+           (change-to a0-46 this)
+           (if (not (-> this nav))
+               (go-inactive this)
+               )
+           (let ((v1-77 (-> this nav state)))
+             (set! (-> v1-77 current-poly) (the-as nav-poly #f))
+             )
+           0
+           (let ((a1-20 (-> s5-1 nav-branch)))
+             (when a1-20
+               (vehicle-controller-method-13 (-> this controller) a1-20 (-> this root trans))
+               (let ((a0-50 (-> this nav state))
+                     (v1-84 (-> this dest-point))
+                     )
+                 (logclear! (-> a0-50 flags) (nav-state-flag directional-mode))
+                 (logior! (-> a0-50 flags) (nav-state-flag target-poly-dirty))
+                 (set! (-> a0-50 target-pos quad) (-> v1-84 quad))
+                 )
+               0
+               )
+             )
+           (citizen-method-195 this)
+           (citizen-method-194 this)
+           (try-locate-ground this (meters 10) (meters 10) #t (-> this gnd-collide-with))
+           (set! (-> this gnd-height) (-> this root gspot-pos y))
+           (go-from-behavior this s5-1)
+           )
+         )
+       )
+     )
+    (('nav-mesh-kill)
+     (remove-process-drawable (-> this nav state mesh) this)
+     (set! (-> this nav) #f)
+     (go-inactive this)
+     #t
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 213 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-213 ((this citizen))
+  (set! (-> this root transv x) 0.0)
+  (set! (-> this root transv z) 0.0)
+  (when (-> this enemy-info move-to-ground)
+    (if (focus-test? this under-water)
+        (accelerate-fall! this (-> this root transv))
+        (+! (-> this root transv y) (* (-> this enemy-info movement-gravity) (seconds-per-frame)))
+        )
+    )
+  (let ((a2-0 (new 'stack-no-clear 'move-above-ground-params)))
+    (let ((v1-15 (-> this enemy-info)))
+      (set! (-> a2-0 gnd-collide-with) (-> this gnd-collide-with))
+      (set! (-> a2-0 popup) 8192.0)
+      (set! (-> a2-0 dont-move-if-overlaps?) #t)
+      (set! (-> a2-0 hover-if-no-ground?) (-> v1-15 hover-if-no-ground))
+      (set! (-> a2-0 overlaps-params options) (overlaps-others-options oo0 oo2))
+      (set! (-> a2-0 overlaps-params collide-with-filter) (-> v1-15 overlaps-others-collide-with-filter))
+      )
+    (set! (-> a2-0 overlaps-params tlist) *touching-list*)
+    (-> a2-0 overlaps-params)
+    (move-above-ground! this (-> this root transv) a2-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 59 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod enemy-common-post ((this citizen))
+  (with-pp
+    (when (and (not (logtest? (-> this flags) (citizen-flag in-mission)))
+               *cty-faction-manager*
+               (and (or (not (-> this draw))
+                        (not (logtest? (-> this draw status) (draw-control-status on-screen)))
+                        (let ((f0-0 450560.0))
+                          (< (* f0-0 f0-0) (vector-vector-xz-distance-squared (-> this root trans) (math-camera-pos)))
+                          )
+                        )
+                    (nonzero? (-> this controller branch))
+                    (or (not (cty-faction-manager-method-23 *cty-faction-manager* (the-as uint (-> this controller branch clock-mask)))
+                             )
+                        (not (logtest? (cty-faction-manager-method-9
+                                         *cty-faction-manager*
+                                         (the-as int (-> this controller branch clock-type))
+                                         (-> pp level name)
+                                         )
+                                       1
+                                       )
+                             )
+                        )
+                    )
+               )
+      (format
+        0
+        "Going inactive (~s).  Terr ~d, level ~s~%"
+        (-> this name)
+        (-> this controller branch clock-type)
+        (-> pp level name)
+        )
+      (go-inactive this)
+      )
+    (+! (-> this probe-counter) 1)
+    (when (< (-> this next-time-look-at) (current-time))
+      (when (and (nonzero? (-> this neck)) (not (logtest? (-> this flags) (citizen-flag neck-no-auto-look-at))))
+        (let ((a0-11 (the-as process-focusable (handle->process (-> this focus handle))))
+              (s5-3 (new 'stack-no-clear 'vector))
+              )
+          (cond
+            (a0-11
+              (set! (-> s5-3 quad) (-> (get-trans a0-11 2) quad))
+              )
+            (*target*
+              (set! (-> s5-3 quad) (-> (get-trans *target* 2) quad))
+              )
+            (else
+              (set! (-> s5-3 quad) (-> (camera-pos) quad))
+              )
+            )
+          (if (and (-> this next-state) (= (-> this next-state name) 'flee))
+              (set! (-> s5-3 quad) (-> this danger-pos quad))
+              )
+          (when (< (vector-vector-distance s5-3 (-> this root trans)) 122880.0)
+            (set-look-at-mode! this 1)
+            (target-set! (-> this neck) s5-3)
+            )
+          )
+        (when (< (-> this stop-time-look-at) (current-time))
+          (shut-down (-> this neck))
+          (set! (-> this next-time-look-at) (+ (current-time) (the int (* 300.0 (rnd-float-range this 0.0 20.0)))))
+          (set! (-> this stop-time-look-at)
+                (+ (-> this next-time-look-at) (the int (* 300.0 (rnd-float-range this 5.0 10.0))))
+                )
+          )
+        )
+      )
+    (let ((a0-26 (-> this enemy-flags)))
+      (when (and (logtest? a0-26 (enemy-flag auto-reset-penetrate))
+                 (time-elapsed? (-> this auto-reset-penetrate-time) (seconds 0.1))
+                 )
+        (set! (-> this enemy-flags) (logclear a0-26 (enemy-flag auto-reset-penetrate)))
+        (set! (-> this root penetrated-by) (get-penetrated-by this))
+        (let ((v1-84 0))
+          (if (logtest? (penetrate knocked) (-> this root penetrate-using))
+              (set! v1-84 (logior (shl 2 32) v1-84))
+              )
+          (set! (-> this root penetrate-using) (the-as penetrate v1-84))
+          )
+        )
+      )
+    (if (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-control-status on-screen)))
+        (set-time! (-> this last-draw-time))
+        )
+    (let ((s5-6 (-> this draw shadow-ctrl)))
+      (when (!= *nav-enemy-dummy-shadow-control* s5-6)
+        (let ((f0-10 (vector-vector-distance (camera-pos) (-> this root trans))))
+          (cond
+            ((< 163840.0 f0-10)
+             (logior! (-> s5-6 settings flags) (shadow-flags disable-draw))
+             0
+             )
+            ((not (handle->process (-> this ragdoll-proc)))
+             (let ((v1-104 s5-6))
+               (logclear! (-> v1-104 settings flags) (shadow-flags disable-draw))
+               )
+             0
+             (let* ((f0-11 (lerp-scale 0.0 1.0 f0-10 163840.0 40960.0))
+                    (f0-14 (fmax 0.01 (+ (* -2.0 f0-11 f0-11 f0-11) (* 3.0 f0-11 f0-11))))
+                    )
+               (set! (-> s5-6 settings shadow-dir w) (* 614400.0 f0-14))
+               )
+             )
+            )
+          )
+        )
+      )
+    (when (logtest? (enemy-flag check-water checking-water) (-> this enemy-flags))
+      (check-water this)
+      (when (and (focus-test? this touch-water) (< (-> this root trans y) (+ -11468.8 (-> this water-surface-height))))
+        (set! (-> this root trans y) (+ -11468.8 (-> this water-surface-height)))
+        (if (not (and (-> this next-state) (= (-> this next-state name) 'in-ditch)))
+            (go (method-of-object this in-ditch))
+            )
+        )
+      )
+    (ja-post)
+    0
+    (none)
+    )
+  )
+
+;; definition for method 139 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod move-above-ground! ((this citizen) (arg0 vector) (arg1 move-above-ground-params))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (-> this root)))
+      (set! (-> arg1 on-ground?) #f)
+      (set! (-> arg1 do-move?) #t)
+      (set! (-> arg1 old-gspot-pos quad) (-> gp-0 gspot-pos quad))
+      (set! (-> arg1 old-gspot-normal quad) (-> gp-0 gspot-normal quad))
+      (set! (-> gp-0 trans-old-old-old quad) (-> gp-0 trans-old-old quad))
+      (set! (-> gp-0 trans-old-old quad) (-> gp-0 trans-old quad))
+      (set! (-> gp-0 trans-old quad) (-> gp-0 trans quad))
+      (set! (-> gp-0 prev-status) (-> gp-0 status))
+      (vector-v+! (-> gp-0 trans) (-> gp-0 trans) arg0)
+      (set! (-> arg1 new-pos quad) (-> gp-0 trans quad))
+      (when (not (logtest? (logxor (-> this traffic-id) (the-as int (-> this probe-counter))) 7))
+        (let ((s2-0 (new 'stack-no-clear 'collide-query)))
+          (logclear! (-> gp-0 status) (collide-status on-ground))
+          (let* ((a0-10 this)
+                 (t9-1 (method-of-object a0-10 enemy-above-ground?))
+                 (a1-2 s2-0)
+                 (a2-2 (new 'stack-no-clear 'vector))
+                 )
+            (let ((v1-15 (-> gp-0 trans)))
+              (let ((a3-0 (-> gp-0 transv)))
+                (let ((t0-1 0.15))
+                  (.mov vf7 t0-1)
+                  )
+                (.lvf vf5 (&-> a3-0 quad))
+                )
+              (.lvf vf4 (&-> v1-15 quad))
+              )
+            (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+            (.mul.x.vf acc vf5 vf7 :mask #b111)
+            (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+            (.svf (&-> a2-2 quad) vf6)
+            (when (t9-1 a0-10 a1-2 a2-2 (-> arg1 gnd-collide-with) 16384.0 81920.0 1024.0)
+              (set! (-> gp-0 gspot-pos quad) (-> gp-0 trans quad))
+              (set! (-> gp-0 gspot-pos y) (-> s2-0 best-other-tri intersect y))
+              (set! (-> gp-0 gspot-normal quad) (-> s2-0 best-other-tri normal quad))
+              (logior! (-> gp-0 status) (collide-status on-ground))
+              (set! (-> gp-0 ground-pat) (-> s2-0 best-other-tri pat))
+              )
+            )
+          )
+        (set! (-> this gnd-height) (-> gp-0 gspot-pos y))
+        (set! (-> gp-0 gspot-pos y) (-> arg1 old-gspot-pos y))
+        )
+      (let ((f0-5 (- (-> this gnd-height) (-> gp-0 gspot-pos y))))
+        (cond
+          ((< 0.0 f0-5)
+           (+! (-> gp-0 gspot-pos y) (* 10.0 (seconds-per-frame) f0-5))
+           )
+          (else
+            (+! (-> gp-0 gspot-pos y) (* 10.0 (seconds-per-frame) f0-5))
+            (if (< (-> gp-0 gspot-pos y) (-> this gnd-height))
+                (set! (-> gp-0 gspot-pos y) (-> this gnd-height))
+                )
+            )
+          )
+        )
+      (set! (-> arg1 on-ground?) #t)
+      (set! (-> arg1 pat) (-> gp-0 ground-pat))
+      (when (>= (-> gp-0 gspot-pos y) (-> arg1 new-pos y))
+        (set! (-> arg1 new-pos y) (-> gp-0 gspot-pos y))
+        (set! (-> gp-0 ground-impact-vel) (- (vector-dot arg0 (-> gp-0 dynam gravity-normal))))
+        (set! (-> arg0 y) 0.0)
+        )
+      (set! (-> gp-0 trans quad) (-> arg1 new-pos quad))
+      (when (-> arg1 do-move?)
+        (cond
+          ((-> arg1 on-ground?)
+           (let ((a1-3 (-> gp-0 gspot-pos))
+                 (a0-18 (-> gp-0 gspot-normal))
+                 (v1-42 (-> arg1 pat))
+                 )
+             (set! (-> gp-0 ground-touch-point quad) (-> a1-3 quad))
+             (set! (-> gp-0 poly-normal quad) (-> a0-18 quad))
+             (set! (-> gp-0 surface-normal quad) (-> a0-18 quad))
+             (set! (-> gp-0 local-normal quad) (-> a0-18 quad))
+             (set! (-> gp-0 ground-poly-normal quad) (-> a0-18 quad))
+             (set! (-> gp-0 poly-pat) v1-42)
+             (set! (-> gp-0 cur-pat) v1-42)
+             (set! (-> gp-0 ground-pat) v1-42)
+             )
+           (logior! (-> gp-0 status) (collide-status on-surface on-ground touch-surface))
+           )
+          (else
+            (logclear! (-> gp-0 status) (collide-status
+                                          on-surface
+                                          on-ground
+                                          touch-surface
+                                          touch-wall
+                                          touch-ceiling
+                                          touch-actor
+                                          on-special-surface
+                                          touch-edge
+                                          blocked
+                                          on-water
+                                          impact-surface
+                                          touch-background
+                                          stuck
+                                          glance
+                                          )
+                       )
+            (when (not (logtest? (-> gp-0 root-prim prim-core action) (collide-action no-normal-reset)))
+              (let ((v1-52 (-> gp-0 dynam gravity-normal)))
+                (set! (-> gp-0 local-normal quad) (-> v1-52 quad))
+                (set! (-> gp-0 surface-normal quad) (-> v1-52 quad))
+                (set! (-> gp-0 poly-normal quad) (-> v1-52 quad))
+                )
+              (set! (-> gp-0 coverage) 0.0)
+              (set! (-> gp-0 touch-angle) 0.0)
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 160 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod normalize-heading! ((this citizen) (arg0 nav-control))
+  (let ((t9-0 (method-of-object this citizen-method-214))
+        (v1-1 arg0)
+        (a3-0 (-> arg0 state))
+        (a2-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> a2-0 quad) (-> a3-0 heading quad))
+    (t9-0 this v1-1 a2-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 214 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-214 ((this citizen) (arg0 nav-control) (arg1 vector))
+  (set! (-> arg1 y) 0.0)
+  (vector-normalize! arg1 1.0)
+  (let ((gp-0 (new 'stack-no-clear 'quaternion))
+        (s5-1 (-> this root quat))
+        )
+    (quaternion-set! gp-0 0.0 (-> arg1 x) 0.0 (+ 1.0 (-> arg1 z)))
+    (quaternion-normalize! gp-0)
+    (quaternion-smooth-seek!
+      s5-1
+      s5-1
+      gp-0
+      (* (fmax 0.5 (* 0.00024414062 (-> arg0 state speed))) (seconds-per-frame))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 187 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod nav-enemy-method-187 ((this citizen))
+  (nav-enemy-method-188 this)
+  (let ((a0-2 this))
+    (when (logtest? (enemy-flag ef37) (-> a0-2 enemy-flags))
+      (cond
+        ((logtest? (enemy-flag ef39) (-> this enemy-flags))
+         (set! (-> this enemy-flags) (the-as enemy-flag (logclear (-> this enemy-flags) (enemy-flag ef39))))
+         (set! (-> this root gspot-pos quad) (-> this root trans quad))
+         (set! (-> this gnd-height) (-> this root gspot-pos y))
+         )
+        (else
+          (normalize-heading! this (-> this nav))
+          (nav-enemy-method-161 this (-> this nav))
+          )
+        )
+      )
+    )
+  (enemy-common-post this)
+  (update-transforms (-> this root))
+  0
+  (none)
+  )
+
+;; definition for method 122 of type citizen
+;; WARN: Return type mismatch int vs object.
+(defmethod go-idle2 ((this citizen))
+  (go (method-of-object this active))
+  0
+  )
+
+;; definition for method 119 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-defaults! ((this citizen) (arg0 nav-enemy-info))
+  (set-squad this)
+  (if (not (-> this squad))
+      (format 0 "citizen::initialize-enemy: error: no squad-control~%")
+      )
+  (set! (-> arg0 nav-mesh) *default-nav-mesh*)
+  (let ((t9-2 (method-of-type nav-enemy init-enemy-defaults!)))
+    (t9-2 this arg0)
+    )
+  (set! (-> this speed-scale) (rnd-float-range this 0.9 1.1))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+  (vehicle-controller-method-9 (-> this controller))
+  (citizen-method-194 this)
+  (if (zero? (-> this draw light-index))
+      (set! (-> this draw light-index) (the-as uint 10))
+      )
+  (set! (-> this travel-anim-scale-speed) 1.0)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type citizen
+;; WARN: Return type mismatch entity-perm-status vs object.
+(defmethod init-from-entity! ((this citizen) (arg0 entity-actor))
+  (process-entity-status! this (entity-perm-status dead) #t)
+  )
+
+;; definition for function citizen-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defbehavior citizen-init-by-other citizen ((arg0 traffic-object-spawn-params))
+  (stack-size-set! (-> self main-thread) 512)
+  (logclear! (-> self mask) (process-mask enemy))
+  (init-enemy-collision! self)
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 rotation))
+  (if (not (logtest? (-> arg0 flags) (traffic-spawn-flags tsf0)))
+      (traffic-entity-hack (-> arg0 object-type))
+      )
+  (set! (-> self vehicle) (-> arg0 handle))
+  (set! (-> self interp) 0.0)
+  (logclear! (-> self flags) (citizen-flag run-mode))
+  (logclear! (-> self flags) (citizen-flag shuffle-mode))
+  (set! (-> self shield-handle) (the-as handle #f))
+  (if (logtest? (-> arg0 flags) (traffic-spawn-flags tsf3))
+      (logior! (-> self flags) (citizen-flag dark-guard))
+      )
+  (set! (-> self attacker-info) #f)
+  (set! (-> self mission-squad) #f)
+  (init-enemy! self)
+  (set! (-> self traffic-id) (the-as int (-> arg0 id)))
+  (go-inactive self)
+  )
+
+;; definition for method 209 of type citizen
+(defmethod get-run-anim ((this citizen))
+  (-> this anim-run)
+  )
+
+;; definition for function citizen-travel-anim
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior citizen-travel-anim citizen ((arg0 int) (arg1 int))
+  (local-vars (f28-0 float))
+  (logclear! (-> self flags) (citizen-flag shuffle-mode))
+  (logclear! (-> self flags) (citizen-flag run-mode))
+  (let ((v1-6 (ja-group)))
+    (when (not (and v1-6 (= v1-6 (-> self draw art-group data (-> self anim-walk)))))
+      (ja-channel-push! 2 (the-as time-frame arg1))
+      (ja-no-eval :group! (-> self draw art-group data (-> self anim-walk))
+                  :num! (loop!)
+                  :dist (-> self dist-walk-anim)
+                  :frame-num (ja-aframe 4.0 0)
+                  )
+      (let ((gp-1 (-> self skel root-channel 1)))
+        (let ((f0-3 (-> self interp)))
+          (set! (-> gp-1 frame-interp 1) f0-3)
+          (set! (-> gp-1 frame-interp 0) f0-3)
+          )
+        (set! (-> gp-1 dist) (-> self dist-run-anim))
+        (set! (-> gp-1 frame-group) (the-as art-joint-anim (-> self draw art-group data (get-run-anim self))))
+        (set! (-> gp-1 param 0) 0.0)
+        (joint-control-channel-group!
+          gp-1
+          (the-as art-joint-anim (-> self draw art-group data (get-run-anim self)))
+          num-func-chan
+          )
+        )
+      )
+    )
+  (until #f
+    (let ((f30-0 (-> self nav state speed)))
+      (lerp-scale 0.0 1.0 f30-0 (-> self speed-walk) (-> self speed-run))
+      (set! f28-0
+            (cond
+              ((< f30-0 4096.0)
+               (cond
+                 ((logtest? (-> self flags) (citizen-flag shuffle-mode))
+                  (set! f28-0 1.0)
+                  (ja :chan 1 :group! (-> self draw art-group data (-> self anim-shuffle)) :dist 4096.0)
+                  )
+                 (else
+                   (set! f28-0 0.0)
+                   (when (= (-> self interp) 0.0)
+                     (logclear! (-> self flags) (citizen-flag run-mode))
+                     (logior! (-> self flags) (citizen-flag shuffle-mode))
+                     )
+                   )
+                 )
+               f28-0
+               )
+              ((< 24576.0 f30-0)
+               (cond
+                 ((logtest? (-> self flags) (citizen-flag run-mode))
+                  (set! f28-0 1.0)
+                  (ja :chan 1 :group! (-> self draw art-group data (get-run-anim self)) :dist (-> self dist-run-anim))
+                  )
+                 (else
+                   (set! f28-0 0.0)
+                   (when (= (-> self interp) 0.0)
+                     (logior! (-> self flags) (citizen-flag run-mode))
+                     (logclear! (-> self flags) (citizen-flag shuffle-mode))
+                     )
+                   )
+                 )
+               f28-0
+               )
+              ((or (logtest? (-> self flags) (citizen-flag run-mode)) (logtest? (-> self flags) (citizen-flag shuffle-mode)))
+               (set! f28-0 0.0)
+               (when (= (-> self interp) 0.0)
+                 (logclear! (-> self flags) (citizen-flag run-mode))
+                 (logclear! (-> self flags) (citizen-flag shuffle-mode))
+                 )
+               f28-0
+               )
+              (else
+                0.0
+                )
+              )
+            )
+      (seek! (-> self interp) f28-0 (* 4.0 (seconds-per-frame)))
+      (let ((v1-76 (-> self skel root-channel 1))
+            (f0-21 (-> self interp))
+            )
+        (set! (-> v1-76 frame-interp 1) f0-21)
+        (set! (-> v1-76 frame-interp 0) f0-21)
+        )
+      (let* ((f0-22 (current-cycle-distance (-> self skel)))
+             (f0-25 (/ (/ (* 16.0 f30-0) (* 15.0 f0-22)) (-> self root scale x)))
+             )
+        (if (logtest? (-> self flags) (citizen-flag shuffle-mode))
+            (set! f0-25 1.0)
+            )
+        (let ((f0-26 (* f0-25 (-> self travel-anim-scale-speed))))
+          (ja :num! (loop! f0-26))
+          )
+        )
+      )
+    (ja :chan 1 :num! (chan 0))
+    (suspend)
+    )
+  #f
+  )
+
+;; definition for method 201 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-201 ((this citizen) (arg0 vector))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s2-0 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
+        )
+    (let ((s1-0 (-> this nav state current-poly)))
+      (let ((a1-2 (-> this nav state)))
+        (set! (-> s5-0 quad) (-> a1-2 heading quad))
+        )
+      (set! (-> s5-0 y) 0.0)
+      (vector-xz-normalize! s5-0 20480.0)
+      (set! (-> s4-0 quad) (-> s5-0 quad))
+      (clamp-vector-to-mesh-no-gaps (-> this nav) (-> this root trans) s1-0 s4-0 s2-0)
+      )
+    (cond
+      ((-> s2-0 found-boundary)
+       (let ((s1-2 (vector-! (new 'stack-no-clear 'vector) (-> this dest-point) (-> this controller path-prev-point)))
+             (s0-1 (vector-! (new 'stack-no-clear 'vector) (-> s2-0 intersection) (-> this controller path-prev-point)))
+             )
+         (vector-! (new 'stack-no-clear 'vector) s5-0 s4-0)
+         (set! (-> s1-2 y) 0.0)
+         (vector-xz-normalize! s1-2 1.0)
+         (vector-rotate90-around-y! s1-2 s1-2)
+         (if (< 0.0 (vector-dot s1-2 s0-1))
+             (vector-negate! arg0 s1-2)
+             (set! (-> arg0 quad) (-> s1-2 quad))
+             )
+         )
+       (vector-xz-normalize! arg0 8192.0)
+       )
+      (else
+        (set! (-> arg0 quad) (the-as uint128 0))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 202 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-202 ((this citizen) (arg0 vector) (arg1 vector))
+  (let ((s2-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> s5-0 quad) (-> this root trans quad))
+    (let ((a1-1 (-> this nav state)))
+      (set! (-> s2-0 quad) (-> a1-1 heading quad))
+      )
+    (set! (-> s2-0 y) 0.0)
+    (vector-xz-normalize! s2-0 20480.0)
+    (set! (-> s5-0 y) (-> arg0 y))
+    (cond
+      ((< (vector-vector-xz-distance arg0 s5-0) (-> arg0 w))
+       (vector-! (new 'stack-no-clear 'vector) arg0 s5-0)
+       (new 'stack-no-clear 'vector)
+       (new 'stack-no-clear 'vector)
+       0.0
+       (let ((s2-2 (vector-! (new 'stack-no-clear 'vector) (-> this dest-point) (-> this controller path-prev-point)))
+             (s1-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this controller path-prev-point)))
+             )
+         (set! (-> s2-2 y) 0.0)
+         (vector-xz-normalize! s2-2 1.0)
+         (vector-rotate90-around-y! s2-2 s2-2)
+         (if (< 0.0 (vector-dot s2-2 s1-1))
+             (vector-negate! arg1 s2-2)
+             (set! (-> arg1 quad) (-> s2-2 quad))
+             )
+         )
+       (vector-xz-normalize! arg1 (* 5.0 (- (-> arg0 w) (vector-vector-xz-distance arg0 s5-0))))
+       )
+      ((line-sphere-intersection? arg0 s5-0 (vector+! (new 'stack-no-clear 'vector) s5-0 s2-0))
+       (let ((s3-3 (vector-! (new 'stack-no-clear 'vector) arg0 s5-0))
+             (s5-1 (new 'stack-no-clear 'vector))
+             (s4-1 (new 'stack-no-clear 'vector))
+             )
+         0.0
+         (vector-rotate90-around-y! s5-1 s2-0)
+         (vector-xz-normalize! s5-1 1.0)
+         (let ((f30-1 (vector-dot s5-1 s3-3)))
+           (vector-*! s4-1 s3-3 s5-1 f30-1)
+           (vector-xz-normalize! s5-1 20480.0)
+           (if (< 0.0 f30-1)
+               (vector-negate! arg1 s5-1)
+               (set! (-> arg1 quad) (-> s5-1 quad))
+               )
+           )
+         )
+       )
+      (else
+        (set! (-> arg1 quad) (the-as uint128 0))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 203 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-203 ((this citizen) (arg0 vector))
+  (local-vars (sv-288 nav-poly) (sv-304 clamp-travel-vector-to-mesh-return-info) (sv-320 vector))
+  (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (the-as vector (-> this cp-sphere))))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s2-0 (new 'stack-no-clear 'vector))
+        )
+    0.0
+    (set! (-> arg0 quad) (the-as uint128 0))
+    (when (-> this cp-valid?)
+      (set! (-> this cp-valid?) #f)
+      (set! (-> s2-0 quad) (-> this cp-vec quad))
+      (set! (-> s2-0 y) 0.0)
+      (vector-xz-normalize! s2-0 1.0)
+      (vector-rotate90-around-y! s2-0 s2-0)
+      (set! (-> s3-1 y) 0.0)
+      (vector-*! s4-0 s3-1 s2-0 (vector-dot s3-1 s2-0))
+      (let ((f30-0 (- 1.0 (/ (vector-length s4-0) (vector-length (-> this cp-vec))))))
+        (vector+! s4-0 s4-0 (the-as vector (-> this cp-sphere)))
+        (let ((s0-0 (new 'stack-no-clear 'vector)))
+          (set! sv-320 (new 'stack-no-clear 'vector))
+          (let ((s1-0 (new 'stack-no-clear 'vector)))
+            (set! sv-304 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
+            (set! sv-288 (-> this nav state current-poly))
+            (let ((f28-0 (+ (-> this cp-sphere r) (-> this nav-radius-backup))))
+              (when sv-288
+                (vector-normalize-copy! s0-0 s2-0 f28-0)
+                (vector-normalize-copy! sv-320 s2-0 (- f28-0))
+                (clamp-vector-to-mesh-no-gaps (-> this nav) s4-0 sv-288 s0-0 sv-304)
+                (let ((a0-12 (-> this nav))
+                      (t9-7 (method-of-type nav-control clamp-vector-to-mesh-no-gaps))
+                      (a1-10 s4-0)
+                      (a3-3 sv-320)
+                      )
+                  (t9-7 a0-12 a1-10 sv-288 a3-3 sv-304)
+                  )
+                (let* ((v1-22 s0-0)
+                       (f0-11 (sqrtf (+ (* (-> v1-22 x) (-> v1-22 x)) (* (-> v1-22 z) (-> v1-22 z)))))
+                       (v1-24 sv-320)
+                       (f1-10 (sqrtf (+ (* (-> v1-24 x) (-> v1-24 x)) (* (-> v1-24 z) (-> v1-24 z)))))
+                       )
+                  (cond
+                    ((< 0.0 (vector-dot s2-0 s3-1))
+                     (if (< 4096.0 f0-11)
+                         (set! (-> s1-0 quad) (-> s0-0 quad))
+                         (set! (-> s1-0 quad) (-> sv-320 quad))
+                         )
+                     )
+                    ((< 4096.0 f1-10)
+                     (set! (-> s1-0 quad) (-> sv-320 quad))
+                     )
+                    (else
+                      (set! (-> s1-0 quad) (-> s0-0 quad))
+                      )
+                    )
+                  )
+                (set! (-> arg0 quad) (-> s1-0 quad))
+                (let ((a1-11 (new 'stack-no-clear 'vector)))
+                  (set! (-> a1-11 quad) (-> this root trans quad))
+                  (set! (-> a1-11 y) 0.0)
+                  (let ((f0-15 (- f28-0 (vector-vector-xz-distance s4-0 a1-11))))
+                    (if (< f0-15 0.0)
+                        (set! f0-15 0.0)
+                        )
+                    (vector-normalize! arg0 (* (-> this cp-factor) f0-15 f30-0))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type iter-seg
+(deftype iter-seg (structure)
+  ((self         citizen)
+   (score        float)
+   (seg          nav-segment)
+   (cp-plane     plane   :inline)
+   (desired-dir  vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type iter-seg
+(defmethod inspect ((this iter-seg))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'iter-seg)
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tscore: ~f~%" (-> this score))
+  (format #t "~1Tseg: #<nav-segment @ #x~X>~%" (-> this seg))
+  (format #t "~1Tcp-plane: #<plane @ #x~X>~%" (-> this cp-plane))
+  (format #t "~1Tdesired-dir: #<vector @ #x~X>~%" (-> this desired-dir))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function iter-seg-clear-path
+;; INFO: Used lq/sq
+(defun iter-seg-clear-path ((arg0 iter-seg) (arg1 nav-segment))
+  (with-pp
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((s2-0 (-> arg0 self))
+            (a0-1 (-> arg1 branch src-node))
+            (s4-0 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> s4-0 quad) (-> a0-1 position quad))
+        (set! (-> s4-0 w) 1.0)
+        (let ((a0-4 (-> arg1 branch dest-node))
+              (s3-0 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s3-0 quad) (-> a0-4 position quad))
+          (set! (-> s3-0 w) 1.0)
+          (set! (-> s4-0 y) 0.0)
+          (set! (-> s3-0 y) 0.0)
+          (set! (-> s4-0 w) 1.0)
+          (set! (-> s3-0 w) 1.0)
+          (when *citizen-debug*
+            )
+          (when #t
+            (cond
+              ((< 0.0 (vector4-dot (the-as vector (-> arg0 cp-plane)) s3-0))
+               (let ((s0-1 (vector-! (new 'stack-no-clear 'vector) s3-0 s4-0))
+                     (s1-1 (vector-! (new 'stack-no-clear 'vector) (-> s2-0 root trans) s4-0))
+                     )
+                 (set! (-> s1-1 y) 0.0)
+                 (vector-rotate90-around-y! s0-1 s0-1)
+                 (vector-normalize! s0-1 1.0)
+                 (let ((a1-3 s1-1))
+                   (let ((v1-17 s1-1))
+                     (let ((a0-12 s0-1))
+                       (let ((a2-2 (- (vector-dot s0-1 s1-1))))
+                         (.mov vf7 a2-2)
+                         )
+                       (.lvf vf5 (&-> a0-12 quad))
+                       )
+                     (.lvf vf4 (&-> v1-17 quad))
+                     )
+                   (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                   (.mul.x.vf acc vf5 vf7 :mask #b111)
+                   (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                   (.svf (&-> a1-3 quad) vf6)
+                   )
+                 (vector+! s1-1 s1-1 s4-0)
+                 (cond
+                   ((< 0.0 (vector-dot (the-as vector (-> arg0 cp-plane)) (vector-! (new 'stack-no-clear 'vector) s3-0 s1-1)))
+                    (vector-vector-xz-distance s3-0 (-> s2-0 cp-sphere))
+                    (let ((s1-3 (vector-! (new 'stack-no-clear 'vector) s3-0 (the-as vector (-> s2-0 cp-sphere))))
+                          (s0-2 (new 'stack-no-clear 'vector))
+                          )
+                      (set! (-> s0-2 quad) (-> s2-0 cp-vec quad))
+                      (set! (-> s0-2 y) 0.0)
+                      (vector-normalize! s0-2 1.0)
+                      (set! (-> s1-3 y) 0.0)
+                      (let ((f30-0 (vector-dot s0-2 s1-3)))
+                        (if (and *cty-faction-manager* (not (logtest? (cty-faction-manager-method-9
+                                                                        *cty-faction-manager*
+                                                                        (the-as int (-> arg1 branch clock-type))
+                                                                        (-> pp level name)
+                                                                        )
+                                                                      1
+                                                                      )
+                                                            )
+                                 )
+                            (set! f30-0 (+ -409600.0 f30-0))
+                            )
+                        (when (< (-> arg0 score) f30-0)
+                          (set! (-> arg0 score) f30-0)
+                          (set! (-> arg0 seg) arg1)
+                          )
+                        )
+                      )
+                    (if *citizen-debug*
+                        (add-debug-line #t (bucket-id debug-no-zbuf1) s4-0 s3-0 *color-black* #f *color-white*)
+                        )
+                    )
+                   (else
+                     (if *citizen-debug*
+                         (add-debug-line #t (bucket-id debug-no-zbuf1) s1-1 s3-0 *color-red* #f (the-as rgba -1))
+                         )
+                     )
+                   )
+                 )
+               )
+              (else
+                #f
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 204 of type citizen
+;; INFO: Used lq/sq
+(defmethod gen-clear-path ((this citizen))
+  (let ((s4-0 (new 'stack-no-clear 'vector))
+        (gp-0 (new 'stack-no-clear 'iter-seg))
+        )
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s3-0 quad) (-> this cp-vec quad))
+      (set! (-> s4-0 quad) (-> this root trans quad))
+      (set! (-> s4-0 w) 81920.0)
+      (set! (-> gp-0 seg) #f)
+      (set! (-> gp-0 score) (the-as float #xff800000))
+      (set! (-> s3-0 y) 0.0)
+      (vector-rotate90-around-y! s3-0 s3-0)
+      (vector-normalize! s3-0 1.0)
+      (set! (-> gp-0 cp-plane quad) (-> s3-0 quad))
+      (set! (-> gp-0 cp-plane w) (- (vector-dot s3-0 (the-as vector (-> this cp-sphere)))))
+      )
+    (when (< (vector4-dot (the-as vector (-> gp-0 cp-plane)) (-> this root trans)) 0.0)
+      (set! (-> gp-0 cp-plane x) (- (-> gp-0 cp-plane x)))
+      (set! (-> gp-0 cp-plane y) (- (-> gp-0 cp-plane y)))
+      (set! (-> gp-0 cp-plane z) (- (-> gp-0 cp-plane z)))
+      (set! (-> gp-0 cp-plane w) (- (-> gp-0 cp-plane w)))
+      )
+    (set! (-> gp-0 self) this)
+    (nav-segment-callback
+      this
+      s4-0
+      (the-as traffic-find-segment-struct gp-0)
+      (the-as (function traffic-find-segment-struct nav-segment none) iter-seg-clear-path)
+      )
+    (when *citizen-debug*
+      (if (-> gp-0 seg)
+          (add-debug-line
+            #t
+            (bucket-id debug-no-zbuf1)
+            (the-as vector (-> gp-0 seg vertex))
+            (-> gp-0 seg vertex 1)
+            *color-blue*
+            #f
+            *color-white*
+            )
+          )
+      )
+    (-> gp-0 seg)
+    )
+  )
+
+;; definition for method 205 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-205 ((this citizen))
+  (when (-> this cp-valid?)
+    (let ((s4-0 (new 'stack-no-clear 'vector)))
+      (set! (-> s4-0 quad) (-> this cp-force quad))
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (let ((a1-0 (-> this nav state)))
+          (set! (-> s5-0 quad) (-> a1-0 heading quad))
+          )
+        (set! (-> s5-0 y) 0.0)
+        (vector-xz-normalize! s5-0 1.0)
+        (vector-xz-normalize! s4-0 1.0)
+        (when (< (fabs (vector-dot s4-0 s5-0)) (cos 14563.556))
+          (vector-negate! (new 'stack-no-clear 'vector) s5-0)
+          (let ((a1-6 (gen-clear-path this)))
+            (if a1-6
+                (citizen-method-199 this a1-6)
+                )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function iter-seg-new-dir
+;; INFO: Used lq/sq
+(defun iter-seg-new-dir ((arg0 iter-seg) (arg1 nav-segment))
+  (with-pp
+    (-> arg0 self)
+    (let ((a1-1 (-> arg1 branch src-node))
+          (v1-2 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> v1-2 quad) (-> a1-1 position quad))
+      (set! (-> v1-2 w) 1.0)
+      (let ((a2-0 (-> arg1 branch dest-node))
+            (a0-4 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a0-4 quad) (-> a2-0 position quad))
+        (set! (-> a0-4 w) 1.0)
+        (set! (-> v1-2 y) 0.0)
+        (set! (-> a0-4 y) 0.0)
+        (set! (-> v1-2 w) 1.0)
+        (set! (-> a0-4 w) 1.0)
+        (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) a0-4 v1-2)))
+          0.0
+          (vector-normalize! s4-1 1.0)
+          (let ((f30-0 (vector-dot s4-1 (-> arg0 desired-dir))))
+            (when (and (< (-> arg0 score) f30-0)
+                       (or (not *cty-faction-manager*) (logtest? (cty-faction-manager-method-9
+                                                                   *cty-faction-manager*
+                                                                   (the-as int (-> arg1 branch clock-type))
+                                                                   (-> pp level name)
+                                                                   )
+                                                                 1
+                                                                 )
+                           )
+                       )
+              (set! (-> arg0 score) f30-0)
+              (set! (-> arg0 seg) arg1)
+              arg1
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 207 of type citizen
+;; INFO: Used lq/sq
+(defmethod citizen-method-207 ((this citizen) (arg0 vector) (arg1 float))
+  (let ((s4-0 (new 'stack-no-clear 'vector))
+        (gp-0 (new 'stack-no-clear 'iter-seg))
+        )
+    (set! (-> (new 'stack-no-clear 'vector) quad) (-> this cp-vec quad))
+    (set! (-> s4-0 quad) (-> this root trans quad))
+    (set! (-> s4-0 w) arg1)
+    (set! (-> gp-0 seg) #f)
+    (set! (-> gp-0 score) (the-as float #xff800000))
+    (set! (-> gp-0 desired-dir quad) (-> arg0 quad))
+    (vector-normalize! (-> gp-0 desired-dir) 1.0)
+    (set! (-> gp-0 self) this)
+    (nav-segment-callback
+      this
+      s4-0
+      (the-as traffic-find-segment-struct gp-0)
+      (the-as (function traffic-find-segment-struct nav-segment none) iter-seg-new-dir)
+      )
+    (when *citizen-debug*
+      (if (-> gp-0 seg)
+          (add-debug-line
+            #t
+            (bucket-id debug-no-zbuf1)
+            (the-as vector (-> gp-0 seg vertex))
+            (-> gp-0 seg vertex 1)
+            *color-blue*
+            #f
+            *color-white*
+            )
+          )
+      )
+    (-> gp-0 seg)
+    )
+  )
+
+;; definition for method 208 of type citizen
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 208 citizen) has a return type of none, but the expression builder found a return statement.
+(defmethod citizen-method-208 ((this citizen) (arg0 vector))
+  (dotimes (s4-0 6)
+    (let ((a1-2 (citizen-method-207 this arg0 (* 81920.0 (the float (+ s4-0 1))))))
+      (when a1-2
+        (citizen-method-199 this a1-2)
+        (return #f)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 206 of type citizen
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-206 ((this citizen))
+  (let ((s4-0 (the-as vehicle (handle->process (-> this vehicle)))))
+    (let ((v1-4 (-> this root root-prim)))
+      (set! (-> v1-4 prim-core collide-as) (-> this root backup-collide-as))
+      (set! (-> v1-4 prim-core collide-with) (-> this root backup-collide-with))
+      )
+    (when s4-0
+      (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (-> s4-0 root trans))))
+        (let ((s3-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> s4-0 root quat)))
+              (v1-10 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> s4-0 root quat)))
+              )
+          (if (< 0.0 (vector-dot s5-1 s3-0))
+              (vector+! s5-1 v1-10 s3-0)
+              (vector-! s5-1 v1-10 s3-0)
+              )
+          )
+        (vector-normalize! s5-1 32768.0)
+        (set! (-> s5-1 y) 71680.0)
+        (vector+! s5-1 s5-1 (-> s4-0 root transv))
+        (send-event
+          this
+          'attack
+          #f
+          (static-attack-info :mask (vehicle-impulse-factor) ((id (new-attack-id))
+                                                              (damage 0.0)
+                                                              (vehicle-damage-factor 1.0)
+                                                              (vehicle-impulse-factor 1.0)
+                                                              (vector s5-1)
+                                                              (knock (knocked-type vehicle))
+                                                              )
+                              )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate in-ditch (citizen)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-2 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (set! (-> self wait-time) (set-reaction-time! self (seconds 1) (seconds 5)))
+    (if (= (-> self water-anim) -1)
+        (go-inactive self)
+        )
+    (when (focus-test? self touch-water)
+      (let ((a1-3 (new 'stack-no-clear 'vector)))
+        (set! (-> a1-3 quad) (-> self root trans quad))
+        (set! (-> a1-3 y) (+ 40.96 (-> self water-surface-height)))
+        (splash-spawn 0.2 a1-3 1)
+        )
+      )
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans #f
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (cond
+      ((focus-test? self touch-water)
+       (until #f
+         (ja-no-eval :group! (-> self draw art-group data (-> self water-anim)) :num! (seek! max 0.5) :frame-num 0.0)
+         (until (ja-done? 0)
+           (let ((gp-0 (new 'stack-no-clear 'vector)))
+             (set! (-> gp-0 quad) (-> self root trans quad))
+             (set! (-> gp-0 y) (+ 40.96 (-> self water-surface-height)))
+             (when (and (logtest? (-> self draw status) (draw-control-status on-screen)) (zero? (-> self draw cur-lod)))
+               (let ((f0-6 (y-angle (-> self root))))
+                 (rings-water-spawn f0-6 gp-0 *null-vector* 3072.0 4096.0)
+                 )
+               )
+             )
+           (suspend)
+           (ja :num! (seek! max 0.5))
+           )
+         )
+       #f
+       )
+      (else
+        (until #f
+          (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
+                      :num! (seek! max 0.1)
+                      :frame-num 0.0
+                      )
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek! max 0.1))
+            )
+          )
+        #f
+        )
+      )
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait (citizen)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-2 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (cond
+      ((not (logtest? (-> self flags) (citizen-flag in-formation)))
+       (if (and (-> self wait-return-state) (time-elapsed? (-> self state-time) (-> self wait-time)))
+           (go (-> self wait-return-state))
+           )
+       )
+      (else
+        (let ((a0-3 (handle->process (-> self vehicle))))
+          (if (and a0-3 (= (process->handle self) (get-leader-handle (the-as formation-object a0-3))))
+              (go (-> self wait-return-state))
+              )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info idle-anim))
+                  :num! (seek! max (-> self speed-scale))
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max (-> self speed-scale)))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (when (not (logtest? (-> self flags) (citizen-flag in-formation)))
+      (let ((a1-1 (vector-! (new 'stack-no-clear 'vector) (-> self dest-point) (-> self root trans))))
+        (seek-toward-heading-vec! (-> self root) a1-1 32768.0 (seconds 0.05))
+        )
+      )
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (citizen)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((v1-2 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-2 enemy-flags)))
+          (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-2 enemy-flags))))
+          )
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-2 enemy-flags))))
+      (set! (-> v1-2 nav callback-info) (-> v1-2 enemy-info callback-info))
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-5 enemy-flags))))
+      )
+    0
+    (when (logtest? (-> self nav state flags) (nav-state-flag directional-mode))
+      (citizen-method-208 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+      (vehicle-controller-method-14 (-> self controller) (the-as vehicle self))
+      (let ((a0-18 (-> self nav state))
+            (v1-17 (-> self dest-point))
+            )
+        (logclear! (-> a0-18 flags) (nav-state-flag directional-mode))
+        (logior! (-> a0-18 flags) (nav-state-flag target-poly-dirty))
+        (set! (-> a0-18 target-pos quad) (-> v1-17 quad))
+        )
+      0
+      )
+    (nav-enemy-method-176 self)
+    (let ((v1-23 (-> self nav state)))
+      (set! (-> v1-23 speed) 0.0)
+      )
+    0
+    (let ((a0-21 (-> self nav state))
+          (v1-26 *null-vector*)
+          )
+      (set! (-> a0-21 velocity quad) (-> v1-26 quad))
+      )
+    0
+    (let ((v1-29 (-> self nav)))
+      (set! (-> v1-29 target-speed) (* (-> self speed-scale) (-> self speed-walk)))
+      )
+    0
+    (set! (-> self wait-time) (set-reaction-time! self (seconds 4) (seconds 30)))
+    (if (zero? (-> self controller branch))
+        (citizen-method-208 self (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+        )
+    (if (and *cty-faction-manager*
+             (nonzero? (-> self controller branch))
+             (not (logtest? (cty-faction-manager-method-9
+                              *cty-faction-manager*
+                              (the-as int (-> self controller branch clock-type))
+                              (-> self level name)
+                              )
+                            1
+                            )
+                  )
+             )
+        (citizen-method-208 self (vector-float*!
+                                   (new 'stack-no-clear 'vector)
+                                   (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
+                                   -1.0
+                                   )
+                            )
+        )
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.5))
+             (not (logtest? (-> self nav state flags) (nav-state-flag in-mesh)))
+             (< (-> self root trans y) 4096.0)
+             )
+        (go-virtual in-ditch)
+        )
+    (when (and (time-elapsed? (-> self state-time) (-> self wait-time))
+               (not (logtest? (-> self flags) (citizen-flag in-formation)))
+               )
+      (let ((f0-2 (-> self nav state speed)))
+        (set! (-> self nav target-speed) (seek f0-2 0.0 (* 12288.0 (seconds-per-frame))))
+        )
+      0
+      (when (= (-> self nav state speed) 0.0)
+        (set! (-> self wait-return-state) (the-as (state citizen) (-> self state)))
+        (set! (-> self wait-time) (set-reaction-time! self (seconds 1) (seconds 5)))
+        (go-virtual wait)
+        )
+      )
+    (when (logtest? (-> self flags) (citizen-flag in-formation))
+      (let ((a0-10 (handle->process (-> self vehicle))))
+        1.0
+        (when a0-10
+          (let ((f0-9 (get-target-speed (the-as formation-object a0-10) self (-> self formation-index)))
+                (v1-46 (-> self nav))
+                )
+            (set! (-> v1-46 target-speed) (* (-> self speed-scale) (-> self speed-walk) f0-9))
+            )
+          0
+          )
+        )
+      )
+    (let ((f0-11 2867.2)
+          (v1-50 (-> self root transv))
+          )
+      (if (< f0-11 (sqrtf (+ (* (-> v1-50 x) (-> v1-50 x)) (* (-> v1-50 z) (-> v1-50 z)))))
+          (set-time! (-> self cp-next-time))
+          )
+      )
+    (when (< (+ (-> self cp-next-time) (seconds 2)) (current-time))
+      (let ((a1-5 (vector-! (new 'stack-no-clear 'vector) (-> self controller path-prev-point) (-> self dest-point))))
+        (set-time! (-> self cp-next-time))
+        (citizen-method-208 self a1-5)
+        )
+      )
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info walk-anim))) 300)
+    )
+  :post (behavior ()
+    (cond
+      ((not (logtest? (-> self flags) (citizen-flag in-formation)))
+       (when (and (nonzero? (-> self controller branch))
+                  (let ((f0-0 (vector-vector-xz-distance-squared (-> self root trans) (-> self dest-point)))
+                        (f1-0 16384.0)
+                        )
+                    (or (< f0-0 (* f1-0 f1-0)) (logtest? (-> self nav state flags) (nav-state-flag at-target)))
+                    )
+                  )
+         (let ((gp-0 (-> self controller branch)))
+           (vehicle-controller-method-14 (-> self controller) (the-as vehicle self))
+           (when (= gp-0 (-> self controller branch))
+             (let ((a0-5 (-> self nav state))
+                   (a1-2 (new 'stack-no-clear 'vector))
+                   )
+               (set! (-> a1-2 quad) (-> a0-5 heading quad))
+               (vector-float*! a1-2 a1-2 -1.0)
+               (citizen-method-208 self a1-2)
+               )
+             )
+           )
+         )
+       (let ((a0-10 (-> self nav state))
+             (v1-21 (-> self dest-point))
+             )
+         (logclear! (-> a0-10 flags) (nav-state-flag directional-mode))
+         (logior! (-> a0-10 flags) (nav-state-flag target-poly-dirty))
+         (set! (-> a0-10 target-pos quad) (-> v1-21 quad))
+         )
+       0
+       )
+      (else
+        (let ((a0-13 (handle->process (-> self vehicle))))
+          (when (and a0-13 (!= (process->handle self) (get-leader-handle (the-as formation-object a0-13))))
+            (when (or (logtest? (-> self nav state flags) (nav-state-flag at-target))
+                      (let ((t9-4 vector-vector-xz-distance-squared)
+                            (a0-16 (-> self root trans))
+                            (a2-2 (-> self nav state))
+                            (a1-12 (new 'stack-no-clear 'vector))
+                            )
+                        (set! (-> a1-12 quad) (-> a2-2 target-pos quad))
+                        (let ((f0-2 (t9-4 a0-16 a1-12))
+                              (f1-3 4096.0)
+                              )
+                          (< f0-2 (* f1-3 f1-3))
+                          )
+                        )
+                      )
+              (-> self nav state speed)
+              (set! (-> self wait-return-state) (the-as (state citizen) (-> self state)))
+              (go-virtual wait)
+              )
+            )
+          )
+        )
+      )
+    (nav-enemy-method-187 self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate inactive (citizen)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('nav-mesh-kill 'traffic-activate 'traffic-off-force 'traffic-off 'change-guard-type 'handle-gem-pickup)
+       (event-handler self proc argc message block)
+       )
+      )
+    )
+  :enter (behavior ()
+    (when (-> self nav)
+      (citizen-method-195 self)
+      (let ((v1-4 self))
+        (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag ef37))))
+        (set! (-> v1-4 nav callback-info) *null-nav-callback-info*)
+        )
+      0
+      )
+    (let ((a0-5 (handle->process (-> self ragdoll-proc))))
+      (when a0-5
+        (deactivate a0-5)
+        (set! (-> self ragdoll-proc) (the-as handle #f))
+        )
+      )
+    (logior! (-> self focus-status) (focus-status disable inactive))
+    (let ((v1-17 (-> self root root-prim)))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec))
+      (set! (-> v1-17 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (logclear! (-> self root nav-flags) (nav-flags has-root-sphere has-extra-sphere))
+    (vehicle-controller-method-11 (-> self controller))
+    )
+  :exit (behavior ()
+    '()
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (citizen)
+  :virtual #t
+  :trans (behavior ()
+    (let ((a1-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+          (gp-0 (new 'stack-no-clear 'quaternion))
+          )
+      (quaternion-from-two-vectors-max-angle! gp-0 a1-1 *up-vector* (* 7281.778 (seconds-per-frame)))
+      (quaternion*! (-> self root quat) gp-0 (-> self root quat))
+      )
+    (let ((t9-3 (-> (method-of-type nav-enemy knocked) trans)))
+      (if t9-3
+          (t9-3)
+          )
+      )
+    )
+  )
+
+;; definition for method 143 of type citizen
+(defmethod on-dying ((this citizen))
+  (when (handle->process (-> this shield-handle))
+    (let ((a0-6 (handle->process (-> this shield-handle))))
+      (send-event a0-6 'shield-detach)
+      )
+    )
+  ((method-of-type nav-enemy on-dying) this)
+  (none)
+  )
+
+;; definition for method 10 of type citizen
+(defmethod deactivate ((this citizen))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (nop!)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 215 of type citizen
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-215 ((this citizen))
+  0
+  (none)
+  )
+
+;; definition for method 66 of type citizen
+(defmethod get-penetrated-by ((this citizen))
+  (logior (penetrated-by-all&hit-points->penetrated-by (-> this penetrated-by-all) (the int (-> this hit-points)))
+          (penetrate vehicle)
+          )
+  )
+
+;; definition for method 153 of type citizen
+(defmethod get-gem-pool-idx ((this citizen))
+  (if (zero? (-> *setting-control* user-current gem-pool-index))
+      -1
+      (-> *setting-control* user-current gem-pool-index)
+      )
+  )
+
+;; definition for method 152 of type citizen
+(defmethod enemy-method-152 ((this citizen))
+  0.5
+  )
+
+
+
+
