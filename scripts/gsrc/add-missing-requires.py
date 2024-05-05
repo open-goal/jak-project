@@ -137,13 +137,13 @@ for file in gd_files:
            if '.o' in stripped_line:
               file_name = stripped_line.replace(".o", "")
               if file_name not in file_bundles.keys():
-                file_bundles[file_name] = [bundle_name]
-              elif bundle_name not in file_bundles[file_name]:
-                file_bundles[file_name].append(bundle_name)
+                file_bundles[file_name] = [f"\"{bundle_name}\""]
+              elif f"\"{bundle_name}\"" not in file_bundles[file_name]:
+                file_bundles[file_name].append(f"\"{bundle_name}\"")
 
 # Go and append the require statements to the beginning of all files
 for file in files:
-    with open(file, 'r') as f:
+    with open(file, 'r+') as f:
         lines = f.readlines()
         new_lines = []
         for line in lines:
@@ -152,9 +152,24 @@ for file in files:
               file_stem = Path(file).stem
               # add in bundle and require statements
               if file_stem in file_bundles.keys():
-                new_lines.append(f"(bundles {" ".join(file_bundles[file_stem])})")
-              new_lines.append("")
+                new_lines.append(f"(bundles {" ".join(file_bundles[file_stem])})\n")
               if file_stem in reduced_dependencies.keys():
+                new_lines.append("\n")
                 for dep in reduced_dependencies[file_stem]:
-                   minimized_path = os.path.normpath(file).replace(os.sep, '/').split("goal_src/jak1/")[1]
-                   new_lines.append(f"(require {minimized_path})")
+                   # Find the file's full path
+                   minimized_path = ""
+                   for temp_file in files:
+                     if Path(temp_file).stem == dep:
+                        minimized_path = os.path.normpath(temp_file).replace(os.sep, '/').split("goal_src/jak1/")[1]
+                        break
+                   new_lines.append(f"(require \"{minimized_path}\")\n")
+                new_lines.append("\n")
+           else:
+               new_lines.append(line)
+            
+        # Move the file pointer to the beginning
+        f.seek(0)
+        # Write the modified lines back to the file
+        f.writelines(new_lines)
+        # Truncate any remaining content (if the new content is shorter than the old)
+        f.truncate()
