@@ -13,12 +13,15 @@ uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
 uniform float fog_hack_threshold;
 
 out vec4 fragment_color;
-// out vec3 tex_coord;
+out vec2 tex_coord;
 out float fogginess;
 
 void main() {
   int vx = gl_VertexID % 512;
   int vz = gl_VertexID / 512;
+
+  tex_coord.x = ((vx & 1) == 1) ? 1.f : 0.f;
+  tex_coord.y = ((vz & 1) == 1) ? 1.f : 0.f;
 
   vec4 transformed = -camera[3];
   transformed -= camera[0] * 32768.f * vx;

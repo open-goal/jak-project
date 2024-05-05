@@ -4,7 +4,26 @@
 
 #include "third-party/imgui/imgui.h"
 
-Hfrag::Hfrag(const std::string& name, int my_id) : BucketRenderer(name, my_id) {}
+Hfrag::Hfrag(const std::string& name, int my_id) : BucketRenderer(name, my_id) {
+  // generate shared index buffer
+  int vi = 0;
+  std::vector<u32> indices;
+  for (int bucket_idx = 0; bucket_idx < kNumBuckets; bucket_idx++) {
+    for (int tile_idx = 0; tile_idx < kNumMontageTiles; tile_idx++) {
+      indices.push_back(vi++);
+      indices.push_back(vi++);
+      indices.push_back(vi++);
+      indices.push_back(vi++);
+      indices.push_back(UINT32_MAX);
+    }
+  }
+
+  glGenBuffers(1, &m_montage_indices);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_montage_indices);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * indices.size(), indices.data(),
+               GL_STATIC_DRAW);
+  ASSERT(indices.size() == kIndsPerTile * kNumMontageTiles * kNumBuckets);
+}
 
 void Hfrag::draw_debug_window() {
   for (auto& level : m_levels) {
@@ -16,6 +35,7 @@ void Hfrag::draw_debug_window() {
       ImGui::Text(" in view corners: %d", level.stats.corners_in_view);
       ImGui::Text(" in view and not occluded corners: %d",
                   level.stats.corners_in_view_and_not_occluded);
+      ImGui::Text(" buckets used: %d", level.stats.buckets_used);
     }
   }
 }
@@ -81,7 +101,6 @@ void Hfrag::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     if (hfrag_level) {
       hfrag_level->last_used_frame = render_state->frame_idx;
       if (occlusion_data) {
-        printf("offset is %d\n", hfrag_level->hfrag->occlusion_offset);
         occlusion_data += hfrag_level->hfrag->occlusion_offset;
       }
       render_hfrag_level(hfrag_level, render_state, prof, pc_port_data, occlusion_data);
@@ -167,6 +186,10 @@ void Hfrag::unload_hfrag_level(Hfrag::HfragLevel* lev) {
   glBindTexture(GL_TEXTURE_1D, lev->time_of_day_texture);
   glDeleteTextures(1, &lev->time_of_day_texture);
   glDeleteVertexArrays(1, &lev->vao);
+
+  glDeleteVertexArrays(1, &lev->montage_vao);
+  glDeleteBuffers(1, &lev->montage_vertices);
+
   lev->in_use = false;
   lev->name.clear();
   lev->last_used_frame = 0;
@@ -183,11 +206,22 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
   lev->load_id = data->load_id;
   lev->vertex_buffer = data->hfrag_vertices;
   lev->index_buffer = data->hfrag_indices;
-  glGenVertexArrays(1, &lev->vao);
-  glBindVertexArray(lev->vao);
   lev->tod_cache = swizzle_time_of_day(data->level->hfrag.time_of_day_colors);
   lev->num_colors = data->level->hfrag.time_of_day_colors.size();
   lev->hfrag = &data->level->hfrag;
+  lev->wang_texture = data->textures.at(data->level->hfrag.wang_tree_tex_id[0]);
+
+  if (m_color_result.size() < lev->num_colors) {
+    m_color_result.resize(lev->num_colors);
+  }
+
+  ASSERT(lev->hfrag->buckets.size() == kNumBuckets);
+  ASSERT(lev->hfrag->corners.size() == kNumCorners);
+  ASSERT(lev->num_colors <= TIME_OF_DAY_COLOR_COUNT);
+
+  // normal drawing opengl
+  glGenVertexArrays(1, &lev->vao);
+  glBindVertexArray(lev->vao);
   glBindBuffer(GL_ARRAY_BUFFER, lev->vertex_buffer);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
@@ -209,7 +243,6 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
                          sizeof(tfrag3::HfragmentVertex),  // stride
                          (void*)offsetof(tfrag3::HfragmentVertex, color_index)  // offset (0)
   );
-
   glActiveTexture(GL_TEXTURE10);
   glGenTextures(1, &lev->time_of_day_texture);
   glBindTexture(GL_TEXTURE_1D, lev->time_of_day_texture);
@@ -217,13 +250,81 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
                GL_UNSIGNED_INT_8_8_8_8, nullptr);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
   glBindVertexArray(0);
-  ASSERT(lev->num_colors <= TIME_OF_DAY_COLOR_COUNT);
 
-  if (m_color_result.size() < lev->num_colors) {
-    m_color_result.resize(lev->num_colors);
+  // montage
+
+  struct MontageVertex {
+    float x, y, u, v;
+  };
+  struct MontageTile {
+    MontageVertex verts[4];
+  };
+  struct MontageBucket {
+    MontageTile tiles[kNumMontageTiles];
+  };
+  MontageBucket montage[kNumBuckets];
+
+  // generate montage vertices
+  for (int bucket_idx = 0; bucket_idx < kNumBuckets; bucket_idx++) {
+    auto& bucket = montage[bucket_idx];
+    for (int tile_idx = 0; tile_idx < kNumMontageTiles; tile_idx++) {
+      auto& tile = bucket.tiles[tile_idx];
+      // the xy is the same for all buckets
+      const int tx = tile_idx % 4;
+      const int ty = tile_idx / 4;
+
+      tile.verts[0].x = tx * 0.25f;
+      tile.verts[1].x = tx * 0.25f + 0.25f;
+      tile.verts[2].x = tx * 0.25f;
+      tile.verts[3].x = tx * 0.25f + 0.25f;
+
+      tile.verts[0].y = ty * 0.25f;
+      tile.verts[1].y = ty * 0.25f;
+      tile.verts[2].y = ty * 0.25f + 0.25f;
+      tile.verts[3].y = ty * 0.25f + 0.25f;
+
+      // use the lookup table from the game
+      const int montage_idx = lev->hfrag->buckets[bucket_idx].montage_table[tile_idx];
+      const int mx = montage_idx & 15;
+      const int my = montage_idx / 16;
+      ASSERT(montage_idx < 8 * 16);
+
+      tile.verts[0].u = mx * 0.0625f;
+      tile.verts[1].u = mx * 0.0625f + 0.0625f;
+      tile.verts[2].u = mx * 0.0625f;
+      tile.verts[3].u = mx * 0.0625f + 0.0625f;
+
+      tile.verts[0].v = my * 0.125f;
+      tile.verts[1].v = my * 0.125f;
+      tile.verts[2].v = my * 0.125f + 0.125f;
+      tile.verts[3].v = my * 0.125f + 0.125f;
+    }
   }
+
+  glGenVertexArrays(1, &lev->montage_vao);
+  glBindVertexArray(lev->montage_vao);
+  glGenBuffers(1, &lev->montage_vertices);
+  glBindBuffer(GL_ARRAY_BUFFER, lev->montage_vertices);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(MontageBucket) * kNumBuckets, montage, GL_STATIC_DRAW);
+  glActiveTexture(GL_TEXTURE0);
+
+  glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
+  glVertexAttribPointer(0,                                 // location 0 in the shader
+                        2,                                 // 3 values per vert
+                        GL_FLOAT,                          // floats
+                        GL_FALSE,                          // normalized (ignored)
+                        sizeof(MontageVertex),             // stride
+                        (void*)offsetof(MontageVertex, x)  // offset
+  );
+  glVertexAttribPointer(1,                                 // location 0 in the shader
+                        2,                                 // 3 values per vert
+                        GL_FLOAT,                          // floats
+                        GL_FALSE,                          // normalized (ignored)
+                        sizeof(MontageVertex),             // stride
+                        (void*)offsetof(MontageVertex, u)  // offset
+  );
 }
 
 void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
@@ -231,6 +332,47 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
                                ScopedProfilerNode& prof,
                                const TfragPcPortData& pc_data,
                                const u8* occlusion_data) {
+  // first pass, determine visibility and which buckets we need to generate textures for
+  for (auto& b : m_bucket_used) {
+    b = false;
+  }
+  lev->stats = {};
+  for (u32 bucket_idx = 0; bucket_idx < lev->hfrag->buckets.size(); bucket_idx++) {
+    const auto& bucket = lev->hfrag->buckets[bucket_idx];
+    for (u32 corner_idx : bucket.corners) {
+      const auto& corner = lev->hfrag->corners[corner_idx];
+      lev->stats.total_corners++;
+      bool draw = true;
+
+      if (sphere_in_view_ref(corner.bsphere, pc_data.camera.planes)) {
+        lev->stats.corners_in_view++;
+      } else {
+        draw = false;
+      }
+
+      if (draw && occlusion_data) {  // only check vis bit if frustum culling passes
+        int occlusion_byte = corner.vis_id / 8;
+        int occlusion_bit = corner.vis_id & 7;
+        if ((occlusion_data[occlusion_byte] & (1 << (7 - occlusion_bit)))) {
+          lev->stats.corners_in_view_and_not_occluded++;
+        } else {
+          draw = false;
+        }
+      }
+
+      m_corner_vis[corner_idx] = draw;
+      if (draw) {
+        m_bucket_used[bucket_idx] = true;
+      }
+    }
+    if (m_bucket_used[bucket_idx]) {
+      lev->stats.buckets_used++;
+    }
+  }
+
+  // textures
+  render_hfrag_montage_textures(lev, render_state, prof);
+
   // generate time of day texture
   interp_time_of_day_fast(pc_data.camera.itimes, lev->tod_cache, m_color_result.data());
   glActiveTexture(GL_TEXTURE10);
@@ -248,40 +390,27 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
 
   // set up shader
   first_tfrag_draw_setup(pc_data.camera, render_state, ShaderId::HFRAG);
+  setup_opengl_from_draw_mode(lev->hfrag->draw_mode, GL_TEXTURE0, false);
 
-  // for now, very simple rendering.
-  glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_GREATER);
-  glDisable(GL_BLEND);
-  glDepthMask(GL_TRUE);
 
-  // iterate buckets
-  lev->stats = {};
+  glActiveTexture(GL_TEXTURE0);
+  // glBindTexture(GL_TEXTURE_2D, lev->hfrag->wang_tree_tex_id[0]);
+
+  // draw pass
   for (u32 bucket_idx = 0; bucket_idx < lev->hfrag->buckets.size(); bucket_idx++) {
+    if (!m_bucket_used[bucket_idx]) {
+      continue;  // no need to bind texture.
+    }
+    glBindTexture(GL_TEXTURE_2D, lev->montage_texture[bucket_idx].fb.texture());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // HACK rm
+
     const auto& bucket = lev->hfrag->buckets[bucket_idx];
     for (u32 corner_idx : bucket.corners) {
-      const auto& corner = lev->hfrag->corners[corner_idx];
-      lev->stats.total_corners++;
-
-      if (sphere_in_view_ref(corner.bsphere, pc_data.camera.planes)) {
-        lev->stats.corners_in_view++;
-        bool draw = true;
-        if (occlusion_data) {
-          int occlusion_byte = corner.vis_id / 8;
-          int occlusion_bit = corner.vis_id & 7;
-          if (!(occlusion_data[occlusion_byte] & (1 << (7 - occlusion_bit)))) {
-            draw = false;
-          } else {
-            lev->stats.corners_in_view_and_not_occluded++;
-          }
-        }
-
-        if (draw) {
-          glDrawElements(GL_TRIANGLE_STRIP, 560, GL_UNSIGNED_INT,
-                         (void*)(corner_idx * 560 * sizeof(u32)));
-          prof.add_draw_call(1);
-          prof.add_tri(16 * 16 * 2);
-        }
+      if (m_corner_vis[corner_idx]) {
+        glDrawElements(GL_TRIANGLE_STRIP, 560, GL_UNSIGNED_INT,
+                       (void*)(corner_idx * 560 * sizeof(u32)));
+        prof.add_draw_call(1);
+        prof.add_tri(16 * 16 * 2);
       }
     }
   }
@@ -289,4 +418,36 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
   //  glDrawElements(GL_TRIANGLE_STRIP, 506880, GL_UNSIGNED_INT, nullptr);
   //  prof.add_draw_call(1);
   //  prof.add_tri(511 * 511 * 2);
+}
+
+void Hfrag::render_hfrag_montage_textures(Hfrag::HfragLevel* lev,
+                                          SharedRenderState* render_state,
+                                          ScopedProfilerNode& prof) {
+  glBindVertexArray(lev->montage_vao);
+  glBindBuffer(GL_ARRAY_BUFFER, lev->montage_vertices);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_montage_indices);
+  glEnable(GL_PRIMITIVE_RESTART);
+  glPrimitiveRestartIndex(UINT32_MAX);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+
+  const auto& sh = render_state->shaders[ShaderId::HFRAG_MONTAGE];
+  sh.activate();
+  glUniform1i(glGetUniformLocation(sh.id(), "tex_T0"), 0);
+
+  for (int bi = 0; bi < kNumBuckets; bi++) {
+    if (!m_bucket_used[bi]) {
+      continue;  // no need to generate textures
+    }
+
+    FramebufferTexturePairContext ctxt(lev->montage_texture[bi].fb);  // render to texture
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, lev->wang_texture);
+    constexpr int index_stride = kIndsPerTile * kNumMontageTiles;
+    const int offset = bi * index_stride;
+    glDrawElements(GL_TRIANGLE_STRIP, index_stride, GL_UNSIGNED_INT, (void*)(offset * sizeof(u32)));
+  }
+
+  glEnable(GL_DEPTH_TEST);
+
 }

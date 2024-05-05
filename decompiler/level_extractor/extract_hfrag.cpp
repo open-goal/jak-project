@@ -103,6 +103,66 @@ void extract_hfrag(const level_tools::BspHeader& bsp,
   // colors
   hfrag_out.time_of_day_colors = pack_colors(hfrag.colors);
 
+  // shaders
+  DrawMode mode;
+  mode.set_at(false);  // I think this is just the default and hfrag doesn't set it
+  mode.set_ab(false);  // see prim regs set up in hfrag-vu1
+  mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);  // unused
+  mode.set_zt(true);                                            // default ztest
+  mode.set_depth_test(GsTest::ZTest::GEQUAL);
+  mode.set_depth_write_enable(true);
+  mode.enable_fog();
+  mode.set_decal(false);
+  mode.set_clamp_s_enable(true);
+  mode.set_clamp_t_enable(true);
+
+  // adgif0 should be tex0
+  const auto& shader = hfrag.shaders[2];
+  ASSERT((u8)shader.tex0_addr == (u32)GsRegisterAddress::TEX0_1);
+  ASSERT(shader.tex0_data == 0);  // no decal
+  // adgif1 should be tex1
+  ASSERT((u8)shader.tex1_addr == (u32)GsRegisterAddress::TEX1_1);
+  u32 tpage = shader.tex1_addr >> 20;
+  u32 tidx = (shader.tex1_addr >> 8) & 0b1111'1111'1111;
+  u32 tex_combo = (((u32)tpage) << 16) | tidx;
+  auto tex = tex_db.textures.find(tex_combo);
+  ASSERT(tex != tex_db.textures.end());
+  ASSERT(tex->second.name == "wang_0");
+  ASSERT((u8)shader.mip_addr == (u32)GsRegisterAddress::MIPTBP1_1);
+  ASSERT((u8)shader.clamp_addr == (u32)GsRegisterAddress::CLAMP_1);
+  bool clamp_s = shader.clamp_data & 0b001;
+  bool clamp_t = shader.clamp_data & 0b100;
+  ASSERT(clamp_t && clamp_s);
+  ASSERT((u8)shader.alpha_addr == (u32)GsRegisterAddress::ALPHA_1);
+  GsAlpha reg(shader.alpha_data);
+  ASSERT(reg.a_mode() == GsAlpha::BlendMode::SOURCE && reg.b_mode() == GsAlpha::BlendMode::DEST &&
+         reg.c_mode() == GsAlpha::BlendMode::SOURCE && reg.d_mode() == GsAlpha::BlendMode::DEST);
+  hfrag_out.draw_mode = mode;
+
+  // find texture (hack, until we have texture animations)
+  u32 idx_in_lev_data = UINT32_MAX;
+  for (u32 i = 0; i < out->textures.size(); i++) {
+    if (out->textures[i].combo_id == tex_combo) {
+      idx_in_lev_data = i;
+      break;
+    }
+  }
+  ASSERT(idx_in_lev_data != UINT32_MAX);
+  hfrag_out.wang_tree_tex_id[0] = idx_in_lev_data;
+  hfrag_out.wang_tree_tex_id[1] = -1;
+  hfrag_out.wang_tree_tex_id[2] = -1;
+  hfrag_out.wang_tree_tex_id[3] = -1;
+
+  // montage table
+  for (int bi = 0; bi < 17; bi++) {
+    for (int mi = 0; mi < 16; mi++) {
+      // the game stores this as a memory offset, but we convert to an index for convenience.
+      u32 montage_mem_offset = hfrag.montage[bi].table[mi];
+      ASSERT((montage_mem_offset & 31) == 0);
+      hfrag_out.buckets.at(bi).montage_table.at(mi) = montage_mem_offset / 32;
+    }
+  }
+
   //  std::string result = fmt::format(
   //      "ply\nformat ascii 1.0\nelement vertex {}\nproperty float x\nproperty float y\nproperty
   //      " "float z\nproperty uchar red\nproperty uchar green\nproperty uchar blue\nelement face

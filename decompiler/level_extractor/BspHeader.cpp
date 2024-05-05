@@ -2032,9 +2032,11 @@ void HFragment::read_from_file(TypedRef ref,
   vis_ids.resize(kNumCorners);
   memcpy_plain_data((u8*)vis_ids.data(), deref_label(get_field_ref(ref, "visids", dts)),
                     sizeof(s16) * kNumCorners);
-  // shader
+  memcpy_plain_data((u8*)shaders, deref_label(get_field_ref(ref, "shaders", dts)), 80 * 3);
   colors.read_from_file(deref_label(get_field_ref(ref, "colors", dts)));
-  // montage
+  // note: using hard-coded size here
+  memcpy_plain_data((u8*)montage, deref_label(get_field_ref(ref, "montage", dts)),
+                    sizeof(u16) * 16 * 17);
   // bucket
   verts.resize(kNumVerts);
   memcpy_plain_data((u8*)verts.data(), deref_label(get_field_ref(ref, "verts", dts)),

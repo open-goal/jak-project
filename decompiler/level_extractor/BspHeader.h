@@ -838,6 +838,10 @@ struct CollideHash {
  (size             uint32         :offset 44 :score 1)
  */
 
+struct HFragmentMontage {
+  u16 table[16];
+};
+
 struct HFragment {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
@@ -854,9 +858,9 @@ struct HFragment {
   level_tools::Vector start_corner;          // location of corner (0, 0)
   std::vector<level_tools::Vector> spheres;  // array of bspheres for each "corner"
   std::vector<s16> vis_ids;                  // precomputed vis id for each "corner"
-  // shaders??
+  AdGifData shaders[3];
   TimeOfDayPalette colors;
-  // montage??
+  HFragmentMontage montage[17];
   // buckets??
   std::vector<u32> verts;
   // pat-array
