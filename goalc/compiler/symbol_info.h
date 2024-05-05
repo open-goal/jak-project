@@ -43,6 +43,7 @@ namespace symbol_info {
 // - [x] better lookup call, allow passing the symbol kind
 // - [] reduce empty fields in SymbolInfo
 // - [] some paths are stored differently for some reason, there's some inconsistent path separators somewhere
+// - [] long-term this opens the door to shared code across folders
 
 enum class Kind {
   GLOBAL_VAR,
