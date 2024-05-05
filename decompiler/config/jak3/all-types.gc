@@ -13205,8 +13205,8 @@
   (guard-transport 26)
   (kg-pickup 27)
   (bike-d 28)
-  (invalid -1)
-  ; (invalid #xffffffff)
+  (invalid0 -1)
+  (invalid #xffffffff)
   )
 ;; ---traffic-h:traffic-type
 
@@ -29388,7 +29388,7 @@
     active ;; 29
     )
   (:methods
-    (rigid-body-object-method-30 (_type_) none) ;; 30
+    (rigid-body-object-method-30 (_type_) object) ;; 30
     (apply-gravity! (_type_ float) none) ;; 31
     (rigid-body-object-method-32 (_type_) none) ;; 32
     (alloc-rbody-control! (_type_ rigid-body-object-constants) none) ;; 33 ;; (init-skel-and-rigid-body (_type_) none)
@@ -48316,6 +48316,7 @@
   :flag-assert         #x900000003
   )
 
+;; +++cty-faction-h:faction-spawn-flag
 (defenum faction-spawn-flag
   :type uint8
   :bitfield #t
@@ -48324,6 +48325,7 @@
   (fs2 2)
   (fs3 3)
   )
+;; ---cty-faction-h:faction-spawn-flag
 
 (deftype faction-spawn-info (structure)
   ((faction-type    uint8  :offset-assert 0)
@@ -48337,12 +48339,15 @@
   :flag-assert         #x900000004
   )
 
+;; +++cty-faction-h:cty-faction-update-flag
 (defenum cty-faction-update-flag
   :type uint8
   :bitfield #t
   (cfu0 0)
   )
+;; ---cty-faction-h:cty-faction-update-flag
 
+;; +++cty-faction-h:cty-faction-level
 (defenum cty-faction-level
   (pesc 0)
   (pesb 1)
@@ -48352,7 +48357,9 @@
   (pepc 5)
   (pepb 6)
   )
+;; ---cty-faction-h:cty-faction-level
 
+;; +++cty-faction-h:nav-territory-type
 (defenum nav-territory-type
   :type uint8
   (port-ff-deep 0)
@@ -48387,6 +48394,7 @@
   (special8 29)
   (invalid 128)
   )
+;; ---cty-faction-h:nav-territory-type
 
 (deftype cty-faction-manager (basic)
   ((faction-array                  cty-faction-info        30         :offset-assert 4)
@@ -48615,6 +48623,7 @@
   :flag-assert         #x900000020
   )
 
+;; +++traffic-engine-h:traffic-type-flag
 (defenum traffic-type-flag
   :bitfield #t
   :type uint8
@@ -48627,6 +48636,7 @@
   (ttf6)
   (ttf7)
   )
+;; ---traffic-engine-h:traffic-type-flag
 
 (deftype traffic-object-type-info (structure)
   ((flags                traffic-type-flag  :offset-assert 0)
@@ -49194,6 +49204,7 @@
 ;; citizen-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++citizen-h:citizen-flag
 (defenum citizen-flag
   :type uint16
   :bitfield #t
@@ -49213,6 +49224,7 @@
   (talking)
   (in-mission)
   )
+;; ---citizen-h:citizen-flag
 
 (deftype citizen (nav-enemy)
   ((self                    citizen                    :override)
@@ -49299,25 +49311,32 @@
 ;; squad-control-city-h           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++squad-control-city-h:squad-city-mode
+(defenum squad-city-mode
+  :type uint32
+  (zero)
+  )
+;; ---squad-control-city-h:squad-city-mode
+
 (deftype squad-control-city (squad-control)
   ((traffic   traffic-engine :offset-assert 816)
-   (city-mode uint32         :offset-assert 820)
+   (city-mode squad-city-mode :offset-assert 820)
    )
   :method-count-assert 45
   :size-assert         #x338
   :flag-assert         #x2d00000338
   (:methods
-    (squad-control-city-method-34 (_type_) none) ;; 34
-    (squad-control-city-method-35 (_type_) none) ;; 35
-    (squad-control-city-method-36 (_type_) none) ;; 36
+    (squad-control-city-method-34 (_type_) symbol) ;; 34
+    (squad-control-city-method-35 (_type_ citizen handle) process-focusable) ;; 35
+    (get-city-mode (_type_) squad-city-mode) ;; 36
     (squad-control-city-method-37 (_type_) none) ;; 37
-    (squad-control-city-method-38 (_type_) none) ;; 38
-    (squad-control-city-method-39 (_type_) none) ;; 39
+    (squad-control-city-method-38 (_type_ process-focusable process-focusable) symbol) ;; 38
+    (squad-control-city-method-39 (_type_) float) ;; 39
     (squad-control-city-method-40 (_type_) none) ;; 40
-    (squad-control-city-method-41 (_type_) none) ;; 41
-    (squad-control-city-method-42 (_type_) none) ;; 42
-    (squad-control-city-method-43 (_type_) none) ;; 43
-    (squad-control-city-method-44 (_type_ traffic-engine) none) ;; 44
+    (squad-control-city-method-41 (_type_) symbol) ;; 41
+    (squad-control-city-method-42 (_type_) float) ;; 42
+    (squad-control-city-method-43 (_type_) symbol) ;; 43
+    (add-squad-to-traffic-engine (_type_ traffic-engine) none) ;; 44
     )
   )
 
@@ -49331,7 +49350,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype handle-array (inline-array-class-uint64)
-  ((data handle :dynamic :override)
+  ((data0 handle :dynamic :score 1)
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -49550,6 +49569,7 @@
 ;; cty-faction                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++cty-faction:exclusive-nav-info-mask
 (defenum exclusive-nav-info-mask
   :type uint8
   :bitfield #t
@@ -49562,6 +49582,7 @@
   (eni6 6)
   (eni7 7)
   )
+;; ---cty-faction:exclusive-nav-info-mask
 
 (deftype exclusive-nav-mesh-info (structure)
   ((aid            uint32                  :offset-assert 0)
@@ -49622,11 +49643,13 @@
 ;; formation-object               ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++formation-object:formation-object-flag
 (defenum formation-object-flag
   :type uint8
   :bitfield #t
   (fo0)
   )
+;; ---formation-object:formation-object-flag
 
 (deftype formation-object (process-focusable)
   ((object-list         handle-array               :offset-assert 208)
@@ -49745,9 +49768,10 @@
   :flag-assert         #x1800000021
   )
 
+;; +++cty-attack-controller:city-target-type
 (defenum city-target-type
-  (a 1)
-  (b 2)
+  (unk1 1)
+  (unk2 2)
   (guard-tazer 3)
   (guard-rifle 4)
   (guard-grenade 5)
@@ -49759,7 +49783,9 @@
   (spydroid 11)
   (roboguard-giant 12)
   )
+;; ---cty-attack-controller:city-target-type
 
+;; +++cty-attack-controller:cty-faction
 (defenum cty-faction
   :type uint8
   (ff 0)
@@ -49767,13 +49793,14 @@
   (mh 2)
   (invalid 128)
   )
+;; ---cty-attack-controller:cty-faction
 
 (define-extern city-target-type->cty-faction (function city-target-type cty-faction))
 (define-extern city-target-type->traffic-object-type (function city-target-type traffic-type))
 (define-extern symbol->city-target-type (function symbol city-target-type))
 (define-extern *cty-attack-controller* cty-attack-controller)
 (define-extern initialize-cty-attack-controller (function none))
-(define-extern cty-attack-reset (function symbol none))
+(define-extern cty-attack-reset (function symbol symbol symbol none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; flee-info                      ;;
@@ -49810,7 +49837,7 @@
   )
 
 (define-extern *citizen-debug* symbol)
-(define-extern citizen-init-by-other (function traffic-object-spawn-params none :behavior citizen))
+(define-extern citizen-init-by-other (function traffic-object-spawn-params object :behavior citizen))
 (define-extern citizen-travel-anim (function int int symbol :behavior citizen))
 (define-extern iter-seg-clear-path (function iter-seg nav-segment symbol))
 (define-extern iter-seg-new-dir (function iter-seg nav-segment nav-segment))
@@ -50186,9 +50213,9 @@
     )
   (:methods
     (traffic-manager-method-16 (_type_) none) ;; 16 ;; (update (_type_) none)
-    (traffic-manager-method-17 (_type_) none) ;; 17 ;; (spawn-all (_type_) none)
+    (spawn-all (_type_) none) ;; 17 ;; (spawn-all (_type_) none)
     (traffic-manager-method-18 (_type_) none) ;; 18 ;; (kill-excess-once (_type_) none)
-    (traffic-manager-method-19 (_type_) none) ;; 19 ;; (kill-all-inactive (_type_) none)
+    (kill-all (_type_) none) ;; 19 ;; (kill-all-inactive (_type_) none)
     (traffic-manager-method-20 (_type_) none) ;; 20 ;; (reset-and-init (_type_) none)
     (traffic-manager-method-21 (_type_) none) ;; 21 ;; (init-params (_type_) none)
     (traffic-manager-method-22 (_type_) none) ;; 22
@@ -50251,7 +50278,7 @@
 (define-extern draw-city-info (function city-level-info vis-grid-pos none))
 (define-extern formation-spawn (function process type formation-info formation-object))
 (define-extern type-from-traffic-object-type (function traffic-type type))
-(define-extern citizen-spawn (function process type traffic-object-spawn-params process-drawable))
+(define-extern citizen-spawn (function process traffic-type traffic-object-spawn-params process-drawable))
 (define-extern traffic-object-spawn (function process traffic-object-spawn-params process-drawable))
 (define-extern *traffic-vehicle-level-borrow-list* object)
 (define-extern *traffic-vehicle-level-sound-list* object)
@@ -66447,138 +66474,128 @@
 ;; wlander-h                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wlander-anim-info (structure)
-  ((anim-index       UNKNOWN 2 :offset-assert 0)
-   (anim-index-front int32     :offset-assert 0)
-   (anim-index-back  int32     :offset-assert 4)
+  ((anim-index       int32 2   :offset-assert 0)
+   (anim-index-front int32     :offset 0)
+   (anim-index-back  int32     :offset 4)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype wlander-global-info (basic)
   ((prev-yellow-hit         int8      :offset-assert 4)
    (prev-blue-hit           int8      :offset-assert 5)
-   (knocked                 UNKNOWN 2 :offset-assert 8)
-   (knocked-land            UNKNOWN 2 :offset-assert 16)
-   (anim-knocked-front      int32     :offset-assert 8)
-   (anim-knocked-back       int32     :offset-assert 12)
-   (anim-knocked-front-land int32     :offset-assert 16)
-   (anim-knocked-back-land  int32     :offset-assert 20)
-   (yellow-hit-anim         UNKNOWN 2 :offset-assert 24)
-   (yellow-land-anim        UNKNOWN 2 :offset-assert 40)
-   (blue-hit-anim           UNKNOWN 1 :offset-assert 56)
+   (knocked                 int32 2   :offset-assert 8)
+   (knocked-land            int32 2   :offset-assert 16)
+   (anim-knocked-front      int32     :offset 8)
+   (anim-knocked-back       int32     :offset 12)
+   (anim-knocked-front-land int32     :offset 16)
+   (anim-knocked-back-land  int32     :offset 20)
+   (yellow-hit-anim         wlander-anim-info 2 :inline :offset-assert 24)
+   (yellow-land-anim        wlander-anim-info 2 :inline :offset-assert 40)
+   (blue-hit-anim           wlander-anim-info 1 :inline :offset-assert 56)
    )
   :method-count-assert 9
   :size-assert         #x40
   :flag-assert         #x900000040
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wlander-male                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wlander (civilian)
-  ((mad-level           float               :offset-assert 1128)
+  (; (info wlander-global-info :override)
+   (mad-level           float               :offset 1128)
    (los                 los-control :inline :offset-assert 1136)
    (target-pos          vector      :inline :offset-assert 1312)
    (gun-joint           int32               :offset-assert 1328)
    (gun-axis            int32               :offset-assert 1332)
    (gun-length          float               :offset-assert 1336)
-   (shoot-time          uint64              :offset-assert 1344)
-   (last-time-far       uint64              :offset-assert 1352)
-   (last-time-los       uint64              :offset-assert 1360)
+   (shoot-time          time-frame          :offset-assert 1344)
+   (last-time-far       time-frame          :offset-assert 1352)
+   (last-time-los       time-frame          :offset-assert 1360)
    (shot-sound          int32               :offset-assert 1368)
    (knocked-collide     basic               :offset-assert 1372)
-   (knocked-speed-scale float               :offset-assert 1384)
-   (male                basic               :offset-assert 1388)
+   (knocked-speed-scale float               :offset 1384)
+   (male                symbol              :offset-assert 1388)
    )
   :method-count-assert 243
   :size-assert         #x570
   :flag-assert         #xf304f00570
-  (:methods
-    (wlander-method-238 () none) ;; 238
-    (wlander-method-239 () none) ;; 239
-    (wlander-method-240 () none) ;; 240
-    (wlander-method-241 () none) ;; 241
-    (wlander-method-242 () none) ;; 242
-    )
   (:state-methods
-    gun-shoot ;; 234
-    close-attack ;; 235
-    panic ;; 237
-    hostile ;; 38
-    active ;; 34
-    standing ;; 236
     knocked ;; 31
     knocked-recover ;; 32
+    active ;; 34
+    hostile ;; 38
+    gun-shoot ;; 234
+    close-attack ;; 235
+    standing ;; 236
+    panic ;; 237
+    )
+  (:methods
+    (call-for-help (_type_ float) none) ;; 238
+    (fire-shot (_type_) none) ;; 239
+    (toggle-cspec (_type_ symbol int) none) ;; 240
+    (search-for-focus (_type_) none) ;; 241
+    (try-activate (_type_) symbol) ;; 242
     )
   )
-|#
 
-#|
 (deftype wlander-male (wlander)
   ()
   :method-count-assert 243
   :size-assert         #x570
   :flag-assert         #xf304f00570
   (:state-methods
+    gun-shoot ;; 234
     close-attack ;; 235
     standing ;; 236
-    gun-shoot ;; 234
     )
   )
-|#
 
-#|
 (deftype wlander-female (wlander)
-  ((gunout basic  :offset-assert 1392)
+  ((gunout symbol  :offset-assert 1392)
    )
   :method-count-assert 243
   :size-assert         #x574
   :flag-assert         #xf305000574
   (:state-methods
+    wait ;; 190
     gun-shoot ;; 234
     close-attack ;; 235
-    wait ;; 190
     )
   )
-|#
 
-;; (define-extern wlander-travel-anim function)
-;; (define-extern *wlander-male-nav-enemy-info* nav-enemy-info)
-;; (define-extern wlander-male-joint-callback function)
-;; (define-extern *wlander-female-nav-enemy-info* nav-enemy-info)
-;; (define-extern wlander-female-joint-callback function)
+(define-extern wlander-travel-anim (function object time-frame none :behavior wlander))
+(define-extern *wlander-male-nav-enemy-info* nav-enemy-info)
+(define-extern wlander-male-joint-callback (function draw-control cspace-array joint-control none))
+(define-extern *wlander-female-nav-enemy-info* nav-enemy-info)
+(define-extern wlander-female-joint-callback (function draw-control cspace-array joint-control none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wlander-female                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype waster-b (civilian)
   ()
   :method-count-assert 234
   :size-assert         #x464
   :flag-assert         #xea03f00464
   (:state-methods
-    wait ;; 190
-    get-up-back ;; 221
-    get-up-front ;; 220
     knocked ;; 31
+    wait ;; 190
+    get-up-front ;; 220
+    get-up-back ;; 221
     )
   )
-|#
 
-;; (define-extern *waster-b-global-info* civilian-global-info)
-;; (define-extern *waster-b-nav-enemy-info* nav-enemy-info)
+(define-extern *waster-b-global-info* civilian-global-info)
+(define-extern *waster-b-nav-enemy-info* nav-enemy-info)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; waswide-init                   ;;
