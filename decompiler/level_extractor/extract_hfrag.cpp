@@ -18,18 +18,16 @@ int corner_xz_to_index(int x, int z) {
   return z * kCornersPerEdge + x;
 }
 
-//  X----X----X---X
-//  |    |    |   |
-//  X----X----X---X
-//  |    |    |
-//  X----X----X---
-
-void extract_hfrag(const level_tools::HFragment& hfrag,
+void extract_hfrag(const level_tools::BspHeader& bsp,
                    const std::string& debug_name,
                    const std::vector<level_tools::TextureRemap>& map,
                    const TextureDB& tex_db,
                    tfrag3::Level* out) {
+  ASSERT(bsp.hfrag.has_value());
+  const auto& hfrag = bsp.hfrag.value();
   auto& hfrag_out = out->hfrag;
+
+  hfrag_out.occlusion_offset = bsp.visible_list_length - bsp.extra_vis_list_length;
 
   // create vertices
   for (int vz = 0; vz < kVertsPerEdge; vz++) {
@@ -53,10 +51,23 @@ void extract_hfrag(const level_tools::HFragment& hfrag,
         const int vz = vz_corner_base + vz_offset;
         for (int vx_offset = 0; vx_offset < kVertsPerCorner + 1; vx_offset++) {
           const int vx = vx_corner_base + vx_offset;
-          const int vi = vertex_xz_to_index(vx, vz);
-          const int vi_z = vertex_xz_to_index(vx, vz + 1);
-          hfrag_out.indices.push_back(vi);
-          hfrag_out.indices.push_back(vi_z);
+
+          // The original hfrag definitely had the same convention of each corner "peeking" at
+          // vertices with larger indices. On the corners on the +x and +z edge, this would cause
+          // indexing out of bounds. I'm not really sure how this is solved in the original game,
+          // but for PC, we just put fill these invalid indices with strip restarts so we don't have
+          // to special case things.
+          if (vx < kVertsPerEdge && vz < kVertsPerEdge) {
+            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz));
+          } else {
+            hfrag_out.indices.push_back(UINT32_MAX);
+          }
+
+          if (vx < kVertsPerEdge && vz + 1 < kVertsPerEdge) {
+            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz + 1));
+          } else {
+            hfrag_out.indices.push_back(UINT32_MAX);
+          }
         }
         hfrag_out.indices.push_back(UINT32_MAX);
       }
@@ -85,7 +96,6 @@ void extract_hfrag(const level_tools::HFragment& hfrag,
       const u32 v_data = hfrag.verts.at(vi);
       const u16 v_packed = v_data >> 16;
       const u16 bucket = v_packed >> 11;
-      printf("corner %d in bucket %d\n", ci, bucket);
       hfrag_out.buckets.at(bucket).corners.push_back(ci);
     }
   }

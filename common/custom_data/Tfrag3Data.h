@@ -472,6 +472,7 @@ struct Hfragment {
 
   std::array<s32, 4> wang_tree_tex_id;
   DrawMode draw_mode;
+  u32 occlusion_offset;
 
   void serialize(Serializer& ser);
   void memory_usage(MemoryUsageTracker* tracker) const;

@@ -913,6 +913,7 @@ struct BspHeader {
 
   //  (visible-list-length int32 :offset-assert 36)
   s32 visible_list_length = -1;
+  s32 extra_vis_list_length = -1; // jak 2+ only
 
   //  (drawable-trees drawable-tree-array :offset-assert 40)
   DrawableTreeArray drawable_tree_array;

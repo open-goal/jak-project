@@ -19,11 +19,15 @@ class Hfrag : public BucketRenderer {
     GLuint index_buffer;
     GLuint time_of_day_texture;
     GLuint vao;
-    const std::vector<tfrag3::HfragmentCorner>* corners = nullptr;
-    const std::vector<tfrag3::HfragmentBucket>* buckets = nullptr;
+    tfrag3::Hfragment* hfrag = nullptr;
     u64 num_colors = 0;
     SwizzledTimeOfDay tod_cache;
     u64 last_used_frame = 0;
+    struct {
+      int total_corners = 0;
+      int corners_in_view = 0;
+      int corners_in_view_and_not_occluded = 0;
+    } stats;
   };
 
  private:
@@ -35,7 +39,9 @@ class Hfrag : public BucketRenderer {
   void load_hfrag_level(const std::string& load_name, HfragLevel* lev, const LevelData* data);
   void render_hfrag_level(HfragLevel* lev,
                           SharedRenderState* render_state,
-                          ScopedProfilerNode& prof, const TfragPcPortData& pc_data);
+                          ScopedProfilerNode& prof,
+                          const TfragPcPortData& pc_data,
+                          const u8* occlusion_data);
 
   static constexpr int kMaxLevels = 2;
   std::array<HfragLevel, kMaxLevels> m_levels;

@@ -6,7 +6,7 @@
 
 namespace decompiler {
 
-void extract_hfrag(const level_tools::HFragment& hfrag,
+void extract_hfrag(const level_tools::BspHeader& bsp,
                    const std::string& debug_name,
                    const std::vector<level_tools::TextureRemap>& map,
                    const TextureDB& tex_db,

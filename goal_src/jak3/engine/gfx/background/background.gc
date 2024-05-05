@@ -5,12 +5,12 @@
 ;; name in dgo: background
 ;; dgos: GAME
 
-(defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level))
+(defun add-pc-tfrag3-data ((dma-buf dma-buffer) (lev level) (imm int))
   "Add PC-port specific tfrag data"
   (let ((packet (the-as dma-packet (-> dma-buf base))))
     (set! (-> packet dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc 25))
     (set! (-> packet vif0) (new 'static 'vif-tag))
-    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port)))
+    (set! (-> packet vif1) (new 'static 'vif-tag :cmd (vif-cmd pc-port) :imm imm))
     (set! (-> dma-buf base) (the pointer (&+ packet 16)))
     )
 
@@ -106,7 +106,7 @@
       (dotimes (i (-> *level* draw-level-count))
         (let ((lev (-> *level* draw-level i)))
           (when (pc-should-draw-hfrag lev)
-            (add-pc-tfrag3-data dma-buf lev)
+            (add-pc-tfrag3-data dma-buf lev i)
             )
           )
         )

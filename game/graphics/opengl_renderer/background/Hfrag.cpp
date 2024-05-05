@@ -2,9 +2,23 @@
 
 #include "common/log/log.h"
 
+#include "third-party/imgui/imgui.h"
+
 Hfrag::Hfrag(const std::string& name, int my_id) : BucketRenderer(name, my_id) {}
 
-void Hfrag::draw_debug_window() {}
+void Hfrag::draw_debug_window() {
+  for (auto& level : m_levels) {
+    if (!level.in_use) {
+      ImGui::Text("Inactive");
+    } else {
+      ImGui::Text("Level %s", level.name.c_str());
+      ImGui::Text(" total corners:   %d", level.stats.total_corners);
+      ImGui::Text(" in view corners: %d", level.stats.corners_in_view);
+      ImGui::Text(" in view and not occluded corners: %d",
+                  level.stats.corners_in_view_and_not_occluded);
+    }
+  }
+}
 
 void Hfrag::init_shaders(ShaderLibrary&) {}
 
@@ -48,8 +62,14 @@ void Hfrag::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     // grab the data
     ASSERT(xfer.size_bytes == sizeof(TfragPcPortData));
     TfragPcPortData pc_port_data;
+    int level_idx = xfer.vifcode1().immediate;
     memcpy(&pc_port_data, xfer.data, sizeof(TfragPcPortData));
     pc_port_data.level_name[11] = '\0';
+
+    const u8* occlusion_data = nullptr;
+    if (render_state->occlusion_vis[level_idx].valid) {
+      occlusion_data = render_state->occlusion_vis[level_idx].data;
+    }
 
     // ugh
     if (std::string("desert-vis") == pc_port_data.level_name) {
@@ -60,7 +80,11 @@ void Hfrag::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
     auto* hfrag_level = get_hfrag_level(pc_port_data.level_name, render_state);
     if (hfrag_level) {
       hfrag_level->last_used_frame = render_state->frame_idx;
-      render_hfrag_level(hfrag_level, render_state, prof, pc_port_data);
+      if (occlusion_data) {
+        printf("offset is %d\n", hfrag_level->hfrag->occlusion_offset);
+        occlusion_data += hfrag_level->hfrag->occlusion_offset;
+      }
+      render_hfrag_level(hfrag_level, render_state, prof, pc_port_data, occlusion_data);
     }
 
     xfer = dma.read_and_advance();
@@ -146,6 +170,7 @@ void Hfrag::unload_hfrag_level(Hfrag::HfragLevel* lev) {
   lev->in_use = false;
   lev->name.clear();
   lev->last_used_frame = 0;
+  lev->hfrag = nullptr;
 }
 
 void Hfrag::load_hfrag_level(const std::string& load_name,
@@ -158,12 +183,11 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
   lev->load_id = data->load_id;
   lev->vertex_buffer = data->hfrag_vertices;
   lev->index_buffer = data->hfrag_indices;
-  lev->corners = &data->level->hfrag.corners;
-  lev->buckets = &data->level->hfrag.buckets;
   glGenVertexArrays(1, &lev->vao);
   glBindVertexArray(lev->vao);
   lev->tod_cache = swizzle_time_of_day(data->level->hfrag.time_of_day_colors);
   lev->num_colors = data->level->hfrag.time_of_day_colors.size();
+  lev->hfrag = &data->level->hfrag;
   glBindBuffer(GL_ARRAY_BUFFER, lev->vertex_buffer);
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
@@ -205,7 +229,8 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
 void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
                                SharedRenderState* render_state,
                                ScopedProfilerNode& prof,
-                               const TfragPcPortData& pc_data) {
+                               const TfragPcPortData& pc_data,
+                               const u8* occlusion_data) {
   // generate time of day texture
   interp_time_of_day_fast(pc_data.camera.itimes, lev->tod_cache, m_color_result.data());
   glActiveTexture(GL_TEXTURE10);
@@ -230,9 +255,38 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
   glDisable(GL_BLEND);
   glDepthMask(GL_TRUE);
 
-  glDrawElements(GL_TRIANGLE_STRIP, 506880, GL_UNSIGNED_INT, nullptr);
-  //  for (u32 ci = 0; ci < lev->corners->size(); ci++) {
-  //    // const auto& corner = (*lev->corners)[ci];
-  //
-  //  }
+  // iterate buckets
+  lev->stats = {};
+  for (u32 bucket_idx = 0; bucket_idx < lev->hfrag->buckets.size(); bucket_idx++) {
+    const auto& bucket = lev->hfrag->buckets[bucket_idx];
+    for (u32 corner_idx : bucket.corners) {
+      const auto& corner = lev->hfrag->corners[corner_idx];
+      lev->stats.total_corners++;
+
+      if (sphere_in_view_ref(corner.bsphere, pc_data.camera.planes)) {
+        lev->stats.corners_in_view++;
+        bool draw = true;
+        if (occlusion_data) {
+          int occlusion_byte = corner.vis_id / 8;
+          int occlusion_bit = corner.vis_id & 7;
+          if (!(occlusion_data[occlusion_byte] & (1 << (7 - occlusion_bit)))) {
+            draw = false;
+          } else {
+            lev->stats.corners_in_view_and_not_occluded++;
+          }
+        }
+
+        if (draw) {
+          glDrawElements(GL_TRIANGLE_STRIP, 560, GL_UNSIGNED_INT,
+                         (void*)(corner_idx * 560 * sizeof(u32)));
+          prof.add_draw_call(1);
+          prof.add_tri(16 * 16 * 2);
+        }
+      }
+    }
+  }
+
+  //  glDrawElements(GL_TRIANGLE_STRIP, 506880, GL_UNSIGNED_INT, nullptr);
+  //  prof.add_draw_call(1);
+  //  prof.add_tri(511 * 511 * 2);
 }

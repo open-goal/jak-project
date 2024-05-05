@@ -2087,6 +2087,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
     case GameVersion::Jak2:
     case GameVersion::Jak3:
       visible_list_length = read_plain_data_field<s16>(ref, "visible-list-length", dts);
+      extra_vis_list_length = read_plain_data_field<s16>(ref, "extra-vis-list-length", dts);
       break;
     default:
       ASSERT(false);

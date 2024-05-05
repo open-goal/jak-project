@@ -259,7 +259,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
                           fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data);
   }
   if (bsp_header.hfrag) {
-    extract_hfrag(*bsp_header.hfrag, dgo_name, bsp_header.texture_remap_table, tex_db, &level_data);
+    extract_hfrag(bsp_header, dgo_name, bsp_header.texture_remap_table, tex_db, &level_data);
   }
   level_data.level_name = bsp_header.name;
 

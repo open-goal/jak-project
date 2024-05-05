@@ -444,6 +444,7 @@ void Hfragment::serialize(Serializer& ser) {
   ser.from_pod_vector(&time_of_day_colors);
   ser.from_ptr(&wang_tree_tex_id);
   ser.from_ptr(&draw_mode);
+  ser.from_ptr(&occlusion_offset);
 }
 
 void BVH::serialize(Serializer& ser) {
