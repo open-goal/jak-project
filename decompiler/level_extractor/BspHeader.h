@@ -32,18 +32,6 @@ struct PrintSettings {
   bool expand_collide = false;
 };
 
-struct DrawStats {
-  int total_tfrag_tris = 0;
-  int total_tie_prototype_tris = 0;
-  int total_actors = 0;
-  int total_tie_instances = 0;
-  int total_tfragments = 0;
-
-  bool debug_print_dma_data = false;
-
-  std::string print() const;
-};
-
 /////////////////////
 // Common Types
 /////////////////////
@@ -88,7 +76,6 @@ struct TimeOfDayPalette {
 struct Drawable {
   virtual void read_from_file(TypedRef ref,
                               const decompiler::DecompilerTypeSystem& dts,
-                              DrawStats* stats,
                               GameVersion version) = 0;
   virtual std::string print(const PrintSettings& settings, int indent) const = 0;
   virtual std::string my_type() const = 0;
@@ -101,7 +88,6 @@ struct Drawable {
 struct DrawNode : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -127,7 +113,6 @@ struct DrawableInlineArrayNode : public DrawableInlineArray {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -141,7 +126,6 @@ struct DrawableTree : public Drawable {};
 struct DrawableTreeUnknown : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -151,7 +135,6 @@ struct DrawableTreeUnknown : public DrawableTree {
 struct DrawableInlineArrayUnknown : public DrawableInlineArray {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -191,7 +174,6 @@ struct EntityActor {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
 };
 
@@ -202,7 +184,6 @@ struct DrawableActor : public Drawable {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "drawable-actor"; }
@@ -211,7 +192,6 @@ struct DrawableActor : public Drawable {
 struct DrawableTreeActor : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -242,7 +222,7 @@ struct CollideFragMesh {
    (unused          uint8          :offset 31)
    )
    */
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
   std::string print(const PrintSettings& settings, int indent) const;
 
   u16 strip_data_len;
@@ -258,7 +238,7 @@ struct CollideFragMesh {
 };
 
 struct CollideFragment {
-  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
   std::string print(const PrintSettings& settings, int indent) const;
   Vector bsphere;
   CollideFragMesh mesh;
@@ -267,7 +247,6 @@ struct CollideFragment {
 struct DrawableInlineArrayCollideFragment : public DrawableInlineArray {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -280,7 +259,6 @@ struct DrawableInlineArrayCollideFragment : public DrawableInlineArray {
 struct DrawableTreeCollideFragment : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -298,14 +276,13 @@ struct TFragmentDebugData {
   bool has_debug_lines;
 
   std::string print(int indent) const;
-  void read_from_file(Ref ref, const decompiler::DecompilerTypeSystem& dts, DrawStats* stats);
+  void read_from_file(Ref ref, const decompiler::DecompilerTypeSystem& dts);
 };
 
 // the "fragment" is just a collection of data that fits into the VU memory.
 struct TFragment : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "tfragment"; }
@@ -347,7 +324,6 @@ struct DrawableInlineArrayTFrag : public DrawableInlineArray {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -358,7 +334,6 @@ struct DrawableInlineArrayTFrag : public DrawableInlineArray {
 struct DrawableTreeTfrag : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -418,7 +393,6 @@ struct DrawableTreeTfragWater : public DrawableTreeTfrag {
 struct TieFragment : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "tie-fragment"; }
@@ -449,7 +423,6 @@ struct TieFragment : public Drawable {
 struct InstanceTie : public Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "instance-tie"; }
@@ -471,7 +444,6 @@ struct InstanceTie : public Drawable {
 struct PrototypeTie : public DrawableInlineArray {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -525,7 +497,6 @@ struct PrototypeBucketTie {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
   std::string print(const PrintSettings& settings, int indent) const;
 };
@@ -540,7 +511,6 @@ struct PrototypeArrayTie {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
   std::string print(const PrintSettings& settings, int indent) const;
 };
@@ -550,7 +520,6 @@ struct PrototypeArrayTie {
 struct ProxyPrototypeArrayTie {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
   std::string print(const PrintSettings& settings, int indent) const;
 
@@ -568,7 +537,6 @@ struct DrawableInlineArrayInstanceTie : public DrawableInlineArray {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -578,7 +546,6 @@ struct DrawableInlineArrayInstanceTie : public DrawableInlineArray {
 struct DrawableTreeInstanceTie : public DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version) override;
   std::string print(const PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -600,7 +567,6 @@ namespace shrub_types {
 struct Shrubbery : public level_tools::Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "shrubbery"; }
@@ -623,7 +589,6 @@ struct Shrubbery : public level_tools::Drawable {
 struct PrototypeShrubbery : public level_tools::DrawableInlineArray {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "prototype-shrubbery"; }
@@ -639,7 +604,6 @@ struct Billboard {};
 struct GenericShrubFragment : public level_tools::Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "generic-shrub-fragment"; }
@@ -671,7 +635,6 @@ struct GenericShrubFragment : public level_tools::Drawable {
 struct PrototypeGenericShrub : public level_tools::Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "prototype-generic-shrub"; }
@@ -710,7 +673,6 @@ struct PrototypeBucketShrub {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version);
   std::string print(const level_tools::PrintSettings& settings, int indent) const;
 };
@@ -723,7 +685,6 @@ struct PrototypeInlineArrayShrub {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version);
   std::string print(const level_tools::PrintSettings& settings, int indent) const;
 };
@@ -731,7 +692,6 @@ struct PrototypeInlineArrayShrub {
 struct PrototypeArrayShrubInfo {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version);
   std::string print(const level_tools::PrintSettings& settings, int indent) const;
 
@@ -742,7 +702,6 @@ struct PrototypeArrayShrubInfo {
 struct InstanceShrubbery : public level_tools::Drawable {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "instance-shrubbery"; }
@@ -767,7 +726,6 @@ struct DrawableInlineArrayInstanceShrub : public level_tools::DrawableInlineArra
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override { return "drawable-inline-array-instance-shrub"; }
@@ -776,7 +734,6 @@ struct DrawableInlineArrayInstanceShrub : public level_tools::DrawableInlineArra
 struct DrawableTreeInstanceShrub : public level_tools::DrawableTree {
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      level_tools::DrawStats* stats,
                       GameVersion version) override;
   std::string print(const level_tools::PrintSettings& settings, int indent) const override;
   std::string my_type() const override;
@@ -805,7 +762,6 @@ struct DrawableInlineArrayActor {
   std::vector<DrawableActor> drawable_actors;
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
 };
 
@@ -815,7 +771,6 @@ struct CollideHash {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
 };
 
@@ -843,17 +798,13 @@ struct HFragmentMontage {
 };
 
 struct HFragment {
-  void read_from_file(TypedRef ref,
-                      const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
-                      GameVersion version);
+  void read_from_file(TypedRef ref, const decompiler::DecompilerTypeSystem& dts);
 
   static constexpr int kCornersPerEdge = 32;
   static constexpr int kNumCorners = kCornersPerEdge * kCornersPerEdge;
 
   static constexpr int kVertsPerEdge = 512;
   static constexpr int kNumVerts = 512 * 512;
-
 
   level_tools::Vector start_corner;          // location of corner (0, 0)
   std::vector<level_tools::Vector> spheres;  // array of bspheres for each "corner"
@@ -882,7 +833,6 @@ struct DrawableTreeArray {
 
   void read_from_file(TypedRef ref,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version);
 
   std::string print(const PrintSettings& settings, int indent) const;
@@ -917,7 +867,7 @@ struct BspHeader {
 
   //  (visible-list-length int32 :offset-assert 36)
   s32 visible_list_length = -1;
-  s32 extra_vis_list_length = -1; // jak 2+ only
+  s32 extra_vis_list_length = -1;  // jak 2+ only
 
   //  (drawable-trees drawable-tree-array :offset-assert 40)
   DrawableTreeArray drawable_tree_array;
@@ -969,7 +919,6 @@ struct BspHeader {
 
   void read_from_file(const decompiler::LinkedObjectFile& file,
                       const decompiler::DecompilerTypeSystem& dts,
-                      DrawStats* stats,
                       GameVersion version,
                       bool only_read_texture_remap = false);
 

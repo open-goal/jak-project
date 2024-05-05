@@ -9,16 +9,6 @@
 
 #include "third-party/imgui/imgui.h"
 
-namespace {
-std::string uppercase_string(const std::string& s) {
-  std::string result;
-  for (auto c : s) {
-    result.push_back(toupper(c));
-  }
-  return result;
-}
-}  // namespace
-
 Loader::Loader(const fs::path& base_path, int max_levels)
     : m_base_path(base_path), m_max_levels(max_levels) {
   m_loader_thread = std::thread(&Loader::loader_thread, this);

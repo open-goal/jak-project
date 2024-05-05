@@ -8,8 +8,6 @@ constexpr int kCornersPerEdge = level_tools::HFragment::kCornersPerEdge;
 constexpr int kVertsPerEdge = level_tools::HFragment::kVertsPerEdge;
 constexpr int kVertsPerCorner = kVertsPerEdge / kCornersPerEdge;
 
-constexpr float kVertSpacing = 32768;
-
 int vertex_xz_to_index(int vx, int vz) {
   return vz * kVertsPerEdge + vx;
 }
@@ -18,69 +16,15 @@ int corner_xz_to_index(int x, int z) {
   return z * kCornersPerEdge + x;
 }
 
-void extract_hfrag(const level_tools::BspHeader& bsp,
-                   const std::string& debug_name,
-                   const std::vector<level_tools::TextureRemap>& map,
-                   const TextureDB& tex_db,
-                   tfrag3::Level* out) {
+void extract_hfrag(const level_tools::BspHeader& bsp, const TextureDB& tex_db, tfrag3::Level* out) {
   ASSERT(bsp.hfrag.has_value());
   const auto& hfrag = bsp.hfrag.value();
   auto& hfrag_out = out->hfrag;
 
   hfrag_out.occlusion_offset = bsp.visible_list_length - bsp.extra_vis_list_length;
 
-  // create vertices
-  for (int vz = 0; vz < kVertsPerEdge; vz++) {
-    for (int vx = 0; vx < kVertsPerEdge; vx++) {
-      const int v_idx = vertex_xz_to_index(vx, vz);
-      const u32 v_data = hfrag.verts.at(v_idx);
-      const u16 v_height_u16 = v_data & 0xffff;
-      const u16 v_packed_index = v_data >> 16;
-      const u16 color_idx = v_packed_index & 0b111'1111'1111;
-      auto& vert_out = hfrag_out.vertices.emplace_back();
-      vert_out.color_index = color_idx;
-      vert_out.height = v_height_u16 * 8.f;
-    }
-  }
-
-  for (int cz = 0; cz < kCornersPerEdge; cz++) {
-    const int vz_corner_base = cz * kVertsPerCorner;
-    for (int cx = 0; cx < kCornersPerEdge; cx++) {
-      const int vx_corner_base = cx * kVertsPerCorner;
-      for (int vz_offset = 0; vz_offset < kVertsPerCorner; vz_offset++) {
-        const int vz = vz_corner_base + vz_offset;
-        for (int vx_offset = 0; vx_offset < kVertsPerCorner + 1; vx_offset++) {
-          const int vx = vx_corner_base + vx_offset;
-
-          // The original hfrag definitely had the same convention of each corner "peeking" at
-          // vertices with larger indices. On the corners on the +x and +z edge, this would cause
-          // indexing out of bounds. I'm not really sure how this is solved in the original game,
-          // but for PC, we just put fill these invalid indices with strip restarts so we don't have
-          // to special case things.
-          if (vx < kVertsPerEdge && vz < kVertsPerEdge) {
-            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz));
-          } else {
-            hfrag_out.indices.push_back(UINT32_MAX);
-          }
-
-          if (vx < kVertsPerEdge && vz + 1 < kVertsPerEdge) {
-            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz + 1));
-          } else {
-            hfrag_out.indices.push_back(UINT32_MAX);
-          }
-        }
-        hfrag_out.indices.push_back(UINT32_MAX);
-      }
-    }
-  }
-
-  for (int i = 0; i < 3; i++) {
-    ASSERT(hfrag.start_corner.data[i] == 0);
-  }
-
-  hfrag_out.buckets.resize(hfrag.num_buckets_near);
-
   // create corners
+  hfrag_out.buckets.resize(hfrag.num_buckets_near);
   for (int cz = 0; cz < kCornersPerEdge; cz++) {
     for (int cx = 0; cx < kCornersPerEdge; cx++) {
       const int ci = corner_xz_to_index(cx, cz);
@@ -98,6 +42,98 @@ void extract_hfrag(const level_tools::BspHeader& bsp,
       const u16 bucket = v_packed >> 11;
       hfrag_out.buckets.at(bucket).corners.push_back(ci);
     }
+  }
+
+  // create vertices and indices
+  // loop over each corner
+  for (int cz = 0; cz < kCornersPerEdge; cz++) {
+    const int vz_corner_base = cz * kVertsPerCorner;
+    for (int cx = 0; cx < kCornersPerEdge; cx++) {
+      const int vx_corner_base = cx * kVertsPerCorner;
+      const int ci = corner_xz_to_index(cx, cz);
+      auto& corner = hfrag_out.corners.at(ci);
+      corner.index_start = hfrag_out.indices.size();
+
+      // loop over quad rows which have lower vertex in vz
+      for (int vz_offset = 0; vz_offset < kVertsPerCorner; vz_offset++) {
+        const int vz = vz_corner_base + vz_offset;
+        // loop over quads which have lower vertex in vx, vz
+        for (int vx_offset = 0; vx_offset < kVertsPerCorner; vx_offset++) {
+          const int vx = vx_corner_base + vx_offset;
+
+          // skip out of bound quads
+          if (vx + 1 < kVertsPerEdge && vz + 1 < kVertsPerEdge) {
+            corner.num_tris += 2;
+            for (int qx = 0; qx < 2; qx++) {
+              for (int qz = 0; qz < 2; qz++) {
+                hfrag_out.indices.push_back(hfrag_out.vertices.size());
+                int vi = vertex_xz_to_index(vx + qx, vz + qz);
+                const u32 data = hfrag.verts.at(vi);
+                auto& vert = hfrag_out.vertices.emplace_back();
+                vert.height = 8.f * (data & 0xffff);
+                vert.color_index = (data >> 16) & 0b111'1111'1111;
+                vert.u = qx;
+                vert.v = qz;
+                vert.vi = vi;
+              }
+            }
+            hfrag_out.indices.push_back(UINT32_MAX);
+          }
+        }
+      }
+      corner.index_length = hfrag_out.indices.size() - corner.index_start;
+    }
+  }
+
+  //  for (int vz = 0; vz < kVertsPerEdge; vz++) {
+  //    for (int vx = 0; vx < kVertsPerEdge; vx++) {
+  //      const int v_idx = vertex_xz_to_index(vx, vz);
+  //      const u32 v_data = hfrag.verts.at(v_idx);
+  //      const u16 v_height_u16 = v_data & 0xffff;
+  //      const u16 v_packed_index = v_data >> 16;
+  //      const u16 color_idx = v_packed_index & 0b111'1111'1111;
+  //      auto& vert_out = hfrag_out.vertices.emplace_back();
+  //      vert_out.color_index = color_idx;
+  //      vert_out.height = v_height_u16 * 8.f;
+  //    }
+  //  }
+  //
+  //  for (int cz = 0; cz < kCornersPerEdge; cz++) {
+  //    const int vz_corner_base = cz * kVertsPerCorner;
+  //    for (int cx = 0; cx < kCornersPerEdge; cx++) {
+  //      const int vx_corner_base = cx * kVertsPerCorner;
+  //      for (int vz_offset = 0; vz_offset < kVertsPerCorner; vz_offset++) {
+  //        const int vz = vz_corner_base + vz_offset;
+  //        for (int vx_offset = 0; vx_offset < kVertsPerCorner + 1; vx_offset++) {
+  //          const int vx = vx_corner_base + vx_offset;
+  //
+  //          // The original hfrag definitely had the same convention of each corner "peeking" at
+  //          // vertices with larger indices. On the corners on the +x and +z edge, this would
+  //          cause
+  //          // indexing out of bounds. I'm not really sure how this is solved in the original
+  //          game,
+  //          // but for PC, we just put fill these invalid indices with strip restarts so we don't
+  //          have
+  //          // to special case things.
+  //          if (vx < kVertsPerEdge && vz < kVertsPerEdge) {
+  //            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz));
+  //          } else {
+  //            hfrag_out.indices.push_back(UINT32_MAX);
+  //          }
+  //
+  //          if (vx < kVertsPerEdge && vz + 1 < kVertsPerEdge) {
+  //            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz + 1));
+  //          } else {
+  //            hfrag_out.indices.push_back(UINT32_MAX);
+  //          }
+  //        }
+  //        hfrag_out.indices.push_back(UINT32_MAX);
+  //      }
+  //    }
+  //  }
+
+  for (int i = 0; i < 3; i++) {
+    ASSERT(hfrag.start_corner.data[i] == 0);
   }
 
   // colors

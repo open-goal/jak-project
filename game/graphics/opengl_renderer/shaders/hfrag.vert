@@ -1,7 +1,9 @@
 #version 410 core
 
 layout (location = 0) in float position_in;
-layout (location = 3) in int time_of_day_index;
+layout (location = 1) in int time_of_day_index;
+layout (location = 2) in ivec2 uv;
+layout (location = 3) in int vi;
 
 uniform vec4 hvdf_offset;
 uniform mat4 camera;
@@ -17,11 +19,11 @@ out vec2 tex_coord;
 out float fogginess;
 
 void main() {
-  int vx = gl_VertexID % 512;
-  int vz = gl_VertexID / 512;
+  int vx = vi % 512;
+  int vz = vi / 512;
 
-  tex_coord.x = ((vx & 1) == 1) ? 1.f : 0.f;
-  tex_coord.y = ((vz & 1) == 1) ? 1.f : 0.f;
+  tex_coord.x = (uv.x == 1) ? 1.f : 0.f;
+  tex_coord.y = (uv.y == 1) ? 1.f : 0.f;
 
   vec4 transformed = -camera[3];
   transformed -= camera[0] * 32768.f * vx;
@@ -51,18 +53,4 @@ void main() {
   // time of day lookup
   fragment_color = texelFetch(tex_T10, time_of_day_index, 0);
   fragment_color.a = 1.0;
-
-  // color adjustment
-  // fragment_color *= 2;
-//  fragment_color.a *= 2;
-//
-//
-//  // fog hack
-//  if (fragment_color.r < fog_hack_threshold &&
-//  fragment_color.g < fog_hack_threshold &&
-//  fragment_color.b < fog_hack_threshold) {
-//    fogginess = 0;
-//  }
-
-  // tex_coord = tex_coord_in;
 }

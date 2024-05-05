@@ -237,11 +237,23 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
                         (void*)offsetof(tfrag3::HfragmentVertex, height)  // offset
   );
 
-  glVertexAttribIPointer(3,                                // location 1 in the shader
-                         1,                                // 3 values per vert
+  glVertexAttribIPointer(1,                                // location 1 in the shader
+                         1,                                // 1 values per vert
                          GL_UNSIGNED_SHORT,                // u16
                          sizeof(tfrag3::HfragmentVertex),  // stride
                          (void*)offsetof(tfrag3::HfragmentVertex, color_index)  // offset (0)
+  );
+  glVertexAttribIPointer(2,                                           // location 1 in the shader
+                         2,                                           // 2 values per vert
+                         GL_UNSIGNED_BYTE,                            // u8
+                         sizeof(tfrag3::HfragmentVertex),             // stride
+                         (void*)offsetof(tfrag3::HfragmentVertex, u)  // offset (0)
+  );
+  glVertexAttribIPointer(3,                                            // location 1 in the shader
+                         1,                                            // 2 values per vert
+                         GL_UNSIGNED_INT,                              // u32
+                         sizeof(tfrag3::HfragmentVertex),              // stride
+                         (void*)offsetof(tfrag3::HfragmentVertex, vi)  // offset (0)
   );
   glActiveTexture(GL_TEXTURE10);
   glGenTextures(1, &lev->time_of_day_texture);
@@ -311,6 +323,7 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
 
   glEnableVertexAttribArray(0);
   glEnableVertexAttribArray(1);
+
   glVertexAttribPointer(0,                                 // location 0 in the shader
                         2,                                 // 3 values per vert
                         GL_FLOAT,                          // floats
@@ -392,7 +405,6 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
   first_tfrag_draw_setup(pc_data.camera, render_state, ShaderId::HFRAG);
   setup_opengl_from_draw_mode(lev->hfrag->draw_mode, GL_TEXTURE0, false);
 
-
   glActiveTexture(GL_TEXTURE0);
   // glBindTexture(GL_TEXTURE_2D, lev->hfrag->wang_tree_tex_id[0]);
 
@@ -402,22 +414,19 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
       continue;  // no need to bind texture.
     }
     glBindTexture(GL_TEXTURE_2D, lev->montage_texture[bucket_idx].fb.texture());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); // HACK rm
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);  // HACK rm
 
     const auto& bucket = lev->hfrag->buckets[bucket_idx];
     for (u32 corner_idx : bucket.corners) {
+      const auto& corner = lev->hfrag->corners[corner_idx];
       if (m_corner_vis[corner_idx]) {
-        glDrawElements(GL_TRIANGLE_STRIP, 560, GL_UNSIGNED_INT,
-                       (void*)(corner_idx * 560 * sizeof(u32)));
+        glDrawElements(GL_TRIANGLE_STRIP, corner.index_length, GL_UNSIGNED_INT,
+                       (void*)(corner.index_start * sizeof(u32)));
         prof.add_draw_call(1);
-        prof.add_tri(16 * 16 * 2);
+        prof.add_tri(corner.num_tris);
       }
     }
   }
-
-  //  glDrawElements(GL_TRIANGLE_STRIP, 506880, GL_UNSIGNED_INT, nullptr);
-  //  prof.add_draw_call(1);
-  //  prof.add_tri(511 * 511 * 2);
 }
 
 void Hfrag::render_hfrag_montage_textures(Hfrag::HfragLevel* lev,
@@ -446,8 +455,9 @@ void Hfrag::render_hfrag_montage_textures(Hfrag::HfragLevel* lev,
     constexpr int index_stride = kIndsPerTile * kNumMontageTiles;
     const int offset = bi * index_stride;
     glDrawElements(GL_TRIANGLE_STRIP, index_stride, GL_UNSIGNED_INT, (void*)(offset * sizeof(u32)));
+    prof.add_draw_call();
+    prof.add_tri(32);
   }
 
   glEnable(GL_DEPTH_TEST);
-
 }

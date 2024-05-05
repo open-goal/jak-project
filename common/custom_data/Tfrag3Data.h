@@ -448,13 +448,18 @@ struct ShrubTree {
 
 struct HfragmentVertex {
   float height = 0;
+  u32 vi = 0;
   u16 color_index = 0;
-  u16 pad = 0;
+  u8 u = 0, v = 0;
+  u32 pad = 0;
 };
 
 struct HfragmentCorner {
   math::Vector<float, 4> bsphere;
   u32 vis_id = 0;
+  u32 index_start = 0;
+  u32 index_length = 0;
+  u32 num_tris = 0;
 };
 
 struct HfragmentBucket {
