@@ -3,7 +3,7 @@
  * Top-level compilation forms for each of the GOOS object types.
  */
 
-#include <common/util/string_util.h>
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"

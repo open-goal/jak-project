@@ -1,5 +1,5 @@
 #include "common/goos/PrettyPrinter.h"
-#include <common/util/string_util.h>
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 

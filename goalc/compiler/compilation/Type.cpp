@@ -3,7 +3,7 @@
 #include "common/type_system/deftype.h"
 #include "common/type_system/state.h"
 #include "common/util/math_util.h"
-#include <common/util/string_util.h>
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"

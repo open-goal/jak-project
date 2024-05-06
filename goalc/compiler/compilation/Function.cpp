@@ -3,7 +3,7 @@
  * Calling and defining functions, lambdas, and inlining.
  */
 
-#include <common/util/string_util.h>
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"

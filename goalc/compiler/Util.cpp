@@ -1,7 +1,7 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
 #include "common/util/json_util.h"
-#include <common/util/string_util.h>
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
