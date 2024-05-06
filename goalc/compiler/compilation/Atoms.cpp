@@ -155,6 +155,8 @@ const std::unordered_map<
         {"reset-target", {"", &Compiler::compile_reset_target}},
         {":status", {"", &Compiler::compile_poke}},
         {"in-package", {"", &Compiler::compile_in_package}},
+        {"bundles", {"", &Compiler::compile_bundles}},
+        {"require", {"", &Compiler::compile_require}},
         {"reload", {"", &Compiler::compile_reload}},
         {"get-info", {"", &Compiler::compile_get_info}},
         {"autocomplete", {"", &Compiler::compile_autocomplete}},

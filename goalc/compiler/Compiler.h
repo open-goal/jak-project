@@ -637,6 +637,8 @@ class Compiler {
   Val* compile_gs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_bundles(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_require(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env);

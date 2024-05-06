@@ -312,6 +312,26 @@ Val* Compiler::compile_in_package(const goos::Object& form, const goos::Object& 
 }
 
 /*!
+ * TODO - this form will denote which .DGO/.CGO the file should be bundled within
+ */
+Val* Compiler::compile_bundles(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)form;
+  (void)rest;
+  (void)env;
+  return get_none();
+}
+
+/*!
+ * TODO - this form will denote a dependency for the given file
+ */
+Val* Compiler::compile_require(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)form;
+  (void)rest;
+  (void)env;
+  return get_none();
+}
+
+/*!
  * Build dgo files. Takes a string argument pointing to the DGO description file, which is read
  * and parsed here.
  */

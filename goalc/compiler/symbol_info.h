@@ -13,37 +13,17 @@
 namespace symbol_info {
 
 // Require statement todo:
-// - [x] enums
-// - [x] constants
-// - [x] variables
-// - [x] decls (atleast for types)
-// - [x] types
-// - [x] functions
-// - [] macros
-//   - can't do macros right now because unfortunately, getting their definition location is still
-//   an outlier, look into this eventually.
-//   - However, the expanded macro would be checked appropriately which is kinda what matters more
-//   anyway.
-//   - if i only have to do one type (macros) i can break down and statically analyze the code for
-//   it (begrudgingly)
-// - [x] methods
-// - [] states virtual
-//   - cant do this either for the same reason as macros, the defining form isn't tracked (how do i
-//   resolve it to one that is, perhaps use the line/offset of the file and search the textdb?)
-// - [x] states non-virtual
-//   - covered by variable/symbol checks
-// - [] compilation speed report
 // - [] make it all conditional
+// - [] `bundle-list` command
+// - [] get rid of old doc generation code
+// - [] support enums in symbol info map
+// - [] reduce empty fields in SymbolInfo
+// - [] compilation speed report
 // - [] potentially remove redundant map in compiler, try to get my symbol info trie more efficient
 // (assuming its not).  Some sort of lookup cache, etc.
 // - [] replace most unordered_maps with robin-maps atleast a 2x improvement (benchmark it)
-// - [] get rid of old doc generation code
-// - [] support enums in symbol info map
-// - [x] as well as states
-// - [x] better lookup call, allow passing the symbol kind
-// - [] reduce empty fields in SymbolInfo
-// - [] some paths are stored differently for some reason, there's some inconsistent path separators somewhere
-// - [] long-term this opens the door to shared code across folders
+// - [] some paths are stored differently for some reason, there's some inconsistent path separators
+// somewhere, investigate
 
 enum class Kind {
   GLOBAL_VAR,
@@ -51,10 +31,11 @@ enum class Kind {
   FUNCTION,
   TYPE,
   CONSTANT,
-  MACRO,
+  MACRO,  // TODO - defining form for virtual state isnt tracked by reader
   LANGUAGE_BUILTIN,
   METHOD,
-  STATE,
+  STATE,  // TODO - defining form for virtual state isnt tracked by reader
+  ENUM,
   INVALID
 };
 
@@ -132,6 +113,8 @@ struct SymbolInfo {
   bool m_state_virtual = false;
   std::unordered_map<std::string, std::string> m_state_handler_docstrings;
   std::vector<ArgumentInfo> m_state_enter_and_code_args = {};
+  // Enum related
+  bool m_enum_bitfield = false;
 
   // TODO: need to track references for this, this is a TODO for LSP work
   // bool is_unused = false;
