@@ -401,37 +401,34 @@ Val* Compiler::compile_get_symbol_value(const goos::Object& form,
 
   const auto& ts = *existing_symbol;
   const auto& full_type = m_ts.lookup_type_allow_partial_def(ts);
-  // TODO - this might be redundant
-  // TODO - make this conditionally an error / conditionally log / conditionally add to missing set
-  if (full_type->m_metadata.definition_info.has_value() &&
-      !env->file_env()->m_missing_required_files.contains(
-          full_type->m_metadata.definition_info->filename) &&
-      env->file_env()->m_required_files.find(full_type->m_metadata.definition_info->filename) ==
-          env->file_env()->m_required_files.end() &&
-      !str_util::ends_with(full_type->m_metadata.definition_info->filename,
-                           env->file_env()->name() + ".gc")) {
-    lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
-             full_type->m_metadata.definition_info->filename, name);
-    env->file_env()->m_missing_required_files.insert(
-        full_type->m_metadata.definition_info->filename);
-  } else {
-    // Try to lookup in symbol_info
-    // TODO - is this too much of a performance loss, do i need to make a dedicated interned map so
-    // it's fast? Compare once i add perf. report capabilities.
-    // TODO - a way to specify what symbol type you're looking for in the search would be handy,
-    // assume 1 result for not
-    const auto& symbol_info = m_symbol_info.lookup_exact_name(name);
-    if (!symbol_info.empty()) {
-      const auto& result = symbol_info.at(0);
-      if (result->m_def_location.has_value() &&
-          !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
-          env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
-              env->file_env()->m_required_files.end() &&
-          !str_util::ends_with(result->m_def_location->file_path,
-                               env->file_env()->name() + ".gc")) {
-        lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
-                 result->m_def_location->file_path, name);
-        env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+  if (m_settings.check_for_requires) {
+    if (full_type->m_metadata.definition_info.has_value() &&
+        !env->file_env()->m_missing_required_files.contains(
+            full_type->m_metadata.definition_info->filename) &&
+        env->file_env()->m_required_files.find(full_type->m_metadata.definition_info->filename) ==
+            env->file_env()->m_required_files.end() &&
+        !str_util::ends_with(full_type->m_metadata.definition_info->filename,
+                             env->file_env()->name() + ".gc")) {
+      lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+               full_type->m_metadata.definition_info->filename, name);
+      env->file_env()->m_missing_required_files.insert(
+          full_type->m_metadata.definition_info->filename);
+    } else {
+      // Try to lookup in symbol_info
+      const auto& symbol_info = m_symbol_info.lookup_exact_name(name);
+      if (!symbol_info.empty()) {
+        const auto& result = symbol_info.at(0);
+        if (result->m_def_location.has_value() &&
+            !env->file_env()->m_missing_required_files.contains(
+                result->m_def_location->file_path) &&
+            env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+                env->file_env()->m_required_files.end() &&
+            !str_util::ends_with(result->m_def_location->file_path,
+                                 env->file_env()->name() + ".gc")) {
+          lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                   result->m_def_location->file_path, name);
+          env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+        }
       }
     }
   }
@@ -482,21 +479,24 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
                            "Ambiguous symbol: {} is both a global variable and a constant and it "
                            "is not clear which should be used here.");
     }
-    // TODO - make this conditionally an error / conditionally log / conditionally add to missing
-    // set
-    auto global_constant_info = m_global_constant_info.lookup(form.as_symbol());
-    // TODO - the file check is poor
-    if (global_constant_info->definition_info.has_value() &&
-        !env->file_env()->m_missing_required_files.contains(
-            global_constant_info->definition_info->filename) &&
-        env->file_env()->m_required_files.find(global_constant_info->definition_info->filename) ==
-            env->file_env()->m_required_files.end() &&
-        !str_util::ends_with(global_constant_info->definition_info->filename,
-                             env->file_env()->name() + ".gc")) {
-      lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
-               global_constant_info->definition_info->filename, name);
-      env->file_env()->m_missing_required_files.insert(
-          global_constant_info->definition_info->filename);
+    if (m_settings.check_for_requires) {
+      // TODO - these file checks are gross, replace with something more robust long-term
+      const auto& symbol_info =
+          m_symbol_info.lookup_exact_name(name, symbol_info::Kind::GLOBAL_VAR);
+      if (!symbol_info.empty()) {
+        const auto& result = symbol_info.at(0);
+        if (result->m_def_location.has_value() &&
+            !env->file_env()->m_missing_required_files.contains(
+                result->m_def_location->file_path) &&
+            env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+                env->file_env()->m_required_files.end() &&
+            !str_util::ends_with(result->m_def_location->file_path,
+                                 env->file_env()->name() + ".gc")) {
+          lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                   result->m_def_location->file_path, name);
+          env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+        }
+      }
     }
     // got a global constant
     return compile_error_guard(*global_constant, env);

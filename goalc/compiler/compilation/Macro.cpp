@@ -32,20 +32,21 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
                                   const goos::Object& rest,
                                   const goos::Object& name,
                                   Env* env) {
-  if (name.print() == "test-macro") {
-    int x = 0;
-  }
-  const auto& symbol_info = m_symbol_info.lookup_exact_name(name.print());
-  if (!symbol_info.empty()) {
-    const auto& result = symbol_info.at(0);
-    if (result->m_def_location.has_value() &&
-        !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
-        env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
-            env->file_env()->m_required_files.end() &&
-        !str_util::ends_with(result->m_def_location->file_path, env->file_env()->name() + ".gc")) {
-      lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
-               result->m_def_location->file_path, name.print());
-      env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+  if (m_settings.check_for_requires) {
+    const auto& symbol_info =
+        m_symbol_info.lookup_exact_name(name.print(), symbol_info::Kind::MACRO);
+    if (!symbol_info.empty()) {
+      const auto& result = symbol_info.at(0);
+      if (result->m_def_location.has_value() &&
+          !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
+          env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+              env->file_env()->m_required_files.end() &&
+          !str_util::ends_with(result->m_def_location->file_path,
+                               env->file_env()->name() + ".gc")) {
+        lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                 result->m_def_location->file_path, name.print());
+        env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+      }
     }
   }
 
@@ -225,7 +226,6 @@ Val* Compiler::compile_define_constant(const goos::Object& form,
                              existing->print(), value.print());
     }
     m_global_constants.set(sym, value);
-    m_global_constant_info.set(sym, {.definition_info = m_goos.reader.db.get_short_info_for(form)});
   }
 
   // GOOS constant

@@ -135,11 +135,6 @@ class Compiler {
   symbol_info::SymbolInfoMap m_symbol_info;
   goos::InternedPtrMap<TypeSpec> m_symbol_types;
   goos::InternedPtrMap<goos::Object> m_global_constants;
-  // It's too difficult to extend the above map to contain metadata about the global constants
-  // (brings up circular dependency issues in `Object.h` so just make an adjacent map that holds
-  // said info...
-  // TODO - this is more state to have to ensure it's kept up to date however
-  goos::InternedPtrMap<GlobalConstantInfo> m_global_constant_info;
   std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
       m_inlineable_functions;
 

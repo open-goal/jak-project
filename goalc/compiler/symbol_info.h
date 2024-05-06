@@ -13,11 +13,9 @@
 namespace symbol_info {
 
 // Require statement todo:
-// - [] make it all conditional
+// - [] reduce empty fields in SymbolInfo
 // - [] `bundle-list` command
 // - [] get rid of old doc generation code
-// - [] support enums in symbol info map
-// - [] reduce empty fields in SymbolInfo
 // - [] compilation speed report
 // - [] potentially remove redundant map in compiler, try to get my symbol info trie more efficient
 // (assuming its not).  Some sort of lookup cache, etc.
@@ -115,6 +113,7 @@ struct SymbolInfo {
   std::vector<ArgumentInfo> m_state_enter_and_code_args = {};
   // Enum related
   bool m_enum_bitfield = false;
+  std::unordered_map<std::string, s64> m_enum_variants;
 
   // TODO: need to track references for this, this is a TODO for LSP work
   // bool is_unused = false;
@@ -171,6 +170,12 @@ class SymbolInfoMap {
                  const std::vector<ArgumentInfo>& code_args,
                  const goos::Object& defining_form,
                  const std::string& docstring);
+  void add_enum(const std::string& name,
+                const std::string& type,
+                const std::unordered_map<std::string, s64> variants,
+                const bool is_bitfield,
+                const goos::Object& defining_form,
+                const std::string& docstring = "");
   std::vector<SymbolInfo*> lookup_symbols_by_file(const std::string& file_path) const;
   std::vector<SymbolInfo*> lookup_exact_name(const std::string& name) const;
   std::vector<SymbolInfo*> lookup_exact_name(const std::string& name, const Kind sym_kind) const;

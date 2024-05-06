@@ -254,22 +254,21 @@ s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
       const auto& head_sym = head.as_symbol();
       const auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
       if (enum_type) {
-        // Check if the enum has been required or not
-        // TODO - make this conditionally an error / conditionally log / conditionally add to
-        // missing set
-        // TODO - the file check is poor
-        if (enum_type->m_metadata.definition_info.has_value() &&
-            !env->file_env()->m_missing_required_files.contains(
-                enum_type->m_metadata.definition_info->filename) &&
-            env->file_env()->m_required_files.find(
-                enum_type->m_metadata.definition_info->filename) ==
-                env->file_env()->m_required_files.end() &&
-            !str_util::ends_with(enum_type->m_metadata.definition_info->filename,
-                                 env->file_env()->name() + ".gc")) {
-          lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
-                   enum_type->m_metadata.definition_info->filename, head_sym.name_ptr);
-          env->file_env()->m_missing_required_files.insert(
-              enum_type->m_metadata.definition_info->filename);
+        if (m_settings.check_for_requires) {
+          // Check if the enum has been required or not
+          if (enum_type->m_metadata.definition_info.has_value() &&
+              !env->file_env()->m_missing_required_files.contains(
+                  enum_type->m_metadata.definition_info->filename) &&
+              env->file_env()->m_required_files.find(
+                  enum_type->m_metadata.definition_info->filename) ==
+                  env->file_env()->m_required_files.end() &&
+              !str_util::ends_with(enum_type->m_metadata.definition_info->filename,
+                                   env->file_env()->name() + ".gc")) {
+            lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                     enum_type->m_metadata.definition_info->filename, head_sym.name_ptr);
+            env->file_env()->m_missing_required_files.insert(
+                enum_type->m_metadata.definition_info->filename);
+          }
         }
         bool success;
         // TODO - changed false to true so you'd actually once again get a useful error (something

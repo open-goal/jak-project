@@ -90,27 +90,30 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
     }
   }
 
-  std::vector<symbol_info::SymbolInfo*> symbol_info =
-      m_symbol_info.lookup_exact_method_name(method_info.name, compile_time_type.base_type());
-  // TODO - check for virtual state requirement, if i could track the defining form!
-  // if (symbol_info.empty()) {
-  //  // maybe it's a virtual state
-  //  symbol_info = m_symbol_info.lookup_exact_virtual_state_name(method_info.name,
-  //                                                              compile_time_type.base_type());
-  //  if (!symbol_info.empty()) {
-  //    int x = 0;
-  //  }
-  //}
-  if (!symbol_info.empty()) {
-    const auto& result = symbol_info.at(0);
-    if (result->m_def_location.has_value() &&
-        !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
-        env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
-            env->file_env()->m_required_files.end() &&
-        !str_util::ends_with(result->m_def_location->file_path, env->file_env()->name() + ".gc")) {
-      lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
-               result->m_def_location->file_path, method_info.name);
-      env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+  if (m_settings.check_for_requires) {
+    std::vector<symbol_info::SymbolInfo*> symbol_info =
+        m_symbol_info.lookup_exact_method_name(method_info.name, compile_time_type.base_type());
+    // TODO - check for virtual state requirement, if i could track the defining form!
+    // if (symbol_info.empty()) {
+    //  // maybe it's a virtual state
+    //  symbol_info = m_symbol_info.lookup_exact_virtual_state_name(method_info.name,
+    //                                                              compile_time_type.base_type());
+    //  if (!symbol_info.empty()) {
+    //    int x = 0;
+    //  }
+    //}
+    if (!symbol_info.empty()) {
+      const auto& result = symbol_info.at(0);
+      if (result->m_def_location.has_value() &&
+          !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
+          env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+              env->file_env()->m_required_files.end() &&
+          !str_util::ends_with(result->m_def_location->file_path,
+                               env->file_env()->name() + ".gc")) {
+        lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                 result->m_def_location->file_path, method_info.name);
+        env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+      }
     }
   }
 
@@ -1489,8 +1492,12 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   (void)form;
   (void)env;
 
-  const auto new_enum = parse_defenum(rest, &m_ts, {});
+  DefinitionMetadata def_metadata;
+  const auto new_enum = parse_defenum(rest, &m_ts, &def_metadata);
   new_enum->m_metadata.definition_info = m_goos.reader.db.get_short_info_for(form);
+  m_symbol_info.add_enum(new_enum->get_name(), new_enum->get_parent(), new_enum->entries(),
+                         new_enum->is_bitfield(), form,
+                         def_metadata.docstring.has_value() ? def_metadata.docstring.value() : "");
   return get_none();
 }
 

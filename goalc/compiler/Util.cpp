@@ -310,7 +310,7 @@ TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
   } else if (src.is_pair()) {
     type_name = symbol_string(car(&src));
   }
-  if (!type_name.empty()) {
+  if (m_settings.check_for_requires && !type_name.empty()) {
     const auto& symbol_info = m_symbol_info.lookup_exact_name(type_name);
     if (!symbol_info.empty()) {
       const auto& result = symbol_info.at(0);
