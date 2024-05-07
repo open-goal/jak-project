@@ -997,6 +997,7 @@ const std::unordered_map<
              {"vehicle-rider-info",
               {{"grab-rail-array", ArrayFieldDecompMeta(TypeSpec("vehicle-grab-rail-info"), 48)},
                {"attach-point-array", ArrayFieldDecompMeta(TypeSpec("vehicle-attach-point"), 32)}}},
+             {"vehicle-setup-info", {{"color", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
              {"desbeast-path", {{"node", ArrayFieldDecompMeta(TypeSpec("desbeast-node"), 32)}}},
              {"race-info",
               {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
