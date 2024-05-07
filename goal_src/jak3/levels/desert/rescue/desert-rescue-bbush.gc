@@ -95,39 +95,18 @@
 
 ;; WARN: Return type mismatch connection vs none.
 (defmethod set-time-limit ((this task-manager-desert-rescue-bbush))
-  (local-vars (r0-0 uint128) (v1-9 uint128) (a0-6 object) (a1-5 uint128) (sv-16 int))
+  (local-vars (sv-16 res-tag))
   (set-setting! 'pilot-exit #f 0.0 0)
   (let ((t1-1 2))
     (set-setting! 'vehicles 'set (shr t1-1 32) t1-1)
     )
   (set-setting! 'airlock #f 0.0 0)
-  (set! sv-16 0)
-  (let ((v1-7 (res-lump-data
-                (entity-by-name "desresc-bbush-info-1")
-                'actor-groups
-                pointer
-                :tag-ptr (the-as (pointer res-tag) (& sv-16))
-                )
-              )
-        )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-7 (res-lump-data (entity-by-name "desresc-bbush-info-1") 'actor-groups pointer :tag-ptr (& sv-16))))
     (cond
-      ((and v1-7 (begin
-                   (let ((a0-7 #t))
-                     (let ((a1-4 (the-as uint128 sv-16)))
-                       (.pcpyud a1-5 a1-4 r0-0)
-                       )
-                     (let ((a1-7 (the-as int (shr (* (the-as int a1-5) 2) 49))))
-                       (cmove-#f-zero a0-6 a1-7 a0-7)
-                       )
-                     )
-                   a0-6
-                   )
-            )
+      ((and v1-7 (nonzero? (-> sv-16 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-7))
-       (let ((v1-8 (the-as uint128 sv-16)))
-         (.pcpyud v1-9 v1-8 r0-0)
-         )
-       (set! (-> this actor-group-count) (shr (* (the-as int v1-9) 2) 49))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
        )
       (else
         (set! (-> this actor-group) (the-as (pointer actor-group) #f))
