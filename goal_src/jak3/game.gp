@@ -174,31 +174,31 @@
 (cgo-file "mined.gd" common-dep)
 (cgo-file "minee.gd" common-dep)
 ; ;; city
-; (cgo-file "cfa.gd" common-dep) ;; ctyfarm
-; (cgo-file "cfb.gd" common-dep)
-; (cgo-file "cgb.gd" common-dep) ;; ctygen
-; (cgo-file "cia.gd" common-dep) ;; ctyind
-; (cgo-file "cib.gd" common-dep)
-; (cgo-file "cpo.gd" common-dep) ;; ctyport
-; (cgo-file "cta.gd" common-dep)
-; (cgo-file "ctb.gd" common-dep)
-; (cgo-file "ctc.gd" common-dep)
-; (cgo-file "ctypepa.gd" common-dep) ;; citizens
-; (cgo-file "ctypepb.gd" common-dep) ;; predator
-; (cgo-file "ctypepc.gd" common-dep) ;; empty
-; (cgo-file "ctypesa.gd" common-dep) ;; guards
-; (cgo-file "ctypesb.gd" common-dep) ;; metal heads
-; (cgo-file "ctypesc.gd" common-dep) ;; kg
-; (cgo-file "ctycara.gd" common-dep) ;; cars
-; (cgo-file "ctycarb.gd" common-dep) ;; bikes
-; (cgo-file "ctycarc.gd" common-dep) ;; hellcat
-; (cgo-file "ctycarkg.gd" common-dep) ;; empty
-; (cgo-file "onintent.gd" common-dep)
-; (cgo-file "hhg.gd" common-dep) ;; hiphog
-; (cgo-file "gga.gd" common-dep) ;; gungame
-; (cgo-file "gungame1.gd" common-dep)
-; (cgo-file "gungame2.gd" common-dep)
-; (cgo-file "powergd.gd" common-dep)
+(cgo-file "cfa.gd" common-dep) ;; ctyfarm
+(cgo-file "cfb.gd" common-dep)
+(cgo-file "cgb.gd" common-dep) ;; ctygen
+(cgo-file "cia.gd" common-dep) ;; ctyind
+(cgo-file "cib.gd" common-dep)
+(cgo-file "cpo.gd" common-dep) ;; ctyport
+(cgo-file "cta.gd" common-dep)
+(cgo-file "ctb.gd" common-dep)
+(cgo-file "ctc.gd" common-dep)
+(cgo-file "ctypepa.gd" common-dep) ;; citizens
+(cgo-file "ctypepb.gd" common-dep) ;; predator
+(cgo-file "ctypepc.gd" common-dep) ;; empty
+(cgo-file "ctypesa.gd" common-dep) ;; guards
+(cgo-file "ctypesb.gd" common-dep) ;; metal heads
+(cgo-file "ctypesc.gd" common-dep) ;; kg
+(cgo-file "ctycara.gd" common-dep) ;; cars
+(cgo-file "ctycarb.gd" common-dep) ;; bikes
+(cgo-file "ctycarc.gd" common-dep) ;; hellcat
+(cgo-file "ctycarkg.gd" common-dep) ;; empty
+(cgo-file "onintent.gd" common-dep)
+(cgo-file "hhg.gd" common-dep) ;; hiphog
+(cgo-file "gga.gd" common-dep) ;; gungame
+(cgo-file "gungame1.gd" common-dep)
+(cgo-file "gungame2.gd" common-dep)
+(cgo-file "powergd.gd" common-dep)
 (cgo-file "freehq.gd" common-dep)
 ; (cgo-file "vin.gd" common-dep)
 ; (cgo-file "freecast.gd" common-dep)
