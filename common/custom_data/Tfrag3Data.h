@@ -274,18 +274,23 @@ struct BVH {
   void serialize(Serializer& ser);
 };
 
-// A time-of-day color. Each stores 8 colors. At a given "time of day", they are interpolated
-// to find a single color which goes into a color palette.
-struct TimeOfDayColor {
-  math::Vector<u8, 4> rgba[8];
+// This is split into groups of 4 colors.
+// The data in these groups is stored first by palette, then color, then channel.
+struct PackedTimeOfDay {
+  std::vector<u8> data;
+  u32 color_count = 0;
+  void serialize(Serializer& ser);
 
-  bool operator==(const TimeOfDayColor& other) const {
-    for (size_t i = 0; i < 8; i++) {
-      if (rgba[i] != other.rgba[i]) {
-        return false;
-      }
-    }
-    return true;
+  u8 read(int color, int palette, int channel) const {
+    const int color_quad = color / 4;
+    const int color_in_quad = color % 4;
+    return data[color_quad * 4 * 4 * 8 + palette * 4 * 4 + color_in_quad * 4 + channel];
+  }
+
+  u8& read(int color, int palette, int channel) {
+    const int color_quad = color / 4;
+    const int color_in_quad = color % 4;
+    return data[color_quad * 4 * 4 * 8 + palette * 4 * 4 + color_in_quad * 4 + channel];
   }
 };
 
@@ -324,8 +329,8 @@ struct TfragTree {
   TFragmentTreeKind kind;        // our tfrag kind
   std::vector<StripDraw> draws;  // the actual topology and settings
   PackedTfragVertices packed_vertices;
-  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
-  BVH bvh;                             // the bvh for frustum culling
+  PackedTimeOfDay colors;  // vertex colors (pre-interpolation)
+  BVH bvh;                 // the bvh for frustum culling
   bool use_strips = true;
 
   struct {
@@ -406,7 +411,7 @@ struct TieTree {
   std::array<u32, kNumTieCategories + 1> category_draw_indices;
 
   PackedTieVertices packed_vertices;
-  std::vector<TimeOfDayColor> colors;  // vertex colors (pre-interpolation)
+  PackedTimeOfDay colors;  // vertex colors (pre-interpolation)
 
   std::vector<InstancedStripDraw> instanced_wind_draws;
   std::vector<TieWindInstance> wind_instance_info;
@@ -427,7 +432,7 @@ struct TieTree {
 
 struct ShrubTree {
   // todo some visibility structure
-  std::vector<TimeOfDayColor> time_of_day_colors;  // multiplier colors
+  PackedTimeOfDay time_of_day_colors;  // multiplier colors
 
   PackedShrubVertices packed_vertices;
   std::vector<ShrubDraw> static_draws;  // the actual topology and settings
@@ -473,7 +478,7 @@ struct Hfragment {
   std::vector<u32> indices;
   std::vector<HfragmentCorner> corners;
   std::vector<HfragmentBucket> buckets;
-  std::vector<TimeOfDayColor> time_of_day_colors;
+  PackedTimeOfDay time_of_day_colors;
 
   std::array<s32, 4> wang_tree_tex_id;
   DrawMode draw_mode;

@@ -206,8 +206,7 @@ void Hfrag::load_hfrag_level(const std::string& load_name,
   lev->load_id = data->load_id;
   lev->vertex_buffer = data->hfrag_vertices;
   lev->index_buffer = data->hfrag_indices;
-  lev->tod_cache = swizzle_time_of_day(data->level->hfrag.time_of_day_colors);
-  lev->num_colors = data->level->hfrag.time_of_day_colors.size();
+  lev->num_colors = data->level->hfrag.time_of_day_colors.color_count;
   lev->hfrag = &data->level->hfrag;
   lev->wang_texture = data->textures.at(data->level->hfrag.wang_tree_tex_id[0]);
 
@@ -387,7 +386,7 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
   render_hfrag_montage_textures(lev, render_state, prof);
 
   // generate time of day texture
-  interp_time_of_day_fast(pc_data.camera.itimes, lev->tod_cache, m_color_result.data());
+  interp_time_of_day(pc_data.camera.itimes, lev->hfrag->time_of_day_colors, m_color_result.data());
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, lev->time_of_day_texture);
   glTexSubImage1D(GL_TEXTURE_1D, 0, 0, lev->num_colors, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,

@@ -32,7 +32,6 @@ class Hfrag : public BucketRenderer {
     GLuint vao;
     tfrag3::Hfragment* hfrag = nullptr;
     u64 num_colors = 0;
-    SwizzledTimeOfDay tod_cache;
     u64 last_used_frame = 0;
 
     GLuint wang_texture;

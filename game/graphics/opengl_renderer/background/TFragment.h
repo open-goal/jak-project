@@ -122,10 +122,9 @@ class TFragment : public BucketRenderer {
     GLuint vao = -1;
     u32 vert_count = 0;
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
-    const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
+    const tfrag3::PackedTimeOfDay* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
     const u32* index_data = nullptr;
-    SwizzledTimeOfDay tod_cache;
     u64 draw_mode = 0;
 
     void reset_stats() {
@@ -177,6 +176,5 @@ class TFragment : public BucketRenderer {
   std::vector<DebugVertex> m_debug_vert_data;
 
   bool m_has_level = false;
-  bool m_use_fast_time_of_day = true;
   const std::vector<GLuint>* m_anim_slot_array;
 };

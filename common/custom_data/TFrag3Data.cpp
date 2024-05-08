@@ -14,6 +14,11 @@
 
 namespace tfrag3 {
 
+void PackedTimeOfDay::serialize(Serializer& ser) {
+  ser.from_pod_vector(&data);
+  ser.from_ptr(&color_count);
+}
+
 void PackedTieVertices::serialize(Serializer& ser) {
   ser.from_pod_vector(&color_indices);
   ser.from_pod_vector(&matrices);
@@ -72,10 +77,9 @@ void TfragTree::serialize(Serializer& ser) {
     draw.serialize(ser);
   }
 
-  // ser.from_pod_vector(&vertices);
   ser.from_pod_vector(&packed_vertices.vertices);
   ser.from_pod_vector(&packed_vertices.cluster_origins);
-  ser.from_pod_vector(&colors);
+  colors.serialize(ser);
   bvh.serialize(ser);
   ser.from_ptr(&use_strips);
 }
@@ -399,7 +403,7 @@ void TieTree::serialize(Serializer& ser) {
   }
 
   packed_vertices.serialize(ser);
-  ser.from_pod_vector(&colors);
+  colors.serialize(ser);
   bvh.serialize(ser);
 
   ser.from_ptr(&has_per_proto_visibility_toggle);
@@ -407,7 +411,7 @@ void TieTree::serialize(Serializer& ser) {
 }
 
 void ShrubTree::serialize(Serializer& ser) {
-  ser.from_pod_vector(&time_of_day_colors);
+  time_of_day_colors.serialize(ser);
   ser.from_pod_vector(&indices);
   packed_vertices.serialize(ser);
   if (ser.is_saving()) {
@@ -441,7 +445,7 @@ void Hfragment::serialize(Serializer& ser) {
   for (auto& x : buckets) {
     x.serialize(ser);
   }
-  ser.from_pod_vector(&time_of_day_colors);
+  time_of_day_colors.serialize(ser);
   ser.from_ptr(&wang_tree_tex_id);
   ser.from_ptr(&draw_mode);
   ser.from_ptr(&occlusion_offset);
@@ -681,8 +685,7 @@ void PackedShrubVertices::memory_usage(MemoryUsageTracker* tracker) const {
 }
 
 void ShrubTree::memory_usage(MemoryUsageTracker* tracker) const {
-  tracker->add(MemoryUsageCategory::SHRUB_TIME_OF_DAY,
-               sizeof(TimeOfDayColor) * time_of_day_colors.size());
+  tracker->add(MemoryUsageCategory::SHRUB_TIME_OF_DAY, sizeof(u8) * time_of_day_colors.data.size());
   packed_vertices.memory_usage(tracker);
   tracker->add(MemoryUsageCategory::SHRUB_DRAW, sizeof(ShrubDraw) * static_draws.size());
   tracker->add(MemoryUsageCategory::SHRUB_IND, sizeof(u32) * indices.size());
@@ -710,7 +713,7 @@ void TieTree::memory_usage(MemoryUsageTracker* tracker) const {
                  draw.vis_groups.size() * sizeof(StripDraw::VisGroup));
   }
   packed_vertices.memory_usage(tracker);
-  tracker->add(MemoryUsageCategory::TIE_TIME_OF_DAY, sizeof(TimeOfDayColor) * colors.size());
+  tracker->add(MemoryUsageCategory::TIE_TIME_OF_DAY, sizeof(u8) * colors.data.size());
 
   for (auto& draw : instanced_wind_draws) {
     draw.memory_usage(tracker);
@@ -734,7 +737,7 @@ void TfragTree::memory_usage(MemoryUsageTracker* tracker) const {
                  draw.vis_groups.size() * sizeof(StripDraw::VisGroup));
   }
   packed_vertices.memory_usage(tracker);
-  tracker->add(MemoryUsageCategory::TFRAG_TIME_OF_DAY, sizeof(TimeOfDayColor) * colors.size());
+  tracker->add(MemoryUsageCategory::TFRAG_TIME_OF_DAY, sizeof(u8) * colors.data.size());
   tracker->add(MemoryUsageCategory::TFRAG_BVH, sizeof(VisNode) * bvh.vis_nodes.size());
 }
 
@@ -750,8 +753,7 @@ void IndexTexture::memory_usage(MemoryUsageTracker* tracker) const {
 void Hfragment::memory_usage(tfrag3::MemoryUsageTracker* tracker) const {
   tracker->add(MemoryUsageCategory::HFRAG_VERTS, vertices.size() * sizeof(HfragmentVertex));
   tracker->add(MemoryUsageCategory::HFRAG_INDEX, indices.size() * sizeof(u32));
-  tracker->add(MemoryUsageCategory::HFRAG_TIME_OF_DAY,
-               time_of_day_colors.size() * sizeof(TimeOfDayColor));
+  tracker->add(MemoryUsageCategory::HFRAG_TIME_OF_DAY, time_of_day_colors.data.size() * sizeof(u8));
   tracker->add(MemoryUsageCategory::HFRAG_CORNERS, corners.size() * sizeof(HfragmentCorner));
 }
 

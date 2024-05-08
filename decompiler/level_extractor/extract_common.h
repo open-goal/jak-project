@@ -8,5 +8,5 @@
 
 namespace decompiler {
 u32 clean_up_vertex_indices(std::vector<u32>& idx);
-std::vector<tfrag3::TimeOfDayColor> pack_colors(const level_tools::TimeOfDayPalette& in);
+tfrag3::PackedTimeOfDay pack_colors(const level_tools::TimeOfDayPalette& in);
 }  // namespace decompiler
