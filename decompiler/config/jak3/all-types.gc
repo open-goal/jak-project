@@ -44727,18 +44727,18 @@
 ;; ctysluma-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *range-color-rubble-flame* curve-color-fast)
-;; (define-extern *range-alpha-rubble-flame* curve2d-fast)
-;; (define-extern *range-scale-rubble-flame-x* curve2d-fast)
-;; (define-extern *range-scale-rubble-flame-y* curve2d-fast)
-;; (define-extern *r-curve-rubble-flame* curve2d-fast)
-;; (define-extern *g-curve-rubble-flame* curve2d-fast)
-;; (define-extern *b-curve-rubble-flame* curve2d-fast)
-;; (define-extern *curve-alpha-rubble-flame* curve2d-fast)
-;; (define-extern *curve-scale-rubble-flame-x* curve2d-fast)
-;; (define-extern *curve-scale-rubble-flame-y* curve2d-fast)
-;; (define-extern *part-ctyslum-rubble-fire-flame-curve-settings* object)
-;; (define-extern check-drop-level-ctysluma-drop-userdata function) ;; (function sparticle-system sparticle-cpuinfo vector none)
+(define-extern *range-color-rubble-flame* curve-color-fast)
+(define-extern *range-alpha-rubble-flame* curve2d-fast)
+(define-extern *range-scale-rubble-flame-x* curve2d-fast)
+(define-extern *range-scale-rubble-flame-y* curve2d-fast)
+(define-extern *r-curve-rubble-flame* curve2d-fast)
+(define-extern *g-curve-rubble-flame* curve2d-fast)
+(define-extern *b-curve-rubble-flame* curve2d-fast)
+(define-extern *curve-alpha-rubble-flame* curve2d-fast)
+(define-extern *curve-scale-rubble-flame-x* curve2d-fast)
+(define-extern *curve-scale-rubble-flame-y* curve2d-fast)
+(define-extern *part-ctyslum-rubble-fire-flame-curve-settings* particle-curve-settings)
+(define-extern check-drop-level-ctysluma-drop-userdata (function sparticle-system sparticle-cpuinfo vector none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; neon-baron-part                ;;
@@ -47038,30 +47038,26 @@
 ;; ctyport-attack-bbush           ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ctyport-attack-manager-bbush (ctyport-attack-manager)
-  ((actor-group       uint32  :offset-assert 308)
-   (actor-group-count int32   :offset-assert 312)
-   (clock-speed       float   :offset-assert 316)
-   (hud-timer         uint64  :offset-assert 196)
-   (countdown-timer   uint64  :offset-assert 332)
+  ((actor-group       (pointer actor-group)  :offset-assert 312)
+   (actor-group-count int32   :offset-assert 316)
+   (clock-speed       float   :offset-assert 320)
+   (countdown-timer   handle  :offset 336)
    )
   :method-count-assert 53
   :size-assert         #x158
   :flag-assert         #x3500e00158
   (:state-methods
-    wait-award ;; 52
-    head-to-wall ;; 33
     pickup-nukes ;; 32
-    wait ;; 14
+    head-to-wall ;; 33
+    wait-award ;; 52
     )
   )
-|#
 
-;; (define-extern *ctyport-attack-bbush-positions* object)
-;; (define-extern *ctyport-bbush-mine-positions* array)
-;; (define-extern *port-attack-bbush-fail-sphere* object)
-;; (define-extern *port-attack-bbush-fail-radius* object)
+(define-extern *ctyport-attack-bbush-positions* (array ctyport-attack-package-info))
+(define-extern *ctyport-bbush-mine-positions* (array ctyport-mine-layout))
+(define-extern *port-attack-bbush-fail-sphere* sphere)
+(define-extern *port-attack-bbush-fail-radius* float)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; target-turret-shot             ;;
@@ -50943,8 +50939,8 @@
 ;; ctyslumb-part                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern check-drop-level-ctyslumb-drop-userdata function) ;; (function sparticle-system sparticle-cpuinfo vector none)
-;; (define-extern *ctyslumb-water-texture-anim-array* texture-anim-array)
+(define-extern check-drop-level-ctyslumb-drop-userdata (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern *ctyslumb-water-texture-anim-array* texture-anim-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mech-part                      ;;
@@ -51676,16 +51672,13 @@
 ;; ctyslumc-obs                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cty-elevator (elevator)
   ()
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
   )
-|#
 
-#|
 (deftype ctyslumc-flag (process-drawable)
   ()
   :method-count-assert 21
@@ -51695,10 +51688,9 @@
     idle ;; 20
     )
   )
-|#
 
-;; (define-extern *ctyslumc-water-texture-anim-array* texture-anim-array)
-;; (define-extern ctyslumc-flag-init-by-other function)
+(define-extern *ctyslumc-water-texture-anim-array* texture-anim-array)
+(define-extern ctyslumc-flag-init-by-other (function vector entity-actor object :behavior ctyslumc-flag))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; pecker-ingame                  ;;
@@ -55169,42 +55161,38 @@
   :flag-assert         #x90000002c
   )
 
-#|
 (deftype evasive-compare-params (structure)
-  ((data             UNKNOWN 3 :offset-assert 0)
-   (y-val            float     :offset-assert 0)
-   (angular-velocity float     :offset-assert 4)
-   (speed            float     :offset-assert 8)
+  ((data             float   3 :offset-assert 0 :score -1)
+   (y-val            float     :offset 0)
+   (angular-velocity float     :offset 4)
+   (speed            float     :offset 8)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc
   :flag-assert         #x90000000c
   )
-|#
 
-#|
 (deftype evasive-action-info (structure)
   ((start-values evasive-compare-params :inline :offset-assert 0)
    (max-values   evasive-compare-params :inline :offset-assert 12)
    (difficulty   float                          :offset-assert 24)
-   (evaded?      basic                          :offset-assert 28)
+   (evaded?      symbol                         :offset-assert 28)
    )
   :method-count-assert 11
   :size-assert         #x20
   :flag-assert         #xb00000020
   (:methods
-    (evasive-action-info-method-9 () none) ;; 9
-    (evasive-action-info-method-10 () none) ;; 10
+    (init! (_type_ evasive-compare-params evasive-compare-params float) none) ;; 9
+    (evaded? (_type_ evasive-compare-params) symbol) ;; 10
     )
   )
-|#
 
-#|
 (deftype hijack-missile-bobber (structure)
   ((start-val           float   :offset-assert 0)
    (current-val         float   :offset-assert 4)
-   (total-time          uint64  :offset-assert 8)
-   (current-time        uint64  :offset-assert 16)
+   (total-time          time-frame :offset-assert 8)
+   (current-time        time-frame :offset-assert 16)
    (current-size-scalar float   :offset-assert 24)
    (dir                 float   :offset-assert 28)
    (num-iterations      float   :offset-assert 32)
@@ -55219,27 +55207,27 @@
    (current-speed       float   :offset-assert 68)
    (output-scale        float   :offset-assert 72)
    (output-val          float   :offset-assert 76)
-   (charge-time         uint64  :offset-assert 80)
-   (wait-time           uint64  :offset-assert 88)
-   (turning?            basic   :offset-assert 96)
+   (charge-time         time-frame :offset-assert 80)
+   (wait-time           time-frame :offset-assert 88)
+   (turning?            symbol  :offset-assert 96)
    )
+  :pack-me
   :method-count-assert 12
   :size-assert         #x64
   :flag-assert         #xc00000064
   (:methods
-    (hijack-missile-bobber-method-9 () none) ;; 9
-    (hijack-missile-bobber-method-10 () none) ;; 10
-    (hijack-missile-bobber-method-11 () none) ;; 11
+    (init! (_type_) none) ;; 9
+    (hijack-missile-bobber-method-10 (_type_) time-frame) ;; 10
+    (hijack-missile-bobber-method-11 (_type_) time-frame) ;; 11
     )
   )
-|#
 
-#|
 (deftype cty-hijack-missile (process-focusable)
-  ((tracked-player-positions basic                         :offset-assert 208)
+  ((root                     collide-shape-moving          :override)
+   (tracked-player-positions vector-array                  :offset-assert 208)
    (current-track-index      uint32                        :offset-assert 212)
-   (last-record-time         uint64                        :offset-assert 216)
-   (track-obj                uint64                        :offset-assert 224)
+   (last-record-time         time-frame                    :offset-assert 216)
+   (track-obj                handle                        :offset-assert 224)
    (current-speed            float                         :offset-assert 232)
    (target-speed             float                         :offset-assert 236)
    (lunge-speed              float                         :offset-assert 240)
@@ -55247,14 +55235,14 @@
    (evasive-info             evasive-action-info   :inline :offset-assert 272)
    (target-pos               vector                :inline :offset-assert 304)
    (flee-vec                 vector                :inline :offset-assert 320)
-   (is-leader?               basic                         :offset-assert 336)
+   (is-leader?               symbol                        :offset-assert 336)
    (offset-dist              float                         :offset-assert 340)
    (vel-factor               float                         :offset-assert 344)
    (original-quat            quaternion            :inline :offset-assert 352)
    (rotate-deg               float                         :offset-assert 368)
    (basetrans                vector                :inline :offset-assert 384)
    (lisa                     lissajous-interp      :inline :offset-assert 400)
-   (next-lisa-time           uint64                        :offset-assert 488)
+   (next-lisa-time           time-frame                    :offset-assert 488)
    (lisa-pt                  vector                :inline :offset-assert 496)
    (circle-mag               float                         :offset-assert 512)
    (last-trans               vector                :inline :offset-assert 528)
@@ -55265,160 +55253,157 @@
    (scale-factor             float                         :offset-assert 560)
    (missile-dist             float                         :offset-assert 564)
    (stage                    int8                          :offset-assert 568)
-   (particle-trail           basic                         :offset-assert 572)
-   (particle-trail-thrust    basic                         :offset-assert 576)
-   (peel-off-sound           uint32                        :offset-assert 580)
+   (particle-trail           sparticle-subsampler          :offset-assert 572)
+   (particle-trail-thrust    sparticle-subsampler          :offset-assert 576)
+   (peel-off-sound           sound-id                      :offset-assert 580)
    (bobber                   hijack-missile-bobber :inline :offset-assert 584)
    )
   :method-count-assert 54
   :size-assert         #x2ac
   :flag-assert         #x36023002ac
-  (:methods
-    (cty-hijack-missile-method-29 () none) ;; 29
-    (cty-hijack-missile-method-32 () none) ;; 32
-    (cty-hijack-missile-method-33 () none) ;; 33
-    (cty-hijack-missile-method-34 () none) ;; 34
-    (cty-hijack-missile-method-43 () none) ;; 43
-    (cty-hijack-missile-method-44 () none) ;; 44
-    (cty-hijack-missile-method-45 () none) ;; 45
-    (cty-hijack-missile-method-46 () none) ;; 46
-    (cty-hijack-missile-method-47 () none) ;; 47
-    (cty-hijack-missile-method-48 () none) ;; 48
-    (cty-hijack-missile-method-49 () none) ;; 49
-    (cty-hijack-missile-method-50 () none) ;; 50
-    (cty-hijack-missile-method-51 () none) ;; 51
-    (cty-hijack-missile-method-52 () none) ;; 52
-    (cty-hijack-missile-method-53 () none) ;; 53
-    )
   (:state-methods
+    idle ;; 28
+    undefined0 ;; 29
     chasing ;; 30
-    chasing-2 ;; 38
-    fake-chase ;; 42
+    explode ;; 31
+    undefined1 ;; 32
+    undefined2 ;; 33
+    undefined3 ;; 34
+    lunge-prepare ;; 35
     lure ;; 36
     lure-die ;; 37
-    lunge-prepare ;; 35
-    explode ;; 31
-    explode-tiny ;; 40
+    chasing-2 ;; 38
     die ;; 39
+    explode-tiny ;; 40
     initial-launch ;; 41
-    idle ;; 28
+    fake-chase ;; 42
+    )
+  (:methods
+    (go-idle (_type_) object) ;; 43
+    (cty-hijack-missile-method-44 (_type_) none) ;; 44
+    (probe-ground (_type_ vector vector) symbol) ;; 45
+    (get-tracked-obj-pos (_type_ vector) vector) ;; 46
+    (cty-hijack-missile-method-47 (_type_ vector int) vector) ;; 47
+    (cty-hijack-missile-method-48 (_type_ vector) vector) ;; 48
+    (cty-hijack-missile-method-49 (_type_) none) ;; 49
+    (event-handler (_type_ process int symbol event-message-block) object) ;; 50
+    (cty-hijack-missile-method-51 (_type_) none) ;; 51
+    (cty-hijack-missile-method-52 (_type_ symbol) float) ;; 52
+    (cty-hijack-missile-method-53 (_type_) none) ;; 53
     )
   )
-|#
 
-;; (define-extern *missile-dist-near* object)
-;; (define-extern *missile-dist-far* object)
-;; (define-extern cty-hijack-missile-init-by-other function)
-;; (define-extern compute-target-speed function)
-;; (define-extern cty-hijack-missile-chase-event-handler function)
-;; (define-extern *k0* object)
-;; (define-extern *k1* object)
-;; (define-extern *missile-dist-start* object)
-;; (define-extern *accel-scalar* object)
-;; (define-extern *use-lunging* object)
+(define-extern *missile-dist-near* float)
+(define-extern *missile-dist-far* float)
+(define-extern cty-hijack-missile-init-by-other (function cty-hijack-missile-init-params object :behavior cty-hijack-missile))
+(define-extern compute-target-speed (function float))
+(def-event-handler cty-hijack-missile-chase-event-handler cty-hijack-missile)
+(define-extern *k0* float)
+(define-extern *k1* float)
+(define-extern *missile-dist-start* float)
+(define-extern *accel-scalar* float)
+(define-extern *use-lunging* symbol)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-hijack                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype cty-hijack-manager (task-manager)
-  ((hpickup                     uint64  :offset-assert 240)
-   (missiles                    basic   :offset-assert 248)
+  ((hpickup                     handle  :offset-assert 240)
+   (missiles                    (array handle)   :offset-assert 248)
    (current-leader-missile      int8    :offset-assert 252)
-   (task-arrow                  uint64  :offset-assert 256)
-   (alert-expire-time           uint64  :offset-assert 264)
-   (lure-hit-time               uint64  :offset-assert 280)
-   (naughty-ottsel-lure         uint64  :offset-assert 288)
-   (missile-sound               uint32  :offset-assert 296)
-   (vehicle-is-visible?         basic   :offset-assert 300)
-   (last-check-vehicle-vis-time uint64  :offset-assert 304)
+   (task-arrow                  handle  :offset-assert 256)
+   (alert-expire-time           time-frame :offset-assert 264)
+   (lure-hit-time               time-frame :offset 280)
+   (naughty-ottsel-lure         handle  :offset-assert 288)
+   (missile-sound               sound-id :offset-assert 296)
+   (vehicle-is-visible?         symbol  :offset-assert 300)
+   (last-check-vehicle-vis-time time-frame :offset-assert 304)
    )
   :method-count-assert 41
   :size-assert         #x138
   :flag-assert         #x2900c00138
-  (:methods
-    (cty-hijack-manager-method-35 () none) ;; 35
-    (cty-hijack-manager-method-36 () none) ;; 36
-    (cty-hijack-manager-method-37 () none) ;; 37
-    (cty-hijack-manager-method-38 () none) ;; 38
-    (cty-hijack-manager-method-39 () none) ;; 39
-    (cty-hijack-manager-method-40 () none) ;; 40
-    )
   (:state-methods
     player-riding ;; 32
-    show-missile-launch ;; 34
     decoy-stage ;; 33
-    active ;; 15
-    wait ;; 14
-    fail ;; 18
+    show-missile-launch ;; 34
+    )
+  (:methods
+    (cty-hijack-manager-method-35 (_type_) none) ;; 35
+    (spawn-missile (_type_ vector quaternion int) handle) ;; 36
+    (spawn-missiles-from-launcher (_type_ int) none) ;; 37
+    (guide-arrow-spawn (_type_) symbol) ;; 38
+    (cty-hijack-manager-method-39 (_type_ int) none) ;; 39
+    (reset-hijack-speech (_type_) symbol) ;; 40
     )
   )
-|#
 
-#|
 (deftype hijack-speech-instance (speech-instance)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
+;; +++cty-hijack:hijack-speech-info-flag
+(defenum hijack-speech-info-flag
+  :type uint64
+  :bitfield #t
+  (hsi0 0)
+  (hsi1 1)
+  (hsi2 2)
+  (hsi3 3)
+  (hsi4 4)
+  (hsi5 5)
+  )
+;; ---cty-hijack:hijack-speech-info-flag
+
 (deftype hijack-speech-info (structure)
-  ((speeches  basic   :offset-assert 0)
-   (flags     uint64  :offset-assert 8)
-   (play-time uint64  :offset-assert 16)
+  ((speeches  (array hijack-speech-instance) :offset-assert 0)
+   (flags     hijack-speech-info-flag  :offset-assert 8)
+   (play-time time-frame  :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype cty-missile-lure-init-params (structure)
   ((pos                vector     :inline :offset-assert 0)
    (orient             quaternion :inline :offset-assert 16)
-   (is-naughty-ottsel? basic              :offset-assert 32)
+   (is-naughty-ottsel? symbol             :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x24
   :flag-assert         #x900000024
   )
-|#
 
-#|
 (deftype cty-missile-lure (process-focusable)
-  ((state-time         uint64              :offset-assert 192)
-   (minimap            connection-minimap  :offset-assert 216)
-   (is-naughty-ottsel? basic               :offset-assert 220)
-   (lock-open?         basic               :offset-assert 224)
-   (hum-sound          uint32              :offset-assert 228)
-   (sirens2            basic               :offset-assert 232)
-   (raise-sound        uint32              :offset-assert 236)
+  ((minimap            connection-minimap  :offset 216)
+   (is-naughty-ottsel? symbol              :offset-assert 220)
+   (lock-open?         symbol              :offset-assert 224)
+   (hum-sound          sound-id            :offset-assert 228)
+   (sirens2            sparticle-launch-control :offset-assert 232)
+   (raise-sound        sound-id            :offset-assert 236)
    )
   :method-count-assert 37
   :size-assert         #xf0
   :flag-assert         #x25007000f0
-  (:methods
-    (cty-missile-lure-method-35 () none) ;; 35
-    (cty-missile-lure-method-36 () none) ;; 36
-    )
   (:state-methods
+    idle ;; 28
     active ;; 29
+    complete ;; 30
     closing ;; 31
     opening ;; 32
-    complete ;; 30
-    idle ;; 28
     naughty-ottsel-wait ;; 33
     naughty-ottsel-lure ;; 34
     )
+  (:methods
+    (go-idle (_type_) object) ;; 35
+    (find-and-lure-missiles (_type_) symbol) ;; 36
+    )
   )
-|#
 
-#|
 (deftype cty-lure-info (structure)
   ((pos vector :inline :offset-assert 0)
    )
@@ -55426,9 +55411,7 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype cty-missile-launcher (process-drawable)
   ()
   :method-count-assert 22
@@ -55439,9 +55422,7 @@
     recoil ;; 21
     )
   )
-|#
 
-#|
 (deftype guide-arrow-info (structure)
   ((pos    vector :inline :offset-assert 0)
    (facing vector :inline :offset-assert 16)
@@ -55450,24 +55431,23 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-;; (define-extern *cty-hijack-speech-list* object)
-;; (define-extern *pickup-start-pos* object)
-;; (define-extern *pickup-start-angle* object)
-;; (define-extern *hijack-speech* array)
-;; (define-extern debug-reset-hijack-speech function)
-;; (define-extern cty-missile-lure-init-by-other function)
-;; (define-extern *cty-hijack-lure-positions* array)
-;; (define-extern *naughty-ottsel-pos* object)
-;; (define-extern *ctyport-hijack-fail* object)
-;; (define-extern *pre-hijack-kg-squad-member-settings* object)
-;; (define-extern *post-hijack-kg-squad-member-settings* object)
-;; (define-extern *missile-fire-order* array)
-;; (define-extern *missile-fire-frames* array)
-;; (define-extern *missile-closer-chase-normal* object)
-;; (define-extern *missile-closer-chase-pos* object)
-;; (define-extern *guide-arrow-list* array)
+(define-extern *cty-hijack-speech-list* (inline-array talker-speech-class))
+(define-extern *pickup-start-pos* vector)
+(define-extern *pickup-start-angle* float)
+(define-extern *hijack-speech* (array hijack-speech-info))
+(define-extern debug-reset-hijack-speech (function symbol))
+(define-extern cty-missile-lure-init-by-other (function cty-missile-lure-init-params object :behavior cty-missile-lure))
+(define-extern *cty-hijack-lure-positions* (array cty-lure-info))
+(define-extern *naughty-ottsel-pos* vector)
+(define-extern *ctyport-hijack-fail* resetter-params)
+(define-extern *pre-hijack-kg-squad-member-settings* kg-squad-member-settings)
+(define-extern *post-hijack-kg-squad-member-settings* kg-squad-member-settings)
+(define-extern *missile-fire-order* (array int32))
+(define-extern *missile-fire-frames* (array float))
+(define-extern *missile-closer-chase-normal* vector)
+(define-extern *missile-closer-chase-pos* vector)
+(define-extern *guide-arrow-list* (array guide-arrow-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; for-turret-shot                ;;
