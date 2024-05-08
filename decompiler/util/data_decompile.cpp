@@ -1032,6 +1032,11 @@ const std::unordered_map<
                {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
                {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
                {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+             {"ctyport-mine-layout",
+              {{"stored-handles",
+                ArrayFieldDecompMeta(TypeSpec("handle"),
+                                     8,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
