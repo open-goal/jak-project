@@ -1,0 +1,452 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *target-controller-pad*, type cpad-info
+(define *target-controller-pad* (new 'static 'cpad-info))
+
+;; definition for function setup-control-pad
+;; WARN: Return type mismatch int vs none.
+(defun setup-control-pad ((arg0 cpad-info))
+  (cpad-invalid! arg0)
+  (set! (-> arg0 button0) (the-as uint 0))
+  (set! (-> arg0 valid) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition for function set-pad-world-dir
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun set-pad-world-dir ((arg0 cpad-info) (arg1 vector) (arg2 float))
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s5-0 quad) (-> arg1 quad))
+    (let ((s3-0 (matrix-transpose! (new 'stack-no-clear 'matrix) (-> *target* control cam-R-w))))
+      (let ((s2-0 (matrix-from-two-vectors!
+                    (new 'stack-no-clear 'matrix)
+                    (-> *target* control cam-R-w uvec)
+                    (-> *target* control local-normal)
+                    )
+                  )
+            )
+        (matrix-transpose! s2-0 s2-0)
+        (vector-matrix*! s5-0 s5-0 s2-0)
+        )
+      (vector-matrix*! s5-0 s5-0 s3-0)
+      )
+    (set! (-> s5-0 y) 0.0)
+    (vector-normalize! s5-0 arg2)
+    (vector-rotate-around-y! s5-0 s5-0 32768.0)
+    (set! (-> arg0 stick0-dir) (atan (- (-> s5-0 x)) (- (-> s5-0 z))))
+    (set! (-> arg0 stick0-speed) arg2)
+    (+! (-> s5-0 x) 1.0)
+    (+! (-> s5-0 z) 1.0)
+    (set! (-> s5-0 x) (* 0.5 (-> s5-0 x)))
+    (set! (-> s5-0 z) (* 0.5 (-> s5-0 z)))
+    (set! (-> arg0 leftx) (the-as uint (the int (* 255.0 (-> s5-0 x)))))
+    (if (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+        (set! (-> arg0 leftx) (the-as uint (* (the-as uint -1) (-> arg0 leftx))))
+        )
+    (set! (-> arg0 lefty) (the-as uint (the int (* 255.0 (-> s5-0 z)))))
+    )
+  (none)
+  )
+
+;; definition for function override-player-controls
+(defun override-player-controls ((arg0 cpad-info))
+  (let ((v1-1 (-> *setting-control* user-current player-control-override)))
+    (logclear! (-> arg0 button0) (-> *setting-control* user-current player-control-mask))
+    (logior! (-> arg0 button0) (logand (-> v1-1 button0) (-> *setting-control* user-current player-control-mask)))
+    (when (logtest? #x4000000 (-> *setting-control* user-current player-control-mask))
+      (set! (-> arg0 leftx) (-> v1-1 leftx))
+      (set! (-> arg0 lefty) (-> v1-1 lefty))
+      (set! (-> arg0 stick0-dir) (-> v1-1 stick0-dir))
+      (set! (-> arg0 stick0-speed) (-> v1-1 stick0-speed))
+      )
+    (when (logtest? #x8000000 (-> *setting-control* user-current player-control-mask))
+      (set! (-> arg0 rightx) (-> v1-1 rightx))
+      (set! (-> arg0 righty) (-> v1-1 righty))
+      )
+    )
+  0
+  )
+
+;; definition of type player-controller-init-params
+(deftype player-controller-init-params (structure)
+  ((mode         symbol)
+   (flags        player-controller-flag)
+   (targ-pos     vector  :inline)
+   (notify-proc  handle)
+   )
+  )
+
+;; definition for method 3 of type player-controller-init-params
+(defmethod inspect ((this player-controller-init-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'player-controller-init-params)
+  (format #t "~1Tmode: ~A~%" (-> this mode))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Ttarg-pos: #<vector @ #x~X>~%" (-> this targ-pos))
+  (format #t "~1Tnotify-proc: ~D~%" (-> this notify-proc))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type player-controller
+(deftype player-controller (process-focusable)
+  ((params    player-controller-init-params  :inline)
+   (targ-pos  vector                         :inline)
+   )
+  (:state-methods
+    idle
+    active
+    clip-to-nav-mesh
+    lock
+    )
+  (:methods
+    (set-nav-params (_type_) none)
+    (set-nav-mesh (_type_) none)
+    (set-params (_type_ player-controller-init-params) object)
+    (event-handler (_type_ process int symbol event-message-block) object)
+    )
+  )
+
+;; definition for method 3 of type player-controller
+(defmethod inspect ((this player-controller))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tparams: #<player-controller-init-params @ #x~X>~%" (-> this params))
+  (format #t "~2Ttarg-pos: #<vector @ #x~X>~%" (-> this targ-pos))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 32 of type player-controller
+;; WARN: Return type mismatch nav-callback-info vs none.
+(defmethod set-nav-params ((this player-controller))
+  (when (or (not (-> this nav)) (zero? (-> this nav)))
+    (let ((a0-4 (find-nearest-nav-mesh (target-pos 0) (the-as float #x7f800000))))
+      (if a0-4
+          (add-process-drawable-to-nav-mesh a0-4 this #t)
+          )
+      )
+    )
+  (when (-> this nav)
+    (set! (-> this nav flags) (nav-control-flag display-marks))
+    (let ((v1-9 (-> this nav)))
+      (set! (-> v1-9 sphere-mask) (the-as uint 0))
+      )
+    0
+    (let ((v1-11 (-> this nav)))
+      (set! (-> v1-11 target-speed) 4096.0)
+      )
+    0
+    (let ((v1-13 (-> this nav)))
+      (set! (-> v1-13 acceleration) 409600.0)
+      )
+    0
+    (let ((v1-15 (-> this nav)))
+      (set! (-> v1-15 turning-acceleration) 40960000.0)
+      )
+    0
+    (let ((v1-17 (-> this nav)))
+      (set! (-> v1-17 speed-scale) 1.0)
+      )
+    0
+    (let ((v1-19 (-> this nav)))
+      (set! (-> v1-19 max-rotation-rate) 18204444.0)
+      )
+    0
+    (set! (-> this nav callback-info) *default-nav-callback-info*)
+    )
+  (none)
+  )
+
+;; definition for function player-controller-init-by-other
+;; INFO: Used lq/sq
+(defbehavior player-controller-init-by-other player-controller ((arg0 player-controller-init-params))
+  (let ((s5-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((v1-3 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set-vector! (-> v1-3 local-sphere) 0.0 0.0 0.0 0.01)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-3)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-6 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-6 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-6 prim-core collide-with))
+      )
+    (set! (-> self root) s5-0)
+    )
+  (set! (-> self root trans quad) (-> (target-pos 0) quad))
+  (set-params self arg0)
+  (go-virtual idle)
+  )
+
+;; definition for method 34 of type player-controller
+;; INFO: Used lq/sq
+(defmethod set-params ((this player-controller) (arg0 player-controller-init-params))
+  (mem-copy! (the-as pointer (-> this params)) (the-as pointer arg0) 40)
+  (set! (-> this targ-pos quad) (-> arg0 targ-pos quad))
+  (case (-> arg0 mode)
+    (('active)
+     (if (not (and (-> this next-state) (= (-> this next-state name) 'active)))
+         (go (method-of-object this active))
+         )
+     )
+    (('clip-to-nav-mesh)
+     (if (not (and (-> this next-state) (= (-> this next-state name) 'clip-to-nav-mesh)))
+         (go (method-of-object this clip-to-nav-mesh))
+         )
+     )
+    (('lock)
+     (if (not (and (-> this next-state) (= (-> this next-state name) 'lock)))
+         (go (method-of-object this lock))
+         )
+     )
+    (('idle)
+     (if (not (and (-> this next-state) (= (-> this next-state name) 'idle)))
+         (go (method-of-object this idle))
+         )
+     )
+    )
+  )
+
+;; definition for method 33 of type player-controller
+(defmethod set-nav-mesh ((this player-controller))
+  (let ((a0-3 (find-nearest-nav-mesh (target-pos 0) (the-as float #x7f800000))))
+    (if (and a0-3 (!= nav-mesh (-> this nav state mesh)))
+        (change-to a0-3 this)
+        )
+    )
+  (none)
+  )
+
+;; definition for function player-controller-event-handler
+(defbehavior player-controller-event-handler player-controller ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (event-handler self arg0 arg1 arg2 arg3)
+  )
+
+;; definition for method 35 of type player-controller
+;; INFO: Used lq/sq
+(defmethod event-handler ((this player-controller) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('set-params)
+     (set-params this (the-as player-controller-init-params (-> arg3 param 0)))
+     )
+    (('set-target)
+     (let ((v0-0 (the-as object (-> this targ-pos))))
+       (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       v0-0
+       )
+     )
+    (('change-mode)
+     (set! (-> this params mode) (the-as symbol (-> arg3 param 0)))
+     (set-params this (-> this params))
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (player-controller)
+  :virtual #t
+  :event player-controller-event-handler
+  :enter (behavior ()
+    (remove-setting! 'player-control-override)
+    (remove-setting! 'player-control-mask)
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate clip-to-nav-mesh (player-controller)
+  :virtual #t
+  :event player-controller-event-handler
+  :enter (behavior ()
+    (set-nav-params self)
+    )
+  :trans (behavior ()
+    (if (not *target*)
+        (go empty-state)
+        )
+    (set-nav-mesh self)
+    (when (and (-> self nav) (nonzero? (-> self nav)))
+      (when (and (logtest? (-> self params flags) (player-controller-flag pc1)) (-> self nav state mesh))
+        (let ((gp-0 (new 'stack-no-clear 'vector)))
+          (if (nav-mesh-method-10 (-> self nav state mesh) gp-0 (target-pos 0) (the-as nav-poly #f))
+              (set! (-> gp-0 y) (-> (target-pos 0) y))
+              )
+          (move-to-point! (-> *target* control) gp-0)
+          )
+        )
+      )
+    (set! (-> self root trans quad) (-> (target-pos 0) quad))
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate lock (player-controller)
+  :virtual #t
+  :event player-controller-event-handler
+  :enter (behavior ()
+    (when (logtest? (-> self params flags) (player-controller-flag lock-features))
+      (set-setting! 'duck #f 0.0 0)
+      (set-setting! 'board #f 0.0 0)
+      (set-setting! 'darkjak #f 0.0 0)
+      (set-setting! 'jump #f 0.0 0)
+      )
+    (when (logtest? (-> self params flags) (player-controller-flag letterbox))
+      (set-setting! 'letterbox 'abs 1.0 0)
+      (set-setting! 'letterbox-speed 'abs 2.0 0)
+      )
+    (set-setting! 'player-control-override #f 0.0 *target-controller-pad*)
+    (let ((t1-7 #x400fff4))
+      (if (not (logtest? (-> self params flags) (player-controller-flag pc0)))
+          (set! t1-7 (logior #x8000000 t1-7))
+          )
+      (set-setting! 'player-control-mask #f 0.0 t1-7)
+      )
+    (setup-control-pad *target-controller-pad*)
+    )
+  :exit (behavior ()
+    (when (logtest? (-> self params flags) (player-controller-flag lock-features))
+      (remove-setting! 'duck)
+      (remove-setting! 'board)
+      (remove-setting! 'darkjak)
+      (remove-setting! 'jump)
+      )
+    (remove-setting! 'player-control-override)
+    (remove-setting! 'player-control-mask)
+    (when (logtest? (-> self params flags) (player-controller-flag letterbox))
+      (remove-setting! 'letterbox)
+      (set-setting! 'letterbox-speed 'abs 4.0 0)
+      )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate active (player-controller)
+  :virtual #t
+  :event player-controller-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (when (logtest? (-> self params flags) (player-controller-flag lock-features))
+      (set-setting! 'duck #f 0.0 0)
+      (set-setting! 'board #f 0.0 0)
+      (set-setting! 'darkjak #f 0.0 0)
+      (set-setting! 'jump #f 0.0 0)
+      )
+    (when (logtest? (-> self params flags) (player-controller-flag letterbox))
+      (set-setting! 'letterbox 'abs 1.0 0)
+      (set-setting! 'letterbox-speed 'abs 2.0 0)
+      )
+    (set-nav-params self)
+    (set-setting! 'player-control-override #f 0.0 *target-controller-pad*)
+    (let ((t1-7 #x400fff4))
+      (if (not (logtest? (-> self params flags) (player-controller-flag pc0)))
+          (set! t1-7 (logior #x8000000 t1-7))
+          )
+      (set-setting! 'player-control-mask #f 0.0 t1-7)
+      )
+    )
+  :exit (behavior ()
+    (when (logtest? (-> self params flags) (player-controller-flag lock-features))
+      (remove-setting! 'duck)
+      (remove-setting! 'board)
+      (remove-setting! 'darkjak)
+      (remove-setting! 'jump)
+      )
+    (remove-setting! 'player-control-override)
+    (remove-setting! 'player-control-mask)
+    (when (logtest? (-> self params flags) (player-controller-flag letterbox))
+      (remove-setting! 'letterbox)
+      (set-setting! 'letterbox-speed 'abs 4.0 0)
+      )
+    )
+  :trans (behavior ()
+    (if (not *target*)
+        (go empty-state)
+        )
+    (if (or (not (-> self nav)) (zero? (-> self nav)))
+        (go-virtual idle)
+        )
+    (set-nav-mesh self)
+    (when (and (logtest? (-> self params flags) (player-controller-flag pc1)) (-> self nav state mesh))
+      (let ((gp-0 (new 'stack-no-clear 'vector)))
+        (if (nav-mesh-method-10 (-> self nav state mesh) gp-0 (target-pos 0) (the-as nav-poly #f))
+            (set! (-> gp-0 y) (-> (target-pos 0) y))
+            )
+        (move-to-point! (-> *target* control) gp-0)
+        )
+      )
+    (set! (-> self root trans quad) (-> (target-pos 0) quad))
+    (set-virtual-cur-pos! (-> self nav state) (target-pos 0))
+    (let ((a0-9 (-> self nav state))
+          (v1-33 (-> self targ-pos))
+          )
+      (logclear! (-> a0-9 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-9 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-9 target-pos quad) (-> v1-33 quad))
+      )
+    0
+    (let ((gp-3 *target-controller-pad*))
+      (let ((a1-7 (-> self nav state)))
+        (set! (-> (new 'stack-no-clear 'vector) quad) (-> a1-7 velocity quad))
+        )
+      (let ((a0-12 (-> self nav state))
+            (s5-2 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> s5-2 quad) (-> a0-12 heading quad))
+        (let ((f30-0 (vector-vector-xz-distance (-> self root trans) (-> self targ-pos))))
+          (let ((f28-0 1.0))
+            (setup-control-pad gp-3)
+            (if (< f30-0 24576.0)
+                (set! f28-0 (lerp-scale 0.3 1.0 f30-0 4096.0 24576.0))
+                )
+            (set-pad-world-dir gp-3 s5-2 f28-0)
+            )
+          (when (and (logtest? (-> self params flags) (player-controller-flag pc4))
+                     (or (and (>= 1024.0 (vector-length (get-transv *target*))) (< f30-0 12288.0))
+                         (and (< f30-0 14336.0) (focus-test? *target* board))
+                         )
+                     )
+            (send-event (handle->process (-> self params notify-proc)) 'reached-destination)
+            (go-virtual idle)
+            )
+          )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+
+
+
