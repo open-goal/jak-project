@@ -85,53 +85,6 @@ void extract_hfrag(const level_tools::BspHeader& bsp, const TextureDB& tex_db, t
     }
   }
 
-  //  for (int vz = 0; vz < kVertsPerEdge; vz++) {
-  //    for (int vx = 0; vx < kVertsPerEdge; vx++) {
-  //      const int v_idx = vertex_xz_to_index(vx, vz);
-  //      const u32 v_data = hfrag.verts.at(v_idx);
-  //      const u16 v_height_u16 = v_data & 0xffff;
-  //      const u16 v_packed_index = v_data >> 16;
-  //      const u16 color_idx = v_packed_index & 0b111'1111'1111;
-  //      auto& vert_out = hfrag_out.vertices.emplace_back();
-  //      vert_out.color_index = color_idx;
-  //      vert_out.height = v_height_u16 * 8.f;
-  //    }
-  //  }
-  //
-  //  for (int cz = 0; cz < kCornersPerEdge; cz++) {
-  //    const int vz_corner_base = cz * kVertsPerCorner;
-  //    for (int cx = 0; cx < kCornersPerEdge; cx++) {
-  //      const int vx_corner_base = cx * kVertsPerCorner;
-  //      for (int vz_offset = 0; vz_offset < kVertsPerCorner; vz_offset++) {
-  //        const int vz = vz_corner_base + vz_offset;
-  //        for (int vx_offset = 0; vx_offset < kVertsPerCorner + 1; vx_offset++) {
-  //          const int vx = vx_corner_base + vx_offset;
-  //
-  //          // The original hfrag definitely had the same convention of each corner "peeking" at
-  //          // vertices with larger indices. On the corners on the +x and +z edge, this would
-  //          cause
-  //          // indexing out of bounds. I'm not really sure how this is solved in the original
-  //          game,
-  //          // but for PC, we just put fill these invalid indices with strip restarts so we don't
-  //          have
-  //          // to special case things.
-  //          if (vx < kVertsPerEdge && vz < kVertsPerEdge) {
-  //            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz));
-  //          } else {
-  //            hfrag_out.indices.push_back(UINT32_MAX);
-  //          }
-  //
-  //          if (vx < kVertsPerEdge && vz + 1 < kVertsPerEdge) {
-  //            hfrag_out.indices.push_back(vertex_xz_to_index(vx, vz + 1));
-  //          } else {
-  //            hfrag_out.indices.push_back(UINT32_MAX);
-  //          }
-  //        }
-  //        hfrag_out.indices.push_back(UINT32_MAX);
-  //      }
-  //    }
-  //  }
-
   for (int i = 0; i < 3; i++) {
     ASSERT(hfrag.start_corner.data[i] == 0);
   }
