@@ -1037,6 +1037,7 @@ const std::unordered_map<
                 ArrayFieldDecompMeta(TypeSpec("handle"),
                                      8,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+             {"deschase-path", {{"node", ArrayFieldDecompMeta(TypeSpec("deschase-node"), 32)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

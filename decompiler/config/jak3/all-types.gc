@@ -11097,7 +11097,7 @@
    (borrow-hold-count      uint32              :offset-assert 696)
    (borrow-hold            pair              3 :offset-assert 700)
    (cloth                  symbol              :offset-assert 712)
-   (player-control-override symbol             :offset-assert 716)
+   (player-control-override cpad-info          :offset-assert 716)
    (player-control-mask    uint32              :offset-assert 720)
    (gun-special-mode       symbol              :offset-assert 724)
    (airlock-command        pair                :offset-assert 728)
@@ -21357,7 +21357,8 @@
   )
 
 (deftype part-tracker (process)
-  ((root            trsqv                                  :offset-assert 128) ;; guessed by decompiler
+  ((parent          (pointer process)                      :override)
+   (root            trsqv                                  :offset-assert 128) ;; guessed by decompiler
    (mat             matrix                         :inline :offset-assert 144)
    (offset          vector                         :inline :offset-assert 208)
    (userdata        uint64                                 :offset-assert 224)
@@ -54516,199 +54517,55 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; wcar-catapult                  ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-(deftype catapult-shot-sphere (process-drawable)
-  ((current-alpha float  :offset-assert 200)
-   )
-  :method-count-assert 21
-  :size-assert         #xd8
-  :flag-assert         #x15006000d8
-  (:state-methods
-    active ;; 20
-    )
-  )
-|#
-
-#|
-(deftype catapult-shot-sphere-init-params (structure)
-  ((pos vector :inline :offset-assert 0)
-   )
-  :method-count-assert 9
-  :size-assert         #x10
-  :flag-assert         #x900000010
-  )
-|#
-
-#|
-(deftype v-catapult-shot (metalhead-grenade-shot)
-  ((trail-part basic  :offset-assert 532)
-   )
-  :method-count-assert 41
-  :size-assert         #x218
-  :flag-assert         #x2901a00218
-  (:state-methods
-    impact ;; 22
-    )
-  )
-|#
-
-#|
-(deftype v-catapult (wcar-base)
-  ((jmod-axles         UNKNOWN                4       :offset-assert 2752)
-   (jmod-gun-x         joint-mod-rotate-local :inline :offset-assert 2880)
-   (jmod-gun-y         joint-mod-rotate-local :inline :offset-assert 2912)
-   (turret-control     turret-control         :inline :offset-assert 2944)
-   (sub-state-time     uint32                         :offset-assert 3040)
-   (sub-state          int8                           :offset-assert 3044)
-   (launch-projectile? basic                          :offset-assert 3048)
-   (targ-pos           vector                 :inline :offset-assert 3056)
-   (notify-handle      uint64                         :offset-assert 3072)
-   (spawn-part?        basic                          :offset-assert 3080)
-   (charge-time        uint64                         :offset-assert 3088)
-   (exploding?         basic                          :offset-assert 3096)
-   )
-  :method-count-assert 205
-  :size-assert         #xc1c
-  :flag-assert         #xcd0ba00c1c
-  (:methods
-    (v-catapult-method-203 () none) ;; 203
-    (v-catapult-method-204 () none) ;; 204
-    )
-  (:state-methods
-    die ;; 61
-    hostile ;; 152
-    explode ;; 60
-    )
-  )
-|#
-
-;; (define-extern *v-catapult-turret-control-info* object)
-;; (define-extern *v-catapult-turret-guard-settings* object)
-;; (define-extern *v-catapult-debris-longspike-params* debris-static-params)
-;; (define-extern *v-catapult-debris-bar-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lpanel-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rpanel-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lbumperspikes-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rbumperspikes-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lfspike-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rfspike-params* debris-static-params)
-;; (define-extern *v-catapult-debris-ltopspike-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rtopspike-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lsidespikea-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lsidespikeb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lsidespikec-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lsidespiked-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lsidespikee-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rsidespikea-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rsidespikeb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rsidespikec-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rsidespiked-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rsidespikee-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lfpanela-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rfpanela-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lfpanelb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rfpanelb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lfpanelc-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rfpanelc-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lfpaneld-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rfpaneld-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lmpanela-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rmpanela-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lmpanelb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rmpanelb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lmpanelc-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rmpanelc-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lmpaneld-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rmpaneld-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lrpanela-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rrpanela-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lrpanelb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rrpanelb-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lrpanelc-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rrpanelc-params* debris-static-params)
-;; (define-extern *v-catapult-debris-lrpaneld-params* debris-static-params)
-;; (define-extern *v-catapult-debris-rrpaneld-params* debris-static-params)
-;; (define-extern *range-ftexplo-dust-color* curve-color-fast)
-;; (define-extern *range-ftexplo-dust-alpha* curve2d-fast)
-;; (define-extern *range-ftexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-ftexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-ftexplo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-ftexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-ftexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-v-catapult-shot-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-ftexplo-color* curve-color-fast)
-;; (define-extern *range-ftexplo-alpha* curve2d-fast)
-;; (define-extern *range-ftexplo-scale-x* curve2d-fast)
-;; (define-extern *range-ftexplo-scale-y* curve2d-fast)
-;; (define-extern *curve-ftexplo-alpha* curve2d-fast)
-;; (define-extern *curve-ftexplo-scale-x* curve2d-fast)
-;; (define-extern *curve-ftexplo-scale-y* curve2d-fast)
-;; (define-extern *part-v-catapult-shot-explosion-texture-curve-settings* object)
-;; (define-extern catapult-shot-sphere-init-by-other function)
-;; (define-extern *v-catapult-shot-impact-blur* object)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-jump                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype wascity-airlock-debris (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (wascity-airlock-debris-method-22 () none) ;; 22
-    )
   (:state-methods
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
+    )
+  (:methods
+    (spawn-exploder (_type_) none) ;; 22
     )
   )
-|#
 
-#|
 (deftype beam-generator (process-drawable)
-  ((arrow uint64         :offset-assert 200)
+  ((arrow handle         :offset-assert 200)
    (pos   vector :inline :offset-assert 208)
    (angs  vector :inline :offset-assert 224)
    )
   :method-count-assert 24
   :size-assert         #xf0
   :flag-assert         #x18007000f0
-  (:methods
-    (beam-generator-method-22 () none) ;; 22
-    (beam-generator-method-23 () none) ;; 23
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (check-pickup (_type_) none) ;; 22
+    (rotate (_type_) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype hud-wasdoors-health (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype hud-desert-catapult-count (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype desjump-point (structure)
   ((pos  vector     :inline :offset-assert 0)
    (quat quaternion :inline :offset-assert 16)
@@ -54717,60 +54574,53 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype desjump-vehicle (structure)
-  ((handle     uint64  :offset-assert 0)
+  ((handle     handle  :offset-assert 0)
    (path-type  uint8   :offset-assert 8)
    (path-pos   uint8   :offset-assert 9)
-   (ready?     basic   :offset-assert 12)
-   (kamikaze?  basic   :offset-assert 16)
-   (wait-timer uint64  :offset-assert 24)
+   (ready?     symbol  :offset-assert 12)
+   (kamikaze?  symbol  :offset-assert 16)
+   (wait-timer time-frame  :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype desert-jump-manager (task-manager)
-  ((nav-mesh            basic           :offset-assert 240)
-   (vehicle             UNKNOWN 2       :offset-assert 248)
+  ((nav-mesh            nav-mesh        :offset-assert 240)
+   (vehicle             desjump-vehicle 2 :inline :offset-assert 248)
    (vehicle-count       uint8           :offset-assert 312)
-   (v-free-list         basic           :offset-assert 316)
+   (v-free-list         (array uint8)   :offset-assert 316)
    (total-veh-spawned   uint8           :offset-assert 320)
-   (check-timer         uint64          :offset-assert 328)
-   (hud-wasdoors-health uint64          :offset-assert 216)
-   (generator           uint64          :offset-assert 336)
-   (interceptor         UNKNOWN 4       :offset-assert 344)
+   (check-timer         time-frame      :offset-assert 328)
+   (hud-wasdoors-health handle          :offset 216)
+   (generator           handle          :offset-assert 336)
+   (interceptor         desjump-vehicle 4 :inline :offset-assert 344)
    (interceptor-count   uint8           :offset-assert 472)
-   (i-free-list         basic           :offset-assert 476)
-   (interceptor-timer   uint64          :offset-assert 480)
+   (i-free-list         (array uint8)   :offset-assert 476)
+   (interceptor-timer   time-frame      :offset-assert 480)
    (plane               vector  :inline :offset-assert 496)
    (last-catapult-pos   vector  :inline :offset-assert 512)
-   (player-can-win?     basic           :offset-assert 528)
+   (player-can-win?     symbol          :offset-assert 528)
    )
   :method-count-assert 35
   :size-assert         #x214
   :flag-assert         #x2301a00214
   (:methods
-    (desert-jump-manager-method-32 () none) ;; 32
-    (desert-jump-manager-method-33 () none) ;; 33
-    (desert-jump-manager-method-34 () none) ;; 34
-    )
-  (:state-methods
-    active ;; 15
+    (spawn-vehicle (_type_ uint vehicle-type) handle) ;; 32
+    (spawn-beam-generator (_type_ vector) none) ;; 33
+    (damage-airlock (_type_ int) none) ;; 34
     )
   )
-|#
 
-;; (define-extern *wascity-airlock-exploder-params* joint-exploder-static-params)
-;; (define-extern beam-generator-init-by-other function)
-;; (define-extern *desjump-wasdoors-pos* object)
-;; (define-extern *desjump-vehicle-path* array)
-;; (define-extern part-tracker-check-parent function)
+(define-extern *wascity-airlock-exploder-params* joint-exploder-static-params)
+(define-extern beam-generator-init-by-other (function vector entity-actor object :behavior beam-generator))
+(define-extern *desjump-wasdoors-pos* vector)
+(define-extern *desjump-vehicle-path* (array (array desjump-point)))
+(define-extern part-tracker-check-parent (function part-tracker object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desertg-obs                    ;;
@@ -58519,6 +58369,136 @@
 
 (define-extern *v-marauder-turret-control-info* turret-control-info)
 (define-extern *v-marauder-turret-guard-settings* squad-unit-settings)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; wcar-catapult                  ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; this block was moved
+
+(deftype catapult-shot-sphere (process-drawable)
+  ((current-alpha float  :offset-assert 200)
+   (pad uint8 12)
+   )
+  :method-count-assert 21
+  :size-assert         #xd8
+  :flag-assert         #x15006000d8
+  (:state-methods
+    active ;; 20
+    )
+  )
+
+(deftype catapult-shot-sphere-init-params (structure)
+  ((pos vector :inline :offset-assert 0)
+   )
+  :method-count-assert 9
+  :size-assert         #x10
+  :flag-assert         #x900000010
+  )
+
+(deftype v-catapult-shot (metalhead-grenade-shot)
+  ((trail-part sparticle-launch-control :offset-assert 532)
+   )
+  :method-count-assert 41
+  :size-assert         #x218
+  :flag-assert         #x2901a00218
+  (:state-methods
+    impact ;; 22
+    )
+  )
+
+(deftype v-catapult (wcar-base)
+  ((jmod-axles         joint-mod-rotate-local 4 :inline :offset-assert 2752)
+   (jmod-gun-x         joint-mod-rotate-local :inline :offset-assert 2880)
+   (jmod-gun-y         joint-mod-rotate-local :inline :offset-assert 2912)
+   (turret-control     turret-control         :inline :offset-assert 2944)
+   (sub-state-time     uint32                         :offset-assert 3040)
+   (sub-state          int8                           :offset-assert 3044)
+   (launch-projectile? symbol                         :offset-assert 3048)
+   (targ-pos           vector                 :inline :offset-assert 3056)
+   (notify-handle      handle                         :offset-assert 3072)
+   (spawn-part?        symbol                         :offset-assert 3080)
+   (charge-time        time-frame                     :offset-assert 3088)
+   (exploding?         symbol                         :offset-assert 3096)
+   )
+  :method-count-assert 205
+  :size-assert         #xc1c
+  :flag-assert         #xcd0ba00c1c
+  (:state-methods
+    explode ;; 60
+    die ;; 61
+    hostile ;; 152
+    )
+  (:methods
+    (fire-catapult-shot (_type_ vector vector) none) ;; 203
+    (v-catapult-method-204 (_type_) symbol) ;; 204
+    )
+  )
+
+(define-extern *v-catapult-turret-control-info* turret-control-info)
+(define-extern *v-catapult-turret-guard-settings* squad-unit-settings)
+(define-extern *v-catapult-debris-longspike-params* debris-static-params)
+(define-extern *v-catapult-debris-bar-params* debris-static-params)
+(define-extern *v-catapult-debris-lpanel-params* debris-static-params)
+(define-extern *v-catapult-debris-rpanel-params* debris-static-params)
+(define-extern *v-catapult-debris-lbumperspikes-params* debris-static-params)
+(define-extern *v-catapult-debris-rbumperspikes-params* debris-static-params)
+(define-extern *v-catapult-debris-lfspike-params* debris-static-params)
+(define-extern *v-catapult-debris-rfspike-params* debris-static-params)
+(define-extern *v-catapult-debris-ltopspike-params* debris-static-params)
+(define-extern *v-catapult-debris-rtopspike-params* debris-static-params)
+(define-extern *v-catapult-debris-lsidespikea-params* debris-static-params)
+(define-extern *v-catapult-debris-lsidespikeb-params* debris-static-params)
+(define-extern *v-catapult-debris-lsidespikec-params* debris-static-params)
+(define-extern *v-catapult-debris-lsidespiked-params* debris-static-params)
+(define-extern *v-catapult-debris-lsidespikee-params* debris-static-params)
+(define-extern *v-catapult-debris-rsidespikea-params* debris-static-params)
+(define-extern *v-catapult-debris-rsidespikeb-params* debris-static-params)
+(define-extern *v-catapult-debris-rsidespikec-params* debris-static-params)
+(define-extern *v-catapult-debris-rsidespiked-params* debris-static-params)
+(define-extern *v-catapult-debris-rsidespikee-params* debris-static-params)
+(define-extern *v-catapult-debris-lfpanela-params* debris-static-params)
+(define-extern *v-catapult-debris-rfpanela-params* debris-static-params)
+(define-extern *v-catapult-debris-lfpanelb-params* debris-static-params)
+(define-extern *v-catapult-debris-rfpanelb-params* debris-static-params)
+(define-extern *v-catapult-debris-lfpanelc-params* debris-static-params)
+(define-extern *v-catapult-debris-rfpanelc-params* debris-static-params)
+(define-extern *v-catapult-debris-lfpaneld-params* debris-static-params)
+(define-extern *v-catapult-debris-rfpaneld-params* debris-static-params)
+(define-extern *v-catapult-debris-lmpanela-params* debris-static-params)
+(define-extern *v-catapult-debris-rmpanela-params* debris-static-params)
+(define-extern *v-catapult-debris-lmpanelb-params* debris-static-params)
+(define-extern *v-catapult-debris-rmpanelb-params* debris-static-params)
+(define-extern *v-catapult-debris-lmpanelc-params* debris-static-params)
+(define-extern *v-catapult-debris-rmpanelc-params* debris-static-params)
+(define-extern *v-catapult-debris-lmpaneld-params* debris-static-params)
+(define-extern *v-catapult-debris-rmpaneld-params* debris-static-params)
+(define-extern *v-catapult-debris-lrpanela-params* debris-static-params)
+(define-extern *v-catapult-debris-rrpanela-params* debris-static-params)
+(define-extern *v-catapult-debris-lrpanelb-params* debris-static-params)
+(define-extern *v-catapult-debris-rrpanelb-params* debris-static-params)
+(define-extern *v-catapult-debris-lrpanelc-params* debris-static-params)
+(define-extern *v-catapult-debris-rrpanelc-params* debris-static-params)
+(define-extern *v-catapult-debris-lrpaneld-params* debris-static-params)
+(define-extern *v-catapult-debris-rrpaneld-params* debris-static-params)
+(define-extern *range-ftexplo-dust-color* curve-color-fast)
+(define-extern *range-ftexplo-dust-alpha* curve2d-fast)
+(define-extern *range-ftexplo-dust-scale-x* curve2d-fast)
+(define-extern *range-ftexplo-dust-scale-y* curve2d-fast)
+(define-extern *curve-ftexplo-dust-alpha* curve2d-fast)
+(define-extern *curve-ftexplo-dust-scale-x* curve2d-fast)
+(define-extern *curve-ftexplo-dust-scale-y* curve2d-fast)
+(define-extern *part-v-catapult-shot-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-ftexplo-color* curve-color-fast)
+(define-extern *range-ftexplo-alpha* curve2d-fast)
+(define-extern *range-ftexplo-scale-x* curve2d-fast)
+(define-extern *range-ftexplo-scale-y* curve2d-fast)
+(define-extern *curve-ftexplo-alpha* curve2d-fast)
+(define-extern *curve-ftexplo-scale-x* curve2d-fast)
+(define-extern *curve-ftexplo-scale-y* curve2d-fast)
+(define-extern *part-v-catapult-shot-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern catapult-shot-sphere-init-by-other (function catapult-shot-sphere-init-params object :behavior catapult-shot-sphere))
+(define-extern *v-catapult-shot-impact-blur* curve2d-piecewise)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; w-parking-spot                 ;;
@@ -68485,20 +68465,29 @@
 ;; external-player-control        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++external-player-control:player-controller-flag
+(defenum player-controller-flag
+  :type uint32
+  :bitfield #t
+  (pc0 0)
+  (pc1 1)
+  (lock-features 2)
+  (letterbox 3)
+  (pc4 4)
+  )
+;; ---external-player-control:player-controller-flag
+
 (deftype player-controller-init-params (structure)
-  ((mode        basic          :offset-assert 0)
-   (flags       uint32         :offset-assert 4)
+  ((mode        symbol         :offset-assert 0)
+   (flags       player-controller-flag :offset-assert 4)
    (targ-pos    vector :inline :offset-assert 16)
-   (notify-proc uint64         :offset-assert 32)
+   (notify-proc handle         :offset-assert 32)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype player-controller (process-focusable)
   ((params   player-controller-init-params :inline :offset-assert 208)
    (targ-pos vector                        :inline :offset-assert 256)
@@ -68506,27 +68495,26 @@
   :method-count-assert 36
   :size-assert         #x110
   :flag-assert         #x2400900110
-  (:methods
-    (player-controller-method-32 () none) ;; 32
-    (player-controller-method-33 () none) ;; 33
-    (player-controller-method-34 () none) ;; 34
-    (player-controller-method-35 () none) ;; 35
-    )
   (:state-methods
-    active ;; 29
-    lock ;; 31
-    clip-to-nav-mesh ;; 30
     idle ;; 28
+    active ;; 29
+    clip-to-nav-mesh ;; 30
+    lock ;; 31
+    )
+  (:methods
+    (set-nav-params (_type_) none) ;; 32
+    (set-nav-mesh (_type_) none) ;; 33
+    (set-params (_type_ player-controller-init-params) object) ;; 34
+    (event-handler (_type_ process int symbol event-message-block) object) ;; 35
     )
   )
-|#
 
-;; (define-extern *target-controller-pad* cpad-info)
-;; (define-extern setup-control-pad function)
-;; (define-extern set-pad-world-dir function)
-(define-extern override-player-controls (function int))
-;; (define-extern player-controller-init-by-other function)
-;; (define-extern player-controller-event-handler function)
+(define-extern *target-controller-pad* cpad-info)
+(define-extern setup-control-pad (function cpad-info none))
+(define-extern set-pad-world-dir (function cpad-info vector float none))
+(define-extern override-player-controls (function cpad-info int))
+(define-extern player-controller-init-by-other (function player-controller-init-params object :behavior player-controller))
+(def-event-handler player-controller-event-handler player-controller)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wcar-marauder-b                ;;
@@ -68554,12 +68542,11 @@
 ;; desert-chase-path-h            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype deschase-node (structure)
   ((position  vector :inline :offset-assert 0)
-   (pos-x     float          :offset-assert 0)
-   (pos-y     float          :offset-assert 4)
-   (pos-z     float          :offset-assert 8)
+   (pos-x     float          :offset 0)
+   (pos-y     float          :offset 4)
+   (pos-z     float          :offset 8)
    (speed     float          :offset-assert 16)
    (next-node int32          :offset-assert 20)
    )
@@ -68567,208 +68554,178 @@
   :size-assert         #x18
   :flag-assert         #x900000018
   )
-|#
 
-#|
 (deftype deschase-path (structure)
   ((node-count uint16  :offset-assert 0)
-   (node       uint32  :offset-assert 4)
+   (node       (inline-array deschase-node)  :offset-assert 4)
    )
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-chase-path              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *desert-chase-marauder-path* object)
+(define-extern *desert-chase-marauder-path* deschase-path)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-chase                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype deschase-point (structure)
   ((pos    vector     :inline :offset-assert 0)
    (quat   quaternion :inline :offset-assert 16)
-   (i-node int8               :offset-assert 12)
+   (i-node int8               :offset 12)
    )
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype v-catapult-shot-embers (metalhead-grenade-shot)
-  ((ptracker-proc uint64  :offset-assert 536)
+  ((ptracker-proc handle  :offset-assert 536)
    )
   :method-count-assert 41
   :size-assert         #x220
   :flag-assert         #x2901a00220
-  (:state-methods
-    impact ;; 22
-    )
   )
-|#
 
-#|
 (deftype catapult-target (process-drawable)
   ((alpha float  :offset-assert 200)
    )
   :method-count-assert 22
   :size-assert         #xcc
   :flag-assert         #x16005000cc
-  (:methods
-    (catapult-target-method-21 () none) ;; 21
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (catapult-target-method-21 (_type_) none) ;; 21
+    )
   )
-|#
 
-#|
 (deftype deschase-vehicle (structure)
-  ((handle      uint64  :offset-assert 0)
-   (wait-timer  uint64  :offset-assert 8)
-   (shot-fired? basic   :offset-assert 16)
+  ((handle      handle  :offset-assert 0)
+   (wait-timer  time-frame :offset-assert 8)
+   (shot-fired? symbol   :offset-assert 16)
    )
+  :allow-misaligned
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype desert-chase-ambush-manager (task-manager)
-  ((marauder-nav-mesh   basic     :offset-assert 240)
-   (marauder            UNKNOWN 5 :offset-assert 248)
-   (m-free-list         basic     :offset-assert 288)
-   (marauder-count      uint8     :offset-assert 292)
-   (total-spawned       uint8     :offset-assert 293)
-   (check-timer         uint64    :offset-assert 296)
-   (marauder-entity     basic     :offset-assert 304)
-   (h-player-controller uint64    :offset-assert 312)
-   (player-moved?       basic     :offset-assert 320)
-   (vehicle-nav-mesh    basic     :offset-assert 324)
-   (vehicle             UNKNOWN 4 :offset-assert 328)
-   (vehicle-count       uint8     :offset-assert 456)
-   (v-free-list         basic     :offset-assert 460)
-   (total-veh-spawned   uint8     :offset-assert 464)
-   (target-point        UNKNOWN 4 :offset-assert 480)
-   (last-shot-time      uint64    :offset-assert 544)
+  ((marauder-nav-mesh   nav-mesh                   :offset-assert 240)
+   (marauder            handle 5                   :offset-assert 248)
+   (m-free-list         (array uint8)              :offset-assert 288)
+   (marauder-count      uint8                      :offset-assert 292)
+   (total-spawned       uint8                      :offset-assert 293)
+   (check-timer         time-frame                 :offset-assert 296)
+   (marauder-entity     entity-actor               :offset-assert 304)
+   (h-player-controller handle                     :offset-assert 312)
+   (player-moved?       symbol                     :offset-assert 320)
+   (vehicle-nav-mesh    nav-mesh                   :offset-assert 324)
+   (vehicle             deschase-vehicle 4 :inline :offset-assert 328)
+   (vehicle-count       uint8                      :offset-assert 456)
+   (v-free-list         (array uint8)              :offset-assert 460)
+   (total-veh-spawned   uint8                      :offset-assert 464)
+   (target-point        vector 4           :inline :offset-assert 480)
+   (last-shot-time      time-frame                 :offset-assert 544)
    )
   :method-count-assert 36
   :size-assert         #x228
   :flag-assert         #x2401b00228
   (:methods
-    (desert-chase-ambush-manager-method-32 () none) ;; 32
-    (desert-chase-ambush-manager-method-33 () none) ;; 33
-    (desert-chase-ambush-manager-method-34 () none) ;; 34
-    (desert-chase-ambush-manager-method-35 () none) ;; 35
-    )
-  (:state-methods
-    active ;; 15
+    (spawn-marauder (_type_ deschase-point) none) ;; 32
+    (spawn-v-catapult (_type_ int) handle) ;; 33
+    (fire-catapult-shot (_type_ vector vector) none) ;; 34
+    (desert-chase-ambush-manager-method-35 (_type_ int) none) ;; 35
     )
   )
-|#
 
-#|
 (deftype deschase-artifact (process-drawable)
-  ((arrow uint64         :offset-assert 200)
+  ((arrow handle         :offset-assert 200)
    (pos   vector :inline :offset-assert 208)
    (angs  vector :inline :offset-assert 224)
    )
   :method-count-assert 23
   :size-assert         #xf0
   :flag-assert         #x17007000f0
-  (:methods
-    (deschase-artifact-method-21 () none) ;; 21
-    (deschase-artifact-method-22 () none) ;; 22
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (check-pickup (_type_) none) ;; 21
+    (rotate (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype hud-desert-chase-marauders (hud)
   ()
   :method-count-assert 27
   :size-assert         #xac4
   :flag-assert         #x1b0a500ac4
   )
-|#
 
-#|
 (deftype deschase-vehicle-control (structure)
-  ((vehicle      uint64         :offset-assert 0)
-   (target       uint64         :offset-assert 8)
+  ((vehicle      handle         :offset-assert 0)
+   (target       handle         :offset-assert 8)
    (path         deschase-path  :offset-assert 16)
    (speed        float          :offset-assert 20)
    (i-node       int32          :offset-assert 24)
    (max-dist     float          :offset-assert 28)
    (speed-factor float          :offset-assert 32)
    )
+  :allow-misaligned
   :method-count-assert 13
   :size-assert         #x24
   :flag-assert         #xd00000024
   (:methods
-    (deschase-vehicle-control-method-9 () none) ;; 9
-    (deschase-vehicle-control-method-10 () none) ;; 10
-    (deschase-vehicle-control-method-11 () none) ;; 11
-    (deschase-vehicle-control-method-12 () none) ;; 12
+    (deschase-vehicle-control-method-9 (_type_) none) ;; 9
+    (deschase-vehicle-control-method-10 (_type_) none) ;; 10
+    (deschase-vehicle-control-method-11 (_type_) none) ;; 11
+    (deschase-vehicle-control-method-12 (_type_) none) ;; 12
     )
   )
-|#
 
-#|
 (deftype desert-chase-chase-manager (task-manager)
-  ((h-player-controller uint64               :offset-assert 240)
-   (check-timer         uint64               :offset-assert 248)
-   (speech-time         uint64               :offset-assert 256)
+  ((h-player-controller handle               :offset-assert 240)
+   (check-timer         time-frame           :offset-assert 248)
+   (speech-time         time-frame           :offset-assert 256)
    (last-speech         int8                 :offset-assert 264)
    (death-count         int16                :offset-assert 266)
    (max-dist            float                :offset-assert 268)
    (suck-factor         float                :offset-assert 272)
-   (player-moved?       basic                :offset-assert 276)
-   (control-array       UNKNOWN            4 :offset-assert 280)
-   (minimap             connection-minimap   :offset-assert 472)
-   (artifact            uint64               :offset-assert 480)
+   (player-moved?       symbol               :offset-assert 276)
+   (control-array       deschase-vehicle-control 4 :inline :offset-assert 280)
+   (minimap             connection-minimap   :offset 472)
+   (artifact            handle               :offset-assert 480)
    )
   :method-count-assert 34
   :size-assert         #x1e8
   :flag-assert         #x22017001e8
   (:methods
-    (desert-chase-chase-manager-method-32 () none) ;; 32
-    (desert-chase-chase-manager-method-33 () none) ;; 33
-    )
-  (:state-methods
-    complete ;; 16
-    active ;; 15
+    (spawn-chase-vehicle (_type_ deschase-vehicle deschase-point) none) ;; 32
+    (update-chase-status (_type_) none) ;; 33
     )
   )
-|#
 
-;; (define-extern *stronghold-inside-point* object)
-;; (define-extern *stronghold-vehicle-stop-point* object)
-;; (define-extern *stronghold-player-goto-point* object)
-;; (define-extern *stronghold-marauder-start* array)
-;; (define-extern *deschase-catapult-spawn-point* array)
-;; (define-extern catapult-target-handler function)
-;; (define-extern catapult-target-init-by-other function)
-;; (define-extern desert-chase-ambush-intro-sequence function)
-;; (define-extern deschase-artifact-init-by-other function)
-;; (define-extern deschase-artifact-spawn function)
-;; (define-extern *stronghold-vehicle-start* array)
-;; (define-extern *desert-chase-vehicle-start* array)
-;; (define-extern desert-chase-chase-intro-sequence function)
+(define-extern *stronghold-inside-point* vector)
+(define-extern *stronghold-vehicle-stop-point* vector)
+(define-extern *stronghold-player-goto-point* vector)
+(define-extern *stronghold-marauder-start* (array deschase-point))
+(define-extern *deschase-catapult-spawn-point* (array deschase-point))
+(def-event-handler catapult-target-handler catapult-target)
+(define-extern catapult-target-init-by-other (function vector object :behavior catapult-target))
+(define-extern desert-chase-ambush-intro-sequence (function none :behavior desert-chase-ambush-manager))
+(define-extern deschase-artifact-init-by-other (function vector object :behavior deschase-artifact))
+(define-extern deschase-artifact-spawn (function process vector deschase-artifact))
+(define-extern *stronghold-vehicle-start* (array deschase-point))
+(define-extern *desert-chase-vehicle-start* (array deschase-point))
+(define-extern desert-chase-chase-intro-sequence (function none :behavior desert-chase-chase-manager))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ctyport-part                   ;;
