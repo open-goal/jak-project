@@ -344,7 +344,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod init! ((this ctyport-attack-manager-bbush))
-  (local-vars (r0-0 uint128) (v1-42 uint128) (a0-22 object) (a1-20 uint128) (sv-96 int))
+  (local-vars (sv-96 res-tag))
   (let ((t9-0 (method-of-type task-manager init!)))
     (t9-0 this)
     )
@@ -376,33 +376,12 @@
       )
     )
   (set! (-> this mine-layout) *ctyport-bbush-mine-positions*)
-  (set! sv-96 0)
-  (let ((v1-40 (res-lump-data
-                 (entity-by-name "port-attack-bbush-1")
-                 'actor-groups
-                 pointer
-                 :tag-ptr (the-as (pointer res-tag) (& sv-96))
-                 )
-               )
-        )
+  (set! sv-96 (new 'static 'res-tag))
+  (let ((v1-40 (res-lump-data (entity-by-name "port-attack-bbush-1") 'actor-groups pointer :tag-ptr (& sv-96))))
     (cond
-      ((and v1-40 (begin
-                    (let ((a0-23 #t))
-                      (let ((a1-19 (the-as uint128 sv-96)))
-                        (.pcpyud a1-20 a1-19 r0-0)
-                        )
-                      (let ((a1-22 (the-as int (shr (* (the-as int a1-20) 2) 49))))
-                        (cmove-#f-zero a0-22 a1-22 a0-23)
-                        )
-                      )
-                    a0-22
-                    )
-            )
+      ((and v1-40 (nonzero? (-> sv-96 elt-count)))
        (set! (-> this actor-group) (the-as (pointer actor-group) v1-40))
-       (let ((v1-41 (the-as uint128 sv-96)))
-         (.pcpyud v1-42 v1-41 r0-0)
-         )
-       (set! (-> this actor-group-count) (shr (* (the-as int v1-42) 2) 49))
+       (set! (-> this actor-group-count) (the-as int (-> sv-96 elt-count)))
        )
       (else
         (set! (-> this actor-group) (the-as (pointer actor-group) #f))
