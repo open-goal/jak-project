@@ -29367,7 +29367,7 @@
     (rigid-body-control-method-22 (_type_ vector vector) none) ;; 22
     (rigid-body-control-method-23 (_type_ vector vector) none) ;; 23
     (rigid-body-control-method-24 (_type_ vector vector) none) ;; 24
-    (rigid-body-control-method-25 (_type_ vector) none) ;; 25
+    (rigid-body-control-method-25 (_type_ vector) vector) ;; 25
     (rigid-body-control-method-26 (_type_) none) ;; 26
     (init! (_type_ rigid-body-info vector quaternion (function rigid-body-object float)) none) ;; 27
     (rigid-body-control-method-28 (_type_ vector quaternion) none) ;; 28
@@ -46578,7 +46578,9 @@
   )
 
 (deftype bombbot-bomb (process-focusable)
-  ((explode-part        sparticle-launch-control :offset-assert 208)
+  ((parent              (pointer process-focusable) :override)
+   (root                collide-shape-moving :override)
+   (explode-part        sparticle-launch-control :offset-assert 208)
    (rot-axis            vector :inline :offset-assert 224)
    (rot-angle           float          :offset-assert 240)
    (warning-glow-part   sparticle-launch-control :offset-assert 244)
@@ -46685,22 +46687,21 @@
     drop-bombs ;; 193
     )
   (:methods
-    ; (bombbot-method-192 () none) ;; 192
     (bombbot-method-194 (_type_) none) ;; 194
     (bombbot-method-195 (_type_) none) ;; 195
-    (bombbot-method-196 (_type_) none) ;; 196
+    (bombbot-method-196 (_type_ vector) none) ;; 196
     (bombbot-method-197 (_type_) none) ;; 197
     (bombbot-method-198 (_type_) none) ;; 198
     (bombbot-method-199 (_type_) none) ;; 199
-    (bombbot-method-200 (_type_) none) ;; 200
-    (bombbot-method-201 (_type_) none) ;; 201
+    (toggle-cspec-deadly (_type_ symbol int) none) ;; 200
+    (valid-target? (_type_ process-focusable) object) ;; 201
     (bombbot-method-202 (_type_) none) ;; 202
     (bombbot-method-203 (_type_) none) ;; 203
     (bombbot-method-204 (_type_) none) ;; 204
     (bombbot-method-205 (_type_) none) ;; 205
-    (bombbot-method-206 (_type_) none) ;; 206
-    (bombbot-method-207 (_type_) none) ;; 207
-    (bombbot-method-208 (_type_) none) ;; 208
+    (fire-shot (_type_ vector vector) (pointer projectile)) ;; 206
+    (bombbot-method-207 (_type_) symbol) ;; 207
+    (bombbot-method-208 (_type_ vector vector) vector) ;; 208
     )
   )
 
@@ -46756,7 +46757,6 @@
   :size-assert         #x600
   :flag-assert         #xd205800600
   (:state-methods
-    hostile ;; 38
     explode ;; 190
     done ;; 209
     )
@@ -46765,7 +46765,7 @@
 (deftype task-manager-blow-barricade (task-manager)
   ((check-timer       time-frame                 :offset-assert 240)
    (bombbot-h         handle                     :offset-assert 248)
-   (actor-group       uint32                     :offset-assert 256)
+   (actor-group       (pointer actor-group)      :offset-assert 256)
    (actor-group-count int32                      :offset-assert 260)
    (done?             int32                      :offset-assert 264)
    (minimap           connection-minimap         :offset-assert 268)
@@ -46780,54 +46780,52 @@
     )
   )
 
-#|
 (deftype task-manager-port-fight (task-manager)
-  ((check-timer        uint64               :offset-assert 236)
-   (bombbot-h          UNKNOWN            4 :offset-assert 244)
-   (actor-group        uint32               :offset-assert 276)
-   (actor-group-count  int32                :offset-assert 280)
-   (done?              int32                :offset-assert 284)
-   (minimap            connection-minimap   :offset-assert 288)
-   (min-time           uint32               :offset-assert 292)
-   (hud-timer          uint64               :offset-assert 196)
-   (intro-state        int32                :offset-assert 308)
-   (intro-time         uint64               :offset-assert 228)
-   (target-far-enough? basic                :offset-assert 324)
+  ((check-timer        time-frame           :offset-assert 240)
+   (bombbot-h          handle             4 :offset-assert 248)
+   (actor-group        (pointer actor-group) :offset-assert 280)
+   (actor-group-count  int32                :offset-assert 284)
+   (done?              int32                :offset-assert 288)
+   (minimap            connection-minimap   :offset-assert 292)
+   (min-time           uint32               :offset-assert 296)
+   ; (hud-timer          handle               :offset-assert 200)
+   (intro-state        int32                :offset 312)
+   ; (intro-time         time-frame           :offset-assert 232)
+   (target-far-enough? symbol               :offset 328)
    )
   :method-count-assert 34
   :size-assert         #x14c
   :flag-assert         #x2200d0014c
-  (:methods
-    (task-manager-port-fight-method-33 () none) ;; 33
-    )
   (:state-methods
-    wait ;; 14
     fail-screen ;; 32
-    active ;; 15
+    )
+  (:methods
+    (add-danger (_type_) none) ;; 33
     )
   )
-|#
 
-;; (define-extern *bombbot-hint* object)
-;; (define-extern *bombbot-hint-time* object)
-;; (define-extern *bombbot-body-constants* object) ;; rigid-body-object-constants
-;; (define-extern bombbot-bomb-handler function)
-;; (define-extern *daxter-speech* object)
-;; (define-extern bombbot-bomb-reaction function)
-;; (define-extern bombbot-bomb-init-by-other function)
-;; (define-extern *bombbot-nav-enemy-info* nav-enemy-info) ;; nav-enemy-info
-;; (define-extern *bombbot-ik-limb-setup* array)
-;; (define-extern bombbot-do-spline function) ;; (function vector vector vector vector vector float vector)
-;; (define-extern spawn-bombbot-projectile function)
-;; (define-extern *bombbot-debris-params* debris-static-params)
-;; (define-extern bombbot-callback function) ;; (function cspace transformq none)
-;; (define-extern bombbot-head-callback function) ;; (function cspace transformq none)
-;; (define-extern bombbot-gun-swivel-callback function) ;; (function cspace transformq none)
-;; (define-extern bombbot-gun-callback function) ;; (function cspace transformq none)
-;; (define-extern *bombbot-spring-setup* array) ;; (array spring-setup)
-;; (define-extern bombbot-init-by-other function) ;; (function bombbot-spawn-params none :behavior bombbot)
-;; (define-extern bombbot-player-init-by-other function)
-;; (define-extern *blow-barricade-kg-squad-member-settings* object)
+(declare-type kg-squad-member-settings structure)
+
+(define-extern *bombbot-hint* sound-id)
+(define-extern *bombbot-hint-time* float)
+(define-extern *bombbot-body-constants* rigid-body-object-constants)
+(def-event-handler bombbot-bomb-handler bombbot-bomb)
+(define-extern *daxter-speech* int)
+(define-extern bombbot-bomb-reaction (function control-info collide-query vector vector collide-status))
+(define-extern bombbot-bomb-init-by-other (function vector vector object :behavior bombbot-bomb))
+(define-extern *bombbot-nav-enemy-info* nav-enemy-info)
+(define-extern *bombbot-ik-limb-setup* (array ik-limb-setup))
+(define-extern bombbot-do-spline (function vector vector vector vector vector float vector))
+(define-extern spawn-bombbot-projectile (function bombbot vector vector float vector float (pointer bombbot-shot)))
+(define-extern *bombbot-debris-params* debris-static-params)
+(define-extern bombbot-callback (function cspace transformq none))
+(define-extern bombbot-head-callback (function cspace transformq none))
+(define-extern bombbot-gun-swivel-callback (function cspace transformq none))
+(define-extern bombbot-gun-callback (function cspace transformq none))
+(define-extern *bombbot-spring-setup* (array spring-setup))
+(define-extern bombbot-init-by-other (function bombbot-spawn-params none :behavior bombbot))
+(define-extern bombbot-player-init-by-other (function bombbot-spawn-params object :behavior bombbot-player))
+(define-extern *blow-barricade-kg-squad-member-settings* kg-squad-member-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wasdoors-init                  ;;
