@@ -14,7 +14,7 @@ void tfrag_from_gltf(const gltf_mesh_extract::TfragOutput& mesh_extract_out,
   out_pc.kind = tfrag3::TFragmentTreeKind::NORMAL;  // todo more types?
   out_pc.draws = std::move(mesh_extract_out.strip_draws);
   pack_tfrag_vertices(&out_pc.packed_vertices, mesh_extract_out.vertices);
-  out_pc.colors.color_count = (mesh_extract_out.color_palette.size()) & (~3);
+  out_pc.colors.color_count = (mesh_extract_out.color_palette.size() + 3) & (~3);
   out_pc.colors.data.resize(out_pc.colors.color_count * 8 * 4);
   for (u32 color_index = 0; color_index < mesh_extract_out.color_palette.size(); color_index++) {
     for (u32 palette = 0; palette < 8; palette++) {
