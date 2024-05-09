@@ -128,7 +128,7 @@
 (cgo-file "deschase.gd" common-dep)
 (cgo-file "desd.gd" common-dep)
 (cgo-file "dese.gd" common-dep)
-; (cgo-file "deserrol.gd" common-dep)
+(cgo-file "deserrol.gd" common-dep)
 (cgo-file "desf.gd" common-dep)
 (cgo-file "desg.gd" common-dep)
 (cgo-file "desh.gd" common-dep)
@@ -276,8 +276,8 @@
 (cgo-file "win.gd" common-dep) ;; wasintro
 (cgo-file "title.gd" common-dep)
 (cgo-file "inttitle.gd" common-dep)
-; (cgo-file "intpalrf.gd" common-dep) ;; intro-palace-roof
-; (cgo-file "ipf.gd" common-dep) ;; intro-palace-fall
+(cgo-file "intpalrf.gd" common-dep) ;; intro-palace-roof
+(cgo-file "ipf.gd" common-dep) ;; intro-palace-fall
 (cgo-file "introcst.gd" common-dep)
 ; ;; outro
 ; (cgo-file "outcast3.gd" common-dep)
