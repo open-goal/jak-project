@@ -7,31 +7,64 @@
 
 ;; DECOMP BEGINS
 
-(define *default-mh-squad-member-settings* (new 'static 'mh-squad-member-settings
-                                             :object-type (traffic-type metalhead-grunt)
-                                             :max-target-count #x7f
-                                             :target-count 4
-                                             )
-        )
+(define *default-mh-squad-member-settings*
+  (new 'static 'inline-array kg-squad-member-settings 3
+    (new 'static 'kg-squad-member-settings
+      :object-type (traffic-type metalhead-grunt)
+      :max-target-count #x7f
+      :target-count 4
+      )
+    (new 'static 'kg-squad-member-settings
+      :object-type (traffic-type metalhead-flitter)
+      :max-target-count #x7f
+      :target-count 3
+      )
+    (new 'static 'kg-squad-member-settings :object-type (traffic-type metalhead-predator) :max-target-count #x7f)
+    )
+  )
 
-(define *war-mh-squad-member-settings* (new 'static 'mh-squad-member-settings
-                                         :object-type (traffic-type metalhead-grunt)
-                                         :max-target-count #x7f
-                                         :target-count 5
+(define *war-mh-squad-member-settings* (new 'static 'inline-array kg-squad-member-settings 3
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type metalhead-grunt)
+                                           :max-target-count #x7f
+                                           :target-count 5
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type metalhead-flitter)
+                                           :max-target-count #x7f
+                                           :target-count 5
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type metalhead-predator)
+                                           :max-target-count #x7f
+                                           :target-count 2
+                                           )
                                          )
         )
 
 ;; WARN: Return type mismatch pointer vs none.
-(defmethod copy-squad-settings-to-idx ((this mh-squad-control) (arg0 mh-squad-settings) (arg1 int))
+(defmethod copy-squad-settings-to-idx ((this mh-squad-control) (arg0 (inline-array mh-squad-member-settings)) (arg1 int))
   (mem-copy! (the-as pointer (-> this squad-settings (the-as uint arg1))) (the-as pointer arg0) 48)
   (none)
   )
 
 ;; WARN: Return type mismatch symbol vs none.
 (defmethod init-alert ((this mh-squad-control))
-  (copy-squad-settings-to-idx this (the-as mh-squad-settings *default-mh-squad-member-settings*) 0)
-  (copy-squad-settings-to-idx this (the-as mh-squad-settings *war-mh-squad-member-settings*) 1)
-  (copy-squad-settings-to-idx this (the-as mh-squad-settings *default-mh-squad-member-settings*) 2)
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+    0
+    )
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *war-mh-squad-member-settings*)
+    1
+    )
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+    2
+    )
   (set! (-> this alert-level) 0)
   (call-parent-method this)
   (mh-squad-control-method-48 this)
@@ -94,13 +127,17 @@
      (set! (-> this city-mode) (squad-city-mode two))
      (copy-squad-settings-to-idx
        this
-       (the-as mh-squad-settings (-> *setting-control* user-current mh-enemy-settings))
+       (the-as (inline-array mh-squad-member-settings) (-> *setting-control* user-current mh-enemy-settings))
        0
        )
      )
     (else
       (set! (-> this city-mode) (squad-city-mode zero))
-      (copy-squad-settings-to-idx this (the-as mh-squad-settings *default-mh-squad-member-settings*) 0)
+      (copy-squad-settings-to-idx
+        this
+        (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+        0
+        )
       )
     )
   (when *cty-faction-manager*
