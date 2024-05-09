@@ -997,6 +997,7 @@ const std::unordered_map<
              {"vehicle-rider-info",
               {{"grab-rail-array", ArrayFieldDecompMeta(TypeSpec("vehicle-grab-rail-info"), 48)},
                {"attach-point-array", ArrayFieldDecompMeta(TypeSpec("vehicle-attach-point"), 32)}}},
+             {"vehicle-setup-info", {{"color", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
              {"desbeast-path", {{"node", ArrayFieldDecompMeta(TypeSpec("desbeast-node"), 32)}}},
              {"race-info",
               {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
@@ -1031,6 +1032,12 @@ const std::unordered_map<
                {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
                {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
                {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+             {"ctyport-mine-layout",
+              {{"stored-handles",
+                ArrayFieldDecompMeta(TypeSpec("handle"),
+                                     8,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+             {"deschase-path", {{"node", ArrayFieldDecompMeta(TypeSpec("deschase-node"), 32)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

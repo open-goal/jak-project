@@ -1,0 +1,263 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 193 of type kg-squad-member
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-squad ((this kg-squad-member))
+  (set! (-> this squad) *kg-squad-control*)
+  (set! (-> this minimap) #f)
+  (none)
+  )
+
+;; definition for method 194 of type kg-squad-member
+(defmethod citizen-method-194 ((this kg-squad-member))
+  (dotimes (v1-0 3)
+    (set! (-> this hatred-memory v1-0 hated-target) (the-as handle #f))
+    (set! (-> this hatred-memory v1-0 hatred-value) 0.0)
+    )
+  (set! (-> this last-choose-new-enemy-time) 0)
+  (set! (-> this choose-new-enemy-delay-time) (seconds 3))
+  (set! (-> this current-enemy) (the-as handle #f))
+  (logior! (-> this mask) (process-mask kg-robot))
+  (set! (-> this next-update-target-time) 0)
+  (set! (-> this faction-mode) (the-as uint 0))
+  (set! (-> this fact fade-time) (seconds 10))
+  (logior! (-> this fact options) (actor-option fade-out no-distance-check-fadeout))
+  (if (not (-> this minimap))
+      (set! (-> this minimap) (add-icon! *minimap* this (the-as uint 139) (the-as int #f) (the-as vector #t) 0))
+      )
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 221 of type kg-squad-member
+;; WARN: disable def twice: 6. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod get-current-enemy ((this kg-squad-member))
+  (if #t
+      (handle->process (-> this attacker-info enemy))
+      (squad-control-city-method-35 (-> this squad) this (-> this current-enemy))
+      )
+  )
+
+;; definition for method 212 of type kg-squad-member
+(defmethod go-from-behavior ((this kg-squad-member) (arg0 traffic-object-spawn-params))
+  (add-squad-member (-> this squad) this)
+  (call-parent-method this arg0)
+  (none)
+  )
+
+;; definition for method 196 of type kg-squad-member
+(defmethod go-inactive ((this kg-squad-member))
+  (pop-squad-member-from-list (-> this squad) this)
+  (call-parent-method this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate inactive (kg-squad-member)
+  :virtual #t
+  :enter (behavior ()
+    (when (-> self minimap)
+      (logior! (-> self minimap flags) (minimap-flag fade-out))
+      (set! (-> self minimap) #f)
+      )
+    (let ((t9-0 (-> (method-of-type citizen inactive) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    )
+  )
+
+;; definition for method 10 of type kg-squad-member
+(defmethod deactivate ((this kg-squad-member))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (pop-squad-member-from-list (-> this squad) this)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 217 of type kg-squad-member
+(defmethod enemy->hatred-val ((this kg-squad-member) (arg0 process))
+  (cond
+    ((logtest? (process-mask guard) (-> arg0 mask))
+     0.5
+     )
+    ((logtest? (process-mask metalhead) (-> arg0 mask))
+     -0.01
+     )
+    ((= (-> arg0 type) target)
+     0.3
+     )
+    ((logtest? (process-mask civilian) (-> arg0 mask))
+     0.02
+     )
+    ((logtest? (process-mask kg-robot) (-> arg0 mask))
+     -1.0
+     )
+    ((and (logtest? (process-mask vehicle) (-> arg0 mask)) (not (logtest? (process-mask enemy) (-> arg0 mask))))
+     0.01
+     )
+    (else
+      -1.0
+      )
+    )
+  )
+
+;; definition for method 218 of type kg-squad-member
+(defmethod get-hatred-val-for-target ((this kg-squad-member) (arg0 handle))
+  (dotimes (v1-0 3)
+    (if (= arg0 (-> this hatred-memory v1-0 hated-target))
+        (return (-> this hatred-memory v1-0 hatred-value))
+        )
+    )
+  0.0
+  )
+
+;; definition for method 216 of type kg-squad-member
+(defmethod kg-squad-member-method-216 ((this kg-squad-member) (arg0 process))
+  (let ((f30-0 (enemy->hatred-val this arg0))
+        (f0-0 (get-hatred-val-for-target this (process->handle arg0)))
+        )
+    0.0
+    (+ f0-0 f30-0)
+    )
+  )
+
+;; definition for method 219 of type kg-squad-member
+(defmethod kg-squad-member-method-219 ((this kg-squad-member) (arg0 process-focusable))
+  (let* ((s4-0 (get-trans arg0 0))
+         (f0-0 (vector-vector-xz-distance-squared (-> this root trans) s4-0))
+         (f1-0 409600.0)
+         )
+    (or (and (< f0-0 (* f1-0 f1-0)) (< (fabs (- (-> s4-0 y) (-> this root trans y))) 61440.0))
+        (< 0.0 (get-hatred-val-for-target this (process->handle arg0)))
+        )
+    )
+  )
+
+;; definition for method 59 of type kg-squad-member
+(defmethod enemy-common-post ((this kg-squad-member))
+  (local-vars (s5-0 int))
+  (when (focus-test? this dangerous)
+    (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> a1-0 options) (overlaps-others-options))
+      (set! (-> a1-0 collide-with-filter) (-> this enemy-info overlaps-others-collide-with-filter))
+      (set! (-> a1-0 tlist) *touching-list*)
+      (find-overlapping-shapes (-> this root) a1-0)
+      )
+    )
+  (cond
+    ((logtest? (-> this flags) (citizen-flag in-mission))
+     (set! (-> this faction-mode) (the-as uint 2))
+     )
+    ((nonzero? (-> this controller branch))
+     (let ((v1-15 (get-city-mode (-> this squad))))
+       0
+       (cond
+         ((= v1-15 (squad-city-mode two))
+          (set! s5-0 2)
+          )
+         (else
+           (let ((v1-17 *cty-faction-manager*)
+                 (a1-2 (-> this controller branch clock-type))
+                 )
+             (set! s5-0 (-> v1-17 territory-faction-modes 0 data (+ 1 (* a1-2 16))))
+             )
+           )
+         )
+       )
+     (when (!= (-> this faction-mode) s5-0)
+       (if (not (send-event this 'change-faction-mode s5-0 (-> this faction-mode)))
+           (set! (-> this faction-mode) (the-as uint s5-0))
+           )
+       )
+     )
+    )
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 84 of type kg-squad-member
+(defmethod send-attack-on-jump-or-knocked ((this kg-squad-member) (arg0 process) (arg1 event-message-block))
+  (cond
+    (#f
+      ((method-of-type citizen send-attack-on-jump-or-knocked) this arg0 arg1)
+      )
+    (else
+      (when (!= (-> arg0 type) target)
+        (let* ((s3-0 (-> arg1 param 0))
+               (s2-0 arg0)
+               (v1-2 (if (type? s2-0 process-focusable)
+                         s2-0
+                         )
+                     )
+               )
+          (cond
+            ((and (focus-test? this dangerous)
+                  (logtest? (process-mask enemy guard civilian metalhead) (-> arg0 mask))
+                  (not (logtest? (process-mask kg-robot) (-> arg0 mask)))
+                  (and v1-2
+                       (not (logtest? (-> (the-as process-focusable v1-2) focus-status) (focus-status disable dead ignore grabbed)))
+                       )
+                  ((method-of-type touching-shapes-entry prims-touching-action?)
+                   (the-as touching-shapes-entry s3-0)
+                   (-> this root)
+                   (collide-action deadly)
+                   (collide-action)
+                   )
+                  )
+             (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                              (the-as touching-shapes-entry s3-0)
+                              (-> this root)
+                              (collide-action persistent-attack)
+                              (collide-action)
+                              )
+                             (-> this persistent-attack-id)
+                             (-> this attack-id)
+                             )
+                         )
+                   )
+               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               )
+             )
+            (else
+              (send-event arg0 'touch (-> arg1 param 0))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 220 of type kg-squad-member
+(defmethod kg-squad-member-method-220 ((this kg-squad-member))
+  (if (or (not (-> this draw)) (not (logtest? (-> this draw status) (draw-control-status on-screen))))
+      (return #f)
+      )
+  (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (math-camera-pos)))
+        (f1-0 122880.0)
+        )
+    (if (< f0-0 (* f1-0 f1-0))
+        (return #t)
+        )
+    )
+  #f
+  )
+
+;; failed to figure out what this is:
+(defstate in-ditch (kg-squad-member)
+  :virtual #t
+  :enter (behavior ()
+    (go-inactive self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die-fast (kg-squad-member)
+  :virtual #t
+  :enter (behavior ()
+    (go-inactive self)
+    )
+  )

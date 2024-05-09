@@ -1,0 +1,126 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type formation-info
+(deftype formation-info (structure)
+  ((composition  (array uint8))
+   (layout       (array vector))
+   )
+  )
+
+;; definition for method 3 of type formation-info
+(defmethod inspect ((this formation-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'formation-info)
+  (format #t "~1Tcomposition: ~A~%" (-> this composition))
+  (format #t "~1Tlayout: ~A~%" (-> this layout))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type formation-layout
+(deftype formation-layout (basic)
+  ((formation-points      vector  10 :inline)
+   (num-formation-points  int8)
+   (leader-index          int8)
+   (__pad                 int16)
+   (scale-factor          float)
+   (estimated-radius      float)
+   (composition           (array uint8))
+   )
+  (:methods
+    (init! (_type_ formation-info) none)
+    )
+  )
+
+;; definition for method 3 of type formation-layout
+(defmethod inspect ((this formation-layout))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tformation-points[10] @ #x~X~%" (-> this formation-points))
+  (format #t "~1Tnum-formation-points: ~D~%" (-> this num-formation-points))
+  (format #t "~1Tleader-index: ~D~%" (-> this leader-index))
+  (format #t "~1T__pad: ~D~%" (-> this __pad))
+  (format #t "~1Tscale-factor: ~f~%" (-> this scale-factor))
+  (format #t "~1Testimated-radius: ~f~%" (-> this estimated-radius))
+  (format #t "~1Tcomposition: ~A~%" (-> this composition))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type formation-layout
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch (array uint8) vs none.
+(defmethod init! ((this formation-layout) (arg0 formation-info))
+  (let* ((s4-0 (-> arg0 layout))
+         (v1-1 (length s4-0))
+         (f0-0 0.0)
+         )
+    (dotimes (a0-2 v1-1)
+      (set! (-> this formation-points a0-2 quad) (-> s4-0 a0-2 quad))
+      (let* ((a1-6 (-> this formation-points a0-2))
+             (f1-3 (+ (* (-> a1-6 x) (-> a1-6 x)) (* (-> a1-6 z) (-> a1-6 z))))
+             )
+        (if (< f0-0 f1-3)
+            (set! f0-0 f1-3)
+            )
+        )
+      )
+    (set! (-> this num-formation-points) v1-1)
+    (if (> v1-1 0)
+        (set! (-> this estimated-radius) (sqrtf f0-0))
+        )
+    )
+  (set! (-> this composition) (-> arg0 composition))
+  (none)
+  )
+
+;; definition for symbol *formation-layout-cross*, type (array vector)
+(define *formation-layout-cross* (new 'static 'boxed-array :type vector
+                                   (new 'static 'vector :x 1.0 :w 1.0)
+                                   (new 'static 'vector :z 1.0 :w 1.0)
+                                   (new 'static 'vector :x -1.0 :w 1.0)
+                                   (new 'static 'vector :z -1.0 :w 1.0)
+                                   )
+        )
+
+;; definition for symbol *formation-composition-cross*, type (array uint8)
+(define *formation-composition-cross* (new 'static 'boxed-array :type uint8 #x1 #x2 #x1 #x1))
+
+;; definition for symbol *formation-layout-wedge*, type (array vector)
+(define *formation-layout-wedge* (new 'static 'boxed-array :type vector
+                                   (new 'static 'vector :z 1.0 :w 1.0)
+                                   (new 'static 'vector :x 1.0 :w 1.0)
+                                   (new 'static 'vector :x -1.0 :w 1.0)
+                                   )
+        )
+
+;; definition for symbol *formation-composition-wedge*, type (array uint8)
+(define *formation-composition-wedge* (new 'static 'boxed-array :type uint8 #x2 #x1 #x1))
+
+;; definition for symbol *formation-list*, type (inline-array formation-info)
+(define *formation-list*
+  (new 'static 'inline-array formation-info 2 (new 'static 'formation-info) (new 'static 'formation-info))
+  )
+
+;; failed to figure out what this is:
+(set! (-> *formation-list* 0 composition) *formation-composition-cross*)
+
+;; failed to figure out what this is:
+(set! (-> *formation-list* 0 layout) *formation-layout-cross*)
+
+;; failed to figure out what this is:
+(set! (-> *formation-list* 1 composition) *formation-composition-wedge*)
+
+;; failed to figure out what this is:
+(set! (-> *formation-list* 1 layout) *formation-layout-wedge*)
+
+
+
+

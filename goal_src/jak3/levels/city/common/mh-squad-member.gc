@@ -7,3 +7,283 @@
 
 ;; DECOMP BEGINS
 
+;; WARN: Return type mismatch mh-squad-control vs none.
+(defmethod set-squad ((this mh-squad-member))
+  (set! (-> this squad) *mh-squad-control*)
+  (none)
+  )
+
+(defmethod citizen-method-194 ((this mh-squad-member))
+  (set! (-> this last-choose-new-enemy-time) 0)
+  (set! (-> this choose-new-enemy-delay-time) (seconds 3))
+  (set! (-> this current-enemy) (the-as handle #f))
+  (set! (-> this mask) (the-as process-mask (logior (process-mask metalhead) (-> this mask))))
+  (set! (-> this faction-mode) (the-as uint 0))
+  (set! (-> this next-update-target-time) 0)
+  (set! (-> this fact pickup-type) (pickup-type eco-pill-dark))
+  (if (zero? (mod (the-as int (rand-uint31-gen *random-generator*)) 11))
+      (set! (-> this fact pickup-type) (pickup-type eco-pill-light))
+      )
+  (set! (-> this fact pickup-amount) 1.0)
+  (set! (-> this fact pickup-spawn-amount) 1.0)
+  (set! (-> this fact fade-time) (seconds 10))
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod go-from-behavior ((this mh-squad-member) (arg0 traffic-object-spawn-params))
+  (add-squad-member (-> this squad) this)
+  (call-parent-method this arg0)
+  (none)
+  )
+
+(defmethod go-inactive ((this mh-squad-member))
+  (pop-squad-member-from-list (-> this squad) this)
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod deactivate ((this mh-squad-member))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (pop-squad-member-from-list (-> this squad) this)
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod enemy->hatred-val ((this mh-squad-member) (arg0 process))
+  (cond
+    ((logtest? (process-mask metalhead) (-> arg0 mask))
+     -1.0
+     )
+    ((logtest? (process-mask guard) (-> arg0 mask))
+     0.5
+     )
+    ((= (-> arg0 type) target)
+     0.49
+     )
+    ((logtest? (process-mask civilian) (-> arg0 mask))
+     0.2
+     )
+    ((logtest? (process-mask kg-robot) (-> arg0 mask))
+     -0.01
+     )
+    ((and (logtest? (process-mask vehicle) (-> arg0 mask)) (not (logtest? (process-mask enemy) (-> arg0 mask))))
+     0.01
+     )
+    (else
+      -1.0
+      )
+    )
+  )
+
+(defmethod get-hatred-val-for-proc ((this mh-squad-member) (arg0 process))
+  (let ((f1-0 (enemy->hatred-val this arg0)))
+    0.0
+    f1-0
+    )
+  )
+
+(defmethod pfoc-in-range? ((this mh-squad-member) (arg0 process-focusable))
+  (let* ((s5-0 (get-trans arg0 0))
+         (f0-0 (vector-vector-xz-distance-squared (-> this root trans) s5-0))
+         (f1-0 245760.0)
+         )
+    (and (< f0-0 (* f1-0 f1-0)) (< (fabs (- (-> s5-0 y) (-> this root trans y))) 61440.0))
+    )
+  )
+
+(defmethod enemy-common-post ((this mh-squad-member))
+  (local-vars (s5-0 int))
+  (when (focus-test? this dangerous)
+    (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+      (set! (-> a1-0 options) (overlaps-others-options))
+      (set! (-> a1-0 collide-with-filter) (-> this enemy-info overlaps-others-collide-with-filter))
+      (set! (-> a1-0 tlist) *touching-list*)
+      (find-overlapping-shapes (-> this root) a1-0)
+      )
+    )
+  (cond
+    ((logtest? (-> this flags) (citizen-flag in-mission))
+     (set! (-> this faction-mode) (the-as uint 2))
+     )
+    ((nonzero? (-> this controller branch))
+     (let ((v1-15 (get-city-mode (-> this squad))))
+       0
+       (cond
+         ((= v1-15 (squad-city-mode two))
+          (set! s5-0 2)
+          )
+         (else
+           (let ((v1-17 *cty-faction-manager*)
+                 (a1-2 (-> this controller branch clock-type))
+                 )
+             (set! s5-0 (-> v1-17 territory-faction-modes 0 data (+ 1 (* a1-2 16))))
+             )
+           )
+         )
+       )
+     (when (!= (-> this faction-mode) s5-0)
+       (if (not (send-event this 'change-faction-mode s5-0 (-> this faction-mode)))
+           (set! (-> this faction-mode) (the-as uint s5-0))
+           )
+       )
+     )
+    )
+  (find-new-focus this)
+  ((method-of-type citizen enemy-common-post) this)
+  (none)
+  )
+
+(defmethod send-attack-on-jump-or-knocked ((this mh-squad-member) (arg0 process) (arg1 event-message-block))
+  (cond
+    (#f
+      ((method-of-type citizen send-attack-on-jump-or-knocked) this arg0 arg1)
+      )
+    (else
+      (when (!= (-> arg0 type) target)
+        (let* ((s3-0 (-> arg1 param 0))
+               (s2-0 arg0)
+               (v1-2 (if (type? s2-0 process-focusable)
+                         s2-0
+                         )
+                     )
+               )
+          (cond
+            ((and (focus-test? this dangerous)
+                  (logtest? (process-mask enemy guard civilian kg-robot) (-> arg0 mask))
+                  (not (logtest? (process-mask metalhead) (-> arg0 mask)))
+                  (and v1-2
+                       (not (logtest? (-> (the-as process-focusable v1-2) focus-status) (focus-status disable dead ignore grabbed)))
+                       )
+                  ((method-of-type touching-shapes-entry prims-touching-action?)
+                   (the-as touching-shapes-entry s3-0)
+                   (-> this root)
+                   (collide-action deadly)
+                   (collide-action)
+                   )
+                  )
+             (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                              (the-as touching-shapes-entry s3-0)
+                              (-> this root)
+                              (collide-action persistent-attack)
+                              (collide-action)
+                              )
+                             (-> this persistent-attack-id)
+                             (-> this attack-id)
+                             )
+                         )
+                   )
+               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               )
+             )
+            (else
+              (send-event arg0 'touch (-> arg1 param 0))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; WARN: disable def twice: 6. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod get-current-enemy ((this mh-squad-member))
+  (if #t
+      (handle->process (-> this attacker-info enemy))
+      (squad-control-city-method-35 (-> this squad) this (-> this current-enemy))
+      )
+  )
+
+;; WARN: disable def twice: 120. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod find-new-focus ((this mh-squad-member))
+  (local-vars (v0-6 object))
+  (when (not (handle->process (-> this current-enemy)))
+    (set! (-> this focus handle) (the-as handle #f))
+    (set! (-> this current-enemy) (the-as handle #f))
+    )
+  (let ((a0-6 (get-current-enemy this)))
+    (if a0-6
+        (set! (-> this current-enemy) (process->handle a0-6))
+        (set! (-> this current-enemy) (the-as handle #f))
+        )
+    )
+  (when (logtest? (-> this attacker-info flags) (city-attacker-info-flag cai2))
+    (set! (-> this attacker-info next-update-target-time) (+ (current-time) (seconds 3)))
+    (logclear! (-> this attacker-info flags) (city-attacker-info-flag cai2))
+    )
+  (let* ((s5-0 (handle->process (-> this current-enemy)))
+         (a0-18 (if (type? s5-0 process-focusable)
+                    s5-0
+                    )
+                )
+         )
+    (cond
+      ((and a0-18
+            (not (logtest? (-> (the-as process-focusable a0-18) focus-status) (focus-status disable dead inactive)))
+            )
+       (let* ((s5-1 this)
+              (s4-0 (method-of-object s5-1 enemy-method-70))
+              (s3-0 (handle->process (-> this current-enemy)))
+              )
+         (s4-0
+           s5-1
+           (the-as process-focusable (if (type? s3-0 process-focusable)
+                                         s3-0
+                                         )
+                   )
+           (the-as enemy-aware #f)
+           )
+         )
+       (update-focus this)
+       (let ((f0-0 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
+             (f1-0 266240.0)
+             )
+         (cond
+           ((< f0-0 (* f1-0 f1-0))
+            (when (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
+              (set! v0-6 (logior (-> this flags) (citizen-flag persistent)))
+              (set! (-> this flags) (the-as citizen-flag v0-6))
+              v0-6
+              )
+            )
+           (else
+             (set! v0-6 (logclear (-> this flags) (citizen-flag persistent)))
+             (set! (-> this flags) (the-as citizen-flag v0-6))
+             v0-6
+             )
+           )
+         )
+       )
+      (else
+        (set! (-> this focus handle) (the-as handle #f))
+        (logclear! (-> this flags) (citizen-flag persistent))
+        (if (and (-> this next-state) (= (-> this next-state name) 'hostile))
+            (go (method-of-object this active))
+            )
+        )
+      )
+    )
+  )
+
+(defstate active (mh-squad-member)
+  :virtual #t
+  :trans (behavior ()
+    (when (handle->process (-> self current-enemy))
+      (let* ((gp-0 (handle->process (-> self current-enemy)))
+             (v1-7 (if (type? gp-0 process-focusable)
+                       (the-as process-focusable gp-0)
+                       )
+                   )
+             )
+        (if (not (or (focus-test? v1-7 inactive) (focus-test? v1-7 disable)))
+            (go-virtual hostile)
+            )
+        )
+      )
+    (let ((t9-3 (-> (find-parent-state) trans)))
+      (if t9-3
+          (t9-3)
+          )
+      )
+    )
+  )

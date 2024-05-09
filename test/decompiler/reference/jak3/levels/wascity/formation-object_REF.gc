@@ -1,0 +1,560 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type handle-array
+(deftype handle-array (inline-array-class-uint64)
+  ((data0  handle  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type handle-array
+(defmethod inspect ((this handle-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data0))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> handle-array heap-base) (the-as uint 8))
+
+;; definition of type formation-object
+(deftype formation-object (process-focusable)
+  ((object-list          handle-array)
+   (num-objects          int8)
+   (formation            formation-layout)
+   (flags                formation-object-flag)
+   (controller           vehicle-controller  :inline)
+   (alert-time-offset    time-frame)
+   (dest-position        vector              :inline)
+   (formation-transform  matrix              :inline)
+   )
+  (:state-methods
+    active
+    inactive
+    )
+  (:methods
+    (formation-object-method-30 (_type_) symbol)
+    (formation-object-method-31 (_type_) float)
+    (formation-object-method-32 (_type_) float)
+    (formation-object-method-33 (_type_) float)
+    (formation-object-method-34 (_type_) float)
+    (formation-object-method-35 (_type_) symbol)
+    (get-leader-handle (_type_) handle)
+    (formation-object-method-37 (_type_) symbol)
+    (get-target-speed (_type_ process-focusable int) float)
+    (init-collision! (_type_) none)
+    (formation-object-method-40 (_type_ vector vector int) vector)
+    (formation-event-handler (_type_ process int symbol event-message-block) object)
+    (formation-object-method-42 (_type_ handle) symbol)
+    (formation-object-method-43 (_type_ int) none)
+    (formation-object-method-44 (_type_ int) object)
+    (formation-object-method-45 (_type_) symbol)
+    (clear-objects! (_type_) none)
+    (formation-object-method-47 (_type_ handle) object)
+    )
+  )
+
+;; definition for method 3 of type formation-object
+(defmethod inspect ((this formation-object))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tobject-list: ~A~%" (-> this object-list))
+  (format #t "~2Tnum-objects: ~D~%" (-> this num-objects))
+  (format #t "~2Tformation: ~A~%" (-> this formation))
+  (format #t "~2Tflags: ~D~%" (-> this flags))
+  (format #t "~2Tcontroller: #<vehicle-controller @ #x~X>~%" (-> this controller))
+  (format #t "~2Talert-time-offset: ~D~%" (-> this alert-time-offset))
+  (format #t "~2Tdest-position: #<vector @ #x~X>~%" (-> this dest-position))
+  (format #t "~2Tformation-transform: #<matrix @ #x~X>~%" (-> this formation-transform))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type msg-get-num-inactive
+(deftype msg-get-num-inactive (structure)
+  ((obj-type          traffic-type)
+   (num-inactive-out  int32)
+   )
+  )
+
+;; definition for method 3 of type msg-get-num-inactive
+(defmethod inspect ((this msg-get-num-inactive))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'msg-get-num-inactive)
+  (format #t "~1Tobj-type: ~D~%" (-> this obj-type))
+  (format #t "~1Tnum-inactive-out: ~D~%" (-> this num-inactive-out))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 30 of type formation-object
+(defmethod formation-object-method-30 ((this formation-object))
+  (let ((s5-0 (new 'stack-no-clear 'msg-get-num-inactive)))
+    (set! (-> s5-0 obj-type) (traffic-type guard-a))
+    (send-event *traffic-manager* 'get-num-normal-available s5-0)
+    (>= (-> s5-0 num-inactive-out) (-> this formation num-formation-points))
+    )
+  )
+
+;; definition for method 40 of type formation-object
+(defmethod formation-object-method-40 ((this formation-object) (arg0 vector) (arg1 vector) (arg2 int))
+  (when (and (>= arg2 0) (< arg2 (-> this num-objects)))
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (vector-rotate*! s3-0 (-> this formation formation-points arg2) (-> this formation-transform))
+      (vector+float*! arg0 arg1 s3-0 (-> this formation scale-factor))
+      )
+    )
+  arg0
+  )
+
+;; definition for method 41 of type formation-object
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch formation-object vs object.
+(defmethod formation-event-handler ((this formation-object) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('member-attacked)
+     (dotimes (s5-1 (-> this num-objects))
+       (let ((s4-0 (-> this object-list data0 s5-1)))
+         (if (formation-object-method-47 this s4-0)
+             (send-event (handle->process s4-0) 'member-attacked)
+             )
+         )
+       )
+     )
+    (('traffic-off)
+     (when (not (logtest? (-> this flags) (formation-object-flag fo0)))
+       )
+     (set! this (the-as formation-object #f))
+     (goto cfg-47)
+     )
+    (('traffic-off-force)
+     (go (method-of-object this inactive))
+     )
+    (('get-leader-handle)
+     (-> arg3 param 0)
+     (get-leader-handle this)
+     )
+    (('traffic-activate)
+     (cond
+       ((formation-object-method-45 this)
+        (matrix-identity! (-> this formation-transform))
+        (let ((s5-2 (the-as traffic-object-spawn-params (-> arg3 param 0))))
+          (let ((a1-3 (-> s5-2 nav-branch)))
+            (when a1-3
+              (vehicle-controller-method-13 (-> this controller) a1-3 (-> this root trans))
+              (let ((s4-1 (new 'stack-no-clear 'vector)))
+                (vector-! s4-1 (-> this controller turn-exit-point) (-> this root trans))
+                (set! (-> s4-1 y) 0.0)
+                (vector-normalize! s4-1 1.0)
+                (forward-up->inv-matrix (-> this formation-transform) s4-1 *up-vector*)
+                )
+              )
+            )
+          (set! (-> this root trans quad) (-> s5-2 position quad))
+          (set! (-> s5-2 handle-parent) (process->handle this))
+          (set! (-> s5-2 object-type) (traffic-type guard-a))
+          (logior! (-> s5-2 flags) (traffic-spawn-flags tsf4))
+          (dotimes (s4-2 (-> this num-objects))
+            (set! (-> s5-2 handle) (-> this object-list data0 s4-2))
+            (set! (-> s5-2 user-data) (the-as uint s4-2))
+            (formation-object-method-40 this (-> s5-2 position) (-> this root trans) s4-2)
+            (send-event *traffic-manager* 'activate-specific-object s5-2)
+            (send-event (handle->process (-> s5-2 handle)) 'change-guard-type (-> this formation composition s4-2))
+            )
+          )
+        (logclear! (-> this focus-status) (focus-status inactive))
+        (go (method-of-object this active))
+        )
+       (else
+         (go (method-of-object this inactive))
+         (set! this (the-as formation-object #f))
+         (goto cfg-47)
+         )
+       )
+     )
+    )
+  (label cfg-47)
+  this
+  )
+
+;; definition for method 39 of type formation-object
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this formation-object))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 0.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for function formation-init-by-other
+;; INFO: Used lq/sq
+(defbehavior formation-init-by-other formation-object ((arg0 traffic-object-spawn-params))
+  (stack-size-set! (-> self main-thread) 128)
+  (init-collision! self)
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 rotation))
+  (traffic-entity-hack (-> arg0 object-type))
+  (set! (-> self formation) (new 'process 'formation-layout))
+  (init! (-> self formation) (-> *formation-list* (logand (rand-uint31-gen *random-generator*) 1)))
+  (set! (-> self formation scale-factor) 20480.0)
+  (set! (-> self formation leader-index) 1)
+  (set! (-> self object-list) (new 'process 'handle-array (-> self formation num-formation-points)))
+  (clear-1 (-> self object-list))
+  (set! (-> self num-objects) 0)
+  (vehicle-controller-method-9 (-> self controller))
+  (go-virtual inactive)
+  )
+
+;; definition for method 42 of type formation-object
+(defmethod formation-object-method-42 ((this formation-object) (arg0 handle))
+  (!= (push-back (-> this object-list) arg0) -1)
+  )
+
+;; definition for method 44 of type formation-object
+(defmethod formation-object-method-44 ((this formation-object) (arg0 int))
+  (let ((gp-0 (-> this object-list data0 arg0)))
+    (pop-front (-> this object-list) arg0)
+    (when (formation-object-method-47 this gp-0)
+      (let* ((gp-1 (handle->process gp-0))
+             (a0-6 (if (type? gp-1 process-focusable)
+                       gp-1
+                       )
+                   )
+             )
+        (send-event a0-6 'formation-exit)
+        )
+      )
+    )
+  )
+
+;; definition for method 43 of type formation-object
+;; WARN: Return type mismatch object vs none.
+(defmethod formation-object-method-43 ((this formation-object) (arg0 int))
+  (let* ((gp-0 this)
+         (s5-0 (method-of-object gp-0 formation-object-method-44))
+         )
+    (dotimes (s2-0 arg0)
+      (case (-> this object-list data0 s2-0)
+        (((length (-> this object-list)))
+         (empty)
+         (goto cfg-7)
+         )
+        )
+      )
+    (label cfg-7)
+    (s5-0 gp-0 -1)
+    )
+  (none)
+  )
+
+;; definition of type msg-get-inactive-objects
+(deftype msg-get-inactive-objects (structure)
+  ((object-type-info-array  (inline-array traffic-object-type-info))
+   )
+  )
+
+;; definition for method 3 of type msg-get-inactive-objects
+(defmethod inspect ((this msg-get-inactive-objects))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'msg-get-inactive-objects)
+  (format #t "~1Tobject-type-info-array: #x~X~%" (-> this object-type-info-array))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol foo-hack, type symbol
+(define foo-hack #t)
+
+;; definition for method 45 of type formation-object
+(defmethod formation-object-method-45 ((this formation-object))
+  (if (not foo-hack)
+      (return #f)
+      )
+  (clear-objects! this)
+  (let ((s5-0 (new 'stack-no-clear 'msg-get-inactive-objects)))
+    (send-event *traffic-manager* 'get-inactive-object-list s5-0)
+    (let ((s5-1 (-> s5-0 object-type-info-array 6)))
+      (when (>= (-> s5-1 inactive-count) (-> this formation num-formation-points))
+        (set! (-> this num-objects) (-> this formation num-formation-points))
+        (dotimes (s4-0 (-> this num-objects))
+          (push-back (-> this object-list) (-> s5-1 array s4-0))
+          )
+        (return #t)
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 46 of type formation-object
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-objects! ((this formation-object))
+  (dotimes (s5-0 (-> this num-objects))
+    (let ((s4-0 (-> this object-list data0 s5-0)))
+      (when (formation-object-method-47 this s4-0)
+        (let* ((s4-1 (handle->process s4-0))
+               (a0-5 (if (type? s4-1 process-focusable)
+                         s4-1
+                         )
+                     )
+               )
+          (send-event a0-5 'formation-exit)
+          )
+        )
+      )
+    )
+  (clear-2 (-> this object-list))
+  (set! (-> this num-objects) 0)
+  0
+  (none)
+  )
+
+;; definition for method 47 of type formation-object
+(defmethod formation-object-method-47 ((this formation-object) (arg0 handle))
+  (let* ((s5-0 (handle->process arg0))
+         (v1-3 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (and v1-3
+         (logtest? (-> (the-as citizen v1-3) flags) (citizen-flag in-formation))
+         (= (-> (the-as citizen v1-3) vehicle) (process->handle this))
+         )
+    )
+  )
+
+;; definition for function formation-object-event-handler
+(defbehavior formation-object-event-handler formation-object ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (formation-event-handler self arg0 arg1 arg2 arg3)
+  )
+
+;; failed to figure out what this is:
+(defstate inactive (formation-object)
+  :virtual #t
+  :event formation-object-event-handler
+  :enter (behavior ()
+    (logior! (-> self focus-status) (focus-status inactive))
+    (clear-objects! self)
+    )
+  :exit (behavior ()
+    (logclear! (-> self focus-status) (focus-status inactive))
+    )
+  :code sleep-code
+  )
+
+;; definition for symbol random-var, type int
+(define random-var 0)
+
+;; failed to figure out what this is:
+(defstate active (formation-object)
+  :virtual #t
+  :event formation-object-event-handler
+  :enter (behavior ()
+    (logclear! (-> self focus-status) (focus-status inactive))
+    (set-time! (-> self state-time))
+    (set! (-> self alert-time-offset) (the-as time-frame (the int (* 300.0 (rand-vu-float-range 0.9 1.3)))))
+    (formation-object-method-40
+      self
+      (-> self dest-position)
+      (-> self controller turn-exit-point)
+      (-> self formation leader-index)
+      )
+    (formation-object-method-37 self)
+    )
+  :trans (behavior ()
+    (if (not (formation-object-method-35 self))
+        (go-virtual inactive)
+        )
+    (formation-object-method-34 self)
+    (let ((f30-0 (formation-object-method-33 self)))
+      (when (and (nonzero? (-> self controller branch))
+                 (< (vector-vector-xz-distance-squared (-> self root trans) (-> self dest-position)) (* f30-0 f30-0))
+                 )
+        (let ((s5-0 (new 'stack-no-clear 'vector))
+              (gp-0 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s5-0 quad) (-> self controller turn-exit-point quad))
+          (vehicle-controller-method-14 (-> self controller) (the-as vehicle self))
+          (vector-! gp-0 (-> self controller turn-exit-point) s5-0)
+          (set! (-> gp-0 y) 0.0)
+          (vector-normalize! gp-0 1.0)
+          (forward-up->inv-matrix (-> self formation-transform) gp-0 *up-vector*)
+          )
+        (formation-object-method-40
+          self
+          (-> self dest-position)
+          (-> self controller turn-exit-point)
+          (-> self formation leader-index)
+          )
+        (formation-object-method-37 self)
+        )
+      )
+    (when (time-elapsed? (-> self state-time) (-> self alert-time-offset))
+      (set! (-> self alert-time-offset) (the-as time-frame (the int (* 300.0 (rand-vu-float-range 0.9 1.3)))))
+      (set-time! (-> self state-time))
+      (when *traffic-manager*
+        (let ((gp-1 (new 'stack-no-clear 'traffic-danger-info)))
+          (set! (-> gp-1 sphere quad) (-> self root trans quad))
+          (set! (-> gp-1 sphere r) 40960.0)
+          (vector-reset! (-> gp-1 velocity))
+          (set! (-> gp-1 notify-radius) (formation-object-method-32 self))
+          (set! (-> gp-1 danger-level) 1.0)
+          (set! (-> gp-1 decay-rate) 0.0)
+          (set! (-> gp-1 flags) (the-as uint 1))
+          (set! (-> gp-1 danger-type) (the-as uint 0))
+          (set! (-> gp-1 handle) (the-as handle #f))
+          (send-event *traffic-manager* 'add-danger-sphere gp-1)
+          )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for method 7 of type formation-object
+;; WARN: Return type mismatch process-focusable vs formation-object.
+(defmethod relocate ((this formation-object) (offset int))
+  (if (nonzero? (-> this formation))
+      (&+! (-> this formation) offset)
+      )
+  (if (nonzero? (-> this object-list))
+      (&+! (-> this object-list) offset)
+      )
+  (the-as formation-object ((method-of-type process-focusable relocate) this offset))
+  )
+
+;; definition for method 31 of type formation-object
+(defmethod formation-object-method-31 ((this formation-object))
+  (* (-> this formation scale-factor) (-> this formation estimated-radius))
+  )
+
+;; definition for method 34 of type formation-object
+;; INFO: Used lq/sq
+(defmethod formation-object-method-34 ((this formation-object))
+  (let* ((s5-0 (handle->process (-> this object-list data0 (-> this formation leader-index))))
+         (a0-6 (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+         )
+    (if a0-6
+        (set! (-> this root trans quad) (-> (get-trans (the-as process-focusable a0-6) 0) quad))
+        )
+    )
+  (set! (-> this root trans y) (+ 20480.0 (-> this root trans y)))
+  )
+
+;; definition for method 35 of type formation-object
+(defmethod formation-object-method-35 ((this formation-object))
+  (let ((gp-0 0))
+    (dotimes (s4-0 (-> this num-objects))
+      (let ((a1-0 (-> this object-list data0 s4-0)))
+        (cond
+          ((formation-object-method-47 this a1-0)
+           (+! gp-0 1)
+           )
+          ((= s4-0 (-> this formation leader-index))
+           (return #f)
+           )
+          )
+        )
+      )
+    (when (< gp-0 2)
+      )
+    (>= gp-0 2)
+    )
+  )
+
+;; definition for method 36 of type formation-object
+(defmethod get-leader-handle ((this formation-object))
+  (-> this object-list data0 (-> this formation leader-index))
+  )
+
+;; definition for method 37 of type formation-object
+(defmethod formation-object-method-37 ((this formation-object))
+  (dotimes (s5-0 (-> this num-objects))
+    (let ((s4-0 (handle->process (-> this object-list data0 s5-0))))
+      (send-event
+        s4-0
+        'formation-set-destination
+        (formation-object-method-40 this (new 'stack-no-clear 'vector) (-> this controller turn-exit-point) s5-0)
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 33 of type formation-object
+(defmethod formation-object-method-33 ((this formation-object))
+  (* 2.0 (+ 10240.0 (formation-object-method-31 this)))
+  )
+
+;; definition for method 32 of type formation-object
+(defmethod formation-object-method-32 ((this formation-object))
+  (* 2.3 (+ 10240.0 (formation-object-method-31 this)))
+  )
+
+;; definition for method 38 of type formation-object
+(defmethod get-target-speed ((this formation-object) (arg0 process-focusable) (arg1 int))
+  (process->handle arg0)
+  (let* ((s4-0 (get-trans arg0 0))
+         (v1-6
+           (formation-object-method-40 this (new 'stack-no-clear 'vector) *zero-vector* (-> this formation leader-index))
+           )
+         (a2-3 (vector-! (new 'stack-no-clear 'vector) (-> this root trans) v1-6))
+         (s3-0 (formation-object-method-40 this (new 'stack-no-clear 'vector) a2-3 arg1))
+         (s5-1
+           (formation-object-method-40 this (new 'stack-no-clear 'vector) (-> this controller turn-exit-point) arg1)
+           )
+         (f30-1 (- (vector-vector-xz-distance s4-0 s5-1) (vector-vector-xz-distance s3-0 s5-1)))
+         (f1-0 (formation-object-method-31 this))
+         (f0-2 (fmax 0.0 (fmin 1.8 (/ (fabs f30-1) f1-0))))
+         (f0-3 (* 0.5555556 f0-2))
+         (f1-4 1.0)
+         )
+    (if (>= f0-3 0.07)
+        (set! f1-4 (cond
+                     ((< 0.0 f30-1)
+                      (let ((f0-6 (- 1.0 (* (- 1.0 f0-3) (- 1.0 f0-3)))))
+                        (- (+ 1.0 (* 1.8 f0-6)) f0-6)
+                        )
+                      )
+                     (else
+                       (- (+ 1.0 (* 0.75 f0-3)) f0-3)
+                       )
+                     )
+              )
+        )
+    f1-4
+    )
+  )
