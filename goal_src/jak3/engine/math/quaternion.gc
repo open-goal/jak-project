@@ -156,8 +156,8 @@
 ;; ERROR: Bad vector register dependency: vf2
 (defun quaternion-conjugate! ((arg0 quaternion) (arg1 quaternion))
   "Set arg0 to the conjugate of arg1 (negate only ijk).
-If arg1 is normalized, this is equivalent to the inverse
-NOTE: this gives you the inverse rotation."
+   If arg1 is normalized, this is equivalent to the inverse
+   NOTE: this gives you the inverse rotation."
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
          )
@@ -259,7 +259,7 @@ NOTE: this gives you the inverse rotation."
 ;; ERROR: Bad vector register dependency: vf3
 (defun quaternion-inverse! ((arg0 quaternion) (arg1 quaternion))
   "Invert a quaternion. The inverse will satisfy q * q^-1 = identity, even if q is not normalized.
-If your quaternion is normalized, it is faster/more accurate to do quaternion-conjugate!"
+   If your quaternion is normalized, it is faster/more accurate to do quaternion-conjugate!"
   (rlet ((acc :class vf)
          (Q :class vf)
          (vf0 :class vf)
@@ -339,9 +339,9 @@ If your quaternion is normalized, it is faster/more accurate to do quaternion-co
 
 (defun quaternion-right-mult-matrix! ((arg0 matrix) (arg1 quaternion))
   "Place quaternion coefficients into a matrix.
-You can convert a quaternion to a matrix by taking the product of this
-right-mult and left-mult matrix, but this method is not used.
-Instead, quaternion->matrix is a more efficient implementation."
+   You can convert a quaternion to a matrix by taking the product of this
+   right-mult and left-mult matrix, but this method is not used.
+   Instead, quaternion->matrix is a more efficient implementation."
   (let ((f3-0 (-> arg1 x))
         (f2-0 (-> arg1 y))
         (f1-0 (-> arg1 z))
@@ -674,7 +674,7 @@ Instead, quaternion->matrix is a more efficient implementation."
 
 (defun quaternion-slerp! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Real quaternion slerp. Spherical-linear interpolation is a nice way to interpolate
-between quaternions."
+   between quaternions."
   (local-vars (v1-15 float))
   (rlet ((acc :class vf)
          (vf1 :class vf)
@@ -739,8 +739,8 @@ between quaternions."
 
 (defun quaternion-pseudo-slerp! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "This is a bad interpolation between quaternions. It lerps then normalizes.
-It will behave extremely poorly for 180 rotations.
-It is unused."
+   It will behave extremely poorly for 180 rotations.
+   It is unused."
   (rlet ((acc :class vf)
          (vf1 :class vf)
          (vf2 :class vf)
@@ -773,7 +773,7 @@ It is unused."
 
 (defun quaternion-pseudo-seek ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Seek one quaternion toward another. Not using real slerp, so this is only good if the quaternions
-are pretty similar."
+   are pretty similar."
   (let ((s3-0 (new 'stack-no-clear 'quaternion)))
     (let ((s5-0 (new 'stack-no-clear 'quaternion)))
       (quaternion-copy! s3-0 arg2)
@@ -797,16 +797,16 @@ are pretty similar."
 
 (defun quaternion-smooth-seek! ((arg0 quaternion) (arg1 quaternion) (arg2 quaternion) (arg3 float))
   "Another hacky rotation interpolation."
-  (let ((gp-0 (new 'stack-no-clear 'quaternion)))
-    (quaternion-copy! (the-as quaternion (&-> gp-0 x)) arg2)
-    (if (< (quaternion-dot (the-as quaternion (&-> gp-0 x)) arg1) 0.0)
-        (quaternion-negate! (the-as quaternion (&-> gp-0 x)) (the-as quaternion (&-> gp-0 x)))
+  (let ((gp-0 (new 'stack-no-clear 'inline-array 'quaternion 2)))
+    (quaternion-copy! (-> gp-0 0) arg2)
+    (if (< (quaternion-dot (-> gp-0 0) arg1) 0.0)
+        (quaternion-negate! (-> gp-0 0) (-> gp-0 0))
         )
-    (quaternion-! (&+ gp-0 16) (the-as quaternion (&-> gp-0 x)) arg1)
-    (quaternion-float*! (&+ gp-0 16) (&+ gp-0 16) (fmin 1.0 arg3))
-    (quaternion+! (the-as quaternion (&-> gp-0 x)) arg1 (&+ gp-0 16))
-    (quaternion-normalize! (the-as quaternion (&-> gp-0 x)))
-    (quaternion-copy! arg0 (the-as quaternion (&-> gp-0 x)))
+    (quaternion-! (-> gp-0 1) (-> gp-0 0) arg1)
+    (quaternion-float*! (-> gp-0 1) (-> gp-0 1) (fmin 1.0 arg3))
+    (quaternion+! (-> gp-0 0) arg1 (-> gp-0 1))
+    (quaternion-normalize! (-> gp-0 0))
+    (quaternion-copy! arg0 (-> gp-0 0))
     )
   )
 

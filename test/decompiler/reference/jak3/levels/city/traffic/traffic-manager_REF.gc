@@ -1,0 +1,1327 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *traffic-engine*, type traffic-engine
+(define *traffic-engine* (the-as traffic-engine #f))
+
+;; definition for symbol *traffic-fast-spawn*, type symbol
+(define *traffic-fast-spawn* #f)
+
+;; definition of type traffic-manager
+(deftype traffic-manager (process)
+  ((traffic-engine    traffic-engine)
+   (fast-spawn        symbol)
+   (dark-guard-ratio  int32)
+   (spawn-params      traffic-object-spawn-params  :inline)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  (:methods
+    (traffic-manager-method-16 (_type_) none)
+    (spawn-all (_type_) none)
+    (traffic-manager-method-18 (_type_) none)
+    (kill-all (_type_) none)
+    (traffic-manager-method-20 (_type_) none)
+    (traffic-manager-method-21 (_type_) none)
+    (traffic-manager-method-22 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type traffic-manager
+(defmethod inspect ((this traffic-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttraffic-engine: ~A~%" (-> this traffic-engine))
+  (format #t "~2Tfast-spawn: ~A~%" (-> this fast-spawn))
+  (format #t "~2Tdark-guard-ratio: ~D~%" (-> this dark-guard-ratio))
+  (format #t "~2Tspawn-params: #<traffic-object-spawn-params @ #x~X>~%" (-> this spawn-params))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function draw-city-info
+;; WARN: Return type mismatch int vs none.
+(defun draw-city-info ((arg0 city-level-info) (arg1 vis-grid-pos))
+  (let ((v1-0 (-> arg0 grid-info box)))
+    (add-debug-box #t (bucket-id debug) (-> v1-0 min) (-> v1-0 max) *color-yellow*)
+    )
+  (debug-draw-grid (-> arg0 grid-info) *color-gray*)
+  (debug-draw-cell (-> arg0 grid-info) arg1 *color-red*)
+  (let* ((v1-8 (+ (-> arg1 x)
+                  (* (-> arg1 z) (-> arg0 grid-info dimension-array 0))
+                  (* (* (-> arg1 y) (-> arg0 grid-info dimension-array 0)) (-> arg0 grid-info dimension-array 2))
+                  )
+               )
+         (v1-10 (-> arg0 cell-array v1-8))
+         )
+    (add-debug-sphere #t (bucket-id debug) (-> v1-10 sphere) (-> v1-10 sphere r) *color-green*)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod traffic-manager-method-16 ((this traffic-manager))
+  (traffic-manager-method-22 this)
+  (if (= (status-of-level-and-borrows *level* 'ctywide #f) 'active)
+      (set-setting! 'gem-pool-index #f 0.0 1)
+      )
+  (update-traffic (-> this traffic-engine))
+  (cond
+    ((-> *setting-control* user-current traffic-spawn)
+     (traffic-manager-method-18 this)
+     (spawn-all this)
+     )
+    (else
+      (kill-all this)
+      )
+    )
+  (if *debug-segment*
+      (stub (-> this traffic-engine))
+      )
+  (if *display-traffic-height-map*
+      (debug-draw *traffic-height-map* (target-pos 0))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 18 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod traffic-manager-method-18 ((this traffic-manager))
+  (let ((s5-0 0))
+    (while (< (the-as uint s5-0) (the-as uint 29))
+      (let ((v1-2 (-> this traffic-engine object-type-info-array s5-0)))
+        (when (logtest? (-> v1-2 flags) (traffic-type-flag ttf1))
+          (let ((a0-5 (+ (-> v1-2 active-count) (-> v1-2 inactive-count))))
+            (when (< (-> v1-2 want-count) a0-5)
+              (let ((a0-10 (handle->process (get-from-inactive-by-type
+                                              (-> this traffic-engine tracker-array (-> v1-2 tracker-index))
+                                              (the-as traffic-type s5-0)
+                                              )
+                                            )
+                           )
+                    )
+                (if a0-10
+                    (deactivate a0-10)
+                    )
+                )
+              )
+            )
+          )
+        )
+      (+! s5-0 1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 19 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod kill-all ((this traffic-manager))
+  (deactivate-all (-> this traffic-engine))
+  (let ((s5-0 0))
+    (while (< (the-as uint s5-0) (the-as uint 29))
+      (let ((s4-0 (-> this traffic-engine object-type-info-array s5-0)))
+        (countdown (s3-0 (-> s4-0 inactive-count))
+          (let ((a0-7 (handle->process (get-from-inactive-by-type
+                                         (-> this traffic-engine tracker-array (-> s4-0 tracker-index))
+                                         (the-as traffic-type s5-0)
+                                         )
+                                       )
+                      )
+                )
+            (if a0-7
+                (deactivate a0-7)
+                )
+            )
+          )
+        )
+      (+! s5-0 1)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 17 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-all ((this traffic-manager))
+  (dotimes (s5-0 29)
+    (let ((s4-0 (-> this traffic-engine object-type-info-array s5-0)))
+      (logclear! (-> s4-0 flags) (traffic-type-flag ttf3))
+      (if (= (status-of-level-and-borrows *level* (-> s4-0 level) #f) 'active)
+          (logior! (-> s4-0 flags) (traffic-type-flag ttf3))
+          )
+      )
+    )
+  (let ((s5-1 1)
+        (s4-1 0)
+        (s3-1 #x1fffffff)
+        )
+    (if (-> this fast-spawn)
+        (set! s5-1 120)
+        )
+    (b! #t cfg-38 :delay (nop!))
+    (label cfg-8)
+    (let* ((s2-0 (-> this spawn-params))
+           (s1-0 (the-as int (-> s2-0 object-type)))
+           )
+      (when (logtest? s3-1 (ash 1 s1-0))
+        (let ((s0-0 (-> this traffic-engine object-type-info-array (the-as traffic-type s1-0))))
+          (let ((v1-21 (+ (-> s0-0 active-count) (-> s0-0 inactive-count))))
+            (b!
+              (not (and (logtest? (-> s0-0 flags) (traffic-type-flag ttf1))
+                        (logtest? (-> s0-0 flags) (traffic-type-flag ttf3))
+                        (not (logtest? (-> s0-0 flags) (traffic-type-flag ttf4)))
+                        (< v1-21 (-> s0-0 want-count))
+                        )
+                   )
+              cfg-31
+              :delay (nop!)
+              )
+            (logclear! (-> s2-0 flags) (traffic-spawn-flags tsf3))
+            (if (and (= (-> s2-0 object-type) (traffic-type guard-a))
+                     (> (-> this dark-guard-ratio) 0)
+                     (zero? (mod v1-21 (-> this dark-guard-ratio)))
+                     )
+                (logior! (-> s2-0 flags) (traffic-spawn-flags tsf3))
+                )
+            )
+          (let ((a2-1 (traffic-object-spawn this s2-0)))
+            (b! (not a2-1) cfg-29 :delay (nop!))
+            (add-object (-> this traffic-engine) (the-as traffic-type s1-0) a2-1)
+            )
+          (+! (-> s0-0 reserve-count) -1)
+          )
+        (+! (-> s2-0 id) 1)
+        (+! s4-1 1)
+        (b! #t cfg-30 :delay (nop!))
+        (label cfg-29)
+        (format #t "traffic-manager: unable to spawn~%")
+        (b! #t cfg-43 :delay (nop!))
+        (label cfg-30)
+        (b! #t cfg-35 :delay (nop!))
+        (label cfg-31)
+        (set! s3-1 (logclear s3-1 (ash 1 s1-0)))
+        )
+      (label cfg-35)
+      (let ((v1-37 (+ s1-0 1)))
+        (if (>= (the-as uint v1-37) (the-as uint 29))
+            (set! v1-37 0)
+            )
+        (set! (-> s2-0 object-type) (the-as traffic-type v1-37))
+        )
+      )
+    (label cfg-38)
+    (b! (and (< s4-1 s5-1) (nonzero? s3-1)) cfg-8 :delay (nop!))
+    )
+  (label cfg-43)
+  (set! (-> this fast-spawn) #f)
+  0
+  0
+  (none)
+  )
+
+;; definition for function formation-spawn
+;; WARN: Return type mismatch process vs formation-object.
+(defun formation-spawn ((arg0 process) (arg1 type) (arg2 formation-info))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((s3-0 (get-process *default-dead-pool* arg1 #x4000 1))
+           (v1-1 (when s3-0
+                   (let ((t9-1 (method-of-type process activate)))
+                     (t9-1 s3-0 arg0 "formation" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 formation-init-by-other arg2)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as formation-object gp-0)
+    )
+  )
+
+;; definition for function type-from-traffic-object-type
+(defun type-from-traffic-object-type ((arg0 traffic-type))
+  (case arg0
+    (((traffic-type civilian-male))
+     citizen-norm
+     )
+    (((traffic-type civilian-female))
+     citizen-chick
+     )
+    (((traffic-type civilian-fat))
+     citizen-fat
+     )
+    (((traffic-type civilian-pilot))
+     citizen-norm
+     )
+    (((traffic-type metalhead-predator))
+     metalhead-predator
+     )
+    (((traffic-type metalhead-grunt))
+     metalhead-grunt
+     )
+    (((traffic-type metalhead-flitter))
+     metalhead-flitter
+     )
+    (((traffic-type wlander-male))
+     wlander-male
+     )
+    (((traffic-type wlander-female))
+     wlander-female
+     )
+    (((traffic-type guard-a))
+     crimson-guard
+     )
+    (((traffic-type guard-pilot))
+     crimson-guard
+     )
+    (((traffic-type roboguard))
+     roboguard-city
+     )
+    (((traffic-type spydroid))
+     spydroid
+     )
+    (((traffic-type flying-turret))
+     flying-turret
+     )
+    (else
+      (the-as type #f)
+      )
+    )
+  )
+
+;; definition for function citizen-spawn
+;; WARN: Return type mismatch process vs process-drawable.
+(defun citizen-spawn ((arg0 process) (arg1 traffic-type) (arg2 traffic-object-spawn-params))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((a1-1 (type-from-traffic-object-type arg1))
+           (s3-0 (get-process *default-dead-pool* a1-1 #x4000 1))
+           (v1-1 (when s3-0
+                   (let ((t9-2 (method-of-type process activate)))
+                     (t9-2 s3-0 arg0 "citizen" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 citizen-init-by-other arg2)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as process-drawable gp-0)
+    )
+  )
+
+;; definition for function traffic-object-spawn
+(defun traffic-object-spawn ((arg0 process) (arg1 traffic-object-spawn-params))
+  (let ((v0-0 (the-as process-drawable #f)))
+    (case (-> arg1 object-type)
+      (((traffic-type civilian-bike-a))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-bike-a) arg1))
+       )
+      (((traffic-type civilian-bike-b))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-bike-b) arg1))
+       )
+      (((traffic-type civilian-bike-c))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-bike-c) arg1))
+       )
+      (((traffic-type bike-d))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-bike-d) arg1))
+       )
+      (((traffic-type civilian-car-a))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-car-a) arg1))
+       )
+      (((traffic-type civilian-car-b))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-car-b) arg1))
+       )
+      (((traffic-type civilian-car-c))
+       (set! v0-0 (vehicle-spawn (vehicle-type h-car-c) arg1))
+       )
+      (((traffic-type civilian-male)
+        (traffic-type civilian-female)
+        (traffic-type civilian-fat)
+        (traffic-type civilian-pilot)
+        (traffic-type metalhead-predator)
+        (traffic-type metalhead-grunt)
+        (traffic-type metalhead-flitter)
+        (traffic-type wlander-male)
+        (traffic-type wlander-female)
+        (traffic-type guard-a)
+        (traffic-type guard-pilot)
+        (traffic-type roboguard)
+        (traffic-type spydroid)
+        (traffic-type flying-turret)
+        )
+       (set! v0-0 (citizen-spawn arg0 (-> arg1 object-type) arg1))
+       )
+      (((traffic-type formation))
+       (set! v0-0 (formation-spawn arg0 formation-object (the-as formation-info arg1)))
+       )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 20 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod traffic-manager-method-20 ((this traffic-manager))
+  (set! (-> this traffic-engine) *traffic-engine*)
+  (reset-and-init-from-manager (-> this traffic-engine) this)
+  (let ((t9-1 (-> *traffic-info* restore-speech-callback)))
+    (if t9-1
+        (t9-1)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type traffic-manager
+;; WARN: Return type mismatch process vs traffic-manager.
+(defmethod relocate ((this traffic-manager) (offset int))
+  (set! *traffic-manager* this)
+  (if *traffic-manager*
+      (set! *traffic-manager* (&+ *traffic-manager* offset))
+      )
+  (the-as traffic-manager ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 10 of type traffic-manager
+(defmethod deactivate ((this traffic-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (and *vehicle-manager* (!= (-> this level) (-> *vehicle-manager* level)))
+      (change-parent *vehicle-manager* *entity-pool*)
+      )
+  (squad-stop-alarm-sound (-> this traffic-engine))
+  (set! *traffic-manager* #f)
+  (remove-setting *setting-control* this 'task-mask)
+  (apply-settings *setting-control*)
+  (speech-table-reset! *speech-control*)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; definition for method 21 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod traffic-manager-method-21 ((this traffic-manager))
+  (if (= (status-of-level-and-borrows *level* 'ctywide #f) 'active)
+      (set-setting! 'gem-pool-index #f 0.0 1)
+      )
+  (let ((s5-1 (new 'stack-no-clear 'array 'int8 29)))
+    (set! (-> s5-1 17) 2)
+    (set! (-> s5-1 18) 2)
+    (set! (-> s5-1 19) 2)
+    (set! (-> s5-1 20) 2)
+    (set! (-> s5-1 21) 2)
+    (set! (-> s5-1 22) 2)
+    (set! (-> s5-1 24) 0)
+    (set! (-> s5-1 25) 0)
+    (set! (-> s5-1 26) 0)
+    (set! (-> s5-1 0) 20)
+    (set! (-> s5-1 1) 20)
+    (set! (-> s5-1 2) 1)
+    (set! (-> s5-1 3) 1)
+    (set! (-> s5-1 4) 1)
+    (set! (-> s5-1 6) 14)
+    (set! (-> s5-1 7) 0)
+    (set! (-> s5-1 8) 5)
+    (set! (-> s5-1 9) 9)
+    (set! (-> s5-1 10) 3)
+    (set! (-> s5-1 11) 14)
+    (set! (-> s5-1 12) 14)
+    (set! (-> s5-1 13) 3)
+    (set! (-> s5-1 14) 10)
+    (set! (-> s5-1 15) 15)
+    (set! (-> s5-1 16) 10)
+    (set! (-> s5-1 27) 0)
+    (set! (-> s5-1 28) 0)
+    (set! (-> this fast-spawn) *traffic-fast-spawn*)
+    (traffic-manager-method-20 this)
+    (let ((v1-29 (-> this traffic-engine)))
+      (dotimes (a0-4 29)
+        (set! (-> v1-29 object-type-info-array a0-4 want-count) (-> s5-1 a0-4))
+        )
+      )
+    )
+  (let ((s5-2 (-> this spawn-params)))
+    (set! (-> s5-2 object-type) (traffic-type guard-a))
+    (set! (-> s5-2 behavior) (the-as uint 1))
+    (set! (-> s5-2 id) (the-as uint 0))
+    (set! (-> s5-2 nav-mesh) #f)
+    (set! (-> s5-2 nav-branch) #f)
+    (set! (-> s5-2 proc) #f)
+    (set! (-> s5-2 handle) (the-as handle #f))
+    (set! (-> s5-2 user-data) (the-as uint 0))
+    (set! (-> s5-2 flags) (traffic-spawn-flags tsf1))
+    (set! (-> s5-2 guard-type) (the-as uint 11))
+    (set! (-> s5-2 entity) #f)
+    (vector-reset! (-> s5-2 velocity))
+    (vector-reset! (-> s5-2 position))
+    (forward-up-nopitch->quaternion
+      (-> s5-2 rotation)
+      (new 'static 'vector :z 1.0 :w 1.0)
+      (new 'static 'vector :y 1.0 :w 1.0)
+      )
+    (set! (-> s5-2 id) (the-as uint 1))
+    )
+  (set! (-> this dark-guard-ratio) 0)
+  (restore-default-settings (-> this traffic-engine))
+  (set! *traffic-manager* this)
+  0
+  (none)
+  )
+
+;; definition for symbol *traffic-vehicle-level-borrow-list*, type object
+(define *traffic-vehicle-level-borrow-list* (the-as object '(#f)))
+
+;; definition for symbol *traffic-vehicle-level-sound-list*, type object
+(define *traffic-vehicle-level-sound-list* (the-as object '(#f)))
+
+;; definition for function traffic-manager-event-handler
+(defbehavior traffic-manager-event-handler traffic-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (let ((gp-0 (the-as object #t)))
+    (case arg2
+      (('child-killed)
+       (child-killed (-> self traffic-engine) arg0)
+       )
+      (('increase-alert-level)
+       (break!)
+       0
+       )
+      (('decrease-alert-level)
+       (break!)
+       0
+       )
+      (('set-alert-level)
+       (break!)
+       0
+       )
+      (('set-max-alert-level)
+       (break!)
+       0
+       )
+      (('get-alert-level)
+       (break!)
+       0
+       )
+      (('set-alert-duration)
+       (break!)
+       0
+       )
+      (('disable-spawning)
+       (set! (-> self traffic-engine allow-spawning?) #f)
+       (format 0 "Disable spawn ~%")
+       )
+      (('enable-spawning)
+       (set! (-> self traffic-engine allow-spawning?) #t)
+       (format 0 "Enable spawn ~%")
+       )
+      (('deactivate-all)
+       (deactivate-all (-> self traffic-engine))
+       )
+      (('set-target-level)
+       (let ((f0-0 (the-as float (-> arg3 param 0))))
+         (target-count (-> self traffic-engine) f0-0)
+         )
+       )
+      (('set-guard-target-level)
+       (break!)
+       0
+       )
+      (('restore-default-settings)
+       (restore-default-settings (-> self traffic-engine))
+       )
+      (('add-danger-sphere)
+       (let ((a1-7 (-> arg3 param 0)))
+         (add-danger (-> self traffic-engine) (the-as traffic-danger-info a1-7))
+         )
+       )
+      (('spawn-object)
+       (let ((s5-0 (the-as object (-> arg3 param 0))))
+         (set! (-> (the-as traffic-object-spawn-params s5-0) proc)
+               (traffic-object-spawn self (the-as traffic-object-spawn-params s5-0))
+               )
+         )
+       )
+      (('activate-object)
+       (let ((a1-9 (-> arg3 param 0)))
+         (activate-object (-> self traffic-engine) (the-as traffic-object-spawn-params a1-9))
+         )
+       )
+      (('activate-specific-object)
+       (let ((a1-10 (-> arg3 param 0)))
+         (activate-by-handle (-> self traffic-engine) (the-as traffic-object-spawn-params a1-10))
+         )
+       )
+      (('get-object-remaining-count)
+       (let ((a1-11 (-> arg3 param 0)))
+         (set! gp-0 (get-object-remaining-count (-> self traffic-engine) (the-as int a1-11)))
+         )
+       )
+      (('set-object-reserve-count)
+       (let ((a1-12 (-> arg3 param 0))
+             (a2-1 (-> arg3 param 1))
+             )
+         (set-object-reserve-count (-> self traffic-engine) (the-as int a1-12) a2-1)
+         )
+       )
+      (('get-object-reserve-count)
+       (let ((a1-13 (-> arg3 param 0)))
+         (set! gp-0 (get-object-reserve-count (-> self traffic-engine) (the-as int a1-13)))
+         )
+       )
+      (('set-object-target-level)
+       (let ((a1-14 (-> arg3 param 0))
+             (f0-1 (the-as float (-> arg3 param 1)))
+             )
+         (set-object-target-level (-> self traffic-engine) (the-as int a1-14) f0-1)
+         )
+       )
+      (('set-object-target-count)
+       (let ((a1-15 (-> arg3 param 0))
+             (a2-3 (-> arg3 param 1))
+             )
+         (set-object-target-count (-> self traffic-engine) (the-as int a1-15) (the-as int a2-3))
+         )
+       )
+      (('set-guard-target-count-range)
+       (break!)
+       0
+       )
+      (('deactivate-by-type)
+       (let ((a1-16 (-> arg3 param 0)))
+         (deactivate-by-type (-> self traffic-engine) (the-as traffic-type a1-16))
+         )
+       )
+      (('new-suppression-box)
+       (let ((a1-17 (-> arg3 param 0)))
+         (new-suppression-box (-> self traffic-engine) (the-as traffic-suppression-params a1-17))
+         )
+       )
+      (('update-suppression-box)
+       (let ((a1-18 (-> arg3 param 0)))
+         (update-suppression-box (-> self traffic-engine) (the-as traffic-suppression-params a1-18))
+         )
+       )
+      (('kill-traffic-sphere)
+       (let ((a1-19 (-> arg3 param 0)))
+         (kill-traffic-sphere (-> self traffic-engine) (the-as vector a1-19))
+         )
+       )
+      (('set-guard-multi-focus)
+       (break!)
+       0
+       )
+      (('player-enter-vehicle)
+       (let ((s5-1 (-> arg3 param 0)))
+         (when *city-borrow-manager*
+           (set! (car (ref& *traffic-vehicle-level-borrow-list* 0))
+                 (-> self traffic-engine object-type-info-array s5-1 level)
+                 )
+           (set! (car (ref& *traffic-vehicle-level-sound-list* 0))
+                 (level->sound-bank-name (-> self traffic-engine object-type-info-array s5-1 level))
+                 )
+           (remove-setting! 'borrow-hold)
+           (set-setting! 'borrow-hold-perm *traffic-vehicle-level-borrow-list* 0.0 0)
+           (set-setting! 'city-sound *traffic-vehicle-level-sound-list* 0.0 1)
+           )
+         )
+       )
+      (('player-exit-vehicle)
+       (let ((v1-31 (-> arg3 param 0)))
+         (when *city-borrow-manager*
+           (set! (car (ref& *traffic-vehicle-level-borrow-list* 0))
+                 (-> self traffic-engine object-type-info-array v1-31 level)
+                 )
+           (remove-setting! 'borrow-hold-perm)
+           (set-setting! 'borrow-hold *traffic-vehicle-level-borrow-list* 0.0 0)
+           (remove-setting! 'city-sound)
+           )
+         )
+       )
+      (('set-disable-pursuit-control)
+       (break!)
+       0
+       )
+      (('set-object-auto-activate)
+       (let ((a1-29 (-> arg3 param 0))
+             (a2-10 (-> arg3 param 1))
+             )
+         (set-object-auto-activate (-> self traffic-engine) (the-as int a1-29) (the-as symbol a2-10))
+         )
+       )
+      (('set-guard-force-visible)
+       (break!)
+       0
+       )
+      (('end-pursuit-by-type)
+       (break!)
+       0
+       )
+      (('level-loaded)
+       (let ((a1-30 (-> arg3 param 0)))
+         (level-link (-> self traffic-engine) (the-as level a1-30))
+         )
+       )
+      (('level-killed)
+       (let ((s5-4 (the-as object (-> arg3 param 0))))
+         (level-unlink (-> self traffic-engine) (the-as level s5-4))
+         (format #t "traffic-manager : level killed ~S~%" (-> (the-as level s5-4) nickname))
+         )
+       )
+      (('add-object)
+       (let ((a1-33 (-> arg3 param 0))
+             (a2-12 (-> arg3 param 1))
+             )
+         (add-object (-> self traffic-engine) (the-as traffic-type a1-33) (the-as process a2-12))
+         )
+       )
+      (('get-num-normal-available)
+       (let* ((v1-44 (the-as msg-get-num-inactive (-> arg3 param 0)))
+              (a1-35 (-> self traffic-engine object-type-info-array (-> v1-44 obj-type)))
+              )
+         (set! (-> v1-44 num-inactive-out) (- (-> a1-35 target-count) (-> a1-35 active-count)))
+         )
+       )
+      (('get-num-inactive)
+       (let* ((v1-45 (the-as msg-get-num-inactive (-> arg3 param 0)))
+              (a1-37 (-> v1-45 obj-type))
+              )
+         (set! (-> v1-45 num-inactive-out) (-> self traffic-engine object-type-info-array a1-37 inactive-count))
+         )
+       )
+      (('get-inactive-object-list)
+       (let ((v1-46 (the-as msg-get-inactive-objects (-> arg3 param 0))))
+         (set! (-> v1-46 object-type-info-array) (-> self traffic-engine object-type-info-array))
+         )
+       )
+      (('borrow-query-remaining)
+       (let ((a0-129 (-> arg3 param 0))
+             (v1-47 0)
+             )
+         (dotimes (a1-39 29)
+           (let ((a2-15 (-> self traffic-engine object-type-info-array a1-39)))
+             (if (= (-> a2-15 level) a0-129)
+                 (+! v1-47 (-> a2-15 active-count))
+                 )
+             )
+           )
+         (set! gp-0 v1-47)
+         )
+       (goto cfg-131)
+       )
+      (('borrow-notify-shutdown-end)
+       (let ((v1-49 (-> arg3 param 0)))
+         (dotimes (a0-133 29)
+           (let ((a1-42 (-> self traffic-engine object-type-info-array a0-133)))
+             (if (= (-> a1-42 level) v1-49)
+                 (logclear! (-> a1-42 flags) (traffic-type-flag ttf4))
+                 )
+             )
+           )
+         )
+       )
+      (('borrow-notify-shutdown-begin)
+       (let ((v1-51 (-> arg3 param 0)))
+         (dotimes (a0-136 29)
+           (let ((a1-45 (-> self traffic-engine object-type-info-array a0-136)))
+             (if (= (-> a1-45 level) v1-51)
+                 (logior! (-> a1-45 flags) (traffic-type-flag ttf4))
+                 )
+             )
+           )
+         )
+       )
+      (('kill-all)
+       (format #t "traffic-manager::kill-all~%")
+       (deactivate-all (-> self traffic-engine))
+       (kill-all self)
+       )
+      (('spawn-all)
+       (format #t "traffic-manager::spawn-all~%")
+       (set! (-> self fast-spawn) #t)
+       (spawn-all self)
+       )
+      (('set-density-factor)
+       (let ((f0-2 (the-as float (-> arg3 param 0))))
+         (set! (-> self traffic-engine inv-density-factor) (/ 5.0 f0-2))
+         )
+       )
+      (('rider-off)
+       (let ((s5-5 (-> self child)))
+         (while s5-5
+           (send-event (ppointer->process s5-5) 'rider-off)
+           (set! s5-5 (-> s5-5 0 brother))
+           )
+         )
+       )
+      (('rider-on)
+       (let ((s5-6 (-> self child)))
+         (while s5-6
+           (send-event (ppointer->process s5-6) 'rider-on)
+           (set! s5-6 (-> s5-6 0 brother))
+           )
+         )
+       )
+      (else
+        (set! gp-0 #f)
+        )
+      )
+    (label cfg-131)
+    gp-0
+    )
+  )
+
+;; definition for function traffic-manager-init-by-other
+(defbehavior traffic-manager-init-by-other traffic-manager ()
+  (stack-size-set! (-> self main-thread) 128)
+  (ctywide-entity-hack)
+  (traffic-manager-method-21 self)
+  (add-setting! 'task-mask 'clear 0.0 (task-mask ctywide))
+  (set! (-> self event-hook) traffic-manager-event-handler)
+  (vehicle-manager-start self)
+  (go-virtual idle)
+  )
+
+;; definition for function traffic-start
+;; WARN: Return type mismatch int vs none.
+(defun traffic-start ()
+  (kill-by-type traffic-manager *active-pool*)
+  (process-spawn traffic-manager :name "traffic-manager" :to *entity-pool*)
+  0
+  (none)
+  )
+
+;; definition for function traffic-kill
+;; WARN: Return type mismatch symbol vs none.
+(defun traffic-kill ()
+  (kill-by-type traffic-manager *active-pool*)
+  (none)
+  )
+
+;; definition for function ctywide-entity-hack
+;; WARN: Return type mismatch int vs none.
+(defun ctywide-entity-hack ()
+  (with-pp
+    (set! (-> pp level) (-> *traffic-info* ctywide-level))
+    0
+    (none)
+    )
+  )
+
+;; definition for function traffic-entity-hack
+;; WARN: Return type mismatch int vs none.
+(defun traffic-entity-hack ((arg0 traffic-type))
+  (with-pp
+    (set! (-> pp level) (level-get *level* (-> *traffic-engine* object-type-info-array arg0 level)))
+    (if (not (-> pp level))
+        (format 0 "traffic-entity-hack ~s~%" (cond
+                                               ((= arg0 (traffic-type guard-a))
+                                                "guard-a"
+                                                )
+                                               ((= arg0 (traffic-type civilian-fat))
+                                                "civilian-fat"
+                                                )
+                                               ((= arg0 (traffic-type civilian-car-a))
+                                                "civilian-car-a"
+                                                )
+                                               ((= arg0 (traffic-type bike-d))
+                                                "bike-d"
+                                                )
+                                               ((= arg0 (traffic-type civilian-bike-b))
+                                                "civilian-bike-b"
+                                                )
+                                               ((= arg0 (traffic-type metalhead-flitter))
+                                                "metalhead-flitter"
+                                                )
+                                               ((= arg0 (traffic-type vehicle-task))
+                                                "vehicle-task"
+                                                )
+                                               ((= arg0 (traffic-type metalhead-predator))
+                                                "metalhead-predator"
+                                                )
+                                               ((= arg0 (traffic-type guard-b))
+                                                "guard-b"
+                                                )
+                                               ((= arg0 (traffic-type wlander-female))
+                                                "wlander-female"
+                                                )
+                                               ((= arg0 (traffic-type civilian-bike-a))
+                                                "civilian-bike-a"
+                                                )
+                                               ((= arg0 (traffic-type wlander-male))
+                                                "wlander-male"
+                                                )
+                                               ((= arg0 (traffic-type guard-transport))
+                                                "guard-transport"
+                                                )
+                                               ((= arg0 (traffic-type guard-car))
+                                                "guard-car"
+                                                )
+                                               ((= arg0 (traffic-type roboguard))
+                                                "roboguard"
+                                                )
+                                               ((= arg0 (traffic-type metalhead-grunt))
+                                                "metalhead-grunt"
+                                                )
+                                               ((= arg0 (traffic-type guard-pilot))
+                                                "guard-pilot"
+                                                )
+                                               ((= arg0 (traffic-type civilian-pilot))
+                                                "civilian-pilot"
+                                                )
+                                               ((= arg0 (traffic-type spydroid))
+                                                "spydroid"
+                                                )
+                                               ((= arg0 (traffic-type kg-pickup))
+                                                "kg-pickup"
+                                                )
+                                               ((= arg0 (traffic-type flying-turret))
+                                                "flying-turret"
+                                                )
+                                               ((= arg0 (traffic-type civilian-female))
+                                                "civilian-female"
+                                                )
+                                               ((= arg0 (traffic-type civilian-car-c))
+                                                "civilian-car-c"
+                                                )
+                                               ((= arg0 (traffic-type citizen-task))
+                                                "citizen-task"
+                                                )
+                                               ((= arg0 (traffic-type guard-bike))
+                                                "guard-bike"
+                                                )
+                                               ((= arg0 (traffic-type civilian-car-b))
+                                                "civilian-car-b"
+                                                )
+                                               ((= arg0 (traffic-type civilian-bike-c))
+                                                "civilian-bike-c"
+                                                )
+                                               ((= arg0 (traffic-type formation))
+                                                "formation"
+                                                )
+                                               ((= arg0 (traffic-type civilian-male))
+                                                "civilian-male"
+                                                )
+                                               (else
+                                                 "*unknown*"
+                                                 )
+                                               )
+                )
+        )
+    0
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (traffic-manager)
+  :virtual #t
+  :event traffic-manager-event-handler
+  :enter (behavior ()
+    (spawn-all self)
+    )
+  :code (behavior ()
+    (suspend)
+    (suspend)
+    (go-virtual active)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (traffic-manager)
+  :virtual #t
+  :event traffic-manager-event-handler
+  :code sleep-code
+  :post (behavior ()
+    (traffic-manager-method-16 self)
+    )
+  )
+
+;; definition for function riders-on
+;; WARN: Return type mismatch object vs none.
+(defun riders-on ()
+  (send-event *traffic-manager* 'rider-on)
+  (none)
+  )
+
+;; definition for function riders-off
+;; WARN: Return type mismatch object vs none.
+(defun riders-off ()
+  (send-event *traffic-manager* 'rider-off)
+  (none)
+  )
+
+;; definition of type want-count-binding
+(deftype want-count-binding (structure)
+  ((obj-type  traffic-type)
+   (count     uint8)
+   )
+  )
+
+;; definition for method 3 of type want-count-binding
+(defmethod inspect ((this want-count-binding))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'want-count-binding)
+  (format #t "~1Tobj-type: ~D~%" (-> this obj-type))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type want-count-group
+(deftype want-count-group (structure)
+  ((bindings  (array want-count-binding))
+   )
+  )
+
+;; definition for method 3 of type want-count-group
+(defmethod inspect ((this want-count-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'want-count-group)
+  (format #t "~1Tbindings: ~A~%" (-> this bindings))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type want-count-level-group
+(deftype want-count-level-group (structure)
+  ((want-groups  (array want-count-group))
+   (level        uint8)
+   )
+  )
+
+;; definition for method 3 of type want-count-level-group
+(defmethod inspect ((this want-count-level-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'want-count-level-group)
+  (format #t "~1Twant-groups: ~A~%" (-> this want-groups))
+  (format #t "~1Tlevel: ~D~%" (-> this level))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *want-count-levels*, type (array want-count-level-group)
+(define *want-count-levels*
+  (new 'static 'boxed-array :type want-count-level-group
+    (new 'static 'want-count-level-group
+      :want-groups (new 'static 'boxed-array :type want-count-group
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type roboguard))
+            (new 'static 'want-count-binding :obj-type (traffic-type spydroid))
+            (new 'static 'want-count-binding :obj-type (traffic-type flying-turret))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-grunt))
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-flitter))
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-predator))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type guard-a))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-female))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-fat))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-b))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-c))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-b))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-c))
+            )
+          )
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        )
+      )
+    (new 'static 'want-count-level-group
+      :want-groups (new 'static 'boxed-array :type want-count-group
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type roboguard))
+            (new 'static 'want-count-binding :obj-type (traffic-type spydroid) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type flying-turret) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-grunt) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-flitter) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-predator))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type guard-a) :count #x2)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-female) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-fat) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-b) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-c) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-b) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-c) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        )
+      :level #x1
+      )
+    (new 'static 'want-count-level-group
+      :want-groups (new 'static 'boxed-array :type want-count-group
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type roboguard) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type spydroid) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type flying-turret) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-grunt) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-flitter) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-predator))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type guard-a) :count #x4)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-female) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-fat) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-a) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-b) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-c) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-a) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-b) :count #x1)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-c) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        )
+      :level #x2
+      )
+    (new 'static 'want-count-level-group
+      :want-groups (new 'static 'boxed-array :type want-count-group
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type roboguard) :count #x3)
+            (new 'static 'want-count-binding :obj-type (traffic-type spydroid) :count #x3)
+            (new 'static 'want-count-binding :obj-type (traffic-type flying-turret) :count #x3)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-grunt) :count #x3)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-flitter) :count #x3)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-predator) :count #x1)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type guard-a) :count #x7)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :count #xa)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-female) :count #xa)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-fat) :count #x3)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-a) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-b) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-c) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-a) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-b) :count #x2)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-c) :count #x2)
+            )
+          )
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        )
+      :level #x3
+      )
+    (new 'static 'want-count-level-group
+      :want-groups (new 'static 'boxed-array :type want-count-group
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type roboguard) :count #x5)
+            (new 'static 'want-count-binding :obj-type (traffic-type spydroid) :count #x4)
+            (new 'static 'want-count-binding :obj-type (traffic-type flying-turret) :count #x5)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-grunt) :count #x5)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-flitter) :count #x5)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-predator) :count #x2)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type guard-a) :count #xb)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-female))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-fat))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-b))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-c))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-b))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-c))
+            )
+          )
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        )
+      :level #x4
+      )
+    (new 'static 'want-count-level-group
+      :want-groups (new 'static 'boxed-array :type want-count-group
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type roboguard) :count #x6)
+            (new 'static 'want-count-binding :obj-type (traffic-type spydroid) :count #x9)
+            (new 'static 'want-count-binding :obj-type (traffic-type flying-turret) :count #x6)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-grunt) :count #x6)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-flitter) :count #x8)
+            (new 'static 'want-count-binding :obj-type (traffic-type metalhead-predator) :count #x3)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type guard-a) :count #xd)
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding)
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-female))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-fat))
+            )
+          )
+        (new 'static 'want-count-group
+          :bindings (new 'static 'boxed-array :type want-count-binding
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-b))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-bike-c))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-a))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-b))
+            (new 'static 'want-count-binding :obj-type (traffic-type civilian-car-c))
+            )
+          )
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        (new 'static 'want-count-group :bindings (new 'static 'boxed-array :type want-count-binding))
+        )
+      :level #x7
+      )
+    )
+  )
+
+;; definition for method 22 of type traffic-manager
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 22 traffic-manager) has a return type of none, but the expression builder found a return statement.
+(defmethod traffic-manager-method-22 ((this traffic-manager))
+  (if (not *cty-faction-manager*)
+      (return 0)
+      )
+  (dotimes (v1-3 7)
+    (let ((a1-1 (-> *cty-faction-manager* faction-spawn v1-3 current-level))
+          (a0-3 -1)
+          )
+      (dotimes (a2-0 (-> *want-count-levels* length))
+        (when (= (-> *want-count-levels* a2-0 level) a1-1)
+          (set! a0-3 a2-0)
+          0
+          (goto cfg-11)
+          )
+        )
+      (label cfg-11)
+      (when (>= a0-3 0)
+        (let ((a0-9 (-> *want-count-levels* a0-3 want-groups v1-3)))
+          (dotimes (a1-7 (-> a0-9 bindings length))
+            (set! (-> *traffic-engine* object-type-info-array (-> a0-9 bindings a1-7 obj-type) want-count)
+                  (the-as int (-> a0-9 bindings a1-7 count))
+                  )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+
+
+

@@ -1,0 +1,960 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type boat-manager
+(deftype boat-manager (process)
+  ((mesh         nav-mesh)
+   (paths        path-control  4)
+   (boats-stop?  symbol)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (boat-manager-method-15 (_type_) none)
+    (boat-manager-method-16 (_type_) symbol)
+    )
+  )
+
+;; definition for method 3 of type boat-manager
+(defmethod inspect ((this boat-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmesh: ~A~%" (-> this mesh))
+  (format #t "~2Tpaths[4] @ #x~X~%" (-> this paths))
+  (format #t "~2Tboats-stop?: ~A~%" (-> this boats-stop?))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *barge-constants*, type rigid-body-vehicle-constants
+(define *barge-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 100.0
+      :inv-mass 0.01
+      :linear-damping 0.9
+      :angular-damping 0.9
+      :bounce-factor 0.1
+      :friction-factor 0.05
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :z 8192.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 16) (meters 6) (meters 20))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*barge-constants*
+    :flags #x8
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 vt27)
+    :transmission (new 'static 'vehicle-transmission-info :gear-count 1)
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 1.0
+      :turbo-boost-factor 1.0
+      :turbo-boost-duration (seconds 1)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 1274.3112
+      :tire-steering-speed-factor 61440.0
+      :tire-friction-factor 1.0
+      :tire-static-friction 0.5
+      :tire-static-friction-speed (meters 1)
+      :tire-dynamic-friction 0.25
+      :tire-dynamic-friction-speed (meters 3)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 1.0
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 0.7
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 0.5
+      :buoyancy-factor 0.5
+      :water-drag-factor 1.0
+      :player-weight 163840.0
+      :player-shift-x (meters 0.6)
+      :player-shift-z (meters 1)
+      :air-angular-damping 1.0
+      :ground-torque-scale 1.0
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 4.5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 182.04445
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 8192.0 :z -10240.0 :w 1.0)
+        (new 'static 'vector :x -10240.0 :y 8192.0 :w 1.0)
+        (new 'static 'vector :x 10240.0 :y 8192.0 :w 1.0)
+        (new 'static 'vector :y 8192.0 :z 10240.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.25
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "car-scrape-stn")
+      :glance-sound (static-sound-name "car-glance-stn")
+      :impact-sound (static-sound-name "car-impact-stn")
+      :explode-sound (static-sound-name "vehicle-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "car-by-1")
+      :bank-replace '()
+      :idle-pitch-scale 1.0
+      :idle-crossover-rpm 1000.0
+      :engine-crossover-rpm 4000.0
+      :start-sound (static-sound-name "vehicl-ignition")
+      :susp-speed-threshold 40960.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :thruster-flame-width (meters 0.25)
+      :thruster-flame-length (meters 4)
+      :thruster-local-pos (new 'static 'inline-array vector 2 (new 'static 'vector :w 1.0) (new 'static 'vector :w 1.0))
+      :exhaust-local-pos (new 'static 'inline-array vector 2 (new 'static 'vector :w 1.0) (new 'static 'vector :w 1.0))
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2 (new 'static 'vector :w 1.0) (new 'static 'vector :w 1.0))
+      :smoke-local-vel (new 'static 'inline-array vector 2 (new 'static 'vector :w 1.0) (new 'static 'vector :w 1.0))
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 1.0
+      :hit-points 2000.0
+      :inv-hit-points 0.0005
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 1.0
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :z 22118.4 :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :w 1.0)
+        :inertia 1.0
+        :radius 4096.0
+        :scale 1.0
+        :travel 2048.0
+        :width 4096.0
+        :suspension-spring 0.5
+        :suspension-damping 0.5
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.8
+        :probe-radius 409.6
+        :tread-texture "common-white"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :w 1.0)
+        :inertia 1.0
+        :radius 4096.0
+        :scale 1.0
+        :travel 2048.0
+        :width 4096.0
+        :suspension-spring 0.5
+        :suspension-damping 0.5
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.8
+        :probe-radius 409.6
+        :tread-texture "common-white"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 6144.0
+      :shadow-bot-clip -40960.0
+      :shadow-locus-dist 409600.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :rider-stance #x1
+      :grab-rail-array #f
+      :rider-hand-offset (new 'static 'inline-array vector 2 (new 'static 'vector :w 1.0) (new 'static 'vector :w 1.0))
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xdb
+    :debris #f
+    )
+  )
+
+;; definition of type boat-base
+(deftype boat-base (vehicle)
+  ((manager     handle)
+   (angle       float)
+   (y-rot       float)
+   (path-num    uint32)
+   (path-index  float)
+   )
+  )
+
+;; definition for method 3 of type boat-base
+(defmethod inspect ((this boat-base))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type vehicle inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmanager: ~D~%" (-> this manager))
+  (format #t "~2Tangle: ~f~%" (-> this angle))
+  (format #t "~2Ty-rot: ~f~%" (-> this y-rot))
+  (format #t "~2Tpath-num: ~D~%" (-> this path-num))
+  (format #t "~2Tpath-index: ~f~%" (-> this path-index))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 46 of type boat-base
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-damage ((this boat-base) (arg0 float) (arg1 rigid-body-impact))
+  0
+  (none)
+  )
+
+;; definition for method 50 of type boat-base
+(defmethod attack-handler ((this boat-base) (arg0 process-drawable) (arg1 attack-info) (arg2 touching-shapes-entry) (arg3 penetrate))
+  #f
+  )
+
+;; definition for method 103 of type boat-base
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-103 ((this boat-base))
+  (local-vars (v1-8 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (when (time-elapsed? (-> this disturbed-time) (seconds 2))
+      (let* ((f0-0 (-> this camera-dist2))
+             (f1-0 0.000024414063)
+             (f0-1 (* f0-0 (* f1-0 f1-0)))
+             )
+        (.lvf vf1 (&-> (-> this rbody ang-velocity) quad))
+        (.add.w.vf vf2 vf0 vf0 :mask #b1)
+        (.mul.vf vf1 vf1 vf1)
+        (.mul.x.vf acc vf2 vf1 :mask #b1)
+        (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+        (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+        (.mov v1-8 vf1)
+        (when (< v1-8 f0-1)
+          (logclear! (-> this v-flags) (vehicle-flag disturbed))
+          (vehicle-method-142 this)
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 30 of type boat-base
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defmethod rigid-body-object-method-30 ((this boat-base))
+  (local-vars (v1-42 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (rider-trans)
+    (let ((t9-1 (method-of-type vehicle rigid-body-object-method-30)))
+      (t9-1 this)
+      )
+    (let ((s5-0 (-> this root)))
+      (pull-riders! s5-0)
+      (cond
+        ((logtest? (do-push-aways s5-0) (collide-spec jak))
+         (+! (-> this overlap-player-counter) 1)
+         (when (< (the-as uint 60) (-> this overlap-player-counter))
+           (send-event
+             *target*
+             'attack-invinc
+             #f
+             (static-attack-info
+               :mask (vehicle-impulse-factor)
+               ((id (new-attack-id)) (damage 1000.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'smush))
+               )
+             )
+           (set! (-> this overlap-player-counter) (the-as uint 0))
+           0
+           )
+         )
+        (else
+          (set! (-> this overlap-player-counter) (the-as uint 0))
+          0
+          )
+        )
+      )
+    (when (not (logtest? (-> this rbody flags) (rigid-body-flag enable-physics)))
+      (let ((s5-1 (new 'stack-no-clear 'inline-array 'vector 6)))
+        (let ((a1-1 (-> this nav state)))
+          (set! (-> s5-1 0 quad) (-> a1-1 velocity quad))
+          )
+        (let ((s4-0 (new 'stack 'clamp-travel-vector-to-mesh-return-info)))
+          (let ((s3-0 (-> this nav state current-poly)))
+            (vector-xz-normalize-copy! (-> s5-1 3) (-> s5-1 0) 163840.0)
+            (set! (-> s5-1 4 quad) (-> s5-1 3 quad))
+            (clamp-vector-to-mesh-no-gaps (-> this nav) (-> this root trans) s3-0 (-> s5-1 4) s4-0)
+            )
+          (when (-> s4-0 found-boundary)
+            (let ((f30-0 (vector-length (-> s5-1 0))))
+              (vector-flatten! (-> s5-1 0) (-> s5-1 0) (-> s4-0 boundary-normal))
+              (vector-rotate90-around-y! (-> s5-1 0) (-> s4-0 boundary-normal))
+              (vector-normalize! (-> s5-1 0) f30-0)
+              )
+            (when (= this *debug-actor*)
+              (add-debug-vector #t (bucket-id debug-no-zbuf1) (-> this root trans) (-> s5-1 0) (meters 10) *color-blue*)
+              (format *stdebug* "avoid border~%")
+              )
+            )
+          )
+        (let* ((f0-3 4.096)
+               (f0-5 (* f0-3 f0-3))
+               )
+          (.lvf vf1 (&-> (-> s5-1 0) quad))
+          (.add.w.vf vf2 vf0 vf0 :mask #b1)
+          (.mul.vf vf1 vf1 vf1)
+          (.mul.x.vf acc vf2 vf1 :mask #b1)
+          (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+          (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+          (.mov v1-42 vf1)
+          (when (< f0-5 v1-42)
+            (set! (-> s5-1 5 quad) (-> s5-1 0 quad))
+            (vector-normalize! (-> s5-1 5) 1.0)
+            (let ((s4-1 (-> this root quat)))
+              (quaternion-set! (the-as quaternion (-> s5-1 2)) 0.0 (-> s5-1 5 x) 0.0 (+ 1.0 (-> s5-1 5 z)))
+              (quaternion-normalize! (the-as quaternion (-> s5-1 2)))
+              (quaternion-smooth-seek! s4-1 s4-1 (the-as quaternion (-> s5-1 2)) (* 1.2 (seconds-per-frame)))
+              )
+            (vector-z-quaternion! (-> s5-1 1) (-> this root quat))
+            (vector-v*float+! (-> this root trans) (-> this root trans) (-> s5-1 1) 8954.266)
+            (seek! (-> this root trans y) 4096.0 (* 4096.0 (seconds-per-frame)))
+            )
+          )
+        )
+      (when (= this *debug-actor*)
+        (format *stdebug* "no physics~%")
+        (format *stdebug* "~M~%" (-> this root trans y))
+        )
+      )
+    (if (= this *debug-actor*)
+        (format *stdebug* "speed ~M~%" (vector-length (-> this root transv)))
+        )
+    (let ((s4-2 (handle->process (-> this manager)))
+          (s5-2 (new 'stack-no-clear 'vector))
+          )
+      (when s4-2
+        (let ((a1-22 (-> this nav state)))
+          (set! (-> s5-2 quad) (-> a1-22 target-pos quad))
+          )
+        (if (or (= (-> this path-num) 2) (-> *setting-control* user-current stop-boats?))
+            (get-point-at-percent-along-path!
+              (-> (the-as boat-manager (+ (* (-> this path-num) 4) (the-as uint s4-2))) paths 0)
+              (-> this root trans)
+              (-> this path-index)
+              'interp
+              )
+            )
+        (when (and (not (or (= (-> this path-num) 2) (-> *setting-control* user-current stop-boats?)))
+                   (< (vector-vector-xz-distance (-> this root trans) s5-2) 163840.0)
+                   )
+          (+! (-> this path-index) 0.01)
+          (let ((f0-20 (-> this path-index)))
+            (set! (-> this path-index) (- f0-20 (* (the float (the int (/ f0-20 1.0))) 1.0)))
+            )
+          )
+        (get-point-at-percent-along-path!
+          (-> (the-as boat-manager (+ (* (-> this path-num) 4) (the-as uint s4-2))) paths 0)
+          s5-2
+          (-> this path-index)
+          'interp
+          )
+        (let ((v1-102 (-> this nav state)))
+          (logclear! (-> v1-102 flags) (nav-state-flag directional-mode))
+          (logior! (-> v1-102 flags) (nav-state-flag target-poly-dirty))
+          (set! (-> v1-102 target-pos quad) (-> s5-2 quad))
+          )
+        0
+        )
+      )
+    (vehicle-method-78 this)
+    )
+  )
+
+;; definition for method 55 of type boat-base
+(defmethod clear-impulse-force-flag! ((this boat-base))
+  ((method-of-type vehicle clear-impulse-force-flag!) this)
+  (none)
+  )
+
+;; definition for method 31 of type boat-base
+;; INFO: Used lq/sq
+(defmethod apply-gravity! ((this boat-base) (arg0 float))
+  (let ((s3-0 (-> this rbody))
+        (s2-0 (-> this info))
+        (s4-0 (new 'stack-no-clear 'matrix))
+        )
+    (let ((a1-1 (-> this nav state)))
+      (set! (-> s4-0 uvec quad) (-> a1-1 velocity quad))
+      )
+    (vector-! (-> s4-0 rvec) (-> s4-0 uvec) (-> s3-0 lin-velocity))
+    (vector-float*! (-> s4-0 rvec) (-> s4-0 rvec) (* 4.0 (-> s2-0 info mass)))
+    (set-vector! (-> s4-0 trans) 0.0 -122880.0 40960.0 1.0)
+    (vector-matrix*! (-> s4-0 fvec) (-> s4-0 trans) (-> s3-0 matrix))
+    (apply-impact! s3-0 (-> s4-0 fvec) (-> s4-0 rvec))
+    (vector-reset! (-> s4-0 rvec))
+    (set! (-> s4-0 rvec y) (* -4.0 (-> s2-0 extra gravity) (-> s2-0 info mass)))
+    (add-force! s3-0 (-> s4-0 rvec))
+    )
+  (rigid-body-object-method-53 this arg0)
+  (vehicle-method-96 this arg0)
+  (none)
+  )
+
+;; definition for method 93 of type boat-base
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-93 ((this boat-base))
+  0
+  (none)
+  )
+
+;; definition for method 38 of type boat-base
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-38 ((this boat-base))
+  0
+  (none)
+  )
+
+;; definition for method 131 of type boat-base
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-131 ((this boat-base) (arg0 traffic-object-spawn-params))
+  (get-nav-control this (-> arg0 nav-mesh))
+  (set! (-> this manager) (-> arg0 handle))
+  (set! (-> this nav callback-info) *physics-nav-callback-info*)
+  (logior! (-> this nav flags) (nav-control-flag display-marks limit-rotation-rate update-heading-from-facing))
+  (let ((v1-5 (-> this nav)))
+    (set! (-> v1-5 target-speed) 40960.0)
+    )
+  0
+  (let ((v1-7 (-> this nav)))
+    (set! (-> v1-7 acceleration) 8192.0)
+    )
+  0
+  (let ((v1-9 (-> this nav)))
+    (set! (-> v1-9 turning-acceleration) 8192.0)
+    )
+  0
+  (let ((v1-11 (-> this nav)))
+    (set! (-> v1-11 max-rotation-rate) 9102.223)
+    )
+  0
+  (let ((v1-13 (-> this nav)))
+    (set! (-> v1-13 nav-cull-radius) 122880.0)
+    )
+  0
+  (let ((v1-15 (-> this nav)))
+    (set! (-> v1-15 sphere-mask) (the-as uint 64))
+    )
+  0
+  (set! (-> this path-num) (-> arg0 user-data))
+  (set! (-> this path-index) (+ 0.05 (-> arg0 position w)))
+  (when (-> *setting-control* user-current stop-boats?)
+    )
+  (logior! (-> this root root-prim prim-core collide-as) (collide-spec pusher))
+  (let ((v1-26 (-> this root root-prim)))
+    (set! (-> this root backup-collide-as) (-> v1-26 prim-core collide-as))
+    (set! (-> this root backup-collide-with) (-> v1-26 prim-core collide-with))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 33 of type boat-base
+;; WARN: Return type mismatch int vs none.
+(defmethod alloc-rbody-control! ((this boat-base) (arg0 rigid-body-object-constants))
+  ((method-of-type vehicle alloc-rbody-control!) this arg0)
+  0
+  (none)
+  )
+
+;; definition for method 109 of type boat-base
+;; WARN: Return type mismatch object vs none.
+(defmethod vehicle-method-109 ((this boat-base))
+  (go (method-of-object this idle))
+  (none)
+  )
+
+;; definition for method 102 of type boat-base
+(defmethod vehicle-method-102 ((this boat-base))
+  #f
+  )
+
+;; failed to figure out what this is:
+(defstate waiting (boat-base)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual idle)
+    )
+  :exit (behavior ()
+    '()
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate inactive (boat-base)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual idle)
+    )
+  :exit (behavior ()
+    '()
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (boat-base)
+  :virtual #t
+  :event vehicle-event-handler
+  :enter (behavior ()
+    (logior! (-> self v-flags) (vehicle-flag riding))
+    (set-time! (-> self state-time))
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    '()
+    )
+  :post (behavior ()
+    (rbody-post self)
+    (update-transforms (-> self root))
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-barge barge barge-lod0-jg barge-idle-ja
+              ((barge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 21)
+              )
+
+;; definition of type barge
+(deftype barge (boat-base)
+  ((engine    sound-id)
+   (bow-wash  sound-id)
+   )
+  )
+
+;; definition for method 3 of type barge
+(defmethod inspect ((this barge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type boat-base inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tengine: ~D~%" (-> this engine))
+  (format #t "~2Tbow-wash: ~D~%" (-> this bow-wash))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 34 of type barge
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this barge))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 19) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 20))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-11 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-13 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 0.0 0.0 81920.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 -32768.0 16384.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 -8192.0 16384.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 16384.0 16384.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 0)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 40960.0 16384.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 0)
+      (set-vector! (-> v1-23 local-sphere) 24576.0 0.0 -32768.0 16384.0)
+      )
+    (let ((v1-25 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-25 prim-core action) (collide-action solid))
+      (set! (-> v1-25 transform-index) 0)
+      (set-vector! (-> v1-25 local-sphere) 24576.0 0.0 -8192.0 16384.0)
+      )
+    (let ((v1-27 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-27 prim-core action) (collide-action solid))
+      (set! (-> v1-27 transform-index) 0)
+      (set-vector! (-> v1-27 local-sphere) 24576.0 0.0 16384.0 16384.0)
+      )
+    (let ((v1-29 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-29 prim-core action) (collide-action solid))
+      (set! (-> v1-29 transform-index) 0)
+      (set-vector! (-> v1-29 local-sphere) 24576.0 0.0 40960.0 16384.0)
+      )
+    (let ((v1-31 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-31 prim-core action) (collide-action solid))
+      (set! (-> v1-31 transform-index) 0)
+      (set-vector! (-> v1-31 local-sphere) -24576.0 0.0 -32768.0 16384.0)
+      )
+    (let ((v1-33 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-33 prim-core action) (collide-action solid))
+      (set! (-> v1-33 transform-index) 0)
+      (set-vector! (-> v1-33 local-sphere) -24576.0 0.0 -8192.0 16384.0)
+      )
+    (let ((v1-35 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-35 prim-core action) (collide-action solid))
+      (set! (-> v1-35 transform-index) 0)
+      (set-vector! (-> v1-35 local-sphere) -24576.0 0.0 16384.0 16384.0)
+      )
+    (let ((v1-37 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-37 prim-core action) (collide-action solid))
+      (set! (-> v1-37 transform-index) 0)
+      (set-vector! (-> v1-37 local-sphere) -24576.0 0.0 40960.0 16384.0)
+      )
+    (let ((v1-39 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-39 prim-core action) (collide-action solid))
+      (set! (-> v1-39 transform-index) 0)
+      (set-vector! (-> v1-39 local-sphere) 16384.0 0.0 -57344.0 16384.0)
+      )
+    (let ((v1-41 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-41 prim-core action) (collide-action solid))
+      (set! (-> v1-41 transform-index) 0)
+      (set-vector! (-> v1-41 local-sphere) -16384.0 0.0 -57344.0 16384.0)
+      )
+    (let ((v1-43 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-43 prim-core action) (collide-action solid))
+      (set! (-> v1-43 transform-index) 0)
+      (set-vector! (-> v1-43 local-sphere) 0.0 8192.0 -61440.0 16384.0)
+      )
+    (let ((v1-45 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-45 prim-core action) (collide-action solid))
+      (set! (-> v1-45 transform-index) 0)
+      (set-vector! (-> v1-45 local-sphere) -40960.0 0.0 -53248.0 16384.0)
+      )
+    (let ((v1-47 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-47 prim-core action) (collide-action solid))
+      (set! (-> v1-47 transform-index) 0)
+      (set-vector! (-> v1-47 local-sphere) 40960.0 0.0 -53248.0 16384.0)
+      )
+    (set! (-> s5-0 nav-radius) 81920.0)
+    (let ((v1-49 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-49 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-49 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 35 of type barge
+;; WARN: Return type mismatch int vs none.
+(defmethod init-rbody-control! ((this barge))
+  (with-pp
+    (set! (-> pp level) (level-get *level* 'ctyport))
+    (initialize-skeleton
+      this
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-barge" (the-as (pointer level) #f)))
+      (the-as pair 0)
+      )
+    (alloc-rbody-control! this *barge-constants*)
+    (set! (-> this draw lod-set lod 0 dist) 1228800.0)
+    (set! (-> this engine) (new-sound-id))
+    (set! (-> this bow-wash) (new-sound-id))
+    (set-vector! (-> this draw color-emissive) 0.3 0.3 0.0 0.0)
+    (iterate-prims
+      (-> this root)
+      (lambda ((arg0 collide-shape-prim))
+        (let ((v1-0 (-> arg0 prim-core prim-type)))
+          (cond
+            ((= v1-0 -1)
+             (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                      backgnd
+                                                      bot
+                                                      crate
+                                                      civilian
+                                                      enemy
+                                                      obstacle
+                                                      vehicle-sphere
+                                                      hit-by-player-list
+                                                      hit-by-others-list
+                                                      collectable
+                                                      pusher
+                                                      shield
+                                                      vehicle-sphere-no-probe
+                                                      )
+                   )
+             (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-sphere))
+             )
+            ((= v1-0 1)
+             (set! (-> arg0 prim-core collide-with) (collide-spec jak player-list))
+             (set! (-> arg0 prim-core collide-as) (collide-spec camera-blocker vehicle-mesh vehicle-mesh-probeable))
+             )
+            ((zero? v1-0)
+             (set! (-> arg0 prim-core collide-with)
+                   (collide-spec
+                     backgnd
+                     jak
+                     bot
+                     crate
+                     civilian
+                     enemy
+                     obstacle
+                     vehicle-sphere
+                     hit-by-player-list
+                     hit-by-others-list
+                     player-list
+                     collectable
+                     pusher
+                     shield
+                     vehicle-sphere-no-probe
+                     )
+                   )
+             (set! (-> arg0 prim-core collide-as)
+                   (collide-spec vehicle-sphere camera-blocker vehicle-mesh vehicle-mesh-probeable)
+                   )
+             )
+            )
+          )
+        (none)
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 7 of type boat-manager
+;; WARN: Return type mismatch process vs boat-manager.
+(defmethod relocate ((this boat-manager) (offset int))
+  (dotimes (v1-0 4)
+    (if (-> this paths v1-0)
+        (&+! (-> this paths v1-0) offset)
+        )
+    )
+  (the-as boat-manager ((method-of-type process relocate) this offset))
+  )
+
+;; failed to figure out what this is:
+(defstate idle (boat-manager)
+  :virtual #t
+  :trans (behavior ()
+    (when (and (not (-> self boats-stop?)) (-> *setting-control* user-current stop-boats?))
+      (kill-by-type barge *active-pool*)
+      (boat-manager-method-16 self)
+      (set! (-> self boats-stop?) #t)
+      )
+    (dotimes (gp-0 4)
+      (let ((a0-2 (-> self paths gp-0)))
+        (if a0-2
+            (debug-draw a0-2)
+            )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for method 16 of type boat-manager
+;; INFO: Used lq/sq
+(defmethod boat-manager-method-16 ((this boat-manager))
+  (when (-> this mesh)
+    (dotimes (s5-0 4)
+      (when (-> this paths s5-0)
+        (when #t
+          (logior! (-> this paths s5-0 flags) (path-control-flag display draw-line draw-point draw-text))
+          (let ((s4-0 (-> this paths s5-0))
+                (f30-0 0.0)
+                )
+            1
+            (let ((s3-0 (new 'stack-no-clear 'matrix)))
+              (vector-reset! (-> s3-0 fvec))
+              (set! (-> s3-0 fvec y) 1.0)
+              (the int (* 0.0000016276042 (total-distance s4-0)))
+              (while (< f30-0 0.8)
+                (displacement-between-points-at-percent-normalized! s4-0 (-> s3-0 uvec) f30-0)
+                (get-point-at-percent-along-path! s4-0 (-> s3-0 rvec) f30-0 'interp)
+                (vector-normalize! (-> s3-0 uvec) 1.0)
+                (quaternion-look-at! (the-as quaternion (-> s3-0 trans)) (-> s3-0 uvec) (-> s3-0 fvec))
+                (let ((s2-0 (new 'stack 'traffic-object-spawn-params)))
+                  (set! (-> s2-0 object-type) (traffic-type guard-a))
+                  (set! (-> s2-0 behavior) (the-as uint 1))
+                  (set! (-> s2-0 id) (the-as uint 0))
+                  (set! (-> s2-0 nav-mesh) (-> this mesh))
+                  (set! (-> s2-0 nav-branch) #f)
+                  (set! (-> s2-0 proc) #f)
+                  (set! (-> s2-0 handle) (process->handle this))
+                  (set! (-> s2-0 user-data) (the-as uint s5-0))
+                  (set! (-> s2-0 flags) (traffic-spawn-flags tsf0))
+                  (set! (-> s2-0 guard-type) (the-as uint 11))
+                  (set! (-> s2-0 entity) #f)
+                  (set! (-> s2-0 velocity quad) (-> s3-0 uvec quad))
+                  (set! (-> s2-0 position quad) (-> s3-0 rvec quad))
+                  (quaternion-copy! (-> s2-0 rotation) (the-as quaternion (-> s3-0 trans)))
+                  (set! (-> s2-0 position w) f30-0)
+                  (when (vehicle-spawn-hack barge s2-0 this)
+                    )
+                  )
+                (let ((f0-4 0.25))
+                  (if (and (!= s5-0 2) (not (-> *setting-control* user-current stop-boats?)))
+                      (set! f0-4 (rand-vu))
+                      )
+                  (+! f30-0 (/ (* 4096.0 (+ 150.0 (* 150.0 f0-4))) (total-distance s4-0)))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for method 11 of type boat-manager
+(defmethod init-from-entity! ((this boat-manager) (arg0 entity-actor))
+  (set! (-> this mesh) (nav-mesh-from-res-tag arg0 'nav-mesh-actor 0))
+  (set! (-> this entity) arg0)
+  (set! (-> this boats-stop?) (-> *setting-control* user-current stop-boats?))
+  (when (-> this mesh)
+    (dotimes (s5-1 4)
+      (set! (-> this paths s5-1) (new 'process 'curve-control this 'path (the float s5-1)))
+      )
+    (boat-manager-method-16 this)
+    )
+  (go (method-of-object this idle))
+  )
+
+
+
+

@@ -7,3 +7,72 @@
 
 ;; DECOMP BEGINS
 
+(deftype traffic-guard-type-info (structure)
+  ((object-type       traffic-type)
+   (max-target-count  int8)
+   (min-target-count  int8)
+   (target-count      int8)
+   (count             int8)
+   (change-to-type    traffic-type)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype traffic-guard-type-array (structure)
+  ((data                traffic-guard-type-info  3 :inline)
+   (guard-info-normal   traffic-guard-type-info  :inline :overlay-at (-> data 0))
+   (guard-info-war      traffic-guard-type-info  :inline :offset  16)
+   (guard-info-mission  traffic-guard-type-info  :inline :offset  32)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype squad-alert-state-settings (structure)
+  ((guard-settings-array  squad-unit-settings  10 :inline)
+   (ped-tazer             squad-unit-settings  :inline :overlay-at (-> guard-settings-array 0))
+   (ped-rifle             squad-unit-settings  :inline :offset  32)
+   (ped-grenade           squad-unit-settings  :inline :offset  64)
+   (ped-waster            squad-unit-settings  :inline :offset  96)
+   (bike-turret           squad-unit-settings  :inline :offset 128)
+   (hellcat-turret        squad-unit-settings  :inline :offset 160)
+   )
+  :pack-me
+  )
+
+
+(deftype traffic-target-formation (structure)
+  ((circle-range  float  16)
+   )
+  :pack-me
+  )
+
+
+(deftype ff-squad-control (squad-control-city)
+  ((squad-settings                    squad-alert-state-settings  3 :inline :offset 824)
+   (settings                          squad-alert-state-settings  :inline   :overlay-at (-> squad-settings 0))
+   (settings-war                      squad-alert-state-settings  :inline   :overlay-at (-> squad-settings 1))
+   (settings-mission                  squad-alert-state-settings  :inline   :overlay-at (-> squad-settings 2))
+   (guard-type-info-array             traffic-guard-type-array    10 :inline)
+   (guard-type-mask-from-object-type  uint32                      29)
+   (target-formation-array            traffic-target-formation    3 :inline)
+   )
+  (:methods
+    (ff-squad-control-method-45 (_type_) none)
+    (ff-squad-control-method-46 (_type_) none)
+    (ff-squad-control-method-47 (_type_) none)
+    (ff-squad-control-method-48 (_type_) none)
+    (set-guard-target-level (_type_ float) none)
+    (get-focus (_type_) process-focusable)
+    (ff-squad-control-method-51 (_type_ process-focusable collide-spec) process-focusable)
+    (end-pursuit-for-all (_type_ int) none)
+    (get-unit-settings-by-idx (_type_ int) squad-unit-settings)
+    (ff-squad-control-method-54 (_type_ int) none)
+    (ff-squad-control-method-55 (_type_ int int) traffic-type)
+    (ff-squad-control-method-56 (_type_ int int int) none)
+    )
+  )
+
+
+(define *ff-squad-control* (the-as ff-squad-control #f))
