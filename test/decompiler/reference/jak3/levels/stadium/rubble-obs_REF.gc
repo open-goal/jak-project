@@ -1,0 +1,1197 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type rub-tower
+(deftype rub-tower (process-focusable)
+  ((last-attack-time    time-frame)
+   (collision-updated?  symbol)
+   )
+  (:state-methods
+    idle
+    (unstable float)
+    fall
+    fallen
+    )
+  (:methods
+    (init-collision! (_type_) none)
+    (check-impact (_type_ rigid-body-impact vehicle) symbol)
+    (update-collision (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type rub-tower
+(defmethod inspect ((this rub-tower))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tlast-attack-time: ~D~%" (-> this last-attack-time))
+  (format #t "~2Tcollision-updated?: ~A~%" (-> this collision-updated?))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-tower rub-tower rub-tower-lod0-jg rub-tower-idle-ja
+              ((rub-tower-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 -10 60)
+              :origin-joint-index 3
+              )
+
+;; definition for function rub-tower-event-handler
+(defbehavior rub-tower-event-handler rub-tower ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('trigger)
+     (go-virtual fall)
+     )
+    (('impact-impulse)
+     (let ((a1-4 (-> arg3 param 0)))
+       (check-impact self (the-as rigid-body-impact a1-4) (the-as vehicle arg0))
+       )
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (rub-tower)
+  :virtual #t
+  :event rub-tower-event-handler
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate unstable (rub-tower)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('event-bump)
+       (sound-play "rub-hit")
+       )
+      (else
+        (rub-tower-event-handler proc argc message block)
+        )
+      )
+    )
+  :code (behavior ((arg0 float))
+    (ja-channel-push! 1 (the-as time-frame (the int (* 60.0 arg0))))
+    (ja-no-eval :group! rub-tower-bump-ja :num! (seek! max arg0) :frame-num 5.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max arg0))
+      )
+    (go-virtual idle)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate fall (rub-tower)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('event-hit-ground)
+       (activate! *camera-smush-control* 2048.0 30 150 1.0 0.8 (-> *display* camera-clock))
+       (sound-play "rub-fall-impact")
+       (cond
+         ((logtest? (-> *part-group-id-table* 1026 flags) (sp-group-flag sp13))
+          (set! (-> *launch-matrix* trans quad) (-> self node-list data 11 bone transform trans quad))
+          (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1026))
+          )
+         (else
+           (set! (-> *launch-matrix* trans quad) (-> self node-list data 11 bone transform trans quad))
+           (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1026))
+           )
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (update-collision self)
+    (sound-play "rub-fall")
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! rub-tower-fall-ja :num! (seek!) :frame-num 2.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual fallen)
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate fallen (rub-tower)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (ja :group! rub-tower-fall-ja :num! max)
+    (update-collision self)
+    (transform-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 27 of type rub-tower
+(defmethod get-inv-mass ((this rub-tower))
+  0.0
+  )
+
+;; definition for method 33 of type rub-tower
+(defmethod check-impact ((this rub-tower) (arg0 rigid-body-impact) (arg1 vehicle))
+  (let ((f30-0 (-> arg0 impulse)))
+    (let* ((s5-0 arg1)
+           (v1-0 (if (type? s5-0 wvehicle)
+                     s5-0
+                     )
+                 )
+           )
+      (b!
+        (not (or (< 921600.0 f30-0) (and v1-0 (logtest? (-> v1-0 controls flags) (vehicle-controls-flag vcf2)))))
+        cfg-11
+        :delay (nop!)
+        )
+      )
+    (sound-play "rub-impact")
+    (go (method-of-object this fall))
+    (b! #t cfg-20 :delay (nop!))
+    (label cfg-11)
+    (when (and (time-elapsed? (-> this last-attack-time) (seconds 2))
+               (not (and (-> this next-state) (= (-> this next-state name) 'unstable)))
+               )
+      (sound-play "rub-impact")
+      (go (method-of-object this unstable) (lerp-scale 0.4 0.8 f30-0 0.0 921600.0))
+      )
+    )
+  (label cfg-20)
+  (set-time! (-> this last-attack-time))
+  #f
+  )
+
+;; definition for method 32 of type rub-tower
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this rub-tower))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 40960.0 -40960.0 245760.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 40960.0 -40960.0 245760.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 40960.0 -40960.0 245760.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 34 of type rub-tower
+;; WARN: Return type mismatch int vs none.
+(defmethod update-collision ((this rub-tower))
+  (when (not (-> this collision-updated?))
+    (let ((v1-5 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0))
+          (a1-3 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1))
+          )
+      (when (and v1-5 a1-3)
+        (set! (-> a1-3 prim-core action) (-> v1-5 prim-core action))
+        (set! (-> a1-3 prim-core collide-as) (logior (-> v1-5 prim-core collide-as) (collide-spec obstacle)))
+        (set! (-> a1-3 prim-core collide-with) (-> v1-5 prim-core collide-with))
+        (set! (-> v1-5 prim-core action) (collide-action))
+        (set! (-> v1-5 prim-core collide-as) (collide-spec))
+        (set! (-> v1-5 prim-core collide-with) (collide-spec))
+        (set! (-> this collision-updated?) #t)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type rub-tower
+(defmethod init-from-entity! ((this rub-tower) (arg0 entity-actor))
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-rub-tower" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this collision-updated?) #f)
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this fallen))
+      (go (method-of-object this idle))
+      )
+  )
+
+;; definition of type rub-electric-gate-switch
+(deftype rub-electric-gate-switch (process-focusable)
+  ((part-sparks  sparticle-launch-control)
+   )
+  (:state-methods
+    idle
+    explode
+    exploded
+    )
+  (:methods
+    (check-impact (_type_ rigid-body-impact vehicle) symbol)
+    (go-explode (_type_) none)
+    (spawn-joint-exploder (_type_) none)
+    (update-draw-mask (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type rub-electric-gate-switch
+(defmethod inspect ((this rub-electric-gate-switch))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tpart-sparks: ~A~%" (-> this part-sparks))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-electric-gate-switch rub-electric-gate-switch rub-electric-gate-switch-lod0-jg rub-electric-gate-switch-idle-ja
+              ((rub-electric-gate-switch-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 15)
+              :longest-edge (meters 1)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-electric-gate-switch-explode rub-electric-gate-switch rub-electric-gate-switch-lod0-jg rub-electric-gate-switch-idle-ja
+              ((rub-electric-gate-switch-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 100)
+              )
+
+;; definition for symbol *rub-electric-gate-switch-exploder-params*, type joint-exploder-static-params
+(define *rub-electric-gate-switch-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 19 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 20 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 21 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 22 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 23 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    :art-level #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (rub-electric-gate-switch)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual explode)
+       )
+      (('impact-impulse)
+       (let ((a1-4 (-> block param 0)))
+         (check-impact self (the-as rigid-body-impact a1-4) (the-as vehicle proc))
+         )
+       )
+      )
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (transform-post)
+    (sleep-code)
+    )
+  :post (behavior ()
+    (if (nonzero? (-> self part))
+        (spawn (-> self part) (-> self root trans))
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate explode (rub-electric-gate-switch)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (sound-play "ruins-gate-towr")
+    (spawn-joint-exploder self)
+    (cond
+      ((logtest? (-> *part-group-id-table* 1024 flags) (sp-group-flag sp13))
+       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1024))
+       )
+      (else
+        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1024))
+        )
+      )
+    (update-draw-mask self)
+    (go-virtual exploded)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate exploded (rub-electric-gate-switch)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (until (time-elapsed? (-> self state-time) (seconds 2))
+      (suspend)
+      )
+    (logclear! (-> self root penetrated-by) (penetrate vehicle))
+    (sleep-code)
+    )
+  :post (behavior ()
+    (if (nonzero? (-> self part-sparks))
+        (spawn (-> self part-sparks) (-> self root trans))
+        )
+    )
+  )
+
+;; definition for method 27 of type rub-electric-gate-switch
+(defmethod get-inv-mass ((this rub-electric-gate-switch))
+  0.01
+  )
+
+;; definition for method 31 of type rub-electric-gate-switch
+(defmethod check-impact ((this rub-electric-gate-switch) (arg0 rigid-body-impact) (arg1 vehicle))
+  (let ((v1-0 (if (type? arg1 wvehicle)
+                  arg1
+                  )
+              )
+        )
+    (when (or (< 1024000.0 (-> arg0 impulse))
+              (and v1-0 (logtest? (-> v1-0 controls flags) (vehicle-controls-flag vcf2)))
+              )
+      (go-explode this)
+      #t
+      )
+    )
+  )
+
+;; definition for method 33 of type rub-electric-gate-switch
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod spawn-joint-exploder ((this rub-electric-gate-switch))
+  (let ((gp-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> gp-0 fountain-rand-transv-lo quad) (-> (target-pos 0) quad))
+    (set! (-> gp-0 fountain-rand-transv-hi x) 122880.0)
+    (set! (-> gp-0 fountain-rand-transv-hi y) 245760.0)
+    (set! (-> gp-0 fountain-rand-transv-hi z) 4096.0)
+    (set! (-> gp-0 fountain-rand-transv-hi w) 16384.0)
+    (set! (-> gp-0 friction) 0.95)
+    (set! (-> gp-0 duration) (seconds 4))
+    (process-spawn
+      joint-exploder
+      (art-group-get-by-name *level* "skel-rub-electric-gate-switch" (the-as (pointer level) #f))
+      2
+      gp-0
+      *rub-electric-gate-switch-exploder-params*
+      :name "joint-exploder"
+      :to this
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 32 of type rub-electric-gate-switch
+;; WARN: Return type mismatch int vs none.
+(defmethod go-explode ((this rub-electric-gate-switch))
+  (logior! (-> this root penetrated-by) (penetrate vehicle))
+  (go (method-of-object this explode))
+  0
+  (none)
+  )
+
+;; definition for method 7 of type rub-electric-gate-switch
+;; WARN: Return type mismatch process-drawable vs rub-electric-gate-switch.
+(defmethod relocate ((this rub-electric-gate-switch) (offset int))
+  (if (nonzero? (-> this part-sparks))
+      (&+! (-> this part-sparks) offset)
+      )
+  (the-as rub-electric-gate-switch ((method-of-type process-drawable relocate) this offset))
+  )
+
+;; definition for method 10 of type rub-electric-gate-switch
+(defmethod deactivate ((this rub-electric-gate-switch))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this part-sparks))
+      (kill-particles (-> this part-sparks))
+      )
+  ((method-of-type process-drawable deactivate) this)
+  (none)
+  )
+
+;; definition for method 11 of type rub-electric-gate-switch
+(defmethod init-from-entity! ((this rub-electric-gate-switch) (arg0 entity-actor))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 40960.0 -40960.0 245760.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 3)
+      (set-vector! (-> v1-11 local-sphere) 0.0 40960.0 0.0 61440.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-13 transform-index) 3)
+      (set-vector! (-> v1-13 local-sphere) 0.0 40960.0 0.0 61440.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (set! (-> this root pause-adjust-distance) 614400.0)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-rub-electric-gate-switch" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1023) this))
+  (set! (-> this part-sparks) (create-launch-control (-> *part-group-id-table* 1025) this))
+  (cond
+    ((logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+     (update-draw-mask this)
+     (go (method-of-object this exploded))
+     )
+    (else
+      (setup-masks (-> this draw) 2 1)
+      (go (method-of-object this idle))
+      )
+    )
+  )
+
+;; definition for method 34 of type rub-electric-gate-switch
+;; WARN: Return type mismatch int vs none.
+(defmethod update-draw-mask ((this rub-electric-gate-switch))
+  (let ((v1-3 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0))
+        (a1-3 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1))
+        )
+    (when (and v1-3 a1-3)
+      (set! (-> a1-3 prim-core action) (-> v1-3 prim-core action))
+      (set! (-> a1-3 prim-core collide-as) (logior (-> v1-3 prim-core collide-as) (collide-spec obstacle)))
+      (set! (-> a1-3 prim-core collide-with) (-> v1-3 prim-core collide-with))
+      (set! (-> v1-3 prim-core action) (collide-action))
+      (set! (-> v1-3 prim-core collide-as) (collide-spec))
+      (set! (-> v1-3 prim-core collide-with) (collide-spec))
+      (setup-masks (-> this draw) 1 2)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type rub-elec-gate
+(deftype rub-elec-gate (process-drawable)
+  ((path-r              path-control)
+   (actor-group         (pointer actor-group))
+   (actor-group-count   int32)
+   (width               float)
+   (height              float)
+   (active?             symbol)
+   (switch-status       uint8)
+   (palette-id          int8)
+   (hit-sound-id        sound-id)
+   (shutoff-delay-time  time-frame)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  (:methods
+    (toggle-blocking-plane (_type_ symbol) none)
+    )
+  )
+
+;; definition for method 3 of type rub-elec-gate
+(defmethod inspect ((this rub-elec-gate))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tpath-l: ~A~%" (-> this path))
+  (format #t "~2Tpath-r: ~A~%" (-> this path-r))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Twidth: ~f~%" (-> this width))
+  (format #t "~2Theight: ~f~%" (-> this height))
+  (format #t "~2Tactive?: ~A~%" (-> this active?))
+  (format #t "~2Tswitch-status: ~D~%" (-> this switch-status))
+  (format #t "~2Tpalette-id: ~D~%" (-> this palette-id))
+  (format #t "~2Thit-sound-id: ~D~%" (-> this hit-sound-id))
+  (format #t "~2Tshutoff-delay-time: ~D~%" (-> this shutoff-delay-time))
+  (label cfg-7)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (rub-elec-gate)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('kill)
+       (go-virtual die)
+       )
+      (('blocking-plane-hit)
+       (let* ((s5-0 proc)
+              (v1-3 (if (type? s5-0 process-drawable)
+                        s5-0
+                        )
+                    )
+              (gp-1 (the-as object (-> block param 0)))
+              )
+         (when (and v1-3 (the-as uint gp-1))
+           (sound-play
+             "ruins-gate-hit"
+             :id (-> self hit-sound-id)
+             :position (-> (the-as process-drawable v1-3) root trans)
+             )
+           (cond
+             ((logtest? (-> *part-group-id-table* 1027 flags) (sp-group-flag sp13))
+              (set! (-> *launch-matrix* trans quad) (-> (the-as rigid-body-impact gp-1) point quad))
+              (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1027))
+              )
+             (else
+               (set! (-> *launch-matrix* trans quad) (-> (the-as rigid-body-impact gp-1) point quad))
+               (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1027))
+               )
+             )
+           )
+         )
+       #f
+       )
+      )
+    )
+  :trans (behavior ()
+    (when (and (< 1 (-> self actor-group-count)) (nonzero? (-> self actor-group 0)) (nonzero? (-> self actor-group 1)))
+      (let ((gp-0 0))
+        (let ((s5-0 (length (-> self actor-group 0))))
+          (dotimes (v1-8 s5-0)
+            (let ((a0-7 (-> self actor-group 0 data v1-8)))
+              (when (and a0-7 (-> a0-7 actor))
+                (cond
+                  ((not (logtest? (-> a0-7 actor extra perm status) (entity-perm-status subtask-complete)))
+                   (+! gp-0 1)
+                   0
+                   )
+                  (else
+                    (logior! (-> self switch-status) (ash 1 v1-8))
+                    )
+                  )
+                )
+              )
+            )
+          (dotimes (s4-0 s5-0)
+            (when (logtest? (-> self switch-status) (ash 1 s4-0))
+              (let ((s3-0 (-> self actor-group 1)))
+                (dotimes (s2-0 (-> s3-0 length))
+                  (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+                    (set! (-> a1-9 from) (process->ppointer self))
+                    (set! (-> a1-9 num-params) 1)
+                    (set! (-> a1-9 message) 'off)
+                    (set! (-> a1-9 param 0) (the-as uint s4-0))
+                    (let ((t9-1 send-event-function)
+                          (v1-20 (-> s3-0 data s2-0 actor))
+                          )
+                      (t9-1
+                        (if v1-20
+                            (-> v1-20 extra process)
+                            )
+                        a1-9
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        (when (and (zero? gp-0) (-> self active?) (zero? (-> self shutoff-delay-time)))
+          (set-time! (-> self shutoff-delay-time))
+          (when (string= (-> self name) "rub-elec-gate-1")
+            (if (res-lump-struct (-> self entity) 'camera-name structure)
+                (process-spawn
+                  external-camera-controller
+                  (-> self entity)
+                  1200
+                  #f
+                  :name "external-camera-controller"
+                  :to *entity-pool*
+                  )
+                )
+            (let ((a1-15 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-15 from) (process->ppointer self))
+              (set! (-> a1-15 num-params) 0)
+              (set! (-> a1-15 message) 'camera-cut)
+              (let ((t9-7 send-event-function)
+                    (v1-45 (-> *game-info* sub-task-list (game-task-node palace-ruins-attack-resolution)))
+                    )
+                (t9-7
+                  (handle->process (if (-> v1-45 manager)
+                                       (-> v1-45 manager manager)
+                                       (the-as handle #f)
+                                       )
+                                   )
+                  a1-15
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (when (nonzero? (-> self shutoff-delay-time))
+      (when (time-elapsed? (-> self shutoff-delay-time) (seconds 2))
+        (toggle-blocking-plane self #f)
+        (process-entity-status! self (entity-perm-status subtask-complete) #t)
+        (set! (-> self active?) #f)
+        (if (nonzero? (-> self part))
+            (kill-particles (-> self part))
+            )
+        (sound-play "ruins-gate-off")
+        (set! (-> self shutoff-delay-time) 0)
+        0
+        )
+      )
+    (when (-> self active?)
+      (when (nonzero? (-> self sound))
+        (update-trans! (-> self sound) (-> self root trans))
+        (update! (-> self sound))
+        )
+      (let ((gp-3 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> self root quat))))
+        (if (nonzero? (-> self shutoff-delay-time))
+            (rub-elec-gate-adjust-particles (-> self width) (-> self height) (rand-vu-float-range 0.0 1.0))
+            (rub-elec-gate-adjust-particles (-> self width) (-> self height) 1.0)
+            )
+        (matrix<-trans gp-3 (-> self root trans))
+        (spawn-from-mat (-> self part) gp-3)
+        )
+      )
+    (if (nonzero? (-> self path-r))
+        (debug-draw (-> self path-r))
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (if (or (sphere-in-view-frustum?
+              (sphere<-vector+r! (new 'stack-no-clear 'sphere) (-> self root trans) (-> self width))
+              )
+            (< (if *target*
+                   (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))
+                   4096000.0
+                   )
+               409600.0
+               )
+            )
+        (set-stadiuma-electricity-scale!
+          (if (-> self active?)
+              1.0
+              0.0
+              )
+          (-> self palette-id)
+          (-> self level name)
+          )
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (rub-elec-gate)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+;; definition for method 22 of type rub-elec-gate
+;; WARN: Return type mismatch int vs none.
+(defmethod toggle-blocking-plane ((this rub-elec-gate) (arg0 symbol))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (cond
+      (arg0
+        (when (and (nonzero? (-> this path)) (nonzero? (-> this path-r)))
+          (let ((gp-0 (new 'static 'inline-array vector 2 (new 'static 'vector) (new 'static 'vector))))
+            (let ((s4-0 (new 'stack-no-clear 'vector))
+                  (s2-0 (new 'stack-no-clear 'vector))
+                  (s3-0 (new 'stack-no-clear 'vector))
+                  )
+              (get-point-at-percent-along-path! (-> this path) (-> gp-0 0) 0.0 'interp)
+              (get-point-at-percent-along-path! (-> this path) (-> gp-0 1) 1.0 'interp)
+              (vector-! s3-0 (-> gp-0 1) (-> gp-0 0))
+              (get-point-at-percent-along-path! (-> this path-r) (-> gp-0 1) 0.0 'interp)
+              (vector-! s2-0 (-> gp-0 1) (-> gp-0 0))
+              (set! (-> this width) (vector-length s2-0))
+              (set! (-> this height) (vector-length s3-0))
+              (let ((a1-8 (-> this root trans)))
+                (let ((v1-17 (-> gp-0 0)))
+                  (let ((a0-7 s2-0))
+                    (let ((a2-4 0.5))
+                      (.mov vf7 a2-4)
+                      )
+                    (.lvf vf5 (&-> a0-7 quad))
+                    )
+                  (.lvf vf4 (&-> v1-17 quad))
+                  )
+                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                (.mul.x.vf acc vf5 vf7 :mask #b111)
+                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.svf (&-> a1-8 quad) vf6)
+                )
+              (vector-normalize! (vector-cross! s4-0 s2-0 s3-0) 1.0)
+              (quaternion-look-at! (-> this root quat) s4-0 s3-0)
+              )
+            (+! (-> gp-0 0 y) -20480.0)
+            (+! (-> gp-0 1 y) -20480.0)
+            (blocking-plane-spawn (the-as curve-control #f) gp-0 122880.0)
+            )
+          )
+        )
+      (else
+        (blocking-plane-destroy)
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 7 of type rub-elec-gate
+;; WARN: Return type mismatch process-drawable vs rub-elec-gate.
+(defmethod relocate ((this rub-elec-gate) (offset int))
+  (if (nonzero? (-> this path-r))
+      (&+! (-> this path-r) offset)
+      )
+  (the-as rub-elec-gate ((method-of-type process-drawable relocate) this offset))
+  )
+
+;; definition for method 10 of type rub-elec-gate
+(defmethod deactivate ((this rub-elec-gate))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this sound))
+      (stop! (-> this sound))
+      )
+  ((method-of-type process-drawable deactivate) this)
+  (none)
+  )
+
+;; definition for method 11 of type rub-elec-gate
+;; INFO: Used lq/sq
+(defmethod init-from-entity! ((this rub-elec-gate) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this active?)
+        (not (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete)))
+        )
+  (set! (-> this path) (new 'process 'path-control this 'pathl 0.0 (the-as entity #f) #f))
+  (cond
+    ((logtest? (-> this path flags) (path-control-flag not-found))
+     (set! (-> this path) (the-as path-control 0))
+     0
+     )
+    (else
+      (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
+      )
+    )
+  (set! (-> this path-r) (new 'process 'path-control this 'pathr 0.0 (the-as entity #f) #f))
+  (cond
+    ((logtest? (-> this path-r flags) (path-control-flag not-found))
+     (set! (-> this path-r) (the-as path-control 0))
+     0
+     )
+    (else
+      (logior! (-> this path-r flags) (path-control-flag display draw-line draw-point draw-text))
+      )
+    )
+  (if (-> this active?)
+      (toggle-blocking-plane this #t)
+      )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1022) this))
+  (set! (-> this sound) (new 'process 'ambient-sound "ruins-gate-hum" (-> this root trans) 0.0))
+  (set! (-> this hit-sound-id) (new-sound-id))
+  (set! (-> this entity) arg0)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-31 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-31 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-31))
+       )
+      (else
+        (format 0 "ERROR: entity missing actor-group!~%")
+        )
+      )
+    )
+  (set! (-> this palette-id)
+        (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 -1) :time -1000000000.0)
+        )
+  (go (method-of-object this idle))
+  )
+
+;; definition of type rub-electric-gate-panel
+(deftype rub-electric-gate-panel (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  (:methods
+    (get-skel (_type_) art-group)
+    (setup-draw-masks (_type_ symbol int) none)
+    )
+  )
+
+;; definition for method 3 of type rub-electric-gate-panel
+(defmethod inspect ((this rub-electric-gate-panel))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate idle (rub-electric-gate-panel)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('on)
+       (setup-draw-masks self #t (the-as int (-> block param 0)))
+       )
+      (('off)
+       (setup-draw-masks self #f (the-as int (-> block param 0)))
+       )
+      )
+    )
+  :enter (behavior ()
+    (setup-draw-masks self #t -1)
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (ja-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 22 of type rub-electric-gate-panel
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-draw-masks ((this rub-electric-gate-panel) (arg0 symbol) (arg1 int))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type rub-electric-gate-panel
+(defmethod init-from-entity! ((this rub-electric-gate-panel) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
+  )
+
+;; definition of type rub-electric-gate-panel-a
+(deftype rub-electric-gate-panel-a (rub-electric-gate-panel)
+  ()
+  )
+
+;; definition for method 3 of type rub-electric-gate-panel-a
+(defmethod inspect ((this rub-electric-gate-panel-a))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rub-electric-gate-panel inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-electric-gate-panel-a rub-electric-gate-panel-a rub-electric-gate-panel-a-lod0-jg rub-electric-gate-panel-a-idle-ja
+              ((rub-electric-gate-panel-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 12 0 15)
+              )
+
+;; definition for method 22 of type rub-electric-gate-panel-a
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-draw-masks ((this rub-electric-gate-panel-a) (arg0 symbol) (arg1 int))
+  (let ((v1-0 1)
+        (a3-0 2)
+        )
+    (when (zero? arg1)
+      (set! v1-0 1)
+      (set! a3-0 2)
+      )
+    (if arg0
+        (setup-masks (-> this draw) v1-0 a3-0)
+        (setup-masks (-> this draw) a3-0 v1-0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type rub-electric-gate-panel-a
+(defmethod get-skel ((this rub-electric-gate-panel-a))
+  (art-group-get-by-name *level* "skel-rub-electric-gate-panel-a" (the-as (pointer level) #f))
+  )
+
+;; definition of type rub-electric-gate-panel-b
+(deftype rub-electric-gate-panel-b (rub-electric-gate-panel)
+  ()
+  )
+
+;; definition for method 3 of type rub-electric-gate-panel-b
+(defmethod inspect ((this rub-electric-gate-panel-b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rub-electric-gate-panel inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-electric-gate-panel-b rub-electric-gate-panel-b rub-electric-gate-panel-b-lod0-jg rub-electric-gate-panel-b-idle-ja
+              ((rub-electric-gate-panel-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 12 0 15)
+              )
+
+;; definition for method 22 of type rub-electric-gate-panel-b
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-draw-masks ((this rub-electric-gate-panel-b) (arg0 symbol) (arg1 int))
+  (let ((v1-0 3)
+        (a3-0 12)
+        )
+    (cond
+      ((zero? arg1)
+       (set! v1-0 1)
+       (set! a3-0 4)
+       )
+      ((= arg1 1)
+       (set! v1-0 2)
+       (set! a3-0 8)
+       )
+      )
+    (if arg0
+        (setup-masks (-> this draw) v1-0 a3-0)
+        (setup-masks (-> this draw) a3-0 v1-0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type rub-electric-gate-panel-b
+(defmethod get-skel ((this rub-electric-gate-panel-b))
+  (art-group-get-by-name *level* "skel-rub-electric-gate-panel-b" (the-as (pointer level) #f))
+  )
+
+;; definition of type rub-electric-gate-panel-c
+(deftype rub-electric-gate-panel-c (rub-electric-gate-panel)
+  ()
+  )
+
+;; definition for method 3 of type rub-electric-gate-panel-c
+(defmethod inspect ((this rub-electric-gate-panel-c))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rub-electric-gate-panel inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-electric-gate-panel-c rub-electric-gate-panel-c rub-electric-gate-panel-c-lod0-jg rub-electric-gate-panel-c-idle-ja
+              ((rub-electric-gate-panel-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 12 0 15)
+              )
+
+;; definition for method 22 of type rub-electric-gate-panel-c
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-draw-masks ((this rub-electric-gate-panel-c) (arg0 symbol) (arg1 int))
+  (let ((v1-0 7)
+        (a3-0 56)
+        )
+    (cond
+      ((zero? arg1)
+       (set! v1-0 1)
+       (set! a3-0 8)
+       )
+      ((= arg1 1)
+       (set! v1-0 2)
+       (set! a3-0 16)
+       )
+      ((= arg1 2)
+       (set! v1-0 4)
+       (set! a3-0 32)
+       )
+      )
+    (if arg0
+        (setup-masks (-> this draw) v1-0 a3-0)
+        (setup-masks (-> this draw) a3-0 v1-0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type rub-electric-gate-panel-c
+(defmethod get-skel ((this rub-electric-gate-panel-c))
+  (art-group-get-by-name *level* "skel-rub-electric-gate-panel-c" (the-as (pointer level) #f))
+  )
+
+;; definition of type rub-electric-gate-panel-d
+(deftype rub-electric-gate-panel-d (rub-electric-gate-panel)
+  ()
+  )
+
+;; definition for method 3 of type rub-electric-gate-panel-d
+(defmethod inspect ((this rub-electric-gate-panel-d))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type rub-electric-gate-panel inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-rub-electric-gate-panel-d rub-electric-gate-panel-d rub-electric-gate-panel-d-lod0-jg rub-electric-gate-panel-d-idle-ja
+              ((rub-electric-gate-panel-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 12 0 15)
+              )
+
+;; definition for method 22 of type rub-electric-gate-panel-d
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-draw-masks ((this rub-electric-gate-panel-d) (arg0 symbol) (arg1 int))
+  (let ((v1-0 31)
+        (a3-0 992)
+        )
+    (cond
+      ((zero? arg1)
+       (set! v1-0 1)
+       (set! a3-0 32)
+       )
+      ((= arg1 1)
+       (set! v1-0 2)
+       (set! a3-0 64)
+       )
+      ((= arg1 2)
+       (set! v1-0 4)
+       (set! a3-0 128)
+       )
+      ((= arg1 3)
+       (set! v1-0 8)
+       (set! a3-0 256)
+       )
+      ((= arg1 4)
+       (set! v1-0 16)
+       (set! a3-0 512)
+       )
+      )
+    (if arg0
+        (setup-masks (-> this draw) v1-0 a3-0)
+        (setup-masks (-> this draw) a3-0 v1-0)
+        )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 21 of type rub-electric-gate-panel-d
+(defmethod get-skel ((this rub-electric-gate-panel-d))
+  (art-group-get-by-name *level* "skel-rub-electric-gate-panel-d" (the-as (pointer level) #f))
+  )
+
+
+
+
