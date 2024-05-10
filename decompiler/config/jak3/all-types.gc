@@ -53424,7 +53424,7 @@
     (vehicle-method-65 (_type_) int) ;; 65 ;; (start-jump (_type_) none)
     (vehicle-method-66 (_type_ vector int) none) ;; 66
     (get-rider-in-seat (_type_ int) process) ;; 67 ;; (get-seat-count (_type_) int)
-    (vehicle-method-68 (_type_) process) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
+    (find-rider (_type_) process) ;; 68 ;; (compute-seat-position (_type_ vector int) none)
     (put-rider-in-seat (_type_ int process) none) ;; 69 ;; (get-rider-in-seat (_type_ int) process)
     (vehicle-method-70 (_type_) uint) ;; 70 ;; (vehicle-method-70 (_type_) process)
     (get-best-seat (_type_ vector vehicle-seat-flag int) int) ;; 71 ;; (put-rider-in-seat (_type_ int process-focusable) none)
@@ -58486,35 +58486,33 @@
 ;; king-rider                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype king-rider (process-focusable)
-  ((front-back-interp float   :offset-assert 208)
+  ((parent (pointer vehicle)  :override)
+   (front-back-interp float   :offset-assert 208)
    (left-right-interp float   :offset-assert 212)
    (up-down-interp    float   :offset-assert 216)
-   (complain-time     uint64  :offset-assert 224)
+   (complain-time     time-frame :offset-assert 224)
    (complain-speech   int32   :offset-assert 232)
-   (last-moved-time   uint64  :offset-assert 240)
+   (last-moved-time   time-frame :offset-assert 240)
    )
   :method-count-assert 30
   :size-assert         #xf8
   :flag-assert         #x1e008000f8
   (:state-methods
-    die ;; 29
     idle ;; 28
+    die ;; 29
     )
   )
-|#
 
-;; (define-extern king-pilot-trans function)
-;; (define-extern king-pilot-wcar-anim-loop function)
-;; (define-extern king-rider-init-by-other function)
-;; (define-extern king-rider-spawn function)
+(define-extern king-pilot-trans (function none :behavior king-rider))
+(define-extern king-pilot-wcar-anim-loop (function symbol :behavior king-rider))
+(define-extern king-rider-init-by-other (function vehicle object :behavior king-rider))
+(define-extern king-rider-spawn (function vehicle king-rider))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rubble-attack                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rub-missile (metalhead-grenade-shot)
   ()
   :method-count-assert 41
@@ -58524,57 +58522,49 @@
     impact ;; 22
     )
   )
-|#
 
-#|
 (deftype dm-missile-target (process-drawable)
-  ((ring-jmod       UNKNOWN 2 :offset-assert 200)
-   (ring-timer      uint64    :offset-assert 208)
-   (blink-timer     uint64    :offset-assert 216)
-   (target-sound-id uint32    :offset-assert 224)
-   (warn-sound-id   uint32    :offset-assert 228)
+  ((ring-jmod       joint-mod 2 :offset-assert 200)
+   (ring-timer      time-frame :offset-assert 208)
+   (blink-timer     time-frame :offset-assert 216)
+   (target-sound-id sound-id   :offset-assert 224)
+   (warn-sound-id   sound-id   :offset-assert 228)
    )
   :method-count-assert 22
   :size-assert         #xe8
   :flag-assert         #x16007000e8
   (:state-methods
-    lock ;; 21
     idle ;; 20
+    lock ;; 21
     )
   )
-|#
 
-#|
 (deftype rubble-attack-manager (task-manager)
-  ((missile-spawners  basic   :offset-assert 240)
-   (missile           uint64  :offset-assert 248)
-   (missile-target    uint64  :offset-assert 256)
-   (missile-timer     uint64  :offset-assert 264)
-   (vehicle-handle    uint64  :offset-assert 272)
-   (king-rider        uint64  :offset-assert 280)
-   (talk-timer        uint64  :offset-assert 288)
+  ((missile-spawners  (array vector) :offset-assert 240)
+   (missile           handle  :offset-assert 248)
+   (missile-target    handle  :offset-assert 256)
+   (missile-timer     time-frame  :offset-assert 264)
+   (vehicle-handle    handle  :offset-assert 272)
+   (king-rider        handle  :offset-assert 280)
+   (talk-timer        time-frame  :offset-assert 288)
    (played-speeches   uint32  :offset-assert 296)
-   (first-dp-noticed? basic   :offset-assert 300)
+   (first-dp-noticed? symbol  :offset-assert 300)
    )
   :method-count-assert 35
   :size-assert         #x130
   :flag-assert         #x2300b00130
   (:methods
-    (rubble-attack-manager-method-32 () none) ;; 32
-    (rubble-attack-manager-method-33 () none) ;; 33
-    (rubble-attack-manager-method-34 () none) ;; 34
-    )
-  (:state-methods
-    active ;; 15
+    (spawn-missile (_type_) none) ;; 32
+    (rubble-attack-manager-method-33 (_type_) none) ;; 33
+    (play-speech (_type_ int) symbol) ;; 34
     )
   )
-|#
 
-;; (define-extern dm-missile-target-post function)
-;; (define-extern dm-missile-target-handler function)
-;; (define-extern *dm-missile-target-shadow-control* shadow-control)
-;; (define-extern dm-missile-target-init-by-other function)
-;; (define-extern *missile-spawners-all* array)
+(define-extern dm-missile-target-post (function none :behavior dm-missile-target))
+(def-event-handler dm-missile-target-handler dm-missile-target)
+(define-extern *dm-missile-target-shadow-control* shadow-control)
+(define-extern dm-missile-target-init-by-other (function vector object :behavior dm-missile-target))
+(define-extern *missile-spawners-all* (array (array vector)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ai-task-h                      ;;
@@ -63723,11 +63713,11 @@
 ;; rubblea-init                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern rubblea-login function)
-;; (define-extern rubblea-activate function)
-;; (define-extern rubblea-deactivate function)
-;; (define-extern lpattack-login function)
-;; (define-extern lpattack-logout function)
+(define-extern rubblea-login (function level none))
+(define-extern rubblea-activate (function level none))
+(define-extern rubblea-deactivate (function level none))
+(define-extern lpattack-login (function level none))
+(define-extern lpattack-logout (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rubble-texture                 ;;
@@ -63749,138 +63739,121 @@
 ;; rubble-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-func-match-part-def function)
-;; (define-extern spt-func-part-rub-elec-gate function)
-;; (define-extern rub-elec-gate-adjust-particles function)
+(define-extern spt-func-match-part-def (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern spt-func-part-rub-elec-gate (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
+(define-extern rub-elec-gate-adjust-particles (function float float float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; rubble-obs                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype rub-tower (process-focusable)
-  ((last-attack-time   uint64  :offset-assert 208)
-   (collision-updated? basic   :offset-assert 216)
+  ((last-attack-time   time-frame  :offset-assert 208)
+   (collision-updated? symbol   :offset-assert 216)
    )
   :method-count-assert 35
   :size-assert         #xdc
   :flag-assert         #x23006000dc
-  (:methods
-    (rub-tower-method-32 () none) ;; 32
-    (rub-tower-method-33 () none) ;; 33
-    (rub-tower-method-34 () none) ;; 34
-    )
   (:state-methods
-    fallen ;; 31
-    fall ;; 30
-    unstable ;; 29
     idle ;; 28
+    (unstable float) ;; 29
+    fall ;; 30
+    fallen ;; 31
+    )
+  (:methods
+    (init-collision! (_type_) none) ;; 32
+    (check-impact (_type_ rigid-body-impact vehicle) symbol) ;; 33
+    (update-collision (_type_) none) ;; 34
     )
   )
-|#
 
-#|
 (deftype rub-electric-gate-switch (process-focusable)
-  ((part-sparks basic  :offset-assert 208)
+  ((part-sparks sparticle-launch-control  :offset-assert 208)
    )
   :method-count-assert 35
   :size-assert         #xd4
   :flag-assert         #x23006000d4
-  (:methods
-    (rub-electric-gate-switch-method-31 () none) ;; 31
-    (rub-electric-gate-switch-method-32 () none) ;; 32
-    (rub-electric-gate-switch-method-33 () none) ;; 33
-    (rub-electric-gate-switch-method-34 () none) ;; 34
-    )
   (:state-methods
-    exploded ;; 30
-    explode ;; 29
     idle ;; 28
+    explode ;; 29
+    exploded ;; 30
+    )
+  (:methods
+    (check-impact (_type_ rigid-body-impact vehicle) symbol) ;; 31
+    (go-explode (_type_) none) ;; 32
+    (spawn-joint-exploder (_type_) none) ;; 33
+    (update-draw-mask (_type_) none) ;; 34
     )
   )
-|#
 
-#|
 (deftype rub-elec-gate (process-drawable)
-  ((path-l             basic   :offset-assert 148)
-   (path-r             basic   :offset-assert 196)
-   (actor-group        uint32  :offset-assert 200)
-   (actor-group-count  int32   :offset-assert 204)
-   (width              float   :offset-assert 208)
-   (height             float   :offset-assert 212)
-   (active?            basic   :offset-assert 216)
-   (switch-status      uint8   :offset-assert 220)
-   (palette-id         int8    :offset-assert 221)
-   (hit-sound-id       uint32  :offset-assert 224)
-   (shutoff-delay-time uint64  :offset-assert 228)
+  ((path-r             path-control :offset-assert 200)
+   (actor-group        (pointer actor-group) :offset-assert 204)
+   (actor-group-count  int32   :offset-assert 208)
+   (width              float   :offset-assert 212)
+   (height             float   :offset-assert 216)
+   (active?            symbol  :offset-assert 220)
+   (switch-status      uint8   :offset-assert 224)
+   (palette-id         int8    :offset-assert 225)
+   (hit-sound-id       sound-id :offset-assert 228)
+   (shutoff-delay-time time-frame  :offset-assert 232)
    )
   :method-count-assert 23
   :size-assert         #xf0
   :flag-assert         #x17007000f0
-  (:methods
-    (rub-elec-gate-method-22 () none) ;; 22
-    )
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
+    )
+  (:methods
+    (toggle-blocking-plane (_type_ symbol) none) ;; 22
     )
   )
-|#
 
-#|
 (deftype rub-electric-gate-panel (process-drawable)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (rub-electric-gate-panel-method-21 () none) ;; 21
-    (rub-electric-gate-panel-method-22 () none) ;; 22
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (get-skel (_type_) art-group) ;; 21
+    (setup-draw-masks (_type_ symbol int) none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype rub-electric-gate-panel-a (rub-electric-gate-panel)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype rub-electric-gate-panel-b (rub-electric-gate-panel)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype rub-electric-gate-panel-c (rub-electric-gate-panel)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-#|
 (deftype rub-electric-gate-panel-d (rub-electric-gate-panel)
   ()
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
   )
-|#
 
-;; (define-extern rub-tower-event-handler function)
-;; (define-extern *rub-electric-gate-switch-exploder-params* joint-exploder-static-params)
+(def-event-handler rub-tower-event-handler rub-tower)
+(define-extern *rub-electric-gate-switch-exploder-params* joint-exploder-static-params)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; spyder                         ;;
@@ -65447,7 +65420,6 @@
 ;; hiphog-part                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hiphog-mirror-wf-pt (structure)
   ((x float  :offset-assert 0)
    (y float  :offset-assert 4)
@@ -65456,42 +65428,37 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern part-hiphog-sphere-vert-line-flicker function)
-;; (define-extern birth-func-hiphog-sphere function)
-;; (define-extern birth-func-rotate-minute function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
-;; (define-extern birth-func-rotate-hour function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
-;; (define-extern birth-func-rotate-second function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
-;; (define-extern *hiphog-mirror-sheen-waveform* object) ;; (inline-array ripple-wave)
-;; (define-extern hiphog-mirror-sheen-func function) ;; (function sparticle-system sparticle-cpuinfo matrix none)
+(define-extern part-hiphog-sphere-vert-line-flicker (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-hiphog-sphere (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-minute (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-hour (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern birth-func-rotate-second (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern *hiphog-mirror-sheen-waveform* (inline-array ripple-wave))
+(define-extern hiphog-mirror-sheen-func (function sparticle-system sparticle-cpuinfo matrix none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hiphog-scenes                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hip-door-b (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype hip-mirror (process-drawable)
   ()
   :method-count-assert 21
   :size-assert         #xc8
   :flag-assert         #x15005000c8
   (:state-methods
-    idle ;; 20, old: (idle () _type_ :state)
+    idle ;; 20
     )
   )
-|#
 
-;; (define-extern hiphog-activate function) ;; (function vector)
+(define-extern hiphog-activate (function vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ltnfxhip-texture               ;;
@@ -68014,8 +67981,8 @@
 ;; gungame-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern spt-birth-func-brightness-part-fma-daxter-guncourse-slide-dust function)
-;; (define-extern spt-birth-func-brightness-part-fma-daxter-guncourse-land-dust function)
+(define-extern spt-birth-func-brightness-part-fma-daxter-guncourse-slide-dust (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern spt-birth-func-brightness-part-fma-daxter-guncourse-land-dust (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; vinroom-scenes                 ;;
@@ -68026,117 +67993,114 @@
 ;; vinroom-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern birth-func-vinroom-sphere function) ;; (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none)
+(define-extern birth-func-vinroom-sphere (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; power-game                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype power-game-cell (structure)
   ((up    uint8  :offset-assert 0)
    (right uint8  :offset-assert 1)
    (down  uint8  :offset-assert 2)
    (left  uint8  :offset-assert 3)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
   )
-|#
 
-#|
 (deftype power-game-cam-info (structure)
   ((cam-pos           vector :inline :offset-assert 0)
-   (cam-pos-x-angle   deg            :offset-assert 16)
+   (cam-pos-x-angle   degrees        :offset-assert 16)
    (cam-dist          meters         :offset-assert 20)
-   (cam-x-angle       deg            :offset-assert 24)
-   (cam-y-angle       deg            :offset-assert 28)
-   (cam-y-angle-dest  deg            :offset-assert 32)
-   (cam-y-angle-speed deg            :offset-assert 36)
+   (cam-x-angle       degrees        :offset-assert 24)
+   (cam-y-angle       degrees        :offset-assert 28)
+   (cam-y-angle-dest  degrees        :offset-assert 32)
+   (cam-y-angle-speed degrees        :offset-assert 36)
    )
   :method-count-assert 9
   :size-assert         #x28
   :flag-assert         #x900000028
   )
-|#
 
-#|
 (deftype power-game (process-drawable)
-  ((task            basic                       :offset-assert 200)
-   (lentity         basic                       :offset-assert 204)
-   (hud-score       uint64                      :offset-assert 208)
-   (hud-goal        uint64                      :offset-assert 216)
+  ((self            power-game                  :override)
+   (root            collide-shape-moving        :override)
+   (task            game-task-control           :offset-assert 200)
+   (lentity         entity-actor                :offset-assert 204)
+   (hud-score       handle                      :offset-assert 208)
+   (hud-goal        handle                      :offset-assert 216)
    (base-score      float                       :offset-assert 224)
    (score           float                       :offset-assert 228)
-   (score-time      uint64                      :offset-assert 232)
-   (score-met       basic                       :offset-assert 240)
-   (game            uint32                      :offset-assert 244)
-   (blockers        basic                       :offset-assert 248)
-   (dots            basic                       :offset-assert 252)
+   (score-time      time-frame                  :offset-assert 232)
+   (score-met       symbol                      :offset-assert 240)
+   (game            (inline-array power-game-cell) :offset-assert 244)
+   (blockers        (array uint8)               :offset-assert 248)
+   (dots            (array uint8)               :offset-assert 252)
    (miss-max        int32                       :offset-assert 256)
    (miss-count      int32                       :offset-assert 260)
-   (miss-time       uint64                      :offset-assert 264)
+   (miss-time       time-frame                  :offset-assert 264)
    (point-win       float                       :offset-assert 272)
-   (game-start-time uint64                      :offset-assert 280)
-   (wave-start-time uint64                      :offset-assert 288)
+   (game-start-time time-frame                  :offset-assert 280)
+   (wave-start-time time-frame                  :offset-assert 288)
    (wave-index      int32                       :offset-assert 296)
    (difficulty      int32                       :offset-assert 300)
-   (speech-time     uint64                      :offset-assert 304)
+   (speech-time     time-frame                  :offset-assert 304)
    (speech-count    int32                       :offset-assert 312)
-   (speech-last     UNKNOWN             8       :offset-assert 316)
-   (spawn-time      uint64                      :offset-assert 352)
+   (speech-last     int32               8       :offset-assert 316)
+   (spawn-time      time-frame                  :offset-assert 352)
    (center          vector              :inline :offset-assert 368)
-   (corner          UNKNOWN             2       :offset-assert 384)
+   (corner          vector            2 :inline :offset-assert 384)
    (cam-targ        power-game-cam-info :inline :offset-assert 416)
    (cam-cur         power-game-cam-info :inline :offset-assert 464)
-   (player          uint64                      :offset-assert 504)
-   (chaser          uint64                      :offset-assert 512)
-   (zapper          UNKNOWN             5       :offset-assert 520)
-   (switcher        uint64                      :offset-assert 560)
-   (switcher-time   uint64                      :offset-assert 568)
-   (glyph           uint64                      :offset-assert 576)
-   (score-part      UNKNOWN             1       :offset-assert 584)
+   (player          handle                      :offset-assert 504)
+   (chaser          handle                      :offset-assert 512)
+   (zapper          handle              5       :offset-assert 520)
+   (switcher        handle                      :offset-assert 560)
+   (switcher-time   time-frame                  :offset-assert 568)
+   (glyph           handle                      :offset-assert 576)
+   (score-part      sparticle-launch-control 1  :offset-assert 584)
    )
   :method-count-assert 46
   :size-assert         #x24c
   :flag-assert         #x2e01d0024c
-  (:methods
-    (power-game-method-26 () none) ;; 26
-    (power-game-method-27 () none) ;; 27
-    (power-game-method-28 () none) ;; 28
-    (power-game-method-29 () none) ;; 29
-    (power-game-method-30 () none) ;; 30
-    (power-game-method-31 () none) ;; 31
-    (power-game-method-32 () none) ;; 32
-    (power-game-method-33 () none) ;; 33
-    (power-game-method-34 () none) ;; 34
-    (power-game-method-35 () none) ;; 35
-    (power-game-method-36 () none) ;; 36
-    (power-game-method-37 () none) ;; 37
-    (power-game-method-38 () none) ;; 38
-    (power-game-method-39 () none) ;; 39
-    (power-game-method-40 () none) ;; 40
-    (power-game-method-41 () none) ;; 41
-    (power-game-method-42 () none) ;; 42
-    (power-game-method-43 () none) ;; 43
-    (power-game-method-44 () none) ;; 44
-    (power-game-method-45 () none) ;; 45
-    )
   (:state-methods
-    win ;; 25
-    lose ;; 24
-    active ;; 23
-    wait-for-start ;; 22
     idle ;; 20
     hide ;; 21
+    wait-for-start ;; 22
+    (active symbol) ;; 23
+    (lose symbol) ;; 24
+    (win symbol) ;; 25
+    )
+  (:methods
+    (power-game-active-post (_type_) none) ;; 26
+    (update-score-and-give-orbs (_type_) none) ;; 27
+    (spawn-switcher (_type_) none) ;; 28
+    (update-score-text (_type_) none) ;; 29
+    (update-cam (_type_) none) ;; 30
+    (get-center-pos! (_type_ vector float float) vector) ;; 31
+    (power-game-method-32 (_type_ float float) int) ;; 32
+    (power-game-method-33 (_type_ float float int) uint) ;; 33
+    (power-game-method-34 (_type_ float float) int) ;; 34
+    (power-game-method-35 (_type_ float float int) int) ;; 35
+    (power-game-method-36 (_type_ float float int float float) float) ;; 36
+    (power-game-method-37 (_type_ float float int) float) ;; 37
+    (power-game-method-38 (_type_ vector int) vector) ;; 38
+    (power-game-method-39 (_type_ int) int) ;; 39
+    (power-game-method-40 (_type_ int) symbol) ;; 40
+    (power-game-method-41 (_type_ vector) power-game-cell) ;; 41
+    (power-game-method-42 (_type_ vector int int) symbol) ;; 42
+    (power-game-method-43 (_type_ int) rgba) ;; 43
+    (power-game-method-44 (_type_ float float int int) none) ;; 44
+    (set-last-speech (_type_ int int) int) ;; 45
     )
   )
-|#
 
-#|
 (deftype power-game-object (process-focusable)
-  ((local       vector :inline :offset-assert 208)
+  ((parent      (pointer power-game) :override)
+   (local       vector :inline :offset-assert 208)
    (dir         int8           :offset-assert 224)
    (next-dir    int8           :offset-assert 225)
    (slide-dir   int8           :offset-assert 226)
@@ -68144,27 +68108,25 @@
    (slide-dist  int32          :offset-assert 232)
    (slide-speed float          :offset-assert 236)
    (slide-count int32          :offset-assert 240)
-   (slide-lock  basic          :offset-assert 244)
+   (slide-lock  symbol         :offset-assert 244)
    (slide-dest  vector :inline :offset-assert 256)
    (turn-pos    vector :inline :offset-assert 272)
-   (target      uint64         :offset-assert 288)
-   (start-time  uint64         :offset-assert 296)
+   (target      handle         :offset-assert 288)
+   (start-time  time-frame     :offset-assert 296)
    )
   :method-count-assert 32
   :size-assert         #x130
   :flag-assert         #x2000b00130
-  (:methods
-    (power-game-object-method-30 () none) ;; 30
-    (power-game-object-method-31 () none) ;; 31
-    )
   (:state-methods
-    die ;; 29
     active ;; 28
+    die ;; 29
+    )
+  (:methods
+    (power-game-object-method-30 (_type_) none) ;; 30
+    (power-game-object-method-31 (_type_) none) ;; 31
     )
   )
-|#
 
-#|
 (deftype power-game-player (power-game-object)
   ((slide-rel-dir int32  :offset-assert 304)
    )
@@ -68172,13 +68134,11 @@
   :size-assert         #x134
   :flag-assert         #x2000c00134
   (:state-methods
-    die ;; 29
     active ;; 28
+    die ;; 29
     )
   )
-|#
 
-#|
 (deftype power-game-chaser (power-game-object)
   ((targ-dist float  :offset-assert 304)
    )
@@ -68189,78 +68149,71 @@
     active ;; 28
     )
   )
-|#
 
-#|
 (deftype power-game-switcher (power-game-object)
   ((targ-dist float   :offset-assert 304)
-   (turn-time uint64  :offset-assert 312)
+   (turn-time time-frame :offset-assert 312)
    )
   :method-count-assert 33
   :size-assert         #x140
   :flag-assert         #x2100c00140
   (:state-methods
-    die ;; 29
     active ;; 28
+    die ;; 29
     idle ;; 32
     )
   )
-|#
 
-#|
 (deftype power-game-zapper (power-game-object)
-  ((change-time     uint64  :offset-assert 304)
-   (close-time      uint64  :offset-assert 312)
-   (switch-duration uint64  :offset-assert 320)
-   (lane-time       uint64  :offset-assert 328)
+  ((change-time     time-frame :offset-assert 304)
+   (close-time      time-frame :offset-assert 312)
+   (switch-duration time-frame :offset-assert 320)
+   (lane-time       time-frame :offset-assert 328)
    (lane-target     int32   :offset-assert 336)
    (lane-target-old int32   :offset-assert 340)
    (lane-old        int32   :offset-assert 344)
-   (rings           uint32  :offset-assert 348)
+   (rings           (pointer manipy) :offset-assert 348)
    )
   :method-count-assert 32
   :size-assert         #x160
   :flag-assert         #x2000e00160
   (:state-methods
-    die ;; 29
     active ;; 28
+    die ;; 29
     )
   )
-|#
 
-#|
 (deftype power-game-glyph (power-game-object)
   ((pickup-type int32  :offset-assert 304)
-   (angle       deg    :offset-assert 308)
+   (angle       degrees :offset-assert 308)
    )
   :method-count-assert 33
   :size-assert         #x138
   :flag-assert         #x2100c00138
-  (:methods
-    (power-game-glyph-method-32 () none) ;; 32
-    )
   (:state-methods
-    die ;; 29
     active ;; 28
+    die ;; 29
+    )
+  (:methods
+    (power-game-glyph-method-32 (_type_) none) ;; 32
     )
   )
-|#
 
-;; (define-extern birth-func-power-score function)
-;; (define-extern *power-game-track* object)
-;; (define-extern *power-game* object)
-;; (define-extern *power-game-speech-list* object)
-;; (define-extern power-game-player-post function)
-;; (define-extern power-game-player-init function)
-;; (define-extern power-game-chaser-post function)
-;; (define-extern power-game-chaser-init function)
-;; (define-extern power-game-switcher-post function)
-;; (define-extern power-game-switcher-init function)
-;; (define-extern power-game-zapper-post function)
-;; (define-extern power-game-zapper-init function)
-;; (define-extern power-game-glyph-post function)
-;; (define-extern power-game-glyph-init function)
-;; (define-extern cam-power-game-update function)
+(define-extern birth-func-power-score (function sparticle-system sparticle-cpuinfo sprite-vec-data-3d sparticle-launcher sparticle-launch-state none))
+(define-extern *power-game-track* (inline-array power-game-cell))
+(define-extern *power-game* (pointer power-game))
+(define-extern *power-game-speech-list* (inline-array talker-speech-class))
+(define-extern power-game-player-post (function none :behavior power-game-player))
+(define-extern power-game-player-init (function vector entity-actor object :behavior power-game-player))
+(define-extern power-game-chaser-post (function none :behavior power-game-chaser))
+(define-extern power-game-chaser-init (function vector entity-actor handle object :behavior power-game-chaser))
+(define-extern power-game-switcher-post (function none :behavior power-game-switcher))
+(define-extern power-game-switcher-init (function vector entity-actor handle object :behavior power-game-switcher))
+(define-extern power-game-zapper-post (function none :behavior power-game-zapper))
+(define-extern power-game-zapper-init (function vector entity-actor handle int object :behavior power-game-zapper))
+(define-extern power-game-glyph-post (function none :behavior power-game-glyph))
+(define-extern power-game-glyph-init (function vector entity-actor handle int object :behavior power-game-glyph))
+(define-extern cam-power-game-update (function none :behavior power-game))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ljkdxvin-texture               ;;
