@@ -12,6 +12,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_actors.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
+#include "decompiler/level_extractor/extract_hfrag.h"
 #include "decompiler/level_extractor/extract_joint_group.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "decompiler/level_extractor/extract_shrub.h"
@@ -150,9 +151,8 @@ std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
 
-  level_tools::DrawStats draw_stats;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version(), true);
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, db.version(), true);
 
   return bsp_header.texture_remap_table;
 }
@@ -174,10 +174,8 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
 
-  level_tools::DrawStats draw_stats;
-  // draw_stats.debug_print_dma_data = true;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, db.version());
   ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
 
   // grrr.....
@@ -256,6 +254,9 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
     ASSERT(!got_collide);
     extract_collide_frags(bsp_header.collide_hash, all_ties, config,
                           fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data);
+  }
+  if (bsp_header.hfrag) {
+    extract_hfrag(bsp_header, tex_db, &level_data);
   }
   level_data.level_name = bsp_header.name;
 

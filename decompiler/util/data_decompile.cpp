@@ -1233,7 +1233,10 @@ goos::Object decompile_structure(const TypeSpec& type,
         auto len = field.array_size();
         auto stride = ts.get_size_in_type(field) / len;
         ASSERT(stride == field_type_info->get_size_in_memory());
-
+        if (field.type() == TypeSpec("int128") || field.type() == TypeSpec("uint128")) {
+          lg::die("Trying to decompile field {} of {} as an array of type {} not supported",
+                  field.name(), type_info->get_name(), field.type().print());
+        }
         field_defs_out.emplace_back(
             field.name(), decompile_value_array(field.type(), field_type_info, len, stride,
                                                 field_start, obj_words, ts));

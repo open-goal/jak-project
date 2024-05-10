@@ -601,13 +601,7 @@ void extract_shrub(const shrub_types::DrawableTreeInstanceShrub* tree,
   }
 
   // time of day colors
-  tree_out.time_of_day_colors.resize(tree->time_of_day.height);
-  for (int k = 0; k < (int)tree->time_of_day.height; k++) {
-    for (int j = 0; j < 8; j++) {
-      memcpy(tree_out.time_of_day_colors[k].rgba[j].data(), &tree->time_of_day.colors[k * 8 + j],
-             4);
-    }
-  }
+  tree_out.time_of_day_colors = pack_colors(tree->time_of_day);
 
   make_draws(out, tree_out, proto_info, tex_db);
 

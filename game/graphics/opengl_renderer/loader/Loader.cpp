@@ -9,16 +9,6 @@
 
 #include "third-party/imgui/imgui.h"
 
-namespace {
-std::string uppercase_string(const std::string& s) {
-  std::string result;
-  for (auto c : s) {
-    result.push_back(toupper(c));
-  }
-  return result;
-}
-}  // namespace
-
 Loader::Loader(const fs::path& base_path, int max_levels)
     : m_base_path(base_path), m_max_levels(max_levels) {
   m_loader_thread = std::thread(&Loader::loader_thread, this);
@@ -49,6 +39,13 @@ const LevelData* Loader::get_tfrag3_level(const std::string& level_name) {
   } else {
     existing->second->frames_since_last_used = 0;
     return existing->second.get();
+  }
+}
+
+void Loader::debug_print_loaded_levels() {
+  std::unique_lock<std::mutex> lk(m_loader_mutex);
+  for (const auto& [name, _] : m_loaded_tfrag3_levels) {
+    fmt::print("{}\n", name);
   }
 }
 
@@ -492,6 +489,9 @@ void Loader::update(TexturePool& texture_pool) {
             m_garbage_buffers.push_back(tfrag_buff);
           }
         }
+
+        m_garbage_buffers.push_back(lev->hfrag_indices);
+        m_garbage_buffers.push_back(lev->hfrag_indices);
 
         m_garbage_buffers.push_back(lev->collide_vertices);
         m_garbage_buffers.push_back(lev->merc_vertices);

@@ -3543,8 +3543,8 @@
   (bucket5 5) ;; sky
   (bucket6 6) ;; ocean
   (bucket7 7) ;; unknown new jak 3 texture upload, for all levels.
-  (bucket8 8) ;; hfrag
-  (bucket9 9) ;; hfrag
+  (hfrag 8) ;; hfrag
+  (hfrag-scissor 9) ;; hfrag
 
   (tex-l0-tfrag 10) ;; texture
   (tfrag-l0-tfrag 11)     ;; tfrag
@@ -4237,8 +4237,8 @@
   (rn3)
   (rn4)
   (rn5)
-  (rn6)
-  (rn7)
+  (hfrag)
+  (hfrag-scissor)
   (tfrag)
   (tie-scissor)
   (tie)
@@ -6478,7 +6478,7 @@
    (h            int16                 :offset-assert 6)
    (num-mips     uint8                 :offset-assert 8)
    (tex1-control uint8                 :offset-assert 9)
-   (psm          uint8                 :offset-assert 10) ;; gs-psm
+   (psm          gs-psm                :offset-assert 10) ;; gs-psm
    (mip-shift    uint8                 :offset-assert 11)
    (clutpsm      uint16                :offset-assert 12)
    (dest         uint16        7       :offset-assert 14) ;; guessed by decompiler
@@ -6639,11 +6639,11 @@
    of the texture."
   ((quad       qword           5 :inline :offset-assert 0 :score -100) ;; guessed by decompiler
    (prims      gs-reg64        10 :offset 0 :score -100) ;; guessed by decompiler
-   (reg-0      uint8              :offset 8)
-   (reg-1      uint8              :offset 24)
-   (reg-2      uint8              :offset 40)
-   (reg-3      uint8              :offset 56)
-   (reg-4      uint8              :offset 72)
+   (reg-0      gs-reg              :offset 8)
+   (reg-1      gs-reg              :offset 24)
+   (reg-2      gs-reg              :offset 40)
+   (reg-3      gs-reg              :offset 56)
+   (reg-4      gs-reg              :offset 72)
    (tex0       gs-tex0             :offset 0) ;;
    (tex1       gs-tex1             :offset 16) ;;
    (miptbp1    gs-miptbp             :offset 32) ;;
@@ -7529,7 +7529,7 @@
   (lf11 11)
   (lf12 12)
   (lf13 13)
-  (lf14 14)
+  (low-res-hfrag 14)
   (lf15 15)
   (lf16 16)
   (lf17 17)
@@ -11349,7 +11349,7 @@
     (billboard 33)
     (instance-shrubbery 34)
 
-
+    (hfragment 43)
     (entity 44)
     (camera 45)
 
@@ -25019,10 +25019,10 @@
   )
 
 (deftype hfrag-bucket (structure)
-  ((next                 uint32  :offset-assert 0)
+  ((next                 pointer  :offset-assert 0)
    (count                uint16  :offset-assert 4)
-   (vertex-count         uint16  :offset-assert 6)
-   (next-scissor         uint32  :offset-assert 8)
+   (vertex-count         uint16  :offset-assert 6) ;; toggles between 32 and 16???
+   (next-scissor         pointer  :offset-assert 8)
    (count-scissor        uint16  :offset-assert 12)
    (vertex-count-scissor uint16  :offset-assert 14)
    )
@@ -25032,7 +25032,8 @@
   )
 
 (deftype hfrag-packed-index (uint16)
-  ((bit11 uint8 :offset 11 :size 5)
+  ((color uint16 :offset 0 :size 11) ;; color index in palette
+   (bit11 uint8 :offset 11 :size 5) ;; tells you which bucket
     )
   :flag-assert #x900000002
   )
@@ -25041,6 +25042,7 @@
   ((height       uint16  :offset-assert 0)
    (packed-index hfrag-packed-index  :offset-assert 2)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x4
   :flag-assert         #x900000004
@@ -25048,8 +25050,8 @@
 
 (deftype hfrag-vert-index (structure)
   ((pos    vector2ub :inline :offset-assert 0)
-   (index0 uint16            :offset 2)
-   (index1 uint16            :offset 4)
+   (index0 uint16            :offset 2) ;; high lod
+   (index1 uint16            :offset 4) ;; average between this and index2 for low-lod
    (index2 uint16            :offset 6)
    )
   :pack-me
@@ -25060,6 +25062,7 @@
 
 ;; note: the poly vert-index stuff is a total guess!
 
+;; 2x2
 (deftype hfrag-poly4 (structure)
   ((data hfrag-vert-index 4 :inline  :offset-assert 0) ;; field could not be read.
    )
@@ -25068,22 +25071,27 @@
   :flag-assert         #x900000020
   )
 
+;; 3x3
 (deftype hfrag-poly9 (structure)
   ((data hfrag-vert-index 9 :inline  :offset-assert 0) ;; field could not be read.
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x48
   :flag-assert         #x900000048
   )
 
+;; 5x5
 (deftype hfrag-poly25 (structure)
   ((data hfrag-vert-index 25 :inline  :offset-assert 0) ;; field could not be read.
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #xc8
   :flag-assert         #x9000000c8
   )
 
+;; literal dma data to go to VU1
 (deftype hfrag-poly4-chain (structure)
   ((tag   dma-packet :inline :offset-assert 0)
    (verts vector4w-3    4  :inline     :offset-assert 16)
@@ -25165,7 +25173,8 @@
 
 (deftype hfrag-init-packet (structure)
   ((init-tmpl dma-packet :inline :offset-assert 0)
-   (init-data uint32    8       :offset-assert 16)
+   (init-data uint32    8       :offset-assert 16) ;; last one is viftag for mscalf sometimes?
+   (init-vif  vif-tag :overlay-at (-> init-data 7))
    ;(quad      UNKNOWN    3       :offset-assert 0)
    )
   :method-count-assert 9
@@ -25205,13 +25214,13 @@
   )
 
 (deftype hfrag-tex-data (structure)
-  ((quad     qword 3 :inline :offset-assert 0)
-   (prims    uint64 6 :offset 0)
-   (reg-0    uint8     :offset 8)
-   (reg-1    uint8     :offset 24)
-   (reg-2    uint8     :offset 40)
-   (tex0     uint64    :offset 0)
-   (tex1     uint64    :offset 16)
+  ((quad     qword 3 :inline :offset-assert 0 :score -1)
+   (prims    uint64 6 :offset 0 :score -1)
+   (reg-0    gs-reg     :offset 8)
+   (reg-1    gs-reg     :offset 24)
+   (reg-2    gs-reg     :offset 40)
+   (tex0     gs-tex0    :offset 0)
+   (tex1     gs-tex1    :offset 16)
    (texflush uint64    :offset 32)
    )
   :method-count-assert 9
@@ -25255,16 +25264,16 @@
   )
 
 (deftype hfrag-frame (structure)
-  ((quad     qword 4 :inline :offset 0)
-   (prims    uint64 8 :offset 0)
-   (reg-0    uint8     :offset 8)
-   (reg-1    uint8     :offset 24)
-   (reg-2    uint8     :offset 40)
-   (reg-3    uint8     :offset 56)
-   (frame    uint64    :offset 0)
-   (scissor  uint64    :offset 16)
-   (xyoffset uint64    :offset 32)
-   (test     uint64    :offset 48)
+  ((quad     qword 4 :inline :offset 0 :score -1)
+   (prims    uint64 8 :offset 0 :score -1)
+   (reg-0    gs-reg     :offset 8)
+   (reg-1    gs-reg     :offset 24)
+   (reg-2    gs-reg     :offset 40)
+   (reg-3    gs-reg     :offset 56)
+   (frame    gs-frame    :offset 0)
+   (scissor  gs-scissor    :offset 16)
+   (xyoffset gs-xy-offset    :offset 32)
+   (test     gs-test    :offset 48)
    )
   :method-count-assert 9
   :size-assert         #x40
@@ -25282,31 +25291,31 @@
 
 (deftype hfragment (drawable)
   ((start-corner     vector :inline :offset-assert 32)
-   (spheres          uint32         :offset-assert 48)
-   (visids           uint32         :offset-assert 52)
+   (spheres          (inline-array vector)         :offset-assert 48)
+   (visids           (pointer int16)         :offset-assert 52)
    (shaders          (inline-array adgif-shader) :offset-assert 56)
-   (colors           basic          :offset-assert 60)
-   (montage          uint32         :offset-assert 64)
-   (buckets-far      uint32         :offset-assert 68)
-   (buckets-mid      uint32         :offset-assert 72)
-   (buckets-near     uint32         :offset-assert 76)
-   (verts            (inline-array hfrag-vertex) :offset-assert 80)
-   (pat-array        (pointer pat-surface) :offset-assert 84)
-   (pat-length       uint16         :offset-assert 88)
-   (num-buckets-far  uint16         :offset-assert 90)
-   (num-buckets-mid  uint16         :offset-assert 92)
-   (num-buckets-near uint16         :offset-assert 94)
-   (size             uint32         :offset 44)
+   (colors           time-of-day-palette       :offset-assert 60)
+   (montage          uint32         :offset-assert 64) ;; 8272
+   (buckets-far      (inline-array hfrag-bucket)   :offset-assert 68) ;; 8276
+   (buckets-mid      (inline-array hfrag-bucket)         :offset-assert 72) ;; 8280
+   (buckets-near     (inline-array hfrag-bucket)         :offset-assert 76) ;; 8284
+   (verts            (inline-array hfrag-vertex) :offset-assert 80) ;; 8288
+   (pat-array        (pointer pat-surface) :offset-assert 84) ;; 8292
+   (pat-length       uint16         :offset-assert 88) ;; 8296
+   (num-buckets-far  uint16         :offset-assert 90) ;; 8298
+   (num-buckets-mid  uint16         :offset-assert 92) ;; 8300
+   (num-buckets-near uint16         :offset-assert 94) ;; 8302
+   (size             uint32         :offset 44 :score 1)
    )
   :method-count-assert 22
   :size-assert         #x60
   :flag-assert         #x1600000060
   (:methods
-    (hfragment-method-17 (_type_ collide-cache collide-query) none) ;; 17
-    (hfragment-method-18 (_type_ collide-cache collide-query) none) ;; 18
-    (hfragment-method-19 (_type_ collide-cache collide-query int int int int) none) ;; 19
-    (hfragment-method-20 (_type_ collide-cache int int uint uint uint pat-surface) none) ;; 20
-    (hfragment-method-21 (_type_ collide-cache int int uint uint uint pat-surface) none) ;; 21
+    (bounding-box-query (_type_ collide-cache collide-query) none) ;; 17
+    (line-sphere-query (_type_ collide-cache collide-query) none) ;; 18
+    (add-tri-to-collide-cache (_type_ collide-cache collide-query int int int int) none) ;; 19
+    (add-tri-a-xy-zzz-to-collide-cache (_type_ collide-cache int int uint uint uint pat-surface) none) ;; 20
+    (add-tri-b-xy-zzz-to-collide-cache (_type_ collide-cache int int uint uint uint pat-surface) none) ;; 21
     )
   )
 
@@ -25333,16 +25342,16 @@
    (poly4-tmpl             dma-packet            3  :inline     :offset-assert 1088)
    (poly9-tmpl             dma-packet            3  :inline       :offset-assert 1136)
    (poly25-tmpl            dma-packet            3  :inline       :offset-assert 1184)
-   (init-tmpl              dma-packet            3  :inline       :offset-assert 1232) ;; ??
-   (control-tmpl           dma-packet            2  :inline       :offset 1376)
+   (init-tmpl              hfrag-init-packet     3  :inline       :offset-assert 1232) ;; ??
+   (control-tmpl           dma-packet            2  :inline       :offset-assert 1376)
    (heights4-tmpl          dma-packet            2  :inline       :offset-assert 1408)
    (colors4-tmpl           dma-packet            2  :inline       :offset-assert 1440)
    (heights9-tmpl          dma-packet            2  :inline       :offset-assert 1472)
    (colors9-tmpl           dma-packet            2  :inline       :offset-assert 1504)
    (heights25-tmpl         dma-packet            2  :inline       :offset-assert 1536)
    (colors25-tmpl          dma-packet            2  :inline       :offset-assert 1568)
-   (init-vu1-tmpl          dma-packet            2  :inline       :offset-assert 1600) ;; ??
-   (next-tmpl              dma-packet         :inline :offset 1696)
+   (init-vu1-tmpl          hfrag-init-packet     2  :inline       :offset-assert 1600) ;; ??
+   (next-tmpl              dma-packet         :inline :offset-assert 1696)
    (call-tmpl              dma-packet         :inline :offset-assert 1712)
    (ret-tmpl               dma-packet         :inline :offset-assert 1728)
    (next-scissor-tmpl      dma-packet         :inline :offset-assert 1744)
@@ -25353,45 +25362,45 @@
    (adgif-tmpl2            dma-gif-packet     :inline :offset-assert 2160)
    (sprite-tmpl            dma-gif-packet     :inline :offset-assert 2192)
    (mip-tmpl               dma-gif-packet     :inline :offset-assert 2224)
-   (color                  uint128            6       :offset-assert 2256)
+   (color                  vector4w            6 :inline       :offset-assert 2256)
    (far-data               hfrag-sprite-coord :inline :offset-assert 2352)
    (near-data              vector4w-2            16 :inline      :offset-assert 2384)
-   (mip-data               vector4w-3            7 :inline       :offset 2896)
-   (tex-data               hfrag-tex-data            5       :offset 3120)
-   (tex                    uint128            6       :offset 3360)
-   (montage-tex-coords     uint128            128     :offset 3456)
+   (mip-data               vector4w-2    7 :inline       :offset-assert 2896)
+   (tex-data               hfrag-tex-data      5 :inline      :offset-assert 3120)
+   (tex                    vector              6 :inline     :offset-assert 3360)
+   (montage-tex-coords     hfrag-montage-coord            128  :inline    :offset 3456)
    (giftag                 generic-gif-tag    :inline :offset 7552)
    (call-abort             dma-packet         :inline :offset-assert 7568)
    (call-abort-vu1         dma-packet         :inline :offset-assert 7584)
    (shader-far             adgif-shader       :inline :offset-assert 7600)
    (shader-mid             adgif-shader       :inline :offset-assert 7680)
    (shader-near            adgif-shader       :inline :offset-assert 7760)
-   (stq                    uint128            9       :offset-assert 7840)
+   (stq                    vector4w            9  :inline      :offset-assert 7840)
    (shader                 adgif-shader       :inline :offset-assert 7984)
    (constants              vector             :inline :offset-assert 8064)
    (pos-temp               vector4w           :inline :offset-assert 8080)
    (trans-temp             vector             :inline :offset 8080)
    (dists                  vector             :inline :offset-assert 8096)
    (rdists                 vector             :inline :offset-assert 8112)
-   (call-poly4-near        uint32                     :offset-assert 8128)
-   (call-poly9-mid         uint32                     :offset-assert 8132)
-   (call-poly9-near        uint32                     :offset-assert 8136)
-   (call-poly25-far        uint32                     :offset-assert 8140)
-   (call-poly25-mid        uint32                     :offset-assert 8144)
+   (call-poly4-near        vif-tag                     :offset-assert 8128)
+   (call-poly9-mid         vif-tag                     :offset-assert 8132)
+   (call-poly9-near        vif-tag                     :offset-assert 8136)
+   (call-poly25-far        vif-tag                     :offset-assert 8140)
+   (call-poly25-mid        vif-tag                     :offset-assert 8144)
    (dma-buffer             basic                      :offset-assert 8148)
-   (base                   uint32                     :offset-assert 8152)
+   (base                   uint32                     :offset-assert 8152) ;; dma-buffer.base
    (wait-to-spr            uint32                     :offset-assert 8156)
    (wait-from-spr          uint32                     :offset-assert 8160)
    (buffer-end             uint32                     :offset-assert 8164)
    (subdiv-index           uint32                     :offset-assert 8168)
-   (scissor                basic                      :offset-assert 8172)
+   (scissor                symbol                     :offset-assert 8172)
    (chain-ptr              uint32                     :offset-assert 8176)
    (chain-ptr-next         uint32                     :offset-assert 8180)
    (near-dist              float                      :offset-assert 8184)
    (far-dist               float                      :offset-assert 8188)
-   (to-spr                 uint32                     :offset-assert 8192)
+   (to-spr                 uint32                     :offset-assert 8192) ;; dma control register
    (from-spr               uint32                     :offset-assert 8196)
-   (lowres-flag            basic                      :offset-assert 8200)
+   (lowres-flag            symbol                      :offset-assert 8200)
    (hfrag                  hfragment          :inline :offset-assert 8208)
    (next-far               int16                      :offset-assert 8304)
    (next-far-mid           int16                      :offset-assert 8306)
@@ -25419,45 +25428,46 @@
    (size-near-scissor      int32                      :offset-assert 8364)
    (size-texture           int32                      :offset-assert 8368)
    (poly-far               hfrag-poly25               :offset-assert 8372)
-   (poly-mid25             uint32                     :offset-assert 8376)
-   (poly-mid               uint32                     :offset-assert 8380)
-   (poly-near              uint32                     :offset-assert 8384)
-   (far-texture            uint32                     :offset-assert 8388)
+   (poly-mid25             (inline-array hfrag-poly25) :offset-assert 8376)
+   (poly-mid               (inline-array hfrag-poly9)  :offset-assert 8380)
+   (poly-near              (inline-array hfrag-poly9)   :offset-assert 8384)
+   (far-texture            pointer                     :offset-assert 8388)
    (near-textures          uint16            16      :offset-assert 8392)
-   (draw-table             uint16            1024    :offset 8456)
-   (corners                uint128            1024    :offset-assert 10512)
+   (draw-table             int16            1024    :offset 8456)
+   ;; 32 x 32 grid, (z * 32 + x)
+   (corners                vector 1024 :inline                :offset-assert 10512)
    )
   :method-count-assert 36
   :size-assert         #x6910
   :flag-assert         #x2400006910
   (:methods
-    (hfrag-work-method-9 () none) ;; 9
-    (hfrag-work-method-10 () none) ;; 10
-    (hfrag-work-method-11 () none) ;; 11
-    (hfrag-work-method-12 () none) ;; 12
-    (hfrag-work-method-13 () none) ;; 13
-    (hfrag-work-method-14 () none) ;; 14
-    (hfrag-work-method-15 () none) ;; 15
-    (hfrag-work-method-16 () none) ;; 16
-    (hfrag-work-method-17 () none) ;; 17
-    (hfrag-work-method-18 () none) ;; 18
+    (initialize-renderer! (_type_) none) ;; 9
+    (init-work-from-current-hfrag! (_type_) none) ;; 10
+    (pick-level-of-detail! (_type_ level) none) ;; 11 (unk argument)
+    (generate-vertices! (_type_) none) ;; 12
+    (finalize-dma! (_type_) none) ;; 13, calls shader funcs and calls init buf
+    (setup-far-vertex-index! (_type_ hfrag-vert-index int int) none) ;; 14
+    (setup-mid-vertex-index! (_type_ hfrag-vert-index int int) none) ;; 15
+    (setup-near-vertex-index! (_type_ hfrag-vert-index int int) none) ;; 16
+    (init-montage-tex-coords (_type_) none) ;; 17
+    (asm-far-scissor (_type_ dma-buffer int) none) ;; 18
     (hfrag-work-method-19 () none) ;; 19
     (hfrag-work-method-20 () none) ;; 20
-    (hfrag-work-method-21 () none) ;; 21
-    (hfrag-work-method-22 () none) ;; 22
-    (hfrag-work-method-23 () none) ;; 23
-    (hfrag-work-method-24 () none) ;; 24
-    (hfrag-work-method-25 () none) ;; 25
-    (hfrag-work-method-26 () none) ;; 26
-    (hfrag-work-method-27 () none) ;; 27
-    (hfrag-work-method-28 () none) ;; 28
-    (hfrag-work-method-29 () none) ;; 29
-    (hfrag-work-method-30 () none) ;; 30
-    (hfrag-work-method-31 () none) ;; 31
-    (hfrag-work-method-32 () none) ;; 32
-    (hfrag-work-method-33 () none) ;; 33
-    (hfrag-work-method-34 () none) ;; 34
-    (hfrag-work-method-35 () none) ;; 35
+    (asm-near-mid-scissor (_type_ dma-buffer int) none) ;; 21
+    (hfrag-work-method-22 () none) ;; 22 asm
+    (generate-montage-texture (_type_) none) ;; 23, also asm
+    (hfrag-work-method-24 (_type_ dma-buffer) none) ;; 24 scissor related, spad dma?
+    (hfrag-work-method-25 (_type_ dma-buffer) none) ;; 25 scissor related, spad dma
+    (hfrag-work-method-26 (_type_ dma-buffer) none) ;; 26 scissor related, spad dma
+    (asm-far (_type_ dma-buffer int) none) ;; 27 asm, dma and some conversions
+    (asm-far-mid (_type_ dma-buffer int) none) ;; 28 asm (large), dma, vector transformation?, unpacking
+    (asm-mid (_type_ dma-buffer int) none) ;; 29 asm, similar to 28
+    (asm-near-mid (_type_ dma-buffer int) none) ;; 30 asm, similar to 29/28
+    (asm-near (_type_ dma-buffer int) none) ;; 31 asm, near? has vclip
+    (hfrag-work-method-32 (_type_ dma-buffer) none) ;; 32 asm, dma
+    (hfrag-work-method-33 (_type_ dma-buffer) none) ;; 33 asm, dma
+    (hfrag-work-method-34 (_type_ dma-buffer) none) ;; 34 asm, dma
+    (trim-dma-to-fit-in-memory (_type_) none) ;; 35 adding only thing we have dma memory for.
     )
   )
 
@@ -52362,53 +52372,46 @@
 ;; hfrag-vu1-h                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype hfrag-vu1-poly4-packet (structure)
   ((height-tag dma-packet :inline :offset-assert 0)
    (base       vector     :inline :offset-assert 16)
-   (heights    UNKNOWN    4       :offset-assert 32)
+   (heights    uint32     4       :offset-assert 32)
    (color-tag  dma-packet :inline :offset-assert 48)
-   (colors     UNKNOWN    4       :offset-assert 64)
+   (colors     rgba       4       :offset-assert 64)
    (next       dma-packet :inline :offset-assert 80)
    )
   :method-count-assert 9
   :size-assert         #x60
   :flag-assert         #x900000060
   )
-|#
 
-#|
 (deftype hfrag-vu1-poly9-packet (structure)
   ((height-tag dma-packet :inline :offset-assert 0)
    (base       vector3    :inline :offset-assert 16)
-   (heights    UNKNOWN    9       :offset-assert 28)
+   (heights    uint32     9       :offset-assert 28)
    (color-tag  dma-packet :inline :offset-assert 64)
-   (colors     UNKNOWN    12      :offset-assert 80)
+   (colors     rgba       12      :offset-assert 80)
    (next       dma-packet :inline :offset-assert 128)
-   (jump-index int32              :offset-assert 20)
+   (jump-index int32              :offset 20)
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-#|
 (deftype hfrag-vu1-poly25-packet (structure)
   ((height-tag dma-packet :inline :offset-assert 0)
    (base       vector3    :inline :offset-assert 16)
-   (heights    UNKNOWN    25      :offset-assert 28)
+   (heights    uint32     25      :offset-assert 28)
    (color-tag  dma-packet :inline :offset-assert 128)
-   (colors     UNKNOWN    28      :offset-assert 144)
+   (colors     rgba       28      :offset-assert 144)
    (next       dma-packet :inline :offset-assert 256)
    )
   :method-count-assert 9
   :size-assert         #x110
   :flag-assert         #x900000110
   )
-|#
 
-#|
 (deftype hfrag-vu1-vertex (structure)
   ((tex vector :inline :offset-assert 0)
    (clr vector :inline :offset-assert 16)
@@ -52418,79 +52421,69 @@
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype hfrag-vu1-poly4 (structure)
   ((giftag vector  :inline :offset-assert 0)
-   (verts  UNKNOWN 4       :offset-assert 16)
+   (verts  hfrag-vu1-vertex 4 :inline :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype hfrag-vu1-poly9 (structure)
   ((giftag0 vector  :inline :offset-assert 0)
-   (verts0  UNKNOWN 6       :offset-assert 16)
+   (verts0  hfrag-vu1-vertex 6 :inline      :offset-assert 16)
    (giftag1 vector  :inline :offset-assert 304)
-   (verts1  UNKNOWN 6       :offset-assert 320)
+   (verts1  hfrag-vu1-vertex 6  :inline      :offset-assert 320)
    )
   :method-count-assert 9
   :size-assert         #x260
   :flag-assert         #x900000260
   )
-|#
 
-#|
 (deftype hfrag-vu1-poly25 (structure)
   ((giftag0 vector  :inline :offset-assert 0)
-   (verts0  UNKNOWN 10      :offset-assert 16)
+   (verts0  hfrag-vu1-vertex 10  :inline    :offset-assert 16)
    (giftag1 vector  :inline :offset-assert 496)
-   (verts1  UNKNOWN 10      :offset-assert 512)
+   (verts1  hfrag-vu1-vertex 10  :inline     :offset-assert 512)
    (giftag2 vector  :inline :offset-assert 992)
-   (verts2  UNKNOWN 10      :offset-assert 1008)
+   (verts2  hfrag-vu1-vertex 10  :inline    :offset-assert 1008)
    (giftag3 vector  :inline :offset-assert 1488)
-   (verts3  UNKNOWN 10      :offset-assert 1504)
+   (verts3  hfrag-vu1-vertex 10  :inline    :offset-assert 1504)
    )
   :method-count-assert 9
   :size-assert         #x7c0
   :flag-assert         #x9000007c0
   )
-|#
 
-#|
 (deftype hfrag-vu1-constants-base (structure)
-  ((far-verts   UNKNOWN 25 :offset-assert 0)
-   (mid-verts9  UNKNOWN 9  :offset-assert 400)
-   (mid-verts25 UNKNOWN 25 :offset-assert 544)
-   (near-verts4 UNKNOWN 4  :offset-assert 944)
-   (near-verts9 UNKNOWN 9  :offset-assert 1008)
-   (sts         UNKNOWN 9  :offset-assert 1152)
-   (data        UNKNOWN 81 :offset-assert 0)
+  ((far-verts   vector 25 :inline :offset-assert 0)
+   (mid-verts9  vector 9 :inline  :offset-assert 400)
+   (mid-verts25 vector 25 :inline :offset-assert 544)
+   (near-verts4 vector 4 :inline  :offset-assert 944)
+   (near-verts9 vector 9 :inline  :offset-assert 1008)
+   (sts         vector 9 :inline  :offset-assert 1152)
+   (data        vector 81 :inline :offset 0)
    )
   :method-count-assert 9
   :size-assert         #x510
   :flag-assert         #x900000510
   )
-|#
 
-#|
 (deftype hfrag-vu1-constants (structure)
   ((base          hfrag-vu1-constants-base :inline :offset-assert 0)
-   (far-verts     UNKNOWN                  25      :offset-assert 0)
-   (mid-verts9    UNKNOWN                  9       :offset-assert 400)
-   (mid-verts25   UNKNOWN                  25      :offset-assert 544)
-   (near-verts4   UNKNOWN                  4       :offset-assert 944)
-   (near-verts9   UNKNOWN                  9       :offset-assert 1008)
-   (sts           UNKNOWN                  9       :offset-assert 1152)
-   (drw-strip4    qword                    :inline :offset-assert 1296)
-   (drw-strip9-0  qword                    :inline :offset-assert 1312)
-   (drw-strip9-1  qword                    :inline :offset-assert 1328)
-   (drw-strip25-0 qword                    :inline :offset-assert 1344)
-   (drw-strip25-1 qword                    :inline :offset-assert 1360)
+   (far-verts     vector       25 :inline      :offset 0)
+   (mid-verts9    vector       9 :inline       :offset 400)
+   (mid-verts25   vector       25 :inline      :offset 544)
+   (near-verts4   vector       4 :inline       :offset 944)
+   (near-verts9   vector       9 :inline       :offset 1008)
+   (sts           vector       9 :inline       :offset 1152)
+   (drw-strip4    gs-gif-tag               :inline :offset-assert 1296)
+   (drw-strip9-0  gs-gif-tag               :inline :offset-assert 1312)
+   (drw-strip9-1  gs-gif-tag               :inline :offset-assert 1328)
+   (drw-strip25-0 gs-gif-tag               :inline :offset-assert 1344)
+   (drw-strip25-1 gs-gif-tag               :inline :offset-assert 1360)
    (matrix        matrix                   :inline :offset-assert 1376)
    (hvdf-offset   vector                   :inline :offset-assert 1440)
    (hmge-scale    vector                   :inline :offset-assert 1456)
@@ -52501,7 +52494,6 @@
   :size-assert         #x5e0
   :flag-assert         #x9000005e0
   )
-|#
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -52513,34 +52505,34 @@
 ;; hfrag-vu1                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern hfrag-vu1-block object)
-;; (define-extern hfrag-setup-constants function)
-;; (define-extern hfrag-add-constants function)
-;; (define-extern hfrag-vu1-end-buffer function)
-;; (define-extern hfrag-vu1-init-buf function)
+(define-extern hfrag-vu1-block vu-function)
+(define-extern hfrag-setup-constants (function hfrag-vu1-constants none))
+(define-extern hfrag-add-constants (function dma-buffer none))
+(define-extern hfrag-vu1-end-buffer (function dma-buffer none))
+(define-extern hfrag-vu1-init-buf (function none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hfrag                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define-extern *hfrag-debug* symbol)
-;; (define-extern hfrag-vert-print function)
+(define-extern hfrag-vert-print (function int int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hfrag-work                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *hfrag-work* object)
-;; (define-extern *hfrag-vu1-constants-base* object)
+(define-extern *hfrag-work* hfrag-work)
+(define-extern *hfrag-vu1-constants-base* hfrag-vu1-constants-base)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; hfrag-texture-anim             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern wang-texture-anim-init function)
-;; (define-extern real-wang-texture-anim-func function)
-;; (define-extern wang-texture-anim-func function)
-;; (define-extern *hfrag-texture-anim-array* texture-anim-array)
+(define-extern wang-texture-anim-init (function texture-anim none))
+(define-extern real-wang-texture-anim-func (function texture-anim texture-anim none))
+(define-extern wang-texture-anim-func (function none))
+(define-extern *hfrag-texture-anim-array* (texture-anim-array texture-anim))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-mood                    ;;
