@@ -265,7 +265,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i), m_merc2);
       init_bucket_renderer<Generic2BucketRenderer>(
           fmt::format("gmerc-l{}-pris2", i), BucketCategory::GENERIC,
-          GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i), m_generic2,
+          GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS2, BucketId::GMERC_L1_PRIS2, i), m_generic2,
           Generic2::Mode::NORMAL);
     }
 
