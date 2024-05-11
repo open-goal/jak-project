@@ -10083,6 +10083,7 @@
 ;; trail-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++trail-h:trail-node-flag
 (defenum trail-node-flag
   :type uint8
   :bitfield #t
@@ -10090,7 +10091,9 @@
   (tnf1 1)
   (tnf2 2)
   )
+;; ---trail-h:trail-node-flag
 
+;; +++trail-h:conn-flag
 (defenum conn-flag
   :type uint8
   :bitfield #t
@@ -10098,7 +10101,11 @@
   (cf1 1)
   (cf2 2)
   (cf3 3)
+  (cf4 4)
+  (cf5 5)
+  (cf6 6)
   )
+;; ---trail-h:conn-flag
 
 (deftype trail-node (structure)
   ((next-id         int16   :offset-assert 0)
@@ -10119,7 +10126,7 @@
   :flag-assert         #xc00000014
   (:methods
     (get-dist-score (_type_ vector) uint) ;; 9
-    (debug-draw (_type_ int) none) ;; 10
+    (debug-draw (_type_ int) symbol) ;; 10
     (get-position (_type_ vector) vector) ;; 11
     )
   )
@@ -10213,7 +10220,7 @@
   )
 
 (deftype trail-cached-start-pov (structure)
-  ((last-updated      uint64         :offset-assert 0)
+  ((last-updated      time-frame     :offset-assert 0)
    (pov-can-see-start uint64         :offset-assert 8)
    (next-node-id      int32          :offset-assert 16)
    (start-pos         vector :inline :offset-assert 32)
@@ -10239,12 +10246,12 @@
    (conn-mask                 uint8                                       :offset-assert 40)
    (node                      (inline-array trail-node)                   :offset-assert 44) ;; guessed by decompiler
    (conn                      (inline-array trail-conn)                   :offset-assert 48) ;; guessed by decompiler
-   (blocker                   uint32                                      :offset-assert 52)
+   (blocker                   (inline-array trail-blocker)                :offset-assert 52)
    (conn-ids                  (pointer uint16)                            :offset-assert 56) ;; guessed by decompiler
    (visgroup                  (inline-array trail-conn-hash-cell)         :offset-assert 60) ;; guessed by decompiler
    (visnode-ids               (pointer uint16)                            :offset-assert 64) ;; guessed by decompiler
    (conn-hash                 trail-conn-hash                             :offset-assert 68) ;; guessed by decompiler
-   (cell-pov-bit-arrays       uint32                                      :offset-assert 72)
+   (cell-pov-bit-arrays       (pointer uint64)                            :offset-assert 72)
    (pov-can-see-goal          uint64                                      :offset-assert 80)
    (cached-start-pov          trail-cached-start-pov              :inline :offset-assert 96)
    (orig-start-pos            vector                              :inline :offset-assert 144)
@@ -10260,31 +10267,31 @@
   :size-assert         #x190
   :flag-assert         #x2200000190
   (:methods
-    (trail-graph-method-9 (_type_ int) none) ;; 9 ;; (trail-graph-method-9 (_type_ int) none)
-    (trail-graph-method-10 (_type_ int) none) ;; 10 ;; (trail-graph-method-10 (_type_ int) none)
+    (trail-graph-method-9 (_type_ int) int) ;; 9 ;; (trail-graph-method-9 (_type_ int) none)
+    (trail-graph-method-10 (_type_ int) symbol) ;; 10 ;; (trail-graph-method-10 (_type_ int) none)
     (trail-graph-method-11 (_type_ int int) trail-node) ;; 11 ;; (trail-graph-method-11 (_type_ int int) trail-node)
-    (trail-graph-method-12 (_type_) none) ;; 12
-    (trail-graph-method-13 (_type_ vector vector) none) ;; 13 ;; (debug-draw-cell (_type_ int) none)
-    (debug-draw (_type_) none) ;; 14 ;; (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol)
-    (trail-graph-method-15 (_type_ int) none) ;; 15 ;; (do-path (_type_ vector vector) int)
-    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) none) ;; 16 ;; (trail-graph-method-16 () none)
-    (trail-graph-method-17 (_type_) none) ;; 17 ;; (get-node-location-by-id (_type_ uint vector) vector)
+    (trail-graph-method-12 (_type_ trail-node vector) symbol) ;; 12
+    (trail-graph-method-13 (_type_ vector vector) symbol) ;; 13 ;; (debug-draw-cell (_type_ int) none)
+    (debug-draw (_type_) symbol) ;; 14 ;; (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol)
+    (trail-graph-method-15 (_type_ int) symbol) ;; 15 ;; (do-path (_type_ vector vector) int)
+    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) symbol) ;; 16 ;; (trail-graph-method-16 () none)
+    (trail-graph-method-17 (_type_ vector vector) int) ;; 17 ;; (get-node-location-by-id (_type_ uint vector) vector)
     (trail-graph-method-18 (_type_ vector) int) ;; 18 ;; (get-path-to-root (_type_ (pointer uint16) int (pointer int32) (pointer float)) int)
     (trail-graph-method-19 (_type_) none) ;; 19 ;; (trail-graph-method-19 (_type_ int int) symbol)
-    (trail-graph-method-20 (_type_ uint vector) none) ;; 20 ;; (try-initialize (_type_) symbol)
-    (trail-graph-method-21 (_type_) none) ;; 21 ;; (update-node-flags-for-conn (_type_ int trail-node-flag trail-node-flag) none)
-    (trail-graph-method-22 (_type_) none) ;; 22 ;; (trail-graph-method-22 (_type_ int) none)
-    (trail-graph-method-23 (_type_) none) ;; 23 ;; (reset-search-state (_type_) none)
-    (trail-graph-method-24 (_type_) none) ;; 24 ;; (get-next-to-explore (_type_) int)
-    (trail-graph-method-25 (_type_ int) none) ;; 25 ;; (trail-graph-method-25 (_type_ trail-conn-search int int) none)
-    (trail-graph-method-26 (_type_) none) ;; 26 ;; (do-search! (_type_ vector vector trail-cached-search-info) none)
-    (trail-graph-method-27 (_type_) none) ;; 27 ;; (do-some-work (_type_) int)
-    (trail-graph-method-28 (_type_) none) ;; 28 ;; (run-until-done-or-timeout (_type_ int) none)
-    (trail-graph-method-29 (_type_) none) ;; 29
-    (trail-graph-method-30 (_type_) none) ;; 30
+    (trail-graph-method-20 (_type_ uint vector) vector) ;; 20 ;; (try-initialize (_type_) symbol)
+    (trail-graph-method-21 (_type_ (pointer uint16) int (pointer int32) (pointer float)) int) ;; 21 ;; (update-node-flags-for-conn (_type_ int trail-node-flag trail-node-flag) none)
+    (trail-graph-method-22 (_type_ int int) symbol) ;; 22 ;; (trail-graph-method-22 (_type_ int) none)
+    (trail-graph-method-23 (_type_) symbol) ;; 23 ;; (reset-search-state (_type_) none)
+    (trail-graph-method-24 (_type_ uint vector int int) symbol) ;; 24 ;; (get-next-to-explore (_type_) int)
+    (trail-graph-method-25 (_type_ int) int) ;; 25 ;; (trail-graph-method-25 (_type_ trail-conn-search int int) none)
+    (trail-graph-method-26 (_type_) int) ;; 26 ;; (do-search! (_type_ vector vector trail-cached-search-info) none)
+    (trail-graph-method-27 (_type_) int) ;; 27 ;; (do-some-work (_type_) int)
+    (trail-graph-method-28 (_type_ trail-conn-search int int) symbol) ;; 28 ;; (run-until-done-or-timeout (_type_ int) none)
+    (trail-graph-method-29 (_type_ vector vector trail-cached-search-info) int) ;; 29
+    (trail-graph-method-30 (_type_) int) ;; 30
     (trail-graph-method-31 (_type_ int) none) ;; 31
-    (trail-graph-method-32 (_type_) none) ;; 32
-    (trail-graph-method-33 (_type_) none) ;; 33
+    (trail-graph-method-32 (_type_) uint) ;; 32
+    (trail-graph-method-33 (_type_ int) symbol) ;; 33
     )
   )
 
