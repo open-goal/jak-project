@@ -1,0 +1,921 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type blow-tower-node-info
+(deftype blow-tower-node-info (structure)
+  ((speed-scalar           float)
+   (accum-dist             float)
+   (accum-time             float)
+   (accum-time-percentage  float)
+   (event-id               int32)
+   )
+  )
+
+;; definition for method 3 of type blow-tower-node-info
+(defmethod inspect ((this blow-tower-node-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blow-tower-node-info)
+  (format #t "~1Tspeed-scalar: ~f~%" (-> this speed-scalar))
+  (format #t "~1Taccum-dist: ~f~%" (-> this accum-dist))
+  (format #t "~1Taccum-time: ~f~%" (-> this accum-time))
+  (format #t "~1Taccum-time-percentage: ~f~%" (-> this accum-time-percentage))
+  (format #t "~1Tevent-id: ~D~%" (-> this event-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type blow-tower-path
+(deftype blow-tower-path (structure)
+  ((total-time  time-frame)
+   (index       int16)
+   (pts         (inline-array vector))
+   (node-info   (inline-array blow-tower-node-info))
+   (num-nodes   int16)
+   )
+  )
+
+;; definition for method 3 of type blow-tower-path
+(defmethod inspect ((this blow-tower-path))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blow-tower-path)
+  (format #t "~1Ttotal-time: ~D~%" (-> this total-time))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tpts: #x~X~%" (-> this pts))
+  (format #t "~1Tnode-info: #x~X~%" (-> this node-info))
+  (format #t "~1Tnum-nodes: ~D~%" (-> this num-nodes))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type surround-spot
+(deftype surround-spot (structure)
+  ((y-rot        float)
+   (x-rot        float)
+   (offset-dir   vector  :inline)
+   (turret-pos   vector  :inline)
+   (rider-index  int16)
+   (owner        handle)
+   )
+  )
+
+;; definition for method 3 of type surround-spot
+(defmethod inspect ((this surround-spot))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'surround-spot)
+  (format #t "~1Ty-rot: ~f~%" (-> this y-rot))
+  (format #t "~1Tx-rot: ~f~%" (-> this x-rot))
+  (format #t "~1Toffset-dir: #<vector @ #x~X>~%" (-> this offset-dir))
+  (format #t "~1Tturret-pos: #<vector @ #x~X>~%" (-> this turret-pos))
+  (format #t "~1Trider-index: ~D~%" (-> this rider-index))
+  (format #t "~1Towner: ~D~%" (-> this owner))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type blow-tower-path-cursor
+(deftype blow-tower-path-cursor (structure)
+  ((curve               cubic-curve  :inline)
+   (pos                 vector       :inline)
+   (norm                vector       :inline)
+   (current-time        time-frame)
+   (speed               float)
+   (path                blow-tower-path)
+   (current-tt          float)
+   (interp-tt           float)
+   (current-node-index  int16)
+   (event-id            uint32)
+   )
+  (:methods
+    (blow-tower-path-cursor-method-9 (_type_ int) int)
+    (init-fields (_type_) none)
+    (blow-tower-path-cursor-method-11 (_type_ vector) none)
+    (blow-tower-path-cursor-method-12 (_type_ int) vector)
+    )
+  )
+
+;; definition for method 3 of type blow-tower-path-cursor
+(defmethod inspect ((this blow-tower-path-cursor))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blow-tower-path-cursor)
+  (format #t "~1Tcurve: #<cubic-curve @ #x~X>~%" (-> this curve))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tnorm: #<vector @ #x~X>~%" (-> this norm))
+  (format #t "~1Tcurrent-time: ~D~%" (-> this current-time))
+  (format #t "~1Tspeed: ~f~%" (-> this speed))
+  (format #t "~1Tpath: #<blow-tower-path @ #x~X>~%" (-> this path))
+  (format #t "~1Tcurrent-tt: ~f~%" (-> this current-tt))
+  (format #t "~1Tinterp-tt: ~f~%" (-> this interp-tt))
+  (format #t "~1Tcurrent-node-index: ~D~%" (-> this current-node-index))
+  (format #t "~1Tevent-id: ~D~%" (-> this event-id))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function find-event-id-index
+(defun find-event-id-index ((arg0 blow-tower-path-cursor) (arg1 int))
+  (dotimes (v1-0 (-> arg0 path num-nodes))
+    (if (= (-> arg0 path node-info v1-0 event-id) arg1)
+        (return v1-0)
+        )
+    )
+  -1
+  )
+
+;; definition for function find-path-event-id-index
+(defun find-path-event-id-index ((arg0 blow-tower-path) (arg1 int))
+  (dotimes (v1-0 (-> arg0 num-nodes))
+    (if (= (-> arg0 node-info v1-0 event-id) arg1)
+        (return v1-0)
+        )
+    )
+  -1
+  )
+
+;; definition for method 10 of type blow-tower-path-cursor
+;; WARN: Return type mismatch float vs none.
+(defmethod init-fields ((this blow-tower-path-cursor))
+  (set! (-> this current-tt) 0.0)
+  (set! (-> this interp-tt) 0.0)
+  (set! (-> this current-node-index) -1)
+  (set! (-> this speed) 0.0)
+  (none)
+  )
+
+;; definition for function initialize-hermite-from-path
+(defun initialize-hermite-from-path ((arg0 cubic-curve) (arg1 blow-tower-path) (arg2 int))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        )
+    0.0
+    (cond
+      ((<= arg2 0)
+       (vector-! s5-0 (-> arg1 pts 1) (-> arg1 pts 0))
+       (vector-! s4-0 (-> arg1 pts 1) (-> arg1 pts 0))
+       )
+      (else
+        (vector-! s5-0 (-> arg1 pts arg2) (-> arg1 pts (+ arg2 -1)))
+        (vector-! s4-0 (-> arg1 pts (+ arg2 1)) (-> arg1 pts arg2))
+        )
+      )
+    (let ((f30-0 (vector-vector-distance (-> arg1 pts arg2) (-> arg1 pts (+ arg2 1))))
+          (f28-0 (/ (-> arg1 node-info (+ arg2 1) speed-scalar) (-> arg1 node-info arg2 speed-scalar)))
+          )
+      (vector-normalize! s5-0 f30-0)
+      (vector-normalize! s4-0 (* f30-0 f28-0))
+      )
+    (cubic-curve-method-9 arg0 (-> arg1 pts arg2) s5-0 (-> arg1 pts (+ arg2 1)) s4-0)
+    )
+  (none)
+  )
+
+;; definition for method 12 of type blow-tower-path-cursor
+(defmethod blow-tower-path-cursor-method-12 ((this blow-tower-path-cursor) (arg0 int))
+  (set! (-> this speed) (lerp
+                          (-> this path node-info arg0 speed-scalar)
+                          (-> this path node-info (+ arg0 1) speed-scalar)
+                          (-> this interp-tt)
+                          )
+        )
+  (set! (-> this event-id) (the-as uint (-> this path node-info arg0 event-id)))
+  (when (!= (-> this current-node-index) arg0)
+    (set! (-> this current-node-index) arg0)
+    (initialize-hermite-from-path (-> this curve) (-> this path) (-> this current-node-index))
+    )
+  (cubic-curve-method-10 (-> this curve) (-> this pos) (-> this interp-tt))
+  (cubic-curve-method-11 (-> this curve) (-> this norm) (-> this interp-tt))
+  (vector-normalize! (-> this norm) 1.0)
+  )
+
+;; definition for method 9 of type blow-tower-path-cursor
+(defmethod blow-tower-path-cursor-method-9 ((this blow-tower-path-cursor) (arg0 int))
+  (let* ((f1-2 (/ (the float arg0) (the float (-> this path total-time))))
+         (f0-3 (fmax 0.0 (fmin f1-2 (-> this path node-info (+ (-> this path num-nodes) -1) accum-time-percentage))))
+         )
+    (dotimes (v1-7 (+ (-> this path num-nodes) -1))
+      (when (< f0-3 (-> this path node-info (+ v1-7 1) accum-time-percentage))
+        (let ((f1-6 (- (-> this path node-info (+ v1-7 1) accum-time-percentage)
+                       (-> this path node-info v1-7 accum-time-percentage)
+                       )
+                    )
+              )
+          0.0
+          (set! (-> this interp-tt) (/ (- f0-3 (-> this path node-info v1-7 accum-time-percentage)) f1-6))
+          )
+        (set! (-> this current-time) (the-as time-frame arg0))
+        (set! (-> this current-tt) f0-3)
+        (blow-tower-path-cursor-method-12 this v1-7)
+        (return 0)
+        )
+      )
+    )
+  (the-as int #f)
+  )
+
+;; definition for method 11 of type blow-tower-path-cursor
+;; WARN: Return type mismatch int vs none.
+(defmethod blow-tower-path-cursor-method-11 ((this blow-tower-path-cursor) (arg0 vector))
+  (local-vars (f1-5 number) (f2-4 float) (sv-32 number) (sv-40 int) (sv-48 vector) (sv-52 number))
+  (set! sv-32 40960000.0)
+  (set! sv-40 -1)
+  (set! sv-48 (new 'stack-no-clear 'vector))
+  (set! sv-52 0.0)
+  (dotimes (s4-0 (+ (-> this path num-nodes) -1))
+    (let ((s2-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this path pts s4-0)))
+          (s3-1 (vector-! (new 'stack-no-clear 'vector) (-> this path pts (+ s4-0 1)) (-> this path pts s4-0)))
+          )
+      0.0
+      0.0
+      0.0
+      0.0
+      0.0
+      (set! (-> s2-1 y) 0.0)
+      (set! (-> s3-1 y) 0.0)
+      (let ((f1-0 (vector-normalize-ret-len! s3-1 1.0))
+            (f0-10 (vector-dot s2-1 s3-1))
+            )
+        (cond
+          ((< f0-10 0.0)
+           (set! f2-4 (sqrtf (+ (* (-> s2-1 x) (-> s2-1 x)) (* (-> s2-1 z) (-> s2-1 z)))))
+           (set! f1-5 0.0)
+           )
+          ((< f1-0 f0-10)
+           (let ((v1-11 s2-1))
+             (set! f2-4 (sqrtf (+ (* (-> v1-11 x) (-> v1-11 x)) (* (-> v1-11 z) (-> v1-11 z)))))
+             )
+           (set! f1-5 1.0)
+           )
+          (else
+            (let ((f2-9 (vector-dot s2-1 s2-1))
+                  (f3-2 f0-10)
+                  )
+              (set! f2-4 (sqrtf (- f2-9 (* f3-2 f3-2))))
+              )
+            (set! f1-5 (/ f0-10 f1-0))
+            )
+          )
+        (when (< f2-4 (the-as float sv-32))
+          (set! sv-32 f2-4)
+          (set! sv-40 s4-0)
+          (set! sv-52 f1-5)
+          (vector+float*! sv-48 (-> this path pts s4-0) s3-1 f0-10)
+          )
+        )
+      )
+    )
+  (set! (-> this interp-tt) (the-as float sv-52))
+  (set! (-> this current-tt)
+        (lerp
+          (-> this path node-info sv-40 accum-time-percentage)
+          (-> this path node-info (+ sv-40 1) accum-time-percentage)
+          (-> this interp-tt)
+          )
+        )
+  (blow-tower-path-cursor-method-12 this sv-40)
+  (set! (-> this current-time)
+        (the-as time-frame (the int (* (-> this current-tt) (the float (-> this path total-time)))))
+        )
+  (none)
+  )
+
+;; definition of type xform
+(deftype xform (structure)
+  ((root  transformq  :inline)
+   )
+  (:methods
+    (reset (_type_) xform)
+    )
+  )
+
+;; definition for method 3 of type xform
+(defmethod inspect ((this xform))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'xform)
+  (format #t "~1Troot: #<transformq @ #x~X>~%" (-> this root))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function process-xform-list
+;; INFO: Used lq/sq
+(defun process-xform-list ((arg0 xform) (arg1 xform) (arg2 (inline-array xform)) (arg3 int))
+  (let ((s5-0 (matrix<-transformq! (new 'stack-no-clear 'matrix) (-> arg1 root))))
+    (dotimes (s2-0 arg3)
+      (let ((a1-3 (matrix<-transformq! (new 'stack-no-clear 'matrix) (the-as transformq (-> arg2 s2-0)))))
+        (matrix*! s5-0 a1-3 s5-0)
+        )
+      )
+    (matrix->quaternion (-> arg0 root quat) s5-0)
+    (set! (-> arg0 root trans quad) (-> s5-0 trans quad))
+    (set-vector!
+      (-> arg0 root scale)
+      (vector-length (-> s5-0 rvec))
+      (vector-length (-> s5-0 uvec))
+      (vector-length (-> s5-0 fvec))
+      1.0
+      )
+    )
+  arg0
+  )
+
+;; definition for method 9 of type xform
+;; INFO: Used lq/sq
+(defmethod reset ((this xform))
+  (quaternion-identity! (-> this root quat))
+  (set! (-> this root trans quad) (the-as uint128 0))
+  (set-vector! (-> this root scale) 1.0 1.0 1.0 1.0)
+  this
+  )
+
+;; definition of type blow-tower-clock
+(deftype blow-tower-clock (structure)
+  ((elapsed-clock-time  time-frame)
+   (debug?              symbol)
+   (debug-lock-view?    symbol)
+   )
+  )
+
+;; definition for method 3 of type blow-tower-clock
+(defmethod inspect ((this blow-tower-clock))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blow-tower-clock)
+  (format #t "~1Telapsed-clock-time: ~D~%" (-> this elapsed-clock-time))
+  (format #t "~1Tdebug?: ~A~%" (-> this debug?))
+  (format #t "~1Tdebug-lock-view?: ~A~%" (-> this debug-lock-view?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type blow-tower-global-target-info
+(deftype blow-tower-global-target-info (structure)
+  ((target-handles           handle  2)
+   (hellcat                  handle  :overlay-at (-> target-handles 0))
+   (pickup                   handle  :overlay-at (-> target-handles 1))
+   (mission-time             time-frame)
+   (debug?                   symbol)
+   (difficulty-scalar        float)
+   (last-player-attack-time  time-frame)
+   (clock-scalar             float)
+   )
+  )
+
+;; definition for method 3 of type blow-tower-global-target-info
+(defmethod inspect ((this blow-tower-global-target-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blow-tower-global-target-info)
+  (format #t "~1Ttarget-handles[2] @ #x~X~%" (-> this target-handles))
+  (format #t "~1Thellcat: ~D~%" (-> this hellcat))
+  (format #t "~1Tpickup: ~D~%" (-> this pickup))
+  (format #t "~1Tmission-time: ~D~%" (-> this mission-time))
+  (format #t "~1Tdebug?: ~A~%" (-> this debug?))
+  (format #t "~1Tdifficulty-scalar: ~f~%" (-> this difficulty-scalar))
+  (format #t "~1Tlast-player-attack-time: ~D~%" (-> this last-player-attack-time))
+  (format #t "~1Tclock-scalar: ~f~%" (-> this clock-scalar))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *blow-tower-targets*, type blow-tower-global-target-info
+(define *blow-tower-targets* (new 'static 'blow-tower-global-target-info))
+
+;; failed to figure out what this is:
+(set! (-> *blow-tower-targets* hellcat) (the-as handle #f))
+
+;; failed to figure out what this is:
+(set! (-> *blow-tower-targets* pickup) (the-as handle #f))
+
+;; failed to figure out what this is:
+(set! (-> *blow-tower-targets* mission-time) 0)
+
+;; failed to figure out what this is:
+(set! (-> *blow-tower-targets* debug?) #f)
+
+;; failed to figure out what this is:
+(set! (-> *blow-tower-targets* difficulty-scalar) 1.0)
+
+;; failed to figure out what this is:
+(set! (-> *blow-tower-targets* last-player-attack-time) 0)
+
+;; definition for symbol *blow-tower-speech-list*, type (inline-array talker-speech-class)
+(define *blow-tower-speech-list* (new 'static 'inline-array talker-speech-class 60
+                                   (new 'static 'talker-speech-class :name "none")
+                                   (new 'static 'talker-speech-class
+                                     :name "sig141"
+                                     :channel (gui-channel rider)
+                                     :speech #x1
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "tor026"
+                                     :channel (gui-channel rider)
+                                     :speech #x2
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "tor023"
+                                     :channel (gui-channel rider)
+                                     :speech #x3
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx126"
+                                     :channel (gui-channel rider)
+                                     :speech #x4
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx127"
+                                     :channel (gui-channel rider)
+                                     :speech #x5
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx122"
+                                     :channel (gui-channel rider)
+                                     :speech #x6
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx123"
+                                     :channel (gui-channel rider)
+                                     :speech #x7
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig115"
+                                     :channel (gui-channel rider)
+                                     :speech #x8
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx128"
+                                     :channel (gui-channel rider)
+                                     :speech #x9
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx129"
+                                     :channel (gui-channel rider)
+                                     :speech #xa
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx130"
+                                     :channel (gui-channel rider)
+                                     :speech #xb
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "jinx131"
+                                     :channel (gui-channel rider)
+                                     :speech #xc
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig131"
+                                     :channel (gui-channel sig)
+                                     :speech #xd
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "torn205"
+                                     :channel (gui-channel voicebox)
+                                     :speech #xe
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "torn198"
+                                     :channel (gui-channel voicebox)
+                                     :speech #xf
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "torn194"
+                                     :channel (gui-channel rider)
+                                     :speech #x10
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig150"
+                                     :channel (gui-channel sig)
+                                     :speech #x11
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig132"
+                                     :channel (gui-channel sig)
+                                     :speech #x12
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig109"
+                                     :channel (gui-channel sig)
+                                     :speech #x13
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig110"
+                                     :channel (gui-channel sig)
+                                     :speech #x14
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig120"
+                                     :channel (gui-channel sig)
+                                     :speech #x15
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig119"
+                                     :channel (gui-channel sig)
+                                     :speech #x16
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig138"
+                                     :channel (gui-channel sig)
+                                     :speech #x17
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig113"
+                                     :channel (gui-channel sig)
+                                     :speech #x18
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig133"
+                                     :channel (gui-channel sig)
+                                     :speech #x19
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig137"
+                                     :channel (gui-channel sig)
+                                     :speech #x1a
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig258"
+                                     :channel (gui-channel sig)
+                                     :speech #x1b
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig183"
+                                     :channel (gui-channel sig)
+                                     :speech #x1c
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig198"
+                                     :channel (gui-channel sig)
+                                     :speech #x1d
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig135"
+                                     :channel (gui-channel sig)
+                                     :speech #x1e
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig148"
+                                     :channel (gui-channel sig)
+                                     :speech #x1f
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig136"
+                                     :channel (gui-channel sig)
+                                     :speech #x20
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig255"
+                                     :channel (gui-channel sig)
+                                     :speech #x21
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig153"
+                                     :channel (gui-channel sig)
+                                     :speech #x22
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig157"
+                                     :channel (gui-channel sig)
+                                     :speech #x23
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig192"
+                                     :channel (gui-channel sig)
+                                     :speech #x24
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig134"
+                                     :channel (gui-channel sig)
+                                     :speech #x25
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig103"
+                                     :channel (gui-channel sig)
+                                     :speech #x26
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig106"
+                                     :channel (gui-channel sig)
+                                     :speech #x27
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig105"
+                                     :channel (gui-channel sig)
+                                     :speech #x28
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig118"
+                                     :channel (gui-channel sig)
+                                     :speech #x29
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig128"
+                                     :channel (gui-channel sig)
+                                     :speech #x2a
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig127"
+                                     :channel (gui-channel sig)
+                                     :speech #x2b
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig101"
+                                     :channel (gui-channel sig)
+                                     :speech #x2c
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig151"
+                                     :channel (gui-channel sig)
+                                     :speech #x2d
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig159"
+                                     :channel (gui-channel sig)
+                                     :speech #x2e
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig160"
+                                     :channel (gui-channel sig)
+                                     :speech #x2f
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig161"
+                                     :channel (gui-channel sig)
+                                     :speech #x30
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig162"
+                                     :channel (gui-channel sig)
+                                     :speech #x31
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig163"
+                                     :channel (gui-channel sig)
+                                     :speech #x32
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig164"
+                                     :channel (gui-channel sig)
+                                     :speech #x33
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig165"
+                                     :channel (gui-channel sig)
+                                     :speech #x34
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig166"
+                                     :channel (gui-channel sig)
+                                     :speech #x35
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig167"
+                                     :channel (gui-channel sig)
+                                     :speech #x36
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig168"
+                                     :channel (gui-channel sig)
+                                     :speech #x37
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig169"
+                                     :channel (gui-channel sig)
+                                     :speech #x38
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig170"
+                                     :channel (gui-channel sig)
+                                     :speech #x39
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig171"
+                                     :channel (gui-channel sig)
+                                     :speech #x3a
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   (new 'static 'talker-speech-class
+                                     :name "sig172"
+                                     :channel (gui-channel sig)
+                                     :speech #x3b
+                                     :neg #x1
+                                     :on-close #f
+                                     :camera #f
+                                     )
+                                   )
+        )
+
+;; definition of type blow-tower-speech-instance
+(deftype blow-tower-speech-instance (speech-instance)
+  ()
+  )
+
+;; definition for method 3 of type blow-tower-speech-instance
+(defmethod inspect ((this blow-tower-speech-instance))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'blow-tower-speech-instance)
+  (format #t "~1Tspeech: ~D~%" (-> this speech))
+  (format #t "~1Tnum-play-times: ~D~%" (-> this num-play-times))
+  (format #t "~1Tprobability: ~f~%" (-> this probability))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+
