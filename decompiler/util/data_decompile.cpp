@@ -1043,6 +1043,10 @@ const std::unordered_map<
               {{"anim1", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
                {"anim2", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
                {"anim3", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)}}},
+             {"blow-tower-path",
+              // TODO - should be able to just decompile the `anims` field
+              {{"pts", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"node-info", ArrayFieldDecompMeta(TypeSpec("blow-tower-node-info"), 32)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
