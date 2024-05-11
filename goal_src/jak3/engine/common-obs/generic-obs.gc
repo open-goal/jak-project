@@ -3879,10 +3879,14 @@
               )
         )
     (set! (-> this is-spooling?) (nonzero? (res-lump-value arg0 'spooling-val uint128 :time -1000000000.0)))
-    (set! (-> this path) (new 'process 'path-control this 'path 0.0 arg0 #f))
+    ;; og:preserve-this some entities store their path data in the path1 lump
+    (let ((bad-entity? (symbol-member? (string->symbol (-> this name)) '(sound-on-path-119))))
+      (set! (-> this path) (new 'process 'path-control this (#if PC_PORT (if bad-entity? 'path1 'path) 'path) 0.0 arg0 #f))
+      )
     (logior! (-> this path flags) (path-control-flag display draw-line draw-point draw-text))
     (logclear! (-> this mask) (process-mask actor-pause))
-    (when (= s4-0 "")
+    ;; og:preserve-this
+    (when (string= (the string s4-0) "")
       (go (method-of-object this no-play))
       (return 0)
       )
