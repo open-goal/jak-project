@@ -7,3 +7,308 @@
 
 ;; DECOMP BEGINS
 
+(deftype gungame-door (process-drawable)
+  ((root         collide-shape :override)
+   (front?       symbol)
+   (close-sound  sound-id)
+   (train        handle)
+   (other-door   handle)
+   (want-close?  symbol)
+   )
+  (:state-methods
+    idle
+    open
+    close
+    force-close
+    opened
+    )
+  (:methods
+    (gungame-door-method-25 (_type_) symbol)
+    (test-close? (_type_ symbol) symbol)
+    (player-near-door? (_type_ symbol) symbol)
+    )
+  )
+
+
+(defskelgroup skel-gungame-door fort-entry-gate fort-entry-gate-lod0-jg fort-entry-gate-idle-ja
+              ((fort-entry-gate-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 3 0 10)
+              )
+
+(defbehavior gungame-door-handler gungame-door ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('force-close)
+     (go-virtual force-close)
+     )
+    (('player-near-door?)
+     (player-near-door? self (the-as symbol (-> arg3 param 0)))
+     )
+    (('set-train)
+     (set! (-> self train) (process->handle arg0))
+     (set! v0-0 (-> arg3 param 0))
+     (set! (-> self other-door) (the-as handle v0-0))
+     v0-0
+     )
+    (('test-close?)
+     (test-close? self (the-as symbol (-> arg3 param 0)))
+     )
+    (('close)
+     (set! (-> self front?) (the-as symbol (-> arg3 param 0)))
+     (set! v0-0 #t)
+     (set! (-> self want-close?) (the-as symbol v0-0))
+     v0-0
+     )
+    )
+  )
+
+(defstate idle (gungame-door)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('open)
+       (go-virtual open)
+       )
+      (('closed?)
+       #t
+       )
+      (else
+        (gungame-door-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self want-close?) #f)
+    )
+  :trans (behavior ()
+    (test-close? self #t)
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+(defstate force-close (gungame-door)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! fort-entry-gate-idle-ja :num! identity)
+    (ja :group! fort-entry-gate-idle-ja :num! zero)
+    (let ((gp-0 (-> self skel status)))
+      (logior! (-> self skel status) (joint-control-status sync-math))
+      (ja-post)
+      (update-transforms (-> self root))
+      (set! (-> self skel status) gp-0)
+      )
+    (go-virtual idle)
+    )
+  :post (behavior ()
+    (ja-post)
+    )
+  )
+
+(defstate opened (gungame-door)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('closed?)
+       #f
+       )
+      (('open?)
+       #t
+       )
+      (else
+        (gungame-door-handler proc argc message block)
+        )
+      )
+    )
+  :trans (behavior ()
+    (if (and (-> self want-close?) (not (gungame-door-method-25 self)))
+        (go-virtual close)
+        )
+    )
+  :code sleep-code
+  :post transform-post
+  )
+
+(defstate open (gungame-door)
+  :virtual #t
+  :event gungame-door-handler
+  :code (behavior ()
+    (sound-play "gungame-door")
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (seconds 0.2))
+        (suspend)
+        (suspend)
+        )
+      )
+    (ja-no-eval :group! fort-entry-gate-idle-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual opened)
+    )
+  :post transform-post
+  )
+
+;; WARN: disable def twice: 68. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod player-near-door? ((this gungame-door) (arg0 symbol))
+  (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root trans)))
+        (s4-1 (vector-! (new 'stack-no-clear 'vector) (camera-pos) (-> this root trans)))
+        )
+    (let ((s3-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat))))
+      (vector-float*! (-> s3-1 fvec) (-> s3-1 fvec) -1.0)
+      (vector-float*! (-> s3-1 rvec) (-> s3-1 rvec) -1.0)
+      (matrix-transpose! s3-1 s3-1)
+      (vector-matrix*! gp-1 gp-1 s3-1)
+      (vector-matrix*! s4-1 s4-1 s3-1)
+      )
+    (let ((f1-0 16384.0)
+          (f0-2 16384.0)
+          )
+      (when (and (>= f1-0 (fabs (-> gp-1 z))) (>= f0-2 (fabs (-> gp-1 x))))
+        (if arg0
+            (and (< 0.0 (-> s4-1 z)) (< 0.0 (-> gp-1 z)))
+            (and (< (-> s4-1 z) 0.0) (< (-> gp-1 z) 0.0))
+            )
+        )
+      )
+    )
+  )
+
+(defmethod gungame-door-method-25 ((this gungame-door))
+  (if (-> this front?)
+      (not (test-close? this #t))
+      (or (not (test-close? this #f)) (not (send-event (handle->process (-> this other-door)) 'test-close? #f)))
+      )
+  )
+
+;; WARN: disable def twice: 73. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod test-close? ((this gungame-door) (arg0 symbol))
+  (local-vars (v0-6 symbol))
+  (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> this root trans)))
+        (gp-1 (vector-! (new 'stack-no-clear 'vector) (camera-pos) (-> this root trans)))
+        )
+    (let ((s3-1 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> this root quat))))
+      (vector-float*! (-> s3-1 fvec) (-> s3-1 fvec) -1.0)
+      (vector-float*! (-> s3-1 rvec) (-> s3-1 rvec) -1.0)
+      (matrix-transpose! s3-1 s3-1)
+      (vector-matrix*! s5-1 s5-1 s3-1)
+      (vector-matrix*! gp-1 gp-1 s3-1)
+      )
+    (let ((f0-2 16384.0))
+      (cond
+        (arg0
+          (when (and (< 0.0 (-> s5-1 z)) (< 0.0 (-> gp-1 z)) (or (>= f0-2 (fabs (-> s5-1 x))) (< 102400.0 (-> gp-1 z))))
+            (return #t)
+            v0-6
+            )
+          )
+        (else
+          (and (< (-> s5-1 z) 0.0) (< (-> gp-1 z) 0.0))
+          )
+        )
+      )
+    )
+  )
+
+(defstate close (gungame-door)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('closed?)
+       #f
+       )
+      (else
+        (gungame-door-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self close-sound) (sound-play "door-close-all"))
+    )
+  :code (behavior ()
+    (let ((gp-0 #t))
+      (until #f
+        (cond
+          ((gungame-door-method-25 self)
+           (if gp-0
+               (sound-play "door-stopped")
+               )
+           (sound-pause (-> self close-sound))
+           (set! gp-0 #f)
+           )
+          (else
+            (if (not gp-0)
+                (sound-continue (-> self close-sound))
+                )
+            (set! gp-0 #t)
+            (ja :num! (seek! 0.0))
+            )
+          )
+        (suspend)
+        (when (>= 0.0 (ja-frame-num 0))
+          (ja-no-eval :num! zero)
+          (goto cfg-12)
+          )
+        )
+      )
+    #f
+    (label cfg-12)
+    (go-virtual idle)
+    )
+  :post transform-post
+  )
+
+(defmethod init-from-entity! ((this gungame-door) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 12288.0 0.0 40960.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-12 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-12 prim-core action) (collide-action solid))
+      (set! (-> v1-12 transform-index) 4)
+      (set-vector! (-> v1-12 local-sphere) 8192.0 16384.0 0.0 20480.0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid))
+      (set! (-> v1-14 transform-index) 5)
+      (set-vector! (-> v1-14 local-sphere) -8192.0 16384.0 0.0 20480.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-17 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-17 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-17 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gungame-door" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (ja-channel-push! 1 0)
+  (let ((a0-23 (-> this skel root-channel 0)))
+    (set! (-> a0-23 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
+    (set! (-> a0-23 frame-num) 0.0)
+    (joint-control-channel-group! a0-23 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
+    )
+  (transform-post)
+  (go (method-of-object this idle))
+  )
