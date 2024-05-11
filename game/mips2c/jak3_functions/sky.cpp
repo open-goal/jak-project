@@ -91,7 +91,7 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   bool bc = false;
-  u32 call_addr = 0;
+  [[maybe_unused]] u32 call_addr = 0;
   // nop                                            // sll r0, r0, 0
   c->daddiu(sp, sp, -8);  // daddiu sp, sp, -8
   // nop                                            // sll r0, r0, 0
@@ -830,8 +830,8 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   c->copy_vfs_from_other(&sky_regs_vfs);
-  bool bc = false;
-  u32 call_addr = 0;
+  // bool bc = false;
+  // u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
   c->load_symbol2(v1, cache.math_camera);           // lw v1, *math-camera*(s7)
   c->lqc2(vf14, 780, v1);                           // lqc2 vf14, 780(v1)
@@ -928,8 +928,8 @@ struct Cache {
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   c->copy_vfs_from_other(&sky_regs_vfs);
-  bool bc = false;
-  u32 call_addr = 0;
+  // bool bc = false;
+  // u32 call_addr = 0;
   c->mov64(v1, a0);                                 // or v1, a0, r0
   get_fake_spad_addr2(t4, cache.fake_scratchpad_data, 0, c);// lui t4, 28672
   c->ori(t4, t4, 12288);                            // ori t4, t4, 12288
@@ -1016,7 +1016,7 @@ u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
   c->copy_vfs_from_other(&sky_regs_vfs);
   bool bc = false;
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   bool cop1_bc = false;
   c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
   c->load_symbol2(v1, cache.math_camera);           // lw v1, *math-camera*(s7)
@@ -1108,9 +1108,9 @@ struct Cache {
 
 u64 execute(void* ctxt) {
   auto* c = (ExecutionContext*)ctxt;
-  bool bc = false;
+  // bool bc = false;
   c->copy_vfs_from_other(&sky_regs_vfs);
-  u32 call_addr = 0;
+  // u32 call_addr = 0;
   c->daddiu(sp, sp, -32);                           // daddiu sp, sp, -32
   c->load_symbol2(a1, cache.math_camera);           // lw a1, *math-camera*(s7)
   c->daddiu(v1, a0, 1600);                          // daddiu v1, a0, 1600
@@ -1234,7 +1234,7 @@ block_3:
     goto block_12;
   }
 
-block_5:
+// block_5:
   c->lw(v1, 1728, gp);                              // lw v1, 1728(gp)
   c->ori(a0, r0, 36864);                            // ori a0, r0, 36864
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1245,7 +1245,7 @@ block_5:
     goto block_12;
   }
 
-block_7:
+// block_7:
   c->lw(v1, 1732, gp);                              // lw v1, 1732(gp)
   c->ori(a0, r0, 36096);                            // ori a0, r0, 36096
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1256,7 +1256,7 @@ block_7:
     goto block_12;
   }
 
-block_9:
+// block_9:
   c->addiu(v1, r0, 28672);                          // addiu v1, r0, 28672
   c->lw(a0, 1744, gp);                              // lw a0, 1744(gp)
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1267,7 +1267,7 @@ block_9:
     goto block_12;
   }
 
-block_11:
+// block_11:
   c->addiu(v1, r0, 29440);                          // addiu v1, r0, 29440
   c->lw(a0, 1748, gp);                              // lw a0, 1748(gp)
   c->slt(a0, v1, a0);                               // slt a0, v1, a0
@@ -1418,7 +1418,7 @@ block_3:
     goto block_12;
   }
 
-block_5:
+// block_5:
   c->lw(v1, 1728, gp);                              // lw v1, 1728(gp)
   c->ori(a0, r0, 36864);                            // ori a0, r0, 36864
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1429,7 +1429,7 @@ block_5:
     goto block_12;
   }
 
-block_7:
+// block_7:
   c->lw(v1, 1732, gp);                              // lw v1, 1732(gp)
   c->ori(a0, r0, 36096);                            // ori a0, r0, 36096
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1440,7 +1440,7 @@ block_7:
     goto block_12;
   }
 
-block_9:
+// block_9:
   c->addiu(v1, r0, 28672);                          // addiu v1, r0, 28672
   c->lw(a0, 1744, gp);                              // lw a0, 1744(gp)
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1451,7 +1451,7 @@ block_9:
     goto block_12;
   }
 
-block_11:
+// block_11:
   c->addiu(v1, r0, 29440);                          // addiu v1, r0, 29440
   c->lw(a0, 1748, gp);                              // lw a0, 1748(gp)
   c->slt(a0, v1, a0);                               // slt a0, v1, a0
@@ -1567,7 +1567,7 @@ u64 execute(void* ctxt) {
     goto block_3;
   }
 
-block_2:
+// block_2:
   c->lwu(v1, 20, sp);                               // lwu v1, 20(sp)
 
 block_3:
@@ -1638,7 +1638,7 @@ block_6:
     goto block_15;
   }
 
-block_8:
+// block_8:
   c->lw(v1, 1728, gp);                              // lw v1, 1728(gp)
   c->ori(a0, r0, 36864);                            // ori a0, r0, 36864
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1649,7 +1649,7 @@ block_8:
     goto block_15;
   }
 
-block_10:
+// block_10:
   c->lw(v1, 1732, gp);                              // lw v1, 1732(gp)
   c->ori(a0, r0, 36096);                            // ori a0, r0, 36096
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1660,7 +1660,7 @@ block_10:
     goto block_15;
   }
 
-block_12:
+// block_12:
   c->addiu(v1, r0, 28672);                          // addiu v1, r0, 28672
   c->lw(a0, 1744, gp);                              // lw a0, 1744(gp)
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -1671,7 +1671,7 @@ block_12:
     goto block_15;
   }
 
-block_14:
+// block_14:
   c->addiu(v1, r0, 29440);                          // addiu v1, r0, 29440
   c->lw(a0, 1748, gp);                              // lw a0, 1748(gp)
   c->slt(a0, v1, a0);                               // slt a0, v1, a0
@@ -2076,7 +2076,7 @@ block_3:
     goto block_10;
   }
 
-block_5:
+// block_5:
   c->lw(a2, 1732, s5);                              // lw a2, 1732(s5)
   c->ori(t0, r0, 36096);                            // ori t0, r0, 36096
   c->slt(a2, a2, t0);                               // slt a2, a2, t0
@@ -2087,7 +2087,7 @@ block_5:
     goto block_10;
   }
 
-block_7:
+// block_7:
   c->addiu(a2, r0, 28672);                          // addiu a2, r0, 28672
   c->lw(t0, 1744, s5);                              // lw t0, 1744(s5)
   c->slt(a2, a2, t0);                               // slt a2, a2, t0
@@ -2098,7 +2098,7 @@ block_7:
     goto block_10;
   }
 
-block_9:
+// block_9:
   c->addiu(a2, r0, 29440);                          // addiu a2, r0, 29440
   c->lw(t0, 1748, s5);                              // lw t0, 1748(s5)
   c->slt(t0, a2, t0);                               // slt t0, a2, t0
@@ -2271,7 +2271,7 @@ block_3:
     goto block_12;
   }
 
-block_5:
+// block_5:
   c->lw(v1, 1728, gp);                              // lw v1, 1728(gp)
   c->ori(a0, r0, 36864);                            // ori a0, r0, 36864
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -2282,7 +2282,7 @@ block_5:
     goto block_12;
   }
 
-block_7:
+// block_7:
   c->lw(v1, 1732, gp);                              // lw v1, 1732(gp)
   c->ori(a0, r0, 36096);                            // ori a0, r0, 36096
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -2293,7 +2293,7 @@ block_7:
     goto block_12;
   }
 
-block_9:
+// block_9:
   c->addiu(v1, r0, 28672);                          // addiu v1, r0, 28672
   c->lw(a0, 1744, gp);                              // lw a0, 1744(gp)
   c->slt(v1, v1, a0);                               // slt v1, v1, a0
@@ -2304,7 +2304,7 @@ block_9:
     goto block_12;
   }
 
-block_11:
+// block_11:
   c->addiu(v1, r0, 29440);                          // addiu v1, r0, 29440
   c->lw(a0, 1748, gp);                              // lw a0, 1748(gp)
   c->slt(a0, v1, a0);                               // slt a0, v1, a0
