@@ -1038,6 +1038,15 @@ const std::unordered_map<
                                      8,
                                      ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
              {"deschase-path", {{"node", ArrayFieldDecompMeta(TypeSpec("deschase-node"), 32)}}},
+             {"tpath-info",
+              // TODO - should be able to just decompile the `anims` field
+              {{"anim1", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
+               {"anim2", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
+               {"anim3", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)}}},
+             {"blow-tower-path",
+              // TODO - should be able to just decompile the `anims` field
+              {{"pts", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"node-info", ArrayFieldDecompMeta(TypeSpec("blow-tower-node-info"), 32)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,

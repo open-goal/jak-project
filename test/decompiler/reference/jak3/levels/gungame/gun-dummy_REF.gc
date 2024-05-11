@@ -1,0 +1,2316 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *gungame-level*, type symbol
+(define *gungame-level* 'lgunnorm)
+
+;; definition of type tpath-control-frame
+(deftype tpath-control-frame (structure)
+  ((time       float)
+   (path-pos   uint8)
+   (command    tpath-cmd)
+   (move-type  uint8)
+   (path-num   uint8)
+   )
+  )
+
+;; definition for method 3 of type tpath-control-frame
+(defmethod inspect ((this tpath-control-frame))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tpath-control-frame)
+  (format #t "~1Ttime: ~f~%" (-> this time))
+  (format #t "~1Tpath-pos: ~D~%" (-> this path-pos))
+  (format #t "~1Tcommand: ~D~%" (-> this command))
+  (format #t "~1Tmove-type: ~D~%" (-> this move-type))
+  (format #t "~1Tpath-num: ~D~%" (-> this path-num))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type tpath-info
+(deftype tpath-info (structure)
+  ((s-time        float)
+   (num           uint16)
+   (ref-time-num  int16)
+   (score         int16)
+   (flags         tpath-flag)
+   (num-anims     uint8)
+   (bonus-time    float)
+   (list          (array int32))
+   (anims         (inline-array tpath-control-frame)  3)
+   (anim1         (inline-array tpath-control-frame)  :overlay-at (-> anims 0))
+   (anim2         (inline-array tpath-control-frame)  :overlay-at (-> anims 1))
+   (anim3         (inline-array tpath-control-frame)  :overlay-at (-> anims 2))
+   )
+  )
+
+;; definition for method 3 of type tpath-info
+(defmethod inspect ((this tpath-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'tpath-info)
+  (format #t "~1Ts-time: ~f~%" (-> this s-time))
+  (format #t "~1Tnum: ~D~%" (-> this num))
+  (format #t "~1Tref-time-num: ~D~%" (-> this ref-time-num))
+  (format #t "~1Tscore: ~D~%" (-> this score))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tnum-anims: ~D~%" (-> this num-anims))
+  (format #t "~1Tbonus-time: ~f~%" (-> this bonus-time))
+  (format #t "~1Tlist: ~A~%" (-> this list))
+  (format #t "~1Tanims[3] @ #x~X~%" (&-> this anim1))
+  (format #t "~1Tanim1: #x~X~%" (-> this anim1))
+  (format #t "~1Tanim2: #x~X~%" (-> this anim2))
+  (format #t "~1Tanim3: #x~X~%" (-> this anim3))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gun-dummy-gun-info
+(deftype gun-dummy-gun-info (structure)
+  ((gun-state               uint8)
+   (joint-index             int16)
+   (trans                   vector      :inline)
+   (quat                    quaternion  :inline)
+   (next-fire-time          time-frame)
+   (total-rotation          float)
+   (current-rotation        float)
+   (last-track-player-time  time-frame)
+   (last-known-player-pos   vector      :inline)
+   (fire-speed-scalar       float)
+   )
+  )
+
+;; definition for method 3 of type gun-dummy-gun-info
+(defmethod inspect ((this gun-dummy-gun-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gun-dummy-gun-info)
+  (format #t "~1Tgun-state: ~D~%" (-> this gun-state))
+  (format #t "~1Tjoint-index: ~D~%" (-> this joint-index))
+  (format #t "~1Ttrans: #<vector @ #x~X>~%" (-> this trans))
+  (format #t "~1Tquat: #<quaternion @ #x~X>~%" (-> this quat))
+  (format #t "~1Tnext-fire-time: ~D~%" (-> this next-fire-time))
+  (format #t "~1Ttotal-rotation: ~f~%" (-> this total-rotation))
+  (format #t "~1Tcurrent-rotation: ~f~%" (-> this current-rotation))
+  (format #t "~1Tlast-track-player-time: ~D~%" (-> this last-track-player-time))
+  (format #t "~1Tlast-known-player-pos: #<vector @ #x~X>~%" (-> this last-known-player-pos))
+  (format #t "~1Tfire-speed-scalar: ~f~%" (-> this fire-speed-scalar))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gun-dummy
+(deftype gun-dummy (process-focusable)
+  ((incoming-attack-id        uint32)
+   (incoming-attack-id-time   time-frame)
+   (train-man                 handle)
+   (info                      tpath-info)
+   (y-offset                  float)
+   (rot-y-offset              float)
+   (quat                      quaternion          :inline)
+   (hit-points                int32)
+   (score                     float)
+   (path-num                  uint32)
+   (next-spark                time-frame)
+   (inout-percent             float)
+   (quat-ground               quaternion          :inline)
+   (path-pos                  float)
+   (score-speed               float)
+   (first-time-command        symbol)
+   (current                   (inline-array tpath-control-frame))
+   (impact                    vector              :inline)
+   (done?                     symbol)
+   (move-sound                sound-id)
+   (turn-sound                sound-id)
+   (spin-sound                sound-id)
+   (last-combo-time           time-frame)
+   (gun-info                  gun-dummy-gun-info  :inline)
+   (joint-exploder            joint-exploder-static-params)
+   (joint-explode-skel-group  skeleton-group)
+   (joint-explode-anim-index  int16)
+   (hum-sound                 sound-id)
+   (explode-part-group        sparticle-launch-group)
+   )
+  (:state-methods
+    idle
+    )
+  (:methods
+    (init-collision! (_type_) none)
+    (check-done? (_type_) symbol)
+    (gun-dummy-method-31 (_type_) float)
+    (init-tpath (_type_ tpath-info) none)
+    (break-dummy (_type_) none)
+    (get-draw-mask (_type_) int)
+    (gun-dummy-method-35 (_type_) int)
+    (spawn-exploder (_type_) object)
+    (set-explode-group (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type gun-dummy
+(defmethod inspect ((this gun-dummy))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> this incoming-attack-id))
+  (format #t "~2Tincoming-attack-id-time: ~D~%" (-> this incoming-attack-id-time))
+  (format #t "~2Ttrain-man: ~D~%" (-> this train-man))
+  (format #t "~2Tinfo: #<tpath-info @ #x~X>~%" (-> this info))
+  (format #t "~2Ty-offset: ~f~%" (-> this y-offset))
+  (format #t "~2Trot-y-offset: ~f~%" (-> this rot-y-offset))
+  (format #t "~2Tquat: #<quaternion @ #x~X>~%" (-> this quat))
+  (format #t "~2Thit-points: ~D~%" (-> this hit-points))
+  (format #t "~2Tscore: ~f~%" (-> this score))
+  (format #t "~2Tpath-num: ~D~%" (-> this path-num))
+  (format #t "~2Tnext-spark: ~D~%" (-> this next-spark))
+  (format #t "~2Tinout-percent: ~f~%" (-> this inout-percent))
+  (format #t "~2Tquat-ground: #<quaternion @ #x~X>~%" (-> this quat-ground))
+  (format #t "~2Tpath-pos: ~f~%" (-> this path-pos))
+  (format #t "~2Tscore-speed: ~f~%" (-> this score-speed))
+  (format #t "~2Tfirst-time-command: ~A~%" (-> this first-time-command))
+  (format #t "~2Tcurrent: #<tpath-control-frame @ #x~X>~%" (-> this current))
+  (format #t "~2Timpact: #<vector @ #x~X>~%" (-> this impact))
+  (format #t "~2Tdone?: ~A~%" (-> this done?))
+  (format #t "~2Tmove-sound: ~D~%" (-> this move-sound))
+  (format #t "~2Tturn-sound: ~D~%" (-> this turn-sound))
+  (format #t "~2Tspin-sound: ~D~%" (-> this spin-sound))
+  (format #t "~2Tlast-combo-time: ~D~%" (-> this last-combo-time))
+  (format #t "~2Tgun-info: #<gun-dummy-gun-info @ #x~X>~%" (-> this gun-info))
+  (format #t "~2Tjoint-exploder: ~A~%" (-> this joint-exploder))
+  (format #t "~2Tjoint-explode-skel-group: ~A~%" (-> this joint-explode-skel-group))
+  (format #t "~2Tjoint-explode-anim-index: ~D~%" (-> this joint-explode-anim-index))
+  (format #t "~2Thum-sound: ~D~%" (-> this hum-sound))
+  (format #t "~2Texplode-part-group: ~A~%" (-> this explode-part-group))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 37 of type gun-dummy
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-explode-group ((this gun-dummy))
+  (set! (-> this explode-part-group) #f)
+  (none)
+  )
+
+;; definition for method 36 of type gun-dummy
+;; INFO: Used lq/sq
+(defmethod spawn-exploder ((this gun-dummy))
+  (if (not (-> this joint-exploder))
+      (return 0)
+      )
+  (let ((s5-0 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+    (set! (-> s5-0 fountain-rand-transv-lo quad) (-> this impact quad))
+    (set! (-> s5-0 fountain-rand-transv-hi x) 4096.0)
+    (set! (-> s5-0 fountain-rand-transv-hi y) 122880.0)
+    (if (-> this explode-part-group)
+        (part-tracker-spawn
+          part-tracker
+          :to *entity-pool*
+          :group (-> this explode-part-group)
+          :duration (seconds 1)
+          :mat-joint (-> this node-list data 3 bone transform)
+          )
+        )
+    (process-spawn
+      joint-exploder
+      (-> this joint-explode-skel-group)
+      (-> this joint-explode-anim-index)
+      s5-0
+      (-> this joint-exploder)
+      :name "joint-exploder"
+      :to this
+      :unk 0
+      )
+    )
+  )
+
+;; definition for symbol *tpath-rand*, type uint
+(define *tpath-rand* (the-as uint 0))
+
+;; definition for method 33 of type gun-dummy
+;; WARN: Return type mismatch int vs none.
+(defmethod break-dummy ((this gun-dummy))
+  0
+  (none)
+  )
+
+;; definition for method 31 of type gun-dummy
+(defmethod gun-dummy-method-31 ((this gun-dummy))
+  (let ((total-time 0.0))
+    (let ((curr-frame (the-as object (-> this current))))
+      (loop
+        (case (-> (the-as tpath-control-frame curr-frame) command)
+          (((tpath-cmd cmd0))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd1))
+           (+! total-time (-> (the-as tpath-control-frame curr-frame) time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd6))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd7))
+           (if (>= 0.0 (-> (the-as tpath-control-frame curr-frame) time))
+               (set! (-> this gun-info fire-speed-scalar) 1.0)
+               (set! (-> this gun-info fire-speed-scalar) (/ 1.0 (-> (the-as tpath-control-frame curr-frame) time)))
+               )
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd5))
+           (+! total-time (-> (the-as tpath-control-frame curr-frame) time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd4))
+           (+! total-time (-> (the-as tpath-control-frame curr-frame) time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd2))
+           (+! total-time (-> (the-as tpath-control-frame curr-frame) time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd3))
+           (+! total-time (-> (the-as tpath-control-frame curr-frame) time))
+           (set! curr-frame (-> (the-as (inline-array tpath-control-frame) curr-frame) 1))
+           )
+          (((tpath-cmd cmd8))
+           (return total-time)
+           )
+          )
+        )
+      )
+    total-time
+    )
+  )
+
+;; definition for function generate-next-fire-time
+(defun generate-next-fire-time ((arg0 float))
+  (let* ((gp-0 (current-time))
+         (f30-0 300.0)
+         (f28-0 1.0)
+         (f26-0 2.0)
+         (v1-5 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-6 (the-as number (logior #x3f800000 v1-5)))
+         )
+    (+ gp-0 (the int (* f30-0 (+ f28-0 (* f26-0 (+ -1.0 (the-as float v1-6)))) arg0)))
+    )
+  )
+
+;; definition for method 30 of type gun-dummy
+;; INFO: Used lq/sq
+(defmethod check-done? ((this gun-dummy))
+  (local-vars (at-0 int) (v0-1 symbol))
+  (with-pp
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((s5-0 (-> this current))
+            (a1-0 (new 'stack-no-clear 'event-message-block))
+            )
+        (set! (-> a1-0 from) (process->ppointer pp))
+        (set! (-> a1-0 num-params) 1)
+        (set! (-> a1-0 message) 'path)
+        (set! (-> a1-0 param 0) (-> this path-num))
+        (let ((s4-0 (the-as path-control (send-event-function (handle->process (-> this train-man)) a1-0)))
+              (f30-0 (* 0.0033333334 (the float (- (current-time) (-> this state-time)))))
+              )
+          (if (not s4-0)
+              (return #f)
+              )
+          (case (-> s5-0 0 command)
+            (((tpath-cmd cmd1))
+             (set! (-> this path-pos) (* 0.007843138 (the float (-> s5-0 0 path-pos))))
+             (get-point-in-path! s4-0 (-> this root trans) (-> this path-pos) 'interp)
+             (+! (-> this root trans y) (lerp-scale -16384.0 0.0 f30-0 0.0 (-> s5-0 0 time)))
+             (let* ((s3-0 (get-point-in-path! s4-0 (new 'stack-no-clear 'vector) (-> this path-pos) 'interp))
+                    (v1-26 (get-point-in-path!
+                             s4-0
+                             (new 'stack-no-clear 'vector)
+                             (if (< (-> this path-pos) 0.01)
+                                 (+ 0.1 (-> this path-pos))
+                                 (+ -0.1 (-> this path-pos))
+                                 )
+                             'interp
+                             )
+                           )
+                    (s4-2 (vector-! (new 'stack-no-clear 'vector) v1-26 s3-0))
+                    )
+               (vector-rotate90-around-y! s4-2 s4-2)
+               (if (< (vector-dot s4-2 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) s3-0)) 0.0)
+                   (vector-negate-in-place! s4-2)
+                   )
+               (vector-normalize! s4-2 1.0)
+               (forward-up-nopitch->quaternion (-> this quat-ground) s4-2 *up-vector*)
+               )
+             (quaternion-normalize! (-> this quat-ground))
+             (if (-> this first-time-command)
+                 (sound-play "target-up-slow")
+                 )
+             (set! (-> this first-time-command) #f)
+             (when (>= f30-0 (-> s5-0 0 time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
+               )
+             (return #t)
+             v0-1
+             )
+            (((tpath-cmd cmd5))
+             (get-point-in-path! s4-0 (-> this root trans) (-> this path-pos) 'interp)
+             (+! (-> this root trans y) (lerp-scale 0.0 -16384.0 f30-0 0.0 (-> s5-0 0 time)))
+             (if (-> this first-time-command)
+                 (sound-play "target-dwn-slow")
+                 )
+             (set! (-> this first-time-command) #f)
+             (when (>= f30-0 (-> s5-0 0 time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
+               )
+             (return #t)
+             v0-1
+             )
+            (((tpath-cmd cmd4))
+             (let ((s3-3 (get-point-in-path! s4-0 (new 'stack-no-clear 'vector) (-> this path-pos) 'interp)))
+               (let* ((v1-68 (get-point-in-path!
+                               s4-0
+                               (new 'stack-no-clear 'vector)
+                               (if (< (-> this path-pos) 0.01)
+                                   (+ 0.1 (-> this path-pos))
+                                   (+ -0.1 (-> this path-pos))
+                                   )
+                               'interp
+                               )
+                             )
+                      (s4-6 (vector-! (new 'stack-no-clear 'vector) v1-68 s3-3))
+                      )
+                 (vector-rotate90-around-y! s4-6 s4-6)
+                 (if (< (vector-dot s4-6 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) s3-3)) 0.0)
+                     (vector-negate-in-place! s4-6)
+                     )
+                 (vector-normalize! s4-6 1.0)
+                 (forward-up-nopitch->quaternion (-> this quat-ground) s4-6 *up-vector*)
+                 )
+               (quaternion-normalize! (-> this quat-ground))
+               (set! (-> this root trans quad) (-> s3-3 quad))
+               )
+             (set! (-> this inout-percent) (lerp-scale 0.0 1.0 f30-0 0.0 (-> s5-0 0 time)))
+             (set! (-> this first-time-command) #f)
+             (when (>= f30-0 (-> s5-0 0 time))
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this inout-percent) 1.0)
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
+               )
+             (return #t)
+             v0-1
+             )
+            (((tpath-cmd cmd2))
+             (set! (-> this score) (- (-> this score) (* (-> this score-speed) (seconds-per-frame))))
+             (set! (-> this inout-percent) (fmax 0.0 (- (-> this inout-percent) (* 4.0 (seconds-per-frame)))))
+             (let ((s2-4 (new 'stack-no-clear 'vector))
+                   (s3-4 (new 'stack-no-clear 'vector))
+                   (f28-2 (lerp-scale 0.0 1.0 f30-0 0.0 (-> s5-0 0 time)))
+                   )
+               (let ((v1-87 (-> s5-0 0 move-type)))
+                 (cond
+                   ((zero? v1-87)
+                    )
+                   ((= v1-87 1)
+                    (set! f28-2 (+ (* -2.0 f28-2 f28-2 f28-2) (* 3.0 f28-2 f28-2)))
+                    )
+                   ((= v1-87 2)
+                    (set! f28-2 (* f28-2 f28-2 f28-2))
+                    )
+                   ((= v1-87 3)
+                    (sin (* 16384.0 f28-2))
+                    )
+                   )
+                 )
+               (get-point-in-path! s4-0 s2-4 (-> this path-pos) 'interp)
+               (get-point-in-path! s4-0 s3-4 (* 0.007843138 (the float (-> s5-0 0 path-pos))) 'interp)
+               (let ((v1-102 (new 'stack-no-clear 'vector)))
+                 (set! (-> v1-102 quad) (-> this root trans quad))
+                 (vector-float*! (-> this root trans) s2-4 (- 1.0 f28-2))
+                 (let ((a0-63 (-> this root trans)))
+                   (let ((a1-23 (-> this root trans)))
+                     (let ((a2-17 f28-2))
+                       (.mov vf7 a2-17)
+                       )
+                     (.lvf vf5 (&-> s3-4 quad))
+                     (.lvf vf4 (&-> a1-23 quad))
+                     )
+                   (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                   (.mul.x.vf acc vf5 vf7 :mask #b111)
+                   (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                   (.svf (&-> a0-63 quad) vf6)
+                   )
+                 (let ((a0-65 (-> this root transv)))
+                   (.lvf vf1 (&-> (vector-! (new 'stack-no-clear 'vector) (-> this root trans) v1-102) quad))
+                   (let ((f0-50 (-> pp clock frames-per-second)))
+                     (.mov at-0 f0-50)
+                     )
+                   (.mov vf2 at-0)
+                   (.mov.vf vf1 vf0 :mask #b1000)
+                   (.mul.x.vf vf1 vf1 vf2 :mask #b111)
+                   (.svf (&-> a0-65 quad) vf1)
+                   )
+                 )
+               )
+             (if (zero? (-> this move-sound))
+                 (set! (-> this move-sound) (new-sound-id))
+                 )
+             (let ((s4-7 (static-sound-spec "target-mov-slow" :group 0 :volume 100.0 :fo-max 60 :mask (pitch))))
+               (set! (-> s4-7 pitch-mod) (the int (lerp-scale -1.0 1.0 (vector-length (-> this root transv)) 0.0 81920.0)))
+               (sound-play-by-spec s4-7 (-> this move-sound) (-> this root trans))
+               )
+             (when (< (-> this next-spark) (current-time))
+               (set! (-> this next-spark) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 0.0 0.3)))))
+               (spawn (-> this part) (-> this root trans))
+               )
+             (set! (-> this first-time-command) #f)
+             (when (>= f30-0 (-> s5-0 0 time))
+               (when (nonzero? (-> this move-sound))
+                 (sound-stop (-> this move-sound))
+                 (set! (-> this move-sound) (new 'static 'sound-id))
+                 0
+                 )
+               (sound-play "target-stop")
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this path-pos) (* 0.007843138 (the float (-> s5-0 0 path-pos))))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
+               )
+             (return #t)
+             v0-1
+             )
+            (((tpath-cmd cmd3))
+             (set! (-> this score) (- (-> this score) (* (-> this score-speed) (seconds-per-frame))))
+             (set! (-> this inout-percent) (fmax 0.0 (- (-> this inout-percent) (* 4.0 (seconds-per-frame)))))
+             (get-point-in-path! s4-0 (-> this root trans) (-> this path-pos) 'interp)
+             (set! (-> this first-time-command) #f)
+             (when (or (and (= (-> s5-0 0 time) -1.0) (< (-> this hit-points) 0))
+                       (and (!= (-> s5-0 0 time) -1.0) (>= f30-0 (-> s5-0 0 time)))
+                       )
+               (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+               (set! (-> this first-time-command) #t)
+               (set-time! (-> this state-time))
+               )
+             (return #t)
+             v0-1
+             )
+            (((tpath-cmd cmd8))
+             (return #f)
+             v0-1
+             )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 21 of type gun-dummy
+;; INFO: Used lq/sq
+(defmethod get-trans ((this gun-dummy) (arg0 int))
+  "Get the `trans` for this process."
+  (let ((v1-0 (-> this root)))
+    (case arg0
+      ((3 2)
+       (let ((v0-0 (new 'static 'vector :w 1.0)))
+         (set! (-> v0-0 quad) (-> v1-0 trans quad))
+         (+! (-> v0-0 y) 8192.0)
+         v0-0
+         )
+       )
+      (else
+        (-> v1-0 trans)
+        )
+      )
+    )
+  )
+
+;; definition for function gun-dummy-event-handler
+;; INFO: Used lq/sq
+(defbehavior gun-dummy-event-handler gun-dummy ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('prevent-bounce?)
+     (not (logtest? (-> self info flags) (tpath-flag t5)))
+     )
+    (('die-fast)
+     (deactivate self)
+     )
+    (('combo)
+     (set-time! (-> self last-combo-time))
+     #t
+     )
+    (('track)
+     (cond
+       ((-> arg3 param 0)
+        (if (and (not (logtest? (-> self info flags) (tpath-flag t2))) (> (-> self hit-points) 0))
+            #t
+            'abort
+            )
+        )
+       (else
+         (and (not (logtest? (-> self info flags) (tpath-flag t2))) (> (-> self hit-points) 0))
+         )
+       )
+     )
+    (('attack)
+     (let ((s5-0 (the-as attack-info (-> arg3 param 1))))
+       (get-penetrate-using-from-attack-event (the-as process-drawable arg0) arg3)
+       (when (or (not (logtest? (-> self info flags) (tpath-flag t6)))
+                 (and (logtest? (-> self info flags) (tpath-flag t6))
+                      (or (= (-> s5-0 mode) 'eco-dark) (= (-> s5-0 mode) 'explode))
+                      )
+                 )
+         (when (or (!= (-> s5-0 id) (-> self incoming-attack-id))
+                   (time-elapsed? (-> self incoming-attack-id-time) (seconds 0.5))
+                   )
+           (set-time! (-> self incoming-attack-id-time))
+           (set! (-> self incoming-attack-id) (-> s5-0 id))
+           (when arg0
+             (vector+float*! (-> self impact) (-> self root trans) *up-vector* 8192.0)
+             (vector+!
+               (-> self impact)
+               (-> self impact)
+               (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans)) 4096.0)
+               )
+             (cond
+               ((and (= (-> self hit-points) 2) (logtest? (-> self info flags) (tpath-flag t5)))
+                (set! (-> self rot-y-offset) 262144.0)
+                (set! (-> self spin-sound) (sound-play "target-spin"))
+                )
+               ((and (>= (-> self hit-points) 2) (logtest? (-> self info flags) (tpath-flag shield)))
+                (let ((gp-2 (get-draw-mask self)))
+                  (sound-stop (-> self hum-sound))
+                  (let ((s5-3 (new 'stack-no-clear 'matrix)))
+                    (let ((s4-3 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))))
+                      (let ((a0-40 s4-3))
+                        (set! (-> a0-40 quad) (-> s4-3 quad))
+                        (set! (-> a0-40 y) 0.0)
+                        (vector-normalize! a0-40 1.0)
+                        )
+                      (matrix-fu-compose s5-3 s4-3 *up-vector*)
+                      )
+                    (set! (-> s5-3 trans quad) (-> self root trans quad))
+                    (if (logtest? (-> *part-group-id-table* 1425 flags) (sp-group-flag sp13))
+                        (part-tracker-spawn
+                          part-tracker-subsampler
+                          :to *entity-pool*
+                          :group (-> *part-group-id-table* 1425)
+                          :mat-joint s5-3
+                          )
+                        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1425) :mat-joint s5-3)
+                        )
+                    )
+                  (setup-masks (-> self draw) 0 gp-2)
+                  )
+                )
+               (else
+                 (if (and (logtest? (process-mask projectile) (-> arg0 mask))
+                          (not (time-elapsed? (-> self last-combo-time) (seconds 1)))
+                          )
+                     (send-event (ppointer->process (-> self parent)) 'combo)
+                     )
+                 )
+               )
+             (if (> (-> self hit-points) 0)
+                 (+! (-> self hit-points) -1)
+                 )
+             #t
+             )
+           )
+         )
+       )
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (gun-dummy)
+  :virtual #t
+  :event gun-dummy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self inout-percent) 1.0)
+    (set! (-> self y-offset) 0.0)
+    (set! (-> self rot-y-offset) 0.0)
+    (set! (-> self first-time-command) #t)
+    (set! (-> self done?) #f)
+    (if (logtest? (-> self info flags) (tpath-flag shield))
+        (sound-play "gtarget-shield" :id (-> self hum-sound))
+        )
+    )
+  :exit (behavior ()
+    (logior! (-> self info flags) (tpath-flag t1))
+    )
+  :code (behavior ()
+    (while (not (-> self done?))
+      (suspend)
+      )
+    (when (nonzero? (-> self move-sound))
+      (sound-stop (-> self move-sound))
+      (set! (-> self move-sound) (new 'static 'sound-id))
+      0
+      )
+    (when (nonzero? (-> self turn-sound))
+      (sound-stop (-> self turn-sound))
+      (set! (-> self turn-sound) (new 'static 'sound-id))
+      0
+      )
+    (when (nonzero? (-> self spin-sound))
+      (sound-stop (-> self spin-sound))
+      (set! (-> self spin-sound) (new 'static 'sound-id))
+      0
+      )
+    (cleanup-for-death self)
+    )
+  :post (behavior ()
+    (set! (-> self done?) (not (check-done? self)))
+    (when (zero? (-> self hit-points))
+      (logior! (-> self info flags) (tpath-flag t1))
+      (if (>= -100.0 (-> self score))
+          (sound-play "score-bad")
+          )
+      (send-event (handle->process (-> self train-man)) 'score (the int (-> self score)))
+      (break-dummy self)
+      (set! (-> self hit-points) -1)
+      )
+    (+! (-> self root trans y) (-> self y-offset))
+    (set! (-> self rot-y-offset) (- (-> self rot-y-offset) (* 8.0 (seconds-per-frame) (-> self rot-y-offset))))
+    (when (< (-> self rot-y-offset) 182.04445)
+      (when (nonzero? (-> self spin-sound))
+        (sound-stop (-> self spin-sound))
+        (set! (-> self spin-sound) (new 'static 'sound-id))
+        0
+        )
+      )
+    (let ((gp-2 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))))
+      (vector-normalize! gp-2 1.0)
+      (let ((v1-33 (-> self gun-info gun-state)))
+        (if (or (zero? v1-33) (= v1-33 1) (= v1-33 2) (= v1-33 4))
+            (seek-toward-heading-vec! (-> self root) gp-2 65536.0 (seconds 0.5))
+            )
+        )
+      )
+    (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (-> self rot-y-offset))
+    (quaternion-slerp! (-> self root quat) (-> self root quat) (-> self quat-ground) (-> self inout-percent))
+    (transform-post)
+    )
+  )
+
+;; definition for method 29 of type gun-dummy
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this gun-dummy))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy impenetrable-obj shield))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-6 local-sphere) 0.0 7372.8 0.0 8192.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 7 of type gun-dummy
+;; WARN: Return type mismatch process-focusable vs gun-dummy.
+(defmethod relocate ((this gun-dummy) (offset int))
+  (the-as gun-dummy ((method-of-type process-focusable relocate) this offset))
+  )
+
+;; definition for method 11 of type gun-dummy
+(defmethod init-from-entity! ((this gun-dummy) (arg0 entity-actor))
+  (init-collision! this)
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-kg-robo" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (transform-post)
+  (go (method-of-object this idle))
+  )
+
+;; definition for function gun-dummy-gun-aim-jmod-func
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs none.
+(defun gun-dummy-gun-aim-jmod-func ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (the-as gun-dummy-gun (-> arg0 param1))))
+    (cspace<-parented-transformq-joint! arg0 arg1)
+    (quaternion-copy! (-> arg1 quat) (-> s4-0 gun-info quat))
+    )
+  (let ((s4-1 (new 'stack-no-clear 'vector)))
+    (set! (-> s4-1 quad) (-> arg0 bone transform trans quad))
+    (matrix<-no-trans-transformq! (-> arg0 bone transform) arg1)
+    (set! (-> arg0 bone transform trans quad) (-> s4-1 quad))
+    )
+  (none)
+  )
+
+;; definition for method 20 of type gun-dummy
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this gun-dummy))
+  (let ((v1-1 (-> this current 0 command)))
+    (the-as search-info-flag (if (or (= v1-1 (tpath-cmd cmd1)) (= v1-1 (tpath-cmd cmd5)))
+                                 0
+                                 16
+                                 )
+            )
+    )
+  )
+
+;; definition for method 35 of type gun-dummy
+(defmethod gun-dummy-method-35 ((this gun-dummy))
+  (cond
+    ((logtest? (-> this info flags) (tpath-flag t3 t5))
+     2
+     )
+    ((logtest? (-> this info flags) (tpath-flag t2))
+     1
+     )
+    (else
+      1
+      )
+    )
+  )
+
+;; definition for method 34 of type gun-dummy
+(defmethod get-draw-mask ((this gun-dummy))
+  (cond
+    ((logtest? (-> this info flags) (tpath-flag t3))
+     4
+     )
+    ((= *gungame-level* 'lgunnorm)
+     2
+     )
+    (else
+      0
+      )
+    )
+  )
+
+;; definition for method 32 of type gun-dummy
+;; WARN: Return type mismatch int vs none.
+(defmethod init-tpath ((this gun-dummy) (arg0 tpath-info))
+  (cond
+    ((logtest? (-> arg0 flags) (tpath-flag t2))
+     (logclear! (-> this mask) (process-mask enemy))
+     (logior! (-> this mask) (process-mask crate))
+     )
+    (else
+      (logior! (-> this mask) (process-mask enemy))
+      )
+    )
+  (quaternion-copy! (-> this quat) (-> this root quat))
+  (+! (-> this root trans y) -16384.0)
+  (if (not (logtest? (-> arg0 flags) (tpath-flag t4)))
+      (set! *tpath-rand* (the-as uint (rand-vu-int-count 16)))
+      )
+  (set! (-> this current)
+        (the-as (inline-array tpath-control-frame) (-> arg0 anims (mod *tpath-rand* (-> arg0 num-anims)) 0))
+        )
+  (let ((v1-22 (-> this current)))
+    (when (= (-> v1-22 0 command) (tpath-cmd cmd0))
+      (set! (-> this path-num) (-> v1-22 0 path-num))
+      (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+      )
+    )
+  (cond
+    ((logtest? (-> arg0 flags) (tpath-flag t8))
+     (set! (-> this gun-info gun-state) (the-as uint 1))
+     (let ((a0-10 (-> this node-list data 4)))
+       (set! (-> a0-10 param0) gun-dummy-gun-aim-jmod-func)
+       (set! (-> a0-10 param1) this)
+       )
+     )
+    (else
+      (set! (-> this gun-info gun-state) (the-as uint 0))
+      0
+      )
+    )
+  (set! (-> this score) (the float (-> arg0 score)))
+  (if (logtest? (-> arg0 flags) (tpath-flag t2))
+      (set! (-> this score-speed) 0.0)
+      (set! (-> this score-speed) (/ (-> this score) (gun-dummy-method-31 this)))
+      )
+  (set! (-> this info) arg0)
+  (set! (-> this hit-points) (if (logtest? (-> arg0 flags) (tpath-flag t5))
+                                 2
+                                 1
+                                 )
+        )
+  (let ((a1-2 (get-draw-mask this)))
+    (cond
+      ((logtest? (-> arg0 flags) (tpath-flag shield))
+       (+! (-> this hit-points) 1)
+       (setup-masks (-> this draw) a1-2 0)
+       )
+      ((not (logtest? (-> arg0 flags) (tpath-flag t2)))
+       (setup-masks (-> this draw) 0 a1-2)
+       )
+      )
+    )
+  (setup-masks (-> this draw) 0 (gun-dummy-method-35 this))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1413) this))
+  (set! (-> this next-spark) 0)
+  (set! (-> this explode-part-group) #f)
+  (set-explode-group this)
+  0
+  (none)
+  )
+
+;; definition of type gun-dummy-gun
+(deftype gun-dummy-gun (gun-dummy)
+  ()
+  (:methods
+    (gun-dummy-gun-method-38 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type gun-dummy-gun
+(defmethod inspect ((this gun-dummy-gun))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gun-dummy-base
+(deftype gun-dummy-base (gun-dummy)
+  ()
+  (:methods
+    (init (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type gun-dummy-base
+(defmethod inspect ((this gun-dummy-base))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gun-dummy-explode
+(deftype gun-dummy-explode (gun-dummy)
+  ((arm-start-time      time-frame)
+   (explode-start-time  time-frame  :overlay-at arm-start-time)
+   (explode-delay       time-frame)
+   (exploded?           symbol)
+   (last-flash-val      float)
+   )
+  (:state-methods
+    explode
+    )
+  )
+
+;; definition for method 3 of type gun-dummy-explode
+(defmethod inspect ((this gun-dummy-explode))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tarm-start-time: ~D~%" (-> this arm-start-time))
+  (format #t "~2Texplode-start-time: ~D~%" (-> this arm-start-time))
+  (format #t "~2Texplode-delay: ~D~%" (-> this explode-delay))
+  (format #t "~2Texploded?: ~A~%" (-> this exploded?))
+  (format #t "~2Tlast-flash-val: ~f~%" (-> this last-flash-val))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function gun-dummy-gun-init-by-other
+(defbehavior gun-dummy-gun-init-by-other gun-dummy-gun ((arg0 gungame-manager) (arg1 tpath-info))
+  (set! (-> self level) (level-get *level* *gungame-level*))
+  (init-collision! self)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-kg-robo" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self joint-exploder) *gun-kg-robo-exploder-params*)
+  (set! (-> self joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-kg-robo-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> self joint-explode-anim-index) 6)
+  (set! (-> self train-man) (process->handle arg0))
+  (init-tpath self arg1)
+  (set! (-> self move-sound) (new 'static 'sound-id))
+  (set! (-> self turn-sound) (new 'static 'sound-id))
+  (set! (-> self spin-sound) (new 'static 'sound-id))
+  (go-virtual idle)
+  )
+
+;; definition for method 38 of type gun-dummy-base
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-base))
+  0
+  (none)
+  )
+
+;; definition for function gun-dummy-base-init-by-other
+(defbehavior gun-dummy-base-init-by-other gun-dummy-base ((arg0 gungame-manager) (arg1 tpath-info))
+  (set! (-> self level) (level-get *level* *gungame-level*))
+  (init-collision! self)
+  (init self)
+  (set! (-> self train-man) (process->handle arg0))
+  (init-tpath self arg1)
+  (set! (-> self move-sound) (new 'static 'sound-id))
+  (set! (-> self turn-sound) (new 'static 'sound-id))
+  (set! (-> self spin-sound) (new 'static 'sound-id))
+  (set! (-> self hum-sound) (new-sound-id))
+  (go-virtual idle)
+  )
+
+;; definition for method 33 of type gun-dummy-base
+;; WARN: Return type mismatch int vs none.
+(defmethod break-dummy ((this gun-dummy-base))
+  (let ((v1-1 (-> this root root-prim)))
+    (set! (-> v1-1 prim-core collide-as) (collide-spec))
+    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+    )
+  0
+  (setup-masks (-> this draw) 0 -1)
+  (cond
+    ((logtest? (-> this info flags) (tpath-flag t2))
+     (setup-masks (-> this draw) (gun-dummy-method-35 this) 0)
+     )
+    (else
+      (setup-masks (-> this draw) 0 -1)
+      (setup-masks (-> this draw) (gun-dummy-method-35 this) 0)
+      )
+    )
+  (if (logtest? (-> this info flags) (tpath-flag t3))
+      (sound-play "target-bonus")
+      (sound-play "target-break")
+      )
+  (spawn-exploder this)
+  0
+  (none)
+  )
+
+;; definition for method 33 of type gun-dummy-gun
+;; WARN: Return type mismatch int vs none.
+(defmethod break-dummy ((this gun-dummy-gun))
+  (let ((v1-1 (-> this root root-prim)))
+    (set! (-> v1-1 prim-core collide-as) (collide-spec))
+    (set! (-> v1-1 prim-core collide-with) (collide-spec))
+    )
+  0
+  (setup-masks (-> this draw) 0 -1)
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (sound-play "target-break")
+  (spawn-exploder this)
+  0
+  (none)
+  )
+
+;; definition for function gun-dummy-explode-init-by-other
+(defbehavior gun-dummy-explode-init-by-other gun-dummy-explode ((arg0 gungame-manager) (arg1 tpath-info))
+  (set! (-> self level) (level-get *level* *gungame-level*))
+  (init-collision! self)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-bomb" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-bomb-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> self joint-explode-anim-index) 5)
+  (set! (-> self train-man) (process->handle arg0))
+  (init-tpath self arg1)
+  (set! (-> self joint-exploder) *gun-kg-bomb-exploder-params*)
+  (set! (-> self move-sound) (new 'static 'sound-id))
+  (set! (-> self turn-sound) (new 'static 'sound-id))
+  (set! (-> self spin-sound) (new 'static 'sound-id))
+  (set! (-> self arm-start-time) 0)
+  (set! (-> self explode-delay) 0)
+  (set! (-> self exploded?) #f)
+  (go-virtual idle)
+  )
+
+;; definition for method 30 of type gun-dummy-gun
+(defmethod check-done? ((this gun-dummy-gun))
+  (local-vars (v0-1 symbol))
+  (gun-dummy-gun-method-38 this)
+  (case (-> this current 0 command)
+    (((tpath-cmd cmd7))
+     (set! (-> this gun-info gun-state) (the-as uint 2))
+     (set! (-> this gun-info total-rotation) 16384.0)
+     (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+     (set! (-> this first-time-command) #t)
+     (set-time! (-> this state-time))
+     (return #t)
+     v0-1
+     )
+    (((tpath-cmd cmd4))
+     (set! (-> this gun-info total-rotation) 0.0)
+     (set! (-> this gun-info gun-state) (the-as uint 4))
+     (call-parent-method this)
+     )
+    (else
+      (call-parent-method this)
+      )
+    )
+  )
+
+;; definition for method 30 of type gun-dummy-explode
+(defmethod check-done? ((this gun-dummy-explode))
+  (local-vars (v0-0 symbol))
+  (let ((v1-0 (-> this current)))
+    (case (-> v1-0 0 command)
+      (((tpath-cmd cmd6))
+       (set-time! (-> this arm-start-time))
+       (set! (-> this explode-delay) (the-as time-frame (the int (* 300.0 (-> v1-0 0 time)))))
+       (set! (-> this last-flash-val) -1.0)
+       (set! (-> this current) (the-as (inline-array tpath-control-frame) (-> this current 1)))
+       (set! (-> this first-time-command) #t)
+       (set-time! (-> this state-time))
+       (return #t)
+       v0-0
+       )
+      (else
+        (call-parent-method this)
+        )
+      )
+    )
+  )
+
+;; definition for symbol *dummy-flash-counters*, type (array float)
+(define *dummy-flash-counters* (new 'static 'boxed-array :type float
+                                 0.0
+                                 0.26
+                                 0.47
+                                 0.63
+                                 0.73
+                                 0.81
+                                 0.86
+                                 0.9
+                                 0.93
+                                 0.95
+                                 0.96
+                                 0.965
+                                 0.97
+                                 0.975
+                                 0.98
+                                 0.985
+                                 0.99
+                                 )
+        )
+
+;; failed to figure out what this is:
+(defstate idle (gun-dummy-explode)
+  :virtual #t
+  :event gun-dummy-event-handler
+  :trans (behavior ()
+    (cond
+      ((not (-> self exploded?))
+       (when (> (-> self arm-start-time) 0)
+         (let ((gp-0 (- (+ (-> self arm-start-time) (-> self explode-delay)) (current-time))))
+           (let* ((f1-2 (/ (the float gp-0) (the float (-> self explode-delay))))
+                  (f0-3 (fmax 0.0 (fmin 1.0 f1-2)))
+                  (f30-0 (- 1.0 f0-3))
+                  )
+             (dotimes (v1-9 (-> *dummy-flash-counters* length))
+               (let ((f0-4 (-> *dummy-flash-counters* v1-9)))
+                 (when (and (< (-> self last-flash-val) f0-4) (>= f30-0 f0-4))
+                   (set! (-> self draw color-mult y) 0.3)
+                   (set! (-> self draw color-mult z) 0.3)
+                   (sound-play "gtarg-warn-beep")
+                   0
+                   (goto cfg-15)
+                   )
+                 )
+               )
+             (label cfg-15)
+             (set! (-> self last-flash-val) f30-0)
+             )
+           (seek! (-> self draw color-mult y) 1.0 (* 5.0 (seconds-per-frame)))
+           (seek! (-> self draw color-mult z) 1.0 (* 5.0 (seconds-per-frame)))
+           (when (<= gp-0 0)
+             (set! (-> self score) -50.0)
+             (set! (-> self hit-points) 0)
+             0
+             )
+           )
+         )
+       )
+      ((time-elapsed? (-> self arm-start-time) (seconds 2))
+       )
+      )
+    (let ((t9-5 (-> (find-parent-state) trans)))
+      (if t9-5
+          (t9-5)
+          )
+      )
+    )
+  )
+
+;; definition for method 17 of type gun-dummy-explode
+;; WARN: Return type mismatch object vs none.
+(defmethod cleanup-for-death ((this gun-dummy-explode))
+  (go (method-of-object this explode))
+  (none)
+  )
+
+;; definition for method 33 of type gun-dummy-explode
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 33 gun-dummy-explode) has a return type of none, but the expression builder found a return statement.
+(defmethod break-dummy ((this gun-dummy-explode))
+  (if (-> this exploded?)
+      (return 0)
+      )
+  (set! (-> this exploded?) #t)
+  (spawn-exploder this)
+  (cond
+    ((>= (current-time) (+ (-> this arm-start-time) (-> this explode-delay)))
+     (set-time! (-> this arm-start-time))
+     (sound-play "gtarget-explode")
+     (let ((s5-1 (new 'stack-no-clear 'explosion-init-params)))
+       (set! (-> s5-1 spawn-point quad) (-> this root trans quad))
+       (quaternion-identity! (-> s5-1 spawn-quat))
+       (set! (-> s5-1 radius) 24576.0)
+       (set! (-> s5-1 scale) 1.0)
+       (set! (-> s5-1 group) (-> *part-group-id-table* 1424))
+       (set! (-> s5-1 collide-with) (collide-spec jak player-list))
+       (set! (-> s5-1 damage) 2.0)
+       (set! (-> s5-1 damage-scale) 1.0)
+       (set! (-> s5-1 vehicle-damage-factor) 1.0)
+       (set! (-> s5-1 vehicle-impulse-factor) 1.0)
+       (set! (-> s5-1 ignore-proc) (process->handle #f))
+       (explosion-spawn s5-1 this)
+       )
+     )
+    (else
+      (sound-play "target-break")
+      )
+    )
+  (logior! (-> this draw status) (draw-control-status no-draw))
+  (let ((v1-32 (-> this root root-prim)))
+    (set! (-> v1-32 prim-core collide-as) (collide-spec))
+    (set! (-> v1-32 prim-core collide-with) (collide-spec))
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate explode (gun-dummy-explode)
+  :virtual #t
+  :event gun-dummy-event-handler
+  :code (behavior ()
+    (while (-> self child)
+      (let ((gp-0 (-> self child)))
+        (while gp-0
+          (send-event (ppointer->process gp-0) 'notice 'die)
+          (set! gp-0 (-> gp-0 0 brother))
+          )
+        )
+      (suspend)
+      )
+    (deactivate self)
+    )
+  )
+
+;; definition for method 29 of type gun-dummy-base
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this gun-dummy-base))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy impenetrable-obj shield))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-6 local-sphere) 0.0 4096.0 0.0 6144.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 29 of type gun-dummy-gun
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this gun-dummy-gun))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy impenetrable-obj shield))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-6 local-sphere) 0.0 6144.0 0.0 8192.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 29 of type gun-dummy-explode
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this gun-dummy-explode))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec enemy impenetrable-obj shield))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid deadly no-standon))
+      (set-vector! (-> v1-6 local-sphere) 0.0 2457.6 0.0 5734.4)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition of type gun-dummy-shot
+(deftype gun-dummy-shot (guard-shot)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-shot
+(defmethod inspect ((this gun-dummy-shot))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type guard-shot inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 28 of type gun-dummy-shot
+;; WARN: Return type mismatch int vs none.
+(defmethod play-impact-sound ((this gun-dummy-shot) (arg0 projectile-options))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (sound-play "gtarget-fire")
+       )
+      ((= v1-0 (projectile-options po0))
+       (sound-play "guard-shot-hit")
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function spawn-dummy-projectile
+;; INFO: Used lq/sq
+(defun spawn-dummy-projectile ((arg0 gun-dummy) (arg1 vector) (arg2 vector) (arg3 float) (arg4 vector))
+  (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
+    (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg2 arg1)))
+      (set! (-> gp-0 ent) (-> arg0 entity))
+      (set! (-> gp-0 charge) 1.0)
+      (set! (-> gp-0 options) (projectile-options))
+      (logclear! (-> gp-0 options) (projectile-options po14 po15 po16))
+      (set! (-> gp-0 notify-handle) (process->handle arg0))
+      (set! (-> gp-0 owner-handle) (the-as handle #f))
+      (set! (-> gp-0 target-handle) (the-as handle #f))
+      (set! (-> gp-0 target-pos quad) (the-as uint128 0))
+      (set! (-> gp-0 ignore-handle) (process->handle arg0))
+      (let* ((a0-13 *game-info*)
+             (a2-12 (+ (-> a0-13 attack-id) 1))
+             )
+        (set! (-> a0-13 attack-id) a2-12)
+        (set! (-> gp-0 attack-id) a2-12)
+        )
+      (set! (-> gp-0 timeout) (seconds 4))
+      (if arg4
+          (set! (-> gp-0 pos quad) (-> arg4 quad))
+          (set! (-> gp-0 pos quad) (-> arg1 quad))
+          )
+      (vector-normalize-copy! (-> gp-0 vel) v1-1 arg3)
+      )
+    (spawn-projectile gun-dummy-shot gp-0 arg0 *default-dead-pool*)
+    )
+  )
+
+;; definition for method 38 of type gun-dummy-gun
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 38 gun-dummy-gun) has a return type of none, but the expression builder found a return statement.
+(defmethod gun-dummy-gun-method-38 ((this gun-dummy-gun))
+  (if (<= (-> this hit-points) 0)
+      (return 0)
+      )
+  (if (nonzero? (-> this gun-info gun-state))
+      (vector<-cspace! (-> this gun-info trans) (-> this node-list data 4))
+      )
+  (case (-> this gun-info gun-state)
+    ((1)
+     (quaternion-copy! (-> this gun-info quat) (-> this root quat))
+     (quaternion-rotate-local-x! (-> this gun-info quat) (-> this gun-info quat) -16384.0)
+     )
+    ((2 4)
+     (quaternion-copy! (-> this gun-info quat) (-> this root quat))
+     (quaternion-rotate-local-x! (-> this gun-info quat) (-> this gun-info quat) -16384.0)
+     (let ((f0-1 (* 16384.0 (seconds-per-frame))))
+       (if (< (-> this gun-info total-rotation) 0.0)
+           (set! f0-1 (* -1.0 f0-1))
+           )
+       (+! (-> this gun-info current-rotation) f0-1)
+       )
+     (when (>= (fabs (-> this gun-info current-rotation)) (fabs (-> this gun-info total-rotation)))
+       (set! (-> this gun-info current-rotation) (-> this gun-info total-rotation))
+       (case (-> this gun-info gun-state)
+         ((2)
+          (set! (-> this gun-info gun-state) (the-as uint 3))
+          (set! (-> this gun-info last-track-player-time) 0)
+          (set! (-> this gun-info next-fire-time) 0)
+          0
+          )
+         (else
+           (set! (-> this gun-info gun-state) (the-as uint 1))
+           )
+         )
+       )
+     (quaternion-rotate-local-x!
+       (-> this gun-info quat)
+       (-> this gun-info quat)
+       (-> this gun-info current-rotation)
+       )
+     )
+    ((3)
+     (let ((s5-0 (new 'stack-no-clear 'primary-target-pos-vel)))
+       (send-event (ppointer->process (-> this parent)) 'get-player-pos-vel s5-0)
+       (set! (-> this gun-info last-known-player-pos quad) (-> s5-0 position quad))
+       )
+     (if (not (and *target* (not (logtest? (-> *target* focus-status) (focus-status disable dead ignore grabbed)))))
+         (set! (-> this gun-info next-fire-time) (generate-next-fire-time (-> this gun-info fire-speed-scalar)))
+         )
+     (let ((s5-2
+             (vector-! (new 'stack-no-clear 'vector) (-> this gun-info last-known-player-pos) (-> this gun-info trans))
+             )
+           (f26-0 0.0)
+           (f30-0 0.0)
+           (s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+           (f28-0 0.0)
+           )
+       (vector-normalize! s5-2 1.0)
+       (when *target*
+         (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) (get-trans *target* 3) (-> this gun-info trans))))
+           (vector-normalize! s3-1 1.0)
+           (set! f30-0 (-> s3-1 y))
+           (set! f26-0 (asin (-> s3-1 y)))
+           (set! f28-0 (sqrtf (+ (* (-> s3-1 x) (-> s3-1 x)) (* (-> s3-1 z) (-> s3-1 z)))))
+           )
+         )
+       (let* ((v1-43 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this gun-info quat)))
+              (f0-15 (- (asin (-> v1-43 y))))
+              (f1-9 (- f26-0))
+              )
+         (let* ((f3-2 (* 0.000061035156 (fabs (- f0-15 f1-9))))
+                (f3-4 (fmax 0.0 (fmin 1.0 f3-2)))
+                )
+           (- 1.0 (* (- 1.0 f3-4) (- 1.0 f3-4)))
+           )
+         (let ((f26-1 (lerp f0-15 f1-9 (* 2.0 (seconds-per-frame)))))
+           (quaternion-copy! (-> this gun-info quat) (-> this root quat))
+           (quaternion-rotate-local-x! (-> this gun-info quat) (-> this gun-info quat) f26-1)
+           )
+         )
+       (quaternion-normalize! (-> this gun-info quat))
+       (set! (-> s5-2 y) 0.0)
+       (vector-normalize! s5-2 1.0)
+       (cond
+         ((< (-> this rot-y-offset) 3640.889)
+          (let ((f0-21 (vector-dot s5-2 s4-0)))
+            0.0
+            (let ((s3-2 (new 'stack-no-clear 'vector)))
+              (when (< f0-21 0.999)
+                (vector-cross! s3-2 s5-2 s4-0)
+                (let* ((f26-2 (acos f0-21))
+                       (f0-24 (lerp 0.0 f26-2 (* 2.0 (seconds-per-frame))))
+                       )
+                  (if (< f26-2 f0-24)
+                      (set! f0-24 f26-2)
+                      )
+                  (if (< 0.0 (-> s3-2 y))
+                      (set! f0-24 (* -1.0 f0-24))
+                      )
+                  (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-24)
+                  )
+                )
+              )
+            )
+          )
+         (else
+           (set! (-> this gun-info next-fire-time) (generate-next-fire-time (-> this gun-info fire-speed-scalar)))
+           )
+         )
+       (when (< (-> this gun-info next-fire-time) (current-time))
+         (let ((s4-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+               (s5-3 (new 'stack-no-clear 'vector))
+               )
+           (set! (-> s4-1 y) 0.0)
+           (vector-normalize! s4-1 f28-0)
+           (set! (-> s4-1 y) f30-0)
+           (vector-normalize! s4-1 4096.0)
+           (vector+! s5-3 (-> this gun-info trans) s4-1)
+           (spawn-dummy-projectile
+             this
+             s5-3
+             (vector+! (new 'stack-no-clear 'vector) s5-3 s4-1)
+             819200.0
+             (the-as vector #f)
+             )
+           )
+         (set! (-> this gun-info next-fire-time) (generate-next-fire-time (-> this gun-info fire-speed-scalar)))
+         )
+       )
+     )
+    )
+  (if (nonzero? (-> this gun-info gun-state))
+      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this gun-info quat))
+      )
+  (none)
+  )
+
+;; definition of type gun-dummy-kg-b
+(deftype gun-dummy-kg-b (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-kg-b
+(defmethod inspect ((this gun-dummy-kg-b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-kg-b
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-kg-b))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-kg-b" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-kg-b-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-kg-b-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (none)
+  )
+
+;; definition for method 32 of type gun-dummy-kg-b
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-tpath ((this gun-dummy-kg-b) (arg0 tpath-info))
+  (call-parent-method this arg0)
+  (set-vector! (-> this root scale) 0.9 0.9 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-rc-two-eyes
+(deftype gun-dummy-rc-two-eyes (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-rc-two-eyes
+(defmethod inspect ((this gun-dummy-rc-two-eyes))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-rc-two-eyes
+;; WARN: Return type mismatch vector vs none.
+(defmethod init ((this gun-dummy-rc-two-eyes))
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-gun-dummy-rc-two-eyes" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-rc-two-eyes-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-rc-two-eyes-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (set-vector! (-> this root scale) 1.2 1.2 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-rc-one-eye
+(deftype gun-dummy-rc-one-eye (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-rc-one-eye
+(defmethod inspect ((this gun-dummy-rc-one-eye))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-rc-one-eye
+;; WARN: Return type mismatch vector vs none.
+(defmethod init ((this gun-dummy-rc-one-eye))
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-gun-dummy-rc-one-eye" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-rc-one-eye-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-rc-one-eye-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (set-vector! (-> this root scale) 1.2 1.2 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-rc-three-eyes
+(deftype gun-dummy-rc-three-eyes (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-rc-three-eyes
+(defmethod inspect ((this gun-dummy-rc-three-eyes))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-rc-three-eyes
+;; WARN: Return type mismatch vector vs none.
+(defmethod init ((this gun-dummy-rc-three-eyes))
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-gun-dummy-rc-three-eyes" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-rc-three-eyes-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-rc-three-eyes-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (set-vector! (-> this root scale) 1.2 1.2 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-kg-c
+(deftype gun-dummy-kg-c (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-kg-c
+(defmethod inspect ((this gun-dummy-kg-c))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 35 of type gun-dummy-kg-c
+(defmethod gun-dummy-method-35 ((this gun-dummy-kg-c))
+  2
+  )
+
+;; definition for method 34 of type gun-dummy-kg-c
+(defmethod get-draw-mask ((this gun-dummy-kg-c))
+  4
+  )
+
+;; definition for method 38 of type gun-dummy-kg-c
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-kg-c))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-kg-c" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-kg-c-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-kg-c-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (none)
+  )
+
+;; definition for method 32 of type gun-dummy-kg-c
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-tpath ((this gun-dummy-kg-c) (arg0 tpath-info))
+  (call-parent-method this arg0)
+  (set-vector! (-> this root scale) 0.9 0.9 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-kg-big
+(deftype gun-dummy-kg-big (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-kg-big
+(defmethod inspect ((this gun-dummy-kg-big))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-kg-big
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-kg-big))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-kg-big" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-kg-big-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-kg-big-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (none)
+  )
+
+;; definition for method 32 of type gun-dummy-kg-big
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-tpath ((this gun-dummy-kg-big) (arg0 tpath-info))
+  (call-parent-method this arg0)
+  (set-vector! (-> this root scale) 1.4 1.4 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-rc-four-eyes
+(deftype gun-dummy-rc-four-eyes (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-rc-four-eyes
+(defmethod inspect ((this gun-dummy-rc-four-eyes))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-rc-four-eyes
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-rc-four-eyes))
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-gun-dummy-rc-four-eyes" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-rc-four-eyes-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-rc-four-eyes-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (none)
+  )
+
+;; definition for method 32 of type gun-dummy-rc-four-eyes
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-tpath ((this gun-dummy-rc-four-eyes) (arg0 tpath-info))
+  (call-parent-method this arg0)
+  (set-vector! (-> this root scale) 1.2 1.2 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-kg-bonus
+(deftype gun-dummy-kg-bonus (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-kg-bonus
+(defmethod inspect ((this gun-dummy-kg-bonus))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 32 of type gun-dummy-kg-bonus
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-tpath ((this gun-dummy-kg-bonus) (arg0 tpath-info))
+  (call-parent-method this arg0)
+  (set-vector! (-> this root scale) 0.9 0.9 1.0 1.0)
+  (none)
+  )
+
+;; definition for method 38 of type gun-dummy-kg-bonus
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-kg-bonus))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-kg-bonus" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-kg-bonus-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-kg-bonus-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (none)
+  )
+
+;; definition of type gun-dummy-rc-three-eyes-bonus
+(deftype gun-dummy-rc-three-eyes-bonus (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-rc-three-eyes-bonus
+(defmethod inspect ((this gun-dummy-rc-three-eyes-bonus))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 32 of type gun-dummy-rc-three-eyes-bonus
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-tpath ((this gun-dummy-rc-three-eyes-bonus) (arg0 tpath-info))
+  (call-parent-method this arg0)
+  (set-vector! (-> this root scale) 1.2 1.2 1.0 1.0)
+  (none)
+  )
+
+;; definition for method 38 of type gun-dummy-rc-three-eyes-bonus
+;; WARN: Return type mismatch int vs none.
+(defmethod init ((this gun-dummy-rc-three-eyes-bonus))
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-gun-dummy-rc-three-eyes-bonus" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-rc-three-eyes-bonus-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-exploder) *gun-rc-three-eyes-bonus-exploder-params*)
+  (set! (-> this joint-explode-anim-index) 5)
+  (none)
+  )
+
+;; definition of type gun-dummy-cit-a
+(deftype gun-dummy-cit-a (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-cit-a
+(defmethod inspect ((this gun-dummy-cit-a))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-cit-a
+;; WARN: Return type mismatch joint-exploder-static-params vs none.
+(defmethod init ((this gun-dummy-cit-a))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-a" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-a-explode" (the-as (pointer level) #f)))
+        )
+  (set! (-> this joint-explode-anim-index) 5)
+  (set! (-> this joint-exploder) *gun-cit-a-exploder-params*)
+  (none)
+  )
+
+;; definition of type gun-dummy-cit-b
+(deftype gun-dummy-cit-b (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-cit-b
+(defmethod inspect ((this gun-dummy-cit-b))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-cit-b
+;; WARN: Return type mismatch joint-exploder-static-params vs none.
+(defmethod init ((this gun-dummy-cit-b))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-b" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-b-explode" (the-as (pointer level) #f)))
+        )
+  (set! (-> this joint-explode-anim-index) 5)
+  (set! (-> this joint-exploder) *gun-cit-b-exploder-params*)
+  (none)
+  )
+
+;; definition of type gun-dummy-cit-c
+(deftype gun-dummy-cit-c (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-cit-c
+(defmethod inspect ((this gun-dummy-cit-c))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-cit-c
+;; WARN: Return type mismatch joint-exploder-static-params vs none.
+(defmethod init ((this gun-dummy-cit-c))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-c" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-c-explode" (the-as (pointer level) #f)))
+        )
+  (set! (-> this joint-explode-anim-index) 5)
+  (set! (-> this joint-exploder) *gun-cit-c-exploder-params*)
+  (none)
+  )
+
+;; definition of type gun-dummy-cit-d
+(deftype gun-dummy-cit-d (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-cit-d
+(defmethod inspect ((this gun-dummy-cit-d))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-cit-d
+;; WARN: Return type mismatch joint-exploder-static-params vs none.
+(defmethod init ((this gun-dummy-cit-d))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-d" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-cit-d-explode" (the-as (pointer level) #f)))
+        )
+  (set! (-> this joint-explode-anim-index) 5)
+  (set! (-> this joint-exploder) *gun-cit-d-exploder-params*)
+  (none)
+  )
+
+;; definition of type gun-dummy-cit-ratchet
+(deftype gun-dummy-cit-ratchet (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-cit-ratchet
+(defmethod inspect ((this gun-dummy-cit-ratchet))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-cit-ratchet
+;; WARN: Return type mismatch vector vs none.
+(defmethod init ((this gun-dummy-cit-ratchet))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-rachet" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-rachet-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-explode-anim-index) 5)
+  (set! (-> this joint-exploder) *gun-rachet-exploder-params*)
+  (set-vector! (-> this root scale) 1.3 1.3 1.0 1.0)
+  (none)
+  )
+
+;; definition of type gun-dummy-cit-clank
+(deftype gun-dummy-cit-clank (gun-dummy-base)
+  ()
+  )
+
+;; definition for method 3 of type gun-dummy-cit-clank
+(defmethod inspect ((this gun-dummy-cit-clank))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gun-dummy-base inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type gun-dummy-cit-clank
+;; WARN: Return type mismatch vector vs none.
+(defmethod init ((this gun-dummy-cit-clank))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dummy-clank" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this joint-explode-skel-group)
+        (the-as
+          skeleton-group
+          (art-group-get-by-name *level* "skel-gun-dummy-clank-explode" (the-as (pointer level) #f))
+          )
+        )
+  (set! (-> this joint-explode-anim-index) 5)
+  (set! (-> this joint-exploder) *gun-clank-exploder-params*)
+  (set-vector! (-> this root scale) 1.5 1.3 1.0 1.0)
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-cit-a
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-cit-a))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1414))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-cit-ratchet
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-cit-ratchet))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1414))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-cit-clank
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-cit-clank))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1414))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-cit-b
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-cit-b))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1415))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-cit-c
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-cit-c))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1416))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-cit-d
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-cit-d))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1417))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-kg-b
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-kg-b))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1419))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-kg-c
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-kg-c))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1420))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-kg-big
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-kg-big))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1418))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-kg-bonus
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-kg-bonus))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1423))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-gun
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-gun))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1414))
+  (none)
+  )
+
+;; definition for method 37 of type gun-dummy-explode
+;; WARN: Return type mismatch sparticle-launch-group vs none.
+(defmethod set-explode-group ((this gun-dummy-explode))
+  (set! (-> this explode-part-group) (-> *part-group-id-table* 1422))
+  (none)
+  )
+
+;; definition for method 35 of type gun-dummy-rc-four-eyes
+(defmethod gun-dummy-method-35 ((this gun-dummy-rc-four-eyes))
+  1
+  )
+
+;; definition for method 35 of type gun-dummy-rc-three-eyes
+(defmethod gun-dummy-method-35 ((this gun-dummy-rc-three-eyes))
+  1
+  )
+
+;; definition for method 35 of type gun-dummy-rc-two-eyes
+(defmethod gun-dummy-method-35 ((this gun-dummy-rc-two-eyes))
+  1
+  )
+
+;; definition for method 35 of type gun-dummy-rc-one-eye
+;; INFO: this function exists in multiple non-identical object files
+(defmethod gun-dummy-method-35 ((this gun-dummy-rc-one-eye))
+  1
+  )
+
+;; definition for method 35 of type gun-dummy-rc-one-eye
+;; INFO: this function exists in multiple non-identical object files
+(defmethod gun-dummy-method-35 ((this gun-dummy-rc-one-eye))
+  1
+  )
+
+;; definition for method 35 of type gun-dummy-rc-three-eyes-bonus
+(defmethod gun-dummy-method-35 ((this gun-dummy-rc-three-eyes-bonus))
+  1
+  )
+
+;; definition for method 35 of type gun-dummy-cit-ratchet
+(defmethod gun-dummy-method-35 ((this gun-dummy-cit-ratchet))
+  2
+  )
+
+;; definition for method 35 of type gun-dummy-cit-clank
+(defmethod gun-dummy-method-35 ((this gun-dummy-cit-clank))
+  1
+  )
+
+
+
+
