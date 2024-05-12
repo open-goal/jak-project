@@ -112,8 +112,7 @@ struct SymbolInfo {
   std::unordered_map<std::string, std::string> m_state_handler_docstrings;
   std::vector<ArgumentInfo> m_state_enter_and_code_args = {};
   // Enum related
-  bool m_enum_bitfield = false;
-  std::unordered_map<std::string, s64> m_enum_variants;
+  EnumType* m_enum_info = nullptr;
 
   // TODO: need to track references for this, this is a TODO for LSP work
   // bool is_unused = false;
@@ -170,10 +169,7 @@ class SymbolInfoMap {
                  const std::vector<ArgumentInfo>& code_args,
                  const goos::Object& defining_form,
                  const std::string& docstring);
-  void add_enum(const std::string& name,
-                const std::string& type,
-                const std::unordered_map<std::string, s64> variants,
-                const bool is_bitfield,
+  void add_enum(EnumType* enum_info,
                 const goos::Object& defining_form,
                 const std::string& docstring = "");
   std::vector<SymbolInfo*> lookup_symbols_by_file(const std::string& file_path) const;

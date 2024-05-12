@@ -86,7 +86,7 @@ class GlobalEnv : public Env {
   FileEnv* add_file(std::string name);
   // TODO - consider refactoring to use a Trie
   std::vector<std::string> list_files_with_prefix(const std::string& prefix);
-  std::vector<FileEnv*> get_files();
+  std::vector<std::unique_ptr<FileEnv>>& get_files();
 
  private:
   std::vector<std::unique_ptr<FileEnv>> m_files;

@@ -1495,8 +1495,7 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   DefinitionMetadata def_metadata;
   const auto new_enum = parse_defenum(rest, &m_ts, &def_metadata);
   new_enum->m_metadata.definition_info = m_goos.reader.db.get_short_info_for(form);
-  m_symbol_info.add_enum(new_enum->get_name(), new_enum->get_parent(), new_enum->entries(),
-                         new_enum->is_bitfield(), form,
+  m_symbol_info.add_enum(new_enum, form,
                          def_metadata.docstring.has_value() ? def_metadata.docstring.value() : "");
   return get_none();
 }

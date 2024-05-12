@@ -287,22 +287,16 @@ void SymbolInfoMap::add_state(const std::string& name,
   }
 }
 
-void SymbolInfoMap::add_enum(const std::string& name,
-                             const std::string& type,
-                             const std::unordered_map<std::string, s64> variants,
-                             const bool is_bitfield,
+void SymbolInfoMap::add_enum(EnumType* enum_info,
                              const goos::Object& defining_form,
                              const std::string& docstring) {
-  SymbolInfo info = {
-      .m_kind = Kind::ENUM,
-      .m_name = name,
-      .m_def_form = defining_form,
-      .m_docstring = docstring,
-      .m_enum_bitfield = is_bitfield,
-      .m_enum_variants = variants,
-  };
+  SymbolInfo info = {.m_kind = Kind::ENUM,
+                     .m_name = enum_info->get_name(),
+                     .m_def_form = defining_form,
+                     .m_docstring = docstring,
+                     .m_enum_info = enum_info};
   info.set_definition_location(m_textdb);
-  const auto inserted_symbol = m_symbol_map.insert(name, info);
+  const auto inserted_symbol = m_symbol_map.insert(info.m_name, info);
   if (info.m_def_location) {
     add_symbol_to_file_index(info.m_def_location->file_path, inserted_symbol);
   }
