@@ -28834,6 +28834,7 @@
   (momentum-ignore-heading 6) ;; 64
   (output-sphere-hash  7) ;; 128
   (kernel-run          8) ;; 256
+  (ncf9                9)
   )
 
 (deftype check-vector-collision-with-nav-spheres-info (structure)
@@ -46816,7 +46817,7 @@
 (define-extern bombbot-gun-swivel-callback (function cspace transformq none))
 (define-extern bombbot-gun-callback (function cspace transformq none))
 (define-extern *bombbot-spring-setup* (array spring-setup))
-(define-extern bombbot-init-by-other (function bombbot-spawn-params none :behavior bombbot))
+(define-extern bombbot-init-by-other (function bombbot-spawn-params object :behavior bombbot))
 (define-extern bombbot-player-init-by-other (function bombbot-spawn-params object :behavior bombbot-player))
 (define-extern *blow-barricade-kg-squad-member-settings* (inline-array kg-squad-member-settings))
 
@@ -70454,7 +70455,6 @@
 ;; assault-shared                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype assault-cam-info (structure)
   ((pos vector :inline :offset-assert 0)
    (mat matrix :inline :offset-assert 16)
@@ -70463,9 +70463,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype triangle-dists (structure)
   ((dist0 float  :offset-assert 0)
    (dist1 float  :offset-assert 4)
@@ -70474,9 +70472,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype assault-room-collision (structure)
   ((cam-matrix    matrix         :inline :offset-assert 0)
    (cam-pos       vector         :inline :offset-assert 64)
@@ -70487,62 +70483,64 @@
   :size-assert         #x5c
   :flag-assert         #x90000005c
   )
-|#
 
-#|
 (deftype assault-room (structure)
   ((center-pos     vector                 :inline :offset-assert 0)
    (cam-info       assault-cam-info               :offset-assert 16)
    (collision      assault-room-collision         :offset-assert 20)
-   (node-positions basic                          :offset-assert 24)
+   (node-positions (array vector)                 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype assault-speech-instance (speech-instance)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern *assault-speech-list* object)
+(define-extern *assault-speech-list* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-cams                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *assault-cams* array)
+(define-extern *assault-cams* (array assault-cam-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-path                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *assault-rooms* array)
+(define-extern *assault-rooms* (array assault-room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-enemies                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++assault-enemies:assault-target-type
+(defenum assault-target-type
+  :copy-entries city-target-type
+  (assault-citizen-norm 1)
+  (assault-grunt 6)
+  (assault-metalhead-predator 8)
+  (other 11)
+  (assault-bombbot 13)
+  )
+;; ---assault-enemies:assault-target-type
+
 (deftype assault-object-spawn-params (traffic-object-spawn-params)
-  ((nav-branch nav-branch  :offset-assert 24)
-   (lev        basic       :offset-assert 116)
+  ((lev        symbol      :offset-assert 116)
    (suck-level int32       :offset-assert 120)
-   (flee-time  uint64      :offset-assert 128)
+   (flee-time  time-frame  :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
   )
-|#
 
-#|
 (deftype assault-metalhead-grunt (metalhead-grunt)
   ()
   :method-count-assert 232
@@ -70552,79 +70550,50 @@
     exit-transport ;; 231
     )
   )
-|#
 
-#|
 (deftype assault-metalhead-flitter (metalhead-flitter)
   ()
   :method-count-assert 230
   :size-assert         #x494
   :flag-assert         #xe604200494
   (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
     exit-transport ;; 229
     )
   )
-|#
 
-#|
 (deftype assault-metalhead-predator (metalhead-predator)
   ()
   :method-count-assert 228
   :size-assert         #x550
   :flag-assert         #xe404d00550
-  (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
-    )
   )
-|#
 
-#|
 (deftype assault-roboguard (roboguard-city)
-  ((shoot-wait-time uint64  :offset-assert 1600)
+  ((shoot-wait-time time-frame :offset-assert 1600)
    )
   :method-count-assert 242
   :size-assert         #x648
   :flag-assert         #xf205d00648
   (:state-methods
-    in-ditch ;; 192
     roll-initial ;; 241
-    die-fast ;; 42
-    shoot-attack ;; 224
-    hostile-stand ;; 222
     )
+  (:methods (go-from-behavior (_type_ assault-object-spawn-params) object :replace))
   )
-|#
 
-#|
 (deftype assault-spydroid (spydroid)
   ()
   :method-count-assert 238
   :size-assert         #x50c
   :flag-assert         #xee0490050c
-  (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
-    )
   )
-|#
 
-#|
 (deftype assault-flying-turret (flying-turret)
   ()
   :method-count-assert 231
   :size-assert         #x568
   :flag-assert         #xe704f00568
-  (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
-    )
   )
-|#
 
-#|
 (deftype assault-crimson-guard (crimson-guard)
   ((center-pos vector :inline :offset-assert 1616)
    )
@@ -70633,34 +70602,27 @@
   :flag-assert         #x12405e00660
   (:state-methods
     wait-for-enemies ;; 291
-    active ;; 34
-    die-fast ;; 42
-    in-ditch ;; 192
     )
+  (:methods (go-from-behavior (_type_ assault-object-spawn-params) object :replace))
   )
-|#
 
-#|
 (deftype assault-citizen-norm (citizen-norm)
   ((center-pos    vector :inline :offset-assert 1136)
-   (min-flee-time uint64         :offset-assert 1152)
+   (min-flee-time time-frame     :offset-assert 1152)
    )
   :method-count-assert 237
   :size-assert         #x488
   :flag-assert         #xed04100488
   (:state-methods
-    cower-ground ;; 222
     flee-madly ;; 235
     flee-to-center ;; 236
-    knocked-recover ;; 32
     )
+  (:methods (go-from-behavior (_type_ assault-object-spawn-params) object :replace))
   )
-|#
 
-#|
 (deftype assault-cleanup (process)
-  ((offscreen-time uint64  :offset-assert 128)
-   (parent-hand    uint64  :offset-assert 136)
+  ((offscreen-time time-frame :offset-assert 128)
+   (parent-hand    handle     :offset-assert 136)
    )
   :method-count-assert 15
   :size-assert         #x90
@@ -70669,267 +70631,317 @@
     tracking ;; 14
     )
   )
-|#
 
-#|
 (deftype special-health (health)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
   )
-|#
 
-#|
 (deftype ammo-special-pickup (process-focusable)
-  ((ammo-type      int32  :offset-assert 208)
-   (gun-type       int32  :offset-assert 212)
-   (collect-effect basic  :offset-assert 216)
-   (ammo-effect    basic  :offset-assert 220)
+  ((ammo-type      pickup-type  :offset-assert 208)
+   (gun-type       pickup-type  :offset-assert 212)
+   (collect-effect sparticle-launch-group :offset-assert 216)
+   (ammo-effect    sparticle-launch-group :offset-assert 220)
    (anim-index     int32  :offset-assert 224)
    )
   :method-count-assert 31
   :size-assert         #xe4
   :flag-assert         #x1f007000e4
-  (:methods
-    (ammo-special-pickup-method-30 () none) ;; 30
-    )
   (:state-methods
-    pickup ;; 29
     wait ;; 28
+    pickup ;; 29
+    )
+  (:methods
+    (init-pickup (_type_ vector pickup-type pickup-type) object) ;; 30
     )
   )
-|#
 
-#|
 (deftype assault-bombbot (bombbot)
   ((next-node                int32   :offset-assert 1512)
-   (new-point-choose-time    uint64  :offset-assert 1520)
-   (max-hp                   float   :offset-assert 1532)
-   (is-final?                basic   :offset-assert 1536)
+   (new-point-choose-time    time-frame :offset-assert 1520)
+   (max-hp                   float   :offset 1532)
+   (is-final?                symbol  :offset-assert 1536)
    (last-charge-player-count uint32  :offset-assert 1540)
    (suck-level               int32   :offset-assert 1544)
    )
   :method-count-assert 210
   :size-assert         #x60c
   :flag-assert         #xd20590060c
-  (:methods
-    (assault-bombbot-method-209 () none) ;; 209
-    )
   (:state-methods
     hostile ;; 38
-    drop-bombs ;; 193
     explode ;; 190
+    drop-bombs ;; 193
+    )
+  (:methods
+    (assault-bombbot-method-209 (_type_) int) ;; 209
     )
   )
-|#
 
-#|
 (deftype assault-bombbot-spawn-params (bombbot-spawn-params)
-  ((is-final?  basic  :offset-assert 48)
+  ((is-final?  symbol :offset-assert 48)
    (suck-level int32  :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype assault-bombbot-shot (bombbot-shot)
   ()
   :method-count-assert 41
   :size-assert         #x220
   :flag-assert         #x2901a00220
   )
-|#
 
-;; (define-extern assault-enemy-init-by-other function)
-;; (define-extern assault-type->type function)
-;; (define-extern assault-cleanup-init-by-other function)
-;; (define-extern *assault-levels* array)
-;; (define-extern spawn-assault-enemy function)
-;; (define-extern special-health-init-by-other function)
-;; (define-extern ammo-special-pickup-init-by-other function)
-;; (define-extern assault-bombbot-init-by-other function)
-;; (define-extern *curve-assault-bombbot-shot-color-blue* curve-color-fast)
-;; (define-extern *curve-assault-bombbot-shot-width* curve2d-fast)
-;; (define-extern *assault-bombbot-trail* object)
-;; (define-extern *assault-bombbot-trail-2* object)
-;; (define-extern *bombbot-bomb-hp-thresholds* array)
-;; (define-extern *look-time* object)
+(define-extern assault-enemy-init-by-other (function assault-object-spawn-params object :behavior citizen))
+(define-extern assault-type->type (function assault-target-type type))
+(define-extern assault-cleanup-init-by-other (function handle object :behavior assault-cleanup))
+(define-extern *assault-levels* (array symbol))
+(define-extern spawn-assault-enemy (function assault-target-type process handle))
+(define-extern special-health-init-by-other (function vector object :behavior special-health))
+(define-extern ammo-special-pickup-init-by-other (function pickup-type pickup-type object :behavior ammo-special-pickup))
+(define-extern assault-bombbot-init-by-other (function assault-bombbot-spawn-params object :behavior assault-bombbot))
+(define-extern *curve-assault-bombbot-shot-color-blue* curve-color-fast)
+(define-extern *curve-assault-bombbot-shot-width* curve2d-fast)
+(define-extern *assault-bombbot-trail* light-trail-composition)
+(define-extern *assault-bombbot-trail-2* light-trail-composition)
+(define-extern *bombbot-bomb-hp-thresholds* (array float))
+(define-extern *look-time* time-frame)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-script                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++assault-script:assault-cmd
+(defenum assault-cmd
+  :type uint8
+  (spawn)
+  (wait)
+  (advance)
+  (pickup)
+  (torn)
+  (final-bombbot)
+  (load-continue)
+  (save-continue)
+  (speech)
+  (queue)
+  (other)
+  )
+;; ---assault-script:assault-cmd
+
+;; +++assault-script:assault-cmd-spawn-type
+(defenum assault-cmd-spawn-type
+  :type uint16
+  (cmd0)
+  (cmd1)
+  (cmd2)
+  (cmd3)
+  (cmd4)
+  (cmd5)
+  (cmd6)
+  (cmd7)
+  (cmd8)
+  (cmd9)
+  (cmd10)
+  (cmd11)
+  (cmd12)
+  )
+;; ---assault-script:assault-cmd-spawn-type
+
+;; +++assault-script:assault-cmd-wait-type
+(defenum assault-cmd-wait-type
+  :type uint8
+  (spawn-delay)
+  (cmd1)
+  (cmd2)
+  )
+;; ---assault-script:assault-cmd-wait-type
+
+;; +++assault-script:assault-cmd-faction-type
+(defenum assault-cmd-faction-type
+  :type uint8
+  (none)
+  (mh)
+  (ff)
+  (kg)
+  )
+;; ---assault-script:assault-cmd-faction-type
+
+;; +++assault-script:assault-cmd-speech-type
+(defenum assault-cmd-speech-type
+  :type uint64
+  (instructions)
+  (jak-hit)
+  (room-complete)
+  (room-start)
+  (encouragement)
+  (type5)
+  (torn-watch-out)
+  (protect-civilians)
+  (grab-pickup)
+  (torn-give-help)
+  (torn-finish)
+  (guard-hello)
+  (guard-bombbot)
+  )
+;; ---assault-script:assault-cmd-speech-type
+
 (deftype assault-spawn-cmd (structure)
-  ((spawn-delay     uint64  :offset-assert 0)
-   (command         uint8   :offset-assert 8)
-   (spawn-type      uint16  :offset-assert 10)
+  ((spawn-delay     time-frame :offset-assert 0)
+   (command         assault-cmd :offset-assert 8)
+   (spawn-type      assault-cmd-spawn-type :offset-assert 10)
    (count           int8    :offset-assert 12)
    (spawner-index   int8    :offset-assert 13)
-   (wait-type       uint8   :offset-assert 10)
-   (faction-type    uint8   :offset-assert 13)
-   (wait-time       uint64  :offset-assert 0)
-   (msg             basic   :offset-assert 16)
+   (wait-type       assault-cmd-wait-type :offset 10)
+   (faction-type    assault-cmd-faction-type :offset 13)
+   (wait-time       time-frame :offset 0)
+   (msg             symbol  :offset-assert 16)
    (path-id         int32   :offset-assert 20)
    (event0          int32   :offset-assert 24)
    (event1          int32   :offset-assert 28)
    (event2          int32   :offset-assert 32)
-   (speech-type     uint64  :offset-assert 40)
+   (speech-type     assault-cmd-speech-type :offset-assert 40)
    (gun-pickup-type int32   :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype room-powerup-percentage (structure)
   ((avg-spawn-rate uint64     :offset-assert 0)
-   (percentages    UNKNOWN 51 :offset-assert 8)
-   (red2           float      :offset-assert 116)
-   (red3           float      :offset-assert 120)
-   (yellow2        float      :offset-assert 128)
-   (yellow3        float      :offset-assert 132)
-   (blue1          float      :offset-assert 136)
-   (blue2          float      :offset-assert 140)
-   (blue3          float      :offset-assert 144)
-   (darkjak        float      :offset-assert 36)
-   (lightjak       float      :offset-assert 64)
-   (health         float      :offset-assert 88)
+   (percentages    float 51   :offset-assert 8)
+   (red2           float      :offset 116)
+   (red3           float      :offset 120)
+   (yellow2        float      :offset 128)
+   (yellow3        float      :offset 132)
+   (blue1          float      :offset 136)
+   (blue2          float      :offset 140)
+   (blue3          float      :offset 144)
+   (darkjak        float      :offset 36)
+   (lightjak       float      :offset 64)
+   (health         float      :offset 88)
    )
   :method-count-assert 9
   :size-assert         #xd4
   :flag-assert         #x9000000d4
   )
-|#
 
-#|
 (deftype assault-cmd-context (structure)
-  ((start-time      uint64                    :offset-assert 0)
-   (state-time      uint64                    :offset-assert 8)
+  ((start-time      time-frame                :offset-assert 0)
+   (state-time      time-frame                :offset-assert 8)
    (current-command assault-spawn-cmd :inline :offset-assert 16)
-   (script          basic                     :offset-assert 68)
+   (script          pair                      :offset-assert 68)
    )
   :method-count-assert 9
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-;; (define-extern *port-assault-speech* array)
-;; (define-extern *assault-object-count* array)
-;; (define-extern *assault-fade-dist* array)
-;; (define-extern *assault-graph-classification* array)
-;; (define-extern *assault-faction-lookup* array)
-;; (define-extern *assault-guard-count* array)
-;; (define-extern *assault-citizen-count* array)
-;; (define-extern symbol->assault-target-type function)
-;; (define-extern symbol->speech-type function)
-;; (define-extern symbol->faction-type function)
-;; (define-extern symbol->gun-pickup-type function)
-;; (define-extern parse-assault-command function)
-;; (define-extern *assault-bombbot-paths* array)
-;; (define-extern *assault-scripts* array)
-;; (define-extern *room-goal* array)
-;; (define-extern *room-powerups* array)
-;; (define-extern *room0-script* object)
-;; (define-extern *room1-script* object)
-;; (define-extern *room2-script* object)
-;; (define-extern *room3-script* object)
-;; (define-extern *room4-script* object)
+(define-extern *port-assault-speech* (array speech-info))
+(define-extern *assault-object-count* (array int32))
+(define-extern *assault-fade-dist* (array float))
+(define-extern *assault-graph-classification* (array int32))
+(define-extern *assault-faction-lookup* (array uint8))
+(define-extern *assault-guard-count* (array int32))
+(define-extern *assault-citizen-count* (array int32))
+(define-extern symbol->assault-target-type (function symbol assault-target-type))
+(define-extern symbol->speech-type (function symbol assault-cmd-speech-type))
+(define-extern symbol->faction-type (function symbol assault-cmd-faction-type))
+(define-extern symbol->gun-pickup-type (function symbol pickup-type))
+(define-extern parse-assault-command (function pair assault-spawn-cmd object))
+(define-extern *assault-bombbot-paths* (array bombbot-path))
+(define-extern *assault-scripts* (array pair))
+(define-extern *room-goal* (array uint8))
+(define-extern *room-powerups* (array room-powerup-percentage))
+(define-extern *room0-script* pair)
+(define-extern *room1-script* pair)
+(define-extern *room2-script* pair)
+(define-extern *room3-script* pair)
+(define-extern *room4-script* pair)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-task                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ammo-special-info (structure)
   ((ammo-type     int32   :offset-assert 0)
    (gun-type      int32   :offset-assert 4)
-   (end-lock-time uint64  :offset-assert 8)
+   (end-lock-time time-frame :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype task-manager-city-port-assault (task-manager)
   ((script-command          assault-cmd-context :inline :offset-assert 240)
-   (door-handle             uint64                      :offset-assert 312)
+   (door-handle             handle                      :offset-assert 312)
    (current-room            assault-room                :offset-assert 320)
    (current-room-index      int8                        :offset-assert 324)
-   (h-player-controller     uint64                      :offset-assert 328)
-   (spawners                UNKNOWN             12      :offset-assert 336)
-   (original-cam-point      vector              :inline :offset-assert 1296)
+   (h-player-controller     handle                      :offset-assert 328)
+   (spawners                assault-cmd-context 12 :inline :offset-assert 336)
+   (original-cam-point      vector              :inline :offset 1296)
    (original-cam-quat       quaternion          :inline :offset-assert 1312)
    (ammo-special            ammo-special-info   :inline :offset-assert 1328)
-   (torn-h                  uint64                      :offset-assert 1344)
-   (next-powerup-spawn-time uint64                      :offset-assert 1352)
-   (final-bombbot?          basic                       :offset-assert 1360)
+   (torn-h                  handle                      :offset-assert 1344)
+   (next-powerup-spawn-time time-frame                  :offset-assert 1352)
+   (final-bombbot?          symbol                      :offset-assert 1360)
    (room-override-index     int8                        :offset-assert 1364)
-   (bombbot-dead?           basic                       :offset-assert 1368)
-   (cam-pan-sound           uint32                      :offset-assert 1372)
+   (bombbot-dead?           symbol                      :offset-assert 1368)
+   (cam-pan-sound           sound-id                    :offset-assert 1372)
    )
   :method-count-assert 53
   :size-assert         #x560
   :flag-assert         #x3504e00560
-  (:methods
-    (task-manager-city-port-assault-method-36 () none) ;; 36
-    (task-manager-city-port-assault-method-37 () none) ;; 37
-    (task-manager-city-port-assault-method-38 () none) ;; 38
-    (task-manager-city-port-assault-method-39 () none) ;; 39
-    (task-manager-city-port-assault-method-40 () none) ;; 40
-    (task-manager-city-port-assault-method-41 () none) ;; 41
-    (task-manager-city-port-assault-method-42 () none) ;; 42
-    (task-manager-city-port-assault-method-43 () none) ;; 43
-    (task-manager-city-port-assault-method-44 () none) ;; 44
-    (task-manager-city-port-assault-method-45 () none) ;; 45
-    (task-manager-city-port-assault-method-46 () none) ;; 46
-    (task-manager-city-port-assault-method-47 () none) ;; 47
-    (task-manager-city-port-assault-method-48 () none) ;; 48
-    (task-manager-city-port-assault-method-49 () none) ;; 49
-    (task-manager-city-port-assault-method-50 () none) ;; 50
-    (task-manager-city-port-assault-method-51 () none) ;; 51
-    (task-manager-city-port-assault-method-52 () none) ;; 52
-    )
   (:state-methods
     wait ;; 14
     active ;; 15
+    transition ;; 32
     combat ;; 33
     player-entrance ;; 34
     player-quickstart ;; 35
-    transition ;; 32
+    )
+  (:methods
+    (parse-cmd (_type_) none) ;; 36
+    (eval-cmd (_type_) symbol) ;; 37
+    (cmd-can-run? (_type_) symbol) ;; 38
+    (advance-script (_type_) none) ;; 39
+    (room-advance (_type_) none) ;; 40
+    (task-manager-city-port-assault-method-41 (_type_ assault-spawn-cmd assault-cmd-context) symbol) ;; 41
+    (spawn-special-pickup (_type_ pickup-type) none) ;; 42
+    (task-manager-city-port-assault-method-43 (_type_ int) int) ;; 43
+    (task-manager-city-port-assault-method-44 (_type_) object) ;; 44
+    (check-for-pickup-spawn (_type_) int) ;; 45
+    (set-next-powerup-spawn-time (_type_) none) ;; 46
+    (spawn-guards (_type_ int) symbol) ;; 47
+    (spawn-citizens (_type_ int) none) ;; 48
+    (task-manager-city-port-assault-method-49 (_type_ int) int) ;; 49
+    (pickup-spawn-chance (_type_ room-powerup-percentage int) float) ;; 50
+    (get-suck-level (_type_) int) ;; 51
+    (task-manager-city-port-assault-method-52 (_type_) none) ;; 52
     )
   )
-|#
 
-#|
 (deftype assault-player-controller (player-controller)
   ((collision assault-room-collision  :offset-assert 272)
    )
   :method-count-assert 37
   :size-assert         #x114
   :flag-assert         #x2500a00114
-  (:methods
-    (assault-player-controller-method-36 () none) ;; 36
-    )
   (:state-methods
     clip-to-nav-mesh ;; 30
     )
+  (:methods
+    (assault-player-controller-method-36 (_type_) none) ;; 36
+    )
   )
-|#
 
-#|
 (deftype assault-squad-control (basic)
   ((door-index       int16          :offset-assert 4)
-   (spawn-records    basic          :offset-assert 8)
+   (spawn-records    (array proc-focusable-spawner) :offset-assert 8)
    (next-spawn-index int16          :offset-assert 12)
    (door-pos         vector :inline :offset-assert 16)
    )
@@ -70937,20 +70949,20 @@
   :size-assert         #x20
   :flag-assert         #xe00000020
   (:methods
-    (assault-squad-control-method-9 () none) ;; 9
-    (assault-squad-control-method-10 () none) ;; 10
-    (assault-squad-control-method-11 () none) ;; 11
-    (assault-squad-control-method-12 () none) ;; 12
-    (assault-squad-control-method-13 () none) ;; 13
+    (init (_type_) none) ;; 9
+    (assault-squad-control-method-10 (_type_ int) int) ;; 10
+    (spawn-enemies (_type_ process) int) ;; 11
+    (init-spawn-records (_type_) symbol) ;; 12
+    (reset-enemies (_type_) none) ;; 13
     )
   )
-|#
 
-;; (define-extern *port-assault-blur-curve* object)
-;; (define-extern compute-player-ammo function)
-;; (define-extern lctypalt-login function)
-;; (define-extern lctypalt-logout function)
-;; (define-extern skip-to-room function)
+(define-extern *assault-squad* assault-squad-control)
+(define-extern *port-assault-blur-curve* curve2d-piecewise)
+(define-extern compute-player-ammo (function pickup-type float))
+(define-extern lctypalt-login (function level none))
+(define-extern lctypalt-logout (function level none))
+(define-extern skip-to-room (function uint none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-centipede-part              ;;
