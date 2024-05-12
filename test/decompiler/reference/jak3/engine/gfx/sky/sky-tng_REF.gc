@@ -1,24 +1,32 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: sky-tng.gc
-;; name in dgo: sky-tng
-;; dgos: GAME
-
-(def-mips2c set-sky-vf23-value (function int none))
-
-;; DECOMP BEGINS
-
+;; definition for function set-tex-offset
+;; INFO: function output is handled by mips2c
 (def-mips2c set-tex-offset (function int int none))
 
-;; these can't be called directly from GOAL
-;; (def-mips2c draw-large-polygon function)
-;; (def-mips2c clip-polygon-against-positive-hyperplane function)
-;; (def-mips2c clip-polygon-against-negative-hyperplane function)
+;; definition for function draw-large-polygon
+;; INFO: function output is handled by mips2c
+(def-mips2c draw-large-polygon function)
 
+;; definition for function clip-polygon-against-positive-hyperplane
+;; INFO: function output is handled by mips2c
+(def-mips2c clip-polygon-against-positive-hyperplane function)
+
+;; definition for function clip-polygon-against-negative-hyperplane
+;; INFO: function output is handled by mips2c
+(def-mips2c clip-polygon-against-negative-hyperplane function)
+
+;; definition for function render-sky-quad
+;; INFO: function output is handled by mips2c
 (def-mips2c render-sky-quad (function (inline-array sky-vertex) dma-buffer none))
+
+;; definition for function render-sky-tri
+;; INFO: function output is handled by mips2c
 (def-mips2c render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
 
+;; definition for function close-sky-buffer
+;; INFO: Used lq/sq
 ;; WARN: Return type mismatch pointer vs none.
 ;; ERROR: Function may read a register that is not set: ra
 ;; ERROR: Unsupported inline assembly instruction kind - [jr ra]
@@ -29,18 +37,20 @@
   (let ((v1-0 #x8000)
         (v0-0 (-> arg0 base))
         )
-    (set! (-> (the-as (pointer int128) v0-0)) (the int128 0))
+    (set! (-> (the-as (pointer int128) v0-0)) 0)
     (nop!)
     (set! (-> (the-as (pointer int32) v0-0)) v1-0)
     (let ((v0-1 (&+ v0-0 16)))
-      ;; to save like 1 instruction they put this in the delay slot of the jr-ra
-      ;;(.jr ra-0)
+      (.jr ra-0)
       (set! (-> arg0 base) v0-1)
       )
     )
   (none)
   )
 
+;; definition for method 15 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod update-camera-matrix ((this sky-work) (arg0 matrix))
   "Set the camera matrix (no perspective) for sky drawing."
   (rlet ((vf0 :class vf))
@@ -66,6 +76,9 @@
     )
   )
 
+;; definition for method 16 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod update-template-colors ((this sky-work))
   "Update work with sky/erase colors from time-of-day/level."
   (let ((v1-1 (-> *time-of-day-context* current-fog erase-color))
@@ -80,6 +93,8 @@
   (none)
   )
 
+;; definition for method 12 of type sky-work
+;; WARN: Return type mismatch int vs none.
 (defmethod update-time-and-speed ((this sky-work) (arg0 float) (arg1 float))
   "Update cloud sroll and sun/moon position for the time."
   (if (and (level-get-target-inside *level*) (= (-> (level-get-target-inside *level*) info taskname) 'nest))
@@ -95,10 +110,17 @@
   (none)
   )
 
+;; definition for method 17 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 17 sky-work)" 17 sky-work)
 
+;; definition for method 18 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 18 sky-work)" 18 sky-work)
 
+;; definition for method 11 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod update-colors-for-time ((this sky-work) (arg0 float))
   0
   0
@@ -142,6 +164,9 @@
   (none)
   )
 
+;; definition for method 19 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod cloud-vtx-light-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 cloud-lights) (arg3 vector) (arg4 vector))
   (let ((s5-0 (new 'stack-no-clear 'vector4)))
     (let* ((f0-1 (vector-dot (-> arg2 sun0-normal) arg1))
@@ -165,6 +190,9 @@
   (none)
   )
 
+;; definition for method 20 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod cloud-vtx-tex-update ((this sky-work) (arg0 vector) (arg1 vector) (arg2 vector) (arg3 cloud-lights))
   (let ((s5-0 (new 'stack-no-clear 'vector4))
         (s2-0 (new 'stack-no-clear 'vector4))
@@ -186,6 +214,9 @@
   (none)
   )
 
+;; definition for method 21 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod adjust-cloud-lighting ((this sky-work))
   (let ((s5-0 *cloud-vert-array*)
         (s4-0 (-> this cloud-lights))
@@ -247,6 +278,9 @@
   (none)
   )
 
+;; definition for method 22 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod cloud-vtx1-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
   (set! (-> arg0 pos quad) (-> arg1 pos quad))
   (set! (-> arg0 stq quad) (-> arg1 stq quad))
@@ -255,6 +289,9 @@
   (none)
   )
 
+;; definition for method 23 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod cloud-vtx2-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 cloud-vertex))
   (set! (-> arg0 pos quad) (-> arg1 pos quad))
   (set! (-> arg0 stq quad) (-> arg1 stq2 quad))
@@ -263,13 +300,11 @@
   (none)
   )
 
+;; definition for method 24 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-clouds ((this sky-work) (arg0 dma-buffer))
   (local-vars (v1-19 float) (sv-16 cloud-vert-array) (sv-20 (inline-array sky-vertex)) (sv-32 int))
-
-  (when (zero? *sky-texture-anim-array*) ;; added
-    (return #f)
-    )
-
   (rlet ((vf23 :class vf)
          (vf27 :class vf)
          )
@@ -299,14 +334,11 @@
                            (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                            (texflush 0)
                            )
-    ; (.lvf vf27 (&-> this giftag-roof quad))
-    ; (let ((v1-18 #x43c80000))
-    ;   (.mov vf23 v1-18)
-    ;   )
-    ; (.mov v1-19 vf23)
-    ;; og:preserve-this
-    (set-sky-vf27 (&-> this giftag-roof quad))
-    (set-sky-vf23-value #x43c80000)
+    (.lvf vf27 (&-> this giftag-roof quad))
+    (let ((v1-18 #x43c80000))
+      (.mov vf23 v1-18)
+      )
+    (.mov v1-19 vf23)
     (set-tex-offset (the-as int (-> this off-s)) (the-as int (-> this off-t)))
     (let ((s4-1 (-> arg0 base)))
       (&+! (-> arg0 base) 16)
@@ -344,6 +376,9 @@
     )
   )
 
+;; definition for method 25 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod apply-haze-light ((this sky-work) (arg0 vector) (arg1 vector) (arg2 haze-lights) (arg3 float))
   (let* ((s5-0 (new 'stack-no-clear 'vector4))
          (f0-1 (vector-dot (-> arg2 sun0-normal) arg1))
@@ -369,6 +404,9 @@
   (none)
   )
 
+;; definition for method 26 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod adjust-haze-lighting ((this sky-work))
   (let ((s5-0 *haze-vert-array*)
         (s4-0 (-> this haze-lights))
@@ -416,6 +454,9 @@
   (none)
   )
 
+;; definition for method 27 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod haze-vtx-to-sky ((this sky-work) (arg0 sky-vertex) (arg1 sky-vertex) (arg2 haze-vertex))
   (set! (-> arg0 pos quad) (-> arg2 pos quad))
   (set! (-> arg0 col quad) (-> arg2 col quad))
@@ -428,13 +469,14 @@
   (none)
   )
 
+;; definition for method 28 of type sky-work
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-haze ((this sky-work) (arg0 dma-buffer))
   (local-vars (sv-16 haze-vert-array) (sv-20 (inline-array sky-vertex)))
   (rlet ((vf27 :class vf))
     (dma-buffer-add-gs-set arg0 (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1)))
     (init-regs-for-large-polygon-draw this)
-    ;; (.lvf vf27 (&-> this giftag-haze quad))
-    (set-sky-vf27 (&-> this giftag-haze quad))
+    (.lvf vf27 (&-> this giftag-haze quad))
     (let ((s4-0 (-> arg0 base)))
       (&+! (-> arg0 base) 16)
       (set! sv-16 *haze-vert-array*)
@@ -460,12 +502,21 @@
     )
   )
 
+;; definition for method 29 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 29 sky-work)" 29 sky-work)
 
+;; definition for method 30 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 30 sky-work)" 30 sky-work)
 
+;; definition for method 31 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 31 sky-work)" 31 sky-work)
 
+;; definition for method 33 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod setup-stars ((this sky-work) (arg0 matrix) (arg1 sky-upload-data))
   (set! (-> arg0 fvec quad) (-> arg1 data 0))
   (vector-normalize! (-> arg0 fvec) 1.0)
@@ -491,10 +542,16 @@
   (none)
   )
 
+;; definition for method 34 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 34 sky-work)" 34 sky-work)
 
+;; definition for method 35 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 35 sky-work)" 35 sky-work)
 
+;; definition for method 36 of type sky-work
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-roof ((this sky-work) (arg0 dma-buffer))
   (rlet ((vf27 :class vf))
     (dma-buffer-add-gs-set arg0
@@ -503,8 +560,7 @@
                            (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                            )
     (init-regs-for-large-polygon-draw this)
-    ;; (.lvf vf27 (&-> this giftag-base quad))
-    (set-sky-vf27 (&-> this giftag-base quad))
+    (.lvf vf27 (&-> this giftag-base quad))
     (let ((s5-1 (-> arg0 base)))
       (&+! (-> arg0 base) 16)
       (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-roof-polygons 0)) arg0)
@@ -523,6 +579,8 @@
     )
   )
 
+;; definition for method 37 of type sky-work
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-base ((this sky-work) (arg0 dma-buffer))
   (rlet ((vf27 :class vf))
     (dma-buffer-add-gs-set arg0
@@ -530,8 +588,7 @@
                            )
     (let ((s5-0 (-> arg0 base)))
       (&+! (-> arg0 base) 16)
-      ;; (.lvf vf27 (&-> this giftag-base quad))
-      (set-sky-vf27 (&-> this giftag-base quad))
+      (.lvf vf27 (&-> this giftag-base quad))
       (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 0)) arg0)
       (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 3)) arg0)
       (render-sky-tri (the-as (inline-array sky-vertex) (-> sky-base-polygons 6)) arg0)
@@ -548,41 +605,40 @@
     )
   )
 
+;; definition for method 38 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-fog ((this sky-work) (arg0 dma-buffer))
-  (when (zero? *sky-texture-anim-array*) ;; added
-    (return #f)
-    )
   (let ((s4-0 (-> *sky-texture-anim-array* array-data 8 tex)))
     (if s4-0
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0
-                                            :tcc #x1
-                                            :cld #x1
-                                            :psm (the-as int (-> s4-0 psm))
-                                            :cpsm (-> s4-0 clutpsm)
-                                            :cbp (-> s4-0 clutdest)
-                                            :th (log2 (-> s4-0 h))
-                                            :tw (log2 (-> s4-0 w))
-                                            :tbw (-> s4-0 width 0)
-                                            :tbp0 (-> s4-0 dest 0)
-                                            )
+                                         :tcc #x1
+                                         :cld #x1
+                                         :psm (the-as int (-> s4-0 psm))
+                                         :cpsm (-> s4-0 clutpsm)
+                                         :cbp (-> s4-0 clutdest)
+                                         :th (log2 (-> s4-0 h))
+                                         :tw (log2 (-> s4-0 w))
+                                         :tbw (-> s4-0 width 0)
+                                         :tbp0 (-> s4-0 dest 0)
+                                         )
                                        )
                                (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                                (test-1 (new 'static 'gs-test
-                                            :ate #x1
-                                            :atst (gs-atest greater-equal)
-                                            :aref #x70
-                                            :afail #x3
-                                            :zte #x1
-                                            :ztst (gs-ztest greater-equal)
-                                            )
+                                         :ate #x1
+                                         :atst (gs-atest greater-equal)
+                                         :aref #x70
+                                         :afail #x3
+                                         :zte #x1
+                                         :ztst (gs-ztest greater-equal)
+                                         )
                                        )
                                (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                                (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                                )
         )
     )
-
   (let* ((v1-26 (the-as (inline-array qword) (-> arg0 base)))
          (a0-22 *fog-texture-work*)
          (f0-0 (-> a0-22 min-corner y))
@@ -615,8 +671,13 @@
   (none)
   )
 
+;; definition for method 32 of type sky-work
+;; INFO: function output is handled by mips2c
 (defmethod-mips2c "(method 32 sky-work)" 32 sky-work)
 
+;; definition for method 13 of type sky-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
 (defmethod draw-erase ((this sky-work) (arg0 dma-buffer) (arg1 vector))
   (dma-buffer-add-gs-set arg0
                          (zbuf-1 (new 'static 'gs-zbuf :zbp #x130 :psm (gs-psm ct24)))
@@ -644,6 +705,8 @@
   (none)
   )
 
+;; definition for method 14 of type sky-work
+;; WARN: Return type mismatch int vs none.
 (defmethod draw ((this sky-work))
   (let ((s4-0 *time-of-day-context*)
         (v1-0 #f)
@@ -674,12 +737,10 @@
          (update-template-colors this)
          (adjust-haze-lighting this)
          (adjust-cloud-lighting this)
-         (let ((s4-1 (the-as sky-work *fake-scratchpad-data*)))
+         (let ((s4-1 (the-as sky-work #x70000000)))
            (mem-copy! (the-as pointer s4-1) (the-as pointer this) #x2814)
            (setup-stars s4-1 (-> s4-1 star-mat) (-> this upload-data))
-           (when (nonzero? (-> s4-1 star-colors 0 x))
-               (format *stdcon* "doing stars asm!~%")
-               (format *stdcon* "~`matrix`I~%" (-> s4-1 star-mat))
+           (if (nonzero? (-> s4-1 star-colors 0 x))
                (stars-transform-asm s4-1)
                )
            (cond

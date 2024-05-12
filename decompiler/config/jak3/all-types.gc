@@ -3540,7 +3540,7 @@
   (bucket2 2) ;; pc vis stuff
   (bucket3 3) ;; blit?
   (tex-lcom-sky-pre 4)
-  (bucket5 5) ;; sky
+  (sky 5) ;; sky
   (bucket6 6) ;; ocean
   (bucket7 7) ;; unknown new jak 3 texture upload, for all levels.
   (hfrag 8) ;; hfrag
@@ -4234,7 +4234,7 @@
   (rn0)
   (rn1)
   (rn2)
-  (rn3)
+  (sky)
   (rn4)
   (rn5)
   (hfrag)
@@ -4468,6 +4468,8 @@
 (deftype dma-gif (structure)
   "Believed unused GIF header type."
   ((gif  uint64  2 :offset-assert 0) ;; guessed by decompiler
+   (gif0 uint64 :overlay-at (-> gif 0) :score 1)
+   (gif1 uint64 :overlay-at (-> gif 1) :score 1)
    (quad uint128   :offset-assert 0 :overlay-at gif)
    )
   :method-count-assert 9
@@ -4479,6 +4481,8 @@
   "The header for a DMA transfer that goes directly to GIF, containing DMA, VIF, GIF tags."
   ((dma-vif dma-packet :inline :offset-assert 0)
    (gif     uint64     2       :offset-assert 16) ;; guessed by decompiler
+   (gif0    uint64 :offset 16 :score -1)
+   (gif1    uint64 :offset 24 :score -1)
    (quad    uint128    2       :offset-assert 0 :overlay-at dma-vif) ;; guessed by decompiler
    )
   :method-count-assert 9
@@ -5518,6 +5522,32 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
+
+; (deftype dma-gif-packet (structure)
+;   "The header for a DMA transfer that goes directly to GIF, containing DMA, VIF, GIF tags."
+;   ((dma-vif dma-packet :inline :offset-assert 0)
+;    ;;(gif     uint64     2       :offset-assert 16) ;; guessed by decompiler
+;    (gif0    gif-tag64 :offset 16 :score 1)
+;    (gif1    gif-tag-regs :offset 24 :score 1)
+;    (quad    uint128    2       :offset-assert 0 :overlay-at dma-vif) ;; guessed by decompiler
+;    )
+;   :method-count-assert 9
+;   :size-assert         #x20
+;   :flag-assert         #x900000020
+;   )
+
+; (deftype dma-gif (structure)
+;   "Believed unused GIF header type."
+;   ((gif  uint64  2 :offset-assert 0) ;; guessed by decompiler
+;    (gif0 gif-tag64 :overlay-at (-> gif 0) :score 1)
+;    (gif1 gif-tag-regs :overlay-at (-> gif 1) :score 1)
+;    (quad uint128   :offset-assert 0 :overlay-at gif)
+;    )
+;   :method-count-assert 9
+;   :size-assert         #x10
+;   :flag-assert         #x900000010
+;   )
+
 
 (deftype gif-packet (basic)
   "Unused type for building a dynamically sized gif packet."
@@ -11484,7 +11514,7 @@
     (blit-displays-work-method-17 (_type_ vector int float symbol) none) ;; 17
     (blit-displays-work-method-18 () none) ;; 18
     (blit-displays-work-method-19 (_type_) none) ;; 19 (called from main.gc)
-    (blit-displays-work-method-20 () none) ;; 20
+    (blit-displays-work-method-20 (_type_) none) ;; 20
     (get-menu-mode (_type_) symbol) ;; 21
     (get-screen-copied (_type_) symbol) ;; 22
     (get-horizontal-flip-flag (_type_) symbol) ;; 23
@@ -11715,33 +11745,33 @@
     (init-sun-data! (_type_ int float float float) none) ;; 9
     (init-orbit-settings! (_type_ int float float float float float float) none) ;; 10
     (update-colors-for-time (_type_ float) none) ;; 11
-    (update-time-and-speed (_type_ float float) none) ;; 12
-    (sky-work-method-13 () none) ;; 13
-    (draw (_type_) none) ;; 14 ;; (update-matrix (_type_ matrix) none)
-    (sky-work-method-15 () none) ;; 15 ;; (update-template-colors (_type_) none)
-    (sky-work-method-16 () none) ;; 16 ;; (init-regs-for-large-polygon-draw (_type_) none)
-    (sky-work-method-17 () none) ;; 17 ;; (init-regs-for-sky-asm (_type_) none)
-    (sky-work-method-18 () none) ;; 18 ;; (cloud-vtx-light-update (_type_ vector vector cloud-lights vector vector) none)
-    (sky-work-method-19 () none) ;; 19 ;; (cloud-vtx-tex-update (_type_ vector vector vector cloud-lights) none)
-    (sky-work-method-20 () none) ;; 20 ;; (adjust-cloud-lighting (_type_) none)
-    (sky-work-method-21 () none) ;; 21 ;; (cloud-vtx1-to-sky (_type_ sky-vertex cloud-vertex) none)
-    (sky-work-method-22 () none) ;; 22 ;; (cloud-vtx2-to-sky (_type_ sky-vertex cloud-vertex) none)
-    (sky-work-method-23 () none) ;; 23 ;; (draw-clouds (_type_ dma-buffer) none)
-    (sky-work-method-24 () none) ;; 24 ;; (apply-haze-light (_type_ vector vector haze-lights) none)
-    (sky-work-method-25 () none) ;; 25 ;; (adjust-haze-lighting (_type_) none)
-    (sky-work-method-26 () none) ;; 26 ;; (haze-vtx-to-sky (_type_ sky-vertex sky-vertex haze-vertex) none)
-    (sky-work-method-27 () none) ;; 27 ;; (draw-haze (_type_ dma-buffer) none)
-    (sky-work-method-28 () none) ;; 28 ;; (sun-dma (_type_ dma-buffer) none)
-    (sky-work-method-29 () none) ;; 29 ;; (green-sun-dma (_type_ dma-buffer) none)
-    (sky-work-method-30 () none) ;; 30 ;; (moon-dma (_type_ dma-buffer) none)
-    (sky-work-method-31 () none) ;; 31 ;; (setup-stars (_type_ matrix sky-upload-data) none)
-    (sky-work-method-32 () none) ;; 32 ;; (stars-transform-asm (_type_) none)
-    (sky-work-method-33 () none) ;; 33 ;; (stars-dma (_type_ dma-buffer) none)
-    (sky-work-method-34 () none) ;; 34 ;; (draw-roof (_type_ dma-buffer) none)
-    (sky-work-method-35 () none) ;; 35 ;; (draw-base (_type_ dma-buffer) none)
-    (sky-work-method-36 () none) ;; 36 ;; (draw-fog (_type_ dma-buffer) none)
-    (sky-work-method-37 () none) ;; 37
-    (sky-work-method-38 () none) ;; 38
+    (update-time-and-speed "Update cloud sroll and sun/moon position for the time." (_type_ float float) none) ;; 12
+    (draw-erase (_type_ dma-buffer vector) none) ;; 13
+    (draw (_type_) none) ;; 14
+    (update-camera-matrix "Set the camera matrix (no perspective) for sky drawing." (_type_ matrix) none) ;; 15
+    (update-template-colors "Update work with sky/erase colors from time-of-day/level." (_type_) none) ;; 16
+    (init-regs-for-large-polygon-draw (_type_) none) ;; 17
+    (init-regs-for-sky-asm (_type_) none) ;; 18
+    (cloud-vtx-light-update (_type_ vector vector cloud-lights vector vector) none) ;; 19
+    (cloud-vtx-tex-update (_type_ vector vector vector cloud-lights) none) ;; 20
+    (adjust-cloud-lighting (_type_) none) ;; 21
+    (cloud-vtx1-to-sky (_type_ sky-vertex cloud-vertex) none) ;; 22
+    (cloud-vtx2-to-sky (_type_ sky-vertex cloud-vertex) none) ;; 23
+    (draw-clouds (_type_ dma-buffer) none) ;; 24
+    (apply-haze-light (_type_ vector vector haze-lights float) none) ;; 25
+    (adjust-haze-lighting (_type_) none) ;; 26
+    (haze-vtx-to-sky (_type_ sky-vertex sky-vertex haze-vertex) none) ;; 27
+    (draw-haze (_type_ dma-buffer) none) ;; 28
+    (sun-dma (_type_ dma-buffer) none) ;; 29
+    (green-sun-dma (_type_ dma-buffer) none) ;; 30
+    (moon-dma (_type_ dma-buffer) none) ;; 31
+    (day-star-dma (_type_ dma-buffer) none) ;; 32
+    (setup-stars (_type_ matrix sky-upload-data) none) ;; 33
+    (stars-transform-asm (_type_) none) ;; 34
+    (stars-dma (_type_ dma-buffer) none) ;; 35
+    (draw-roof (_type_ dma-buffer) none) ;; 36
+    (draw-base (_type_ dma-buffer) none) ;; 37
+    (draw-fog (_type_ dma-buffer) none) ;; 38
     )
   )
 
@@ -32458,13 +32488,13 @@
 ;; sky-tng                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern set-tex-offset function) ;; (function int int none)
+(define-extern set-tex-offset (function int int none))
 ;; (define-extern draw-large-polygon function)
 ;; (define-extern clip-polygon-against-positive-hyperplane function)
 ;; (define-extern clip-polygon-against-negative-hyperplane function)
-;; (define-extern render-sky-quad function) ;; (function (inline-array sky-vertex) dma-buffer none)
-;; (define-extern render-sky-tri function) ;; (function (inline-array sky-vertex) dma-buffer none)
-(define-extern close-sky-buffer (function dma-buffer none))
+(define-extern render-sky-quad (function (inline-array sky-vertex) dma-buffer none))
+(define-extern render-sky-tri (function (inline-array sky-vertex) dma-buffer none))
+(define-extern close-sky-buffer "Close DMA buffer for large polygon drawing." (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; load-state                     ;;
