@@ -155,4 +155,37 @@ int CPageManager::TryFreePages(int nPages) {
   return 0;
 }
 
+CPageManager::CPageList* CPageManager::AllocPageList(int nPages, char unk) {
+  CPageList* pList = nullptr;
+  CPage* apCollectedPages[29];
+  int nPageCount;
+
+  if (nPages <= 0) {
+    return nullptr;
+  }
+
+  if (m_Cache.m_nNumFree < nPages) {
+    if (nPages >= 29) {
+      return nullptr;
+    }
+
+    int nFreed = TryFreePages(nPages);
+    if (nFreed < nPages) {
+      return nullptr;
+    }
+  }
+
+  int nPageListID = std::countr_one(m_Cache.m_uAllocatedListMap);
+  if (nPages >= 29) {
+    return nullptr;
+  }
+
+  m_Cache.m_uAllocatedListMap |= 1u << nPageListID;
+
+  nPageCount = 0;
+  while (nPageCount < nPages) {
+    int nPageID = std::countr_one(m_Cache.m_uAllocatedPageMap);
+  }
+}
+
 }  // namespace jak3

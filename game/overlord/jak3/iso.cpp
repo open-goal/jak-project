@@ -3,9 +3,9 @@
 #include <cstring>
 
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 
 #include "game/common/dgo_rpc_types.h"
-#include "game/overlord/common/isocommon.h"
 #include "game/overlord/jak3/basefilesystem.h"
 #include "game/overlord/jak3/iso_api.h"
 #include "game/overlord/jak3/iso_fake.h"
@@ -34,7 +34,11 @@ static int s_nDGOMbx;
 
 static u32 DGOThread();
 u32 ISOThread();
-int NullCallback(ISO_Msg* msg);
+int NullCallback(ISO_Hdr* msg);
+int CopyDataToEE(ISO_Hdr*);
+int CopyDataToIOP(ISO_Hdr*);
+int CopyDataTo989snd(ISO_Hdr*);
+int CopyData(ISO_LoadSingle*, int);
 
 /* COMPLETE */
 void InitDriver() {
@@ -158,14 +162,78 @@ u32 ISOThread() {
       msg->file = nullptr;
       msg->callback = NullCallback;
 
-      switch (msg->msg_kind) {
-        case LOAD_TO_EE_CMD_ID:
-        case LOAD_TO_IOP_CMD_ID:
-        case LOAD_TO_EE_OFFSET_CMD_ID:
+      /* LoadSingle messages */
+      if (msg->msg_kind >= LOAD_TO_EE_CMD_ID && msg->msg_kind <= LOAD_TO_989SND) {
+        auto* ls = static_cast<ISO_LoadSingle*>(msg);
+        int pri = 0;
+        if (ls->unk40 == 2) {
+          pri = 2;
+        }
+        if (ls->unk40 == 10) {
+          pri = 4;
+        }
+        if (!QueueMessage(msg, pri)) {
           break;
-        default:
-          lg::error("unhandled iso msg type {:x}", msg->msg_kind);
+        }
+
+        msg->file = nullptr;
+        if (msg->msg_kind == LOAD_TO_EE_OFFSET_CMD_ID) {
+          msg->file = g_pFileSystem->Open(ls->fd, ls->offset, EFileComp::MODE1);
+        } else if (msg->msg_kind == LOAD_TO_989SND) {
+          char name[16] = {0};
+          if (ls->filename) {
+            strncpy(name, ls->filename, 12);
+            name[8] = 0;
+            strcat(name, ".sbk");
+            auto fd = g_pFileSystem->Find(name);
+            if (fd) {
+              msg->file = g_pFileSystem->Open(ls->fd, -1, EFileComp::MODE1);
+            }
+          }
+        } else {
+          msg->file = g_pFileSystem->Open(ls->fd, -1, EFileComp::MODE1);
+        }
+
+        if (!msg->file) {
+          msg->m_nStatus = 8;
+          UnqueueMessage(msg);
+          ReturnMessage(msg);
           break;
+        }
+
+        ls->unk44 = ls->address;
+        ls->unk48 = 0;
+        ls->length_to_copy = g_pFileSystem->GetLength(ls->fd);
+        if (msg->msg_kind == LOAD_TO_989SND) {
+          ls->length = ls->length_to_copy;
+        } else {
+          if (!ls->length_to_copy || ls->length < ls->length_to_copy) {
+            ls->length_to_copy = ls->length;
+          }
+        }
+
+        switch (msg->msg_kind) {
+          case LOAD_TO_EE_CMD_ID:
+            msg->callback = CopyDataToEE;
+            break;
+          case LOAD_TO_IOP_CMD_ID:
+            msg->callback = CopyDataToIOP;
+            break;
+          case LOAD_TO_EE_OFFSET_CMD_ID:
+            msg->callback = CopyDataToEE;
+            break;
+          case LOAD_TO_989SND:
+            msg->callback = CopyDataTo989snd;
+            break;
+          default:
+            ASSERT_NOT_REACHED();
+        }
+
+        msg->m_nStatus = 2;
+        msg->SetActive(true);
+      } else if (msg->msg_kind == 0xADEADBEE) {
+        ReturnMessage(msg);
+        ExitThread();
       }
     }
 
@@ -221,13 +289,19 @@ static void ISO_LoadDGO(RPC_Dgo_Cmd* msg) {
     return;
   }
 
+  ASSERT_NOT_REACHED();
+
   msg->buffer1 = msg->buffer_heap_top;
   msg->result = 0;
 }
 
-static void ISO_LoadNextDGO(RPC_Dgo_Cmd* msg) {}
+static void ISO_LoadNextDGO(RPC_Dgo_Cmd* msg) {
+  ASSERT_NOT_REACHED();
+}
 
-static void ISO_CancelDGO(RPC_Dgo_Cmd* msg) {}
+static void ISO_CancelDGO(RPC_Dgo_Cmd* msg) {
+  ASSERT_NOT_REACHED();
+}
 
 /* COMPLETE */
 const ISOFileDef* FindISOFile(char* name) {
@@ -239,7 +313,24 @@ s32 GetISOFileLength(const ISOFileDef* fd) {
   return g_pFileSystem->GetLength(fd);
 }
 
-int NullCallback(ISO_Msg* msg) {
+int CopyDataToEE(ISO_Hdr* msg) {
+  return CopyData((ISO_LoadSingle*)msg, 0);
+}
+
+int CopyDataToIOP(ISO_Hdr* msg) {
+  return CopyData((ISO_LoadSingle*)msg, 1);
+}
+
+int CopyDataTo989snd(ISO_Hdr* msg) {
+  return CopyData((ISO_LoadSingle*)msg, 2);
+}
+
+int CopyData(ISO_LoadSingle*, int) {
+  ASSERT_NOT_REACHED();
+  return 0;
+}
+
+int NullCallback(ISO_Hdr* msg) {
   return 7;
 }
 
