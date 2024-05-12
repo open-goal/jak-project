@@ -1,5 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(bundles "ENGINE.CGO" "GAME.CGO")
+
+(require "engine/dma/dma.gc")
 
 ;; name: dma-buffer.gc
 ;; name in dgo: dma-buffer
@@ -266,65 +269,6 @@
     (segfault)
     )
   (dma-send-chain chan (the-as uint (-> buf data)))
-  )
-
-(defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
-  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
-   The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
-   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
-
-  (let ((reg-count (length reg-list))
-        (qwc (+ (length reg-list) 1))
-        (reg-names (apply first reg-list))
-        (reg-datas (apply second reg-list))
-        )
-    `(begin
-      ;; dma tag
-      (dma-buffer-add-cnt-vif2 ,buf ,qwc
-                              (new 'static 'vif-tag :cmd (vif-cmd flusha))
-                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
-                              )
-
-      ;; gif tag for editing gs regs
-      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
-                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
-                                   )
-
-      ;; gs regs
-      (dma-buffer-add-uint64 ,buf
-          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
-          )
-      )
-    )
-  )
-
-(defmacro dma-buffer-add-gs-set (buf &rest reg-list)
-  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
-   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
-
-  (let ((reg-count (length reg-list))
-        (qwc (+ (length reg-list) 1))
-        (reg-names (apply first reg-list))
-        (reg-datas (apply second reg-list))
-        )
-    `(begin
-      ;; dma tag
-      (dma-buffer-add-cnt-vif2 ,buf ,qwc
-                              (new 'static 'vif-tag :cmd (vif-cmd nop))
-                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
-                              )
-
-      ;; gif tag for editing gs regs
-      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
-                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
-                                   )
-
-      ;; gs regs
-      (dma-buffer-add-uint64 ,buf
-          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
-          )
-      )
-    )
   )
 
 (defmacro with-cnt-vif-block (bindings &rest body)

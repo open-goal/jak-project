@@ -7,9 +7,6 @@
 
 // A normal Trie does not allow for duplicate keys, however this one does
 // It allows for insertion and removal
-//
-// Note, keys assume only basic ASCII, which is _fine_ as OpenGOAL itself has this
-// limitation as well.
 template <typename T>
 class TrieWithDuplicates {
  private:
