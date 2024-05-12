@@ -30,7 +30,7 @@
   "dma-buffer.o"
   "dma-bucket.o"
   "dma-disasm.o"
-  "pc-secrets.o" ;; added
+  "pc-cheats.o" ;; added
   "pckernel-h.o" ;; added
   "pckernel-impl.o" ;; added
   "pc-debug-common.o" ;; added
