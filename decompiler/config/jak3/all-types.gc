@@ -73954,56 +73954,80 @@
 ;; protect-script                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++protect-script:gunship-command
+(defenum gunship-command
+  :type uint8
+  (spawn)
+  (wait)
+  (missiles)
+  (script-set-jump)
+  (script-jump)
+  (no-op)
+  (other)
+  )
+;; ---protect-script:gunship-command
+
+;; +++protect-script:gunship-cmd-spawn-type
+(defenum gunship-cmd-spawn-type
+  :type uint16
+  :copy-entries city-target-type
+  )
+;; ---protect-script:gunship-cmd-spawn-type
+
+;; +++protect-script:gunship-cmd-wait-type
+(defenum gunship-cmd-wait-type
+  :type uint8
+  (time)
+  (total)
+  )
+;; ---protect-script:gunship-cmd-wait-type
+
 (deftype gunship-cmd (structure)
-  ((command        uint8   :offset-assert 0)
-   (spawn-type     uint16  :offset-assert 2)
+  ((command        gunship-command :offset-assert 0)
+   (spawn-type     gunship-cmd-spawn-type :offset-assert 2)
    (count          int8    :offset-assert 4)
-   (wait-type      uint8   :offset-assert 2)
+   (wait-type      gunship-cmd-wait-type :offset 2)
    (difficulty     float   :offset-assert 8)
-   (wait-time      uint64  :offset-assert 16)
-   (timeout-period uint64  :offset-assert 24)
+   (wait-time      time-frame :offset-assert 16)
+   (timeout-period time-frame :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype gunship-cmd-context (structure)
-  ((start-time        uint64              :offset-assert 0)
+  ((start-time        time-frame          :offset-assert 0)
    (current-command   gunship-cmd :inline :offset-assert 8)
-   (script            basic               :offset-assert 40)
+   (script            pair                :offset-assert 40)
    (script-jump-point basic               :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern parse-protect-command function)
-;; (define-extern *gunship-0-script* object)
+(define-extern parse-protect-command (function gunship-cmd-context object))
+(define-extern *gunship-0-script* pair)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; protect-path                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *protect-path* array)
+(define-extern *protect-path* (array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; protect-gunship                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fire-missile-state (structure)
-  ((missile-dest-positions  UNKNOWN 16 :offset-assert 0)
-   (missile-handles         UNKNOWN 16 :offset-assert 256)
-   (beacon-handles          UNKNOWN 16 :offset-assert 384)
-   (last-fire-missile-time  uint64     :offset-assert 512)
-   (last-probe-missile-time uint64     :offset-assert 520)
-   (launcher-rotate-time    uint64     :offset-assert 528)
+  ((missile-dest-positions  vector  16 :inline :offset-assert 0)
+   (missile-handles         handle  16 :offset-assert 256)
+   (beacon-handles          handle  16 :offset-assert 384)
+   (last-fire-missile-time  time-frame :offset-assert 512)
+   (last-probe-missile-time time-frame :offset-assert 520)
+   (launcher-rotate-time    time-frame :offset-assert 528)
    (num-missiles            int8       :offset-assert 536)
    (missile-launch-index    int8       :offset-assert 537)
    (missile-probe-index     int8       :offset-assert 538)
@@ -74016,56 +74040,49 @@
   :size-assert         #x228
   :flag-assert         #xa00000228
   (:methods
-    (fire-missile-state-method-9 () none) ;; 9
+    (init (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype gunship-info (structure)
-  ((proc        uint64  :offset-assert 0)
+  ((proc        handle  :offset-assert 0)
    (want-target uint8   :offset-assert 8)
-   (cur-state   basic   :offset-assert 12)
+   (cur-state   symbol  :offset-assert 12)
    (difficulty  float   :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype gunship-movement-state (structure)
-  ((state-time       uint64         :offset-assert 0)
-   (next-update-time uint64         :offset-assert 8)
+  ((state-time       time-frame     :offset-assert 0)
+   (next-update-time time-frame     :offset-assert 8)
    (cur-mode         uint8          :offset-assert 16)
    (dest-mode        uint8          :offset-assert 17)
    (dest-pos         vector :inline :offset-assert 32)
-   (completed?       basic          :offset-assert 48)
+   (completed?       symbol         :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype gunship-spawn-info (structure)
-  ((counts          UNKNOWN 17 :offset-assert 0)
-   (next-spawn-time uint64     :offset-assert 24)
+  ((counts          int8 17    :offset-assert 0)
+   (next-spawn-time time-frame :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (gunship-spawn-info-method-9 () none) ;; 9
+    (init (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype protect-gunship (process-focusable)
-  ((task-man                   uint64                         :offset-assert 208)
+  ((task-man                   handle                         :offset-assert 208)
    (missile-info               fire-missile-state     :inline :offset-assert 224)
    (stage-index                int8                           :offset-assert 776)
    (num-stages                 int8                           :offset-assert 777)
@@ -74075,18 +74092,18 @@
    (ground-pt                  vector                 :inline :offset-assert 800)
    (basetrans                  vector                 :inline :offset-assert 816)
    (move-state                 gunship-movement-state :inline :offset-assert 832)
-   (reaction-time              uint64                         :offset-assert 888)
-   (choose-new-point-time      uint64                         :offset-assert 896)
+   (reaction-time              time-frame                     :offset-assert 888)
+   (choose-new-point-time      time-frame                     :offset-assert 896)
    (chosen-point               vector                 :inline :offset-assert 912)
    (last-repo-pos              vector                 :inline :offset-assert 928)
-   (suppress-times             UNKNOWN                8       :offset-assert 944)
+   (suppress-times             time-frame             8       :offset-assert 944)
    (want                       uint8                          :offset-assert 1008)
    (target                     uint8                          :offset-assert 1009)
    (spawn-info                 gunship-spawn-info     :inline :offset-assert 1016)
-   (next-fire-missile-time     uint64                         :offset-assert 1048)
-   (next-spin-laser-time       uint64                         :offset-assert 1056)
-   (next-spawn-time            uint64                         :offset-assert 1064)
-   (last-land-time             uint64                         :offset-assert 1072)
+   (next-fire-missile-time     time-frame                     :offset-assert 1048)
+   (next-spin-laser-time       time-frame                     :offset-assert 1056)
+   (next-spawn-time            time-frame                     :offset-assert 1064)
+   (last-land-time             time-frame                     :offset-assert 1072)
    (last-thrust-vec            vector                 :inline :offset-assert 1088)
    (roll-quat                  quaternion             :inline :offset-assert 1104)
    (difficulty                 float                          :offset-assert 1120)
@@ -74094,18 +74111,18 @@
    (land-start-hp              float                          :offset-assert 1128)
    (jmod-turret-twist          joint-mod-rotate-local :inline :offset-assert 1136)
    (jmod-turret-pitch          joint-mod-rotate-local :inline :offset-assert 1168)
-   (jmod-doors                 UNKNOWN                4       :offset-assert 1200)
+   (jmod-doors                 joint-mod-rotate-local 4 :inline :offset-assert 1200)
    (open-doors                 uint8                          :offset-assert 1328)
    (num-open-doors             uint8                          :offset-assert 1329)
    (last-door-index            uint8                          :offset-assert 1330)
-   (engines                    UNKNOWN                4       :offset-assert 1336)
-   (rotate-start-time          uint64                         :offset-assert 1368)
-   (rotate-total-time          uint64                         :offset-assert 1376)
+   (engines                    handle                 4       :offset-assert 1336)
+   (rotate-start-time          time-frame                     :offset-assert 1368)
+   (rotate-total-time          time-frame                     :offset-assert 1376)
    (rotate-rate                float                          :offset-assert 1384)
    (laser-rotate-speed         float                          :offset-assert 1388)
    (current-laser-rotate-speed float                          :offset-assert 1392)
    (base-laser-dir             vector                 :inline :offset-assert 1408)
-   (next-new-laser-rot-time    uint64                         :offset-assert 1424)
+   (next-new-laser-rot-time    time-frame                     :offset-assert 1424)
    (laser-y                    float                          :offset-assert 1432)
    (jmod-laser-descend         joint-mod-add-local    :inline :offset-assert 1440)
    (num-hp-per-stage           float                          :offset-assert 1504)
@@ -74113,84 +74130,80 @@
    (other-ship-index           int8                           :offset-assert 1509)
    (attacker-info              city-attacker-info             :offset-assert 1512)
    (difficulty-scalar          float                          :offset-assert 1516)
-   (sound-engine-loop          uint32                         :offset-assert 1520)
-   (sound-lock-on              uint32                         :offset-assert 1524)
-   (sound-lock-on-hi           uint32                         :offset-assert 1528)
+   (sound-engine-loop          sound-id                       :offset-assert 1520)
+   (sound-lock-on              sound-id                       :offset-assert 1524)
+   (sound-lock-on-hi           sound-id                       :offset-assert 1528)
    (alive-engines              uint8                          :offset-assert 1532)
-   (last-engine?               basic                          :offset-assert 1536)
+   (last-engine?               symbol                         :offset-assert 1536)
    (desired-thruster-length    float                          :offset-assert 1540)
    (last-thrust                vector                 :inline :offset-assert 1552)
-   (smoke-parts                UNKNOWN                4       :offset-assert 1568)
+   (smoke-parts                sparticle-launch-control 4     :offset-assert 1568)
    )
   :method-count-assert 58
   :size-assert         #x630
   :flag-assert         #x3a05b00630
-  (:methods
-    (protect-gunship-method-36 () none) ;; 36
-    (protect-gunship-method-37 () none) ;; 37
-    (protect-gunship-method-38 () none) ;; 38
-    (protect-gunship-method-39 () none) ;; 39
-    (protect-gunship-method-40 () none) ;; 40
-    (protect-gunship-method-41 () none) ;; 41
-    (protect-gunship-method-42 () none) ;; 42
-    (protect-gunship-method-43 () none) ;; 43
-    (protect-gunship-method-44 () none) ;; 44
-    (protect-gunship-method-45 () none) ;; 45
-    (protect-gunship-method-46 () none) ;; 46
-    (protect-gunship-method-47 () none) ;; 47
-    (protect-gunship-method-48 () none) ;; 48
-    (protect-gunship-method-49 () none) ;; 49
-    (protect-gunship-method-50 () none) ;; 50
-    (protect-gunship-method-51 () none) ;; 51
-    (protect-gunship-method-52 () none) ;; 52
-    (protect-gunship-method-53 () none) ;; 53
-    (protect-gunship-method-54 () none) ;; 54
-    (protect-gunship-method-55 () none) ;; 55
-    (protect-gunship-method-56 () none) ;; 56
-    (protect-gunship-method-57 () none) ;; 57
-    )
   (:state-methods
-    lowering ;; 32
-    raising ;; 31
-    landed ;; 30
-    hover ;; 29
-    spinning-laser ;; 34
-    enemy-spawning ;; 33
     protect-gunship-base-state ;; 28
+    hover ;; 29
+    landed ;; 30
+    raising ;; 31
+    lowering ;; 32
+    enemy-spawning ;; 33
+    spinning-laser ;; 34
     die ;; 35
     )
+  (:methods
+    (spawn-missile (_type_ vector vector vector float int) handle) ;; 36
+    (protect-gunship-method-37 (_type_) int) ;; 37
+    (protect-gunship-method-38 (_type_ int float) none) ;; 38
+    (spawn-enemy (_type_ gunship-cmd-spawn-type) symbol) ;; 39
+    (update-nav-mesh (_type_) none) ;; 40
+    (gunship-post (_type_) none) ;; 41
+    (probe-ground (_type_) none) ;; 42
+    (protect-gunship-method-43 (_type_) none) ;; 43
+    (gunship-init (_type_) object) ;; 44
+    (gunship-handler (_type_ process int symbol event-message-block) object) ;; 45
+    (protect-gunship-method-46 (_type_) symbol) ;; 46
+    (protect-gunship-method-47 (_type_) none) ;; 47
+    (protect-gunship-method-48 (_type_ vector) symbol) ;; 48
+    (protect-gunship-method-49 (_type_) none) ;; 49
+    (protect-gunship-method-50 (_type_) object) ;; 50
+    (protect-gunship-method-51 (_type_) none) ;; 51
+    (protect-gunship-method-52 (_type_) quaternion) ;; 52
+    (open-doors (_type_) int) ;; 53
+    (protect-gunship-method-54 (_type_) float) ;; 54
+    (fire-laser (_type_ vector vector) object) ;; 55
+    (protect-gunship-method-56 (_type_ float) float) ;; 56
+    (protect-gunship-method-57 (_type_ int vector) vector) ;; 57
+    )
   )
-|#
 
-#|
 (deftype gunship-engine (process-focusable)
   ((hit-points     float               :offset-assert 208)
    (child-index    int16               :offset-assert 212)
    (last-attack-id uint32              :offset-assert 216)
    (attacker-info  city-attacker-info  :offset-assert 220)
-   (bolt           basic               :offset-assert 224)
-   (hit-recently?  basic               :offset-assert 228)
-   (last-hit-time  uint64              :offset-assert 232)
+   (bolt           lightning-bolt      :offset-assert 224)
+   (hit-recently?  symbol              :offset-assert 228)
+   (last-hit-time  time-frame          :offset-assert 232)
    )
   :method-count-assert 31
   :size-assert         #xf0
   :flag-assert         #x1f007000f0
-  (:methods
-    (gunship-engine-method-30 () none) ;; 30
-    )
   (:state-methods
     idle ;; 28
     explode ;; 29
     )
+  (:methods
+    (gunship-engine-method-30 (_type_) none) ;; 30
+    )
   )
-|#
 
-#|
 (deftype protect-gunship-init-params (structure)
   ((pos               vector     :inline :offset-assert 0)
    (quat              quaternion :inline :offset-assert 16)
-   (task-man          uint64             :offset-assert 32)
-   (script            basic              :offset-assert 40)
+   (task-man          handle             :offset-assert 32)
+   (script            pair               :offset-assert 40)
    (num-stages        int8               :offset-assert 44)
    (self-index        int8               :offset-assert 45)
    (difficulty        float              :offset-assert 48)
@@ -74200,22 +74213,18 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype protect-gunship-enemy-spawn-params (structure)
   ((pos        vector     :inline :offset-assert 0)
    (quat       quaternion :inline :offset-assert 16)
-   (spawn-type uint16             :offset-assert 32)
-   (parent     uint64             :offset-assert 40)
+   (spawn-type gunship-cmd-spawn-type :offset-assert 32)
+   (parent     handle             :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype gunship-exploder (process-drawable)
   ()
   :method-count-assert 21
@@ -74225,35 +74234,31 @@
     explode ;; 20
     )
   )
-|#
 
-#|
 (deftype gunship-missile (process-focusable)
   ((dest-pos       vector :inline :offset-assert 208)
    (launch-dir     vector :inline :offset-assert 224)
-   (particle-trail basic          :offset-assert 240)
+   (particle-trail sparticle-subsampler :offset-assert 240)
    (travel-speed   float          :offset-assert 244)
    (attack-time    float          :offset-assert 248)
    (attack-id      uint32         :offset-assert 252)
    (index          int16          :offset-assert 256)
-   (swoosh-sound   uint32         :offset-assert 260)
+   (swoosh-sound   sound-id       :offset-assert 260)
    )
   :method-count-assert 33
   :size-assert         #x108
   :flag-assert         #x2100900108
-  (:methods
-    (gunship-missile-method-31 () none) ;; 31
-    (gunship-missile-method-32 () none) ;; 32
-    )
   (:state-methods
-    explode ;; 30
-    attack-targ ;; 29
     launch ;; 28
+    attack-targ ;; 29
+    explode ;; 30
+    )
+  (:methods
+    (gunship-missile-method-31 (_type_) none) ;; 31
+    (gunship-missile-method-32 (_type_) sound-id) ;; 32
     )
   )
-|#
 
-#|
 (deftype gunship-missile-init-params (structure)
   ((pos          vector :inline :offset-assert 0)
    (dest-pos     vector :inline :offset-assert 16)
@@ -74265,95 +74270,87 @@
   :size-assert         #x36
   :flag-assert         #x900000036
   )
-|#
 
-;; (define-extern *gunship-nav-mesh* object)
-;; (define-extern *range-ffexplo-dust-color* curve-color-fast)
-;; (define-extern *range-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-grp-gunship-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-gunship-explo-color* curve-color-fast)
-;; (define-extern *range-gunship-explo-alpha* curve2d-fast)
-;; (define-extern *range-gunship-explo-scale-x* curve2d-fast)
-;; (define-extern *range-gunship-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-gunship-explo-alpha* curve2d-fast)
-;; (define-extern *curve-gunship-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-gunship-explo-scale-y* curve2d-fast)
-;; (define-extern *part-grp-gunship-explosion-texture-curve-settings* object)
-;; (define-extern *active-gunships* object)
-;; (define-extern *gunship-door-joints* array)
-;; (define-extern *gunship-engine-segs-undamaged* array)
-;; (define-extern *gunship-engine-segs-damaged* array)
-;; (define-extern *gunship-engine-lightning* object)
-;; (define-extern gunship-engine-init-by-other function)
-;; (define-extern find-nearest-nav-mesh-protect function)
-;; (define-extern gunship-event-handler function)
-;; (define-extern *gunship-shadow-control* shadow-control)
-;; (define-extern protect-gunship-init-by-other function)
-;; (define-extern gunship-exploder-init-by-other function)
-;; (define-extern gunship-missile-init-by-other function)
-;; (define-extern *rand-missile-sound-list* array)
-;; (define-extern *missile-launch-locations* array)
-;; (define-extern find-reposition-pt function)
+(define-extern *gunship-nav-mesh* actor-id)
+(define-extern *range-ffexplo-dust-color* curve-color-fast)
+(define-extern *range-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *part-grp-gunship-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-gunship-explo-color* curve-color-fast)
+(define-extern *range-gunship-explo-alpha* curve2d-fast)
+(define-extern *range-gunship-explo-scale-x* curve2d-fast)
+(define-extern *range-gunship-explo-scale-y* curve2d-fast)
+(define-extern *curve-gunship-explo-alpha* curve2d-fast)
+(define-extern *curve-gunship-explo-scale-x* curve2d-fast)
+(define-extern *curve-gunship-explo-scale-y* curve2d-fast)
+(define-extern *part-grp-gunship-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *active-gunships* (inline-array gunship-info))
+(define-extern *gunship-door-joints* (array int32))
+(define-extern *gunship-engine-segs-undamaged* (array uint64))
+(define-extern *gunship-engine-segs-damaged* (array uint64))
+(define-extern *gunship-engine-lightning* lightning-appearance)
+(define-extern gunship-engine-init-by-other (function int float object :behavior gunship-engine))
+(define-extern find-nearest-nav-mesh-protect (function vector float nav-mesh))
+(def-event-handler gunship-event-handler protect-gunship)
+(define-extern *gunship-shadow-control* shadow-control)
+(define-extern protect-gunship-init-by-other (function protect-gunship-init-params object :behavior protect-gunship))
+(define-extern gunship-exploder-init-by-other (function vector quaternion object :behavior gunship-exploder))
+(define-extern gunship-missile-init-by-other (function gunship-missile-init-params object :behavior gunship-missile))
+(define-extern *rand-missile-sound-list* (array string))
+(define-extern *missile-launch-locations* (array int16))
+(define-extern find-reposition-pt (function vector vector vector int int float float vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-protect                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-protect-hq (task-manager)
-  ((gunships      UNKNOWN 2 :offset-assert 240)
-   (spawn-records basic     :offset-assert 256)
+  ((gunships      handle 2  :offset-assert 240)
+   (spawn-records (array proc-focusable-spawner) :offset-assert 256)
    (spawn-index   int8      :offset-assert 260)
    (death-count   int8      :offset-assert 261)
    )
   :method-count-assert 38
   :size-assert         #x106
   :flag-assert         #x2600900106
-  (:methods
-    (task-manager-protect-hq-method-35 () none) ;; 35
-    (task-manager-protect-hq-method-36 () none) ;; 36
-    (task-manager-protect-hq-method-37 () none) ;; 37
-    )
   (:state-methods
-    fail ;; 18
+    fight-gunship ;; 32
     fight-gunship-2 ;; 33
     wait-finish ;; 34
-    fight-gunship ;; 32
-    active ;; 15
-    wait ;; 14
+    )
+  (:methods
+    (gunship-spawn (_type_ protect-gunship-enemy-spawn-params) object) ;; 35
+    (spawn-gunship (_type_ vector int float) handle) ;; 36
+    (get-spawn-pos-for-ship (_type_ vector vector symbol) vector) ;; 37
     )
   )
-|#
 
-#|
 (deftype prot-crate (process-drawable)
-  ((h-crate   uint64  :offset-assert 208)
-   (dummy-ent basic   :offset-assert 216)
+  ((h-crate   handle       :offset 208)
+   (dummy-ent entity-actor :offset-assert 216)
    )
   :method-count-assert 22
   :size-assert         #xdc
   :flag-assert         #x16006000dc
-  (:methods
-    (prot-crate-method-21 () none) ;; 21
-    )
   (:state-methods
     active ;; 20
     )
+  (:methods
+    (spawn-crate (_type_) handle) ;; 21
+    )
   )
-|#
 
-;; (define-extern *protect-object-count* array)
-;; (define-extern protect-type->type function)
-;; (define-extern *protect-levels* array)
-;; (define-extern spawn-protect-enemy function)
-;; (define-extern *gunship-start-positions* array)
-;; (define-extern *fountain-center-pos* object)
-;; (define-extern get-protect-suck-t function)
+(define-extern *protect-object-count* (array int32))
+(define-extern protect-type->type (function gunship-cmd-spawn-type type))
+(define-extern *protect-levels* (array symbol))
+(define-extern spawn-protect-enemy (function int process handle))
+(define-extern *gunship-start-positions* (array vector))
+(define-extern *fountain-center-pos* vector)
+(define-extern get-protect-suck-t (function float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-hover                   ;;
