@@ -331,8 +331,7 @@ std::vector<SymbolInfo*> SymbolInfoMap::lookup_exact_method_name(
   const auto query_results = m_symbol_map.retrieve_with_exact(name);
   std::vector<SymbolInfo*> filtered_results = {};
   for (const auto& result : query_results) {
-    if (result->m_kind == Kind::METHOD &&
-        result->m_method_info.defined_in_type == defining_type_name) {
+    if (result->m_kind == Kind::METHOD && result->m_method_info.type_name == defining_type_name) {
       filtered_results.push_back(result);
     }
   }

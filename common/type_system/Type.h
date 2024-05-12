@@ -28,6 +28,8 @@ struct MethodInfo {
   std::string name;
   TypeSpec type;
   std::string defined_in_type;
+  // TODO - this might be redundant, but preventing an unknown breaking change, clean it up later
+  std::string type_name;
   bool no_virtual = false;
   // TODO - this is no longer used anymore...but was not removed from th4e struct?
   bool overrides_parent = false;
