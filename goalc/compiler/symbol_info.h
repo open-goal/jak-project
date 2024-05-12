@@ -12,17 +12,28 @@
 
 namespace symbol_info {
 
-// TODO - states
-// TODO - enums
+// Require statement todo:
+// - [] reduce empty fields in SymbolInfo
+// - [] `bundle-list` command
+// - [] get rid of old doc generation code
+// - [] compilation speed report
+// - [] potentially remove redundant map in compiler, try to get my symbol info trie more efficient
+// (assuming its not).  Some sort of lookup cache, etc.
+// - [] replace most unordered_maps with robin-maps atleast a 2x improvement (benchmark it)
+// - [] some paths are stored differently for some reason, there's some inconsistent path separators
+// somewhere, investigate
+
 enum class Kind {
   GLOBAL_VAR,
   FWD_DECLARED_SYM,
   FUNCTION,
   TYPE,
   CONSTANT,
-  MACRO,
+  MACRO,  // TODO - defining form for virtual state isnt tracked by reader
   LANGUAGE_BUILTIN,
   METHOD,
+  STATE,  // TODO - defining form for virtual state isnt tracked by reader
+  ENUM,
   INVALID
 };
 
@@ -35,8 +46,6 @@ struct DefinitionLocation {
 
 struct ArgumentInfo {
   std::string name;
-  // TODO - anything use this?
-  TypeSpec type_spec;
   std::string type;
   std::string description = "";
   // !var
@@ -74,15 +83,6 @@ struct TypeStateInfo {
   std::optional<int> id;  // TODO - is this even relevant anymore?
 };
 
-/*!
- * Info about a single symbol, representing one of:
- *  - Global variable
- *  - Global function
- *  - Type
- *  - Constant
- *  - Macro
- *  - Builtin keyword of the OpenGOAL language
- */
 struct SymbolInfo {
   Kind m_kind = Kind::INVALID;
   std::string m_name;
@@ -99,7 +99,6 @@ struct SymbolInfo {
   // Type Related
   std::string m_parent_type = "";
   int m_type_size = -1;
-  // NOTE - removed method count...seems unnecessary?
   std::vector<FieldInfo> m_type_fields = {};
   std::vector<TypeMethodInfo> m_type_methods = {};
   std::vector<TypeStateInfo> m_type_states = {};
@@ -107,6 +106,14 @@ struct SymbolInfo {
   std::vector<std::string> m_macro_args = {};
   std::vector<std::pair<std::string, std::optional<std::string>>> m_macro_kwargs = {};
   std::optional<std::string> m_variadic_arg = {};
+  // State Related
+  std::string m_state_related_type;
+  bool m_state_virtual = false;
+  std::unordered_map<std::string, std::string> m_state_handler_docstrings;
+  std::vector<ArgumentInfo> m_state_enter_and_code_args = {};
+  // Enum related
+  EnumType* m_enum_info = nullptr;
+
   // TODO: need to track references for this, this is a TODO for LSP work
   // bool is_unused = false;
 
@@ -156,8 +163,23 @@ class SymbolInfoMap {
                   const std::vector<GoalArg>& args,
                   const MethodInfo& method_info,
                   const goos::Object& defining_form);
+  void add_state(const std::string& name,
+                 const std::string& related_type,
+                 const bool is_virtual,
+                 const std::vector<ArgumentInfo>& code_args,
+                 const goos::Object& defining_form,
+                 const std::string& docstring);
+  void add_enum(EnumType* enum_info,
+                const goos::Object& defining_form,
+                const std::string& docstring = "");
   std::vector<SymbolInfo*> lookup_symbols_by_file(const std::string& file_path) const;
   std::vector<SymbolInfo*> lookup_exact_name(const std::string& name) const;
+  std::vector<SymbolInfo*> lookup_exact_name(const std::string& name, const Kind sym_kind) const;
+  std::vector<SymbolInfo*> lookup_exact_method_name(const std::string& name,
+                                                    const std::string& defining_type_name) const;
+  std::vector<SymbolInfo*> lookup_exact_virtual_state_name(
+      const std::string& name,
+      const std::string& defining_type_name) const;
   std::vector<SymbolInfo*> lookup_symbols_starting_with(const std::string& prefix) const;
   std::set<std::string> lookup_names_starting_with(const std::string& prefix,
                                                    int max_count = -1) const;

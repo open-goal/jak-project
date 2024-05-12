@@ -3,6 +3,8 @@
  * Calling and defining functions, lambdas, and inlining.
  */
 
+#include "common/util/string_util.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
 
@@ -315,10 +317,26 @@ Val* Compiler::compile_lambda(const goos::Object& form, const goos::Object& rest
  */
 Val* Compiler::compile_function_or_method_call(const goos::Object& form, Env* env) {
   goos::Object f = form;
-  auto fe = env->function_env();
+  const auto fe = env->function_env();
 
-  auto args = get_va(form, form);
-  auto uneval_head = args.unnamed.at(0);
+  const auto args = get_va(form, form);
+  const auto& uneval_head = args.unnamed.at(0);
+  if (m_settings.check_for_requires) {
+    const auto& symbol_info = m_symbol_info.lookup_exact_name(uneval_head.print());
+    if (!symbol_info.empty()) {
+      const auto& result = symbol_info.at(0);
+      if (result->m_def_location.has_value() &&
+          !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
+          env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+              env->file_env()->m_required_files.end() &&
+          !str_util::ends_with(result->m_def_location->file_path,
+                               env->file_env()->name() + ".gc")) {
+        lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                 result->m_def_location->file_path, uneval_head.print());
+        env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+      }
+    }
+  }
   Val* head = get_none();
 
   // determine if this call should be automatically inlined.

@@ -86,6 +86,7 @@ class GlobalEnv : public Env {
   FileEnv* add_file(std::string name);
   // TODO - consider refactoring to use a Trie
   std::vector<std::string> list_files_with_prefix(const std::string& prefix);
+  std::vector<std::unique_ptr<FileEnv>>& get_files();
 
  private:
   std::vector<std::unique_ptr<FileEnv>> m_files;
@@ -129,6 +130,10 @@ class FileEnv : public Env {
   bool is_debug_file() const { return default_segment() == DEBUG_SEGMENT; }
 
   void cleanup_after_codegen();
+
+  // TODO - privatize these eventually
+  std::unordered_set<std::string> m_required_files;          // TODO - a string for now
+  std::unordered_set<std::string> m_missing_required_files;  // TODO - a string for now
 
  protected:
   std::string m_name;

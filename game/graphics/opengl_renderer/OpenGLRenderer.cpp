@@ -141,6 +141,7 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     // 4
     init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-pre", BucketCategory::TEX,
                                                BucketId::TEX_LCOM_SKY_PRE, texture_animator);
+    init_bucket_renderer<DirectRenderer>("sky", BucketCategory::OTHER, BucketId::SKY, 1024 * 8);
 
     init_bucket_renderer<OceanMidAndFar>("ocean-mid-far", BucketCategory::OCEAN,
                                          BucketId::OCEAN_MID_FAR);
