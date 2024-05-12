@@ -15,7 +15,7 @@
 
 (defglobalconstant LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES LEVEL_PAGE_SIZE))
 ;(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.5) ;; level heap in debug mode is 1.5x larger
-(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.1) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
+(defglobalconstant DEBUG_LEVEL_HEAP_MULT 1.2) ;; we're gonna use debug mode-style heaps but we don't actually need them at 1.5x size right now
 (defglobalconstant DEBUG_LEVEL_PAGE_SIZE (* 1024 (* DEBUG_LEVEL_HEAP_MULT LEVEL_PAGE_SIZE_KB)))
 (defglobalconstant DEBUG_LEVEL_HEAP_SIZE (* NUM_LEVEL_PAGES DEBUG_LEVEL_PAGE_SIZE))
 
@@ -1999,11 +1999,11 @@
                    (set! (-> sv-96 tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                    (set! (-> sv-96 clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                    (set! (-> sv-96 alpha) (new 'static 'gs-miptbp :tbp1 #x58))
-                   (set! (-> sv-96 reg-0) (the-as uint 6))
-                   (set! (-> sv-96 reg-1) (the-as uint 20))
-                   (set! (-> sv-96 reg-2) (the-as uint 52))
-                   (set! (-> sv-96 reg-3) (the-as uint 8))
-                   (set! (-> sv-96 reg-4) (the-as uint 66))
+                   (set! (-> sv-96 reg-0) (gs-reg tex0-1))
+                   (set! (-> sv-96 reg-1) (gs-reg tex1-1))
+                   (set! (-> sv-96 reg-2) (gs-reg miptbp1-1))
+                   (set! (-> sv-96 reg-3) (gs-reg clamp-1))
+                   (set! (-> sv-96 reg-4) (gs-reg alpha-1))
                    )
                  )
                (set! (-> arg1 pos) (the-as uint 0))
@@ -3862,10 +3862,9 @@
         ((or (= (-> this level i status) 'active)
              (= (-> this level i status) 'alive)
              (= (-> this level i status) 'loaded))
-          ;; using info nickname since desert's bsp nickname is desert-vis, not dst.
-          (set! (-> lev-names i) (symbol->string (-> this level i info nickname)))
+          (set! (-> lev-names i) (symbol->string (bsp-name (-> this level i))))
           (if (-> this level i display?)
-              (set! (-> active-lev-names i) (symbol->string (-> this level i info nickname))))
+              (set! (-> active-lev-names i) (-> lev-names i)))
           )
         )
       )

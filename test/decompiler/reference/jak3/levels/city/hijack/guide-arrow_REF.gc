@@ -1,0 +1,159 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-guide-arrow ctywide-arrow ctywide-arrow-lod0-jg ctywide-arrow-idle-ja
+              ((ctywide-arrow-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+;; definition of type guide-arrow
+(deftype guide-arrow (process-drawable)
+  ((bob-dir   vector  :inline)
+   (base-pos  vector  :inline)
+   (pad       uint8   8)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  (:methods
+    (guide-arrow-method-22 (_type_) vector)
+    )
+  )
+
+;; definition for method 3 of type guide-arrow
+(defmethod inspect ((this guide-arrow))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tbob-dir: #<vector @ #x~X>~%" (-> this bob-dir))
+  (format #t "~2Tbase-pos: #<vector @ #x~X>~%" (-> this base-pos))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type guide-arrow-init-params
+(deftype guide-arrow-init-params (structure)
+  ((pos     vector  :inline)
+   (facing  vector  :inline)
+   (twist   float)
+   (xz?     symbol)
+   )
+  )
+
+;; definition for method 3 of type guide-arrow-init-params
+(defmethod inspect ((this guide-arrow-init-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'guide-arrow-init-params)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tfacing: #<vector @ #x~X>~%" (-> this facing))
+  (format #t "~1Ttwist: ~f~%" (-> this twist))
+  (format #t "~1Txz?: ~A~%" (-> this xz?))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function guide-arrow-init-by-other
+;; INFO: Used lq/sq
+(defbehavior guide-arrow-init-by-other guide-arrow ((arg0 guide-arrow-init-params))
+  (set! (-> self root) (new 'process 'trsqv))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-guide-arrow" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (cond
+    ((-> arg0 xz?)
+     (let ((a1-5 (matrix-u-r-compose
+                   (new 'stack-no-clear 'matrix)
+                   (vector-float*! (new 'stack-no-clear 'vector) (-> arg0 facing) -1.0)
+                   *up-vector*
+                   )
+                 )
+           )
+       (matrix->quaternion (-> self root quat) a1-5)
+       )
+     )
+    (else
+      (quaternion-identity! (-> self root quat))
+      )
+    )
+  (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (-> arg0 twist))
+  (logclear! (-> self mask) (process-mask actor-pause movie))
+  (process-entity-status! self (entity-perm-status no-kill) #t)
+  (go-virtual idle)
+  )
+
+;; definition for method 22 of type guide-arrow
+(defmethod guide-arrow-method-22 ((this guide-arrow))
+  (set-vector! (-> this root scale) 1.5 1.5 1.5 1.0)
+  (set-vector! (-> this draw color-mult) 1.0 0.0 0.0 1.0)
+  (logior! (-> this draw status) (draw-control-status force-fade))
+  (let ((f0-8 (vector-vector-distance (-> this root trans) (math-camera-pos))))
+    0.0
+    (let* ((f1-2 (* 0.0000027126737 f0-8))
+           (f1-4 (fmax 0.0 (fmin 1.0 f1-2)))
+           (f0-11 (- 1.0 (* (- 1.0 f1-4) (- 1.0 f1-4))))
+           )
+      (set! (-> this draw force-fade) (the-as uint (the int (lerp 0.0 96.0 f0-11))))
+      )
+    )
+  (let* ((f0-14 1.5)
+         (f1-8 (* 0.0033333334 (the float (- (current-time) (-> this state-time)))))
+         (f30-0 (/ (- f1-8 (* (the float (the int (/ f1-8 f0-14))) f0-14)) f0-14))
+         )
+    0.0
+    (let ((s5-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+          (f0-19 (* 4096.0 (cos (* 65536.0 f30-0))))
+          )
+      (vector+float*! (-> this root trans) (-> this base-pos) s5-1 f0-19)
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (guide-arrow)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (deactivate self)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self base-pos quad) (-> self root trans quad))
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (guide-arrow-method-22 self)
+    )
+  :code sleep-code
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate die (guide-arrow)
+  :virtual #t
+  :code nothing
+  )
+
+;; definition for function spawn-guide-arrow
+;; WARN: Return type mismatch (pointer process) vs (pointer guide-arrow).
+(defun spawn-guide-arrow ((arg0 guide-arrow-init-params) (arg1 process))
+  (process-spawn guide-arrow arg0 :name "guide-arrow" :to arg1)
+  )
+
+
+
+

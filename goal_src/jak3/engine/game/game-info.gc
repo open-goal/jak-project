@@ -12,7 +12,7 @@
 (define-extern process-drawable-shock-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher int int float object))
 (define-extern *lightning-darkjak-pill* lightning-spec)
 (define-extern ready-hud (function symbol int none))
-(define-extern override-player-controls (function int))
+(define-extern override-player-controls (function cpad-info int))
 (define-extern *highscore-info-array* (array highscore-info))
 (define-extern *user* symbol)
 
@@ -476,7 +476,7 @@
      (set! (-> this old-vehicles) (game-vehicles))
      (set! (-> this secrets) (game-secrets))
      (set! (-> this purchase-secrets) (game-secrets))
-     (set! (-> this current-vehicle) (game-vehicle-u8 v-turtle v-snake v-toad v-fox))
+     (set! (-> this current-vehicle) (vehicle-type-u8 vt27))
      (set-continue!
        this
        (cond
@@ -1904,10 +1904,7 @@
 
 (defmethod adjust-to-screen-flip ((this cpad-info))
   (if (and (not (paused?)) (zero? (-> this number)) (-> *setting-control* user-current player-control-override))
-      (when (nonzero? override-player-controls)  ;; og:preserve-this not-yet-implemented check
-        ;; added nonzero check, but I suspect there's a bug we're even getting here...
-        (override-player-controls)
-        )
+      (override-player-controls this)
       )
   (when (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
     (set! (-> this leftx) (- 255 (the-as int (-> this leftx))))
@@ -2154,8 +2151,8 @@
                              darkjak-smack
                              darkjak-bomb0
                              darkjak-bomb1
-                             feature44
-                             feature45
+                             darkjak-tracking
+                             darkjak-invinc
                              lightjak
                              lightjak-regen
                              lightjak-swoop
@@ -2189,7 +2186,7 @@
   (set! (-> gp-0 distance) 0.0)
   (set! (-> gp-0 health-bar-vehicle) 0.0)
   (set! (-> gp-0 dust-storm) (the-as handle #f))
-  (set! (-> gp-0 current-vehicle) (game-vehicle-u8 v-turtle v-snake v-toad v-fox))
+  (set! (-> gp-0 current-vehicle) (vehicle-type-u8 vt27))
   )
 
 0

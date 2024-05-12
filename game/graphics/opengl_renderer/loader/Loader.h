@@ -26,6 +26,7 @@ class Loader {
   void set_active_levels(const std::vector<std::string>& levels);
   std::vector<LevelData*> get_in_use_levels();
   void draw_debug_window();
+  void debug_print_loaded_levels();
 
  private:
   void loader_thread();

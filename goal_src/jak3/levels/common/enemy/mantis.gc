@@ -801,8 +801,11 @@
   :virtual #t
   :event enemy-event-handler
   :exit (behavior ()
-    (let ((v1-0 (-> self nav)))
-      (logclear! (-> v1-0 shape nav-flags) (nav-flags has-extra-sphere))
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-0 (-> self nav)))
+        (logclear! (-> v1-0 shape nav-flags) (nav-flags has-extra-sphere))
+        )
       )
     0
     )
@@ -1012,8 +1015,11 @@
     )
   :exit (behavior ()
     (change-to (nav-mesh-from-res-tag (-> self entity) 'nav-mesh-actor 0) self)
-    (let ((v1-2 (-> self nav)))
-      (set! (-> v1-2 max-rotation-rate) (-> self enemy-info maximum-rotation-rate))
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-2 (-> self nav)))
+        (set! (-> v1-2 max-rotation-rate) (-> self enemy-info maximum-rotation-rate))
+        )
       )
     0
     )

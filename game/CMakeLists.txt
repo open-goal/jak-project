@@ -25,6 +25,7 @@ endif()
 set(RUNTIME_SOURCE
         external/discord_jak1.cpp
         external/discord_jak2.cpp
+        external/discord_jak3.cpp
         external/discord.cpp
         graphics/display.cpp
         graphics/gfx_test.cpp
@@ -33,6 +34,7 @@ set(RUNTIME_SOURCE
         graphics/jak3_texture_remap.cpp
         graphics/screenshot.cpp
         graphics/opengl_renderer/background/background_common.cpp
+        graphics/opengl_renderer/background/Hfrag.cpp
         graphics/opengl_renderer/background/Shrub.cpp
         graphics/opengl_renderer/background/TFragment.cpp
         graphics/opengl_renderer/background/Tie3.cpp

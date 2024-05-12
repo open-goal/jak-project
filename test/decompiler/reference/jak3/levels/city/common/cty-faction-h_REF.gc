@@ -1,0 +1,214 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type cty-faction-info
+(deftype cty-faction-info (structure)
+  ((data      int8  6)
+   (ff-guard  int8  :overlay-at (-> data 0))
+   (ff-ped    int8  :overlay-at (-> data 1))
+   (kg-guard  int8  :overlay-at (-> data 2))
+   (kg-ped    int8  :overlay-at (-> data 3))
+   (mh-guard  int8  :overlay-at (-> data 4))
+   (mh-ped    int8  :overlay-at (-> data 5))
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type cty-faction-info
+(defmethod inspect ((this cty-faction-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'cty-faction-info)
+  (format #t "~1Tdata[6] @ #x~X~%" (&-> this ff-guard))
+  (format #t "~1Tff-guard: ~D~%" (-> this ff-guard))
+  (format #t "~1Tff-ped: ~D~%" (-> this ff-ped))
+  (format #t "~1Tkg-guard: ~D~%" (-> this kg-guard))
+  (format #t "~1Tkg-ped: ~D~%" (-> this kg-ped))
+  (format #t "~1Tmh-guard: ~D~%" (-> this mh-guard))
+  (format #t "~1Tmh-ped: ~D~%" (-> this mh-ped))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type cty-faction-strength
+(deftype cty-faction-strength (structure)
+  ((data         int8  3)
+   (ff-strength  int8  :overlay-at (-> data 0))
+   (kg-strength  int8  :overlay-at (-> data 1))
+   (mh-strength  int8  :overlay-at (-> data 2))
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type cty-faction-strength
+(defmethod inspect ((this cty-faction-strength))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'cty-faction-strength)
+  (format #t "~1Tdata[3] @ #x~X~%" (&-> this ff-strength))
+  (format #t "~1Tff-strength: ~D~%" (-> this ff-strength))
+  (format #t "~1Tkg-strength: ~D~%" (-> this kg-strength))
+  (format #t "~1Tmh-strength: ~D~%" (-> this mh-strength))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type territory-faction-mode
+(deftype territory-faction-mode (structure)
+  ((data     int8   3)
+   (ff-mode  uint8  :overlay-at (-> data 0))
+   (kg-mode  uint8  :overlay-at (-> data 1))
+   (mh-mode  uint8  :overlay-at (-> data 2))
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type territory-faction-mode
+(defmethod inspect ((this territory-faction-mode))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'territory-faction-mode)
+  (format #t "~1Tdata[3] @ #x~X~%" (&-> this ff-mode))
+  (format #t "~1Tff-mode: ~D~%" (-> this ff-mode))
+  (format #t "~1Tkg-mode: ~D~%" (-> this kg-mode))
+  (format #t "~1Tmh-mode: ~D~%" (-> this mh-mode))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type territory-faction-flag
+(deftype territory-faction-flag (structure)
+  ((data     uint8  3)
+   (ff-mode  uint8  :overlay-at (-> data 0))
+   (kg-mode  uint8  :overlay-at (-> data 1))
+   (mh-mode  uint8  :overlay-at (-> data 2))
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type territory-faction-flag
+(defmethod inspect ((this territory-faction-flag))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'territory-faction-flag)
+  (format #t "~1Tdata[3] @ #x~X~%" (&-> this ff-mode))
+  (format #t "~1Tff-mode: ~D~%" (-> this ff-mode))
+  (format #t "~1Tkg-mode: ~D~%" (-> this kg-mode))
+  (format #t "~1Tmh-mode: ~D~%" (-> this mh-mode))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type faction-spawn-info
+(deftype faction-spawn-info (structure)
+  ((faction-type     uint8)
+   (current-level    uint8)
+   (requested-level  uint8)
+   (flags            faction-spawn-flag)
+   )
+  :allow-misaligned
+  )
+
+;; definition for method 3 of type faction-spawn-info
+(defmethod inspect ((this faction-spawn-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'faction-spawn-info)
+  (format #t "~1Tfaction-type: ~D~%" (-> this faction-type))
+  (format #t "~1Tcurrent-level: ~D~%" (-> this current-level))
+  (format #t "~1Trequested-level: ~D~%" (-> this requested-level))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type cty-faction-manager
+(deftype cty-faction-manager (basic)
+  ((faction-array                   cty-faction-info        30)
+   (faction-mod-array               cty-faction-info        30 :inline)
+   (global-faction-strength-mod     cty-faction-strength    :inline)
+   (territory-faction-strength-mod  cty-faction-strength    4 :inline)
+   (permission-cache                uint8                   30 :offset 671)
+   (last-requested-level            symbol)
+   (territory-faction-modes         territory-faction-mode  30 :inline)
+   (territory-flags                 uint8                   30)
+   (last-active-territories         uint32)
+   (update-flags                    cty-faction-update-flag)
+   (target-exclusive-branch-index   uint8)
+   (territory-faction-flags         territory-faction-flag  :inline)
+   (faction-spawn                   faction-spawn-info      7 :inline)
+   (last-change-music-time          time-frame                 :offset 1344)
+   (start-fight-music-time          time-frame)
+   )
+  (:methods
+    (cty-faction-manager-method-9 (_type_ int symbol) int)
+    (cty-faction-manager-method-10 (_type_ int symbol) int)
+    (cty-faction-manager-method-11 (_type_ int) uint)
+    (cty-faction-manager-method-12 (_type_ int int) int)
+    (cty-faction-manager-method-13 (_type_) symbol)
+    (cty-faction-manager-method-14 (_type_ nav-territory-type int int) int)
+    (restore-defaults (_type_) cty-faction-update-flag)
+    (cty-faction-manager-method-16 (_type_ nav-territory-type) int)
+    (cty-faction-manager-method-17 (_type_ symbol) int)
+    (cty-faction-manager-method-18 (_type_ symbol) int)
+    (cty-faction-manager-method-19 (_type_) symbol)
+    (cty-faction-manager-method-20 (_type_ uint) int)
+    (cty-faction-manager-method-21 (_type_ int) symbol)
+    (cty-faction-manager-method-22 (_type_) cty-faction-update-flag)
+    (cty-faction-manager-method-23 (_type_ uint) symbol)
+    (cty-faction-manager-method-24 (_type_) symbol)
+    (faction-spawn (_type_ int int symbol symbol) faction-spawn-flag)
+    )
+  )
+
+;; definition for method 3 of type cty-faction-manager
+(defmethod inspect ((this cty-faction-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tfaction-array[30] @ #x~X~%" (-> this faction-array))
+  (format #t "~1Tfaction-mod-array[30] @ #x~X~%" (-> this faction-mod-array))
+  (format
+    #t
+    "~1Tglobal-faction-strength-mod: #<cty-faction-strength @ #x~X>~%"
+    (-> this global-faction-strength-mod)
+    )
+  (format #t "~1Tterritory-faction-strength-mod[4] @ #x~X~%" (-> this territory-faction-strength-mod))
+  (format #t "~1Tpermission-cache[30] @ #x~X~%" (-> this permission-cache))
+  (format #t "~1Tlast-requested-level: ~A~%" (-> this last-requested-level))
+  (format #t "~1Tterritory-faction-modes[30] @ #x~X~%" (-> this territory-faction-modes))
+  (format #t "~1Tterritory-flags[30] @ #x~X~%" (-> this territory-flags))
+  (format #t "~1Tlast-active-territories: ~D~%" (-> this last-active-territories))
+  (format #t "~1Tupdate-flags: ~D~%" (-> this update-flags))
+  (format #t "~1Ttarget-exclusive-branch-index: ~D~%" (-> this target-exclusive-branch-index))
+  (format #t "~1Tterritory-faction-flags: #<territory-faction-flag @ #x~X>~%" (-> this territory-faction-flags))
+  (format #t "~1Tfaction-spawn[7] @ #x~X~%" (-> this faction-spawn))
+  (format #t "~1Tlast-change-music-time: ~D~%" (-> this last-change-music-time))
+  (format #t "~1Tstart-fight-music-time: ~D~%" (-> this start-fight-music-time))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 12 of type cty-faction-manager
+(defmethod cty-faction-manager-method-12 ((this cty-faction-manager) (arg0 int) (arg1 int))
+  (-> this territory-faction-modes 0 data (+ arg1 (* arg0 16)))
+  )
+
+;; definition for symbol *cty-faction-manager*, type cty-faction-manager
+(define *cty-faction-manager* (the-as cty-faction-manager #f))
+
+
+
+

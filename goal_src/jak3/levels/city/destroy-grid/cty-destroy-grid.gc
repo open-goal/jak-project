@@ -5,5 +5,2301 @@
 ;; name in dgo: cty-destroy-grid
 ;; dgos: LJINX
 
+;; +++jinx-flag
+(defenum jinx-flag
+  :type uint32
+  :bitfield #t
+  (j0 0)
+  (j1 1)
+  (j2 2)
+  )
+;; ---jinx-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype jinx-hud (hud)
+  ()
+  )
+
+
+(defmethod draw ((this jinx-hud))
+  (set-hud-piece-position!
+    (-> this sprites 2)
+    (the int (+ 30.0 (* -130.0 (-> this offset))))
+    (the int (+ 30.0 (* -100.0 (-> this offset))))
+    )
+  (set! (-> this sprites 0 angle) (* 182.04445 (the float (- 270 (/ (* 90 (-> this values 0 current)) 100)))))
+  (set-as-offset-from! (the-as hud-sprite (-> this sprites)) (the-as vector4w (-> this sprites 2)) 40 16)
+  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites 2)) 1 16)
+  (set-as-offset-from! (-> this sprites 3) (the-as vector4w (-> this sprites 2)) 6 2)
+  (set! (-> this sprites 3 scale-x) 1.2)
+  (set! (-> this sprites 3 scale-y) 1.25)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this jinx-hud))
+  (set! (-> this values 0 target) (the int (* 100.0 (-> *game-info* bot-health 0))))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this jinx-hud))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-transparent-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 12.0)
+  (set! (-> this sprites 0 scale-y) 11.2)
+  (set! (-> this sprites 0 pos z) #xfffff2)
+  (set! (-> this sprites 1 tid) (the-as texture-id (get-texture hud-npcring-bar-01 level-default-minimap)))
+  (set! (-> this sprites 1 pos z) #xfffff0)
+  (set! (-> this sprites 2 tid) (the-as texture-id (get-texture hud-npcring-01 level-default-minimap)))
+  (set! (-> this sprites 2 pos z) #xffffff)
+  (set! (-> this sprites 3 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :page #x9f8)))
+        )
+  (set! (-> this sprites 3 scale-x) 1.0)
+  (set! (-> this sprites 3 scale-y) 1.0)
+  (set! (-> this sprites 3 pos z) #xffffff)
+  0
+  (none)
+  )
+
+(defskelgroup skel-jinx jinx jinx-lod0-jg jinx-idle0-ja
+              ((jinx-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow jinx-shadow-mg
+              :origin-joint-index 14
+              :shadow-joint-index 14
+              )
+
+(define *jinx-nav-enemy-info* (new 'static 'nav-enemy-info
+                                :use-die-falling #f
+                                :use-victory #f
+                                :use-jump-blocked #t
+                                :debug-draw-neck #f
+                                :jump-debug-draw #f
+                                :move-to-ground #t
+                                :hover-if-no-ground #f
+                                :idle-anim-script (new 'static 'inline-array idle-control-frame 2
+                                  (new 'static 'idle-control-frame
+                                    :command (idle-control-cmd play)
+                                    :anim #x3
+                                    :param0 1
+                                    :param1 1
+                                    :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+                                    )
+                                  (new 'static 'idle-control-frame)
+                                  )
+                                :idle-anim 3
+                                :notice-anim 3
+                                :hostile-anim -1
+                                :hit-anim 3
+                                :knocked-anim 6
+                                :knocked-land-anim 7
+                                :die-anim 8
+                                :die-falling-anim 8
+                                :victory-anim -1
+                                :jump-wind-up-anim -1
+                                :jump-in-air-anim -1
+                                :jump-land-anim -1
+                                :neck-joint 6
+                                :look-at-joint 7
+                                :bullseye-joint 5
+                                :notice-distance (meters 40)
+                                :notice-distance-delta (meters 10)
+                                :proximity-notice-distance (meters 20)
+                                :default-hit-points 20.0
+                                :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list)
+                                :penetrate-knocked (penetrate
+                                  touch
+                                  generic-attack
+                                  lunge
+                                  flop
+                                  punch
+                                  spin
+                                  roll
+                                  uppercut
+                                  bonk
+                                  tube
+                                  vehicle
+                                  flut-attack
+                                  board
+                                  mech
+                                  mech-punch
+                                  mech-bonk
+                                  dark-skin
+                                  dark-punch
+                                  dark-bomb
+                                  dark-smack
+                                  flut
+                                  shield
+                                  explode
+                                  jak-yellow-shot
+                                  jak-red-shot
+                                  jak-blue-shot
+                                  jak-dark-shot
+                                  enemy-yellow-shot
+                                  enemy-dark-shot
+                                  eco-yellow
+                                  eco-red
+                                  eco-blue
+                                  eco-green
+                                  knocked
+                                  jak-red-shockwave
+                                  jak-dark-nuke
+                                  jak-dark-blackhole
+                                  emp-blast
+                                  penetrate38
+                                  penetrate39
+                                  penetrate40
+                                  penetrate41
+                                  penetrate42
+                                  penetrate43
+                                  penetrate44
+                                  penetrate45
+                                  penetrate46
+                                  penetrate47
+                                  penetrate48
+                                  penetrate49
+                                  penetrate50
+                                  penetrate51
+                                  penetrate52
+                                  penetrate53
+                                  penetrate54
+                                  penetrate55
+                                  penetrate56
+                                  penetrate57
+                                  penetrate58
+                                  penetrate59
+                                  penetrate60
+                                  penetrate61
+                                  penetrate64
+                                  penetrate63
+                                  )
+                                :movement-gravity (meters -100)
+                                :friction 0.7
+                                :attack-shove-back (meters 3)
+                                :attack-shove-up (meters 2)
+                                :attack-mode 'generic
+                                :attack-damage 2
+                                :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+                                :knocked-can-land-timeout (seconds 0.1)
+                                :knocked-recover-timeout (seconds 2)
+                                :ragdoll-blend-out-time (seconds 0.25)
+                                :ragdoll-rotate-velocity-mult 1.0
+                                :jump-height-min (meters 3)
+                                :jump-height-factor 0.5
+                                :knocked-seek-ry-clamp 2730.6667
+                                :knocked-soft-vxz-lo 45056.0
+                                :knocked-soft-vxz-hi 54067.2
+                                :knocked-soft-vy-lo 38092.8
+                                :knocked-soft-vy-hi 45056.0
+                                :knocked-medium-vxz-lo 65536.0
+                                :knocked-medium-vxz-hi 74547.2
+                                :knocked-medium-vy-lo 65536.0
+                                :knocked-medium-vy-hi 73728.0
+                                :knocked-hard-vxz-lo 66355.2
+                                :knocked-hard-vxz-hi 85196.8
+                                :knocked-hard-vy-lo 60620.8
+                                :knocked-hard-vy-hi 101580.8
+                                :knocked-huge-vxz-lo 164659.2
+                                :knocked-huge-vxz-hi 249036.8
+                                :knocked-huge-vy-lo 183500.8
+                                :knocked-huge-vy-hi 217907.2
+                                :knocked-yellow-vxz-lo 20480.0
+                                :knocked-yellow-vxz-hi 24576.0
+                                :knocked-yellow-vy-lo 28672.0
+                                :knocked-yellow-vy-hi 40960.0
+                                :knocked-red-vxz-lo 24576.0
+                                :knocked-red-vxz-hi 73728.0
+                                :knocked-red-vy-lo 65536.0
+                                :knocked-red-vy-hi 81920.0
+                                :knocked-blue-vxz-lo 40960.0
+                                :knocked-blue-vxz-hi 49152.0
+                                :knocked-blue-vy-lo 24576.0
+                                :knocked-blue-vy-hi 40960.0
+                                :ragdoll-info #f
+                                :shadow-size (meters 2)
+                                :shadow-max-y (meters 1)
+                                :shadow-min-y (meters -2)
+                                :shadow-locus-dist (meters 150)
+                                :gem-joint -1
+                                :gem-offset (new 'static 'sphere :r 163840.0)
+                                :knocked-off #t
+                                :callback-info #f
+                                :use-momentum #t
+                                :use-frustration #t
+                                :use-stop-chase #t
+                                :use-circling #f
+                                :use-pacing #f
+                                :walk-anim 9
+                                :turn-anim -1
+                                :run-anim 10
+                                :taunt-anim -1
+                                :run-travel-speed (meters 10)
+                                :run-acceleration (meters 14)
+                                :run-turning-acceleration (meters 50)
+                                :walk-travel-speed (meters 3)
+                                :walk-acceleration (meters 8)
+                                :walk-turning-acceleration (meters 6)
+                                :maximum-rotation-rate (degrees 720)
+                                :notice-nav-radius (meters 10)
+                                :frustration-distance (meters 8)
+                                :frustration-time (seconds 4)
+                                :blocked-time (seconds 0.3)
+                                :circle-dist-lo 20480.0
+                                :circle-dist-hi 61440.0
+                                :nav-mesh #f
+                                )
+        )
+
+(set! (-> *jinx-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(set! (-> *jinx-nav-enemy-info* nav-mesh) *default-nav-mesh*)
+
+(define *citizen-jinx-global-info* (new 'static 'civilian-global-info :seat-flag #x2))
+
+(deftype jinx (civilian)
+  ((min-speed           float)
+   (max-speed           float)
+   (follow-offset       float)
+   (travel-anim-interp  float)
+   (travel-prev-ry      float)
+   (travel-prev-ry1     float)
+   (player-blocking     float)
+   (follow-dir          vector     :inline)
+   (destination         vector     :inline)
+   (nav-mesh-aid        actor-id)
+   (health-handle       handle)
+   (box-time            float)
+   (jinx-flags          jinx-flag  :offset 1212)
+   )
+  (:state-methods
+    traveling-blocked
+    traveling
+    waiting-idle
+    undefined0
+    go-power-box
+    do-power-box
+    )
+  (:methods
+    (adjust-target-speed (_type_) none)
+    (player-blocking-travel? (_type_) symbol)
+    (travel-anim (_type_) int)
+    (update-nav-mesh (_type_) none)
+    (move-cam-to-jinx (_type_) object)
+    (set-cam-height (_type_ vector) float)
+    )
+  )
+
+
+(defmethod update-nav-mesh ((this jinx))
+  (when (= (-> this nav state mesh) *default-nav-mesh*)
+    (let ((a0-4 (find-nearest-nav-mesh (-> this root trans) 0.0)))
+      (when a0-4
+        (change-to a0-4 this)
+        (let ((v1-7 (-> this nav state)))
+          (set! (-> v1-7 current-poly) (the-as nav-poly #f))
+          )
+        0
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod go-die ((this jinx))
+  ((method-of-type nav-enemy go-die) this)
+  )
+
+(defmethod move-above-ground! ((this jinx) (arg0 vector) (arg1 move-above-ground-params))
+  ((method-of-type nav-enemy move-above-ground!) this arg0 arg1)
+  (none)
+  )
+
+(defmethod normalize-heading! ((this jinx) (arg0 nav-control))
+  ((method-of-type nav-enemy normalize-heading!) this arg0)
+  (none)
+  )
+
+(defmethod nav-enemy-method-187 ((this jinx))
+  ((method-of-type nav-enemy nav-enemy-method-187) this)
+  (none)
+  )
+
+(defmethod enemy-common-post ((this jinx))
+  (logior! (-> this flags) (citizen-flag persistent))
+  (update-nav-mesh this)
+  (set! (-> this travel-prev-ry) (-> this travel-prev-ry1))
+  (set! (-> this travel-prev-ry1) (quaternion-y-angle (-> this root quat)))
+  (set! (-> *game-info* bot-health 0) (/ (-> this hit-points) (-> this enemy-info default-hit-points)))
+  (let ((a1-0 (new 'stack-no-clear 'overlaps-others-params)))
+    (set! (-> a1-0 options) (overlaps-others-options))
+    (set! (-> a1-0 collide-with-filter) (the-as collide-spec -1))
+    (set! (-> a1-0 tlist) *touching-list*)
+    (find-overlapping-shapes (-> this root) a1-0)
+    )
+  ((method-of-type nav-enemy enemy-common-post) this)
+  (none)
+  )
+
+(defmethod player-blocking-travel? ((this jinx))
+  (let ((s5-0 #f))
+    (when *target*
+      (let ((a1-0 (-> *target* control trans))
+            (v1-4 (-> this root))
+            (f0-0 14336.0)
+            )
+        (when (>= (* f0-0 f0-0) (vector-vector-distance-squared (-> v1-4 trans) a1-0))
+          (let ((v1-8 (-> *target* control transv)))
+            (when (>= (sqrtf (+ (* (-> v1-8 x) (-> v1-8 x)) (* (-> v1-8 z) (-> v1-8 z)))) 2048.0)
+              (if (logtest? (-> this nav state flags) (nav-state-flag avoiding-sphere))
+                  (set! s5-0 #t)
+                  )
+              )
+            )
+          )
+        )
+      )
+    (let* ((f0-8 (-> this player-blocking))
+           (f0-10 (if s5-0
+                      (seek f0-8 1.0 (seconds-per-frame))
+                      (seek f0-8 0.0 (seconds-per-frame))
+                      )
+                  )
+           )
+      (set! (-> this player-blocking) f0-10)
+      (= f0-10 1.0)
+      )
+    )
+  )
+
+(defstate wait-for-ride (jinx)
+  :virtual #t
+  :enter (behavior ()
+    (when (and (nonzero? (-> self vehicle)) (-> self vehicle))
+      (let ((a0-1 (the-as vehicle (handle->process (-> self vehicle)))))
+        (when a0-1
+          (remove-riders a0-1 (the-as handle self))
+          (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
+          )
+        )
+      )
+    (let ((t9-2 (-> (find-parent-state) enter)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    )
+  :exit #f
+  :trans (behavior ()
+    (when (and (nonzero? (-> self vehicle)) (-> self vehicle))
+      (case (-> (the-as vehicle (handle->process (-> self vehicle))) info object-type)
+        (((traffic-type civilian-car-a) (traffic-type civilian-car-b) (traffic-type civilian-car-c))
+         (go-virtual move-to-vehicle)
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (ja-group)))
+      (when (and v1-2 (or (= v1-2 jinx-idle0-ja) (= v1-2 jinx-idle1-ja)))
+        (ja-no-eval :num! (seek!))
+        (while (not (ja-done? 0))
+          (suspend)
+          (ja-eval)
+          )
+        )
+      )
+    (until #f
+      (let ((gp-0 (rnd-int self 5)))
+        (while (>= gp-0 0)
+          (let ((v1-18 (ja-group)))
+            (if (not (and v1-18 (= v1-18 jinx-idle0-ja)))
+                (ja-channel-push! 1 (seconds 0.2))
+                )
+            )
+          (ja-no-eval :group! jinx-idle0-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          (+! gp-0 -1)
+          )
+        )
+      (let ((v1-50 (ja-group)))
+        (if (not (and v1-50 (= v1-50 jinx-idle1-ja)))
+            (ja-channel-push! 1 (seconds 0.2))
+            )
+        )
+      (stop-look-at! self)
+      (ja-no-eval :group! jinx-idle1-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (set-look-at-mode! self 1)
+      )
+    #f
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defstate move-to-vehicle (jinx)
+  :virtual #t
+  :enter (behavior ()
+    (let ((gp-0 (the-as vehicle (handle->process (-> self vehicle)))))
+      (set! (-> self seat)
+            (get-best-seat gp-0 (-> self root trans) (the-as vehicle-seat-flag (-> self info seat-flag)) 1)
+            )
+      (if (!= (-> self seat) -1)
+          (put-rider-in-seat gp-0 (-> self seat) self)
+          )
+      )
+    (let ((t9-3 (-> (find-parent-state) enter)))
+      (if t9-3
+          (t9-3)
+          )
+      )
+    )
+  :trans (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (let ((s0-0 (the-as vehicle (handle->process (-> self vehicle)))))
+        (cond
+          ((and (-> self vehicle) s0-0)
+           (cond
+             ((!= (-> self seat) -1)
+              (vehicle-method-66 s0-0 gp-0 (-> self seat))
+              (let ((s2-0 (new 'stack-no-clear 'vector))
+                    (s4-0 (new 'stack-no-clear 'vector))
+                    (s1-0 (new 'stack-no-clear 'vector))
+                    (s5-0 (new 'stack-no-clear 'vector))
+                    )
+                (let ((s3-0 (new 'stack-no-clear 'vector)))
+                  (new 'stack-no-clear 'vector)
+                  (set! (-> s2-0 quad) (-> self root trans quad))
+                  (set! (-> s1-0 quad) (-> gp-0 quad))
+                  (vector-! s5-0 gp-0 (-> s0-0 root trans))
+                  (vector-z-quaternion! s4-0 (-> self root quat))
+                  (let ((f30-1 (* 0.5 (vector-vector-xz-distance s2-0 s1-0))))
+                    (vector-normalize! s4-0 (* 2.0 f30-1))
+                    (vector-normalize! s5-0 (* 4.0 f30-1))
+                    )
+                  (do-spline2 s3-0 s2-0 s4-0 s1-0 s5-0 0.8)
+                  (set! (-> s3-0 y) (-> self root trans y))
+                  (let ((v1-20 (-> self nav state)))
+                    (logclear! (-> v1-20 flags) (nav-state-flag directional-mode))
+                    (logior! (-> v1-20 flags) (nav-state-flag target-poly-dirty))
+                    (set! (-> v1-20 target-pos quad) (-> s3-0 quad))
+                    )
+                  )
+                0
+                (if (and (< (vector-dot (vector-normalize! s4-0 1.0) (vector-normalize! s5-0 1.0)) -0.5)
+                         (< (vector-vector-xz-distance gp-0 (-> self root trans)) 18432.0)
+                         (< (fabs (- (-> gp-0 y) (-> self root trans y))) 20480.0)
+                         )
+                    (go-virtual board-vehicle)
+                    )
+                )
+              )
+             (else
+               (go-virtual wait-for-ride)
+               )
+             )
+           )
+          (else
+            (go-virtual wait-for-ride)
+            )
+          )
+        )
+      (if (< 204800.0 (vector-vector-xz-distance gp-0 (-> self root trans)))
+          (go-virtual wait-for-ride)
+          )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (travel-anim self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defbehavior board-vehicle-get-in-car-jump jinx ((arg0 vector) (arg1 quaternion) (arg2 symbol))
+  (let ((s0-0 (the-as vehicle (handle->process (-> self vehicle))))
+        (s1-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s3-0 (new 'stack-no-clear 'quaternion))
+        )
+    (if (not s0-0)
+        (go-virtual wait-for-ride)
+        )
+    (quaternion-copy! s3-0 (-> s0-0 root quat))
+    (vehicle-method-66 s0-0 s1-0 (-> self seat))
+    (vector-! s4-0 s1-0 arg0)
+    (let ((f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+      (cond
+        (arg2
+          (set! f30-1 (- 1.0 f30-1))
+          (quaternion-rotate-local-y! s3-0 s3-0 (* f30-1 (if (zero? (-> self seat))
+                                                             16384.0
+                                                             -16384.0
+                                                             )
+                                                   )
+                                      )
+          )
+        (else
+          (quaternion-rotate-local-y! s3-0 s3-0 (* f30-1 (if (zero? (-> self seat))
+                                                             -16384.0
+                                                             16384.0
+                                                             )
+                                                   )
+                                      )
+          )
+        )
+      (quaternion-slerp! (-> self root quat) arg1 s3-0 f30-1)
+      (vector+float*! (-> self root trans) arg0 s4-0 f30-1)
+      )
+    )
+  )
+
+(defbehavior board-vehicle-get-in-car-land jinx ((arg0 symbol))
+  (let ((s4-0 (the-as vehicle (handle->process (-> self vehicle))))
+        (gp-0 (new 'stack-no-clear 'quaternion))
+        )
+    (if (not s4-0)
+        (go-virtual wait-for-ride)
+        )
+    (quaternion-copy! gp-0 (-> s4-0 root quat))
+    (vehicle-method-66 s4-0 (-> self root trans) (-> self seat))
+    (let ((f0-0 1.0))
+      (if arg0
+          (quaternion-rotate-local-y! gp-0 gp-0 (* f0-0 (if (zero? (-> self seat))
+                                                            16384.0
+                                                            -16384.0
+                                                            )
+                                                   )
+                                      )
+          (quaternion-rotate-local-y! gp-0 gp-0 (* f0-0 (if (zero? (-> self seat))
+                                                            -16384.0
+                                                            16384.0
+                                                            )
+                                                   )
+                                      )
+          )
+      )
+    (quaternion-copy! (-> self root quat) gp-0)
+    )
+  )
+
+(defbehavior board-vehicle-get-in-car-sit jinx ((arg0 symbol))
+  (let ((s4-0 (the-as vehicle (handle->process (-> self vehicle))))
+        (gp-0 (new 'stack-no-clear 'quaternion))
+        )
+    (if (not s4-0)
+        (go-virtual wait-for-ride)
+        )
+    (quaternion-copy! gp-0 (-> s4-0 root quat))
+    (vehicle-method-66 s4-0 (-> self root trans) (-> self seat))
+    (let ((f0-2 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+      (if arg0
+          (set! f0-2 (- 1.0 f0-2))
+          )
+      (if arg0
+          (quaternion-rotate-local-y! (-> self root quat) gp-0 (* (- 1.0 f0-2) (if (zero? (-> self seat))
+                                                                                   16384.0
+                                                                                   -16384.0
+                                                                                   )
+                                                                  )
+                                      )
+          (quaternion-rotate-local-y! (-> self root quat) gp-0 (* (- 1.0 f0-2) (if (zero? (-> self seat))
+                                                                                   -16384.0
+                                                                                   16384.0
+                                                                                   )
+                                                                  )
+                                      )
+          )
+      )
+    )
+  )
+
+(defbehavior board-vehicle-get-in-car-end jinx ()
+  (let ((gp-0 (the-as vehicle (handle->process (-> self vehicle)))))
+    (if (not gp-0)
+        (go-virtual wait-for-ride)
+        )
+    (quaternion-copy! (-> self root quat) (-> gp-0 root quat))
+    (vehicle-method-66 gp-0 (-> self root trans) (-> self seat))
+    )
+  (none)
+  )
+
+(defstate board-vehicle (jinx)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! jinx-get-in-car-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+        (ja-no-eval :group! jinx-get-in-car-jump-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (board-vehicle-get-in-car-jump gp-0 s5-0 #f)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (ja-no-eval :group! jinx-get-in-car-land-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (board-vehicle-get-in-car-land #f)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! jinx-get-in-car-sit-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (board-vehicle-get-in-car-sit #f)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! jinx-get-in-car-sit-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (board-vehicle-get-in-car-end)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (put-rider-in-seat (the-as vehicle (handle->process (-> self vehicle))) (-> self seat) self)
+    (go-virtual ride)
+    )
+  )
+
+(defstate knocked-recover (jinx)
+  :virtual #t
+  :code (behavior ()
+    (cond
+      ((enemy-method-109 self)
+       (go-die self)
+       )
+      ((>= 0.0 (-> self box-time))
+       (go-virtual wait-for-ride)
+       )
+      (else
+        (go-virtual go-power-box)
+        )
+      )
+    )
+  )
+
+(defmethod civilian-method-232 ((this jinx) (arg0 vector))
+  (let ((s3-0 (the-as vehicle (handle->process (-> this vehicle))))
+        (s4-0 (new 'stack 'collide-query))
+        )
+    (vehicle-method-66 s3-0 arg0 (-> this seat))
+    (vector-! arg0 arg0 (-> s3-0 root trans))
+    (vector-normalize! arg0 (+ 18432.0 (vector-length arg0)))
+    (vector+! arg0 arg0 (-> s3-0 root trans))
+    (when (enemy-above-ground? this s4-0 arg0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+      (set! (-> arg0 y) (-> s4-0 best-other-tri intersect y))
+      (let ((v1-14 (-> this nav))
+            (a1-10 (new 'stack-no-clear 'nav-poly))
+            )
+        (vector-! (the-as vector (-> a1-10 vertex)) arg0 (the-as vector (-> v1-14 state mesh bounds)))
+        (set! (-> a1-10 vertex1 x) (-> v1-14 nearest-y-threshold))
+        (set! (-> a1-10 data 20) (the-as uint 2))
+        (if (nav-mesh-method-45 (-> v1-14 state mesh) a1-10)
+            (return #t)
+            )
+        )
+      )
+    )
+  #f
+  )
+
+(defstate exit-vehicle (jinx)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((a0-1 (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000))))
+      (if a0-1
+          (set! (-> self nav-mesh-aid) (the-as actor-id (-> a0-1 entity aid)))
+          )
+      (change-to a0-1 self)
+      )
+    (when (not (-> self nav))
+      (format #t "nav mesh not found~%")
+      (go-inactive self)
+      )
+    (let ((v1-11 (-> self nav state)))
+      (set! (-> v1-11 current-poly) (the-as nav-poly #f))
+      )
+    0
+    (let ((a0-5 (-> self nav state))
+          (v1-14 (-> self dest-point))
+          )
+      (logclear! (-> a0-5 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-5 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-5 target-pos quad) (-> v1-14 quad))
+      )
+    0
+    (citizen-method-195 self)
+    (set! (-> self gnd-height) (-> self root gspot-pos y))
+    (logior! (-> self flags) (citizen-flag persistent))
+    (logior! (-> self focus-status) (focus-status pilot-riding pilot))
+    (set-time! (-> self state-time))
+    (let ((v1-28 (-> self root root-prim)))
+      (set! (-> v1-28 prim-core collide-as) (collide-spec))
+      (set! (-> v1-28 prim-core collide-with) (collide-spec))
+      )
+    0
+    (nav-enemy-method-182 self)
+    (nav-enemy-method-184 self)
+    )
+  :exit (behavior ()
+    (set! (-> self box-time) 15.0)
+    (let ((t9-0 (-> (method-of-type civilian exit-vehicle) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    )
+  :code (behavior ()
+    (remove-riders (the-as vehicle (handle->process (-> self vehicle))) (the-as handle self))
+    (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (set-time! (-> self state-time))
+      (while (not (civilian-method-232 self gp-0))
+        (let ((s5-0 (the-as vehicle (handle->process (-> self vehicle))))
+              (s4-0 (new 'stack-no-clear 'quaternion))
+              )
+          (quaternion-copy! s4-0 (-> s5-0 root quat))
+          (vehicle-method-66 s5-0 (-> self root trans) (-> self seat))
+          (quaternion-copy! (-> self root quat) s4-0)
+          )
+        (when (time-elapsed? (-> self state-time) (seconds 2))
+          (put-rider-in-seat (the-as vehicle (handle->process (-> self vehicle))) (-> self seat) self)
+          (go-virtual ride)
+          )
+        (suspend)
+        )
+      (ja-channel-push! 1 (seconds 0.1))
+      (ja-no-eval :group! jinx-get-out-car-start-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (board-vehicle-get-in-car-end)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (ja-no-eval :group! jinx-get-out-car-getup-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (board-vehicle-get-in-car-sit #t)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (ja-no-eval :group! jinx-get-out-car-start-jump-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (board-vehicle-get-in-car-land #t)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (let ((s5-1 (new 'stack-no-clear 'vector)))
+        (set! (-> s5-1 quad) (-> gp-0 quad))
+        (let ((gp-1 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+          (ja-no-eval :group! jinx-get-out-car-jump-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (board-vehicle-get-in-car-jump s5-1 gp-1 #t)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      )
+    (let ((v1-133 (-> self root root-prim)))
+      (set! (-> v1-133 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-133 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (send-event (ppointer->process (-> self parent)) 'go-power-box)
+    (go-virtual go-power-box)
+    )
+  )
+
+(defstate waiting-idle (jinx)
+  :virtual #t
+  :trans (behavior ()
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((gp-0 (-> self destination)))
+        (let ((v1-0 (target-pos 0)))
+          (let ((a0-1 (-> self follow-dir)))
+            (let ((a1-0 (-> self follow-offset)))
+              (.mov vf7 a1-0)
+              )
+            (.lvf vf5 (&-> a0-1 quad))
+            )
+          (.lvf vf4 (&-> v1-0 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> gp-0 quad) vf6)
+        )
+      (if (< 12288.0 (vector-vector-distance (-> self destination) (-> self root trans)))
+          (go-virtual traveling)
+          )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-2 (ja-group)))
+      (when (and v1-2 (or (= v1-2 jinx-idle0-ja) (= v1-2 jinx-idle1-ja)))
+        (ja-no-eval :num! (seek!))
+        (while (not (ja-done? 0))
+          (suspend)
+          (ja-eval)
+          )
+        )
+      )
+    (until #f
+      (let ((gp-0 (rnd-int self 5)))
+        (while (>= gp-0 0)
+          (let ((v1-18 (ja-group)))
+            (if (not (and v1-18 (= v1-18 jinx-idle0-ja)))
+                (ja-channel-push! 1 (seconds 0.2))
+                )
+            )
+          (ja-no-eval :group! jinx-idle0-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          (+! gp-0 -1)
+          )
+        )
+      (let ((v1-50 (ja-group)))
+        (if (not (and v1-50 (= v1-50 jinx-idle1-ja)))
+            (ja-channel-push! 1 (seconds 0.2))
+            )
+        )
+      (stop-look-at! self)
+      (ja-no-eval :group! jinx-idle1-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (set-look-at-mode! self 1)
+      )
+    #f
+    )
+  :post (behavior ()
+    (transform-post)
+    )
+  )
+
+(defstate traveling (jinx)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (nav-enemy-method-181 self)
+    (nav-enemy-method-183 self)
+    (stop-look-at! self)
+    (nav-enemy-method-177 self)
+    )
+  :trans (behavior ()
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (let ((gp-0 (-> self destination)))
+        (let ((v1-0 (target-pos 0)))
+          (let ((a0-1 (-> self follow-dir)))
+            (let ((a1-0 (-> self follow-offset)))
+              (.mov vf7 a1-0)
+              )
+            (.lvf vf5 (&-> a0-1 quad))
+            )
+          (.lvf vf4 (&-> v1-0 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> gp-0 quad) vf6)
+        )
+      (cond
+        ((< (vector-vector-distance (-> self destination) (-> self root trans)) 8192.0)
+         (go-virtual waiting-idle)
+         )
+        ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (player-blocking-travel? self))
+         (go-virtual traveling-blocked)
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (travel-anim self)
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((a0-0 (-> self nav state))
+          (v1-1 (-> self destination))
+          )
+      (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      )
+    0
+    (nav-enemy-travel-post)
+    )
+  )
+
+(defstate go-power-box (jinx)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (nav-enemy-method-181 self)
+    (nav-enemy-method-183 self)
+    (stop-look-at! self)
+    (nav-enemy-method-177 self)
+    )
+  :trans (behavior ()
+    (set! (-> self destination quad) (-> self event-param-point quad))
+    (if (< (vector-vector-distance (-> self destination) (-> self root trans)) 10240.0)
+        (go-virtual do-power-box)
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (travel-anim self)
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((a0-0 (-> self nav state))
+          (v1-1 (-> self destination))
+          )
+      (logclear! (-> a0-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-0 target-pos quad) (-> v1-1 quad))
+      )
+    0
+    (nav-enemy-travel-post)
+    )
+  )
+
+(defstate do-power-box (jinx)
+  :virtual #t
+  :event enemy-event-handler
+  :trans (behavior ()
+    (set! (-> self box-time) (- (-> self box-time) (seconds-per-frame)))
+    )
+  :code (behavior ()
+    (stop-look-at! self)
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! jinx-kneel-down-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (let ((a1-3 (vector-! (new 'stack-no-clear 'vector) (-> self destination) (-> self root trans))))
+        (seek-toward-heading-vec! (-> self root) a1-3 65536.0 0)
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! jinx-kneel-fix-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (until #f
+      (ja-no-eval :group! jinx-kneel-loop0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (when (< (-> self box-time) 0.0)
+        #t
+        (goto cfg-16)
+        )
+      (ja-no-eval :group! jinx-kneel-loop1-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (when (< (-> self box-time) 0.0)
+        #t
+        (goto cfg-16)
+        )
+      )
+    #f
+    (label cfg-16)
+    (ja-no-eval :group! jinx-kneel-up-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (set-look-at-mode! self 1)
+    (go-virtual wait-for-ride)
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defstate traveling-blocked (jinx)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (nav-enemy-method-182 self)
+    (nav-enemy-method-178 self)
+    (nav-enemy-method-184 self)
+    (set-look-at-mode! self 1)
+    (set! (-> self travel-anim-interp) 0.0)
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 1)) (not (player-blocking-travel? self)))
+        (go-virtual traveling)
+        )
+    )
+  :code (-> (method-of-type jinx waiting-idle) code)
+  :post nav-enemy-simple-post
+  )
+
+(defmethod adjust-target-speed ((this jinx))
+  (-> this root)
+  (let ((s5-0 (new 'stack-no-clear 'vector)))
+    (vector-! s5-0 (-> this destination) (-> this root trans))
+    (vector-normalize-copy! (-> this follow-dir) s5-0 1.0)
+    (let* ((f0-1 (vector-dot (-> this follow-dir) s5-0))
+           (f0-2 (- (- (-> this follow-offset)) f0-1))
+           )
+      0.0
+      (let ((f0-5 (if (>= f0-2 0.0)
+                      (- 1.0 (* 0.000048828126 (fmin 20480.0 f0-2)))
+                      (* -0.000048828126 (fmax -20480.0 f0-2))
+                      )
+                  )
+            (s5-1 (-> this nav))
+            )
+        (set! (-> s5-1 target-speed) (lerp (-> this min-speed) (-> this max-speed) f0-5))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod travel-anim ((this jinx))
+  (with-pp
+    (adjust-target-speed this)
+    (let ((f30-0 (-> this nav state speed)))
+      (let ((f0-1 (lerp-scale 0.0 1.0 f30-0 12288.0 40960.0)))
+        (seek! (-> this travel-anim-interp) f0-1 (* 4.0 (seconds-per-frame)))
+        )
+      (let ((f28-0 (-> this travel-anim-interp))
+            (v1-9 (if (> (-> this skel active-channels) 0)
+                      (-> this skel root-channel 0 frame-group)
+                      )
+                  )
+            )
+        (cond
+          ((and v1-9 (= v1-9 (-> this draw art-group data 9)))
+           (let ((v1-14 (-> this skel root-channel 1)))
+             (set! (-> v1-14 frame-interp 1) f28-0)
+             (set! (-> v1-14 frame-interp 0) f28-0)
+             )
+           (let* ((f28-1 (current-cycle-distance (-> this skel)))
+                  (f0-5 (quaternion-y-angle (-> this root quat)))
+                  (f1-2 (deg- f0-5 (-> this travel-prev-ry)))
+                  (f0-8 (fmin 40960.0 (* 0.35342914 (-> pp clock frames-per-second) (fabs f1-2))))
+                  (f0-11 (/ (* 16.0 (fmax f30-0 f0-8)) (* 15.0 f28-1)))
+                  (a0-11 (-> this skel root-channel 0))
+                  )
+             (set! (-> a0-11 param 0) f0-11)
+             (joint-control-channel-group-eval! a0-11 (the-as art-joint-anim #f) num-func-loop!)
+             )
+           (let ((a0-12 (-> this skel root-channel 1)))
+             (set! (-> a0-12 param 0) 0.0)
+             (joint-control-channel-group-eval! a0-12 (the-as art-joint-anim #f) num-func-chan)
+             )
+           )
+          (else
+            (ja-channel-push! 2 (seconds 0.15))
+            (let ((a0-14 (-> this skel root-channel 0)))
+              (set! (-> a0-14 dist) 13107.2)
+              (set! (-> a0-14 frame-group) (the-as art-joint-anim (-> this draw art-group data 9)))
+              (set! (-> a0-14 param 0) 1.0)
+              (joint-control-channel-group! a0-14 (the-as art-joint-anim (-> this draw art-group data 9)) num-func-loop!)
+              )
+            (let ((a0-15 (-> this skel root-channel 1)))
+              (set! (-> a0-15 frame-interp 1) f28-0)
+              (set! (-> a0-15 frame-interp 0) f28-0)
+              (set! (-> a0-15 dist) 21843.969)
+              (set! (-> a0-15 frame-group) (the-as art-joint-anim (-> this draw art-group data 10)))
+              (set! (-> a0-15 param 0) 0.0)
+              (joint-control-channel-group! a0-15 (the-as art-joint-anim (-> this draw art-group data 10)) num-func-chan)
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod event-handler ((this jinx) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('nav-mesh-kill)
+     (set! (-> this nav-mesh-aid) (the-as actor-id (-> this nav state mesh entity aid)))
+     (change-to *default-nav-mesh* this)
+     #t
+     )
+    (else
+      ((method-of-type civilian event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod send-attack-on-jump-or-knocked ((this jinx) (arg0 process) (arg1 event-message-block))
+  (cond
+    ((and (-> this next-state) (let ((v1-3 (-> this next-state name)))
+                                 (or (= v1-3 'knocked) (= v1-3 'jump))
+                                 )
+          )
+     ((method-of-type nav-enemy send-attack-on-jump-or-knocked) this arg0 arg1)
+     )
+    (else
+      (when (!= (-> arg0 type) target)
+        (let* ((s3-0 (-> arg1 param 0))
+               (s2-0 arg0)
+               (v1-6 (if (type? s2-0 process-focusable)
+                         s2-0
+                         )
+                     )
+               )
+          (cond
+            ((and (focus-test? this dangerous)
+                  (logtest? (process-mask enemy) (-> arg0 mask))
+                  (and v1-6
+                       (not (logtest? (-> (the-as process-focusable v1-6) focus-status) (focus-status disable dead ignore grabbed)))
+                       )
+                  ((method-of-type touching-shapes-entry prims-touching-action?)
+                   (the-as touching-shapes-entry s3-0)
+                   (-> this root)
+                   (collide-action deadly)
+                   (collide-action)
+                   )
+                  )
+             (let ((a3-2 (if ((method-of-type touching-shapes-entry prims-touching-action?)
+                              (the-as touching-shapes-entry s3-0)
+                              (-> this root)
+                              (collide-action persistent-attack)
+                              (collide-action)
+                              )
+                             (-> this persistent-attack-id)
+                             (-> this attack-id)
+                             )
+                         )
+                   )
+               (send-attack this arg0 (the-as touching-shapes-entry s3-0) a3-2)
+               )
+             )
+            (else
+              (send-event arg0 'touch (-> arg1 param 0))
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod run-logic? ((this jinx))
+  "Should this process be run? Checked by execute-process-tree."
+  #t
+  )
+
+;; WARN: Return type mismatch citizen-flag vs none.
+(defmethod citizen-method-194 ((this jinx))
+  (let ((t9-0 (method-of-type civilian citizen-method-194)))
+    (t9-0 this)
+    )
+  (logior! (-> this flags) (citizen-flag persistent))
+  (none)
+  )
+
+(defmethod citizen-method-210 ((this jinx) (arg0 int) (arg1 process))
+  0
+  (none)
+  )
+
+(defmethod init-enemy-collision! ((this jinx))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-others))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 3) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 4))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 5734.4 0.0 7372.8)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid can-ride))
+      (set-vector! (-> v1-13 local-sphere) 0.0 3686.4 0.0 3686.4)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-15 local-sphere) 0.0 5939.2 0.0 3686.4)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec bot bot-targetable))
+      (set! (-> v1-17 prim-core collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> v1-17 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-17 local-sphere) 0.0 8192.0 0.0 3686.4)
+      )
+    (set! (-> s5-0 nav-radius) 5734.4)
+    (let ((v1-19 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-19 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-19 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> s5-0 event-priority) (the-as uint 6))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy-defaults! ((this jinx) (arg0 nav-enemy-info))
+  (set! (-> arg0 nav-mesh) *default-nav-mesh*)
+  (let ((t9-0 (method-of-type nav-enemy init-enemy-defaults!)))
+    (t9-0 this arg0)
+    )
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+  0
+  (none)
+  )
+
+(defmethod init-enemy! ((this jinx))
+  (set-vector! (-> this follow-dir) 0.0 0.0 1.0 1.0)
+  (logclear! (-> this mask) (process-mask enemy))
+  (logior! (-> this mask) (process-mask bot))
+  (set! (-> this min-speed) 24576.0)
+  (set! (-> this max-speed) 49152.0)
+  (set! (-> this follow-offset) 24576.0)
+  (set! (-> this travel-anim-interp) 0.0)
+  (set! (-> this info) *citizen-jinx-global-info*)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-jinx" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *jinx-nav-enemy-info*)
+  (set! (-> this draw light-index) (the-as uint 10))
+  (set! (-> this shield-handle) (the-as handle #f))
+  (set! (-> this health-handle)
+        (ppointer->handle (process-spawn jinx-hud :init hud-init-by-other :name "jinx-hud" :to this))
+        )
+  (set! (-> this mission-squad) *cty-attack-controller*)
+  (when (-> this mission-squad)
+    (set! (-> this attacker-info) (allocate-attacker (-> this mission-squad)))
+    (init! (-> this attacker-info) this 13)
+    (set! (-> this attacker-info max-num-attackers) (the-as uint 2))
+    (logior! (-> this attacker-info flags) (city-attacker-info-flag cai1))
+    )
+  (go (method-of-object this wait-for-ride))
+  0
+  (none)
+  )
+
+(deftype task-manager-city-destroy-grid (task-manager)
+  ((jinx               handle)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (next-box           uint32)
+   (arrow-h            handle)
+   (goal-pos           vector      :inline)
+   (goal-pos-front     vector      :inline)
+   (sub-state          uint32)
+   (vehicle            handle)
+   (wall-h             handle)
+   (sound-name         string)
+   (id                 sound-id)
+   (delay              time-frame)
+   (delay-start        time-frame)
+   (end-time           time-frame  :offset 360)
+   (intro-play?        symbol)
+   )
+  (:methods
+    (update-jinx-speech (_type_) none)
+    (set-speech-name (_type_ string int int) none)
+    )
+  )
+
+
+(define *cty-destroy-grid-kg-squad-member-settings* (new 'static 'inline-array kg-squad-member-settings 4
+                                                      (new 'static 'kg-squad-member-settings
+                                                        :object-type (traffic-type roboguard)
+                                                        :max-target-count #x7f
+                                                        :target-count 3
+                                                        :enemy-type (traffic-type guard-a)
+                                                        )
+                                                      (new 'static 'kg-squad-member-settings
+                                                        :object-type (traffic-type roboguard)
+                                                        :max-target-count #x7f
+                                                        :enemy-type (traffic-type guard-b)
+                                                        )
+                                                      (new 'static 'kg-squad-member-settings
+                                                        :object-type (traffic-type flying-turret)
+                                                        :max-target-count #x7f
+                                                        :target-count 2
+                                                        :enemy-type (traffic-type metalhead-grunt)
+                                                        )
+                                                      (new 'static 'kg-squad-member-settings
+                                                        :object-type (traffic-type spydroid)
+                                                        :max-target-count #x7f
+                                                        :target-count 3
+                                                        :enemy-type (traffic-type metalhead-flitter)
+                                                        )
+                                                      )
+        )
+
+(define *cty-destroy-grid-mh-squad-member-settings* (new 'static 'inline-array mh-squad-member-settings 3
+                                                      (new 'static 'mh-squad-member-settings
+                                                        :object-type (traffic-type metalhead-grunt)
+                                                        :max-target-count #x7f
+                                                        :target-count 5
+                                                        )
+                                                      (new 'static 'mh-squad-member-settings
+                                                        :object-type (traffic-type metalhead-flitter)
+                                                        :max-target-count #x7f
+                                                        :target-count 6
+                                                        )
+                                                      (new 'static 'mh-squad-member-settings
+                                                        :object-type (traffic-type metalhead-predator)
+                                                        :max-target-count #x7f
+                                                        :target-count 2
+                                                        )
+                                                      )
+        )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod set-time-limit ((this task-manager-city-destroy-grid))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this vehicle) (the-as handle #f))
+  (set! (-> this wall-h) (the-as handle #f))
+  (set-setting! 'kg-enemy-settings #f 0.0 *cty-destroy-grid-kg-squad-member-settings*)
+  (set-setting! 'mh-enemy-settings #f 0.0 *cty-destroy-grid-mh-squad-member-settings*)
+  (set-setting! 'city-sound '(citygrid) 0.0 2)
+  (set! (-> this sub-state) (the-as uint 0))
+  (set! (-> this next-box) (the-as uint 0))
+  (set! (-> this arrow-h) (the-as handle #f))
+  (logior! (-> *cty-attack-controller* target-attacker flags) (city-attacker-info-flag cai3))
+  (when *cty-attack-controller*
+    (let ((s5-0 (push-back-hatred *cty-attack-controller*)))
+      (set! (-> s5-0 hatred) 0.6)
+      (set! (-> s5-0 hatred-dist) 245760.0)
+      (set! (-> s5-0 dist-scale) 0.5)
+      (set! (-> s5-0 attacker-scale) 0.01)
+      (set! (-> s5-0 max-consider-dist) 614400.0)
+      (set-hatred-indices-for-all *cty-attack-controller* 0 (get-hatred-at-idx *cty-attack-controller* 9 0) s5-0 13)
+      )
+    )
+  (set! (-> this id) (new 'static 'sound-id))
+  (set! (-> this intro-play?) #f)
+  (set! (-> this sound-name) #f)
+  (none)
+  )
+
+(defmethod set-speech-name ((this task-manager-city-destroy-grid) (arg0 string) (arg1 int) (arg2 int))
+  (set! (-> this delay-start)
+        (+ (current-time) (the int (rand-vu-float-range (the float arg1) (the float arg2))))
+        )
+  (set! (-> this sound-name) arg0)
+  0
+  (none)
+  )
+
+(defmethod update-jinx-speech ((this task-manager-city-destroy-grid))
+  (with-pp
+    (case (get-status *gui-control* (-> this id))
+      (((gui-status pending))
+       (when (time-elapsed? (-> this start-time) (seconds 1))
+         (set-action!
+           *gui-control*
+           (gui-action stop)
+           (-> this id)
+           (gui-channel none)
+           (gui-action none)
+           (the-as string #f)
+           (the-as (function gui-connection symbol) #f)
+           (the-as process #f)
+           )
+         (set! (-> this id) (new 'static 'sound-id))
+         (set-time! (-> this end-time))
+         )
+       )
+      (((gui-status unknown))
+       (set! (-> this id) (new 'static 'sound-id))
+       (set-time! (-> this end-time))
+       )
+      )
+    (when (nonzero? (-> this jinx))
+      (let ((s5-0 (handle->process (-> this jinx))))
+        (when s5-0
+          (when (and (zero? (-> this id)) (-> this sound-name) (>= (current-time) (-> this delay-start)))
+            (set! (-> this id)
+                  (add-process *gui-control* this (gui-channel hal) (gui-action play) (-> this sound-name) -99.0 0)
+                  )
+            (sound-params-set! *gui-control* (-> this id) #f -1 -1 -1 (-> *setting-control* user-current talker-volume))
+            (set-time! (-> this start-time))
+            (set! (-> this sound-name) #f)
+            )
+          (when (nonzero? (-> this id))
+            (cond
+              ((-> *setting-control* user-current speech-control)
+               (when *sound-player-enable*
+                 (let ((s4-0 (the-as sound-rpc-set-param (get-sound-buffer-entry))))
+                   (set! (-> s4-0 command) (sound-command set-param))
+                   (set! (-> s4-0 id) (-> this id))
+                   (set! (-> s4-0 params volume) (the int (* 1024.0 (-> *setting-control* user-current talker-volume))))
+                   (set! (-> s4-0 params fo-min) 15)
+                   (set! (-> s4-0 params fo-max) 90)
+                   (set! (-> s4-0 params fo-curve) 9)
+                   (let ((a1-5 (-> (the-as process-focusable s5-0) root trans)))
+                     (let ((gp-1 pp))
+                       (when (= a1-5 #t)
+                         (if (and gp-1 (type? gp-1 process-drawable) (nonzero? (-> (the-as process-drawable gp-1) root)))
+                             (set! a1-5 (-> (the-as process-drawable gp-1) root trans))
+                             (set! a1-5 (the-as vector #f))
+                             )
+                         )
+                       )
+                     (sound-trans-convert (-> s4-0 params trans) a1-5)
+                     )
+                   (set! (-> s4-0 params mask) (the-as uint 481))
+                   (-> s4-0 id)
+                   )
+                 )
+               )
+              (else
+                (set-action!
+                  *gui-control*
+                  (gui-action stop)
+                  (-> this id)
+                  (gui-channel none)
+                  (gui-action none)
+                  (the-as string #f)
+                  (the-as (function gui-connection symbol) #f)
+                  (the-as process #f)
+                  )
+                (set! (-> this id) (new 'static 'sound-id))
+                0
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod move-cam-to-jinx ((this jinx))
+  (cond
+    ((logtest? (-> this jinx-flags) (jinx-flag j0))
+     (logclear! (-> this jinx-flags) (jinx-flag j0))
+     (logior! (-> this jinx-flags) (jinx-flag j1))
+     (let ((s4-0 (-> this move-dest)))
+       (set-cam-height this s4-0)
+       (let ((s5-0 (new 'stack-no-clear 'vector)))
+         (vector-! s5-0 s4-0 (-> this root trans))
+         (set-setting! 'string-max-height 'abs (-> s5-0 y) 0)
+         (set-setting! 'string-min-height 'abs (-> s5-0 y) 0)
+         (let ((f30-0 (sqrtf (+ (* (-> s5-0 x) (-> s5-0 x)) (* (-> s5-0 z) (-> s5-0 z))))))
+           (set-setting! 'string-max-length 'abs f30-0 0)
+           (set-setting! 'string-min-length 'abs f30-0 0)
+           )
+         )
+       )
+     (set-setting! 'immediate-string-min-max #f 0.0 0)
+     (let ((v0-6 (the-as object 1000)))
+       (set! (-> *ACTOR-bank* birth-max) (the-as int v0-6))
+       v0-6
+       )
+     )
+    ((logtest? (-> this jinx-flags) (jinx-flag j1))
+     (logclear! (-> this jinx-flags) (jinx-flag j1))
+     (send-event *camera* 'change-target this)
+     (send-event *camera* 'teleport-to-vector-start-string (-> this move-dest))
+     )
+    )
+  )
+
+(defmethod set-cam-height ((this jinx) (arg0 vector))
+  (set-vector! arg0 0.0 12288.0 28672.0 1.0)
+  (vector<-cspace+vector! arg0 (-> this node-list data 2) arg0)
+  (if (focus-test? this under-water)
+      (set! (-> arg0 y) (+ (get-water-height this) (-> *setting-control* cam-current target-height)))
+      )
+  )
+
+(defstate die-fast (jinx)
+  :virtual #t
+  :enter (behavior ()
+    (go-virtual die)
+    )
+  )
+
+(defstate die (jinx)
+  :virtual #t
+  :enter (behavior ()
+    (logior! (-> self jinx-flags) (jinx-flag j0))
+    (let ((t9-1 (-> (find-parent-state) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :code (behavior ()
+    (until (process-grab? *target* #f)
+      (suspend)
+      )
+    (ja-channel-push! 1 (seconds 0.075))
+    (let ((f30-0 (rnd-float-range self 0.8 1.2)))
+      (ja-no-eval :group! (-> self draw art-group data (-> self enemy-info die-anim))
+                  :num! (seek! max f30-0)
+                  :frame-num 0.0
+                  )
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max f30-0))
+        )
+      )
+    (send-event (ppointer->process (-> self parent)) 'fail)
+    (until #f
+      (suspend)
+      )
+    #f
+    (let ((gp-0 (-> self child)))
+      (while gp-0
+        (send-event (ppointer->process gp-0) 'notice 'die)
+        (set! gp-0 (-> gp-0 0 brother))
+        )
+      )
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    )
+  :post (behavior ()
+    (move-cam-to-jinx self)
+    (let ((t9-2 (-> (find-parent-state) post)))
+      (if t9-2
+          ((the-as (function none) t9-2))
+          )
+      )
+    )
+  )
+
+(define *jinx-exit-vehicle-speech-index* 0)
+
+(define *jinx-board-vehicle-speech-index* 0)
+
+(define *jinx-exit-vehicle-speech*
+  (new 'static 'boxed-array :type string "jinx105" "jinx106" "jinx107" "jinx108")
+  )
+
+(define *jinx-board-vehicle-speech*
+  (new 'static 'boxed-array :type string "jinx112" "jinx113" "jinx114" "jinx115" "jinx116" "jinx117")
+  )
+
+(defmethod task-manager-method-26 ((this task-manager-city-destroy-grid))
+  (local-vars (v1-180 float) (v1-201 float))
+  (with-pp
+    (rlet ((acc :class vf)
+           (vf0 :class vf)
+           (vf1 :class vf)
+           (vf2 :class vf)
+           (vf4 :class vf)
+           (vf5 :class vf)
+           (vf6 :class vf)
+           (vf7 :class vf)
+           )
+      (init-vf0-vector)
+      (update-jinx-speech this)
+      (when (nonzero? (-> this jinx))
+        (let ((s5-0 (the-as jinx (handle->process (-> this jinx)))))
+          (when s5-0
+            (when (nonzero? (-> this actor-group))
+              (dotimes (s4-0 (length (-> this actor-group 0)))
+                (let ((s3-0 (-> this actor-group 0 data s4-0)))
+                  (when (= (-> this next-box) s4-0)
+                    (set! (-> this goal-pos quad) (-> s3-0 actor trans quad))
+                    (let ((s2-0 (-> this goal-pos-front)))
+                      (let ((s1-0 (-> s3-0 actor trans)))
+                        (let ((v1-17 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> s3-0 actor quat))))
+                          (let ((a0-12 8192.0))
+                            (.mov vf7 a0-12)
+                            )
+                          (.lvf vf5 (&-> v1-17 quad))
+                          )
+                        (.lvf vf4 (&-> s1-0 quad))
+                        )
+                      (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                      (.mul.x.vf acc vf5 vf7 :mask #b111)
+                      (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                      (.svf (&-> s2-0 quad) vf6)
+                      )
+                    (when (< (vector-vector-distance (-> s3-0 actor trans) (-> s5-0 root trans)) 40960.0)
+                      )
+                    )
+                  )
+                )
+              )
+            (let ((s4-1 (entity-nav-mesh-by-aid (-> s5-0 nav-mesh-aid))))
+              (cond
+                ((if (type? s4-1 entity-nav-mesh)
+                     s4-1
+                     )
+                 )
+                (else
+                  )
+                )
+              )
+            (when (= (+ (length (-> this actor-group 0)) 1) (-> this next-box))
+              (+! (-> this next-box) 1)
+              (deactivate s5-0)
+              (let ((a0-20 (handle->process (-> this vehicle))))
+                (if a0-20
+                    (deactivate a0-20)
+                    )
+                )
+              (let ((a0-23 (-> this arrow-h process 0)))
+                (if a0-23
+                    (deactivate a0-23)
+                    )
+                )
+              (send-event this 'complete)
+              )
+            (let ((a1-6 *target*))
+              (when (and a1-6 (focus-test? a1-6 pilot))
+                (set-setting! 'music 'cityfi 0.0 0)
+                (when (not (-> this intro-play?))
+                  (set-setting! 'airlock #f 0.0 0)
+                  (set-speech-name this "jinx102" 300 600)
+                  (set! (-> this intro-play?) #t)
+                  )
+                )
+              )
+            (let ((v1-67 (the-as vehicle (handle->process (-> this vehicle)))))
+              (cond
+                (v1-67
+                  (logior! (-> v1-67 v-flags) (vehicle-flag persistent))
+                  (if (or (and (-> v1-67 next-state) (= (-> v1-67 next-state name) 'inactive)) (focus-test? v1-67 dead))
+                      (send-event this 'fail)
+                      )
+                  )
+                (else
+                  (send-event this 'fail)
+                  )
+                )
+              )
+            (when (-> this arrow-h)
+              (let ((a0-47 (-> this arrow-h process 0))
+                    (v1-82 *target*)
+                    (a2-4 (handle->process (-> this vehicle)))
+                    )
+                (cond
+                  ((and (-> s5-0 next-state) (= (-> s5-0 next-state name) 'wait-for-ride))
+                   (logclear! (-> (the-as vehicle a2-4) v-flags) (vehicle-flag persistent))
+                   (if (and (the-as vehicle a2-4) v1-82 (not (logtest? (focus-status pilot) (-> v1-82 focus-status))))
+                       (send-event a0-47 'set-position (-> (the-as vehicle a2-4) root trans))
+                       (send-event a0-47 'set-position (-> s5-0 root trans))
+                       )
+                   (send-event (handle->process (-> this arrow-h)) 'show)
+                   )
+                  ((and (-> s5-0 next-state) (= (-> s5-0 next-state name) 'ride))
+                   (cond
+                     ((and a2-4 v1-82 (not (logtest? (focus-status pilot) (-> v1-82 focus-status))))
+                      (send-event a0-47 'set-position (-> s5-0 root trans))
+                      (send-event (handle->process (-> this arrow-h)) 'show)
+                      )
+                     (else
+                       (send-event (handle->process (-> this arrow-h)) 'set-position (-> this goal-pos))
+                       (send-event (handle->process (-> this arrow-h)) 'show)
+                       )
+                     )
+                   )
+                  (else
+                    (send-event (handle->process (-> this arrow-h)) 'hide)
+                    )
+                  )
+                )
+              )
+            (when *target*
+              (if (< 819200.0 (vector-vector-distance (-> s5-0 root trans) (target-pos 0)))
+                  (send-event this 'fail)
+                  )
+              (let ((s4-4 (the-as vehicle (handle->process (-> this vehicle)))))
+                (when s4-4
+                  (cond
+                    ((and (-> s5-0 next-state) (= (-> s5-0 next-state name) 'ride))
+                     (when (= (-> this next-box) (length (-> this actor-group 0)))
+                       (deactivate s5-0)
+                       (let ((a0-85 (handle->process (-> this vehicle))))
+                         (if a0-85
+                             (deactivate a0-85)
+                             )
+                         )
+                       (let ((a0-88 (-> this arrow-h process 0)))
+                         (if a0-88
+                             (deactivate a0-88)
+                             )
+                         )
+                       (send-event this 'complete)
+                       )
+                     (if (and (< (vector-vector-distance (-> this goal-pos) (-> s5-0 root trans)) 163840.0)
+                              (begin
+                                (.lvf vf1 (&-> (-> s4-4 root transv) quad))
+                                (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                (.mul.vf vf1 vf1 vf1)
+                                (.mul.x.vf acc vf2 vf1 :mask #b1)
+                                (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                                (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                (.mov v1-180 vf1)
+                                (let ((f0-4 v1-180)
+                                      (f1-2 12288.0)
+                                      )
+                                  (< f0-4 (* f1-2 f1-2))
+                                  )
+                                )
+                              )
+                         (send-event s5-0 'exit-vehicle (-> this goal-pos-front))
+                         )
+                     )
+                    ((and (-> s5-0 next-state) (= (-> s5-0 next-state name) 'wait-for-ride))
+                     (let ((v1-197 (get-best-seat s4-4 (-> s4-4 root trans) (the-as vehicle-seat-flag (-> s5-0 info seat-flag)) 1)))
+                       (when (!= v1-197 -1)
+                         (.lvf vf1 (&-> (-> s4-4 root transv) quad))
+                         (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                         (.mul.vf vf1 vf1 vf1)
+                         (.mul.x.vf acc vf2 vf1 :mask #b1)
+                         (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                         (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                         (.mov v1-201 vf1)
+                         (let ((f0-5 v1-201)
+                               (f1-5 32768.0)
+                               )
+                           (when (and (< f0-5 (* f1-5 f1-5))
+                                      (let ((f0-6 (vector-vector-distance-squared (-> s4-4 root trans) (-> s5-0 root trans)))
+                                            (f1-8 204800.0)
+                                            )
+                                        (< f0-6 (* f1-8 f1-8))
+                                        )
+                                      )
+                             (send-event s5-0 'board-vehicle s4-4)
+                             (when (and (nonzero? (-> this next-box)) (!= (-> this next-box) (length (-> this actor-group 0))))
+                               (let ((a1-50 (new 'stack-no-clear 'event-message-block)))
+                                 (set! (-> a1-50 from) (process->ppointer pp))
+                                 (set! (-> a1-50 num-params) 0)
+                                 (set! (-> a1-50 message) 'explode)
+                                 (let ((t9-38 send-event-function)
+                                       (v1-228 (-> this actor-group 0 data (+ (-> this next-box) -1) actor))
+                                       )
+                                   (t9-38
+                                     (if v1-228
+                                         (-> v1-228 extra process)
+                                         )
+                                     a1-50
+                                     )
+                                   )
+                                 )
+                               (set-speech-name this (-> *jinx-board-vehicle-speech* *jinx-board-vehicle-speech-index*) 300 600)
+                               (set! *jinx-board-vehicle-speech-index*
+                                     (mod (+ *jinx-board-vehicle-speech-index* 1) (-> *jinx-board-vehicle-speech* length))
+                                     )
+                               )
+                             )
+                           )
+                         )
+                       )
+                     )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      0
+      (none)
+      )
+    )
+  )
+
+(defstate wait (task-manager-city-destroy-grid)
+  :virtual #t
+  :code (behavior ()
+    (set-setting! 'borrow-hold-perm '(ctycara) 0.0 0)
+    (while (or (!= (status-of-level-and-borrows *level* 'ctycara #f) 'active)
+               (!= (status-of-level-and-borrows *level* 'mhcitya #f) 'active)
+               )
+      (suspend)
+      )
+    (let ((t9-4 (-> (find-parent-state) code)))
+      (if t9-4
+          ((the-as (function none) t9-4))
+          )
+      )
+    )
+  )
+
+(defmethod taskman-event-handler ((this task-manager-city-destroy-grid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('go-power-box)
+     (set-speech-name this (-> *jinx-exit-vehicle-speech* *jinx-exit-vehicle-speech-index*) 300 600)
+     (set! *jinx-exit-vehicle-speech-index*
+           (mod (+ *jinx-exit-vehicle-speech-index* 1) (-> *jinx-exit-vehicle-speech* length))
+           )
+     (let ((v0-1 (the-as object (+ (-> this next-box) 1))))
+       (set! (-> this next-box) (the-as uint v0-1))
+       v0-1
+       )
+     )
+    (else
+      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defstate active (task-manager-city-destroy-grid)
+  :virtual #t
+  :enter (behavior ()
+    (local-vars (sv-272 res-tag))
+    (set-time! (-> self state-time))
+    (let ((s5-0 *traffic-manager*)
+          (gp-0 (new 'stack 'traffic-object-spawn-params))
+          )
+      (set! (-> gp-0 position quad) (-> (new 'static 'vector :x -1781217.8 :y 49152.0 :z 3740217.0 :w 1.0) quad))
+      (quaternion-copy! (-> gp-0 rotation) (new 'static 'quaternion :x 0.0013 :y 0.744 :z -0.0068 :w 0.6681))
+      (set! (-> gp-0 object-type) (traffic-type civilian-car-a))
+      (set! (-> gp-0 behavior) (the-as uint 0))
+      (set! (-> gp-0 id) (the-as uint 0))
+      (set! (-> gp-0 proc) #f)
+      (send-event s5-0 'spawn-object gp-0)
+      (if (not (-> gp-0 proc))
+          (format #t "traffic object spawn failed~%")
+          )
+      (when (-> gp-0 proc)
+        (set! (-> self vehicle) (process->handle (-> gp-0 proc)))
+        (send-event (handle->process (-> self vehicle)) 'scale-max-hit-points #x42c80000)
+        )
+      )
+    (let ((gp-1 (entity-by-name "tmanager-1")))
+      (when gp-1
+        (let ((s5-1 (new 'stack-no-clear 'enemy-init-by-other-params)))
+          (set! (-> s5-1 trans quad) (-> (new 'static 'vector :x -1785244.0 :y 35316.53 :z 3693337.5 :w 1.0) quad))
+          (quaternion-copy! (-> s5-1 quat) (new 'static 'quaternion :y 0.5494 :w 0.8355))
+          (set! (-> s5-1 entity) gp-1)
+          (set! (-> s5-1 directed?) #f)
+          (set! (-> s5-1 no-initial-move-to-ground?) #t)
+          (set! (-> s5-1 art-level) #f)
+          (set! (-> self jinx)
+                (process->handle
+                  (ppointer->process (process-spawn jinx :init enemy-init-by-other self s5-1 :name "jinx" :to self))
+                  )
+                )
+          )
+        (let ((v1-36 (-> self jinx process)))
+          (set-setting! 'kg-primary-target v1-36 1.0 (-> v1-36 0 pid))
+          )
+        (let ((v1-40 (-> self jinx process)))
+          (set-setting! 'mh-primary-target v1-40 1.0 (-> v1-40 0 pid))
+          )
+        (set! (-> self entity) (the-as entity-actor gp-1))
+        (set! sv-272 (new 'static 'res-tag))
+        (let ((v1-44 (res-lump-data gp-1 'actor-groups pointer :tag-ptr (& sv-272))))
+          (cond
+            ((and v1-44 (nonzero? (-> sv-272 elt-count)))
+             (set! (-> self actor-group-count) (the-as int (-> sv-272 elt-count)))
+             (set! (-> self actor-group) (the-as (pointer actor-group) v1-44))
+             )
+            (else
+              (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> self node-info task)))
+              )
+            )
+          )
+        )
+      )
+    (let ((gp-3 (new 'stack-no-clear 'task-arrow-params)))
+      (let ((a0-38 (new 'static 'vector :w 1.0)))
+        (set! (-> gp-3 pos quad) (-> a0-38 quad))
+        )
+      (quaternion-identity! (-> gp-3 quat))
+      (set! (-> gp-3 flags) (task-arrow-flags taf3 taf8))
+      (set! (-> gp-3 map-icon) (the-as uint 12))
+      (set! (-> self arrow-h) (process->handle (task-arrow-spawn gp-3 self)))
+      )
+    )
+  )
+
+(deftype com-power-box (process-drawable)
+  ((root      collide-shape :override)
+   (sound-id  sound-id)
+   )
+  (:state-methods
+    idle
+    explode
+    )
+  )
+
+
+(defskelgroup skel-com-power-box com-power-box com-power-box-lod0-jg com-power-box-idle-ja
+              ((com-power-box-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-combox-debris-piece com-power-box com-power-box-debris-piece-lod0-jg -1
+              ((com-power-box-debris-piece-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
+
+(defskelgroup skel-combox-debris-panelwires com-power-box com-power-box-debris-panelwires-lod0-jg -1
+              ((com-power-box-debris-panelwires-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
+
+(defskelgroup skel-combox-debris-paneltop com-power-box com-power-box-debris-paneltop-lod0-jg -1
+              ((com-power-box-debris-paneltop-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
+
+(defskelgroup skel-combox-debris-tubes com-power-box com-power-box-debris-tubes-lod0-jg -1
+              ((com-power-box-debris-tubes-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
+
+(define *combox-debris-params* (new 'static 'debris-static-params
+                                 :joints (new 'static 'boxed-array :type debris-static-joint-params
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-piece"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-panelwires"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-paneltop"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-tubes"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-piece"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-panelwires"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-paneltop"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-tubes"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-piece"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-panelwires"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-paneltop"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   (new 'static 'debris-static-joint-params
+                                     :parent-joint-index 3
+                                     :group "skel-combox-debris-tubes"
+                                     :offset (new 'static 'vector :w 1.0)
+                                     )
+                                   )
+                                 :collide-spec (collide-spec backgnd)
+                                 )
+        )
+
+(defstate idle (com-power-box)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('explode)
+       (go-virtual explode)
+       )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate explode (com-power-box)
+  :virtual #t
+  :exit (behavior ()
+    (sound-stop (-> self sound-id))
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status dead) #t)
+    (sound-play "bomb-set")
+    (set! (-> self sound-id) (sound-play "time-tick-loop"))
+    (let ((gp-2 (current-time)))
+      (until (time-elapsed? gp-2 (seconds 5))
+        (suspend)
+        )
+      )
+    (sound-stop (-> self sound-id))
+    (sound-play "bomb-explode")
+    (setup-masks (-> self draw) 0 -1)
+    (setup-masks (-> self draw) 1 0)
+    (let ((v1-15 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 0)))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec))
+      )
+    0
+    (let ((gp-4 (new 'stack-no-clear 'explosion-init-params)))
+      (set! (-> gp-4 spawn-point quad) (-> self root trans quad))
+      (quaternion-identity! (-> gp-4 spawn-quat))
+      (set! (-> gp-4 radius) 32768.0)
+      (set! (-> gp-4 scale) 1.0)
+      (set! (-> gp-4 group) (-> *part-group-id-table* 217))
+      (set! (-> gp-4 collide-with)
+            (collide-spec backgnd jak crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+            )
+      (set! (-> gp-4 damage) 2.0)
+      (set! (-> gp-4 damage-scale) 1.0)
+      (set! (-> gp-4 vehicle-damage-factor) 1.0)
+      (set! (-> gp-4 vehicle-impulse-factor) 1.0)
+      (set! (-> gp-4 ignore-proc) (process->handle #f))
+      (explosion-spawn gp-4 (the-as process-drawable *default-pool*))
+      )
+    (dotimes (gp-5 (-> *combox-debris-params* joints length))
+      (set-vector!
+        (-> *combox-debris-params* joints gp-5 offset)
+        (rand-vu-float-range -16384.0 16384.0)
+        (rand-vu-float-range 0.0 8192.0)
+        (rand-vu-float-range -4096.0 4096.0)
+        1.0
+        )
+      )
+    (let ((a1-11 (new 'stack 'debris-tuning (the-as uint 1))))
+      (set! (-> a1-11 hit-xz-reaction) 0.95)
+      (set! (-> a1-11 hit-y-reaction) 0.6)
+      (set! (-> a1-11 scale-rand-lo) 0.4)
+      (set! (-> a1-11 scale-rand-hi) 0.7)
+      (set! (-> a1-11 fountain-rand-transv-lo quad) (-> self root trans quad))
+      (+! (-> a1-11 fountain-rand-transv-lo y) -40960.0)
+      (debris-spawn self a1-11 *combox-debris-params* (the-as process-drawable #f))
+      )
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this com-power-box) (arg0 entity-actor))
+  (local-vars (sv-80 vector) (sv-96 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+      (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+        (set! (-> s4-0 total-prims) (the-as uint 3))
+        (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+        (set! (-> s3-0 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
+        (set! (-> s3-0 prim-core action) (collide-action solid rideable))
+        (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 20480.0)
+        (set! (-> s4-0 root-prim) s3-0)
+        )
+      (pusher-init s4-0)
+      (let ((v0-3 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+        (set! (-> v0-3 prim-core collide-as) (collide-spec crate))
+        (set! (-> v0-3 prim-core collide-with) (collide-spec jak player-list tobot))
+        (set! (-> v0-3 prim-core action) (collide-action solid rideable))
+        (set! (-> v0-3 transform-index) 3)
+        (set-vector! (-> v0-3 local-sphere) 0.0 0.0 0.0 20480.0)
+        )
+      (let ((v0-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+        (set! (-> v0-4 prim-core collide-as) (collide-spec crate))
+        (set! (-> v0-4 prim-core collide-with) (collide-spec jak player-list tobot))
+        (set! (-> v0-4 prim-core action) (collide-action solid rideable))
+        (set! (-> v0-4 transform-index) 3)
+        (set-vector! (-> v0-4 local-sphere) 0.0 0.0 0.0 20480.0)
+        )
+      (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+      (let ((v1-24 (-> s4-0 root-prim)))
+        (set! (-> s4-0 backup-collide-as) (-> v1-24 prim-core collide-as))
+        (set! (-> s4-0 backup-collide-with) (-> v1-24 prim-core collide-with))
+        )
+      (set! (-> this root) s4-0)
+      )
+    (process-drawable-from-entity! this arg0)
+    (initialize-skeleton
+      this
+      (the-as skeleton-group (art-group-get-by-name *level* "skel-com-power-box" (the-as (pointer level) #f)))
+      (the-as pair 0)
+      )
+    (set! (-> this draw light-index) (the-as uint 10))
+    (let ((s5-2 (get-process *default-dead-pool* simple-nav-sphere #x4000 1)))
+      (when s5-2
+        (let ((t9-9 (method-of-type simple-nav-sphere activate)))
+          (t9-9 (the-as simple-nav-sphere s5-2) this "simple-nav-sphere" (the-as pointer #x70004000))
+          )
+        (let ((s4-2 run-function-in-process)
+              (s3-1 s5-2)
+              (s2-0 simple-nav-sphere-init-by-other)
+              (s1-0 #x46333333)
+              (s0-0 (new 'stack-no-clear 'vector))
+              )
+          (set! sv-80 (-> this root trans))
+          (let ((v0-10 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))))
+            (let ((v1-36 8192.0))
+              (.mov vf7 v1-36)
+              )
+            (.lvf vf5 (&-> v0-10 quad))
+            )
+          (.lvf vf4 (&-> sv-80 quad))
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> s0-0 quad) vf6)
+          ((the-as (function object object object object object object none) s4-2) s3-1 s2-0 s1-0 s0-0 #f -1)
+          )
+        (-> s5-2 ppointer)
+        )
+      )
+    (let ((s5-3 (get-process *default-dead-pool* simple-nav-sphere #x4000 1)))
+      (when s5-3
+        (let ((t9-13 (method-of-type simple-nav-sphere activate)))
+          (t9-13 (the-as simple-nav-sphere s5-3) this "simple-nav-sphere" (the-as pointer #x70004000))
+          )
+        (let ((s4-3 run-function-in-process)
+              (s3-2 s5-3)
+              (s2-1 simple-nav-sphere-init-by-other)
+              (s1-1 #x46333333)
+              (s0-1 (new 'stack-no-clear 'vector))
+              )
+          (set! sv-96 (-> this root trans))
+          (let ((v0-14 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))))
+            (let ((v1-46 -8192.0))
+              (.mov vf7 v1-46)
+              )
+            (.lvf vf5 (&-> v0-14 quad))
+            )
+          (.lvf vf4 (&-> sv-96 quad))
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> s0-1 quad) vf6)
+          ((the-as (function object object object object object object none) s4-3) s3-2 s2-1 s1-1 s0-1 #f -1)
+          )
+        (-> s5-3 ppointer)
+        )
+      )
+    (setup-masks (-> this draw) 0 -1)
+    (setup-masks (-> this draw) 2 0)
+    (go (method-of-object this idle))
+    )
+  )

@@ -5,5 +5,89 @@
 ;; name in dgo: kg-squad-control-h
 ;; dgos: DESRESC, WWD, CWI
 
+;; +++kg-squad-used-guard-types
+(defenum kg-squad-used-guard-types
+  :type uint32
+  :bitfield #t
+  (kg0 0)
+  (kg1 1)
+  (kg2 2)
+  (kg3 3)
+  (kg4 4)
+  (kg5 5)
+  (kg6 6)
+  (kg7 7)
+  (kg8 8)
+  (kg9 9)
+  )
+;; ---kg-squad-used-guard-types
+
+
 ;; DECOMP BEGINS
 
+(deftype handle-array (inline-array-class-uint64)
+  ((data0  handle  :dynamic)
+   )
+  )
+
+
+(set! (-> handle-array heap-base) (the-as uint 8))
+
+(deftype kg-squad-member-settings (structure)
+  ((object-type               traffic-type)
+   (max-target-count          int8)
+   (min-target-count          int8)
+   (target-count              int8)
+   (enemy-type                traffic-type)
+   (toggle-shield-percentage  float)
+   (heat-shield-percentage    float)
+   )
+  )
+
+
+(deftype kg-squad-settings (structure)
+  ((roboguard-settings        kg-squad-member-settings  :inline)
+   (roboguard-giant-settings  kg-squad-member-settings  :inline)
+   (flying-turret-settings    kg-squad-member-settings  :inline)
+   (spydroid-settings         kg-squad-member-settings  :inline)
+   (kg-enemy-settings         kg-squad-member-settings  4 :inline :overlay-at roboguard-settings)
+   )
+  )
+
+
+(deftype kg-squad-control (squad-control-city)
+  ((guard-to-traffic-mapping        traffic-type       10)
+   (guard-to-squad-setting-mapping  uint8              10)
+   (used-guard-types                kg-squad-used-guard-types)
+   (active-squad-member-list        handle-array               :offset 852)
+   (enemy-type-seek-to-list         uint8              3)
+   (enemy-type-seek-from-list       uint8              3)
+   (enemy-type-seek-to              uint8                      :overlay-at (-> enemy-type-seek-to-list 0))
+   (enemy-type-seek-from            uint8                      :overlay-at (-> enemy-type-seek-from-list 0))
+   (enemy-type-seek-to-war          uint8                      :overlay-at (-> enemy-type-seek-to-list 1))
+   (enemy-type-seek-from-war        uint8                      :overlay-at (-> enemy-type-seek-from-list 1))
+   (enemy-type-seek-to-mission      uint8                      :overlay-at (-> enemy-type-seek-to-list 2))
+   (enemy-type-seek-from-mission    uint8                      :overlay-at (-> enemy-type-seek-from-list 2))
+   (alert-level                     int8)
+   (squad-settings                  kg-squad-settings  3 :inline)
+   (squad-normal-settings           kg-squad-settings  :inline :overlay-at (-> squad-settings 0))
+   (squad-war-settings              kg-squad-settings  :inline :overlay-at (-> squad-settings 1))
+   (squad-mission-settings          kg-squad-settings  :inline :overlay-at (-> squad-settings 2))
+   (current-target-attackers        int8)
+   )
+  (:methods
+    (increment-alert-level (_type_ int) int)
+    (set-alert-level1 (_type_ int) int)
+    (add-squad-member (_type_ process) int)
+    (pop-squad-member-from-list (_type_ process) int)
+    (get-alert-level1 (_type_) int)
+    (copy-squad-settings-to-idx (_type_ (inline-array kg-squad-member-settings) int) none)
+    (kg-squad-control-method-51 (_type_) symbol)
+    (kg-squad-control-method-52 (_type_ process process) int)
+    (kg-squad-control-method-53 (_type_) none)
+    (kg-squad-control-method-54 (_type_) float)
+    )
+  )
+
+
+(define *kg-squad-control* (the-as kg-squad-control #f))

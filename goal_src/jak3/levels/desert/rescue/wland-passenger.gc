@@ -7,3 +7,1588 @@
 
 ;; DECOMP BEGINS
 
+(deftype wland-passenger (citizen)
+  ((task-arrow         handle)
+   (start-pos          vector      :inline)
+   (seat               int32)
+   (transport          handle)
+   (is-dead?           symbol)
+   (front-back-interp  float       :offset 1080)
+   (left-right-interp  float)
+   (up-down-interp     float)
+   (original-trans     vector      :inline)
+   (desired-pos        vector      :inline)
+   (dest-quat          quaternion  :inline)
+   (original-quat      quaternion  :inline)
+   (backup-nav-mask    uint32)
+   (task-man           handle)
+   (nav-sphere-handle  handle)
+   )
+  (:state-methods
+    boarding
+    returning
+    board-vehicle
+    ride
+    exit-vehicle
+    approaching-transport
+    entering-transport
+    lying-prone
+    ride-start
+    wait-for-transport-to-open
+    )
+  (:methods
+    (toggle-rod-of-god (_type_) none)
+    (can-board-vehicle? (_type_) symbol)
+    (wland-passenger-method-228 (_type_ vector) symbol)
+    (wland-passenger-method-229 (_type_ vector) float)
+    (wland-passenger-method-230 (_type_ vehicle vector) vector)
+    (wland-passenger-method-231 (_type_) float)
+    )
+  )
+
+
+(defskelgroup skel-wland-passenger wland-passenger wland-passenger-lod0-jg -1
+              ((wland-passenger-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow wland-passenger-shadow-mg
+              :origin-joint-index 3
+              )
+
+(deftype wland-passenger-init-by-other-params (traffic-object-spawn-params)
+  ((is-dead?  symbol)
+   (parent    handle)
+   )
+  )
+
+
+(defmethod wland-passenger-method-229 ((this wland-passenger) (arg0 vector))
+  (let ((gp-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+        (s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+        )
+    0.0
+    0.0
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) arg0 (-> this root trans))))
+      0.0
+      (set! (-> s5-1 y) 0.0)
+      (set! (-> gp-0 y) 0.0)
+      (set! (-> s4-0 y) 0.0)
+      (vector-normalize! s5-1 1.0)
+      (vector-normalize! gp-0 1.0)
+      (vector-normalize! s4-0 1.0)
+      (let* ((f0-7 (vector-dot s5-1 s4-0))
+             (f0-8 (acos f0-7))
+             )
+        (if (< (vector-dot s5-1 gp-0) 0.0)
+            (set! f0-8 (* -1.0 f0-8))
+            )
+        f0-8
+        )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod toggle-rod-of-god ((this wland-passenger))
+  (if (< (vector-vector-distance (-> this root trans) (target-pos 0)) 122880.0)
+      (send-event (handle->process (-> this task-arrow)) 'hide)
+      (send-event (handle->process (-> this task-arrow)) 'show)
+      )
+  (none)
+  )
+
+(defmethod can-board-vehicle? ((this wland-passenger))
+  (with-pp
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer pp))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'get-vehicle)
+      (let ((v1-2 (the-as vehicle (send-event-function *target* a1-0))))
+        (if v1-2
+            (< (vector-length (-> v1-2 root transv)) 40960.0)
+            #f
+            )
+        )
+      )
+    )
+  )
+
+(defun probe-for-transport-ground ((arg0 vector))
+  (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+    (vector+float*! (-> gp-0 start-pos) arg0 *up-vector* 24576.0)
+    (set! (-> gp-0 move-dist quad) (the-as uint128 0))
+    (set! (-> gp-0 move-dist y) -81920.0)
+    (let ((v1-4 gp-0))
+      (set! (-> v1-4 radius) 40.96)
+      (set! (-> v1-4 collide-with) (collide-spec backgnd))
+      (set! (-> v1-4 ignore-process0) #f)
+      (set! (-> v1-4 ignore-process1) #f)
+      (set! (-> v1-4 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-4 action-mask) (collide-action solid))
+      )
+    (if (>= (fill-and-probe-using-line-sphere *collide-cache* gp-0) 0.0)
+        (-> gp-0 best-other-tri intersect y)
+        -40960000.0
+        )
+    )
+  )
+
+(defun compute-y-height ((arg0 process-focusable) (arg1 vector))
+  (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat))))
+    0.0
+    (let ((s3-1 (vector-! (new 'stack-no-clear 'vector) arg1 (get-trans arg0 0))))
+      (vector-normalize! s4-0 1.0)
+      (let ((f30-0 (vector-dot s3-1 s4-0))
+            (s1-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat)))
+            (s2-1 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat)))
+            (s3-2 (new 'stack-no-clear 'vector))
+            (s4-1 (new 'stack-no-clear 'vector))
+            )
+        (vector+float*! s3-2 (get-trans arg0 0) s1-0 -57344.0)
+        (vector+float*! s3-2 s3-2 s2-1 4096.0)
+        (vector+float*! s4-1 (get-trans arg0 0) s1-0 -34816.0)
+        (vector+float*! s4-1 s4-1 s2-1 22528.0)
+        (let ((f30-1 (cond
+                       ((< f30-0 -57344.0)
+                        (-> arg1 y)
+                        )
+                       ((< -34816.0 f30-0)
+                        (-> s4-1 y)
+                        )
+                       (else
+                         (+ 2048.0 (lerp-scale (-> s3-2 y) (-> s4-1 y) f30-0 -57344.0 -34816.0))
+                         )
+                       )
+                     )
+              )
+          (fmax (probe-for-transport-ground arg1) f30-1)
+          )
+        )
+      )
+    )
+  )
+
+(defun compute-transport-approach-pt ((arg0 process-focusable) (arg1 vector))
+  (let ((s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat))))
+    (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat))
+    (let ((f30-0 (compute-y-height arg0 (target-pos 0)))
+          (s3-1 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> s3-1 quad) (-> (target-pos 0) quad))
+      (set! (-> s3-1 y) f30-0)
+      )
+    (vector+float*! arg1 (get-trans arg0 0) s5-0 -57344.0)
+    )
+  arg1
+  )
+
+(defmethod should-move-to-ground? ((this wland-passenger))
+  (not (and (-> this next-state) (= (-> this next-state name) 'entering-transport)))
+  )
+
+(defstate entering-transport (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
+      )
+    0
+    (let* ((gp-0 (-> self nav state))
+           (s5-0 (handle->process (-> self transport)))
+           (v1-8 (get-trans
+                   (the-as vehicle (if (type? s5-0 process-focusable)
+                                       (the-as vehicle s5-0)
+                                       )
+                           )
+                   0
+                   )
+                 )
+           )
+      (logclear! (-> gp-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> gp-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> gp-0 target-pos quad) (-> v1-8 quad))
+      )
+    0
+    )
+  :trans (behavior ()
+    (let* ((gp-0 (handle->process (-> self transport)))
+           (a0-4 (if (type? gp-0 process-focusable)
+                     gp-0
+                     )
+                 )
+           )
+      (cond
+        (a0-4
+          (set! (-> self root trans y) (compute-y-height (the-as process-focusable a0-4) (-> self root trans)))
+          (let ((t9-2 vector-vector-xz-distance)
+                (a0-5 (-> self root trans))
+                (a2-0 (-> self nav state))
+                (a1-3 (new 'stack-no-clear 'vector))
+                )
+            (set! (-> a1-3 quad) (-> a2-0 target-pos quad))
+            (when (< (t9-2 a0-5 a1-3) 14745.6)
+              (send-event (handle->process (-> self transport)) 'leave)
+              (send-event (handle->process (-> self transport)) 'die-when-ready)
+              (go-virtual die-fast)
+              )
+            )
+          )
+        (else
+          (go-virtual die-fast)
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info run-anim))) 90)
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defstate wait-for-transport-to-open (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
+      )
+    0
+    (set-time! (-> self state-time))
+    (nav-enemy-method-178 self)
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.1))
+             (send-event (handle->process (-> self transport)) 'can-board?)
+             )
+        (go-virtual approaching-transport)
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defun update-nav-sphere ((arg0 handle) (arg1 process-focusable) (arg2 vector))
+  (if (not arg1)
+      (return 0)
+      )
+  (let ((s0-0 (-> arg1 root trans))
+        (s2-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg1 root quat)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        (f30-0 40960.0)
+        )
+    (let ((s1-0 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> arg1 root quat)))
+          (s3-1 (compute-transport-approach-pt arg1 (new 'stack-no-clear 'vector)))
+          )
+      (vector+float*! s5-0 s0-0 s2-0 -29900.8)
+      (vector+float*! s5-0 s5-0 s1-0 20480.0)
+      (let ((s1-2 (vector-! (new 'stack-no-clear 'vector) s3-1 arg2))
+            (s0-2 (vector-float*! (new 'stack-no-clear 'vector) s2-0 1.0))
+            )
+        0.0
+        (set! (-> s1-2 y) 0.0)
+        (vector-normalize! s1-2 1.0)
+        (set! (-> s0-2 y) 0.0)
+        (vector-normalize! s0-2 1.0)
+        (let ((f28-0 (vector-dot s0-2 s1-2)))
+          (cond
+            ((< (vector-vector-xz-distance arg2 s3-1) 6144.0)
+             (set! f30-0 (the-as float 0.0))
+             )
+            ((< 0.0 f28-0)
+             (set! f30-0 (lerp f30-0 0.0 f28-0))
+             )
+            )
+          )
+        )
+      )
+    (send-event (handle->process arg0) 'move-trans s5-0)
+    (send-event (handle->process arg0) 'set-radius f30-0)
+    )
+  )
+
+(defstate approaching-transport (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
+      )
+    0
+    (let* ((gp-0 (-> self nav state))
+           (s5-0 compute-transport-approach-pt)
+           (s4-0 (handle->process (-> self transport)))
+           (v1-7 (s5-0
+                   (the-as process-focusable (if (type? s4-0 process-focusable)
+                                                 s4-0
+                                                 )
+                           )
+                   (new 'stack-no-clear 'vector)
+                   )
+                 )
+           )
+      (logclear! (-> gp-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> gp-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> gp-0 target-pos quad) (-> v1-7 quad))
+      )
+    0
+    (nav-enemy-method-177 self)
+    (set-time! (-> self state-time))
+    (let ((gp-1 (find-nearest-nav-mesh (-> self root trans) 8192.0)))
+      (if gp-1
+          (set! (-> self nav-sphere-handle)
+                (ppointer->handle
+                  (process-spawn simple-nav-sphere #x46a66666 (-> self root trans) gp-1 -1 :name "simple-nav-sphere" :to self)
+                  )
+                )
+          )
+      )
+    )
+  :exit (behavior ()
+    (send-event (handle->process (-> self nav-sphere-handle)) 'die-fast)
+    )
+  :trans (behavior ()
+    (let ((gp-0 update-nav-sphere)
+          (s5-0 (-> self nav-sphere-handle))
+          (s4-0 (handle->process (-> self transport)))
+          )
+      (gp-0
+        s5-0
+        (the-as process-focusable (if (type? s4-0 process-focusable)
+                                      s4-0
+                                      )
+                )
+        (-> self root trans)
+        )
+      )
+    (let ((t9-2 vector-vector-xz-distance)
+          (a0-5 (-> self root trans))
+          (a2-1 (-> self nav state))
+          (a1-3 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> a1-3 quad) (-> a2-1 target-pos quad))
+      (when (< (t9-2 a0-5 a1-3) 2048.0)
+        (let ((v1-8 (-> self nav)))
+          (set! (-> v1-8 sphere-mask) (the-as uint 65))
+          )
+        0
+        (go-virtual entering-transport)
+        )
+      )
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info run-anim))) 30)
+    )
+  :post (behavior ()
+    (if (time-elapsed? (-> self state-time) (seconds 0.035))
+        (nav-enemy-method-187 self)
+        (enemy-common-post self)
+        )
+    )
+  )
+
+(defstate returning (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
+      )
+    0
+    (let ((a0-12 (-> self nav state))
+          (v1-4 (-> self start-pos))
+          )
+      (logclear! (-> a0-12 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-12 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-12 target-pos quad) (-> v1-4 quad))
+      )
+    0
+    (nav-enemy-method-176 self)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
+      (cond
+        ((and (< (vector-vector-distance (target-pos 0) (-> self start-pos)) 81920.0) (can-board-vehicle? self))
+         (go-virtual boarding)
+         )
+        ((< (vector-vector-xz-distance (-> self root trans) (-> self start-pos)) 6144.0)
+         (go-virtual active)
+         )
+        )
+      )
+    (toggle-rod-of-god self)
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info walk-anim))) 300)
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defun do-spline3 ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let* ((f1-1 (* arg5 arg5))
+           (f0-2 (* arg5 f1-1))
+           )
+      (let ((f2-3 (- (+ 1.0 (* -3.0 arg5) (* 3.0 f1-1)) f0-2))
+            (f3-7 (+ (* 3.0 f0-2) (* -6.0 f1-1) (* 3.0 arg5)))
+            (f1-3 (+ (* -3.0 f0-2) (* 3.0 f1-1)))
+            )
+        (vector-float*! arg0 arg1 f2-3)
+        (let ((t2-0 arg0))
+          (let ((v1-10 arg0))
+            (let ((t1-3 (vector+! (new 'stack-no-clear 'vector) arg1 arg2)))
+              (let ((a1-1 f3-7))
+                (.mov vf7 a1-1)
+                )
+              (.lvf vf5 (&-> t1-3 quad))
+              )
+            (.lvf vf4 (&-> v1-10 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> t2-0 quad) vf6)
+          )
+        (let ((a2-1 arg0))
+          (let ((v1-11 arg0))
+            (let ((a1-3 (vector+! (new 'stack-no-clear 'vector) arg3 arg4)))
+              (let ((t0-1 f1-3))
+                (.mov vf7 t0-1)
+                )
+              (.lvf vf5 (&-> a1-3 quad))
+              )
+            (.lvf vf4 (&-> v1-11 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a2-1 quad) vf6)
+          )
+        )
+      (let ((v0-0 arg0))
+        (let ((v1-12 arg0))
+          (let ((a0-1 arg3))
+            (let ((a1-4 f0-2))
+              (.mov vf7 a1-4)
+              )
+            (.lvf vf5 (&-> a0-1 quad))
+            )
+          (.lvf vf4 (&-> v1-12 quad))
+          )
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> v0-0 quad) vf6)
+        v0-0
+        )
+      )
+    )
+  )
+
+(defstate boarding (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-0 enemy-flags)))
+          (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-0 enemy-flags))))
+          )
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-0 enemy-flags))))
+      (set! (-> v1-0 nav callback-info) (-> v1-0 enemy-info callback-info))
+      )
+    0
+    (nav-enemy-method-177 self)
+    (set! (-> self backup-nav-mask) (get-sphere-mask (-> self nav)))
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (toggle-rod-of-god self)
+    (cond
+      ((or (< 122880.0 (vector-vector-distance (target-pos 0) (-> self root trans)))
+           (< 163840.0 (vector-vector-distance (-> self root trans) (-> self start-pos)))
+           )
+       (if (time-elapsed? (-> self state-time) (seconds 0.2))
+           (go-virtual returning)
+           )
+       )
+      (else
+        (let ((gp-1 (new 'stack-no-clear 'vector)))
+          (new 'stack-no-clear 'vector)
+          (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-2 from) (process->ppointer self))
+            (set! (-> a1-2 num-params) 0)
+            (set! (-> a1-2 message) 'get-vehicle)
+            (let ((s5-0 (the-as vehicle (send-event-function *target* a1-2))))
+              (if (not s5-0)
+                  (return 0)
+                  )
+              (set! (-> self vehicle) (process->handle s5-0))
+              (when s5-0
+                (set! (-> self seat) (get-best-seat s5-0 (-> self root trans) (vehicle-seat-flag vsf1) 1))
+                (when (!= (-> self seat) -1)
+                  (vehicle-method-66 s5-0 gp-1 (-> self seat))
+                  (let ((s4-0 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> s5-0 root quat)))
+                        (gp-2 (new 'stack-no-clear 'vector))
+                        )
+                    (set! (-> s4-0 y) 0.0)
+                    (vector-normalize! s4-0 1.0)
+                    (vector+float*! gp-2 (-> s5-0 root trans) s4-0 24576.0)
+                    (cond
+                      ((< (vector-vector-xz-distance (-> self root trans) gp-2) 14336.0)
+                       (let ((v1-32 (-> self nav)))
+                         (set! (-> v1-32 sphere-mask) (the-as uint 65))
+                         )
+                       0
+                       )
+                      (else
+                        (let ((v1-34 (-> self nav)))
+                          (set! (-> v1-34 sphere-mask) (-> self backup-nav-mask))
+                          )
+                        0
+                        )
+                      )
+                    (let ((a0-21 (-> self nav state))
+                          (v1-37 gp-2)
+                          )
+                      (logclear! (-> a0-21 flags) (nav-state-flag directional-mode))
+                      (logior! (-> a0-21 flags) (nav-state-flag target-poly-dirty))
+                      (set! (-> a0-21 target-pos quad) (-> v1-37 quad))
+                      )
+                    0
+                    (if (< (vector-vector-xz-distance gp-2 (-> self root trans)) 6144.0)
+                        (go-virtual board-vehicle)
+                        )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info run-anim))) 90)
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defmethod coin-flip? ((this wland-passenger))
+  #f
+  )
+
+(defmethod wland-passenger-method-230 ((this wland-passenger) (arg0 vehicle) (arg1 vector))
+  (let ((s5-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat))))
+    (let ((a0-3 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> arg0 root quat))))
+      (vector+float*! arg1 (-> arg0 root trans) a0-3 9830.4)
+      )
+    (vector+float*! arg1 arg1 s5-0 -1843.2)
+    )
+  (+! (-> arg1 y) -204.8)
+  arg1
+  )
+
+(define *progress* (the-as object #t))
+
+(defstate board-vehicle (wland-passenger)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('vehicle-crash)
+       #f
+       )
+      (('end-task)
+       (go-die self)
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (let ((v1-0 (-> self nav)))
+      (set! (-> v1-0 sphere-mask) (-> self backup-nav-mask))
+      )
+    0
+    (logior! (-> self flags) (citizen-flag persistent))
+    (set-time! (-> self state-time))
+    (let ((v1-7 (-> self root root-prim)))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec))
+      )
+    0
+    (let ((v1-9 self))
+      (set! (-> v1-9 enemy-flags) (the-as enemy-flag (logclear (-> v1-9 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-9 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-12 self))
+      (set! (-> v1-12 enemy-flags) (the-as enemy-flag (logclear (-> v1-12 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (send-event (handle->process (-> self task-arrow)) 'die)
+    (send-event (handle->process (-> self task-man)) 'picked-up)
+    (change-parent self *rigid-body-queue-manager*)
+    )
+  :exit (behavior ()
+    (logclear! (-> self flags) (citizen-flag persistent))
+    (logclear! (-> self focus-status) (focus-status pilot))
+    )
+  :trans (behavior ()
+    (let ((v1-1 (the-as vehicle (handle->process (-> self vehicle)))))
+      (if (or (not v1-1) (logtest? (-> v1-1 v-flags) (vehicle-flag dead)))
+          (citizen-method-206 self)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (ja-no-eval :group! wland-passenger-vehicle-jump-to-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (let ((s5-0 (ja-num-frames 0))
+              (f0-4 (ja-frame-num 0))
+              )
+          0.0
+          (let ((f30-0 (/ f0-4 (the float s5-0)))
+                (s5-1 (the-as vehicle (handle->process (-> self vehicle))))
+                )
+            (let ((s4-1 (vector+float*!
+                          (new 'stack-no-clear 'vector)
+                          (-> s5-1 root trans)
+                          (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> s5-1 root quat))
+                          -1638.4
+                          )
+                        )
+                  (s3-1 (new 'stack-no-clear 'vector))
+                  )
+              (vector-! s3-1 s4-1 (-> self root trans))
+              (set! (-> s3-1 y) 0.0)
+              (vector-normalize! s3-1 1.0)
+              (let ((s4-2 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat)))
+                    (a2-2 (quaternion-look-at! (new 'stack-no-clear 'quaternion) s3-1 *up-vector*))
+                    )
+                (quaternion-slerp! (-> self root quat) s4-2 a2-2 f30-0)
+                )
+              )
+            (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> s5-1 root quat))
+            (let ((a2-4 (wland-passenger-method-230 self s5-1 (new 'stack-no-clear 'vector))))
+              (vector-lerp! (-> self root trans) gp-0 a2-4 f30-0)
+              )
+            )
+          )
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (let ((gp-1 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+      (ja-no-eval :group! wland-passenger-vehicle-get-in-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (let ((s5-2 (handle->process (-> self vehicle)))
+              (s3-2 (ja-num-frames 0))
+              (f30-1 (ja-frame-num 0))
+              )
+          0.0
+          (let* ((s4-3 (new 'stack-no-clear 'vector))
+                 (t9-18 (method-of-object self wland-passenger-method-230))
+                 (a0-27 self)
+                 (a1-16 (handle->process (-> self vehicle)))
+                 (s2-0 (t9-18 a0-27 (the-as vehicle a1-16) (new 'stack-no-clear 'vector)))
+                 )
+            (vehicle-method-66 (the-as vehicle s5-2) s4-3 (-> self seat))
+            (let ((f30-2 (/ f30-1 (the float s3-2))))
+              (vector-lerp! (-> self root trans) s2-0 s4-3 f30-2)
+              (let ((s4-4 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> (the-as vehicle s5-2) root quat))))
+                (let ((f0-18 (the float (-> (the-as vehicle s5-2) info rider seat-array (-> self seat) angle))))
+                  (quaternion-rotate-local-y! s4-4 s4-4 f0-18)
+                  )
+                (quaternion-slerp! (-> self root quat) gp-1 s4-4 f30-2)
+                )
+              )
+            )
+          )
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (ja-channel-push! 1 (seconds 1))
+    (ja :group! wland-passenger-pilot-car-up-down-ja :num! (identity 1.0))
+    (let ((gp-2 (the-as vehicle (handle->process (-> self vehicle)))))
+      (vehicle-method-66 gp-2 (-> self root trans) (-> self seat))
+      (let ((f0-24 (the float (-> gp-2 info rider seat-array (-> self seat) angle))))
+        (quaternion-rotate-local-y! (-> self root quat) (-> gp-2 root quat) f0-24)
+        )
+      )
+    (put-rider-in-seat (the-as vehicle (handle->process (-> self vehicle))) (-> self seat) self)
+    (go-virtual ride-start)
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defstate exit-vehicle (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (change-to (find-nearest-nav-mesh (-> self root trans) (the-as float #x7f800000)) self)
+    (if (not (-> self nav))
+        (go-inactive self)
+        )
+    (citizen-method-195 self)
+    (set! (-> self gnd-height) (-> self root gspot-pos y))
+    (logior! (-> self flags) (citizen-flag persistent))
+    (logior! (-> self focus-status) (focus-status pilot-riding pilot))
+    (set-time! (-> self state-time))
+    (let ((v1-18 (-> self root root-prim)))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec))
+      (set! (-> v1-18 prim-core collide-with) (collide-spec))
+      )
+    0
+    (let ((v1-20 self))
+      (set! (-> v1-20 enemy-flags) (the-as enemy-flag (logclear (-> v1-20 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-20 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-23 self))
+      (set! (-> v1-23 enemy-flags) (the-as enemy-flag (logclear (-> v1-23 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (send-event (handle->process (-> self task-man)) 'dropped-off)
+    )
+  :exit (behavior ()
+    (logclear! (-> self flags) (citizen-flag persistent))
+    (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
+    )
+  :trans (behavior ()
+    (let ((v1-1 (the-as vehicle (handle->process (-> self vehicle)))))
+      (if (or (not v1-1) (logtest? (-> v1-1 v-flags) (vehicle-flag dead)))
+          (citizen-method-206 self)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (remove-riders (the-as vehicle (handle->process (-> self vehicle))) (the-as handle self))
+    (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
+    (ja-no-eval :group! wland-passenger-vehicle-get-out-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (let* ((gp-0 (the-as vehicle (handle->process (-> self vehicle))))
+             (s5-0 (quaternion-copy! (-> self root quat) (-> gp-0 root quat)))
+             (s4-0 (new 'stack-no-clear 'vector))
+             (s3-0 (wland-passenger-method-230 self gp-0 (new 'stack-no-clear 'vector)))
+             (s2-0 (ja-num-frames 0))
+             (f0-4 (ja-frame-num 0))
+             )
+        0.0
+        (let ((f30-0 (/ f0-4 (the float s2-0))))
+          (vehicle-method-66 gp-0 s4-0 (-> self seat))
+          (vector-lerp! (-> self root trans) s4-0 s3-0 f30-0)
+          (let ((gp-1 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> gp-0 root quat))))
+            (quaternion-rotate-y! s5-0 s5-0 0.0)
+            (quaternion-rotate-y! gp-1 gp-1 -16384.0)
+            (quaternion-slerp! (-> self root quat) s5-0 gp-1 f30-0)
+            )
+          )
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((gp-2 (the-as vehicle (handle->process (-> self vehicle)))))
+      (wland-passenger-method-230 self gp-2 (-> self root trans))
+      (+! (-> self root trans y) 409.6)
+      (quaternion-copy! (-> self root quat) (-> gp-2 root quat))
+      )
+    (quaternion-rotate-y! (-> self root quat) (-> self root quat) -16384.0)
+    (set! (-> self original-trans quad) (-> self root trans quad))
+    (quaternion-copy! (-> self original-quat) (-> self root quat))
+    (let ((s4-1 (the-as vehicle (handle->process (-> self vehicle))))
+          (s5-1 (new 'stack-no-clear 'vector))
+          (gp-3 (new 'stack-no-clear 'vector))
+          )
+      (let ((v1-63 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> s4-1 root quat))))
+        (vector+float*! s5-1 (-> s4-1 root trans) v1-63 40960.0)
+        (vector+float*! (-> self desired-pos) (-> s4-1 root trans) v1-63 24576.0)
+        )
+      (wland-passenger-method-228 self (-> self desired-pos))
+      (vector-! gp-3 s5-1 (-> self root trans))
+      (set! (-> gp-3 y) 0.0)
+      (vector-normalize! gp-3 1.0)
+      (quaternion-look-at! (-> self dest-quat) gp-3 *up-vector*)
+      )
+    (ja-no-eval :group! wland-passenger-vehicle-get-out-jump-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (let ((gp-4 (ja-num-frames 0))
+            (f0-17 (ja-frame-num 0))
+            )
+        0.0
+        (let ((f30-1 (/ f0-17 (the float gp-4))))
+          (quaternion-slerp! (-> self root quat) (-> self original-quat) (-> self dest-quat) f30-1)
+          (vector-lerp! (-> self root trans) (-> self original-trans) (-> self desired-pos) f30-1)
+          )
+        )
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-no-eval :group! wland-passenger-vehicle-get-out-land-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((v1-121 (-> self root root-prim)))
+      (set! (-> v1-121 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-121 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (send-event (handle->process (-> self task-arrow)) 'die)
+    (go-virtual wait-for-transport-to-open)
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defmethod wland-passenger-method-228 ((this wland-passenger) (arg0 vector))
+  (let ((s3-0 (the-as vehicle (handle->process (-> this vehicle))))
+        (s4-0 (new 'stack 'collide-query))
+        )
+    (vehicle-method-66 s3-0 arg0 (-> this seat))
+    (vector-! arg0 arg0 (-> s3-0 root trans))
+    (vector-normalize! arg0 (+ 34816.0 (vector-length arg0)))
+    (vector+! arg0 arg0 (-> s3-0 root trans))
+    (when (enemy-above-ground? this s4-0 arg0 (collide-spec backgnd) 8192.0 81920.0 1024.0)
+      (set! (-> arg0 y) (-> s4-0 best-other-tri intersect y))
+      (let ((v1-14 (-> this nav))
+            (a1-10 (new 'stack-no-clear 'nav-poly))
+            )
+        (vector-! (the-as vector (-> a1-10 vertex)) arg0 (the-as vector (-> v1-14 state mesh bounds)))
+        (set! (-> a1-10 vertex1 x) (-> v1-14 nearest-y-threshold))
+        (set! (-> a1-10 data 20) (the-as uint 2))
+        (if (nav-mesh-method-45 (-> v1-14 state mesh) a1-10)
+            (return #t)
+            )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod wland-passenger-method-231 ((this wland-passenger))
+  (let ((s5-0 (the-as vehicle (handle->process (-> this vehicle)))))
+    (if (not s5-0)
+        (return 0.0)
+        )
+    (vehicle-method-66 s5-0 (-> this root trans) (-> this seat))
+    (let ((f0-1 (the float (-> s5-0 info rider seat-array (-> this seat) angle))))
+      (quaternion-rotate-local-y! (-> this root quat) (-> s5-0 root quat) f0-1)
+      )
+    )
+  (let ((v1-15 (the-as vehicle (handle->process (-> this vehicle)))))
+    (if (or (not v1-15) (logtest? (-> v1-15 v-flags) (vehicle-flag dead)))
+        (citizen-method-206 this)
+        )
+    )
+  (when (and *target* (focus-test? *target* pilot-riding))
+    (let ((s4-0 (-> *target* pilot)))
+      (when (nonzero? s4-0)
+        (let ((s5-1 (new 'stack-no-clear 'matrix)))
+          (set! (-> s5-1 uvec x) (* 182.04445 (* 0.5454545 (the float (current-time)))))
+          (set! (-> s5-1 uvec z) (sin (-> s5-1 uvec x)))
+          (set! (-> s5-1 uvec w) (cos (-> s5-1 uvec x)))
+          (set! (-> s5-1 uvec y) (seconds-per-frame))
+          (set! (-> s5-1 rvec quad) (-> s4-0 local-accel quad))
+          (let ((f1-6 (+ (* 0.03 (-> s5-1 uvec z)) (* -1.0 (-> s5-1 rvec x) (-> s4-0 left-right-accel-factor)))))
+            (+! (-> this left-right-interp) (* (- f1-6 (-> this left-right-interp)) (fmin 1.0 (* 8.0 (-> s5-1 uvec y)))))
+            )
+          (set! (-> this left-right-interp) (fmax -1.0 (fmin 1.0 (-> this left-right-interp))))
+          (let* ((f0-17 (+ (* 0.03 (-> s5-1 uvec w)) (* -1.0 (-> s5-1 rvec z) (-> s4-0 front-back-accel-factor))))
+                 (f1-16 (+ -0.5 f0-17))
+                 )
+            (+! (-> this front-back-interp) (* (- f1-16 (-> this front-back-interp)) (fmin 1.0 (* 8.0 (-> s5-1 uvec y)))))
+            )
+          (set! (-> this front-back-interp) (fmax -1.0 (fmin 1.0 (-> this front-back-interp))))
+          (let ((f1-25 (+ (* 0.03 (-> s5-1 uvec w)) (* -1.0 (-> s5-1 rvec y) (-> s4-0 up-down-accel-factor)))))
+            (+! (-> this up-down-interp) (* (- f1-25 (-> this up-down-interp)) (fmin 1.0 (* 8.0 (-> s5-1 uvec y)))))
+            )
+          )
+        (set! (-> this up-down-interp) (fmax -1.0 (fmin 1.0 (-> this up-down-interp))))
+        )
+      )
+    )
+  (when (not (time-elapsed? (-> this state-time) (seconds 1)))
+    (set! (-> this up-down-interp) 0.0)
+    (set! (-> this left-right-interp) 0.0)
+    (set! (-> this front-back-interp) -1.0)
+    )
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior wland-passenger-wcar-anim-loop wland-passenger ()
+  (ja-channel-push! 3 (seconds 1))
+  (ja :group! wland-passenger-pilot-car-turn-back-ja)
+  (ja :chan 1 :group! wland-passenger-pilot-car-turn-front-ja)
+  (ja :chan 2 :group! wland-passenger-pilot-car-up-down-ja)
+  (until #f
+    (let ((f30-0 (* 5.0 (+ 1.0 (-> self left-right-interp)))))
+      (ja :num-func num-func-identity :frame-num (ja-aframe f30-0 0))
+      (let ((gp-1 (-> self skel root-channel 1)))
+        (let ((f0-3 (* 0.5 (+ 1.0 (-> self front-back-interp)))))
+          (set! (-> gp-1 frame-interp 1) f0-3)
+          (set! (-> gp-1 frame-interp 0) f0-3)
+          )
+        (set! (-> gp-1 num-func) num-func-identity)
+        (set! (-> gp-1 frame-num) (ja-aframe f30-0 1))
+        )
+      )
+    (let ((f0-6 (* 5.0 (- 1.0 (-> self up-down-interp))))
+          (gp-2 (-> self skel root-channel 2))
+          )
+      (let ((f1-7 (fabs (-> self up-down-interp))))
+        (set! (-> gp-2 frame-interp 1) f1-7)
+        (set! (-> gp-2 frame-interp 0) f1-7)
+        )
+      (set! (-> gp-2 num-func) num-func-identity)
+      (set! (-> gp-2 frame-num) (ja-aframe f0-6 2))
+      )
+    (suspend)
+    )
+  #f
+  (none)
+  )
+
+(defstate ride (wland-passenger)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('exit-vehicle)
+       (when (< (vector-length (-> (the-as vehicle (handle->process (-> self vehicle))) root transv)) 20480.0)
+         (set! (-> self transport) (the-as handle (-> block param 0)))
+         (go-virtual exit-vehicle)
+         )
+       )
+      (('end-task)
+       (go-die self)
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (logior! (-> self flags) (citizen-flag persistent))
+    (set-time! (-> self state-time))
+    (let ((v1-5 (-> self root root-prim)))
+      (set! (-> v1-5 prim-core collide-as) (collide-spec))
+      (set! (-> v1-5 prim-core collide-with) (collide-spec))
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-7 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-10 self))
+      (set! (-> v1-10 enemy-flags) (the-as enemy-flag (logclear (-> v1-10 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (logior! (-> self focus-status) (focus-status pilot-riding pilot))
+    )
+  :exit (behavior ()
+    (logclear! (-> self flags) (citizen-flag persistent))
+    (logclear! (-> self focus-status) (focus-status pilot-riding pilot))
+    (let ((v1-4 self))
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logclear (-> v1-4 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-4 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logclear (-> v1-7 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  :trans (behavior ()
+    (wland-passenger-method-231 self)
+    )
+  :code (behavior ()
+    (wland-passenger-wcar-anim-loop)
+    )
+  :post (behavior ()
+    (enemy-common-post self)
+    )
+  )
+
+(defstate ride-start (wland-passenger)
+  :virtual #t
+  :parent (wland-passenger ride)
+  :trans (behavior ()
+    (wland-passenger-method-231 self)
+    (if (time-elapsed? (-> self state-time) (seconds 1))
+        (go-virtual ride)
+        )
+    )
+  :code sleep-code
+  )
+
+(defstate lying-prone (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (logclear! (-> self enemy-flags) (enemy-flag vulnerable))
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (toggle-rod-of-god self)
+    (when (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 348160.0)
+      (send-event (handle->process (-> self task-man)) 'fight)
+      (send-event (handle->process (-> self task-arrow)) 'die)
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja :group! wland-passenger-getup-front-ja :num! zero)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defstate active (wland-passenger)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (logior! (-> self enemy-flags) (enemy-flag vulnerable))
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (cond
+      ((handle->process (-> self transport))
+       (go-virtual approaching-transport)
+       )
+      ((-> self is-dead?)
+       (go-virtual lying-prone)
+       )
+      ((and (< (vector-vector-distance (target-pos 0) (-> self start-pos)) 81920.0) (can-board-vehicle? self))
+       (go-virtual boarding)
+       )
+      ((< 20480.0 (vector-vector-xz-distance (-> self root trans) (-> self start-pos)))
+       (go-virtual returning)
+       )
+      )
+    (toggle-rod-of-god self)
+    (when (or (logtest? (-> self draw status) (draw-control-status no-draw))
+              (< 409600.0 (vector-vector-xz-distance (-> self root trans) (target-pos 0)))
+              )
+      (let ((gp-3 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))))
+        (set! (-> gp-3 y) 0.0)
+        (vector-normalize! gp-3 1.0)
+        (quaternion-look-at! (-> self root quat) gp-3 *up-vector*)
+        )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-channel-push! 1 (seconds 0.3))
+      (let ((gp-0 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 9) 5)))
+        (dotimes (s5-0 gp-0)
+          (let ((s4-0 (-> self skel root-channel 0)))
+            (set! (-> s4-0 frame-group) (the-as art-joint-anim wland-passenger-idle-wave-ja))
+            (set! (-> s4-0 param 0)
+                  (the float (+ (-> (the-as art-joint-anim wland-passenger-idle-wave-ja) frames num-frames) -1))
+                  )
+            (let* ((f30-0 3.0)
+                   (f28-0 0.0)
+                   (v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-16 (the-as number (logior #x3f800000 v1-15)))
+                   )
+              (set! (-> s4-0 param 1) (+ f30-0 (* f28-0 (+ -1.0 (the-as float v1-16)))))
+              )
+            (set! (-> s4-0 frame-num) 0.0)
+            (joint-control-channel-group! s4-0 (the-as art-joint-anim wland-passenger-idle-wave-ja) num-func-seek!)
+            )
+          (until (ja-done? 0)
+            (suspend)
+            (let ((s4-1 (-> self skel root-channel 0)))
+              (set! (-> s4-1 param 0) (the float (+ (-> s4-1 frame-group frames num-frames) -1)))
+              (let* ((f30-1 3.0)
+                     (f28-1 0.0)
+                     (v1-29 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                     (v1-30 (the-as number (logior #x3f800000 v1-29)))
+                     )
+                (set! (-> s4-1 param 1) (+ f30-1 (* f28-1 (+ -1.0 (the-as float v1-30)))))
+                )
+              (joint-control-channel-group-eval! s4-1 (the-as art-joint-anim #f) num-func-seek!)
+              )
+            )
+          )
+        )
+      (ja-no-eval :group! wland-passenger-idle-wave-to-cover-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (let ((gp-1 (+ (logand (rand-uint31-gen *random-generator*) 3) 1)))
+        (dotimes (s5-1 (the-as int gp-1))
+          (ja-no-eval :group! wland-passenger-idle-cover-ja :num! (seek!) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek!))
+            )
+          )
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defbehavior wland-passenger-init-by-other wland-passenger ((arg0 wland-passenger-init-by-other-params))
+  (set! (-> self start-pos quad) (-> arg0 position quad))
+  (set! (-> self transport) (the-as handle #f))
+  (set! (-> self is-dead?) (-> arg0 is-dead?))
+  (let ((s5-0 (new 'stack-no-clear 'task-arrow-params)))
+    (set! (-> s5-0 pos quad) (-> arg0 position quad))
+    (quaternion-identity! (-> s5-0 quat))
+    (set! (-> s5-0 flags) (task-arrow-flags))
+    (set! (-> s5-0 map-icon) (the-as uint 13))
+    (logior! (-> s5-0 flags) (task-arrow-flags taf3))
+    (set! (-> self task-arrow) (process->handle (task-arrow-spawn s5-0 self)))
+    )
+  (set! (-> self level) (level-get *level* 'desresc))
+  (set! (-> self task-man) (-> arg0 parent))
+  (citizen-init-by-other arg0)
+  )
+
+(define *wland-passenger-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 2
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 1
+        :param1 1
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim -1
+    :hit-anim 3
+    :knocked-anim 9
+    :knocked-land-anim 10
+    :die-anim 3
+    :die-falling-anim 3
+    :victory-anim 3
+    :jump-wind-up-anim 3
+    :jump-in-air-anim 3
+    :jump-land-anim 3
+    :neck-joint -1
+    :sound-hit (static-sound-name "wland-passenger")
+    :sound-die (static-sound-name "wland-passenger")
+    :notice-distance-delta (meters 0.1)
+    :default-hit-points 12.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 0.5)
+    :jump-height-factor 0.1
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 61440.0
+    :knocked-soft-vy-hi 61440.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 40960.0
+    :knocked-hard-vxz-hi 61440.0
+    :knocked-hard-vy-lo 98304.0
+    :knocked-hard-vy-hi 106496.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 20480.0
+    :knocked-yellow-vxz-hi 24576.0
+    :knocked-yellow-vy-lo 28672.0
+    :knocked-yellow-vy-hi 40960.0
+    :knocked-red-vxz-lo 65536.0
+    :knocked-red-vxz-hi 81920.0
+    :knocked-red-vy-lo 61440.0
+    :knocked-red-vy-hi 61440.0
+    :knocked-blue-vxz-lo 32768.0
+    :knocked-blue-vxz-hi 65536.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :ragdoll-info #f
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 4
+    :turn-anim 3
+    :run-anim 19
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 10)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *wland-passenger-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defmethod init-enemy-collision! ((this wland-passenger))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 5324.8 0.0 5324.8)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-15 local-sphere) 0.0 9011.2 0.0 5324.8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-enemy! ((this wland-passenger))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wland-passenger" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *wland-passenger-nav-enemy-info*)
+  (let ((v1-5 (-> this nav)))
+    (set! (-> v1-5 speed-scale) 1.0)
+    )
+  0
+  (set! (-> this anim-shuffle) 4)
+  (set! (-> this anim-walk) 4)
+  (set! (-> this speed-walk) 12288.0)
+  (set! (-> this dist-walk-anim) 13107.2)
+  (set! (-> this dist-run-anim) 26214.4)
+  (set! (-> this anim-run) 19)
+  (set! (-> this speed-run) 49152.0)
+  (set! (-> this water-anim) -1)
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs (pointer wland-passenger).
+(defun spawn-wlander ((arg0 desert-passenger-info) (arg1 process))
+  (let ((s5-0 (new 'stack-no-clear 'wland-passenger-init-by-other-params)))
+    (set! (-> s5-0 position quad) (-> arg0 passenger-pos quad))
+    (quaternion-identity! (-> s5-0 rotation))
+    (set! (-> s5-0 velocity quad) (the-as uint128 0))
+    (set! (-> s5-0 behavior) (the-as uint 0))
+    (set! (-> s5-0 flags) (traffic-spawn-flags tsf0))
+    (set! (-> s5-0 is-dead?) (-> arg0 is-final?))
+    (set! (-> s5-0 parent) (process->handle arg1))
+    (process-spawn wland-passenger s5-0 :name "wland-passenger" :to arg1)
+    )
+  )
+
+;; WARN: disable def twice: 20. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod event-handler ((this wland-passenger) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('impact-impulse)
+     (when (= arg0 (send-event *target* 'get-vehicle))
+       (let ((t9-1 (method-of-type enemy event-handler)))
+         (t9-1 this arg0 arg1 arg2 arg3)
+         )
+       (let ((v0-1 (the-as object (logior (-> this root penetrated-by) (penetrate vehicle)))))
+         (set! (-> this root penetrated-by) (the-as penetrate v0-1))
+         v0-1
+         )
+       )
+     )
+    (('set-nav-mesh)
+     (when (and (-> this next-state) (= (-> this next-state name) 'inactive))
+       (let ((a0-8 (find-nearest-nav-mesh (-> this root trans) (the-as float #x7f800000))))
+         (when a0-8
+           (change-to a0-8 this)
+           (if (not (-> this nav))
+               (go-inactive this)
+               )
+           (let ((v1-20 (-> this nav state)))
+             (set! (-> v1-20 current-poly) (the-as nav-poly #f))
+             )
+           0
+           (citizen-method-195 this)
+           (citizen-method-194 this)
+           (try-locate-ground this (meters 10) (meters 10) #t (-> this gnd-collide-with))
+           (go (method-of-object this active))
+           )
+         )
+       )
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defstate inactive (wland-passenger)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-nav-mesh)
+       (event-handler self proc argc message block)
+       )
+      )
+    )
+  )
+
+(defmethod on-dying ((this wland-passenger))
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod go-die ((this wland-passenger))
+  (send-event (handle->process (-> this task-man)) 'fail-delay)
+  (call-parent-method this)
+  )
+
+(defmethod cleanup-for-death ((this wland-passenger))
+  (send-event (handle->process (-> this task-man)) 'fail-delay)
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod get-penetrated-by ((this wland-passenger))
+  ((method-of-type enemy get-penetrated-by) this)
+  )
+
+(defmethod citizen-method-194 ((this wland-passenger))
+  (call-parent-method this)
+  (set! (-> this root penetrated-by) (penetrate
+                                       generic-attack
+                                       lunge
+                                       flop
+                                       punch
+                                       spin
+                                       roll
+                                       uppercut
+                                       bonk
+                                       tube
+                                       flut-attack
+                                       board
+                                       mech-punch
+                                       dark-punch
+                                       dark-smack
+                                       flut
+                                       )
+        )
+  (none)
+  )
+
+(defmethod go-hostile ((this wland-passenger))
+  (go (method-of-object this active))
+  )
+
+(defmethod get-inv-mass ((this wland-passenger))
+  0.5
+  )
+
+(defmethod lerp-damage ((this wland-passenger) (arg0 float))
+  (lerp-scale 0.0 (* 0.3 (-> this enemy-info default-hit-points)) arg0 20480.0 122880.0)
+  )

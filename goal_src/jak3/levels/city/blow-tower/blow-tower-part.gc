@@ -5,5 +5,1284 @@
 ;; name in dgo: blow-tower-part
 ;; dgos: LCTYBLOW
 
+(define-extern *range-bt-roboguard-dust-scale-x* curve2d-fast)
+(define-extern *range-bt-roboguard-dust-scale-y* curve2d-fast)
+
 ;; DECOMP BEGINS
 
+(defskelgroup skel-bt-roboguard bt-roboguard bt-roboguard-lod0-jg bt-roboguard-idle0-ja
+              ((bt-roboguard-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow bt-roboguard-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-bt-grunt bt-grunt bt-grunt-lod0-jg -1
+              ((bt-grunt-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow bt-grunt-shadow-mg
+              :origin-joint-index 16
+              )
+
+(defskelgroup skel-kg-flyer kg-flying-turret kg-flying-turret-lod0-jg kg-flying-turret-idle-ja
+              ((kg-flying-turret-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defskelgroup skel-bt-mh-flyer bt-wasp bt-wasp-lod0-jg -1
+              ((bt-wasp-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7.5)
+              :shadow bt-wasp-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-bt-barrel cty-explode-barrel cty-explode-barrel-lod0-jg cty-explode-barrel-idle-ja
+              ((cty-explode-barrel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(defskelgroup skel-bt-missile cty-homing-missile cty-homing-missile-lod0-jg cty-homing-missile-idle-ja
+              ((cty-homing-missile-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-bt-hellcat hellcat-tower hellcat-tower-lod0-jg hellcat-tower-idle-ja
+              ((hellcat-tower-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-bt-pickup kg-pickup kg-pickup-lod0-jg kg-pickup-idle-ja
+              ((kg-pickup-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 12)
+              :shadow kg-pickup-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-bt-torn bt-torn bt-torn-lod0-jg bt-torn-idle-ja
+              ((bt-torn-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              )
+
+(defskelgroup skel-bt-sig bt-sig bt-sig-lod0-jg bt-sig-idle-ja
+              ((bt-sig-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              )
+
+(defskelgroup skel-bt-jinx bt-jinx bt-jinx-lod0-jg bt-jinx-idle-ja
+              ((bt-jinx-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              )
+
+(defpartgroup group-barrel-damage
+  :id 1455
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4788 :flags (sp7))
+    (sp-item 4789 :flags (sp3) :binding 4787)
+    (sp-item 4787 :flags (sp2) :period (seconds 4) :length (seconds 2))
+    )
+  )
+
+(defpart 4788
+  :init-specs ((:texture (explosion-nebula level-default-sprite))
+    (:num 1.0)
+    (:x (meters 0) (meters 0.5))
+    (:y (meters 0.5))
+    (:scale-x (meters 0.5) (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 200.0 30.0)
+    (:b 30.0)
+    (:a 128.0)
+    (:vel-y (meters 0.0033333334))
+    (:scalevel-x (meters -0.0033333334) (meters -0.0033333334))
+    (:scalevel-y (meters 0.0033333334) (meters 0.0033333334))
+    (:fade-g -0.8)
+    (:fade-b -0.2)
+    (:fade-a -0.2 -0.6666667)
+    (:accel-y (meters 0.00033333333) (meters 0.00033333333))
+    (:friction 0.99)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:conerot-x (degrees -5) (degrees 10))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4789
+  :init-specs ((:texture (hotdot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 15))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 200.0)
+    (:a 128.0)
+    (:vel-y (meters 0.2))
+    (:scalevel-x (meters -0.033333335))
+    (:scalevel-y :copy scalevel-x)
+    (:accel-y (meters -0.00066666666) (meters -0.00066666666))
+    (:friction 0.99)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 0) (degrees 2))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4787
+  :init-specs ((:texture (explo-texture level-default-sprite))
+    (:birth-func 'birth-func-inherit-size)
+    (:num 0.3)
+    (:scale-x (meters 0.00024414062) (meters 0.00012207031))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 128.0)
+    (:b 32.0)
+    (:a 128.0)
+    (:fade-a -0.36571428 -0.36571428)
+    (:accel-y (meters 0) (meters -0.00033333333))
+    (:timer (seconds 1.167))
+    (:flags (sp-cpuinfo-flag-3))
+    )
+  )
+
+(defpartgroup group-flyer-shot-trail
+  :id 1456
+  :bounds (static-bspherem 0 0 0 1)
+  :parts ((sp-item 4790 :flags (sp6)) (sp-item 4791 :flags (sp6)) (sp-item 4792 :flags (sp6)))
+  )
+
+(defpart 4791
+  :init-specs ((:texture (diamond-star level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 2.25) (meters 0.1))
+    (:rot-x (degrees 2.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 128.0 64.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 2048.0)
+    )
+  )
+
+(defpart 4792
+  :init-specs ((:texture (colorflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 10))
+    (:rot-x (degrees 2.25))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 2048.0)
+    )
+  )
+
+(defpart 4790
+  :init-specs ((:texture (rainbow-halo level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 2))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 64.0 128.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    )
+  )
+
+(defpartgroup group-bt-mh-flyer-explosion
+  :id 1457
+  :duration (seconds 2)
+  :linger-duration (seconds 1)
+  :flags (sp0 sp5 sp6 sp7)
+  :bounds (static-bspherem 0 0 0 15)
+  :rotate ((degrees 0) (degrees 90) (degrees 0))
+  :scale (0.25 0.25 0.25)
+  :parts ((sp-item 4793 :flags (sp6) :period (seconds 3) :length (seconds 0.017))
+    (sp-item 4794 :flags (sp6) :period (seconds 3) :length (seconds 0.017))
+    (sp-item 4795 :period (seconds 3) :length (seconds 0.05))
+    (sp-item 4796 :fade-after (meters 200) :falloff-to (meters 200) :period (seconds 3) :length (seconds 0.085) :offset 20)
+    (sp-item 4797 :fade-after (meters 150) :falloff-to (meters 150) :period (seconds 3) :length (seconds 0.067) :offset 30)
+    )
+  )
+
+(defpart 4794
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 2))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 24.0)
+    (:scalevel-x (meters 0.10666667))
+    (:rotvel-z (degrees 0.3))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -4.266667)
+    (:fade-b -4.266667)
+    (:fade-a 0.0)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 glow))
+    (:next-time (seconds 0.25))
+    (:next-launcher 4798)
+    )
+  )
+
+(defpart 4798
+  :init-specs ((:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.85333335)
+    (:fade-g -1.7066667)
+    (:fade-b -1.7066667)
+    (:fade-a -0.64)
+    )
+  )
+
+(defpart 4797
+  :init-specs ((:texture (explosion-edge level-default-sprite))
+    (:num 2.0 0.2)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0) (degrees 3600) :store)
+    (:scale-y (meters 0.8) (meters 0.2))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 32.0 32.0)
+    (:scalevel-x (meters 0.01) (meters 0.13333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -0.36)
+    (:fade-b -4.24)
+    (:fade-a -0.22068965)
+    (:friction 0.95)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:next-time (seconds 0.085))
+    (:next-launcher 4799)
+    (:conerot-x '*sp-temp*)
+    (:conerot-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4796
+  :init-specs ((:texture (explosion-nebula level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 3.0)
+    (:scale-x (meters 1) (meters 1))
+    (:rot-z (degrees 0))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 32.0 32.0)
+    (:vel-y (meters 0.02) (meters 0.01))
+    (:scalevel-x (meters 0.01) (meters 0.13333334))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -0.36)
+    (:fade-b -4.24)
+    (:fade-a -0.22068965)
+    (:friction 0.95)
+    (:timer (seconds 3.335))
+    (:flags (sp-cpuinfo-flag-2))
+    (:userdata :data (new 'static 'boxed-array :type int32 40 1 0 #x400000 #x400700))
+    (:next-time (seconds 0.085))
+    (:next-launcher 4799)
+    (:conerot-x (degrees 0) (degrees 3600))
+    (:conerot-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4799
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0) (:next-time (seconds 0.017) (seconds 0.065)) (:next-launcher 4800))
+  )
+
+(defpart 4800
+  :init-specs ((:scalevel-x (meters 0.016666668) (meters 0.016666668))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.44)
+    (:fade-g -2.36)
+    (:fade-b -2.64)
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 4801)
+    )
+  )
+
+(defpart 4801
+  :init-specs ((:scalevel-x (meters 0.008333334) (meters 0.008333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -1.2944444)
+    (:fade-g -0.7111111)
+    (:fade-b -0.094444446)
+    (:fade-a -0.06545454 -0.06545454)
+    (:next-time (seconds 0.5) (seconds 0.097))
+    (:next-launcher 4802)
+    )
+  )
+
+(defpart 4802
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b 0.0) (:fade-a -0.1125))
+  )
+
+(defpart 4793
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 96.0)
+    (:scalevel-x (meters 0.5))
+    (:rotvel-z (degrees 0.3))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -1.28)
+    (:fade-b -5.1)
+    (:fade-a 0.0)
+    (:timer (seconds 0.217))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:next-time (seconds 0.1))
+    (:next-launcher 4803)
+    )
+  )
+
+(defpart 4803
+  :init-specs ((:scalevel-x (meters -0.2857143))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 0.0)
+    (:fade-g -3.6571429)
+    (:fade-b 0.0)
+    (:fade-a -2.7428572)
+    )
+  )
+
+(defpart 4795
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 8.0 1.0)
+    (:x (meters 0) (meters 0.6))
+    (:scale-x (meters 2.5) (meters 2))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 70.0 20.0)
+    (:g 70.0 20.0)
+    (:b 70.0 20.0)
+    (:a 0.0 40.0)
+    (:vel-y (meters 0) (meters 0.1))
+    (:scalevel-x (meters 0.033333335) (meters 0.02))
+    (:rotvel-z (degrees -0.12) (degrees 0.24))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r 3.3)
+    (:fade-g 3.12)
+    (:fade-b 1.18)
+    (:fade-a 1.76)
+    (:friction 0.88)
+    (:timer (seconds 2.367))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:next-time (seconds 0.117) (seconds 0.047))
+    (:next-launcher 4804)
+    (:conerot-x (degrees 0) (degrees 3600))
+    (:conerot-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4804
+  :init-specs ((:scalevel-x (meters 0.0033333334))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.53333336)
+    (:fade-g -1.9666667)
+    (:fade-b -2.2)
+    (:fade-a -0.41666666)
+    (:next-time (seconds 0.15) (seconds 0.047))
+    (:next-launcher 4805)
+    )
+  )
+
+(defpart 4805
+  :init-specs ((:scalevel-x (meters 0))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-r -0.38833332)
+    (:fade-g -0.21333334)
+    (:fade-b -0.028333334)
+    (:fade-a -0.38833332)
+    )
+  )
+
+(defpart 4806
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 1.0)
+    (:scale-x (meters 0.5) (meters 0.5))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 150.0)
+    (:g 150.0)
+    (:b 150.0)
+    (:a 30.0 30.0)
+    (:scalevel-x (meters 0.01))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.1 -0.1)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    (:userdata :data (new 'static 'boxed-array :type int32 20 1 0 #x400000 #x405c00))
+    (:rotate-y (degrees 0))
+    )
+  )
+
+(defpartgroup group-bt-dummy
+  :id 1458
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 20)
+  :parts ((sp-item 4807 :flags (sp3 sp7)))
+  )
+
+(defpart 4807
+  :init-specs ((:texture (middot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 5))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 0.0)
+    (:b 0.0)
+    (:a 0.0)
+    (:timer (seconds 0.017))
+    (:flags ())
+    )
+  )
+
+(defpartgroup group-grunt-hit-pickup
+  :id 1459
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 500)
+  :parts ((sp-item 4808 :flags (sp7) :period (seconds 1) :length (seconds 0.067)) (sp-item 4809 :flags (is-3d sp7)))
+  )
+
+(defpart 4808
+  :init-specs ((:texture (hotdot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 0.3) (meters 0.5))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 120.0)
+    (:b 60.0)
+    (:a 255.0)
+    (:vel-y (meters 0.033333335) (meters 0.033333335))
+    (:fade-a -0.425)
+    (:accel-y (meters -0.0026666666))
+    (:friction 0.9)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4809
+  :init-specs ((:texture (crate-wood-01-splinter level-default-sprite))
+    (:birth-func 'birth-func-texture-group)
+    (:num 1.0)
+    (:scale-x (meters 0.5) (meters 1))
+    (:scale-y (meters 0.5) (meters 1))
+    (:r 20.0 50.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:a 128.0)
+    (:vel-y (meters 0.033333335) (meters 0.06666667))
+    (:rotvel-x (degrees -5) (degrees 10))
+    (:rotvel-y (degrees -5) (degrees 10))
+    (:rotvel-z (degrees -5) (degrees 10))
+    (:accel-y (meters -0.0016666667))
+    (:timer (seconds 2.5))
+    (:flags (launch-along-z left-multiply-quat))
+    (:userdata
+      :data (new 'static 'boxed-array :type int32 5 0 0 #x400600 #x400500 #x40ae00 #x40a500 #x408800 #x405000)
+      )
+    (:next-time (seconds 0.335))
+    (:next-launcher 4810)
+    (:conerot-x (degrees 0) (degrees 90))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(defpart 4810
+  :init-specs ((:r 20.0 50.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:rotvel-x (degrees -5) (degrees 10))
+    (:rotvel-y (degrees -5) (degrees 10))
+    (:rotvel-z (degrees -5) (degrees 10))
+    (:next-time (seconds 0.017) (seconds 0.997))
+    (:next-launcher 4811)
+    )
+  )
+
+(defpart 4811
+  :init-specs ((:r 255.0)
+    (:g :copy r)
+    (:b :copy r)
+    (:rotvel-x (degrees -5) (degrees 10))
+    (:rotvel-y (degrees -5) (degrees 10))
+    (:rotvel-z (degrees -5) (degrees 10))
+    (:next-time (seconds 0.017))
+    (:next-launcher 4810)
+    )
+  )
+
+(defpart 4812
+  :init-specs ((:texture (explosion-nebula level-default-sprite))
+    (:birth-func 'birth-func-curve)
+    (:num 30.0)
+    (:scale-x (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 1.0)
+    (:g 1.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.05))
+    (:friction 0.97)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-13))
+    (:userdata 0.0)
+    (:func 'live-func-curve)
+    (:conerot-x (degrees 0) (degrees 360))
+    (:conerot-z (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(if #t
+    (set! *range-bt-roboguard-dust-scale-x* (new 'static 'curve2d-fast
+                                              :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                              :ys (new 'static 'vector :x 4.0 :y 10.0 :z 11.0 :w 12.0)
+                                              :one-over-x-deltas (new 'static 'vector :x 6.0 :y 1.0 :z 1.0 :w 1.0)
+                                              )
+          )
+    )
+
+(if #t
+    (set! *range-bt-roboguard-dust-scale-y* (new 'static 'curve2d-fast
+                                              :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                                              :ys (new 'static 'vector :x 4.0 :y 10.0 :z 11.0 :w 12.0)
+                                              :one-over-x-deltas (new 'static 'vector :x 6.0 :y 1.0 :z 1.0 :w 1.0)
+                                              )
+          )
+    )
+
+(define *part-bt-roboguard-explosion-dust-in-curve-settings* (new 'static 'particle-curve-settings
+                                                               :lifetime-base (seconds 0.5)
+                                                               :lifetime-offset (seconds 1)
+                                                               :flags (particle-curve-flags pcf0)
+                                                               )
+        )
+
+(set! (-> *part-id-table* 4812 init-specs 14 initial-valuef)
+      (the-as float *part-bt-roboguard-explosion-dust-in-curve-settings*)
+      )
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* color-start) *range-kgpickup-dust-color*)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* alpha-start) *range-kgpickup-dust-alpha*)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* scale-x-start)
+      *range-bt-roboguard-dust-scale-x*
+      )
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* scale-y-start)
+      *range-bt-roboguard-dust-scale-y*
+      )
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* r-scalar) #f)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* g-scalar) #f)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* b-scalar) #f)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* a-scalar) *curve-kgpickup-dust-alpha*)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* scale-x-scalar) *curve-kgpickup-dust-scale-x*)
+
+(set! (-> *part-bt-roboguard-explosion-dust-in-curve-settings* scale-y-scalar) *curve-kgpickup-dust-scale-y*)
+
+(defpartgroup group-bt-roboguard-explode
+  :id 1460
+  :duration (seconds 4)
+  :flags (sp0 sp5)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 1277 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 1279 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4812 :period (seconds 30) :length (seconds 0.035))
+    (sp-item 1282 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 1283 :period (seconds 30) :length (seconds 0.167))
+    (sp-item 1285 :flags (sp3) :binding 1276)
+    (sp-item 1285 :flags (sp3) :binding 1276)
+    (sp-item 1276 :flags (sp2) :period (seconds 4) :length (seconds 2))
+    (sp-item 1276 :flags (sp2) :period (seconds 4) :length (seconds 2))
+    )
+  )
+
+(defpartgroup group-gun-hellcat-shot-hit
+  :id 1461
+  :duration (seconds 0.017)
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4813 :flags (sp6) :period (seconds 2) :length (seconds 0.017))
+    (sp-item 4814 :fade-after (meters 60) :falloff-to (meters 60) :period (seconds 2) :length (seconds 0.017))
+    (sp-item 4815 :fade-after (meters 120) :falloff-to (meters 140) :period (seconds 2) :length (seconds 0.017))
+    )
+  )
+
+(defpart 4815
+  :init-specs ((:texture (motion-blur-part level-default-sprite))
+    (:num 8.0 16.0)
+    (:scale-x (meters 1.5))
+    (:rot-x 4)
+    (:scale-y (meters 0.05) (meters 0.05))
+    (:r 255.0)
+    (:g 255.0)
+    (:b 255.0)
+    (:a 64.0 64.0)
+    (:omega (degrees 0.0675))
+    (:vel-z (meters 0.06666667) (meters 0.33333334))
+    (:fade-r -0.053333335)
+    (:fade-g -2.55)
+    (:fade-b -5.1)
+    (:fade-a -0.42666668 -0.42666668)
+    (:accel-y (meters -0.0013333333) (meters -0.001))
+    (:friction 0.875)
+    (:timer (seconds 0.5))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-13))
+    (:func 'sparticle-motion-blur)
+    (:conerot-x (degrees 80) (degrees 40))
+    (:conerot-y (degrees 80) (degrees 40))
+    (:conerot-z (degrees 80) (degrees 40))
+    (:conerot-radius (meters 0) (meters 0.2))
+    )
+  )
+
+(defpart 4814
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 8.0 16.0)
+    (:scale-x (meters 0.5) (meters 1))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 100.0)
+    (:b 80.0)
+    (:a 32.0 32.0)
+    (:vel-z (meters 0) (meters 0.016666668))
+    (:scalevel-x (meters 0.0013333333) (meters 0.0033333334))
+    (:rotvel-z (degrees -0.3) (degrees 0.6))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.10666667 -0.10666667)
+    (:friction 0.95)
+    (:timer (seconds 2))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13))
+    (:conerot-x (degrees 90) (degrees 20))
+    (:conerot-y (degrees 90) (degrees 20))
+    (:conerot-z (degrees 90) (degrees 20))
+    (:conerot-radius (meters 0) (meters 0.2))
+    )
+  )
+
+(defpart 4813
+  :init-specs ((:texture (hitspark level-default-sprite))
+    (:num 1.0)
+    (:sound (static-sound-spec "blue-gun-rico" :group 0))
+    (:scale-x (meters 0.4) (meters 2))
+    (:rot-x (degrees 2.25))
+    (:rot-z (degrees 0) (degrees 3600))
+    (:scale-y :copy scale-x)
+    (:r 230.0 25.0)
+    (:g 230.0 25.0)
+    (:b 230.0 25.0)
+    (:a 128.0)
+    (:fade-a -5.12)
+    (:timer (seconds 0.085))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:next-time (seconds 0.035))
+    (:next-launcher 4816)
+    )
+  )
+
+(defpart 4816
+  :init-specs ((:scalevel-x (meters 0.12) (meters 0.12)) (:scalevel-y :copy scalevel-x))
+  )
+
+(defpartgroup group-bt-mh-flyer-engine
+  :id 1462
+  :duration (seconds 0.017)
+  :flags (sp0 sp7)
+  :bounds (static-bspherem 0 0 0 8)
+  :parts ((sp-item 4817 :flags (is-3d sp7))
+    (sp-item 4818 :fade-after (meters 120) :falloff-to (meters 120) :flags (sp7))
+    (sp-item 4819 :fade-after (meters 60) :falloff-to (meters 60) :flags (sp7))
+    (sp-item 4820 :fade-after (meters 60) :falloff-to (meters 60) :flags (sp7))
+    (sp-item 4821 :fade-after (meters 120) :falloff-to (meters 120) :flags (sp7))
+    )
+  )
+
+(defpart 4817
+  :init-specs ((:texture (bt-wasp-flame lblowcst-sprite))
+    (:num 1.0)
+    (:y (meters 0))
+    (:z (meters -1.2) (meters 0.1))
+    (:scale-x (meters 0.6))
+    (:scale-y (meters 2.6))
+    (:r 128.0 128.0)
+    (:g 64.0 64.0)
+    (:b :copy g)
+    (:a 128.0 64.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    (:rotate-x (degrees -90))
+    (:rotate-y (degrees 0))
+    (:rotate-z (degrees 0))
+    )
+  )
+
+(defpart 4821
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:y (meters -0.3))
+    (:scale-x (meters 1.5) (meters 0.1))
+    (:rot-x (degrees 2.25))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 64.0 64.0)
+    (:b 0.0)
+    (:a 16.0 8.0)
+    (:omega (degrees 2718))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 409.6)
+    )
+  )
+
+(defpart 4818
+  :init-specs ((:texture (bigpuff level-default-sprite))
+    (:num 0.5)
+    (:y (meters 0) (meters -0.25))
+    (:scale-x (meters 0.2) (meters 0.2))
+    (:rot-z (degrees 0) 1 (degrees 180))
+    (:scale-y (meters 1) (meters 0.6))
+    (:r 192.0)
+    (:g 64.0)
+    (:b 0.0)
+    (:a 0.0 16.0)
+    (:vel-y (meters -0.1) (meters -0.016666668))
+    (:scalevel-x (meters 0.033333335))
+    (:scalevel-y (meters 0.006666667))
+    (:fade-r -2.0)
+    (:fade-g 2.0)
+    (:fade-b 5.0)
+    (:fade-a 0.32)
+    (:accel-x (meters 0) (meters 0.0016666667))
+    (:accel-y (meters 0.00016666666) (meters 0.00033333333))
+    (:friction 0.94)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-13 sp-cpuinfo-flag-14 launch-along-z))
+    (:next-time (seconds 0.085))
+    (:next-launcher 4822)
+    (:rotate-y (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 4822
+  :init-specs ((:r 64.0 64.0)
+    (:g 64.0 64.0)
+    (:b 64.0 64.0)
+    (:fade-r 0.0)
+    (:fade-g 0.0)
+    (:fade-b 0.0)
+    (:fade-a -0.064 -0.128)
+    )
+  )
+
+(defpart 4819
+  :init-specs ((:texture (hotdot level-default-sprite))
+    (:num 0.1 0.1)
+    (:y (meters 0.25) (meters -0.5))
+    (:scale-x (meters 0.05))
+    (:scale-y (meters 0.5))
+    (:r 192.0 64.0)
+    (:g 0.0 128.0)
+    (:b 0.0)
+    (:a 128.0)
+    (:vel-y (meters -0.033333335) (meters -0.026666667))
+    (:scalevel-x (meters 0.001))
+    (:scalevel-y (meters -0.017))
+    (:fade-g 0.0)
+    (:accel-x (meters 0) (meters 0.0016666667))
+    (:accel-y (meters 0.00016666666) (meters 0.0005))
+    (:friction 0.96)
+    (:timer (seconds 0.167) (seconds 0.247))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-13 sp-cpuinfo-flag-14 launch-along-z))
+    (:next-time (seconds 0.1))
+    (:next-launcher 4823)
+    (:rotate-y (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 4823
+  :init-specs ((:scalevel-x (meters 0)) (:scalevel-y (meters 0)))
+  )
+
+(defpart 4820
+  :init-specs ((:num 1.0)
+    (:rot-x 8)
+    (:r 1638.4)
+    (:g 1331.2)
+    (:b 1433.6)
+    (:vel-y (meters -0.1) (meters -0.016666668))
+    (:fade-r 32.768)
+    (:fade-g 26.623999)
+    (:fade-b 28.671999)
+    (:accel-x (meters 0) (meters 0.0016666667))
+    (:friction 0.94)
+    (:timer (seconds 0.335))
+    (:flags (distort launch-along-z))
+    (:next-time (seconds 0.167))
+    (:next-launcher 4824)
+    (:rotate-y (degrees 0) (degrees 360))
+    )
+  )
+
+(defpart 4824
+  :init-specs ((:fade-r 0.0) (:fade-g 0.0) (:fade-b -4.096))
+  )
+
+(defpart 4825
+  :init-specs ((:texture (gun-yellow-muzzleflash level-default-sprite))
+    (:birth-func 'birth-func-set-quat)
+    (:num 1.0)
+    (:scale-x (meters 2))
+    (:scale-y (meters 4))
+    (:r 128.0 128.0)
+    (:g 32.0 96.0)
+    (:b :copy g)
+    (:a 128.0 64.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3))
+    )
+  )
+
+(define *bt-grunt-ragdoll-info* (new 'static 'ragdoll-setup
+                                  :orient-tform (new 'static 'vector :x 1.0 :w 10625.897)
+                                  :scale (new 'static 'vector :x 0.6399 :y 0.6399 :z 0.6399)
+                                  :bg-collide-with (collide-spec backgnd player-list)
+                                  :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 3
+                                      :parent-joint -1
+                                      :geo-tform (new 'static 'vector :x -1.0 :w 1170.3455)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 2268.7744
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 4
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 1.0 :w 4000.9365)
+                                      :geo-tform (new 'static 'vector :x 1.0 :w 12817.95)
+                                      :axial-slop 2169.078
+                                      :max-angle 2296.8184
+                                      :coll-rad 2867.2
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 5
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 1.0 :w 10540.374)
+                                      :geo-tform (new 'static 'vector :x -1.0 :w 12551.108)
+                                      :axial-slop 2169.078
+                                      :max-angle 2226.3489
+                                      :coll-rad 2209.3823
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 6
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 1.0 :w 13046.233)
+                                      :geo-tform (new 'static 'vector :x 1.0 :w 18078.088)
+                                      :axial-slop 2169.078
+                                      :max-angle 3210.7178
+                                      :coll-rad 1644.544
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 7
+                                      :parent-joint 4
+                                      :pre-tform (new 'static 'vector :x 0.4178 :z -0.9083 :w 11487.004)
+                                      :geo-tform (new 'static 'vector :x -0.5907 :y -0.4565 :z 0.665 :w 25388.248)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1641.6768
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 8
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.1565 :z -0.9875 :w 12747.589)
+                                      :geo-tform (new 'static 'vector :x -0.0123 :y 0.7268 :z 0.6864 :w 28823.824)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1295.1552
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 9
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.938 :z 0.3463 :w 15464.585)
+                                      :geo-tform (new 'static 'vector :x 0.0404 :y 0.9991 :z 0.0016 :w 26660.428)
+                                      :axial-slop 2169.078
+                                      :max-angle 2671.921
+                                      :coll-rad 1899.3152
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 10
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.938 :z 0.346 :w 14.381512)
+                                      :geo-tform (new 'static 'vector :x 0.5827 :y 0.8005 :z 0.1389 :w 27752.074)
+                                      :axial-slop 2169.078
+                                      :max-angle 2077.3455
+                                      :coll-rad 1787.904
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 11
+                                      :parent-joint 4
+                                      :pre-tform (new 'static 'vector :x 0.418 :z 0.9082 :w 11484.565)
+                                      :geo-tform (new 'static 'vector :x 0.5908 :y -0.4564 :z 0.665 :w 40148.812)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1563.8528
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 12
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.1563 :z 0.9875 :w 12751.085)
+                                      :geo-tform (new 'static 'vector :x 0.0122 :y 0.7266 :z 0.6866 :w 36713.688)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1127.6288
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 13
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.938 :z -0.3461 :w 15469.664)
+                                      :geo-tform (new 'static 'vector :x -0.0404 :y 0.9991 :z 0.0015 :w 38877.887)
+                                      :axial-slop 2169.078
+                                      :max-angle 2330.5876
+                                      :coll-rad 1610.1376
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 14
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.9377 :z -0.3468 :w 16.074524)
+                                      :geo-tform (new 'static 'vector :x -0.2371 :y 0.2169 :z -0.9468 :w 20556.623)
+                                      :axial-slop 2169.078
+                                      :max-angle 1879.882
+                                      :coll-rad 1629.3888
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 15
+                                      :parent-joint 3
+                                      :pre-tform (new 'static 'vector :x 1.0 :w 42847.234)
+                                      :geo-tform (new 'static 'vector :x -1.0 :w 16468.232)
+                                      :axial-slop 2169.078
+                                      :max-angle 2508.973
+                                      :coll-rad 1812.0704
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 16
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 1.0 :w 3567.2522)
+                                      :geo-tform (new 'static 'vector :x 1.0 :w 42973.14)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1858.3552
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 17
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.2349 :z -0.9718 :w 18020.252)
+                                      :geo-tform (new 'static 'vector :x 0.3808 :y 0.3151 :z 0.8691 :w 29486.395)
+                                      :axial-slop 2169.078
+                                      :max-angle 3698.87
+                                      :coll-rad 877.3632
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 18
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.9998 :z 0.0086 :w 4412.9214)
+                                      :geo-tform (new 'static 'vector :x 0.3995 :y -0.4805 :z 0.7804 :w 25729.781)
+                                      :axial-slop 2169.078
+                                      :max-angle 3691.5154
+                                      :coll-rad 1524.9408
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 19
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.7835 :z 0.621 :w 14960.958)
+                                      :geo-tform (new 'static 'vector :x 0.2887 :y 0.6587 :z 0.6945 :w 40555.97)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1127.6288
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 20
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.7644 :z -0.6445 :w 17272.176)
+                                      :geo-tform (new 'static 'vector :x 0.5513 :y 0.3614 :z 0.7516 :w 33063.24)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1127.6288
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 44
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.9734 :z 0.2283 :w 7149.304)
+                                      :geo-tform (new 'static 'vector :x -0.7224 :y -0.6901 :z -0.0373 :w 15253.522)
+                                      :axial-slop 2169.078
+                                      :max-angle 1294.1176
+                                      :coll-rad 659.456
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 45
+                                      :parent-joint 20
+                                      :pre-tform (new 'static 'vector :x 0.4934 :z 0.8696 :w 6514.1875)
+                                      :geo-tform (new 'static 'vector :x -0.0332 :y 0.8825 :z 0.4687 :w 37613.457)
+                                      :axial-slop 2169.078
+                                      :max-angle 1411.5544
+                                      :coll-rad 605.3888
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 21
+                                      :parent-joint 16
+                                      :pre-tform (new 'static 'vector :x -1.0 :w 9863.842)
+                                      :geo-tform (new 'static 'vector :x -1.0 :w 12698.965)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1488.0768
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 22
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -1.0 :w 1462.5452)
+                                      :geo-tform (new 'static 'vector :x 0.9995 :y -0.0161 :z -0.0185 :w 7921.737)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1285.7344
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 23
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.9958 :z -0.09 :w 1956.7229)
+                                      :geo-tform (new 'static 'vector :x 0.9998 :y 0.0041 :z 0.0071 :w 33050.805)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1801.8304
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 24
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.9998 :z 0.0159 :w 6114.891)
+                                      :geo-tform (new 'static 'vector :x 0.9998 :y -0.0127 :z 0.0043 :w 8018.73)
+                                      :axial-slop 2169.078
+                                      :max-angle 2497.213
+                                      :coll-rad 794.2144
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 25
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.9998 :z 0.0159 :w 6305.8555)
+                                      :geo-tform (new 'static 'vector :x 0.9998 :y -0.0172 :z 0.0018 :w 6908.7324)
+                                      :axial-slop 2169.078
+                                      :max-angle 1846.1127
+                                      :coll-rad 556.2368
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 46
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.9998 :z 0.0159 :w 6830.7266)
+                                      :geo-tform (new 'static 'vector :x 0.9993 :y -0.0365 :z -0.006 :w 3790.2383)
+                                      :axial-slop 2169.078
+                                      :max-angle 1491.563
+                                      :coll-rad 542.3104
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 26
+                                      :parent-joint 16
+                                      :pre-tform (new 'static 'vector :x -0.2352 :z 0.9718 :w 18022.729)
+                                      :geo-tform (new 'static 'vector :x -0.3537 :y 0.3542 :z 0.8654 :w 34566.508)
+                                      :axial-slop 2169.078
+                                      :max-angle 3739.2292
+                                      :coll-rad 1540.096
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 27
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.8967 :z -0.4423 :w 5274.7744)
+                                      :geo-tform (new 'static 'vector :x -0.0105 :y 0.862 :z -0.5065 :w 24694.367)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1127.6288
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 28
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.8194 :z -0.573 :w 13110.112)
+                                      :geo-tform (new 'static 'vector :x -0.2576 :y 0.7211 :z 0.6428 :w 24504.475)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1751.4496
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 29
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.8027 :z 0.596 :w 15135.011)
+                                      :geo-tform (new 'static 'vector :x -0.5895 :y 0.2007 :z 0.7821 :w 36329.734)
+                                      :axial-slop 2169.078
+                                      :max-angle 3682.7046
+                                      :coll-rad 1127.6288
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 48
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.8262 :z 0.5632 :w 7707.525)
+                                      :geo-tform (new 'static 'vector :x -0.6943 :y 0.7184 :z -0.0381 :w 14762.858)
+                                      :axial-slop 2169.078
+                                      :max-angle 2015.6871
+                                      :coll-rad 573.0304
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 49
+                                      :parent-joint 29
+                                      :pre-tform (new 'static 'vector :x 0.9975 :z -0.0684 :w 3277.692)
+                                      :geo-tform (new 'static 'vector :x -0.2795 :y 0.7979 :z 0.5336 :w 35258.77)
+                                      :axial-slop 2169.078
+                                      :max-angle 1851.9927
+                                      :coll-rad 468.992
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 41
+                                      :parent-joint 4
+                                      :pre-tform (new 'static 'vector :x 0.5769 :z -0.8166 :w 8297.695)
+                                      :geo-tform (new 'static 'vector :x -0.6954 :y -0.0651 :z 0.7153 :w 9511.8955)
+                                      :axial-slop 2169.078
+                                      :max-angle 2863.5044
+                                      :coll-rad 1868.5952
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 42
+                                      :parent-joint 4
+                                      :pre-tform (new 'static 'vector :x 0.5774 :z 0.8162 :w 8293.489)
+                                      :geo-tform (new 'static 'vector :x 0.948 :y -0.2986 :z 0.1083 :w 34953.68)
+                                      :axial-slop 2169.078
+                                      :max-angle 2569.885
+                                      :coll-rad 1893.9904
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 31
+                                      :parent-joint 10
+                                      :pre-tform (new 'static 'vector :x 0.3449 :z -0.9384 :w 16372.404)
+                                      :geo-tform (new 'static 'vector :x 0.088 :y -0.8342 :z 0.5442 :w 20057.604)
+                                      :axial-slop 2169.078
+                                      :max-angle 3185.0312
+                                      :coll-rad 1327.9232
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 32
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.6081 :z 0.7936 :w 10429.526)
+                                      :geo-tform (new 'static 'vector :x 0.213 :y -0.975 :z -0.061 :w 19499.654)
+                                      :axial-slop 2169.078
+                                      :max-angle 2031.8344
+                                      :coll-rad 423.1168
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 33
+                                      :parent-joint 10
+                                      :pre-tform (new 'static 'vector :x 0.9512 :z -0.3084 :w 2006.2573)
+                                      :geo-tform (new 'static 'vector :x -0.0464 :y 0.9956 :z 0.0799 :w 26746.152)
+                                      :axial-slop 2169.078
+                                      :max-angle 2505.2957
+                                      :coll-rad 533.7088
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 34
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.7105 :z 0.7034 :w 3017.6597)
+                                      :geo-tform (new 'static 'vector :x 0.0381 :y 0.9847 :z -0.1692 :w 26846.422)
+                                      :axial-slop 2169.078
+                                      :max-angle 2064.8572
+                                      :coll-rad 408.3712
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 35
+                                      :parent-joint 8
+                                      :pre-tform (new 'static 'vector :x 0.9371 :z 0.3486 :w 15668.893)
+                                      :geo-tform (new 'static 'vector :x -0.2897 :y 0.1004 :z 0.9516 :w 31568.328)
+                                      :axial-slop 2169.078
+                                      :max-angle 2784.2424
+                                      :coll-rad 1593.7535
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 36
+                                      :parent-joint 14
+                                      :pre-tform (new 'static 'vector :x 0.3452 :z 0.9383 :w 16373.424)
+                                      :geo-tform (new 'static 'vector :x 0.1347 :y 0.823 :z -0.5515 :w 19233.342)
+                                      :axial-slop 2169.078
+                                      :max-angle 2773.2288
+                                      :coll-rad 1373.3888
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 37
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x -0.4593 :z -0.888 :w 10428.289)
+                                      :geo-tform (new 'static 'vector :x 0.1971 :y 0.977 :z 0.079 :w 17810.5)
+                                      :axial-slop 2169.078
+                                      :max-angle 1984.8488
+                                      :coll-rad 616.448
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 38
+                                      :parent-joint 14
+                                      :pre-tform (new 'static 'vector :x 0.9998 :z -0.0063 :w 3668.4868)
+                                      :geo-tform (new 'static 'vector :x 0.0529 :y 0.9969 :z 0.056 :w 38759.062)
+                                      :axial-slop 2169.078
+                                      :max-angle 1981.1897
+                                      :coll-rad 1127.6288
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 39
+                                      :parent-joint -1
+                                      :pre-tform (new 'static 'vector :x 0.7207 :z -0.6929 :w 3011.8708)
+                                      :geo-tform (new 'static 'vector :x -0.0298 :y 0.9808 :z -0.1918 :w 38536.098)
+                                      :axial-slop 2169.078
+                                      :max-angle 2276.2654
+                                      :coll-rad 534.528
+                                      )
+                                    (new 'static 'ragdoll-joint-setup
+                                      :joint-index 40
+                                      :parent-joint 12
+                                      :pre-tform (new 'static 'vector :x 0.9375 :z -0.3477 :w 15673.973)
+                                      :geo-tform (new 'static 'vector :x 0.2894 :y 0.1005 :z 0.9517 :w 33957.168)
+                                      :axial-slop 2169.078
+                                      :max-angle 2685.1372
+                                      :coll-rad 1853.0304
+                                      )
+                                    )
+                                  )
+        )

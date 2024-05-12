@@ -1,0 +1,1057 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defpartgroup group-cty-sniper-battery-glow
+  :id 1463
+  :flags (sp0 sp4)
+  :bounds (static-bspherem 0 0 0 4)
+  :parts ((sp-item 4829 :fade-after (meters 200) :flags (sp6 sp7) :hour-mask #b111111111111000000))
+  )
+
+;; failed to figure out what this is:
+(defpart 4829
+  :init-specs ((:texture (colorflash level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 7) (meters 0.1))
+    (:rot-x (degrees 11.25))
+    (:scale-y :copy scale-x)
+    (:r 0.0)
+    (:g 160.0)
+    (:b 240.0)
+    (:a 40.0 4.0)
+    (:omega (degrees 4511.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 2048.0)
+    (:rotate-y (degrees 0))
+    )
+  )
+
+;; definition of type cty-sniper-button-top
+(deftype cty-sniper-button-top (process-drawable)
+  ((is-up      symbol)
+   (colormode  handle)
+   )
+  (:state-methods
+    idle
+    going-up
+    going-down
+    )
+  )
+
+;; definition for method 3 of type cty-sniper-button-top
+(defmethod inspect ((this cty-sniper-button-top))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tis-up: ~A~%" (-> this is-up))
+  (format #t "~2Tcolormode: ~D~%" (-> this colormode))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cty-sniper-button-top cty-sniper-button-top cty-sniper-button-top-lod0-jg cty-sniper-button-top-idle-ja
+              ((cty-sniper-button-top-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
+
+;; definition for function cty-sniper-button-top-handler
+(defbehavior cty-sniper-button-top-handler cty-sniper-button-top ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('get-colormode)
+     (-> self colormode)
+     )
+    (('up)
+     (set! (-> self colormode) (new 'static 'handle))
+     (set! (-> self is-up) #t)
+     (go-virtual going-up)
+     )
+    (('down)
+     (set! (-> self colormode) (new 'static 'handle :process #x2 :u64 #x2))
+     (set! (-> self is-up) #f)
+     (go-virtual going-down)
+     )
+    (('vulnerable)
+     (set! v0-0 1)
+     (set! (-> self colormode) (the-as handle v0-0))
+     v0-0
+     )
+    (('invulnerable)
+     (set! v0-0 (if (-> self is-up)
+                    0
+                    2
+                    )
+           )
+     (set! (-> self colormode) (the-as handle v0-0))
+     v0-0
+     )
+    )
+  )
+
+;; definition for function cty-sniper-button-top-genpost
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defbehavior cty-sniper-button-top-genpost cty-sniper-button-top ()
+  (let ((v1-0 (-> self colormode)))
+    (cond
+      ((= v1-0 1)
+       (let ((v1-2 (-> (new 'static 'vector :y 1.0 :w 1.0) quad)))
+         (set! (-> self draw color-emissive quad) v1-2)
+         )
+       (let ((v1-4 (-> (new 'static 'vector :x 0.5 :y 0.5 :z 0.5 :w 1.0) quad)))
+         (set! (-> self draw color-mult quad) v1-4)
+         )
+       )
+      ((zero? v1-0)
+       (let ((v1-6 (-> (new 'static 'vector :x 1.0 :w 1.0) quad)))
+         (set! (-> self draw color-emissive quad) v1-6)
+         )
+       (let ((v1-8 (-> (new 'static 'vector :x 0.5 :y 0.5 :z 0.5 :w 1.0) quad)))
+         (set! (-> self draw color-mult quad) v1-8)
+         )
+       )
+      ((= v1-0 2)
+       (let ((v1-11 (-> (new 'static 'vector :x 0.5 :y 0.5 :z 0.5 :w 1.0) quad)))
+         (set! (-> self draw color-mult quad) v1-11)
+         )
+       (let ((v1-16 (-> (if (< (mod (current-time) 150) 75)
+                            (new 'static 'vector :x 0.8 :w 1.0)
+                            (new 'static 'vector :y 0.8 :w 1.0)
+                            )
+                        quad
+                        )
+                    )
+             )
+         (set! (-> self draw color-emissive quad) v1-16)
+         )
+       )
+      )
+    )
+  (ja-post)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (cty-sniper-button-top)
+  :virtual #t
+  :event cty-sniper-button-top-handler
+  :code sleep-code
+  :post cty-sniper-button-top-genpost
+  )
+
+;; failed to figure out what this is:
+(defstate going-up (cty-sniper-button-top)
+  :virtual #t
+  :event cty-sniper-button-top-handler
+  :code (behavior ()
+    (ja-no-eval :group! cty-sniper-button-top-popup-ja :num! (seek! max 0.25) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.25))
+      )
+    (go-virtual idle)
+    )
+  :post cty-sniper-button-top-genpost
+  )
+
+;; failed to figure out what this is:
+(defstate going-down (cty-sniper-button-top)
+  :virtual #t
+  :event cty-sniper-button-top-handler
+  :code (behavior ()
+    (ja-no-eval :group! cty-sniper-button-top-pushdown-ja :num! (seek! max 0.25) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.25))
+      )
+    (go-virtual idle)
+    )
+  :post cty-sniper-button-top-genpost
+  )
+
+;; definition for method 11 of type cty-sniper-button-top
+(defmethod init-from-entity! ((this cty-sniper-button-top) (arg0 entity-actor))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-cty-sniper-button-top" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> this is-up) #t)
+  (go (method-of-object this idle))
+  )
+
+;; definition for function cty-sniper-button-top-init-by-other
+;; INFO: Used lq/sq
+(defbehavior cty-sniper-button-top-init-by-other cty-sniper-button-top ((arg0 vector) (arg1 quaternion))
+  (set! (-> self root) (new 'process 'trsqv))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (initialize-skeleton
+    self
+    (the-as
+      skeleton-group
+      (art-group-get-by-name *level* "skel-cty-sniper-button-top" (the-as (pointer level) #f))
+      )
+    (the-as pair 0)
+    )
+  (set! (-> self colormode) (new 'static 'handle))
+  (go-virtual idle)
+  )
+
+;; definition of type cty-sniper-button
+(deftype cty-sniper-button (process-drawable)
+  ((stay-down-time  time-frame)
+   (lid             handle)
+   )
+  (:state-methods
+    idle-up
+    going-down
+    idle-down
+    bail-up
+    moribund
+    )
+  (:methods
+    (cty-sniper-button-method-25 (_type_) object)
+    )
+  )
+
+;; definition for method 3 of type cty-sniper-button
+(defmethod inspect ((this cty-sniper-button))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstay-down-time: ~D~%" (-> this stay-down-time))
+  (format #t "~2Tlid: ~D~%" (-> this lid))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cty-sniper-button cty-sniper-button cty-sniper-button-lod0-jg cty-sniper-button-idle-ja
+              ((cty-sniper-button-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 2)
+              )
+
+;; definition for method 12 of type cty-sniper-button
+(defmethod run-logic? ((this cty-sniper-button))
+  "Should this process be run? Checked by execute-process-tree."
+  #t
+  )
+
+;; failed to figure out what this is:
+(defstate idle-up (cty-sniper-button)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (when (logtest? (-> (the-as attack-info (-> block param 1)) penetrate-using) (penetrate flop))
+         (go-virtual going-down)
+         #f
+         )
+       )
+      (('die)
+       (go-virtual moribund)
+       )
+      (('vulnerable)
+       (send-event (handle->process (-> self lid)) 'vulnerable)
+       )
+      (('invulnerable)
+       (send-event (handle->process (-> self lid)) 'invulnerable)
+       )
+      )
+    )
+  :enter (behavior ()
+    '()
+    )
+  :exit (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code transform-and-sleep-code
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate going-down (cty-sniper-button)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (go-virtual moribund)
+       )
+      (('vulnerable)
+       (send-event (handle->process (-> self lid)) 'vulnerable)
+       )
+      (('invulnerable)
+       (send-event (handle->process (-> self lid)) 'invulnerable)
+       (go-virtual bail-up)
+       )
+      )
+    )
+  :enter (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (sound-play "activate-button")
+    (send-event (handle->process (-> self lid)) 'down 0.25)
+    (ja-no-eval :group! cty-sniper-button-pushdown-ja :num! (seek! max 0.25) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.25))
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (go-virtual idle-down)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate idle-down (cty-sniper-button)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (go-virtual moribund)
+       )
+      (('vulnerable)
+       (send-event (handle->process (-> self lid)) 'vulnerable)
+       )
+      (('invulnerable)
+       (send-event (handle->process (-> self lid)) 'invulnerable)
+       (go-virtual bail-up)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (ja-channel-set! 1)
+    (ja :group! cty-sniper-button-pushdown-ja :num! (identity (the float (ja-num-frames 0))))
+    (ja-post)
+    (let ((gp-1 (current-time)))
+      (until (time-elapsed? gp-1 (-> self stay-down-time))
+        (suspend)
+        )
+      )
+    (send-event (handle->process (-> self lid)) 'up #x3e800000)
+    (ja-no-eval :group! cty-sniper-button-popup-ja :num! (seek! max 0.25) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.25))
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (go-virtual idle-up)
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate bail-up (cty-sniper-button)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('die)
+       (go-virtual moribund)
+       )
+      (('vulnerable)
+       (send-event (handle->process (-> self lid)) 'vulnerable)
+       )
+      (('invulnerable)
+       (send-event (handle->process (-> self lid)) 'invulnerable)
+       )
+      )
+    )
+  :enter (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (send-event (handle->process (-> self lid)) 'up #x3e800000)
+    (ja-no-eval :group! cty-sniper-button-popup-ja :num! (seek! max 0.25) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 0.25))
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (go-virtual idle-up)
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate moribund (cty-sniper-button)
+  :virtual #t
+  :code sleep-code
+  :post (behavior ()
+    (let ((a0-0 (new 'stack-no-clear 'vector)))
+      (vector+! a0-0 (-> self draw origin) (-> self draw bounds))
+      (set! (-> a0-0 w) (-> self draw bounds w))
+      (when (not (sphere-in-view-frustum? (the-as sphere a0-0)))
+        (cleanup-for-death self)
+        (go empty-state)
+        )
+      )
+    (ja-post)
+    )
+  )
+
+;; definition for method 25 of type cty-sniper-button
+(defmethod cty-sniper-button-method-25 ((this cty-sniper-button))
+  (and (-> this next-state) (let ((v1-2 (-> this next-state name)))
+                              (or (= v1-2 'going-down) (= v1-2 'idle-down))
+                              )
+       )
+  )
+
+;; definition for method 11 of type cty-sniper-button
+(defmethod init-from-entity! ((this cty-sniper-button) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 8192.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 0.0 0.0 8192.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 4)
+      (set-vector! (-> v1-11 local-sphere) 0.0 0.0 0.0 8192.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-cty-sniper-button" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this stay-down-time)
+        (the-as time-frame (the int (* 300.0 (res-lump-float (-> this entity) 'button-down-time :default 1.0))))
+        )
+  (set! (-> this lid) (process->handle (ppointer->process (process-spawn
+                                                            cty-sniper-button-top
+                                                            (-> this root trans)
+                                                            (-> this root quat)
+                                                            :name "cty-sniper-button-top"
+                                                            :to this
+                                                            )
+                                                          )
+                                       )
+        )
+  (set! (-> this root pause-adjust-distance) 409600.0)
+  (if #f
+      (go (method-of-object this idle-down))
+      (go (method-of-object this idle-up))
+      )
+  )
+
+;; definition for method 10 of type cty-sniper-button
+(defmethod deactivate ((this cty-sniper-button))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (while (-> this child)
+    (deactivate (ppointer->process (-> this child)))
+    )
+  ((method-of-type process-focusable deactivate) (the-as process-focusable this))
+  (none)
+  )
+
+;; definition of type cty-sniper-battery
+(deftype cty-sniper-battery (process-focusable)
+  ((incoming-attack-id           uint32)
+   (actor-group                  (pointer actor-group))
+   (actor-group-count            int32)
+   (known-vulnerable-this-frame  symbol)
+   (during-movement-sound        sound-id)
+   (run-once                     symbol)
+   (halted                       symbol)
+   )
+  (:state-methods
+    idle
+    vulnerable
+    die
+    explode
+    )
+  (:methods
+    (cty-sniper-battery-method-32 (_type_) symbol)
+    )
+  )
+
+;; definition for method 3 of type cty-sniper-battery
+(defmethod inspect ((this cty-sniper-battery))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tincoming-attack-id: ~D~%" (-> this incoming-attack-id))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tknown-vulnerable-this-frame: ~A~%" (-> this known-vulnerable-this-frame))
+  (format #t "~2Tduring-movement-sound: ~D~%" (-> this during-movement-sound))
+  (format #t "~2Trun-once: ~A~%" (-> this run-once))
+  (format #t "~2Thalted: ~A~%" (-> this halted))
+  (label cfg-7)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cty-sniper-battery cty-sniper-core cty-sniper-core-lod0-jg cty-sniper-core-idle-ja
+              ((cty-sniper-core-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-cty-sniper-battery-explode cty-sniper-core cty-sniper-core-explode-lod0-jg cty-sniper-core-explode-idle-ja
+              ((cty-sniper-core-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
+
+;; definition for symbol *cty-sniper-battery-exploder-params*, type joint-exploder-static-params
+(define *cty-sniper-battery-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index 3)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index 3)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpartgroup group-sniper-battery-explosion
+  :id 1464
+  :duration (seconds 4)
+  :flags (sp0 sp5)
+  :bounds (static-bspherem 0 0 0 15)
+  :parts ((sp-item 4830 :flags (sp3) :period (seconds 30) :length (seconds 0.017))
+    (sp-item 4831 :period (seconds 30) :length (seconds 0.035))
+    (sp-item 4832 :period (seconds 30) :length (seconds 0.035))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4830
+  :init-specs ((:texture (glow-soft level-default-sprite))
+    (:num 1.0)
+    (:y (meters 2))
+    (:scale-x (meters 10))
+    (:rot-x (degrees 225))
+    (:scale-y :copy scale-x)
+    (:r 220.0)
+    (:g 200.0)
+    (:b 40.0)
+    (:a 64.0)
+    (:fade-a -0.21333334)
+    (:timer (seconds 1))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 glow))
+    (:userdata 40960.0)
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4831
+  :init-specs ((:texture (hotdot level-default-sprite))
+    (:num 50.0)
+    (:y (meters 2))
+    (:scale-x (meters 0.4) (meters 0.8))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 30.0)
+    (:a 128.0)
+    (:vel-y (meters 0.083333336) (meters 0.16666667))
+    (:scalevel-x (meters -0.0016666667))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.28444445 -0.28444445)
+    (:accel-y (meters -0.0016666667))
+    (:friction 0.9)
+    (:timer (seconds 1.5))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; failed to figure out what this is:
+(defpart 4832
+  :init-specs ((:texture (specs level-default-sprite))
+    (:num 10.0 10.0)
+    (:y (meters 2))
+    (:scale-x (meters 2) (meters 6))
+    (:rot-z (degrees 0) (degrees 360))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 30.0)
+    (:a 128.0)
+    (:vel-y (meters 0.033333335) (meters 0.13333334))
+    (:scalevel-x (meters 0.026666667))
+    (:rotvel-z (degrees -0.2) (degrees 0.4))
+    (:scalevel-y :copy scalevel-x)
+    (:fade-a -0.512 -0.512)
+    (:accel-y (meters -0.0016666667))
+    (:friction 0.75)
+    (:timer (seconds 0.835))
+    (:flags (sp-cpuinfo-flag-0 sp-cpuinfo-flag-3))
+    (:conerot-x (degrees 0) (degrees 360))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+;; definition for function cty-sniper-battery-handler
+;; INFO: Used lq/sq
+(defbehavior cty-sniper-battery-handler cty-sniper-battery ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('get-buttons-actor-group)
+     (&-> (-> self actor-group) 0)
+     )
+    (('move-trans)
+     (let ((v0-0 (the-as object (-> self root trans))))
+       (set! (-> (the-as vector v0-0) quad) (-> (the-as vector (-> arg3 param 0)) quad))
+       v0-0
+       )
+     )
+    (('attack)
+     (cond
+       ((zero? (-> self actor-group-count))
+        (let ((a1-7 (the-as object (-> arg3 param 1))))
+          (when (!= (-> (the-as attack-info a1-7) id) (-> self incoming-attack-id))
+            (set! (-> self incoming-attack-id) (-> (the-as attack-info a1-7) id))
+            (let ((f30-0 (-> (the-as attack-info a1-7) damage)))
+              (find-offending-process-focusable arg0 (the-as attack-info a1-7))
+              (if (>= f30-0 2.0)
+                  (go-virtual die)
+                  )
+              )
+            )
+          )
+        )
+       (else
+         (when (-> self known-vulnerable-this-frame)
+           (let ((a1-8 (the-as object (-> arg3 param 1))))
+             (when (!= (-> (the-as attack-info a1-8) id) (-> self incoming-attack-id))
+               (set! (-> self incoming-attack-id) (-> (the-as attack-info a1-8) id))
+               (let ((f30-1 (-> (the-as attack-info a1-8) damage)))
+                 (find-offending-process-focusable arg0 (the-as attack-info a1-8))
+                 (if (>= f30-1 0.0)
+                     (go-virtual die)
+                     )
+                 )
+               )
+             )
+           )
+         )
+       )
+     )
+    (('alive)
+     #t
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (cty-sniper-battery)
+  :virtual #t
+  :event cty-sniper-battery-handler
+  :trans (behavior ()
+    (set! (-> self known-vulnerable-this-frame) (cty-sniper-battery-method-32 self))
+    (if (ja-done? 0)
+        (sound-stop (-> self during-movement-sound))
+        (sound-play "bigbutton-move" :id (-> self during-movement-sound) :position #f)
+        )
+    (if (-> self known-vulnerable-this-frame)
+        (go-virtual vulnerable)
+        )
+    )
+  :code (behavior ()
+    (cond
+      ((-> self run-once)
+       (ja-no-eval :group! cty-sniper-battery-explode-lod0-mg :num! (seek!) :frame-num 0.0)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek!))
+         )
+       )
+      (else
+        (set! (-> self run-once) #t)
+        )
+      )
+    (suspend)
+    (setup-masks (-> self draw) 0 2)
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate vulnerable (cty-sniper-battery)
+  :virtual #t
+  :event cty-sniper-battery-handler
+  :enter (behavior ()
+    (dotimes (gp-0 (length (-> self actor-group 0)))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'vulnerable)
+        (let ((t9-0 send-event-function)
+              (v1-5 (-> self actor-group 0 data gp-0 actor))
+              )
+          (t9-0
+            (if v1-5
+                (-> v1-5 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      )
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer self))
+      (set! (-> a1-1 num-params) 0)
+      (set! (-> a1-1 message) 'battery-extend)
+      (let ((t9-2 send-event-function)
+            (v1-17 (-> *game-info* sub-task-list (game-task-node city-sniper-fight-resolution)))
+            )
+        (t9-2
+          (handle->process (if (-> v1-17 manager)
+                               (-> v1-17 manager manager)
+                               (the-as handle #f)
+                               )
+                           )
+          a1-1
+          )
+        )
+      )
+    )
+  :exit (behavior ()
+    (dotimes (gp-0 (length (-> self actor-group 0)))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'invulnerable)
+        (let ((t9-0 send-event-function)
+              (v1-5 (-> self actor-group 0 data gp-0 actor))
+              )
+          (t9-0
+            (if v1-5
+                (-> v1-5 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      )
+    )
+  :trans (behavior ()
+    (set! (-> self known-vulnerable-this-frame) (cty-sniper-battery-method-32 self))
+    (if (ja-done? 0)
+        (sound-stop (-> self during-movement-sound))
+        (sound-play "bigbutton-move" :id (-> self during-movement-sound) :position #f)
+        )
+    (spawn-from-cspace (-> self part) (-> self node-list data 6))
+    (when (not (-> self known-vulnerable-this-frame))
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-2 from) (process->ppointer self))
+        (set! (-> a1-2 num-params) 0)
+        (set! (-> a1-2 message) 'battery-retract)
+        (let ((t9-5 send-event-function)
+              (v1-14 (-> *game-info* sub-task-list (game-task-node city-sniper-fight-resolution)))
+              )
+          (t9-5
+            (handle->process (if (-> v1-14 manager)
+                                 (-> v1-14 manager manager)
+                                 (the-as handle #f)
+                                 )
+                             )
+            a1-2
+            )
+          )
+        )
+      (go-virtual idle)
+      )
+    )
+  :code (behavior ()
+    (setup-masks (-> self draw) 2 0)
+    (ja-no-eval :group! cty-sniper-battery-explode-lod0-jg :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (suspend)
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate die (cty-sniper-battery)
+  :virtual #t
+  :event cty-sniper-battery-handler
+  :trans (behavior ()
+    (spawn-from-cspace (-> self part) (-> self node-list data 6))
+    )
+  :code (behavior ()
+    (sound-stop (-> self during-movement-sound))
+    (when (> (-> self actor-group-count) 0)
+      (dotimes (gp-0 (length (-> self actor-group 0)))
+        (let ((v1-5 (-> self actor-group 0 data gp-0 actor)))
+          (send-event
+            (if v1-5
+                (-> v1-5 extra process)
+                )
+            'die
+            )
+          )
+        )
+      )
+    (suspend)
+    (go-virtual explode)
+    )
+  :post ja-post
+  )
+
+;; failed to figure out what this is:
+(defstate explode (cty-sniper-battery)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('alive)
+       (if (time-elapsed? (-> self state-time) (seconds 0.1))
+           #f
+           #t
+           )
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (sound-play "destroy-battery")
+    (cond
+      ((logtest? (-> *part-group-id-table* 1464 flags) (sp-group-flag sp13))
+       (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 1464))
+       )
+      (else
+        (set! (-> *launch-matrix* trans quad) (-> self root trans quad))
+        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 1464))
+        )
+      )
+    (let ((v1-35 (-> self root root-prim)))
+      (set! (-> v1-35 prim-core collide-as) (collide-spec))
+      (set! (-> v1-35 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (set! (-> self root root-prim local-sphere w) 491520.0)
+    (let ((gp-3 (new 'stack 'joint-exploder-tuning (the-as uint 0))))
+      (set-vector! (-> gp-3 fountain-rand-transv-lo) -40960.0 40960.0 -40960.0 1.0)
+      (set-vector! (-> gp-3 fountain-rand-transv-hi) 40960.0 122880.0 40960.0 1.0)
+      (let ((v1-47 (process-spawn
+                     joint-exploder
+                     (art-group-get-by-name *level* "skel-cty-sniper-battery-explode" (the-as (pointer level) #f))
+                     7
+                     gp-3
+                     *cty-sniper-battery-exploder-params*
+                     :name "joint-exploder"
+                     :to self
+                     :unk 0
+                     )
+                   )
+            )
+        (set! (-> (the-as process-drawable (-> v1-47 0)) root pause-adjust-distance) 409600.0)
+        )
+      )
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    )
+  :post ja-post
+  )
+
+;; definition for method 32 of type cty-sniper-battery
+(defmethod cty-sniper-battery-method-32 ((this cty-sniper-battery))
+  (local-vars (s5-0 symbol))
+  (cond
+    ((< (-> this actor-group-count) 1)
+     (set! s5-0 #t)
+     )
+    (else
+      (set! s5-0 #t)
+      (dotimes (s4-0 (length (-> this actor-group 0)))
+        (let ((a0-2 (-> this actor-group 0 data s4-0 actor)))
+          (if (and a0-2 (not (logtest? (-> a0-2 extra perm status) (entity-perm-status subtask-complete))))
+              (set! s5-0 #f)
+              )
+          )
+        )
+      )
+    )
+  s5-0
+  )
+
+;; definition for method 11 of type cty-sniper-battery
+;; INFO: Used lq/sq
+(defmethod init-from-entity! ((this cty-sniper-battery) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak hit-by-others-list player-list projectile))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 8192.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> v1-12 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-12 prim-core action) (collide-action solid))
+      (set! (-> v1-12 transform-index) 3)
+      (set-vector! (-> v1-12 local-sphere) 0.0 0.0 0.0 16384.0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle pusher))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid))
+      (set! (-> v1-14 transform-index) 7)
+      (set-vector! (-> v1-14 local-sphere) 0.0 0.0 0.0 24576.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-17 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-17 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-17 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-cty-sniper-battery" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-25 (res-lump-data arg0 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-25 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-25))
+       )
+      (else
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> this during-movement-sound) (new-sound-id))
+  (set! (-> this run-once) #f)
+  (let ((s5-1 (-> this skel root-channel 0)))
+    (joint-control-channel-group-eval!
+      s5-1
+      (the-as art-joint-anim (-> this draw art-group data 4))
+      num-func-identity
+      )
+    (set! (-> s5-1 frame-num)
+          (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 4)) frames num-frames) -1))
+          )
+    )
+  (set! (-> this halted) #f)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1463) this))
+  (logior! (-> this mask) (process-mask enemy))
+  (go (method-of-object this idle))
+  )
+
+;; definition for function cty-sniper-battery-init-by-other
+;; INFO: Used lq/sq
+(defbehavior cty-sniper-battery-init-by-other cty-sniper-battery ((arg0 vector) (arg1 quaternion))
+  (let ((s4-0 (new 'process 'collide-shape self (collide-list-enum usually-hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak hit-by-others-list player-list projectile))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 8192.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> s4-0 event-self) 'touched)
+    (set! (-> self root) s4-0)
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-copy! (-> self root quat) arg1)
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-cty-sniper-battery" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> self during-movement-sound) (new-sound-id))
+  (go-virtual idle)
+  )
+
+
+
+

@@ -12,6 +12,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_actors.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
+#include "decompiler/level_extractor/extract_hfrag.h"
 #include "decompiler/level_extractor/extract_joint_group.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "decompiler/level_extractor/extract_shrub.h"
@@ -150,9 +151,8 @@ std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
 
-  level_tools::DrawStats draw_stats;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version(), true);
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, db.version(), true);
 
   return bsp_header.texture_remap_table;
 }
@@ -168,18 +168,23 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
   }
-  std::string level_name = bsp_rec->name;
 
-  lg::info("Processing level {} ({})", dgo_name, level_name);
+  lg::info("Processing {}...", dgo_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
 
-  level_tools::DrawStats draw_stats;
-  // draw_stats.debug_print_dma_data = true;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, db.version());
   ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
+
+  // grrr.....
+  if (db.version() == GameVersion::Jak1 && dgo_name == "TIT.DGO" && bsp_header.name == "intro") {
+    bsp_header.name = "title";
+  } else if (db.version() == GameVersion::Jak1 && dgo_name == "DEM.DGO" &&
+             bsp_header.name == "intro") {
+    bsp_header.name = "demo";
+  }
 
   /*
   level_tools::PrintSettings settings;
@@ -207,7 +212,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
       ASSERT(as_tfrag_tree);
       std::vector<std::pair<int, int>> expected_missing_textures;
-      auto it = hacks.missing_textures_by_level.find(level_name);
+      auto it = hacks.missing_textures_by_level.find(bsp_header.name);
       if (it != hacks.missing_textures_by_level.end()) {
         expected_missing_textures = it->second;
       }
@@ -219,7 +224,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, level_data,
-                    false, level_name, atest_disable_flag);
+                    false, bsp_header.name, atest_disable_flag);
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       ASSERT(as_tie_tree);
@@ -250,7 +255,10 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
     extract_collide_frags(bsp_header.collide_hash, all_ties, config,
                           fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data);
   }
-  level_data.level_name = level_name;
+  if (bsp_header.hfrag) {
+    extract_hfrag(bsp_header, tex_db, &level_data);
+  }
+  level_data.level_name = bsp_header.name;
 
   return bsp_header;
 }
@@ -358,13 +366,12 @@ void extract_from_level(const ObjectFileDB& db,
   level_data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  lg::info("stats for {}", dgo_name);
+  lg::info("stats for {}", level_data.level_name);
   print_memory_usage(level_data, ser.get_save_result().second);
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
            100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(
-      output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
-      compressed.data(), compressed.size());
+  file_util::write_binary_file(output_folder / fmt::format("{}.fr3", level_data.level_name),
+                               compressed.data(), compressed.size());
 
   if (config.rip_levels) {
     auto back_file_path = file_util::get_jak_project_dir() / "glb_out" /
