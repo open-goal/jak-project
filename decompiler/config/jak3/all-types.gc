@@ -23344,6 +23344,20 @@
   )
 ;; ---target-h:target-anim
 
+;; +++target-h:target-effect
+(defenum target-effect
+  :type uint64
+  :bitfield #t
+  (te0 0)
+  (te1 1)
+  (te2 2)
+  (te3 3)
+  (te4 4)
+  (te5 5)
+  (te6 6)
+  )
+;; ---target-h:target-effect
+
 (declare-type sidekick process-drawable)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -23403,13 +23417,13 @@
    (spool-anim                  spool-anim                               :offset-assert 2236) ;; guessed by decompiler
    (ambient-time                time-frame                               :offset-assert 2240) ;; time-frame
    (fp-hud                      handle                                   :offset-assert 2248) ;; handle
-   (no-load-wait                uint64                                   :offset-assert 2256)
-   (no-look-around-wait         uint64                                   :offset-assert 2264)
+   (no-load-wait                time-frame                               :offset-assert 2256)
+   (no-look-around-wait         time-frame                               :offset-assert 2264)
    (burn-proc                   handle                                   :offset-assert 2272) ;; handle
    (pre-joint-hook              (function none :behavior target)         :offset-assert 2280) ;; guessed by decompiler
    (notify                      handle                                   :offset-assert 2288) ;; handle
    (death-resetter              resetter-spec                    :inline :offset-assert 2296)
-   (mode-cache                  basic                                    :offset-assert 2312)
+   (mode-cache                  symbol                                   :offset-assert 2312)
    (mode-param1                 handle                                   :offset-assert 2320) ;; handle
    (mode-param2                 uint64                                   :offset-assert 2328)
    (mode-param3                 uint64                                   :offset-assert 2336)
@@ -23425,8 +23439,8 @@
    (tobot-state                 state                                    :offset-assert 2380) ;; guessed by decompiler
    (tobot?                      symbol                                   :offset-assert 2384) ;; guessed by decompiler
    (tobot-recorder              basic                                    :offset-assert 2388)
-   (target-effect               uint64                                   :offset-assert 2392)
-   (color-effect                basic                                    :offset-assert 2400)
+   (target-effect               target-effect                            :offset-assert 2392)
+   (color-effect                symbol                                   :offset-assert 2400)
    (color-effect-start-time     time-frame                               :offset-assert 2408) ;; time-frame
    (color-effect-duration       time-frame                               :offset-assert 2416)
    (racer                       racer-info                               :offset-assert 2424) ;; guessed by decompiler
@@ -23626,7 +23640,7 @@
     (target-pilot-clone-anim handle)
     target-pilot-daxter-perch
     ;; indax
-    (target-indax-start handle object) ;; associated process guessed by decompiler, old: (state handle target)
+    (target-indax-start handle object)
     target-indax-get-off
     target-indax-stance
     target-indax-walk
@@ -44768,32 +44782,41 @@
 ;; neon-baron-part                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++neon-baron-part:neon-baron-flag
+(defenum neon-baron-flag
+  :type uint64
+  :bitfield #t
+  (nb0)
+  (nb1)
+  (nb2)
+  (nb3)
+  )
+;; ---neon-baron-part:neon-baron-flag
+
 (deftype neon-baron (process)
-  ((flags         uint64                           :offset-assert 128) ;; int64
+  ((flags         neon-baron-flag                  :offset-assert 128) ;; int64
    (master-enable uint64                           :offset-assert 136) ;; int64
    (mode          uint64                           :offset-assert 144) ;; int64
    (sign          (array object)                   :offset-assert 152) ;; guessed by decompiler
    (parts         sparticle-launch-control 1       :offset-assert 156) ;; guessed by decompiler
-   (state-time    uint64                           :offset-assert 160) ;; time-frame
+   (state-time    time-frame                       :offset-assert 160) ;; time-frame
    (mat           matrix                   :inline :offset-assert 176)
    )
   :method-count-assert 17
   :size-assert         #xf0
   :flag-assert         #x11007000f0
-  (:methods
-    (neon-baron-method-15 () none) ;; 15 ;; (spawn-parts (_type_) none)
-    (neon-baron-method-16 () none) ;; 16 ;; (update-mode (_type_) none)
-    )
   (:state-methods
-    idle ;; 14, old: (idle () _type_ :state)
+    idle ;; 14
+    )
+  (:methods
+    (spawn-parts (_type_) symbol) ;; 15
+    (update-mode (_type_) none) ;; 16
     )
   )
-|#
 
-;; (define-extern *baron-neon-skull* array) ;; (array object)
-;; (define-extern *city-baron-group-ids* array) ;; (array int32)
-;; (define-extern *neon-baron-flashing-acc* object) ;; (pointer uint32)
+(define-extern *baron-neon-skull* (array object))
+(define-extern *city-baron-group-ids* (array int32))
+(define-extern *neon-baron-flashing-acc* (pointer uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chain-physics                  ;;
@@ -51739,33 +51762,26 @@
 ;; combx-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype combx-elevator (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (combx-elevator-method-21 () none) ;; 21
-    (combx-elevator-method-22 () none) ;; 22
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 21
+    (setup-skel-and-draw-masks (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
-(deftype combx-states (UNKNOWN)
+(deftype combx-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern init-mood-combx function)
-;; (define-extern update-mood-combx function)
+(define-extern init-mood-combx (function mood-context float))
+(define-extern update-mood-combx (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; combx-scenes                   ;;
@@ -64391,7 +64407,6 @@
 ;; lfaccity-mood                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lfaccity-states (structure)
   ((light     light-state :inline :offset-assert 0)
    (roty      float               :offset-assert 8)
@@ -64405,50 +64420,43 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype faccity-pparticle-info (structure)
   ((original-pos vector :inline :offset-assert 0)
-   (inited?      basic          :offset-assert 16)
+   (inited?      symbol         :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype faccity-pparticle-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data faccity-pparticle-info :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype lfaccity-pparticle-mover (process-drawable)
-  ((actor-group       uint32  :offset-assert 196)
-   (actor-group-count int32   :offset-assert 200)
-   (particles         basic   :offset-assert 204)
+  ((actor-group       (pointer actor-group)  :offset-assert 200)
+   (actor-group-count int32   :offset-assert 204)
+   (particles         faccity-pparticle-array :offset-assert 208)
    )
   :method-count-assert 22
   :size-assert         #xd4
   :flag-assert         #x16006000d4
-  (:methods
-    (lfaccity-pparticle-mover-method-21 () none) ;; 21
-    )
   (:state-methods
     active ;; 20
     )
+  (:methods
+    (mood-update (_type_) symbol) ;; 21
+    )
   )
-|#
 
-;; (define-extern *faccity-part-updater* object)
-;; (define-extern update-mood-lfaccity function)
-;; (define-extern lfaccity-pparticle-mover-init-by-other function)
+(define-extern *faccity-part-updater* lfaccity-pparticle-mover)
+(define-extern update-mood-lfaccity (function mood-context float int none :behavior time-of-day-proc))
+(define-extern lfaccity-pparticle-mover-init-by-other (function entity-actor object :behavior lfaccity-pparticle-mover))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-sniper-battery             ;;

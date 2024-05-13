@@ -1,16 +1,10 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
-;; name: lfaccity-mood.gc
-;; name in dgo: lfaccity-mood
-;; dgos: LFACB, LFACCITY
-
-(declare-type lfaccity-pparticle-mover process-drawable)
-
-;; DECOMP BEGINS
-
+;; definition for symbol *faccity-part-updater*, type lfaccity-pparticle-mover
 (define *faccity-part-updater* (the-as lfaccity-pparticle-mover #f))
 
+;; definition of type lfaccity-states
 (deftype lfaccity-states (structure)
   ((light      light-state  :inline)
    (roty       float)
@@ -22,7 +16,25 @@
    )
   )
 
+;; definition for method 3 of type lfaccity-states
+(defmethod inspect ((this lfaccity-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'lfaccity-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> this light))
+  (format #t "~1Troty: ~f~%" (-> this roty))
+  (format #t "~1Trotz: ~f~%" (-> this rotz))
+  (format #t "~1Trot-bob: ~f~%" (-> this rot-bob))
+  (format #t "~1Twobble: ~f~%" (-> this wobble))
+  (format #t "~1Tbob: ~f~%" (-> this bob))
+  (format #t "~1Tzero-test: ~D~%" (-> this zero-test))
+  (label cfg-4)
+  this
+  )
 
+;; definition for function update-mood-lfaccity
 ;; WARN: Return type mismatch object vs none.
 (defbehavior update-mood-lfaccity time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
   (copy-mood-exterior arg0)
@@ -82,21 +94,50 @@
   (none)
   )
 
+;; definition of type faccity-pparticle-info
 (deftype faccity-pparticle-info (structure)
   ((original-pos  vector  :inline)
    (inited?       symbol)
    )
   )
 
+;; definition for method 3 of type faccity-pparticle-info
+(defmethod inspect ((this faccity-pparticle-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'faccity-pparticle-info)
+  (format #t "~1Toriginal-pos: #<vector @ #x~X>~%" (-> this original-pos))
+  (format #t "~1Tinited?: ~A~%" (-> this inited?))
+  (label cfg-4)
+  this
+  )
 
+;; definition of type faccity-pparticle-array
 (deftype faccity-pparticle-array (inline-array-class)
   ((data  faccity-pparticle-info  :inline :dynamic)
    )
   )
 
+;; definition for method 3 of type faccity-pparticle-array
+(defmethod inspect ((this faccity-pparticle-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
 
+;; failed to figure out what this is:
 (set! (-> faccity-pparticle-array heap-base) (the-as uint 32))
 
+;; definition of type lfaccity-pparticle-mover
 (deftype lfaccity-pparticle-mover (process-drawable)
   ((actor-group        (pointer actor-group))
    (actor-group-count  int32)
@@ -110,7 +151,27 @@
     )
   )
 
+;; definition for method 3 of type lfaccity-pparticle-mover
+(defmethod inspect ((this lfaccity-pparticle-mover))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tparticles: ~A~%" (-> this particles))
+  (label cfg-7)
+  this
+  )
 
+;; definition for method 11 of type lfaccity-pparticle-mover
+;; INFO: Used lq/sq
 (defmethod init-from-entity! ((this lfaccity-pparticle-mover) (arg0 entity-actor))
   (local-vars (sv-16 res-tag))
   (set! sv-16 (new 'static 'res-tag))
@@ -140,10 +201,12 @@
   (go (method-of-object this active))
   )
 
+;; definition for function lfaccity-pparticle-mover-init-by-other
 (defbehavior lfaccity-pparticle-mover-init-by-other lfaccity-pparticle-mover ((arg0 entity-actor))
   (init-from-entity! self arg0)
   )
 
+;; failed to figure out what this is:
 (defstate active (lfaccity-pparticle-mover)
   :virtual #t
   :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -156,11 +219,13 @@
   :code sleep-code
   )
 
+;; definition for method 12 of type lfaccity-pparticle-mover
 (defmethod run-logic? ((this lfaccity-pparticle-mover))
   "Should this process be run? Checked by execute-process-tree."
   #t
   )
 
+;; definition for method 10 of type lfaccity-pparticle-mover
 (defmethod deactivate ((this lfaccity-pparticle-mover))
   "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (set! *faccity-part-updater* #f)
@@ -168,6 +233,8 @@
   (none)
   )
 
+;; definition for method 21 of type lfaccity-pparticle-mover
+;; INFO: Used lq/sq
 (defmethod mood-update ((this lfaccity-pparticle-mover))
   (let ((s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> *math-camera* quat-other))))
     (dotimes (s4-0 (-> this particles length))
@@ -204,6 +271,7 @@
   #f
   )
 
+;; definition for method 7 of type lfaccity-pparticle-mover
 (defmethod relocate ((this lfaccity-pparticle-mover) (offset int))
   (set! *faccity-part-updater* this)
   (if *faccity-part-updater*
@@ -214,3 +282,7 @@
       )
   (call-parent-method this offset)
   )
+
+
+
+
