@@ -366,10 +366,12 @@ void* RPC_Player(unsigned int /*fno*/, void* data, int size) {
         gFPS = cmd->fps.fps;
       } break;
       case Jak2SoundCommand::cancel_dgo: {
-        // implemented just so we don't assert (this does nothing on PS2)
+        // temporary. here just so we don't assert.
+        lg::error("RPC Player dgo cancel command received");
       } break;
       default:
-        ASSERT_MSG(false, fmt::format("Unimplemented RPC Player command {}", int(cmd->j2command)));
+        // ASSERT_MSG(false, fmt::format("Unhandled RPC Player command {}", int(cmd->j2command)));
+        lg::error("Unhandled Jak2 RPC Player command {}\n", int(cmd->j2command));
     }
 
     n_messages--;

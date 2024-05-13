@@ -49,7 +49,7 @@ Val* Compiler::compile_define(const goos::Object& form, const goos::Object& rest
       f.lambda = as_lambda->lambda;
       f.type = as_lambda->type();
     }
-    // Most defines come via macro invokations, we want the TRUE defining form location
+    // Most defines come via macro invocations, we want the TRUE defining form location
     // if we can get it
     // TODO - test the return value changes
     if (env->macro_expand_env()) {

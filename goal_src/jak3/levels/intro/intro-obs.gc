@@ -7,3 +7,42 @@
 
 ;; DECOMP BEGINS
 
+(deftype ctypal-ctyfarma (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-ctypal-ctyfarma ctypal-ctyfarma ctypal-ctyfarma-lod0-jg ctypal-ctyfarma-idle-ja
+              ((ctypal-ctyfarma-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 640)
+              )
+
+(defstate idle (ctypal-ctyfarma)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this ctypal-ctyfarma) (arg0 entity-actor))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-ctypal-ctyfarma" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object this idle))
+  )

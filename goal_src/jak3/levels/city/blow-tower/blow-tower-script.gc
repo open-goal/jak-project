@@ -5,5 +5,885 @@
 ;; name in dgo: blow-tower-script
 ;; dgos: LCTYBLOW
 
+;; +++blow-tower-cmd-type
+(defenum blow-tower-cmd-type
+  :type uint8
+  (spawn)
+  (activate)
+  (rotate-view)
+  (lock-view)
+  (unlock-view)
+  (path-height)
+  (roll-amount)
+  (clock-scalar)
+  (advance)
+  (barrel-roll)
+  (constrain-angle)
+  (play-sound)
+  (cmd12)
+  (save-progress)
+  (look-at)
+  (look-at-track)
+  (look-at-ent)
+  (look-at-bombbot)
+  (cmd18)
+  (end)
+  )
+;; ---blow-tower-cmd-type
+
+
+;; +++blow-tower-cmd-spawn-type
+(defenum blow-tower-cmd-spawn-type
+  :type uint8
+  (cmd0)
+  (cmd1)
+  (kg-flyer)
+  (mh-flyer)
+  (kg-flyer-ent)
+  (mh-flyer-ent)
+  (cmd6)
+  (cmd7)
+  (mh-grunt)
+  (missiles)
+  (missiles-ent)
+  (kg-bombbot)
+  (kg-bombbot-ent)
+  )
+;; ---blow-tower-cmd-spawn-type
+
+
 ;; DECOMP BEGINS
 
+(deftype blow-tower-cmd (structure)
+  ((cmd-type       blow-tower-cmd-type)
+   (spawn-type     blow-tower-cmd-spawn-type)
+   (entity-name    string)
+   (rotate-amount  float)
+   (lock-min       float)
+   (lock-max       float)
+   (target         uint8)
+   (path-height    float)
+   (event-id       uint32)
+   (time-offset    float)
+   (clock-scalar   float)
+   (entity-name2   string)
+   (snap-view?     symbol)
+   (snd-name       sound-name)
+   )
+  )
+
+
+(deftype tower-event-group (structure)
+  ((event-id      int32)
+   (command-list  pair)
+   )
+  )
+
+
+(defun get-blow-tower-target ((arg0 pair) (arg1 int) (arg2 int))
+  (let ((a0-1 arg0))
+    (cond
+      ((>= ((method-of-type (rtype-of a0-1) length) a0-1) (+ arg2 1))
+       (case (ref arg0 arg2)
+         (('player)
+          0
+          )
+         (('pickup)
+          1
+          )
+         (else
+           (the-as int (logand (rand-uint31-gen *random-generator*) 1))
+           )
+         )
+       )
+      (else
+        (empty)
+        arg1
+        )
+      )
+    )
+  )
+
+;; WARN: disable def twice: 179. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defun parse-blow-tower-command ((arg0 pair) (arg1 blow-tower-cmd))
+  (local-vars (v0-8 object))
+  (let ((a0-2 (ref arg0 0)))
+    (case a0-2
+      (('spawn)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type spawn))
+       (let ((v1-1 (ref arg0 1)))
+         (set! (-> arg1 entity-name) "")
+         (set! (-> arg1 spawn-type) (cond
+                                      ((= v1-1 'mh-flyer)
+                                       (blow-tower-cmd-spawn-type mh-flyer)
+                                       )
+                                      ((= v1-1 'kg-flyer)
+                                       (blow-tower-cmd-spawn-type kg-flyer)
+                                       )
+                                      ((= v1-1 'kg-flyer-ent)
+                                       (blow-tower-cmd-spawn-type kg-flyer-ent)
+                                       )
+                                      ((= v1-1 'mh-flyer-ent)
+                                       (blow-tower-cmd-spawn-type mh-flyer-ent)
+                                       )
+                                      ((= v1-1 'mh-grunt)
+                                       (blow-tower-cmd-spawn-type mh-grunt)
+                                       )
+                                      ((= v1-1 'kg-bombbot)
+                                       (blow-tower-cmd-spawn-type kg-bombbot)
+                                       )
+                                      ((= v1-1 'kg-bombbot-ent)
+                                       (blow-tower-cmd-spawn-type kg-bombbot-ent)
+                                       )
+                                      ((= v1-1 'missiles)
+                                       (blow-tower-cmd-spawn-type missiles)
+                                       )
+                                      ((= v1-1 'missiles-ent)
+                                       (blow-tower-cmd-spawn-type missiles-ent)
+                                       )
+                                      (else
+                                        (blow-tower-cmd-spawn-type mh-flyer)
+                                        )
+                                      )
+               )
+         )
+       (set! (-> arg1 event-id) (the-as uint 0))
+       (case (-> arg1 spawn-type)
+         (((blow-tower-cmd-spawn-type kg-bombbot))
+          (set! (-> arg1 target) (the-as uint 0))
+          (let ((a0-15 arg0))
+            (if (>= ((method-of-type (rtype-of a0-15) length) a0-15) 3)
+                (set! (-> arg1 event-id) (the-as uint (command-get-int (ref arg0 2) 0)))
+                )
+            )
+          (let ((a0-18 arg0))
+            (if (>= ((method-of-type (rtype-of a0-18) length) a0-18) 4)
+                (set! (-> arg1 entity-name) (the-as string (ref arg0 3)))
+                )
+            )
+          (let ((a0-20 arg0))
+            (if (>= ((method-of-type (rtype-of a0-20) length) a0-20) 5)
+                (set! (-> arg1 time-offset) (command-get-float (ref arg0 4) 0.0))
+                )
+            )
+          )
+         (((blow-tower-cmd-spawn-type kg-bombbot-ent))
+          (set! (-> arg1 target) (the-as uint 0))
+          (let ((a0-24 arg0))
+            (if (>= ((method-of-type (rtype-of a0-24) length) a0-24) 3)
+                (set! (-> arg1 entity-name) (the-as string (ref arg0 2)))
+                )
+            )
+          (let ((a0-26 arg0))
+            (when (>= ((method-of-type (rtype-of a0-26) length) a0-26) 4)
+              (set! v0-8 (ref arg0 3))
+              (set! (-> arg1 entity-name2) (the-as string v0-8))
+              v0-8
+              )
+            )
+          )
+         (((blow-tower-cmd-spawn-type mh-flyer-ent) (blow-tower-cmd-spawn-type kg-flyer-ent))
+          (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 2)))
+          (set! v0-8 (ref arg0 3))
+          (set! (-> arg1 entity-name) (the-as string v0-8))
+          v0-8
+          )
+         (((blow-tower-cmd-spawn-type missiles-ent))
+          (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 2)))
+          (set! (-> arg1 entity-name) (the-as string (ref arg0 3)))
+          (set! (-> arg1 time-offset) 1.0)
+          (let ((a0-35 arg0))
+            (if (>= ((method-of-type (rtype-of a0-35) length) a0-35) 5)
+                (set! (-> arg1 time-offset) (command-get-float (ref arg0 4) 0.0))
+                )
+            )
+          )
+         (((blow-tower-cmd-spawn-type missiles))
+          (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 2)))
+          (set! (-> arg1 time-offset) 1.0)
+          (let ((a0-40 arg0))
+            (if (>= ((method-of-type (rtype-of a0-40) length) a0-40) 4)
+                (set! (-> arg1 time-offset) (command-get-float (ref arg0 3) 0.0))
+                )
+            )
+          )
+         (else
+           (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 2)))
+           (set! (-> arg1 time-offset) 0.0)
+           (let ((a0-44 arg0))
+             (if (>= ((method-of-type (rtype-of a0-44) length) a0-44) 4)
+                 (set! (-> arg1 event-id) (the-as uint (command-get-int (ref arg0 3) 0)))
+                 )
+             )
+           (let ((a0-47 arg0))
+             (if (>= ((method-of-type (rtype-of a0-47) length) a0-47) 5)
+                 (set! (-> arg1 time-offset) (command-get-float (ref arg0 4) 0.0))
+                 )
+             )
+           )
+         )
+       )
+      (('advance)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type advance))
+       (set! v0-8 (command-get-int (ref arg0 1) 0))
+       (set! (-> arg1 event-id) (the-as uint v0-8))
+       v0-8
+       )
+      (('activate)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type activate))
+       (set! (-> arg1 entity-name) (the-as string (ref arg0 1)))
+       (set! v0-8 (get-blow-tower-target arg0 0 2))
+       (set! (-> arg1 target) (the-as uint v0-8))
+       v0-8
+       )
+      (('lock-view)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type lock-view))
+       (set! (-> arg1 lock-min) (* 182.04445 (command-get-float (ref arg0 1) 0.0)))
+       (set! (-> arg1 lock-max) (* 182.04445 (command-get-float (ref arg0 2) 0.0)))
+       )
+      (('play-sound)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type play-sound))
+       (set! (-> arg1 time-offset) 0.0)
+       (let ((a0-58 arg0))
+         (if (>= ((method-of-type (rtype-of a0-58) length) a0-58) 3)
+             (set! (-> arg1 time-offset) (command-get-float (ref arg0 2) 0.0))
+             )
+         )
+       (set! v0-8 (get-blow-tower-target arg0 0 1))
+       (set! (-> arg1 target) (the-as uint v0-8))
+       v0-8
+       )
+      (('stop-sound)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type play-sound))
+       (set! v0-8 (get-blow-tower-target arg0 0 2))
+       (set! (-> arg1 target) (the-as uint v0-8))
+       v0-8
+       )
+      (('look-at)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type look-at))
+       (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 1)))
+       (set! (-> arg1 time-offset) (command-get-float (ref arg0 2) 0.0))
+       (set! (-> arg1 path-height) 1.0)
+       (let ((a0-66 arg0))
+         (if (>= ((method-of-type (rtype-of a0-66) length) a0-66) 4)
+             (set! (-> arg1 path-height) (command-get-float (ref arg0 3) 0.0))
+             )
+         )
+       )
+      (('speech)
+       (speech-play
+         *blow-tower-speech*
+         (symbol->blow-tower-speech (the-as symbol (ref arg0 1)))
+         *blow-tower-speech-list*
+         (target-pos 0)
+         )
+       )
+      (('look-at-ent 'look-at-track 'look-at-bombbot)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type look-at-track))
+       (cond
+         ((= a0-2 'look-at-ent)
+          (set! (-> arg1 cmd-type) (blow-tower-cmd-type look-at-ent))
+          )
+         ((= a0-2 'look-at-bombbot)
+          (set! (-> arg1 cmd-type) (blow-tower-cmd-type look-at-bombbot))
+          )
+         )
+       (set! (-> arg1 entity-name) (the-as string (ref arg0 1)))
+       (set! (-> arg1 path-height) 1.0)
+       (let ((a0-74 arg0))
+         (if (>= ((method-of-type (rtype-of a0-74) length) a0-74) 3)
+             (set! (-> arg1 path-height) (command-get-float (ref arg0 2) 0.0))
+             )
+         )
+       )
+      (('barrel-roll)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type barrel-roll))
+       (set! (-> arg1 path-height) (command-get-float (ref arg0 1) 0.0))
+       (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 2)))
+       (set! (-> arg1 time-offset) 2.0)
+       (let ((a0-82 arg0))
+         (if (>= ((method-of-type (rtype-of a0-82) length) a0-82) 4)
+             (set! (-> arg1 time-offset) (command-get-float (ref arg0 3) 0.0))
+             )
+         )
+       )
+      (('roll-amount)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type roll-amount))
+       (set! (-> arg1 path-height) (command-get-float (ref arg0 1) 0.0))
+       (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 0 2)))
+       (set! (-> arg1 time-offset) 1.0)
+       (let ((a0-90 arg0))
+         (if (>= ((method-of-type (rtype-of a0-90) length) a0-90) 4)
+             (set! (-> arg1 time-offset) (command-get-float (ref arg0 3) 0.0))
+             )
+         )
+       )
+      (('clock-scalar)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type clock-scalar))
+       (set! (-> arg1 clock-scalar) (command-get-float (ref arg0 1) 0.0))
+       )
+      (('path-height)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type path-height))
+       (set! (-> arg1 path-height) (* 4096.0 (command-get-float (ref arg0 1) 0.0)))
+       (set! (-> arg1 target) (the-as uint (get-blow-tower-target arg0 3 2)))
+       (set! v0-8 (command-get-int (ref arg0 3) 0))
+       (set! (-> arg1 event-id) (the-as uint v0-8))
+       v0-8
+       )
+      (('unlock-view)
+       (set! v0-8 4)
+       (set! (-> arg1 cmd-type) (the-as blow-tower-cmd-type v0-8))
+       v0-8
+       )
+      (('end)
+       (set! v0-8 19)
+       (set! (-> arg1 cmd-type) (the-as blow-tower-cmd-type v0-8))
+       v0-8
+       )
+      (('save-progress)
+       (set! v0-8 13)
+       (set! (-> arg1 cmd-type) (the-as blow-tower-cmd-type v0-8))
+       v0-8
+       )
+      (('constrain-angle)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type constrain-angle))
+       (set! (-> arg1 rotate-amount) (* 182.04445 (command-get-float (ref arg0 1) 0.0)))
+       )
+      (('rotate-view)
+       (set! (-> arg1 cmd-type) (blow-tower-cmd-type rotate-view))
+       (set! (-> arg1 rotate-amount) (* 182.04445 (command-get-float (ref arg0 1) 0.0)))
+       (set! (-> arg1 snap-view?) #f)
+       (let ((a0-117 arg0))
+         (if (>= ((method-of-type (rtype-of a0-117) length) a0-117) 3)
+             (set! (-> arg1 snap-view?) (the-as symbol (ref arg0 2)))
+             )
+         )
+       (set! (-> arg1 time-offset) 360.0)
+       (let ((a0-119 arg0))
+         (if (>= ((method-of-type (rtype-of a0-119) length) a0-119) 4)
+             (set! (-> arg1 time-offset) (command-get-float (ref arg0 3) 0.0))
+             )
+         )
+       )
+      )
+    )
+  )
+
+(define *blow-tower-script*
+  (new 'static 'boxed-array :type tower-event-group
+    (new 'static 'tower-event-group
+      :event-id #x44c
+      :command-list '((speech mission-0) (look-at player (new 'static 'bfloat :data 1.5) (new 'static 'bfloat :data 1.0)))
+      )
+    (new 'static 'tower-event-group :event-id #x4b0 :command-list '())
+    (new 'static 'tower-event-group :event-id #x578 :command-list '((spawn kg-flyer-ent player "bt-fliers-4")))
+    (new 'static 'tower-event-group :event-id #x640 :command-list '())
+    (new 'static 'tower-event-group :event-id #x76c :command-list '())
+    (new 'static 'tower-event-group :event-id #x7d0 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x898
+      :command-list '((barrel-roll 80 pickup (new 'static 'bfloat :data 2.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x8fc
+      :command-list '((play-sound pickup (new 'static 'bfloat :data 2.5))
+        (barrel-roll -80 pickup (new 'static 'bfloat :data 2.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x960
+      :command-list '((barrel-roll 0 pickup (new 'static 'bfloat :data 2.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x992
+      :command-list '((path-height (new 'static 'bfloat :data 8.0) player 2500) (roll-amount (new 'static 'bfloat :data 20.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x9c4
+      :command-list '((path-height (new 'static 'bfloat :data 8.0) pickup 2900)
+        (path-height (new 'static 'bfloat :data 3.0) player 2700)
+        (roll-amount (new 'static 'bfloat :data -5.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #xa8c
+      :command-list '((roll-amount (new 'static 'bfloat)) (path-height (new 'static 'bfloat) pickup 3000))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xbb8
+      :command-list '((speech mission-1)
+        (path-height (new 'static 'bfloat :data 8.0) player 3100)
+        (roll-amount (new 'static 'bfloat :data 10.0))
+        (spawn kg-bombbot-ent "bbot-s-1" "bbots-e-5")
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #xc1c
+      :command-list '((path-height (new 'static 'bfloat) player 3200))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xc80
+      :command-list '((play-sound player (new 'static 'bfloat :data 1.0))
+        (path-height (new 'static 'bfloat :data 10.0) player 3300)
+        (roll-amount (new 'static 'bfloat :data 30.0) player (new 'static 'bfloat :data 30.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #xd48
+      :command-list '((path-height (new 'static 'bfloat) player 3442)
+        (barrel-roll (new 'static 'bfloat) pickup (new 'static 'bfloat :data 2.0))
+        (roll-amount (new 'static 'bfloat) player (new 'static 'bfloat :data 30.0))
+        )
+      )
+    (new 'static 'tower-event-group :event-id #xd54 :command-list '())
+    (new 'static 'tower-event-group :event-id #xd60 :command-list '())
+    (new 'static 'tower-event-group :event-id #xd6c :command-list '())
+    (new 'static 'tower-event-group :event-id #xdac :command-list '((speech first-metalhead-pickup)))
+    (new 'static 'tower-event-group
+      :event-id #xe10
+      :command-list '((play-sound pickup (new 'static 'bfloat :data 6.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xe74
+      :command-list '((barrel-roll 60 pickup (new 'static 'bfloat :data 1.0))
+        (path-height (new 'static 'bfloat) player 3740)
+        (roll-amount (new 'static 'bfloat :data -10.0) player (new 'static 'bfloat :data 40.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #xe9c
+      :command-list '((barrel-roll 0 pickup (new 'static 'bfloat :data 1.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xec4
+      :command-list '((look-at-track "bt-grunt-4" (new 'static 'bfloat :data 2.0)) (speech first-metalhead-player))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xf14
+      :command-list '((roll-amount (new 'static 'bfloat :data 20.0))
+        (roll-amount (new 'static 'bfloat) player (new 'static 'bfloat :data 40.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #xf3c
+      :command-list '((path-height (new 'static 'bfloat) player 3980)
+        (look-at player (new 'static 'bfloat :data 3.0) (new 'static 'bfloat :data 0.75))
+        )
+      )
+    (new 'static 'tower-event-group :event-id #xf64 :command-list '((roll-amount (new 'static 'bfloat))))
+    (new 'static 'tower-event-group
+      :event-id #xf8c
+      :command-list '((look-at player (new 'static 'bfloat :data 0.5) (new 'static 'bfloat :data 0.5)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xfb4
+      :command-list '((look-at pickup (new 'static 'bfloat)) (sound-play pickup (new 'static 'bfloat :data 3.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #xfdc
+      :command-list '((barrel-roll -45 pickup (new 'static 'bfloat :data 2.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1004
+      :command-list '((barrel-roll 0 pickup (new 'static 'bfloat :data 1.0)) (spawn kg-flyer-ent player "bt-fliers-6"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x102c
+      :command-list '((path-height (new 'static 'bfloat :data 8.0) pickup 4180) (look-at player (new 'static 'bfloat :data 1.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x10cc
+      :command-list '((speech missiles-pickup-1)
+        (sound-play player (new 'static 'bfloat :data 0.75))
+        (look-at pickup (new 'static 'bfloat :data -1.0) (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.75))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.5))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1130
+      :command-list '((path-height (new 'static 'bfloat) pickup)
+        (rotate-view (new 'static 'bfloat :data 180.0) #f (new 'static 'bfloat :data 180.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x125c
+      :command-list '((look-at pickup (new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 0.3)))
+      )
+    (new 'static 'tower-event-group :event-id #x12c0 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x1324
+      :command-list '((look-at pickup (new 'static 'bfloat :data -1.0) (new 'static 'bfloat :data 2.0))
+        (look-at-track "bt-grunt-7" (new 'static 'bfloat :data 2.0))
+        (clock-scalar (new 'static 'bfloat :data 0.75))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1388
+      :command-list '((barrel-roll 0 pickup (new 'static 'bfloat :data 2.0))
+        (roll-amount (new 'static 'bfloat :data 20.0) player (new 'static 'bfloat :data 180.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1450
+      :command-list '((roll-amount (new 'static 'bfloat) player (new 'static 'bfloat :data 180.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x14b4
+      :command-list '((clock-scalar (new 'static 'bfloat :data 1.0)) (spawn kg-bombbot-ent "bbot1-s-1" "bbots-e-1"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x14e6
+      :command-list '((look-at-track "bt-grunt-43" (new 'static 'bfloat :data 2.0)))
+      )
+    (new 'static 'tower-event-group :event-id #x1518 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x157c
+      :command-list '((play-sound player (new 'static 'bfloat :data 1.0))
+        (path-height (new 'static 'bfloat :data 20.0) player 5700)
+        (path-height (new 'static 'bfloat) pickup 5700)
+        (clock-scalar (new 'static 'bfloat :data 1.5))
+        )
+      )
+    (new 'static 'tower-event-group :event-id #x1644 :command-list '((look-at-bombbot "bbot1-s-1")))
+    (new 'static 'tower-event-group :event-id #x16a8 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x170c
+      :command-list '((speech missiles-player)
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        (spawn missiles-ent player "bt-missile-launcher-1" (new 'static 'bfloat :data 3.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1838
+      :command-list '((spawn kg-bombbot-ent "bbot-s-3" "bbots-e-7"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1900
+      :command-list '((clock-scalar (new 'static 'bfloat :data 1.0)))
+      )
+    (new 'static 'tower-event-group :event-id #x1964 :command-list '((look-at-bombbot "bbot-s-3")))
+    (new 'static 'tower-event-group
+      :event-id #x1a2c
+      :command-list '((path-height (new 'static 'bfloat) player 6800)
+        (look-at-track "bt-grunt-10" (new 'static 'bfloat :data 2.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1a90
+      :command-list '((spawn kg-bombbot-ent "bbot5-s-1" "bt-roboguard-19"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1af4
+      :command-list '((sound-play player (new 'static 'bfloat :data 1.0))
+        (look-at player (new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 2.0))
+        )
+      )
+    (new 'static 'tower-event-group :event-id #x1ce8 :command-list '((speech mission-2)))
+    (new 'static 'tower-event-group
+      :event-id #x1bbc
+      :command-list '((path-height (new 'static 'bfloat :data 17.0) player 7300))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x1e14
+      :command-list '((path-height (new 'static 'bfloat) player 7900))
+      )
+    (new 'static 'tower-event-group :event-id #x1edc :command-list '((speech mission-3)))
+    (new 'static 'tower-event-group
+      :event-id #x2134
+      :command-list '((speech missiles-pickup-2)
+        (rotate-view (new 'static 'bfloat :data 90.0) #t (new 'static 'bfloat :data 180.0))
+        (path-height (new 'static 'bfloat :data 2.5) pickup)
+        (path-height (new 'static 'bfloat :data 2.5) player)
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2198
+      :command-list '((look-at pickup (new 'static 'bfloat :data -1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x21fc
+      :command-list '((spawn missiles pickup)
+        (spawn missiles pickup)
+        (spawn missiles pickup)
+        (spawn missiles pickup)
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2260
+      :command-list '((spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.5))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x22c4
+      :command-list '((spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x238c
+      :command-list '((look-at pickup (new 'static 'bfloat) (new 'static 'bfloat :data 0.4)))
+      )
+    (new 'static 'tower-event-group :event-id #x251c :command-list '((save-progress)))
+    (new 'static 'tower-event-group
+      :event-id #x2580
+      :command-list '((look-at player (new 'static 'bfloat :data 1.5)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x25e4
+      :command-list '((path-height (new 'static 'bfloat :data 35.0) player 9900))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2648
+      :command-list '((spawn kg-flyer-ent player "bt-fliers-1")
+        (spawn kg-flyer-ent player "bt-fliers-1")
+        (spawn kg-flyer-ent player "bt-fliers-1")
+        (roll-amount 30 player 60)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x26ac
+      :command-list '((spawn mh-flyer-ent pickup "bt-fliers-2") (spawn mh-flyer-ent pickup "bt-fliers-2"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x27d8
+      :command-list '((spawn mh-flyer-ent pickup "bt-fliers-2")
+        (spawn mh-flyer-ent pickup "bt-fliers-2")
+        (spawn mh-flyer-ent player "bt-fliers-2")
+        (spawn mh-flyer-ent player "bt-fliers-2")
+        (path-height (new 'static 'bfloat :data 5.0) player 10400)
+        (roll-amount (new 'static 'bfloat) player 30)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x28a0
+      :command-list '((path-height (new 'static 'bfloat) player 11000) (spawn kg-bombbot-ent "bbot-s-4" "bbots-e-8"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2904
+      :command-list '((spawn mh-flyer-ent player "bt-fliers-2") (spawn mh-flyer-ent player "bt-fliers-2"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2968
+      :command-list '((path-height (new 'static 'bfloat :data 15.0) pickup 10800))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x29cc
+      :command-list '((play-sound pickup (new 'static 'bfloat :data 4.0))
+        (speech missiles-pickup-3)
+        (spawn missiles pickup (new 'static 'bfloat :data 1.1))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.1))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.1))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.1))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.1))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.1))
+        (look-at pickup (new 'static 'bfloat :data -1.0))
+        (path-height (new 'static 'bfloat :data 5.0) player 10800)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a36
+      :command-list '((spawn kg-flyer-ent player "bt-roboguard-53") (spawn kg-flyer-ent player "bt-roboguard-52"))
+      )
+    (new 'static 'tower-event-group :event-id #x2a38 :command-list '((look-at pickup (new 'static 'bfloat))))
+    (new 'static 'tower-event-group :event-id #x2a3a :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x2a3e
+      :command-list '((path-height (new 'static 'bfloat :data 10.0) pickup 10816)
+        (path-height (new 'static 'bfloat :data -2.0) player 10818)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a40
+      :command-list '((play-sound pickup (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a48
+      :command-list '((play-sound player (new 'static 'bfloat :data 2.0))
+        (play-sound pickup (new 'static 'bfloat :data 10.0))
+        (path-height (new 'static 'bfloat :data 40.0) player 10830)
+        (path-height (new 'static 'bfloat :data 35.0) pickup 10830)
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 1.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 2.0))
+        (look-at pickup (new 'static 'bfloat :data -1.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a54
+      :command-list '((barrel-roll 45 pickup (new 'static 'bfloat :data 1.0))
+        (path-height (new 'static 'bfloat :data 76.0) player 10840)
+        (path-height (new 'static 'bfloat :data 73.0) pickup 10840)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a56
+      :command-list '((look-at pickup (new 'static 'bfloat :data -0.5)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a58
+      :command-list '((barrel-roll 0 pickup (new 'static 'bfloat :data 2.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a5a
+      :command-list '((play-sound pickup (new 'static 'bfloat :data 1.0))
+        (look-at-track "bt-grunt-30" (new 'static 'bfloat :data 2.0))
+        )
+      )
+    (new 'static 'tower-event-group :event-id #x2a5c :command-list '())
+    (new 'static 'tower-event-group :event-id #x2a70 :command-list '((speech first-metalhead-player)))
+    (new 'static 'tower-event-group
+      :event-id #x2a60
+      :command-list '((look-at player (new 'static 'bfloat :data 1.0))
+        (speech mission-5)
+        (spawn missiles-ent player "bt-roboguard-52" (new 'static 'bfloat :data 2.0))
+        (spawn missiles-ent player "bt-roboguard-52" (new 'static 'bfloat :data 2.5))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a62
+      :command-list '((path-height (new 'static 'bfloat) pickup 10856) (spawn mh-flyer-ent player "bt-roboguard-58"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a64
+      :command-list '((path-height (new 'static 'bfloat :data 3.0) player 10856)
+        (spawn kg-bombbot-ent "bt-roboguard-56" "bt-roboguard-57")
+        (spawn mh-flyer-ent player "bt-roboguard-53")
+        (spawn mh-flyer-ent player "bt-roboguard-58")
+        )
+      )
+    (new 'static 'tower-event-group :event-id #x2a66 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x2a68
+      :command-list '((spawn mh-flyer-ent player "bt-roboguard-55") (spawn mh-flyer-ent player "bt-roboguard-55"))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a6c
+      :command-list '((spawn mh-flyer-ent player "bt-grunt-15")
+        (spawn mh-flyer-ent player "bt-grunt-16")
+        (path-height (new 'static 'bfloat :data 7.0) pickup 10862)
+        (look-at player (new 'static 'bfloat :data 1.0))
+        (clock-scalar (new 'static 'bfloat :data 1.75))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2a6e
+      :command-list '((clock-scalar (new 'static 'bfloat :data 1.0)))
+      )
+    (new 'static 'tower-event-group :event-id #x2a70 :command-list '((roll-amount -10 player 30)))
+    (new 'static 'tower-event-group
+      :event-id #x2a72
+      :command-list '((path-height (new 'static 'bfloat :data 3.0) pickup 10900))
+      )
+    (new 'static 'tower-event-group :event-id #x2a94 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x2b5c
+      :command-list '((clock-scalar (new 'static 'bfloat :data 0.75))
+        (spawn kg-bombbot-ent "bbot-e-1" "bbots-e-3")
+        (path-height (new 'static 'bfloat :data 10.0) player 11300)
+        (roll-amount 20 player 20)
+        (speech mission-6)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2c24
+      :command-list '((sound-play pickup (new 'static 'bfloat :data 3.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2c88
+      :command-list '((barrel-roll 60 pickup (new 'static 'bfloat :data 1.0))
+        (roll-amount 0 player 20)
+        (look-at player (new 'static 'bfloat :data 3.0))
+        (speech mission-4)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2cec
+      :command-list '((barrel-roll -60 pickup (new 'static 'bfloat :data 2.0)))
+      )
+    (new 'static 'tower-event-group :event-id #x2d50 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x2db4
+      :command-list '((barrel-roll 60 pickup (new 'static 'bfloat :data 2.0))
+        (path-height (new 'static 'bfloat :data 8.0) pickup 11800)
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2e18
+      :command-list '((path-height (new 'static 'bfloat) pickup 11900))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2f44
+      :command-list '((barrel-roll 0 pickup (new 'static 'bfloat :data 2.0)) (clock-scalar (new 'static 'bfloat :data 1.0)))
+      )
+    (new 'static 'tower-event-group :event-id #x30d4 :command-list '((look-at pickup (new 'static 'bfloat))))
+    (new 'static 'tower-event-group :event-id #x3138 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x3200
+      :command-list '((path-height (new 'static 'bfloat :data 2.0) player) (rotate-view (new 'static 'bfloat :data 30.0)))
+      )
+    (new 'static 'tower-event-group
+      :event-id #x2c24
+      :command-list '((path-height (new 'static 'bfloat) player 11700))
+      )
+    (new 'static 'tower-event-group :event-id #x32c8 :command-list '((spawn mh-flyer-ent player "bt-fliers-3")))
+    (new 'static 'tower-event-group
+      :event-id #x3458
+      :command-list '((path-height (new 'static 'bfloat :data 5.0) pickup 13600))
+      )
+    (new 'static 'tower-event-group :event-id #x3520 :command-list '((path-height (new 'static 'bfloat) pickup)))
+    (new 'static 'tower-event-group :event-id #x36b0 :command-list '())
+    (new 'static 'tower-event-group
+      :event-id #x3778
+      :command-list '((speech missiles-pickup-4)
+        (path-height (new 'static 'bfloat) player 14300)
+        (spawn missiles pickup (new 'static 'bfloat :data 3.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 3.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 3.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 3.0))
+        (spawn missiles pickup (new 'static 'bfloat :data 3.0))
+        )
+      )
+    (new 'static 'tower-event-group
+      :event-id #x3a98
+      :command-list '((roll-amount (new 'static 'bfloat :data -20.0) player 10))
+      )
+    (new 'static 'tower-event-group :event-id #x3c8c :command-list '())
+    (new 'static 'tower-event-group :event-id #x3e80 :command-list '((unlock-view)))
+    (new 'static 'tower-event-group
+      :event-id #x4010
+      :command-list '((roll-amount (new 'static 'bfloat) player 20))
+      )
+    (new 'static 'tower-event-group :event-id #x413c :command-list '((end)))
+    )
+  )

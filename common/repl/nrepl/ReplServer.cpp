@@ -16,10 +16,6 @@
 #include "common/log/log.h"
 // clang-format on
 
-// TODO - basically REPL to listen and inject commands into a running REPL
-// - we will need a C++ side client as well which will let us communicate with the repl via for
-// example, ImgUI
-//
 // TODO - The server also needs to eventually return the result of the evaluation
 
 ReplServer::~ReplServer() {

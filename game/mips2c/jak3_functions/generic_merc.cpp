@@ -3172,7 +3172,7 @@ block_64:
     goto block_67;
   }
 
-block_66:
+// block_66:
   c->daddiu(v1, s7, 4);                             // daddiu v1, s7, 4
   get_fake_spad_addr2(a0, cache.fake_scratchpad_data, 0, c);// lui a0, 28672
   c->lbu(a0, 6852, a0);                             // lbu a0, 6852(a0)
@@ -3204,7 +3204,7 @@ block_69:
     goto block_72;
   }
 
-block_71:
+// block_71:
   get_fake_spad_addr2(v1, cache.fake_scratchpad_data, 0, c);// lui v1, 28672
   c->lbu(v1, 6858, v1);                             // lbu v1, 6858(v1)
   c->daddiu(a0, v1, -1);                            // daddiu a0, v1, -1
@@ -3287,7 +3287,7 @@ block_75:
 //
 //   c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
-block_79:
+// block_79:
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
   // c->sw(a3, 128, a2);                            // sw a3, 128(a2)
   sadr = c->sgpr64(a3);
@@ -3362,7 +3362,7 @@ block_80:
 
   c->gprs[t0].du64[0] = 0;                          // or t0, r0, r0
 
-block_84:
+// block_84:
   c->dsll(t0, a0, 4);                               // dsll t0, a0, 4
   // c->sw(a3, 128, a2);                            // sw a3, 128(a2)
   sadr = c->sgpr64(a3);

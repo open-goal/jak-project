@@ -1,4 +1,5 @@
 #include "common/goos/PrettyPrinter.h"
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 
@@ -31,6 +32,24 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
                                   const goos::Object& rest,
                                   const goos::Object& name,
                                   Env* env) {
+  if (m_settings.check_for_requires) {
+    const auto& symbol_info =
+        m_symbol_info.lookup_exact_name(name.print(), symbol_info::Kind::MACRO);
+    if (!symbol_info.empty()) {
+      const auto& result = symbol_info.at(0);
+      if (result->m_def_location.has_value() &&
+          !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
+          env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+              env->file_env()->m_required_files.end() &&
+          !str_util::ends_with(result->m_def_location->file_path,
+                               env->file_env()->name() + ".gc")) {
+        lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                 result->m_def_location->file_path, name.print());
+        env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+      }
+    }
+  }
+
   auto macro = macro_obj.as_macro();
   Arguments args = m_goos.get_args(o, rest, macro->args);
   auto mac_env_obj = EnvironmentObject::make_new();
@@ -45,8 +64,6 @@ Val* Compiler::compile_goos_macro(const goos::Object& o,
       env->function_env()->alloc_env<MacroExpandEnv>(env, name.as_symbol(), macro->body, o);
   try {
     const auto& compile_result = compile(goos_result, compile_env_for_macro);
-    // TODO - is this critical (do the args and such change?)?
-    m_macro_specs.emplace(macro->name, macro->args);
     return compile_result;
   } catch (CompilerException& ce) {
     if (ce.print_err_stack) {

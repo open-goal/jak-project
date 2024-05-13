@@ -1,0 +1,686 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *alert-level-settings*, type squad-alert-state-settings
+(define *alert-level-settings* (new 'static 'squad-alert-state-settings
+                                 :ped-tazer (new 'static 'squad-unit-settings
+                                   :target-count 3
+                                   :shot-count 1
+                                   :inaccuracy 0.5
+                                   :acquire-delay (seconds 1)
+                                   :shot-delay (seconds 0.25)
+                                   :burst-delay (seconds 2)
+                                   )
+                                 :ped-rifle (new 'static 'squad-unit-settings
+                                   :target-count 3
+                                   :shot-count 2
+                                   :rand-shot-count 1
+                                   :inaccuracy 0.5
+                                   :acquire-delay (seconds 1)
+                                   :shot-delay (seconds 0.25)
+                                   :burst-delay (seconds 2)
+                                   )
+                                 :ped-grenade (new 'static 'squad-unit-settings
+                                   :target-count 1
+                                   :shot-count 1
+                                   :inaccuracy 0.5
+                                   :acquire-delay (seconds 1)
+                                   :shot-delay (seconds 0.25)
+                                   :burst-delay (seconds 2)
+                                   )
+                                 :bike-turret (new 'static 'squad-unit-settings
+                                   :shot-count 2
+                                   :rand-shot-count 1
+                                   :inaccuracy 0.5
+                                   :acquire-delay (seconds 1)
+                                   :shot-delay (seconds 0.25)
+                                   :burst-delay (seconds 5)
+                                   )
+                                 :hellcat-turret (new 'static 'squad-unit-settings
+                                   :shot-count 2
+                                   :rand-shot-count 1
+                                   :inaccuracy 0.5
+                                   :acquire-delay (seconds 1)
+                                   :shot-delay (seconds 0.25)
+                                   :burst-delay (seconds 5)
+                                   )
+                                 )
+        )
+
+;; definition for symbol *ff-war-alert-state-settings*, type squad-alert-state-settings
+(define *ff-war-alert-state-settings* (new 'static 'squad-alert-state-settings
+                                        :ped-tazer (new 'static 'squad-unit-settings
+                                          :target-count 4
+                                          :shot-count 1
+                                          :inaccuracy 0.125
+                                          :acquire-delay (seconds 0.5)
+                                          :shot-delay (seconds 0.25)
+                                          :burst-delay (seconds 2)
+                                          )
+                                        :ped-rifle (new 'static 'squad-unit-settings
+                                          :target-count 7
+                                          :shot-count 2
+                                          :rand-shot-count 2
+                                          :inaccuracy 0.125
+                                          :acquire-delay (seconds 0.5)
+                                          :shot-delay (seconds 0.15)
+                                          :burst-delay (seconds 2)
+                                          )
+                                        :ped-grenade (new 'static 'squad-unit-settings
+                                          :target-count 3
+                                          :shot-count 1
+                                          :inaccuracy 0.125
+                                          :acquire-delay (seconds 1)
+                                          :shot-delay (seconds 0.25)
+                                          :burst-delay (seconds 3)
+                                          )
+                                        :bike-turret (new 'static 'squad-unit-settings
+                                          :shot-count 2
+                                          :rand-shot-count 2
+                                          :inaccuracy 0.125
+                                          :acquire-delay (seconds 0.5)
+                                          :shot-delay (seconds 0.25)
+                                          :burst-delay (seconds 3)
+                                          )
+                                        :hellcat-turret (new 'static 'squad-unit-settings
+                                          :shot-count 2
+                                          :rand-shot-count 2
+                                          :inaccuracy 0.125
+                                          :acquire-delay (seconds 0.5)
+                                          :shot-delay (seconds 0.25)
+                                          :burst-delay (seconds 3)
+                                          )
+                                        )
+        )
+
+;; definition for symbol *ff-guard-type-mask*, type int
+(define *ff-guard-type-mask* 63)
+
+;; definition for method 10 of type ff-squad-control
+(defmethod squad-control-method-10 ((this ff-squad-control))
+  (call-parent-method this)
+  (dotimes (v1-0 3)
+    (set! (-> this guard-type-info-array 0 data v1-0 object-type) (traffic-type guard-a))
+    (set! (-> this guard-type-info-array 1 data v1-0 object-type) (traffic-type guard-a))
+    (set! (-> this guard-type-info-array 2 data v1-0 object-type) (traffic-type guard-a))
+    (set! (-> this guard-type-info-array 3 data v1-0 object-type) (traffic-type wlander-male))
+    (set! (-> this guard-type-info-array 4 data v1-0 object-type) (traffic-type guard-bike))
+    (set! (-> this guard-type-info-array 5 data v1-0 object-type) (traffic-type guard-car))
+    )
+  (dotimes (v1-3 29)
+    (set! (-> this guard-type-mask-from-object-type v1-3) (the-as uint 0))
+    )
+  (dotimes (v1-6 10)
+    (when (logtest? *ff-guard-type-mask* (ash 1 v1-6))
+      (let ((a0-17 (-> this guard-type-info-array v1-6 guard-info-normal object-type)))
+        (set! (-> this guard-type-mask-from-object-type a0-17)
+              (the-as uint (logior (ash 1 v1-6) (-> this guard-type-mask-from-object-type a0-17)))
+              )
+        )
+      )
+    )
+  (init-alert this)
+  (none)
+  )
+
+;; definition for method 12 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod init-alert ((this ff-squad-control))
+  (let ((t9-0 (-> *traffic-info* restore-speech-callback)))
+    (if t9-0
+        (t9-0)
+        )
+    )
+  (let ((t9-1 (method-of-type squad-control init-alert)))
+    (t9-1 this)
+    )
+  (dotimes (v1-4 3)
+    (dotimes (a0-2 10)
+      (when (logtest? *ff-guard-type-mask* (ash 1 a0-2))
+        (let ((a1-6 (the-as traffic-guard-type-array (+ (+ (* v1-4 16) 1780 (* 48 a0-2)) (the-as int this)))))
+          (set! (-> a1-6 guard-info-normal min-target-count) 0)
+          (set! (-> a1-6 guard-info-normal max-target-count) 127)
+          )
+        )
+      )
+    )
+  (set-guard-target-level this 1.0)
+  0
+  (none)
+  )
+
+;; definition for method 56 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod ff-squad-control-method-56 ((this ff-squad-control) (arg0 int) (arg1 int) (arg2 int))
+  (let ((v1-3 (-> this guard-type-info-array (the-as uint arg0))))
+    (set! (-> v1-3 guard-info-normal min-target-count) (max 0 (min 127 arg1)))
+    (set! (-> v1-3 guard-info-normal max-target-count) (max 0 (min 127 arg2)))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 16 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod squad-control-method-16 ((this ff-squad-control) (arg0 vector) (arg1 process-focusable) (arg2 squad-target-status))
+  (local-vars (sv-176 (array crimson-guard)) (sv-180 (array float)) (sv-184 int))
+  (let ((t9-0 (method-of-type squad-control squad-control-method-16)))
+    (t9-0 this arg0 arg1 arg2)
+    )
+  (let ((s4-0 (get-idx-in-status-arr this (-> arg2 handle))))
+    (set! sv-176 (the-as (array crimson-guard) (new 'stack 'boxed-array crimson-guard 16)))
+    (set! sv-180 (the-as (array float) (new 'stack 'boxed-array float 16)))
+    (set! sv-184 0)
+    (dotimes (s3-0 (the-as int (-> this traffic tracker1 active-object-count)))
+      (case (-> this traffic tracker1 active-object-type-list s3-0)
+        (((traffic-type guard-a))
+         (let ((s2-0 (the-as crimson-guard (handle->process (-> this traffic tracker1 active-object-list s3-0)))))
+           (when (and s2-0 (not (focus-test? s2-0 dead inactive)) (= (-> s2-0 target-status handle) (-> arg2 handle)))
+             (set! (-> sv-176 sv-184) s2-0)
+             (set! (-> sv-180 sv-184) (vector-vector-distance (-> s2-0 root trans) (-> arg2 position)))
+             (set! sv-184 (+ sv-184 1))
+             (set! (-> s2-0 move-index) -1)
+             )
+           )
+         )
+        )
+      )
+    (let ((a0-14 #t))
+      (while a0-14
+        (set! a0-14 #f)
+        (dotimes (v1-32 (+ sv-184 -1))
+          (when (< (-> sv-180 (+ v1-32 1)) (-> sv-180 v1-32))
+            (let ((a0-17 (-> sv-176 v1-32))
+                  (f0-2 (-> sv-180 v1-32))
+                  )
+              (set! (-> sv-176 v1-32) (-> sv-176 (+ v1-32 1)))
+              (set! (-> sv-176 (+ v1-32 1)) a0-17)
+              (set! (-> sv-180 v1-32) (-> sv-180 (+ v1-32 1)))
+              (set! (-> sv-180 (+ v1-32 1)) f0-2)
+              )
+            (set! a0-14 #t)
+            )
+          )
+        )
+      )
+    (cond
+      ((< s4-0 0)
+       )
+      (else
+        (let ((s3-1 (new 'stack-no-clear 'array 'float 16)))
+          (dotimes (v1-37 16)
+            (set! (-> s3-1 v1-37) 0.0)
+            )
+          (dotimes (s2-1 sv-184)
+            (crimson-guard-method-282 (-> sv-176 s2-1) (-> arg2 position) (-> this target-formation-array s4-0) s3-1 16)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 35 of type ff-squad-control
+(defmethod squad-control-city-method-35 ((this ff-squad-control) (arg0 citizen) (arg1 handle))
+  (cond
+    ((type? arg0 citizen)
+     (let ((a0-2 arg0))
+       (cond
+         ((!= (-> a0-2 faction-mode) 1)
+          (if (zero? (-> this alert-state level))
+              (the-as process-focusable #f)
+              (get-focus-in-range this arg0)
+              )
+          )
+         (else
+           (call-parent-method this arg0 arg1)
+           )
+         )
+       )
+     )
+    (else
+      (ff-squad-control-method-51
+        this
+        arg0
+        (collide-spec jak enemy hit-by-others-list player-list bot-targetable jak-vehicle)
+        )
+      )
+    )
+  )
+
+;; definition for method 51 of type ff-squad-control
+;; WARN: Return type mismatch process-drawable vs process-focusable.
+(defmethod ff-squad-control-method-51 ((this ff-squad-control) (arg0 process-focusable) (arg1 collide-spec))
+  (let ((gp-0 (the-as process-drawable #f)))
+    (let ((f30-0 (the-as float #x7f800000)))
+      (when (logtest? arg1 (collide-spec player-list))
+        (let ((v1-4 (-> *collide-player-list* alive-list next0)))
+          *collide-player-list*
+          (let ((s3-0 (-> v1-4 next0)))
+            (while (!= v1-4 (-> *collide-player-list* alive-list-end))
+              (let ((v1-5 (the-as collide-shape (-> (the-as connection v1-4) param1))))
+                (when (logtest? arg1 (-> v1-5 root-prim prim-core collide-as))
+                  (let* ((s1-0 (-> v1-5 process))
+                         (s2-0 (if (type? s1-0 process-focusable)
+                                   s1-0
+                                   )
+                               )
+                         )
+                    (when (and s2-0 (not (focus-test? (the-as process-focusable s2-0) disable dead inactive)) (!= arg0 s2-0))
+                      (let ((f0-0 (vector-vector-xz-distance (-> arg0 root trans) (-> (the-as process-focusable s2-0) root trans))))
+                        (when (or (not gp-0) (< f0-0 f30-0))
+                          (set! gp-0 s2-0)
+                          (set! f30-0 f0-0)
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              (set! v1-4 s3-0)
+              *collide-player-list*
+              (set! s3-0 (-> (the-as connection s3-0) next0))
+              )
+            )
+          )
+        )
+      (when (logtest? arg1 (collide-spec hit-by-player-list hit-by-others-list))
+        (when (logtest? arg1 (collide-spec hit-by-player-list))
+          (let ((v1-22 (-> *collide-hit-by-player-list* alive-list next0)))
+            *collide-hit-by-player-list*
+            (let ((s3-1 (-> v1-22 next0)))
+              (while (!= v1-22 (-> *collide-hit-by-player-list* alive-list-end))
+                (let ((v1-23 (the-as collide-shape (-> (the-as connection v1-22) param1))))
+                  (when (logtest? arg1 (-> v1-23 root-prim prim-core collide-as))
+                    (let* ((s1-1 (-> v1-23 process))
+                           (s2-1 (if (type? s1-1 process-focusable)
+                                     s1-1
+                                     )
+                                 )
+                           )
+                      (when (and s2-1 (not (focus-test? (the-as process-focusable s2-1) disable dead inactive)) (!= arg0 s2-1))
+                        (let ((f0-1 (vector-vector-xz-distance (-> arg0 root trans) (-> s2-1 root trans))))
+                          (when (or (not gp-0) (< f0-1 f30-0))
+                            (set! gp-0 s2-1)
+                            (set! f30-0 f0-1)
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                (set! v1-22 s3-1)
+                *collide-hit-by-player-list*
+                (set! s3-1 (-> s3-1 next0))
+                )
+              )
+            )
+          )
+        (when (logtest? arg1 (collide-spec hit-by-others-list))
+          (let ((v1-38 (-> *collide-hit-by-others-list* alive-list next0)))
+            *collide-hit-by-others-list*
+            (let ((s3-2 (-> v1-38 next0)))
+              (while (!= v1-38 (-> *collide-hit-by-others-list* alive-list-end))
+                (let ((v1-39 (the-as collide-shape (-> (the-as connection v1-38) param1))))
+                  (when (logtest? arg1 (-> v1-39 root-prim prim-core collide-as))
+                    (let* ((s1-2 (-> v1-39 process))
+                           (s2-2 (if (type? s1-2 process-focusable)
+                                     s1-2
+                                     )
+                                 )
+                           )
+                      (when (and s2-2 (not (focus-test? (the-as process-focusable s2-2) disable dead inactive)) (!= arg0 s2-2))
+                        (let ((f0-2 (vector-vector-xz-distance (-> arg0 root trans) (-> s2-2 root trans))))
+                          (when (or (not gp-0) (< f0-2 f30-0))
+                            (set! gp-0 s2-2)
+                            (set! f30-0 f0-2)
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                (set! v1-38 s3-2)
+                *collide-hit-by-others-list*
+                (set! s3-2 (-> s3-2 next0))
+                )
+              )
+            )
+          )
+        )
+      )
+    (the-as process-focusable gp-0)
+    )
+  )
+
+;; definition for method 48 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod ff-squad-control-method-48 ((this ff-squad-control))
+  (let ((v0-0 0))
+    (dotimes (v1-0 10)
+      (if (logtest? *ff-guard-type-mask* (ash 1 v1-0))
+          (+! v0-0 (-> this guard-type-info-array v1-0 guard-info-normal count))
+          )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 50 of type ff-squad-control
+(defmethod get-focus ((this ff-squad-control))
+  (get-target-focus this)
+  )
+
+;; definition for method 49 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-guard-target-level ((this ff-squad-control) (arg0 float))
+  (set! (-> this alert-state guard-target-level) arg0)
+  0
+  (none)
+  )
+
+;; definition for method 53 of type ff-squad-control
+(defmethod get-unit-settings-by-idx ((this ff-squad-control) (arg0 int))
+  (-> this settings guard-settings-array arg0)
+  )
+
+;; definition for method 54 of type ff-squad-control
+;; WARN: Return type mismatch uint vs none.
+(defmethod ff-squad-control-method-54 ((this ff-squad-control) (arg0 int))
+  (-> this traffic object-type-info-array arg0 guard-type)
+  (none)
+  )
+
+;; definition for method 55 of type ff-squad-control
+(defmethod ff-squad-control-method-55 ((this ff-squad-control) (arg0 int) (arg1 int))
+  (-> (the-as ff-squad-control (+ (the-as uint this) (* (the-as uint 48) (the-as uint arg0)) (* arg1 16)))
+      guard-type-info-array
+      0
+      guard-info-normal
+      change-to-type
+      )
+  )
+
+;; definition for method 46 of type ff-squad-control
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for method 45 of type ff-squad-control
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod ff-squad-control-method-45 ((this ff-squad-control))
+  (let ((s5-0 (get-target-focus this)))
+    (let ((a1-0 (-> this alert-state level)))
+      (mem-copy!
+        (the-as pointer (-> this settings))
+        (the-as pointer (+ (the-as uint *alert-level-settings*) (* 320 (the-as int a1-0))))
+        320
+        )
+      )
+    (mem-copy! (the-as pointer (-> this settings-war)) (the-as pointer *ff-war-alert-state-settings*) 320)
+    (dotimes (v1-2 3)
+      (dotimes (a0-4 10)
+        (when (logtest? *ff-guard-type-mask* (ash 1 a0-4))
+          (let ((a2-7 (the-as squad-alert-state-settings (+ (+ (* a0-4 32) 820 (* 320 v1-2)) (the-as int this))))
+                (a1-13 (the-as traffic-guard-type-array (+ (+ (* v1-2 16) 1780 (* 48 a0-4)) (the-as int this))))
+                )
+            (set! (-> a2-7 ped-tazer inaccuracy)
+                  (fmax 0.0 (fmin 1.0 (* (-> a2-7 ped-tazer inaccuracy) (-> this alert-state guard-inaccuracy-factor))))
+                  )
+            (when (and s5-0 (= (-> s5-0 type) target))
+              (when (focus-test? *target* pilot)
+                (set! (-> a2-7 ped-tazer acquire-delay)
+                      (the-as uint (the int (* 0.75 (the float (-> a2-7 ped-tazer acquire-delay)))))
+                      )
+                (set! (-> a2-7 ped-tazer shot-delay)
+                      (the-as uint (the int (* 0.6 (the float (-> a2-7 ped-tazer shot-delay)))))
+                      )
+                (set! (-> a2-7 ped-tazer burst-delay)
+                      (the-as uint (the int (* 0.8 (the float (-> a2-7 ped-tazer burst-delay)))))
+                      )
+                )
+              )
+            (set! (-> a1-13 guard-info-normal target-count)
+                  (max
+                    (min
+                      (the int (* (the float (-> a2-7 ped-tazer target-count)) (-> this alert-state guard-target-level)))
+                      (-> a1-13 guard-info-normal max-target-count)
+                      )
+                    (-> a1-13 guard-info-normal min-target-count)
+                    )
+                  )
+            )
+          )
+        )
+      )
+    )
+  (dotimes (v1-5 3)
+    (dotimes (a0-7 29)
+      (let ((a2-12 (-> this guard-type-mask-from-object-type a0-7)))
+        (when (nonzero? a2-12)
+          (let ((a3-20 0)
+                (a1-17 0)
+                )
+            (while (nonzero? a2-12)
+              (if (logtest? a2-12 1)
+                  (+! a1-17 (-> (the-as ff-squad-control (+ (the-as uint this) (* 48 a3-20) (* v1-5 16)))
+                                guard-type-info-array
+                                0
+                                guard-info-normal
+                                target-count
+                                )
+                      )
+                  )
+              (+! a3-20 1)
+              (set! a2-12 (shr a2-12 1))
+              )
+            (set! (-> this traffic object-type-info-array 0 target-counts (+ v1-5 (* a0-7 32))) a1-17)
+            )
+          )
+        )
+      )
+    )
+  (let ((s5-1 #f))
+    (when (not (logtest? (-> this alert-state flags) (squad-alert-flag war)))
+      (when *traffic-alert-level-force*
+        (set! (-> this alert-state level) (the-as uint 3))
+        (logclear! (-> this alert-state flags) (squad-alert-flag alert-ending))
+        (set-time! (-> this alert-state start-time))
+        )
+      (when (>= (-> this alert-state level) (the-as uint 1))
+        (set! s5-1 #t)
+        (cond
+          ((logtest? (-> this alert-state flags) (squad-alert-flag alert-ending))
+           (cond
+             ((> (the-as int (ff-squad-control-method-48 this)) 0)
+              (set-time! (-> this alert-state start-time))
+              )
+             (else
+               (when (time-elapsed? (-> this alert-state start-time) (seconds 3))
+                 (set! s5-1 #f)
+                 (set! (-> this alert-state level) (the-as uint 0))
+                 (logclear! (-> this alert-state flags) (squad-alert-flag alert-ending))
+                 )
+               )
+             )
+           )
+          (else
+            (let ((s4-0
+                    (+ (- (-> this alert-state start-time) (current-time)) (the-as time-frame (-> this alert-state duration)))
+                    )
+                  )
+              (if (and (get-target-focus this)
+                       (= (-> (get-target-focus this) type) target)
+                       (-> *target* next-state)
+                       (= (-> *target* next-state name) 'target-hide)
+                       )
+                  (set! s4-0 (- s4-0 (the-as time-frame (* (- (current-time) (-> *target* state-time)) 2))))
+                  )
+              (if (> s4-0 0)
+                  0
+                  (logior! (-> this alert-state flags) (squad-alert-flag alert-ending))
+                  )
+              )
+            )
+          )
+        )
+      )
+    (cond
+      (s5-1
+        (if (not (logtest? (-> this alert-state flags) (squad-alert-flag alarm-on)))
+            (logior! (-> this alert-state flags) (squad-alert-flag alarm-on))
+            )
+        (set! (-> (new 'stack-no-clear 'vector) quad) (-> (target-pos 0) quad))
+        (if #t
+            (ff-squad-control-method-47 this)
+            )
+        (let ((v1-65 0))
+          (dotimes (a0-26 29)
+            (let ((a1-20 (-> this traffic object-type-info-array a0-26)))
+              (if #t
+                  (+! v1-65 (-> a1-20 killed-count))
+                  )
+              )
+            )
+          (if (and (>= v1-65 (the-as int (* (-> this alert-state level) 8)))
+                   (< (-> this alert-state level) (-> this alert-state max-level))
+                   )
+              (start-alert this (the-as int (+ (-> this alert-state level) 1)))
+              )
+          )
+        )
+      (else
+        (when (logtest? (-> this alert-state flags) (squad-alert-flag alarm-on))
+          (logclear! (-> this alert-state flags) (squad-alert-flag alarm-on))
+          (ff-squad-control-method-47 this)
+          (let ((v1-79 (-> this alert-state target-status-array)))
+            (logclear! (-> v1-79 0 flags) (squad-target-flag visible-now visible-recently visible-ever))
+            )
+          (dotimes (v1-80 29)
+            (set! (-> this traffic object-type-info-array v1-80 killed-count) (the-as uint 0))
+            0
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 47 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod ff-squad-control-method-47 ((this ff-squad-control))
+  (set-time! (-> this alert-state notify-time))
+  (cond
+    ((> (-> this alert-state level) 0)
+     (if (and (not (logtest? (-> this alert-state flags) (squad-alert-flag alert-ending))) (get-target-focus this))
+         (for-all-active-processes
+           (-> this traffic)
+           (lambda ((arg0 crimson-guard) (arg1 traffic-object-type-info))
+             (when (logtest? (-> arg1 flags) (traffic-type-flag ttf0))
+               (let ((a0-1 arg0))
+                 (if (!= (-> a0-1 faction-mode) 1)
+                     (send-event arg0 'alert-begin (get-target-focus *ff-squad-control*))
+                     )
+                 )
+               )
+             (none)
+             )
+           )
+         )
+     )
+    (else
+      (for-all-active-processes
+        (-> this traffic)
+        (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info))
+          (if (logtest? (-> arg1 flags) (traffic-type-flag ttf0))
+              (send-event arg0 'alert-end)
+              )
+          (none)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 52 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod end-pursuit-for-all ((this ff-squad-control) (arg0 int))
+  (for-all-active-processes-of-type
+    (-> this traffic tracker-array (-> this traffic object-type-info-array arg0 tracker-index))
+    (the-as traffic-type arg0)
+    (lambda ((arg0 process-focusable) (arg1 traffic-object-type-info)) (send-event arg0 'end-pursuit) (none))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 26 of type ff-squad-control
+(defmethod set-pos-vel ((this ff-squad-control) (arg0 primary-target-pos-vel))
+  (squad-control-method-25 this arg0 (seconds 0.45))
+  arg0
+  )
+
+;; definition for method 13 of type ff-squad-control
+;; WARN: Return type mismatch int vs none.
+(defmethod update ((this ff-squad-control))
+  (call-parent-method this)
+  (ff-squad-control-method-45 this)
+  (ff-squad-control-method-46 this)
+  (when *cty-faction-manager*
+    (let ((a2-0 (if (> (-> this alert-state level) 0)
+                    (the-as int (+ (-> this alert-state level) 3))
+                    3
+                    )
+                )
+          )
+      (faction-spawn *cty-faction-manager* 2 a2-0 #f #f)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 39 of type ff-squad-control
+(defmethod squad-control-city-method-39 ((this ff-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (if (type? arg0 crimson-guard)
+      (crimson-guard-method-288 (the-as crimson-guard arg0) arg1)
+      )
+  )
+
+;; definition for method 43 of type ff-squad-control
+(defmethod squad-control-city-method-43 ((this ff-squad-control) (arg0 process-focusable))
+  (if (type? arg0 crimson-guard)
+      (time-elapsed? (-> (the-as crimson-guard arg0) last-choose-new-enemy-time) (seconds 4))
+      #t
+      )
+  )
+
+;; definition for function set-ff-primary-target
+;; WARN: Return type mismatch int vs none.
+(defun set-ff-primary-target ((arg0 handle) (arg1 float))
+  (when *ff-squad-control*
+    (let* ((s5-0 *ff-squad-control*)
+           (s4-0 (method-of-object s5-0 squad-control-method-27))
+           (s3-0 (handle->process arg0))
+           )
+      (s4-0
+        s5-0
+        (if (type? s3-0 process-focusable)
+            s3-0
+            )
+        arg1
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+
+
+

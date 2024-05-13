@@ -39,6 +39,7 @@ void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
       int curr_mouse_relx;
       int curr_mouse_rely;
       const auto mouse_state_rel = SDL_GetRelativeMouseState(&curr_mouse_relx, &curr_mouse_rely);
+      (void)mouse_state_rel;
       if (m_mouse_moved_x && m_last_xcoord == curr_mouse_x && curr_mouse_relx == 0) {
         data->analog_data.at(2) = 127;
         m_mouse_moved_x = false;

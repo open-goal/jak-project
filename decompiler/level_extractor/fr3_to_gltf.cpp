@@ -246,9 +246,9 @@ int make_color_buffer_accessor(const std::vector<tfrag3::PreloadedVertex>& verti
   std::vector<float> floats;
 
   for (size_t i = 0; i < vertices.size(); i++) {
-    auto& color = tfrag_tree.colors.at(vertices[i].color_index);
     for (int j = 0; j < 3; j++) {
-      floats.push_back(((float)color.rgba[time_of_day][j]) / 255.f);
+      floats.push_back(((float)tfrag_tree.colors.read(vertices[i].color_index, time_of_day, j)) /
+                       255.f);
     }
     floats.push_back(1.f);
   }
@@ -289,9 +289,9 @@ int make_color_buffer_accessor(const std::vector<tfrag3::PreloadedVertex>& verti
   std::vector<float> floats;
 
   for (size_t i = 0; i < vertices.size(); i++) {
-    auto& color = tie_tree.colors.at(vertices[i].color_index);
     for (int j = 0; j < 3; j++) {
-      floats.push_back(((float)color.rgba[time_of_day][j]) / 255.f);
+      floats.push_back(((float)tie_tree.colors.read(vertices[i].color_index, time_of_day, j)) /
+                       255.f);
     }
     floats.push_back(1.f);
   }
@@ -368,9 +368,10 @@ int make_color_buffer_accessor(const std::vector<tfrag3::ShrubGpuVertex>& vertic
   std::vector<float> floats;
 
   for (size_t i = 0; i < vertices.size(); i++) {
-    auto& color = shrub_tree.time_of_day_colors.at(vertices[i].color_index);
     for (int j = 0; j < 3; j++) {
-      floats.push_back(((float)color.rgba[time_of_day][j]) / 255.f);
+      floats.push_back(
+          ((float)shrub_tree.time_of_day_colors.read(vertices[i].color_index, time_of_day, j)) /
+          255.f);
     }
     floats.push_back(1.f);
   }

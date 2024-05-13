@@ -356,6 +356,10 @@ struct TieFrag {
   } prog_info;
 };
 
+struct TimeOfDayColor {
+  math::Vector<u8, 4> rgba[8];
+};
+
 // main instance type
 // unlike the GOAL type, we store all instances info in here too.
 struct TieProtoInfo {
@@ -364,8 +368,8 @@ struct TieProtoInfo {
   u32 proto_flag;
   float stiffness = 0;  // wind
   std::optional<AdgifInfo> envmap_adgif;
-  std::vector<tfrag3::TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
-  std::vector<TieFrag> frags;                              // the fragments of the prototype
+  std::vector<TimeOfDayColor> time_of_day_colors;  // c++ type for time of day data
+  std::vector<TieFrag> frags;                      // the fragments of the prototype
 };
 
 /*!
@@ -2094,7 +2098,7 @@ std::string dump_full_to_obj(const std::vector<TieProtoInfo>& protos) {
 // and this tells us an index in the time of day palette.
 
 struct BigPalette {
-  std::vector<tfrag3::TimeOfDayColor> colors;
+  std::vector<TimeOfDayColor> colors;
 };
 
 // combine all individual time of day palettes into one giant one.
@@ -2122,6 +2126,21 @@ BigPalette make_big_palette(std::vector<TieProtoInfo>& protos) {
 
   ASSERT(result.colors.size() < UINT16_MAX);
   return result;
+}
+
+tfrag3::PackedTimeOfDay pack_big_palette(const BigPalette& in) {
+  tfrag3::PackedTimeOfDay out;
+  out.color_count = (in.colors.size() + 3) & (~3);
+  out.data.resize(out.color_count * 8 * 4);
+
+  for (u32 color = 0; color < in.colors.size(); color++) {
+    for (u32 palette = 0; palette < 8; palette++) {
+      for (u32 channel = 0; channel < 4; channel++) {
+        out.read(color, palette, channel) = in.colors.at(color).rgba[palette][channel];
+      }
+    }
+  }
+  return out;
 }
 
 /*!
@@ -2823,7 +2842,7 @@ void extract_tie(const level_tools::DrawableTreeInstanceTie* tree,
 
     merge_groups(this_tree.packed_vertices.matrix_groups);
 
-    this_tree.colors = full_palette.colors;
+    this_tree.colors = pack_big_palette(full_palette);
     out.tie_trees[geo].push_back(std::move(this_tree));
   }
 }

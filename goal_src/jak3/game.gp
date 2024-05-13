@@ -105,14 +105,15 @@
 (cgo-file "wasseem.gd" common-dep)
 (cgo-file "wca.gd" common-dep)
 (cgo-file "wcb.gd" common-dep)
+(cgo-file "wasleapr.gd" common-dep)
 (cgo-file "wcaseem.gd" common-dep)
 (cgo-file "wascast.gd" common-dep)
-(cgo-file "desresc.gd" common-dep)
-(cgo-file "wasleapr.gd" common-dep)
+(cgo-file "cwi.gd" common-dep) ;; ctywide
 (cgo-file "wasall.gd" common-dep)
-(cgo-file "wwd.gd" common-dep) ;; waswide
+(cgo-file "desresc.gd" common-dep)
 (cgo-file "wsd.gd" common-dep) ;; wasdoors (garage)
 (cgo-file "waspgame.gd" common-dep)
+(cgo-file "wwd.gd" common-dep) ;; waswide
 ; ;; arena
 (cgo-file "wasstada.gd" common-dep)
 (cgo-file "wasstadb.gd" common-dep)
@@ -173,7 +174,6 @@
 (cgo-file "mined.gd" common-dep)
 (cgo-file "minee.gd" common-dep)
 ; ;; city
-(cgo-file "cwi.gd" common-dep) ;; ctywide
 (cgo-file "cfa.gd" common-dep) ;; ctyfarm
 (cgo-file "cfb.gd" common-dep)
 (cgo-file "cgb.gd" common-dep) ;; ctygen

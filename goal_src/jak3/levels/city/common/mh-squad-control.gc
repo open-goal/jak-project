@@ -7,3 +7,180 @@
 
 ;; DECOMP BEGINS
 
+(define *default-mh-squad-member-settings*
+  (new 'static 'inline-array kg-squad-member-settings 3
+    (new 'static 'kg-squad-member-settings
+      :object-type (traffic-type metalhead-grunt)
+      :max-target-count #x7f
+      :target-count 4
+      )
+    (new 'static 'kg-squad-member-settings
+      :object-type (traffic-type metalhead-flitter)
+      :max-target-count #x7f
+      :target-count 3
+      )
+    (new 'static 'kg-squad-member-settings :object-type (traffic-type metalhead-predator) :max-target-count #x7f)
+    )
+  )
+
+(define *war-mh-squad-member-settings* (new 'static 'inline-array kg-squad-member-settings 3
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type metalhead-grunt)
+                                           :max-target-count #x7f
+                                           :target-count 5
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type metalhead-flitter)
+                                           :max-target-count #x7f
+                                           :target-count 5
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type metalhead-predator)
+                                           :max-target-count #x7f
+                                           :target-count 2
+                                           )
+                                         )
+        )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod copy-squad-settings-to-idx ((this mh-squad-control) (arg0 (inline-array mh-squad-member-settings)) (arg1 int))
+  (mem-copy! (the-as pointer (-> this squad-settings (the-as uint arg1))) (the-as pointer arg0) 48)
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod init-alert ((this mh-squad-control))
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+    0
+    )
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *war-mh-squad-member-settings*)
+    1
+    )
+  (copy-squad-settings-to-idx
+    this
+    (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+    2
+    )
+  (set! (-> this alert-level) 0)
+  (call-parent-method this)
+  (mh-squad-control-method-48 this)
+  (none)
+  )
+
+(defmethod squad-control-method-10 ((this mh-squad-control))
+  (set! (-> this active-squad-member-list length) 0)
+  (dotimes (v1-1 29)
+    (set! (-> this map-traffic-object-type-to-squad v1-1) (traffic-type invalid0))
+    )
+  (set! (-> this map-traffic-object-type-to-squad 8) (traffic-type civilian-male))
+  (set! (-> this map-traffic-object-type-to-squad 9) (traffic-type civilian-female))
+  (set! (-> this map-traffic-object-type-to-squad 10) (traffic-type civilian-fat))
+  (call-parent-method this)
+  (none)
+  )
+
+;; WARN: Return type mismatch handle-array vs none.
+(defmethod initialize ((this mh-squad-control) (arg0 process))
+  (set! (-> this active-squad-member-list) (new 'loading-level 'handle-array 126))
+  (none)
+  )
+
+(defmethod add-squad-member ((this mh-squad-control) (arg0 process))
+  (push-back (-> this active-squad-member-list) (process->handle arg0))
+  )
+
+(defmethod pop-squad-member-from-list ((this mh-squad-control) (arg0 process))
+  (let ((v1-2 (process->handle arg0)))
+    (dotimes (a1-4 (-> this active-squad-member-list length))
+      (when (= (-> this active-squad-member-list data0 a1-4) v1-2)
+        (pop-front (-> this active-squad-member-list) a1-4)
+        (return 0)
+        )
+      )
+    )
+  (the-as int #f)
+  )
+
+(defmethod mh-squad-control-method-48 ((this mh-squad-control))
+  (dotimes (v1-0 3)
+    (dotimes (a1-0 3)
+      (let ((a3-2 (the-as mh-squad-settings (+ (+ (* a1-0 16) 828 (* 48 v1-0)) (the-as int this)))))
+        (set! (-> this traffic object-type-info-array 0 target-counts (+ v1-0 (* (-> a3-2 grunt-settings object-type) 32)))
+              (max
+                (min (-> a3-2 grunt-settings target-count) (-> a3-2 grunt-settings max-target-count))
+                (-> a3-2 grunt-settings min-target-count)
+                )
+              )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod update ((this mh-squad-control))
+  (cond
+    ((-> *setting-control* user-current mh-enemy-settings)
+     (set! (-> this city-mode) (squad-city-mode two))
+     (copy-squad-settings-to-idx
+       this
+       (the-as (inline-array mh-squad-member-settings) (-> *setting-control* user-current mh-enemy-settings))
+       0
+       )
+     )
+    (else
+      (set! (-> this city-mode) (squad-city-mode zero))
+      (copy-squad-settings-to-idx
+        this
+        (the-as (inline-array mh-squad-member-settings) *default-mh-squad-member-settings*)
+        0
+        )
+      )
+    )
+  (when *cty-faction-manager*
+    (let ((a2-2 (if (-> *setting-control* user-current mh-enemy-settings)
+                    7
+                    3
+                    )
+                )
+          )
+      (faction-spawn *cty-faction-manager* 1 a2-2 #f (if (-> *setting-control* user-current mh-enemy-settings)
+                                                         #t
+                                                         )
+                     )
+      )
+    )
+  (mh-squad-control-method-48 this)
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod squad-control-city-method-41 ((this mh-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (not (logtest? (process-mask metalhead) (-> arg1 mask)))
+  )
+
+(defmethod squad-control-city-method-39 ((this mh-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (get-hatred-val-for-proc (the-as mh-squad-member arg0) arg1)
+  )
+
+(defun set-mh-primary-target ((arg0 handle) (arg1 float))
+  (when *mh-squad-control*
+    (let* ((s5-0 *mh-squad-control*)
+           (s4-0 (method-of-object s5-0 squad-control-method-27))
+           (s3-0 (handle->process arg0))
+           )
+      (s4-0
+        s5-0
+        (if (type? s3-0 process-focusable)
+            s3-0
+            )
+        arg1
+        )
+      )
+    )
+  0
+  (none)
+  )

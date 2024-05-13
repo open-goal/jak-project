@@ -124,10 +124,12 @@ class TypeSpec {
     ASSERT(m_arguments);
     return m_arguments->at(idx);
   }
+
   TypeSpec& get_arg(int idx) {
     ASSERT(m_arguments);
     return m_arguments->at(idx);
   }
+
   const TypeSpec& last_arg() const {
     ASSERT(m_arguments);
     ASSERT(!m_arguments->empty());

@@ -7,3 +7,1223 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-hip-door-b hip-door-a hip-door-a-lod0-jg hip-door-a-idle-ja
+              ((hip-door-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 5)
+              )
+
+(deftype hip-door-b (com-airlock)
+  ()
+  )
+
+
+(defskelgroup skel-ashelin-effect ashelin-effect ashelin-effect-lod0-jg ashelin-effect-idle-ja
+              ((ashelin-effect-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-bomb-bot-movie bomb-bot-movie bomb-bot-movie-lod0-jg bomb-bot-movie-idle-ja
+              ((bomb-bot-movie-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              :global-effects 64
+              )
+
+(defskelgroup skel-samos-effect samos-effect samos-effect-lod0-jg samos-effect-idle-ja
+              ((samos-effect-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(defmethod init-from-entity! ((this hip-door-b) (arg0 entity-actor))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 penetrated-by) (penetrate))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 20480.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid))
+      (set! (-> v1-8 transform-index) 4)
+      (set-vector! (-> v1-8 local-sphere) 0.0 8192.0 0.0 16384.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid))
+      (set! (-> v1-10 transform-index) 5)
+      (set-vector! (-> v1-10 local-sphere) 0.0 8192.0 0.0 16384.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-door-b" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-airlock! this)
+  (set! (-> this sound-open-loop) (static-sound-spec "wood-door-open" :group 0))
+  (set! (-> this sound-open-stop) (static-sound-spec "wood-open-hit" :group 0))
+  (set! (-> this sound-close-loop) (static-sound-spec "wood-door-close" :group 0))
+  (set! (-> this sound-close-stop) (static-sound-spec "wood-close-hit" :group 0))
+  (set! (-> this door-radius) 8192.0)
+  (go (method-of-object this close) #t)
+  )
+
+(deftype hip-mirror (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-hip-mirror hip-mirror 0 2 ((1 (meters 999999))) :bounds (static-spherem 0 0 0 12))
+
+(defstate idle (hip-mirror)
+  :virtual #t
+  :code sleep-code
+  :post (behavior ()
+    (let* ((f0-0 (vector-vector-distance (math-camera-pos) (-> self root trans)))
+           (f0-1 (lerp-scale 1.0 0.0 f0-0 40960.0 122880.0))
+           )
+      (ja :num-func num-func-identity :frame-num (ja-aframe f0-1 0))
+      )
+    (ja-post)
+    )
+  )
+
+(defmethod init-from-entity! ((this hip-mirror) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-hip-mirror" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (logior! (-> this skel status) (joint-control-status blend-shape))
+  (go (method-of-object this idle))
+  )
+
+(defun hiphog-activate ()
+  (let ((a0-1 (entity-by-name "hip-mirror-2")))
+    (when a0-1
+      (set! (-> *math-camera* mirror-trans quad) (-> a0-1 extra trans quad))
+      (vector-rotate-y! (-> *math-camera* mirror-normal) (new 'static 'vector :x 1.0 :w 1.0) -10297.162)
+      )
+    )
+  )
+
+(defskelgroup skel-cty-remote cty-remote cty-remote-lod0-jg cty-remote-idle-ja
+              ((cty-remote-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-purple-one purple-one purple-one-lod0-jg purple-one-idle-ja
+              ((purple-one-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :origin-joint-index 3
+              )
+
+(load-scene (new 'static 'scene
+              :name "sewer-kg-met-intro"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "sewer-kg-met-intro"
+              :parts 8
+              :command-list '((930 (fadeout (frame-time-30 30))) (10000 (task-close! "sewer-kg-met-introduction")))
+              :cut-list '(295 476 555 798)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min 476) (798 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnjxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie"
+              :end-point #f
+              :borrow '((hiphog 0 ltnjxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running #f
+              :on-complete #f
+              )
+            )
+
+(load-scene (new 'static 'scene
+              :name "port-assault-intro"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "port-assault-intro"
+              :parts 7
+              :command-list '((0 (fadein (frame-time-30 10)))
+                (750 (fadeout (frame-time-30 10)))
+                (10000 (task-close! "city-port-assault-introduction"))
+                )
+              :cut-list '(29 327 380 540 674)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min 380) (540 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnjxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie"
+              :end-point "ctyport-hiphog"
+              :borrow '((hiphog 0 ltnjxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running '(sound-play-loop "hiphog-amb-mov")
+              :on-complete #f
+              )
+            )
+
+(load-scene (new 'static 'scene
+              :name "city-blow-barricade-intro"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4 scf8)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "city-blow-barricade-intro"
+              :parts 10
+              :command-list '((0 (fadein (frame-time-30 10)))
+                (125
+                  (part-tracker
+                    "group-cigar-glow"
+                    entity
+                    "jinx-highres"
+                    joint
+                    "cigsmoke"
+                    track
+                    #t
+                    duration
+                    (frame-range 125 240)
+                    )
+                  (part-tracker
+                    "group-cigar-smoke"
+                    entity
+                    "jinx-highres"
+                    joint
+                    "cigsmoke"
+                    track
+                    #t
+                    duration
+                    (frame-range 125 240)
+                    subsample-num
+                    (new 'static 'bfloat :data 5.0)
+                    )
+                  )
+                (134 (part-tracker
+                       "group-cigar-smoke-blow"
+                       entity
+                       "jinx-highres"
+                       joint
+                       "mouthsmoke"
+                       track
+                       #t
+                       duration
+                       (frame-range 134 145)
+                       )
+                     )
+                (279
+                  (part-tracker
+                    "group-cigar-glow"
+                    entity
+                    "jinx-highres"
+                    joint
+                    "cigsmoke"
+                    track
+                    #t
+                    duration
+                    (frame-range 279 517)
+                    )
+                  (part-tracker
+                    "group-cigar-smoke"
+                    entity
+                    "jinx-highres"
+                    joint
+                    "cigsmoke"
+                    track
+                    #t
+                    duration
+                    (frame-range 279 517)
+                    subsample-num
+                    (new 'static 'bfloat :data 5.0)
+                    )
+                  )
+                (408 (part-tracker
+                       "group-cigar-ashes"
+                       entity
+                       "jinx-highres"
+                       joint
+                       "cigsmoke"
+                       track
+                       #t
+                       duration
+                       (frame-range 408 411)
+                       )
+                     )
+                (418 (part-tracker
+                       "group-cigar-ashes"
+                       entity
+                       "jinx-highres"
+                       joint
+                       "cigsmoke"
+                       track
+                       #t
+                       duration
+                       (frame-range 418 419)
+                       )
+                     )
+                (648 (part-tracker
+                       "group-cigar-ashes-spit"
+                       entity
+                       "sidekick-highres"
+                       joint
+                       "tongueTip"
+                       track
+                       #f
+                       duration
+                       (frame-range 648 650)
+                       )
+                     )
+                (868
+                  (part-tracker
+                    "group-cigar-glow"
+                    entity
+                    "jinx-highres"
+                    joint
+                    "cigsmoke"
+                    track
+                    #t
+                    duration
+                    (frame-range 868 1086)
+                    )
+                  (part-tracker
+                    "group-cigar-smoke"
+                    entity
+                    "jinx-highres"
+                    joint
+                    "cigsmoke"
+                    track
+                    #t
+                    duration
+                    (frame-range 868 1086)
+                    )
+                  )
+                (1072 (fadeout (frame-time-30 10)))
+                (10000 (task-close! "city-blow-barricade-introduction"))
+                )
+              :cut-list '(59 127 171 198 224 278 394 503 507 590 663 866 946)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'hiphog
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min 278) (394 946))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnjxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cty-remote"
+                  :level 'ltnjxhip
+                  :art-group "skel-cty-remote"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jinx-highres"
+                  :level 'ltnjxhip
+                  :art-group "skel-jinx-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie"
+              :end-point "ctyport-bombbot"
+              :borrow '((hiphog 0 ltnjxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running '(sound-play-loop "hiphog-amb-mov")
+              :on-complete #f
+              )
+            )
+
+(load-scene (new 'static 'scene
+              :name "city-blow-barricade-res"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "city-blow-barricade-res"
+              :parts 3
+              :command-list '((340 (fadeout (frame-time-30 10)))
+                (10000
+                  (send-event self 'user-data-set! (task-closed? "city-blow-barricade-resolution"))
+                  (task-close! "city-blow-barricade-resolution")
+                  )
+                )
+              :cut-list '(55 155 252)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnjxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jinx-highres"
+                  :level 'ltnjxhip
+                  :art-group "skel-jinx-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "cty-remote"
+                  :level 'ltnjxhip
+                  :art-group "skel-cty-remote"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "purple-one"
+                  :level 'ltnjxhip
+                  :art-group "skel-purple-one"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie-nocity"
+              :end-point "hiphog-movie-nocity"
+              :borrow '((hiphog 0 ltnjxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running '(sound-play-loop "hiphog-amb-mov")
+              :on-complete '(unless (send-event self 'user-data) (talker-spawn "powup014"))
+              )
+            )
+
+(load-scene (new 'static 'scene
+              :name "city-port-fight-intro"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "city-port-fight-intro"
+              :parts 15
+              :command-list '((0 (fadein (frame-time-30 10)))
+                (1474 (part-tracker
+                        "group-fma-hiphog-holo-glow"
+                        entity
+                        "bomb-bot-movie"
+                        joint
+                        "main"
+                        track
+                        #t
+                        duration
+                        (frame-range 1474 1614)
+                        )
+                      )
+                (1752 (fadeout (frame-time-30 10)))
+                (10000 (task-close! "city-port-fight-introduction"))
+                )
+              :cut-list '(108 136 199 223 369 475 521 586 696 731 854 1014 1089 1186 1334 1419 1614)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min 696) (731 1186) (1334 max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnfxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "bomb-bot-movie"
+                  :level 'ltnfxhip
+                  :art-group "skel-bomb-bot-movie"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie"
+              :end-point "ctyport-hiphog"
+              :borrow '((hiphog 0 ltnfxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running '(sound-play-loop "hiphog-amb-mov")
+              :on-complete #f
+              )
+            )
+
+(load-scene
+  (new 'static 'scene
+    :name "city-sniper-fight-intro"
+    :extra #f
+    :info #f
+    :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+    :mask-to-clear (process-mask movie projectile)
+    :entity "scene-stage-24"
+    :art-group "scenecamera"
+    :anim "city-sniper-fight-intro"
+    :parts 5
+    :command-list '((0 (fadein (frame-time-30 10)))
+      (590 (fadeout (frame-time-30 10)))
+      (10000 (task-close! "city-sniper-fight-introduction"))
+      )
+    :cut-list '(113 218 329 417 454)
+    :wait-ground-time (seconds 1)
+    :actor (new 'static 'boxed-array :type scene-actor
+      (new 'static 'scene-actor
+        :name "scenecamera"
+        :level #f
+        :art-group "skel-scenecamera"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :camera 4
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "jakc-highres"
+        :level 'hiphog
+        :art-group "skel-jakc-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        :no-draw-seg #x80
+        )
+      (new 'static 'scene-actor
+        :name "sidekick-highres"
+        :level 'hiphog
+        :art-group "skel-sidekick-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      (new 'static 'scene-actor
+        :name "torn-highres"
+        :level 'ltnjxhip
+        :art-group "skel-torn-highres"
+        :prefix ""
+        :draw-frames '((min max))
+        :scissor-frames '()
+        :shadow-frames '((min max))
+        :cloth-reset-frames '()
+        :cloth-commands '()
+        :flags #x1
+        :shadow-flags -1
+        :shadow-volume-joint #f
+        )
+      )
+    :load-point "hiphog-movie"
+    :end-point "hiphog-movie"
+    :borrow '((hiphog 0 ltnjxhip special)
+      (ctywide-ff alias ctywide copy ctypesa special ctycara special ctycarb special ctypepa special)
+      )
+    :sfx-volume -1.0
+    :ambient-volume -1.0
+    :music-volume -1.0
+    :music-delay 1500.0
+    :scene-task #x89
+    :on-running '(sound-play-loop "hiphog-amb-mov")
+    :on-complete #f
+    )
+  )
+
+(load-scene (new 'static 'scene
+              :name "city-port-attack-intro"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "city-port-attack-intro"
+              :parts 16
+              :command-list '((0 (fadein (frame-time-30 10)) (kill "hiphog-hologram-part-1"))
+                (1 (apply ,(lambda :behavior scene-player
+                             ()
+                             (set-setting! 'stop-boats? #t 0.0 0)
+                             (set-setting! 'airlock #f 0.0 0)
+                             (kill-by-type barge *active-pool*)
+                             (none)
+                             )
+                          )
+                   )
+                (1790 (fadeout (frame-time-30 15)))
+                (10000
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (persist-with-delay *setting-control* #f (seconds 120) 'stop-boats? #t 0.0 0)
+                            (persist-with-delay *setting-control* 'door (seconds 4) 'airlock #t 0.0 0)
+                            (none)
+                            )
+                         )
+                  (task-close! "city-port-attack-introduction")
+                  )
+                )
+              :cut-list '(0 87 135 221 319 387 419 925 1071 1254 1358 1496 1553 1609 1688)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnfxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "ashelin-effect"
+                  :level 'ltnfxhip
+                  :art-group "skel-ashelin-effect"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "errol-effect"
+                  :level 'ltnfxhip
+                  :art-group "skel-errol-effect"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "samos-effect"
+                  :level 'ltnfxhip
+                  :art-group "skel-samos-effect"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "particleman"
+                  :level 'hiphog
+                  :art-group "skel-particleman"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie-nocity"
+              :end-point "hiphog-movie"
+              :borrow '((hiphog 0 ltnfxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running '(sound-play-loop "hiphog-amb-mov")
+              :on-complete #f
+              )
+            )
+
+(load-scene (new 'static 'scene
+              :name "city-port-attack-intro-demo"
+              :extra #f
+              :info #f
+              :scene-flags (scene-flags scf1 scf2 scf3 scf4)
+              :mask-to-clear (process-mask movie projectile)
+              :entity "scene-stage-24"
+              :art-group "scenecamera"
+              :anim "city-port-attack-intro"
+              :parts 16
+              :command-list '((0 (fadein (frame-time-30 10)) (kill "hiphog-hologram-part-1"))
+                (1 (apply ,(lambda :behavior scene-player
+                             ()
+                             (set-setting! 'stop-boats? #t 0.0 0)
+                             (set-setting! 'airlock #f 0.0 0)
+                             (kill-by-type barge *active-pool*)
+                             (none)
+                             )
+                          )
+                   )
+                (1790 (fadeout (frame-time-30 15)))
+                (10000
+                  (apply ,(lambda :behavior scene-player
+                            ()
+                            (persist-with-delay *setting-control* #f (seconds 120) 'stop-boats? #t 0.0 0)
+                            (persist-with-delay *setting-control* 'door (seconds 4) 'airlock #t 0.0 0)
+                            (none)
+                            )
+                         )
+                  (task-close! "city-port-attack-introduction")
+                  )
+                )
+              :cut-list '(0 87 135 221 319 387 419 925 1071 1254 1358 1496 1553 1609 1688)
+              :wait-ground-time (seconds 1)
+              :actor (new 'static 'boxed-array :type scene-actor
+                (new 'static 'scene-actor
+                  :name "scenecamera"
+                  :level #f
+                  :art-group "skel-scenecamera"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :camera 4
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "jakc-highres"
+                  :level 'hiphog
+                  :art-group "skel-jakc-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  :no-draw-seg #x80
+                  )
+                (new 'static 'scene-actor
+                  :name "sidekick-highres"
+                  :level 'hiphog
+                  :art-group "skel-sidekick-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "torn-highres"
+                  :level 'ltnfxhip
+                  :art-group "skel-torn-highres"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "ashelin-effect"
+                  :level 'ltnfxhip
+                  :art-group "skel-ashelin-effect"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "errol-effect"
+                  :level 'ltnfxhip
+                  :art-group "skel-errol-effect"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                (new 'static 'scene-actor
+                  :name "samos-effect"
+                  :level 'ltnfxhip
+                  :art-group "skel-samos-effect"
+                  :prefix ""
+                  :draw-frames '((min max))
+                  :scissor-frames '()
+                  :shadow-frames '((min max))
+                  :cloth-reset-frames '()
+                  :cloth-commands '()
+                  :flags #x1
+                  :shadow-flags -1
+                  :shadow-volume-joint #f
+                  )
+                )
+              :load-point "hiphog-movie-nocity"
+              :end-point "ctyport-attack-start"
+              :borrow '((hiphog 0 ltnfxhip special))
+              :sfx-volume -1.0
+              :ambient-volume -1.0
+              :music-volume -1.0
+              :music-delay 1500.0
+              :on-running #f
+              :on-complete #f
+              )
+            )
+
+(defpartgroup group-fma-hiphog-holo-glow
+  :id 869
+  :flags (sp0)
+  :bounds (static-bspherem 0 0 0 24)
+  :parts ((sp-item 3130 :flags (sp6)))
+  )
+
+(defpart 3130
+  :init-specs ((:texture (glow level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 2) (meters 0.2))
+    (:rot-x (degrees 22.5))
+    (:scale-y :copy scale-x)
+    (:r 255.0)
+    (:g 10.0 10.0)
+    (:b 0.0)
+    (:a 10.0 10.0)
+    (:omega (degrees 6761.25))
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-3 glow))
+    (:userdata 4096.0)
+    )
+  )

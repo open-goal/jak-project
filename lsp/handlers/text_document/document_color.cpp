@@ -88,7 +88,7 @@ std::optional<json> document_color(Workspace& workspace, int /*id*/, json raw_pa
     float green = 0.0f;
     float blue = 0.0f;
     float alpha = 0.0f;
-    int token_idx = 0;
+    unsigned int token_idx = 0;
     while (token_idx < result.tokens.size()) {
       const auto& token = result.tokens[token_idx];
       // in OpenGOAL -- 255 is equal to 128, so we double every value and subtract 1

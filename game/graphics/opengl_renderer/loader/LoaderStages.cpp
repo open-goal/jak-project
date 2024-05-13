@@ -552,6 +552,73 @@ class StallLoaderStage : public LoaderStage {
   int m_count = 0;
 };
 
+class HfragLoaderStage : public LoaderStage {
+ public:
+  HfragLoaderStage() : LoaderStage("hfrag") {}
+  void reset() override {
+    m_done = false;
+    m_opengl = false;
+    m_vtx_uploaded = false;
+    m_idx = 0;
+  }
+
+  bool run(Timer&, LoaderInput& data) override {
+    if (m_done) {
+      return true;
+    }
+
+    if (!m_opengl) {
+      glGenBuffers(1, &data.lev_data->hfrag_indices);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.lev_data->hfrag_indices);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                   data.lev_data->level->hfrag.indices.size() * sizeof(u32), nullptr,
+                   GL_STATIC_DRAW);
+
+      glGenBuffers(1, &data.lev_data->hfrag_vertices);
+      glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->hfrag_vertices);
+      glBufferData(GL_ARRAY_BUFFER,
+                   data.lev_data->level->hfrag.vertices.size() * sizeof(tfrag3::HfragmentVertex),
+                   nullptr, GL_STATIC_DRAW);
+      m_opengl = true;
+    }
+
+    if (!m_vtx_uploaded) {
+      u32 start = m_idx;
+      m_idx = std::min(start + 32768, (u32)data.lev_data->level->hfrag.indices.size());
+      glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->hfrag_indices);
+      glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(u32), (m_idx - start) * sizeof(u32),
+                      data.lev_data->level->hfrag.indices.data() + start);
+      if (m_idx != data.lev_data->level->hfrag.indices.size()) {
+        return false;
+      } else {
+        m_idx = 0;
+        m_vtx_uploaded = true;
+      }
+    }
+
+    u32 start = m_idx;
+    m_idx = std::min(start + 32768, (u32)data.lev_data->level->hfrag.vertices.size());
+    glBindBuffer(GL_ARRAY_BUFFER, data.lev_data->hfrag_vertices);
+    glBufferSubData(GL_ARRAY_BUFFER, start * sizeof(tfrag3::HfragmentVertex),
+                    (m_idx - start) * sizeof(tfrag3::HfragmentVertex),
+                    data.lev_data->level->hfrag.vertices.data() + start);
+
+    if (m_idx != data.lev_data->level->hfrag.vertices.size()) {
+      return false;
+    } else {
+      m_done = true;
+      return true;
+    }
+    return true;
+  }
+
+ private:
+  bool m_done = false;
+  bool m_opengl = false;
+  bool m_vtx_uploaded = false;
+  u32 m_idx = 0;
+};
+
 MercLoaderStage::MercLoaderStage() : LoaderStage("merc") {}
 void MercLoaderStage::reset() {
   m_done = false;
@@ -622,6 +689,7 @@ std::vector<std::unique_ptr<LoaderStage>> make_loader_stages() {
   ret.push_back(std::make_unique<ShrubLoadStage>());
   ret.push_back(std::make_unique<CollideLoaderStage>());
   ret.push_back(std::make_unique<MercLoaderStage>());
+  ret.push_back(std::make_unique<HfragLoaderStage>());
   ret.push_back(std::make_unique<StallLoaderStage>());
   return ret;
 }

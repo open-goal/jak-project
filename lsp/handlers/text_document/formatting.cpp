@@ -8,7 +8,7 @@
 #include "lsp/state/workspace.h"
 
 namespace lsp_handlers {
-std::optional<json> formatting(Workspace& workspace, int id, json raw_params) {
+std::optional<json> formatting(Workspace& workspace, int /*id*/, json raw_params) {
   auto params = raw_params.get<LSPSpec::DocumentFormattingParams>();
   const auto file_type = workspace.determine_filetype_from_uri(params.textDocument.m_uri);
 

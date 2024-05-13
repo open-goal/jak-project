@@ -203,7 +203,7 @@ bool run_build_level(const std::string& input_file,
   }
 
   // Save the PC level
-  save_pc_data(file.nickname, pc_level,
+  save_pc_data(file.name, pc_level,
                file_util::get_jak_project_dir() / "out" / output_prefix / "fr3");
 
   return true;

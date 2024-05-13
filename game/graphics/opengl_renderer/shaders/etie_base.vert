@@ -11,7 +11,6 @@ uniform float fog_min;
 uniform float fog_max;
 uniform sampler1D tex_T10; // note, sampled in the vertex shader on purpose.
 uniform int decal;
-uniform float fog_hack_threshold;
 
 out vec4 fragment_color;
 out vec3 tex_coord;
@@ -60,13 +59,6 @@ void main() {
     // color adjustment
     fragment_color *= 2;
     fragment_color.a *= 2;
-  }
-
-  // fog hack
-  if (fragment_color.r < fog_hack_threshold &&
-    fragment_color.g < fog_hack_threshold &&
-    fragment_color.b < fog_hack_threshold) {
-    fogginess = 0;
   }
 
   tex_coord = tex_coord_in;

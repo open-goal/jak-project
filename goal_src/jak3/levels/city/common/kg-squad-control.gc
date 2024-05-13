@@ -7,3 +7,370 @@
 
 ;; DECOMP BEGINS
 
+(define *default-kg-squad-member-settings* (new 'static 'inline-array kg-squad-member-settings 4
+                                             (new 'static 'kg-squad-member-settings
+                                               :object-type (traffic-type roboguard)
+                                               :max-target-count #x7f
+                                               :enemy-type (traffic-type guard-a)
+                                               )
+                                             (new 'static 'kg-squad-member-settings
+                                               :object-type (traffic-type roboguard)
+                                               :max-target-count #x7f
+                                               :enemy-type (traffic-type guard-b)
+                                               )
+                                             (new 'static 'kg-squad-member-settings
+                                               :object-type (traffic-type flying-turret)
+                                               :max-target-count #x7f
+                                               :target-count 1
+                                               :enemy-type (traffic-type metalhead-grunt)
+                                               )
+                                             (new 'static 'kg-squad-member-settings
+                                               :object-type (traffic-type spydroid)
+                                               :max-target-count #x7f
+                                               :target-count 4
+                                               :enemy-type (traffic-type metalhead-flitter)
+                                               )
+                                             )
+        )
+
+(define *alert-kg-squad-member-settings* (new 'static 'inline-array kg-squad-member-settings 4
+                                           (new 'static 'kg-squad-member-settings
+                                             :object-type (traffic-type roboguard)
+                                             :max-target-count #x7f
+                                             :target-count 3
+                                             :enemy-type (traffic-type guard-a)
+                                             )
+                                           (new 'static 'kg-squad-member-settings
+                                             :object-type (traffic-type roboguard)
+                                             :max-target-count #x7f
+                                             :enemy-type (traffic-type guard-b)
+                                             )
+                                           (new 'static 'kg-squad-member-settings
+                                             :object-type (traffic-type flying-turret)
+                                             :max-target-count #x7f
+                                             :target-count 3
+                                             :enemy-type (traffic-type metalhead-grunt)
+                                             )
+                                           (new 'static 'kg-squad-member-settings
+                                             :object-type (traffic-type spydroid)
+                                             :max-target-count #x7f
+                                             :target-count 4
+                                             :enemy-type (traffic-type metalhead-flitter)
+                                             )
+                                           )
+        )
+
+(define *war-kg-squad-member-settings* (new 'static 'inline-array kg-squad-member-settings 4
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type roboguard)
+                                           :max-target-count #x7f
+                                           :target-count 5
+                                           :enemy-type (traffic-type guard-a)
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type roboguard)
+                                           :max-target-count #x7f
+                                           :enemy-type (traffic-type guard-b)
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type flying-turret)
+                                           :max-target-count #x7f
+                                           :target-count 4
+                                           :enemy-type (traffic-type metalhead-grunt)
+                                           )
+                                         (new 'static 'kg-squad-member-settings
+                                           :object-type (traffic-type spydroid)
+                                           :max-target-count #x7f
+                                           :target-count 5
+                                           :enemy-type (traffic-type metalhead-flitter)
+                                           )
+                                         )
+        )
+
+;; WARN: Return type mismatch pointer vs none.
+(defmethod copy-squad-settings-to-idx ((this kg-squad-control) (arg0 (inline-array kg-squad-member-settings)) (arg1 int))
+  (mem-copy! (the-as pointer (-> this squad-settings arg1)) (the-as pointer arg0) 64)
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod init-alert ((this kg-squad-control))
+  (copy-squad-settings-to-idx this *default-kg-squad-member-settings* 0)
+  (copy-squad-settings-to-idx this *war-kg-squad-member-settings* 1)
+  (copy-squad-settings-to-idx this *default-kg-squad-member-settings* 2)
+  (set! (-> this alert-level) 0)
+  (call-parent-method this)
+  (kg-squad-control-method-51 this)
+  (none)
+  )
+
+(defmethod squad-control-method-10 ((this kg-squad-control))
+  (set! (-> this active-squad-member-list length) 0)
+  (set! (-> this guard-to-traffic-mapping 6) (traffic-type roboguard))
+  (set! (-> this guard-to-traffic-mapping 7) (traffic-type roboguard))
+  (set! (-> this guard-to-traffic-mapping 8) (traffic-type flying-turret))
+  (set! (-> this guard-to-traffic-mapping 9) (traffic-type spydroid))
+  (logior! (-> this used-guard-types) (kg-squad-used-guard-types kg6))
+  (logior! (-> this used-guard-types) (kg-squad-used-guard-types kg7))
+  (logior! (-> this used-guard-types) (kg-squad-used-guard-types kg8))
+  (logior! (-> this used-guard-types) (kg-squad-used-guard-types kg9))
+  (set! (-> this guard-to-squad-setting-mapping 6) (the-as uint 0))
+  (set! (-> this guard-to-squad-setting-mapping 7) (the-as uint 1))
+  (set! (-> this guard-to-squad-setting-mapping 8) (the-as uint 2))
+  (set! (-> this guard-to-squad-setting-mapping 9) (the-as uint 3))
+  (call-parent-method this)
+  (none)
+  )
+
+;; WARN: Return type mismatch handle-array vs none.
+(defmethod initialize ((this kg-squad-control) (arg0 process))
+  (set! (-> this active-squad-member-list) (new 'loading-level 'handle-array 126))
+  (none)
+  )
+
+(defmethod add-squad-member ((this kg-squad-control) (arg0 process))
+  (push-back (-> this active-squad-member-list) (process->handle arg0))
+  )
+
+(defmethod pop-squad-member-from-list ((this kg-squad-control) (arg0 process))
+  (let ((v1-2 (process->handle arg0)))
+    (dotimes (a1-4 (-> this active-squad-member-list length))
+      (when (= (-> this active-squad-member-list data0 a1-4) v1-2)
+        (pop-front (-> this active-squad-member-list) a1-4)
+        (return 0)
+        )
+      )
+    )
+  (the-as int #f)
+  )
+
+(defmethod kg-squad-control-method-52 ((this kg-squad-control) (arg0 process) (arg1 process))
+  (let ((v1-2 (process->handle arg1))
+        (v0-0 0)
+        )
+    (dotimes (a2-4 (-> this active-squad-member-list length))
+      (let ((a3-3 (the-as kg-squad-member (handle->process (-> this active-squad-member-list data0 a2-4)))))
+        (if (and a3-3 (!= a3-3 arg0) (= (-> a3-3 current-enemy) v1-2))
+            (+! v0-0 1)
+            )
+        )
+      )
+    v0-0
+    )
+  )
+
+(defmethod kg-squad-control-method-51 ((this kg-squad-control))
+  (local-vars (a1-8 symbol))
+  (dotimes (v1-0 3)
+    (dotimes (a1-0 10)
+      (when (logtest? (-> this used-guard-types) (ash 1 a1-0))
+        (set! (-> this
+                  traffic
+                  object-type-info-array
+                  0
+                  target-counts
+                  (+ v1-0 (* (-> this guard-to-traffic-mapping a1-0) 32))
+                  )
+              0
+              )
+        0
+        )
+      )
+    )
+  (dotimes (v1-3 3)
+    (dotimes (a1-3 4)
+      (let ((a2-12 (the-as kg-squad-settings (+ (+ (* a1-3 16) 860 (* v1-3 64)) (the-as int this)))))
+        (+! (-> this
+                traffic
+                object-type-info-array
+                0
+                target-counts
+                (+ v1-3 (* (-> a2-12 roboguard-settings object-type) 32))
+                )
+            (max
+              (min (-> a2-12 roboguard-settings target-count) (-> a2-12 roboguard-settings max-target-count))
+              (-> a2-12 roboguard-settings min-target-count)
+              )
+            )
+        )
+      )
+    )
+  (dotimes (v1-6 3)
+    (let ((a1-6 (new 'static 'boxed-array :type int8 :length 0 :allocated-length 10))
+          (a2-17 (new 'static 'boxed-array :type int8 :length 0 :allocated-length 10))
+          )
+      (dotimes (a3-10 10)
+        (set! (-> a1-6 a3-10) 0)
+        (set! (-> a2-17 a3-10) 0)
+        )
+      (dotimes (a3-13 4)
+        (let ((t0-13 (the-as kg-squad-settings (+ (+ (* a3-13 16) 860 (* v1-6 64)) (the-as int this)))))
+          (set! (-> a2-17 (-> t0-13 roboguard-settings enemy-type))
+                (max
+                  (min (-> t0-13 roboguard-settings target-count) (-> t0-13 roboguard-settings max-target-count))
+                  (-> t0-13 roboguard-settings min-target-count)
+                  )
+                )
+          )
+        )
+      (dotimes (a3-16 (-> this active-squad-member-list length))
+        (let ((t0-19 (the-as kg-squad-member (handle->process (-> this active-squad-member-list data0 a3-16)))))
+          (when t0-19
+            (if (= (-> t0-19 faction-mode) v1-6)
+                (+! (-> a1-6 (-> t0-19 kg-type)) 1)
+                )
+            )
+          )
+        )
+      (dotimes (a3-19 10)
+        (when (< (-> a1-6 a3-19) (-> a2-17 a3-19))
+          (dotimes (t0-28 10)
+            (when (< (-> a2-17 t0-28) (-> a1-6 t0-28))
+              (set! (-> this enemy-type-seek-from) (the-as uint t0-28))
+              (set! (-> this enemy-type-seek-to) (the-as uint a3-19))
+              (set! a1-8 #t)
+              (goto cfg-47)
+              )
+            )
+          )
+        )
+      )
+    (set! a1-8 #f)
+    (label cfg-47)
+    (when (not a1-8)
+      (set! (-> this enemy-type-seek-from-list v1-6) (the-as uint 11))
+      (set! (-> this enemy-type-seek-to-list v1-6) (the-as uint 11))
+      )
+    )
+  #f
+  )
+
+(defmethod update ((this kg-squad-control))
+  (cond
+    ((-> *setting-control* user-current kg-enemy-settings)
+     (set! (-> this city-mode) (squad-city-mode two))
+     (copy-squad-settings-to-idx
+       this
+       (the-as (inline-array kg-squad-member-settings) (-> *setting-control* user-current kg-enemy-settings))
+       0
+       )
+     )
+    (else
+      (set! (-> this city-mode) (squad-city-mode zero))
+      (copy-squad-settings-to-idx this *default-kg-squad-member-settings* 0)
+      )
+    )
+  (kg-squad-control-method-51 this)
+  (kg-squad-control-method-53 this)
+  (when *cty-faction-manager*
+    (let ((a2-2 (cond
+                  ((-> *setting-control* user-current kg-enemy-settings)
+                   7
+                   )
+                  ((> (-> this alert-level) 0)
+                   7
+                   )
+                  (else
+                    3
+                    )
+                  )
+                )
+          )
+      (faction-spawn *cty-faction-manager* 0 a2-2 #f (if (-> *setting-control* user-current kg-enemy-settings)
+                                                         #t
+                                                         )
+                     )
+      )
+    )
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod increment-alert-level ((this kg-squad-control) (arg0 int))
+  (let ((v0-0 (+ (-> this alert-level) arg0)))
+    (set! (-> this alert-level) v0-0)
+    v0-0
+    )
+  )
+
+(defmethod set-alert-level1 ((this kg-squad-control) (arg0 int))
+  (set! (-> this alert-level) arg0)
+  arg0
+  )
+
+(defmethod kg-squad-control-method-53 ((this kg-squad-control))
+  (cond
+    ((> (-> this alert-level) 0)
+     (if (not (-> *setting-control* user-current kg-enemy-settings))
+         (copy-squad-settings-to-idx this *alert-kg-squad-member-settings* 0)
+         )
+     )
+    (else
+      (copy-squad-settings-to-idx this *default-kg-squad-member-settings* 0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod get-alert-level1 ((this kg-squad-control))
+  (-> this alert-level)
+  )
+
+(defmethod squad-control-city-method-38 ((this kg-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (kg-squad-member-method-219 (the-as kg-squad-member arg0) arg1)
+  )
+
+(defmethod squad-control-city-method-40 ((this kg-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (if (not (logtest? (process-mask kg-robot) (-> arg1 mask)))
+      (set! (-> this current-target-attackers) (kg-squad-control-method-52 this arg0 arg1))
+      )
+  (none)
+  )
+
+(defmethod squad-control-city-method-41 ((this kg-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (not (logtest? (process-mask kg-robot) (-> arg1 mask)))
+  )
+
+(defmethod squad-control-city-method-42 ((this kg-squad-control))
+  (if (< 4 (-> this current-target-attackers))
+      100000.0
+      (+ 1.0 (the float (-> this current-target-attackers)))
+      )
+  )
+
+(defmethod squad-control-city-method-43 ((this kg-squad-control) (arg0 process-focusable))
+  (let ((v1-0 arg0))
+    (time-elapsed?
+      (-> (the-as kg-squad-member v1-0) last-choose-new-enemy-time)
+      (-> (the-as kg-squad-member v1-0) choose-new-enemy-delay-time)
+      )
+    )
+  )
+
+(defmethod squad-control-city-method-39 ((this kg-squad-control) (arg0 process-focusable) (arg1 process-focusable))
+  (kg-squad-member-method-216 (the-as kg-squad-member arg0) arg1)
+  )
+
+(defun set-kg-primary-target ((arg0 handle) (arg1 float))
+  (when *kg-squad-control*
+    (let* ((s5-0 *kg-squad-control*)
+           (s4-0 (method-of-object s5-0 squad-control-method-27))
+           (s3-0 (handle->process arg0))
+           )
+      (s4-0
+        s5-0
+        (if (type? s3-0 process-focusable)
+            s3-0
+            )
+        arg1
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod kg-squad-control-method-54 ((this kg-squad-control))
+  (-> *setting-control* user-current kg-difficulty)
+  )

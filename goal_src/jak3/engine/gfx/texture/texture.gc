@@ -147,7 +147,7 @@
     #t
     "#<texture ~20S psm: ~6S  ~4D x ~4D  num-mips: ~D :size ~4DK "
     (-> this name)
-    (psm->string (the-as gs-psm (-> this psm)))
+    (psm->string (-> this psm))
     (-> this w)
     (-> this h)
     (-> this num-mips)
@@ -156,7 +156,7 @@
   (dotimes (s5-1 (the-as int (-> this num-mips)))
     (format #t " #x~X/~X" (-> this dest s5-1) (-> this width s5-1))
     )
-  (if (< (texture-bpp (the-as gs-psm (-> this psm))) 16)
+  (if (< (texture-bpp (-> this psm)) 16)
       (format #t " :clut #x~X/1" (-> this clutdest))
       )
   (format #t " @ #x~X>" this)
@@ -1683,7 +1683,7 @@
                              (bitbltbuf (new 'static 'gs-bitbltbuf
                                           :sbp (-> tex dest v1-0)
                                           :sbw (-> tex width v1-0)
-                                          :spsm (-> tex psm)
+                                          :spsm (the-as int (-> tex psm))
                                           :dbp (/ dest 64)
                                           :dbw (-> tex width v1-0)
                                           :dpsm (the-as int tex-format)
@@ -1699,7 +1699,7 @@
   (cond
     ((< clut-dest 0)
      )
-    ((= (-> tex psm) 20)
+    ((= (-> tex psm) (gs-psm mt4))
      (dma-buffer-add-gs-set dma-buf
                             (bitbltbuf (new 'static 'gs-bitbltbuf
                                          :sbw #x1
@@ -1716,7 +1716,7 @@
                             )
      (set! (-> tex clutdest) (the-as uint (/ clut-dest 64)))
      )
-    ((= (-> tex psm) 19)
+    ((= (-> tex psm) (gs-psm mt8))
      (dma-buffer-add-gs-set dma-buf
                             (bitbltbuf (new 'static 'gs-bitbltbuf
                                          :sbw #x2
@@ -1734,7 +1734,7 @@
      (set! (-> tex clutdest) (the-as uint (/ clut-dest 64)))
      )
     )
-  (set! (-> tex psm) (the-as uint tex-format))
+  (set! (-> tex psm) tex-format)
   dma-buf
   )
 
