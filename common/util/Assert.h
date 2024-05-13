@@ -36,6 +36,9 @@
 
 #define ASSERT_NOT_REACHED_MSG(STR) \
   (void)((private_assert_failed("not reached", __FILE__, __LINE__, __PRETTY_FUNCTION__, STR), 0))
+
+#define ASSERT_EQ_IMM(EXPR, EXPECTED) \
+  ASSERT_MSG((EXPR) == (EXPECTED), fmt::format("result was {}, expected {}", (EXPR), (EXPECTED)))
 #else
 
 #define ASSERT(EX) ((void)0)

@@ -471,4 +471,5 @@
   "ragdoll-test.o"
   "debris.o"
   "shield-sphere.o"
+  "entity-debug.o" ;; added
  ))

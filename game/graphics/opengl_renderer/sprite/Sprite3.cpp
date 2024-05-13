@@ -378,6 +378,9 @@ void Sprite3::render_2d_group1(DmaFollower& dma,
       case GameVersion::Jak2:
         ASSERT(run.vifcode1().immediate == SpriteProgMem::Sprites2dHud_Jak2);
         break;
+      case GameVersion::Jak3:
+        ASSERT_EQ_IMM(run.vifcode1().immediate, (int)SpriteProgMem::Sprites2dHud_Jak3);
+        break;
       default:
         ASSERT_NOT_REACHED();
     }

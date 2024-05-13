@@ -268,10 +268,10 @@
 (cgo-file "railf.gd" common-dep)
 (cgo-file "railx.gd" common-dep)
 ; ;; precursor
-; (cgo-file "preca.gd" common-dep)
-; (cgo-file "precb.gd" common-dep)
-; (cgo-file "precc.gd" common-dep)
-; (cgo-file "precd.gd" common-dep)
+(cgo-file "preca.gd" common-dep)
+(cgo-file "precb.gd" common-dep)
+(cgo-file "precc.gd" common-dep)
+;; (cgo-file "precd.gd" common-dep)
 ; ;; title/intro
 (cgo-file "win.gd" common-dep) ;; wasintro
 (cgo-file "title.gd" common-dep)
@@ -280,15 +280,15 @@
 (cgo-file "ipf.gd" common-dep) ;; intro-palace-fall
 (cgo-file "introcst.gd" common-dep)
 ; ;; outro
-; (cgo-file "outcast3.gd" common-dep)
-; (cgo-file "outrocst.gd" common-dep)
+(cgo-file "outcast3.gd" common-dep)
+(cgo-file "outrocst.gd" common-dep)
 ; ;; museum
-; (cgo-file "museum.gd" common-dep)
-; (cgo-file "museum2.gd" common-dep)
-; (cgo-file "museum3.gd" common-dep)
-; (cgo-file "museum3b.gd" common-dep)
-; (cgo-file "museum4.gd" common-dep)
-; (cgo-file "museum4b.gd" common-dep)
+(cgo-file "museum.gd" common-dep)
+(cgo-file "museum2.gd" common-dep)
+(cgo-file "museum3.gd" common-dep)
+(cgo-file "museum3b.gd" common-dep)
+(cgo-file "museum4.gd" common-dep)
+(cgo-file "museum4b.gd" common-dep)
 ;; test
 (cgo-file "halfpipe.gd" common-dep)
 ; ;; borrow
