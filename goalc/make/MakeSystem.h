@@ -57,7 +57,7 @@ class MakeSystem {
   std::vector<std::string> get_dependencies(const std::string& target) const;
   std::vector<std::string> filter_dependencies(const std::vector<std::string>& all_deps);
 
-  bool make(const std::string& target, bool force, bool verbose);
+  bool make(const std::string& target, bool force, bool verbose, bool gen_report);
 
   void add_tool(std::shared_ptr<Tool> tool);
   void set_constant(const std::string& name, const std::string& value);
