@@ -8,20 +8,25 @@ add_library(compiler
         build_level/common/build_level.cpp
         build_level/jak1/build_level.cpp
         build_level/jak2/build_level.cpp
+        build_level/jak3/build_level.cpp
         build_level/collide/jak1/collide_bvh.cpp
         build_level/collide/jak1/collide_drawable.cpp
         build_level/collide/jak1/collide_pack.cpp
         build_level/collide/jak2/collide.cpp
+        build_level/collide/jak3/collide.cpp
         build_level/common/color_quantization.cpp
         build_level/common/Entity.cpp
         build_level/jak1/Entity.cpp
         build_level/jak2/Entity.cpp
+        build_level/jak3/Entity.cpp
         build_level/common/FileInfo.cpp
         build_level/jak1/FileInfo.cpp
         build_level/jak2/FileInfo.cpp
+        build_level/jak3/FileInfo.cpp
         build_level/common/gltf_mesh_extract.cpp
         build_level/jak1/LevelFile.cpp
         build_level/jak2/LevelFile.cpp
+        build_level/jak3/LevelFile.cpp
         build_level/common/ResLump.cpp
         build_level/common/Tfrag.cpp
         build_level/jak1/ambient.cpp
