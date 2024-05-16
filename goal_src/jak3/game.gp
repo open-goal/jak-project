@@ -268,10 +268,11 @@
 (cgo-file "railf.gd" common-dep)
 (cgo-file "railx.gd" common-dep)
 ; ;; precursor
+(cgo-file "lmech.gd" common-dep)
 (cgo-file "preca.gd" common-dep)
 (cgo-file "precb.gd" common-dep)
 (cgo-file "precc.gd" common-dep)
-;; (cgo-file "precd.gd" common-dep)
+(cgo-file "precd.gd" common-dep)
 ; ;; title/intro
 (cgo-file "win.gd" common-dep) ;; wasintro
 (cgo-file "title.gd" common-dep)
@@ -357,7 +358,6 @@
 (cgo-file "ljndklev.gd" common-dep)
 (cgo-file "lkeira.gd" common-dep)
 (cgo-file "lkleever.gd" common-dep)
-(cgo-file "lmech.gd" common-dep)
 (cgo-file "lmhca.gd" common-dep)
 (cgo-file "lmhcb.gd" common-dep)
 (cgo-file "lnstcst.gd" common-dep)

@@ -10113,6 +10113,7 @@
 ;; trail-h                        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; +++trail-h:trail-node-flag
 (defenum trail-node-flag
   :type uint8
   :bitfield #t
@@ -10120,7 +10121,9 @@
   (tnf1 1)
   (tnf2 2)
   )
+;; ---trail-h:trail-node-flag
 
+;; +++trail-h:conn-flag
 (defenum conn-flag
   :type uint8
   :bitfield #t
@@ -10128,7 +10131,11 @@
   (cf1 1)
   (cf2 2)
   (cf3 3)
+  (cf4 4)
+  (cf5 5)
+  (cf6 6)
   )
+;; ---trail-h:conn-flag
 
 (deftype trail-node (structure)
   ((next-id         int16   :offset-assert 0)
@@ -10149,7 +10156,7 @@
   :flag-assert         #xc00000014
   (:methods
     (get-dist-score (_type_ vector) uint) ;; 9
-    (debug-draw (_type_ int) none) ;; 10
+    (debug-draw (_type_ int) symbol) ;; 10
     (get-position (_type_ vector) vector) ;; 11
     )
   )
@@ -10243,7 +10250,7 @@
   )
 
 (deftype trail-cached-start-pov (structure)
-  ((last-updated      uint64         :offset-assert 0)
+  ((last-updated      time-frame     :offset-assert 0)
    (pov-can-see-start uint64         :offset-assert 8)
    (next-node-id      int32          :offset-assert 16)
    (start-pos         vector :inline :offset-assert 32)
@@ -10269,12 +10276,12 @@
    (conn-mask                 uint8                                       :offset-assert 40)
    (node                      (inline-array trail-node)                   :offset-assert 44) ;; guessed by decompiler
    (conn                      (inline-array trail-conn)                   :offset-assert 48) ;; guessed by decompiler
-   (blocker                   uint32                                      :offset-assert 52)
+   (blocker                   (inline-array trail-blocker)                :offset-assert 52)
    (conn-ids                  (pointer uint16)                            :offset-assert 56) ;; guessed by decompiler
    (visgroup                  (inline-array trail-conn-hash-cell)         :offset-assert 60) ;; guessed by decompiler
    (visnode-ids               (pointer uint16)                            :offset-assert 64) ;; guessed by decompiler
    (conn-hash                 trail-conn-hash                             :offset-assert 68) ;; guessed by decompiler
-   (cell-pov-bit-arrays       uint32                                      :offset-assert 72)
+   (cell-pov-bit-arrays       (pointer uint64)                            :offset-assert 72)
    (pov-can-see-goal          uint64                                      :offset-assert 80)
    (cached-start-pov          trail-cached-start-pov              :inline :offset-assert 96)
    (orig-start-pos            vector                              :inline :offset-assert 144)
@@ -10290,31 +10297,31 @@
   :size-assert         #x190
   :flag-assert         #x2200000190
   (:methods
-    (trail-graph-method-9 (_type_ int) none) ;; 9 ;; (trail-graph-method-9 (_type_ int) none)
-    (trail-graph-method-10 (_type_ int) none) ;; 10 ;; (trail-graph-method-10 (_type_ int) none)
+    (trail-graph-method-9 (_type_ int) int) ;; 9 ;; (trail-graph-method-9 (_type_ int) none)
+    (trail-graph-method-10 (_type_ int) symbol) ;; 10 ;; (trail-graph-method-10 (_type_ int) none)
     (trail-graph-method-11 (_type_ int int) trail-node) ;; 11 ;; (trail-graph-method-11 (_type_ int int) trail-node)
-    (trail-graph-method-12 (_type_) none) ;; 12
-    (trail-graph-method-13 (_type_ vector vector) none) ;; 13 ;; (debug-draw-cell (_type_ int) none)
-    (debug-draw (_type_) none) ;; 14 ;; (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol)
-    (trail-graph-method-15 (_type_ int) none) ;; 15 ;; (do-path (_type_ vector vector) int)
-    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) none) ;; 16 ;; (trail-graph-method-16 () none)
-    (trail-graph-method-17 (_type_) none) ;; 17 ;; (get-node-location-by-id (_type_ uint vector) vector)
+    (trail-graph-method-12 (_type_ trail-node vector) symbol) ;; 12
+    (trail-graph-method-13 (_type_ vector vector) symbol) ;; 13 ;; (debug-draw-cell (_type_ int) none)
+    (debug-draw (_type_) symbol) ;; 14 ;; (debug-draw-path (_type_ int (pointer uint16) vector vector rgba float) symbol)
+    (trail-graph-method-15 (_type_ int) symbol) ;; 15 ;; (do-path (_type_ vector vector) int)
+    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) symbol) ;; 16 ;; (trail-graph-method-16 () none)
+    (trail-graph-method-17 (_type_ vector vector) int) ;; 17 ;; (get-node-location-by-id (_type_ uint vector) vector)
     (trail-graph-method-18 (_type_ vector) int) ;; 18 ;; (get-path-to-root (_type_ (pointer uint16) int (pointer int32) (pointer float)) int)
     (trail-graph-method-19 (_type_) none) ;; 19 ;; (trail-graph-method-19 (_type_ int int) symbol)
-    (trail-graph-method-20 (_type_ uint vector) none) ;; 20 ;; (try-initialize (_type_) symbol)
-    (trail-graph-method-21 (_type_) none) ;; 21 ;; (update-node-flags-for-conn (_type_ int trail-node-flag trail-node-flag) none)
-    (trail-graph-method-22 (_type_) none) ;; 22 ;; (trail-graph-method-22 (_type_ int) none)
-    (trail-graph-method-23 (_type_) none) ;; 23 ;; (reset-search-state (_type_) none)
-    (trail-graph-method-24 (_type_) none) ;; 24 ;; (get-next-to-explore (_type_) int)
-    (trail-graph-method-25 (_type_ int) none) ;; 25 ;; (trail-graph-method-25 (_type_ trail-conn-search int int) none)
-    (trail-graph-method-26 (_type_) none) ;; 26 ;; (do-search! (_type_ vector vector trail-cached-search-info) none)
-    (trail-graph-method-27 (_type_) none) ;; 27 ;; (do-some-work (_type_) int)
-    (trail-graph-method-28 (_type_) none) ;; 28 ;; (run-until-done-or-timeout (_type_ int) none)
-    (trail-graph-method-29 (_type_) none) ;; 29
-    (trail-graph-method-30 (_type_) none) ;; 30
+    (trail-graph-method-20 (_type_ uint vector) vector) ;; 20 ;; (try-initialize (_type_) symbol)
+    (trail-graph-method-21 (_type_ (pointer uint16) int (pointer int32) (pointer float)) int) ;; 21 ;; (update-node-flags-for-conn (_type_ int trail-node-flag trail-node-flag) none)
+    (trail-graph-method-22 (_type_ int int) symbol) ;; 22 ;; (trail-graph-method-22 (_type_ int) none)
+    (trail-graph-method-23 (_type_) symbol) ;; 23 ;; (reset-search-state (_type_) none)
+    (trail-graph-method-24 (_type_ uint vector int int) symbol) ;; 24 ;; (get-next-to-explore (_type_) int)
+    (trail-graph-method-25 (_type_ int) int) ;; 25 ;; (trail-graph-method-25 (_type_ trail-conn-search int int) none)
+    (trail-graph-method-26 (_type_) int) ;; 26 ;; (do-search! (_type_ vector vector trail-cached-search-info) none)
+    (trail-graph-method-27 (_type_) int) ;; 27 ;; (do-some-work (_type_) int)
+    (trail-graph-method-28 (_type_ trail-conn-search int int) symbol) ;; 28 ;; (run-until-done-or-timeout (_type_ int) none)
+    (trail-graph-method-29 (_type_ vector vector trail-cached-search-info) int) ;; 29
+    (trail-graph-method-30 (_type_) int) ;; 30
     (trail-graph-method-31 (_type_ int) none) ;; 31
-    (trail-graph-method-32 (_type_) none) ;; 32
-    (trail-graph-method-33 (_type_) none) ;; 33
+    (trail-graph-method-32 (_type_) uint) ;; 32
+    (trail-graph-method-33 (_type_ int) symbol) ;; 33
     )
   )
 
@@ -16797,7 +16804,7 @@
    (alpha               gs-alpha           :offset-assert 72)
    (bucket              bucket-id          :offset-assert 80)
    (sink                uint32           :offset-assert 84)
-   (level               basic            :offset-assert 88)
+   (level               level            :offset-assert 88)
    (texture-index       uint32           :offset-assert 92)
    (data                prim-vertex :inline :dynamic :offset-assert 96)
    )
@@ -23337,6 +23344,20 @@
   )
 ;; ---target-h:target-anim
 
+;; +++target-h:target-effect
+(defenum target-effect
+  :type uint64
+  :bitfield #t
+  (te0 0)
+  (te1 1)
+  (te2 2)
+  (te3 3)
+  (te4 4)
+  (te5 5)
+  (te6 6)
+  )
+;; ---target-h:target-effect
+
 (declare-type sidekick process-drawable)
 (declare-type racer-info basic)
 (declare-type tube-info basic)
@@ -23396,18 +23417,18 @@
    (spool-anim                  spool-anim                               :offset-assert 2236) ;; guessed by decompiler
    (ambient-time                time-frame                               :offset-assert 2240) ;; time-frame
    (fp-hud                      handle                                   :offset-assert 2248) ;; handle
-   (no-load-wait                uint64                                   :offset-assert 2256)
-   (no-look-around-wait         uint64                                   :offset-assert 2264)
+   (no-load-wait                time-frame                               :offset-assert 2256)
+   (no-look-around-wait         time-frame                               :offset-assert 2264)
    (burn-proc                   handle                                   :offset-assert 2272) ;; handle
    (pre-joint-hook              (function none :behavior target)         :offset-assert 2280) ;; guessed by decompiler
    (notify                      handle                                   :offset-assert 2288) ;; handle
    (death-resetter              resetter-spec                    :inline :offset-assert 2296)
-   (mode-cache                  basic                                    :offset-assert 2312)
+   (mode-cache                  symbol                                   :offset-assert 2312)
    (mode-param1                 handle                                   :offset-assert 2320) ;; handle
    (mode-param2                 uint64                                   :offset-assert 2328)
    (mode-param3                 uint64                                   :offset-assert 2336)
    (major-mode-exit-hook        (function none :behavior target)         :offset-assert 2344)
-   (major-mode-event-hook       (function none :behavior target)         :offset-assert 2348)
+   (major-mode-event-hook       (function process int symbol event-message-block object :behavior target) :offset-assert 2348)
    (sub-mode-exit-hook          (function none :behavior target)         :offset-assert 2352)
    (ext-geo-control             external-art-buffer                      :offset-assert 2356)
    (pending-ext-geo             target-geo                               :offset-assert 2360)
@@ -23418,8 +23439,8 @@
    (tobot-state                 state                                    :offset-assert 2380) ;; guessed by decompiler
    (tobot?                      symbol                                   :offset-assert 2384) ;; guessed by decompiler
    (tobot-recorder              basic                                    :offset-assert 2388)
-   (target-effect               uint64                                   :offset-assert 2392)
-   (color-effect                basic                                    :offset-assert 2400)
+   (target-effect               target-effect                            :offset-assert 2392)
+   (color-effect                symbol                                   :offset-assert 2400)
    (color-effect-start-time     time-frame                               :offset-assert 2408) ;; time-frame
    (color-effect-duration       time-frame                               :offset-assert 2416)
    (racer                       racer-info                               :offset-assert 2424) ;; guessed by decompiler
@@ -23619,7 +23640,7 @@
     (target-pilot-clone-anim handle)
     target-pilot-daxter-perch
     ;; indax
-    (target-indax-start handle object) ;; associated process guessed by decompiler, old: (state handle target)
+    (target-indax-start handle object)
     target-indax-get-off
     target-indax-stance
     target-indax-walk
@@ -26848,6 +26869,14 @@
   )
 ;; ---sparticle-h:sp-cpuinfo-flag
 
+;; +++sparticle-h:sp-cpuinfo-flag-s32
+(defenum sp-cpuinfo-flag-s32
+  :bitfield #t
+  :type int32
+  :copy-entries sp-cpuinfo-flag
+  )
+;; ---sparticle-h:sp-cpuinfo-flag-s32
+
 (deftype sparticle-cpuinfo (structure)
   "The per-particle information. This stays on the CPU, and isn't uploaded to the VU."
   ((sprite        sprite-vec-data-2d                                                                 :offset-assert 0)
@@ -26866,7 +26895,7 @@
    (friction      float                                                                              :offset-assert 96)
    (timer         int32                                                                              :offset-assert 100)
    (flags         sp-cpuinfo-flag                                                                    :offset-assert 104) ;; guessed by decompiler
-   (flags-s32     int32                                                                              :offset 104) ;; added
+   (flags-s32     sp-cpuinfo-flag-s32                                                                :offset 104) ;; added
    (user-int32    int32                                                                              :offset-assert 108)
    (user-uint32   uint32                                                                             :offset 108)
    (user-float    float                                                                              :offset 108 :score 1)
@@ -28855,6 +28884,7 @@
   (momentum-ignore-heading 6) ;; 64
   (output-sphere-hash  7) ;; 128
   (kernel-run          8) ;; 256
+  (ncf9                9)
   )
 
 (deftype check-vector-collision-with-nav-spheres-info (structure)
@@ -44758,32 +44788,41 @@
 ;; neon-baron-part                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++neon-baron-part:neon-baron-flag
+(defenum neon-baron-flag
+  :type uint64
+  :bitfield #t
+  (nb0)
+  (nb1)
+  (nb2)
+  (nb3)
+  )
+;; ---neon-baron-part:neon-baron-flag
+
 (deftype neon-baron (process)
-  ((flags         uint64                           :offset-assert 128) ;; int64
+  ((flags         neon-baron-flag                  :offset-assert 128) ;; int64
    (master-enable uint64                           :offset-assert 136) ;; int64
    (mode          uint64                           :offset-assert 144) ;; int64
    (sign          (array object)                   :offset-assert 152) ;; guessed by decompiler
    (parts         sparticle-launch-control 1       :offset-assert 156) ;; guessed by decompiler
-   (state-time    uint64                           :offset-assert 160) ;; time-frame
+   (state-time    time-frame                       :offset-assert 160) ;; time-frame
    (mat           matrix                   :inline :offset-assert 176)
    )
   :method-count-assert 17
   :size-assert         #xf0
   :flag-assert         #x11007000f0
-  (:methods
-    (neon-baron-method-15 () none) ;; 15 ;; (spawn-parts (_type_) none)
-    (neon-baron-method-16 () none) ;; 16 ;; (update-mode (_type_) none)
-    )
   (:state-methods
-    idle ;; 14, old: (idle () _type_ :state)
+    idle ;; 14
+    )
+  (:methods
+    (spawn-parts (_type_) symbol) ;; 15
+    (update-mode (_type_) none) ;; 16
     )
   )
-|#
 
-;; (define-extern *baron-neon-skull* array) ;; (array object)
-;; (define-extern *city-baron-group-ids* array) ;; (array int32)
-;; (define-extern *neon-baron-flashing-acc* object) ;; (pointer uint32)
+(define-extern *baron-neon-skull* (array object))
+(define-extern *city-baron-group-ids* (array int32))
+(define-extern *neon-baron-flashing-acc* (pointer uint32))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; chain-physics                  ;;
@@ -46837,7 +46876,7 @@
 (define-extern bombbot-gun-swivel-callback (function cspace transformq none))
 (define-extern bombbot-gun-callback (function cspace transformq none))
 (define-extern *bombbot-spring-setup* (array spring-setup))
-(define-extern bombbot-init-by-other (function bombbot-spawn-params none :behavior bombbot))
+(define-extern bombbot-init-by-other (function bombbot-spawn-params object :behavior bombbot))
 (define-extern bombbot-player-init-by-other (function bombbot-spawn-params object :behavior bombbot-player))
 (define-extern *blow-barricade-kg-squad-member-settings* (inline-array kg-squad-member-settings))
 
@@ -51729,33 +51768,26 @@
 ;; combx-obs                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype combx-elevator (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 23
   :size-assert         #xc8
   :flag-assert         #x17005000c8
-  (:methods
-    (combx-elevator-method-21 () none) ;; 21
-    (combx-elevator-method-22 () none) ;; 22
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 21
+    (setup-skel-and-draw-masks (_type_) none) ;; 22
+    )
   )
-|#
 
-#|
-(deftype combx-states (UNKNOWN)
+(deftype combx-states (structure)
   ()
-  :method-count-assert 0
-  :size-assert         #x0
-  :flag-assert         #x0
   )
-|#
 
-;; (define-extern init-mood-combx function)
-;; (define-extern update-mood-combx function)
+(define-extern init-mood-combx (function mood-context float))
+(define-extern update-mood-combx (function mood-context float int none :behavior time-of-day-proc))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; combx-scenes                   ;;
@@ -61561,7 +61593,6 @@
 ;; precurd-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype pre-tformer (process-drawable)
   ()
   :method-count-assert 21
@@ -61571,9 +61602,7 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype wall-window-big (process-drawable)
   ()
   :method-count-assert 21
@@ -61583,95 +61612,89 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype precurd-door-a (com-airlock)
   ()
   :method-count-assert 30
   :size-assert         #x1b0
   :flag-assert         #x1e013001b0
   )
-|#
 
-#|
 (deftype precur-bridge-path-break (process-drawable)
-  ((triggered?        basic          :offset-assert 196)
-   (idx               uint8          :offset-assert 200)
-   (l-origin          matrix :inline :offset-assert 204)
-   (actor-group       uint32         :offset-assert 268)
-   (actor-group-count int32          :offset-assert 272)
-   (anim-1-time       uint64         :offset-assert 276)
-   (delay-time        uint64         :offset-assert 284)
-   (debris-handle     uint64         :offset-assert 292)
+  ((root              collide-shape  :override)
+   (triggered?        symbol         :offset-assert 200)
+   (idx               uint8          :offset-assert 204)
+   (l-origin          matrix :inline :offset-assert 208)
+   (actor-group       (pointer actor-group) :offset-assert 272)
+   (actor-group-count int32          :offset-assert 276)
+   (anim-1-time       time-frame     :offset-assert 280)
+   (delay-time        time-frame     :offset-assert 288)
+   (debris-handle     handle         :offset-assert 296)
    )
   :method-count-assert 28
   :size-assert         #x130
   :flag-assert         #x1c00b00130
-  (:methods
-    (precur-bridge-path-break-method-21 () none) ;; 21
-    (precur-bridge-path-break-method-22 () none) ;; 22
-    (precur-bridge-path-break-method-23 () none) ;; 23
-    (precur-bridge-path-break-method-24 () none) ;; 24
-    (precur-bridge-path-break-method-25 () none) ;; 25
-    (precur-bridge-path-break-method-26 () none) ;; 26
-    (precur-bridge-path-break-method-27 () none) ;; 27
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (precur-bridge-path-break-method-21 (_type_) none) ;; 21
+    (init-collision! (_type_) none) ;; 22
+    (get-skel (_type_) art-group) ;; 23
+    (set-idx-by-name (_type_) none) ;; 24
+    (precur-bridge-path-break-method-25 (_type_ vector) none) ;; 25
+    (precur-bridge-path-break-method-26 (_type_) none) ;; 26
+    (precur-bridge-path-break-method-27 (_type_) none) ;; 27
+    )
   )
-|#
 
-#|
 (deftype precur-bridge-blocks-break (process-drawable)
-  ((triggered? basic     :offset-assert 200)
+  ((root       collide-shape :override)
+   (triggered? symbol    :offset-assert 200)
    (idx        uint8     :offset-assert 204)
-   (snds       UNKNOWN 5 :offset-assert 208)
-   (toe-up?    UNKNOWN 5 :offset-assert 228)
+   (snds       sound-id 5 :offset-assert 208)
+   (toe-up?    symbol   5 :offset-assert 228)
    )
   :method-count-assert 26
   :size-assert         #xf8
   :flag-assert         #x1a008000f8
-  (:methods
-    (precur-bridge-blocks-break-method-21 () none) ;; 21
-    (precur-bridge-blocks-break-method-22 () none) ;; 22
-    (precur-bridge-blocks-break-method-23 () none) ;; 23
-    (precur-bridge-blocks-break-method-24 () none) ;; 24
-    (precur-bridge-blocks-break-method-25 () none) ;; 25
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (precur-bridge-blocks-break-method-21 (_type_) none) ;; 21
+    (init-collision! (_type_) none) ;; 22
+    (init-collision2! (_type_) none) ;; 23
+    (get-skel (_type_) art-group) ;; 24
+    (set-idx-by-name (_type_) none) ;; 25
+    )
   )
-|#
 
-;; (define-extern pre-tformer-spawn-leg-a function)
-;; (define-extern pre-tformer-spawn-leg-b function)
-;; (define-extern pre-tformer-spawn-leg-c function)
-;; (define-extern pre-tformer-spawn-spike function)
-;; (define-extern *precurd-obs-shake-time* object)
-;; (define-extern wall-window-big-init-by-other function)
-;; (define-extern *precur-blocks-trigger-points* array)
-;; (define-extern *precur-path-trigger-points* array)
-;; (define-extern *precur-path-2nd-trigger-points* array)
-;; (define-extern *precur-trigger-idx* object)
-;; (define-extern precur-bridge-reset function)
-;; (define-extern precur-bridge-path-trigger function)
-;; (define-extern precur-bridge-path-2nd-trigger function)
-;; (define-extern precur-bridge-blocks-trigger function)
-;; (define-extern precur-trigger-update function)
-;; (define-extern *precur-path-delay-time* array)
-;; (define-extern *precurd-blow-snd-id* object)
-;; (define-extern precur-play-blow-sound function)
-;; (define-extern precur-stop-blow-sound function)
-;; (define-extern *precurd-panel-tear-off-time* object)
+(define-extern pre-tformer-spawn-leg-a (function none :behavior process-drawable))
+(define-extern pre-tformer-spawn-leg-b (function none :behavior process-drawable))
+(define-extern pre-tformer-spawn-leg-c (function none :behavior process-drawable))
+(define-extern pre-tformer-spawn-spike (function none :behavior process-drawable))
+(define-extern *precurd-obs-shake-time* time-frame)
+(define-extern wall-window-big-init-by-other (function vector entity-actor object :behavior wall-window-big))
+(define-extern *precur-blocks-trigger-points* (array float))
+(define-extern *precur-path-trigger-points* (array float))
+(define-extern *precur-path-2nd-trigger-points* (array float))
+(define-extern *precur-trigger-idx* int)
+(define-extern precur-bridge-reset (function symbol))
+(define-extern precur-bridge-path-trigger (function int symbol))
+(define-extern precur-bridge-path-2nd-trigger (function int symbol))
+(define-extern precur-bridge-blocks-trigger (function int symbol))
+(define-extern precur-trigger-update (function none))
+(define-extern *precur-path-delay-time* (array float))
+(define-extern *precurd-blow-snd-id* sound-id)
+(define-extern precur-play-blow-sound (function none))
+(define-extern precur-stop-blow-sound (function none))
+(define-extern *precurd-panel-tear-off-time* time-frame)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precurd-scenes                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype precurd-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
@@ -61679,26 +61702,25 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern *beam-appearance-1* object)
-;; (define-extern *beam-appearance-2* object)
-;; (define-extern *beam-appearance-3* object)
-;; (define-extern *beam-appearance-4* object)
-;; (define-extern *beam-appearance-5* object)
-;; (define-extern *beam-appearance-6* object)
-;; (define-extern init-mood-precurd function)
-;; (define-extern update-mood-precurd function)
-;; (define-extern precurd-lightjak-do-effect function)
-;; (define-extern precurd-lightjak-stop-effect function)
-;; (define-extern *range-precursor-explo-color* curve-color-fast)
-;; (define-extern *range-precursor-explo-alpha* curve2d-fast)
-;; (define-extern *range-precursor-explo-scale-x* curve2d-fast)
-;; (define-extern *range-precursor-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-precursor-explo-alpha* curve2d-fast)
-;; (define-extern *curve-precursor-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-precursor-explo-scale-y* curve2d-fast)
-;; (define-extern *part-precursor-ship-explosion-texture-curve-settings* object)
+(define-extern *beam-appearance-1* prim-beam-settings)
+(define-extern *beam-appearance-2* prim-beam-settings)
+(define-extern *beam-appearance-3* prim-beam-settings)
+(define-extern *beam-appearance-4* prim-beam-settings)
+(define-extern *beam-appearance-5* prim-beam-settings)
+(define-extern *beam-appearance-6* prim-beam-settings)
+(define-extern init-mood-precurd (function mood-context float))
+(define-extern update-mood-precurd (function mood-context float int none :behavior time-of-day-proc))
+(define-extern precurd-lightjak-do-effect (function none :behavior process-drawable))
+(define-extern precurd-lightjak-stop-effect (function none :behavior process-drawable))
+(define-extern *range-precursor-explo-color* curve-color-fast)
+(define-extern *range-precursor-explo-alpha* curve2d-fast)
+(define-extern *range-precursor-explo-scale-x* curve2d-fast)
+(define-extern *range-precursor-explo-scale-y* curve2d-fast)
+(define-extern *curve-precursor-explo-alpha* curve2d-fast)
+(define-extern *curve-precursor-explo-scale-x* curve2d-fast)
+(define-extern *curve-precursor-explo-scale-y* curve2d-fast)
+(define-extern *part-precursor-ship-explosion-texture-curve-settings* particle-curve-settings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precurd-part                   ;;
@@ -61709,19 +61731,18 @@
 ;; hover-nav-precura              ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *precura-adjacency* object)
+(define-extern *precura-adjacency* nav-network-data)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precura-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype precura-states (structure)
   ((pulse         pulse-state :inline :offset-assert 0)
    (generator     pulse-state :inline :offset-assert 16)
    (main          float               :offset-assert 32)
-   (target-laser  UNKNOWN     2       :offset-assert 36)
-   (current-laser UNKNOWN     2       :offset-assert 44)
+   (target-laser  float       2       :offset-assert 36)
+   (current-laser float       2       :offset-assert 44)
    (speed-laser   float               :offset-assert 52)
    (target-bomb   float               :offset-assert 56)
    (current-bomb  float               :offset-assert 60)
@@ -61731,9 +61752,7 @@
   :size-assert         #x44
   :flag-assert         #x900000044
   )
-|#
 
-#|
 (deftype precurb-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    (main  float               :offset-assert 16)
@@ -61742,145 +61761,104 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype lprecurc-loader (process)
-  ((name             basic                 :offset-assert 0)
-   (mask             process-mask          :offset-assert 4)
-   (clock            basic                 :offset-assert 8)
-   (parent           uint32                :offset-assert 12)
-   (brother          uint32                :offset-assert 16)
-   (child            uint32                :offset-assert 20)
-   (ppointer         uint32                :offset-assert 24)
-   (self             basic                 :offset-assert 28)
-   (pool             basic                 :offset-assert 32)
-   (status           basic                 :offset-assert 36)
-   (pid              int32                 :offset-assert 40)
-   (main-thread      basic                 :offset-assert 44)
-   (top-thread       basic                 :offset-assert 48)
-   (entity           basic                 :offset-assert 52)
-   (level            basic                 :offset-assert 56)
-   (state            basic                 :offset-assert 60)
-   (prev-state       basic                 :offset-assert 64)
-   (next-state       basic                 :offset-assert 68)
-   (state-stack      basic                 :offset-assert 72)
-   (trans-hook       basic                 :offset-assert 76)
-   (post-hook        basic                 :offset-assert 80)
-   (event-hook       basic                 :offset-assert 84)
-   (allocated-length int32                 :offset-assert 88)
-   (heap-base        uint32                :offset-assert 92)
-   (heap-top         uint32                :offset-assert 96)
-   (heap-cur         uint32                :offset-assert 100)
-   (stack-frame-top  basic                 :offset-assert 104)
-   (heap             kheap        :inline  :offset-assert 92)
-   (connection-list  connectable  :inline  :offset-assert 108)
-   (stack            UNKNOWN      :dynamic :offset-assert 124)
-   )
+  ()
   :method-count-assert 16
   :size-assert         #x80
   :flag-assert         #x1000000080
   (:state-methods
-    die ;; 15
     idle ;; 14
+    die ;; 15
     )
   )
-|#
 
-;; (define-extern init-mood-precura function)
-;; (define-extern update-precura-lights function)
-;; (define-extern update-mood-precura function)
-;; (define-extern set-precura-generator-light! function)
-;; (define-extern set-precura-laser-light! function)
-;; (define-extern set-precura-bomb-light! function)
-;; (define-extern init-mood-precurb function)
-;; (define-extern update-mood-precurb function)
-;; (define-extern lprecurc-loader-init-by-other function)
-;; (define-extern precura-login function)
-;; (define-extern precura-activate function)
-;; (define-extern precura-deactivate function)
-;; (define-extern precura-logout function)
+(define-extern init-mood-precura (function mood-context float))
+(define-extern update-precura-lights (function mood-context none))
+(define-extern update-mood-precura (function mood-context float int none :behavior time-of-day-proc))
+(define-extern set-precura-generator-light! (function float none))
+(define-extern set-precura-laser-light! (function float float int none))
+(define-extern set-precura-bomb-light! (function float float none))
+(define-extern init-mood-precurb (function mood-context float))
+(define-extern update-mood-precurb (function mood-context float int none :behavior time-of-day-proc))
+(define-extern lprecurc-loader-init-by-other (function level object :behavior lprecurc-loader))
+(define-extern precura-login (function level none))
+(define-extern precura-activate (function level none))
+(define-extern precura-deactivate (function level none))
+(define-extern precura-logout (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precura-part                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern sparticle-track-joint-xz function)
+(define-extern sparticle-track-joint-xz (function sparticle-system sparticle-cpuinfo sparticle-launchinfo none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precura-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype precur-switch (process-drawable)
-  ((alt-actor basic  :offset-assert 200)
+  ((alt-actor entity-actor  :offset-assert 200)
    )
   :method-count-assert 24
   :size-assert         #xcc
   :flag-assert         #x18005000cc
   (:state-methods
-    idle-down ;; 23
-    going-up ;; 22
-    going-down ;; 21
     idle ;; 20
+    going-down ;; 21
+    going-up ;; 22
+    idle-down ;; 23
     )
   )
-|#
 
-#|
 (deftype precur-jump-plate (process-drawable)
   ((start-quat quaternion :inline :offset-assert 208)
-   (turn-start uint64             :offset-assert 224)
+   (turn-start time-frame         :offset-assert 224)
    (angle      float              :offset-assert 232)
-   (first?     basic              :offset-assert 236)
+   (first?     symbol             :offset-assert 236)
    (idx        uint8              :offset-assert 240)
-   (sound-id   uint32             :offset-assert 244)
+   (sound-id   sound-id           :offset-assert 244)
    )
   :method-count-assert 22
   :size-assert         #xf8
   :flag-assert         #x16008000f8
   (:state-methods
-    turn ;; 21
     idle ;; 20
+    turn ;; 21
     )
   )
-|#
 
-#|
 (deftype precur-generator (process-drawable)
-  ((attack-id           uint32  :offset-assert 200)
+  ((root                collide-shape :override)
+   (attack-id           uint32  :offset-assert 200)
    (shove-id            uint32  :offset-assert 204)
-   (sound-id            uint32  :offset-assert 208)
+   (sound-id            sound-id :offset-assert 208)
    (next-lightning-time uint32  :offset-assert 212)
    (shock-distance      float   :offset-assert 216)
    )
   :method-count-assert 23
   :size-assert         #xdc
   :flag-assert         #x17006000dc
-  (:methods
-    (precur-generator-method-22 () none) ;; 22
-    )
   (:state-methods
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
+    )
+  (:methods
+    (init-fields (_type_) none) ;; 22
     )
   )
-|#
 
-#|
 (deftype precur-generator-a (precur-generator)
   ()
   :method-count-assert 23
   :size-assert         #xdc
   :flag-assert         #x17006000dc
   (:state-methods
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
     )
   )
-|#
 
-#|
 (deftype precur-generator-b (precur-generator)
   ()
   :method-count-assert 23
@@ -61891,177 +61869,173 @@
     idle ;; 20
     )
   )
-|#
 
-#|
 (deftype precur-generator-c (process-drawable)
-  ((actor-group         uint32  :offset-assert 196)
-   (actor-group-count   int32   :offset-assert 200)
-   (next-lightning-time uint32  :offset-assert 204)
-   (sound-id            uint32  :offset-assert 208)
+  ((root                collide-shape         :override)
+   (actor-group         (pointer actor-group) :offset-assert 200)
+   (actor-group-count   int32   :offset-assert 204)
+   (next-lightning-time uint32  :offset-assert 208)
+   (sound-id            sound-id :offset-assert 212)
    )
   :method-count-assert 22
   :size-assert         #xd8
   :flag-assert         #x16006000d8
   (:state-methods
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
     )
   )
-|#
 
-#|
 (deftype precur-generator-d-gem (process-drawable)
-  ((ang-vel    float          :offset-assert 200)
+  ((root       collide-shape  :override)
+   (ang-vel    float          :offset-assert 200)
    (offset-vec vector :inline :offset-assert 208)
    (init-pos   vector :inline :offset-assert 224)
-   (sound-id   uint32         :offset-assert 240)
+   (sound-id   sound-id       :offset-assert 240)
    )
   :method-count-assert 24
   :size-assert         #xf4
   :flag-assert         #x18008000f4
   (:state-methods
-    explode ;; 23
-    smoking ;; 22
-    orbit-gen ;; 21
     idle ;; 20
+    orbit-gen ;; 21
+    smoking ;; 22
+    explode ;; 23
     )
   )
-|#
 
-#|
 (deftype precur-generator-d (process-drawable)
-  ((actor-group         uint32    :offset-assert 196)
-   (actor-group-count   int32     :offset-assert 200)
-   (next-lightning-time uint32    :offset-assert 204)
-   (proc-handle         UNKNOWN 3 :offset-assert 212)
-   (animation-speed     float     :offset-assert 236)
-   (sound-id            uint32    :offset-assert 240)
+  ((root                collide-shape         :override)
+   (actor-group         (pointer actor-group) :offset-assert 200)
+   (actor-group-count   int32     :offset-assert 204)
+   (next-lightning-time uint32    :offset-assert 208)
+   (proc-handle         handle  3 :offset-assert 216)
+   (animation-speed     float     :offset-assert 240)
+   (sound-id            sound-id  :offset-assert 244)
    )
   :method-count-assert 24
   :size-assert         #xf8
   :flag-assert         #x18008000f8
-  (:methods
-    (precur-generator-d-method-23 () none) ;; 23
-    )
   (:state-methods
-    explosions ;; 22
-    explode ;; 21
     idle ;; 20
+    explode ;; 21
+    explosions ;; 22
+    )
+  (:methods
+    (spawn-gems (_type_) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype precur-platform-round (process-drawable)
-  ((start-quat       quaternion :inline :offset-assert 208)
+  ((root             collide-shape      :override)
+   (start-quat       quaternion :inline :offset-assert 208)
    (start-height     float              :offset-assert 224)
-   (sound-id         uint32             :offset-assert 228)
+   (sound-id         sound-id           :offset-assert 228)
    (start-dip-time   float              :offset-assert 232)
    (last-ridden-time float              :offset-assert 236)
    )
   :method-count-assert 25
   :size-assert         #xf0
   :flag-assert         #x19007000f0
+  (:state-methods
+    idle ;; 20
+    hidden-state ;; 21
+    rotate-plat ;; 22
+    fade-in ;; 23
+    )
   (:methods
     (precur-platform-round-method-24 () none) ;; 24
     )
-  (:state-methods
-    rotate-plat ;; 22
-    fade-in ;; 23
-    hidden-state ;; 21
-    idle ;; 20
-    )
   )
-|#
 
-#|
 (deftype precur-door-d (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 22
   :size-assert         #xc8
   :flag-assert         #x16005000c8
   (:state-methods
-    die ;; 21
     idle ;; 20
+    die ;; 21
     )
   )
-|#
 
-#|
 (deftype precur-door-c (process-drawable)
-  ()
+  ((root collide-shape :override))
   :method-count-assert 24
   :size-assert         #xc8
   :flag-assert         #x18005000c8
-  (:methods
-    (precur-door-c-method-22 () none) ;; 22
-    (precur-door-c-method-23 () none) ;; 23
-    )
   (:state-methods
     idle ;; 20
     explode ;; 21
     )
+  (:methods
+    (init-collision! (_type_) none) ;; 22
+    (spawn-exploder (_type_) (pointer joint-exploder)) ;; 23
+    )
   )
-|#
 
-#|
+;; +++precura-obs:precur-hint-type
+(defenum precur-hint-type
+  :type uint8
+  (pickup-hint)
+  (place-hint)
+  (normal)
+  )
+;; ---precura-obs:precur-hint-type
+
 (deftype task-manager-precur-tour (task-manager)
-  ((hint-type uint8  :offset-assert 240)
+  ((hint-type precur-hint-type :offset-assert 240)
    )
   :method-count-assert 32
   :size-assert         #xf1
   :flag-assert         #x20008000f1
   )
-|#
 
-#|
 (deftype precura-door-a (process-drawable)
-  ((open-test    basic   :offset-assert 200)
-   (open-started uint64  :offset-assert 208)
-   (do-camera?   basic   :offset-assert 216)
+  ((open-test    pair       :offset-assert 200)
+   (open-started time-frame :offset-assert 208)
+   (do-camera?   symbol  :offset-assert 216)
    (open-frame   float   :offset-assert 220)
-   (precur-tour? basic   :offset-assert 224)
+   (precur-tour? symbol  :offset-assert 224)
    )
   :method-count-assert 23
   :size-assert         #xe4
   :flag-assert         #x17007000e4
   ;; field open-test uses ~A with a signed load.
-  (:methods
-    (precura-door-a-method-22 () none) ;; 22
-    )
   (:state-methods
     open ;; 20
     close ;; 21
     )
+  (:methods
+    (precura-door-a-method-22 () none) ;; 22
+    )
   )
-|#
 
-;; (define-extern spawn-mech-shock-effect function)
-;; (define-extern *precur-generator-a-exploder-params* joint-exploder-static-params)
-;; (define-extern *precur-generator-b-exploder-params* joint-exploder-static-params)
-;; (define-extern *precur-generator-c-exploder-params* joint-exploder-static-params)
-;; (define-extern precur-generator-d-gem-init-by-other function)
-;; (define-extern *precur-generator-d-exploder-params* joint-exploder-static-params)
-;; (define-extern rotate-platform-behavior function)
-;; (define-extern *precur-door-d-exploder-params* joint-exploder-static-params)
-;; (define-extern precur-door-d-init-by-other function)
-;; (define-extern *precur-door-c-exploder-params* joint-exploder-static-params)
-;; (define-extern precur-door-c-handler function)
-;; (define-extern hint-type->string function)
-;; (define-extern precura-do-blur-if-more-than-dist-away function)
+(define-extern spawn-mech-shock-effect (function none))
+(define-extern *precur-generator-a-exploder-params* joint-exploder-static-params)
+(define-extern *precur-generator-b-exploder-params* joint-exploder-static-params)
+(define-extern *precur-generator-c-exploder-params* joint-exploder-static-params)
+(define-extern precur-generator-d-gem-init-by-other (function vector float vector object :behavior precur-generator-d-gem))
+(define-extern *precur-generator-d-exploder-params* joint-exploder-static-params)
+(define-extern rotate-platform-behavior (function none :behavior precur-platform-round))
+(define-extern *precur-door-d-exploder-params* joint-exploder-static-params)
+(define-extern precur-door-d-init-by-other (function object entity-actor object :behavior precur-door-d))
+(define-extern *precur-door-c-exploder-params* joint-exploder-static-params)
+(def-event-handler precur-door-c-handler precur-door-c)
+(define-extern hint-type->string (function precur-hint-type string))
+(define-extern precura-do-blur-if-more-than-dist-away (function vector float none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precura-obs2                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype mechblock (process-focusable)
-  ((origin         vector :inline :offset-assert 208)
-   (drop-point     vector :inline :offset-assert 256)
+  ((root           collide-shape-moving :override)
+   (origin         vector :inline :offset-assert 208)
+   (drop-point     vector :inline :offset 256)
    (allow-drag?    symbol         :offset-assert 272) ;; guessed by decompiler
    (reset-on-land? symbol         :offset-assert 276) ;; guessed by decompiler
-   (nav-mesh       basic          :offset-assert 280)
+   (nav-mesh       nav-mesh       :offset-assert 280)
    (hit-something? symbol         :offset-assert 284) ;; guessed by decompiler
    (attack-id      uint32         :offset-assert 288)
    (next-entity    entity         :offset-assert 292) ;; guessed by decompiler
@@ -62069,52 +62043,47 @@
   :method-count-assert 34
   :size-assert         #x128
   :flag-assert         #x2200b00128
-  (:methods
-    (mechblock-method-33 () none) ;; 33
-    )
   (:state-methods
-    fall ;; 31
-    drag-object ;; 30
-    carry ;; 29
-    wait ;; 32
     idle ;; 28
+    carry ;; 29
+    drag-object ;; 30
+    fall ;; 31
+    wait ;; 32
+    )
+  (:methods
+    (can-drop? (_type_ vector) symbol) ;; 33
     )
   )
-|#
 
-#|
 (deftype precur-bomb (mechblock)
-  ((bomb-timer             uint32             :offset-assert 296)
+  (
+   (bomb-timer             uint32             :offset-assert 296)
    (blink-timer            uint32             :offset-assert 300)
    (blink-rate             float              :offset-assert 304)
-   (blink                  basic              :offset-assert 308)
+   (blink                  symbol             :offset-assert 308)
    (collide-timer          uint32             :offset-assert 312)
    (spin-quat              quaternion :inline :offset-assert 320)
    (default-emissive-color vector     :inline :offset-assert 336)
-   (hint?                  basic              :offset-assert 352)
-   (sound-id               uint32             :offset-assert 356)
+   (hint?                  symbol             :offset-assert 352)
+   (sound-id               sound-id           :offset-assert 356)
    )
   :method-count-assert 39
   :size-assert         #x168
   :flag-assert         #x2700f00168
-  (:methods
-    (precur-bomb-method-38 () none) ;; 38
-    )
   (:state-methods
-    explode ;; 35
     fall ;; 31
-    carry ;; 29
+    ready ;; 34
+    explode ;; 35
     spawn-up ;; 36
     pre-spawn-up ;; 37
-    idle ;; 28
-    ready ;; 34
+    )
+  (:methods
+    (update-blink (_type_) object) ;; 38
     )
   )
-|#
 
-#|
 (deftype precur-box (mechblock)
-  ((taskman uint64  :offset-assert 296)
+  ((taskman handle  :offset-assert 296)
    )
   :method-count-assert 34
   :size-assert         #x130
@@ -62123,76 +62092,76 @@
     idle ;; 28
     )
   )
-|#
 
-#|
+;; +++precura-obs2:precur-hint-mode
+(defenum precur-hint-mode
+  :type uint8
+  (teach-bomb)
+  (normal)
+  )
+;; ---precura-obs2:precur-hint-mode
+
 (deftype precur-bomb-spawner (process-drawable)
-  ((proc-handle uint64  :offset-assert 200)
-   (hint-mode   uint8   :offset-assert 208)
+  ((proc-handle handle  :offset-assert 200)
+   (hint-mode   precur-hint-mode :offset-assert 208)
    )
   :method-count-assert 22
   :size-assert         #xd1
   :flag-assert         #x16006000d1
-  (:methods
-    (precur-bomb-spawner-method-21 () none) ;; 21
-    )
   (:state-methods
     idle ;; 20
     )
+  (:methods
+    (spawn-bomb (_type_) handle) ;; 21
+    )
   )
-|#
 
-#|
 (deftype precur-laser-beam (process-drawable)
-  ((laser-dir         vector     :inline :offset-assert 204)
-   (attack-id         uint32             :offset-assert 220)
-   (org-laser-quat    quaternion :inline :offset-assert 236)
-   (on-duration       float              :offset-assert 252)
-   (off-duration      float              :offset-assert 256)
-   (current-angle     int8               :offset-assert 260)
-   (last-attack-time  uint32             :offset-assert 264)
-   (counter           uint8              :offset-assert 268)
-   (sound-id          uint32             :offset-assert 272)
-   (actor-group       uint32             :offset-assert 276)
-   (actor-group-count int32              :offset-assert 280)
+  ((laser-dir         vector     :inline :offset-assert 208)
+   (attack-id         uint32             :offset-assert 224)
+   (org-laser-quat    quaternion :inline :offset-assert 240)
+   (on-duration       float              :offset-assert 256)
+   (off-duration      float              :offset-assert 260)
+   (current-angle     int8               :offset-assert 264)
+   (last-attack-time  uint32             :offset-assert 268)
+   (counter           uint8              :offset-assert 272)
+   (sound-id          sound-id           :offset-assert 276)
+   (actor-group       (pointer actor-group) :offset-assert 280)
+   (actor-group-count int32              :offset-assert 284)
    )
   :method-count-assert 26
   :size-assert         #x120
   :flag-assert         #x1a00a00120
-  (:methods
-    (precur-laser-beam-method-24 () none) ;; 24
-    (precur-laser-beam-method-25 () none) ;; 25
-    )
   (:state-methods
-    hide ;; 22
     active ;; 20
-    dormant ;; 23
     telegraph ;; 21
+    hide ;; 22
+    dormant ;; 23
+    )
+  (:methods
+    (fire-beam (_type_ vector vector) none) ;; 24
+    (fire-beam0 "Unused." (_type_ vector vector) none) ;; 25
     )
   )
-|#
 
-#|
 (deftype task-manager-precura (task-manager)
-  ((part-doom     basic   :offset-assert 240)
-   (doom-time     uint64  :offset-assert 248)
-   (extra-time    uint64  :offset-assert 256)
+  ((part-doom     sparticle-launch-control :offset-assert 240)
+   (doom-time     time-frame :offset-assert 248)
+   (extra-time    time-frame :offset-assert 256)
    (doom-counter  uint8   :offset-assert 264)
    (faded         uint8   :offset-assert 265)
-   (movie-played? basic   :offset-assert 268)
+   (movie-played? symbol  :offset-assert 268)
    )
   :method-count-assert 32
   :size-assert         #x110
   :flag-assert         #x2000900110
   )
-|#
 
-#|
 (deftype precur-spot-shadow-effect (process-drawable)
   ((focal-length    float                       :offset-assert 200)
    (near-clip       float                       :offset-assert 204)
    (far-clip        float                       :offset-assert 208)
-   (color           uint32                      :offset-assert 212)
+   (color           rgba                        :offset-assert 212)
    (pre-flicker-pos vector              :inline :offset-assert 224)
    (jmod-outer      joint-mod-add-local :inline :offset-assert 240)
    (jmod-inner      joint-mod-add-local :inline :offset-assert 304)
@@ -62200,68 +62169,58 @@
   :method-count-assert 24
   :size-assert         #x170
   :flag-assert         #x1800f00170
-  (:methods
-    (precur-spot-shadow-effect-method-22 () none) ;; 22
-    (precur-spot-shadow-effect-method-23 () none) ;; 23
-    )
   (:state-methods
-    inactive ;; 21
     idle ;; 20
+    inactive ;; 21
+    )
+  (:methods
+    (set-inner-jmod-scale (_type_ vector) none) ;; 22
+    (set-outer-jmod-scale (_type_ vector) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype precur-path (process-drawable)
-  ((pathb               basic   :offset-assert 200)
+  ((pathb               path-control :offset-assert 200)
    (last-attack-time    uint32  :offset-assert 204)
    (attack-id           uint32  :offset-assert 208)
-   (bolt                basic   :offset-assert 212)
+   (bolt                lightning-bolt :offset-assert 212)
    (shock-part-time     uint32  :offset-assert 216)
-   (shock-shadow-handle uint64  :offset-assert 224)
+   (shock-shadow-handle handle  :offset-assert 224)
    )
   :method-count-assert 24
   :size-assert         #xe8
   :flag-assert         #x18007000e8
-  (:methods
-    (precur-path-method-22 () none) ;; 22
-    (precur-path-method-23 () none) ;; 23
-    )
   (:state-methods
-    dormant ;; 21
     idle ;; 20
+    dormant ;; 21
+    )
+  (:methods
+    (probe-for-player-collision (_type_ vector vector) none) ;; 22
+    (draw-lightning (_type_ vector vector) none) ;; 23
     )
   )
-|#
 
-#|
 (deftype precur-door-b (com-airlock)
-  ((open-test basic  :offset-assert 204)
-   )
+  ((pad uint8 4))
   :method-count-assert 30
   :size-assert         #x1b4
   :flag-assert         #x1e014001b4
-  ;; field open-test uses ~A with a signed load.
-  (:state-methods
-    open ;; 20
-    )
   )
-|#
 
-;; (define-extern precur-bomb-bounce-reaction function)
-;; (define-extern precur-bomb-handler function)
-;; (define-extern precur-bomb-init-by-other function)
-;; (define-extern hint-mode->string function)
-;; (define-extern *laser-angles-array* array)
-;; (define-extern elec-mech function)
-;; (define-extern *precura-continue-sphere* object)
-;; (define-extern *precura-continue2-sphere* object)
-;; (define-extern *pca-sph1* object)
-;; (define-extern *pca-sph2* object)
-;; (define-extern process-drawable-shock-wave-effect function)
-;; (define-extern precur-spot-shadow-effect-init-by-other function)
-;; (define-extern precur-spot-shadow-effect-handler function)
-;; (define-extern *precur-tour-lightning* object)
+(define-extern precur-bomb-bounce-reaction (function control-info collide-query vector vector collide-status))
+(def-event-handler precur-bomb-handler precur-bomb)
+(define-extern precur-bomb-init-by-other (function vector symbol object :behavior precur-bomb))
+(define-extern hint-mode->string (function precur-hint-mode string))
+(define-extern *laser-angles-array* (array float))
+(define-extern elec-mech (function vector uint none))
+(define-extern *precura-continue-sphere* sphere)
+(define-extern *precura-continue2-sphere* sphere)
+(define-extern *pca-sph1* sphere)
+(define-extern *pca-sph2* sphere)
+(define-extern process-drawable-shock-wave-effect (function process-drawable lightning-spec (function lightning-tracker none) sparticle-launcher vector int float object))
+(define-extern precur-spot-shadow-effect-init-by-other (function vector vector object :behavior precur-spot-shadow-effect))
+(def-event-handler precur-spot-shadow-effect-handler precur-spot-shadow-effect)
+(define-extern *precur-tour-lightning* lightning-appearance)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; wascitya-obs                   ;;
@@ -64454,7 +64413,6 @@
 ;; lfaccity-mood                  ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype lfaccity-states (structure)
   ((light     light-state :inline :offset-assert 0)
    (roty      float               :offset-assert 8)
@@ -64468,50 +64426,43 @@
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype faccity-pparticle-info (structure)
   ((original-pos vector :inline :offset-assert 0)
-   (inited?      basic          :offset-assert 16)
+   (inited?      symbol         :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype faccity-pparticle-array (inline-array-class)
-  ((data UNKNOWN :dynamic :offset-assert 16)
+  ((data faccity-pparticle-info :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
   :size-assert         #x10
   :flag-assert         #xe00000010
   )
-|#
 
-#|
 (deftype lfaccity-pparticle-mover (process-drawable)
-  ((actor-group       uint32  :offset-assert 196)
-   (actor-group-count int32   :offset-assert 200)
-   (particles         basic   :offset-assert 204)
+  ((actor-group       (pointer actor-group)  :offset-assert 200)
+   (actor-group-count int32   :offset-assert 204)
+   (particles         faccity-pparticle-array :offset-assert 208)
    )
   :method-count-assert 22
   :size-assert         #xd4
   :flag-assert         #x16006000d4
-  (:methods
-    (lfaccity-pparticle-mover-method-21 () none) ;; 21
-    )
   (:state-methods
     active ;; 20
     )
+  (:methods
+    (mood-update (_type_) symbol) ;; 21
+    )
   )
-|#
 
-;; (define-extern *faccity-part-updater* object)
-;; (define-extern update-mood-lfaccity function)
-;; (define-extern lfaccity-pparticle-mover-init-by-other function)
+(define-extern *faccity-part-updater* lfaccity-pparticle-mover)
+(define-extern update-mood-lfaccity (function mood-context float int none :behavior time-of-day-proc))
+(define-extern lfaccity-pparticle-mover-init-by-other (function entity-actor object :behavior lfaccity-pparticle-mover))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-sniper-battery             ;;
@@ -68226,7 +68177,6 @@
 ;; precurc-mood                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype precurc-states (structure)
   ((pulse pulse-state :inline :offset-assert 0)
    )
@@ -68234,57 +68184,52 @@
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-;; (define-extern init-mood-precurc function)
-;; (define-extern update-precurc-lights function)
-;; (define-extern update-mood-precurc function)
-;; (define-extern precurc-activate function)
-;; (define-extern precur-deactivate function)
+(define-extern init-mood-precurc (function mood-context float))
+(define-extern update-precurc-lights (function mood-context none))
+(define-extern update-mood-precurc (function mood-context float int none :behavior time-of-day-proc))
+(define-extern precurc-activate (function level none))
+(define-extern precur-deactivate (function level none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; precurc-obs                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype precur-elevator (elevator)
   ()
   :method-count-assert 52
   :size-assert         #x1a0
   :flag-assert         #x34012001a0
   )
-|#
 
-#|
 (deftype precur-door-a (process-drawable)
-  ((open-test    basic   :offset-assert 200)
-   (open-started uint64  :offset-assert 208)
-   (do-camera?   basic   :offset-assert 216)
+  ((open-test    pair       :offset-assert 200)
+   (open-started time-frame :offset-assert 208)
+   (do-camera?   symbol  :offset-assert 216)
    (open-frame   float   :offset-assert 220)
    )
   :method-count-assert 23
   :size-assert         #xe0
   :flag-assert         #x17006000e0
   ;; field open-test uses ~A with a signed load.
-  (:methods
-    (precur-door-a-method-22 () none) ;; 22
-    )
   (:state-methods
     open ;; 20
     close ;; 21
     )
+  (:methods
+    (precur-door-a-method-22 () none) ;; 22
+    )
   )
-|#
 
-#|
 (deftype precur-swingpole-pop (swingpole)
-  ((moving?         basic   :offset-assert 284)
-   (player-grabbed? basic   :offset-assert 288)
-   (halfway?        basic   :offset-assert 292)
-   (stopped-time    uint64  :offset-assert 296)
+  ((root            collide-shape :override)
+   (moving?         symbol  :offset-assert 284)
+   (player-grabbed? symbol  :offset-assert 288)
+   (halfway?        symbol  :offset-assert 292)
+   (stopped-time    time-frame :offset-assert 296)
    (movedist        float   :offset-assert 304)
    (tt              float   :offset-assert 308)
-   (paused-time     uint64  :offset-assert 312)
+   (paused-time     time-frame :offset-assert 312)
    (direction       uint8   :offset-assert 320)
    )
   :method-count-assert 25
@@ -68294,8 +68239,6 @@
     idle ;; 20
     )
   )
-|#
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; external-player-control        ;;
@@ -70475,7 +70418,6 @@
 ;; assault-shared                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype assault-cam-info (structure)
   ((pos vector :inline :offset-assert 0)
    (mat matrix :inline :offset-assert 16)
@@ -70484,9 +70426,7 @@
   :size-assert         #x50
   :flag-assert         #x900000050
   )
-|#
 
-#|
 (deftype triangle-dists (structure)
   ((dist0 float  :offset-assert 0)
    (dist1 float  :offset-assert 4)
@@ -70495,9 +70435,7 @@
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-#|
 (deftype assault-room-collision (structure)
   ((cam-matrix    matrix         :inline :offset-assert 0)
    (cam-pos       vector         :inline :offset-assert 64)
@@ -70508,62 +70446,64 @@
   :size-assert         #x5c
   :flag-assert         #x90000005c
   )
-|#
 
-#|
 (deftype assault-room (structure)
   ((center-pos     vector                 :inline :offset-assert 0)
    (cam-info       assault-cam-info               :offset-assert 16)
    (collision      assault-room-collision         :offset-assert 20)
-   (node-positions basic                          :offset-assert 24)
+   (node-positions (array vector)                 :offset-assert 24)
    )
   :method-count-assert 9
   :size-assert         #x1c
   :flag-assert         #x90000001c
   )
-|#
 
-#|
 (deftype assault-speech-instance (speech-instance)
   ()
   :method-count-assert 9
   :size-assert         #x8
   :flag-assert         #x900000008
   )
-|#
 
-;; (define-extern *assault-speech-list* object)
+(define-extern *assault-speech-list* (inline-array talker-speech-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-cams                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *assault-cams* array)
+(define-extern *assault-cams* (array assault-cam-info))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-path                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *assault-rooms* array)
+(define-extern *assault-rooms* (array assault-room))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-enemies                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++assault-enemies:assault-target-type
+(defenum assault-target-type
+  :copy-entries city-target-type
+  (assault-citizen-norm 1)
+  (assault-grunt 6)
+  (assault-metalhead-predator 8)
+  (other 11)
+  (assault-bombbot 13)
+  )
+;; ---assault-enemies:assault-target-type
+
 (deftype assault-object-spawn-params (traffic-object-spawn-params)
-  ((nav-branch nav-branch  :offset-assert 24)
-   (lev        basic       :offset-assert 116)
+  ((lev        symbol      :offset-assert 116)
    (suck-level int32       :offset-assert 120)
-   (flee-time  uint64      :offset-assert 128)
+   (flee-time  time-frame  :offset-assert 128)
    )
   :method-count-assert 9
   :size-assert         #x88
   :flag-assert         #x900000088
   )
-|#
 
-#|
 (deftype assault-metalhead-grunt (metalhead-grunt)
   ()
   :method-count-assert 232
@@ -70573,79 +70513,50 @@
     exit-transport ;; 231
     )
   )
-|#
 
-#|
 (deftype assault-metalhead-flitter (metalhead-flitter)
   ()
   :method-count-assert 230
   :size-assert         #x494
   :flag-assert         #xe604200494
   (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
     exit-transport ;; 229
     )
   )
-|#
 
-#|
 (deftype assault-metalhead-predator (metalhead-predator)
   ()
   :method-count-assert 228
   :size-assert         #x550
   :flag-assert         #xe404d00550
-  (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
-    )
   )
-|#
 
-#|
 (deftype assault-roboguard (roboguard-city)
-  ((shoot-wait-time uint64  :offset-assert 1600)
+  ((shoot-wait-time time-frame :offset-assert 1600)
    )
   :method-count-assert 242
   :size-assert         #x648
   :flag-assert         #xf205d00648
   (:state-methods
-    in-ditch ;; 192
     roll-initial ;; 241
-    die-fast ;; 42
-    shoot-attack ;; 224
-    hostile-stand ;; 222
     )
+  (:methods (go-from-behavior (_type_ assault-object-spawn-params) object :replace))
   )
-|#
 
-#|
 (deftype assault-spydroid (spydroid)
   ()
   :method-count-assert 238
   :size-assert         #x50c
   :flag-assert         #xee0490050c
-  (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
-    )
   )
-|#
 
-#|
 (deftype assault-flying-turret (flying-turret)
   ()
   :method-count-assert 231
   :size-assert         #x568
   :flag-assert         #xe704f00568
-  (:state-methods
-    die-fast ;; 42
-    in-ditch ;; 192
-    )
   )
-|#
 
-#|
 (deftype assault-crimson-guard (crimson-guard)
   ((center-pos vector :inline :offset-assert 1616)
    )
@@ -70654,34 +70565,27 @@
   :flag-assert         #x12405e00660
   (:state-methods
     wait-for-enemies ;; 291
-    active ;; 34
-    die-fast ;; 42
-    in-ditch ;; 192
     )
+  (:methods (go-from-behavior (_type_ assault-object-spawn-params) object :replace))
   )
-|#
 
-#|
 (deftype assault-citizen-norm (citizen-norm)
   ((center-pos    vector :inline :offset-assert 1136)
-   (min-flee-time uint64         :offset-assert 1152)
+   (min-flee-time time-frame     :offset-assert 1152)
    )
   :method-count-assert 237
   :size-assert         #x488
   :flag-assert         #xed04100488
   (:state-methods
-    cower-ground ;; 222
     flee-madly ;; 235
     flee-to-center ;; 236
-    knocked-recover ;; 32
     )
+  (:methods (go-from-behavior (_type_ assault-object-spawn-params) object :replace))
   )
-|#
 
-#|
 (deftype assault-cleanup (process)
-  ((offscreen-time uint64  :offset-assert 128)
-   (parent-hand    uint64  :offset-assert 136)
+  ((offscreen-time time-frame :offset-assert 128)
+   (parent-hand    handle     :offset-assert 136)
    )
   :method-count-assert 15
   :size-assert         #x90
@@ -70690,267 +70594,317 @@
     tracking ;; 14
     )
   )
-|#
 
-#|
 (deftype special-health (health)
   ()
   :method-count-assert 36
   :size-assert         #x194
   :flag-assert         #x2401200194
   )
-|#
 
-#|
 (deftype ammo-special-pickup (process-focusable)
-  ((ammo-type      int32  :offset-assert 208)
-   (gun-type       int32  :offset-assert 212)
-   (collect-effect basic  :offset-assert 216)
-   (ammo-effect    basic  :offset-assert 220)
+  ((ammo-type      pickup-type  :offset-assert 208)
+   (gun-type       pickup-type  :offset-assert 212)
+   (collect-effect sparticle-launch-group :offset-assert 216)
+   (ammo-effect    sparticle-launch-group :offset-assert 220)
    (anim-index     int32  :offset-assert 224)
    )
   :method-count-assert 31
   :size-assert         #xe4
   :flag-assert         #x1f007000e4
-  (:methods
-    (ammo-special-pickup-method-30 () none) ;; 30
-    )
   (:state-methods
-    pickup ;; 29
     wait ;; 28
+    pickup ;; 29
+    )
+  (:methods
+    (init-pickup (_type_ vector pickup-type pickup-type) object) ;; 30
     )
   )
-|#
 
-#|
 (deftype assault-bombbot (bombbot)
   ((next-node                int32   :offset-assert 1512)
-   (new-point-choose-time    uint64  :offset-assert 1520)
-   (max-hp                   float   :offset-assert 1532)
-   (is-final?                basic   :offset-assert 1536)
+   (new-point-choose-time    time-frame :offset-assert 1520)
+   (max-hp                   float   :offset 1532)
+   (is-final?                symbol  :offset-assert 1536)
    (last-charge-player-count uint32  :offset-assert 1540)
    (suck-level               int32   :offset-assert 1544)
    )
   :method-count-assert 210
   :size-assert         #x60c
   :flag-assert         #xd20590060c
-  (:methods
-    (assault-bombbot-method-209 () none) ;; 209
-    )
   (:state-methods
     hostile ;; 38
-    drop-bombs ;; 193
     explode ;; 190
+    drop-bombs ;; 193
+    )
+  (:methods
+    (assault-bombbot-method-209 (_type_) int) ;; 209
     )
   )
-|#
 
-#|
 (deftype assault-bombbot-spawn-params (bombbot-spawn-params)
-  ((is-final?  basic  :offset-assert 48)
+  ((is-final?  symbol :offset-assert 48)
    (suck-level int32  :offset-assert 52)
    )
   :method-count-assert 9
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype assault-bombbot-shot (bombbot-shot)
   ()
   :method-count-assert 41
   :size-assert         #x220
   :flag-assert         #x2901a00220
   )
-|#
 
-;; (define-extern assault-enemy-init-by-other function)
-;; (define-extern assault-type->type function)
-;; (define-extern assault-cleanup-init-by-other function)
-;; (define-extern *assault-levels* array)
-;; (define-extern spawn-assault-enemy function)
-;; (define-extern special-health-init-by-other function)
-;; (define-extern ammo-special-pickup-init-by-other function)
-;; (define-extern assault-bombbot-init-by-other function)
-;; (define-extern *curve-assault-bombbot-shot-color-blue* curve-color-fast)
-;; (define-extern *curve-assault-bombbot-shot-width* curve2d-fast)
-;; (define-extern *assault-bombbot-trail* object)
-;; (define-extern *assault-bombbot-trail-2* object)
-;; (define-extern *bombbot-bomb-hp-thresholds* array)
-;; (define-extern *look-time* object)
+(define-extern assault-enemy-init-by-other (function assault-object-spawn-params object :behavior citizen))
+(define-extern assault-type->type (function assault-target-type type))
+(define-extern assault-cleanup-init-by-other (function handle object :behavior assault-cleanup))
+(define-extern *assault-levels* (array symbol))
+(define-extern spawn-assault-enemy (function assault-target-type process handle))
+(define-extern special-health-init-by-other (function vector object :behavior special-health))
+(define-extern ammo-special-pickup-init-by-other (function pickup-type pickup-type object :behavior ammo-special-pickup))
+(define-extern assault-bombbot-init-by-other (function assault-bombbot-spawn-params object :behavior assault-bombbot))
+(define-extern *curve-assault-bombbot-shot-color-blue* curve-color-fast)
+(define-extern *curve-assault-bombbot-shot-width* curve2d-fast)
+(define-extern *assault-bombbot-trail* light-trail-composition)
+(define-extern *assault-bombbot-trail-2* light-trail-composition)
+(define-extern *bombbot-bomb-hp-thresholds* (array float))
+(define-extern *look-time* time-frame)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-script                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++assault-script:assault-cmd
+(defenum assault-cmd
+  :type uint8
+  (spawn)
+  (wait)
+  (advance)
+  (pickup)
+  (torn)
+  (final-bombbot)
+  (load-continue)
+  (save-continue)
+  (speech)
+  (queue)
+  (other)
+  )
+;; ---assault-script:assault-cmd
+
+;; +++assault-script:assault-cmd-spawn-type
+(defenum assault-cmd-spawn-type
+  :type uint16
+  (cmd0)
+  (cmd1)
+  (cmd2)
+  (cmd3)
+  (cmd4)
+  (cmd5)
+  (cmd6)
+  (cmd7)
+  (cmd8)
+  (cmd9)
+  (cmd10)
+  (cmd11)
+  (cmd12)
+  )
+;; ---assault-script:assault-cmd-spawn-type
+
+;; +++assault-script:assault-cmd-wait-type
+(defenum assault-cmd-wait-type
+  :type uint8
+  (spawn-delay)
+  (cmd1)
+  (cmd2)
+  )
+;; ---assault-script:assault-cmd-wait-type
+
+;; +++assault-script:assault-cmd-faction-type
+(defenum assault-cmd-faction-type
+  :type uint8
+  (none)
+  (mh)
+  (ff)
+  (kg)
+  )
+;; ---assault-script:assault-cmd-faction-type
+
+;; +++assault-script:assault-cmd-speech-type
+(defenum assault-cmd-speech-type
+  :type uint64
+  (instructions)
+  (jak-hit)
+  (room-complete)
+  (room-start)
+  (encouragement)
+  (type5)
+  (torn-watch-out)
+  (protect-civilians)
+  (grab-pickup)
+  (torn-give-help)
+  (torn-finish)
+  (guard-hello)
+  (guard-bombbot)
+  )
+;; ---assault-script:assault-cmd-speech-type
+
 (deftype assault-spawn-cmd (structure)
-  ((spawn-delay     uint64  :offset-assert 0)
-   (command         uint8   :offset-assert 8)
-   (spawn-type      uint16  :offset-assert 10)
+  ((spawn-delay     time-frame :offset-assert 0)
+   (command         assault-cmd :offset-assert 8)
+   (spawn-type      assault-cmd-spawn-type :offset-assert 10)
    (count           int8    :offset-assert 12)
    (spawner-index   int8    :offset-assert 13)
-   (wait-type       uint8   :offset-assert 10)
-   (faction-type    uint8   :offset-assert 13)
-   (wait-time       uint64  :offset-assert 0)
-   (msg             basic   :offset-assert 16)
+   (wait-type       assault-cmd-wait-type :offset 10)
+   (faction-type    assault-cmd-faction-type :offset 13)
+   (wait-time       time-frame :offset 0)
+   (msg             symbol  :offset-assert 16)
    (path-id         int32   :offset-assert 20)
    (event0          int32   :offset-assert 24)
    (event1          int32   :offset-assert 28)
    (event2          int32   :offset-assert 32)
-   (speech-type     uint64  :offset-assert 40)
+   (speech-type     assault-cmd-speech-type :offset-assert 40)
    (gun-pickup-type int32   :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype room-powerup-percentage (structure)
   ((avg-spawn-rate uint64     :offset-assert 0)
-   (percentages    UNKNOWN 51 :offset-assert 8)
-   (red2           float      :offset-assert 116)
-   (red3           float      :offset-assert 120)
-   (yellow2        float      :offset-assert 128)
-   (yellow3        float      :offset-assert 132)
-   (blue1          float      :offset-assert 136)
-   (blue2          float      :offset-assert 140)
-   (blue3          float      :offset-assert 144)
-   (darkjak        float      :offset-assert 36)
-   (lightjak       float      :offset-assert 64)
-   (health         float      :offset-assert 88)
+   (percentages    float 51   :offset-assert 8)
+   (red2           float      :offset 116)
+   (red3           float      :offset 120)
+   (yellow2        float      :offset 128)
+   (yellow3        float      :offset 132)
+   (blue1          float      :offset 136)
+   (blue2          float      :offset 140)
+   (blue3          float      :offset 144)
+   (darkjak        float      :offset 36)
+   (lightjak       float      :offset 64)
+   (health         float      :offset 88)
    )
   :method-count-assert 9
   :size-assert         #xd4
   :flag-assert         #x9000000d4
   )
-|#
 
-#|
 (deftype assault-cmd-context (structure)
-  ((start-time      uint64                    :offset-assert 0)
-   (state-time      uint64                    :offset-assert 8)
+  ((start-time      time-frame                :offset-assert 0)
+   (state-time      time-frame                :offset-assert 8)
    (current-command assault-spawn-cmd :inline :offset-assert 16)
-   (script          basic                     :offset-assert 68)
+   (script          pair                      :offset-assert 68)
    )
   :method-count-assert 9
   :size-assert         #x48
   :flag-assert         #x900000048
   )
-|#
 
-;; (define-extern *port-assault-speech* array)
-;; (define-extern *assault-object-count* array)
-;; (define-extern *assault-fade-dist* array)
-;; (define-extern *assault-graph-classification* array)
-;; (define-extern *assault-faction-lookup* array)
-;; (define-extern *assault-guard-count* array)
-;; (define-extern *assault-citizen-count* array)
-;; (define-extern symbol->assault-target-type function)
-;; (define-extern symbol->speech-type function)
-;; (define-extern symbol->faction-type function)
-;; (define-extern symbol->gun-pickup-type function)
-;; (define-extern parse-assault-command function)
-;; (define-extern *assault-bombbot-paths* array)
-;; (define-extern *assault-scripts* array)
-;; (define-extern *room-goal* array)
-;; (define-extern *room-powerups* array)
-;; (define-extern *room0-script* object)
-;; (define-extern *room1-script* object)
-;; (define-extern *room2-script* object)
-;; (define-extern *room3-script* object)
-;; (define-extern *room4-script* object)
+(define-extern *port-assault-speech* (array speech-info))
+(define-extern *assault-object-count* (array int32))
+(define-extern *assault-fade-dist* (array float))
+(define-extern *assault-graph-classification* (array int32))
+(define-extern *assault-faction-lookup* (array uint8))
+(define-extern *assault-guard-count* (array int32))
+(define-extern *assault-citizen-count* (array int32))
+(define-extern symbol->assault-target-type (function symbol assault-target-type))
+(define-extern symbol->speech-type (function symbol assault-cmd-speech-type))
+(define-extern symbol->faction-type (function symbol assault-cmd-faction-type))
+(define-extern symbol->gun-pickup-type (function symbol pickup-type))
+(define-extern parse-assault-command (function pair assault-spawn-cmd object))
+(define-extern *assault-bombbot-paths* (array bombbot-path))
+(define-extern *assault-scripts* (array pair))
+(define-extern *room-goal* (array uint8))
+(define-extern *room-powerups* (array room-powerup-percentage))
+(define-extern *room0-script* pair)
+(define-extern *room1-script* pair)
+(define-extern *room2-script* pair)
+(define-extern *room3-script* pair)
+(define-extern *room4-script* pair)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; assault-task                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype ammo-special-info (structure)
   ((ammo-type     int32   :offset-assert 0)
    (gun-type      int32   :offset-assert 4)
-   (end-lock-time uint64  :offset-assert 8)
+   (end-lock-time time-frame :offset-assert 8)
    )
   :method-count-assert 9
   :size-assert         #x10
   :flag-assert         #x900000010
   )
-|#
 
-#|
 (deftype task-manager-city-port-assault (task-manager)
   ((script-command          assault-cmd-context :inline :offset-assert 240)
-   (door-handle             uint64                      :offset-assert 312)
+   (door-handle             handle                      :offset-assert 312)
    (current-room            assault-room                :offset-assert 320)
    (current-room-index      int8                        :offset-assert 324)
-   (h-player-controller     uint64                      :offset-assert 328)
-   (spawners                UNKNOWN             12      :offset-assert 336)
-   (original-cam-point      vector              :inline :offset-assert 1296)
+   (h-player-controller     handle                      :offset-assert 328)
+   (spawners                assault-cmd-context 12 :inline :offset-assert 336)
+   (original-cam-point      vector              :inline :offset 1296)
    (original-cam-quat       quaternion          :inline :offset-assert 1312)
    (ammo-special            ammo-special-info   :inline :offset-assert 1328)
-   (torn-h                  uint64                      :offset-assert 1344)
-   (next-powerup-spawn-time uint64                      :offset-assert 1352)
-   (final-bombbot?          basic                       :offset-assert 1360)
+   (torn-h                  handle                      :offset-assert 1344)
+   (next-powerup-spawn-time time-frame                  :offset-assert 1352)
+   (final-bombbot?          symbol                      :offset-assert 1360)
    (room-override-index     int8                        :offset-assert 1364)
-   (bombbot-dead?           basic                       :offset-assert 1368)
-   (cam-pan-sound           uint32                      :offset-assert 1372)
+   (bombbot-dead?           symbol                      :offset-assert 1368)
+   (cam-pan-sound           sound-id                    :offset-assert 1372)
    )
   :method-count-assert 53
   :size-assert         #x560
   :flag-assert         #x3504e00560
-  (:methods
-    (task-manager-city-port-assault-method-36 () none) ;; 36
-    (task-manager-city-port-assault-method-37 () none) ;; 37
-    (task-manager-city-port-assault-method-38 () none) ;; 38
-    (task-manager-city-port-assault-method-39 () none) ;; 39
-    (task-manager-city-port-assault-method-40 () none) ;; 40
-    (task-manager-city-port-assault-method-41 () none) ;; 41
-    (task-manager-city-port-assault-method-42 () none) ;; 42
-    (task-manager-city-port-assault-method-43 () none) ;; 43
-    (task-manager-city-port-assault-method-44 () none) ;; 44
-    (task-manager-city-port-assault-method-45 () none) ;; 45
-    (task-manager-city-port-assault-method-46 () none) ;; 46
-    (task-manager-city-port-assault-method-47 () none) ;; 47
-    (task-manager-city-port-assault-method-48 () none) ;; 48
-    (task-manager-city-port-assault-method-49 () none) ;; 49
-    (task-manager-city-port-assault-method-50 () none) ;; 50
-    (task-manager-city-port-assault-method-51 () none) ;; 51
-    (task-manager-city-port-assault-method-52 () none) ;; 52
-    )
   (:state-methods
     wait ;; 14
     active ;; 15
+    transition ;; 32
     combat ;; 33
     player-entrance ;; 34
     player-quickstart ;; 35
-    transition ;; 32
+    )
+  (:methods
+    (parse-cmd (_type_) none) ;; 36
+    (eval-cmd (_type_) symbol) ;; 37
+    (cmd-can-run? (_type_) symbol) ;; 38
+    (advance-script (_type_) none) ;; 39
+    (room-advance (_type_) none) ;; 40
+    (task-manager-city-port-assault-method-41 (_type_ assault-spawn-cmd assault-cmd-context) symbol) ;; 41
+    (spawn-special-pickup (_type_ pickup-type) none) ;; 42
+    (task-manager-city-port-assault-method-43 (_type_ int) int) ;; 43
+    (task-manager-city-port-assault-method-44 (_type_) object) ;; 44
+    (check-for-pickup-spawn (_type_) int) ;; 45
+    (set-next-powerup-spawn-time (_type_) none) ;; 46
+    (spawn-guards (_type_ int) symbol) ;; 47
+    (spawn-citizens (_type_ int) none) ;; 48
+    (task-manager-city-port-assault-method-49 (_type_ int) int) ;; 49
+    (pickup-spawn-chance (_type_ room-powerup-percentage int) float) ;; 50
+    (get-suck-level (_type_) int) ;; 51
+    (task-manager-city-port-assault-method-52 (_type_) none) ;; 52
     )
   )
-|#
 
-#|
 (deftype assault-player-controller (player-controller)
   ((collision assault-room-collision  :offset-assert 272)
    )
   :method-count-assert 37
   :size-assert         #x114
   :flag-assert         #x2500a00114
-  (:methods
-    (assault-player-controller-method-36 () none) ;; 36
-    )
   (:state-methods
     clip-to-nav-mesh ;; 30
     )
+  (:methods
+    (assault-player-controller-method-36 (_type_) none) ;; 36
+    )
   )
-|#
 
-#|
 (deftype assault-squad-control (basic)
   ((door-index       int16          :offset-assert 4)
-   (spawn-records    basic          :offset-assert 8)
+   (spawn-records    (array proc-focusable-spawner) :offset-assert 8)
    (next-spawn-index int16          :offset-assert 12)
    (door-pos         vector :inline :offset-assert 16)
    )
@@ -70958,20 +70912,20 @@
   :size-assert         #x20
   :flag-assert         #xe00000020
   (:methods
-    (assault-squad-control-method-9 () none) ;; 9
-    (assault-squad-control-method-10 () none) ;; 10
-    (assault-squad-control-method-11 () none) ;; 11
-    (assault-squad-control-method-12 () none) ;; 12
-    (assault-squad-control-method-13 () none) ;; 13
+    (init (_type_) none) ;; 9
+    (assault-squad-control-method-10 (_type_ int) int) ;; 10
+    (spawn-enemies (_type_ process) int) ;; 11
+    (init-spawn-records (_type_) symbol) ;; 12
+    (reset-enemies (_type_) none) ;; 13
     )
   )
-|#
 
-;; (define-extern *port-assault-blur-curve* object)
-;; (define-extern compute-player-ammo function)
-;; (define-extern lctypalt-login function)
-;; (define-extern lctypalt-logout function)
-;; (define-extern skip-to-room function)
+(define-extern *assault-squad* assault-squad-control)
+(define-extern *port-assault-blur-curve* curve2d-piecewise)
+(define-extern compute-player-ammo (function pickup-type float))
+(define-extern lctypalt-login (function level none))
+(define-extern lctypalt-logout (function level none))
+(define-extern skip-to-room (function uint none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; mh-centipede-part              ;;
@@ -73975,56 +73929,80 @@
 ;; protect-script                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
+;; +++protect-script:gunship-command
+(defenum gunship-command
+  :type uint8
+  (spawn)
+  (wait)
+  (missiles)
+  (script-set-jump)
+  (script-jump)
+  (no-op)
+  (other)
+  )
+;; ---protect-script:gunship-command
+
+;; +++protect-script:gunship-cmd-spawn-type
+(defenum gunship-cmd-spawn-type
+  :type uint16
+  :copy-entries city-target-type
+  )
+;; ---protect-script:gunship-cmd-spawn-type
+
+;; +++protect-script:gunship-cmd-wait-type
+(defenum gunship-cmd-wait-type
+  :type uint8
+  (time)
+  (total)
+  )
+;; ---protect-script:gunship-cmd-wait-type
+
 (deftype gunship-cmd (structure)
-  ((command        uint8   :offset-assert 0)
-   (spawn-type     uint16  :offset-assert 2)
+  ((command        gunship-command :offset-assert 0)
+   (spawn-type     gunship-cmd-spawn-type :offset-assert 2)
    (count          int8    :offset-assert 4)
-   (wait-type      uint8   :offset-assert 2)
+   (wait-type      gunship-cmd-wait-type :offset 2)
    (difficulty     float   :offset-assert 8)
-   (wait-time      uint64  :offset-assert 16)
-   (timeout-period uint64  :offset-assert 24)
+   (wait-time      time-frame :offset-assert 16)
+   (timeout-period time-frame :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 9
   :size-assert         #x20
   :flag-assert         #x900000020
   )
-|#
 
-#|
 (deftype gunship-cmd-context (structure)
-  ((start-time        uint64              :offset-assert 0)
+  ((start-time        time-frame          :offset-assert 0)
    (current-command   gunship-cmd :inline :offset-assert 8)
-   (script            basic               :offset-assert 40)
+   (script            pair                :offset-assert 40)
    (script-jump-point basic               :offset-assert 44)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-;; (define-extern parse-protect-command function)
-;; (define-extern *gunship-0-script* object)
+(define-extern parse-protect-command (function gunship-cmd-context object))
+(define-extern *gunship-0-script* pair)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; protect-path                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *protect-path* array)
+(define-extern *protect-path* (array vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; protect-gunship                ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype fire-missile-state (structure)
-  ((missile-dest-positions  UNKNOWN 16 :offset-assert 0)
-   (missile-handles         UNKNOWN 16 :offset-assert 256)
-   (beacon-handles          UNKNOWN 16 :offset-assert 384)
-   (last-fire-missile-time  uint64     :offset-assert 512)
-   (last-probe-missile-time uint64     :offset-assert 520)
-   (launcher-rotate-time    uint64     :offset-assert 528)
+  ((missile-dest-positions  vector  16 :inline :offset-assert 0)
+   (missile-handles         handle  16 :offset-assert 256)
+   (beacon-handles          handle  16 :offset-assert 384)
+   (last-fire-missile-time  time-frame :offset-assert 512)
+   (last-probe-missile-time time-frame :offset-assert 520)
+   (launcher-rotate-time    time-frame :offset-assert 528)
    (num-missiles            int8       :offset-assert 536)
    (missile-launch-index    int8       :offset-assert 537)
    (missile-probe-index     int8       :offset-assert 538)
@@ -74037,56 +74015,49 @@
   :size-assert         #x228
   :flag-assert         #xa00000228
   (:methods
-    (fire-missile-state-method-9 () none) ;; 9
+    (init (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype gunship-info (structure)
-  ((proc        uint64  :offset-assert 0)
+  ((proc        handle  :offset-assert 0)
    (want-target uint8   :offset-assert 8)
-   (cur-state   basic   :offset-assert 12)
+   (cur-state   symbol  :offset-assert 12)
    (difficulty  float   :offset-assert 16)
    )
   :method-count-assert 9
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype gunship-movement-state (structure)
-  ((state-time       uint64         :offset-assert 0)
-   (next-update-time uint64         :offset-assert 8)
+  ((state-time       time-frame     :offset-assert 0)
+   (next-update-time time-frame     :offset-assert 8)
    (cur-mode         uint8          :offset-assert 16)
    (dest-mode        uint8          :offset-assert 17)
    (dest-pos         vector :inline :offset-assert 32)
-   (completed?       basic          :offset-assert 48)
+   (completed?       symbol         :offset-assert 48)
    )
   :method-count-assert 9
   :size-assert         #x34
   :flag-assert         #x900000034
   )
-|#
 
-#|
 (deftype gunship-spawn-info (structure)
-  ((counts          UNKNOWN 17 :offset-assert 0)
-   (next-spawn-time uint64     :offset-assert 24)
+  ((counts          int8 17    :offset-assert 0)
+   (next-spawn-time time-frame :offset-assert 24)
    )
+  :pack-me
   :method-count-assert 10
   :size-assert         #x20
   :flag-assert         #xa00000020
   (:methods
-    (gunship-spawn-info-method-9 () none) ;; 9
+    (init (_type_) none) ;; 9
     )
   )
-|#
 
-#|
 (deftype protect-gunship (process-focusable)
-  ((task-man                   uint64                         :offset-assert 208)
+  ((task-man                   handle                         :offset-assert 208)
    (missile-info               fire-missile-state     :inline :offset-assert 224)
    (stage-index                int8                           :offset-assert 776)
    (num-stages                 int8                           :offset-assert 777)
@@ -74096,18 +74067,18 @@
    (ground-pt                  vector                 :inline :offset-assert 800)
    (basetrans                  vector                 :inline :offset-assert 816)
    (move-state                 gunship-movement-state :inline :offset-assert 832)
-   (reaction-time              uint64                         :offset-assert 888)
-   (choose-new-point-time      uint64                         :offset-assert 896)
+   (reaction-time              time-frame                     :offset-assert 888)
+   (choose-new-point-time      time-frame                     :offset-assert 896)
    (chosen-point               vector                 :inline :offset-assert 912)
    (last-repo-pos              vector                 :inline :offset-assert 928)
-   (suppress-times             UNKNOWN                8       :offset-assert 944)
+   (suppress-times             time-frame             8       :offset-assert 944)
    (want                       uint8                          :offset-assert 1008)
    (target                     uint8                          :offset-assert 1009)
    (spawn-info                 gunship-spawn-info     :inline :offset-assert 1016)
-   (next-fire-missile-time     uint64                         :offset-assert 1048)
-   (next-spin-laser-time       uint64                         :offset-assert 1056)
-   (next-spawn-time            uint64                         :offset-assert 1064)
-   (last-land-time             uint64                         :offset-assert 1072)
+   (next-fire-missile-time     time-frame                     :offset-assert 1048)
+   (next-spin-laser-time       time-frame                     :offset-assert 1056)
+   (next-spawn-time            time-frame                     :offset-assert 1064)
+   (last-land-time             time-frame                     :offset-assert 1072)
    (last-thrust-vec            vector                 :inline :offset-assert 1088)
    (roll-quat                  quaternion             :inline :offset-assert 1104)
    (difficulty                 float                          :offset-assert 1120)
@@ -74115,18 +74086,18 @@
    (land-start-hp              float                          :offset-assert 1128)
    (jmod-turret-twist          joint-mod-rotate-local :inline :offset-assert 1136)
    (jmod-turret-pitch          joint-mod-rotate-local :inline :offset-assert 1168)
-   (jmod-doors                 UNKNOWN                4       :offset-assert 1200)
+   (jmod-doors                 joint-mod-rotate-local 4 :inline :offset-assert 1200)
    (open-doors                 uint8                          :offset-assert 1328)
    (num-open-doors             uint8                          :offset-assert 1329)
    (last-door-index            uint8                          :offset-assert 1330)
-   (engines                    UNKNOWN                4       :offset-assert 1336)
-   (rotate-start-time          uint64                         :offset-assert 1368)
-   (rotate-total-time          uint64                         :offset-assert 1376)
+   (engines                    handle                 4       :offset-assert 1336)
+   (rotate-start-time          time-frame                     :offset-assert 1368)
+   (rotate-total-time          time-frame                     :offset-assert 1376)
    (rotate-rate                float                          :offset-assert 1384)
    (laser-rotate-speed         float                          :offset-assert 1388)
    (current-laser-rotate-speed float                          :offset-assert 1392)
    (base-laser-dir             vector                 :inline :offset-assert 1408)
-   (next-new-laser-rot-time    uint64                         :offset-assert 1424)
+   (next-new-laser-rot-time    time-frame                     :offset-assert 1424)
    (laser-y                    float                          :offset-assert 1432)
    (jmod-laser-descend         joint-mod-add-local    :inline :offset-assert 1440)
    (num-hp-per-stage           float                          :offset-assert 1504)
@@ -74134,84 +74105,80 @@
    (other-ship-index           int8                           :offset-assert 1509)
    (attacker-info              city-attacker-info             :offset-assert 1512)
    (difficulty-scalar          float                          :offset-assert 1516)
-   (sound-engine-loop          uint32                         :offset-assert 1520)
-   (sound-lock-on              uint32                         :offset-assert 1524)
-   (sound-lock-on-hi           uint32                         :offset-assert 1528)
+   (sound-engine-loop          sound-id                       :offset-assert 1520)
+   (sound-lock-on              sound-id                       :offset-assert 1524)
+   (sound-lock-on-hi           sound-id                       :offset-assert 1528)
    (alive-engines              uint8                          :offset-assert 1532)
-   (last-engine?               basic                          :offset-assert 1536)
+   (last-engine?               symbol                         :offset-assert 1536)
    (desired-thruster-length    float                          :offset-assert 1540)
    (last-thrust                vector                 :inline :offset-assert 1552)
-   (smoke-parts                UNKNOWN                4       :offset-assert 1568)
+   (smoke-parts                sparticle-launch-control 4     :offset-assert 1568)
    )
   :method-count-assert 58
   :size-assert         #x630
   :flag-assert         #x3a05b00630
-  (:methods
-    (protect-gunship-method-36 () none) ;; 36
-    (protect-gunship-method-37 () none) ;; 37
-    (protect-gunship-method-38 () none) ;; 38
-    (protect-gunship-method-39 () none) ;; 39
-    (protect-gunship-method-40 () none) ;; 40
-    (protect-gunship-method-41 () none) ;; 41
-    (protect-gunship-method-42 () none) ;; 42
-    (protect-gunship-method-43 () none) ;; 43
-    (protect-gunship-method-44 () none) ;; 44
-    (protect-gunship-method-45 () none) ;; 45
-    (protect-gunship-method-46 () none) ;; 46
-    (protect-gunship-method-47 () none) ;; 47
-    (protect-gunship-method-48 () none) ;; 48
-    (protect-gunship-method-49 () none) ;; 49
-    (protect-gunship-method-50 () none) ;; 50
-    (protect-gunship-method-51 () none) ;; 51
-    (protect-gunship-method-52 () none) ;; 52
-    (protect-gunship-method-53 () none) ;; 53
-    (protect-gunship-method-54 () none) ;; 54
-    (protect-gunship-method-55 () none) ;; 55
-    (protect-gunship-method-56 () none) ;; 56
-    (protect-gunship-method-57 () none) ;; 57
-    )
   (:state-methods
-    lowering ;; 32
-    raising ;; 31
-    landed ;; 30
-    hover ;; 29
-    spinning-laser ;; 34
-    enemy-spawning ;; 33
     protect-gunship-base-state ;; 28
+    hover ;; 29
+    landed ;; 30
+    raising ;; 31
+    lowering ;; 32
+    enemy-spawning ;; 33
+    spinning-laser ;; 34
     die ;; 35
     )
+  (:methods
+    (spawn-missile (_type_ vector vector vector float int) handle) ;; 36
+    (protect-gunship-method-37 (_type_) int) ;; 37
+    (protect-gunship-method-38 (_type_ int float) none) ;; 38
+    (spawn-enemy (_type_ gunship-cmd-spawn-type) symbol) ;; 39
+    (update-nav-mesh (_type_) none) ;; 40
+    (gunship-post (_type_) none) ;; 41
+    (probe-ground (_type_) none) ;; 42
+    (protect-gunship-method-43 (_type_) none) ;; 43
+    (gunship-init (_type_) object) ;; 44
+    (gunship-handler (_type_ process int symbol event-message-block) object) ;; 45
+    (protect-gunship-method-46 (_type_) symbol) ;; 46
+    (protect-gunship-method-47 (_type_) none) ;; 47
+    (protect-gunship-method-48 (_type_ vector) symbol) ;; 48
+    (protect-gunship-method-49 (_type_) none) ;; 49
+    (protect-gunship-method-50 (_type_) object) ;; 50
+    (protect-gunship-method-51 (_type_) none) ;; 51
+    (protect-gunship-method-52 (_type_) quaternion) ;; 52
+    (open-doors (_type_) int) ;; 53
+    (protect-gunship-method-54 (_type_) float) ;; 54
+    (fire-laser (_type_ vector vector) object) ;; 55
+    (protect-gunship-method-56 (_type_ float) float) ;; 56
+    (protect-gunship-method-57 (_type_ int vector) vector) ;; 57
+    )
   )
-|#
 
-#|
 (deftype gunship-engine (process-focusable)
   ((hit-points     float               :offset-assert 208)
    (child-index    int16               :offset-assert 212)
    (last-attack-id uint32              :offset-assert 216)
    (attacker-info  city-attacker-info  :offset-assert 220)
-   (bolt           basic               :offset-assert 224)
-   (hit-recently?  basic               :offset-assert 228)
-   (last-hit-time  uint64              :offset-assert 232)
+   (bolt           lightning-bolt      :offset-assert 224)
+   (hit-recently?  symbol              :offset-assert 228)
+   (last-hit-time  time-frame          :offset-assert 232)
    )
   :method-count-assert 31
   :size-assert         #xf0
   :flag-assert         #x1f007000f0
-  (:methods
-    (gunship-engine-method-30 () none) ;; 30
-    )
   (:state-methods
     idle ;; 28
     explode ;; 29
     )
+  (:methods
+    (gunship-engine-method-30 (_type_) none) ;; 30
+    )
   )
-|#
 
-#|
 (deftype protect-gunship-init-params (structure)
   ((pos               vector     :inline :offset-assert 0)
    (quat              quaternion :inline :offset-assert 16)
-   (task-man          uint64             :offset-assert 32)
-   (script            basic              :offset-assert 40)
+   (task-man          handle             :offset-assert 32)
+   (script            pair               :offset-assert 40)
    (num-stages        int8               :offset-assert 44)
    (self-index        int8               :offset-assert 45)
    (difficulty        float              :offset-assert 48)
@@ -74221,22 +74188,18 @@
   :size-assert         #x38
   :flag-assert         #x900000038
   )
-|#
 
-#|
 (deftype protect-gunship-enemy-spawn-params (structure)
   ((pos        vector     :inline :offset-assert 0)
    (quat       quaternion :inline :offset-assert 16)
-   (spawn-type uint16             :offset-assert 32)
-   (parent     uint64             :offset-assert 40)
+   (spawn-type gunship-cmd-spawn-type :offset-assert 32)
+   (parent     handle             :offset-assert 40)
    )
   :method-count-assert 9
   :size-assert         #x30
   :flag-assert         #x900000030
   )
-|#
 
-#|
 (deftype gunship-exploder (process-drawable)
   ()
   :method-count-assert 21
@@ -74246,35 +74209,31 @@
     explode ;; 20
     )
   )
-|#
 
-#|
 (deftype gunship-missile (process-focusable)
   ((dest-pos       vector :inline :offset-assert 208)
    (launch-dir     vector :inline :offset-assert 224)
-   (particle-trail basic          :offset-assert 240)
+   (particle-trail sparticle-subsampler :offset-assert 240)
    (travel-speed   float          :offset-assert 244)
    (attack-time    float          :offset-assert 248)
    (attack-id      uint32         :offset-assert 252)
    (index          int16          :offset-assert 256)
-   (swoosh-sound   uint32         :offset-assert 260)
+   (swoosh-sound   sound-id       :offset-assert 260)
    )
   :method-count-assert 33
   :size-assert         #x108
   :flag-assert         #x2100900108
-  (:methods
-    (gunship-missile-method-31 () none) ;; 31
-    (gunship-missile-method-32 () none) ;; 32
-    )
   (:state-methods
-    explode ;; 30
-    attack-targ ;; 29
     launch ;; 28
+    attack-targ ;; 29
+    explode ;; 30
+    )
+  (:methods
+    (gunship-missile-method-31 (_type_) none) ;; 31
+    (gunship-missile-method-32 (_type_) sound-id) ;; 32
     )
   )
-|#
 
-#|
 (deftype gunship-missile-init-params (structure)
   ((pos          vector :inline :offset-assert 0)
    (dest-pos     vector :inline :offset-assert 16)
@@ -74286,95 +74245,87 @@
   :size-assert         #x36
   :flag-assert         #x900000036
   )
-|#
 
-;; (define-extern *gunship-nav-mesh* object)
-;; (define-extern *range-ffexplo-dust-color* curve-color-fast)
-;; (define-extern *range-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
-;; (define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
-;; (define-extern *part-grp-gunship-explosion-dust-in-curve-settings* object)
-;; (define-extern *range-gunship-explo-color* curve-color-fast)
-;; (define-extern *range-gunship-explo-alpha* curve2d-fast)
-;; (define-extern *range-gunship-explo-scale-x* curve2d-fast)
-;; (define-extern *range-gunship-explo-scale-y* curve2d-fast)
-;; (define-extern *curve-gunship-explo-alpha* curve2d-fast)
-;; (define-extern *curve-gunship-explo-scale-x* curve2d-fast)
-;; (define-extern *curve-gunship-explo-scale-y* curve2d-fast)
-;; (define-extern *part-grp-gunship-explosion-texture-curve-settings* object)
-;; (define-extern *active-gunships* object)
-;; (define-extern *gunship-door-joints* array)
-;; (define-extern *gunship-engine-segs-undamaged* array)
-;; (define-extern *gunship-engine-segs-damaged* array)
-;; (define-extern *gunship-engine-lightning* object)
-;; (define-extern gunship-engine-init-by-other function)
-;; (define-extern find-nearest-nav-mesh-protect function)
-;; (define-extern gunship-event-handler function)
-;; (define-extern *gunship-shadow-control* shadow-control)
-;; (define-extern protect-gunship-init-by-other function)
-;; (define-extern gunship-exploder-init-by-other function)
-;; (define-extern gunship-missile-init-by-other function)
-;; (define-extern *rand-missile-sound-list* array)
-;; (define-extern *missile-launch-locations* array)
-;; (define-extern find-reposition-pt function)
+(define-extern *gunship-nav-mesh* actor-id)
+(define-extern *range-ffexplo-dust-color* curve-color-fast)
+(define-extern *range-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *range-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *curve-ffexplo-dust-alpha* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-x* curve2d-fast)
+(define-extern *curve-ffexplo-dust-scale-y* curve2d-fast)
+(define-extern *part-grp-gunship-explosion-dust-in-curve-settings* particle-curve-settings)
+(define-extern *range-gunship-explo-color* curve-color-fast)
+(define-extern *range-gunship-explo-alpha* curve2d-fast)
+(define-extern *range-gunship-explo-scale-x* curve2d-fast)
+(define-extern *range-gunship-explo-scale-y* curve2d-fast)
+(define-extern *curve-gunship-explo-alpha* curve2d-fast)
+(define-extern *curve-gunship-explo-scale-x* curve2d-fast)
+(define-extern *curve-gunship-explo-scale-y* curve2d-fast)
+(define-extern *part-grp-gunship-explosion-texture-curve-settings* particle-curve-settings)
+(define-extern *active-gunships* (inline-array gunship-info))
+(define-extern *gunship-door-joints* (array int32))
+(define-extern *gunship-engine-segs-undamaged* (array uint64))
+(define-extern *gunship-engine-segs-damaged* (array uint64))
+(define-extern *gunship-engine-lightning* lightning-appearance)
+(define-extern gunship-engine-init-by-other (function int float object :behavior gunship-engine))
+(define-extern find-nearest-nav-mesh-protect (function vector float nav-mesh))
+(def-event-handler gunship-event-handler protect-gunship)
+(define-extern *gunship-shadow-control* shadow-control)
+(define-extern protect-gunship-init-by-other (function protect-gunship-init-params object :behavior protect-gunship))
+(define-extern gunship-exploder-init-by-other (function vector quaternion object :behavior gunship-exploder))
+(define-extern gunship-missile-init-by-other (function gunship-missile-init-params object :behavior gunship-missile))
+(define-extern *rand-missile-sound-list* (array string))
+(define-extern *missile-launch-locations* (array int16))
+(define-extern find-reposition-pt (function vector vector vector int int float float vector))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; cty-protect                    ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype task-manager-protect-hq (task-manager)
-  ((gunships      UNKNOWN 2 :offset-assert 240)
-   (spawn-records basic     :offset-assert 256)
+  ((gunships      handle 2  :offset-assert 240)
+   (spawn-records (array proc-focusable-spawner) :offset-assert 256)
    (spawn-index   int8      :offset-assert 260)
    (death-count   int8      :offset-assert 261)
    )
   :method-count-assert 38
   :size-assert         #x106
   :flag-assert         #x2600900106
-  (:methods
-    (task-manager-protect-hq-method-35 () none) ;; 35
-    (task-manager-protect-hq-method-36 () none) ;; 36
-    (task-manager-protect-hq-method-37 () none) ;; 37
-    )
   (:state-methods
-    fail ;; 18
+    fight-gunship ;; 32
     fight-gunship-2 ;; 33
     wait-finish ;; 34
-    fight-gunship ;; 32
-    active ;; 15
-    wait ;; 14
+    )
+  (:methods
+    (gunship-spawn (_type_ protect-gunship-enemy-spawn-params) object) ;; 35
+    (spawn-gunship (_type_ vector int float) handle) ;; 36
+    (get-spawn-pos-for-ship (_type_ vector vector symbol) vector) ;; 37
     )
   )
-|#
 
-#|
 (deftype prot-crate (process-drawable)
-  ((h-crate   uint64  :offset-assert 208)
-   (dummy-ent basic   :offset-assert 216)
+  ((h-crate   handle       :offset 208)
+   (dummy-ent entity-actor :offset-assert 216)
    )
   :method-count-assert 22
   :size-assert         #xdc
   :flag-assert         #x16006000dc
-  (:methods
-    (prot-crate-method-21 () none) ;; 21
-    )
   (:state-methods
     active ;; 20
     )
+  (:methods
+    (spawn-crate (_type_) handle) ;; 21
+    )
   )
-|#
 
-;; (define-extern *protect-object-count* array)
-;; (define-extern protect-type->type function)
-;; (define-extern *protect-levels* array)
-;; (define-extern spawn-protect-enemy function)
-;; (define-extern *gunship-start-positions* array)
-;; (define-extern *fountain-center-pos* object)
-;; (define-extern get-protect-suck-t function)
+(define-extern *protect-object-count* (array int32))
+(define-extern protect-type->type (function gunship-cmd-spawn-type type))
+(define-extern *protect-levels* (array symbol))
+(define-extern spawn-protect-enemy (function int process handle))
+(define-extern *gunship-start-positions* (array vector))
+(define-extern *fountain-center-pos* vector)
+(define-extern get-protect-suck-t (function float))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; desert-hover                   ;;

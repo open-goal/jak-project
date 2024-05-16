@@ -5,5 +5,212 @@
 ;; name in dgo: lfaccity-mood
 ;; dgos: LFACB, LFACCITY
 
+(declare-type lfaccity-pparticle-mover process-drawable)
+
 ;; DECOMP BEGINS
 
+(define *faccity-part-updater* (the-as lfaccity-pparticle-mover #f))
+
+(deftype lfaccity-states (structure)
+  ((light      light-state  :inline)
+   (roty       float)
+   (rotz       float)
+   (rot-bob    float)
+   (wobble     float)
+   (bob        float)
+   (zero-test  int32)
+   )
+  )
+
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior update-mood-lfaccity time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as object (-> arg0 state))))
+      (cond
+        ((level-get *level* 'factoryb)
+         (set-vector! (-> *math-camera* trans-other) 1228800.0 (-> (the-as lfaccity-states gp-1) bob) 1228800.0 1.0)
+         (let ((s3-0 (new 'stack-no-clear 'vector)))
+           (set-vector! s3-0 -409600.0 0.0 0.0 1.0)
+           (vector-rotate-y! s3-0 s3-0 (-> (the-as lfaccity-states gp-1) roty))
+           (vector+! (-> *math-camera* trans-other) (-> *math-camera* trans-other) s3-0)
+           )
+         )
+        ((or (level-get *level* 'factoryc) (level-get *level* 'factoryd))
+         (set-vector!
+           (-> *math-camera* trans-other)
+           696320.0
+           (+ -614400.0 (-> (the-as lfaccity-states gp-1) bob))
+           -368640.0
+           1.0
+           )
+         )
+        )
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (let ((s5-1 *math-camera*))
+        (when (not (paused?))
+          (let ((s3-1 (new 'stack-no-clear 'quaternion))
+                (s4-1 (new 'stack-no-clear 'quaternion))
+                )
+            (quaternion-vector-angle! s3-1 *y-vector* (-> (the-as lfaccity-states gp-1) roty))
+            (quaternion-vector-angle! s4-1 *z-vector* (-> (the-as lfaccity-states gp-1) wobble))
+            (quaternion*! (-> s5-1 quat-other) s4-1 s3-1)
+            )
+          (let ((f0-17 (+ (-> (the-as lfaccity-states gp-1) roty) (* 910.2222 (seconds-per-frame)))))
+            (set! (-> (the-as lfaccity-states gp-1) roty) (- f0-17 (* (the float (the int (/ f0-17 65536.0))) 65536.0)))
+            )
+          (let ((f0-20 (+ (-> (the-as lfaccity-states gp-1) rotz) (* 8192.0 (seconds-per-frame)))))
+            (set! (-> (the-as lfaccity-states gp-1) rotz) (- f0-20 (* (the float (the int (/ f0-20 65536.0))) 65536.0)))
+            )
+          (set! (-> (the-as lfaccity-states gp-1) wobble) (* 910.2222 (sin (-> (the-as lfaccity-states gp-1) rotz))))
+          (let ((f0-26 (+ (-> (the-as lfaccity-states gp-1) rot-bob) (* 16384.0 (seconds-per-frame)))))
+            (set! (-> (the-as lfaccity-states gp-1) rot-bob)
+                  (- f0-26 (* (the float (the int (/ f0-26 65536.0))) 65536.0))
+                  )
+            )
+          (set! (-> (the-as lfaccity-states gp-1) bob)
+                (+ -40960.0 (* 40960.0 (sin (-> (the-as lfaccity-states gp-1) rot-bob))))
+                )
+          (send-event *faccity-part-updater* 'mood-update)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(deftype faccity-pparticle-info (structure)
+  ((original-pos  vector  :inline)
+   (inited?       symbol)
+   )
+  )
+
+
+(deftype faccity-pparticle-array (inline-array-class)
+  ((data  faccity-pparticle-info  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> faccity-pparticle-array heap-base) (the-as uint 32))
+
+(deftype lfaccity-pparticle-mover (process-drawable)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (particles          faccity-pparticle-array)
+   )
+  (:state-methods
+    active
+    )
+  (:methods
+    (mood-update (_type_) symbol)
+    )
+  )
+
+
+(defmethod init-from-entity! ((this lfaccity-pparticle-mover) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-1 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> this root) (new 'process 'trsqv))
+  (if (<= (-> this actor-group-count) 0)
+      (go process-drawable-art-error "actor group")
+      )
+  (set! (-> this entity extra vis-dist) 40960000000000.0)
+  (set! (-> this particles) (new 'process 'faccity-pparticle-array (-> this actor-group 0 length)))
+  (dotimes (v1-18 (-> this particles length))
+    (set! (-> this particles data v1-18 inited?) #f)
+    )
+  (set! *faccity-part-updater* this)
+  (go (method-of-object this active))
+  )
+
+(defbehavior lfaccity-pparticle-mover-init-by-other lfaccity-pparticle-mover ((arg0 entity-actor))
+  (init-from-entity! self arg0)
+  )
+
+(defstate active (lfaccity-pparticle-mover)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('mood-update)
+       (mood-update self)
+       )
+      )
+    )
+  :code sleep-code
+  )
+
+(defmethod run-logic? ((this lfaccity-pparticle-mover))
+  "Should this process be run? Checked by execute-process-tree."
+  #t
+  )
+
+(defmethod deactivate ((this lfaccity-pparticle-mover))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *faccity-part-updater* #f)
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod mood-update ((this lfaccity-pparticle-mover))
+  (let ((s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> *math-camera* quat-other))))
+    (dotimes (s4-0 (-> this particles length))
+      (cond
+        ((-> this particles data s4-0 inited?)
+         (let ((v1-6 (vector-matrix*! (new 'stack-no-clear 'vector) (the-as vector (-> this particles data s4-0)) s5-0))
+               (a1-4 (-> this actor-group 0 data s4-0 actor))
+               )
+           (when a1-4
+             (let ((a1-5 (-> a1-4 extra process)))
+               (when a1-5
+                 (set! (-> (the-as process-drawable a1-5) root trans quad) (-> v1-6 quad))
+                 (vector+!
+                   (-> (the-as process-drawable a1-5) root trans)
+                   (-> (the-as process-drawable a1-5) root trans)
+                   (-> *math-camera* trans-other)
+                   )
+                 )
+               )
+             )
+           )
+         )
+        (else
+          (let ((v1-14 (-> this actor-group 0 data s4-0 actor)))
+            (when v1-14
+              (set! (-> this particles data s4-0 original-pos quad) (-> v1-14 extra trans quad))
+              (set! (-> this particles data s4-0 inited?) #t)
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+(defmethod relocate ((this lfaccity-pparticle-mover) (offset int))
+  (set! *faccity-part-updater* this)
+  (if *faccity-part-updater*
+      (set! *faccity-part-updater* (&+ *faccity-part-updater* offset))
+      )
+  (if (nonzero? (-> this particles))
+      (&+! (-> this particles) offset)
+      )
+  (call-parent-method this offset)
+  )
