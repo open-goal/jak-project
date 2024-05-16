@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,8 +34,7 @@
 #include "SDL_filesystem.h"
 
 /* Wrapper around __unixify_std that uses SDL's memory allocators */
-static char *
-SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
+static char *SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
 {
     const char *const in_buf = buffer; /* = NULL if we allocate the buffer.  */
 
@@ -53,8 +52,9 @@ SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
     }
 
     if (!__unixify_std(ro_path, buffer, buf_len, filetype)) {
-        if (!in_buf)
+        if (!in_buf) {
             SDL_free(buffer);
+        }
 
         SDL_SetError("Could not convert '%s' to a Unix-style path", ro_path);
         return NULL;
@@ -72,8 +72,7 @@ SDL_unixify_std(const char *ro_path, char *buffer, size_t buf_len, int filetype)
     return buffer;
 }
 
-static char *
-canonicalisePath(const char *path, const char *pathVar)
+static char *canonicalisePath(const char *path, const char *pathVar)
 {
     _kernel_oserror *error;
     _kernel_swi_regs regs;
@@ -108,8 +107,7 @@ canonicalisePath(const char *path, const char *pathVar)
     return buf;
 }
 
-static _kernel_oserror *
-createDirectoryRecursive(char *path)
+static _kernel_oserror *createDirectoryRecursive(char *path)
 {
     char *ptr = NULL;
     _kernel_oserror *error;
@@ -118,20 +116,20 @@ createDirectoryRecursive(char *path)
     regs.r[1] = (int)path;
     regs.r[2] = 0;
 
-    for (ptr = path+1; *ptr; ptr++) {
+    for (ptr = path + 1; *ptr; ptr++) {
         if (*ptr == '.') {
             *ptr = '\0';
             error = _kernel_swi(OS_File, &regs, &regs);
             *ptr = '.';
-            if (error != NULL)
+            if (error) {
                 return error;
+            }
         }
     }
     return _kernel_swi(OS_File, &regs, &regs);
 }
 
-char *
-SDL_GetBasePath(void)
+char *SDL_GetBasePath(void)
 {
     _kernel_swi_regs regs;
     _kernel_oserror *error;
@@ -149,16 +147,16 @@ SDL_GetBasePath(void)
 
     /* chop off filename. */
     ptr = SDL_strrchr(canon, '.');
-    if (ptr != NULL)
+    if (ptr) {
         *ptr = '\0';
+    }
 
     retval = SDL_unixify_std(canon, NULL, 0, __RISCOSIFY_FILETYPE_NOTSPECIFIED);
     SDL_free(canon);
     return retval;
 }
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_GetPrefPath(const char *org, const char *app)
 {
     char *canon, *dir, *retval;
     size_t len;
@@ -178,7 +176,7 @@ SDL_GetPrefPath(const char *org, const char *app)
     }
 
     len = SDL_strlen(canon) + SDL_strlen(org) + SDL_strlen(app) + 4;
-    dir = (char *) SDL_malloc(len);
+    dir = (char *)SDL_malloc(len);
     if (!dir) {
         SDL_OutOfMemory();
         SDL_free(canon);
@@ -194,7 +192,7 @@ SDL_GetPrefPath(const char *org, const char *app)
     SDL_free(canon);
 
     error = createDirectoryRecursive(dir);
-    if (error != NULL) {
+    if (error) {
         SDL_SetError("Couldn't create directory: %s", error->errmess);
         SDL_free(dir);
         return NULL;

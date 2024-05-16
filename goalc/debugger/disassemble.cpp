@@ -6,8 +6,8 @@
 #include "goalc/compiler/Env.h"
 #include "goalc/compiler/IR.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   std::string result;
@@ -16,17 +16,15 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr) {
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
   int offset = 0;
-  while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op,
-                                             ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                             ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+  while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op))) {
     result += fmt::format("[0x{:x}] ", base_addr);
     ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible, print_buff,
-                                    print_buff_size, base_addr);
+                                    print_buff_size, base_addr, ZYAN_NULL);
     result += print_buff;
     result += "\n";
 
@@ -44,7 +42,7 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
@@ -54,12 +52,10 @@ std::string disassemble_x86(u8* data, int len, u64 base_addr, u64 highlight_addr
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';
-    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op,
-                                            ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                            ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op))) {
       result += fmt::format("{:c} [0x{:x}] ", prefix, base_addr);
       ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible,
-                                      print_buff, print_buff_size, base_addr);
+                                      print_buff, print_buff_size, base_addr, ZYAN_NULL);
       result += print_buff;
       result += "\n";
       offset += instr.length;
@@ -97,7 +93,7 @@ std::string disassemble_x86_function(
   ZydisFormatter formatter;
   ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
   ZydisDecodedInstruction instr;
-  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT_VISIBLE];
+  ZydisDecodedOperand op[ZYDIS_MAX_OPERAND_COUNT];
 
   constexpr int print_buff_size = 512;
   char print_buff[print_buff_size];
@@ -118,9 +114,7 @@ std::string disassemble_x86_function(
   int mark_offset = int(highlight_addr - base_addr);
   while (offset < len) {
     char prefix = (offset == mark_offset) ? '-' : ' ';
-    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op,
-                                            ZYDIS_MAX_OPERAND_COUNT_VISIBLE,
-                                            ZYDIS_DFLAG_VISIBLE_OPERANDS_ONLY))) {
+    if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, data + offset, len - offset, &instr, op))) {
       bool warn_messed_up = false;
       bool print_ir = false;
       // we should have a next instruction.
@@ -190,7 +184,7 @@ std::string disassemble_x86_function(
       }
 
       ZydisFormatterFormatInstruction(&formatter, &instr, op, instr.operand_count_visible,
-                                      print_buff, print_buff_size, base_addr);
+                                      print_buff, print_buff_size, base_addr, ZYAN_NULL);
       line += print_buff;
 
       if (print_ir && current_ir_idx >= 0 && current_ir_idx < int(ir_strings.size())) {

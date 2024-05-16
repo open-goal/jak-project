@@ -411,15 +411,16 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type fort-elec-belt-inst
 ;; WARN: Return type mismatch process-drawable vs fort-elec-belt-inst.
-(defmethod relocate ((this fort-elec-belt-inst) (arg0 int))
+(defmethod relocate ((this fort-elec-belt-inst) (offset int))
   (if (nonzero? (-> this l-bolt))
-      (&+! (-> this l-bolt) arg0)
+      (&+! (-> this l-bolt) offset)
       )
-  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) this arg0))
+  (the-as fort-elec-belt-inst ((method-of-type process-drawable relocate) this offset))
   )
 
 ;; definition for method 10 of type fort-elec-belt-inst
 (defmethod deactivate ((this fort-elec-belt-inst))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -571,11 +572,11 @@ This commonly includes things such as:
 
 ;; definition for method 7 of type fort-elec-belt
 ;; WARN: Return type mismatch process vs fort-elec-belt.
-(defmethod relocate ((this fort-elec-belt) (arg0 int))
+(defmethod relocate ((this fort-elec-belt) (offset int))
   (if (nonzero? (-> this path))
-      (&+! (-> this path) arg0)
+      (&+! (-> this path) offset)
       )
-  (the-as fort-elec-belt ((method-of-type process relocate) this arg0))
+  (the-as fort-elec-belt ((method-of-type process relocate) this offset))
   )
 
 ;; definition for method 11 of type fort-elec-belt
@@ -655,7 +656,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 3 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this fort-conveyor))
   (when (not this)
     (set! this this)
@@ -675,14 +675,12 @@ This commonly includes things such as:
               )
 
 ;; definition for method 22 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 (defmethod get-art-group ((this fort-conveyor))
   "@returns The respective [[art-group]] for the [[conveyor]]"
   (art-group-get-by-name *level* "skel-fort-conveyor" (the-as (pointer uint32) #f))
   )
 
 ;; definition for method 23 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch collide-shape-moving vs none.
 (defmethod reset-root! ((this fort-conveyor))
   "Re-initializes the `root` [[trsqv]]"
@@ -713,7 +711,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 24 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 ;; WARN: Return type mismatch vector vs none.
 (defmethod init! ((this fort-conveyor))
   "Initializes defaults for things like the `speed` and `belt-radius`"
@@ -727,7 +724,6 @@ This commonly includes things such as:
   )
 
 ;; definition for method 25 of type fort-conveyor
-;; INFO: this function exists in multiple non-identical object files
 (defmethod set-and-get-ambient-sound! ((this fort-conveyor))
   "So long as [[actor-option::16]] is not set, fetch the [[ambient-sound]] for the [[conveyor]]
 and return it as well.  Otherwise, set it to `0`"

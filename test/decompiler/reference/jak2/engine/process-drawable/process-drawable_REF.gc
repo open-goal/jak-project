@@ -195,8 +195,8 @@
 
 ;; definition for method 10 of type draw-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod lod-set! ((this draw-control) (arg0 int))
-  (let ((v1-1 (max 0 (min arg0 (-> this lod-set max-lod)))))
+(defmethod lod-set! ((this draw-control) (lod int))
+  (let ((v1-1 (max 0 (min lod (-> this lod-set max-lod)))))
     (set! (-> this desired-lod) v1-1)
     (when (!= (-> this cur-lod) v1-1)
       (set! (-> this mgeo) (-> this lod-set lod v1-1 geo))
@@ -212,11 +212,11 @@
 
 ;; definition for method 11 of type draw-control
 ;; WARN: Return type mismatch int vs none.
-(defmethod lods-assign! ((this draw-control) (arg0 lod-set))
-  (mem-copy! (the-as pointer (-> this lod-set)) (the-as pointer arg0) 49)
-  (let ((a1-2 (min (-> this cur-lod) (-> this lod-set max-lod))))
+(defmethod lods-assign! ((this draw-control) (lods lod-set))
+  (mem-copy! (the-as pointer (-> this lod-set)) (the-as pointer lods) 49)
+  (let ((lod (min (-> this cur-lod) (-> this lod-set max-lod))))
     (set! (-> this cur-lod) -1)
-    (lod-set! this a1-2)
+    (lod-set! this lod)
     )
   0
   (none)
@@ -519,13 +519,14 @@
   )
 
 ;; definition for function draw-root
-(defun draw-root ((arg0 process-drawable))
-  (add-debug-quaternion #t (bucket-id debug-no-zbuf1) (-> arg0 root trans) (-> arg0 root quat))
+(defun draw-root ((proc process-drawable))
+  (add-debug-quaternion #t (bucket-id debug-no-zbuf1) (-> proc root trans) (-> proc root quat))
   (none)
   )
 
 ;; definition for method 10 of type process-drawable
 (defmethod deactivate ((this process-drawable))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this part))
       (kill-and-free-particles (-> this part))
       )
@@ -1784,10 +1785,10 @@
 ;; WARN: Return type mismatch int vs none.
 (defbehavior rider-post process-drawable ()
   (ja-post)
-  (let ((gp-0 (the-as collide-shape (-> self root))))
-    (update-transforms gp-0)
-    (pull-riders! gp-0)
-    (do-push-aways gp-0)
+  (let ((cshape (the-as collide-shape (-> self root))))
+    (update-transforms cshape)
+    (pull-riders! cshape)
+    (do-push-aways cshape)
     )
   0
   (none)
@@ -1796,15 +1797,15 @@
 ;; definition for function pusher-post
 (defbehavior pusher-post process-drawable ()
   (ja-post)
-  (let ((gp-0 (the-as collide-shape (-> self root))))
-    (update-transforms gp-0)
-    (do-push-aways gp-0)
+  (let ((cshape (the-as collide-shape (-> self root))))
+    (update-transforms cshape)
+    (do-push-aways cshape)
     )
   0
   )
 
 ;; definition for function process-drawable-delay-player
-(defbehavior process-drawable-delay-player process-drawable ((arg0 time-frame))
+(defbehavior process-drawable-delay-player process-drawable ((delay time-frame))
   (while (and *target* (focus-test? *target* in-air))
     (suspend)
     )
@@ -1817,7 +1818,7 @@
              )
     (suspend)
     )
-  (while (not (time-elapsed? (-> self state-time) arg0))
+  (while (not (time-elapsed? (-> self state-time) delay))
     (suspend)
     )
   (process-release? *target*)

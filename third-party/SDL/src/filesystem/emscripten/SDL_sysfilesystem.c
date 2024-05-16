@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,15 +32,13 @@
 
 #include <emscripten/emscripten.h>
 
-char *
-SDL_GetBasePath(void)
+char *SDL_GetBasePath(void)
 {
     char *retval = "/";
     return SDL_strdup(retval);
 }
 
-char *
-SDL_GetPrefPath(const char *org, const char *app)
+char *SDL_GetPrefPath(const char *org, const char *app)
 {
     const char *append = "/libsdl/";
     char *retval;
@@ -56,7 +54,7 @@ SDL_GetPrefPath(const char *org, const char *app)
     }
 
     len = SDL_strlen(append) + SDL_strlen(org) + SDL_strlen(app) + 3;
-    retval = (char *) SDL_malloc(len);
+    retval = (char *)SDL_malloc(len);
     if (!retval) {
         SDL_OutOfMemory();
         return NULL;
@@ -68,17 +66,18 @@ SDL_GetPrefPath(const char *org, const char *app)
         SDL_snprintf(retval, len, "%s%s/", append, app);
     }
 
-    for (ptr = retval+1; *ptr; ptr++) {
+    for (ptr = retval + 1; *ptr; ptr++) {
         if (*ptr == '/') {
             *ptr = '\0';
-            if (mkdir(retval, 0700) != 0 && errno != EEXIST)
+            if (mkdir(retval, 0700) != 0 && errno != EEXIST) {
                 goto error;
+            }
             *ptr = '/';
         }
     }
 
     if (mkdir(retval, 0700) != 0 && errno != EEXIST) {
-error:
+    error:
         SDL_SetError("Couldn't create directory '%s': '%s'", retval, strerror(errno));
         SDL_free(retval);
         return NULL;

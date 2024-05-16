@@ -1,0 +1,71 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type effect-control
+(deftype effect-control (basic)
+  "An effect such as a particle with sound effects that plays during an animation."
+  ((process           process-drawable)
+   (flags             effect-control-flag)
+   (last-frame-group  art-joint-anim)
+   (last-frame-num    float)
+   (channel-offset    int32)
+   (res               res-lump)
+   (name              (pointer res-tag))
+   (param             uint32)
+   )
+  (:methods
+    (new (symbol type process-drawable) _type_)
+    (effect-control-method-9 (_type_) none)
+    (do-effect (_type_ string float int) none)
+    (do-effect-for-surface (_type_ symbol float int basic pat-surface) none)
+    (play-effect-sound (_type_ symbol float int basic sound-name) int)
+    (set-channel-offset! (_type_ int) none)
+    (play-effects-from-res-lump (_type_ float float float) none)
+    )
+  )
+
+;; definition for method 3 of type effect-control
+(defmethod inspect ((this effect-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tprocess: ~A~%" (-> this process))
+  (format #t "~1Tflags: #x~X~%" (-> this flags))
+  (format #t "~1Tlast-frame-group: ~A~%" (-> this last-frame-group))
+  (format #t "~1Tlast-frame-num: ~f~%" (-> this last-frame-num))
+  (format #t "~1Tchannel-offset: ~D~%" (-> this channel-offset))
+  (format #t "~1Tres: ~A~%" (-> this res))
+  (format #t "~1Tname: #x~X~%" (-> this name))
+  (format #t "~1Tparam: #x~X~%" (-> this param))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type effect-control
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (proc process-drawable))
+  (cond
+    ((res-lump-struct (-> proc draw jgeo extra) 'effect-name structure)
+     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> v0-1 process) proc)
+       (set! (-> v0-1 last-frame-group) #f)
+       v0-1
+       )
+     )
+    (else
+      (the-as effect-control #f)
+      )
+    )
+  )
+
+;; definition for method 13 of type effect-control
+;; WARN: Return type mismatch int vs none.
+(defmethod set-channel-offset! ((this effect-control) (offset int))
+  (set! (-> this channel-offset) offset)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

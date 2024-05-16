@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,8 +34,7 @@
 static uint64_t start;
 static SDL_bool ticks_started = SDL_FALSE;
 
-void
-SDL_TicksInit(void)
+void SDL_TicksInit(void)
 {
     if (ticks_started) {
         return;
@@ -45,14 +44,12 @@ SDL_TicksInit(void)
     start = GetTimerSystemTime();
 }
 
-void
-SDL_TicksQuit(void)
+void SDL_TicksQuit(void)
 {
     ticks_started = SDL_FALSE;
 }
 
-Uint64
-SDL_GetTicks64(void)
+Uint64 SDL_GetTicks64(void)
 {
     uint64_t now;
 
@@ -64,23 +61,21 @@ SDL_GetTicks64(void)
     return (Uint64)((now - start) / (kBUSCLK / CLOCKS_PER_SEC));
 }
 
-Uint64
-SDL_GetPerformanceCounter(void)
+Uint64 SDL_GetPerformanceCounter(void)
 {
     return SDL_GetTicks64();
 }
 
-Uint64
-SDL_GetPerformanceFrequency(void)
+Uint64 SDL_GetPerformanceFrequency(void)
 {
     return 1000;
 }
 
 void SDL_Delay(Uint32 ms)
 {
-    struct timespec tv = {0};
-    tv.tv_sec          = ms / 1000;
-    tv.tv_nsec         = (ms % 1000) * 1000000;
+    struct timespec tv = { 0 };
+    tv.tv_sec = ms / 1000;
+    tv.tv_nsec = (ms % 1000) * 1000000;
     nanosleep(&tv, NULL);
 }
 

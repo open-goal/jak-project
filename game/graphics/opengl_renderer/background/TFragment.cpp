@@ -99,7 +99,6 @@ void TFragment::render(DmaFollower& dma,
   if (m_my_id == render_state->bucket_for_vis_copy &&
       dma.current_tag_vifcode1().kind == VifCode::Kind::PC_PORT) {
     DmaTransfer transfers[20];
-
     for (int i = 0; i < render_state->num_vis_to_copy; i++) {
       transfers[i] = dma.read_and_advance();
       auto next0 = dma.read_and_advance();
@@ -268,7 +267,7 @@ void TFragment::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_k
     m_cached_trees[geom].clear();
   }
 
-  size_t time_of_day_count = 0;
+  u32 time_of_day_count = 0;
   size_t vis_temp_len = 0;
   size_t max_draws = 0;
   size_t max_num_grps = 0;
@@ -288,7 +287,7 @@ void TFragment::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_k
         }
         max_num_grps = std::max(max_num_grps, num_grps);
         max_inds = std::max(tree.unpacked.indices.size(), max_inds);
-        time_of_day_count = std::max(tree.colors.size(), time_of_day_count);
+        time_of_day_count = std::max(tree.colors.color_count, time_of_day_count);
         u32 verts = tree.packed_vertices.vertices.size();
         glGenVertexArrays(1, &tree_cache.vao);
         glBindVertexArray(tree_cache.vao);
@@ -299,7 +298,6 @@ void TFragment::update_load(const std::vector<tfrag3::TFragmentTreeKind>& tree_k
         tree_cache.colors = &tree.colors;
         tree_cache.vis = &tree.bvh;
         tree_cache.index_data = tree.unpacked.indices.data();
-        tree_cache.tod_cache = swizzle_time_of_day(tree.colors);
         tree_cache.draw_mode = tree.use_strips ? GL_TRIANGLE_STRIP : GL_TRIANGLES;
         vis_temp_len = std::max(vis_temp_len, tree.bvh.vis_nodes.size());
         glBindBuffer(GL_ARRAY_BUFFER, tree_cache.vertex_buffer);
@@ -420,24 +418,16 @@ void TFragment::render_tree(int geom,
 
   ASSERT(tree.kind != tfrag3::TFragmentTreeKind::INVALID);
 
-  if (m_color_result.size() < tree.colors->size()) {
-    m_color_result.resize(tree.colors->size());
+  if (m_color_result.size() < tree.colors->color_count) {
+    m_color_result.resize(tree.colors->color_count);
   }
-#ifndef __aarch64__
-  if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
-  } else {
-    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
-  }
-#else
-  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
-#endif
+  interp_time_of_day(settings.camera.itimes, *tree.colors, m_color_result.data());
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                  m_color_result.data());
+  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->color_count, GL_RGBA,
+                  GL_UNSIGNED_INT_8_8_8_8_REV, m_color_result.data());
 
-  first_tfrag_draw_setup(settings, render_state, ShaderId::TFRAG3);
+  first_tfrag_draw_setup(settings.camera, render_state, ShaderId::TFRAG3);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);

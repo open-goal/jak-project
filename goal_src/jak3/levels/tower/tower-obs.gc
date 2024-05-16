@@ -5,5 +5,1016 @@
 ;; name in dgo: tower-obs
 ;; dgos: TOWERA
 
+(declare-type tow-spawner process-drawable)
+
 ;; DECOMP BEGINS
 
+(defun towera-login ((arg0 level))
+  (set! *nav-network* (new 'loading-level 'nav-network))
+  (alloc-nav-network-for-level! *nav-network* 64 10)
+  0
+  (none)
+  )
+
+(defun towera-logout ((arg0 level))
+  (set! *nav-network* (the-as nav-network 0))
+  0
+  (none)
+  )
+
+(defun towera-activate ((arg0 level))
+  (if (and (nonzero? *nav-network*) *nav-network*)
+      (init-by-other! *nav-network* arg0 *towera-adjacency*)
+      )
+  0
+  (none)
+  )
+
+(deftype actor-group-watcher (process)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (notify-actor       entity-actor)
+   )
+  (:state-methods
+    idle
+    active
+    )
+  )
+
+
+(defstate idle (actor-group-watcher)
+  :virtual #t
+  :trans (behavior ()
+    (local-vars (v1-1 symbol))
+    (dotimes (v1-0 (-> self actor-group-count))
+      (dotimes (a0-0 (-> self actor-group v1-0 length))
+        (let ((a2-2 (-> self actor-group v1-0 data a0-0 actor)))
+          (when (or (not a2-2) (not (logtest? (-> a2-2 extra perm status) (entity-perm-status subtask-complete))))
+            (set! v1-1 #f)
+            (goto cfg-13)
+            )
+          )
+        )
+      )
+    (set! v1-1 #t)
+    (label cfg-13)
+    (if v1-1
+        (go-virtual active)
+        )
+    )
+  :code sleep-code
+  )
+
+(defstate active (actor-group-watcher)
+  :virtual #t
+  :code (behavior ()
+    (local-vars
+      (a0-0 process)
+      (a1-0 event-message-block)
+      (t9-0 (function process-tree event-message-block object))
+      )
+    (until (t9-0 a0-0 a1-0)
+      (suspend)
+      (set! a1-0 (new 'stack-no-clear 'event-message-block))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'trigger)
+      (set! t9-0 send-event-function)
+      (let ((v1-2 (-> self notify-actor)))
+        (set! a0-0 (if v1-2
+                       (-> v1-2 extra process)
+                       )
+              )
+        )
+      )
+    (sleep-code)
+    )
+  )
+
+(defmethod init-from-entity! ((this actor-group-watcher) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-1 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> this notify-actor) (entity-actor-lookup arg0 'alt-actor 0))
+  (go (method-of-object this idle))
+  )
+
+(deftype tow-large-plat (process-drawable)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (final-y            float)
+   (fade-level         float)
+   (sound-id           sound-id)
+   )
+  (:state-methods
+    idle
+    lower
+    lowered
+    wait-to-trigger-movie
+    trigger-movie
+    die
+    )
+  (:states
+    wait-for-battle
+    )
+  )
+
+
+(defskelgroup skel-tow-large-plat tow-large-plat tow-large-plat-lod0-jg tow-large-plat-idle-ja
+              ((tow-large-plat-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -10 0 18)
+              )
+
+(defstate idle (tow-large-plat)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual lower)
+       #t
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! tow-large-plat-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate lower (tow-large-plat)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (if (res-lump-struct (-> self entity) 'camera-name structure)
+        (process-spawn
+          external-camera-controller
+          (-> self entity)
+          1500
+          #f
+          :name "external-camera-controller"
+          :to *entity-pool*
+          )
+        )
+    (set! (-> self sound-id) (new-sound-id))
+    )
+  :exit (behavior ()
+    (when (nonzero? (-> self sound-id))
+      (sound-stop (-> self sound-id))
+      (set! (-> self sound-id) (new 'static 'sound-id))
+      0
+      )
+    )
+  :trans (behavior ()
+    (when (>= (-> self final-y) (-> self root trans y))
+      (process-entity-status! self (entity-perm-status subtask-complete) #t)
+      (go-virtual lowered)
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! tow-large-plat-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 1.5))
+      (set! (-> self root trans y) (seek-ease
+                                     (-> self root trans y)
+                                     (-> self final-y)
+                                     (* 40960.0 (seconds-per-frame))
+                                     20480.0
+                                     (* 2048.0 (seconds-per-frame))
+                                     )
+            )
+      (cond
+        ((< (fabs (- (-> self root trans y) (-> self final-y))) 4096.0)
+         (when (nonzero? (-> self sound-id))
+           (sound-stop (-> self sound-id))
+           (set! (-> self sound-id) (new 'static 'sound-id))
+           0
+           )
+         )
+        (else
+          (sound-play "pillar-lower" :id (-> self sound-id))
+          )
+        )
+      )
+    (transform-post)
+    )
+  )
+
+(defstate lowered (tow-large-plat)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self root trans y) (-> self final-y))
+    (dotimes (gp-0 (-> self actor-group-count))
+      (let ((s5-0 (-> self actor-group gp-0)))
+        (dotimes (s4-0 (-> s5-0 length))
+          (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-0 from) (process->ppointer self))
+            (set! (-> a1-0 num-params) 0)
+            (set! (-> a1-0 message) 'cue-chase)
+            (let ((t9-0 send-event-function)
+                  (v1-7 (-> s5-0 data s4-0 actor))
+                  )
+              (t9-0
+                (if v1-7
+                    (-> v1-7 extra process)
+                    )
+                a1-0
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! tow-large-plat-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defstate wait-for-battle (tow-large-plat)
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual wait-to-trigger-movie)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self final-y) (-> self root trans y))
+    (+! (-> self root trans y) -122880.0)
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (ja-no-eval :group! tow-large-plat-idle-ja :num! zero)
+    (transform-post)
+    )
+  :code sleep-code
+  )
+
+(defstate wait-to-trigger-movie (tow-large-plat)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('ridden)
+       (if (>= (-> self fade-level) 128.0)
+           (go-virtual trigger-movie)
+           )
+       )
+      )
+    )
+  :enter (behavior ()
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (logior! (-> self draw status) (draw-control-status force-fade))
+    (set! (-> self draw force-fade) (the-as uint 0))
+    (set! (-> self fade-level) 0.0)
+    (if (res-lump-struct (-> self entity) 'camera-name structure)
+        (process-spawn
+          external-camera-controller
+          (-> self entity)
+          1500
+          #f
+          :name "external-camera-controller"
+          :to *entity-pool*
+          )
+        )
+    )
+  :trans (behavior ()
+    (if (< (vector-vector-distance (target-pos 0) (-> self root trans)) 122880.0)
+        (rider-trans)
+        )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! tow-large-plat-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (set! (-> self root trans y) (seek-ease
+                                   (-> self root trans y)
+                                   (-> self final-y)
+                                   (* 40960.0 (seconds-per-frame))
+                                   20480.0
+                                   (* 2048.0 (seconds-per-frame))
+                                   )
+          )
+    (seek! (-> self fade-level) 128.0 (* 32.0 (seconds-per-frame)))
+    (set! (-> self draw force-fade) (the-as uint (the int (-> self fade-level))))
+    (transform-post)
+    )
+  )
+
+(defstate trigger-movie (tow-large-plat)
+  :virtual #t
+  :code (behavior ()
+    (logclear! (-> self draw status) (draw-control-status force-fade))
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 1))
+        (suspend)
+        )
+      )
+    (process-spawn
+      scene-player
+      :init scene-player-init
+      '("tower-destroy-res" "tower-destroy-res-b")
+      #t
+      #f
+      :name "scene-player"
+      )
+    (cleanup-for-death self)
+    (sleep-code)
+    )
+  )
+
+(defstate die (tow-large-plat)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+(defmethod deactivate ((this tow-large-plat))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (when (nonzero? (-> this sound-id))
+    (sound-stop (-> this sound-id))
+    (set! (-> this sound-id) (new 'static 'sound-id))
+    0
+    )
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod init-from-entity! ((this tow-large-plat) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-6 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 -40960.0 0.0 73728.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-6)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tow-large-plat" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (let* ((f30-0 (-> this root trans y))
+         (v1-16 (res-lump-value (-> this entity) 'extra-id uint128 :time -1000000000.0))
+         (v1-17 (cond
+                  ((zero? v1-16)
+                   122880.0
+                   )
+                  ((= (the-as uint v1-16) 1)
+                   32768.0
+                   )
+                  ((= (the-as uint v1-16) 2)
+                   0.0
+                   )
+                  )
+                )
+         )
+    (set! (-> this final-y) (- f30-0 v1-17))
+    )
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-19 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-19 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-19))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (cond
+    ((= (res-lump-value (-> this entity) 'extra-id uint :time -1000000000.0) 2)
+     (if (task-node-closed? (game-task-node tower-destroy-resolution))
+         (go (method-of-object this die))
+         (go wait-for-battle)
+         )
+     )
+    ((logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+     (go (method-of-object this lowered))
+     )
+    (else
+      (go (method-of-object this idle))
+      )
+    )
+  )
+
+(deftype tow-energy-bridge (process-drawable)
+  ((root  collide-shape :override)
+   )
+  (:state-methods
+    idle
+    extending
+    active
+    )
+  )
+
+
+(defskelgroup skel-tow-energy-bridge tow-energy-bridge tow-energy-bridge-lod0-jg tow-energy-bridge-idle-ja
+              ((tow-energy-bridge-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 20)
+              )
+
+(defstate idle (tow-energy-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual extending)
+       #t
+       )
+      )
+    )
+  :enter (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (ja-no-eval :group! tow-energy-bridge-idle-ja :num! zero)
+    (ja-post)
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    )
+  :code sleep-code
+  :post #f
+  )
+
+(defstate extending (tow-energy-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       #t
+       )
+      )
+    )
+  :enter (behavior ()
+    (if (res-lump-struct (-> self entity) 'camera-name structure)
+        (process-spawn
+          external-camera-controller
+          (-> self entity)
+          810
+          #f
+          :name "external-camera-controller"
+          :to *entity-pool*
+          )
+        )
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 0.75))
+        (suspend)
+        )
+      )
+    (let ((v1-6 (-> self root root-prim)))
+      (set! (-> v1-6 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-6 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (sound-play "bridge-expand")
+    (logclear! (-> self draw status) (draw-control-status no-draw))
+    (let ((f30-0 1.0))
+      0.0
+      (let ((gp-2 (current-time)))
+        (until (time-elapsed? gp-2 (the int (* 300.0 f30-0)))
+          (let ((f0-2 (fmax 0.0 (fmin 1.0 (/ (the float (- (current-time) gp-2)) (* 300.0 f30-0))))))
+            (set-vector! (-> self draw color-mult) f0-2 f0-2 f0-2 1.0)
+            )
+          (spawn-from-cspace (-> self part) (joint-node tow-energy-bridge-lod0-jg main))
+          (ja-post)
+          (suspend)
+          )
+        )
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (go-virtual active)
+    )
+  :post (behavior ()
+    '()
+    )
+  )
+
+(defstate active (tow-energy-bridge)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       #t
+       )
+      )
+    )
+  :enter (behavior ()
+    (ja-post)
+    )
+  :code sleep-code
+  )
+
+(defmethod init-from-entity! ((this tow-energy-bridge) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec obstacle camera-blocker))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 81920.0)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-2)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tow-energy-bridge" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1438) this))
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this active))
+      (go (method-of-object this idle))
+      )
+  )
+
+(deftype tow-spawner (process-drawable)
+  ((spawn-time         time-frame)
+   (spawn-count        int32)
+   (spawn-count-final  int32)
+   (nav-mesh           nav-mesh)
+   )
+  (:state-methods
+    idle
+    active
+    spawning
+    wait-for-children
+    done
+    )
+  (:methods
+    (can-spawn-creature? (_type_ vector float) symbol)
+    (do-spawn (_type_) none)
+    )
+  )
+
+
+(defskelgroup skel-tow-spawner tow-spawner tow-spawner-lod0-jg tow-spawner-idle-ja
+              ((tow-spawner-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              )
+
+(defstate idle (tow-spawner)
+  :virtual #t
+  :enter (behavior ()
+    (process-entity-status! self (entity-perm-status subtask-complete) #f)
+    (set-time! (-> self spawn-time))
+    (set! (-> self spawn-count) 0)
+    (set! (-> self spawn-count-final) 3)
+    )
+  :trans (behavior ()
+    (if (< (vector-vector-xz-distance (target-pos 0) (-> self root trans)) 491520.0)
+        (go-virtual active)
+        )
+    )
+  :code sleep-code
+  :post #f
+  )
+
+(defstate active (tow-spawner)
+  :virtual #t
+  :enter (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (< (-> self spawn-count-final) (-> self spawn-count))
+        (go-virtual wait-for-children)
+        )
+    (if (and (time-elapsed? (-> self state-time) (seconds 1))
+             (and *target*
+                  (not (-> *setting-control* user-current nuke-active?))
+                  (let ((gp-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+                    (and (and (project-point-to-nav-mesh
+                                (-> self entity)
+                                (-> gp-0 0)
+                                (-> *target* control trans)
+                                (the-as nav-poly #f)
+                                40960.0
+                                )
+                              (< (vector-vector-xz-distance (-> gp-0 0) (-> *target* control trans)) 409.6)
+                              )
+                         (< (-> self spawn-time) (current-time))
+                         )
+                    )
+                  )
+             )
+        (go-virtual spawning)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! tow-spawner-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (ja-post)
+    )
+  )
+
+(defstate spawning (tow-spawner)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! tow-spawner-spawn-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (if (logtest? (-> *part-group-id-table* 1436 flags) (sp-group-flag sp13))
+        (part-tracker-spawn
+          part-tracker-subsampler
+          :to *entity-pool*
+          :group (-> *part-group-id-table* 1436)
+          :duration (seconds 2)
+          :target self
+          :mat-joint 5
+          )
+        (part-tracker-spawn
+          part-tracker
+          :to *entity-pool*
+          :group (-> *part-group-id-table* 1436)
+          :duration (seconds 2)
+          :target self
+          :mat-joint 5
+          )
+        )
+    (ja-no-eval :group! tow-spawner-spawn-middle-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (do-spawn self)
+    (ja-no-eval :group! tow-spawner-spawn-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual active)
+    )
+  :post (behavior ()
+    (ja-post)
+    )
+  )
+
+(defstate wait-for-children (tow-spawner)
+  :virtual #t
+  :code (behavior ()
+    (while (-> self child)
+      (suspend)
+      )
+    (logior! (-> self mask) (process-mask actor-pause))
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (go-virtual done)
+    )
+  :post (behavior ()
+    (let ((a0-0 (joint-node tow-spawner-lod0-jg spawnerspew))
+          (a1-0 (new 'stack-no-clear 'matrix))
+          )
+      (let* ((v1-1 a1-0)
+             (t0-0 (-> a0-0 bone transform))
+             (a0-2 (-> t0-0 rvec quad))
+             (a2-0 (-> t0-0 uvec quad))
+             (a3-0 (-> t0-0 fvec quad))
+             (t0-1 (-> t0-0 trans quad))
+             )
+        (set! (-> v1-1 rvec quad) a0-2)
+        (set! (-> v1-1 uvec quad) a2-0)
+        (set! (-> v1-1 fvec quad) a3-0)
+        (set! (-> v1-1 trans quad) t0-1)
+        )
+      (vector+float*! (-> a1-0 trans) (-> a1-0 trans) (-> a1-0 fvec) 8192.0)
+      (spawn-from-mat (-> self part) a1-0)
+      )
+    )
+  )
+
+(defstate done (tow-spawner)
+  :virtual #t
+  :code sleep-code
+  :post (-> (method-of-type tow-spawner wait-for-children) post)
+  )
+
+(defmethod can-spawn-creature? ((this tow-spawner) (arg0 vector) (arg1 float))
+  (and (or (not *target*) (< 14336.0 (vector-vector-xz-distance (-> *target* control trans) (-> this root trans))))
+       (let ((s3-0 (new 'stack-no-clear 'vector))
+             (s4-0 (the-as (array collide-shape) (new 'stack 'boxed-array collide-shape 8)))
+             )
+         (set! (-> s3-0 quad) (-> arg0 quad))
+         (set! (-> s3-0 w) arg1)
+         (let ((gp-1 (fill-actor-list-for-box *actor-hash* s3-0 (-> s4-0 data) (-> s4-0 length))))
+           (or (zero? gp-1) (begin
+                              (dotimes (s5-1 gp-1)
+                                (if (type? (-> s4-0 0 process) prebot-small-eco-creature)
+                                    (return #f)
+                                    )
+                                )
+                              #t
+                              )
+               )
+           )
+         )
+       )
+  )
+
+;; WARN: Function (method 26 tow-spawner) has a return type of none, but the expression builder found a return statement.
+(defmethod do-spawn ((this tow-spawner))
+  (if (-> *setting-control* user-current nuke-active?)
+      (return 0)
+      )
+  (let ((s3-0 (new 'stack-no-clear 'enemy-init-by-other-params))
+        (s2-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data 5)))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (let ((v1-6 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))))
+      (vector+float*! s4-0 s2-0 v1-6 4096.0)
+      (+! (-> s4-0 y) -4096.0)
+      (vector+float*! s5-0 s2-0 v1-6 32768.0)
+      )
+    (when (and (project-point-to-nav-mesh (-> this entity) s5-0 s5-0 (the-as nav-poly #f) 40960.0)
+               (can-spawn-creature? this s5-0 12288.0)
+               )
+      (set! (-> s3-0 trans quad) (-> s4-0 quad))
+      (quaternion-copy! (-> s3-0 quat) (-> this root quat))
+      (set! (-> s3-0 entity) (-> this entity))
+      (set! (-> s3-0 directed?) #f)
+      (set! (-> s3-0 no-initial-move-to-ground?) #t)
+      (set! (-> s3-0 art-level) #f)
+      (let* ((s2-1 (get-process *default-dead-pool* prebot-small-eco-creature #x4000 1))
+             (s3-1 (ppointer->process (when s2-1
+                                        (let ((t9-6 (method-of-type process activate)))
+                                          (t9-6 s2-1 this "eco-creature" (the-as pointer #x70004000))
+                                          )
+                                        (run-now-in-process s2-1 enemy-init-by-other this s3-0)
+                                        (-> s2-1 ppointer)
+                                        )
+                                      )
+                   )
+             )
+        (when s3-1
+          (vector-! (-> (the-as prebot-small-eco-creature s3-1) incoming attack-direction) s5-0 s4-0)
+          (set! (-> (the-as prebot-small-eco-creature s3-1) incoming attack-direction y) 0.0)
+          (vector-normalize! (-> (the-as prebot-small-eco-creature s3-1) incoming attack-direction) 1.0)
+          (set! (-> (the-as prebot-small-eco-creature s3-1) incoming knocked-type) (knocked-type blue-shot))
+          (logior! (-> (the-as prebot-small-eco-creature s3-1) flags) (eco-creature-flag ecf2))
+          (sound-play "tow-spawner")
+          (set! (-> this spawn-time) (+ (current-time) (the int (* 300.0 (rand-vu-float-range 2.0 4.0)))))
+          (+! (-> this spawn-count) 1)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! ((this tow-spawner) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tow-spawner" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 1437) this))
+  (set! (-> this nav-mesh) (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor 0))
+  (if (not (-> this nav-mesh))
+      (go process-drawable-art-error "no nav-mesh")
+      )
+  (clear-objects! (-> this nav-mesh sphere-hash))
+  (let ((a0-9 (-> this skel root-channel 0)))
+    (set! (-> a0-9 frame-group) (the-as art-joint-anim (-> this draw art-group data 2)))
+    (set! (-> a0-9 frame-num) 0.0)
+    (joint-control-channel-group! a0-9 (the-as art-joint-anim (-> this draw art-group data 2)) num-func-identity)
+    )
+  (ja-post)
+  (if (logtest? (-> this entity extra perm status) (entity-perm-status subtask-complete))
+      (go (method-of-object this done))
+      (go (method-of-object this idle))
+      )
+  )
+
+(deftype tow-tentacle (process-drawable)
+  ((root                collide-shape :override)
+   (attack-id           int32)
+   (no-collision-timer  time-frame)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-tow-tentacle tow-tentacle tow-tentacle-lod0-jg -1
+              ((tow-tentacle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 14 0 0 23)
+              :origin-joint-index 3
+              )
+
+(defstate idle (tow-tentacle)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch)
+       (when (= (-> proc type) target)
+         (let ((a2-1 (-> block param 0)))
+           (send-shoves (-> self root) proc (the-as touching-shapes-entry a2-1) 0.0 10240.0 20480.0)
+           )
+         )
+       )
+      )
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (ja-channel-set! 1)
+    (until #f
+      (ja-no-eval :group! tow-tentacle-idle-ja :num! (seek! max 0.25) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.25))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (do-push-aways (-> self root))
+    (transform-post)
+    )
+  )
+
+(defmethod init-from-entity! ((this tow-tentacle) (arg0 entity-actor))
+  (local-vars (sv-16 collide-shape-prim-sphere) (sv-32 collide-shape-prim-sphere) (sv-48 vector))
+  (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s4-0 reaction) cshape-reaction-default)
+    (set! (-> s4-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 8) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 9))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle camera-blocker pusher))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid no-standon))
+      (set! (-> s3-0 transform-index) 3)
+      (set-vector! (-> s3-0 local-sphere) 57344.0 0.0 0.0 94208.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      (pusher-init s4-0)
+      (let* ((s2-0 1)
+             (s1-0 '((4 10240) (5 10240) (6 8192) (7 8192) (8 6144) (9 6144) (10 4096) (11 4096)))
+             (s0-0 (car s1-0))
+             )
+        (while (not (null? s1-0))
+          (set! sv-16 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0)))
+          (set! sv-32 sv-16)
+          (set! (-> sv-32 prim-core collide-as) (-> s3-0 prim-core collide-as))
+          (set! (-> sv-32 prim-core collide-with) (-> s3-0 prim-core collide-with))
+          (set! (-> sv-32 prim-core action) (-> s3-0 prim-core action))
+          (set! (-> sv-32 transform-index) (command-get-int (car s0-0) 0))
+          (set! (-> sv-32 prim-id) (the-as uint s2-0))
+          (+! s2-0 1)
+          (set! sv-48 (-> sv-16 local-sphere))
+          (set! (-> sv-48 x) 0.0)
+          (set! (-> sv-48 y) 0.0)
+          (set! (-> sv-48 z) 0.0)
+          (set! (-> sv-48 w) (command-get-float (car (cdr s0-0)) 0.0))
+          (set! s1-0 (cdr s1-0))
+          (set! s0-0 (car s1-0))
+          )
+        )
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-31 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-31 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-31 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-tow-tentacle" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (let* ((v1-35 *game-info*)
+         (a0-18 (+ (-> v1-35 attack-id) 1))
+         )
+    (set! (-> v1-35 attack-id) a0-18)
+    (set! (-> this attack-id) (the-as int a0-18))
+    )
+  (set! (-> this no-collision-timer) 0)
+  (go (method-of-object this idle))
+  )
+
+(deftype task-manager-tower-destroy (task-manager)
+  ((creak-sound-id        sound-id)
+   (creak-sound-timer     time-frame)
+   (creak-sound-duration  time-frame)
+   (goo-sound-id          uint32)
+   (goo-sound-timer       time-frame)
+   (goo-sound-duration    time-frame)
+   (goo-sound-playing     symbol)
+   (goo-sound-location    vector  :inline)
+   )
+  )
+
+
+(defmethod task-manager-method-26 ((this task-manager-tower-destroy))
+  ((method-of-type task-manager task-manager-method-26) this)
+  (none)
+  )
+
+(defmethod task-manager-method-25 ((this task-manager-tower-destroy))
+  (remove-setting! 'music)
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod set-time-limit ((this task-manager-tower-destroy))
+  (set-setting! 'music 'towdestr 0.0 0)
+  0
+  (none)
+  )

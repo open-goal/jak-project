@@ -37,10 +37,10 @@
     (let ((v1-0 (new 'static 'vector4w :x #x1000 :y #x1000 :z #x1000)))
       (.mov vf9 (the uint128 radius))  ;; vf9.x = radius
       (.lvf vf3 (&-> line quad))       ;; vf3 = line
-      (let ((a0-1 (-> v1-0 quad)))     ;; a0-1 = 0x1000, 
+      (let ((a0-1 (-> v1-0 quad)))     ;; a0-1 = 0x1000,
         (.ftoi.vf vf21 vf3)            ;; vf21 is the line
         (.lvf vf1 (&-> origin quad))   ;; vf1 is the origin
-        (.mul.vf vf8 vf3 vf3)          ;; 
+        (.mul.vf vf8 vf3 vf3)          ;;
         (let ((v1-1 *collide-work*))
           (.add.vf vf2 vf1 vf3)        ;; vf2 is the endpoint
           ;;(set! (-> obj ignore-mask) pat-ignore)
@@ -53,7 +53,7 @@
             )
           (format 0 "BAD case in setup-collide-for-line-sphere")
           (b! #t cfg-13 :delay (nop!))
-          
+
           (label cfg-3)
           (.add.y.vf vf8 vf8 vf8 :mask #b1)
           ;;(set! (-> obj num-tris) 0)
@@ -144,19 +144,19 @@
 (defun debug-draw-collide-work ((my-off float))
   (when (not (paused?))
   (+! *debug-counter* 1)
-    
+
     )
-  
+
   ;; create a test input that moves around sandover
   (let ((origin (new 'static 'vector :y (meters 7.0) :x (meters 5.) :z (meters 0.0)))
         (line (new 'static 'vector :y (meters 5.0) :x (meters -5.0)))
         (radius (meters 2.0))
         (val (+ my-off (* 0.003 (the float *debug-counter*))))
         )
-    
+
     (set! (-> line z) (* (sin (degrees val)) (meters 35.0)))
     (set! (-> line x) (* (cos (degrees val)) (meters 35.0)))
-    
+
     (let ((dbg2 (/ val 2)))
       (set! (-> origin x) (* (sin (degrees dbg2)) (meters 100.)))
       (set! (-> origin z) (* (cos (* 3.0 (degrees dbg2))) (meters 100.)))
@@ -164,15 +164,15 @@
       )
 #|
     ;;; PROBE (at the frag finding level)
-    
+
     ;; setup the collide work
     (setup-collide-for-line-sphere origin line radius)
-    
 
-    
+
+
     ;; clear collide list
     (set! (-> *collide-list* num-items) 0)
-    
+
     ;; loop over active levels
     (dotimes (lev-idx (-> *level* length))
       (let ((lev (-> *level* level lev-idx)))
@@ -182,11 +182,11 @@
           )
         )
       )
-    
+
     ;; print results
     (format *stdcon* "got ~d in list~%" (-> *collide-list* num-items))
     (format *stdcon* "cam at: ~`vector`P~%" (camera-pos))
-    
+
     (let ((old-count 0))
       ;; visualize results
       (dotimes (i (-> *collide-list* num-items))
@@ -196,7 +196,7 @@
             (+! old-count 1)
             (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (-> inst bsphere w) (new 'static 'rgba :b #x80 :a #x80))
             )
-          
+
           (when (not inst)
             (+! old-count 1)
             ;;(format *stdcon* "NI: ~A~%" mesh)
@@ -205,21 +205,21 @@
           ;
           )
         )
-      
+
       ;; now test the other one
       (set! (-> *collide-list* num-items) 0)
       (collide-probe-make-list (-> *level* level 0) *collide-list*)
-      
+
       ;; these should come out the same, if we did it right.
       (format *stdcon* "COMPARE: ~d ~d~%" (-> *collide-list* num-items) old-count)
-      
+
       (dotimes (i (-> *collide-list* num-items))
         (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
               (inst (the instance-tie (-> *collide-list* items i inst))))
           (when inst
             (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (* 0.95 (-> inst bsphere w)) (new 'static 'rgba :b #x80 :r #x80 :a #x80))
             )
-          
+
           (when (not inst)
             ;;(format *stdcon* "NI: ~A~%" mesh)
             (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 6.0) (new 'static 'rgba :g #x30 :a #x80))
@@ -229,22 +229,22 @@
         )
       )
 |#
-    
+
     ;; CCACHE (fill from bounding box)
     (let ((bbox-fake (new 'stack 'bounding-box))
           (bbox (new 'stack 'bounding-box)))
-      
+
       ;; make box
       (set! (-> bbox-fake min quad) (-> origin quad))
       (vector+! (-> bbox-fake max) origin line)
-      
+
       (dotimes (i 3)
         (set! (-> bbox min data i) (fmin (-> bbox-fake min data i) (-> bbox-fake max data i)))
         (set! (-> bbox max data i) (fmax (-> bbox-fake min data i) (-> bbox-fake max data i)))
         )
       (set! (-> bbox min w) 1.0)
       (set! (-> bbox max w) 1.0)
-      
+
       ;; BBOX
       ;; draw box
       ;(add-debug-box #t (bucket-id debug-draw0) (-> bbox min) (-> bbox max) (new 'static 'rgba :g #x30 :a #x80))
@@ -255,16 +255,16 @@
       ;                          (the process-drawable #f)
       ;                          (the pat-surface 0)
       ;                          )
-      
-      
+
+
 
       ;; Y PROBE
       ; (+! (-> bbox min y) (meters 8.0))
       ; (let ((vec (new 'stack-no-clear 'vector)))
       ;   (set! (-> vec quad) (-> bbox min quad))
       ;   (-! (-> vec y) (meters 20.0))
-      ;   (add-debug-line 
-      ;     #t 
+      ;   (add-debug-line
+      ;     #t
       ;     (bucket-id debug-draw0)
       ;     (-> bbox min)
       ;     vec
@@ -274,12 +274,12 @@
       ;     )
       ;   )
       ; (fill-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) (the uint 0))
-      
+
       ;; LINE SPHERE
       ; (fill-using-line-sphere *collide-cache* origin line radius (collide-kind background) (the process-drawable #f) 0)
       ; ;; draw the line we're going to check
-      ; (add-debug-line 
-      ;   #t 
+      ; (add-debug-line
+      ;   #t
       ;   (bucket-id debug-draw0)
       ;   origin
       ;   (vector+! (new 'stack-no-clear 'vector) origin line)
@@ -287,7 +287,7 @@
       ;   #f
       ;   (the rgba -1)
       ;   )
-      
+
       ; ;; debug draw spheres along the line
       ; (dotimes (i 10)
       ;   (add-debug-sphere
@@ -302,14 +302,14 @@
       ;     (new 'static 'rgba :g #x80 :r #x80 :b #x80 :a #x80)
       ;     )
       ;   )
-      
+
       ;; Y probe (actual probe)
       (+! (-> bbox min y) (meters 8.0))
       (let ((vec (new 'stack-no-clear 'vector)))
         (set! (-> vec quad) (-> bbox min quad))
         (-! (-> vec y) (meters 20.0))
-        ; (add-debug-line 
-        ;   #t 
+        ; (add-debug-line
+        ;   #t
         ;   (bucket-id debug-draw0)
         ;   (-> bbox min)
         ;   vec
@@ -318,9 +318,9 @@
         ;   (the rgba -1)
         ;   )
         )
-      
+
       (let ((result (new 'stack-no-clear 'collide-tri-result)))
-        
+
         (let ((u (fill-and-probe-using-y-probe *collide-cache* (-> bbox min) (meters 20.0) (collide-kind background) (the process-drawable #f) result (the uint 0))))
           (-! (-> bbox min y) (* u (meters 20.0)))
           ;; (format *stdcon* "u = ~f : ~`vector`P ~%" u (-> result vertex 0))
@@ -333,19 +333,19 @@
             )
           )
          ;(add-debug-outline-triangle #t (bucket-id debug-draw1) (-> result vertex 0) (-> result vertex 1) (-> result vertex 2) (new 'static 'rgba :r #x80 :g #x80 :a #x80))
-        
-        
-        
-        
+
+
+
+
         )
-      
-      
-      
+
+
+
       ;(debug-draw *collide-cache*)
-      
-      
+
+
       )
-    
+
     #f
     )
   )
@@ -354,7 +354,7 @@
   ;;(kill-by-name 'debug-drawer *active-pool*)
   (let ((proc (get-process *nk-dead-pool* process 1024)))
     (activate proc *active-pool* 'debug-drawer *kernel-dram-stack*)
-    (run-next-time-in-process 
+    (run-next-time-in-process
       proc
       (lambda ()
         (let ((my-off (rand-vu-float-range 0.0 1000.0)))
@@ -362,11 +362,11 @@
             (debug-draw-collide-work my-off)
             (suspend)
             )
-          
-          
+
+
           )
         )
-      )                      
+      )
     )
   )
 

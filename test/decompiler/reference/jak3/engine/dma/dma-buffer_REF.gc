@@ -1,0 +1,242 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type dma-packet
+(deftype dma-packet (structure)
+  "The header for a DMA transfer, containing an DMA tag, and VIF tags."
+  ((dma   dma-tag)
+   (vif0  vif-tag)
+   (vif1  vif-tag)
+   (quad  uint128  :overlay-at dma)
+   )
+  )
+
+;; definition for method 3 of type dma-packet
+;; INFO: Used lq/sq
+(defmethod inspect ((this dma-packet))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-packet)
+  (format #t "~1Tdma: #x~X~%" (-> this dma))
+  (format #t "~1Tvif0: #x~X~%" (-> this vif0))
+  (format #t "~1Tvif1: #x~X~%" (-> this vif1))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-packet-array
+(deftype dma-packet-array (inline-array-class)
+  "Unused dma array. Unclear how it should be used."
+  ((data  dma-packet  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type dma-packet-array
+(defmethod inspect ((this dma-packet-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> dma-packet-array heap-base) (the-as uint 16))
+
+;; definition of type dma-gif
+(deftype dma-gif (structure)
+  "Believed unused GIF header type."
+  ((gif   uint64   2)
+   (gif0  uint64   :overlay-at (-> gif 0))
+   (gif1  uint64   :overlay-at (-> gif 1))
+   (quad  uint128  :overlay-at (-> gif 0))
+   )
+  )
+
+;; definition for method 3 of type dma-gif
+;; INFO: Used lq/sq
+(defmethod inspect ((this dma-gif))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-gif)
+  (format #t "~1Tgif[2] @ #x~X~%" (&-> this gif0))
+  (format #t "~1Tquad: ~D~%" (-> this quad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-gif-packet
+(deftype dma-gif-packet (structure)
+  "The header for a DMA transfer that goes directly to GIF, containing DMA, VIF, GIF tags."
+  ((dma-vif  dma-packet  :inline)
+   (gif      uint64      2)
+   (gif0     uint64        :overlay-at (-> gif 0))
+   (gif1     uint64        :overlay-at (-> gif 1))
+   (quad     uint128     2 :overlay-at (-> dma-vif dma))
+   )
+  )
+
+;; definition for method 3 of type dma-gif-packet
+(defmethod inspect ((this dma-gif-packet))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'dma-gif-packet)
+  (format #t "~1Tdma-vif: #<dma-packet @ #x~X>~%" (-> this dma-vif))
+  (format #t "~1Tgif[2] @ #x~X~%" (-> this gif))
+  (format #t "~1Tquad[2] @ #x~X~%" (-> this dma-vif))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type dma-buffer
+(deftype dma-buffer (basic)
+  "A buffer for DMA data."
+  ((allocated-length  int32)
+   (base              pointer)
+   (end               pointer)
+   (real-buffer-end   int32)
+   (data-buffer       uint8   :dynamic :overlay-at real-buffer-end)
+   (data              uint64  1        :offset  32)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    )
+  )
+
+;; definition for method 3 of type dma-buffer
+(defmethod inspect ((this dma-buffer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tbase: #x~X~%" (-> this base))
+  (format #t "~1Tend: #x~X~%" (-> this end))
+  (format #t "~1Treal-buffer-end: ~D~%" (-> this real-buffer-end))
+  (format #t "~1Tdata[1] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type dma-buffer
+(defmethod new dma-buffer ((allocation symbol) (type-to-make type) (size-bytes int))
+  "Allocate a DMA buffer to hold the given size"
+  (let ((v0-0 (object-new allocation type-to-make (+ size-bytes -4 (-> type-to-make size)))))
+    (set! (-> v0-0 base) (-> v0-0 data))
+    (set! (-> v0-0 allocated-length) size-bytes)
+    (set! (-> v0-0 real-buffer-end) (the-as int (&+ (-> v0-0 data) size-bytes)))
+    v0-0
+    )
+  )
+
+;; definition for function dma-buffer-inplace-new
+(defun dma-buffer-inplace-new ((dma-buff dma-buffer) (size-bytes int))
+  "Create a dma-buffer in-place. Does not set the type of the dma-buffer object."
+  (set! (-> dma-buff base) (-> dma-buff data))
+  (set! (-> dma-buff allocated-length) size-bytes)
+  dma-buff
+  )
+
+;; definition for method 4 of type dma-buffer
+(defmethod length ((this dma-buffer))
+  (-> this allocated-length)
+  )
+
+;; definition for method 5 of type dma-buffer
+(defmethod asize-of ((this dma-buffer))
+  (+ (-> this allocated-length) -4 (-> dma-buffer size))
+  )
+
+;; definition for function dma-buffer-length
+(defun dma-buffer-length ((dma-buf dma-buffer))
+  "Get length used in quadwords, rounded up."
+  (shr (+ (&- (-> dma-buf base) (the-as uint (-> dma-buf data))) 15) 4)
+  )
+
+;; definition for function dma-buffer-free
+(defun dma-buffer-free ((dma-buf dma-buffer))
+  "Get the number of free quadwords between base and end pointers."
+  (shr (+ (&- (-> dma-buf end) (the-as uint (-> dma-buf base))) 15) 4)
+  )
+
+;; definition for function dma-buffer-add-vu-function
+;; ERROR: Failed store: (s.w! (+ t2-0 8) t3-5) at op 23
+;; ERROR: Failed store: (s.w! (+ t2-0 12) t3-8) at op 32
+(defun dma-buffer-add-vu-function ((dma-buf dma-buffer) (vu-func vu-function) (flush-path-3 int))
+  "Add DMA tags to load the given VU function. The destination in vu instruction memory
+   is specific inside the vu-function. This does NOT copy the vu-function into the buffer,
+   but creates a reference to the existing VU function."
+  (let ((v1-0 (the-as object (+ (the-as uint vu-func) 16)))
+        (a3-0 (-> vu-func qlength))
+        (a1-1 (-> vu-func origin))
+        )
+    (while (> a3-0 0)
+      (let ((t0-1 (min 127 a3-0)))
+        (let* ((t1-1 dma-buf)
+               (t2-0 (-> t1-1 base))
+               )
+          (set! (-> (the-as (pointer int64) t2-0))
+                (logior (logior #x30000000 (shr (shl t0-1 48) 48)) (shr (shl (the-as int v1-0) 33) 1))
+                )
+          (let ((t3-5 (shr
+                        (shl
+                          (if (zero? flush-path-3)
+                              16
+                              19
+                              )
+                          57
+                          )
+                        33
+                        )
+                      )
+                )
+            (s.w! (+ t2-0 8) t3-5)
+            )
+          (let ((t3-8 (logior (logior #x4a000000 (shr (shl a1-1 48) 48)) (shr (shl (* t0-1 2) 56) 40))))
+            (s.w! (+ t2-0 12) t3-8)
+            )
+          (set! (-> t1-1 base) (&+ t2-0 16))
+          )
+        (set! v1-0 (+ (the-as uint v1-0) (* t0-1 16)))
+        (set! a3-0 (- a3-0 t0-1))
+        (+! a1-1 (* t0-1 2))
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function dma-buffer-send
+(defun dma-buffer-send ((chan dma-bank) (buf dma-buffer))
+  "Send the DMA buffer! DOES NOT TRANSFER TAG, you probably want dma-buffer-send-chain instead."
+  (when (< (-> buf allocated-length) (&- (-> buf base) (the-as uint (-> buf data))))
+    (crash!)
+    0
+    )
+  (dma-send chan (the-as uint (-> buf data)) (the-as uint (dma-buffer-length buf)))
+  (none)
+  )
+
+;; definition for function dma-buffer-send-chain
+(defun dma-buffer-send-chain ((chan dma-bank-source) (buf dma-buffer))
+  "Send the DMA buffer! Sends the tags, so this is suitable for the main graphics chain."
+  (when (< (-> buf allocated-length) (&- (-> buf base) (the-as uint (-> buf data))))
+    (crash!)
+    0
+    )
+  (dma-send-chain chan (the-as uint (-> buf data)))
+  (none)
+  )

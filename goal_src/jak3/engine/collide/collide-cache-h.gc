@@ -5,5 +5,147 @@
 ;; name in dgo: collide-cache-h
 ;; dgos: GAME
 
+(defenum prim-type
+  :type int8
+  (prim   -2)
+  (sphere -1)
+  (group  0)
+  (mesh 1)
+  (fake-prim 2)
+  )
+
+(declare-type collide-cache-prim structure)
+(declare-type collide-using-spheres-params structure)
+(declare-type instance-tie structure)
+(declare-type collide-list structure)
+
 ;; DECOMP BEGINS
 
+(deftype collide-puss-sphere (structure)
+  "A query sphere from the user for the porbe-using-spheres query.
+This is used internally by the collide-cache implementation."
+  ((bsphere  sphere          :inline)
+   (bbox4w   bounding-box4w  :inline)
+   )
+  )
+
+
+(deftype collide-puss-work (structure)
+  "Scratchpad memory map for probe-using-spheres query."
+  ((closest-pt      vector               :inline)
+   (tri-normal      vector               :inline)
+   (tri-bbox4w      bounding-box4w       :inline)
+   (spheres-bbox4w  bounding-box4w       :inline)
+   (spheres         collide-puss-sphere  64 :inline)
+   )
+  (:methods
+    (check-mesh-prim-against-spheres (_type_ collide-cache-prim collide-using-spheres-params) symbol)
+    (check-sphere-prim-against-spheres (_type_ collide-cache-prim collide-using-spheres-params) symbol)
+    )
+  )
+
+
+(deftype collide-cache-tri (structure)
+  "A single triangle inside the collision cache.
+Contains a reference back to the source object (like a collide-shape or water-control), and the prim itself."
+  ((vertex       vector       3 :inline)
+   (extra-quad   uint8        16)
+   (pat          pat-surface  :overlay-at (-> extra-quad 0))
+   (collide-ptr  basic        :overlay-at (-> extra-quad 4))
+   (prim-index   uint16       :overlay-at (-> extra-quad 8))
+   (user16       uint16       :overlay-at (-> extra-quad 10))
+   (user32       uint32       :overlay-at (-> extra-quad 12))
+   (clear-flags  uint128      :overlay-at (-> extra-quad 0))
+   )
+  )
+
+
+(deftype collide-cache-prim (structure)
+  "A primitive inside the collide-cache.
+This can represent a sphere, a triangle mesh, or a group of other primitives within a bounding sphere."
+  ((prim-core     collide-prim-core   :inline)
+   (extra-quad    uint8               16)
+   (ccache        collide-cache               :overlay-at (-> extra-quad 0))
+   (prim          collide-shape-prim          :overlay-at (-> extra-quad 4))
+   (first-tri     uint16                      :overlay-at (-> extra-quad 8))
+   (num-tris      uint16                      :overlay-at (-> extra-quad 10))
+   (unused        uint8               4       :overlay-at (-> extra-quad 12))
+   (world-sphere  vector              :inline :overlay-at (-> prim-core world-sphere))
+   (collide-as    collide-spec                :overlay-at (-> prim-core collide-as))
+   (action        collide-action              :overlay-at (-> prim-core action))
+   (prim-type     prim-type                   :overlay-at (-> prim-core prim-type))
+   )
+  (:methods
+    (resolve-moving-sphere-tri (_type_ collide-query sphere vector float collide-action) float)
+    (resolve-moving-sphere-sphere (_type_ collide-query sphere vector float collide-action) float)
+    )
+  )
+
+
+(deftype collide-cache (basic)
+  "The collide-cache is a structure to accelerate collision queries.
+In particular, it helps with queries where you don't know what you might hit.
+It can detect collision with the background geometry, foreground dynamic collision shapes (spheres and meshes), and water.
+To use it, it must first be 'filled' with geometry. Then you can manually inspect the geometry, or use one of the queries.
+The supported queries are 'line-sphere' (raycast) and 'spheres' (check if intersecting anything).
+It is not useful for ollision queries against a specific foreground object, like 'am I on top of platform X right now?'."
+  ((num-tris          int32)
+   (num-tris-u32      uint32              :overlay-at num-tris)
+   (num-prims         int32)
+   (num-prims-u32     uint32              :overlay-at num-prims)
+   (ignore-mask       pat-surface)
+   (ignore-processes  process             2)
+   (collide-box       bounding-box        :inline)
+   (collide-box4w     bounding-box4w      :inline)
+   (collide-with      collide-spec)
+   (unused            uint32)
+   (prims             collide-cache-prim  100 :inline)
+   (tris              collide-cache-tri   461 :inline)
+   )
+  (:methods
+    (debug-draw (_type_) none)
+    (fill-and-probe-using-line-sphere (_type_ collide-query) float)
+    (fill-and-probe-using-spheres (_type_ collide-query) symbol)
+    (fill-using-bounding-box (_type_ collide-query) none)
+    (fill-using-line-sphere (_type_ collide-query) none)
+    (fill-using-spheres (_type_ collide-query) none)
+    (reset (_type_) none)
+    (probe-using-line-sphere (_type_ collide-query) float)
+    (probe-using-spheres (_type_ collide-query) symbol)
+    (fill-from-bg (_type_ (function collide-hash int collide-list collide-query int) (function collide-cache collide-list collide-query none) collide-query) none)
+    (fill-from-fg-boxes (_type_) none)
+    (fill-from-fg-line-sphere (_type_ collide-query) none)
+    (fill-from-water (_type_ water-control) none)
+    (collide-cache-method-22 () none)
+    (collide-cache-method-23 () none)
+    (collide-cache-method-24 () none)
+    (collide-cache-method-25 () none)
+    )
+  )
+
+
+(deftype collide-list-item (structure)
+  "Entry on the broad-phase collision list.
+Can represent instanced collision, as a TIE instance, or a single non-instanced mesh fragment."
+  ((mesh  instance-tie)
+   (inst  basic)
+   )
+  :pack-me
+  )
+
+
+(deftype collide-list (structure)
+  "List of items returned by the broad-phase collision query."
+  ((num-items  int32)
+   (items      collide-list-item  256 :inline :offset  16)
+   )
+  )
+
+
+(kmemopen global "collide-cache-buffers")
+
+(define-perm *collide-cache* collide-cache (new 'global 'collide-cache))
+
+(define-perm *collide-list* collide-list (new 'global 'collide-list))
+
+(kmemclose)

@@ -64,6 +64,44 @@ void Env::set_remap_for_new_method(const TypeSpec& ts) {
   }
 }
 
+void Env::set_remap_for_relocate_method(const TypeSpec& ts) {
+  int nargs = ts.arg_count() - 1;
+  m_var_remap["a0-0"] = "this";
+  if (ts.get_arg(1).base_type() == "kheap") {
+    m_var_remap["a1-0"] = "heap";
+  } else {
+    m_var_remap["a1-0"] = "offset";
+  }
+  if (nargs > 1 && ts.get_arg(2).base_type() == "pointer") {
+    m_var_remap["a2-0"] = "name";
+  }
+  for (int i = 3; i < nargs; i++) {
+    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 3));
+  }
+  if (ts.try_get_tag("behavior")) {
+    m_var_remap["s6-0"] = "self";
+    m_pp_mapped_by_behavior = true;
+  } else {
+    m_var_remap["s6-0"] = "pp";
+  }
+}
+
+void Env::set_remap_for_memusage_method(const TypeSpec& ts) {
+  int nargs = ts.arg_count() - 1;
+  m_var_remap["a0-0"] = "this";
+  m_var_remap["a1-0"] = "usage";
+  m_var_remap["a2-0"] = "flags";
+  for (int i = 3; i < nargs; i++) {
+    m_var_remap[get_reg_name(i)] = ("arg" + std::to_string(i - 3));
+  }
+  if (ts.try_get_tag("behavior")) {
+    m_var_remap["s6-0"] = "self";
+    m_pp_mapped_by_behavior = true;
+  } else {
+    m_var_remap["s6-0"] = "pp";
+  }
+}
+
 void Env::set_remap_for_method(const TypeSpec& ts) {
   int nargs = ts.arg_count() - 1;
   m_var_remap["a0-0"] = "this";

@@ -1,0 +1,114 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type process-focusable
+(deftype process-focusable (process-drawable)
+  ((self          process-focusable           :override)
+   (ppointer      (pointer process-focusable) :override)
+   (root          collide-shape               :override)
+   (focus-status  focus-status)
+   )
+  (:methods
+    (process-mask->search-info-flag (_type_) search-info-flag)
+    (get-trans (_type_ int) vector)
+    (get-quat (_type_ int) quaternion)
+    (get-transv (_type_) vector)
+    (time-to-apex-or-ground (_type_ int) int)
+    (get-water-height (_type_) meters)
+    (get-notice-time (_type_) time-frame)
+    (get-inv-mass (_type_) float)
+    )
+  )
+
+;; definition for method 3 of type process-focusable
+(defmethod inspect ((this process-focusable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tfocus-status: ~D~%" (-> this focus-status))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 20 of type process-focusable
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this process-focusable))
+  (let ((search-flag (search-info-flag)))
+    (let ((mask (-> this mask)))
+      (if (logtest? (process-mask crate) mask)
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag crate))))
+          )
+      (if (logtest? (process-mask guard) mask)
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag guard))))
+          )
+      (if (logtest? (process-mask enemy) mask)
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag enemy))))
+          )
+      )
+    (the-as search-info-flag search-flag)
+    )
+  )
+
+;; definition for method 21 of type process-focusable
+;; WARN: Return type mismatch structure vs vector.
+(defmethod get-trans ((this process-focusable) (mode int))
+  "Get the `trans` for this process."
+  (let ((cshape (-> this root)))
+    (the-as vector (cond
+                     ((zero? mode)
+                      (-> cshape trans)
+                      )
+                     ((and (= mode 1) (type? cshape collide-shape-moving))
+                      (-> (the-as collide-shape-moving cshape) gspot-pos)
+                      )
+                     ((and (or (= mode 2) (= mode 3) (= mode 10)) (type? cshape collide-shape))
+                      (-> (the-as collide-shape-moving cshape) root-prim prim-core)
+                      )
+                     (else
+                       (-> cshape trans)
+                       )
+                     )
+            )
+    )
+  )
+
+;; definition for method 23 of type process-focusable
+(defmethod get-transv ((this process-focusable))
+  "Get the `transv` for this process."
+  (-> this root transv)
+  )
+
+;; definition for method 22 of type process-focusable
+(defmethod get-quat ((this process-focusable) (arg0 int))
+  "Get the quaternion for this process."
+  (-> this root quat)
+  )
+
+;; definition for method 24 of type process-focusable
+(defmethod time-to-apex-or-ground ((this process-focusable) (arg0 int))
+  0
+  )
+
+;; definition for method 25 of type process-focusable
+;; WARN: Return type mismatch int vs meters.
+(defmethod get-water-height ((this process-focusable))
+  (the-as meters 0)
+  )
+
+;; definition for method 27 of type process-focusable
+(defmethod get-inv-mass ((this process-focusable))
+  0.0
+  )
+
+;; definition for method 26 of type process-focusable
+;; WARN: Return type mismatch int vs time-frame.
+(defmethod get-notice-time ((this process-focusable))
+  (the-as time-frame 0)
+  )
+
+;; failed to figure out what this is:
+0

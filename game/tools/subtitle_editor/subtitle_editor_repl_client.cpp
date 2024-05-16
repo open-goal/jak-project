@@ -4,7 +4,7 @@
 
 #include "game/runtime.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 SubtitleEditorReplClient::SubtitleEditorReplClient() {
   int port = 8181;

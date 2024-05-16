@@ -7,3 +7,51 @@
 
 ;; DECOMP BEGINS
 
+(deftype simple-focus (process-focusable)
+  ((first-time?  symbol)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defmethod get-trans ((this simple-focus) (arg0 int))
+  "Get the `trans` for this process."
+  (-> this root trans)
+  )
+
+(defmethod run-logic? ((this simple-focus))
+  "Should this process be run? Checked by execute-process-tree."
+  (when (-> this first-time?)
+    (set! (-> this first-time?) #f)
+    #t
+    )
+  )
+
+(defstate idle (simple-focus)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('move-trans)
+       (let ((v0-0 (-> self root trans)))
+         (set! (-> v0-0 quad) (-> (the-as vector (-> block param 0)) quad))
+         v0-0
+         )
+       )
+      )
+    )
+  :code sleep-code
+  )
+
+(defbehavior simple-focus-init-by-other simple-focus ()
+  (let ((gp-0 (new 'process 'trsqv)))
+    (set! (-> self root) (the-as collide-shape gp-0))
+    (vector-identity! (-> gp-0 scale))
+    (quaternion-identity! (-> gp-0 quat))
+    )
+  (logclear! (-> self mask) (process-mask enemy))
+  (set! (-> self first-time?) #t)
+  (set! (-> self event-hook) (-> (method-of-object self idle) event))
+  (go-virtual idle)
+  )

@@ -1,0 +1,225 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type city-attacker-info
+(deftype city-attacker-info (structure)
+  ((proc                     handle)
+   (enemy                    handle)
+   (next-update-target-time  time-frame)
+   (flags                    city-attacker-info-flag)
+   (num-current-attackers    uint8)
+   (max-num-attackers        uint8)
+   (self-type                int16)
+   (enemy-type               int16)
+   (self-index               int16)
+   (enemy-index              int16)
+   (callback                 (function process city-attacker-info int))
+   (hatred-map-callback      (function process city-attacker-info int))
+   )
+  (:methods
+    (init! (_type_ process int) none)
+    (reset! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type city-attacker-info
+(defmethod inspect ((this city-attacker-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'city-attacker-info)
+  (format #t "~1Tproc: ~D~%" (-> this proc))
+  (format #t "~1Tenemy: ~D~%" (-> this enemy))
+  (format #t "~1Tnext-update-target-time: ~D~%" (-> this next-update-target-time))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tnum-current-attackers: ~D~%" (-> this num-current-attackers))
+  (format #t "~1Tmax-num-attackers: ~D~%" (-> this max-num-attackers))
+  (format #t "~1Tself-type: ~D~%" (-> this self-type))
+  (format #t "~1Tenemy-type: ~D~%" (-> this enemy-type))
+  (format #t "~1Tself-index: ~D~%" (-> this self-index))
+  (format #t "~1Tenemy-index: ~D~%" (-> this enemy-index))
+  (format #t "~1Tcallback: ~A~%" (-> this callback))
+  (format #t "~1Thatred-map-callback: ~A~%" (-> this hatred-map-callback))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type city-attacker-cache
+(deftype city-attacker-cache (structure)
+  ((pos          vector)
+   (proc         process)
+   (attackable?  symbol)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type city-attacker-cache
+(defmethod inspect ((this city-attacker-cache))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'city-attacker-cache)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tproc: ~A~%" (-> this proc))
+  (format #t "~1Tattackable?: ~A~%" (-> this attackable?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type city-hatred-info
+(deftype city-hatred-info (structure)
+  ((hatred             float)
+   (max-consider-dist  float)
+   (hatred-dist        float)
+   (dist-scale         float)
+   (attacker-scale     float)
+   (flags              city-hatred-info-flag)
+   (index              uint8)
+   (pad                uint8)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type city-hatred-info
+(defmethod inspect ((this city-hatred-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'city-hatred-info)
+  (format #t "~1Thatred: ~f~%" (-> this hatred))
+  (format #t "~1Tmax-consider-dist: ~f~%" (-> this max-consider-dist))
+  (format #t "~1Thatred-dist: ~f~%" (-> this hatred-dist))
+  (format #t "~1Tdist-scale: ~f~%" (-> this dist-scale))
+  (format #t "~1Tattacker-scale: ~f~%" (-> this attacker-scale))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tpad: ~D~%" (-> this pad))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type city-attacker-array
+(deftype city-attacker-array (inline-array-class)
+  ((data  city-attacker-info  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type city-attacker-array
+(defmethod inspect ((this city-attacker-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> city-attacker-array heap-base) (the-as uint 48))
+
+;; definition of type city-hatred-array
+(deftype city-hatred-array (inline-array-class)
+  ((data  city-hatred-info  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type city-hatred-array
+(defmethod inspect ((this city-hatred-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> city-hatred-array heap-base) (the-as uint 24))
+
+;; definition of type city-attacker-cache-array
+(deftype city-attacker-cache-array (inline-array-class)
+  ((data  city-attacker-cache  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type city-attacker-cache-array
+(defmethod inspect ((this city-attacker-cache-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> city-attacker-cache-array heap-base) (the-as uint 12))
+
+;; definition of type mission-squad-control
+(deftype mission-squad-control (basic)
+  ((attackers             city-attacker-array)
+   (unused-list           (array int16))
+   (hatred-vals           city-hatred-array)
+   (hatred-indices        (array uint8))
+   (attacker-cache        city-attacker-cache-array)
+   (target-attacker       city-attacker-info)
+   (max-num-object-types  int32)
+   )
+  (:methods
+    (init! (_type_ int int int) none)
+    (allocate-attacker (_type_) city-attacker-info)
+    (remove-attacker (_type_ city-attacker-info) none)
+    (mission-squad-control-method-12 (_type_) symbol)
+    (mission-squad-control-method-13 (_type_ city-attacker-info) int)
+    (init-attackers (_type_) none)
+    (init-attack-controller (_type_) none)
+    (mission-squad-control-method-16 (_type_) none)
+    (set-hatred-indices-for-all (_type_ int city-hatred-info city-hatred-info int) symbol)
+    (get-attacker-at-idx (_type_ int) city-attacker-info)
+    (push-back-hatred (_type_) city-hatred-info)
+    (set-hatred-indices (_type_ city-hatred-info int int) uint)
+    (get-hatred-at-idx (_type_ int int) city-hatred-info)
+    (update-attack-target (_type_) none)
+    (reset-hatred (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type mission-squad-control
+(defmethod inspect ((this mission-squad-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tattackers: ~A~%" (-> this attackers))
+  (format #t "~1Tunused-list: ~A~%" (-> this unused-list))
+  (format #t "~1Thatred-vals: ~A~%" (-> this hatred-vals))
+  (format #t "~1Thatred-indices: ~A~%" (-> this hatred-indices))
+  (format #t "~1Tattacker-cache: ~A~%" (-> this attacker-cache))
+  (format #t "~1Ttarget-attacker: #<city-attacker-info @ #x~X>~%" (-> this target-attacker))
+  (format #t "~1Tmax-num-object-types: ~D~%" (-> this max-num-object-types))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0
+
+
+
+

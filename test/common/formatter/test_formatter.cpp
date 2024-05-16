@@ -26,8 +26,8 @@ EXPECTED OUTPUT
 
 #include "gtest/gtest.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 struct TestDefinition {
   std::string name;
@@ -100,6 +100,11 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
                                   fmt::emphasis::bold | fg(fmt::color::cyan)));
   for (const auto& test : tests) {
     if (only_important_tests && !str_util::starts_with(test.name, "!")) {
+      continue;
+    }
+    if (str_util::contains(test.output, "TODO")) {
+      // ignore the output
+      fmt::print("  ⚠️ - {}\n", test.name);
       continue;
     }
     const auto formatted_result = formatter::format_code(test.input);

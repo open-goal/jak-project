@@ -1,6 +1,7 @@
 #include "common/goos/ParseHelpers.h"
 #include "common/type_system/deftype.h"
 #include "common/util/json_util.h"
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
@@ -162,7 +163,7 @@ goos::Arguments Compiler::get_va(const goos::Object& form, const goos::Object& r
 
   std::string err;
   if (!goos::get_va(rest, &err, &args)) {
-    throw_compiler_error(form, err);
+    throw_compiler_error(form, "{}", err);
   }
   return args;
 }
@@ -189,7 +190,7 @@ void Compiler::va_check(
         named) {
   std::string err;
   if (!goos::va_check(args, unnamed, named, &err)) {
-    throw_compiler_error(form, err);
+    throw_compiler_error(form, "{}", err);
   }
 }
 
@@ -295,6 +296,28 @@ TypeSpec Compiler::parse_typespec(const goos::Object& src, Env* env) {
     return env->function_env()->method_function_type.substitute_for_method_call(
         env->function_env()->method_of_type_name);
   }
+  if (m_settings.check_for_requires) {
+    TypeSpec ts = ::parse_typespec(&m_ts, src);
+    const auto& type_name = ts.base_type();
+    if (!type_name.empty()) {
+      const auto& symbol_info = m_symbol_info.lookup_exact_name(type_name);
+      if (!symbol_info.empty()) {
+        const auto& result = symbol_info.at(0);
+        if (result->m_def_location.has_value() &&
+            !env->file_env()->m_missing_required_files.contains(
+                result->m_def_location->file_path) &&
+            env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+                env->file_env()->m_required_files.end() &&
+            !str_util::ends_with(result->m_def_location->file_path,
+                                 env->file_env()->name() + ".gc")) {
+          lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                   result->m_def_location->file_path, type_name);
+          env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+        }
+      }
+    }
+  }
+
   return ::parse_typespec(&m_ts, src);
 }
 
@@ -314,7 +337,7 @@ bool Compiler::is_local_symbol(const goos::Object& obj, Env* env) {
   }
 
   // check global constants
-  if (m_global_constants.find(obj.as_symbol()) != m_global_constants.end()) {
+  if (m_global_constants.lookup(obj.as_symbol())) {
     return true;
   }
 

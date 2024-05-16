@@ -6,7 +6,7 @@
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 /*
  *  name: crate-3141
@@ -212,6 +212,31 @@ void ResSymbol::write_data(DataObjectGenerator& gen) const {
 }
 
 int ResSymbol::get_alignment() const {
+  return 4;
+}
+
+ResType::ResType(const std::string& name, const std::vector<std::string>& str, float key_frame)
+    : Res(name, key_frame), m_str(str) {}
+
+ResType::ResType(const std::string& name, const std::string& str, float key_frame)
+    : Res(name, key_frame), m_str({str}) {}
+
+TagInfo ResType::get_tag_info() const {
+  TagInfo result;
+  result.elt_type = "type";
+  result.elt_count = m_str.size();
+  result.inlined = false;
+  result.data_size = 4 * m_str.size();
+  return result;
+}
+
+void ResType::write_data(DataObjectGenerator& gen) const {
+  for (auto& str : m_str) {
+    gen.add_type_tag(str);
+  }
+}
+
+int ResType::get_alignment() const {
   return 4;
 }
 

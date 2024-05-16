@@ -12,7 +12,7 @@
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 /////////////////////////////

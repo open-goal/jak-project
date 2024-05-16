@@ -7,3 +7,121 @@
 
 ;; DECOMP BEGINS
 
+(deftype pecker-ingame (process-drawable)
+  ((path-u  float)
+   )
+  (:state-methods
+    idle
+    active
+    die
+    )
+  )
+
+
+(defskelgroup skel-pecker-ingame pecker-ingame pecker-ingame-lod0-jg pecker-ingame-fly-ja
+              ((pecker-ingame-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow pecker-ingame-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(defbehavior pecker-ingame-handler pecker-ingame ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('die)
+     (go-virtual die)
+     )
+    )
+  )
+
+(defstate idle (pecker-ingame)
+  :virtual #t
+  :event pecker-ingame-handler
+  :trans (behavior ()
+    (let ((v1-1 (res-lump-value (-> self entity) 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
+      (cond
+        ((zero? v1-1)
+         (if (task-node-closed? (game-task-node comb-travel-introduction))
+             (go-virtual active)
+             )
+         )
+        ((= (the-as uint v1-1) 1)
+         (if (task-node-closed? (game-task-node comb-travel-resolution))
+             (go-virtual active)
+             )
+         )
+        (else
+          (go-virtual active)
+          )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+(defstate active (pecker-ingame)
+  :virtual #t
+  :event pecker-ingame-handler
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek! max 0.78) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.78))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let* ((f0-0 (path-control-method-23 (-> self path) (target-pos 0)))
+           (f0-3 (lerp-scale 0.01 0.1 (fmax 0.0 (- (-> self path-u) f0-0)) 0.1 0.0))
+           )
+      (seek! (-> self path-u) 1.0 (* f0-3 (seconds-per-frame)))
+      )
+    (get-point-at-percent-along-path! (-> self path) (-> self root trans) (-> self path-u) 'interp)
+    (let ((gp-1 (new 'stack-no-clear 'vector)))
+      (displacement-between-points-at-percent-normalized! (-> self path) gp-1 (-> self path-u))
+      (forward-up-nopitch->quaternion (-> self root quat) gp-1 *y-vector*)
+      )
+    (debug-draw (-> self path))
+    (ja-post)
+    )
+  )
+
+(defstate die (pecker-ingame)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+(defmethod init-from-entity! ((this pecker-ingame) (arg0 entity-actor))
+  (let ((v1-1 (res-lump-value arg0 'extra-id uint128 :default (the-as uint128 -1) :time -1000000000.0)))
+    (cond
+      ((zero? v1-1)
+       (when (task-node-closed? (game-task-node comb-travel-resolution))
+         (cleanup-for-death this)
+         (deactivate this)
+         )
+       )
+      ((= (the-as uint v1-1) 1)
+       (when (task-node-closed? (game-task-node mine-explore-introduction))
+         (cleanup-for-death this)
+         (deactivate this)
+         )
+       )
+      )
+    )
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-pecker-ingame" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw light-index) (the-as uint 30))
+  (logior! (-> this skel status) (joint-control-status eye-anim))
+  (set! (-> this path) (new 'process 'curve-control this 'path -1000000000.0))
+  (set! (-> this path-u) 0.0)
+  (go (method-of-object this idle))
+  )

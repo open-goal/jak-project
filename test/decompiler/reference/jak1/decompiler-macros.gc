@@ -422,11 +422,14 @@
                                &key (exit *no-state*)
                                &key (code *no-state*)
                                &key (post *no-state*)
+                               &rest body
                                )
   "Define a new state!"
-
   (with-gensyms (new-state)
-    (let ((defstate-type (first parents)))
+    (let ((defstate-type (first parents))
+          (docstring ""))
+      (when (and (> (length body) 1) (string? (first body)))
+        (set! docstring (first body)))
       (when (not (null? *defstate-type-stack*))
         (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
                  *defstate-type-stack*)
@@ -489,8 +492,8 @@
          ;; This way it can check the individual function types, make sure they make sense, and create
          ;; a state with the appropriate type.
          ,(if virtual
-              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
-              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
 
          )

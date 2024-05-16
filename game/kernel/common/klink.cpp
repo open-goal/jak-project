@@ -6,7 +6,7 @@
 #include "game/kernel/common/fileio.h"
 #include "game/kernel/common/kscheme.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace {
 // turn on printf's for debugging linking issues.
@@ -33,11 +33,11 @@ void klink_init_globals() {
  * Initialize the link control.
  * TODO: this hasn't been carefully checked for jak 2 differences.
  */
-void link_control::begin(Ptr<uint8_t> object_file,
-                         const char* name,
-                         int32_t size,
-                         Ptr<kheapinfo> heap,
-                         uint32_t flags) {
+void link_control::jak1_jak2_begin(Ptr<uint8_t> object_file,
+                                   const char* name,
+                                   int32_t size,
+                                   Ptr<kheapinfo> heap,
+                                   uint32_t flags) {
   if (is_opengoal_object(object_file.c())) {
     // save data from call to begin
     m_object_data = object_file;

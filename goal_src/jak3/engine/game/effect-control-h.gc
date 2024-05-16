@@ -5,5 +5,74 @@
 ;; name in dgo: effect-control-h
 ;; dgos: GAME
 
+;; +++effect-control-flag
+(defenum effect-control-flag
+  :type uint32
+  :bitfield #t
+  (ecf0 0)
+  (ecf1 1)
+  (ecf2 2)
+  (ecf3 3)
+  (ecf4 4)
+  (ecf5 5)
+  (ecf6 6)
+  (ecf7 7)
+  (ecf8 8)
+  (ecf9 9)
+  (ecf10 10)
+  (ecf11 11)
+  (ecf12 12)
+  (ecf13 13)
+  (ecf14 14)
+  (ecf15 15)
+  )
+;; ---effect-control-flag
+
+(define-extern effect-param->sound-spec (function sound-spec (pointer float) int process-focusable sound-spec))
+(define-extern *debug-effect-control* symbol)
+
 ;; DECOMP BEGINS
 
+(deftype effect-control (basic)
+  "An effect such as a particle with sound effects that plays during an animation."
+  ((process           process-drawable)
+   (flags             effect-control-flag)
+   (last-frame-group  art-joint-anim)
+   (last-frame-num    float)
+   (channel-offset    int32)
+   (res               res-lump)
+   (name              (pointer res-tag))
+   (param             uint32)
+   )
+  (:methods
+    (new (symbol type process-drawable) _type_)
+    (effect-control-method-9 (_type_) none)
+    (do-effect (_type_ string float int) none)
+    (do-effect-for-surface (_type_ symbol float int basic pat-surface) none)
+    (play-effect-sound (_type_ symbol float int basic sound-name) int)
+    (set-channel-offset! (_type_ int) none)
+    (play-effects-from-res-lump (_type_ float float float) none)
+    )
+  )
+
+
+(defmethod new effect-control ((allocation symbol) (type-to-make type) (proc process-drawable))
+  (cond
+    ((res-lump-struct (-> proc draw jgeo extra) 'effect-name structure)
+     (let ((v0-1 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+       (set! (-> v0-1 process) proc)
+       (set! (-> v0-1 last-frame-group) #f)
+       v0-1
+       )
+     )
+    (else
+      (the-as effect-control #f)
+      )
+    )
+  )
+
+(defmethod set-channel-offset! ((this effect-control) (offset int))
+  (set! (-> this channel-offset) offset)
+  0
+  (none)
+  )

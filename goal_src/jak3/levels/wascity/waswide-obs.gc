@@ -7,3 +7,834 @@
 
 ;; DECOMP BEGINS
 
+(deftype wascity-windmill (process-drawable)
+  ((quat  quaternion  :inline)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-wascity-windmill wascity-windmill wascity-windmill-lod0-jg wascity-windmill-idle-ja
+              ((wascity-windmill-lod0-mg (meters 20)) (wascity-windmill-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 20)
+              )
+
+(defstate idle (wascity-windmill)
+  :virtual #t
+  :trans (behavior ()
+    (quaternion-rotate-local-y!
+      (-> self root quat)
+      (-> self quat)
+      (lerp-scale -16384.0 16384.0 (sin (* 5.0 (the float (current-time)))) -1.0 1.0)
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defun wascity-windmill-callback ((arg0 cspace) (arg1 transformq))
+  (quaternion-rotate-local-z! (-> arg1 quat) (-> arg1 quat) (* 109.22667 (the float (current-time))))
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! ((this wascity-windmill) (arg0 entity-actor))
+  (ctywide-entity-hack)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wascity-windmill" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (quaternion-copy! (-> this quat) (-> this root quat))
+  (let ((a0-7 (-> this node-list data 4)))
+    (set! (-> a0-7 param0) wascity-windmill-callback)
+    (set! (-> a0-7 param1) this)
+    (set! (-> a0-7 param2) (the-as basic 0))
+    )
+  (go (method-of-object this idle))
+  )
+
+(deftype wascity-flag-base (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  (:methods
+    (get-skel (_type_) art-group)
+    (wascity-flag-base-method-22 (_type_) none)
+    )
+  )
+
+
+(defstate idle (wascity-flag-base)
+  :virtual #t
+  :enter (behavior ()
+    (ja :num-func num-func-identity :frame-num (the float (rand-vu-int-count (ja-num-frames 0))))
+    )
+  :trans (behavior ()
+    (ja :num! (loop!))
+    (if (ja-done? 0)
+        (wascity-flag-base-method-22 self)
+        )
+    )
+  :code sleep-code
+  :post ja-post
+  )
+
+(defmethod wascity-flag-base-method-22 ((this wascity-flag-base))
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! ((this wascity-flag-base) (arg0 entity-actor))
+  (ctywide-entity-hack)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (go (method-of-object this idle))
+  )
+
+(deftype wascity-flag-a (wascity-flag-base)
+  ()
+  )
+
+
+(defskelgroup skel-wascity-flag-a wascity-flag-a wascity-flag-a-lod0-jg wascity-flag-a-flap-ja
+              ((wascity-flag-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 12)
+              )
+
+(defmethod get-skel ((this wascity-flag-a))
+  (art-group-get-by-name *level* "skel-wascity-flag-a" (the-as (pointer level) #f))
+  )
+
+(deftype wascity-flag-b (wascity-flag-base)
+  ()
+  )
+
+
+(defskelgroup skel-wascity-flag-b wascity-flag-b wascity-flag-b-lod0-jg wascity-flag-b-flap-ja
+              ((wascity-flag-b-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 12)
+              )
+
+(defmethod get-skel ((this wascity-flag-b))
+  (art-group-get-by-name *level* "skel-wascity-flag-b" (the-as (pointer level) #f))
+  )
+
+(deftype wascity-flag-c (wascity-flag-base)
+  ()
+  )
+
+
+(defskelgroup skel-wascity-flag-c wascity-flag-c wascity-flag-c-lod0-jg wascity-flag-c-flap-ja
+              ((wascity-flag-c-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 7 0 10)
+              )
+
+(defmethod get-skel ((this wascity-flag-c))
+  (art-group-get-by-name *level* "skel-wascity-flag-c" (the-as (pointer level) #f))
+  )
+
+(deftype wascity-flag-d (wascity-flag-base)
+  ()
+  )
+
+
+(defskelgroup skel-wascity-flag-d wascity-flag-d wascity-flag-d-lod0-jg wascity-flag-d-flap-ja
+              ((wascity-flag-d-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 25)
+              )
+
+(defmethod get-skel ((this wascity-flag-d))
+  (art-group-get-by-name *level* "skel-wascity-flag-d" (the-as (pointer level) #f))
+  )
+
+(deftype wascity-wind-fan (process-drawable)
+  ((quat  quaternion  :inline)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-wascity-wind-fan wascity-wind-fan wascity-wind-fan-lod0-jg wascity-wind-fan-idle-ja
+              ((wascity-wind-fan-lod0-mg (meters 20)) (wascity-wind-fan-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 5 0 15)
+              )
+
+(defstate idle (wascity-wind-fan)
+  :virtual #t
+  :trans (behavior ()
+    (quaternion-rotate-local-y! (-> self root quat) (-> self quat) (* 18.204445 (the float (current-time))))
+    )
+  :code (behavior ()
+    (ja :group! wascity-wind-fan-idle-ja :num! none :frame-num 0.0)
+    (sleep-code)
+    )
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this wascity-wind-fan) (arg0 entity-actor))
+  (ctywide-entity-hack)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wascity-wind-fan" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (quaternion-copy! (-> this quat) (-> this root quat))
+  (go (method-of-object this idle))
+  )
+
+(deftype shaker (structure)
+  ((axis          vector  :inline)
+   (start-time    time-frame)
+   (decay-time    float)
+   (amplitude     float)
+   (freq          float)
+   (y-decay-time  float)
+   (y-amplitude   float)
+   (y-freq        float)
+   (shake         float)
+   (y-shake       float)
+   )
+  (:methods
+    (shaker-method-9 (_type_) none)
+    )
+  )
+
+
+;; WARN: Return type mismatch float vs none.
+(defmethod shaker-method-9 ((this shaker))
+  (let ((s5-0 (- (current-time) (-> this start-time))))
+    (set! (-> this shake) (* (-> this amplitude)
+                             (lerp-scale 1.0 0.0 (the float s5-0) 0.0 (-> this decay-time))
+                             (cos (* 65536.0 (/ (the float s5-0) (-> this freq))))
+                             )
+          )
+    (set! (-> this y-shake) (* (-> this y-amplitude)
+                               (lerp-scale 1.0 0.0 (the float s5-0) 0.0 (-> this y-decay-time))
+                               (cos (* 65536.0 (/ (the float s5-0) (-> this y-freq))))
+                               )
+          )
+    )
+  (none)
+  )
+
+(defskelgroup skel-wascity-cactus wascity-cactus wascity-cactus-lod0-jg wascity-cactus-idle-ja
+              ((wascity-cactus-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 4 0 7)
+              )
+
+(defskelgroup skel-wascity-cactus-explode wascity-cactus wascity-cactus-explode-lod0-jg wascity-cactus-explode-idle-ja
+              ((wascity-cactus-explode-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 80)
+              )
+
+(define *wascity-cactus-exploder-params*
+  (new 'static 'joint-exploder-static-params
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    )
+  )
+
+(deftype wascity-cactus (process-focusable)
+  ((shakers               shaker  6 :inline)
+   (incoming-attack-id    uint32)
+   (incoming-attack-time  time-frame)
+   (hit-points            float)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  (:methods
+    (wascity-cactus-method-30 (_type_) none)
+    (wascity-cactus-method-31 (_type_) none)
+    )
+  )
+
+
+(defun wascity-cactus-callback ((arg0 cspace) (arg1 transformq))
+  (let ((s4-0 (-> arg0 param1))
+        (s3-0 (the-as object (-> arg0 param2)))
+        )
+    (quaternion*!
+      (-> arg1 quat)
+      (-> arg1 quat)
+      (quaternion-vector-angle!
+        (the-as quaternion (new 'stack-no-clear 'vector))
+        (the-as vector (-> (the-as wascity-cactus s4-0) shakers (the-as int s3-0)))
+        (-> (the-as wascity-cactus s4-0) shakers (the-as int s3-0) shake)
+        )
+      )
+    (quaternion-rotate-local-y!
+      (-> arg1 quat)
+      (-> arg1 quat)
+      (-> (the-as wascity-cactus s4-0) shakers (the-as int s3-0) y-shake)
+      )
+    (if (< (the int (-> (the-as wascity-cactus s4-0) shakers (the-as int s3-0) decay-time))
+           (- (current-time) (-> (the-as wascity-cactus s4-0) shakers (the-as int s3-0) start-time))
+           )
+        (set! (-> arg0 param0) #f)
+        )
+    )
+  (cspace<-parented-transformq-joint! arg0 arg1)
+  0
+  (none)
+  )
+
+(defstate die (wascity-cactus)
+  :virtual #t
+  :enter #f
+  :exit #f
+  :trans #f
+  :code (behavior ()
+    (let ((v1-1 (-> self root root-prim)))
+      (set! (-> v1-1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-1 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (drop-pickup (-> self fact) #t *entity-pool* (the-as fact-info #f) 0 #t)
+    (while (-> self child)
+      (suspend)
+      )
+    (cleanup-for-death self)
+    )
+  :post #f
+  )
+
+(defstate idle (wascity-cactus)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('attack)
+       (let ((a1-1 (the-as object (-> block param 1)))
+             (a0-2 proc)
+             )
+         (when (and (!= (-> (the-as attack-info a1-1) id) (-> self incoming-attack-id))
+                    (!= (-> (the-as attack-info a1-1) mode) 'flut)
+                    )
+           (set! (-> self incoming-attack-id) (-> (the-as attack-info a1-1) id))
+           (when a0-2
+             (let ((s5-0 (find-offending-process-focusable a0-2 (the-as attack-info a1-1))))
+               (when s5-0
+                 (let ((a0-4 (get-penetrate-using-from-attack-event (the-as process-drawable proc) block)))
+                   (cond
+                     ((and (not (logtest? (penetrate dark-skin) a0-4))
+                           (= (pu->knocked-type a0-4) (knocked-type none))
+                           (< 0.0 (-> self hit-points))
+                           )
+                      (if (not (time-elapsed? (-> self incoming-attack-time) (seconds 0.6)))
+                          (return #f)
+                          )
+                      (sound-play "cactus-hit")
+                      (seek! (-> self hit-points) 0.0 0.1)
+                      (set-time! (-> self incoming-attack-time))
+                      (let ((gp-2 (new 'stack-no-clear 'vector)))
+                        (vector-inv-orient-by-quat!
+                          gp-2
+                          (vector-cross!
+                            (new 'stack-no-clear 'vector)
+                            (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> s5-0 root trans) (-> self root trans)) 1.0)
+                            *up-vector*
+                            )
+                          (-> self root quat)
+                          )
+                        (let ((v1-20 (-> self shakers)))
+                          (set! (-> v1-20 0 axis quad) (-> gp-2 quad))
+                          (set-time! (-> v1-20 0 start-time))
+                          (set! (-> v1-20 0 decay-time) 300.0)
+                          (set! (-> v1-20 0 freq) 150.0)
+                          (set! (-> v1-20 0 amplitude) 1820.4445)
+                          (set! (-> v1-20 0 y-amplitude) 0.0)
+                          )
+                        (let ((a0-19 (joint-node wascity-cactus-lod0-jg main)))
+                          (set! (-> a0-19 param0) wascity-cactus-callback)
+                          (set! (-> a0-19 param1) self)
+                          (set! (-> a0-19 param2) (the-as basic 0))
+                          )
+                        (let ((v1-23 (-> self shakers 1)))
+                          (set! (-> v1-23 axis quad) (-> gp-2 quad))
+                          (set! (-> v1-23 start-time) (+ (current-time) (seconds -0.06)))
+                          (set! (-> v1-23 decay-time) 600.0)
+                          (set! (-> v1-23 freq) 150.0)
+                          (set! (-> v1-23 amplitude) 364.0889)
+                          (set! (-> v1-23 y-amplitude) 0.0)
+                          (set! (-> v1-23 y-decay-time) 450.0)
+                          (set! (-> v1-23 y-freq) 150.0)
+                          (set! (-> v1-23 y-amplitude) 3640.889)
+                          )
+                        (let ((v1-25 (joint-node wascity-cactus-lod0-jg a)))
+                          (set! (-> v1-25 param0) wascity-cactus-callback)
+                          (set! (-> v1-25 param1) self)
+                          (set! (-> v1-25 param2) (the-as basic 1))
+                          )
+                        (let ((v1-26 (-> self shakers 2)))
+                          (set! (-> v1-26 axis quad) (-> gp-2 quad))
+                          (set! (-> v1-26 start-time) (+ (current-time) (seconds -0.2)))
+                          (set! (-> v1-26 decay-time) 600.0)
+                          (set! (-> v1-26 freq) 150.0)
+                          (set! (-> v1-26 amplitude) 364.0889)
+                          (set! (-> v1-26 y-decay-time) 450.0)
+                          (set! (-> v1-26 y-freq) 150.0)
+                          (set! (-> v1-26 y-amplitude) 3640.889)
+                          )
+                        (let ((v1-28 (joint-node wascity-cactus-lod0-jg b)))
+                          (set! (-> v1-28 param0) wascity-cactus-callback)
+                          (set! (-> v1-28 param1) self)
+                          (set! (-> v1-28 param2) (the-as basic 2))
+                          )
+                        (let ((v1-29 (-> self shakers 3)))
+                          (set! (-> v1-29 axis quad) (-> gp-2 quad))
+                          (set! (-> v1-29 start-time) (+ (current-time) (seconds -0.2)))
+                          (set! (-> v1-29 decay-time) 600.0)
+                          (set! (-> v1-29 freq) 150.0)
+                          (set! (-> v1-29 amplitude) 364.0889)
+                          (set! (-> v1-29 y-decay-time) 450.0)
+                          (set! (-> v1-29 y-freq) 150.0)
+                          (set! (-> v1-29 y-amplitude) 3640.889)
+                          )
+                        (let ((v1-31 (joint-node wascity-cactus-lod0-jg c)))
+                          (set! (-> v1-31 param0) wascity-cactus-callback)
+                          (set! (-> v1-31 param1) self)
+                          (set! (-> v1-31 param2) (the-as basic 2))
+                          )
+                        (let ((v1-32 (-> self shakers 4)))
+                          (set! (-> v1-32 axis quad) (-> gp-2 quad))
+                          (set! (-> v1-32 start-time) (+ (current-time) (seconds -0.2)))
+                          (set! (-> v1-32 decay-time) 600.0)
+                          (set! (-> v1-32 freq) 150.0)
+                          (set! (-> v1-32 amplitude) 364.0889)
+                          (set! (-> v1-32 y-decay-time) 450.0)
+                          (set! (-> v1-32 y-freq) 150.0)
+                          (set! (-> v1-32 y-amplitude) 3640.889)
+                          )
+                        (let ((v1-34 (joint-node wascity-cactus-lod0-jg d)))
+                          (set! (-> v1-34 param0) wascity-cactus-callback)
+                          (set! (-> v1-34 param1) self)
+                          (set! (-> v1-34 param2) (the-as basic 2))
+                          )
+                        (let ((v1-35 (-> self shakers 5)))
+                          (set! (-> v1-35 axis quad) (-> gp-2 quad))
+                          (set! (-> v1-35 start-time) (+ (current-time) (seconds -0.4)))
+                          (set! (-> v1-35 decay-time) 600.0)
+                          (set! (-> v1-35 freq) 150.0)
+                          (set! (-> v1-35 amplitude) 364.0889)
+                          (set! (-> v1-35 y-decay-time) 450.0)
+                          (set! (-> v1-35 y-freq) 150.0)
+                          (set! (-> v1-35 y-amplitude) 3640.889)
+                          )
+                        )
+                      (let ((v0-0 (the-as object (joint-node wascity-cactus-lod0-jg e))))
+                        (set! (-> (the-as cspace v0-0) param0) wascity-cactus-callback)
+                        (set! (-> (the-as cspace v0-0) param1) self)
+                        (set! (-> (the-as cspace v0-0) param2) (the-as basic 2))
+                        v0-0
+                        )
+                      )
+                     (else
+                       (sound-play "cactus-burst")
+                       (let ((gp-4 (new 'stack 'joint-exploder-tuning (the-as uint 1))))
+                         (set! (-> gp-4 fountain-rand-transv-lo quad) (-> s5-0 root trans quad))
+                         (set! (-> gp-4 fountain-rand-transv-hi x) 4096.0)
+                         (set! (-> gp-4 fountain-rand-transv-hi y) 122880.0)
+                         (process-spawn
+                           joint-exploder
+                           (art-group-get-by-name *level* "skel-wascity-cactus-explode" (the-as (pointer level) #f))
+                           7
+                           gp-4
+                           *wascity-cactus-exploder-params*
+                           :name "joint-exploder"
+                           :to self
+                           :unk 0
+                           )
+                         )
+                       (go-virtual die)
+                       )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+         )
+       )
+      )
+    )
+  :exit #f
+  :code sleep-code
+  :post (behavior ()
+    (dotimes (gp-0 6)
+      (shaker-method-9 (-> self shakers gp-0))
+      )
+    (transform-post)
+    )
+  )
+
+(defmethod wascity-cactus-method-30 ((this wascity-cactus))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-6 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-6 prim-core collide-as) (collide-spec crate camera-blocker))
+      (set! (-> v1-6 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-6 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-6 transform-index) 3)
+      (set-vector! (-> v1-6 local-sphere) 0.0 16384.0 0.0 28672.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-6)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-9 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-9 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-9 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod wascity-cactus-method-31 ((this wascity-cactus))
+  (logior! (-> this mask) (process-mask crate))
+  0
+  (none)
+  )
+
+(defmethod init-from-entity! ((this wascity-cactus) (arg0 entity-actor))
+  (ctywide-entity-hack)
+  (wascity-cactus-method-30 this)
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wascity-cactus" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (wascity-cactus-method-31 this)
+  (set! (-> this fact)
+        (new 'process 'fact-info this (pickup-type none) (-> *FACT-bank* default-eco-pill-green-inc))
+        )
+  (set! (-> this hit-points) 1.0)
+  (quaternion-vector-angle! (-> this root quat) *up-vector* (* 182.04445 (rand-vu-float-range 0.0 360.0)))
+  (let ((f0-4 (rand-vu-float-range 0.9 1.1)))
+    (set-vector! (-> this root scale) f0-4 f0-4 f0-4 1.0)
+    )
+  (transform-post)
+  (go (method-of-object this idle))
+  )
+
+(deftype wascity-market-crate (market-crate)
+  ()
+  )
+
+
+(deftype wascity-market-basket-a (market-basket-a)
+  ()
+  )
+
+
+(deftype wascity-market-basket-b (market-basket-b)
+  ()
+  )
+
+
+(deftype wascity-market-sack-a (market-sack-a)
+  ()
+  )
+
+
+(deftype wascity-market-sack-b (market-sack-b)
+  ()
+  )
+
+
+(deftype wascity-fruit-stand (fruit-stand)
+  ()
+  )
+
+
+(deftype wascity-water-pump (process-drawable)
+  ()
+  (:state-methods
+    idle
+    )
+  )
+
+
+(defskelgroup skel-wascity-water-pump wascity-water-pump wascity-water-pump-lod0-jg wascity-water-pump-idle-ja
+              ((wascity-water-pump-lod0-mg (meters 20)) (wascity-water-pump-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 10)
+              )
+
+(defstate idle (wascity-water-pump)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post ja-post
+  )
+
+(defmethod init-from-entity! ((this wascity-water-pump) (arg0 entity-actor))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 3) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 4))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid rideable no-standon))
+      (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 49152.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-8 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 1))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-8 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-8 transform-index) 6)
+      (set-vector! (-> v1-8 local-sphere) 10240.0 0.0 8192.0 16384.0)
+      )
+    (let ((v1-10 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 1))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-10 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-10 transform-index) 8)
+      (set-vector! (-> v1-10 local-sphere) -8192.0 0.0 0.0 12288.0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 2) (the-as uint 1))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-12 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-12 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-12 transform-index) 3)
+      (set-vector! (-> v1-12 local-sphere) 0.0 0.0 0.0 49152.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-15 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-15 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-15 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wascity-water-pump" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object this idle))
+  )
+
+(defskelgroup skel-wascity-awning-a wascity-awning-a wascity-awning-a-lod0-jg wascity-awning-a-idle-ja
+              ((wascity-awning-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 -2.5 5 10)
+              )
+
+(deftype wascity-awning-a (bouncer)
+  ()
+  )
+
+
+(defmethod play-sound ((this wascity-awning-a))
+  (sound-play "tarp-bounce")
+  0
+  (none)
+  )
+
+(defmethod bouncer-method-26 ((this wascity-awning-a))
+  (sound-play "bounce-whoosh")
+  0
+  (none)
+  )
+
+(defmethod init-skel! ((this wascity-awning-a))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wascity-awning-a" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-collision! ((this wascity-awning-a))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 1))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 -16384.0 16384.0 32768.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defskelgroup skel-wascity-awning-b wascity-awning-b wascity-awning-b-lod0-jg wascity-awning-b-idle-ja
+              ((wascity-awning-b-lod0-mg (meters 20)) (wascity-awning-b-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              )
+
+(deftype wascity-awning-b (bouncer)
+  ()
+  )
+
+
+(defmethod play-sound ((this wascity-awning-b))
+  (sound-play "tarp-bounce")
+  0
+  (none)
+  )
+
+(defmethod bouncer-method-26 ((this wascity-awning-b))
+  (sound-play "bounce-whoosh")
+  0
+  (none)
+  )
+
+(defmethod init-skel! ((this wascity-awning-b))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-wascity-awning-b" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  0
+  (none)
+  )
+
+(defmethod init-collision! ((this wascity-awning-b))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((v1-2 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 1))))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec crate))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> v1-2 prim-core action) (collide-action solid))
+      (set! (-> v1-2 transform-index) 3)
+      (set-vector! (-> v1-2 local-sphere) 0.0 0.0 0.0 20480.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-2)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-5 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-5 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-5 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defskelgroup skel-monk-npc monk monk-lod0-jg monk-standing-idle-1-ja
+              ((monk-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0.2 0 1.6)
+              :shadow monk-shadow-mg
+              :origin-joint-index 3
+              :shadow-joint-index 3
+              )
+
+(deftype monk-npc (process-taskable)
+  ()
+  )
+
+
+(defmethod init-skeleton! ((this monk-npc))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-monk-npc" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  0
+  (let* ((v1-8 (mod
+                 (+ (the-as int (-> this root trans x))
+                    (the-as int (-> this root trans y))
+                    (the-as int (-> this root trans z))
+                    )
+                 6
+                 )
+               )
+         (s5-1 (cond
+                 ((zero? v1-8)
+                  4171
+                  )
+                 ((= v1-8 1)
+                  8357
+                  )
+                 ((= v1-8 2)
+                  #x4113
+                  )
+                 ((= v1-8 3)
+                  #x8225
+                  )
+                 ((= v1-8 4)
+                  #x10407
+                  )
+                 ((= v1-8 5)
+                  #x20825
+                  )
+                 )
+               )
+         )
+    (setup-masks (-> this draw) 0 -1)
+    (setup-masks (-> this draw) s5-1 0)
+    )
+  0
+  (none)
+  )
+
+(defmethod get-art-element ((this monk-npc))
+  (if (not (logtest? (+ (the-as int (-> this root trans x))
+                        (the-as int (-> this root trans y))
+                        (the-as int (-> this root trans z))
+                        )
+                     1
+                     )
+           )
+      (-> this draw art-group data 9)
+      (-> this draw art-group data 10)
+      )
+  )

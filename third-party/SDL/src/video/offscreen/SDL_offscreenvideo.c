@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_OFFSCREEN
+#ifdef SDL_VIDEO_DRIVER_OFFSCREEN
 
 /* Offscreen video driver is similar to dummy driver, however its purpose
  * is enabling applications to use some of the SDL video functionality
@@ -42,27 +42,25 @@
 
 /* Initialization/Query functions */
 static int OFFSCREEN_VideoInit(_THIS);
-static int OFFSCREEN_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode);
+static int OFFSCREEN_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode);
 static void OFFSCREEN_VideoQuit(_THIS);
 
 /* OFFSCREEN driver bootstrap functions */
 
-static void
-OFFSCREEN_DeleteDevice(SDL_VideoDevice * device)
+static void OFFSCREEN_DeleteDevice(SDL_VideoDevice *device)
 {
     SDL_free(device);
 }
 
-static SDL_VideoDevice *
-OFFSCREEN_CreateDevice(void)
+static SDL_VideoDevice *OFFSCREEN_CreateDevice(void)
 {
     SDL_VideoDevice *device;
 
     /* Initialize all variables that we clean on shutdown */
-    device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
+    device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
         SDL_OutOfMemory();
-        return (0);
+        return 0;
     }
 
     /* General video */
@@ -75,7 +73,7 @@ OFFSCREEN_CreateDevice(void)
     device->DestroyWindowFramebuffer = SDL_OFFSCREEN_DestroyWindowFramebuffer;
     device->free = OFFSCREEN_DeleteDevice;
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
     /* GL context */
     device->GL_SwapWindow = OFFSCREEN_GLES_SwapWindow;
     device->GL_MakeCurrent = OFFSCREEN_GLES_MakeCurrent;
@@ -97,11 +95,11 @@ OFFSCREEN_CreateDevice(void)
 
 VideoBootStrap OFFSCREEN_bootstrap = {
     OFFSCREENVID_DRIVER_NAME, "SDL offscreen video driver",
-    OFFSCREEN_CreateDevice
+    OFFSCREEN_CreateDevice,
+    NULL /* no ShowMessageBox implementation */
 };
 
-int
-OFFSCREEN_VideoInit(_THIS)
+int OFFSCREEN_VideoInit(_THIS)
 {
     SDL_DisplayMode mode;
 
@@ -122,14 +120,12 @@ OFFSCREEN_VideoInit(_THIS)
     return 0;
 }
 
-static int
-OFFSCREEN_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
+static int OFFSCREEN_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
     return 0;
 }
 
-void
-OFFSCREEN_VideoQuit(_THIS)
+void OFFSCREEN_VideoQuit(_THIS)
 {
 }
 

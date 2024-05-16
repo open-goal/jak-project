@@ -304,15 +304,15 @@
     (('hit-knocked)
      (logclear! (-> this mask) (process-mask actor-pause))
      (logclear! (-> this focus-status) (focus-status dangerous))
-     (logclear! (-> this enemy-flags) (enemy-flag enable-on-notice))
-     (logior! (-> this enemy-flags) (enemy-flag chase-startup))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
      (logior! (-> this focus-status) (focus-status hit))
      (if (zero? (-> this hit-points))
          (logior! (-> this focus-status) (focus-status dead))
          )
-     (logclear! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
      (enemy-method-62 this)
-     (logior! (-> this enemy-flags) (enemy-flag actor-pause-backup))
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
      (process-contact-action arg0)
      (send-event arg0 'get-attack-count 1)
      (when (zero? (-> this hit-points))
@@ -465,7 +465,7 @@
 
 ;; definition for method 77 of type spyder
 ;; WARN: Using new Jak 2 rtype-of
-(defmethod enemy-method-77 ((this spyder) (arg0 (pointer float)))
+(defmethod enemy-method-77 ((this spyder) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (let ((a0-2 (-> this skel root-channel 0)))
@@ -473,7 +473,7 @@
        (set! (-> a0-2 param 0)
              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 15)) frames num-frames) -1))
              )
-       (set! (-> a0-2 param 1) (-> arg0 0))
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
        (set! (-> a0-2 frame-num) 0.0)
        (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 15)) num-func-seek!)
        )
@@ -485,7 +485,7 @@
             (s5-0 (new 'static 'array uint64 3 #x11 #x12 #x13))
             (s4-0 (new 'static 'array int32 4 0 0 0 0))
             (a2-1 (ash 1 (-> s4-0 0)))
-            (v1-20 (enemy-method-120 this a1-4 a2-1))
+            (v1-20 (rnd-bit this a1-4 a2-1))
             (s5-1 (-> this draw art-group data (-> (the-as (pointer int32) (+ (* v1-20 8) (the-as int s5-0))))))
             )
        (set! (-> s4-0 0) v1-20)
@@ -517,7 +517,7 @@
           (set! (-> a0-20 param 0)
                 (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 13)) frames num-frames) -1))
                 )
-          (set! (-> a0-20 param 1) (-> arg0 0))
+          (set! (-> a0-20 param 1) (-> arg0 anim-speed))
           (set! (-> a0-20 frame-num) 0.0)
           (joint-control-channel-group! a0-20 (the-as art-joint-anim (-> this draw art-group data 13)) num-func-seek!)
           )
@@ -535,7 +535,7 @@
   )
 
 ;; definition for method 78 of type spyder
-(defmethod enemy-method-78 ((this spyder) (arg0 (pointer float)))
+(defmethod enemy-method-78 ((this spyder) (arg0 enemy-knocked-info))
   (case (-> this incoming knocked-type)
     (((knocked-type knocked-type-4))
      (cond
@@ -712,7 +712,7 @@
   )
 
 ;; definition for method 55 of type spyder
-(defmethod track-target! ((this spyder))
+(defmethod common-post ((this spyder))
   "Does a lot of various things relating to interacting with the target
 - tracks when the enemy was last drawn
 - looks at the target and handles attacking
@@ -722,7 +722,7 @@
   (update-trans! (-> this sound) (-> this root trans))
   (update! (-> this sound))
   (spyder-method-182 this)
-  (let ((t9-6 (method-of-type nav-enemy track-target!)))
+  (let ((t9-6 (method-of-type nav-enemy common-post)))
     (t9-6 this)
     )
   (logclear! (-> this status-flags) (spyder-flags spflags-0))
@@ -743,7 +743,6 @@
   )
 
 ;; definition for method 3 of type ik-setup
-;; INFO: this function exists in multiple non-identical object files
 (defmethod inspect ((this ik-setup))
   (when (not this)
     (set! this this)
@@ -928,7 +927,7 @@
           )
       )
     (spyder-method-181 self)
-    (look-at-target! self (enemy-flag death-start))
+    (look-at-target! self (enemy-flag look-at-move-dest))
     (logclear! (-> self status-flags) (spyder-flags spflags-1))
     (when (!= (-> self dest-fade) 128.0)
       (set! (-> self shock-effect-end) (+ (current-time) (seconds 1)))
@@ -943,7 +942,7 @@
           )
       )
     (logclear! (-> self status-flags) (spyder-flags spflags-5))
-    (look-at-target! self (enemy-flag lock-focus))
+    (look-at-target! self (enemy-flag look-at-focus))
     )
   :trans (behavior ()
     (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
@@ -1081,18 +1080,18 @@
       (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag enemy-flag37) (-> v1-4 enemy-flags))))
       )
     0
-    (look-at-target! self (enemy-flag lock-focus))
-    (logior! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (look-at-target! self (enemy-flag look-at-focus))
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
     )
   :exit (behavior ()
-    (logclear! (-> self enemy-flags) (enemy-flag actor-pause-backup))
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
     (let ((v1-2 (-> self nav)))
       (set! (-> v1-2 max-rotation-rate) (-> *spyder-nav-enemy-info* maximum-rotation-rate))
       )
     0
     )
   :trans (behavior ()
-    (if (and (logtest? (-> self enemy-flags) (enemy-flag look-at-focus)) (-> self enemy-info use-victory))
+    (if (and (logtest? (-> self enemy-flags) (enemy-flag victory)) (-> self enemy-info use-victory))
         (go-virtual victory)
         )
     (if (or (>= 2 (the-as int (-> self focus aware))) (not (get-enemy-target self)))
@@ -1117,14 +1116,13 @@
     (ja-channel-push! 2 (seconds 0.2))
     (let ((f30-0 0.0))
       (ja-no-eval :group! spyder-shoot-low-ja :num! (loop!) :frame-num 0.0)
-      (let ((a0-12 (-> self skel root-channel 1)))
-        (set! (-> a0-12 frame-interp 1) f30-0)
-        (set! (-> a0-12 frame-interp 0) f30-0)
-        (set! (-> a0-12 frame-group) (the-as art-joint-anim spyder-shoot-high-ja))
-        (set! (-> a0-12 param 0) 0.0)
-        (set! (-> a0-12 frame-num) 0.0)
-        (joint-control-channel-group! a0-12 (the-as art-joint-anim spyder-shoot-high-ja) num-func-chan)
-        )
+      (ja-no-eval :chan 1
+                  :group! spyder-shoot-high-ja
+                  :num! (chan 0)
+                  :frame-interp0 f30-0
+                  :frame-interp1 f30-0
+                  :frame-num 0.0
+                  )
       (let ((a0-14 (handle->process (-> self focus handle))))
         (when a0-14
           (let ((gp-0 (new 'stack-no-clear 'vector)))
@@ -1148,12 +1146,7 @@
                     (until (time-elapsed? s3-1 (seconds 0.2))
                       (set! f30-0 (seek f30-0 (lerp-scale 0.0 1.0 (the float s4-0) 0.0 8.0) (seconds-per-frame)))
                       (ja :num! (loop!))
-                      (let ((a0-27 (-> self skel root-channel 1)))
-                        (set! (-> a0-27 frame-interp 1) f30-0)
-                        (set! (-> a0-27 frame-interp 0) f30-0)
-                        (set! (-> a0-27 param 0) 0.0)
-                        (joint-control-channel-group-eval! a0-27 (the-as art-joint-anim #f) num-func-chan)
-                        )
+                      (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
                       (suspend)
                       )
                     )
@@ -1384,16 +1377,16 @@
   )
 
 ;; definition for method 7 of type spyder
-(defmethod relocate ((this spyder) (arg0 int))
+(defmethod relocate ((this spyder) (offset int))
   (if (nonzero? (-> this joint))
-      (&+! (-> this joint) arg0)
+      (&+! (-> this joint) offset)
       )
   (dotimes (v1-4 4)
     (if (nonzero? (-> this joint-ik v1-4))
-        (&+! (-> this joint-ik v1-4) arg0)
+        (&+! (-> this joint-ik v1-4) offset)
         )
     )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; definition for method 115 of type spyder

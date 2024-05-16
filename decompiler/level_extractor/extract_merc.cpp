@@ -228,8 +228,14 @@ void update_mode_from_alpha1(GsAlpha reg, DrawMode& mode) {
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
              reg.d_mode() == GsAlpha::BlendMode::DEST) {
     // Cv = (Cs - Cd) * FIX + Cd
-    ASSERT(reg.fix() == 64);
-    mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+    if (reg.fix() == 64) {
+      mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_DST_FIX_DST);
+    } else if (reg.fix() == 128) {
+      // Cv = (Cs - Cd) + Cd = Cs... no blend.
+      mode.set_alpha_blend(DrawMode::AlphaBlend::SRC_SRC_SRC_SRC);
+    } else {
+      ASSERT_NOT_REACHED();
+    }
   } else if (reg.a_mode() == GsAlpha::BlendMode::DEST &&
              reg.b_mode() == GsAlpha::BlendMode::SOURCE &&
              reg.c_mode() == GsAlpha::BlendMode::ZERO_OR_FIXED &&
@@ -760,9 +766,9 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
   }
 
   // check eyes
-  u32 eye_tpage = version == GameVersion::Jak2 ? 0x70c : 0x1cf;
-  u32 left_id = version == GameVersion::Jak2 ? 7 : 0x6f;
-  u32 right_id = version == GameVersion::Jak2 ? 8 : 0x70;
+  u32 eye_tpage = PerGameVersion<u32>(0x1cf, 0x70c, 0x3)[version];
+  u32 left_id = PerGameVersion<u32>(0x6f, 0x7, 0x2)[version];
+  u32 right_id = PerGameVersion<u32>(0x70, 0x8, 0x3)[version];
 
   if (eye_out && (pc_combo_tex_id >> 16) == eye_tpage) {
     auto tex_it = tex_db.textures.find(pc_combo_tex_id);
@@ -776,8 +782,11 @@ s32 find_or_add_texture_to_level(tfrag3::Level& out,
 
     if (idx == left_id || idx == right_id) {
       if (!hdr.eye_ctrl) {
-        fmt::print("no eye ctrl, but expected one");
-        if (debug_name != "kor-break-lod0") {
+        fmt::print("no eye ctrl, but expected one for {}\n", debug_name);
+        // it looks like these models have half-implemented eyes - the texture IDs are there, but
+        // there's no eye control.
+        if (debug_name != "kor-break-lod0" && debug_name != "errol-lowres-lod1" &&
+            debug_name != "kleever-rider-lod0") {
           ASSERT(false);
         }
       }

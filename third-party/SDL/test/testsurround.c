@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,16 +18,16 @@
 static int total_channels;
 static int active_channel;
 
-#define SAMPLE_RATE_HZ 48000
-#define QUICK_TEST_TIME_MSEC 100
+#define SAMPLE_RATE_HZ        48000
+#define QUICK_TEST_TIME_MSEC  100
 #define CHANNEL_TEST_TIME_SEC 5
-#define MAX_AMPLITUDE SDL_MAX_SINT16
+#define MAX_AMPLITUDE         SDL_MAX_SINT16
 
-#define SINE_FREQ_HZ 500
+#define SINE_FREQ_HZ     500
 #define LFE_SINE_FREQ_HZ 50
 
 /* The channel layout is defined in SDL_audio.h */
-const char*
+const char *
 get_channel_name(int channel_index, int channel_count)
 {
     switch (channel_index) {
@@ -38,6 +38,7 @@ get_channel_name(int channel_index, int channel_count)
     case 2:
         switch (channel_count) {
         case 3:
+        case 5:
             return "Low Frequency Effects";
         case 4:
             return "Back Left";
@@ -57,27 +58,32 @@ get_channel_name(int channel_index, int channel_count)
         switch (channel_count) {
         case 5:
             return "Back Right";
+        case 6:
+            return "Side Left";
         case 7:
             return "Back Center";
-        case 6:
         case 8:
             return "Back Left";
         }
+        SDL_assert(0);
     case 5:
         switch (channel_count) {
-        case 7:
-            return "Back Left";
         case 6:
+            return "Side Right";
+        case 7:
+            return "Side Left";
         case 8:
             return "Back Right";
         }
+        SDL_assert(0);
     case 6:
         switch (channel_count) {
         case 7:
-            return "Back Right";
+            return "Side Right";
         case 8:
             return "Side Left";
         }
+        SDL_assert(0);
     case 7:
         return "Side Right";
     }
@@ -92,9 +98,9 @@ is_lfe_channel(int channel_index, int channel_count)
 }
 
 void SDLCALL
-fill_buffer(void* unused, Uint8* stream, int len)
+fill_buffer(void *unused, Uint8 *stream, int len)
 {
-    Sint16* buffer = (Sint16*)stream;
+    Sint16 *buffer = (Sint16 *)stream;
     int samples = len / sizeof(Sint16);
     static int total_samples = 0;
     int i;
@@ -132,8 +138,7 @@ fill_buffer(void* unused, Uint8* stream, int len)
     }
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int i;
 

@@ -5,5 +5,222 @@
 ;; name in dgo: tfrag-h
 ;; dgos: GAME
 
+(declare-type tfrag-work structure)
+(declare-type drawable-tree-tfrag structure)
+(define-extern *tfrag-work* tfrag-work)
+(define-extern draw-drawable-tree-tfrag (function drawable-tree-tfrag none))
+(define-extern draw-drawable-tree-tfrag-trans (function drawable-tree-tfrag none))
+(define-extern draw-drawable-tree-tfrag-water (function drawable-tree-tfrag none))
+(define-extern *pc-tfrag-draw-level* level) ;; added
+
 ;; DECOMP BEGINS
 
+(deftype tfragment-stats (structure)
+  "Triangle and vertex stats for a single tfragment."
+  ((num-tris    uint16  4)
+   (num-dverts  uint16  4)
+   )
+  )
+
+
+(deftype tfragment-debug-data (structure)
+  "Optional debug information (stats, lines) for a tfragment."
+  ((stats        tfragment-stats  :inline)
+   (debug-lines  (array vector-array))
+   )
+  )
+
+
+(deftype generic-tfragment (structure)
+  "Unused. Could have been a way to render tfrag's through generic."
+  ((dummy  int32)
+   )
+  )
+
+
+(deftype tfragment (drawable)
+  "A tfrag mesh fragment. This is just references to DMA data, plus some metadata."
+  ((color-index          uint16                         :offset   6)
+   (debug-data           tfragment-debug-data           :offset   8)
+   (color-indices        uint32                         :offset  12)
+   (colors               uint32                         :overlay-at color-indices)
+   (dma-chain            uint32                       3 :offset  32)
+   (dma-common           uint32                         :overlay-at (-> dma-chain 0))
+   (dma-level-0          uint32                         :overlay-at dma-common)
+   (dma-base             uint32                         :overlay-at (-> dma-chain 1))
+   (dma-level-1          uint32                         :overlay-at (-> dma-chain 2))
+   (dma-qwc              uint8                        4 :offset  44)
+   (dma-qwc-word         uint32                         :overlay-at (-> dma-qwc 0))
+   (shader               (inline-array adgif-shader)    :offset  48)
+   (num-shaders          uint8                          :offset  52)
+   (num-base-colors      uint8                          :offset  53)
+   (num-level0-colors    uint8                          :offset  54)
+   (num-level1-colors    uint8                          :offset  55)
+   (color-offset         uint8                          :offset  56)
+   (color-count          uint8                          :offset  57)
+   (texture-masks-index  uint16                         :offset  58)
+   (generic              generic-tfragment              :offset  60)
+   (generic-u32          uint32                         :overlay-at generic)
+   )
+  )
+
+
+(deftype drawable-inline-array-tfrag (drawable-inline-array)
+  "Array of tfragments"
+  ((data  tfragment  1 :inline)
+   (pad   uint32)
+   )
+  )
+
+(deftype drawable-inline-array-tfrag-trans (drawable-inline-array-tfrag)
+  ((data2  tfragment  1 :inline)
+   (pad2   uint32)
+   )
+  )
+
+(deftype drawable-inline-array-tfrag-water (drawable-inline-array-tfrag)
+  ((data2  tfragment  1 :inline)
+   (pad2   uint32)
+   )
+  )
+
+(deftype drawable-tree-tfrag (drawable-tree)
+  "top level tfrag tree."
+  ((time-of-day-pal  time-of-day-palette             :offset  12)
+   (arrays           drawable-inline-array  :dynamic :offset  32)
+   )
+  )
+
+(deftype drawable-tree-tfrag-trans (drawable-tree-tfrag)
+  ()
+  )
+
+(deftype drawable-tree-tfrag-water (drawable-tree-tfrag-trans)
+  ()
+  )
+
+(deftype tfrag-dists (structure)
+  "Distances for mesh level-of-detail blending for use on VU1."
+  ((data    uint32  16)
+   (vector  vector  4 :overlay-at (-> data 0))
+   (k0s     vector  2 :overlay-at (-> data 0))
+   (k1s     vector  2 :overlay-at (-> data 8))
+   )
+  )
+
+
+(deftype tfrag-data (structure)
+  "Constants for VU1 data memory for tfrag rendering."
+  ((data         uint32       56)
+   (vector       vector       14      :overlay-at (-> data 0))
+   (fog          vector       :inline :overlay-at (-> data 0))
+   (val          vector       :inline :overlay-at (-> data 4))
+   (strgif       gs-gif-tag   :inline :overlay-at (-> data 8))
+   (fangif       gs-gif-tag   :inline :overlay-at (-> data 12))
+   (adgif        gs-gif-tag   :inline :overlay-at (-> data 16))
+   (hvdf-offset  vector       :inline :overlay-at (-> data 20))
+   (hmge-scale   vector       :inline :overlay-at (-> data 24))
+   (invh-scale   vector       :inline :overlay-at (-> data 28))
+   (ambient      vector       :inline :overlay-at (-> data 32))
+   (guard        vector       :inline :overlay-at (-> data 36))
+   (dists        tfrag-dists  :inline :overlay-at (-> data 40))
+   (k0s          uint128      2       :overlay-at (-> data 40))
+   (k1s          uint128      2       :overlay-at (-> data 48))
+   )
+  )
+
+
+(deftype tfrag-control (structure)
+  "VU1 'control' data containing address and counters."
+  ((num-base-points            uint32)
+   (num-shared-base-points     uint32)
+   (num-level0-points          uint32)
+   (num-shared-level0-points   uint32)
+   (num-level1-points          uint32)
+   (num-shared-level1-points   uint32)
+   (ptr-vtxdata                uint32)
+   (ptr-base-points            uint32)
+   (ptr-shared-base-points     uint32)
+   (ptr-level0-points          uint32)
+   (ptr-shared-level0-points   uint32)
+   (ptr-level1-points          uint32)
+   (ptr-shared-level1-points   uint32)
+   (ptr-draw-points            uint32)
+   (ptr-interpolated-0         uint32)
+   (ptr-shared-interpolated-0  uint32)
+   (ptr-interpolated1          uint32)
+   (ptr-shared-interpolated1   uint32)
+   (ptr-strip-data             uint32)
+   (ptr-texture-data           uint32)
+   )
+  )
+
+
+(deftype tfrag-stats (structure)
+  "TFRAG statistics computed on EE."
+  ((from          int32)
+   (to            int32)
+   (cnt           int32)
+   (tris          int32)
+   (tfaces        int32)
+   (tfrags        int32)
+   (dtris         int32)
+   (base-verts    int32)
+   (level0-verts  int32)
+   (level1-verts  int32)
+   (dma-cnt       int32)
+   (dma-dta       int32)
+   (dma-tex       int32)
+   (strips        int32)
+   (drawpoints    int32)
+   (vif           int32)
+   )
+  )
+
+
+(deftype tfrag-packet (structure)
+  ((tag  uint128  2)
+   )
+  )
+
+
+(deftype tfrag-work (structure)
+  "Scratch space for generating TFRAG DMA."
+  ((base-tmpl                 dma-packet  :inline)
+   (level-0-tmpl              dma-packet  :inline)
+   (common-tmpl               dma-packet  :inline)
+   (level-1-tmpl              dma-packet  :inline)
+   (color-tmpl                dma-packet  :inline)
+   (frag-dists                vector      :inline)
+   (min-dist                  vector      :inline)
+   (color-ptr                 vector4w    :inline)
+   (tr-stat-tfrag             tr-stat)
+   (tr-stat-tfrag-scissor     tr-stat)
+   (vu1-enable-tfrag          int32)
+   (vu1-enable-tfrag-scissor  int32)
+   (cur-vis-bits              uint32)
+   (end-vis-bits              uint32)
+   (src-ptr                   uint32)
+   (last-call                 uint32)
+   (dma-buffer                basic)
+   (test-id                   uint32)
+   (wait-from-spr             uint32)
+   (wait-to-spr               uint32)
+   (near-wait-from-spr        uint32)
+   (near-wait-to-spr          uint32)
+   (max-fragment              uint16)
+   (min-fragment              uint16)
+   (texture-dists             uint32)
+   )
+  )
+
+
+(deftype tfrag-dma (structure)
+  "Memory layout for to/from scratchpad for tfrag."
+  ((banka   tfragment  16 :inline)
+   (bankb   tfragment  16 :inline)
+   (outa    uint128    128)
+   (outb    uint128    128)
+   (colors  rgba       2047)
+   )
+  )

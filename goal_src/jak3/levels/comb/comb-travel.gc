@@ -7,3 +7,317 @@
 
 ;; DECOMP BEGINS
 
+(deftype task-manager-tube-ride (task-manager)
+  ((suck-factor     float)
+   (hp-scale        float)
+   (intro-sequence  basic)
+   (outro-sequence  basic)
+   (no-shoot-time   time-frame)
+   (end-sphere      sphere  :inline)
+   (end-plane       vector  :inline)
+   (intro-sphere    sphere  :inline)
+   (outro-sphere    sphere  :inline)
+   (intro-target    vector  :inline)
+   (outro-target    vector  :inline)
+   (outro-plane2    vector  :inline)
+   (outro-target2   vector  :inline)
+   )
+  (:methods
+    (set-sbanks (_type_) none)
+    )
+  )
+
+
+(defmethod task-manager-method-26 ((this task-manager-tube-ride))
+  (let ((t9-0 (method-of-type task-manager task-manager-method-26)))
+    (t9-0 this)
+    )
+  (let* ((s4-0 (handle->process (-> this player-vehicle)))
+         (s5-0 (if (type? s4-0 process-focusable)
+                   (the-as process-focusable s4-0)
+                   )
+               )
+         )
+    (when s5-0
+      (if (focus-test? s5-0 dead)
+          (send-event this 'fail)
+          )
+      (if (time-elapsed? (-> this no-shoot-time) (seconds 0.1))
+          (logclear! (-> s5-0 focus-status) (focus-status ignore))
+          (logior! (-> s5-0 focus-status) (focus-status ignore))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod set-time-limit ((this task-manager-tube-ride))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this hp-scale) 1.0)
+  (set! (-> this intro-sequence) #f)
+  (set! (-> this outro-sequence) #f)
+  (let ((a2-0 (-> this node-info death-count)))
+    (set! (-> this suck-factor) (cond
+                                  ((< a2-0 (the-as uint 5))
+                                   0.0
+                                   )
+                                  ((< a2-0 (the-as uint 10))
+                                   0.25
+                                   )
+                                  (else
+                                    (fmin 1.0 (* 0.05 (the float a2-0)))
+                                    )
+                                  )
+          )
+    (format #t "tube-ride::initialize death-count ~d, suck-factor ~f~%" a2-0 (-> this suck-factor))
+    )
+  (none)
+  )
+
+(defmethod set-sbanks ((this task-manager-tube-ride))
+  (set-setting! 'music 'combs 0.0 0)
+  0
+  (none)
+  )
+
+(defmethod taskman-event-handler ((this task-manager-tube-ride) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('no-shoot)
+     (let ((v0-0 (the-as object (current-time))))
+       (set! (-> this no-shoot-time) (the-as time-frame v0-0))
+       v0-0
+       )
+     )
+    (else
+      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defstate active (task-manager-tube-ride)
+  :virtual #t
+  :code (behavior ()
+    (set-setting! 'pilot-exit #f 0.0 0)
+    (set-setting! 'pilot-death #t 0.0 0)
+    (until #f
+      (if (and *target* (not (logtest? (focus-status teleporting) (-> *target* focus-status))))
+          (goto cfg-8)
+          )
+      (suspend)
+      )
+    #f
+    (label cfg-8)
+    (suspend)
+    (until #f
+      (let ((v1-13 (handle->process (-> *vehicle-info* handle-by-vehicle-type 10))))
+        (when v1-13
+          (set! (-> self player-vehicle) (process->handle v1-13))
+          (goto cfg-23)
+          )
+        )
+      (suspend)
+      )
+    #f
+    (label cfg-23)
+    (cond
+      ((-> self intro-sequence)
+       (send-event (handle->process (-> self player-vehicle)) 'ignore-impulse #t)
+       (send-event (handle->process (-> self player-vehicle)) 'ignore-damage #t)
+       (until #f
+         (if (and *target* (focus-test? *target* pilot-riding))
+             (goto cfg-46)
+             )
+         (suspend)
+         )
+       #f
+       (label cfg-46)
+       (set-sbanks self)
+       (send-event (handle->process (-> self player-vehicle)) 'ignore-impulse #f)
+       (send-event (handle->process (-> self player-vehicle)) 'ignore-damage #f)
+       (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-speed 0)
+       (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-position (-> self intro-target))
+       (until #f
+         (let* ((s5-0 (handle->process (-> self player-vehicle)))
+                (gp-0 (if (type? s5-0 process-focusable)
+                          (the-as process-focusable s5-0)
+                          )
+                      )
+                )
+           (when gp-0
+             (send-event gp-0 'set-control-hook-ai)
+             (if (< (vector-vector-distance (-> gp-0 root trans) (-> self intro-sphere)) (-> self intro-sphere r))
+                 (goto cfg-89)
+                 )
+             )
+           )
+         (suspend)
+         )
+       #f
+       (label cfg-89)
+       (send-event (handle->process (-> self player-vehicle)) 'set-control-hook-player)
+       (send-event (handle->process (-> self player-vehicle)) 'in-tunnel #t)
+       )
+      (else
+        (set-sbanks self)
+        )
+      )
+    (send-event
+      (handle->process (-> self player-vehicle))
+      'scale-max-hit-points
+      (* (-> self hp-scale) (+ 1.0 (-> self suck-factor)))
+      )
+    (send-event (handle->process (-> self player-vehicle)) 'ignore-impulse #f)
+    (send-event (handle->process (-> self player-vehicle)) 'ignore-damage #f)
+    (when (-> self outro-sequence)
+      (until #f
+        (let* ((gp-1 (handle->process (-> self player-vehicle)))
+               (v1-134 (if (type? gp-1 process-focusable)
+                           gp-1
+                           )
+                       )
+               )
+          (when v1-134
+            (if (< (vector-vector-distance (-> (the-as process-focusable v1-134) root trans) (-> self outro-sphere))
+                   (-> self outro-sphere r)
+                   )
+                (goto cfg-139)
+                )
+            )
+          )
+        (suspend)
+        )
+      #f
+      (label cfg-139)
+      (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-position (-> self outro-target))
+      (send-event (handle->process (-> self player-vehicle)) 'set-control-hook-ai)
+      (until #f
+        (let* ((gp-2 (handle->process (-> self player-vehicle)))
+               (v1-156 (if (type? gp-2 process-focusable)
+                           gp-2
+                           )
+                       )
+               )
+          (when v1-156
+            (if (< 0.0 (vector4-dot (-> (the-as process-focusable v1-156) root trans) (-> self outro-plane2)))
+                (goto cfg-166)
+                )
+            )
+          )
+        (suspend)
+        )
+      #f
+      (label cfg-166)
+      (send-event (handle->process (-> self player-vehicle)) 'in-tunnel #f)
+      (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-position (-> self outro-target2))
+      )
+    (until #f
+      (let* ((s5-1 (handle->process (-> self player-vehicle)))
+             (gp-3 (if (type? s5-1 process-focusable)
+                       (the-as process-focusable s5-1)
+                       )
+                   )
+             )
+        (when gp-3
+          (if (and (< (vector-vector-distance (-> gp-3 root trans) (-> self end-sphere)) (-> self end-sphere r))
+                   (< 0.0 (vector4-dot (-> gp-3 root trans) (-> self end-plane)))
+                   )
+              (send-event self 'complete)
+              )
+          )
+        )
+      (suspend)
+      )
+    #f
+    (let ((t9-29 (-> (find-parent-state) code)))
+      (if t9-29
+          ((the-as (function none) t9-29))
+          )
+      )
+    )
+  )
+
+(defstate complete (task-manager-tube-ride)
+  :virtual #t
+  :code (behavior ()
+    (remove-setting! 'pilot-exit)
+    (set-setting! 'pilot #f 0.0 0)
+    (let ((t9-3 (-> (find-parent-state) code)))
+      (if t9-3
+          ((the-as (function none) t9-3))
+          )
+      )
+    )
+  )
+
+(deftype task-manager-comb-travel (task-manager-tube-ride)
+  ()
+  )
+
+
+(defmethod set-time-limit ((this task-manager-comb-travel))
+  (call-parent-method this)
+  (set! (-> this end-sphere quad)
+        (-> (new 'static 'vector :x 14454784.0 :y -163840.0 :z 607027.2 :w 409600.0) quad)
+        )
+  (set! (-> this end-plane quad) (-> (new 'static 'vector :x 1.0 :w 1.0) quad))
+  (set! (-> this end-plane w) (- (vector-dot (-> this end-plane) (the-as vector (-> this end-sphere)))))
+  (set! (-> this intro-sequence) (the-as basic #t))
+  (set! (-> this intro-sphere quad)
+        (-> (new 'static 'vector :x 1083801.6 :y -81920.0 :z 45056.0 :w 122880.0) quad)
+        )
+  (set! (-> this intro-target quad) (-> this intro-sphere quad))
+  (set! (-> this outro-sequence) (the-as basic #t))
+  (set! (-> this outro-sphere quad)
+        (-> (new 'static 'vector :x 13798605.0 :y -226099.2 :z 614400.0 :w 491520.0) quad)
+        )
+  (set! (-> this outro-target quad)
+        (-> (new 'static 'vector :x 13798605.0 :y -4096000.0 :z 614400.0 :w 1.0) quad)
+        )
+  (set! (-> this outro-target2 quad)
+        (-> (new 'static 'vector :x 13549568.0 :y -225280.0 :z 614400.0 :w 1.0) quad)
+        )
+  (set! (-> this outro-plane2 quad) (-> this end-plane quad))
+  (set! (-> this outro-plane2 w) (- (vector-dot (-> this outro-plane2) (-> this outro-target2))))
+  0
+  (none)
+  )
+
+(defstate complete (task-manager-comb-travel)
+  :virtual #t
+  :code (behavior ()
+    (send-event *target* 'end-mode 'pilot)
+    (send-event (handle->process (-> self player-vehicle)) 'sled-disable)
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 2))
+        (suspend)
+        )
+      )
+    (let ((t9-3 (-> (find-parent-state) code)))
+      (if t9-3
+          ((the-as (function none) t9-3))
+          )
+      )
+    )
+  )
+
+(deftype task-manager-comb-wild-ride (task-manager-tube-ride)
+  ()
+  )
+
+
+(defmethod set-time-limit ((this task-manager-comb-wild-ride))
+  (call-parent-method this)
+  (set! (-> this hp-scale) 2.0)
+  (set! (-> this end-sphere quad)
+        (-> (new 'static 'vector :x 68403.2 :y -14056653.0 :z -3796582.5 :w 409600.0) quad)
+        )
+  (set! (-> this end-plane quad) (-> (new 'static 'vector :x -0.0162 :y -0.3505 :z -0.9364 :w 1.0) quad))
+  (set! (-> this end-plane w) (- (vector-dot (-> this end-plane) (the-as vector (-> this end-sphere)))))
+  (set-blackout-frames (seconds 0.3))
+  0
+  (none)
+  )

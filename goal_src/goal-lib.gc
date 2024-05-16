@@ -273,6 +273,10 @@
   `(define-extern ,function-name (function ,@type-info))
   )
 
+(defmacro def-event-handler (name type)
+  `(define-extern ,name (function process int symbol event-message-block object :behavior ,type))
+  )
+
 (defmacro defun-debug (name bindings &rest body)
   "Define a function which is only present in debug mode. Otherwise the function becomes nothing"
   `(if *debug-segment*
@@ -327,71 +331,98 @@
     )
   )
 
-(defmacro while (test &rest body)
+(defmacro continue (&key (from #f))
+  "Skips the remainder of the current loop iteration. Optionally continue from a labeled loop."
+  `(return-from ,(string->symbol (if from (string-append (symbol->string from) "-continue") "continue")) #f)
+ )
+
+(defmacro break (&key (from #f))
+  "Exits the current loop immediately. Optionally break from a labeled loop."
+  `(return-from ,(string->symbol (if from (string-append (symbol->string from) "-break") "break")) #f)
+ )
+
+(defmacro while (test &key (label #f) &rest body)
   "While loop. The test is evaluated before body."
   (with-gensyms (reloop test-exit)
-    `(begin
-       (goto ,test-exit)
-       (label ,reloop)
-       ,@body
-       (label ,test-exit)
-       (when-goto ,test ,reloop)
-       #f
-       )
+    (let ((break-label    (string->symbol (if label (string-append (symbol->string label) "-break") "break")))
+          (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
+      `(block ,break-label
+        (goto ,test-exit)
+        (label ,reloop)
+        (block ,continue-label
+          ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+        )
+        (label ,test-exit)
+        (when-goto ,test ,reloop)
+        #f
+        )
     )
   )
+)
 
-(defmacro until (test &rest body)
+(defmacro until (test &key (label #f) &rest body)
   "Until loop. The body is evaluated before the test."
   (with-gensyms (reloop)
-    `(begin
-       (label ,reloop)
-       ,@body
-       (when-goto (not ,test) ,reloop)
-       )
+    (let ((break-label    (string->symbol (if label (string-append (symbol->string label) "-break") "break")))
+          (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
+      `(block ,break-label
+        (label ,reloop)
+        (block ,continue-label
+          ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+        )
+        (when-goto (not ,test) ,reloop)
+        )
     )
   )
+)
 
-(defmacro dotimes (var &rest body)
+(defmacro dotimes (var &key (label #f) &rest body)
   "Loop like for (int i = 0; i < end; i++)
    var is a list made up of a variable to bind the amount to (second item), and the remaining forms are evaluated after the loop is finished."
-  `(let (( ,(first var) 0))
-     (while (< ,(first var) ,(second var))
-            ,@body
-            (1+! ,(first var))
-            )
-     ,@(cddr var)
-     )
+  (let ((continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
+    `(let (( ,(first var) 0))
+      (while (< ,(first var) ,(second var)) :label ,label
+              (block ,continue-label
+                ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+              )
+              (1+! ,(first var))
+              )
+      ,@(cddr var)
+      )
   )
+)
 
-(defmacro countdown (var &rest body)
+(defmacro countdown (var &key (label #f) &rest body)
   "Loop like for (int i = end; i-- > 0)"
   `(let ((,(first var) ,(second var)))
-     (while (!= ,(first var) 0)
+     (while (!= ,(first var) 0) :label ,label
        (set! ,(first var) (- ,(first var) 1))
        ,@body
        )
      )
   )
 
-(defmacro loop (&rest body)
+(defmacro loop (&key (label #f) &rest body)
   "Loop this code forever."
-  `(while #t
+  `(while #t :label ,label
       ,@body)
   )
 
-(defmacro doarray (bindings &rest body)
+(defmacro doarray (bindings &key (label #f) &rest body)
   "iterate over an array. usage: (doarray (<array entry name> <array>) <code>)"
 
   (with-gensyms (len i)
   (let ((val (first bindings))
-        (arr (second bindings)))
+        (arr (second bindings))
+        (continue-label (string->symbol (if label (string-append (symbol->string label) "-continue") "continue"))))
 
         `(let* ((,len (-> ,arr length))
                 (,i 0)
                 (,val (-> ,arr ,i)))
-             (while (< ,i ,len)
-                ,@body
+             (while (< ,i ,len) :label ,label
+                (block ,continue-label
+                  ,@(if (null? body) (list `(return-from ,continue-label #f)) body)
+                )
                 (1+! ,i)
                 (set! ,val (-> ,arr ,i))
                 )
@@ -566,8 +597,8 @@
   "Increments a value"
   `(1+ ,val))
 
-(defmacro +! (place amount)
-  `(set! ,place (+ ,place ,amount))
+(defmacro +! (place &rest args)
+  `(set! ,place (+ ,place ,@args))
   )
 
 (defmacro 1+! (place)
@@ -1016,6 +1047,15 @@
       )
   )
 
+(defmacro bitfield->string (enum input)
+  "return the name of an bitfield enum value, assumes `input` is the bit position (with 0 being the right-most bit)"
+
+  `(case (shl 1 ,input)
+      ,@(apply (lambda (x) `(((,enum ,(car x) )) ,(symbol->string (car x) ) )) (reverse (get-enum-vals enum)))
+      (else "*unknown*")
+      )
+  )
+
 (defmacro bit-enum->string (enum input stream)
   "print the enum bits in input to stream"
 
@@ -1034,6 +1074,15 @@
     )
   )
 
+(defmacro string->enum (enum input default)
+  "return the value of an enum name"
+
+  `(case-str ,input
+      ,@(apply (lambda (x) `((,(symbol->string (car x))) (,enum ,(car x)))) (get-enum-vals enum))
+      (else ,default)
+      )
+  )
+
 (defmacro doenum (bindings &rest body)
   "run body while iterating through an enum.
    WARNING: enums are NOT A RUNTIME TYPE! There is an UNWOUND loop with body in it!! Use with caution."
@@ -1042,11 +1091,12 @@
   `(begin ,@(apply (lambda (x)
                       ;; (fmt #t "{}\n" x)
                       `(let (
-                            (,(first bindings) ,(symbol->string (car x))) ;; name
-                            (,(second bindings) ,(cdr x)) ;; value
+                            (,(car bindings) ,(symbol->string (car x))) ;; name
+                            (,(cadr bindings) ,(cdr x)) ;; value
                             )
                         ,@body
-                        )) (get-enum-vals (third bindings))))
+                        )) (get-enum-vals (caddr bindings)))
+                    ,@(cdddr bindings))
 
   )
 
@@ -1162,6 +1212,38 @@
   `(empty)
   )
 
+(defmacro def-tex (tex-name tpage idx)
+  "define a new texture for a tpage. adds it to a global map stored in goos."
+  ;; grab data about the texture
+  (let* ((tpage-string (symbol->string tpage))
+         (tex-name-string tex-name)
+         (tpage-info-lookup (hash-table-try-ref *tpage-info* tpage))
+         (tpage-info-exists (car tpage-info-lookup))
+         (tpage-info (cdr tpage-info-lookup))
+         )
+    ;; no tpage was found, make a new one and add it.
+    (when (not tpage-info-exists)
+      (set! tpage-info (make-string-hash-table))
+      (hash-table-set! *tpage-info* tpage-string tpage-info)
+      )
+    ;; lookup name in our tpage
+    (let* ((tex-name-lookup (hash-table-try-ref tpage-info tex-name-string))
+           (tex-name-exists (car tex-name-lookup))
+           (tex-new (list tex-name idx))) ;; this is the format of the individual entries
+      ;; found, check if valid
+      (if (and tex-name-exists (not (eq? (cdr tex-name-lookup) tex-new)))
+          (fmt #t "error redefining texture. data mismatch: {}\n" tex-new)
+          #f)
+      ;; not found. add to the tpage.
+      (when (not tex-name-exists)
+        (hash-table-set! tpage-info tex-name-string tex-new)
+        )
+      )
+    )
+  `(defconstant ,(string->symbol-format "{}-{}" tex-name tpage)
+     (new 'static 'texture-id :page ,tpage :index ,idx))
+  )
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; built-in type stuff
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1182,5 +1264,9 @@
   ((eq? GAME_VERSION 'jak2)
    (asm-file "goal_src/jak2/compiler-setup.gc")
    (seval (fmt #t "Jak 2 Mode\n"))
+   )
+  ((eq? GAME_VERSION 'jak3)
+   (asm-file "goal_src/jak3/compiler-setup.gc")
+   (seval (fmt #t "Jak 3 Mode\n"))
    )
   )

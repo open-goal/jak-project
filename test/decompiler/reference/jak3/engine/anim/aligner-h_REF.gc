@@ -1,0 +1,57 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type align-control
+(deftype align-control (basic)
+  ((flags        align-flags)
+   (process      process-drawable)
+   (frame-group  art-joint-anim)
+   (frame-num    float)
+   (matrix       matrix      2 :inline)
+   (transform    transform   2 :inline)
+   (delta        transformq  :inline)
+   (last-speed   meters)
+   (align        transformq  :inline :overlay-at (-> transform 0 trans data 0))
+   )
+  (:methods
+    (new (symbol type process) _type_)
+    (compute-alignment! (_type_) transformq)
+    (align! (_type_ align-opts float float float) trsqv)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv)
+    (first-transform (_type_) transform)
+    (second-transform (_type_) transform)
+    )
+  )
+
+;; definition for method 3 of type align-control
+(defmethod inspect ((this align-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tflags: #x~X~%" (-> this flags))
+  (format #t "~1Tprocess: ~A~%" (-> this process))
+  (format #t "~1Tframe-group: ~A~%" (-> this frame-group))
+  (format #t "~1Tframe-num: ~f~%" (-> this frame-num))
+  (format #t "~1Tmatrix[2] @ #x~X~%" (-> this matrix))
+  (format #t "~1Ttransform[2] @ #x~X~%" (-> this transform))
+  (format #t "~1Tdelta: #<transformq @ #x~X>~%" (-> this delta))
+  (format #t "~1Tlast-speed: (meters ~m)~%" (-> this last-speed))
+  (format #t "~1Talign: #<transformq @ #x~X>~%" (-> this transform))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 0 of type align-control
+;; WARN: Return type mismatch object vs align-control.
+(defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? this)
+      (go process-drawable-art-error "memory")
+      (return (the-as align-control 0))
+      )
+    (set! (-> this process) (the-as process-drawable arg0))
+    (the-as align-control this)
+    )
+  )

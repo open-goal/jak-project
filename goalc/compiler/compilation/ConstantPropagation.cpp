@@ -1,3 +1,5 @@
+#include "common/util/string_util.h"
+
 #include "goalc/compiler/Compiler.h"
 
 /*!
@@ -187,13 +189,13 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
       }
 
       // it can either be a global or symbol
-      const auto& global_constant = m_global_constants.find(expanded.as_symbol());
-      const auto& existing_symbol = m_symbol_types.find(expanded.as_symbol());
+      const auto* global_constant = m_global_constants.lookup(expanded.as_symbol());
+      const auto* existing_symbol = m_symbol_types.lookup(expanded.as_symbol());
 
       // see if it's a constant
-      if (global_constant != m_global_constants.end()) {
+      if (global_constant) {
         // check there is no symbol with the same name, this is likely a bug and complain.
-        if (existing_symbol != m_symbol_types.end()) {
+        if (existing_symbol) {
           throw_compiler_error(
               code,
               "Ambiguous symbol: {} is both a global variable and a constant and it "
@@ -201,7 +203,7 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
         }
 
         // got a global constant
-        return try_constant_propagation(global_constant->second, env);
+        return try_constant_propagation(*global_constant, env);
       } else {
         // return to the compiler, we can't figure it out.
         return {expanded, true};
@@ -245,19 +247,43 @@ Compiler::ConstPropResult Compiler::constant_propagation_dispatch(const goos::Ob
 }
 
 s64 Compiler::get_constant_integer_or_error(const goos::Object& in, Env* env) {
-  auto prop = try_constant_propagation(in, env);
+  const auto prop = try_constant_propagation(in, env);
   if (prop.value.is_pair()) {
-    auto head = prop.value.as_pair()->car;
+    const auto& head = prop.value.as_pair()->car;
     if (head.is_symbol()) {
-      auto head_sym = head.as_symbol();
-      auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
+      const auto& head_sym = head.as_symbol();
+      const auto enum_type = m_ts.try_enum_lookup(head_sym.name_ptr);
       if (enum_type) {
+        if (m_settings.check_for_requires) {
+          // Check if the enum has been required or not
+          if (enum_type->m_metadata.definition_info.has_value() &&
+              !env->file_env()->m_missing_required_files.contains(
+                  enum_type->m_metadata.definition_info->filename) &&
+              env->file_env()->m_required_files.find(
+                  enum_type->m_metadata.definition_info->filename) ==
+                  env->file_env()->m_required_files.end() &&
+              !str_util::ends_with(enum_type->m_metadata.definition_info->filename,
+                                   env->file_env()->name() + ".gc")) {
+            lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                     enum_type->m_metadata.definition_info->filename, head_sym.name_ptr);
+            env->file_env()->m_missing_required_files.insert(
+                enum_type->m_metadata.definition_info->filename);
+          }
+        }
         bool success;
-        u64 as_enum =
-            enum_lookup(prop.value, enum_type, prop.value.as_pair()->cdr, false, &success);
+        // TODO - changed false to true so you'd actually once again get a useful error (something
+        // wasn't found in the enum instead of just "cant be used as a constant") Ramifications of
+        // this?
+        const u64 as_enum =
+            enum_lookup(prop.value, enum_type, prop.value.as_pair()->cdr, true, &success);
         if (success) {
           return as_enum;
         }
+      } else {
+        // TODO - provide a meaningful error to using an enum that wasn't defined
+        // is this going to break other things, it looks like currently the `has_side_effects` is
+        // defaulted to `true` so the error below is kinda...by accident?
+        throw_compiler_error(in, "{} is not a defined enum.", head_sym.name_ptr);
       }
     }
   }

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_NACL
+#ifdef SDL_VIDEO_DRIVER_NACL
 
 #include "SDL.h"
 #include "../../events/SDL_events_c.h"
@@ -305,8 +305,7 @@ static Uint8 SDL_NACL_translate_mouse_button(int32_t button) {
     }
 }
 
-static SDL_Scancode
-SDL_NACL_translate_keycode(int keycode)
+static SDL_Scancode SDL_NACL_translate_keycode(int keycode)
 {
     SDL_Scancode scancode = SDL_SCANCODE_UNKNOWN;
 

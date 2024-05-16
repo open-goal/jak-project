@@ -39,7 +39,7 @@ class Matcher {
   static Matcher var_name(const std::string& name);
   static Matcher any_label(int match_id = -1);
   static Matcher reg(Register reg);
-  static inline Matcher s6() { return Matcher::reg(Register(Reg::GPR, Reg::S6)); }
+  static Matcher s6();
   static Matcher op(const GenericOpMatcher& op, const std::vector<Matcher>& args);
   static Matcher func(const Matcher& match, const std::vector<Matcher>& args);
   static Matcher func(const std::string& name, const std::vector<Matcher>& args);
@@ -76,6 +76,8 @@ class Matcher {
   static Matcher let(bool is_star,
                      const std::vector<LetEntryMatcher>& entries,
                      const std::vector<Matcher>& elts);
+  static Matcher unmerged_let(const std::vector<LetEntryMatcher>& entries,
+                              const std::vector<Matcher>& elts);
 
   enum class Kind {
     ANY_REG,     // matching any register
@@ -106,6 +108,7 @@ class Matcher {
     QUOTED_SYMBOL,
     SAME_VAR,
     LET,
+    UNMERGED_LET,
     VAR_NAME,
     INVALID
   };

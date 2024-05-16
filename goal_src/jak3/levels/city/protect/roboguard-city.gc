@@ -5,5 +5,2410 @@
 ;; name in dgo: roboguard-city
 ;; dgos: CTYPESC
 
+;; +++robo-flag
+(defenum robo-flag
+  :type uint16
+  :bitfield #t
+  (r0 0)
+  (r1 1)
+  (r2 2)
+  (r3 3)
+  (r4 4)
+  (r5 5)
+  (r6 6)
+  (r7 7)
+  (r8 8)
+  (r9 9)
+  (r10 10)
+  (r11 11)
+  (r12 12)
+  (r13 13)
+  (r14 14)
+  (r15 15)
+  )
+;; ---robo-flag
+
+
 ;; DECOMP BEGINS
 
+(defskelgroup skel-roboguard-city roboguard-city roboguard-city-lod0-jg roboguard-city-idle0-ja
+              ((roboguard-city-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              :shadow roboguard-city-shadow-mg
+              :origin-joint-index 3
+              )
+
+(define *roboguard-city-debris-params*
+  (new 'static 'debris-static-params
+    :joints (new 'static 'boxed-array :type debris-static-joint-params
+      (new 'static 'debris-static-joint-params :parent-joint-index 15 :group "skel-kg-debris-a")
+      (new 'static 'debris-static-joint-params :parent-joint-index 11 :group "skel-kg-debris-b")
+      (new 'static 'debris-static-joint-params :parent-joint-index 10 :group "skel-kg-debris-d")
+      (new 'static 'debris-static-joint-params :parent-joint-index 13 :group "skel-kg-debris-b")
+      (new 'static 'debris-static-joint-params :parent-joint-index 27 :group "skel-kg-debris-d")
+      (new 'static 'debris-static-joint-params :parent-joint-index 18 :group "skel-kg-debris-a")
+      (new 'static 'debris-static-joint-params :parent-joint-index 6 :group "skel-kg-debris-a")
+      (new 'static 'debris-static-joint-params :parent-joint-index 17 :group "skel-kg-debris-b")
+      (new 'static 'debris-static-joint-params :parent-joint-index 4 :group "skel-kg-debris-c")
+      )
+    )
+  )
+
+(deftype roboguard-city (kg-squad-member)
+  ((los                             los-control          :inline)
+   (rotation-matrix                 matrix               :inline)
+   (me-to-focus-dir                 vector               :inline)
+   (me-to-focus-angle               float)
+   (robo-flags                      robo-flag)
+   (torso-aim-blend                 float)
+   (torso-angle                     float)
+   (torso-seek-speed                float)
+   (torso-to-focus-angle            float)
+   (last-torso-frame-num            float)
+   (stand-angle-threshold           float)
+   (attack-distance                 float)
+   (attack-dist-scalar              float)
+   (fire-time                       time-frame)
+   (last-attack-time                time-frame)
+   (fired-this-time?                symbol)
+   (last-roll-time                  time-frame)
+   (cannot-reach-target?            symbol)
+   (cannot-reach-target-start-time  time-frame)
+   (frustrate-roll-time             time-frame)
+   (target-status                   squad-target-status  :inline)
+   (last-update-chase-pos-time      time-frame)
+   (random-offset-search            float)
+   (pursuit-start-time              time-frame)
+   (dizzy-start-time                time-frame)
+   (roll-sound                      sound-id)
+   )
+  (:state-methods
+    hostile-stand
+    close-attack
+    shoot-attack
+    explode
+    roll-enter
+    roll-exit
+    roll-chase
+    reposition
+    dizzy
+    exit-transport
+    giant-hostile
+    )
+  (:methods
+    (roboguard-city-method-233 (_type_ vector vector) symbol)
+    (fire-shot-from-joint-idx (_type_ int) none)
+    (roboguard-city-method-235 (_type_) int)
+    (roboguard-city-method-236 (_type_) int)
+    (roboguard-city-method-237 (_type_) object)
+    (roboguard-city-method-238 (_type_ symbol) robo-flag)
+    (roboguard-city-method-239 (_type_) robo-flag)
+    (init-draw-params (_type_) none)
+    )
+  )
+
+
+(set! (-> *lightning-spec-id-table* 43) (new 'static 'lightning-spec
+                                          :name "lightning-shock-roboguard-city"
+                                          :flags (lightning-spec-flags lsf0)
+                                          :start-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :end-color (new 'static 'rgba :r #xff :g #xff :b #xff :a #x80)
+                                          :fade-to-color (new 'static 'rgba :r #xbf :b #x8f :a #x5)
+                                          :fade-start-factor 0.2
+                                          :fade-time 15.0
+                                          :texture (new 'static 'texture-id :index #x3f :page #x4)
+                                          :reduction 0.42
+                                          :num-points 8
+                                          :box-size 8192.0
+                                          :merge-factor 0.5
+                                          :merge-count 2
+                                          :radius 819.2
+                                          :duration 90.0
+                                          :sound (static-sound-spec "shock" :group 0)
+                                          )
+      )
+
+(define *roboguard-city-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script #f
+    :idle-anim 4
+    :notice-anim -1
+    :hostile-anim 11
+    :hit-anim 4
+    :knocked-anim 23
+    :knocked-land-anim 24
+    :die-anim -1
+    :die-falling-anim 25
+    :victory-anim 4
+    :jump-wind-up-anim 4
+    :jump-in-air-anim 4
+    :jump-land-anim 4
+    :neck-joint -1
+    :look-at-joint 6
+    :bullseye-joint 4
+    :notice-distance (meters 50)
+    :notice-distance-delta (meters 20)
+    :proximity-notice-distance (meters 30)
+    :default-hit-points 10.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak civilian enemy vehicle-sphere hit-by-others-list player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.5
+    :attack-shove-back (meters 5)
+    :attack-shove-up (meters 3)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 0.5)
+    :jump-height-factor 0.1
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 20480.0
+    :knocked-soft-vxz-hi 28672.0
+    :knocked-soft-vy-lo 36864.0
+    :knocked-soft-vy-hi 45056.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 49152.0
+    :knocked-hard-vxz-hi 57344.0
+    :knocked-hard-vy-lo 49152.0
+    :knocked-hard-vy-hi 57344.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 20480.0
+    :knocked-yellow-vxz-hi 28672.0
+    :knocked-yellow-vy-lo 36864.0
+    :knocked-yellow-vy-hi 40960.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 114688.0
+    :knocked-red-vy-lo 53248.0
+    :knocked-red-vy-hi 69632.0
+    :knocked-blue-vxz-lo 16384.0
+    :knocked-blue-vxz-hi 20480.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :ragdoll-info #f
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 10
+    :turn-anim 3
+    :run-anim 11
+    :taunt-anim -1
+    :run-travel-speed (meters 8)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 30)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 360)
+    :notice-nav-radius (meters 10)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *roboguard-city-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+(defpart 4696
+  :init-specs ((:texture (pal-lightning level-default-sprite))
+    (:birth-func 'birth-func-set-quat)
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:scale-y (meters 40))
+    (:r 128.0 64.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 128.0)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14 left-multiply-quat))
+    )
+  )
+
+(defpart 4697
+  :init-specs ((:texture (glow-hotdot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0 64.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 128.0)
+    (:rotvel-z (degrees 0.3))
+    (:fade-g -1.0666667)
+    (:fade-b -1.0666667)
+    (:fade-a -8.533334)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    )
+  )
+
+(defpart 4698
+  :init-specs ((:texture (glow-hotdot level-default-sprite))
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0 64.0)
+    (:g 128.0 64.0)
+    (:b 128.0 64.0)
+    (:a 128.0)
+    (:rotvel-z (degrees 0.3))
+    (:fade-g -1.0666667)
+    (:fade-b -1.0666667)
+    (:fade-a -8.533334)
+    (:timer (seconds 0.017))
+    (:flags (sp-cpuinfo-flag-2 sp-cpuinfo-flag-3 sp-cpuinfo-flag-14))
+    )
+  )
+
+(defmethod init-enemy-collision! ((this roboguard-city))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 4) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 5))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy los-blocker))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot enemy obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid semi-solid deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-12 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-12 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-12 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-12 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-12 local-sphere) 0.0 6144.0 0.0 6144.0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-14 prim-core collide-with)
+            (collide-spec backgnd jak bot obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-14 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-14 transform-index) 4)
+      (set-vector! (-> v1-14 local-sphere) 0.0 0.0 0.0 6144.0)
+      )
+    (let ((v1-16 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-16 prim-core action) (collide-action))
+      (set! (-> v1-16 transform-index) 11)
+      (set-vector! (-> v1-16 local-sphere) 0.0 0.0 0.0 10240.0)
+      )
+    (let ((v1-18 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-18 prim-core collide-as) (collide-spec los-blocker))
+      (set! (-> v1-18 prim-core action) (collide-action semi-solid))
+      (set-vector! (-> v1-18 local-sphere) 0.0 8192.0 0.0 11468.8)
+      )
+    (set! (-> s5-0 nav-radius) 8192.0)
+    (let ((v1-20 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-20 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-20 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-priority) (the-as uint 8))
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defbehavior roboguard-city-turn-torso-post roboguard-city ()
+  (seek! (-> self torso-aim-blend) 1.0 (* 5.0 (seconds-per-frame)))
+  (let ((v1-3 (joint-node roboguard-city-lod0-jg chest))
+        (gp-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> gp-0 quad) (-> v1-3 bone transform fvec quad))
+    (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> v1-3 bone transform trans))))
+      (set! (-> gp-0 y) 0.0)
+      (set! (-> s5-1 y) 0.0)
+      (vector-xz-normalize! gp-0 1.0)
+      (vector-xz-normalize! s5-1 1.0)
+      (set! (-> self torso-to-focus-angle) (acos (vector-dot gp-0 s5-1)))
+      )
+    )
+  (if (>= 2730.6667 (-> self torso-to-focus-angle))
+      (seek! (-> self torso-seek-speed) 0.0 (* 36408.89 (seconds-per-frame)))
+      (seek! (-> self torso-seek-speed) 21845.334 (* 36408.89 (seconds-per-frame)))
+      )
+  (nav-enemy-simple-post)
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior roboguard-city-turret-code roboguard-city ()
+  (ja-channel-push! 1 (seconds 0.2))
+  (ja-no-eval :group! roboguard-city-idle-shoot0-loop-ja :num! zero)
+  (let ((gp-0 (current-time)))
+    (until (time-elapsed? gp-0 (seconds 0.2))
+      (suspend)
+      )
+    )
+  (let ((gp-1
+          (lambda :behavior process
+            ((arg0 roboguard-city) (arg1 symbol))
+            (quaternion-rotate-y! (-> arg0 root quat) (-> arg0 root quat) (* 20480.0 (seconds-per-frame) (if arg1
+                                                                                                             1.0
+                                                                                                             -1.0
+                                                                                                             )
+                                                                             )
+                                  )
+            )
+          )
+        (f30-0 (-> self stand-angle-threshold))
+        )
+    (until #f
+      (when (< (fabs (-> self me-to-focus-angle)) f30-0)
+        (let ((s5-0 (current-time)))
+          (until (time-elapsed? s5-0 (seconds 0.5))
+            (suspend)
+            )
+          )
+        (while (< (fabs (-> self me-to-focus-angle)) f30-0)
+          (suspend)
+          )
+        )
+      (ja-channel-push! 1 0)
+      (let ((v1-20 (if (< 0.0 (-> self me-to-focus-angle))
+                       6
+                       8
+                       )
+                   )
+            (s5-1 (< 0.0 (-> self me-to-focus-angle)))
+            )
+        (ja-no-eval :group! (-> self draw art-group data v1-20) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (gp-1 self s5-1)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      (when (< (fabs (-> self me-to-focus-angle)) f30-0)
+        (let ((s5-2 (current-time)))
+          (until (time-elapsed? s5-2 (seconds 0.5))
+            (suspend)
+            )
+          )
+        (while (< (fabs (-> self me-to-focus-angle)) f30-0)
+          (suspend)
+          )
+        )
+      (ja-channel-push! 1 0)
+      (let ((v1-40 (if (< 0.0 (-> self me-to-focus-angle))
+                       7
+                       9
+                       )
+                   )
+            (s5-3 (< 0.0 (-> self me-to-focus-angle)))
+            )
+        (ja-no-eval :group! (-> self draw art-group data v1-40) :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (gp-1 self s5-3)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    )
+  #f
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior roboguard-city-idle-code roboguard-city ()
+  (ja-channel-push! 1 (seconds 0.1))
+  (until #f
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 2.0 (rand-vu-float-range 0.1 0.15)) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 2.0 (rand-vu-float-range 0.1 0.15)))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 3.0 (rand-vu-float-range 0.1 0.15)) :frame-num 2.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 3.0 (rand-vu-float-range 0.1 0.15)))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 4.0 (rand-vu-float-range 0.1 0.15)) :frame-num 3.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 4.0 (rand-vu-float-range 0.1 0.15)))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 5.0 (rand-vu-float-range 0.1 0.15)) :frame-num 4.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 5.0 (rand-vu-float-range 0.1 0.15)))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 6.0 (rand-vu-float-range 0.1 0.15)) :frame-num 5.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 6.0 (rand-vu-float-range 0.1 0.15)))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 7.0 0.07) :frame-num 6.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 7.0 0.07))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 8.0 0.07) :frame-num 7.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 8.0 0.07))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 9.0 0.07) :frame-num 8.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 9.0 0.07))
+      )
+    (ja-no-eval :group! roboguard-city-idle0-ja :num! (seek! 10.0 (rand-vu-float-range 0.02 0.05)) :frame-num 9.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! 10.0 (rand-vu-float-range 0.02 0.05)))
+      )
+    )
+  #f
+  (none)
+  )
+
+(defstate wait (roboguard-city)
+  :virtual #t
+  :code roboguard-city-idle-code
+  )
+
+(defstate active (roboguard-city)
+  :virtual #t
+  :trans (behavior ()
+    (nav-enemy-method-181 self)
+    (let ((t9-2 (-> (find-parent-state) trans)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    (let ((gp-0 (get-current-enemy self)))
+      (when gp-0
+        (let* ((s5-0 self)
+               (s4-0 (method-of-object s5-0 enemy-method-70))
+               (s3-0 (handle->process (-> self target-status handle)))
+               )
+          (s4-0
+            s5-0
+            (the-as process-focusable (if (type? s3-0 process-focusable)
+                                          s3-0
+                                          )
+                    )
+            (the-as enemy-aware #f)
+            )
+          )
+        (update-focus self)
+        (set! (-> self target-status handle) (process->handle gp-0))
+        (go-hostile self)
+        )
+      )
+    )
+  )
+
+(defstate idle (roboguard-city)
+  :virtual #t
+  :code sleep-code
+  :post (behavior ()
+    (if (and (nonzero? (-> self draw)) (logtest? (-> self draw status) (draw-control-status on-screen)))
+        (set-time! (-> self last-draw-time))
+        )
+    (update-focus self)
+    (ja-post)
+    )
+  )
+
+(defstate stare (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type kg-squad-member stare) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self stand-angle-threshold) 9102.223)
+    )
+  :code roboguard-city-turret-code
+  :post roboguard-city-turn-torso-post
+  )
+
+(defmethod roboguard-city-method-233 ((this roboguard-city) (arg0 vector) (arg1 vector))
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (set! (-> a1-1 quad) (-> this root trans quad))
+    (set! (-> a1-1 w) (-> this root nav-radius))
+    (when (not (add-root-sphere-to-hash! (-> this nav) a1-1 255))
+      (let* ((s3-0 (new 'stack-no-clear 'vector))
+             (s2-0 (closest-point-on-mesh (-> this nav) s3-0 arg0 (the-as nav-poly #f)))
+             (s4-1 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
+             )
+        (when s2-0
+          (clamp-vector-to-mesh-no-gaps (-> this nav) s3-0 s2-0 arg1 s4-1)
+          (not (-> s4-1 found-boundary))
+          )
+        )
+      )
+    )
+  )
+
+(defstate dizzy (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (break!)
+    (logclear! (-> self focus-status) (focus-status dangerous))
+    (set-time! (-> self state-time))
+    )
+  :exit (behavior ()
+    (if (= (-> self hit-points) 0.0)
+        (go-virtual explode)
+        )
+    )
+  :trans (behavior ()
+    (if (time-elapsed? (-> self dizzy-start-time) (seconds 3))
+        (go-virtual hostile)
+        )
+    (when (time-elapsed? (-> self state-time) (seconds 0.1))
+      (let* ((s5-0 (-> *part-id-table* 160))
+             (gp-0 (get-field-spec-by-id s5-0 (sp-field-id spt-scale-x)))
+             (v1-13 (get-field-spec-by-id s5-0 (sp-field-id spt-scale-y)))
+             )
+        (when (and gp-0 v1-13)
+          (let ((f30-0 (-> gp-0 initial-valuef))
+                (f28-0 (-> gp-0 random-rangef))
+                )
+            (set! (-> gp-0 initial-valuef) (* 0.4 f30-0))
+            (set! (-> gp-0 random-rangef) (* 0.4 f28-0))
+            (let* ((v1-18 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-19 (the-as number (logior #x3f800000 v1-18)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-19)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    10
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-27 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-28 (the-as number (logior #x3f800000 v1-27)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-28)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    14
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-36 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-37 (the-as number (logior #x3f800000 v1-36)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-37)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    8
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-45 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-46 (the-as number (logior #x3f800000 v1-45)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-46)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    12
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-54 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-55 (the-as number (logior #x3f800000 v1-54)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-55)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    19
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-63 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-64 (the-as number (logior #x3f800000 v1-63)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-64)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    22
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-72 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-73 (the-as number (logior #x3f800000 v1-72)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-73)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    18
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (let* ((v1-81 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-82 (the-as number (logior #x3f800000 v1-81)))
+                   )
+              (if (< (+ -1.0 (the-as float v1-82)) 0.1)
+                  (process-drawable-shock-effect
+                    self
+                    (-> *lightning-spec-id-table* 43)
+                    lightning-probe-callback
+                    (-> *part-id-table* 160)
+                    21
+                    0
+                    40960.0
+                    )
+                  )
+              )
+            (set! (-> gp-0 initial-valuef) f30-0)
+            (set! (-> gp-0 random-rangef) f28-0)
+            )
+          )
+        )
+      (set-time! (-> self state-time))
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! roboguard-city-dizzy-ja :num! (seek! max 0.5) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 0.5))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (ja-post)
+    (update-transforms (-> self root))
+    )
+  )
+
+(defstate roll-enter (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (sound-play "robo-roll" :id (-> self roll-sound))
+    (logior! (-> self robo-flags) (robo-flag r2))
+    (logclear! (-> self robo-flags) (robo-flag r3))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! roboguard-city-idle-to-ball-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual roll-chase)
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'collide-query))
+          (gp-0 (-> self root))
+          )
+      (if (find-ground gp-0 a1-0 (-> self enemy-info gnd-collide-with) 8192.0 81920.0 1024.0 (the-as process #f))
+          (set! (-> gp-0 trans y) (-> gp-0 gspot-pos y))
+          )
+      )
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate roll-exit (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :exit (behavior ()
+    (logclear! (-> self robo-flags) (robo-flag r2))
+    (logior! (-> self robo-flags) (robo-flag r7))
+    (set! (-> self attack-dist-scalar) 1.0)
+    (set-time! (-> self last-roll-time))
+    )
+  :trans (behavior ()
+    (sound-stop (-> self roll-sound))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (let ((gp-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans))))
+      (set! (-> gp-1 y) 0.0)
+      (vector-normalize! gp-1 1.0)
+      (ja-no-eval :group! roboguard-city-ball-to-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (quaternion-rotate-y-to-vector!
+          (-> self root quat)
+          (-> self root quat)
+          (the-as quaternion gp-1)
+          (* 32768.0 (seconds-per-frame))
+          )
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (go-virtual hostile-stand)
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'collide-query))
+          (gp-0 (-> self root))
+          )
+      (if (find-ground gp-0 a1-0 (-> self enemy-info gnd-collide-with) 8192.0 81920.0 1024.0 (the-as process #f))
+          (set! (-> gp-0 trans y) (-> gp-0 gspot-pos y))
+          )
+      )
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate roll-chase (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logior! (-> self flags) (citizen-flag in-pursuit))
+    (if (not (logtest? (-> self squad alert-state flags) (squad-alert-flag war)))
+        (logior! (-> self flags) (citizen-flag persistent))
+        )
+    (set! (-> self attack-dist-scalar) 0.5)
+    (let ((v1-9 (-> self nav)))
+      (set! (-> v1-9 acceleration) 16384.0)
+      )
+    0
+    (nav-enemy-method-181 self)
+    (nav-enemy-method-183 self)
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let ((gp-0 (-> self nav state))
+          (v1-19 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+          )
+      (set! (-> gp-0 heading quad) (-> v1-19 quad))
+      )
+    0
+    (let ((gp-1 (-> self nav state))
+          (v1-24 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+          )
+      (set! (-> gp-1 velocity quad) (-> v1-24 quad))
+      )
+    0
+    (set-time! (-> self state-time))
+    (set! (-> self frustrate-roll-time)
+          (the-as time-frame (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 451) 1050))
+          )
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (-> self frustrate-roll-time))
+             (should-check-los? (-> self los) (seconds 0.6))
+             )
+        (go-virtual roll-exit)
+        )
+    (let ((v1-9 (-> self nav)))
+      (set! (-> v1-9 target-speed) 81920.0)
+      )
+    0
+    (let ((v1-11 (-> self nav)))
+      (set! (-> v1-11 turning-acceleration) 20480.0)
+      )
+    0
+    (when (time-elapsed? (-> self last-update-chase-pos-time) (seconds 1))
+      (squad-control-method-31
+        (-> self squad)
+        (-> self move-dest)
+        self
+        (-> self target-status handle)
+        (* 0.5 (-> self attack-distance))
+        (-> self random-offset-search)
+        )
+      (roboguard-city-method-239 self)
+      (set-time! (-> self last-update-chase-pos-time))
+      )
+    (let ((a0-9 (-> self nav state))
+          (v1-25 (-> self move-dest))
+          )
+      (logclear! (-> a0-9 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-9 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-9 target-pos quad) (-> v1-25 quad))
+      )
+    0
+    (when (time-elapsed? (-> self state-time) (-> self reaction-time))
+      (case (roboguard-city-method-235 self)
+        ((2 3)
+         (go-virtual roll-exit)
+         )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja :group! roboguard-city-ball-ja)
+    (until #f
+      (let ((a0-4 (-> self skel root-channel 0)))
+        (let ((f0-0 0.000024414063)
+              (a2-0 (-> self nav state))
+              (v1-7 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> v1-7 quad) (-> a2-0 velocity quad))
+          (set! (-> a0-4 param 0) (* f0-0 (sqrtf (+ (* (-> v1-7 x) (-> v1-7 x)) (* (-> v1-7 z) (-> v1-7 z))))))
+          )
+        (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-loop!)
+        )
+      (suspend)
+      )
+    #f
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defmethod roboguard-city-method-235 ((this roboguard-city))
+  (let ((f30-0 (vector-vector-xz-distance (-> this root trans) (-> this move-dest))))
+    (vector-vector-xz-distance (-> this root trans) (-> this focus-pos))
+    (let ((v1-2 #f)
+          (s5-0 0)
+          )
+      #t
+      (cond
+        ((< 143360.0 f30-0)
+         (set! s5-0 1)
+         )
+        ((< f30-0 8192.0)
+         (set! v1-2 (should-check-los? (-> this los) (seconds 0.6)))
+         )
+        )
+      (cond
+        (v1-2
+          2
+          )
+        ((< 8192.0 f30-0)
+         (roboguard-city-method-238 this #f)
+         (if (and (= s5-0 1)
+                  (logtest? (-> this robo-flags) (robo-flag r10))
+                  (time-elapsed? (-> this last-roll-time) (seconds 1))
+                  )
+             1
+             0
+             )
+         )
+        (else
+          (roboguard-city-method-238 this #t)
+          2
+          )
+        )
+      )
+    )
+  )
+
+(defmethod roboguard-city-method-236 ((this roboguard-city))
+  (local-vars (a0-7 city-attacker-info))
+  (vector-vector-xz-distance (-> this root trans) (-> this move-dest))
+  (let ((f30-0 (vector-vector-xz-distance (-> this root trans) (-> this focus-pos)))
+        (s5-0 (get-focus! this))
+        )
+    (cond
+      ((and (or (< f30-0 (* (-> this attack-distance) (-> this attack-dist-scalar)))
+                (not (time-elapsed? (-> this last-roll-time) (seconds 1)))
+                )
+            (and s5-0
+                 (should-check-los? (-> this los) (seconds 0.6))
+                 (or (logtest? (-> this draw status) (draw-control-status on-screen))
+                     (not (and (-> this attacker-info)
+                               (-> this mission-squad)
+                               (begin (set! a0-7 (get-attacker-at-idx (-> this mission-squad) (-> this attacker-info enemy-index))) a0-7)
+                               (logtest? (-> a0-7 flags) (city-attacker-info-flag cai4))
+                               )
+                          )
+                     )
+                 )
+            )
+       (cond
+         ((< (fabs (-> this torso-to-focus-angle)) 3640.889)
+          (if (>= 24576.0 (vector-vector-xz-distance (-> this root trans) (-> this focus-pos)))
+              4
+              5
+              )
+          )
+         (else
+           2
+           )
+         )
+       )
+      (s5-0
+        (cond
+          ((< f30-0 (* (-> this attack-distance) (-> this attack-dist-scalar)))
+           (roboguard-city-method-238 this #t)
+           (when (logtest? (-> this robo-flags) (robo-flag r8))
+             (squad-control-method-31
+               (-> this squad)
+               (-> this move-dest)
+               this
+               (-> this target-status handle)
+               (* 0.5 (-> this attack-distance))
+               (-> this random-offset-search)
+               )
+             (roboguard-city-method-239 this)
+             (roboguard-city-method-235 this)
+             )
+           )
+          (else
+            (roboguard-city-method-239 this)
+            (let* ((f30-2 65536.0)
+                   (v1-37 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                   (v1-38 (the-as number (logior #x3f800000 v1-37)))
+                   )
+              (set! (-> this random-offset-search) (* f30-2 (+ -1.0 (the-as float v1-38))))
+              )
+            (squad-control-method-31
+              (-> this squad)
+              (-> this move-dest)
+              this
+              (-> this target-status handle)
+              (* 0.5 (-> this attack-distance))
+              (-> this random-offset-search)
+              )
+            (roboguard-city-method-235 this)
+            )
+          )
+        )
+      (else
+        6
+        )
+      )
+    )
+  )
+
+(defstate giant-hostile (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (nav-enemy-method-176 self)
+    (when (-> self nav)
+      (let ((v1-4 (-> self nav)))
+        (set! (-> v1-4 target-speed) (* (-> self speed-scale) (-> self enemy-info run-travel-speed)))
+        )
+      0
+      (let ((v1-6 (-> self nav)))
+        (set! (-> v1-6 turning-acceleration) 32768.0)
+        )
+      0
+      (let ((v1-8 (-> self nav)))
+        (set! (-> v1-8 acceleration) 4096.0)
+        )
+      0
+      (let ((gp-0 (-> self nav state))
+            (v1-12 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+            )
+        (set! (-> gp-0 heading quad) (-> v1-12 quad))
+        )
+      0
+      (let ((gp-1 (-> self nav state))
+            (v1-17 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+            )
+        (set! (-> gp-1 velocity quad) (-> v1-17 quad))
+        )
+      0
+      (let ((v1-20 (-> self nav)))
+        (set! (-> v1-20 max-rotation-rate) 10922.667)
+        )
+      0
+      (logclear! (-> self nav state nav flags) (nav-control-flag limit-rotation-rate))
+      )
+    (nav-enemy-method-181 self)
+    (set! (-> self nav callback-info) *default-nav-callback-info*)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (logior! (-> self nav state nav flags) (nav-control-flag limit-rotation-rate))
+    (let ((gp-0 (-> self nav state))
+          (v1-5 (target-pos 0))
+          )
+      (logclear! (-> gp-0 flags) (nav-state-flag directional-mode))
+      (logior! (-> gp-0 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> gp-0 target-pos quad) (-> v1-5 quad))
+      )
+    0
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info run-anim))) 60)
+    )
+  :post (behavior ()
+    (nav-enemy-method-187 self)
+    )
+  )
+
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+(defstate hostile (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (if (logtest? (-> self robo-flags) (robo-flag r9))
+        (go-virtual giant-hostile)
+        )
+    (nav-enemy-method-176 self)
+    (when (-> self nav)
+      (let ((v1-10 (-> self nav)))
+        (set! (-> v1-10 target-speed) (* (-> self speed-scale) (-> self enemy-info run-travel-speed)))
+        )
+      0
+      (let ((v1-12 (-> self nav)))
+        (set! (-> v1-12 turning-acceleration) 8192.0)
+        )
+      0
+      (let ((v1-14 (-> self nav)))
+        (set! (-> v1-14 acceleration) 4096.0)
+        )
+      0
+      (let ((gp-0 (-> self nav state))
+            (v1-18 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+            )
+        (set! (-> gp-0 heading quad) (-> v1-18 quad))
+        )
+      0
+      (let ((gp-1 (-> self nav state))
+            (v1-23 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+            )
+        (set! (-> gp-1 velocity quad) (-> v1-23 quad))
+        )
+      0
+      )
+    (nav-enemy-method-181 self)
+    (set-time! (-> self state-time))
+    (set! (-> self attack-dist-scalar) 0.75)
+    )
+  :exit (behavior ()
+    (set! (-> self attack-dist-scalar) 1.0)
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type kg-squad-member hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (roboguard-city-method-235 self)))
+      (cond
+        ((= v1-5 1)
+         (cond
+           ((time-elapsed? (-> self last-roll-time) (seconds 1))
+            (go-virtual roll-enter)
+            )
+           ((should-check-los? (-> self los) (seconds 0.6))
+            (go-virtual shoot-attack)
+            )
+           )
+         )
+        ((= v1-5 2)
+         (if (time-elapsed? (-> self state-time) (-> self reaction-time))
+             (go-virtual hostile-stand)
+             )
+         )
+        ((= v1-5 3)
+         (go-virtual reposition)
+         )
+        ((zero? v1-5)
+         (if (time-elapsed? (-> self state-time) (seconds 2))
+             (go-virtual hostile-stand)
+             )
+         )
+        )
+      )
+    (logior! (-> self enemy-flags) (enemy-flag vulnerable))
+    )
+  :code (behavior ()
+    (citizen-travel-anim (the-as int (-> self draw art-group data (-> self enemy-info run-anim))) 60)
+    )
+  :post (behavior ()
+    (seek! (-> self torso-aim-blend) 0.0 (seconds-per-frame))
+    (let ((v1-1 (-> self move-dest))
+          (a0-2 (-> self nav state))
+          )
+      (logclear! (-> a0-2 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-2 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-2 target-pos quad) (-> v1-1 quad))
+      )
+    0
+    (nav-enemy-method-187 self)
+    )
+  )
+
+(defstate hostile-stand (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set! (-> self stand-angle-threshold) 9102.223)
+    (nav-enemy-method-180 self 8192.0 (the-as float #f))
+    (set! (-> self attack-dist-scalar) 2.0)
+    )
+  :exit (behavior ()
+    (nav-enemy-method-179 self)
+    (set! (-> self attack-dist-scalar) 1.0)
+    )
+  :trans (behavior ()
+    (let ((v1-1 (roboguard-city-method-236 self)))
+      (cond
+        ((= v1-1 4)
+         (go-virtual close-attack)
+         )
+        ((= v1-1 5)
+         (go-virtual shoot-attack)
+         )
+        ((= v1-1 1)
+         (go-virtual roll-enter)
+         )
+        ((zero? v1-1)
+         (if (time-elapsed? (-> self state-time) (-> self reaction-time))
+             (go-virtual hostile)
+             )
+         )
+        )
+      )
+    )
+  :code roboguard-city-turret-code
+  :post roboguard-city-turn-torso-post
+  )
+
+(defstate reposition (roboguard-city)
+  :virtual #t
+  :parent (roboguard-city hostile-stand)
+  )
+
+(defstate close-attack (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set-time! (-> self fire-time))
+    (nav-enemy-method-180 self 12288.0 (the-as float #f))
+    (let* ((v1-6 *game-info*)
+           (v0-1 (+ (-> v1-6 attack-id) 1))
+           )
+      (set! (-> v1-6 attack-id) v0-1)
+      (set! (-> self persistent-attack-id) v0-1)
+      )
+    )
+  :exit (behavior ()
+    (nav-enemy-method-179 self)
+    (logclear! (-> self robo-flags) (robo-flag r7))
+    (logclear! (-> self focus-status) (focus-status dangerous))
+    )
+  :trans (behavior ()
+    (when #t
+      (let ((s5-0 (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 2)))
+        (when (logtest? (-> s5-0 prim-core action) (collide-action deadly))
+          (let ((gp-0 (new 'stack 'sphere)))
+            (set! (-> gp-0 quad) (-> s5-0 prim-core world-sphere quad))
+            (let ((s5-1 (new 'stack-no-clear 'array 'collide-shape 384)))
+              (countdown (s4-0 (fill-actor-list-for-box *actor-hash* gp-0 s5-1 384))
+                (let* ((s3-0 (-> s5-1 s4-0))
+                       (v1-12 (if (type? s3-0 collide-shape)
+                                  s3-0
+                                  )
+                              )
+                       )
+                  (when v1-12
+                    (let* ((s2-0 (-> v1-12 process))
+                           (s3-1 (if (type? s2-0 process-focusable)
+                                     s2-0
+                                     )
+                                 )
+                           )
+                      (when s3-1
+                        (if (and (!= *target* s3-1)
+                                 (!= self s3-1)
+                                 (not (focus-test? (the-as process-focusable s3-1) disable dead inactive))
+                                 (logtest? (process-mask crate guard vehicle civilian metalhead) (-> s3-1 mask))
+                                 (let ((f0-0 (vector-vector-xz-distance-squared gp-0 (get-trans (the-as process-focusable s3-1) 3)))
+                                       (f1-0 10240.0)
+                                       )
+                                   (< f0-0 (* f1-0 f1-0))
+                                   )
+                                 )
+                            (send-attack self s3-1 (the-as touching-shapes-entry #f) (-> self persistent-attack-id))
+                            )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            (let* ((s4-1 *target*)
+                   (s5-2 (if (type? s4-1 process-focusable)
+                             s4-1
+                             )
+                         )
+                   )
+              (when (and s5-2 (< (vector-vector-distance (get-trans s5-2 0) gp-0) (-> gp-0 r)))
+                (if (and (!= *target* s5-2)
+                         (!= self s5-2)
+                         (not (focus-test? s5-2 disable dead inactive))
+                         (logtest? (process-mask crate guard vehicle civilian metalhead) (-> s5-2 mask))
+                         (let ((f0-2 (vector-vector-xz-distance-squared gp-0 (get-trans s5-2 3)))
+                               (f1-4 10240.0)
+                               )
+                           (< f0-2 (* f1-4 f1-4))
+                           )
+                         )
+                    (send-attack self s5-2 (the-as touching-shapes-entry #f) (-> self persistent-attack-id))
+                    )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((f30-0
+            (lerp-scale 0.0 1.0 (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 12288.0 20480.0)
+            )
+          )
+      (ja-channel-push! 2 (seconds 0.3))
+      (ja-no-eval :group! roboguard-city-punch-close-rotate-ja :num! (seek!) :frame-num 0.0)
+      (ja-no-eval :chan 1 :group! roboguard-city-punch-far-rotate-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
+        (seek-to-point-toward-point!
+          (-> self root)
+          (-> self focus-pos)
+          (* 1.2 (-> self nav max-rotation-rate))
+          (seconds 0.02)
+          )
+        (seek! (-> self torso-aim-blend) 0.0 (* 3.0 (seconds-per-frame)))
+        (suspend)
+        (ja :num! (seek! max 0.5))
+        )
+      (let ((f28-0 8192.0))
+        (let* ((a0-10 (-> self root root-prim))
+               (v1-53 (-> (the-as collide-shape-prim-group a0-10) child 2))
+               )
+          (+! (-> a0-10 local-sphere w) f28-0)
+          (set! (-> v1-53 prim-core action) (collide-action solid deadly))
+          (set! (-> v1-53 prim-core collide-as) (collide-spec enemy))
+          (set! (-> v1-53 prim-core collide-with)
+                (collide-spec jak bot civilian enemy obstacle hit-by-others-list player-list)
+                )
+          )
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (ja-no-eval :group! roboguard-city-punch-close-go-ja :num! (seek!) :frame-num 0.0)
+        (ja-no-eval :chan 1 :group! roboguard-city-punch-far-go-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        (set! (-> (the-as collide-shape-prim-group (-> self root root-prim)) child 2 prim-core action)
+              (collide-action)
+              )
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        (ja-no-eval :group! roboguard-city-punch-close-hold-ja :num! (seek!) :frame-num 0.0)
+        (ja-no-eval :chan 1 :group! roboguard-city-punch-far-hold-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (ja :chan 1 :num! (chan 0) :frame-interp0 f30-0 :frame-interp1 f30-0)
+          (suspend)
+          (ja :num! (seek! max 0.75))
+          )
+        (let* ((v1-147 (the-as collide-shape-prim-group (-> self root root-prim)))
+               (a0-26 (-> v1-147 child 2))
+               )
+          (set! (-> v1-147 local-sphere w) (- (-> v1-147 local-sphere w) f28-0))
+          (set! (-> a0-26 prim-core collide-as) (collide-spec))
+          (set! (-> a0-26 prim-core collide-with) (collide-spec))
+          )
+        )
+      )
+    0
+    (go-virtual hostile-stand)
+    )
+  :post nav-enemy-simple-post
+  )
+
+(defstate shoot-attack (roboguard-city)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set! (-> self fired-this-time?) #f)
+    (set-time! (-> self state-time))
+    (set-time! (-> self fire-time))
+    (set! (-> self last-torso-frame-num) 0.0)
+    (set! (-> self stand-angle-threshold) 16384.0)
+    (nav-enemy-method-180 self 8192.0 (the-as float #f))
+    (nav-enemy-method-181 self)
+    )
+  :exit (behavior ()
+    (when (> (-> self skel float-channels) 0)
+      (let ((a0-1 (joint-control-method-12 (-> self skel) 0)))
+        (joint-channel-float-delete! a0-1)
+        )
+      )
+    (logclear! (-> self robo-flags) (robo-flag r7))
+    (set! (-> self fired-this-time?) #f)
+    (nav-enemy-method-179 self)
+    )
+  :trans (behavior ()
+    (when (and (time-elapsed? (-> self fire-time) (seconds 0.6)) (zero? (-> self skel float-channels)))
+      (when (and (time-elapsed? (-> self state-time) (-> self reaction-time)) (-> self fired-this-time?))
+        (let ((v1-12 (roboguard-city-method-236 self)))
+          (cond
+            ((= v1-12 4)
+             (go-virtual close-attack)
+             )
+            ((= v1-12 1)
+             (go-virtual roll-enter)
+             )
+            ((= v1-12 6)
+             (go-virtual hostile-stand)
+             )
+            ((zero? v1-12)
+             (go-virtual hostile)
+             )
+            )
+          )
+        )
+      (let ((v1-28 (ja-channel-float! (the-as art-joint-anim roboguard-city-idle-shoot0-loop-ja) 0.0 0.0 0.0)))
+        (when v1-28
+          (set! (-> self skel interp-select 0) #x13bb8)
+          (set! (-> self skel interp-select 1) 0)
+          (set! (-> v1-28 param 0) 1.0)
+          (set! (-> v1-28 param 1) 1.0)
+          (set! (-> v1-28 param 2) 2.0)
+          (set! (-> v1-28 num-func) num-func-interp1-play!)
+          )
+        )
+      (set-time! (-> self fire-time))
+      )
+    (let ((gp-0 (joint-control-method-12 (-> self skel) 0)))
+      (when gp-0
+        (let ((f1-0 (-> gp-0 frame-num))
+              (f0-3 (-> self last-torso-frame-num))
+              )
+          (cond
+            ((and (< 0.0 f1-0) (>= 0.0 f0-3))
+             (fire-shot-from-joint-idx self 11)
+             )
+            ((and (< 3.0 f1-0) (>= 3.0 f0-3))
+             (fire-shot-from-joint-idx self 15)
+             )
+            )
+          )
+        (set! (-> self last-torso-frame-num) (-> gp-0 frame-num))
+        )
+      )
+    )
+  :code roboguard-city-turret-code
+  :post roboguard-city-turn-torso-post
+  )
+
+(defstate knocked (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logclear! (-> self robo-flags) (robo-flag r7))
+    (logclear! (-> self robo-flags) (robo-flag r2))
+    (let ((gp-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))))
+      (set! (-> gp-0 y) 0.0)
+      (vector-normalize! gp-0 1.0)
+      (quaternion-look-at! (-> self root quat) gp-0 *up-vector*)
+      )
+    (when (and (< 0.0 (-> self hit-points)) (logtest? (-> self draw status) (draw-control-status on-screen)) #f)
+      (let* ((s5-0 (-> *part-id-table* 160))
+             (gp-1 (get-field-spec-by-id s5-0 (sp-field-id spt-scale-x)))
+             (v1-19 (get-field-spec-by-id s5-0 (sp-field-id spt-scale-y)))
+             )
+        (when (and gp-1 v1-19)
+          (let ((f30-0 (-> gp-1 initial-valuef))
+                (f28-0 (-> gp-1 random-rangef))
+                )
+            (set! (-> gp-1 initial-valuef) (* 0.4 f30-0))
+            (set! (-> gp-1 random-rangef) (* 0.4 f28-0))
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              10
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              14
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              8
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              12
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              19
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              22
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              18
+              0
+              40960.0
+              )
+            (process-drawable-shock-effect
+              self
+              (-> *lightning-spec-id-table* 43)
+              lightning-probe-callback
+              (-> *part-id-table* 160)
+              21
+              0
+              40960.0
+              )
+            (set! (-> gp-1 initial-valuef) f30-0)
+            (set! (-> gp-1 random-rangef) f28-0)
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defmethod go-die ((this roboguard-city))
+  (go (method-of-object this explode))
+  )
+
+(defstate knocked-recover (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-1 (-> (find-parent-state) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type kg-squad-member knocked-recover) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (enemy-method-109 self)
+        (go-die self)
+        (go-hostile self)
+        )
+    )
+  )
+
+(defmethod go-hostile ((this roboguard-city))
+  (local-vars (v1-3 enemy-flag) (v1-5 enemy-flag))
+  (logior! (-> this enemy-flags) (enemy-flag vulnerable))
+  (let ((v1-2 (-> this enemy-flags)))
+    (if (logtest? v1-2 (enemy-flag attackable-backup))
+        (set! v1-3 (logior v1-2 (enemy-flag attackable)))
+        (set! v1-3 (logclear v1-2 (enemy-flag attackable)))
+        )
+    )
+  (set! (-> this enemy-flags) v1-3)
+  (let ((v1-4 (-> this enemy-flags)))
+    (if (logtest? (enemy-flag trackable-backup) v1-4)
+        (set! v1-5 (logior (enemy-flag trackable) v1-4))
+        (set! v1-5 (logclear v1-4 (enemy-flag trackable)))
+        )
+    )
+  (set! (-> this enemy-flags) v1-5)
+  (cond
+    ((handle->process (-> this focus handle))
+     (logior! (-> this flags) (citizen-flag hostile))
+     (go (method-of-object this hostile))
+     )
+    (else
+      (go (method-of-object this active))
+      )
+    )
+  )
+
+(defstate die (roboguard-city)
+  :virtual #t
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.075))
+    (go-virtual explode)
+    )
+  )
+
+(defstate explode (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (sound-play "robo-explode")
+    (let ((v1-2 (-> self root root-prim)))
+      (set! (-> v1-2 prim-core collide-as) (collide-spec))
+      (set! (-> v1-2 prim-core collide-with) (collide-spec))
+      )
+    0
+    (logior! (-> self draw status) (draw-control-status no-draw))
+    (drop-pickup (-> self fact) #t *entity-pool* (-> self fact) 0 #f)
+    )
+  :code (behavior ()
+    (let ((v1-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node roboguard-city-lod0-jg chest))))
+      (cond
+        ((logtest? (-> *part-group-id-table* 219 flags) (sp-group-flag sp13))
+         (set! (-> *launch-matrix* trans quad) (-> v1-1 quad))
+         (part-tracker-spawn part-tracker-subsampler :to self :group (-> *part-group-id-table* 219))
+         )
+        (else
+          (set! (-> *launch-matrix* trans quad) (-> v1-1 quad))
+          (part-tracker-spawn part-tracker :to self :group (-> *part-group-id-table* 219))
+          )
+        )
+      )
+    (when (kg-squad-member-method-220 self)
+      (let ((v1-32 (new 'stack 'debris-tuning (the-as uint 1))))
+        (set! (-> v1-32 hit-xz-reaction) 0.95)
+        (set! (-> v1-32 hit-y-reaction) 0.6)
+        (set! (-> v1-32 fountain-rand-transv-lo quad) (-> self incoming attack-position quad))
+        )
+      )
+    (cleanup-for-death self)
+    )
+  )
+
+(deftype roboguard-shot (guard-shot)
+  ()
+  )
+
+
+(defmethod play-impact-sound ((this roboguard-shot) (arg0 projectile-options))
+  (let ((v1-0 arg0))
+    (cond
+      ((zero? v1-0)
+       (sound-play "robo-fire")
+       )
+      ((= v1-0 (projectile-options po0))
+       (sound-play "guard-shot-hit")
+       )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch (pointer process) vs (pointer roboguard-shot).
+(defun spawn-roboguard-projectile ((arg0 roboguard-city) (arg1 vector) (arg2 vector) (arg3 float) (arg4 vector))
+  (let ((gp-0 (new 'stack-no-clear 'projectile-init-by-other-params)))
+    (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) arg2 arg1)))
+      (set! (-> gp-0 ent) (-> arg0 entity))
+      (set! (-> gp-0 charge) 1.0)
+      (set! (-> gp-0 options) (projectile-options))
+      (logclear! (-> gp-0 options) (projectile-options po14 po15 po16))
+      (set! (-> gp-0 notify-handle) (process->handle arg0))
+      (set! (-> gp-0 owner-handle) (the-as handle #f))
+      (set! (-> gp-0 target-handle) (the-as handle #f))
+      (set! (-> gp-0 target-pos quad) (the-as uint128 0))
+      (set! (-> gp-0 ignore-handle) (process->handle arg0))
+      (let* ((a0-13 *game-info*)
+             (a2-12 (+ (-> a0-13 attack-id) 1))
+             )
+        (set! (-> a0-13 attack-id) a2-12)
+        (set! (-> gp-0 attack-id) a2-12)
+        )
+      (set! (-> gp-0 timeout) (seconds 4))
+      (set! (-> gp-0 damage) 1.0)
+      (logior! (-> gp-0 options) (projectile-options po14))
+      (set! (-> gp-0 vehicle-damage-factor) 2.0)
+      (logior! (-> gp-0 options) (projectile-options po15))
+      (set! (-> gp-0 vehicle-impulse-factor) 2.0)
+      (logior! (-> gp-0 options) (projectile-options po16))
+      (if arg4
+          (set! (-> gp-0 pos quad) (-> arg4 quad))
+          (set! (-> gp-0 pos quad) (-> arg1 quad))
+          )
+      (vector-normalize-copy! (-> gp-0 vel) v1-1 arg3)
+      )
+    (the-as (pointer roboguard-shot) (spawn-projectile roboguard-shot gp-0 arg0 *default-dead-pool*))
+    )
+  )
+
+(defmethod fire-shot-from-joint-idx ((this roboguard-city) (arg0 int))
+  (let ((s5-0 (vector<-cspace! (new 'stack-no-clear 'vector) (-> this node-list data arg0)))
+        (s4-0 (-> this rotation-matrix fvec))
+        )
+    (set! (-> s4-0 y) 0.0)
+    (let ((f0-1 (vector-vector-xz-distance s5-0 (-> this focus-pos))))
+      (vector-normalize! s4-0 f0-1)
+      )
+    (set! (-> s4-0 y) (- (-> this focus-pos y) (-> s5-0 y)))
+    (vector-normalize! s4-0 40960.0)
+    (vector-rotate-around-y! s4-0 s4-0 (-> this torso-angle))
+    (spawn-roboguard-projectile
+      this
+      s5-0
+      (vector+! (new 'stack-no-clear 'vector) s5-0 s4-0)
+      819200.0
+      (the-as vector #f)
+      )
+    )
+  (set! (-> this fired-this-time?) #t)
+  0
+  (none)
+  )
+
+(defmethod knocked-anim ((this roboguard-city) (arg0 enemy-knocked-info))
+  (ja-channel-push! 1 0)
+  (let ((v1-0 #t))
+    (case (-> this incoming knocked-type)
+      (((knocked-type none) (knocked-type mech-punch) (knocked-type yellow-shot) (knocked-type blue-shot))
+       (set! v1-0 #f)
+       )
+      )
+    (if (logtest? (-> this robo-flags) (robo-flag r2))
+        (set! v1-0 #t)
+        )
+    (cond
+      (v1-0
+        (let ((a0-10 (-> this skel root-channel 0)))
+          (set! (-> a0-10 frame-group) (the-as art-joint-anim (-> this draw art-group data 25)))
+          (set! (-> a0-10 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 25)) frames num-frames) -1))
+                )
+          (set! (-> a0-10 param 1) (-> arg0 anim-speed))
+          (set! (-> a0-10 frame-num) 0.0)
+          (joint-control-channel-group! a0-10 (the-as art-joint-anim (-> this draw art-group data 25)) num-func-seek!)
+          )
+        )
+      (else
+        (let ((a0-11 (-> this skel root-channel 0)))
+          (set! (-> a0-11 frame-group) (the-as art-joint-anim (-> this draw art-group data 23)))
+          (set! (-> a0-11 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 23)) frames num-frames) -1))
+                )
+          (set! (-> a0-11 param 1) (-> arg0 anim-speed))
+          (set! (-> a0-11 frame-num) 0.0)
+          (joint-control-channel-group! a0-11 (the-as art-joint-anim (-> this draw art-group data 23)) num-func-seek!)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+(defmethod knocked-land-anim ((this roboguard-city) (arg0 enemy-knocked-info))
+  (let ((v1-0 #t))
+    (case (-> this incoming knocked-type)
+      (((knocked-type none) (knocked-type mech-punch) (knocked-type yellow-shot) (knocked-type blue-shot))
+       (set! v1-0 #f)
+       )
+      )
+    (if (logtest? (-> this robo-flags) (robo-flag r2))
+        (set! v1-0 #t)
+        )
+    (cond
+      (v1-0
+        (let ((v1-3 (-> this skel root-channel 0)))
+          (set! (-> v1-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 26)))
+          (set! (-> v1-3 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 26)) frames num-frames) -1))
+                )
+          (set! (-> v1-3 param 1) (-> arg0 anim-speed))
+          (set! (-> v1-3 frame-num) 0.0)
+          (joint-control-channel-group! v1-3 (the-as art-joint-anim (-> this draw art-group data 26)) num-func-seek!)
+          )
+        )
+      (else
+        (let ((v1-7 (-> this skel root-channel 0)))
+          (set! (-> v1-7 frame-group) (the-as art-joint-anim (-> this draw art-group data 24)))
+          (set! (-> v1-7 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 24)) frames num-frames) -1))
+                )
+          (set! (-> v1-7 param 1) (-> arg0 anim-speed))
+          (set! (-> v1-7 frame-num) 0.0)
+          (joint-control-channel-group! v1-7 (the-as art-joint-anim (-> this draw art-group data 24)) num-func-seek!)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+(defmethod event-handler ((this roboguard-city) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('attack)
+     (set-time! (-> this pursuit-start-time))
+     (logior! (-> this flags) (citizen-flag in-pursuit))
+     (if (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
+         (logior! (-> this flags) (citizen-flag persistent))
+         )
+     ((method-of-type kg-squad-member event-handler) this arg0 arg1 arg2 arg3)
+     )
+    (('hit 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (cond
+       ((or (= (-> this hit-points) 0.0)
+            (and (>= 1.0 (-> this hit-points)) (= (-> this incoming knocked-type) (knocked-type blue-shot)))
+            )
+        (on-dying this)
+        (go (method-of-object this explode))
+        )
+       (else
+         (go (method-of-object this knocked))
+         )
+       )
+     #t
+     )
+    (else
+      ((method-of-type kg-squad-member event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs process.
+(defmethod update-focus ((this roboguard-city))
+  (the-as process 0)
+  )
+
+(defmethod enemy-common-post ((this roboguard-city))
+  (roboguard-city-method-237 this)
+  (let ((s5-0 (the-as process-focusable (handle->process (-> this focus handle)))))
+    (when s5-0
+      (set! (-> this focus-pos quad) (-> (get-trans s5-0 3) quad))
+      (los-control-method-9 (-> this los) s5-0 (-> this focus-pos) 819.2 4096.0)
+      )
+    )
+  (vector-! (-> this me-to-focus-dir) (-> this focus-pos) (-> this root trans))
+  (set! (-> this me-to-focus-dir y) 0.0)
+  (vector-xz-normalize! (-> this me-to-focus-dir) 1.0)
+  (let* ((a1-6 (-> this rotation-matrix fvec))
+         (s5-1 (-> this rotation-matrix))
+         (f0-1 (vector-vector-angle-safe (-> this me-to-focus-dir) a1-6))
+         )
+    (if (< (vector-dot (-> this me-to-focus-dir) (the-as vector s5-1)) 0.0)
+        (set! f0-1 (* -1.0 f0-1))
+        )
+    (set! (-> this me-to-focus-angle) f0-1)
+    )
+  (if (= (-> this faction-mode) 1)
+      (logclear! (-> this flags) (citizen-flag persistent))
+      )
+  (when (logtest? (-> this robo-flags) (robo-flag r8))
+    (squad-control-method-31
+      (-> this squad)
+      (-> this move-dest)
+      this
+      (-> this target-status handle)
+      (* 0.5 (-> this attack-distance))
+      (-> this random-offset-search)
+      )
+    (roboguard-city-method-239 this)
+    )
+  (cond
+    ((logtest? (-> this robo-flags) (robo-flag r2))
+     (let ((s5-3 (vector-! (new 'stack-no-clear 'vector) (math-camera-pos) (-> this root trans))))
+       (set! (-> s5-3 y) 0.0)
+       (vector-normalize! s5-3 1.0)
+       (let ((a1-9 (-> this nav state))
+             (v1-35 (new 'stack-no-clear 'vector))
+             )
+         (set! (-> v1-35 quad) (-> a1-9 heading quad))
+         0.0
+         (let* ((f0-8 (vector-dot s5-3 v1-35))
+                (f0-9 (+ 1.0 f0-8))
+                (f0-10 (* 0.5 f0-9))
+                (f0-11 (lerp -0.2 0.0 f0-10))
+                )
+           (sound-play-by-name
+             (static-sound-name "robo-roll")
+             (-> this roll-sound)
+             1024
+             (the int (* 1524.0 f0-11))
+             0
+             (sound-group)
+             #t
+             )
+           )
+         )
+       )
+     )
+    (else
+      (sound-stop (-> this roll-sound))
+      )
+    )
+  (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
+  ((method-of-type kg-squad-member enemy-common-post) this)
+  (none)
+  )
+
+(defmethod deactivate ((this roboguard-city))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (sound-stop (-> this roll-sound))
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod coin-flip? ((this roboguard-city))
+  #f
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defmethod init-draw-params ((this roboguard-city))
+  (logior! (-> this robo-flags) (robo-flag r9))
+  (setup-masks (-> this draw) -1 0)
+  (set-vector! (-> this draw color-mult) 0.0 0.0 0.1 1.0)
+  (set-vector! (-> this draw color-emissive) 0.1 0.5 0.5 1.5)
+  (set-vector! (-> this root scale) 4.0 4.0 4.0 1.0)
+  (none)
+  )
+
+;; WARN: Return type mismatch focus-status vs none.
+(defmethod citizen-method-194 ((this roboguard-city))
+  (local-vars (a0-21 int))
+  (set! (-> this kg-type) (the-as uint 6))
+  (call-parent-method this)
+  (set! (-> this fired-this-time?) #f)
+  (set! (-> this dizzy-start-time) 0)
+  (set! (-> this target-status handle) (the-as handle #f))
+  (set! (-> this robo-flags) (robo-flag))
+  (set! (-> this cannot-reach-target?) #f)
+  (set! (-> this cannot-reach-target-start-time) 0)
+  (let* ((f30-0 65536.0)
+         (v1-3 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-4 (the-as number (logior #x3f800000 v1-3)))
+         )
+    (set! (-> this random-offset-search) (* f30-0 (+ -1.0 (the-as float v1-4))))
+    )
+  (logior! (-> this robo-flags) (robo-flag r10))
+  (set! (-> this torso-aim-blend) 0.0)
+  (set! (-> this torso-angle) 0.0)
+  (set! (-> this torso-seek-speed) 0.0)
+  (set! (-> this torso-to-focus-angle) 0.0)
+  (let* ((v1-9 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+         (v1-10 (the-as number (logior #x3f800000 v1-9)))
+         (f0-10 (+ -1.0 (the-as float v1-10)))
+         )
+    (cond
+      ((< f0-10 0.1)
+       (set! (-> this fact pickup-type) (pickup-type eco-pill-light))
+       (set! (-> this fact pickup-amount) 1.0)
+       (set! (-> this fact pickup-spawn-amount) 1.0)
+       )
+      ((< f0-10 0.26)
+       (set! (-> this fact pickup-type) (pickup-type health))
+       (set! (-> this fact pickup-amount) 1.0)
+       (set! (-> this fact pickup-spawn-amount) 1.0)
+       )
+      (else
+        (set! (-> this fact pickup-type) (pickup-type ammo-random))
+        (set! (-> this fact pickup-amount) 10.0)
+        (set! (-> this fact pickup-spawn-amount) 1.0)
+        )
+      )
+    )
+  (set! (-> this attack-distance) (rnd-float-range this 49152.0 106496.0))
+  (set! (-> this attack-dist-scalar) 1.0)
+  (set! (-> this last-attack-time) 0)
+  (let ((v1-37 (+ (mod (the-as int (rand-uint31-gen *random-generator*)) 3) 2))
+        (s5-0 0)
+        )
+    0
+    (let* ((a0-15 10)
+           (s3-0 0)
+           (s4-0 (+ a0-15 -3))
+           )
+      (dotimes (a0-16 v1-37)
+        (set! s3-0 (logior s3-0 (ash 1 a0-16)))
+        )
+      (dotimes (s2-0 s4-0)
+        (let ((a0-18 (mod (the-as int (rand-uint31-gen *random-generator*)) s4-0))
+              (a1-5 (logtest? s3-0 (ash 1 s2-0)))
+              )
+          (let ((v1-45 (logtest? s3-0 (ash 1 a0-18))))
+            (if a1-5
+                (set! a0-21 (logior s3-0 (ash 1 a0-18)))
+                (set! a0-21 (logclear s3-0 (ash 1 a0-18)))
+                )
+            (if v1-45
+                (set! s3-0 (logior a0-21 (ash 1 s2-0)))
+                (set! s3-0 (logclear a0-21 (ash 1 s2-0)))
+                )
+            )
+          )
+        )
+      (let ((v1-55 0))
+        (dotimes (a0-25 s4-0)
+          (while (or (= v1-55 0) (= v1-55 1) (= v1-55 4))
+            (+! v1-55 1)
+            )
+          (if (logtest? s3-0 (ash 1 a0-25))
+              (set! s5-0 (logior s5-0 (ash 1 v1-55)))
+              )
+          (+! v1-55 1)
+          )
+        )
+      )
+    (let* ((f30-1 0.2)
+           (v1-60 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-61 (the-as number (logior #x3f800000 v1-60)))
+           (f0-21 (+ -1.0 (the-as float v1-61)))
+           )
+      (cond
+        ((< f0-21 (* 0.5 f30-1))
+         (set! s5-0 (logior s5-0 2))
+         )
+        ((< f0-21 f30-1)
+         (set! s5-0 (logior s5-0 16))
+         )
+        )
+      )
+    (setup-masks (-> this draw) -1 0)
+    (setup-masks (-> this draw) 0 s5-0)
+    )
+  (logclear! (-> this focus-status) (focus-status dangerous))
+  (none)
+  )
+
+(defmethod init-enemy! ((this roboguard-city))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-roboguard-city" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this roll-sound) (new-sound-id))
+  (set! (-> this enemy-flags)
+        (the-as enemy-flag (logior (enemy-flag no-initial-move-to-ground) (-> this enemy-flags)))
+        )
+  (init-enemy-defaults! this *roboguard-city-nav-enemy-info*)
+  (let ((t9-4 (method-of-type kg-squad-member init-enemy!)))
+    (t9-4 this)
+    )
+  (set! (-> this last-update-chase-pos-time) 0)
+  (init-los!
+    (-> this los)
+    this
+    (seconds 0.1)
+    327680.0
+    (collide-spec backgnd obstacle hit-by-others-list los-blocker)
+    )
+  (set! (-> this water-anim) 3)
+  (let ((v1-13 (-> this node-list data 4)))
+    (set! (-> v1-13 param0)
+          (lambda ((arg0 cspace) (arg1 transformq))
+            (let ((s3-0 (the-as roboguard-city (-> arg0 param1)))
+                  (gp-0 (new 'stack-no-clear 'quaternion))
+                  )
+              (cspace<-parented-transformq-joint! arg0 arg1)
+              (let ((s1-0 (-> s3-0 rotation-matrix))
+                    (s2-1 (vector-! (new 'stack-no-clear 'vector) (-> s3-0 focus-pos) (-> arg0 bone transform trans)))
+                    )
+                (set! (-> s2-1 y) 0.0)
+                (set! (-> s1-0 fvec y) 0.0)
+                (set! (-> s1-0 rvec y) 0.0)
+                (vector-xz-normalize! s2-1 1.0)
+                (vector-xz-normalize! (-> s1-0 fvec) 1.0)
+                (vector-xz-normalize! (-> s1-0 rvec) 1.0)
+                (let ((f0-6 (acos (fmax (vector-dot (-> s1-0 fvec) s2-1) (cos 18204.445)))))
+                  (if (< (vector-dot (-> s1-0 rvec) s2-1) 0.0)
+                      (set! f0-6 (* -1.0 f0-6))
+                      )
+                  (set! (-> s3-0 torso-angle)
+                        (* (-> s3-0 torso-aim-blend)
+                           (seek (-> s3-0 torso-angle) f0-6 (* (-> s3-0 torso-seek-speed) (seconds-per-frame)))
+                           )
+                        )
+                  )
+                )
+              (quaternion-vector-angle! gp-0 *y-vector* (-> s3-0 torso-angle))
+              (quaternion*! (-> arg1 quat) (-> arg1 quat) gp-0)
+              )
+            (cspace<-parented-transformq-joint! arg0 arg1)
+            0
+            (none)
+            )
+          )
+    (set! (-> v1-13 param1) this)
+    )
+  (set! (-> this anim-shuffle) 10)
+  (set! (-> this anim-walk) 10)
+  (set! (-> this speed-walk) 12288.0)
+  (set! (-> this dist-walk-anim) 16384.0)
+  (set! (-> this dist-run-anim) 26624.0)
+  (set! (-> this anim-run) 11)
+  (set! (-> this speed-run) 49152.0)
+  (set! (-> this draw lod-set lod 0 dist) 491520.0)
+  0
+  (none)
+  )
+
+(defmethod go-stare ((this roboguard-city))
+  (go (method-of-object this reposition))
+  )
+
+;; WARN: disable def twice: 6. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod get-current-enemy ((this roboguard-city))
+  (if #t
+      (handle->process (-> this attacker-info enemy))
+      (squad-control-city-method-35 (-> this squad) this (-> this target-status handle))
+      )
+  )
+
+(defmethod roboguard-city-method-237 ((this roboguard-city))
+  (when (not (handle->process (-> this target-status handle)))
+    (set! (-> this focus handle) (the-as handle #f))
+    (set! (-> this target-status handle) (the-as handle #f))
+    )
+  (let ((a0-6 (get-current-enemy this)))
+    (cond
+      (a0-6
+        (let ((v1-9 (process->handle a0-6)))
+          (when (!= v1-9 (-> this target-status handle))
+            (set-time! (-> this pursuit-start-time))
+            (logior! (-> this flags) (citizen-flag in-pursuit))
+            (if (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
+                (logior! (-> this flags) (citizen-flag persistent))
+                )
+            )
+          (logior! (-> this flags) (citizen-flag hostile))
+          (set! (-> this target-status handle) (the-as handle v1-9))
+          (set! (-> this current-enemy) (the-as handle v1-9))
+          )
+        )
+      (else
+        (set! (-> this target-status handle) (the-as handle #f))
+        (set! (-> this current-enemy) (the-as handle #f))
+        )
+      )
+    )
+  (when (logtest? (-> this attacker-info flags) (city-attacker-info-flag cai2))
+    (set! (-> this attacker-info next-update-target-time) (+ (current-time) (seconds 3)))
+    (logclear! (-> this attacker-info flags) (city-attacker-info-flag cai2))
+    )
+  (if (time-elapsed? (-> this pursuit-start-time) (seconds 5))
+      (logclear! (-> this flags) (citizen-flag persistent in-pursuit))
+      )
+  (let ((v1-26 (new 'stack-no-clear 'vector)))
+    (set! (-> v1-26 quad) (-> this root trans quad))
+    (+! (-> v1-26 y) 8192.0)
+    )
+  (let* ((s5-0 (handle->process (-> this target-status handle)))
+         (a0-36 (if (type? s5-0 process-focusable)
+                    s5-0
+                    )
+                )
+         )
+    (cond
+      ((and a0-36
+            (not (logtest? (-> (the-as process-focusable a0-36) focus-status) (focus-status disable dead inactive)))
+            )
+       (let* ((s5-1 this)
+              (s4-0 (method-of-object s5-1 enemy-method-70))
+              (s3-0 (handle->process (-> this target-status handle)))
+              )
+         (s4-0
+           s5-1
+           (the-as process-focusable (if (type? s3-0 process-focusable)
+                                         s3-0
+                                         )
+                   )
+           (the-as enemy-aware #f)
+           )
+         )
+       (update-focus this)
+       (let ((f0-2 (vector-vector-xz-distance-squared (-> this root trans) (-> this focus-pos)))
+             (f1-1 204800.0)
+             )
+         (when (< f0-2 (* f1-1 f1-1))
+           (set-time! (-> this pursuit-start-time))
+           (logior! (-> this flags) (citizen-flag in-pursuit))
+           (when (not (logtest? (-> this squad alert-state flags) (squad-alert-flag war)))
+             (let ((v0-6 (the-as object (logior (-> this flags) (citizen-flag persistent)))))
+               (set! (-> this flags) (the-as citizen-flag v0-6))
+               v0-6
+               )
+             )
+           )
+         )
+       )
+      ((!= (-> this target-status handle) #f)
+       (set! (-> this target-status handle) (the-as handle #f))
+       (logclear! (-> this flags) (citizen-flag persistent in-pursuit hostile))
+       (citizen-method-208 this (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+       (go (method-of-object this active))
+       )
+      )
+    )
+  )
+
+(defmethod roboguard-city-method-238 ((this roboguard-city) (arg0 symbol))
+  (cond
+    ((or arg0 (logtest? (-> this nav state flags) (nav-state-flag blocked avoiding-sphere)))
+     (when (not (-> this cannot-reach-target?))
+       (set! (-> this cannot-reach-target?) #t)
+       (set-time! (-> this cannot-reach-target-start-time))
+       )
+     )
+    (else
+      (set! (-> this cannot-reach-target?) #f)
+      (set! (-> this cannot-reach-target-start-time) 0)
+      0
+      )
+    )
+  (when (and (-> this cannot-reach-target?) (time-elapsed? (-> this cannot-reach-target-start-time) (seconds 0.5)))
+    (let* ((f30-0 65536.0)
+           (v1-15 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+           (v1-16 (the-as number (logior #x3f800000 v1-15)))
+           )
+      (set! (-> this random-offset-search) (* f30-0 (+ -1.0 (the-as float v1-16))))
+      )
+    (let ((v0-0 (logior (-> this robo-flags) (robo-flag r8))))
+      (set! (-> this robo-flags) v0-0)
+      v0-0
+      )
+    )
+  )
+
+(defmethod roboguard-city-method-239 ((this roboguard-city))
+  (set! (-> this cannot-reach-target?) #f)
+  (set! (-> this cannot-reach-target-start-time) 0)
+  (let ((v0-0 (logclear (-> this robo-flags) (robo-flag r8))))
+    (set! (-> this robo-flags) v0-0)
+    v0-0
+    )
+  )
+
+(defmethod penetrate->next-state ((this roboguard-city) (arg0 process) (arg1 event-message-block) (arg2 float))
+  (cond
+    ((logtest? (penetrate emp-blast) (-> this incoming penetrate-using))
+     (set-time! (-> this dizzy-start-time))
+     (if #t
+         'hit-knocked
+         'nothing
+         )
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2)
+      )
+    )
+  )
+
+(defmethod citizen-method-215 ((this roboguard-city))
+  (when (nonzero? *cty-attack-controller*)
+    (set! (-> this mission-squad) *cty-attack-controller*)
+    (when (not (-> this attacker-info))
+      (set! (-> this attacker-info) (allocate-attacker (-> this mission-squad)))
+      (init! (-> this attacker-info) this 9)
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod go-from-behavior ((this roboguard-city) (arg0 traffic-object-spawn-params))
+  (if (= (-> arg0 guard-type) 7)
+      (init-draw-params this)
+      )
+  (case (-> arg0 behavior)
+    ((6)
+     (set! (-> this root trans quad) (-> arg0 position quad))
+     (go (method-of-object this exit-transport))
+     )
+    (else
+      (call-parent-method this arg0)
+      )
+    )
+  (none)
+  )
+
+(defstate exit-transport (roboguard-city)
+  :virtual #t
+  :enter (behavior ()
+    (nav-enemy-method-182 self)
+    (logclear! (-> self root status) (collide-status on-surface touch-surface impact-surface))
+    )
+  :trans (behavior ()
+    (when (logtest? (-> self root status) (collide-status on-surface touch-surface impact-surface))
+      (sound-play "robo-roll" :id (-> self roll-sound))
+      (logior! (-> self robo-flags) (robo-flag r2))
+      (go-virtual roll-chase)
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja :group! roboguard-city-ball-ja :num! zero)
+    (sleep-code)
+    )
+  :post (behavior ()
+    (enemy-falling-post)
+    )
+  )

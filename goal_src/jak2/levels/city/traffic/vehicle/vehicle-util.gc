@@ -142,6 +142,7 @@
 (define *pilot-edge-grab-info* (new 'static 'pilot-edge-grab-info))
 
 (defmethod deactivate ((this vehicle))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (vehicle-method-110 this)
   (call-parent-method this)
   (none)
@@ -749,13 +750,13 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-78 ((this vehicle) (arg0 int))
+(defmethod prepare-zone-transition ((this vehicle) (arg0 int))
   (set! (-> this flight-level-index-prev) (-> this flight-level-index))
   (set! (-> this flight-level-index) arg0)
   (logior! (-> this flags) (rigid-body-object-flag flight-level-transition camera-rapid-track-mode))
   (logclear! (-> this flags) (rigid-body-object-flag flight-level-transition-ending))
   (set-time! (-> this transition-time))
-  (vehicle-method-91 this)
+  (enable-rapid-camera-tracking this)
   0
   (none)
   )
@@ -904,8 +905,8 @@ This commonly includes things such as:
     (set-setting! 'head-offset 'abs (-> this info camera-head-offset) 0)
     (set-setting! 'foot-offset 'abs (-> this info camera-foot-offset) 0)
     (set-setting! 'target-height 'abs (meters 0) 0)
-    (vehicle-method-92 this)
-    (vehicle-method-89 this)
+    (disable-rapid-camera-tracking this)
+    (enable-bike-mode this)
     (persist-with-delay *setting-control* 'mode-name (seconds 0.2) 'mode-name 'cam-fixed 0.0 0)
     (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
     (let ((v1-27 (process->ppointer this)))
@@ -926,8 +927,8 @@ This commonly includes things such as:
 
 (defmethod vehicle-method-88 ((this vehicle))
   (when (logtest? (rigid-body-object-flag camera) (-> this flags))
-    (vehicle-method-92 this)
-    (vehicle-method-90 this)
+    (disable-rapid-camera-tracking this)
+    (disable-bike-mode this)
     (remove-setting! 'rapid-tracking)
     (remove-setting! 'fov)
     (remove-setting! 'string-camera-ceiling)
@@ -959,7 +960,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-89 ((this vehicle))
+(defmethod enable-bike-mode ((this vehicle))
   (when (not (logtest? (rigid-body-object-flag camera-bike-mode) (-> this flags)))
     (logior! (-> this flags) (rigid-body-object-flag camera-bike-mode))
     (set-setting! 'bike-mode #f 0.0 0)
@@ -968,7 +969,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-90 ((this vehicle))
+(defmethod disable-bike-mode ((this vehicle))
   (when (logtest? (rigid-body-object-flag camera-bike-mode) (-> this flags))
     (logclear! (-> this flags) (rigid-body-object-flag camera-bike-mode))
     (remove-setting! 'bike-mode)
@@ -977,7 +978,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-91 ((this vehicle))
+(defmethod enable-rapid-camera-tracking ((this vehicle))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-driving))
     (logior! (-> this flags) (rigid-body-object-flag camera-rapid-track-mode))
     (set-setting! 'rapid-tracking #f 0.0 0)
@@ -986,7 +987,7 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-92 ((this vehicle))
+(defmethod disable-rapid-camera-tracking ((this vehicle))
   (when (logtest? (-> this flags) (rigid-body-object-flag player-driving))
     (logclear! (-> this flags) (rigid-body-object-flag camera-rapid-track-mode))
     (remove-setting! 'rapid-tracking)
@@ -1071,13 +1072,13 @@ This commonly includes things such as:
   0
   )
 
-(defmethod vehicle-method-80 ((this vehicle))
+(defmethod switch-zone-high! ((this vehicle))
   (when (and (logtest? (-> this info flags) 64) (< (-> this flight-level-index) 1))
     1
     (cond
       ((< (+ 8192.0 (-> this rbody state position y)) (-> this flight-level))
        (sound-play "bike-up")
-       (vehicle-method-78 this 1)
+       (prepare-zone-transition this 1)
        )
       (else
         (set! (-> this flight-level-index) 1)
@@ -1088,10 +1089,10 @@ This commonly includes things such as:
   (none)
   )
 
-(defmethod vehicle-method-81 ((this vehicle))
+(defmethod switch-zone-low! ((this vehicle))
   (when (and (logtest? (-> this info flags) 64) (> (-> this flight-level-index) 0))
     (sound-play "bike-down")
-    (vehicle-method-78 this 0)
+    (prepare-zone-transition this 0)
     )
   0
   (none)
@@ -1099,7 +1100,7 @@ This commonly includes things such as:
 
 (defmethod vehicle-method-83 ((this vehicle))
   (logclear! (-> this flags) (rigid-body-object-flag flight-level-transition))
-  (vehicle-method-92 this)
+  (disable-rapid-camera-tracking this)
   (set! (-> this flight-level-index) 0)
   0
   (none)

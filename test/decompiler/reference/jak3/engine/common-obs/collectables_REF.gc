@@ -1,0 +1,3473 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-health collectables collectables-health-lod0-jg collectables-health-idle-ja
+              ((collectables-health-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1)
+              :texture-level 10
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gem collectables collectables-gem-lod0-jg collectables-gem-idle-ja
+              ((collectables-gem-lod0-mg (meters 20)) (collectables-gem-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.6)
+              :texture-level 10
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gun-yellow-up yellow-barrel yellow-barrel-lod0-jg yellow-barrel-idle-ja
+              ((yellow-barrel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-gun-dark-up dark-barrel 0 2
+              ((1 (meters 999999)))
+              :bounds (static-spherem 0 1 0 1.6)
+              :origin-joint-index 3
+              )
+
+;; failed to figure out what this is:
+(defskelgroup skel-skill collectables collectables-skill-lod0-jg collectables-skill-idle-ja
+              ((collectables-skill-lod0-mg (meters 20))
+               (collectables-skill-lod1-mg (meters 40))
+               (collectables-skill-lod2-mg (meters 999999))
+               )
+              :bounds (static-spherem 0 0 0 0.6)
+              :shadow collectables-skill-shadow-mg
+              :texture-level 10
+              :shadow-joint-index 3
+              )
+
+;; definition of type collectable
+(deftype collectable (process-drawable)
+  ((root             collide-shape-moving :override)
+   (pickup-type      pickup-type)
+   (pickup-amount    float)
+   (notify           handle)
+   (old-base         vector                :inline)
+   (base             vector                :inline)
+   (extra-trans      vector                :inline)
+   (jump-pos         vector                :inline)
+   (flags            collectable-flag)
+   (birth-time       time-frame)
+   (collect-timeout  time-frame)
+   (fadeout-timeout  time-frame)
+   (bob-offset       uint64)
+   (bob-amount       float)
+   (pickup-handle    handle)
+   (actor-pause      symbol)
+   (collect-effect   sparticle-launch-group)
+   (collect-effect2  sparticle-launch-group)
+   (target           handle)
+   (suck-time        time-frame)
+   (suck-y-offset    float)
+   (speed            vector                :inline)
+   (movie-pos-index  int32)
+   )
+  (:state-methods
+    blocked
+    wait
+    deploy
+    (suck handle)
+    jump
+    fade
+    (pickup symbol handle)
+    die
+    (notice-blue handle)
+    )
+  (:methods
+    (init-common (_type_ entity-actor pickup-type float) none)
+    (initialize-effects (_type_ pickup-type) none)
+    (go-to-initial-state (_type_) object)
+    (initialize-options (_type_ int float fact-info) collectable)
+    (initialize-allocations (_type_) none)
+    (common-post (_type_) none)
+    (do-pickup (_type_ handle) none)
+    )
+  )
+
+;; definition for method 3 of type collectable
+(defmethod inspect ((this collectable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-20)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tpickup-type: ~D~%" (-> this pickup-type))
+  (format #t "~2Tpickup-amount: ~f~%" (-> this pickup-amount))
+  (format #t "~2Tnotify: ~D~%" (-> this notify))
+  (format #t "~2Told-base: ~`vector`P~%" (-> this old-base))
+  (format #t "~2Tbase: ~`vector`P~%" (-> this base))
+  (format #t "~2Textra-trans: ~`vector`P~%" (-> this extra-trans))
+  (format #t "~2Tjump-pos: ~`vector`P~%" (-> this jump-pos))
+  (format #t "~2Tflags: #x~X : (collectable-flag " (-> this flags))
+  (let ((s5-0 (-> this flags)))
+    (if (= (logand s5-0 (collectable-flag no-eco-blue)) (collectable-flag no-eco-blue))
+        (format #t "no-eco-blue ")
+        )
+    (if (= (logand s5-0 (collectable-flag suck-in)) (collectable-flag suck-in))
+        (format #t "suck-in ")
+        )
+    (if (= (logand s5-0 (collectable-flag bounce)) (collectable-flag bounce))
+        (format #t "bounce ")
+        )
+    (if (= (logand s5-0 (collectable-flag no-distance-check-fadeout)) (collectable-flag no-distance-check-fadeout))
+        (format #t "no-distance-check-fadeout ")
+        )
+    (if (= (logand s5-0 (collectable-flag fadeout)) (collectable-flag fadeout))
+        (format #t "fadeout ")
+        )
+    (if (= (logand s5-0 (collectable-flag no-bob)) (collectable-flag no-bob))
+        (format #t "no-bob ")
+        )
+    (if (= (logand s5-0 (collectable-flag do-fadeout)) (collectable-flag do-fadeout))
+        (format #t "do-fadeout ")
+        )
+    (if (= (logand s5-0 (collectable-flag pickup)) (collectable-flag pickup))
+        (format #t "pickup ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~2Tbirth-time: ~D~%" (-> this birth-time))
+  (format #t "~2Tcollect-timeout: ~D~%" (-> this collect-timeout))
+  (format #t "~2Tfadeout-timeout: ~D~%" (-> this fadeout-timeout))
+  (format #t "~2Tbob-offset: ~D~%" (-> this bob-offset))
+  (format #t "~2Tbob-amount: ~f~%" (-> this bob-amount))
+  (format #t "~2Tpickup-handle: ~D~%" (-> this pickup-handle))
+  (format #t "~2Tactor-pause: ~A~%" (-> this actor-pause))
+  (format #t "~2Tcollect-effect: ~A~%" (-> this collect-effect))
+  (format #t "~2Tcollect-effect2: ~A~%" (-> this collect-effect2))
+  (format #t "~2Ttarget: ~D~%" (-> this target))
+  (format #t "~2Tsuck-time: ~D~%" (-> this suck-time))
+  (format #t "~2Tsuck-y-offset: ~f~%" (-> this suck-y-offset))
+  (format #t "~2Tspeed: ~`vector`P~%" (-> this speed))
+  (format #t "~2Tmovie-pos-index: ~D~%" (-> this movie-pos-index))
+  (label cfg-20)
+  this
+  )
+
+;; definition for method 31 of type collectable
+(defmethod go-to-initial-state ((this collectable))
+  (cond
+    ((logtest? (-> this fact options) (actor-option wait-for-task-complete))
+     (go (method-of-object this blocked))
+     )
+    ((logtest? (-> this flags) (collectable-flag bounce))
+     (go (method-of-object this deploy))
+     )
+    (else
+      (go (method-of-object this wait))
+      )
+    )
+  )
+
+;; definition for method 32 of type collectable
+;; INFO: Used lq/sq
+(defmethod initialize-options ((this collectable) (arg0 int) (arg1 float) (arg2 fact-info))
+  (logclear! (-> this mask) (process-mask crate enemy platform ambient))
+  (logior! (-> this mask) (process-mask collectable))
+  (set! (-> this flags) (collectable-flag pickup no-eco-blue))
+  (set! (-> this bob-amount) arg1)
+  (set! (-> this bob-offset) (the-as uint (+ (the-as int (-> this root trans x))
+                                             (the-as int (-> this root trans y))
+                                             (the-as int (-> this root trans z))
+                                             )
+                                     )
+        )
+  (cond
+    ((or (= (vector-length (-> this root transv)) 0.0)
+         (logtest? (-> this fact options) (actor-option auto-pickup))
+         )
+     (vector-reset! (-> this root transv))
+     )
+    (else
+      (logior! (-> this flags) (collectable-flag bounce))
+      (logclear! (-> this flags) (collectable-flag pickup))
+      (logclear! (-> this mask) (process-mask actor-pause))
+      (set! (-> this bob-amount) 0.0)
+      )
+    )
+  (when (> arg0 0)
+    (logior! (-> this flags) (collectable-flag fadeout))
+    (set! (-> this fadeout-timeout) (the-as time-frame arg0))
+    (if (logtest? (actor-option no-distance-check-fadeout) (-> arg2 options))
+        (logior! (-> this flags) (collectable-flag no-distance-check-fadeout))
+        )
+    )
+  (set! (-> this collect-timeout) (seconds 0.33))
+  (set-time! (-> this birth-time))
+  (set! (-> this base quad) (-> this root trans quad))
+  (set! (-> this old-base quad) (-> this root trans quad))
+  (set! (-> this pickup-handle) (the-as handle #f))
+  (case (-> this fact pickup-type)
+    (((pickup-type eco-pill-green)
+      (pickup-type eco-pill-dark)
+      (pickup-type eco-pill-light)
+      (pickup-type eco-green)
+      (pickup-type money)
+      (pickup-type gem)
+      (pickup-type skill)
+      (pickup-type eco-blue)
+      (pickup-type health)
+      (pickup-type trick-point)
+      )
+     (logclear! (-> this flags) (collectable-flag no-eco-blue))
+     )
+    )
+  (if (logtest? (-> this fact options) (actor-option big-collision))
+      (set! (-> this root root-prim local-sphere w) (* 2.5 (-> this root root-prim local-sphere w)))
+      )
+  (when (and arg2 (nonzero? (-> this draw)))
+    (let* ((s5-0 (-> arg2 process))
+           (v1-56 (if (type? s5-0 process-drawable)
+                      s5-0
+                      )
+                  )
+           )
+      (if v1-56
+          (set! (-> this draw light-index) (-> (the-as process-drawable v1-56) draw light-index))
+          )
+      )
+    )
+  this
+  )
+
+;; definition for method 33 of type collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this collectable))
+  (stack-size-set! (-> this main-thread) 128)
+  (logior! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #t)
+  (set! (-> this notify) (the-as handle #f))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+      (set-vector! (-> v1-11 local-sphere) 0.0 3276.8 0.0 3276.8)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-11)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (set! (-> this fact) (new 'process 'fact-info this (-> this pickup-type) (-> this pickup-amount)))
+  0
+  (none)
+  )
+
+;; definition for method 30 of type collectable
+;; WARN: Return type mismatch ambient-sound vs none.
+(defmethod initialize-effects ((this collectable) (arg0 pickup-type))
+  (let ((s5-0 (the-as sparticle-launch-group #f))
+        (s4-0 (the-as sound-spec #f))
+        )
+    (set! (-> this fact pickup-type) arg0)
+    (case (-> this fact pickup-type)
+      (((pickup-type eco-blue)
+        (pickup-type eco-red)
+        (pickup-type eco-green)
+        (pickup-type eco-yellow)
+        (pickup-type health)
+        (pickup-type eco-pill-dark)
+        (pickup-type eco-pill-light)
+        (pickup-type trick-point)
+        )
+       (logclear! (-> this mask) (process-mask actor-pause))
+       )
+      )
+    (case arg0
+      (((pickup-type eco-yellow))
+       (set! s5-0 (-> *part-group-id-table* 164))
+       (set! (-> this collect-effect) (-> *part-group-id-table* 170))
+       (set! (-> this collect-effect2) (-> *part-group-id-table* 165))
+       (set! s4-0 (static-sound-spec "yel-eco-idle" :group 0 :fo-max 15))
+       )
+      (((pickup-type eco-red))
+       (set! s5-0 (-> *part-group-id-table* 158))
+       (set! (-> this collect-effect) (-> *part-group-id-table* 171))
+       (set! (-> this collect-effect2) (-> *part-group-id-table* 159))
+       (set! s4-0 (static-sound-spec "red-eco-idle" :group 0 :fo-max 15))
+       )
+      (((pickup-type eco-blue))
+       (set! s5-0 (-> *part-group-id-table* 154))
+       (set! (-> this collect-effect) (-> *part-group-id-table* 169))
+       (set! (-> this collect-effect2) (-> *part-group-id-table* 155))
+       (set! s4-0 (static-sound-spec "blue-eco-idle" :group 0 :fo-max 15))
+       )
+      (((pickup-type eco-green))
+       (set! s5-0 (-> *part-group-id-table* 129))
+       (set! (-> this collect-effect) (-> *part-group-id-table* 141))
+       (set! (-> this collect-effect2) (-> *part-group-id-table* 124))
+       (set! s4-0 (static-sound-spec "green-eco-idle" :group 0 :fo-max 15))
+       )
+      (((pickup-type health))
+       (initialize-skeleton
+         this
+         (the-as skeleton-group (art-group-get-by-name *level* "skel-health" (the-as (pointer level) #f)))
+         (the-as pair 0)
+         )
+       (let ((v1-37 (-> this root root-prim local-sphere)))
+         (set! (-> v1-37 y) 2457.6)
+         (set! (-> v1-37 w) 4096.0)
+         )
+       (set! (-> this collect-effect) (-> *part-group-id-table* 141))
+       (set! (-> this collect-effect2) (-> *part-group-id-table* 124))
+       (set! s4-0 (static-sound-spec "green-eco-idle" :group 0 :fo-max 15))
+       )
+      (((pickup-type eco-pill-green))
+       (set! s5-0 (-> *part-group-id-table* 125))
+       (set! (-> this collect-effect2) (-> *part-group-id-table* 126))
+       )
+      (((pickup-type eco-pill-dark))
+       (set! s5-0 (-> *part-group-id-table* 128))
+       (set! (-> this collect-effect) (-> *part-group-id-table* 140))
+       )
+      (((pickup-type eco-pill-light))
+       (set! s5-0 (-> *part-group-id-table* 127))
+       (set! (-> this collect-effect) (-> *part-group-id-table* 127))
+       )
+      )
+    (if s5-0
+        (set! (-> this part) (create-launch-control s5-0 this))
+        )
+    (if s4-0
+        (set! (-> this sound) (new 'process 'ambient-sound s4-0 (-> this root trans) 0.0))
+        )
+    )
+  (none)
+  )
+
+;; definition for function initialize-eco-by-other
+;; INFO: Used lq/sq
+(defbehavior initialize-eco-by-other eco ((arg0 vector) (arg1 vector) (arg2 fact-info))
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (set! (-> self pickup-amount) f30-0)
+    (set! (-> self pickup-type) s3-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root transv quad) (-> arg1 quad))
+  (initialize-effects self (-> self fact pickup-type))
+  (set! (-> self notify) (the-as handle #f))
+  (case (-> self fact pickup-type)
+    (((pickup-type eco-blue) (pickup-type eco-yellow) (pickup-type eco-red))
+     (initialize-options
+       self
+       (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+           (the-as int (-> arg2 fade-time))
+           0
+           )
+       1024.0
+       arg2
+       )
+     )
+    (else
+      (initialize-options
+        self
+        (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+            (the-as int (-> arg2 fade-time))
+            4500
+            )
+        1024.0
+        arg2
+        )
+      )
+    )
+  (update-transforms (-> self root))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  )
+
+;; definition for method 29 of type collectable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-common ((this collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+  (set! (-> this pickup-amount) arg2)
+  (set! (-> this pickup-type) arg1)
+  (initialize-allocations this)
+  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (initialize-effects this (-> this fact pickup-type))
+  (initialize-options this 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> this root))
+  (if (logtest? (-> this fact options) (actor-option wait-for-task-complete))
+      (go (method-of-object this blocked))
+      )
+  (go-to-initial-state this)
+  (none)
+  )
+
+;; definition for method 34 of type collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod common-post ((this collectable))
+  (let ((s5-0 (-> this part))
+        (s4-0 (-> this root root-prim prim-core))
+        )
+    (if (nonzero? (-> this draw))
+        (ja-post)
+        )
+    (if (nonzero? s5-0)
+        (spawn s5-0 (the-as vector s4-0))
+        )
+    )
+  (if (nonzero? (-> this sound))
+      (update! (-> this sound))
+      )
+  0
+  (none)
+  )
+
+;; definition for method 35 of type collectable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod do-pickup ((this collectable) (arg0 handle))
+  (set! (-> this pickup-handle) arg0)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (let ((v1-3 (-> this root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (collide-spec))
+    (set! (-> v1-3 prim-core collide-with) (collide-spec))
+    )
+  0
+  (if (nonzero? (-> this sound))
+      (stop! (-> this sound))
+      )
+  (if (nonzero? (-> this draw))
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      )
+  (if (nonzero? (-> this part))
+      (kill-particles (-> this part))
+      )
+  (case (-> this fact pickup-type)
+    (((pickup-type eco-yellow))
+     (sound-play "y-eco-pickup")
+     )
+    (((pickup-type eco-red))
+     (sound-play "r-eco-pickup")
+     )
+    (((pickup-type eco-blue))
+     (sound-play "b-eco-pickup")
+     )
+    (((pickup-type eco-green) (pickup-type health))
+     (sound-play "g-eco-pickup")
+     (+! (-> *game-info* health-collected) 1.0)
+     )
+    (((pickup-type eco-pill-green))
+     (sound-play "pill-pickup")
+     )
+    (((pickup-type eco-pill-dark))
+     (sound-play "pill-pickup")
+     (when (>= (-> *game-info* eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+       (set! (-> this collect-effect) (the-as sparticle-launch-group 0))
+       (set! (-> this collect-effect2) (the-as sparticle-launch-group 0))
+       0
+       )
+     )
+    (((pickup-type eco-pill-light))
+     (sound-play "pill-pickup")
+     (when (>= (-> *game-info* eco-pill-light) (-> *FACT-bank* eco-pill-light-max-default))
+       (set! (-> this collect-effect) (the-as sparticle-launch-group 0))
+       (set! (-> this collect-effect2) (the-as sparticle-launch-group 0))
+       0
+       )
+     )
+    (((pickup-type fuel-cell))
+     (sound-play "pu-powercell")
+     )
+    (((pickup-type ammo-yellow)
+      (pickup-type ammo-red)
+      (pickup-type ammo-blue)
+      (pickup-type ammo-dark)
+      (pickup-type gun-red-1)
+      (pickup-type gun-red-2)
+      (pickup-type gun-red-3)
+      (pickup-type gun-yellow-1)
+      (pickup-type gun-yellow-2)
+      (pickup-type gun-yellow-3)
+      (pickup-type gun-blue-1)
+      (pickup-type gun-blue-2)
+      (pickup-type gun-blue-3)
+      (pickup-type gun-dark-1)
+      (pickup-type gun-dark-2)
+      (pickup-type gun-dark-3)
+      (pickup-type board)
+      )
+     (sound-play "ammo-pickup")
+     )
+    (((pickup-type skill))
+     (talker-spawn-func (-> *talker-speech* 37) *entity-pool* (target-pos 0) (the-as region #f))
+     )
+    )
+  (let ((s5-1 (handle->process arg0)))
+    (when s5-1
+      (when (nonzero? (-> this collect-effect))
+        (cond
+          ((logtest? (-> this collect-effect flags) (sp-group-flag sp13))
+           (set! (-> *launch-matrix* trans quad) (-> this root root-prim prim-core world-sphere quad))
+           (part-tracker-spawn
+             part-tracker-subsampler
+             :to s5-1
+             :group (-> this collect-effect)
+             :callback part-tracker-track-target
+             )
+           )
+          (else
+            (set! (-> *launch-matrix* trans quad) (-> this root root-prim prim-core world-sphere quad))
+            (part-tracker-spawn part-tracker :to s5-1 :group (-> this collect-effect) :callback part-tracker-track-target)
+            )
+          )
+        )
+      (when (nonzero? (-> this collect-effect2))
+        (cond
+          ((logtest? (-> this collect-effect2 flags) (sp-group-flag sp13))
+           (set! (-> *launch-matrix* trans quad) (-> this root root-prim prim-core world-sphere quad))
+           (part-tracker-spawn
+             part-tracker-subsampler
+             :to this
+             :group (-> this collect-effect2)
+             :callback (lambda ((arg0 part-tracker))
+               (let ((v1-1 (handle->process (-> arg0 userdata))))
+                 (when (the-as process v1-1)
+                   (let* ((s5-0 (handle->process (-> (the-as collectable v1-1) pickup-handle)))
+                          (a0-9 (if (type? s5-0 process-focusable)
+                                    s5-0
+                                    )
+                                )
+                          (a2-0 (if (not a0-9)
+                                    (-> arg0 root trans)
+                                    (get-trans (the-as process-focusable a0-9) 3)
+                                    )
+                                )
+                          )
+                     (vector-lerp!
+                       (-> arg0 root trans)
+                       (-> arg0 offset)
+                       a2-0
+                       (/ (the float (- (current-time) (-> arg0 state-time))) (the float (-> arg0 part group duration)))
+                       )
+                     )
+                   )
+                 )
+               )
+             :userdata (the-as uint (process->handle this))
+             )
+           )
+          (else
+            (set! (-> *launch-matrix* trans quad) (-> this root root-prim prim-core world-sphere quad))
+            (part-tracker-spawn
+              part-tracker
+              :to this
+              :group (-> this collect-effect2)
+              :callback (lambda ((arg0 part-tracker))
+                (let ((v1-1 (handle->process (-> arg0 userdata))))
+                  (when (the-as process v1-1)
+                    (let* ((s5-0 (handle->process (-> (the-as collectable v1-1) pickup-handle)))
+                           (a0-9 (if (type? s5-0 process-focusable)
+                                     s5-0
+                                     )
+                                 )
+                           (a2-0 (if (not a0-9)
+                                     (-> arg0 root trans)
+                                     (get-trans (the-as process-focusable a0-9) 3)
+                                     )
+                                 )
+                           )
+                      (vector-lerp!
+                        (-> arg0 root trans)
+                        (-> arg0 offset)
+                        a2-0
+                        (/ (the float (- (current-time) (-> arg0 state-time))) (the float (-> arg0 part group duration)))
+                        )
+                      )
+                    )
+                  )
+                )
+              :userdata (the-as uint (process->handle this))
+              )
+            )
+          )
+        )
+      )
+    )
+  (send-event (handle->process (-> this notify)) 'notify 'pickup)
+  0
+  (none)
+  )
+
+;; definition for function add-blue-shake
+(defun add-blue-shake ((arg0 vector) (arg1 vector) (arg2 vector))
+  (let* ((f0-0 (vector-vector-distance arg1 arg2))
+         (f30-0 (lerp-scale 409.6 0.0 f0-0 (-> *FACT-bank* suck-suck-dist) (-> *FACT-bank* suck-bounce-dist)))
+         )
+    (+! (-> arg0 x) (rand-vu-float-range (- f30-0) f30-0))
+    (+! (-> arg0 y) (rand-vu-float-range (- f30-0) f30-0))
+    (+! (-> arg0 z) (rand-vu-float-range (- f30-0) f30-0))
+    )
+  arg0
+  )
+
+;; definition for function check-blue-suck
+(defbehavior check-blue-suck eco ((arg0 process-drawable))
+  (let ((v1-0 (if (type? arg0 process-drawable)
+                  arg0
+                  )
+              )
+        )
+    (when v1-0
+      (let* ((gp-1 (-> v1-0 root))
+             (v1-1 (if (type? gp-1 collide-shape)
+                       gp-1
+                       )
+                   )
+             )
+        (when v1-1
+          (let ((a0-5 (-> self root root-prim prim-core))
+                (a1-2 (-> (the-as collide-shape v1-1) root-prim prim-core))
+                )
+            (when (< (vector-vector-distance (the-as vector a0-5) (the-as vector a1-2)) (-> *FACT-bank* suck-suck-dist))
+              (logior! (-> self flags) (collectable-flag suck-in))
+              #t
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function add-blue-motion
+(defbehavior add-blue-motion eco ((arg0 symbol) (arg1 symbol) (arg2 symbol) (arg3 symbol))
+  (let* ((gp-0 (handle->process (-> self target)))
+         (s1-0 (if (type? gp-0 process-drawable)
+                   (the-as process-focusable gp-0)
+                   )
+               )
+         )
+    (when s1-0
+      (let ((s4-0 (if (type? s1-0 process-focusable)
+                      s1-0
+                      )
+                  )
+            )
+        (when s4-0
+          (let ((s1-1 (-> self root root-prim prim-core))
+                (gp-1 (get-trans s4-0 3))
+                )
+            (if (and arg1 (rand-vu-percent? 0.25))
+                (eco-blue-glow (the-as vector s1-1))
+                )
+            (let ((f0-0 (vector-vector-distance (the-as vector s1-1) gp-1)))
+              (cond
+                ((and arg3 (< f0-0 8192.0))
+                 (return #t)
+                 )
+                ((begin
+                   (set! arg0
+                         (and (or (not arg2)
+                                  (or (< f0-0 (-> *FACT-bank* suck-suck-dist)) (logtest? (-> self flags) (collectable-flag suck-in)))
+                                  )
+                              arg0
+                              )
+                         )
+                   arg0
+                   )
+                 (logior! (-> self flags) (collectable-flag suck-in))
+                 (when (= (-> self speed w) 0.0)
+                   (set-time! (-> self suck-time))
+                   (set! (-> self speed x) (rand-vu-float-range 327680.0 819200.0))
+                   )
+                 (+! (-> self speed w)
+                     (* (lerp-scale 40960.0 (-> self speed x) (the float (- (current-time) (-> self suck-time))) 45.0 60.0)
+                        (seconds-per-frame)
+                        )
+                     )
+                 (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (-> self base) gp-1)))
+                   (vector-normalize! s5-2 (fmax
+                                             (if (focus-test? s4-0 pilot)
+                                                 -4096.0
+                                                 0.0
+                                                 )
+                                             (- (vector-length s5-2) (* (-> self speed w) (seconds-per-frame)))
+                                             )
+                                      )
+                   (when (< (vector-length s5-2) 81920.0)
+                     (+! (-> self speed y) (* 72817.78 (seconds-per-frame)))
+                     (set! (-> self speed y) (fmin (fmin 291271.12 (-> self speed y)) (-> self speed y)))
+                     (vector-rotate-y! s5-2 s5-2 (* (-> self speed y) (-> self speed z) (seconds-per-frame)))
+                     )
+                   (set! (-> self suck-y-offset)
+                         (* 2048.0 (sin (* 873.81335 (the float (mod (- (current-time) (-> self suck-time)) 75)))))
+                         )
+                   (vector+! (-> self base) gp-1 s5-2)
+                   )
+                 )
+                ((and arg2 (and (< (+ 4096.0 (-> *FACT-bank* suck-bounce-dist)) f0-0)
+                                (not (logtest? (-> self flags) (collectable-flag suck-in)))
+                                )
+                      )
+                 (go-virtual wait)
+                 )
+                (arg1
+                  (add-blue-shake (-> self root trans) (the-as vector s1-1) gp-1)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for function collectable-standard-event-handler
+;; INFO: Used lq/sq
+(defbehavior collectable-standard-event-handler collectable ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-4 object))
+  (when (and (or (= arg2 'touch) (= arg2 'attack))
+             (or (logtest? (-> self flags) (collectable-flag pickup))
+                 (and (-> self next-state) (= (-> self next-state name) 'deploy))
+                 (< (-> self clock clock-ratio) 1.0)
+                 )
+             (and (time-elapsed?
+                    (-> self birth-time)
+                    (the int (* 2.0 (-> self clock clock-ratio) (the float (-> self collect-timeout))))
+                    )
+                  (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                  (-> *setting-control* user-current pickups)
+                  (send-event arg0 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+                  )
+             )
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (process-contact-action arg0)
+    (go-virtual pickup #f (process->handle arg0))
+    )
+  (cond
+    ((= arg2 'trans)
+     (set! (-> self root trans quad) (-> (the-as vector (-> arg3 param 0)) quad))
+     (update-transforms (-> self root))
+     (ja-post)
+     )
+    ((= arg2 'jump)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (set! (-> self jump-pos quad) (-> (the-as vector (-> arg3 param 0)) quad))
+     (go-virtual jump)
+     )
+    ((= arg2 'pickup)
+     (when (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+       (if (and (> arg1 0) (-> arg3 param 0))
+           (move-to-point! (-> self root) (the-as vector (-> arg3 param 0)))
+           )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (process-contact-action arg0)
+       (go-virtual pickup #f (the-as handle #f))
+       )
+     )
+    ((= arg2 'suck)
+     (when (not (and (-> self next-state) (let ((v1-69 (-> self next-state name)))
+                                            (or (= v1-69 'suck) (= v1-69 'pickup))
+                                            )
+                     )
+                )
+       (logclear! (-> self mask) (process-mask actor-pause))
+       (go-virtual suck (process->handle (the-as process (-> arg3 param 0))))
+       )
+     )
+    ((= arg2 'die)
+     (logclear! (-> self mask) (process-mask actor-pause))
+     (go-virtual die)
+     )
+    ((= arg2 'movie-pos)
+     (set! v0-4 (-> arg3 param 0))
+     (set! (-> self movie-pos-index) (the-as int v0-4))
+     v0-4
+     )
+    ((= arg2 'actor-pause)
+     (cond
+       ((-> arg3 param 0)
+        (logior! (-> self mask) (process-mask actor-pause))
+        (set! v0-4 #t)
+        (set! (-> self actor-pause) (the-as symbol v0-4))
+        v0-4
+        )
+       (else
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (set! (-> self actor-pause) #f)
+         #f
+         )
+       )
+     )
+    ((= arg2 'fade)
+     (logior! (-> self flags) (collectable-flag fadeout))
+     (set! (-> self fadeout-timeout) (seconds 0.1))
+     (set! v0-4 (current-time))
+     (set! (-> self birth-time) (the-as time-frame v0-4))
+     v0-4
+     )
+    ((= arg2 'anim)
+     (cond
+       ((-> arg3 param 0)
+        (set! v0-4 (logclear (-> self flags) (collectable-flag no-bob)))
+        (set! (-> self flags) (the-as collectable-flag v0-4))
+        )
+       (else
+         (set! v0-4 (logior (-> self flags) (collectable-flag no-bob)))
+         (set! (-> self flags) (the-as collectable-flag v0-4))
+         )
+       )
+     v0-4
+     )
+    ((= arg2 'collide-shape)
+     (cond
+       ((-> arg3 param 0)
+        (let ((v1-106 (-> self root root-prim)))
+          (set! (-> v1-106 prim-core collide-as) (-> self root backup-collide-as))
+          (set! v0-4 (-> self root backup-collide-with))
+          (set! (-> v1-106 prim-core collide-with) (the-as collide-spec v0-4))
+          )
+        v0-4
+        )
+       (else
+         (let ((v1-108 (-> self root root-prim)))
+           (set! (-> v1-108 prim-core collide-as) (collide-spec))
+           (set! (-> v1-108 prim-core collide-with) (collide-spec))
+           )
+         0
+         )
+       )
+     )
+    ((= arg2 'get-notify)
+     (cond
+       ((= (-> arg3 param 0) #t)
+        (let ((v1-112 (ppointer->process (-> self parent))))
+          (cond
+            ((logtest? (-> v1-112 mask) (process-mask process-tree))
+             (set! (-> self notify) (the-as handle #f))
+             #f
+             )
+            (else
+              (set! v0-4 (process->handle v1-112))
+              (set! (-> self notify) (the-as handle v0-4))
+              v0-4
+              )
+            )
+          )
+        )
+       ((= (-> arg3 param 0) #f)
+        (set! (-> self notify) (the-as handle #f))
+        #f
+        )
+       (else
+         (set! v0-4 (process->handle (the-as process (-> arg3 param 0))))
+         (set! (-> self notify) (the-as handle v0-4))
+         v0-4
+         )
+       )
+     )
+    ((= arg2 'effect)
+     (when (not (-> arg3 param 0))
+       (set! (-> self collect-effect) (the-as sparticle-launch-group 0))
+       (set! (-> self collect-effect2) (the-as sparticle-launch-group 0))
+       0
+       )
+     )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate blocked (collectable)
+  :virtual #t
+  :trans (behavior ()
+    (if (task-complete? *game-info* (-> self entity extra perm task))
+        (go-virtual wait)
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate jump (collectable)
+  :virtual #t
+  :code (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (let ((gp-0 (new 'stack 'trajectory)))
+      (set! (-> self base y) (-> self jump-pos y))
+      (setup-from-to-duration! gp-0 (-> self root trans) (-> self jump-pos) 300.0 -2.2755556)
+      (set-time! (-> self state-time))
+      (until (time-elapsed? (-> self state-time) (seconds 1))
+        (let ((f0-2 (the float (- (current-time) (-> self state-time)))))
+          (compute-trans-at-time gp-0 f0-2 (-> self root trans))
+          )
+        (transform-post)
+        (common-post self)
+        (suspend)
+        (if (nonzero? (-> self skel))
+            (ja :num! (loop! 0.5))
+            )
+        )
+      )
+    (set! (-> self root trans quad) (-> self jump-pos quad))
+    (set! (-> self base quad) (-> self root trans quad))
+    (vector-reset! (-> self root transv))
+    (update-transforms (-> self root))
+    (logclear! (-> self flags) (collectable-flag bounce))
+    (logior! (-> self flags) (collectable-flag pickup))
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    (go-virtual wait)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate deploy (collectable)
+  :virtual #t
+  :event collectable-standard-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (case (-> self pickup-type)
+      (((pickup-type gem))
+       (sound-play "gem-spawn")
+       )
+      (((pickup-type eco-pill-dark) (pickup-type eco-pill-light))
+       (sound-play "pill-spawn")
+       )
+      )
+    (if (and (logtest? (-> self fact options) (actor-option suck-in))
+             (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+             *target*
+             (not (focus-test? *target* dead))
+             (-> *setting-control* user-current pickups)
+             )
+        (go-virtual suck (process->handle *target*))
+        )
+    )
+  :exit (behavior ()
+    (vector-reset! (-> self root transv))
+    (logclear! (-> self flags) (collectable-flag bounce))
+    (logior! (-> self flags) (collectable-flag pickup))
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    (set! (-> self base quad) (-> self root trans quad))
+    (logclear! (-> self root root-prim prim-core action) (collide-action solid))
+    (set! (-> self root root-prim prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+    (set! (-> self root root-prim prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+    )
+  :trans (behavior ()
+    (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
+    (integrate-no-collide! (-> self root) (-> self root transv))
+    (when (and (>= 0.0 (-> self root transv y)) (>= (-> self base y) (-> self root trans y)))
+      (set! (-> self root trans y) (-> self base y))
+      (cond
+        ((< (-> self root transv y) -8192.0)
+         (set! (-> self root transv y) (* -0.5 (-> self root transv y)))
+         )
+        (else
+          (if (and (logtest? (-> self fact options) (actor-option suck-in))
+                   (not (logtest? (-> self flags) (collectable-flag no-eco-blue)))
+                   )
+              (go-virtual notice-blue (process->handle *target*))
+              )
+          (when (and (logtest? (-> self fact options) (actor-option auto-pickup suck-in))
+                     (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                     (-> *setting-control* user-current pickups)
+                     (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+                     )
+            (process-contact-action *target*)
+            (go-virtual pickup #f (process->handle *target*))
+            )
+          (go-virtual wait)
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (common-post self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate suck (collectable)
+  :virtual #t
+  :event collectable-standard-event-handler
+  :enter (behavior ((arg0 handle))
+    (sound-play "pickup-suck")
+    (set! (-> self target) arg0)
+    (set! (-> self speed quad) (the-as uint128 0))
+    (set! (-> self speed z) (if (rand-vu-percent? 0.5)
+                                1.0
+                                -1.0
+                                )
+          )
+    (set! (-> self suck-y-offset) 0.0)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logior! (-> self flags) (collectable-flag pickup suck-in))
+    )
+  :code (behavior ((arg0 handle))
+    (until #f
+      (if (and *target* (focus-test? *target* dead))
+          (go-virtual fade)
+          )
+      (set! (-> self root trans quad) (-> self base quad))
+      (add-blue-motion #t #f #f #f)
+      (update-transforms (-> self root))
+      (common-post self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait (collectable)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('eco-blue)
+       (when (and (not (logtest? (-> self flags) (collectable-flag do-fadeout no-eco-blue)))
+                  (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                  (and (if (and (check-blue-suck (the-as process-drawable proc)) (-> *setting-control* user-current pickups))
+                           (go-virtual suck (process->handle proc))
+                           )
+                       (logtest? (-> self flags) (collectable-flag pickup))
+                       (time-elapsed? (-> self birth-time) (-> self collect-timeout))
+                       )
+                  )
+         (logclear! (-> self mask) (process-mask actor-pause))
+         (go-virtual notice-blue (process->handle proc))
+         )
+       )
+      (else
+        (collectable-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (when (and (logtest? (-> self fact options) (actor-option auto-pickup suck-in))
+               (logtest? (-> self flags) (collectable-flag pickup))
+               (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+               (-> *setting-control* user-current pickups)
+               (send-event *target* 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+               )
+      (process-contact-action *target*)
+      (go-virtual pickup #f (process->handle *target*))
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (if (and (logtest? (-> self flags) (collectable-flag fadeout))
+               (begin
+                 (if (movie?)
+                     (set-time! (-> self birth-time))
+                     )
+                 (time-elapsed? (-> self birth-time) (-> self fadeout-timeout))
+                 )
+               (or (or (not *target*) (or (< 204800.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                                          (focus-test? *target* teleporting)
+                                          )
+                       )
+                   (logtest? (-> self flags) (collectable-flag no-distance-check-fadeout))
+                   )
+               )
+          (go-virtual fade)
+          )
+      (common-post self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate fade (collectable)
+  :virtual #t
+  :event collectable-standard-event-handler
+  :code (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (set! (-> self actor-pause) #f)
+    (logior! (-> self flags) (collectable-flag do-fadeout))
+    (logior! (-> self state-flags) (state-flags sf0))
+    (let ((gp-0 (current-time)))
+      (until #f
+        (let ((f0-1 (- 300.0 (the float (- (current-time) gp-0)))))
+          (cond
+            ((< f0-1 0.0)
+             (process-entity-status! self (entity-perm-status dead) #t)
+             (if (nonzero? (-> self notify))
+                 (send-event (handle->process (-> self notify)) 'notify 'die)
+                 )
+             (deactivate self)
+             )
+            (else
+              (if (nonzero? (-> self part))
+                  (set! (-> self part local-space-binding) (the-as particle-local-space-info (* 0.0033333334 f0-1)))
+                  )
+              (when (nonzero? (-> self draw))
+                (logior! (-> self draw status) (draw-control-status force-fade))
+                (set! (-> self draw force-fade) (the-as uint (max 0 (min 128 (the int (* 0.42666668 f0-1))))))
+                )
+              )
+            )
+          )
+        (common-post self)
+        (suspend)
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate notice-blue (collectable)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (when (and (or (= message 'touch) (= message 'attack))
+               (and (logtest? (-> self flags) (collectable-flag pickup))
+                    (time-elapsed? (-> self birth-time) (-> self collect-timeout))
+                    (not (and (-> self next-state) (= (-> self next-state name) 'pickup)))
+                    (send-event proc 'get-pickup (-> self fact pickup-type) (-> self fact pickup-amount))
+                    )
+               )
+      (logclear! (-> self mask) (process-mask actor-pause))
+      (go-virtual pickup #f (process->handle proc))
+      )
+    )
+  :enter (behavior ((arg0 handle))
+    (set! (-> self target) arg0)
+    (set! (-> self speed quad) (the-as uint128 0))
+    (set! (-> self speed z) (if (rand-vu-percent? 0.5)
+                                1.0
+                                -1.0
+                                )
+          )
+    (set! (-> self suck-y-offset) 0.0)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    )
+  :exit (behavior ()
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    )
+  :trans (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 2)
+      (set! (-> a1-0 message) 'query)
+      (set! (-> a1-0 param 0) (the-as uint 'powerup))
+      (set! (-> a1-0 param 1) (the-as uint 3))
+      (if (and (not (send-event-function *target* a1-0)) (not (logtest? (-> self flags) (collectable-flag suck-in))))
+          (go-virtual wait)
+          )
+      )
+    )
+  :code (behavior ((arg0 handle))
+    (until #f
+      (set! (-> self root trans quad) (-> self base quad))
+      (add-blue-motion #t #f #t #f)
+      (update-transforms (-> self root))
+      (common-post self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate pickup (collectable)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('set-movie-pos)
+       (let ((v1-2 (res-lump-struct (-> self entity) 'movie-pos structure)))
+         (when v1-2
+           (set! (-> (the-as vector v1-2) quad) (-> (the-as vector (-> block param 0)) quad))
+           v1-2
+           )
+         )
+       )
+      (('actor-pause)
+       (cond
+         ((-> block param 0)
+          (logior! (-> self mask) (process-mask actor-pause))
+          (let ((v0-1 (the-as object #t)))
+            (set! (-> self actor-pause) (the-as symbol v0-1))
+            v0-1
+            )
+          )
+         (else
+           (logclear! (-> self mask) (process-mask actor-pause))
+           (set! (-> self actor-pause) #f)
+           #f
+           )
+         )
+       )
+      (('fade)
+       (process-entity-status! self (entity-perm-status dead) #t)
+       (send-event (handle->process (-> self notify)) 'notify 'die)
+       (deactivate self)
+       )
+      (('effect)
+       (when (not (-> block param 0))
+         (set! (-> self collect-effect) (the-as sparticle-launch-group 0))
+         (set! (-> self collect-effect2) (the-as sparticle-launch-group 0))
+         0
+         )
+       )
+      )
+    )
+  :enter (behavior ((arg0 symbol) (arg1 handle))
+    (do-pickup self arg1)
+    )
+  :code (behavior ((arg0 symbol) (arg1 handle))
+    (while (-> self child)
+      (suspend)
+      )
+    (go-virtual die)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate die (collectable)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status dead) #t)
+    )
+  )
+
+;; definition of type eco
+(deftype eco (collectable)
+  ((respawn-delay  time-frame)
+   )
+  )
+
+;; definition for method 3 of type eco
+(defmethod inspect ((this eco))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Trespawn-delay: ~D~%" (-> this respawn-delay))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 33 of type eco
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this eco))
+  (let ((t9-0 (method-of-type collectable initialize-allocations)))
+    (t9-0 this)
+    )
+  (if (logtest? (-> this fact options) (actor-option respawn-delay))
+      (set! (-> this respawn-delay) (-> this fact fade-time))
+      )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate die (eco)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('fade)
+       (process-entity-status! self (entity-perm-status dead) #t)
+       (send-event (handle->process (-> self notify)) 'notify 'die)
+       (deactivate self)
+       )
+      (('die)
+       (go-virtual die)
+       )
+      )
+    )
+  :exit (behavior ()
+    (process-entity-status! self (entity-perm-status no-kill) #f)
+    (if (-> self actor-pause)
+        (logior! (-> self mask) (process-mask actor-pause))
+        )
+    )
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status no-kill) #t)
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logclear! (-> self fact options) (actor-option auto-pickup suck-in))
+    (if (nonzero? (-> self part))
+        (kill-particles (-> self part))
+        )
+    (cond
+      ((nonzero? (-> self respawn-delay))
+       (let ((gp-0 (current-time)))
+         (while (not (time-elapsed? gp-0 (-> self respawn-delay)))
+           (suspend)
+           )
+         )
+       )
+      (else
+        (while (let ((f30-0 0.0))
+                 (< f30-0 (send-event *target* 'query 'pickup (-> self fact pickup-type)))
+                 )
+          (suspend)
+          )
+        )
+      )
+    (set! (-> self base quad) (-> self old-base quad))
+    (set! (-> self root trans quad) (-> self base quad))
+    (let ((v1-26 (-> self root root-prim)))
+      (set! (-> v1-26 prim-core collide-as) (-> self root backup-collide-as))
+      (set! (-> v1-26 prim-core collide-with) (-> self root backup-collide-with))
+      )
+    (+! (-> self clock ref-count) -1)
+    (+! (-> *display* entity-clock ref-count) 1)
+    (set! (-> self clock) (-> *display* entity-clock))
+    (if (nonzero? (-> self draw))
+        (logclear! (-> self draw status) (draw-control-status no-draw))
+        )
+    (go-virtual wait)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate pickup (eco)
+  :virtual #t
+  :code (behavior ((arg0 symbol) (arg1 handle))
+    (if (not (logtest? (-> self fact options) (actor-option no-reaction)))
+        (send-event (handle->process arg1) 'powerup (-> self fact pickup-type) (-> self fact pickup-amount))
+        )
+    (let ((t9-2 (-> (find-parent-state) code)))
+      (if t9-2
+          ((the-as (function none) t9-2))
+          )
+      )
+    )
+  )
+
+;; definition of type eco-yellow
+(deftype eco-yellow (eco)
+  ()
+  )
+
+;; definition for method 3 of type eco-yellow
+(defmethod inspect ((this eco-yellow))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type eco-yellow
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this eco-yellow) (arg0 entity-actor))
+  (init-common this arg0 (pickup-type eco-yellow) (-> *FACT-bank* eco-single-inc))
+  )
+
+;; definition of type eco-red
+(deftype eco-red (eco)
+  ()
+  )
+
+;; definition for method 3 of type eco-red
+(defmethod inspect ((this eco-red))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type eco-red
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this eco-red) (arg0 entity-actor))
+  (init-common this arg0 (pickup-type eco-red) (-> *FACT-bank* eco-single-inc))
+  )
+
+;; definition of type eco-blue
+(deftype eco-blue (eco)
+  ()
+  )
+
+;; definition for method 3 of type eco-blue
+(defmethod inspect ((this eco-blue))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type eco-blue
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this eco-blue) (arg0 entity-actor))
+  (init-common this arg0 (pickup-type eco-blue) (-> *FACT-bank* eco-single-inc))
+  )
+
+;; definition of type eco-green
+(deftype eco-green (eco)
+  ()
+  )
+
+;; definition for method 3 of type eco-green
+(defmethod inspect ((this eco-green))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type eco inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type eco-green
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this eco-green) (arg0 entity-actor))
+  (init-common this arg0 (pickup-type eco-green) (-> *FACT-bank* eco-single-inc))
+  )
+
+;; definition of type health
+(deftype health (collectable)
+  ()
+  )
+
+;; definition for method 3 of type health
+(defmethod inspect ((this health))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type health
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this health) (arg0 entity-actor))
+  (init-common this arg0 (pickup-type health) (-> *FACT-bank* health-default-inc))
+  )
+
+;; definition of type eco-pill
+(deftype eco-pill (collectable)
+  ()
+  )
+
+;; definition for method 3 of type eco-pill
+(defmethod inspect ((this eco-pill))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate wait (eco-pill)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (and *target*
+                  (and (>= 32768.0 (vector-vector-distance (-> self root trans) (-> *target* control trans)))
+                       (not (logtest? (focus-status teleporting) (-> *target* focus-status)))
+                       )
+                  )
+             (and (not (focus-test? *target* dead hit))
+                  (-> *setting-control* user-current pickups)
+                  (case (-> self fact pickup-type)
+                    (((pickup-type eco-pill-dark))
+                     (< (-> *game-info* eco-pill-dark) (-> *FACT-bank* eco-pill-dark-max-default))
+                     )
+                    (((pickup-type eco-pill-light))
+                     (< (-> *game-info* eco-pill-light) (-> *FACT-bank* eco-pill-light-max-default))
+                     )
+                    (else
+                      #t
+                      )
+                    )
+                  )
+             )
+        (send-event self 'suck *target*)
+        )
+    )
+  )
+
+;; definition for method 11 of type eco-pill
+;; WARN: Return type mismatch none vs object.
+(defmethod init-from-entity! ((this eco-pill) (arg0 entity-actor))
+  (init-common this arg0 (pickup-type eco-pill-green) (-> *FACT-bank* health-small-inc))
+  )
+
+;; definition for method 10 of type eco-pill
+(defmethod deactivate ((this eco-pill))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (+! (-> *game-info* live-eco-pill-count) -1)
+  ((method-of-type collectable deactivate) this)
+  (none)
+  )
+
+;; definition for method 33 of type eco-pill
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this eco-pill))
+  (+! (-> *game-info* live-eco-pill-count) 1)
+  (stack-size-set! (-> this main-thread) 128)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #f)
+  (set! (-> this notify) (the-as handle #f))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+      (set-vector! (-> v1-13 local-sphere) 0.0 3276.8 0.0 1638.4)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-13)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-16 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-16 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-16 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (set! (-> this fact) (new 'process 'fact-info this (-> this pickup-type) (-> this pickup-amount)))
+  0
+  (none)
+  )
+
+;; definition of type money
+(deftype money (collectable)
+  ()
+  )
+
+;; definition for method 3 of type money
+(defmethod inspect ((this money))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 12 of type money
+(defmethod run-logic? ((this money))
+  "Should this process be run? Checked by execute-process-tree."
+  (or (not (logtest? (-> this mask) (process-mask actor-pause)))
+      (or (and (nonzero? (-> this draw))
+               (logtest? (-> this draw status) (draw-control-status on-screen))
+               (>= (+ (-> *ACTOR-bank* pause-dist) (-> this root pause-adjust-distance))
+                   (vector-vector-distance (-> this root trans) (math-camera-pos))
+                   )
+               )
+          (and (nonzero? (-> this skel)) (!= (-> this skel root-channel 0) (-> this skel channel)))
+          (and (nonzero? (-> this draw)) (logtest? (-> this draw status) (draw-control-status uninited)))
+          )
+      )
+  )
+
+;; definition for method 10 of type money
+(defmethod deactivate ((this money))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (when (and (-> this next-state) (= (-> this next-state name) 'pickup))
+    (case (-> this pickup-type)
+      (((pickup-type gem))
+       (if (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status save))))
+           (format #t "~A ~A was killed in pickup~%" (-> this type) (-> this name))
+           )
+       (process-entity-status! this (entity-perm-status dead) #t)
+       )
+      (else
+        (if (not (and (-> this entity) (logtest? (-> this entity extra perm status) (entity-perm-status dead))))
+            (format #t "~A ~A was killed in pickup~%" (-> this type) (-> this name))
+            )
+        )
+      )
+    )
+  ((method-of-type collectable deactivate) this)
+  (none)
+  )
+
+;; definition for method 34 of type money
+(defmethod common-post ((this money))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* 40049.777 (seconds-per-frame)))
+  (let ((f30-0 (-> this bob-amount)))
+    (when (< 0.0 f30-0)
+      (set! (-> this root trans y)
+            (+ (-> this base y)
+               (-> this suck-y-offset)
+               (* f30-0
+                  (sin
+                    (* 109.22667
+                       (the float (mod (+ (- (current-time) (-> this birth-time)) (the-as time-frame (-> this bob-offset))) 600))
+                       )
+                    )
+                  )
+               )
+            )
+      (update-transforms (-> this root))
+      )
+    )
+  (let ((a0-7 (-> this part))
+        (a1-1 (-> this root root-prim prim-core))
+        )
+    (if (nonzero? a0-7)
+        (spawn a0-7 (the-as vector a1-1))
+        )
+    )
+  (ja-post)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate notice-blue (money)
+  :virtual #t
+  :code (behavior ((arg0 handle))
+    (until #f
+      (quaternion-rotate-y! (-> self root quat) (-> self root quat) (* 91022.22 (seconds-per-frame)))
+      (set! (-> self root trans quad) (-> self base quad))
+      (add-blue-motion #t #t #t #f)
+      (let ((f30-0 (-> self bob-amount)))
+        (if (< 0.0 f30-0)
+            (set! (-> self root trans y)
+                  (+ (-> self base y)
+                     (-> self suck-y-offset)
+                     (* f30-0
+                        (sin
+                          (* 109.22667
+                             (the float (mod (+ (- (current-time) (-> self birth-time)) (the-as time-frame (-> self bob-offset))) 600))
+                             )
+                          )
+                        )
+                     )
+                  )
+            )
+        )
+      (transform-post)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate pickup (money)
+  :virtual #t
+  :code (behavior ((arg0 symbol) (arg1 handle))
+    (process-entity-status! self (entity-perm-status dead) #t)
+    )
+  )
+
+;; definition for method 33 of type money
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this money))
+  (stack-size-set! (-> this main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+      (set-vector! (-> v1-8 local-sphere) 0.0 2048.0 0.0 4915.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (logior! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #t)
+  (set! (-> this notify) (the-as handle #f))
+  (set! (-> this fact) (new 'process 'fact-info this (pickup-type money) 1.0))
+  (let ((a0-11 (-> this entity)))
+    (if (when a0-11
+          (let ((a0-12 (-> a0-11 extra perm task)))
+            (if a0-12
+                (= a0-12 (game-task none))
+                )
+            )
+          )
+        (set! (-> this entity extra perm task) (game-task complete))
+        )
+    )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gem" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (if (-> this entity)
+      (nav-mesh-connect-from-ent this)
+      )
+  (set-vector! (-> this draw color-mult) 0.8 0.8 0.8 1.0)
+  (set-vector! (-> this draw color-emissive) 0.2 0.2 0.2 1.0)
+  0
+  (none)
+  )
+
+;; definition for method 11 of type money
+(defmethod init-from-entity! ((this money) (arg0 entity-actor))
+  (initialize-allocations this)
+  (process-drawable-from-entity! this (-> this entity))
+  (initialize-options this 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> this root))
+  (go-to-initial-state this)
+  )
+
+;; definition for function money-init-by-other
+;; INFO: Used lq/sq
+(defbehavior money-init-by-other money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor) (arg4 time-frame))
+  (let ((s2-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (process-entity-set! self arg3)
+    (set! (-> self pickup-type) s2-0)
+    (set! (-> self pickup-amount) f30-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s2-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (let ((v1-5 (ppointer->process (-> self parent))))
+    (set! (-> self notify) (if (logtest? (-> v1-5 mask) (process-mask process-tree))
+                               (the-as handle #f)
+                               (process->handle v1-5)
+                               )
+          )
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (set! (-> self root transv quad) (-> arg1 quad))
+  (initialize-options
+    self
+    (the-as int (cond
+                  ((and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+                   (-> arg2 fade-time)
+                   )
+                  (else
+                    (empty)
+                    arg4
+                    )
+                  )
+            )
+    1024.0
+    arg2
+    )
+  (update-transforms (-> self root))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  )
+
+;; definition for function money-init-by-other-no-bob
+;; INFO: Used lq/sq
+(defbehavior money-init-by-other-no-bob money ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 float) (arg4 entity-actor))
+  (process-entity-set! self arg4)
+  (set! (-> self pickup-type) (the-as pickup-type arg2))
+  (set! (-> self pickup-amount) arg3)
+  (initialize-allocations self)
+  (set! (-> self fact pickup-type) (the-as pickup-type arg2))
+  (set! (-> self fact pickup-amount) arg3)
+  (let ((v1-4 (ppointer->process (-> self parent))))
+    (set! (-> self notify) (if (logtest? (-> v1-4 mask) (process-mask process-tree))
+                               (the-as handle #f)
+                               (process->handle v1-4)
+                               )
+          )
+    )
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (quaternion-identity! (-> self root quat))
+  (set! (-> self root transv quad) (-> arg1 quad))
+  (initialize-options self 4500 0.0 (the-as fact-info #f))
+  (logior! (-> self flags) (collectable-flag no-eco-blue))
+  (update-transforms (-> self root))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  )
+
+;; definition of type gem
+(deftype gem (money)
+  ((roty-speed   degrees)
+   (bounce-time  time-frame)
+   (gem-pool     uint8)
+   )
+  )
+
+;; definition for method 3 of type gem
+(defmethod inspect ((this gem))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type money inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Troty-speed: (deg ~r)~%" (-> this roty-speed))
+  (format #t "~2Tbounce-time: ~D~%" (-> this bounce-time))
+  (format #t "~2Tgem-pool: ~D~%" (-> this gem-pool))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 10 of type gem
+(defmethod deactivate ((this gem))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (+! (-> *game-info* live-gem-count) -1)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 34 of type gem
+;; WARN: Return type mismatch int vs none.
+(defmethod common-post ((this gem))
+  (seek! (-> this roty-speed) 20024.889 (* 65536.0 (seconds-per-frame)))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* (-> this roty-speed) (seconds-per-frame)))
+  (logclear! (-> this draw status) (draw-control-status no-draw-temp uninited))
+  (do-joint-math (-> this draw) (-> this node-list) (-> this skel))
+  (let ((a0-7 (-> this part))
+        (a1-3 (-> this draw skeleton bones 3))
+        )
+    (if (nonzero? a0-7)
+        (spawn-from-mat a0-7 (the-as matrix a1-3))
+        )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate suck (gem)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('handle-gem-pickup)
+       (return (notify-gem-pickup (-> self gem-pool)))
+       v0-1
+       )
+      (else
+        (collectable-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate deploy (gem)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-1 object))
+    (case message
+      (('handle-gem-pickup)
+       (return (notify-gem-pickup (-> self gem-pool)))
+       v0-1
+       )
+      (else
+        (collectable-standard-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type collectable deploy) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set-vector!
+      (-> self root transv)
+      (rand-vu-float-range -20480.0 20480.0)
+      81920.0
+      (rand-vu-float-range -20480.0 20480.0)
+      1.0
+      )
+    (when (-> *setting-control* user-current gem-seek-target-dir?)
+      (let ((gp-2 (vector-! (new 'stack-no-clear 'vector) (target-pos 0) (-> self root trans))))
+        0.0
+        (set! (-> gp-2 y) 0.0)
+        (let ((f30-0 (vector-normalize-ret-len! gp-2 1.0)))
+          (let ((a0-6 gp-2))
+            (set! (-> a0-6 quad) (-> gp-2 quad))
+            (set! (-> a0-6 y) 0.0)
+            (vector-normalize! a0-6 1.0)
+            )
+          (vector-float*! gp-2 gp-2 (rand-vu-float-range (* 0.25 f30-0) (* 0.75 f30-0)))
+          )
+        (set! (-> self root transv quad) (-> gp-2 quad))
+        )
+      (set! (-> self root transv y) 81920.0)
+      )
+    (set-gravity-length (-> self root dynam) 122880.0)
+    (set! (-> self roty-speed) 186413.52)
+    (logior! (-> self flags) (collectable-flag pickup))
+    (set! (-> self root root-prim prim-core collide-with)
+          (collide-spec backgnd bot crate civilian enemy obstacle vehicle-sphere hit-by-others-list player-list pusher)
+          )
+    (set! (-> self root root-prim prim-core collide-as) (collide-spec collectable))
+    (set! (-> self root max-iteration-count) (the-as uint 2))
+    (logior! (-> self root root-prim prim-core action) (collide-action solid))
+    (set! (-> self root reaction) projectile-bounce-reaction)
+    (set! (-> self root penetrated-by) (the-as penetrate -1))
+    )
+  :exit (behavior ()
+    (set! (-> self roty-speed) (fmin 262144.0 (-> self roty-speed)))
+    (set-gravity-length (-> self root dynam) 245760.0)
+    (set! (-> self root root-prim local-sphere w) 6144.0)
+    (update-transforms (-> self root))
+    (let ((t9-2 (-> (method-of-type collectable deploy) exit)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    )
+  :trans #f
+  :code sleep-code
+  :post (behavior ()
+    (let ((gp-0 #t))
+      (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
+      (when (-> self entity)
+        (when (get-simple-travel-vector
+                (-> self entity)
+                (-> self root transv)
+                (-> self root trans)
+                (-> self root transv)
+                (* 1.5 (-> self root root-prim prim-core world-sphere w))
+                0.8
+                )
+          (let ((s5-1 (new 'stack-no-clear 'vector))
+                (f30-0 (-> self root transv y))
+                )
+            (project-point-to-nav-mesh (-> self entity) s5-1 (-> self root trans) (the-as nav-poly #f) 40960000.0)
+            (when (>= (vector-vector-xz-distance s5-1 (-> self root trans)) 204.8)
+              (vector-! (-> self root transv) s5-1 (-> self root trans))
+              (vector-normalize! (-> self root transv) 40960.0)
+              (set! (-> self root transv y) (if (< 0.0 (-> self root transv y))
+                                                (+ f30-0 (* 4.0 (seconds-per-frame) (-> self root transv y)))
+                                                f30-0
+                                                )
+                    )
+              (set! gp-0 #f)
+              )
+            )
+          )
+        )
+      (cond
+        (gp-0
+          (let ((v1-31 (-> self root))
+                (a2-3 (new 'stack-no-clear 'collide-query))
+                )
+            (set! (-> a2-3 collide-with) (-> v1-31 root-prim prim-core collide-with))
+            (set! (-> a2-3 ignore-process0) self)
+            (set! (-> a2-3 ignore-process1) #f)
+            (set! (-> a2-3 ignore-pat) (-> v1-31 pat-ignore-mask))
+            (set! (-> a2-3 action-mask) (collide-action solid))
+            (fill-cache-integrate-and-collide v1-31 (-> v1-31 transv) a2-3 (meters 0))
+            )
+          )
+        (else
+          (integrate-no-collide! (-> self root) (-> self root transv))
+          )
+        )
+      )
+    (let* ((gp-1 (-> self root))
+           (s5-2 (-> gp-1 status))
+           )
+      (cond
+        ((logtest? s5-2 (collide-status touch-surface))
+         (set! (-> gp-1 transv x) (* 0.7 (-> gp-1 transv x)))
+         (set! (-> gp-1 transv y) (* (-> gp-1 transv y) (rand-vu-float-range 0.7 0.75)))
+         (set! (-> gp-1 transv z) (* 0.7 (-> gp-1 transv z)))
+         (set! (-> self roty-speed)
+               (fmin
+                 131072.0
+                 (+ (-> self roty-speed) (lerp-scale 0.0 131072.0 (-> self root ground-impact-vel) 0.0 122880.0))
+                 )
+               )
+         (if (or (and (logtest? s5-2 (collide-status on-surface)) (< (vector-length (-> gp-1 transv)) 1228.8))
+                 (time-elapsed? (-> self state-time) (seconds 10))
+                 )
+             (go-virtual wait)
+             )
+         (when (time-elapsed? (-> self bounce-time) (seconds 0.1))
+           (set-time! (-> self bounce-time))
+           (sound-play-by-name
+             (static-sound-name "gem-bounce")
+             (new-sound-id)
+             (the int (* 1024.0 (lerp-scale 0.5 1.0 (-> self root ground-impact-vel) 0.0 40960.0)))
+             0
+             0
+             (sound-group)
+             #t
+             )
+           )
+         )
+        ((time-elapsed? (-> self state-time) (seconds 15))
+         (go-virtual wait)
+         )
+        )
+      )
+    (seek! (-> self roty-speed) 0.0 (* 16384.0 (seconds-per-frame)))
+    (common-post self)
+    )
+  )
+
+;; definition for method 33 of type gem
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this gem))
+  (+! (-> *game-info* live-gem-count) 1)
+  (stack-size-set! (-> this main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+      (set-vector! (-> v1-11 local-sphere) 0.0 2048.0 0.0 2048.0)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-11)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (set! (-> this roty-speed) 40049.777)
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) (rand-vu-float-range 0.0 65536.0))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #f)
+  (set! (-> this notify) (the-as handle #f))
+  (set! (-> this fact) (new 'process 'fact-info this (pickup-type gem) 1.0))
+  (let ((v1-22 (-> this entity)))
+    (if (and (-> this entity)
+             (-> v1-22 extra perm task)
+             (= (-> v1-22 extra perm task) (game-task none))
+             (type-type? (-> v1-22 etype) crate)
+             )
+        (set! (-> this entity extra perm task) (game-task complete))
+        )
+    )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gem" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set-vector! (-> this root scale) 1.5 1.5 1.5 1.0)
+  (if (-> this entity)
+      (nav-mesh-connect-from-ent this)
+      )
+  (set-vector! (-> this draw color-mult) 0.8 0.8 0.8 1.0)
+  (set-vector! (-> this draw color-emissive) 0.2 0.2 0.2 1.0)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 134) this))
+  (set! (-> this collect-effect) (-> *part-group-id-table* 135))
+  (set! (-> this gem-pool) (the-as uint 0))
+  0
+  (none)
+  )
+
+;; definition for symbol *collectable-dummy-shadow-control*, type shadow-control
+(define *collectable-dummy-shadow-control*
+  (new 'static 'shadow-control :settings (new 'static 'shadow-settings
+                                           :center (new 'static 'vector :w (the-as float #x2))
+                                           :shadow-dir (new 'static 'vector :y -1.0 :w 163840.0)
+                                           :bot-plane (new 'static 'plane :y 1.0 :w 40960.0)
+                                           :top-plane (new 'static 'plane :y 1.0 :w -4096.0)
+                                           )
+                               )
+  )
+
+;; definition of type skill
+(deftype skill (money)
+  ()
+  )
+
+;; definition for method 3 of type skill
+(defmethod inspect ((this skill))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type money inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate wait (skill)
+  :virtual #t
+  :code (behavior ()
+    (until #f
+      (if (and (logtest? (-> self flags) (collectable-flag fadeout))
+               (begin
+                 (if (movie?)
+                     (set-time! (-> self birth-time))
+                     )
+                 (time-elapsed? (-> self birth-time) (-> self fadeout-timeout))
+                 )
+               )
+          (go-virtual fade)
+          )
+      (common-post self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for method 33 of type skill
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this skill))
+  (stack-size-set! (-> this main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec collectable notice-blue-eco-powerup))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+      (set-vector! (-> v1-8 local-sphere) 0.0 2048.0 0.0 4915.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (logior! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #t)
+  (set! (-> this root pause-adjust-distance) 409600.0)
+  (set! (-> this notify) (the-as handle #f))
+  (set! (-> this fact) (new 'process 'fact-info this (pickup-type skill) 1.0))
+  (let ((a0-11 (-> this entity)))
+    (if (when a0-11
+          (let ((a0-12 (-> a0-11 extra perm task)))
+            (if a0-12
+                (= a0-12 (game-task none))
+                )
+            )
+          )
+        (set! (-> this entity extra perm task) (game-task complete))
+        )
+    )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-skill" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set! (-> this draw shadow-ctrl) *collectable-dummy-shadow-control*)
+  (if (-> this entity)
+      (nav-mesh-connect-from-ent this)
+      )
+  (cond
+    ((>= (-> this pickup-amount) (-> *FACT-bank* super-skill-inc))
+     (set-vector! (-> this draw color-mult) 0.8 0.8 0.0 1.0)
+     (set-vector! (-> this draw color-emissive) 0.0 1.0 0.2 1.0)
+     (set! (-> this part) (create-launch-control (-> *part-group-id-table* 133) this))
+     )
+    (else
+      (set-vector! (-> this draw color-mult) 0.8 0.8 0.8 1.0)
+      (set-vector! (-> this draw color-emissive) 0.2 0.2 0.2 1.0)
+      (set! (-> this part) (create-launch-control (-> *part-group-id-table* 132) this))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition of type fuel-cell
+(deftype fuel-cell (process-hidden)
+  ()
+  )
+
+;; definition for method 3 of type fuel-cell
+(defmethod inspect ((this fuel-cell))
+  (when (not this)
+    (set! this this)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask metalhead) s5-0) (shl #x8000 16))
+        (format #t "metalhead ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (process-mask civilian))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask kg-robot) s5-0) (process-mask kg-robot))
+        (format #t "kg-robot ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> this clock))
+  (format #t "~1Tparent: #x~X~%" (-> this parent))
+  (format #t "~1Tbrother: #x~X~%" (-> this brother))
+  (format #t "~1Tchild: #x~X~%" (-> this child))
+  (format #t "~1Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tstatus: ~A~%" (-> this status))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tstate: ~A~%" (-> this state))
+  (format #t "~1Tprev-state: ~A~%" (-> this prev-state))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~1Tstate-stack: ~A~%" (-> this state-stack))
+  (format #t "~1Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> this connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> this stack))
+  (label cfg-68)
+  this
+  )
+
+;; definition of type trick-point
+(deftype trick-point (collectable)
+  ()
+  )
+
+;; definition for method 3 of type trick-point
+(defmethod inspect ((this trick-point))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type skate-point
+(deftype skate-point (trick-point)
+  ()
+  )
+
+;; definition for method 3 of type skate-point
+(defmethod inspect ((this skate-point))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type trick-point inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 33 of type trick-point
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this trick-point))
+  (stack-size-set! (-> this main-thread) 128)
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-8 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-8 prim-core collide-as) (collide-spec collectable))
+      (set! (-> v1-8 prim-core collide-with) (collide-spec jak player-list tobot jak-vehicle))
+      (set-vector! (-> v1-8 local-sphere) 0.0 2048.0 0.0 4915.2)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-8)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-11 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (logior! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #t)
+  (set! (-> this notify) (the-as handle #f))
+  (set! (-> this root pause-adjust-distance) 204800.0)
+  (set! (-> this fact) (new 'process 'fact-info this (pickup-type trick-point) 100.0))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 142) this))
+  (set! (-> this collect-effect) (-> *part-group-id-table* 143))
+  0
+  (none)
+  )
+
+;; definition for method 11 of type trick-point
+(defmethod init-from-entity! ((this trick-point) (arg0 entity-actor))
+  (initialize-allocations this)
+  (process-drawable-from-entity! this (-> this entity))
+  (initialize-options this 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> this root))
+  (go-to-initial-state this)
+  )
+
+;; definition of type ammo-collectable
+(deftype ammo-collectable (collectable)
+  ((ammo-effect  basic)
+   )
+  )
+
+;; definition for method 3 of type ammo-collectable
+(defmethod inspect ((this ammo-collectable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type collectable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tammo-effect: ~A~%" (-> this ammo-effect))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 31 of type ammo-collectable
+(defmethod go-to-initial-state ((this ammo-collectable))
+  (if (-> *setting-control* user-current gun-special-mode)
+      (go empty-state)
+      (call-parent-method this)
+      )
+  )
+
+;; definition for method 33 of type ammo-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod initialize-allocations ((this ammo-collectable))
+  (stack-size-set! (-> this main-thread) 128)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this actor-pause) #f)
+  (set! (-> this notify) (the-as handle #f))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((v1-10 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-10 prim-core collide-as) (collide-spec collectable))
+      (set! (-> v1-10 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set-vector! (-> v1-10 local-sphere) 0.0 3276.8 0.0 6553.6)
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) v1-10)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-13 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-13 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-13 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) (rand-vu-float-range 0.0 65536.0))
+  (set! (-> this fact) (new 'process 'fact-info this (-> this pickup-type) (-> this pickup-amount)))
+  (case (-> this pickup-type)
+    (((pickup-type ammo-yellow))
+     (set! (-> this collect-effect) (-> *part-group-id-table* 136))
+     )
+    (((pickup-type ammo-red))
+     (set! (-> this collect-effect) (-> *part-group-id-table* 137))
+     )
+    (((pickup-type ammo-blue))
+     (set! (-> this collect-effect) (-> *part-group-id-table* 138))
+     )
+    (((pickup-type ammo-dark))
+     (set! (-> this collect-effect) (-> *part-group-id-table* 139))
+     )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 30 of type ammo-collectable
+;; WARN: Return type mismatch object vs none.
+(defmethod initialize-effects ((this ammo-collectable) (arg0 pickup-type))
+  (set! (-> this fact pickup-type) arg0)
+  (case arg0
+    (((pickup-type ammo-yellow))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-yellow" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this root scale) 2.5 2.5 2.5 1.0)
+     (set! (-> this ammo-effect) (-> *part-group-id-table* 164))
+     )
+    (((pickup-type ammo-red))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-red" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this root scale) 4.0 4.0 4.0 1.0)
+     (set! (-> this ammo-effect) (-> *part-group-id-table* 158))
+     )
+    (((pickup-type ammo-blue))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-blue" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this root scale) 4.0 4.0 4.0 1.0)
+     (set! (-> this ammo-effect) (-> *part-group-id-table* 154))
+     )
+    (((pickup-type ammo-dark))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-ammo-dark" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this root scale) 3.0 3.0 3.0 1.0)
+     (set! (-> this ammo-effect) (-> *part-group-id-table* 129))
+     )
+    (((pickup-type gun-yellow-1) (pickup-type gun-yellow-2) (pickup-type gun-yellow-3))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-yellow-up" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this root scale) 3.0 3.0 3.0 1.0)
+     (logclear! (-> this flags) (collectable-flag fadeout))
+     (let ((v1-34 (-> this node-list data)))
+       (set! (-> v1-34 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
+       (set! (-> v1-34 0 param1) (the-as basic (-> this root trans)))
+       (set! (-> v1-34 0 param2) (the-as basic (-> this extra-trans)))
+       )
+     (set-vector! (-> this extra-trans) 0.0 1638.4 0.0 1.0)
+     )
+    (((pickup-type gun-dark-1) (pickup-type gun-dark-2) (pickup-type gun-dark-3))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-gun-dark-up" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (set-vector! (-> this root scale) 3.0 3.0 3.0 1.0)
+     (logclear! (-> this flags) (collectable-flag fadeout))
+     )
+    (((pickup-type board))
+     (process-entity-set! this (the-as entity #f))
+     (initialize-skeleton
+       this
+       (the-as skeleton-group (art-group-get-by-name *level* "skel-board" (the-as (pointer level) #f)))
+       (the-as pair 0)
+       )
+     (ja-channel-set! 1)
+     (let ((v1-48 (-> this skel root-channel 0)))
+       (set! (-> v1-48 frame-group) (the-as art-joint-anim (-> this draw art-group data 3)))
+       )
+     (set-vector! (-> this root scale) 2.0 2.0 2.0 1.0)
+     (let ((v1-52 (-> this node-list data)))
+       (set! (-> v1-52 0 param0) (the-as (function cspace transformq none) cspace<-transformq+trans!))
+       (set! (-> v1-52 0 param1) (the-as basic (-> this root trans)))
+       (set! (-> v1-52 0 param2) (the-as basic (-> this extra-trans)))
+       )
+     (set-vector! (-> this extra-trans) 0.0 2048.0 0.0 1.0)
+     (logclear! (-> this flags) (collectable-flag fadeout))
+     )
+    (((pickup-type shield))
+     (set! (-> this ammo-effect) (-> *part-group-id-table* 125))
+     )
+    (((pickup-type trick-point))
+     )
+    )
+  (none)
+  )
+
+;; definition for function initialize-ammo-by-other
+;; INFO: Used lq/sq
+(defbehavior initialize-ammo-by-other ammo ((arg0 vector) (arg1 vector) (arg2 fact-info))
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (set! (-> self pickup-amount) f30-0)
+    (set! (-> self pickup-type) s3-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root transv quad) (-> arg1 quad))
+  (initialize-effects self (-> self fact pickup-type))
+  (set! (-> self notify) (the-as handle #f))
+  (initialize-options self 4500 1024.0 arg2)
+  (update-transforms (-> self root))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  )
+
+;; definition for method 29 of type ammo-collectable
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod init-common ((this ammo-collectable) (arg0 entity-actor) (arg1 pickup-type) (arg2 float))
+  (set! (-> this pickup-amount) arg2)
+  (set! (-> this pickup-type) arg1)
+  (initialize-allocations this)
+  (set! (-> this root trans quad) (-> arg0 extra trans quad))
+  (initialize-effects this (-> this fact pickup-type))
+  (initialize-options this 0 1024.0 (the-as fact-info #f))
+  (update-transforms (-> this root))
+  (go-to-initial-state this)
+  (none)
+  )
+
+;; definition for method 34 of type ammo-collectable
+;; WARN: Return type mismatch int vs none.
+(defmethod common-post ((this ammo-collectable))
+  (quaternion-rotate-y! (-> this root quat) (-> this root quat) (* 40049.777 (seconds-per-frame)))
+  ((method-of-type collectable common-post) this)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate die (ammo-collectable)
+  :virtual #t
+  :code (behavior ()
+    (process-entity-status! self (entity-perm-status dead) #t)
+    )
+  )
+
+;; definition of type ammo
+(deftype ammo (ammo-collectable)
+  ()
+  )
+
+;; definition for method 3 of type ammo
+(defmethod inspect ((this ammo))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type ammo-collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shield
+(deftype shield (ammo-collectable)
+  ()
+  )
+
+;; definition for method 3 of type shield
+(defmethod inspect ((this shield))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type ammo-collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition of type upgrade-collectable
+(deftype upgrade-collectable (ammo-collectable)
+  ()
+  )
+
+;; definition for method 3 of type upgrade-collectable
+(defmethod inspect ((this upgrade-collectable))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type ammo-collectable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for function initialize-upgrade-by-other
+;; INFO: Used lq/sq
+(defbehavior initialize-upgrade-by-other upgrade-collectable ((arg0 vector) (arg1 vector) (arg2 fact-info) (arg3 entity-actor))
+  (process-entity-set! self arg3)
+  (let ((s3-0 (-> arg2 pickup-type))
+        (f30-0 (-> arg2 pickup-spawn-amount))
+        )
+    (set! (-> self pickup-amount) f30-0)
+    (set! (-> self pickup-type) s3-0)
+    (initialize-allocations self)
+    (set! (-> self fact pickup-type) s3-0)
+    (set! (-> self fact pickup-amount) f30-0)
+    )
+  (set! (-> self fact options) (-> arg2 options))
+  (set! (-> self root trans quad) (-> arg0 quad))
+  (set! (-> self root transv quad) (-> arg1 quad))
+  (initialize-effects self (-> self fact pickup-type))
+  (set! (-> self notify) (the-as handle #f))
+  (initialize-options
+    self
+    (if (and arg2 (logtest? (-> arg2 options) (actor-option fade-out)))
+        (the-as int (-> arg2 fade-time))
+        0
+        )
+    1024.0
+    (the-as fact-info #f)
+    )
+  (set! (-> self collect-timeout) (seconds 1))
+  (update-transforms (-> self root))
+  (set! (-> self event-hook) (-> (method-of-object self wait) event))
+  (go-to-initial-state self)
+  )
+
+;; definition for method 11 of type eco
+(defmethod init-from-entity! ((this eco) (arg0 entity-actor))
+  (let ((v1-1 (res-lump-value (-> this entity) 'eco-info uint128 :time -1000000000.0)))
+    (set! (-> this type) (cond
+                           ((= (the-as uint v1-1) 3)
+                            eco-blue
+                            )
+                           ((= (the-as uint v1-1) 2)
+                            eco-red
+                            )
+                           ((= (the-as uint v1-1) 1)
+                            eco-yellow
+                            )
+                           ((= (the-as uint v1-1) 5)
+                            eco-green
+                            )
+                           ((= (the-as uint v1-1) 20)
+                            health
+                            )
+                           ((= (the-as uint v1-1) 10)
+                            money
+                            )
+                           ((= (the-as uint v1-1) 21)
+                            trick-point
+                            )
+                           ((= (the-as uint v1-1) 23)
+                            gem
+                            )
+                           ((= (the-as uint v1-1) 24)
+                            skill
+                            )
+                           ((= (the-as uint v1-1) 11)
+                            fuel-cell
+                            )
+                           (else
+                             eco-pill
+                             )
+                           )
+          )
+    )
+  (init-from-entity! this arg0)
+  )
+
+;; definition for function verify-pickup-type
+;; WARN: Return type mismatch int vs pickup-type.
+(defun verify-pickup-type ((arg0 pickup-type))
+  (case arg0
+    (((pickup-type eco-pill-light))
+     (if (not (logtest? (game-feature lightjak) (-> *game-info* features)))
+         (set! arg0 (pickup-type none))
+         )
+     )
+    (((pickup-type ammo-red))
+     (if (not (logtest? (-> *game-info* features) (game-feature gun-red-1)))
+         (set! arg0 (pickup-type ammo-yellow))
+         )
+     )
+    (((pickup-type ammo-blue))
+     (if (not (logtest? (-> *game-info* features) (game-feature gun-blue-1)))
+         (set! arg0 (pickup-type ammo-yellow))
+         )
+     )
+    (((pickup-type ammo-dark))
+     (if (not (logtest? (-> *game-info* features) (game-feature gun-dark-1)))
+         (set! arg0 (pickup-type ammo-yellow))
+         )
+     )
+    )
+  (the-as pickup-type arg0)
+  )
+
+;; definition for function birth-pickup-at-point
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs (pointer process).
+(defbehavior birth-pickup-at-point process ((arg0 vector) (arg1 pickup-type) (arg2 float) (arg3 symbol) (arg4 process-tree) (arg5 fact-info))
+  (local-vars
+    (v1-56 pickup-type)
+    (v1-68 pickup-type)
+    (sv-32 vector)
+    (sv-36 float)
+    (sv-40 (pointer process))
+    (sv-48 int)
+    (sv-56 fact-info)
+    (sv-64 int)
+    (sv-72 int)
+    )
+  (let ((s2-0 (verify-pickup-type arg1)))
+    (if (= s2-0 (pickup-type none))
+        (return (the-as (pointer process) 0))
+        )
+    (set! sv-32 (new-stack-vector0))
+    (set! sv-36 (res-lump-float
+                  (if (and arg5 (nonzero? (-> arg5 process)))
+                      (-> arg5 process entity)
+                      )
+                  'pickup-radius
+                  :default (cond
+                    ((= s2-0 (pickup-type buzzer))
+                     0.0
+                     )
+                    ((= arg2 1.0)
+                     409.6
+                     )
+                    (else
+                      8192.0
+                      )
+                    )
+                  )
+          )
+    (set! sv-40 (the-as (pointer process) #f))
+    (set! sv-48 (the int arg2))
+    (set! sv-56 (new 'static 'fact-info))
+    (set! (-> sv-56 options) (actor-option))
+    (set! (-> sv-56 process) #f)
+    (if arg5
+        (mem-copy! (&-> sv-56 type) (&-> arg5 type) 40)
+        )
+    (set! (-> sv-56 pickup-type) s2-0)
+    (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+        (set! (-> sv-56 pickup-spawn-amount) 1.0)
+        )
+    (while (> sv-48 0)
+      (set! sv-48 (+ sv-48 -1))
+      (when arg3
+        (set-vector! sv-32 0.0 57001.605 sv-36 1.0)
+        (vector-rotate-around-y! sv-32 sv-32 (/ (* 65536.0 (the float sv-48)) arg2))
+        )
+      (case s2-0
+        (((pickup-type eco-yellow))
+         (set! sv-40 (process-spawn
+                       eco-yellow
+                       :init initialize-eco-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "eco-yellow"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         )
+        (((pickup-type eco-red))
+         (set! sv-40 (process-spawn
+                       eco-red
+                       :init initialize-eco-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "eco-red"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         )
+        (((pickup-type eco-blue))
+         (set! sv-40 (process-spawn
+                       eco-blue
+                       :init initialize-eco-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "eco-blue"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         )
+        (((pickup-type eco-green))
+         (set! sv-40 (process-spawn
+                       eco-green
+                       :init initialize-eco-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "eco-green"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         )
+        (((pickup-type health))
+         (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+             (set! (-> sv-56 pickup-spawn-amount) arg2)
+             )
+         (set! sv-40 (process-spawn
+                       health
+                       :init initialize-eco-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "health"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         (set! sv-48 0)
+         0
+         )
+        (((pickup-type eco-pill-green) (pickup-type eco-pill-dark) (pickup-type eco-pill-light))
+         (set! sv-64 (cond
+                       ((logtest? (actor-option dont-override-fact) (-> sv-56 options))
+                        (the int (-> sv-56 pickup-spawn-amount))
+                        )
+                       ((begin (set! v1-56 s2-0) (= v1-56 (pickup-type eco-pill-dark)))
+                        2
+                        )
+                       ((= v1-56 (pickup-type eco-pill-light))
+                        20
+                        )
+                       (else
+                         1
+                         )
+                       )
+               )
+         (set! (-> sv-56 pickup-spawn-amount) (the float sv-64))
+         (set! sv-40 (process-spawn
+                       eco-pill
+                       :init initialize-eco-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "eco-pill"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         (set! sv-48 (- sv-48 (+ sv-64 -1)))
+         )
+        (((pickup-type ammo-yellow)
+          (pickup-type ammo-red)
+          (pickup-type ammo-blue)
+          (pickup-type ammo-dark)
+          (pickup-type shield)
+          )
+         (set! sv-72 (cond
+                       ((logtest? (actor-option dont-override-fact) (-> sv-56 options))
+                        (the int (-> sv-56 pickup-spawn-amount))
+                        )
+                       ((begin (set! v1-68 s2-0) (= v1-68 (pickup-type ammo-red)))
+                        5
+                        )
+                       ((= v1-68 (pickup-type ammo-dark))
+                        1
+                        )
+                       (else
+                         10
+                         )
+                       )
+               )
+         (set! (-> sv-56 pickup-spawn-amount) (the float sv-72))
+         (set! sv-40 (process-spawn
+                       ammo-collectable
+                       :init initialize-ammo-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "ammo-collectable"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         (set! sv-48 (- sv-48 (+ sv-72 -1)))
+         )
+        (((pickup-type gun-red-1)
+          (pickup-type gun-red-2)
+          (pickup-type gun-red-3)
+          (pickup-type gun-yellow-1)
+          (pickup-type gun-yellow-2)
+          (pickup-type gun-yellow-3)
+          (pickup-type gun-blue-1)
+          (pickup-type gun-blue-2)
+          (pickup-type gun-blue-3)
+          (pickup-type gun-dark-1)
+          (pickup-type gun-dark-2)
+          (pickup-type gun-dark-3)
+          (pickup-type board)
+          )
+         (set! sv-40 (process-spawn
+                       upgrade-collectable
+                       :init initialize-upgrade-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       (-> self entity)
+                       :name "upgrade-collectable"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         (set! sv-48 0)
+         0
+         )
+        (((pickup-type trick-point))
+         (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+             (set! (-> sv-56 pickup-spawn-amount) arg2)
+             )
+         (set! sv-40 (process-spawn
+                       trick-point
+                       :init initialize-ammo-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       :name "trick-point"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         (set! sv-48 0)
+         0
+         )
+        (((pickup-type money))
+         (set! sv-40
+               (process-spawn money arg0 sv-32 sv-56 (-> self entity) 0 :name "money" :from *pickup-dead-pool* :to arg4)
+               )
+         )
+        (((pickup-type trick-point))
+         (set! sv-40
+               (process-spawn money arg0 sv-32 sv-56 (-> self entity) 4500 :name "money" :from *pickup-dead-pool* :to arg4)
+               )
+         )
+        (((pickup-type gem))
+         (if (>= (-> *game-info* live-gem-count) 20)
+             (return (the-as (pointer process) #f))
+             )
+         (set! sv-40 (process-spawn
+                       gem
+                       :init money-init-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       (-> self entity)
+                       4500
+                       :name "gem"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         )
+        (((pickup-type skill))
+         (when (>= arg2 (-> *FACT-bank* super-skill-inc))
+           (if (not (logtest? (actor-option dont-override-fact) (-> sv-56 options)))
+               (set! (-> sv-56 pickup-spawn-amount) arg2)
+               )
+           (set! sv-48 0)
+           0
+           )
+         (set! sv-40 (process-spawn
+                       skill
+                       :init money-init-by-other
+                       arg0
+                       sv-32
+                       sv-56
+                       (-> self entity)
+                       0
+                       :name "skill"
+                       :from *pickup-dead-pool*
+                       :to arg4
+                       )
+               )
+         )
+        (else
+          (format 0 "ERROR: unknown type of eco ~d~%" s2-0)
+          )
+        )
+      )
+    )
+  (the-as (pointer process) sv-40)
+  )
+
+;; definition for function pickup-dark-set!
+(defun pickup-dark-set! ((arg0 fact-info) (arg1 (pointer pickup-type)) (arg2 (pointer float)) (arg3 int))
+  (-> arg2 0)
+  (you-suck-stage *game-info* #f 0)
+  (cond
+    ((or (< 20 (-> *game-info* live-eco-pill-count))
+         (not (logtest? (game-feature darkeco) (-> *game-info* features)))
+         )
+     (return (the-as pickup-type #f))
+     )
+    ((< 10 (-> *game-info* live-eco-pill-count))
+     (set! (-> arg1 0) (pickup-type eco-pill-dark))
+     (set! (-> arg2 0) 2.0)
+     )
+    ((type? arg0 fact-info-enemy)
+     (set! (-> arg1 0) (pickup-type eco-pill-dark))
+     (set! (-> arg2 0) (+ (rand-vu-float-range 6.0 (+ 10.0 (-> arg2 0))) (fmin 10.0 (the float arg3))))
+     )
+    (else
+      (set! (-> arg1 0) (pickup-type eco-pill-dark))
+      (set! (-> arg2 0) (+ (rand-vu-float-range 4.0 (+ 6.0 (-> arg2 0))) (fmin 10.0 (the float arg3))))
+      )
+    )
+  (-> arg1 0)
+  )
+
+;; definition for function pickup-light-set!
+;; WARN: Return type mismatch number vs pickup-type.
+(defun pickup-light-set! ((arg0 fact-info) (arg1 (pointer pickup-type)) (arg2 (pointer float)) (arg3 int))
+  (the-as pickup-type (cond
+                        ((logtest? (game-feature lighteco) (-> *game-info* features))
+                         (set! (-> arg1 0) (pickup-type eco-pill-light))
+                         (set! (-> arg2 0) 20.0)
+                         )
+                        (else
+                          (set! (-> arg1 0) (pickup-type none))
+                          0
+                          )
+                        )
+          )
+  )
+
+;; definition for function pickup-ammo-set!
+(defun pickup-ammo-set! ((arg0 fact-info) (arg1 (pointer pickup-type)) (arg2 (pointer float)) (arg3 int))
+  (local-vars (v0-5 number) (sv-16 float))
+  (let ((s2-0 (-> *game-info* features)))
+    0.0
+    (let ((f22-0 0.0)
+          (f26-0 0.0)
+          (f28-0 0.0)
+          (f30-0 0.0)
+          )
+      (set! sv-16 (the-as float (if (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3))
+                                    (get-max-ammo-for-gun *game-info* (pickup-type ammo-yellow))
+                                    0.0
+                                    )
+                          )
+            )
+      (let* ((f20-0 (if (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3))
+                        (get-max-ammo-for-gun *game-info* (pickup-type ammo-red))
+                        0.0
+                        )
+                    )
+             (f24-0 (if (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3))
+                        (get-max-ammo-for-gun *game-info* (pickup-type ammo-blue))
+                        0.0
+                        )
+                    )
+             (f0-2 (if (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0)
+                       (get-max-ammo-for-gun *game-info* (pickup-type ammo-dark))
+                       0.0
+                       )
+                   )
+             (f4-0 (if (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3))
+                       (-> *game-info* gun-ammo 0)
+                       0.0
+                       )
+                   )
+             (f1-2 (if (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3))
+                       (-> *game-info* gun-ammo 1)
+                       0.0
+                       )
+                   )
+             (f2-1 (if (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3))
+                       (-> *game-info* gun-ammo 2)
+                       0.0
+                       )
+                   )
+             (f3-1 (if (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0)
+                       (-> *game-info* gun-ammo 3)
+                       0.0
+                       )
+                   )
+             (f22-1 (+ f22-0 (- sv-16 f4-0)))
+             )
+        (if (< 0.0 sv-16)
+            (set! f22-1 (/ f22-1 sv-16))
+            )
+        (let ((f1-4 (+ f26-0 (- f20-0 f1-2))))
+          (if (< 0.0 f20-0)
+              (set! f1-4 (/ f1-4 f20-0))
+              )
+          (let ((f2-3 (+ f28-0 (- f24-0 f2-1))))
+            (if (< 0.0 f24-0)
+                (set! f2-3 (/ f2-3 f24-0))
+                )
+            (let ((f3-3 (+ f30-0 (- f0-2 f3-1))))
+              (if (< 0.0 f0-2)
+                  (set! f3-3 (/ f3-3 f0-2))
+                  )
+              (let ((f26-1 (+ f22-1 f1-4 f2-3 f3-3)))
+                (when (= f26-1 0.0)
+                  (set! f22-1 1.0)
+                  (set! f26-1 1.0)
+                  )
+                (cond
+                  ((!= f26-1 0.0)
+                   (let* ((f24-1 (+ f1-4 f22-1))
+                          (f28-1 (+ f2-3 f24-1))
+                          (f30-1 (+ f3-3 f28-1))
+                          (v1-39 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                          (v1-40 (the-as number (logior #x3f800000 v1-39)))
+                          (f0-10 (* (+ -1.0 (the-as float v1-40)) f26-1))
+                          )
+                     (set! v0-5 (cond
+                                  ((and (>= f22-1 f0-10) (logtest? s2-0 (game-feature gun-yellow-1 gun-yellow-2 gun-yellow-3)))
+                                   (set! v0-5 15)
+                                   (set! (-> arg1 0) (the-as pickup-type v0-5))
+                                   v0-5
+                                   )
+                                  ((and (>= f24-1 f0-10) (logtest? s2-0 (game-feature gun-red-1 gun-red-2 gun-red-3)))
+                                   (set! (-> arg1 0) (pickup-type ammo-red))
+                                   (if (>= 1 (mod (the-as int (rand-uint31-gen *random-generator*)) 3))
+                                       (set! (-> arg2 0) (* 0.5 (-> arg2 0)))
+                                       )
+                                   )
+                                  ((and (>= f28-1 f0-10) (logtest? s2-0 (game-feature gun-blue-1 gun-blue-2 gun-blue-3)))
+                                   (set! v0-5 17)
+                                   (set! (-> arg1 0) (the-as pickup-type v0-5))
+                                   v0-5
+                                   )
+                                  ((and (>= f30-1 f0-10) (logtest? (game-feature gun-dark-1 gun-dark-2 gun-dark-3) s2-0))
+                                   (set! (-> arg1 0) (pickup-type ammo-dark))
+                                   (set! (-> arg2 0) (the float (the int (fmax 1.0 (* 0.06666667 (-> arg2 0))))))
+                                   )
+                                  (else
+                                    (pickup-dark-set! arg0 arg1 arg2 arg3)
+                                    )
+                                  )
+                           )
+                     )
+                   )
+                  (else
+                    (set! (-> arg1 0) (pickup-type none))
+                    0
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (-> arg1 0)
+  )
+
+;; definition for method 9 of type fact-info
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+(defmethod drop-pickup ((this fact-info) (arg0 symbol) (arg1 process-tree) (arg2 fact-info) (arg3 int) (arg4 symbol))
+  (local-vars (sv-16 pickup-type) (sv-20 float))
+  (set! sv-16 (-> this pickup-type))
+  (set! sv-20 (-> this pickup-amount))
+  (if (not arg4)
+      (set! sv-20 (fmin 10.0 sv-20))
+      )
+  (cond
+    ((= sv-16 (pickup-type ammo-random))
+     (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
+     )
+    ((= sv-16 (pickup-type eco-pill-random))
+     (if (rand-vu-percent? 0.1)
+         (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+         (pickup-dark-set! this (& sv-16) (& sv-20) arg3)
+         )
+     )
+    ((= sv-16 (pickup-type light-random))
+     (cond
+       ((rand-vu-percent? 0.1)
+        (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+        )
+       (else
+         (set! sv-16 (pickup-type none))
+         0
+         )
+       )
+     )
+    ((= sv-16 (pickup-type ammo-light-random))
+     (let ((v1-17 (rand-vu-int-count 100)))
+       (cond
+         ((< v1-17 10)
+          (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+          )
+         ((< v1-17 50)
+          (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
+          )
+         (else
+           (set! sv-16 (pickup-type none))
+           0
+           )
+         )
+       )
+     )
+    ((= sv-16 (pickup-type ammo-dark-light-random))
+     (let ((v1-23 (rand-vu-int-count 100)))
+       (cond
+         ((< v1-23 10)
+          (pickup-light-set! this (& sv-16) (& sv-20) arg3)
+          )
+         ((< v1-23 55)
+          (pickup-ammo-set! this (& sv-16) (& sv-20) arg3)
+          )
+         (else
+           (pickup-dark-set! this (& sv-16) (& sv-20) arg3)
+           )
+         )
+       )
+     )
+    )
+  (if (= sv-16 (pickup-type none))
+      (return (the-as (pointer process) #f))
+      )
+  (let ((s3-1 (new 'stack-no-clear 'collide-query)))
+    (set! (-> s3-1 start-pos quad) (-> (the-as process-drawable (-> this process)) root trans quad))
+    (set-vector! (-> s3-1 move-dist) 0.0 -81920.0 0.0 1.0)
+    (+! (-> s3-1 start-pos y) 12288.0)
+    (let ((v1-33 s3-1))
+      (set! (-> v1-33 radius) 40.96)
+      (set! (-> v1-33 collide-with) (collide-spec backgnd hit-by-others-list pusher))
+      (set! (-> v1-33 ignore-process0) #f)
+      (set! (-> v1-33 ignore-process1) #f)
+      (set! (-> v1-33 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-33 action-mask) (collide-action solid))
+      )
+    (if (>= (fill-and-probe-using-line-sphere *collide-cache* s3-1) 0.0)
+        (set! (-> s3-1 start-pos quad) (-> s3-1 best-other-tri intersect quad))
+        (set! (-> s3-1 start-pos quad) (-> (the-as process-drawable (-> this process)) root trans quad))
+        )
+    (if (= sv-16 (pickup-type fuel-cell))
+        (+! (-> s3-1 start-pos y) 6144.0)
+        )
+    (birth-pickup-at-point (-> s3-1 start-pos) sv-16 sv-20 arg0 arg1 this)
+    )
+  )
+
+;; definition for function gun-pickup-type->game-feature
+;; WARN: Return type mismatch int vs game-feature.
+(defun gun-pickup-type->game-feature ((arg0 pickup-type))
+  (let ((v1-0 arg0))
+    (the-as game-feature (cond
+                           ((= v1-0 (pickup-type gun-red-1))
+                            (the-as game-feature (game-feature gun-red-1))
+                            )
+                           ((= v1-0 (pickup-type gun-red-2))
+                            (the-as game-feature (game-feature gun-red-2))
+                            )
+                           ((= v1-0 (pickup-type gun-red-3))
+                            (the-as game-feature (game-feature gun-red-3))
+                            )
+                           ((= v1-0 (pickup-type gun-yellow-1))
+                            (the-as game-feature (game-feature gun-yellow-1))
+                            )
+                           ((= v1-0 (pickup-type gun-yellow-2))
+                            (the-as game-feature (game-feature gun-yellow-2))
+                            )
+                           ((= v1-0 (pickup-type gun-yellow-3))
+                            (the-as game-feature (game-feature gun-yellow-3))
+                            )
+                           ((= v1-0 (pickup-type gun-blue-1))
+                            (the-as game-feature (game-feature gun-blue-1))
+                            )
+                           ((= v1-0 (pickup-type gun-blue-2))
+                            (the-as game-feature (game-feature gun-blue-2))
+                            )
+                           ((= v1-0 (pickup-type gun-blue-3))
+                            (the-as game-feature (game-feature gun-blue-3))
+                            )
+                           ((= v1-0 (pickup-type gun-dark-1))
+                            (the-as game-feature (game-feature gun-dark-1))
+                            )
+                           ((= v1-0 (pickup-type gun-dark-2))
+                            (the-as game-feature (game-feature gun-dark-2))
+                            )
+                           ((= v1-0 (pickup-type gun-dark-3))
+                            (the-as game-feature (game-feature gun-dark-3))
+                            )
+                           (else
+                             (the-as game-feature (game-feature))
+                             )
+                           )
+            )
+    )
+  )

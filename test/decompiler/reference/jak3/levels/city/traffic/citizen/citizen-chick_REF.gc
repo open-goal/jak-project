@@ -1,0 +1,1010 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-citizen-chick citizen-chick citizen-chick-lod0-jg -1
+              ((citizen-chick-lod0-mg (meters 20)) (citizen-chick-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 2 0 3)
+              :shadow citizen-chick-shadow-mg
+              )
+
+;; definition for symbol *citizen-chick-global-info*, type civilian-global-info
+(define *citizen-chick-global-info*
+  (new 'static 'civilian-global-info
+    :knocked (new 'static 'array int32 2 20 22)
+    :knocked-land (new 'static 'array int32 2 21 23)
+    :yellow-hit-anim (new 'static 'inline-array civilian-anim-info 1
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 20 22))
+      )
+    :blue-hit-anim (new 'static 'inline-array civilian-anim-info 3
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 19 18))
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 19 18))
+      (new 'static 'civilian-anim-info :anim-index (new 'static 'array int32 2 19 18))
+      )
+    :anim-cover-head-start 14
+    :anim-cover-head-loop 15
+    :anim-cover-head-end 16
+    :speech-ambient 27
+    :speech-alert 28
+    :speech-cower 29
+    :speech-touched-by-player 30
+    :speech-shot-by-player 31
+    :speech-avoiding-player-vehicle 32
+    :speech-hit-by-player-vehicle 33
+    )
+  )
+
+;; definition of type citizen-chick
+(deftype citizen-chick (civilian)
+  ()
+  )
+
+;; definition for method 3 of type citizen-chick
+(defmethod inspect ((this citizen-chick))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type civilian inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *citizen-chick-nav-enemy-info*, type nav-enemy-info
+(define *citizen-chick-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 2
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #xa
+        :param0 1
+        :param1 1
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 10
+    :notice-anim 10
+    :hostile-anim -1
+    :hit-anim 10
+    :knocked-anim 20
+    :knocked-land-anim 21
+    :die-anim 10
+    :die-falling-anim 10
+    :victory-anim 10
+    :jump-wind-up-anim 4
+    :jump-in-air-anim 4
+    :jump-land-anim 4
+    :neck-joint 5
+    :look-at-joint 5
+    :bullseye-joint 4
+    :notice-distance-delta (meters 0.1)
+    :default-hit-points 1.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 3)
+    :attack-shove-up (meters 2)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 4.5)
+    :ragdoll-blend-out-time (seconds 0.25)
+    :ragdoll-rotate-velocity-mult 1.0
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 2730.6667
+    :knocked-soft-vxz-lo 32768.0
+    :knocked-soft-vxz-hi 53248.0
+    :knocked-soft-vy-lo 20480.0
+    :knocked-soft-vy-hi 40960.0
+    :knocked-medium-vxz-lo 40960.0
+    :knocked-medium-vxz-hi 73728.0
+    :knocked-medium-vy-lo 24576.0
+    :knocked-medium-vy-hi 53248.0
+    :knocked-hard-vxz-lo 53248.0
+    :knocked-hard-vxz-hi 102400.0
+    :knocked-hard-vy-lo 40960.0
+    :knocked-hard-vy-hi 81920.0
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 8192.0
+    :knocked-yellow-vxz-hi 16384.0
+    :knocked-yellow-vy-lo 12288.0
+    :knocked-yellow-vy-hi 24576.0
+    :knocked-red-vxz-lo 12288.0
+    :knocked-red-vxz-hi 24576.0
+    :knocked-red-vy-lo 20480.0
+    :knocked-red-vy-hi 36864.0
+    :knocked-blue-vxz-lo 16384.0
+    :knocked-blue-vxz-hi 32768.0
+    :knocked-blue-vy-lo 16384.0
+    :knocked-blue-vy-hi 32768.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :geo-tform (new 'static 'vector :z 1.0 :w 14.399715)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 776.6016
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :z 1.0 :w 32759.936)
+          :geo-tform (new 'static 'vector :x -0.0132 :y 0.103 :z 0.9945 :w 32703.047)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 892.5184
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.998 :z -0.0627 :w 1005.7045)
+          :geo-tform (new 'static 'vector :x -0.0174 :y 0.085 :z 0.9962 :w 32364.498)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 763.4944
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.0652 :z 0.9978 :w 7454.156)
+          :geo-tform (new 'static 'vector :x -0.0365 :y 0.214 :z 0.9761 :w 23936.934)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 561.9712
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.3949 :z 0.9186 :w 22918.867)
+          :geo-tform (new 'static 'vector :x -0.5186 :y 0.8187 :z 0.2463 :w 10966.448)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6318 :z 0.7751 :w 6096.8506)
+          :geo-tform (new 'static 'vector :x 0.2578 :y 0.9617 :z 0.0926 :w 15893.045)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.0947 :z -0.9955 :w 7977.8794)
+          :geo-tform (new 'static 'vector :x 0.1172 :y 0.3467 :z 0.9305 :w 41298.84)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.5223 :z -0.8527 :w 21621.0)
+          :geo-tform (new 'static 'vector :x -0.3996 :y -0.859 :z -0.3197 :w 15644.244)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.2192 :z -0.9756 :w 7433.6577)
+          :geo-tform (new 'static 'vector :x 0.7974 :y 0.0095 :z 0.6032 :w 34256.594)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :z 1.0 :w 17.640106)
+          :geo-tform (new 'static 'vector :z 1.0 :w 1112.1277)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 832.3072
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :z -1.0 :w 13150.417)
+          :geo-tform (new 'static 'vector :x -0.1671 :y -0.0657 :z 0.9837 :w 12017.9)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 524.288
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.2094 :z 0.9778 :w 11988.609)
+          :geo-tform (new 'static 'vector :x 0.9887 :y -0.1433 :z 0.0422 :w 6040.7266)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9963 :z 0.0852 :w 5976.6104)
+          :geo-tform (new 'static 'vector :x -0.8827 :y -0.4697 :z 0.0099 :w 11882.987)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9608 :z -0.2772 :w 10351.757)
+          :geo-tform (new 'static 'vector :x -0.826 :y -0.5058 :z -0.2485 :w 11192.42)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint 12
+          :pre-tform (new 'static 'vector :z 1.0 :w 15361.583)
+          :geo-tform (new 'static 'vector :x -0.0332 :y 0.1941 :z -0.9804 :w 15875.422)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 594.3296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.215 :z -0.9766 :w 15500.575)
+          :geo-tform (new 'static 'vector :x 0.7755 :y 0.6147 :z -0.1434 :w 6094.921)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9338 :z -0.3575 :w 4780.7783)
+          :geo-tform (new 'static 'vector :x -0.9242 :y 0.3246 :z 0.201 :w 9991.874)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9282 :z 0.372 :w 9409.367)
+          :geo-tform (new 'static 'vector :x -0.934 :y 0.3205 :z 0.1574 :w 10100.427)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 562.7904
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint 5
+          :pre-tform (new 'static 'vector :x 0.9806 :z -0.1956 :w 1580.9104)
+          :geo-tform (new 'static 'vector :x -0.0195 :y 0.2824 :z 0.959 :w 32647.85)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 696.7296
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.3059 :z 0.952 :w 7279.739)
+          :geo-tform (new 'static 'vector :x 0.344 :y 0.9317 :z 0.1158 :w 25729.506)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 371.9168
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.4303 :z 0.9026 :w 6036.6484)
+          :geo-tform (new 'static 'vector :x 0.2319 :y 0.9724 :z 0.0232 :w 30738.059)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 289.9968
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.922 :z -0.3869 :w 3968.6052)
+          :geo-tform (new 'static 'vector :x 0.0273 :y 0.8678 :z 0.4961 :w 31513.57)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 280.576
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x -0.1937 :z -0.981 :w 7246.88)
+          :geo-tform (new 'static 'vector :x -0.014 :y 0.9998 :z 0.0019 :w 38307.16)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 335.4624
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x -0.1631 :z -0.9865 :w 5719.964)
+          :geo-tform (new 'static 'vector :x -0.2341 :y 0.9715 :z 0.0353 :w 35807.234)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 299.008
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x 0.7102 :z 0.7039 :w 1501.9758)
+          :geo-tform (new 'static 'vector :x 0.0925 :y 0.7746 :z 0.6255 :w 34903.016)
+          :axial-slop 1721.3394
+          :max-angle 3810.445
+          :coll-rad 316.2112
+          )
+        )
+      )
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #t
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 4
+    :turn-anim 4
+    :run-anim 7
+    :taunt-anim -1
+    :run-travel-speed (meters 12)
+    :run-acceleration (meters 2)
+    :run-turning-acceleration (meters 30)
+    :walk-travel-speed (meters 3)
+    :walk-acceleration (meters 1)
+    :walk-turning-acceleration (meters 8)
+    :maximum-rotation-rate (degrees 720)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *citizen-chick-nav-enemy-info* fact-defaults) *fact-info-enemy-defaults*)
+
+;; definition for method 67 of type citizen-chick
+(defmethod coin-flip? ((this citizen-chick))
+  #f
+  )
+
+;; definition for method 27 of type citizen-chick
+(defmethod get-inv-mass ((this citizen-chick))
+  0.5
+  )
+
+;; definition for method 55 of type citizen-chick
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs degrees.
+(defmethod get-knockback-angle ((this citizen-chick))
+  (let ((f30-0 (quaternion-y-angle (-> this root quat))))
+    (case (-> this incoming knocked-type)
+      (((knocked-type yellow-shot) (knocked-type blue-shot))
+       (let ((a0-5 (the-as process-focusable (handle->process (-> this focus handle)))))
+         (when a0-5
+           (get-trans a0-5 0)
+           (let ((s5-0 (new 'stack-no-clear 'vector)))
+             (set! (-> s5-0 quad) (-> this root transv quad))
+             (if (< (vector-dot (-> this root transv) (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+                    0.0
+                    )
+                 (vector-negate-in-place! s5-0)
+                 )
+             (set! f30-0 (atan (-> s5-0 x) (-> s5-0 z)))
+             )
+           )
+         )
+       )
+      (else
+        (let ((s5-1 (new 'stack-no-clear 'vector)))
+          (set! (-> s5-1 quad) (-> this root transv quad))
+          (if (< (vector-dot s5-1 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat))) 0.0)
+              (vector-negate-in-place! s5-1)
+              )
+          (let* ((f28-0 (atan (-> s5-1 x) (-> s5-1 z)))
+                 (f1-2 (deg- f30-0 f28-0))
+                 (f2-0 (fabs f1-2))
+                 (f0-8 (-> this enemy-info knocked-seek-ry-clamp))
+                 )
+            (when (and (< f0-8 f2-0) (< f2-0 (- 32768.0 f0-8)))
+              (set! f30-0 (+ (cond
+                               ((< f2-0 16384.0)
+                                (if (>= f1-2 0.0)
+                                    f0-8
+                                    (- f0-8)
+                                    )
+                                )
+                               ((>= f1-2 0.0)
+                                (- 32768.0 f0-8)
+                                )
+                               (else
+                                 (+ -32768.0 f0-8)
+                                 )
+                               )
+                             f28-0
+                             )
+                    )
+              (if (< f30-0 0.0)
+                  (set! f30-0 (+ 65536.0 f30-0))
+                  )
+              )
+            )
+          )
+        )
+      )
+    (the-as degrees f30-0)
+    )
+  )
+
+;; definition for method 87 of type citizen-chick
+(defmethod knocked-anim-handler ((this citizen-chick) (arg0 int) (arg1 enemy-knocked-info))
+  (case arg0
+    ((1)
+     (case (-> this incoming knocked-type)
+       (((knocked-type blue-shot))
+        (let ((s5-0 (ja-done? 0)))
+          (let ((a0-4 (-> this skel root-channel 0)))
+            (set! (-> a0-4 param 0) (the float (+ (-> a0-4 frame-group frames num-frames) -1)))
+            (set! (-> a0-4 param 1) (-> arg1 anim-speed))
+            (joint-control-channel-group-eval! a0-4 (the-as art-joint-anim #f) num-func-seek!)
+            )
+          (when s5-0
+            (ja-channel-push! 1 (seconds 0.1))
+            (let ((a0-6 (-> this skel root-channel 0)))
+              (set! (-> a0-6 frame-group)
+                    (the-as art-joint-anim (-> this draw art-group data (-> this info knocked (-> this hit-face))))
+                    )
+              (set! (-> a0-6 param 0)
+                    (the float
+                         (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this info knocked (-> this hit-face))))
+                                frames
+                                num-frames
+                                )
+                            -1
+                            )
+                         )
+                    )
+              (set! (-> a0-6 param 1) (-> arg1 anim-speed))
+              (set! (-> a0-6 frame-num) 3.0)
+              (joint-control-channel-group!
+                a0-6
+                (the-as art-joint-anim (-> this draw art-group data (-> this info knocked (-> this hit-face))))
+                num-func-seek!
+                )
+              )
+            )
+          s5-0
+          )
+        )
+       (else
+         ((method-of-type nav-enemy knocked-anim-handler) this arg0 arg1)
+         )
+       )
+     )
+    (else
+      ((method-of-type nav-enemy knocked-anim-handler) this arg0 arg1)
+      )
+    )
+  )
+
+;; definition for method 85 of type citizen-chick
+(defmethod knocked-anim ((this citizen-chick) (arg0 enemy-knocked-info))
+  (case (-> this incoming knocked-type)
+    (((knocked-type yellow-shot))
+     (ja-channel-push! 1 (seconds 0.01))
+     (let* ((a2-0 (ash 1 (-> this info prev-yellow-hit)))
+            (v1-3 (enemy-method-131 this 1 a2-0))
+            (a1-7
+              (-> this
+                  draw
+                  art-group
+                  data
+                  (-> (the-as civilian-global-info (+ (+ (* (-> this hit-face) 4) (* v1-3 8)) (the-as uint (-> this info))))
+                      yellow-hit-anim
+                      0
+                      anim-index-front
+                      )
+                  )
+              )
+            )
+       (set! (-> this info prev-yellow-hit) v1-3)
+       (let ((a0-15 (-> this skel root-channel 0)))
+         (set! (-> a0-15 frame-group) (the-as art-joint-anim a1-7))
+         (set! (-> a0-15 param 0) (the float (+ (-> (the-as art-joint-anim a1-7) frames num-frames) -1)))
+         (set! (-> a0-15 param 1) (-> arg0 anim-speed))
+         (set! (-> a0-15 frame-num) 0.0)
+         (joint-control-channel-group! a0-15 (the-as art-joint-anim a1-7) num-func-seek!)
+         )
+       )
+     )
+    (((knocked-type blue-shot))
+     (ja-channel-push! 1 (seconds 0.01))
+     (let* ((a2-2 (ash 1 (-> this info prev-blue-hit)))
+            (v1-12 (enemy-method-131 this 3 a2-2))
+            (a1-14
+              (-> this
+                  draw
+                  art-group
+                  data
+                  (-> (the-as civilian-global-info (+ (+ (* (-> this hit-face) 4) (* v1-12 8)) (the-as uint (-> this info))))
+                      blue-hit-anim
+                      0
+                      anim-index-front
+                      )
+                  )
+              )
+            )
+       (set! (-> this info prev-blue-hit) v1-12)
+       (let ((a0-30 (-> this skel root-channel 0)))
+         (set! (-> a0-30 frame-group) (the-as art-joint-anim a1-14))
+         (set! (-> a0-30 param 0) (the float (+ (-> (the-as art-joint-anim a1-14) frames num-frames) -1)))
+         (set! (-> a0-30 param 1) 1.0)
+         (set! (-> a0-30 frame-num) 0.0)
+         (joint-control-channel-group! a0-30 (the-as art-joint-anim a1-14) num-func-seek!)
+         )
+       )
+     )
+    (else
+      (let ((s4-0 (if (= (-> this incoming knocked-type) (knocked-type explode-or-darkjak))
+                      (-> this draw art-group data (-> this info knocked (-> this hit-face)))
+                      (-> this draw art-group data (-> this info knocked (-> this hit-face)))
+                      )
+                  )
+            )
+        (ja-channel-push! 1 (seconds 0.01))
+        (let ((a0-39 (-> this skel root-channel 0)))
+          (set! (-> a0-39 frame-group) (the-as art-joint-anim s4-0))
+          (set! (-> a0-39 param 0) (the float (+ (-> (the-as art-joint-anim s4-0) frames num-frames) -1)))
+          (set! (-> a0-39 param 1) (-> arg0 anim-speed))
+          (set! (-> a0-39 frame-num) 0.0)
+          (joint-control-channel-group! a0-39 (the-as art-joint-anim s4-0) num-func-seek!)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+;; definition for method 86 of type citizen-chick
+(defmethod knocked-land-anim ((this citizen-chick) (arg0 enemy-knocked-info))
+  (ja-channel-push! 1 (seconds 0.1))
+  (let ((a0-2 (-> this skel root-channel 0)))
+    (set! (-> a0-2 frame-group)
+          (the-as art-joint-anim (-> this draw art-group data (-> this info knocked-land (-> this hit-face))))
+          )
+    (set! (-> a0-2 param 0)
+          (the float
+               (+ (-> (the-as art-joint-anim (-> this draw art-group data (-> this info knocked-land (-> this hit-face))))
+                      frames
+                      num-frames
+                      )
+                  -1
+                  )
+               )
+          )
+    (set! (-> a0-2 param 1) (-> arg0 anim-speed))
+    (set! (-> a0-2 frame-num) 0.0)
+    (joint-control-channel-group!
+      a0-2
+      (the-as art-joint-anim (-> this draw art-group data (-> this info knocked-land (-> this hit-face))))
+      num-func-seek!
+      )
+    )
+  #t
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (citizen-chick)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type civilian knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (the-as collide-shape-prim-group (-> self root root-prim))))
+      (logior! (-> v1-5 child 0 prim-core action) (collide-action no-standon))
+      (logclear! (-> v1-5 child 1 prim-core action) (collide-action no-standon))
+      (set! (-> v1-5 child 1 prim-core collide-as) (collide-spec))
+      (set! (-> v1-5 child 1 prim-core collide-with) (collide-spec))
+      )
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate get-up-front (citizen-chick)
+  :virtual #t
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type civilian get-up-front) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (-> self root root-prim)))
+      (logclear! (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core action) (collide-action no-standon))
+      (logior! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core action) (collide-action no-standon))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-as) (collide-spec civilian))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-with)
+            (collide-spec backgnd jak civilian enemy hit-by-others-list player-list)
+            )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate get-up-back (citizen-chick)
+  :virtual #t
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type civilian get-up-back) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (let ((v1-5 (-> self root root-prim)))
+      (logclear! (-> (the-as collide-shape-prim-group v1-5) child 0 prim-core action) (collide-action no-standon))
+      (logior! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core action) (collide-action no-standon))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-as) (collide-spec civilian))
+      (set! (-> (the-as collide-shape-prim-group v1-5) child 1 prim-core collide-with)
+            (collide-spec backgnd jak civilian enemy hit-by-others-list player-list)
+            )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait (citizen-chick)
+  :virtual #t
+  :code (behavior ()
+    (let ((f30-1 (/ 1.0 (rand-vu-float-range 10.0 13.0))))
+      (ja-channel-push! 1 (seconds 0.2))
+      (until #f
+        (ja-no-eval :group! citizen-chick-idle-ja :num! (seek! max f30-1) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-1))
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for method 120 of type citizen-chick
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this citizen-chick))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec civilian))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 8192.0 0.0 12288.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-13 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set-vector! (-> v1-13 local-sphere) 0.0 4096.0 0.0 4096.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec civilian))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec backgnd jak player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid no-standon))
+      (set-vector! (-> v1-15 local-sphere) 0.0 9830.4 0.0 4096.0)
+      )
+    (set! (-> s5-0 nav-radius) 4096.0)
+    (let ((v1-17 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 121 of type citizen-chick
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this citizen-chick))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-citizen-chick" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *citizen-chick-nav-enemy-info*)
+  (let ((v1-5 (-> this nav)))
+    (set! (-> v1-5 speed-scale) 1.0)
+    )
+  0
+  (set! (-> this draw lod-set lod 0 dist) 204800.0)
+  (set! (-> this draw lod-set lod 1 dist) 491520.0)
+  (set! (-> this info) *citizen-chick-global-info*)
+  (try-update-focus (-> this focus) *target* this)
+  (set-vector! (-> this neck twist-max) 10922.667 18204.445 0.0 1.0)
+  (set! (-> this anim-shuffle) 26)
+  (let ((v1-18 (rnd-int this 3)))
+    (cond
+      ((zero? v1-18)
+       (set! (-> this anim-walk) 4)
+       (set! (-> this dist-walk-anim) 15728.64)
+       (set! (-> this speed-walk) 14745.6)
+       )
+      ((= v1-18 1)
+       (set! (-> this anim-walk) 5)
+       (set! (-> this dist-walk-anim) 8736.768)
+       (set! (-> this speed-walk) 8192.0)
+       )
+      ((= v1-18 2)
+       (set! (-> this anim-walk) 6)
+       (set! (-> this dist-walk-anim) 15728.64)
+       (set! (-> this speed-walk) 12288.0)
+       )
+      )
+    )
+  (let ((v1-33 (rnd-int this 3)))
+    (cond
+      ((zero? v1-33)
+       (set! (-> this anim-panic-run) 11)
+       )
+      ((= v1-33 1)
+       (set! (-> this anim-panic-run) 11)
+       )
+      ((= v1-33 2)
+       (set! (-> this anim-panic-run) 7)
+       )
+      )
+    )
+  (let ((v1-39 (rnd-int this 3)))
+    (cond
+      ((zero? v1-39)
+       (set! (-> this dist-run-anim) 26214.4)
+       (set! (-> this anim-run) 7)
+       )
+      ((= v1-39 1)
+       (set! (-> this dist-run-anim) 28385.28)
+       (set! (-> this anim-run) 8)
+       )
+      ((= v1-39 2)
+       (set! (-> this dist-run-anim) 26214.4)
+       (set! (-> this anim-run) 9)
+       )
+      )
+    )
+  (set! (-> this speed-run) 49152.0)
+  (set! (-> this anim-on-ground) 13)
+  (set! (-> this anim-dive) 17)
+  (set! (-> this anim-get-up-back) 25)
+  (set! (-> this anim-get-up-front) 24)
+  (let ((f30-0 (rnd-float-range this 1.0 1.25))
+        (f0-17 (rnd-float-range this 1.0 1.25))
+        )
+    (set-vector! (-> this root scale) f0-17 f30-0 f0-17 1.0)
+    )
+  (let ((f0-19 (rnd-float-range this 0.9 1.0)))
+    (set-vector! (-> this draw color-mult) f0-19 f0-19 f0-19 1.0)
+    )
+  (set! (-> this water-anim) 12)
+  (logior! (-> this flags) (citizen-flag female))
+  0
+  (none)
+  )
+
+;; definition for method 194 of type citizen-chick
+;; WARN: Return type mismatch int vs none.
+(defmethod citizen-method-194 ((this citizen-chick))
+  (let ((t9-0 (method-of-type civilian citizen-method-194)))
+    (t9-0 this)
+    )
+  (set! (-> this dive-reaction) (* 0.2 (rand-vu)))
+  (logclear! (-> this mask) (process-mask enemy))
+  (setup-masks (-> this draw) 0 -1)
+  (setup-masks (-> this draw) 16 0)
+  (setup-masks (-> this draw) 8 0)
+  (let ((v1-11 (rnd-int this 3)))
+    (cond
+      ((zero? v1-11)
+       (setup-masks (-> this draw) 32 0)
+       )
+      ((= v1-11 1)
+       (setup-masks (-> this draw) #x4000 0)
+       )
+      ((= v1-11 2)
+       (setup-masks (-> this draw) #x8000 0)
+       )
+      )
+    )
+  (let ((v1-20 (rnd-int this 3)))
+    (cond
+      ((zero? v1-20)
+       (setup-masks (-> this draw) 64 0)
+       )
+      ((= v1-20 1)
+       (setup-masks (-> this draw) 1024 0)
+       )
+      ((= v1-20 2)
+       (setup-masks (-> this draw) #x10000 0)
+       )
+      )
+    )
+  (let ((v1-29 (rnd-int this 3)))
+    (cond
+      ((zero? v1-29)
+       (setup-masks (-> this draw) 4 0)
+       )
+      ((= v1-29 1)
+       (setup-masks (-> this draw) 512 0)
+       )
+      ((= v1-29 2)
+       (setup-masks (-> this draw) 4096 0)
+       )
+      )
+    )
+  (let ((v1-38 (rnd-int this 3)))
+    (cond
+      ((zero? v1-38)
+       (setup-masks (-> this draw) 2 0)
+       (let ((v1-42 (rnd-int this 2)))
+         (cond
+           ((zero? v1-42)
+            (setup-masks (-> this draw) 128 0)
+            )
+           ((= v1-42 1)
+            (setup-masks (-> this draw) 8192 0)
+            )
+           )
+         )
+       )
+      ((= v1-38 1)
+       (setup-masks (-> this draw) 256 0)
+       )
+      ((= v1-38 2)
+       (setup-masks (-> this draw) 2048 0)
+       (let ((v1-54 (rnd-int this 2)))
+         (cond
+           ((zero? v1-54)
+            (setup-masks (-> this draw) 128 0)
+            )
+           ((= v1-54 1)
+            (setup-masks (-> this draw) 8192 0)
+            )
+           )
+         )
+       )
+      )
+    )
+  (logior! (-> this flags) (citizen-flag female))
+  0
+  (none)
+  )
+
+
+
+

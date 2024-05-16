@@ -16,13 +16,6 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 60
 
-    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
-      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
-      BUILDCACHE_COMPRESS_FORMAT: ZSTD
-      BUILDCACHE_COMPRESS_LEVEL: 19
-      BUILDCACHE_DIRECT_MODE: true
-      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -31,15 +24,22 @@ jobs:
         run: |
           sudo apt update
           sudo apt install build-essential cmake \
-            clang gcc g++ lcov make nasm libxrandr-dev \
+            clang gcc-10 g++-10 lcov make nasm libxrandr-dev \
             libxinerama-dev libxcursor-dev libpulse-dev \
             libxi-dev zip ninja-build libgl1-mesa-dev libssl-dev
 
-      - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v2.1.0
+            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100
+            sudo update-alternatives --set gcc /usr/bin/gcc-10
+            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 100
+            sudo update-alternatives --set g++ /usr/bin/g++-10
+
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2.13
         with:
-          cache_key: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
-          buildcache_tag: v0.28.1
+          variant: sccache
+          key: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          max-size: 1000M
 
       - name: CMake Generation
         env:
@@ -48,18 +48,11 @@ jobs:
         run: |
           cmake -B build --preset=${{ inputs.cmakePreset }} \
             -DCODE_COVERAGE=OFF \
-            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build Project
         run: cmake --build build --parallel $((`nproc`)) -- -w dupbuild=warn
 
       - name: Run Tests
         run: ./test.sh
-
-      # - name: Submit Coverage Report to Codacy
-      #   uses: codacy/codacy-coverage-reporter-action@v1
-      #   continue-on-error: true
-      #   with:
-      #     project-token: ${{ secrets.CODACY_PROJECT_KEY }}
-      #     coverage-reports: ./build/goalc-test_coverage.info

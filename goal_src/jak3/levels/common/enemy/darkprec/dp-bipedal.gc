@@ -7,3 +7,3215 @@
 
 ;; DECOMP BEGINS
 
+(deftype dp-bipedal-shield (shield-sphere)
+  ()
+  )
+
+
+(defmethod shield-attack-handler ((this dp-bipedal-shield) (arg0 process-focusable) (arg1 event-message-block))
+  (let ((s4-0 (-> arg1 param 0))
+        (v1-0 (the-as object (-> arg1 param 1)))
+        )
+    (cond
+      ((and (= (-> arg0 type) target) (case (-> (the-as attack-info v1-0) mode)
+                                        (('punch 'spin)
+                                         #t
+                                         )
+                                        (else
+                                          #f
+                                          )
+                                        )
+            )
+       (if (not (send-shield-attack this arg0 (the-as touching-shapes-entry s4-0) (the-as int (-> this persistent-attack-id)))
+                )
+           (send-shoves (-> this root) arg0 (the-as touching-shapes-entry s4-0) 0.0 12288.0 32768.0)
+           )
+       (go (method-of-object this explode))
+       #t
+       )
+      (else
+        ((method-of-type shield-sphere shield-attack-handler) this arg0 arg1)
+        )
+      )
+    )
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defmethod shield-enabled-trans ((this dp-bipedal-shield))
+  (if (= (-> this shield-type) (shield-type shield-type-0))
+      (seek! (-> this heat-info current-heat-value) 0.0 (* 0.2 (seconds-per-frame)))
+      )
+  (let* ((s4-0 (handle->process (-> this owner)))
+         (s5-0 (if (type? s4-0 process-focusable)
+                   s4-0
+                   )
+               )
+         )
+    (cond
+      (s5-0
+        (quaternion-copy! (-> this root quat) (-> (the-as process-focusable s5-0) root quat))
+        (cond
+          ((!= (-> this track-joint) -1)
+           (vector<-cspace!
+             (-> this root trans)
+             (-> (the-as process-focusable s5-0) node-list data (-> this track-joint))
+             )
+           (let ((v1-16 (vector-orient-by-quat! (new 'stack-no-clear 'vector) (-> this offset-vec) (-> this root quat))))
+             (vector+! (-> this root trans) (-> this root trans) v1-16)
+             )
+           )
+          (else
+            (vector+! (-> this root trans) (get-trans (the-as process-focusable s5-0) 0) (-> this offset-vec))
+            )
+          )
+        )
+      (else
+        (go (method-of-object this die))
+        )
+      )
+    )
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs quaternion.
+(defmethod shield-sphere-method-32 ((this dp-bipedal-shield))
+  (the-as quaternion 0)
+  )
+
+(defmethod init-collision! ((this dp-bipedal-shield))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate mech-punch dark-punch dark-smack))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle impenetrable-obj shield))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid no-standon))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector!
+        (-> s4-0 local-sphere)
+        0.0
+        0.0
+        (* 4096.0 (* 0.3 (-> this sphere-size)))
+        (* 4096.0 (* 1.1 (-> this sphere-size)))
+        )
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-14 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-14 prim-core collide-as) (collide-spec obstacle impenetrable-obj shield))
+      (set! (-> v1-14 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-14 prim-core action) (collide-action solid no-standon))
+      (set! (-> v1-14 transform-index) 3)
+      (set-vector! (-> v1-14 local-sphere) 0.0 0.0 0.0 (* 4096.0 (-> this sphere-size)))
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-17 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-17 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-17 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defskelgroup skel-dp-bipedal dp-bipedal dp-bipedal-lod0-jg -1
+              ((dp-bipedal-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 1.8 0 5)
+              :shadow dp-bipedal-shadow-mg
+              :global-effects 32
+              )
+
+(define *dp-bipedal-formation-table* (new 'static 'boxed-array :type float
+                                       0.0
+                                       5461.3335
+                                       -5461.3335
+                                       10922.667
+                                       -10922.667
+                                       16384.0
+                                       -16384.0
+                                       21845.334
+                                       -21845.334
+                                       27306.666
+                                       -27306.666
+                                       32768.0
+                                       )
+        )
+
+(deftype dp-bipedal-invis-particle-joint (structure)
+  ((joint     int16)
+   (distance  float)
+   (size      float)
+   (spawn?    symbol)
+   )
+  )
+
+
+(define *dp-bipedal-invis-joint-list*
+  (new 'static 'boxed-array :type dp-bipedal-invis-particle-joint
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 3 :distance 819.2 :size 2867.2 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 4 :distance 819.2 :size 2867.2 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 5 :distance 819.2 :size 2048.0 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 6 :distance 819.2 :size 2457.6 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 8 :distance 819.2 :size 2457.6 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 9 :distance 819.2 :size 2457.6 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 11 :distance 819.2 :size 2048.0 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 12 :distance 819.2 :size 2457.6 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 14 :distance 819.2 :size 2457.6 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 16 :distance 819.2 :size 2048.0 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 18 :distance 819.2 :size 2457.6 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 20 :distance 819.2 :size 2048.0 :spawn? #t)
+    (new 'static 'dp-bipedal-invis-particle-joint :joint 21 :distance 819.2 :size 1638.4 :spawn? #t)
+    )
+  )
+
+(deftype dp-bipedal (nav-enemy)
+  ((los                        los-control  :inline)
+   (rotation-matrix            matrix       :inline)
+   (focus-dir                  vector       :inline)
+   (focus-close-attack-pos     vector       :inline)
+   (focus-throw-attack-pos     vector       :inline)
+   (focus-bullseye             vector       :inline)
+   (los-source                 vector       :inline)
+   (formation-position         vector       :inline)
+   (focus-formation-source     vector       :inline)
+   (dest-quat                  quaternion   :inline)
+   (minimap                    connection-minimap)
+   (part-ambush                sparticle-launch-control)
+   (effect-rate                float)
+   (effect-timer               time-frame)
+   (scared-timer               time-frame)
+   (close-attack-timer         time-frame)
+   (can-attack-throw?          symbol)
+   (shield-handle              handle)
+   (shield-timer               time-frame)
+   (shield-sound-id            sound-id)
+   (fade-level                 float)
+   (turret-entity              entity-actor)
+   (on-screen-timer            time-frame   :offset 1080)
+   (valid-ground-timer         time-frame)
+   (knocked-focus-reset-timer  time-frame)
+   )
+  (:state-methods
+    de-ambush
+    hostile-stand
+    attack-close
+    attack-throw
+    shield-out
+    shield-idle
+    shield-in
+    shield-explode
+    turret-seek
+    turret-get-on
+    turret-getting-off
+    turret-get-off
+    turret-active
+    turret-active-shoot
+    )
+  (:methods
+    (can-enter-turret? (_type_) object)
+    (focus-close? (_type_) object)
+    (dp-bipedal-method-206 (_type_) object)
+    (set-collide-spec! (_type_ symbol) none)
+    (probe-point-for-los-block (_type_ vector vector float) symbol)
+    (dp-bipedal-method-209 (_type_ vector float) object)
+    (dp-bipedal-method-210 (_type_) none)
+    (get-turret-actor (_type_) entity-actor)
+    )
+  )
+
+
+(define *fact-info-dp-bipedal-defaults*
+  (new 'static 'fact-info-enemy-defaults :idle-distance (meters 80) :pickup-type 49 :pickup-amount 20.0)
+  )
+
+(define *dp-bipedal-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #f
+    :use-victory #f
+    :use-jump-blocked #t
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #t
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x3
+        :param0 10
+        :param1 10
+        :param2 '((new 'static 'bfloat :data 1.0) (new 'static 'bfloat :data 1.0))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 3
+    :hostile-anim 4
+    :hit-anim -1
+    :knocked-anim 25
+    :knocked-land-anim 22
+    :die-anim 3
+    :die-falling-anim 3
+    :victory-anim -1
+    :jump-wind-up-anim 20
+    :jump-in-air-anim 21
+    :jump-land-anim 22
+    :neck-joint 5
+    :look-at-joint 21
+    :bullseye-joint 5
+    :sound-hit (static-sound-name "dpbiped-gethit")
+    :sound-die (static-sound-name "dpbiped-death")
+    :notice-distance (meters 120)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 20)
+    :default-hit-points 8.0
+    :gnd-collide-with (collide-spec backgnd obstacle hit-by-others-list)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 5)
+    :attack-shove-up (meters 3)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.4)
+    :ragdoll-rotate-velocity-mult 0.3
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp 6371.5557
+    :knocked-soft-vxz-lo 72089.6
+    :knocked-soft-vxz-hi 108134.4
+    :knocked-soft-vy-lo 81920.0
+    :knocked-soft-vy-hi 122880.0
+    :knocked-medium-vxz-lo 73728.0
+    :knocked-medium-vxz-hi 102400.0
+    :knocked-medium-vy-lo 81920.0
+    :knocked-medium-vy-hi 122880.0
+    :knocked-hard-vxz-lo 81920.0
+    :knocked-hard-vxz-hi 122880.0
+    :knocked-hard-vy-lo 90112.0
+    :knocked-hard-vy-hi 143360.0
+    :knocked-huge-vxz-lo 102400.0
+    :knocked-huge-vxz-hi 143360.0
+    :knocked-huge-vy-lo 102400.0
+    :knocked-huge-vy-hi 163840.0
+    :knocked-yellow-vxz-lo 32768.0
+    :knocked-yellow-vxz-hi 40960.0
+    :knocked-yellow-vy-lo 36864.0
+    :knocked-yellow-vy-hi 57344.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 65536.0
+    :knocked-red-vy-lo 65536.0
+    :knocked-red-vy-hi 102400.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :orient-tform (new 'static 'vector :x 1.0 :w 34422.13)
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd obstacle hit-by-others-list player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :geo-tform (new 'static 'vector :x 1.0)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 4096.0
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 31145.656)
+          :geo-tform (new 'static 'vector :x 1.0 :w 41517.0)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 10511.992)
+          :geo-tform (new 'static 'vector :x -1.0 :w 322.52814)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.4663 :z -0.8845 :w 12244.928)
+          :geo-tform (new 'static 'vector :x 0.5959 :y 0.7493 :z -0.2886 :w 38757.9)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7354 :z -0.6775 :w 14353.24)
+          :geo-tform (new 'static 'vector :x 0.2757 :y 0.6588 :z 0.6998 :w 38067.242)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.726 :z -0.6876 :w 17152.191)
+          :geo-tform (new 'static 'vector :x 0.3691 :y 0.0717 :z 0.9266 :w 33447.57)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.3166 :z 0.9485 :w 11200.266)
+          :geo-tform (new 'static 'vector :x -0.5752 :y 0.8133 :z -0.0865 :w 27064.82)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6286 :z 0.7777 :w 12124.397)
+          :geo-tform (new 'static 'vector :x -0.3052 :y 0.6035 :z 0.7365 :w 27653.844)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7067 :z 0.7074 :w 18446.545)
+          :geo-tform (new 'static 'vector :x -0.3489 :y 0.1986 :z 0.9158 :w 37091.137)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :w 10.176285)
+          :geo-tform (new 'static 'vector :x -1.0 :w 5200.2085)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.2095 :z -0.9778 :w 14483.875)
+          :geo-tform (new 'static 'vector :x -0.0788 :y -0.8341 :z 0.5458 :w 15524.842)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6698 :z 0.7424 :w 7232.2437)
+          :geo-tform (new 'static 'vector :x 0.5488 :y -0.7349 :z 0.3982 :w 15080.143)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.3596 :z 0.933 :w 9704.389)
+          :geo-tform (new 'static 'vector :x -0.6416 :y -0.6811 :z -0.3525 :w 14188.161)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5352 :z -0.8446 :w 9982.207)
+          :geo-tform (new 'static 'vector :x -0.3115 :y 0.929 :z 0.1994 :w 27556.104)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint 12
+          :pre-tform (new 'static 'vector :x -0.2102 :z 0.9776 :w 14477.139)
+          :geo-tform (new 'static 'vector :x -0.6396 :y 0.7342 :z 0.2275 :w 22858.447)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6476 :z -0.7619 :w 6865.0054)
+          :geo-tform (new 'static 'vector :x 0.82 :y -0.2497 :z -0.5149 :w 39897.824)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.3875 :z -0.9218 :w 8801.667)
+          :geo-tform (new 'static 'vector :x -0.1058 :y 0.9928 :z 0.0549 :w 9626.165)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6065 :z 0.795 :w 9105.226)
+          :geo-tform (new 'static 'vector :x 0.2518 :y -0.1997 :z 0.9469 :w 26432.908)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint 5
+          :pre-tform (new 'static 'vector :x 1.0 :w 15947.349)
+          :geo-tform (new 'static 'vector :x -1.0 :w 14238.297)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.7263 :z -0.6873 :w 8695.116)
+          :geo-tform (new 'static 'vector :x -0.2489 :y -0.9666 :z 0.0608 :w 21608.748)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7102 :z -0.7039 :w 4636.836)
+          :geo-tform (new 'static 'vector :x 0.917 :y 0.0147 :z 0.3983 :w 31859.545)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x 0.9965 :z -0.0834 :w 2445.8035)
+          :geo-tform (new 'static 'vector :x -0.4038 :y 0.4208 :z 0.8122 :w 32665.656)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.8902 :z -0.4555 :w 9062.118)
+          :geo-tform (new 'static 'vector :x -0.4319 :y 0.2418 :z 0.8688 :w 30271.896)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6036 :z -0.7972 :w 5516.3105)
+          :geo-tform (new 'static 'vector :x -0.4131 :y 0.3724 :z 0.831 :w 28949.0)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x -0.0005 :z 1.0 :w 2732.1958)
+          :geo-tform (new 'static 'vector :x -0.3552 :y 0.3831 :z 0.8526 :w 29168.309)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 28
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6802 :z -0.7329 :w 8677.33)
+          :geo-tform (new 'static 'vector :x -0.3719 :y 0.2555 :z 0.8923 :w 30553.94)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 29
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7039 :z -0.7102 :w 5690.837)
+          :geo-tform (new 'static 'vector :x -0.3536 :y 0.3939 :z 0.8483 :w 29372.725)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 30
+          :parent-joint 8
+          :pre-tform (new 'static 'vector :x -0.5166 :z 0.8561 :w 5443.438)
+          :geo-tform (new 'static 'vector :x -0.3004 :y 0.3567 :z 0.8845 :w 26047.94)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 31
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.4717 :z -0.8817 :w 10051.475)
+          :geo-tform (new 'static 'vector :x -0.3142 :y 0.2126 :z 0.9252 :w 31264.074)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 32
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.7931 :z -0.6089 :w 4441.939)
+          :geo-tform (new 'static 'vector :x -0.2988 :y 0.3693 :z 0.8799 :w 30164.982)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 33
+          :parent-joint 6
+          :pre-tform (new 'static 'vector :x 0.9966 :z -0.0819 :w 24618.145)
+          :geo-tform (new 'static 'vector :x 0.9813 :y -0.1816 :z 0.0635 :w 40022.125)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 34
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 35
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x 0.6491 :z -0.7606 :w 18386.016)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 36
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :w 18385.998)
+          :geo-tform (new 'static 'vector :x -0.9952 :z 0.0975 :w 21022.53)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 37
+          :parent-joint 34
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x -0.9046 :z 0.426 :w 20433.598)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 38
+          :parent-joint 34
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x -0.1584 :z 0.9873 :w 18124.236)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 39
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :w 18124.236)
+          :geo-tform (new 'static 'vector :x -0.58 :z 0.8145 :w 19548.55)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 40
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 1.0 :w 4373.1807)
+          :geo-tform (new 'static 'vector :x -1.0 :w 1988.0345)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 41
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -1.0 :w 1988.071)
+          :geo-tform (new 'static 'vector :x -0.9994 :y -0.0083 :z -0.032 :w 11738.48)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 42
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x 0.2906 :z 0.9568 :w 10870.11)
+          :geo-tform (new 'static 'vector :x -0.1018 :y 0.9914 :z -0.0818 :w 31689.113)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 43
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6662 :z 0.7457 :w 2730.2297)
+          :geo-tform (new 'static 'vector :x -0.5779 :y 0.816 :z -0.0015 :w 24018.252)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 44
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x -0.3014 :z 0.9534 :w 3721.8257)
+          :geo-tform (new 'static 'vector :x -0.5819 :y -0.4471 :z 0.6792 :w 11122.333)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 45
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.8442 :z 0.5358 :w 9201.163)
+          :geo-tform (new 'static 'vector :x -0.2049 :y -0.6244 :z 0.7536 :w 8568.322)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 46
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5064 :z 0.8622 :w 7017.0127)
+          :geo-tform (new 'static 'vector :x -0.224 :y -0.5208 :z 0.8237 :w 10038.367)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 47
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x -0.9808 :z 0.1947 :w 3574.3152)
+          :geo-tform (new 'static 'vector :x -0.3101 :y -0.5784 :z 0.7544 :w 12426.08)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 48
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.6925 :z 0.7213 :w 9185.144)
+          :geo-tform (new 'static 'vector :x -0.2424 :y -0.7478 :z 0.618 :w 10080.02)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 49
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.68 :z 0.7331 :w 6658.6396)
+          :geo-tform (new 'static 'vector :x -0.2869 :y -0.6188 :z 0.7312 :w 11787.96)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 50
+          :parent-joint 11
+          :pre-tform (new 'static 'vector :x -0.9874 :z -0.158 :w 6496.62)
+          :geo-tform (new 'static 'vector :x -0.0973 :y -0.6424 :z 0.7601 :w 14233.836)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 51
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5715 :z 0.8205 :w 10521.187)
+          :geo-tform (new 'static 'vector :x -0.2141 :y -0.8864 :z 0.4102 :w 11102.017)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 52
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.8204 :z 0.5717 :w 4944.8003)
+          :geo-tform (new 'static 'vector :x -0.31 :y -0.7424 :z 0.5938 :w 12784.198)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 53
+          :parent-joint 9
+          :pre-tform (new 'static 'vector :x 0.958 :z 0.2866 :w 10322.029)
+          :geo-tform (new 'static 'vector :x -0.4997 :y -0.657 :z -0.5644 :w 12545.429)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 54
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 55
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x -0.9771 :z -0.2126 :w 21628.574)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 56
+          :parent-joint 54
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x 0.9089 :y 0.4168 :w 32033.178)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 57
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x -0.9997 :z -0.0238 :w 21240.527)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 58
+          :parent-joint 54
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x 0.7958 :y -0.6055 :w 32794.434)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 59
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 1.0 :w 32767.98)
+          :geo-tform (new 'static 'vector :x -0.9111 :z -0.412 :w 21396.268)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 60
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x -0.2484 :z 0.9686 :w 5252.164)
+          :geo-tform (new 'static 'vector :x -0.181 :y 0.8124 :z 0.5542 :w 27354.744)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 61
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x 0.9406 :z 0.3394 :w 22416.66)
+          :geo-tform (new 'static 'vector :x -0.9718 :y 0.2099 :z 0.107 :w 10194.125)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 62
+          :parent-joint 20
+          :pre-tform (new 'static 'vector :x -0.2498 :z -0.9682 :w 5221.7627)
+          :geo-tform (new 'static 'vector :x 0.2965 :y 0.2004 :z 0.9337 :w 34094.484)
+          :axial-slop 1954.0287
+          :max-angle 4123.1426
+          :coll-rad 1807.1552
+          )
+        )
+      )
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #t
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 5
+    :turn-anim -1
+    :run-anim 4
+    :taunt-anim -1
+    :run-travel-speed (meters 6)
+    :run-acceleration (meters 40)
+    :run-turning-acceleration (meters 50)
+    :walk-travel-speed (meters 4)
+    :walk-acceleration (meters 20)
+    :walk-turning-acceleration (meters 20)
+    :maximum-rotation-rate (degrees 720)
+    :notice-nav-radius (meters 59)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+(set! (-> *dp-bipedal-nav-enemy-info* fact-defaults) *fact-info-dp-bipedal-defaults*)
+
+(defmethod init-enemy-collision! ((this dp-bipedal))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by) (penetrate
+                                    generic-attack
+                                    lunge
+                                    flop
+                                    punch
+                                    spin
+                                    roll
+                                    uppercut
+                                    bonk
+                                    tube
+                                    flut-attack
+                                    board
+                                    mech-punch
+                                    dark-punch
+                                    dark-smack
+                                    flut
+                                    )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 6) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 7))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy los-blocker))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 6144.0 0.0 17408.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-13 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> v1-13 local-sphere) 0.0 6144.0 0.0 6144.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-15 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> v1-15 local-sphere) 0.0 10240.0 0.0 6144.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list)
+            )
+      (set! (-> v1-17 prim-core action) (collide-action solid can-ride no-standon))
+      (set-vector! (-> v1-17 local-sphere) 0.0 14336.0 0.0 6144.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 transform-index) 11)
+      (set-vector! (-> v1-19 local-sphere) 0.0 0.0 0.0 6553.6)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-21 transform-index) 10)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 0.0 4096.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec los-blocker))
+      (set! (-> v1-23 prim-core action) (collide-action semi-solid))
+      (set-vector! (-> v1-23 local-sphere) 0.0 10240.0 0.0 10240.0)
+      )
+    (set! (-> s5-0 nav-radius) 7987.1997)
+    (let ((v1-25 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod get-damage-from-attack ((this dp-bipedal) (arg0 object) (arg1 event-message-block))
+  (if (type? arg0 guard-shot)
+      0.5
+      ((method-of-type nav-enemy get-damage-from-attack) this arg0 arg1)
+      )
+  )
+
+(defmethod probe-point-for-los-block ((this dp-bipedal) (arg0 vector) (arg1 vector) (arg2 float))
+  (let ((gp-0 (new 'stack-no-clear 'collide-query)))
+    (let ((s1-0 (new 'stack-no-clear 'vector)))
+      (new 'stack-no-clear 'vector)
+      (let ((s3-0 (new 'stack-no-clear 'vector)))
+        (vector-! s1-0 arg1 arg0)
+        (vector-normalize! s1-0 1.0)
+        (let ((f0-1 (+ 2048.0 arg2)))
+          (vector+float*! (-> gp-0 start-pos) arg0 s1-0 f0-1)
+          (vector+float*! s3-0 arg1 s1-0 (- f0-1))
+          )
+        (vector-! (-> gp-0 move-dist) s3-0 (-> gp-0 start-pos))
+        )
+      )
+    (let ((v1-8 gp-0))
+      (set! (-> v1-8 radius) arg2)
+      (set! (-> v1-8 collide-with) (collide-spec hit-by-others-list player-list los-blocker))
+      (set! (-> v1-8 ignore-process0) this)
+      (set! (-> v1-8 ignore-process1) (handle->process (-> this focus handle)))
+      (set! (-> v1-8 ignore-pat)
+            (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+            )
+      (set! (-> v1-8 action-mask) (collide-action solid semi-solid))
+      )
+    (>= 0.0 (fill-and-probe-using-line-sphere *collide-cache* gp-0))
+    )
+  )
+
+(defun region-check-has-los ((arg0 vector) (arg1 vector) (arg2 float))
+  (local-vars (sv-80 vector) (sv-84 vector) (sv-88 vector) (sv-92 vector))
+  (set! sv-80 (new 'stack-no-clear 'vector))
+  (set! sv-84 (new 'stack-no-clear 'vector))
+  (set! sv-88 (new 'stack-no-clear 'vector))
+  (set! sv-92 (new 'stack-no-clear 'vector))
+  (vector-! sv-92 arg1 arg0)
+  (vector-normalize! sv-92 1.0)
+  (let ((f0-1 (+ 2048.0 arg2)))
+    (vector+float*! sv-84 arg0 sv-92 f0-1)
+    (vector+float*! sv-88 arg1 sv-92 (- f0-1))
+    )
+  (vector-average! sv-80 sv-84 sv-88)
+  (set! (-> sv-80 w) (+ (* 0.5 (vector-vector-distance sv-84 sv-88)) arg2))
+  ;; og:preserve-this
+  (set! (-> (scratchpad-object region-prim-area) region-prim-list num-items) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-enter-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-exit-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-inside-count) 0)
+  (set! (-> (scratchpad-object region-prim-area) region-start-count) 0)
+  (sphere<-vector+r! (the-as sphere (-> (scratchpad-object region-prim-area) pos)) sv-84 0.0)
+  (sphere<-vector+r! (the-as sphere (-> (scratchpad-object region-prim-area) exit-pos)) sv-88 0.0)
+  (vector-! (-> (scratchpad-object region-prim-area) ray) sv-88 sv-84)
+  (vector-! (-> (scratchpad-object region-prim-area) exit-ray) sv-84 sv-88)
+  (dotimes (s5-1 (-> *level* length))
+    (let ((v1-26 (-> *level* level s5-1)))
+      (when (= (-> v1-26 status) 'active)
+        (let ((s4-1 (-> v1-26 bsp region-trees)))
+          (when (nonzero? s4-1)
+            (let* ((s3-0 (-> s4-1 length))
+                   (s2-0 0)
+                   (a0-19 (-> s4-1 s2-0))
+                   )
+              (while (< s2-0 s3-0)
+                (if (= (-> a0-19 name) 'data)
+                    ;; og:preserve-this
+                    (collect-regions a0-19 (the-as sphere sv-80) 0 (-> (scratchpad-object region-prim-area) region-prim-list))
+                    )
+                (+! s2-0 1)
+                (set! a0-19 (-> s4-1 s2-0))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  ;; og:preserve-this
+  (countdown (s5-2 (-> (scratchpad-object region-prim-area) region-prim-list num-items))
+    (let ((v1-46 (-> (scratchpad-object region-prim-area) region-prim-list items s5-2)))
+      (if (and (pair? (-> v1-46 region on-inside))
+               (= (-> v1-46 region on-inside car) 'los)
+               (< 0.0 (ray-sphere-intersect
+                        (-> (scratchpad-object region-prim-area) pos)
+                        (-> (scratchpad-object region-prim-area) ray)
+                        (-> v1-46 bsphere)
+                        (+ (-> v1-46 bsphere w) arg2)
+                        )
+                  )
+               )
+          (return #f)
+          )
+      )
+    )
+  #t
+  )
+
+;; WARN: Return type mismatch symbol vs object.
+(defmethod dp-bipedal-method-209 ((this dp-bipedal) (arg0 vector) (arg1 float))
+  (local-vars (s4-0 vector))
+  (let ((a1-1 (new 'stack-no-clear 'vector)))
+    (set! (-> a1-1 quad) (-> arg0 quad))
+    (set! (-> a1-1 w) arg1)
+    (and (not (add-root-sphere-to-hash! (-> this nav) a1-1 #x100068))
+         (let ((a0-5 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) arg0)))
+           (and (< (vector-x-angle a0-5) 5461.3335)
+                (begin
+                  (set! s4-0 (new 'stack-no-clear 'vector))
+                  (set! (-> s4-0 quad) (-> arg0 quad))
+                  (+! (-> s4-0 y) 15974.399)
+                  (region-check-has-los s4-0 (-> this focus-bullseye) 8192.0)
+                  )
+                (probe-point-for-los-block this s4-0 (-> this focus-bullseye) 16384.0)
+                )
+           )
+         )
+    )
+  )
+
+(defbehavior dp-bipedal-formation-post dp-bipedal ()
+  (when (or (< 8192.0 (vector-vector-xz-distance (-> self focus-pos) (-> self focus-formation-source)))
+            (let ((f0-1 (vector-vector-distance (-> self root trans) (-> self focus-formation-source)))
+                  (f1-0 61440.0)
+                  (f2-0 184320.0)
+                  )
+              (or (< f0-1 f1-0) (< f2-0 f0-1))
+              )
+            (not (dp-bipedal-method-209 self (-> self formation-position) 13977.6))
+            )
+    (set! (-> self focus-formation-source quad) (-> self focus-pos quad))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-1 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self focus-formation-source))))
+        (when (< 0.0 (vector-length s5-1))
+          (dotimes (s4-0 (-> *dp-bipedal-formation-table* length))
+            (let ((s2-0 (new 'stack-no-clear 'vector))
+                  (s3-0 (new 'stack-no-clear 'vector))
+                  )
+              (vector-normalize-copy! s2-0 s5-1 1.0)
+              (vector-rotate-y! s2-0 s2-0 (-> *dp-bipedal-formation-table* s4-0))
+              (vector-normalize! s2-0 77824.0)
+              (vector+! s3-0 (-> self focus-formation-source) s2-0)
+              (when (and (closest-point-on-mesh (-> self nav) s3-0 s3-0 (the-as nav-poly #f))
+                         (dp-bipedal-method-209 self s3-0 13977.6)
+                         )
+                (set! (-> gp-0 quad) (-> s3-0 quad))
+                #t
+                (goto cfg-26)
+                )
+              )
+            )
+          )
+        )
+      (label cfg-26)
+      (set! (-> self formation-position quad) (-> gp-0 quad))
+      )
+    )
+  0
+  (none)
+  )
+
+(defbehavior dp-bipedal-hostile-post dp-bipedal ()
+  (dp-bipedal-formation-post)
+  (let ((gp-0 (-> self nav)))
+    (set! (-> gp-0 target-speed) (vector-length (ja-linear-vel 0)))
+    )
+  0
+  (let ((a0-1 (-> self nav state))
+        (v1-4 (-> self formation-position))
+        )
+    (logclear! (-> a0-1 flags) (nav-state-flag directional-mode))
+    (logior! (-> a0-1 flags) (nav-state-flag target-poly-dirty))
+    (set! (-> a0-1 target-pos quad) (-> v1-4 quad))
+    )
+  0
+  (nav-enemy-method-187 self)
+  0
+  (none)
+  )
+
+(defbehavior dp-bipedal-attack-close-post dp-bipedal ()
+  (let ((v1-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+    (when (closest-point-on-mesh (-> self nav) (-> v1-0 0) (-> self focus-pos) (the-as nav-poly #f))
+      (vector-seek!
+        (-> self root trans)
+        (-> self focus-pos)
+        (* (vector-length (ja-linear-vel 0)) (seconds-per-frame))
+        )
+      (try-locate-ground self (meters 10) (meters 10) #t (-> self gnd-collide-with))
+      )
+    )
+  (nav-enemy-simple-post)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch object vs none.
+(defbehavior dp-bipedal-consider-attacks dp-bipedal ()
+  (local-vars (f0-7 float))
+  (set! (-> self state-stack length) 0)
+  (when (not (time-elapsed? (-> self on-screen-timer) (seconds 1)))
+    (let ((s5-0 (get-focus! self))
+          (gp-0 (-> self root))
+          )
+      (b!
+        (not (and s5-0
+                  (not (focus-test? s5-0 mech turret))
+                  (>= 11832.889 (acos (vector-dot (-> self focus-dir) (-> self rotation-matrix fvec))))
+                  (or (< (vector-vector-distance (-> gp-0 trans) (-> self focus-close-attack-pos)) 31948.799)
+                      (< (vector-dot
+                           (vector-! (new 'stack-no-clear 'vector) (-> self focus-close-attack-pos) (-> gp-0 trans))
+                           (-> self rotation-matrix fvec)
+                           )
+                         0.0
+                         )
+                      )
+                  )
+             )
+        cfg-20
+        :delay (empty-form)
+        )
+      (cond
+        ((< (-> self state-stack length) (-> self state-stack allocated-length))
+         (set! (-> self state-stack (-> self state-stack length)) (method-of-object self attack-close))
+         (+! (-> self state-stack length) 1)
+         )
+        (else
+          (format
+            0
+            "WARNING: ~A could not do (push-state-stack ~S) because it has ~D/~D states.~%"
+            self
+            (-> (method-of-object self attack-close) name)
+            (-> self state-stack length)
+            (-> self state-stack allocated-length)
+            )
+          )
+        )
+      (b! #t cfg-52 :delay (nop!))
+      (label cfg-20)
+      (cond
+        ((and (can-enter-turret? self) (not (and (-> self next-state) (= (-> self next-state name) 'turret-seek))))
+         (cond
+           ((< (-> self state-stack length) (-> self state-stack allocated-length))
+            (set! (-> self state-stack (-> self state-stack length)) (method-of-object self turret-seek))
+            (+! (-> self state-stack length) 1)
+            )
+           (else
+             (format
+               0
+               "WARNING: ~A could not do (push-state-stack ~S) because it has ~D/~D states.~%"
+               self
+               (-> (method-of-object self turret-seek) name)
+               (-> self state-stack length)
+               (-> self state-stack allocated-length)
+               )
+             )
+           )
+         )
+        ((and s5-0
+              (-> self can-attack-throw?)
+              (should-check-los? (-> self los) (seconds 0.3))
+              (>= 8192.0 (acos (vector-dot (-> self focus-dir) (-> self rotation-matrix fvec))))
+              (begin (set! f0-7 (vector-vector-distance (-> gp-0 trans) (-> self focus-throw-attack-pos))) (< 20480.0 f0-7))
+              (< f0-7 225280.0)
+              )
+         (cond
+           ((< (-> self state-stack length) (-> self state-stack allocated-length))
+            (set! (-> self state-stack (-> self state-stack length)) (method-of-object self attack-throw))
+            (+! (-> self state-stack length) 1)
+            )
+           (else
+             (format
+               0
+               "WARNING: ~A could not do (push-state-stack ~S) because it has ~D/~D states.~%"
+               self
+               (-> (method-of-object self attack-throw) name)
+               (-> self state-stack length)
+               (-> self state-stack allocated-length)
+               )
+             )
+           )
+         )
+        )
+      )
+    )
+  (label cfg-52)
+  (none)
+  )
+
+(defbehavior dp-bipedal-turret-post dp-bipedal ()
+  (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-0 from) (process->ppointer self))
+    (set! (-> a1-0 num-params) 1)
+    (set! (-> a1-0 message) 'set-focus)
+    (set! (-> a1-0 param 0) (the-as uint (-> self focus handle)))
+    (let ((t9-0 send-event-function)
+          (v1-4 (-> self turret-entity))
+          )
+      (t9-0
+        (if v1-4
+            (-> v1-4 extra process)
+            )
+        a1-0
+        )
+      )
+    )
+  (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-1 from) (process->ppointer self))
+    (set! (-> a1-1 num-params) 1)
+    (set! (-> a1-1 message) 'gunner-pos)
+    (set! (-> a1-1 param 0) (the-as uint (-> self root trans)))
+    (let ((t9-1 send-event-function)
+          (v1-12 (-> self turret-entity))
+          )
+      (t9-1
+        (if v1-12
+            (-> v1-12 extra process)
+            )
+        a1-1
+        )
+      )
+    )
+  (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+    (set! (-> a1-2 from) (process->ppointer self))
+    (set! (-> a1-2 num-params) 1)
+    (set! (-> a1-2 message) 'gunner-quat)
+    (set! (-> a1-2 param 0) (the-as uint (-> self root quat)))
+    (let ((t9-2 send-event-function)
+          (v1-20 (-> self turret-entity))
+          )
+      (t9-2
+        (if v1-20
+            (-> v1-20 extra process)
+            )
+        a1-2
+        )
+      )
+    )
+  (nav-enemy-simple-post)
+  (none)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior dp-bipedal-turret-code dp-bipedal ()
+  (let ((v1-2 (ja-group)))
+    (when (not (and v1-2 (= v1-2 dp-bipedal-turret-idle-middle-ja)))
+      (ja-channel-push! 3 (seconds 0.2))
+      (ja-no-eval :group! dp-bipedal-turret-idle-middle-ja :num! zero)
+      (let ((a0-6 (-> self skel root-channel 1)))
+        (let ((f0-1 0.0))
+          (set! (-> a0-6 frame-interp 1) f0-1)
+          (set! (-> a0-6 frame-interp 0) f0-1)
+          )
+        (set! (-> a0-6 frame-group) (the-as art-joint-anim dp-bipedal-turret-idle-left-ja))
+        (set! (-> a0-6 frame-num) 0.0)
+        (joint-control-channel-group! a0-6 (the-as art-joint-anim dp-bipedal-turret-idle-left-ja) num-func-identity)
+        )
+      (let ((a0-7 (-> self skel root-channel 2)))
+        (let ((f0-3 1.0))
+          (set! (-> a0-7 frame-interp 1) f0-3)
+          (set! (-> a0-7 frame-interp 0) f0-3)
+          )
+        (set! (-> a0-7 frame-group) (the-as art-joint-anim dp-bipedal-turret-idle-right-ja))
+        (set! (-> a0-7 frame-num) 0.0)
+        (joint-control-channel-group! a0-7 (the-as art-joint-anim dp-bipedal-turret-idle-right-ja) num-func-identity)
+        )
+      )
+    )
+  (until #f
+    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-4 from) (process->ppointer self))
+      (set! (-> a1-4 num-params) 0)
+      (set! (-> a1-4 message) 'sideways)
+      (let* ((t9-4 send-event-function)
+             (v1-33 (-> self turret-entity))
+             (a0-8 (if v1-33
+                       (-> v1-33 extra process)
+                       )
+                   )
+             (f30-0 (the-as float (t9-4 a0-8 a1-4)))
+             )
+        (let ((a0-9 (-> self skel root-channel 1)))
+          (let ((f0-6 (fmax 0.0 (- f30-0))))
+            (set! (-> a0-9 frame-interp 1) f0-6)
+            (set! (-> a0-9 frame-interp 0) f0-6)
+            )
+          (set! (-> a0-9 param 0) 0.0)
+          (set! (-> a0-9 frame-num) (-> self skel root-channel 0 frame-num))
+          (joint-control-channel-group! a0-9 (the-as art-joint-anim #f) num-func-chan)
+          )
+        (let ((a0-10 (-> self skel root-channel 2)))
+          (let ((f0-10 (fmax 0.0 f30-0)))
+            (set! (-> a0-10 frame-interp 1) f0-10)
+            (set! (-> a0-10 frame-interp 0) f0-10)
+            )
+          (set! (-> a0-10 param 0) 0.0)
+          (set! (-> a0-10 frame-num) (-> self skel root-channel 0 frame-num))
+          (joint-control-channel-group! a0-10 (the-as art-joint-anim #f) num-func-chan)
+          )
+        )
+      )
+    (ja :num! (loop! 0.5))
+    (suspend)
+    )
+  #f
+  (none)
+  )
+
+(defstate dormant (dp-bipedal)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy dormant) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logior! (-> self fact enemy-options) (enemy-option ambush))
+    )
+  )
+
+(defstate dormant-aware (dp-bipedal)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy dormant-aware) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logior! (-> self fact enemy-options) (enemy-option ambush))
+    )
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy dormant-aware) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (when (and (= (-> self entity extra perm task) (game-task forest-turn-on-machine))
+               (task-node-closed? (game-task-node forest-turn-on-machine-spawners))
+               )
+      (cleanup-for-death self)
+      (go-virtual die-fast)
+      )
+    (if (and (-> self turret-entity)
+             (let ((v1-17 (-> self turret-entity)))
+               (and (if v1-17
+                        (-> v1-17 extra process)
+                        )
+                    (< (vector-vector-xz-distance (-> self root trans) (-> self turret-entity extra trans)) 45056.0)
+                    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+                      (set! (-> a1-1 from) (process->ppointer self))
+                      (set! (-> a1-1 num-params) 0)
+                      (set! (-> a1-1 message) 'rider)
+                      (let ((t9-5 send-event-function)
+                            (v1-26 (-> self turret-entity))
+                            )
+                        (not (t9-5
+                               (if v1-26
+                                   (-> v1-26 extra process)
+                                   )
+                               a1-1
+                               )
+                             )
+                        )
+                      )
+                    )
+               )
+             )
+        (go-virtual turret-seek)
+        )
+    )
+  )
+
+(defstate ambush (dp-bipedal)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy ambush) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (set! (-> self minimap) (add-icon! *minimap* self (the-as uint 159) (the-as int #f) (the-as vector #t) 0))
+    (set-time! (-> self valid-ground-timer))
+    (set-time! (-> self state-time))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logior! (-> self draw status) (draw-control-status force-fade))
+    (set! (-> self fade-level) 0.0)
+    (point-toward-point! (-> self root) (-> self focus-pos))
+    (set-time! (-> self effect-timer))
+    (set! (-> self effect-rate) 0.4)
+    (cond
+      ((logtest? (-> *part-group-id-table* 242 flags) (sp-group-flag sp13))
+       (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+       (part-tracker-spawn part-tracker-subsampler :to *entity-pool* :group (-> *part-group-id-table* 242))
+       )
+      (else
+        (set! (-> *launch-matrix* trans quad) (-> self root root-prim prim-core world-sphere quad))
+        (part-tracker-spawn part-tracker :to *entity-pool* :group (-> *part-group-id-table* 242))
+        )
+      )
+    (sound-play "dpbiped-ambush")
+    (if (logtest? (-> self fact enemy-options) (enemy-option user12))
+        (script-eval '(send-event *task-manager* 'notify 'dp-bipedal-ambush))
+        )
+    )
+  :exit (behavior ()
+    (set! (-> self draw force-fade) (the-as uint 128))
+    (logclear! (-> self draw status) (draw-control-status force-fade))
+    (if (logtest? (-> self enemy-flags) (enemy-flag actor-pause-backup))
+        (logior! (-> self mask) (process-mask actor-pause))
+        (logclear! (-> self mask) (process-mask actor-pause))
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (let ((v1-0 (rand-vu-int-range 0 4)))
+      (cond
+        ((or (zero? v1-0) (= v1-0 1) (= v1-0 2))
+         (ja-no-eval :group! dp-bipedal-warp-in0-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (spawn
+             (-> self part-ambush)
+             (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node dp-bipedal-lod0-jg Rhand))
+             )
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        ((= v1-0 3)
+         (ja-no-eval :group! dp-bipedal-warp-in1-ja :num! (seek!) :frame-num 0.0)
+         (until (ja-done? 0)
+           (suspend)
+           (ja :num! (seek!))
+           )
+         )
+        )
+      )
+    (go-hostile self)
+    )
+  :post (behavior ()
+    (seek! (-> self fade-level) 1.0 (seconds-per-frame))
+    (set! (-> self draw force-fade) (the-as uint (the int (* 128.0 (-> self fade-level)))))
+    (seek! (-> self effect-rate) 0.0 (* 2.5 (seconds-per-frame)))
+    (dp-bipedal-method-210 self)
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate de-ambush (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (set-time! (-> self state-time))
+    (set! (-> self fade-level) 1.0)
+    )
+  :exit (behavior ()
+    (if (logtest? (-> self enemy-flags) (enemy-flag actor-pause-backup))
+        (logior! (-> self mask) (process-mask actor-pause))
+        (logclear! (-> self mask) (process-mask actor-pause))
+        )
+    )
+  :trans (behavior ()
+    (if (= (-> self fade-level) 0.0)
+        (go-dormant-aware self)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (let ((gp-0 (set-reaction-time! self 1 (seconds 0.01))))
+      (dotimes (s5-0 gp-0)
+        (ja-no-eval :group! dp-bipedal-idle0-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (logior! (-> self draw status) (draw-control-status force-fade))
+    (until #f
+      (ja-no-eval :group! dp-bipedal-idle0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (seek! (-> self fade-level) 0.0 (seconds-per-frame))
+        (set! (-> self draw force-fade) (the-as uint (the int (* 128.0 (-> self fade-level)))))
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.0 (* 2.0 (seconds-per-frame)))
+    (dp-bipedal-method-210 self)
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate hostile (dp-bipedal)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (focus-close? self)
+        (go-virtual attack-close)
+        )
+    (if (not (dp-bipedal-method-206 self))
+        (set-time! (-> self shield-timer))
+        )
+    (if (time-elapsed? (-> self shield-timer) (seconds 0.3))
+        (go-virtual shield-out)
+        )
+    (when (time-elapsed? (-> self state-time) (seconds 0.05))
+      (let ((v1-25 (new 'stack-no-clear 'inline-array 'vector 1)))
+        (let ((a2-0 (-> self nav state)))
+          (set! (-> v1-25 0 quad) (-> a2-0 target-pos quad))
+          )
+        (when (< (vector-vector-xz-distance (-> self root trans) (-> v1-25 0)) 4096.0)
+          (if (should-check-los? (-> self los) (seconds 0.3))
+              (go-virtual shield-out)
+              (go-virtual hostile-stand)
+              )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.3))
+    (until #f
+      (ja-no-eval :group! dp-bipedal-run0-ja :num! (seek! max 1.4) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek! max 1.4))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.0 (seconds-per-frame))
+    (dp-bipedal-hostile-post)
+    )
+  )
+
+(defstate hostile-stand (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (nav-enemy-method-173 self)
+    )
+  :trans (behavior ()
+    ((-> (method-of-type nav-enemy hostile) trans))
+    (if (not (dp-bipedal-method-206 self))
+        (set-time! (-> self shield-timer))
+        )
+    (if (time-elapsed? (-> self shield-timer) (seconds 0.05))
+        (go-virtual shield-out)
+        )
+    (if (< 49152.0 (vector-vector-xz-distance (-> self root trans) (-> self formation-position)))
+        (go-virtual hostile)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! dp-bipedal-idle0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (dp-bipedal-consider-attacks)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (let ((v1-25 (-> self state-stack length)))
+        (when (> v1-25 0)
+          (let ((v1-29 (-> self state-stack (+ v1-25 -1))))
+            (+! (-> self state-stack length) -1)
+            (go (the-as (state dp-bipedal) v1-29))
+            )
+          )
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (seek-to-point-toward-point!
+      (-> self root)
+      (-> self focus-pos)
+      (-> self nav max-rotation-rate)
+      (seconds 0.02)
+      )
+    (seek! (-> self effect-rate) 0.0 (seconds-per-frame))
+    (dp-bipedal-formation-post)
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate shield-out (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja-no-eval :group! dp-bipedal-shield-out-ja :num! (seek! max 2.0) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 2.0))
+      )
+    (go-virtual shield-idle)
+    )
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.2 (seconds-per-frame))
+    (seek-to-point-toward-point!
+      (-> self root)
+      (-> self focus-pos)
+      (-> self nav max-rotation-rate)
+      (seconds 0.02)
+      )
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate shield-idle (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'shield-sphere-spawn-params)))
+      (set! (-> gp-0 owner) (process->handle self))
+      (set! (-> gp-0 sphere-size) 3.25)
+      (set! (-> gp-0 track-joint) 27)
+      (set! (-> gp-0 enable-time) (seconds 0.1))
+      (set! (-> gp-0 disable-time) (seconds 0.1))
+      (set! (-> gp-0 shield-strength) 10)
+      (set! (-> gp-0 shield-type) (shield-type shield-type-0))
+      (if (new 'static 'vector :z -7168.0 :w 1.0)
+          (set! (-> gp-0 offset-vec quad) (-> (new 'static 'vector :z -7168.0 :w 1.0) quad))
+          (vector-reset! (-> gp-0 offset-vec))
+          )
+      (let ((s5-0 (the-as process #f)))
+        (let* ((s4-0 (get-process *default-dead-pool* dp-bipedal-shield #x4000 1))
+               (v1-12 (when s4-0
+                        (let ((t9-1 (method-of-type process activate)))
+                          (t9-1 s4-0 self "process" (the-as pointer #x70004000))
+                          )
+                        (run-now-in-process s4-0 shield-sphere-init-by-other gp-0)
+                        (-> s4-0 ppointer)
+                        )
+                      )
+               )
+          (if v1-12
+              (set! s5-0 (-> v1-12 0))
+              )
+          )
+        (if s5-0
+            (set! (-> self shield-handle) (process->handle s5-0))
+            (go-virtual shield-in)
+            )
+        )
+      )
+    (nav-enemy-method-180 self 13977.6 (the-as float #f))
+    (set-time! (-> self state-time))
+    (set-time! (-> self shield-timer))
+    )
+  :exit (behavior ()
+    (sound-stop (-> self shield-sound-id))
+    (sound-play "dpbiped-shld-dn")
+    (nav-enemy-method-179 self)
+    (send-event (handle->process (-> self shield-handle)) 'shield-detach)
+    )
+  :trans (behavior ()
+    (if (not (send-event (handle->process (-> self shield-handle)) 'active))
+        (go-virtual shield-explode)
+        )
+    (let ((v1-10 (-> self focus aware)))
+      (cond
+        ((>= 1 (the-as int v1-10))
+         (go-virtual active)
+         )
+        ((= v1-10 (enemy-aware ea4))
+         (go-flee self)
+         )
+        )
+      )
+    (if (and (dp-bipedal-method-206 self) (>= (the-as int (-> self focus aware)) 2))
+        (set-time! (-> self shield-timer))
+        )
+    (if (time-elapsed? (-> self shield-timer) (seconds 0.3))
+        (go-virtual shield-in)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (until #f
+      (ja-no-eval :group! dp-bipedal-shield-out-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (dp-bipedal-consider-attacks)
+      (let ((f30-0 0.0))
+        (when (>= f30-0 (the-as float (send-event (handle->process (-> self shield-handle)) 'heat-ratio)))
+          (let ((v1-32 (-> self state-stack length)))
+            (when (> v1-32 0)
+              (let ((v1-36 (-> self state-stack (+ v1-32 -1))))
+                (+! (-> self state-stack length) -1)
+                (go (the-as (state dp-bipedal) v1-36))
+                )
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.0 (seconds-per-frame))
+    (sound-play "dpbiped-shld-lp" :id (-> self shield-sound-id))
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate shield-in (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 0)
+    (ja-no-eval :group! dp-bipedal-shield-in-ja :num! (seek! max 2.0) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 2.0))
+      )
+    (go-hostile self)
+    )
+  :post nav-enemy-simple-post
+  )
+
+(defstate shield-explode (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (ja-no-eval :group! dp-bipedal-shield-up-recoil0-ja :num! (seek! max 1.5) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max 1.5))
+      )
+    (go-hostile self)
+    )
+  :post nav-enemy-simple-post
+  )
+
+(defstate attack-close (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-collide-spec! self #t)
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
+    (set! (-> self root penetrate-using) (penetrate generic-attack lunge))
+    (reset-penetrate! self)
+    (let* ((v1-7 *game-info*)
+           (v0-2 (+ (-> v1-7 attack-id) 1))
+           )
+      (set! (-> v1-7 attack-id) v0-2)
+      (set! (-> self attack-id) v0-2)
+      )
+    )
+  :exit (behavior ()
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (set-collide-spec! self #f)
+    )
+  :trans (behavior ()
+    (reset-penetrate! self)
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-0 enemy-flags))))
+      )
+    0
+    (ja-no-eval :group! dp-bipedal-attack-close0-start-ja :num! (seek! max 1.3) :frame-num 0.0)
+    (until (ja-done? 0)
+      (seek! (-> self effect-rate) 0.2 (seconds-per-frame))
+      (dp-bipedal-attack-close-post)
+      (suspend)
+      (ja :num! (seek! max 1.3))
+      )
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (ja-no-eval :group! dp-bipedal-attack-close0-middle-ja :num! (seek! max 1.3) :frame-num 0.0)
+    (until (ja-done? 0)
+      (dp-bipedal-attack-close-post)
+      (suspend)
+      (ja :num! (seek! max 1.3))
+      )
+    (let ((v1-53 self))
+      (set! (-> v1-53 enemy-flags) (the-as enemy-flag (logclear (-> v1-53 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (ja-no-eval :group! dp-bipedal-attack-close0-end-ja :num! (seek! max 1.3) :frame-num 0.0)
+    (until (ja-done? 0)
+      (seek! (-> self effect-rate) 0.05 (seconds-per-frame))
+      (nav-enemy-simple-post)
+      (suspend)
+      (ja :num! (seek! max 1.3))
+      )
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (go-hostile self)
+    )
+  :post (behavior ()
+    (let ((a0-0 self))
+      (if (logtest? (enemy-flag ef38) (-> a0-0 enemy-flags))
+          (seek-to-point-toward-point!
+            (-> self root)
+            (-> self focus-pos)
+            (-> self nav max-rotation-rate)
+            (seconds 0.02)
+            )
+          )
+      )
+    )
+  )
+
+(defstate attack-throw (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! dp-bipedal-attack-throw0-middle-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (seek! (-> self effect-rate) 0.2 (seconds-per-frame))
+      (spawn (-> self part) (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node dp-bipedal-lod0-jg Rhand)))
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((a1-7 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node dp-bipedal-lod0-jg Rhand))))
+      (spawn-dp-bipedal-grenade self a1-7 (-> self focus-throw-attack-pos) 122880.0)
+      )
+    (ja-no-eval :group! dp-bipedal-attack-throw0-end-ja :num! (seek! (ja-aframe 33.0 0)) :frame-num 0.0)
+    (until (ja-done? 0)
+      (seek! (-> self effect-rate) 0.0 (seconds-per-frame))
+      (suspend)
+      (ja :num! (seek! (ja-aframe 33.0 0)))
+      )
+    (go-hostile self)
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    )
+  )
+
+(defstate knocked (dp-bipedal)
+  :virtual #t
+  :enter (behavior ()
+    (when (>= 0.0 (-> self hit-points))
+      (let ((a0-1 (handle->process (-> self incoming attacker-handle))))
+        (if (and (logtest? (-> self fact enemy-options) (enemy-option user12))
+                 a0-1
+                 (or (= (-> a0-1 type) target) (type? a0-1 vehicle))
+                 )
+            (script-eval '(send-event *task-manager* 'notify 'dp-bipedal-die))
+            )
+        )
+      )
+    (logior! (-> self focus-status) (focus-status ignore))
+    (set-time! (-> self knocked-focus-reset-timer))
+    (let ((t9-3 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-3
+          (t9-3)
+          )
+      )
+    )
+  :code (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) code)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    )
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.2 (seconds-per-frame))
+    (let ((t9-1 (-> (method-of-type nav-enemy knocked) post)))
+      (if t9-1
+          ((the-as (function none) t9-1))
+          )
+      )
+    )
+  )
+
+(defstate knocked-recover (dp-bipedal)
+  :virtual #t
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.01))
+             (and (not (handle->process (-> self ragdoll-proc))) (within-gspot-range? self))
+             )
+        (go-die self)
+        )
+    )
+  :code (behavior ()
+    (local-vars (v1-31 object) (v1-72 symbol))
+    (cond
+      ((handle->process (-> self ragdoll-proc))
+       (ja-channel-push! 1 0)
+       (ja-no-eval :group! dp-bipedal-getup0-start-ja :num! (seek!) :frame-num 0.0)
+       (enable-ragdoll! (-> (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))) ragdoll) self)
+       (until v1-31
+         (suspend)
+         (ja :num! (seek!))
+         (set! v1-31 (and (ja-done? 0) (let ((a0-14 (handle->process (-> self ragdoll-proc))))
+                                         (or (not a0-14) (ragdoll-proc-method-19 (the-as ragdoll-proc a0-14)))
+                                         )
+                          )
+               )
+         )
+       (ja-channel-push! 1 (seconds 0.1))
+       (ja-no-eval :group! dp-bipedal-getup0-end-ja :num! (seek! max 3.0) :frame-num 0.0)
+       (until (ja-done? 0)
+         (suspend)
+         (ja :num! (seek! max 3.0))
+         )
+       )
+      (else
+        (until v1-72
+          (suspend)
+          (ja :num! (seek!))
+          (set! v1-72 (and (logtest? (-> self root status) (collide-status on-surface))
+                           (< (vector-length (-> self root transv)) 2048.0)
+                           )
+                )
+          )
+        )
+      )
+    (if (enemy-method-109 self)
+        (go-die self)
+        (go-hostile self)
+        )
+    )
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.0 (seconds-per-frame))
+    (let ((gp-0 (-> self root))
+          (a1-1 (new 'stack-no-clear 'collide-query))
+          (s5-0 (new 'stack-no-clear 'vector))
+          )
+      (set! (-> s5-0 quad) (-> gp-0 gspot-pos quad))
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s4-0 quad) (-> gp-0 gspot-normal quad))
+        (when (not (find-ground gp-0 a1-1 (-> self enemy-info gnd-collide-with) 8192.0 81920.0 1024.0 (the-as process #f)))
+          (set! (-> gp-0 gspot-pos quad) (-> s5-0 quad))
+          (set! (-> gp-0 gspot-normal quad) (-> s4-0 quad))
+          )
+        )
+      )
+    (seek! (-> self root trans y) (-> self root gspot-pos y) (* 81920.0 (seconds-per-frame)))
+    (enemy-simple-post)
+    )
+  )
+
+(defstate active (dp-bipedal)
+  :virtual #t
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.0 (* 2.0 (seconds-per-frame)))
+    (let ((t9-1 (-> (method-of-type nav-enemy active) post)))
+      (if t9-1
+          ((the-as (function none) t9-1))
+          )
+      )
+    )
+  )
+
+(defstate die (dp-bipedal)
+  :virtual #t
+  :post (behavior ()
+    (seek! (-> self effect-rate) 0.0 (* 2.0 (seconds-per-frame)))
+    (let ((t9-1 (-> (method-of-type nav-enemy die) post)))
+      (if t9-1
+          ((the-as (function none) t9-1))
+          )
+      )
+    )
+  )
+
+(defstate turret-seek (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-look-at-mode! self 2)
+    (nav-enemy-method-177 self)
+    (let ((v1-4 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-4 enemy-flags)))
+          (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-4 enemy-flags))))
+          )
+      (set! (-> v1-4 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-4 enemy-flags))))
+      (set! (-> v1-4 nav callback-info) (-> v1-4 enemy-info callback-info))
+      )
+    0
+    (let ((v1-7 self))
+      (set! (-> v1-7 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-7 enemy-flags))))
+      )
+    0
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.2))
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 0)
+        (set! (-> a1-0 message) 'rider)
+        (let ((t9-0 send-event-function)
+              (v1-5 (-> self turret-entity))
+              )
+          (if (or (t9-0
+                    (if v1-5
+                        (-> v1-5 extra process)
+                        )
+                    a1-0
+                    )
+                  (< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 24576.0)
+                  )
+              (go-virtual hostile)
+              )
+          )
+        )
+      (if (and (>= 18432.0 (vector-vector-xz-distance (-> self root trans) (-> self move-dest)))
+               (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+                 (set! (-> a1-3 from) (process->ppointer self))
+                 (set! (-> a1-3 num-params) 0)
+                 (set! (-> a1-3 message) 'grab)
+                 (let ((t9-4 send-event-function)
+                       (v1-21 (-> self turret-entity))
+                       )
+                   (t9-4
+                     (if v1-21
+                         (-> v1-21 extra process)
+                         )
+                     a1-3
+                     )
+                   )
+                 )
+               )
+          (go-virtual turret-get-on)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (until #f
+      (ja-no-eval :group! dp-bipedal-run0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (dp-bipedal-consider-attacks)
+      (let ((v1-25 (-> self state-stack length)))
+        (when (> v1-25 0)
+          (let ((v1-29 (-> self state-stack (+ v1-25 -1))))
+            (+! (-> self state-stack length) -1)
+            (go (the-as (state dp-bipedal) v1-29))
+            )
+          )
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'gunner-pos)
+      (set! (-> a1-0 param 0) (the-as uint (-> self move-dest)))
+      (let ((t9-0 send-event-function)
+            (v1-4 (-> self turret-entity))
+            )
+        (t9-0
+          (if v1-4
+              (-> v1-4 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (let ((gp-0 (-> self nav)))
+      (set! (-> gp-0 target-speed) (vector-length (ja-linear-vel 0)))
+      )
+    0
+    (let ((a0-3 (-> self nav state))
+          (v1-11 (-> self move-dest))
+          )
+      (logclear! (-> a0-3 flags) (nav-state-flag directional-mode))
+      (logior! (-> a0-3 flags) (nav-state-flag target-poly-dirty))
+      (set! (-> a0-3 target-pos quad) (-> v1-11 quad))
+      )
+    0
+    (nav-enemy-travel-post)
+    )
+  )
+
+(defstate turret-get-on (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer self))
+      (set! (-> a1-0 num-params) 1)
+      (set! (-> a1-0 message) 'gunner-pos)
+      (set! (-> a1-0 param 0) (the-as uint (-> self move-dest)))
+      (let ((t9-0 send-event-function)
+            (v1-4 (-> self turret-entity))
+            )
+        (t9-0
+          (if v1-4
+              (-> v1-4 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-1 from) (process->ppointer self))
+      (set! (-> a1-1 num-params) 1)
+      (set! (-> a1-1 message) 'gunner-quat)
+      (set! (-> a1-1 param 0) (the-as uint (-> self dest-quat)))
+      (let ((t9-1 send-event-function)
+            (v1-11 (-> self turret-entity))
+            )
+        (t9-1
+          (if v1-11
+              (-> v1-11 extra process)
+              )
+          a1-1
+          )
+        )
+      )
+    (logclear! (-> self mask) (process-mask actor-pause))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.05))
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+        (ja-no-eval :group! dp-bipedal-turret-jump-on-start-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+            (quaternion-slerp! (-> self root quat) s5-0 (-> self dest-quat) f30-1)
+            (vector-lerp! (-> self root trans) gp-0 (-> self move-dest) f30-1)
+            )
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (ja-no-eval :group! dp-bipedal-turret-jump-on-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-8 from) (process->ppointer self))
+      (set! (-> a1-8 num-params) 0)
+      (set! (-> a1-8 message) 'trigger)
+      (let ((t9-12 send-event-function)
+            (v1-57 (-> self turret-entity))
+            )
+        (t9-12
+          (if v1-57
+              (-> v1-57 extra process)
+              )
+          a1-8
+          )
+        )
+      )
+    (go-virtual turret-active)
+    )
+  :post nav-enemy-simple-post
+  )
+
+(defstate turret-active (dp-bipedal)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('fire)
+       (go-virtual turret-active-shoot)
+       )
+      (else
+        (enemy-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (set-look-at-mode! self 1)
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.2))
+             (< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 24576.0)
+             (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+               (set! (-> a1-1 from) (process->ppointer self))
+               (set! (-> a1-1 num-params) 1)
+               (set! (-> a1-1 message) 'exit-valid)
+               (set! (-> a1-1 param 0) (the-as uint (-> self move-dest)))
+               (let ((t9-1 send-event-function)
+                     (v1-11 (-> self turret-entity))
+                     )
+                 (t9-1
+                   (if v1-11
+                       (-> v1-11 extra process)
+                       )
+                   a1-1
+                   )
+                 )
+               )
+             )
+        (go-virtual turret-getting-off)
+        )
+    )
+  :code dp-bipedal-turret-code
+  :post dp-bipedal-turret-post
+  )
+
+(defstate turret-active-shoot (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! dp-bipedal-turret-shoot0-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual turret-active)
+    )
+  :post dp-bipedal-turret-post
+  )
+
+(defstate turret-getting-off (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (if (or (time-elapsed? (-> self state-time) (seconds 1)) (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+                                                               (set! (-> a1-0 from) (process->ppointer self))
+                                                               (set! (-> a1-0 num-params) 0)
+                                                               (set! (-> a1-0 message) 'exit)
+                                                               (let ((t9-0 send-event-function)
+                                                                     (v1-6 (-> self turret-entity))
+                                                                     )
+                                                                 (t9-0
+                                                                   (if v1-6
+                                                                       (-> v1-6 extra process)
+                                                                       )
+                                                                   a1-0
+                                                                   )
+                                                                 )
+                                                               )
+            )
+        (go-virtual turret-get-off)
+        )
+    )
+  :code dp-bipedal-turret-code
+  :post dp-bipedal-turret-post
+  )
+
+(defstate turret-get-off (dp-bipedal)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let* ((v1-6 *game-info*)
+           (a0-2 (+ (-> v1-6 attack-id) 1))
+           )
+      (set! (-> v1-6 attack-id) a0-2)
+      (set! (-> self attack-id) a0-2)
+      )
+    (logclear! (-> self focus-status) (focus-status in-air))
+    (let ((v1-9 self))
+      (set! (-> v1-9 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-9 enemy-flags))))
+      )
+    0
+    (let ((v1-11 self))
+      (set! (-> v1-11 enemy-flags) (the-as enemy-flag (logclear (-> v1-11 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-11 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let* ((v1-14 (-> self nav))
+           (a1-2 (-> self move-dest))
+           (f0-0 (-> v1-14 extra-nav-sphere w))
+           )
+      (set! (-> v1-14 extra-nav-sphere quad) (-> a1-2 quad))
+      (set! (-> v1-14 extra-nav-sphere w) f0-0)
+      )
+    0
+    (let ((v1-17 (-> self nav)))
+      (set! (-> v1-17 extra-nav-sphere w) (-> self nav-radius-backup))
+      )
+    0
+    (let ((v1-19 (-> self nav)))
+      (logior! (-> v1-19 shape nav-flags) (nav-flags has-extra-sphere))
+      )
+    0
+    (forward-up-nopitch->quaternion
+      (-> self dest-quat)
+      (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans)) 1.0)
+      *y-vector*
+      )
+    )
+  :exit (behavior ()
+    ;; og:preserve-this fix potential use-after-free bug
+    (if (-> self nav)
+      (let ((v1-0 (-> self nav)))
+        (logclear! (-> v1-0 shape nav-flags) (nav-flags has-extra-sphere))
+        )
+      )
+    0
+    (logior! (-> self mask) (process-mask actor-pause))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! dp-bipedal-turret-jump-off-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (nav-enemy-simple-post)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((gp-0 (new 'stack-no-clear 'vector)))
+      (set! (-> gp-0 quad) (-> self root trans quad))
+      (let ((s5-0 (quaternion-copy! (new 'stack-no-clear 'quaternion) (-> self root quat))))
+        (ja-no-eval :group! dp-bipedal-turret-jump-off-jump-ja :num! (seek!) :frame-num 0.0)
+        (until (ja-done? 0)
+          (let ((f30-1 (/ (ja-frame-num 0) (the float (ja-num-frames 0)))))
+            (quaternion-slerp! (-> self root quat) s5-0 (-> self dest-quat) f30-1)
+            (vector-lerp! (-> self root trans) gp-0 (-> self move-dest) f30-1)
+            )
+          (nav-enemy-simple-post)
+          (suspend)
+          (ja :num! (seek!))
+          )
+        )
+      )
+    (until (logtest? (-> self root status) (collide-status on-ground))
+      (suspend)
+      (nav-enemy-falling-post)
+      )
+    (go-best-state self)
+    )
+  )
+
+(defmethod on-dying ((this dp-bipedal))
+  (when (-> this minimap)
+    (kill-callback (-> *minimap* engine) (-> this minimap))
+    (set! (-> this minimap) #f)
+    )
+  ((method-of-type nav-enemy on-dying) this)
+  (none)
+  )
+
+(defun trajectory-prediction ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector) (arg4 vector) (arg5 float) (arg6 float))
+  (let ((s2-0 (new 'stack-no-clear 'inline-array 'vector 6)))
+    (set! (-> s2-0 0 quad) (-> arg3 quad))
+    (set! (-> s2-0 1 quad) (-> arg4 quad))
+    (vector-! (-> s2-0 5) (-> s2-0 0) arg1)
+    (set! (-> s2-0 2 x) (vector-length (-> s2-0 5)))
+    (vector-normalize! (-> s2-0 5) 1.0)
+    (set! (-> s2-0 2 y) (/ (vector-length (-> s2-0 1)) arg5))
+    (set! (-> s2-0 2 z) (vector-dot
+                          (vector-float*! (new 'stack-no-clear 'vector) (-> s2-0 5) -1.0)
+                          (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s2-0 1) 1.0)
+                          )
+          )
+    (let ((f0-6 1.0)
+          (f1-1 (-> s2-0 2 y))
+          )
+      (set! (-> s2-0 2 w) (- f0-6 (* f1-1 f1-1)))
+      )
+    (set! (-> s2-0 3 x) (* 2.0 (-> s2-0 2 z) (-> s2-0 2 y) (-> s2-0 2 x)))
+    (let ((f0-12 (-> s2-0 2 x)))
+      (set! (-> s2-0 3 y) (- (* f0-12 f0-12)))
+      )
+    (let ((f0-16 (-> s2-0 3 x)))
+      (set! (-> s2-0 3 z) (- (* f0-16 f0-16) (* 4.0 (-> s2-0 3 y) (-> s2-0 2 w))))
+      )
+    (cond
+      ((>= (-> s2-0 3 z) 0.0)
+       (let ((f0-22 (- (-> s2-0 3 x)))
+             (f1-12 (sqrtf (-> s2-0 3 z)))
+             )
+         (set! (-> s2-0 3 w)
+               (fmax (fmax 0.0 (/ (+ f0-22 f1-12) (* 2.0 (-> s2-0 2 w)))) (/ (- f0-22 f1-12) (* 2.0 (-> s2-0 2 w))))
+               )
+         )
+       (set! (-> s2-0 4 x) (/ (-> s2-0 3 w) (+ (fmax 0.0 (vector-dot arg2 (-> s2-0 5))) arg5)))
+       (vector+float*! arg0 (-> s2-0 0) (-> s2-0 1) (-> s2-0 4 x))
+       (let ((f1-19 (/ (-> s2-0 2 x) arg5)))
+         (set! (-> arg0 y) (+ 10240.0 (* 0.25 arg6 (* f1-19 f1-19)) (-> arg3 y)))
+         )
+       #t
+       )
+      (else
+        #f
+        )
+      )
+    )
+  )
+
+(defmethod dp-bipedal-method-210 ((this dp-bipedal))
+  (dotimes (s5-0 (-> *dp-bipedal-invis-joint-list* length))
+    (when (-> *dp-bipedal-invis-joint-list* s5-0 spawn?)
+      (let ((v1-8 (-> *dp-bipedal-invis-joint-list* s5-0 joint))
+            (s4-0 (new 'stack-no-clear 'vector))
+            )
+        (let ((s3-0 (new 'stack-no-clear 'vector)))
+          (vector<-cspace! s4-0 (-> this node-list data v1-8))
+          (vector-! s3-0 (camera-pos) s4-0)
+          (vector-normalize! s3-0 (-> *dp-bipedal-invis-joint-list* s5-0 distance))
+          (vector+! s4-0 s4-0 s3-0)
+          )
+        (set! (-> *part-id-table* 1089 init-specs 2 initial-valuef) (-> *dp-bipedal-invis-joint-list* s5-0 size))
+        (set! (-> *part-id-table* 1089 init-specs 3 initial-valuef)
+              (* 0.6 (-> *dp-bipedal-invis-joint-list* s5-0 size))
+              )
+        (set! (-> *part-id-table* 1089 init-specs 4 initial-valuef)
+              (* 0.41 (-> *dp-bipedal-invis-joint-list* s5-0 size))
+              )
+        (launch-particles (-> *part-id-table* 1089) s4-0)
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod set-collide-spec! ((this dp-bipedal) (arg0 symbol))
+  (let* ((a2-0 (-> this root root-prim))
+         (a0-1 (-> (the-as collide-shape-prim-group a2-0) child 3))
+         (v1-3 (-> (the-as collide-shape-prim-group a2-0) child 4))
+         )
+    (cond
+      (arg0
+        (set! (-> a2-0 local-sphere w) 24576.0)
+        (set! (-> a0-1 prim-core action) (collide-action solid deadly))
+        (set! (-> a0-1 prim-core collide-with) (collide-spec jak bot crate player-list))
+        (set! (-> v1-3 prim-core action) (collide-action solid deadly))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec jak bot crate player-list))
+        )
+      (else
+        (set! (-> a2-0 local-sphere w) 17408.0)
+        (set! (-> a0-1 prim-core action) (collide-action))
+        (set! (-> a0-1 prim-core collide-with) (collide-spec))
+        (set! (-> v1-3 prim-core action) (collide-action))
+        (set! (-> v1-3 prim-core collide-with) (collide-spec))
+        0
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod can-enter-turret? ((this dp-bipedal))
+  (with-pp
+    (and (-> this turret-entity)
+         (let ((v1-1 (-> this turret-entity)))
+           (if v1-1
+               (-> v1-1 extra process)
+               )
+           )
+         (< 65536.0 (vector-vector-xz-distance (-> this focus-pos) (-> this turret-entity extra trans)))
+         (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> a1-1 from) (process->ppointer pp))
+           (set! (-> a1-1 num-params) 0)
+           (set! (-> a1-1 message) 'rider)
+           (let ((t9-1 send-event-function)
+                 (v1-9 (-> this turret-entity))
+                 )
+             (not (t9-1
+                    (if v1-9
+                        (-> v1-9 extra process)
+                        )
+                    a1-1
+                    )
+                  )
+             )
+           )
+         )
+    )
+  )
+
+(defmethod focus-close? ((this dp-bipedal))
+  (let ((a1-0 (get-focus! this)))
+    (and (and a1-0 (not (logtest? (focus-status mech) (-> a1-0 focus-status))))
+         (< (cos 11832.889) (vector-dot (-> this focus-dir) (-> this rotation-matrix fvec)))
+         (< (vector-vector-distance (-> this root trans) (-> this focus-pos)) 12247.039)
+         )
+    )
+  )
+
+(defmethod dp-bipedal-method-206 ((this dp-bipedal))
+  (and (should-check-los? (-> this los) (seconds 0.3))
+       (< (acos (vector-dot (-> this focus-dir) (-> this rotation-matrix fvec))) 10922.667)
+       (let ((s5-0 (new 'stack-no-clear 'inline-array 'vector 1)))
+         (and (closest-point-on-mesh (-> this nav) (-> s5-0 0) (-> this root trans) (the-as nav-poly #f))
+              (< (vector-vector-xz-distance (-> s5-0 0) (-> this root trans)) 2457.6)
+              (< (fabs (- (-> s5-0 0 y) (-> this root trans y))) 12288.0)
+              )
+         )
+       (and (< (vector-vector-distance (-> this root trans) (-> this focus-throw-attack-pos)) 221184.0) 0)
+       )
+  )
+
+(defmethod go-idle ((this dp-bipedal))
+  (go (method-of-object this de-ambush))
+  )
+
+(defmethod go-hostile ((this dp-bipedal))
+  (cond
+    ((or (and (-> this enemy-info use-frustration) (logtest? (enemy-flag ef40) (-> this enemy-flags)))
+         (nav-enemy-method-174 this)
+         )
+     (go-stare2 this)
+     )
+    ((can-enter-turret? this)
+     (go (method-of-object this turret-seek))
+     )
+    ((dp-bipedal-method-206 this)
+     (go (method-of-object this shield-out))
+     )
+    (else
+      (go (method-of-object this hostile))
+      )
+    )
+  )
+
+(defmethod go-stare ((this dp-bipedal))
+  (if (dp-bipedal-method-206 this)
+      (go (method-of-object this shield-out))
+      (go (method-of-object this stare))
+      )
+  )
+
+(defmethod knocked-anim ((this dp-bipedal) (arg0 enemy-knocked-info))
+  (case (-> this incoming knocked-type)
+    (((knocked-type yellow-shot))
+     (set! (-> arg0 anim-speed) 1.5)
+     (ja-channel-push! 1 (seconds 0.1))
+     (cond
+       ((< 0.0
+           (vector-dot (-> this root transv) (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+           )
+        (let ((a0-4 (-> this skel root-channel 0)))
+          (set! (-> a0-4 frame-group) (the-as art-joint-anim (-> this draw art-group data 25)))
+          (set! (-> a0-4 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 25)) frames num-frames) -1))
+                )
+          (set! (-> a0-4 param 1) (-> arg0 anim-speed))
+          (set! (-> a0-4 frame-num) 0.0)
+          (joint-control-channel-group! a0-4 (the-as art-joint-anim (-> this draw art-group data 25)) num-func-seek!)
+          )
+        )
+       (else
+         (let ((a0-5 (-> this skel root-channel 0)))
+           (set! (-> a0-5 frame-group) (the-as art-joint-anim (-> this draw art-group data 23)))
+           (set! (-> a0-5 param 0)
+                 (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 23)) frames num-frames) -1))
+                 )
+           (set! (-> a0-5 param 1) (-> arg0 anim-speed))
+           (set! (-> a0-5 frame-num) 0.0)
+           (joint-control-channel-group! a0-5 (the-as art-joint-anim (-> this draw art-group data 23)) num-func-seek!)
+           )
+         )
+       )
+     #t
+     )
+    (((knocked-type blue-shot))
+     (ja-channel-push! 1 0)
+     (let ((a0-8 (-> this skel root-channel 0)))
+       (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> this draw art-group data 27)))
+       (set! (-> a0-8 param 0)
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 27)) frames num-frames) -1))
+             )
+       (set! (-> a0-8 param 1) (-> arg0 anim-speed))
+       (set! (-> a0-8 frame-num) 0.0)
+       (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 27)) num-func-seek!)
+       )
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+(defmethod knocked-land-anim ((this dp-bipedal) (arg0 enemy-knocked-info))
+  (case (-> this incoming knocked-type)
+    (((knocked-type yellow-shot))
+     (ja-channel-push! 1 (seconds 0.1))
+     (let ((v1-3 (if (> (-> this skel active-channels) 0)
+                     (-> this skel root-channel 0 frame-group)
+                     )
+                 )
+           )
+       (cond
+         ((and v1-3 (= v1-3 (-> this draw art-group data 25)))
+          (let ((a0-7 (-> this skel root-channel 0)))
+            (set! (-> a0-7 frame-group) (the-as art-joint-anim (-> this draw art-group data 26)))
+            (set! (-> a0-7 param 0)
+                  (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 26)) frames num-frames) -1))
+                  )
+            (set! (-> a0-7 param 1) (-> arg0 anim-speed))
+            (set! (-> a0-7 frame-num) 0.0)
+            (joint-control-channel-group! a0-7 (the-as art-joint-anim (-> this draw art-group data 26)) num-func-seek!)
+            )
+          )
+         (else
+           (let ((a0-8 (-> this skel root-channel 0)))
+             (set! (-> a0-8 frame-group) (the-as art-joint-anim (-> this draw art-group data 24)))
+             (set! (-> a0-8 param 0)
+                   (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 24)) frames num-frames) -1))
+                   )
+             (set! (-> a0-8 param 1) (-> arg0 anim-speed))
+             (set! (-> a0-8 frame-num) 0.0)
+             (joint-control-channel-group! a0-8 (the-as art-joint-anim (-> this draw art-group data 24)) num-func-seek!)
+             )
+           )
+         )
+       )
+     #t
+     )
+    (((knocked-type blue-shot))
+     (ja-channel-push! 1 (seconds 0.05))
+     (let ((a0-11 (-> this skel root-channel 0)))
+       (set! (-> a0-11 frame-group) (the-as art-joint-anim (-> this draw art-group data 22)))
+       (set! (-> a0-11 param 0)
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 22)) frames num-frames) -1))
+             )
+       (set! (-> a0-11 param 1) (-> arg0 anim-speed))
+       (set! (-> a0-11 frame-num) 1.0)
+       (joint-control-channel-group! a0-11 (the-as art-joint-anim (-> this draw art-group data 22)) num-func-seek!)
+       )
+     #t
+     )
+    (else
+      #f
+      )
+    )
+  )
+
+(defmethod enemy-method-123 ((this dp-bipedal))
+  (case (-> this incoming knocked-type)
+    (((knocked-type yellow-shot) (knocked-type blue-shot))
+     (= (-> this hit-points) 0.0)
+     )
+    (else
+      #t
+      )
+    )
+  )
+
+;; WARN: Return type mismatch float vs vector.
+(defmethod ragdoll-spawn! ((this dp-bipedal) (arg0 symbol) (arg1 symbol))
+  (let ((t9-0 (method-of-type nav-enemy ragdoll-spawn!)))
+    (t9-0 this arg0 arg1)
+    )
+  (let ((v1-2 (handle->process (-> this ragdoll-proc))))
+    (the-as vector (when v1-2
+                     (set-vector! (-> (the-as ragdoll-proc v1-2) ragdoll gravity) 0.0 -1.4 0.0 1.0)
+                     (set! (-> (the-as ragdoll-proc v1-2) ragdoll gravity-target quad)
+                           (-> (the-as ragdoll-proc v1-2) ragdoll gravity quad)
+                           )
+                     (set! (-> (the-as ragdoll-proc v1-2) ragdoll maximum-stretch) 0.8)
+                     )
+            )
+    )
+  )
+
+(defmethod get-turret-actor ((this dp-bipedal))
+  (when (>= (-> this actor-group-count) 1)
+    (let ((s5-0 (the-as entity-actor #f)))
+      (let ((f30-0 0.0)
+            (s4-0 (-> this root trans))
+            )
+        (dotimes (s3-0 (-> this actor-group 0 length))
+          (let ((s2-0 (-> this actor-group 0 data s3-0 actor)))
+            (when s2-0
+              (let ((f0-0 (vector-vector-xz-distance s4-0 (-> s2-0 extra trans))))
+                (when (or (not s5-0) (< f0-0 f30-0))
+                  (set! s5-0 s2-0)
+                  (set! f30-0 f0-0)
+                  )
+                )
+              )
+            )
+          )
+        )
+      s5-0
+      )
+    )
+  )
+
+(defmethod enemy-common-post ((this dp-bipedal))
+  (quaternion->matrix (-> this rotation-matrix) (-> this root quat))
+  (if (or (logtest? (-> this fact enemy-options) (enemy-option user0))
+          (and (logtest? (-> this draw status) (draw-control-status on-screen))
+               (let ((s5-0 (camera-matrix)))
+                 (camera-pos)
+                 (let* ((s4-0 (-> this focus-pos))
+                        (s5-1 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s5-0 fvec) 1.0))
+                        (v1-11 (vector-normalize! (vector-! (new 'stack-no-clear 'vector) (-> this root trans) s4-0) 1.0))
+                        )
+                   (< 0.0 (vector-dot s5-1 v1-11))
+                   )
+                 )
+               )
+          )
+      (set-time! (-> this on-screen-timer))
+      )
+  (if (or (!= (-> this root gspot-pos y) -40959590.0)
+          (zero? (-> this valid-ground-timer))
+          (and (-> this next-state) (= (-> this next-state name) 'knocked))
+          )
+      (set-time! (-> this valid-ground-timer))
+      )
+  (if (time-elapsed? (-> this valid-ground-timer) (seconds 8))
+      (send-event this 'die-fast)
+      )
+  (if (time-elapsed? (-> this knocked-focus-reset-timer) (seconds 2))
+      (logclear! (-> this focus-status) (focus-status ignore))
+      )
+  (when (< 1 (the-as int (-> this focus aware)))
+    (let ((s5-2 (handle->process (-> this focus handle))))
+      (when s5-2
+        (set! (-> this focus-bullseye quad) (-> (get-trans (the-as process-focusable s5-2) 3) quad))
+        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable s5-2) 0) quad))
+        (vector-! (-> this focus-dir) (-> this focus-pos) (-> this root trans))
+        (vector-normalize! (-> this focus-dir) 1.0)
+        (-> this focus-dir)
+        (let ((s3-0 (-> this focus-pos))
+              (s4-3 (get-transv (the-as process-focusable s5-2)))
+              (v1-56 (-> this root))
+              )
+          (vector+float*! (-> this focus-close-attack-pos) s3-0 s4-3 1.1)
+          (set! (-> this can-attack-throw?)
+                (and (trajectory-prediction
+                       (-> this focus-throw-attack-pos)
+                       (-> v1-56 trans)
+                       (-> v1-56 transv)
+                       (get-trans (the-as process-focusable s5-2) 1)
+                       s4-3
+                       122880.0
+                       102400.0
+                       )
+                     (not (and (-> this next-state) (= (-> this next-state name) 'turret-seek)))
+                     )
+                )
+          )
+        0
+        (los-control-method-9
+          (-> this los)
+          (the-as process-focusable s5-2)
+          (get-trans (the-as process-focusable s5-2) 3)
+          819.2
+          4096.0
+          )
+        )
+      )
+    )
+  (if (logtest? (-> this fact enemy-options) (enemy-option user10))
+      (set! (-> this turret-entity) (get-turret-actor this))
+      )
+  (when (and (time-elapsed? (-> this effect-timer) (seconds 0.06)) (rnd-chance? this (-> this effect-rate)))
+    (process-drawable-shock-effect
+      this
+      (-> *lightning-spec-id-table* 10)
+      lightning-probe-callback
+      (-> *part-id-table* 168)
+      0
+      0
+      40960.0
+      )
+    (set-time! (-> this effect-timer))
+    )
+  ((method-of-type nav-enemy enemy-common-post) this)
+  (none)
+  )
+
+(defmethod enemy-method-108 ((this dp-bipedal) (arg0 process-focusable))
+  (or (focus-test? arg0 invulnerable)
+      (and (focus-test? arg0 mech) (< (vector-vector-distance (-> this root trans) (get-trans arg0 1)) 28672.0))
+      )
+  )
+
+(defmethod get-trans ((this dp-bipedal) (arg0 int))
+  "Get the `trans` for this process."
+  (case arg0
+    ((10)
+     (let ((s5-0 (new 'stack-no-clear 'vector)))
+       (set! (-> s5-0 x) -6144.0)
+       (set! (-> s5-0 y) 14336.0)
+       (set! (-> s5-0 z) 0.0)
+       (set! (-> s5-0 w) 0.0)
+       (vector-orient-by-quat! s5-0 s5-0 (-> this root quat))
+       (vector+! (-> this los-source) (-> this root trans) s5-0)
+       )
+     )
+    (else
+      ((method-of-type nav-enemy get-trans) this arg0)
+      )
+    )
+  )
+
+(defmethod go-gun-dark-2-stretch ((this dp-bipedal))
+  (with-pp
+    (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-0 from) (process->ppointer pp))
+      (set! (-> a1-0 num-params) 0)
+      (set! (-> a1-0 message) 'abort)
+      (let ((t9-0 send-event-function)
+            (v1-2 (-> this turret-entity))
+            )
+        (t9-0
+          (if v1-2
+              (-> v1-2 extra process)
+              )
+          a1-0
+          )
+        )
+      )
+    ((method-of-type nav-enemy go-gun-dark-2-stretch) this)
+    )
+  )
+
+(defmethod event-handler ((this dp-bipedal) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked 'hit-flinch)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+       (set! (-> a1-4 from) (process->ppointer self))
+       (set! (-> a1-4 num-params) 0)
+       (set! (-> a1-4 message) 'abort)
+       (let ((t9-4 send-event-function)
+             (v1-27 (-> this turret-entity))
+             )
+         (t9-4
+           (if v1-27
+               (-> v1-27 extra process)
+               )
+           a1-4
+           )
+         )
+       )
+     (go (method-of-object this knocked))
+     #t
+     )
+    (('impact-impulse)
+     (let ((v1-32 (the-as object (-> arg3 param 0))))
+       (when (< 4096.0 (-> (the-as rigid-body-impact v1-32) impulse))
+         (logior! (-> this root penetrated-by) (penetrate vehicle))
+         (set! (-> this hit-points) 0.0)
+         (go (method-of-object this die))
+         #t
+         )
+       )
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+(defmethod coin-flip? ((this dp-bipedal))
+  #f
+  )
+
+(defmethod get-inv-mass ((this dp-bipedal))
+  1.0
+  )
+
+(defmethod relocate ((this dp-bipedal) (offset int))
+  (if (nonzero? (-> this part-ambush))
+      (&+! (-> this part-ambush) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+(defmethod deactivate ((this dp-bipedal))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (if (nonzero? (-> this part-ambush))
+      (kill-particles (-> this part-ambush))
+      )
+  (sound-stop (-> this shield-sound-id))
+  (call-parent-method this)
+  (none)
+  )
+
+(defmethod init-enemy! ((this dp-bipedal))
+  (local-vars (sv-16 res-tag))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-dp-bipedal" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *dp-bipedal-nav-enemy-info*)
+  (set! (-> this state-stack) (new 'process 'boxed-array state 4))
+  (set! (-> this state-stack length) 0)
+  (set! (-> this root pause-adjust-distance) 163840.0)
+  (set-vector! (-> this root scale) 1.3 1.3 1.3 1.0)
+  (let ((v1-11 (-> this neck)))
+    (set! (-> v1-11 up) (the-as uint 1))
+    (set! (-> v1-11 nose) (the-as uint 2))
+    (set! (-> v1-11 ear) (the-as uint 0))
+    (set-vector! (-> v1-11 twist-max) 11832.889 11832.889 0.0 1.0)
+    (set! (-> v1-11 ignore-angle) 30947.555)
+    )
+  (init-los! (-> this los) this (seconds 0.1) 327680.0 (collide-spec backgnd hit-by-others-list los-blocker))
+  (set! (-> this close-attack-timer) 0)
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 244) this))
+  (set! (-> this part-ambush) (create-launch-control (-> *part-group-id-table* 243) this))
+  (set! (-> this shield-sound-id) (new-sound-id))
+  (set! (-> this shield-handle) (the-as handle #f))
+  (vector-reset! (-> this focus-formation-source))
+  (set! (-> this turret-entity) #f)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-23 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-23 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-23))
+       )
+      (else
+        (set! (-> this actor-group-count) 0)
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        )
+      )
+    )
+  (if (and (logtest? (enemy-option multi-focus) (-> this fact enemy-options))
+           (logtest? (-> this fact enemy-options) (enemy-option user0))
+           )
+      (logior! (-> this focus collide-with) (collide-spec civilian hit-by-others-list))
+      )
+  (set-time! (-> this on-screen-timer))
+  (set! (-> this minimap) #f)
+  (set-time! (-> this valid-ground-timer))
+  0
+  (none)
+  )
+
+(deftype dp-bipedal-spawner (process)
+  ((spawn-pos         vector  :inline)
+   (spawn-timer       time-frame)
+   (enemies-spawned   int32)
+   (enemies-to-spawn  int32)
+   )
+  (:state-methods
+    idle
+    die
+    )
+  )
+
+
+;; WARN: Return type mismatch event-message-block vs object.
+(defbehavior dp-bipedal-spawner-event-handler dp-bipedal-spawner ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('going-dormant)
+     (when (< (-> *event-queue* length) (-> *event-queue* allocated-length))
+       (let ((v0-0 (-> *event-queue* data (-> *event-queue* length))))
+         (+! (-> *event-queue* length) 1)
+         (set! (-> v0-0 from-handle) (process->handle self))
+         (set! (-> v0-0 to-handle) (process->handle arg0))
+         (set! (-> v0-0 num-params) 0)
+         (set! (-> v0-0 message) 'die-fast)
+         v0-0
+         )
+       )
+     )
+    )
+  )
+
+(defstate idle (dp-bipedal-spawner)
+  :virtual #t
+  :event dp-bipedal-spawner-event-handler
+  :trans (behavior ()
+    (if (and (> (-> self enemies-to-spawn) 0) (>= (-> self enemies-spawned) (-> self enemies-to-spawn)))
+        (go-virtual die)
+        )
+    )
+  :code sleep-code
+  :post (behavior ()
+    (format *stdebug* "~s: ~d/~d~%" (-> self name) (-> self enemies-spawned) (-> self enemies-to-spawn))
+    (when (and (not (-> *setting-control* user-current nuke-active?))
+               (time-elapsed? (-> self spawn-timer) (seconds 6))
+               (let ((a2-1 (new 'stack-no-clear 'array 'collide-shape 1))
+                     (a1-1 (new 'stack-no-clear 'vector))
+                     )
+                 (set! (-> a1-1 quad) (-> self entity extra trans quad))
+                 (set! (-> a1-1 w) 24576.0)
+                 (zero? (fill-actor-list-for-box *actor-hash* a1-1 a2-1 1))
+                 )
+               )
+      (let ((s5-0 (-> self entity))
+            (gp-2 (new 'stack-no-clear 'enemy-init-by-other-params))
+            )
+        (set! (-> gp-2 trans quad) (-> s5-0 extra trans quad))
+        (quaternion-copy! (-> gp-2 quat) (-> s5-0 quat))
+        (set! (-> gp-2 entity) s5-0)
+        (set! (-> gp-2 directed?) #f)
+        (set! (-> gp-2 no-initial-move-to-ground?) #f)
+        (set! (-> gp-2 art-level) #f)
+        (let ((s5-1 (get-process *default-dead-pool* dp-bipedal #x4000 1)))
+          (if (ppointer->handle (when s5-1
+                                  (let ((t9-4 (method-of-type process activate)))
+                                    (t9-4 s5-1 self "spawner-slave" (the-as pointer #x70004000))
+                                    )
+                                  (run-now-in-process s5-1 enemy-init-by-other self gp-2)
+                                  (-> s5-1 ppointer)
+                                  )
+                                )
+              (+! (-> self enemies-spawned) 1)
+              )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      )
+    )
+  )
+
+(defstate die (dp-bipedal-spawner)
+  :virtual #t
+  :event dp-bipedal-spawner-event-handler
+  :code (behavior ()
+    (while (-> self child)
+      (suspend)
+      )
+    (process-entity-status! self (entity-perm-status subtask-complete) #t)
+    (process-entity-status! self (entity-perm-status dead) #t)
+    )
+  )
+
+(defmethod init-from-entity! ((this dp-bipedal-spawner) (arg0 entity-actor))
+  (set! (-> this spawn-pos quad) (-> arg0 extra trans quad))
+  (set! (-> this spawn-timer) 0)
+  (set! (-> this enemies-spawned) 0)
+  (set! (-> this enemies-to-spawn)
+        (res-lump-value (-> this entity) 'extra-id int :default (the-as uint128 20) :time -1000000000.0)
+        )
+  (go (method-of-object this idle))
+  )

@@ -8,7 +8,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/util/goal_data_reader.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 constexpr GameVersion kGameVersion = GameVersion::Jak1;
 
@@ -81,14 +81,12 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    level_tools::DrawStats draw_stats;
     // draw_stats.debug_print_dma_data = true;
     level_tools::BspHeader bsp_header;
-    bsp_header.read_from_file(data, dts, &draw_stats, kGameVersion);
+    bsp_header.read_from_file(data, dts, kGameVersion);
 
     level_tools::PrintSettings settings;
     fmt::print("{}\n", bsp_header.print(settings));
-    fmt::print("Stats:\n{}\n", draw_stats.print());
 
   } catch (const std::exception& e) {
     fmt::print("Error: {}\n", e.what());

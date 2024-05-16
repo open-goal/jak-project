@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -17,7 +17,7 @@
 static void log_locales(void)
 {
     SDL_Locale *locales = SDL_GetPreferredLocales();
-    if (locales == NULL) {
+    if (!locales) {
         SDL_Log("Couldn't determine locales: %s", SDL_GetError());
     } else {
         SDL_Locale *l;
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         SDL_Quit();
     }
 
-   return 0;
+    return 0;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

@@ -37,7 +37,7 @@
 
 (defun pc-cheat-health-bars-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
-  #f)
+  (>= (get-count-for-enemy (-> *pc-settings* stats kill-stats) 'civilian) (-> *pc-cheat-state* kill-civvie-target)))
 
 (defun pc-cheat-vehicle-health-bars-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
@@ -60,7 +60,7 @@
       (when (= (get-base-height *ocean-map*) -216498.17)
         (set! (-> *pc-cheat-state* sewer-valve-start-time) (get-current-time))
         )
-      
+
       ;; no cheating!
       (cond
         ((task-node-open? (game-task-node sewer-board-drain))
@@ -85,7 +85,7 @@
     (else
       (let (
         (time-taken (- (-> *pc-cheat-state* sewer-valve-end-time) (-> *pc-cheat-state* sewer-valve-start-time))))
-          
+
           (and  (< 0 time-taken)
                 (< time-taken (seconds (-> *pc-cheat-state* sewer-valve-target-seconds)))
                 (= #b111 (-> *pc-cheat-state* sewer-valve-on)))
@@ -95,7 +95,7 @@
 
 (defun pc-cheat-statistics-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
-  #f)
+  (killed-each-metalhead?))
 
 (defun pc-cheat-suck-in-all-unlock ()
   "#t = cheat unlock requirements met. #f = locked"
@@ -134,7 +134,7 @@
     (progress-cheats-music-player          music-player          #f           fortress-escape-introduction)
     (progress-cheats-real-time-of-day      real-time-of-day      #t           fortress-escape-resolution)
     (progress-cheats-board-tricks          board-tricks          #t           stadium-board1-gold)
-    ;(progress-cheats-health-bars           health-bars           #t           palace-boss-resolution      :unlock (progress-cheats-health-bars-unlock pc-cheat-health-bars-unlock))
+    (progress-cheats-health-bars           health-bars           #t           palace-boss-resolution      :unlock (progress-cheats-health-bars-unlock pc-cheat-health-bars-unlock))
     ;(progress-cheats-vehicle-health-bars   vehicle-health-bars   #t           palace-boss-resolution      :unlock (progress-cheats-vehicle-health-bars-unlock pc-cheat-vehicle-health-bars-unlock))
     (progress-cheats-weather-bad           weather-bad           #t           fortress-escape-resolution  :skill 85)
     (progress-cheats-weather-good          weather-good          #t           fortress-escape-resolution  :skill 85)
@@ -148,7 +148,7 @@
     ;(progress-cheats-slow-movies           slow-movies           #t           nest-boss-resolution      :skill 200)
     ;(progress-cheats-fast-speed            fast-speed            #t           nest-boss-resolution      :skill 250)
     ;(progress-cheats-slow-speed            slow-speed            #t           nest-boss-resolution      :skill 250)
-    ;(progress-cheats-statistics            statistics            auto         nest-boss-resolution      :unlock (progress-cheats-statistics-unlock pc-cheat-statistics-unlock))
+    ;(progress-cheats-statistics            statistics            auto         atoll-water-introduction  :unlock (progress-cheats-statistics-unlock pc-cheat-statistics-unlock))
     )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -236,7 +236,7 @@
 
 (defmethod enable ((this led-fader-state) (start-from vector))
   "begin transition."
-  
+
   (when (-> this enable?)
     (disable this))
 
@@ -247,7 +247,7 @@
 
 (defmethod disable ((this led-fader-state))
   "disable transition."
-  
+
   (set! (-> this amount) 0.0)
   (update this 0.0 0.1)
   (false! (-> this enable?))
@@ -291,7 +291,7 @@
 
 (defmethod update ((this led-fader-state) (to float) (duration float))
   "disable transition."
-  
+
   (when (-> this enable?)
     (seek! (-> this amount) to (/ (-> *target* clock seconds-per-frame) duration))
     (vector4-lerp! (-> this cur-color) (-> this start-color) (-> this end-color) (-> this amount))
@@ -363,7 +363,7 @@
   "Set the default misc settings"
 
   ((method-of-type pc-settings update) obj)
-  
+
   (set! *hires-sky* (-> obj hires-clouds?))
 
   (when (not (led-enabled? obj))
@@ -448,7 +448,7 @@
 
 (defmethod update-led ((obj pc-settings-jak2))
   "set the controller led color by modifying the controller-led-color vector"
-  
+
   ;; default color is just blue.
   (set-vector-xyz! (-> obj controller-led-color) 0.0 0.0 1.0)
 
@@ -533,7 +533,7 @@
               (set-vector-xyz! (-> obj controller-led-color) 0.6875 0.6 0.78125))
             )
           )
-        
+
         ;; darkjak
         ((and (nonzero? (-> *target* darkjak)) (focus-test? *target* dark))
           (vector-copy! (-> *led-fader-state* end-color) *led-darkjak-color*)
@@ -545,23 +545,23 @@
               (update *led-fader-state* 1.0 0.3))
           (vector3-copy!! (-> obj controller-led-color) (-> *led-fader-state* cur-color))
           )
-        
+
         ;; indax
         ((focus-test? *target* indax)
           (set-vector-xyz! (-> obj controller-led-color) 1.0 0.5 0.0)
           )
-        
+
         ;; mech
         ((focus-test? *target* mech)
           (set-vector-xyz! (-> obj controller-led-color) 1.0 1.0 0.0)
           )
-        
+
         ;; board
         ((focus-test? *target* board)
           (set-vector-xyz! (-> obj controller-led-color) 0.0 1.0 1.0)
           )
         )
-      
+
       ;; wanted flash
       (awhen (the hud-map (process-by-name "hud-map" *active-pool*))
         (when (not (hidden? it))
@@ -614,7 +614,7 @@
 
   ;; turbo jet board cheat
   (cond
-    ((and (pc-cheats? (-> *pc-settings* cheats) turbo-board)
+    ((and (pc-cheats? (-> obj cheats) turbo-board)
           *target*
           (focus-test? *target* board)
           (inside-city?))
@@ -640,8 +640,13 @@
 
   ;; check unlocked cheats
   ;;;;;;;;;;;;;;;;;;;;;;;;
+  (let ((old (-> *pc-settings* cheats))
+        (old-unlocked (-> *pc-settings* cheats-unlocked))
+        (old-purchased (-> *pc-settings* cheats-purchased))
+        (old-revealed (-> *pc-settings* cheats-revealed)))
+
   (dotimes (i (-> *pc-cheats-list* length))
-    
+
     ;; reveals cheats if they have been purchased, purchases cheats if they have been unlocked, unlocks cheats if they have been enabled.
     ;; the cheat process requires the steps to be filled in this order, see sequential checking below
     (logior! (-> *pc-settings* cheats-revealed) (logior! (-> *pc-settings* cheats-purchased) (logior! (-> *pc-settings* cheats-unlocked) (-> *pc-settings* cheats))))
@@ -649,7 +654,7 @@
     (let* ((cheat (-> *pc-cheats-list* i))
           (cost (-> cheat skill))
           (unlock-func (the (function symbol) (-> cheat unlock-func value))))
-        
+
         (when (if (logtest? (-> *game-info* secrets) (game-secrets hero-mode))
                   (task-node-closed? (-> cheat avail-after-hero))
                   (task-node-closed? (-> cheat avail-after)))
@@ -657,11 +662,27 @@
 
             (when (>= (-> *game-info* skill-total) cost)
                 (logior! (-> obj cheats-purchased) (-> cheat flag))
-                
+
                 (when (or (zero? unlock-func)
                           (not unlock-func)
                           (unlock-func))
-                    (logior! (-> obj cheats-unlocked) (-> cheat flag)))))))
+                    (logior! (-> obj cheats-unlocked) (-> cheat flag)))))
+        (case (-> cheat can-toggle)
+          ((#f)
+            (when (logtest? (-> obj cheats-unlocked) (-> cheat flag))
+              (logior! (-> obj cheats) (-> cheat flag)))
+            )
+          )))
+
+  ;; when speedrunning...the cheats are manually modified to facilitate the chosen category
+  ;; don't persist these and don't spam the pc-settings saving routine every frame.
+  (when (and (not (-> *pc-settings* speedrunner-mode?))
+             (or (!= old (-> *pc-settings* cheats))
+                 (!= old-unlocked (-> *pc-settings* cheats-unlocked))
+                 (!= old-purchased (-> *pc-settings* cheats-purchased))
+                 (!= old-revealed (-> *pc-settings* cheats-revealed))))
+    ;; save pc-settings if we made new progress
+    (pc-settings-save)))
 
   0)
 
@@ -725,14 +746,16 @@
     (("fast-elevator?") (set! (-> obj fast-elevator?) (file-stream-read-symbol file)))
     (("fast-progress?") (set! (-> obj fast-progress?) (file-stream-read-symbol file)))
     (("smooth-minimap?") (set! (-> obj smooth-minimap?) (file-stream-read-symbol file)))
+    (("minimap-force-north") (set! (-> obj minimap-force-north) (file-stream-read-symbol file)))
     (("hires-clouds?") (set! (-> obj hires-clouds?) (file-stream-read-symbol file)))
     (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
     (("controller-led-status?") (set! (-> obj controller-led-status?) (file-stream-read-symbol file)))
+    (("speedrunner-mode-custom-bind") (set! (-> obj speedrunner-mode-custom-bind) (file-stream-read-int file)))
     (("cheats") (set! (-> obj cheats) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-revealed") (set! (-> obj cheats-revealed) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
-    (("cheats-backup") (set! (-> obj cheats-backup) (the-as pc-cheats (file-stream-read-int file))))
+    (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
@@ -741,6 +764,27 @@
     (("flava-unlocked")
       (dotimes (i 6)
         (set! (-> obj flava-unlocked i) (file-stream-read-symbol file))
+        )
+      )
+    (("stats")
+      (dosettings (file)
+        (case-str *pc-temp-string*
+          (("kill-stats")
+            (initialize (-> obj stats kill-stats))
+            (dosettings (file)
+              (let ((enemy-stats (alloc-slot (-> obj stats kill-stats) (string->symbol *pc-temp-string*))))
+                (dosettings (file)
+                  (let ((source (string->kill-source *pc-temp-string*))
+                        (amount (file-stream-read-int file)))
+                    (when (!= source (kill-stats-source unknown))
+                      (set! (-> enemy-stats sources source) amount)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
         )
       )
     )
@@ -754,24 +798,41 @@
   (format file "  (fast-elevator? ~A)~%" (-> obj fast-elevator?))
   (format file "  (fast-progress? ~A)~%" (-> obj fast-progress?))
   (format file "  (smooth-minimap? ~A)~%" (-> obj smooth-minimap?))
+  (format file "  (minimap-force-north ~A)~%" (-> obj minimap-force-north))
   (format file "  (hires-clouds? ~A)~%" (-> obj hires-clouds?))
   (format file "  (text-language ~D)~%" (-> obj text-language))
-  (format file "  (controller-led-status? ~D)~%" (-> obj controller-led-status?))
+  (format file "  (controller-led-status? ~A)~%" (-> obj controller-led-status?))
+  (format file "  (speedrunner-mode-custom-bind ~D)~%" (-> obj speedrunner-mode-custom-bind))
   (format file "  (cheats #x~x)~%" (-> obj cheats))
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
-  (format file "  (cheats-backup #x~x)~%" (-> obj cheats-backup))
+
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
     (format file " #x~x" (int64<-bit-array (-> obj music-unlocked) (* i 64)))
     )
   (format file ")~%")
+
   (format file "  (flava-unlocked")
   (dotimes (i 6)
     (format file " ~A" (-> obj flava-unlocked i))
     )
   (format file ")~%")
+
+  (format file "  (stats~%")
+  (format file "    (kill-stats~%")
+  (dotimes (i KILL_STATS_MAX_ENEMY_TYPES)
+  (when (-> obj stats kill-stats enemies i name)
+    (format file "      (~A~%" (-> obj stats kill-stats enemies i name))
+    (dotimes (ii KILL_STATS_MAX_SOURCE)
+      (when (nonzero? (-> obj stats kill-stats enemies i sources ii))
+        (format file "        (~A ~D)~%" (string->symbol (kill-source->string (the kill-stats-source ii))) (-> obj stats kill-stats enemies i sources ii))
+        ))
+    (format file "        )~%")
+    ))
+  (format file "      )~%")
+  (format file "    )~%")
   0)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -782,6 +843,7 @@
 (define-once *pc-settings* (new 'global 'pc-settings-jak2))
 
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; other
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -790,7 +852,7 @@
 
 (defun draw-build-revision ()
   (with-dma-buffer-add-bucket ((buf (-> (current-frame) global-buf))
-                               (bucket-id debug-no-zbuf1))
+                               (bucket-id debug-no-zbuf2))
     ;; reset bucket settings prior to drawing - font won't do this for us, and
     ;; draw-raw-image can sometimes mess them up.
     (dma-buffer-add-gs-set-flusha buf
@@ -800,8 +862,8 @@
     (clear *temp-string*)
     (format *temp-string* "<COLOR_WHITE>~S" *pc-settings-built-sha*)
     (pc-encode-utf8-string *temp-string* *pc-encoded-temp-string*)
-    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 2 403 0.0 (font-color default) (font-flags shadow kerning large))))
-        (set! (-> font-ctx scale) 0.325)
+    (let ((font-ctx (new 'stack 'font-context *font-default-matrix* 2 406 0.0 (font-color default) (font-flags shadow kerning large))))
+        (set! (-> font-ctx scale) 0.25)
         (draw-string-adv *pc-encoded-temp-string* buf font-ctx))))
 
 

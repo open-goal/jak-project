@@ -3,7 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/BinaryWriter.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 /*!
  * Write a wave file from a vector of samples.
@@ -56,11 +56,14 @@ void write_wave_file(const std::vector<s16>& left_samples,
   writer.write_to_file(name);
 }
 
-std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader, const bool mono) {
+std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
+                                                           const bool stereo) {
   std::vector<s16> left_samples;
   std::vector<s16> right_samples;
   s32 left_sample_prev[2] = {0, 0};
   s32 right_sample_prev[2] = {0, 0};
+  bool first_left = true;
+  bool first_right = true;
   constexpr s32 f1[5] = {0, 60, 115, 98, 122};
   constexpr s32 f2[5] = {0, 0, -52, -55, -60};
 
@@ -71,15 +74,29 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
   // instead they are partitioned into contiguous 8kb (thats 8192 bytes) chunks
   // alternating left/right
   bool processing_left_chunk = true;
+  // We need to skip the vag header for each channel
+  if (first_left) {
+    reader.ffwd(48);
+    bytes_read += 48;
+    first_left = false;
+  }
   while (true) {
     if (!reader.bytes_left()) {
       break;
     }
 
-    if (bytes_read == 0x2000) {
+    if (stereo && bytes_read == 0x2000) {
       // switch streams
       processing_left_chunk = !processing_left_chunk;
       bytes_read = 0;
+
+      // We need to skip the vag header for each channel
+      if (first_right) {
+        // skip the header
+        reader.ffwd(48);
+        bytes_read += 48;
+        first_right = false;
+      }
     }
 
     u8 shift_filter = reader.read<u8>();
@@ -107,7 +124,7 @@ std::pair<std::vector<s16>, std::vector<s16>> decode_adpcm(BinaryReader& reader,
       s32 sample = (s32)(s16)(nibble << 12);
       sample >>= shift;
 
-      if (mono || processing_left_chunk) {
+      if (!stereo || processing_left_chunk) {
         sample += (left_sample_prev[0] * f1[filter] + left_sample_prev[1] * f2[filter] + 32) / 64;
 
         if (sample > 0x7fff) {

@@ -21,8 +21,37 @@ bool MouseDevice::is_action_already_active(const u32 sdl_code, const bool player
 
 void MouseDevice::poll_state(std::shared_ptr<PadData> data) {
   auto& binds = m_settings->mouse_binds;
-  const auto mouse_state = SDL_GetMouseState(NULL, NULL);
+  int curr_mouse_x;
+  int curr_mouse_y;
+  const auto mouse_state = SDL_GetMouseState(&curr_mouse_x, &curr_mouse_y);
   const auto keyboard_modifier_state = SDL_GetModState();
+
+  // We also poll for mouse position to see if the mouse has stopped moving
+  // if it has, and we are controlling the camera, neutralize the stick direction
+  //
+  // This can all be cleaned up if the game ever has proper mouse motion integration
+  // since you would normally just map the motion of the camera to the relative motion
+  // instead of mapping it to a virtual analog stick.
+  m_frame_counter++;
+  if (m_frame_counter > 3) {
+    m_frame_counter = 0;
+    if (m_control_camera) {
+      int curr_mouse_relx;
+      int curr_mouse_rely;
+      const auto mouse_state_rel = SDL_GetRelativeMouseState(&curr_mouse_relx, &curr_mouse_rely);
+      (void)mouse_state_rel;
+      if (m_mouse_moved_x && m_last_xcoord == curr_mouse_x && curr_mouse_relx == 0) {
+        data->analog_data.at(2) = 127;
+        m_mouse_moved_x = false;
+      }
+      if (m_mouse_moved_y && m_last_ycoord == curr_mouse_y && curr_mouse_rely == 0) {
+        data->analog_data.at(3) = 127;
+        m_mouse_moved_y = false;
+      }
+      m_last_xcoord = curr_mouse_x;
+      m_last_ycoord = curr_mouse_y;
+    }
+  }
 
   // Iterate binds, see if there are any new actions we need to track
   // - Normal Buttons
@@ -111,9 +140,17 @@ void MouseDevice::process_event(const SDL_Event& event,
     m_xcoord = event.motion.x;
     m_ycoord = event.motion.y;
     if (m_control_camera) {
-      const auto xadjust = std::clamp(127 + int(float(event.motion.xrel) * m_xsens), 0, 255);
-      const auto yadjust = std::clamp(127 + int(float(event.motion.yrel) * m_ysens), 0, 255);
+      const auto xrel_amount = float(event.motion.xrel);
+      const auto xadjust = std::clamp(127 + int(xrel_amount * m_xsens), 0, 255);
+      if (xadjust > 0) {
+        m_mouse_moved_x = true;
+      }
       data->analog_data.at(2) = xadjust;
+      const auto yrel_amount = float(event.motion.yrel);
+      const auto yadjust = std::clamp(127 + int(yrel_amount * m_ysens), 0, 255);
+      if (yadjust > 0) {
+        m_mouse_moved_y = true;
+      }
       data->analog_data.at(3) = yadjust;
     }
   } else if (event.type == SDL_MOUSEBUTTONDOWN || event.type == SDL_MOUSEBUTTONUP) {

@@ -1,0 +1,2469 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 2 of type texture-page
+(defmethod print ((this texture-page))
+  (format
+    #t
+    "#<texture-page ~S :length ~D :dest #x~X :size ~DK @ #x~X>"
+    (-> this name)
+    (-> this length)
+    (shr (-> this segment 0 dest) 6)
+    (shr (+ (-> this size) 255) 8)
+    this
+    )
+  this
+  )
+
+;; definition for method 4 of type texture-page
+(defmethod length ((this texture-page))
+  (-> this length)
+  )
+
+;; definition for method 5 of type texture-page
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this texture-page))
+  (the-as int (+ (-> this type size) (* (-> this length) 4)))
+  )
+
+;; definition for method 8 of type texture-page
+(defmethod mem-usage ((this texture-page) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 84 (-> usage length)))
+  (set! (-> usage data 83 name) "texture")
+  (+! (-> usage data 83 count) (-> this length))
+  (let ((v1-7 (+ (asize-of this) (* (-> this dram-size) 4))))
+    (dotimes (a0-6 (-> this length))
+      (if (-> this data a0-6)
+          (+! v1-7 112)
+          )
+      )
+    (+! (-> usage data 83 used) v1-7)
+    (+! (-> usage data 83 total) (logand -16 (+ v1-7 15)))
+    )
+  this
+  )
+
+;; definition for function texture-bpp
+(defun texture-bpp ((tex-format gs-psm))
+  "Get the bits-per-pixel in the given texture format"
+  (case tex-format
+    (((gs-psm mt8))
+     8
+     )
+    (((gs-psm mt4))
+     4
+     )
+    (((gs-psm ct16) (gs-psm ct16s) (gs-psm mz16) (gs-psm mz16s))
+     16
+     )
+    (else
+      32
+      )
+    )
+  )
+
+;; definition for function texture-qwc
+(defun texture-qwc ((w int) (h int) (tex-format gs-psm))
+  "Get the number of quadwords needed for a given texture size and format.
+   Does not consider weird PS2 memory layout stuff."
+  (let ((v1-0 (texture-bpp tex-format)))
+    (/ (+ (* (* w h) v1-0) 127) 128)
+    )
+  )
+
+;; definition for function physical-address
+(defun physical-address ((addr pointer))
+  "Strip off high 8-bits of a pointer, to bypass the uncached memory mappings.
+   This gives an address suitable for DMAing from main memory."
+  (logand #xfffffff addr)
+  )
+
+;; definition for function dma-buffer-add-ref-texture
+;; WARN: Return type mismatch symbol vs none.
+(defun dma-buffer-add-ref-texture ((dma-buf dma-buffer) (tex-data-ptr pointer) (w int) (h int) (tex-format gs-psm))
+  "Upload a texture, by reference. Doesn't copy the texture into the DMA buffer - just a reference,
+   so it is up to the user to make sure the texture is valid during DMA time.
+   Doesn't set up GIF for receiving textures."
+  (let* ((s5-0 (physical-address tex-data-ptr))
+         (v1-0 (texture-qwc w h tex-format))
+         (a0-3 *display*)
+         (a1-3 (* 48 (+ (/ v1-0 #x7fff) 1)))
+         )
+    (+! (-> a0-3 mem-reserve-size) a1-3)
+    (when (not (-> a0-3 dma-buffer-overflow))
+      (let ((a3-1 (-> a0-3 frames (-> a0-3 on-screen) global-buf)))
+        (if (< (-> a3-1 real-buffer-end) (the-as int (&+ (-> a3-1 base) a1-3)))
+            (set! (-> a0-3 dma-buffer-overflow) #t)
+            )
+        )
+      (when (not (-> a0-3 dma-buffer-overflow))
+        (while (> v1-0 0)
+          (let ((a0-6 (min #x7fff v1-0)))
+            (let ((a1-8 (if (= v1-0 a0-6)
+                            1
+                            0
+                            )
+                        )
+                  )
+              (let* ((a2-13 dma-buf)
+                     (a3-3 (the-as dma-packet (-> a2-13 base)))
+                     )
+                (set! (-> a3-3 dma) (new 'static 'dma-tag :qwc #x1 :id (dma-tag-id cnt)))
+                (set! (-> a3-3 vif0) (new 'static 'vif-tag))
+                (set! (-> a3-3 vif1) (new 'static 'vif-tag :imm #x1 :cmd (vif-cmd direct) :msk #x1))
+                (set! (-> a2-13 base) (the-as pointer (&+ a3-3 16)))
+                )
+              (let* ((a2-14 dma-buf)
+                     (a3-5 (the-as gs-gif-tag (-> a2-14 base)))
+                     )
+                (set! (-> a3-5 tag) (new 'static 'gif-tag64 :flg (gif-flag image) :eop a1-8 :nloop a0-6))
+                (set! (-> a3-5 regs) (new 'static 'gif-tag-regs))
+                (set! (-> a2-14 base) (the-as pointer (&+ a3-5 16)))
+                )
+              )
+            (let* ((a1-14 dma-buf)
+                   (a2-15 (the-as dma-packet (-> a1-14 base)))
+                   )
+              (set! (-> a2-15 dma) (new 'static 'dma-tag :id (dma-tag-id ref) :addr (the-as int s5-0) :qwc a0-6))
+              (set! (-> a2-15 vif0) (new 'static 'vif-tag))
+              (set! (-> a2-15 vif1) (new 'static 'vif-tag :cmd (vif-cmd direct) :msk #x1 :imm a0-6))
+              (set! (-> a1-14 base) (the-as pointer (&+ a2-15 16)))
+              )
+            (&+! s5-0 (* a0-6 16))
+            (set! v1-0 (- v1-0 a0-6))
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 2 of type texture
+(defmethod print ((this texture))
+  (format
+    #t
+    "#<texture ~20S psm: ~6S  ~4D x ~4D  num-mips: ~D :size ~4DK "
+    (-> this name)
+    (psm->string (-> this psm))
+    (-> this w)
+    (-> this h)
+    (-> this num-mips)
+    (shr (-> this size) 8)
+    )
+  (dotimes (s5-1 (the-as int (-> this num-mips)))
+    (format #t " #x~X/~X" (-> this dest s5-1) (-> this width s5-1))
+    )
+  (if (< (texture-bpp (-> this psm)) 16)
+      (format #t " :clut #x~X/1" (-> this clutdest))
+      )
+  (format #t " @ #x~X>" this)
+  this
+  )
+
+;; definition for function gs-find-block
+(defun gs-find-block ((bx int) (by int) (tex-format gs-psm))
+  "Lookup offset of block in PS2's swizzled VRAM, as a block index."
+  (cond
+    ((= tex-format (gs-psm ct32))
+     (-> ct32-24-block-table (+ bx (* by 8)))
+     )
+    ((= tex-format (gs-psm ct24))
+     (-> ct32-24-block-table (+ bx (* by 8)))
+     )
+    ((= tex-format (gs-psm ct16))
+     (-> ct16-block-table (+ bx (* by 4)))
+     )
+    ((= tex-format (gs-psm ct16s))
+     (-> ct16s-block-table (+ bx (* by 4)))
+     )
+    ((= tex-format (gs-psm mz32))
+     (-> mz32-24-block-table (+ bx (* by 8)))
+     )
+    ((= tex-format (gs-psm mz24))
+     (-> mz32-24-block-table (+ bx (* by 8)))
+     )
+    ((= tex-format (gs-psm mz16))
+     (-> mz16-block-table (+ bx (* by 4)))
+     )
+    ((= tex-format (gs-psm mz16s))
+     (-> mz16s-block-table (+ bx (* by 4)))
+     )
+    ((= tex-format (gs-psm mt8))
+     (-> mt8-block-table (+ bx (* by 8)))
+     )
+    ((= tex-format (gs-psm mt4))
+     (-> mt4-block-table (+ bx (* by 4)))
+     )
+    (else
+      0
+      )
+    )
+  )
+
+;; definition for function gs-page-width
+(defun gs-page-width ((tex-format gs-psm))
+  "Get the width of a page, in pixels, for the given texture format."
+  (case tex-format
+    (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
+     64
+     )
+    (((gs-psm mt8) (gs-psm mt4))
+     128
+     )
+    (else
+      (format #t "Warning: Unknown block width for psm ~D~%" tex-format)
+      1
+      )
+    )
+  )
+
+;; definition for function gs-page-height
+(defun gs-page-height ((tex-format gs-psm))
+  "Get the height of a page, in pixels, for the given texture format."
+  (case tex-format
+    (((gs-psm ct32) (gs-psm ct24))
+     32
+     )
+    (((gs-psm ct16) (gs-psm ct16s))
+     64
+     )
+    (((gs-psm mt8))
+     64
+     )
+    (((gs-psm mt4))
+     128
+     )
+    (else
+      (format #t "Warning: Unknown block width for psm ~D~%" tex-format)
+      1
+      )
+    )
+  )
+
+;; definition for function gs-block-width
+(defun gs-block-width ((tex-format gs-psm))
+  "Get the width of a block, in pixels, for the texture format."
+  (case tex-format
+    (((gs-psm ct32) (gs-psm ct24))
+     8
+     )
+    (((gs-psm ct16) (gs-psm ct16s) (gs-psm mt8))
+     16
+     )
+    (((gs-psm mt4))
+     32
+     )
+    (else
+      (format #t "Warning: Unknown block width for psm ~D~%" tex-format)
+      1
+      )
+    )
+  )
+
+;; definition for function gs-block-height
+(defun gs-block-height ((tex-format gs-psm))
+  "Get the height of a block, in pixels, for the texture format."
+  (case tex-format
+    (((gs-psm ct32) (gs-psm ct24) (gs-psm ct16) (gs-psm ct16s))
+     8
+     )
+    (((gs-psm mt8) (gs-psm mt4))
+     16
+     )
+    (else
+      (format #t "Warning: Unknown block width for psm ~D~%" tex-format)
+      1
+      )
+    )
+  )
+
+;; definition for function gs-largest-block
+(defun gs-largest-block ((w int) (h int) (tex-format gs-psm))
+  "Get the highest block index used by a texture."
+  (let* ((s5-0 (gs-block-width tex-format))
+         (v1-0 (gs-block-height tex-format))
+         (a0-6 (* (/ (+ s5-0 -1 w) s5-0) s5-0))
+         (a1-4 (* (/ (+ v1-0 -1 h) v1-0) v1-0))
+         (s5-1 (/ a0-6 s5-0))
+         (s3-1 (/ a1-4 v1-0))
+         (s4-1 0)
+         )
+    (dotimes (s2-0 s5-1)
+      (dotimes (s1-0 s3-1)
+        (set! s4-1 (max s4-1 (gs-find-block s2-0 s1-0 tex-format)))
+        )
+      )
+    s4-1
+    )
+  )
+
+;; definition for function gs-blocks-used
+(defun gs-blocks-used ((w int) (h int) (tex-format gs-psm))
+  "Get the number of blocks used by a texture.
+   If the texture isn't an even number of pages, the partially completed
+   page will be counted as the largest used block.
+   (gaps in this page are counted as used)"
+  (let* ((s4-0 (gs-page-width tex-format))
+         (v1-0 (gs-page-height tex-format))
+         (a0-6 (* (/ (+ s4-0 -1 w) s4-0) s4-0))
+         (a1-4 (* (/ (+ v1-0 -1 h) v1-0) v1-0))
+         (s3-0 (/ a0-6 s4-0))
+         (s1-0 (/ a1-4 v1-0))
+         (a0-9 (- w (* (+ s3-0 -1) s4-0)))
+         (a1-7 (- h (* (+ s1-0 -1) v1-0)))
+         )
+    (if (or (< a0-9 s4-0) (< a1-7 v1-0))
+        (+ (gs-largest-block a0-9 a1-7 tex-format) 1 (* (+ (* s3-0 s1-0) -1) 32))
+        (* (* s1-0 s3-0) 32)
+        )
+    )
+  )
+
+;; definition for method 0 of type texture-pool
+(defmethod new texture-pool ((allocation symbol) (type-to-make type))
+  "Allocate and initialize a texture pool."
+  (initialize! (object-new allocation type-to-make (the-as int (-> type-to-make size))))
+  )
+
+;; definition for method 15 of type texture-pool
+(defmethod allocate-vram-words! ((this texture-pool) (size int))
+  "Increment the bump allocator to allocate vram, by words."
+  (let ((v0-0 (-> this cur)))
+    (+! (-> this cur) size)
+    v0-0
+    )
+  )
+
+;; definition for method 18 of type texture-pool
+(defmethod get-common-page-slot-by-id ((this texture-pool) (id int))
+  "Unsupported in jak 3, returns -1 always."
+  -1
+  )
+
+;; definition for method 9 of type texture-pool
+(defmethod initialize! ((this texture-pool))
+  "Set up a texture-pool and do the initial division of VRAM."
+  (set! (-> this cur) 0)
+  (set! (-> this top) (-> this cur))
+  (set! (-> this allocate-func) texture-page-default-allocate)
+  (allocate-defaults this)
+  (format #t "font-palette start #x~x~%" (/ (-> this cur) 64))
+  (set! (-> this font-palette) (allocate-vram-words! this 64))
+  (format #t "font-palette end #x~x~%" (/ (-> this cur) 64))
+  (dotimes (v1-8 32)
+    (set! (-> this common-page v1-8) (the-as texture-page 0))
+    )
+  (set! (-> this common-page-mask) 0)
+  (set! (-> this texture-enable-user-menu)
+        (texture-enable-mask tfrag all-pris shrub alpha water warp sprite hud sky hfrag)
+        )
+  (set! (-> this texture-enable-user)
+        (texture-enable-mask tfrag all-pris shrub alpha water warp sprite hud sky hfrag)
+        )
+  (dotimes (v1-13 128)
+    (set! (-> this ids v1-13) (the-as uint 0))
+    )
+  this
+  )
+
+;; definition for method 10 of type texture-page
+(defmethod get-leftover-block-count ((this texture-page) (num-segments int) (upload-offset int))
+  "Unused - statistics for how much unused memory we have"
+  (let ((offset upload-offset))
+    (dotimes (i num-segments)
+      (+! offset (-> this segment i size))
+      )
+    (logand (/ offset 64) 63)
+    )
+  )
+
+;; definition for method 10 of type texture-pool
+(defmethod print-usage ((this texture-pool))
+  (format #t "--------------------~%")
+  (format
+    #t
+    "texture pool ~DK - ~DK (~DK used, ~DK free)~%"
+    (/ (-> this top) 256)
+    (/ (-> this cur) 256)
+    (/ (- (-> this cur) (-> this top)) 256)
+    (/ (- #xfa000 (-> this cur)) 256)
+    )
+  (format #t "--------------------~%")
+  this
+  )
+
+;; definition for method 16 of type texture-pool
+(defmethod allocate-segment ((this texture-pool) (segment texture-pool-segment) (size int))
+  "Allocate VRAM for a texture-pool-segment"
+  (set! (-> segment size) (the-as uint size))
+  (set! (-> segment dest) (the-as uint (allocate-vram-words! this size)))
+  segment
+  )
+
+;; definition for method 12 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod allocate-defaults ((this texture-pool))
+  "Allocate the common segment and set up dynamic texture addresses"
+  (format #t "texture start #x~x~%" (/ (-> this cur) 64))
+  (allocate-segment this (-> this segment-common) #x3e000)
+  (format #t "texture end #x~x~%" (/ (-> this cur) 64))
+  (set! (-> *ocean-envmap-texture-base* vram-word) (the-as uint (allocate-vram-words! this #x9400)))
+  (set! (-> *ocean-envmap-texture-base* vram-block) (shr (-> *ocean-envmap-texture-base* vram-word) 6))
+  (set! (-> *ocean-envmap-texture-base* vram-page) (shr (-> *ocean-envmap-texture-base* vram-word) 11))
+  (set! (-> *ocean-texture-base* vram-word) (+ (-> *ocean-envmap-texture-base* vram-word) 4096))
+  (set! (-> *ocean-texture-base* vram-block) (shr (-> *ocean-texture-base* vram-word) 6))
+  (set! (-> *ocean-texture-base* vram-page) (shr (-> *ocean-texture-base* vram-word) 11))
+  (set! (-> *grey-scale-base* vram-word) (+ (-> *ocean-envmap-texture-base* vram-word) 4096))
+  (set! (-> *grey-scale-base* vram-block) (shr (-> *grey-scale-base* vram-word) 6))
+  (set! (-> *grey-scale-base* vram-page) (shr (-> *grey-scale-base* vram-word) 11))
+  (set! (-> *eyes-texture-base* vram-word) (+ (-> *ocean-envmap-texture-base* vram-word) 4096))
+  (set! (-> *eyes-texture-base* vram-block) (shr (-> *eyes-texture-base* vram-word) 6))
+  (set! (-> *eyes-texture-base* vram-page) (shr (-> *eyes-texture-base* vram-word) 11))
+  (set! (-> *map-texture-base* vram-word) (+ (-> *ocean-envmap-texture-base* vram-word) 4096))
+  (set! (-> *map-texture-base* vram-block) (shr (-> *map-texture-base* vram-word) 6))
+  (set! (-> *map-texture-base* vram-page) (shr (-> *map-texture-base* vram-word) 11))
+  (set! (-> *skull-gem-texture-base* vram-word) (+ #x9000 (-> *ocean-envmap-texture-base* vram-word)))
+  (set! (-> *skull-gem-texture-base* vram-block) (shr (-> *skull-gem-texture-base* vram-word) 6))
+  (set! (-> *skull-gem-texture-base* vram-page) (shr (-> *skull-gem-texture-base* vram-word) 11))
+  (format #t "dynamic end #x~x~%" (/ (-> this cur) 64))
+  0
+  (none)
+  )
+
+;; definition for method 9 of type texture-page
+(defmethod remove-data-from-heap ((this texture-page) (heap kheap))
+  "Bump the kheap pointer to discard this texture data. All metadata is kept.
+   This is only safe to use if the last thing on the kheap is this texture."
+  (set! (-> heap current) (-> this segment 0 block-data))
+  this
+  )
+
+;; definition for function texture-page-default-allocate
+(defun texture-page-default-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
+  "Texture allocation function for textures that permanently live in VRAM.
+   The texture data is immediately uploaded, then discarded from the heap.
+   This should only be called during startup."
+  (dotimes (s3-0 3)
+    (let ((a1-2 (allocate-vram-words! pool (the-as int (-> page segment s3-0 size)))))
+      (relocate-dests! page a1-2 s3-0)
+      )
+    )
+  (upload-now! page (tex-upload-mode seg0-1-2))
+  (remove-data-from-heap page heap)
+  (set! (-> page dram-size) (the-as uint 0))
+  (dotimes (v1-12 (-> page length))
+    (let ((a0-7 (-> page data v1-12)))
+      (when a0-7
+        (dotimes (a1-6 3)
+          (dotimes (a2-2 3)
+            (set! (-> (the-as (pointer int32) (+ (+ (* a1-6 16) (* a2-2 4)) (the-as int a0-7))) 15) 0)
+            )
+          )
+        )
+      )
+    )
+  page
+  )
+
+;; definition for function texture-page-common-allocate
+(defun texture-page-common-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
+  "Texture allocation function for textures that share the common segment.
+   The texture remains in RAM, and is uploaded to VRAM as needed as part
+   of the main drawing DMA chain."
+  (let ((s5-0 (-> pool segment-common dest)))
+    (dotimes (s4-0 3)
+      (relocate-dests! page (the-as int s5-0) s4-0)
+      (+! s5-0 (-> page segment s4-0 size))
+      )
+    )
+  (set! (-> page dram-size) (-> page size))
+  page
+  )
+
+;; definition for function texture-page-font-allocate
+(defun texture-page-font-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
+  "Texture allocation function for font. This temporarily stores them in the common segment,
+   removes them from RAM. This is a bit of hack. Later font setup code expects the font texture
+   to be in common, and they will eventually be moved into the upper 8-bits of the depth buffer."
+  (texture-page-common-allocate pool page heap page-id)
+  (upload-now! page (tex-upload-mode seg0-1-2))
+  (remove-data-from-heap page heap)
+  (set! (-> page dram-size) (the-as uint 0))
+  (dotimes (v1-4 (-> page length))
+    (let ((a0-5 (-> page data v1-4)))
+      (when a0-5
+        (dotimes (a1-5 3)
+          (dotimes (a2-2 3)
+            (set! (-> (the-as (pointer int32) (+ (+ (* a1-5 16) (* a2-2 4)) (the-as int a0-5))) 15) 0)
+            )
+          )
+        )
+      )
+    )
+  page
+  )
+
+;; definition for method 22 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod lay-out-sprite-tex ((this texture-pool))
+  "Lay out VRAM addresses for sprite rendering, which is done in one pass for all levels."
+  (let ((s5-0 0))
+    (countdown (gp-0 11)
+      (let ((v1-3 (-> *level* level gp-0)))
+        (when (or (= (-> v1-3 status) 'active)
+                  (= (-> v1-3 status) 'alive)
+                  (= (-> v1-3 status) 'loaded)
+                  (= (-> v1-3 status) 'shutdown)
+                  (= (-> v1-3 status) 'reserved)
+                  )
+          (let ((s4-0 (-> v1-3 texture-page 7)))
+            (when s4-0
+              (let ((s3-0 s5-0))
+                (dotimes (s2-0 3)
+                  (relocate-dests! s4-0 s5-0 s2-0)
+                  (+! s5-0 (-> s4-0 segment s2-0 size))
+                  )
+                (set! s5-0 (shl (sar (+ s3-0 (-> s4-0 vram-size) 4095) 12) 12))
+                )
+              )
+            )
+          )
+        )
+      (if (< #x3e000 s5-0)
+          (format
+            0
+            "ERROR: Ran out of texture memory for SPRITE (~dk of 992k) while loading LEVEL ~A~%"
+            (/ s5-0 256)
+            (-> *level* level gp-0 name)
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 23 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod lay-out-hud-tex ((this texture-pool))
+  "Lay out VRAM addresses for HUD rendering, which is done all at one for all levels."
+  (let ((s5-0 0))
+    (countdown (gp-0 11)
+      (let ((v1-3 (-> *level* level gp-0)))
+        (when (or (= (-> v1-3 status) 'active)
+                  (= (-> v1-3 status) 'alive)
+                  (= (-> v1-3 status) 'loaded)
+                  (= (-> v1-3 status) 'shutdown)
+                  (= (-> v1-3 status) 'reserved)
+                  )
+          (let ((s4-0 (-> v1-3 texture-page 8)))
+            (when s4-0
+              (let ((s3-0 s5-0))
+                (dotimes (s2-0 3)
+                  (relocate-dests! s4-0 s5-0 s2-0)
+                  (+! s5-0 (-> s4-0 segment s2-0 size))
+                  )
+                (set! s5-0 (shl (sar (+ s3-0 (-> s4-0 vram-size) 4095) 12) 12))
+                )
+              )
+            )
+          )
+        )
+      (if (< #x3e000 s5-0)
+          (format
+            0
+            "ERROR: Ran out of texture memory for HUD (~dk of 992k) while loading LEVEL ~A~%"
+            (/ s5-0 256)
+            (-> *level* level gp-0 name)
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 24 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod lay-out-warp-tex ((this texture-pool))
+  "Lay out VRAM addresses for WARP texture rendering, and update adgifs to point to the new address."
+  (let ((s5-0 0))
+    (countdown (gp-0 11)
+      (let ((v1-3 (-> *level* level gp-0)))
+        (when (or (= (-> v1-3 status) 'active)
+                  (= (-> v1-3 status) 'alive)
+                  (= (-> v1-3 status) 'loaded)
+                  (= (-> v1-3 status) 'shutdown)
+                  (= (-> v1-3 status) 'reserved)
+                  )
+          (let ((s4-0 (-> v1-3 texture-page 5)))
+            (when s4-0
+              (let ((s3-0 (-> s4-0 segment 0 dest))
+                    (s2-0 s5-0)
+                    )
+                (dotimes (s1-0 3)
+                  (relocate-dests! s4-0 s5-0 s1-0)
+                  (+! s5-0 (-> s4-0 segment s1-0 size))
+                  )
+                (set! s5-0 (shl (sar (+ s2-0 (-> s4-0 vram-size) 4095) 12) 12))
+                (let ((v1-17 (shr (- s2-0 (the-as int s3-0)) 6)))
+                  (when (nonzero? v1-17)
+                    (dotimes (a0-12 (-> s4-0 length))
+                      (let ((a1-14 (the-as object (* (-> *texture-page-dir* entries (-> s4-0 id) link next a0-12 shader) 16))))
+                        (while (nonzero? (the-as uint a1-14))
+                          (+! (-> (the-as adgif-shader a1-14) tex0 tbp0) v1-17)
+                          (+! (-> (the-as adgif-shader a1-14) tex0 cbp) v1-17)
+                          (set! a1-14 (* (-> (the-as adgif-shader a1-14) next shader) 16))
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      (if (< #xa000 s5-0)
+          (format
+            0
+            "ERROR: Ran out of texture memory for WARP (~dk of 992k) while loading LEVEL ~A~%"
+            (/ s5-0 256)
+            (-> *level* level gp-0 name)
+            )
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 25 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-ids ((this texture-pool))
+  "Reset all cached texture upload IDs. This must be done whenever a texture has its vram address changed."
+  (dotimes (v1-0 128)
+    (set! (-> this ids v1-0) (the-as uint 0))
+    )
+  0
+  (none)
+  )
+
+;; definition for method 20 of type texture-pool
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-sprites ((this texture-pool))
+  "Redo sprite texture addresses with the current set of loaded levels."
+  (lay-out-sprite-tex this)
+  (clear-ids this)
+  (set! (-> this update-sprites-flag) #f)
+  (none)
+  )
+
+;; definition for method 19 of type texture-pool
+;; WARN: Return type mismatch symbol vs none.
+(defmethod update-warp-and-hud ((this texture-pool))
+  "Redo warp and hud textures with the current set of loaded levels."
+  (lay-out-hud-tex this)
+  (lay-out-warp-tex this)
+  (clear-ids this)
+  (set! (-> this update-flag) #f)
+  (none)
+  )
+
+;; definition for method 21 of type texture-pool
+;; WARN: Return type mismatch symbol vs none.
+(defmethod mark-hud-warp-sprite-dirty ((this texture-pool))
+  "Set update flags for hud/sprite/warp. Needed after level load or unload."
+  (set! (-> this update-sprites-flag) #t)
+  (set! (-> this update-flag) #t)
+  (none)
+  )
+
+;; definition for function texture-page-common-boot-allocate
+(defun texture-page-common-boot-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
+  "Allocator function for texture loaded at startup time.
+   For jak 3, this seems to always do default-allocate (permanently in vram?)"
+  (let ((s2-0 (get-common-page-slot-by-id pool page-id)))
+    (cond
+      ((>= s2-0 0)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> pool common-page s2-0) page)
+       )
+      ((= page-id 6)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> *level* level-default texture-page 0) page)
+       )
+      ((= page-id 7)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 1) 0) page)
+       )
+      ((= page-id 5)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 4) 0) page)
+       )
+      ((= page-id 8)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 9) 0) page)
+       )
+      ((= page-id 4)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 7) 0) page)
+       )
+      ((= page-id 9)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 8) 0) page)
+       )
+      ((= page-id 10)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 5) 0) page)
+       )
+      ((= page-id 11)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 2) 0) page)
+       )
+      ((= page-id 17)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 3) 0) page)
+       )
+      ((= page-id 3349)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> (&-> *level* level-default texture-page 6) 0) page)
+       )
+      ((= page-id 12)
+       (texture-page-font-allocate pool page heap page-id)
+       )
+      (else
+        (set! (-> *texture-pool* allocate-func) texture-page-default-allocate)
+        (texture-page-default-allocate pool page heap page-id)
+        )
+      )
+    )
+  (set! (-> page dram-size) (-> page size))
+  page
+  )
+
+;; definition for function upload-vram-data
+;; WARN: Return type mismatch symbol vs none.
+(defun upload-vram-data ((dma-buf dma-buffer) (dest int) (data-ptr pointer) (h int) (w int))
+  "Add DMA to later upload a texture, by reference. Sets up the GIF for receiving the texture."
+  (let ((v1-0 *display*)
+        (a0-2 (* 96 (+ (sar h 11) 1)))
+        )
+    (+! (-> v1-0 mem-reserve-size) a0-2)
+    (when (not (-> v1-0 dma-buffer-overflow))
+      (let ((a2-1 (-> v1-0 frames (-> v1-0 on-screen) global-buf)))
+        (if (< (-> a2-1 real-buffer-end) (the-as int (&+ (-> a2-1 base) a0-2)))
+            (set! (-> v1-0 dma-buffer-overflow) #t)
+            )
+        )
+      (when (not (-> v1-0 dma-buffer-overflow))
+        (while (> h 0)
+          (let ((a3-2 (min 2048 h)))
+            (dma-buffer-add-gs-set dma-buf
+                                   (bitbltbuf (new 'static 'gs-bitbltbuf :dbw (/ w 64) :dbp dest))
+                                   (trxpos (new 'static 'gs-trxpos))
+                                   (trxreg (new 'static 'gs-trxreg :rrw w :rrh a3-2))
+                                   (trxdir (new 'static 'gs-trxdir))
+                                   )
+            (dma-buffer-add-ref-texture dma-buf data-ptr w a3-2 (gs-psm ct32))
+            )
+          (+! dest 4096)
+          (&+! data-ptr #x100000)
+          (+! h -2048)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function upload-vram-pages
+(defun upload-vram-pages ((pool texture-pool)
+                 (pool-segment texture-pool-segment)
+                 (page texture-page)
+                 (mode tex-upload-mode)
+                 (bucket bucket-id)
+                 )
+  "Add DMA to upload a texture page. Will only upload the portion of data that is not already present in VRAM.
+   This is the old Jak 1 background texture uploading system, which had this near/far concept
+   for different mip levels. By jak 2, the background system switched to masks and uses
+   the -pris variant of this function."
+  (local-vars (sv-16 pointer) (sv-20 uint) (sv-24 int) (sv-32 int) (sv-40 int) (sv-48 uint))
+  (if (not page)
+      (return 0)
+      )
+  (let ((s5-0 0))
+    (let ((v1-2 *display*)
+          (a0-1 64)
+          )
+      (+! (-> v1-2 mem-reserve-size) a0-1)
+      (when (not (-> v1-2 dma-buffer-overflow))
+        (let ((t1-0 (-> v1-2 frames (-> v1-2 on-screen) global-buf)))
+          (if (< (-> t1-0 real-buffer-end) (the-as int (&+ (-> t1-0 base) a0-1)))
+              (set! (-> v1-2 dma-buffer-overflow) #t)
+              )
+          )
+        (when (not (-> v1-2 dma-buffer-overflow))
+          (let* ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                 (s4-0 (-> s3-0 base))
+                 )
+            (set! sv-16 (-> page segment 0 block-data))
+            (set! sv-20 (shr (-> page segment 0 dest) 12))
+            (set! sv-24 (the-as int (-> page segment 0 size)))
+            (set! sv-32 0)
+            (set! sv-40 0)
+            (set! sv-48 (-> page id))
+            (case mode
+              (((tex-upload-mode none))
+               (return 0)
+               )
+              (((tex-upload-mode seg0))
+               )
+              (((tex-upload-mode seg0-1))
+               (set! sv-24 (the-as int (+ sv-24 (-> page segment 1 size))))
+               )
+              (((tex-upload-mode seg0-1-2))
+               (set! sv-24 (the-as int (-> page size)))
+               )
+              (((tex-upload-mode seg2))
+               (set! sv-16 (-> page segment 2 block-data))
+               (set! sv-20 (shr (-> page segment 2 dest) 12))
+               (set! sv-24 (the-as int (-> page segment 2 size)))
+               )
+              )
+            (set! sv-24 (shr (min (the-as int (-> pool-segment size)) (the-as int (+ sv-24 4095))) 12))
+            (dotimes (s1-0 sv-24)
+              (let ((v1-30 (+ sv-20 s1-0)))
+                (cond
+                  ((zero? sv-32)
+                   (when (!= (-> pool ids v1-30) sv-48)
+                     (set! sv-40 s1-0)
+                     (set! (-> pool ids v1-30) sv-48)
+                     (set! sv-32 (+ sv-32 1))
+                     )
+                   )
+                  ((= (-> pool ids v1-30) sv-48)
+                   (upload-vram-data s3-0 (the-as int (* (+ sv-20 sv-40) 64)) (&+ sv-16 (shl sv-40 14)) (* sv-32 32) 128)
+                   (+! s5-0 sv-32)
+                   (set! sv-32 0)
+                   0
+                   )
+                  (else
+                    (set! (-> pool ids v1-30) sv-48)
+                    (set! sv-32 (+ sv-32 1))
+                    )
+                  )
+                )
+              )
+            (when (nonzero? sv-32)
+              (upload-vram-data s3-0 (the-as int (* (+ sv-20 sv-40) 64)) (&+ sv-16 (shl sv-40 14)) (* sv-32 32) 128)
+              (+! s5-0 sv-32)
+              )
+            (dma-buffer-add-gs-set s3-0 (texflush 1))
+            (let ((a3-3 (-> s3-0 base)))
+              (when (!= s4-0 a3-3)
+                (let ((v1-56 (the-as dma-packet (-> s3-0 base))))
+                  (set! (-> v1-56 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> v1-56 vif0) (new 'static 'vif-tag))
+                  (set! (-> v1-56 vif1) (new 'static 'vif-tag))
+                  (set! (-> s3-0 base) (the-as pointer (&+ v1-56 16)))
+                  )
+                (dma-bucket-insert-tag
+                  (-> *display* frames (-> *display* on-screen) bucket-group)
+                  bucket
+                  s4-0
+                  (the-as (pointer dma-tag) a3-3)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (shl s5-0 14)
+    )
+  )
+
+;; definition for function update-vram-pages
+(defun update-vram-pages ((pool texture-pool) (pool-segment texture-pool-segment) (page texture-page) (mode tex-upload-mode))
+  "Likely a debug function for checking the logic of upload-vram-pages. Unused"
+  (-> page segment 0 block-data)
+  (let ((t1-0 (shr (-> page segment 0 dest) 12))
+        (t2-0 (-> page segment 0 size))
+        (v1-2 0)
+        )
+    0
+    (let ((t0-1 (-> page id)))
+      (cond
+        ((= mode (tex-upload-mode none))
+         (return 0)
+         )
+        ((= mode (tex-upload-mode seg0))
+         )
+        ((= mode (tex-upload-mode seg0-1))
+         (+! t2-0 (-> page segment 1 size))
+         )
+        ((= mode (tex-upload-mode seg0-1-2))
+         (set! t2-0 (-> page size))
+         )
+        ((= mode (tex-upload-mode seg2))
+         (-> page segment 2 block-data)
+         (set! t1-0 (shr (-> page segment 2 dest) 12))
+         (set! t2-0 (-> page segment 2 size))
+         )
+        )
+      (let ((a1-4 (shr (min (the-as int (-> pool-segment size)) (the-as int (+ t2-0 4095))) 12)))
+        (dotimes (a2-3 a1-4)
+          (let ((a3-8 (+ t1-0 a2-3)))
+            (cond
+              ((zero? v1-2)
+               (when (!= (-> pool ids a3-8) t0-1)
+                 (set! (-> pool ids a3-8) t0-1)
+                 (+! v1-2 1)
+                 )
+               )
+              ((= (-> pool ids a3-8) t0-1)
+               (set! v1-2 0)
+               )
+              (else
+                (set! (-> pool ids a3-8) t0-1)
+                (+! v1-2 1)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  )
+
+;; definition for function upload-vram-pages-pris
+(defun upload-vram-pages-pris ((pool texture-pool)
+                      (pool-segment texture-pool-segment)
+                      (page texture-page)
+                      (bucket bucket-id)
+                      (mask (pointer int32))
+                      )
+  "Similar to upload-vram-pages, but skips the near/far mode and instead uses masks.
+   The foreground/background renderers will generate masks telling us which textures are used.
+   This lets us skip uploading entire textures, or mip levels that won't need.
+   (side note: this optimization is what causes many of the texturing issues in pcsx2,
+   where the ps2 and pcsx2 disagree on the mip level to use.)"
+  (local-vars (sv-16 pointer) (sv-20 uint) (sv-24 int) (sv-32 int) (sv-40 int) (sv-48 uint) (sv-52 symbol))
+  (if (not page)
+      (return 0)
+      )
+  (let ((s5-0 0))
+    (let ((v1-2 *display*)
+          (a0-1 64)
+          )
+      (+! (-> v1-2 mem-reserve-size) a0-1)
+      (when (not (-> v1-2 dma-buffer-overflow))
+        (let ((t0-2 (-> v1-2 frames (-> v1-2 on-screen) global-buf)))
+          (if (< (-> t0-2 real-buffer-end) (the-as int (&+ (-> t0-2 base) a0-1)))
+              (set! (-> v1-2 dma-buffer-overflow) #t)
+              )
+          )
+        (when (not (-> v1-2 dma-buffer-overflow))
+          (let* ((s3-0 (-> *display* frames (-> *display* on-screen) global-buf))
+                 (s4-0 (-> s3-0 base))
+                 )
+            (set! sv-16 (-> page segment 0 block-data))
+            (set! sv-20 (shr (-> page segment 0 dest) 12))
+            (set! sv-24 (the-as int (-> page size)))
+            (set! sv-32 0)
+            (set! sv-40 0)
+            (set! sv-48 (-> page id))
+            (set! sv-24 (shr (min (the-as int (-> pool-segment size)) (the-as int (+ sv-24 4095))) 12))
+            (dotimes (s0-0 sv-24)
+              (let ((v1-19 (+ sv-20 s0-0)))
+                (let ((a1-1 (-> mask (/ s0-0 32))))
+                  (set! sv-52 (logtest? a1-1 (ash 1 (logand s0-0 31))))
+                  )
+                (cond
+                  ((zero? sv-32)
+                   (when (and (!= (-> pool ids v1-19) sv-48) sv-52)
+                     (set! sv-40 s0-0)
+                     (set! (-> pool ids v1-19) sv-48)
+                     (set! sv-32 (+ sv-32 1))
+                     )
+                   )
+                  ((or (= (-> pool ids v1-19) sv-48) (not sv-52))
+                   (upload-vram-data s3-0 (the-as int (* (+ sv-20 sv-40) 64)) (&+ sv-16 (shl sv-40 14)) (* sv-32 32) 128)
+                   (+! s5-0 sv-32)
+                   (set! sv-32 0)
+                   0
+                   )
+                  (else
+                    (set! (-> pool ids v1-19) sv-48)
+                    (set! sv-32 (+ sv-32 1))
+                    )
+                  )
+                )
+              )
+            (when (nonzero? sv-32)
+              (upload-vram-data s3-0 (the-as int (* (+ sv-20 sv-40) 64)) (&+ sv-16 (shl sv-40 14)) (* sv-32 32) 128)
+              (+! s5-0 sv-32)
+              )
+            (dma-buffer-add-gs-set s3-0 (texflush 1))
+            (let ((a3-13 (-> s3-0 base)))
+              (when (!= s4-0 a3-13)
+                (let ((v1-45 (the-as dma-packet (-> s3-0 base))))
+                  (set! (-> v1-45 dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> v1-45 vif0) (new 'static 'vif-tag))
+                  (set! (-> v1-45 vif1) (new 'static 'vif-tag))
+                  (set! (-> s3-0 base) (the-as pointer (&+ v1-45 16)))
+                  )
+                (dma-bucket-insert-tag
+                  (-> *display* frames (-> *display* on-screen) bucket-group)
+                  bucket
+                  s4-0
+                  (the-as (pointer dma-tag) a3-13)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (shl s5-0 14)
+    )
+  )
+
+;; definition for function texture-page-level-allocate
+(defun texture-page-level-allocate ((pool texture-pool) (page texture-page) (heap kheap) (page-id int))
+  "Allocation function for level textures."
+  (if (zero? (-> *level* loading-level code-memory-end))
+      (set! (-> *level* loading-level code-memory-end) (the-as pointer page))
+      )
+  (let ((s2-0 (get-common-page-slot-by-id pool page-id)))
+    (cond
+      ((>= s2-0 0)
+       (texture-page-common-allocate pool page heap page-id)
+       (set! (-> pool common-page s2-0) page)
+       )
+      (else
+        (texture-page-common-allocate pool page heap page-id)
+        )
+      )
+    )
+  page
+  )
+
+;; definition for function texture-page-size-check
+(defun texture-page-size-check ((pool texture-pool) (lev level) (print? symbol))
+  "Check the size of level textures."
+  (let ((gp-0 0))
+    (let ((v1-0 (-> lev texture-page 0)))
+      (when v1-0
+        (if (< (the-as uint #x3e000) (-> v1-0 size))
+            (set! gp-0 (logior gp-0 1))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S TFRAG  tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-0 name)
+              (shr (-> v1-0 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-2 (-> lev texture-page 1)))
+      (when v1-2
+        (if (< (the-as uint #x3e000) (-> v1-2 size))
+            (set! gp-0 (logior gp-0 2))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S PRIS  tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-2 name)
+              (shr (-> v1-2 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-4 (-> lev texture-page 6)))
+      (when v1-4
+        (if (< (the-as uint #x3e000) (-> v1-4 size))
+            (set! gp-0 (logior gp-0 64))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S PRIS2 tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-4 name)
+              (shr (-> v1-4 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-6 (-> lev texture-page 2)))
+      (when v1-6
+        (if (< (the-as uint #x3e000) (-> v1-6 size))
+            (set! gp-0 (logior gp-0 4))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S SHRUB tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-6 name)
+              (shr (-> v1-6 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-8 (-> lev texture-page 3)))
+      (when v1-8
+        (if (< (the-as uint #x3e000) (-> v1-8 size))
+            (set! gp-0 (logior gp-0 8))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S ALPHA tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-8 name)
+              (shr (-> v1-8 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-10 (-> lev texture-page 4)))
+      (when v1-10
+        (if (< (the-as uint #x3e000) (-> v1-10 size))
+            (set! gp-0 (logior gp-0 16))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S WATER tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-10 name)
+              (shr (-> v1-10 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-12 (-> lev texture-page 10)))
+      (when v1-12
+        (if (< (the-as uint #x3e000) (-> v1-12 size))
+            (set! gp-0 (logior gp-0 1024))
+            )
+        (if (not print?)
+            (format
+              #t
+              "~Tlevel ~10S HFRAG tpage ~A uses ~DK of common ~DK~%"
+              (-> lev name)
+              (-> v1-12 name)
+              (shr (-> v1-12 size) 8)
+              992
+              )
+            )
+        )
+      )
+    (let ((v1-14 (-> lev texture-page 7)))
+      (when v1-14
+        (if (not print?)
+            (format #t "~Tlevel ~10S SPRITE tpage ~A uses ~DK~%" (-> lev name) (-> v1-14 name) (shr (-> v1-14 size) 8))
+            )
+        )
+      )
+    (let ((v1-16 (-> lev texture-page 8)))
+      (when v1-16
+        (if (not print?)
+            (format #t "~Tlevel ~10S HUD tpage ~A uses ~DK~%" (-> lev name) (-> v1-16 name) (shr (-> v1-16 size) 8))
+            )
+        )
+      )
+    (let ((v1-18 (-> lev texture-page 5)))
+      (when v1-18
+        (if (not print?)
+            (format #t "~Tlevel ~10S WARP tpage ~A uses ~DK~%" (-> lev name) (-> v1-18 name) (shr (-> v1-18 size) 8))
+            )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition for method 13 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod login-level-textures ((this texture-pool) (lev level) (texture-page-count int) (texture-ids (pointer texture-id)))
+  "Login all textures for the given level."
+  (dotimes (v1-0 20)
+    (set! (-> lev texture-page v1-0) #f)
+    )
+  (dotimes (s2-0 texture-page-count)
+    (let ((a0-3 (-> texture-ids s2-0)))
+      (when (and (nonzero? a0-3) (< s2-0 20))
+        (dotimes (s1-0 (-> lev loaded-texture-page-count))
+          (when (= (-> lev loaded-texture-page s1-0 id) (-> a0-3 page))
+            (let ((v1-9 (texture-page-login a0-3 texture-page-common-allocate loading-level)))
+              (if (and v1-9 (= (-> v1-9 page) (-> lev loaded-texture-page s1-0)))
+                  (set! (-> lev texture-page s2-0) (-> v1-9 page))
+                  )
+              )
+            (goto cfg-20)
+            )
+          )
+        )
+      )
+    (label cfg-20)
+    )
+  (let ((a2-3 (texture-page-size-check this lev #t)))
+    (when (nonzero? a2-3)
+      (format #t "--------------------  tpage overflow error #x~X~%" a2-3)
+      (texture-page-size-check this lev #f)
+      (format #t "--------------------~%")
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 14 of type texture-pool
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod add-level-tpage-dma ((pool texture-pool) (lev level) (category tpage-category) (bucket bucket-id))
+  "Set up DMA to upload all textures needed to draw this level on this frame."
+  (let ((a2-1 (-> lev texture-page category)))
+    (-> lev closest-object category)
+    (when (and a2-1 (nonzero? a2-1))
+      (case category
+        (((tpage-category tfrag))
+         (let ((v1-7 (-> lev texture-mask))
+               (a0-2 (-> lev texture-mask 12))
+               )
+           (dotimes (a1-1 3)
+             (logior! (-> (&-> v1-7 0 mask data a1-1) 0) (-> a0-2 mask data a1-1))
+             )
+           )
+         (set! (-> lev upload-size 0) (upload-vram-pages-pris
+                                        pool
+                                        (-> pool segment-common)
+                                        a2-1
+                                        bucket
+                                        (the-as (pointer int32) (-> lev texture-mask))
+                                        )
+               )
+         )
+        (((tpage-category shrub))
+         (let ((v1-11 (-> lev texture-mask 2))
+               (a0-6 (-> lev texture-mask 14))
+               )
+           (dotimes (a1-3 3)
+             (logior! (-> v1-11 mask data a1-3) (-> a0-6 mask data a1-3))
+             )
+           )
+         (set! (-> lev upload-size 2) (upload-vram-pages-pris
+                                        pool
+                                        (-> pool segment-common)
+                                        a2-1
+                                        bucket
+                                        (the-as (pointer int32) (-> lev texture-mask 2))
+                                        )
+               )
+         )
+        (((tpage-category alpha))
+         (cond
+           ((= (-> lev index) 10)
+            (if (not (-> *bigmap* auto-save-icon-flag))
+                (set! (-> lev upload-size 8)
+                      (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+                      )
+                )
+            (set! (-> *bigmap* auto-save-icon-flag) #f)
+            )
+           (else
+             (let ((t0-13 (-> lev texture-mask 3)))
+               (let ((v1-22 (-> lev texture-mask 15)))
+                 (dotimes (a0-12 3)
+                   (logior! (-> t0-13 mask data a0-12) (-> v1-22 mask data a0-12))
+                   )
+                 )
+               (set! (-> lev upload-size 3)
+                     (upload-vram-pages-pris pool (-> pool segment-common) a2-1 bucket (the-as (pointer int32) t0-13))
+                     )
+               )
+             )
+           )
+         )
+        (((tpage-category pris))
+         (set! (-> lev upload-size 1) (upload-vram-pages-pris
+                                        pool
+                                        (-> pool segment-common)
+                                        a2-1
+                                        bucket
+                                        (the-as (pointer int32) (-> lev texture-mask 13))
+                                        )
+               )
+         )
+        (((tpage-category water))
+         (cond
+           ((= (-> lev index) 10)
+            (set! (-> lev upload-size 8)
+                  (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+                  )
+            )
+           (else
+             (let ((t0-16 (-> lev texture-mask 4)))
+               (let ((v1-29 (-> lev texture-mask 16)))
+                 (dotimes (a0-21 3)
+                   (logior! (-> t0-16 mask data a0-21) (-> v1-29 mask data a0-21))
+                   )
+                 )
+               (set! (-> lev upload-size 4)
+                     (upload-vram-pages-pris pool (-> pool segment-common) a2-1 bucket (the-as (pointer int32) t0-16))
+                     )
+               )
+             )
+           )
+         )
+        (((tpage-category warp))
+         (set! (-> lev upload-size 5)
+               (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+               )
+         )
+        (((tpage-category pris2))
+         (if (= (-> lev index) 10)
+             (+! (-> lev upload-size 8)
+                 (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+                 )
+             (set! (-> lev upload-size 6) (upload-vram-pages-pris
+                                            pool
+                                            (-> pool segment-common)
+                                            a2-1
+                                            bucket
+                                            (the-as (pointer int32) (-> lev texture-mask 18))
+                                            )
+                   )
+             )
+         )
+        (((tpage-category sprite))
+         (set! (-> lev upload-size 7)
+               (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+               )
+         )
+        (((tpage-category hud))
+         (cond
+           ((= (-> lev index) 10)
+            (set! (-> lev upload-size 8)
+                  (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+                  )
+            )
+           (else
+             (let ((t0-22 (-> lev texture-mask category)))
+               (set! (-> t0-22 mask quad) (the-as uint128 -1))
+               (set! (-> lev upload-size 8)
+                     (upload-vram-pages-pris pool (-> pool segment-common) a2-1 bucket (the-as (pointer int32) t0-22))
+                     )
+               )
+             )
+           )
+         )
+        (((tpage-category sky))
+         (set! (-> lev upload-size 9)
+               (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+               )
+         )
+        (((tpage-category hfrag))
+         (set! (-> lev upload-size 10)
+               (upload-vram-pages pool (-> pool segment-common) a2-1 (tex-upload-mode seg0-1-2) bucket)
+               )
+         )
+        )
+      (let ((a1-26 (-> lev texture-anim-array category)))
+        (cond
+          ((= category (tpage-category warp))
+           (when (= (-> lev index) 10)
+             (dotimes (s2-1 11)
+               (let ((v1-55 (-> *level* level s2-1)))
+                 (when (or (= (-> v1-55 status) 'active) (= (-> v1-55 status) 'reserved))
+                   (let ((a1-30 (-> v1-55 texture-anim-array 5)))
+                     (if a1-30
+                         (update-texture-anim bucket a1-30)
+                         )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+          ((= category (tpage-category sprite))
+           (when (= (-> lev index) 10)
+             (dotimes (s2-2 11)
+               (let ((v1-64 (-> *level* level s2-2)))
+                 (when (or (= (-> v1-64 status) 'active) (= (-> v1-64 status) 'reserved))
+                   (let ((a1-34 (-> v1-64 texture-anim-array 7)))
+                     (if a1-34
+                         (update-texture-anim bucket a1-34)
+                         )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+          ((= category (tpage-category hud))
+           (when (= (-> lev index) 10)
+             (dotimes (s2-3 11)
+               (let ((v1-73 (-> *level* level s2-3)))
+                 (when (or (= (-> v1-73 status) 'active) (= (-> v1-73 status) 'reserved))
+                   (let ((a1-38 (-> v1-73 texture-anim-array 8)))
+                     (if a1-38
+                         (update-texture-anim bucket a1-38)
+                         )
+                     )
+                   )
+                 )
+               )
+             )
+           )
+          ((= category (tpage-category sky))
+           (when (-> *time-of-day-context* sky)
+             (if a1-26
+                 (update-texture-anim bucket a1-26)
+                 )
+             )
+           )
+          ((= bucket (bucket-id tex-lcom-sky-post))
+           (when (and (-> *time-of-day-context* sky) *ocean-map*)
+             (if a1-26
+                 (update-texture-anim bucket a1-26)
+                 )
+             )
+           )
+          (else
+            (if a1-26
+                (update-texture-anim bucket a1-26)
+                )
+            )
+          )
+        )
+      )
+    )
+  (let ((v1-93 (-> lev texture-dirty-masks category)))
+    (dotimes (a0-74 128)
+      (let ((a2-2 (-> v1-93 mask data (/ a0-74 32))))
+        (when (logtest? a2-2 (ash 1 (logand a0-74 31)))
+          (set! (-> pool ids a0-74) (the-as uint 0))
+          0
+          )
+        )
+      )
+    (set! (-> v1-93 mask quad) (the-as uint128 0))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for function set-skull-gem-masks
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch uint128 vs none.
+(defun set-skull-gem-masks ()
+  "Turn on masks for skull gem textures, so they will be uploaded."
+  (local-vars (v0-3 uint128) (v1-2 uint128) (v1-3 uint128))
+  (let ((gp-0 (-> *level* level-default texture-mask)))
+    (let* ((s5-0 (get-texture skull-gem-alpha-00 level-default-tfrag))
+           (s4-0 (get-texture skull-gem-alpha-01 level-default-tfrag))
+           (a0-4 (get-texture skull-gem-alpha-02 level-default-tfrag))
+           (v1-1 (-> gp-0 0 mask quad))
+           (a1-0 (-> s5-0 masks data 0 mask quad))
+           (a2-0 (-> s4-0 masks data 0 mask quad))
+           (a0-5 (-> a0-4 masks data 0 mask quad))
+           )
+      (.por v1-2 v1-1 a1-0)
+      (.por v1-3 v1-2 a2-0)
+      (.por v0-3 v1-3 a0-5)
+      )
+    (set! (-> gp-0 0 mask quad) v0-3)
+    )
+  (none)
+  )
+
+;; definition for function upload-textures
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun upload-textures ((pool texture-pool))
+  "Set up DMA for all texture uploads for this frame."
+  (cond
+    ((not (get-screen-copied *blit-displays-work*))
+     (set-skull-gem-masks)
+     (set! (-> *level* level-default texture-anim-array 0) *skull-gem-texture-anim-array*)
+     )
+    (else
+      (set! (-> *level* level-default texture-anim-array 0) #f)
+      )
+    )
+  (dotimes (v1-6 11)
+    (let ((a0-8 (-> *level* level v1-6)))
+      (when (or (= (-> a0-8 status) 'active) (= (-> a0-8 status) 'reserved))
+        (dotimes (a1-6 20)
+          (set! (-> a0-8 upload-size a1-6) 0)
+          )
+        )
+      )
+    )
+  (dotimes (s5-0 (-> *texture-page-translate* length))
+    (let* ((s4-0 (-> *texture-page-translate* s5-0))
+           (s3-0 (-> *level* draw-level (-> s4-0 level-index)))
+           )
+      (when (= s5-0 63)
+        (nop!)
+        (nop!)
+        0
+        )
+      (when (and s3-0
+                 (logtest? (the-as texture-enable-mask-u32 (-> *texture-pool* texture-enable-user)) (-> s4-0 texture-user))
+                 )
+        (cond
+          ((= (-> s4-0 level-index) 10)
+           (add-level-tpage-dma pool s3-0 (the-as tpage-category (-> s4-0 level-texture-page)) (-> s4-0 bucket))
+           )
+          (else
+            (if (not (get-menu-mode *blit-displays-work*))
+                (add-level-tpage-dma pool s3-0 (the-as tpage-category (-> s4-0 level-texture-page)) (-> s4-0 bucket))
+                )
+            )
+          )
+        )
+      )
+    )
+  (dotimes (v1-32 11)
+    (let ((a0-22 (-> *level* level v1-32)))
+      (when (or (= (-> a0-22 status) 'active) (= (-> a0-22 status) 'reserved))
+        (dotimes (a1-16 20)
+          (set! (-> a0-22 closest-object a1-16) 4095996000.0)
+          (set! (-> a0-22 texture-mask a1-16 mask quad) (the-as uint128 0))
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(kmemopen global "texture-dma-buffers")
+
+;; definition for symbol *txt-dma-list*, type dma-buffer
+(define *txt-dma-list* (new 'global 'dma-buffer 4096))
+
+;; failed to figure out what this is:
+(kmemclose)
+
+;; definition for method 13 of type texture-page
+;; WARN: Return type mismatch int vs none.
+(defmethod upload-now! ((this texture-page) (mode tex-upload-mode))
+  "Upload a texture to VRAM immediately, wait for DMA to finish."
+  (let ((gp-0 *txt-dma-list*))
+    (let ((v1-0 gp-0))
+      (set! (-> v1-0 base) (-> v1-0 data))
+      (set! (-> v1-0 end) (the-as pointer (+ (+ (-> v1-0 allocated-length) 28) (the-as int v1-0))))
+      )
+    (add-to-dma-buffer this gp-0 mode)
+    (dma-buffer-add-gs-set gp-0 (texflush 1))
+    (let* ((v1-6 gp-0)
+           (a0-7 (-> v1-6 base))
+           )
+      (set! (-> (the-as (pointer int64) a0-7)) #x70000000)
+      (set! (-> (the-as (pointer uint64) a0-7) 1) (the-as uint 0))
+      (set! (-> v1-6 base) (&+ a0-7 16))
+      )
+    (dma-buffer-send-chain (the-as dma-bank-source #x1000a000) gp-0)
+    )
+  (dma-sync (the-as pointer #x1000a000) 0 0)
+  (none)
+  )
+
+;; definition for method 12 of type texture-page
+(defmethod add-to-dma-buffer ((page texture-page) (buf dma-buffer) (mode tex-upload-mode))
+  "Add upload DMA to a DMA buffer. Wrapper for upload-vram-data."
+  (local-vars (sv-16 int))
+  (let ((v1-0 mode))
+    (set! sv-16 (cond
+                  ((= v1-0 (tex-upload-mode none))
+                   0
+                   )
+                  ((= v1-0 (tex-upload-mode seg0-1))
+                   (the-as int (+ (-> page segment 0 size) (-> page segment 1 size)))
+                   )
+                  ((= v1-0 (tex-upload-mode seg0-1-2))
+                   (the-as int (-> page size))
+                   )
+                  (else
+                    (the-as int (-> page segment (the-as int mode) size))
+                    )
+                  )
+          )
+    )
+  (let* ((v1-7 (max 0 (the-as int mode)))
+         (a3-4 (* (/ (+ (/ sv-16 64) 63) 64) 32))
+         (t1-0 (shr (-> page segment v1-7 dest) 6))
+         (a2-10 (-> page segment v1-7 block-data))
+         )
+    (upload-vram-data buf (the-as int t1-0) a2-10 a3-4 128)
+    )
+  sv-16
+  )
+
+;; definition for function texture-relocate
+(defun texture-relocate ((dma-buf dma-buffer) (tex texture) (dest int) (tex-format gs-psm) (clut-dest int))
+  "Move a texture in VRAM."
+  (dotimes (v1-0 (the-as int (-> tex num-mips)))
+    (let ((t1-1 (ash (-> tex w) (- v1-0)))
+          (t2-3 (ash (-> tex h) (- v1-0)))
+          )
+      (dma-buffer-add-gs-set dma-buf
+                             (bitbltbuf (new 'static 'gs-bitbltbuf
+                                          :sbp (-> tex dest v1-0)
+                                          :sbw (-> tex width v1-0)
+                                          :spsm (the-as int (-> tex psm))
+                                          :dbp (/ dest 64)
+                                          :dbw (-> tex width v1-0)
+                                          :dpsm (the-as int tex-format)
+                                          )
+                                        )
+                             (trxpos (new 'static 'gs-trxpos))
+                             (trxreg (new 'static 'gs-trxreg :rrw t1-1 :rrh t2-3))
+                             (trxdir (new 'static 'gs-trxdir :xdir #x2))
+                             )
+      )
+    (set! (-> tex dest v1-0) (the-as uint (/ dest 64)))
+    )
+  (cond
+    ((< clut-dest 0)
+     )
+    ((= (-> tex psm) (gs-psm mt4))
+     (dma-buffer-add-gs-set dma-buf
+                            (bitbltbuf (new 'static 'gs-bitbltbuf
+                                         :sbw #x1
+                                         :dbw #x1
+                                         :dpsm (-> tex clutpsm)
+                                         :dbp (/ clut-dest 64)
+                                         :spsm (-> tex clutpsm)
+                                         :sbp (-> tex clutdest)
+                                         )
+                                       )
+                            (trxpos (new 'static 'gs-trxpos))
+                            (trxreg (new 'static 'gs-trxreg :rrw #x8 :rrh #x2))
+                            (trxdir (new 'static 'gs-trxdir :xdir #x2))
+                            )
+     (set! (-> tex clutdest) (the-as uint (/ clut-dest 64)))
+     )
+    ((= (-> tex psm) (gs-psm mt8))
+     (dma-buffer-add-gs-set dma-buf
+                            (bitbltbuf (new 'static 'gs-bitbltbuf
+                                         :sbw #x2
+                                         :dbw #x2
+                                         :dpsm (-> tex clutpsm)
+                                         :dbp (/ clut-dest 64)
+                                         :spsm (-> tex clutpsm)
+                                         :sbp (-> tex clutdest)
+                                         )
+                                       )
+                            (trxpos (new 'static 'gs-trxpos))
+                            (trxreg (new 'static 'gs-trxreg :rrw #x10 :rrh #x10))
+                            (trxdir (new 'static 'gs-trxdir :xdir #x2))
+                            )
+     (set! (-> tex clutdest) (the-as uint (/ clut-dest 64)))
+     )
+    )
+  (set! (-> tex psm) tex-format)
+  dma-buf
+  )
+
+;; definition for method 11 of type texture-pool
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 20 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Return type mismatch int vs none.
+(defmethod setup-font-texture ((this texture-pool))
+  "Set up the font texture. In normal use, the font texture is allocated, and currently uploaded to, the common segment.
+   This function copies that to the unused upper 8-bits of the depth buffer, and sets up the font
+   renderer to point to that address."
+  (local-vars (sv-16 int) (sv-20 int))
+  (let ((s3-0 (-> this font-palette)))
+    (set! sv-16 (-> this cur))
+    (set! sv-20 (/ s3-0 64))
+    (let ((s5-0
+            (texture-page-login (new 'static 'texture-id :index #x1 :page #xc) texture-page-default-allocate global)
+            )
+          )
+      (if (and s5-0 (-> s5-0 page))
+          (set! sv-16 (the-as int (-> s5-0 page segment 0 dest)))
+          )
+      (let ((s4-0 *txt-dma-list*))
+        (let ((v1-6 s4-0))
+          (set! (-> v1-6 base) (-> v1-6 data))
+          (set! (-> v1-6 end) (the-as pointer (+ (+ (-> v1-6 allocated-length) 28) (the-as int v1-6))))
+          )
+        (let ((s2-0 (get-texture font.12lo gamefont))
+              (s1-0 #xc2000)
+              (s0-0 36)
+              )
+          (set! (-> s2-0 h) 320)
+          (texture-relocate s4-0 s2-0 s1-0 (the-as gs-psm s0-0) s3-0)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-0-tmpl)) s2-0 s1-0 s0-0 sv-20)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-2-tmpl)) s2-0 s1-0 s0-0 sv-20)
+          )
+        (let ((s3-1 (get-texture font.12hi gamefont))
+              (s2-1 #xc2000)
+              (s1-1 44)
+              )
+          (set! (-> s3-1 h) 320)
+          (texture-relocate s4-0 s3-1 s2-1 (the-as gs-psm s1-1) -1)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-1-tmpl)) s3-1 s2-1 s1-1 sv-20)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* small-font-3-tmpl)) s3-1 s2-1 s1-1 sv-20)
+          )
+        (let ((s3-2 (get-texture font.24lo gamefont))
+              (s2-2 #x90000)
+              (s1-2 36)
+              )
+          (set! (-> s3-2 h) 800)
+          (texture-relocate s4-0 s3-2 s2-2 (the-as gs-psm s1-2) -1)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-0-tmpl)) s3-2 s2-2 s1-2 sv-20)
+          )
+        (let ((s3-3 (get-texture font.24hi gamefont))
+              (s2-3 #x90000)
+              (s1-3 44)
+              )
+          (set! (-> s3-3 h) 800)
+          (texture-relocate s4-0 s3-3 s2-3 (the-as gs-psm s1-3) -1)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-1-tmpl)) s3-3 s2-3 s1-3 sv-20)
+          )
+        (let ((s3-4 (get-texture font.24lo2 gamefont))
+              (s2-4 #x5e000)
+              (s1-4 36)
+              )
+          (set! (-> s3-4 h) 800)
+          (texture-relocate s4-0 s3-4 s2-4 (the-as gs-psm s1-4) -1)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-2-tmpl)) s3-4 s2-4 s1-4 sv-20)
+          )
+        (let ((s3-5 (get-texture font.24hi2 gamefont))
+              (s2-5 #x5e000)
+              (s1-5 44)
+              )
+          (set! (-> s3-5 h) 800)
+          (texture-relocate s4-0 s3-5 s2-5 (the-as gs-psm s1-5) -1)
+          (font-set-tex0 (the-as (pointer gs-tex0) (-> *font-work* large-font-3-tmpl)) s3-5 s2-5 s1-5 sv-20)
+          )
+        (dma-buffer-add-gs-set s4-0 (texflush 1))
+        (let* ((v1-30 s4-0)
+               (a0-32 (-> v1-30 base))
+               )
+          (set! (-> (the-as (pointer int64) a0-32)) #x70000000)
+          (set! (-> (the-as (pointer uint64) a0-32) 1) (the-as uint 0))
+          (set! (-> v1-30 base) (&+ a0-32 16))
+          )
+        (dma-buffer-send-chain (the-as dma-bank-source #x10009000) s4-0)
+        )
+      (dma-sync (the-as pointer #x10009000) 0 0)
+      (if (and s5-0 (-> s5-0 page) (= (-> this cur) (+ sv-16 (-> s5-0 page size))))
+          (set! (-> this cur) sv-16)
+          (format 0 "ERROR: could not resize texture pool to remove gamefont.~%")
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 5 of type texture-page-dir
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this texture-page-dir))
+  (the-as int (+ (-> texture-page-dir size) (* 12 (+ (-> this length) -1))))
+  )
+
+;; definition for method 4 of type texture-page-dir
+(defmethod length ((this texture-page-dir))
+  (-> this length)
+  )
+
+;; definition for method 7 of type texture-page-dir
+;; WARN: Return type mismatch texture-page-dir vs none.
+(defmethod relocate ((this texture-page-dir) (heap kheap) (name (pointer uint8)))
+  (set! *texture-page-dir* this)
+  (none)
+  )
+
+;; definition for method 11 of type texture-page
+;; WARN: Return type mismatch texture-page vs none.
+(defmethod relocate-dests! ((this texture-page) (new-dest int) (seg-id int))
+  "Update the metadata of this texture so it points to a new vram address."
+  (let ((v1-0 (shr new-dest 6))
+        (a3-4 (shr (-> this segment seg-id dest) 6))
+        )
+    (when (!= v1-0 a3-4)
+      (dotimes (t0-1 (-> this length))
+        (when (-> this data t0-1)
+          (let* ((t1-6 (-> this data t0-1))
+                 (t2-0 (-> t1-6 num-mips))
+                 )
+            (if (zero? seg-id)
+                (set! (-> t1-6 clutdest) (+ (- (-> t1-6 clutdest) a3-4) v1-0))
+                )
+            (dotimes (t3-4 (the-as int t2-0))
+              (let ((t4-0 t3-4)
+                    (t5-0 t2-0)
+                    )
+                (if (= seg-id (if (>= (the-as uint 2) t5-0)
+                                  (+ (- -1 t4-0) t5-0)
+                                  (max 0 (- 2 t4-0))
+                                  )
+                       )
+                    (set! (-> t1-6 dest t3-4) (+ (- (-> t1-6 dest t3-4) a3-4) v1-0))
+                    )
+                )
+              )
+            )
+          )
+        )
+      (set! (-> this segment seg-id dest) (the-as uint new-dest))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 7 of type texture-page
+(defmethod relocate ((this texture-page) (heap kheap) (filename (pointer uint8)))
+  "Handle a texture page that has been loaded by the linker.
+   This must run in the linker, since we sometimes kick out textures from the loading heap, which
+   requires no more allocations made after the texture, and the only time is right after the linker
+   does the allocation for this GOAL object file."
+  (cond
+    ((or (not this) (not (file-info-correct-version? (-> this info) (file-kind tpage) 0)))
+     (the-as texture-page #f)
+     )
+    (else
+      (let ((v1-2 (-> *level* loading-level)))
+        (when v1-2
+          (set! (-> v1-2 loaded-texture-page (-> v1-2 loaded-texture-page-count)) this)
+          (+! (-> v1-2 loaded-texture-page-count) 1)
+          (if (and (>= (-> v1-2 loaded-texture-page-count) 2) (zero? (-> v1-2 load-buffer-mode)))
+              (set! (-> v1-2 load-buffer-mode) (level-memory-mode tiny))
+              )
+          )
+        )
+      (set! (-> this segment 1 dest) (-> this segment 0 size))
+      (set! (-> this segment 2 dest) (+ (-> this segment 0 size) (-> this segment 1 size)))
+      (set! (-> this vram-size) (-> this size))
+      (let* ((a3-0 (-> this id))
+             (s4-0 (-> *texture-page-dir* entries a3-0))
+             )
+        (set! (-> *texture-relocate-later* memcpy) #f)
+        ((-> *texture-pool* allocate-func) *texture-pool* this heap (the-as int a3-0))
+        (cond
+          ((not (-> *texture-relocate-later* memcpy))
+           (set! (-> s4-0 page) this)
+           (if (not (-> s4-0 link))
+               (set! (-> s4-0 link)
+                     (the-as texture-link (malloc 'loading-level (* (max (-> s4-0 length) (-> this length)) 4)))
+                     )
+               )
+           )
+          (else
+            (let ((v1-20 *texture-relocate-later*))
+              (set! (-> v1-20 entry) s4-0)
+              (set! (-> v1-20 page) this)
+              )
+            )
+          )
+        )
+      this
+      )
+    )
+  )
+
+;; definition for function relocate-later
+(defun relocate-later ()
+  "Unused in jak 2 and likely unsed in jak 3. Feature to postpone some texture copying until
+   a later frame. This is only used in cases when texture data must be memcpy'd in RAM, to patch up a hole left
+   by some data that is now permanently in VRAM, and no longer needed.
+   Note that Jak2/Jak3 don't have this problem since level textures are now never permanent"
+  (let ((gp-0 *texture-relocate-later*))
+    (let ((s5-0 (-> gp-0 entry))
+          (s4-0 (-> gp-0 page))
+          )
+      (ultimate-memcpy (the-as pointer (-> gp-0 dest)) (the-as pointer (-> gp-0 source)) (-> gp-0 move))
+      (set! (-> s5-0 page) s4-0)
+      (if (not (-> s5-0 link))
+          (set! (-> s5-0 link)
+                (the-as texture-link (malloc 'loading-level (* (max (-> s5-0 length) (-> s4-0 length)) 4)))
+                )
+          )
+      )
+    (set! (-> gp-0 memcpy) #f)
+    )
+  #f
+  )
+
+;; definition for function texture-page-login
+(defun texture-page-login ((id texture-id) (alloc-func (function texture-pool texture-page kheap int texture-page)) (heap kheap))
+  "'Login' (initialize) a texture page with the pool.
+   This has a trick - it doesn't actually require you to pass a texture-page object - instead you pass an ID.
+   If the texture was loaded at all, it will already be known to the texture pool, and this function will do nothing.
+   However, if the texture is not present, it will be loaded through a call to `loado`, for use in development."
+  (when (and (nonzero? (-> id page)) (< (-> id page) (the-as uint (-> *texture-page-dir* length))))
+    (let ((s5-0 (-> *texture-page-dir* entries (-> id page))))
+      (when (not (-> s5-0 page))
+        (let ((s4-0 (-> *texture-pool* allocate-func)))
+          (set! (-> *texture-pool* allocate-func) alloc-func)
+          (let* ((s3-0 (make-file-name (file-kind tpage) (the-as string (* (-> id page) 8)) 0 #f))
+                 (s2-0 (the-as texture-page (loado s3-0 heap)))
+                 )
+            (if s2-0
+                (relocate s2-0 heap (charp-basename (-> s3-0 data)))
+                )
+            )
+          (set! (-> *texture-pool* allocate-func) s4-0)
+          )
+        )
+      s5-0
+      )
+    )
+  )
+
+;; definition for function lookup-texture-by-id
+(defun lookup-texture-by-id ((id texture-id))
+  "Get a texture by ID, loading it if needed (for debugging only)."
+  (let ((a0-2 (texture-page-login id texture-page-default-allocate loading-level))
+        (v1-0 (the-as texture-page #f))
+        )
+    (if (and a0-2 (begin (set! v1-0 (-> a0-2 page)) v1-0) (< (-> id index) (the-as uint (-> v1-0 length))))
+        (-> v1-0 data (-> id index))
+        )
+    )
+  )
+
+;; definition for function lookup-texture-by-id-fast
+(defun lookup-texture-by-id-fast ((id texture-id))
+  "Get a texture by ID. #f if it does not exist."
+  (let ((a1-2 (if (and (nonzero? (-> id page)) (< (-> id page) (the-as uint (-> *texture-page-dir* length))))
+                  (-> *texture-page-dir* entries (-> id page))
+                  )
+              )
+        (v1-6 (the-as texture-page #f))
+        )
+    (if (and a1-2 (begin (set! v1-6 (-> a1-2 page)) v1-6) (< (-> id index) (the-as uint (-> v1-6 length))))
+        (-> v1-6 data (-> id index))
+        )
+    )
+  )
+
+;; definition for function lookup-texture-by-name
+(defun lookup-texture-by-name ((tex-name string) (page-name string) (page-out (pointer texture-page)))
+  "Get a loaded texture by name. Slow."
+  (local-vars (sv-16 texture-page-dir))
+  (set! sv-16 *texture-page-dir*)
+  (dotimes (s3-0 (-> sv-16 length))
+    (let ((s2-0 (-> sv-16 entries s3-0 page)))
+      (when (and s2-0 (or (not page-name) (string= (-> s2-0 name) page-name)))
+        (dotimes (s1-0 (-> s2-0 length))
+          (let ((s0-0 (-> s2-0 data s1-0)))
+            (when (and s0-0 (string= (-> s0-0 name) tex-name))
+              (if page-out
+                  (set! (-> page-out 0) s2-0)
+                  )
+              (return s0-0)
+              )
+            )
+          )
+        )
+      )
+    )
+  (the-as texture #f)
+  )
+
+;; definition for function lookup-texture-id-by-name
+;; WARN: Return type mismatch int vs texture-id.
+(defun lookup-texture-id-by-name ((tex-name string) (page-name string))
+  "Get the ID of a loaded texture by name. Slow."
+  (local-vars (sv-16 texture-page-dir))
+  (set! sv-16 *texture-page-dir*)
+  (dotimes (gp-0 (-> sv-16 length))
+    (let ((s3-0 (-> sv-16 entries gp-0 page)))
+      (when (and s3-0 (or (not page-name) (string= (-> s3-0 name) page-name)))
+        (dotimes (s2-0 (-> s3-0 length))
+          (let ((v1-7 (-> s3-0 data s2-0)))
+            (if (and v1-7 (string= (-> v1-7 name) tex-name))
+                (return (new 'static 'texture-id :page gp-0 :index s2-0))
+                )
+            )
+          )
+        )
+      )
+    )
+  (the-as texture-id 0)
+  )
+
+;; definition for function lookup-level-texture-by-name
+(defun lookup-level-texture-by-name ((tex-name string) (lev level) (page-out (pointer texture-page)))
+  "Get a texture from a given level, by name."
+  (dotimes (s3-0 20)
+    (let ((s2-0 (-> lev texture-page s3-0)))
+      (when (and s2-0 (nonzero? s2-0))
+        (dotimes (s1-0 (-> s2-0 length))
+          (let ((s0-0 (-> s2-0 data s1-0)))
+            (when (and s0-0 (string= (-> s0-0 name) tex-name))
+              (if page-out
+                  (set! (-> page-out 0) s2-0)
+                  )
+              (return s0-0)
+              )
+            )
+          )
+        )
+      )
+    )
+  (lookup-texture-by-name tex-name (the-as string #f) page-out)
+  )
+
+;; definition for function lookup-tex-id-from-texture
+;; WARN: Return type mismatch int vs texture-id.
+(defun lookup-tex-id-from-texture ((tex texture))
+  "Get the texture ID of a given texture. Slow."
+  (local-vars (sv-16 texture-page-dir))
+  (set! sv-16 *texture-page-dir*)
+  (dotimes (v1-1 (-> sv-16 length))
+    (let ((a1-2 (-> sv-16 entries v1-1 page)))
+      (when a1-2
+        (dotimes (a2-3 (-> a1-2 length))
+          (let ((a3-2 (-> a1-2 data a2-3)))
+            (if (and a3-2 (= a3-2 tex))
+                (return (new 'static 'texture-id :page v1-1 :index a2-3))
+                )
+            )
+          )
+        )
+      )
+    )
+  (the-as texture-id 0)
+  )
+
+;; definition for function lookup-level-texture-id-by-name
+;; WARN: Return type mismatch int vs texture-id.
+(defun lookup-level-texture-id-by-name ((tex-name string) (lev level) (lev-page-idx int))
+  "Get the texture ID of a given texture in a level. Slow."
+  (let ((s5-0 (-> lev texture-page lev-page-idx)))
+    (when (and s5-0 (nonzero? s5-0))
+      (dotimes (s4-0 (-> s5-0 length))
+        (let ((s3-0 (-> s5-0 data s4-0)))
+          (if (and s3-0 (string= (-> s3-0 name) tex-name))
+              (return (the-as texture-id (lookup-tex-id-from-texture s3-0)))
+              )
+          )
+        )
+      )
+    )
+  (the-as texture-id 0)
+  )
+
+;; definition for method 17 of type texture-pool
+;; WARN: Return type mismatch int vs none.
+(defmethod unload-page ((this texture-pool) (page texture-page))
+  "Remove a page from the texture pool."
+  (local-vars (a0-2 int))
+  (let ((v1-0 *texture-page-dir*))
+    (dotimes (a0-1 (-> v1-0 length))
+      (when (= page (-> v1-0 entries a0-1 page))
+        (set! a0-2 a0-1)
+        (goto cfg-7)
+        )
+      )
+    (set! a0-2 -1)
+    (label cfg-7)
+    (when (>= a0-2 0)
+      (set! (-> v1-0 entries a0-2 page) #f)
+      (set! (-> v1-0 entries a0-2 link) #f)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for symbol *shader-list*, type pair
+(define *shader-list* '())
+
+;; definition for symbol *edit-shader*, type texture-id
+(define *edit-shader* (new 'static 'texture-id))
+
+;; definition for function link-texture-by-id
+(defun link-texture-by-id ((id texture-id) (shader adgif-shader))
+  "Add this adgif shader to the linked list of shaders associated with the given texture ID.
+   Will allocate the link array if it's not already."
+  (when (not (or (zero? (-> id page)) (>= (-> id page) (the-as uint (-> *texture-page-dir* length)))))
+    (let ((s4-0 (-> *texture-page-dir* entries (-> id page))))
+      (if (not (-> s4-0 link))
+          (set! (-> s4-0 link) (the-as texture-link (malloc 'loading-level (* (-> s4-0 length) 4))))
+          )
+      (when (< (-> id index) (the-as uint (-> s4-0 length)))
+        (set! (-> shader next shader) (-> s4-0 link next (-> id index) shader))
+        (set! (-> s4-0 link next (-> id index) shader) (shr (the-as int shader) 4))
+        )
+      s4-0
+      )
+    )
+  )
+
+;; definition for method 9 of type texture-page-dir
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function adgif-shader<-texture!
+;; ERROR: function was not converted to expressions. Cannot decompile.
+
+;; definition for function adgif-shader-update!
+;; WARN: Return type mismatch gs-tex1 vs none.
+(defun adgif-shader-update! ((shader adgif-shader) (tex texture))
+  "Update k based on uv-dist"
+  (let ((s5-0 (the int (/ 256.0 (-> tex uv-dist)))))
+    (case (-> shader tex1 l)
+      ((1)
+       (set! (-> shader tex1 k) (+ (logand (ash s5-0 (- 5 (log2 s5-0))) 31) -350 (* (log2 s5-0) 32)))
+       )
+      (else
+        (set! (-> shader tex1 k) (+ (logand (ash s5-0 (- 4 (log2 s5-0))) 15) -175 (* (log2 s5-0) 16)))
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for function adgif-shader<-texture-with-update!
+;; INFO: function output is handled by mips2c
+(def-mips2c adgif-shader<-texture-with-update! (function adgif-shader texture adgif-shader))
+
+;; definition for function hack-texture
+(defun hack-texture ((tex texture))
+  "adjust some values of a texture, likely for debug."
+  (set! (-> tex uv-dist) 1000000.0)
+  (+! (-> tex masks data 0 dist) 40960000.0)
+  (set! (-> tex masks data 1 dist) (+ 40960000.0 (-> tex masks data 1 dist)))
+  )
+
+;; definition for function adgif-shader-login
+(defun adgif-shader-login ((shader adgif-shader))
+  "set up an adgif shader with the texture-pool, so it points to the right vram address.
+   Will remap textures through the level remap table.
+   If texture is missing, will load it on debug hardware."
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+    (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
+    (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
+    (when (= (-> shader texture-id page) 2797)
+      (nop!)
+      (nop!)
+      0
+      )
+    (link-texture-by-id (-> shader texture-id) shader)
+    (let ((s5-0 (lookup-texture-by-id (-> shader texture-id))))
+      (cond
+        (s5-0
+          (if (and *debug-segment* (-> *screen-shot-work* highres-enable))
+              (hack-texture s5-0)
+              )
+          (adgif-shader<-texture-with-update! shader s5-0)
+          )
+        (else
+          (format
+            0
+            "login<1> could not find texture ~X in obj ~A shader ~X~%"
+            (-> shader texture-id)
+            (-> *kernel-context* login-object)
+            shader
+            )
+          )
+        )
+      s5-0
+      )
+    )
+  )
+
+;; definition for function adgif-shader-login-no-remap
+(defun adgif-shader-login-no-remap ((shader adgif-shader))
+  "Set up an adgif shader with the texture-pool, so it points to the right vram adress.
+   This does not do level tpage remapping, so the texture should be one that's not loaded in a combine level tpage."
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+    (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
+    (link-texture-by-id (-> shader texture-id) shader)
+    (let ((s5-0 (lookup-texture-by-id (-> shader texture-id))))
+      (cond
+        (s5-0
+          (if (and *debug-segment* (-> *screen-shot-work* highres-enable))
+              (hack-texture s5-0)
+              )
+          (adgif-shader<-texture-with-update! shader s5-0)
+          )
+        (else
+          (format
+            0
+            "login<2> could not find texture ~X in obj ~A shader ~X~%"
+            (-> shader texture-id)
+            (-> *kernel-context* login-object)
+            shader
+            )
+          )
+        )
+      s5-0
+      )
+    )
+  )
+
+;; definition for function adgif-shader-login-fast
+(defun adgif-shader-login-fast ((shader adgif-shader))
+  "Set up an adgif shader with the texture-pool, so it points to the right vram address.
+   Will remap through the level table, so can be used to refer to textures inside 'squashed'
+   level tpages.
+   Will not load texture if it is missing."
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+    (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
+    (set! (-> shader texture-id) (level-remap-texture (-> shader texture-id)))
+    (let ((v1-4 (-> shader texture-id)))
+      (when (and (nonzero? (-> v1-4 page)) (< (-> v1-4 page) (the-as uint (-> *texture-page-dir* length))))
+        (let ((a0-9 (-> *texture-page-dir* entries (-> v1-4 page))))
+          (when (and (< (-> v1-4 index) (the-as uint (-> a0-9 length))) (-> a0-9 link))
+            (set! (-> shader next shader) (-> a0-9 link next (-> v1-4 index) shader))
+            (set! (-> a0-9 link next (-> v1-4 index) shader) (shr (the-as int shader) 4))
+            )
+          (when (and (-> a0-9 page) (< (-> v1-4 index) (the-as uint (-> a0-9 page length))))
+            (let ((s5-0 (-> a0-9 page data (-> v1-4 index))))
+              (when s5-0
+                (if (and *debug-segment* (-> *screen-shot-work* highres-enable))
+                    (hack-texture s5-0)
+                    )
+                (adgif-shader<-texture-with-update! shader s5-0)
+                )
+              s5-0
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for function adgif-shader-login-no-remap-fast
+(defun adgif-shader-login-no-remap-fast ((shader adgif-shader))
+  "Set up an adgif shader with the texture-pool, so it points to the right vram address.
+   Will not remap through the level tpage table.
+   Will not load texture if it is missing."
+  (when (logtest? (-> shader link-test) (link-test-flags needs-log-in))
+    (logclear! (-> shader link-test) (link-test-flags needs-log-in bit-9))
+    (let ((v1-4 (-> shader texture-id)))
+      (when (and (nonzero? (-> v1-4 page)) (< (-> v1-4 page) (the-as uint (-> *texture-page-dir* length))))
+        (let ((a0-8 (-> *texture-page-dir* entries (-> v1-4 page))))
+          (when (and (< (-> v1-4 index) (the-as uint (-> a0-8 length))) (-> a0-8 link))
+            (set! (-> shader next shader) (-> a0-8 link next (-> v1-4 index) shader))
+            (set! (-> a0-8 link next (-> v1-4 index) shader) (shr (the-as int shader) 4))
+            )
+          (when (and (-> a0-8 page) (< (-> v1-4 index) (the-as uint (-> a0-8 page length))))
+            (let ((s5-0 (-> a0-8 page data (-> v1-4 index))))
+              (when s5-0
+                (if (and *debug-segment* (-> *screen-shot-work* highres-enable))
+                    (hack-texture s5-0)
+                    )
+                (adgif-shader<-texture-with-update! shader s5-0)
+                )
+              s5-0
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(when (not *debug-segment*)
+  (set! adgif-shader-login adgif-shader-login-fast)
+  (set! adgif-shader-login-no-remap adgif-shader-login-no-remap-fast)
+  )
+
+;; definition for function adgif-shader<-texture-simple!
+(defun adgif-shader<-texture-simple! ((shader adgif-shader) (tex texture))
+  "Simple adgif-shader to texture, just sets vram address and format stuff.
+   Intended for use with fancy texture stuff that will later set the other regs."
+  (set! (-> shader tex1) (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
+  (set! (-> shader tex0 tfx) 0)
+  (if tex
+      (adgif-shader<-texture! shader tex)
+      )
+  (set! (-> shader clamp) (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
+  (set! (-> shader alpha) (new 'static 'gs-miptbp :tbp1 #x44))
+  (set! (-> shader prims 1) (gs-reg64 tex0-1))
+  (set! (-> shader prims 3) (gs-reg64 tex1-1))
+  (set! (-> shader prims 5) (gs-reg64 miptbp1-1))
+  (set! (-> shader clamp-reg) (gs-reg64 clamp-1))
+  (set! (-> shader prims 9) (gs-reg64 alpha-1))
+  shader
+  )
+
+;; definition for function set-dirty-mask!
+;; WARN: Return type mismatch int vs none.
+(defun set-dirty-mask! ((lev level) (mask-idx int) (m0 int) (m1 int))
+  (let ((s4-0 (sar (+ m0 #x3fff) 14))
+        (s5-0 (sar (+ m1 #x3fff) 14))
+        (gp-0 (-> lev texture-dirty-masks mask-idx))
+        (v1-5 (new 'stack 'texture-mask))
+        )
+    (cond
+      ((< 64 s4-0)
+       (set! (-> v1-5 mask dword 0) (the-as uint -1))
+       (set! (-> v1-5 mask dword 1) (the-as uint (+ (ash 1 (+ s4-0 -64)) -1)))
+       )
+      (else
+        (set! (-> v1-5 mask dword 0) (the-as uint (+ (ash 1 s4-0) -1)))
+        )
+      )
+    (when (nonzero? s5-0)
+      (set! (-> v1-5 mask dword 1)
+            (logior (ash (-> v1-5 mask dword 1) s5-0) (ash (-> v1-5 mask dword 0) (+ s5-0 -64)))
+            )
+      (set! (-> v1-5 mask dword 0) (ash (-> v1-5 mask dword 0) s5-0))
+      )
+    (logior! (-> gp-0 mask dword 0) (-> v1-5 mask dword 0))
+    (logior! (-> gp-0 mask dword 1) (-> v1-5 mask dword 1))
+    )
+  0
+  (none)
+  )
+
+;; definition (debug) for function texture-page-dir-inspect
+;; WARN: Return type mismatch texture-page-dir vs none.
+(defun-debug texture-page-dir-inspect ((arg0 texture-page-dir) (arg1 symbol))
+  (format #t "[~8x] ~A~%" arg0 (-> arg0 type))
+  (let ((v1-0 *texture-pool*))
+    (format
+      #t
+      "~Ttexture pool (~DK used, ~DK free)~%"
+      (/ (- (-> v1-0 cur) (-> v1-0 top)) 256)
+      (/ (- (shl (-> *video-params* display-fbp) 11) (-> v1-0 cur)) 256)
+      )
+    )
+  (dotimes (s4-0 (-> *level* length))
+    (let ((a1-3 (-> *level* level s4-0)))
+      (if (= (-> a1-3 status) 'active)
+          (texture-page-size-check *texture-pool* a1-3 #f)
+          )
+      )
+    )
+  (format #t "~Tlength: ~D~%" (-> arg0 length))
+  (format #t "~Tdata[~D]: @ #x~X~%" (-> arg0 length) (-> arg0 entries))
+  (dotimes (s4-1 (-> arg0 length))
+    (let ((s3-0 (-> arg0 entries s4-1 page))
+          (s2-0 (-> arg0 entries s4-1 link))
+          )
+      (cond
+        (s3-0
+          (format
+            #t
+            "~T  [~3D]   loaded ~S ~A~%"
+            s4-1
+            (if s2-0
+                "  linked"
+                "unlinked"
+                )
+            s3-0
+            )
+          )
+        (else
+          (if (= arg1 'full)
+              (format
+                #t
+                "~T  [~3D] unloaded ~S #<texture-page :length ~D>~%"
+                s4-1
+                (if s2-0
+                    "  linked"
+                    "unlinked"
+                    )
+                (-> arg0 entries s4-1 length)
+                )
+              )
+          )
+        )
+      (when (and (or s3-0 s2-0) arg1)
+        (dotimes (s1-0 (-> arg0 entries s4-1 length))
+          (cond
+            ((not s2-0)
+             (format #t "~T    [~3D]   unlinked" s1-0)
+             )
+            ((zero? (-> s2-0 next s1-0 shader))
+             (format #t "~T    [~3D]   UNUSED  " s1-0)
+             )
+            (else
+              (let ((t9-9 format)
+                    (a0-12 #t)
+                    (a1-10 "~T    [~3D] ~3D links ")
+                    (a2-11 s1-0)
+                    (a3-9 0)
+                    )
+                (let ((v1-40 (the-as object (* (-> s2-0 next s1-0 shader) 16))))
+                  (while (nonzero? (the-as uint v1-40))
+                    (nop!)
+                    (+! a3-9 1)
+                    (set! v1-40 (* (-> (the-as adgif-shader v1-40) next shader) 16))
+                    )
+                  )
+                (t9-9 a0-12 a1-10 a2-11 a3-9)
+                )
+              )
+            )
+          (cond
+            ((not s3-0)
+             (format #t " unloaded~%")
+             )
+            ((not (-> s3-0 data s1-0))
+             (format #t "    empty~%")
+             )
+            (else
+              (format #t " ~A~%" (-> s3-0 data s1-0))
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 3 of type texture-page-dir
+(defmethod inspect ((this texture-page-dir))
+  (texture-page-dir-inspect this #f)
+  this
+  )
+
+;; definition for symbol *texture-pool*, type texture-pool
+(define *texture-pool* (new 'global 'texture-pool))

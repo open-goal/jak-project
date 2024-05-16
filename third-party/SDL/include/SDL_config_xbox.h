@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -209,14 +209,19 @@
 #define SDL_VIDEO_DRIVER_DUMMY  1
 #define SDL_VIDEO_DRIVER_WINDOWS    1
 
-/* #ifndef SDL_VIDEO_RENDER_D3D
-#define SDL_VIDEO_RENDER_D3D    1
-#endif*/
-#if !defined(SDL_VIDEO_RENDER_D3D11) && defined(HAVE_D3D11_H)
-#define SDL_VIDEO_RENDER_D3D11  1
-#endif
 #if !defined(SDL_VIDEO_RENDER_D3D12) && defined(HAVE_D3D12_H)
 #define SDL_VIDEO_RENDER_D3D12  1
+#endif
+
+/* Enable OpenGL support */
+#ifndef SDL_VIDEO_OPENGL
+#define SDL_VIDEO_OPENGL    1
+#endif
+#ifndef SDL_VIDEO_OPENGL_WGL
+#define SDL_VIDEO_OPENGL_WGL    1
+#endif
+#ifndef SDL_VIDEO_RENDER_OGL
+#define SDL_VIDEO_RENDER_OGL    1
 #endif
 
 /* Enable system power support */

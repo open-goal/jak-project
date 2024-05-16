@@ -1,10 +1,10 @@
 #pragma once
+#include <span>
+#include <string_view>
 #include <vector>
 
 #include "sfxgrain.h"
 #include "soundbank.h"
-
-#include "third-party/span.hpp"
 
 namespace snd {
 
@@ -46,7 +46,7 @@ class SFXBlock : public SoundBank {
   std::map<std::string, u32> Names;
   std::unique_ptr<u8[]> SampleData;
 
-  static SFXBlock* ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> samples);
+  static SFXBlock* ReadBlock(std::span<u8> bank_data, std::span<u8> samples);
 
   std::optional<std::unique_ptr<SoundHandler>> MakeHandler(VoiceManager& vm,
                                                            u32 sound_id,

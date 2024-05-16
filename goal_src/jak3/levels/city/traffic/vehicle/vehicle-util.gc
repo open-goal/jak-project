@@ -7,3 +7,1250 @@
 
 ;; DECOMP BEGINS
 
+(defmethod init-part! ((this rigid-body-vehicle-constants))
+  (set! (-> this particle-common) *vehicle-particle-common-info*)
+  (init! (-> this particle-common))
+  0
+  (none)
+  )
+
+(deftype vehicle-hud-request (structure)
+  ((handle            handle)
+   (hack-handle-init  symbol  :overlay-at handle)
+   (priority          float)
+   )
+  :pack-me
+  )
+
+
+(deftype vehicle-hud-requests (structure)
+  ((time      time-frame)
+   (requests  vehicle-hud-request  4 :inline)
+   )
+  :pack-me
+  (:methods
+    (vehicle-hud-requests-method-9 (_type_) none)
+    (vehicle-hud-requests-method-10 (_type_) vehicle-hud-request)
+    (vehicle-hud-requests-method-11 (_type_) vehicle-hud-request)
+    )
+  )
+
+
+(defmethod vehicle-hud-requests-method-9 ((this vehicle-hud-requests))
+  (dotimes (v1-0 4)
+    (let ((a1-2 (-> this requests v1-0)))
+      (set! (-> a1-2 handle) (the-as handle #f))
+      (set! (-> a1-2 priority) 0.0)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-hud-requests-method-10 ((this vehicle-hud-requests))
+  (let ((v1-0 0))
+    (let ((f0-0 0.0))
+      (countdown (a1-0 4)
+        (let ((a2-2 (-> this requests a1-0)))
+          (when (and (handle->process (-> a2-2 handle)) (< f0-0 (-> a2-2 priority)))
+            (set! v1-0 a1-0)
+            (set! f0-0 (-> a2-2 priority))
+            )
+          )
+        )
+      )
+    (-> this requests v1-0)
+    )
+  )
+
+(defmethod vehicle-hud-requests-method-11 ((this vehicle-hud-requests))
+  (let ((v1-0 0))
+    (let ((f0-0 (the-as float #x7f800000))
+          (a1-1 4)
+          )
+      (b! #t cfg-10 :delay (nop!))
+      (label cfg-1)
+      (+! a1-1 -1)
+      (let ((a2-2 (-> this requests a1-1)))
+        (b! (handle->process (-> a2-2 handle)) cfg-8 :delay (empty-form))
+        (set! v1-0 a1-1)
+        (set! (-> a2-2 priority) 0.0)
+        (b! #t cfg-12 :delay (nop!))
+        (label cfg-8)
+        (when (< (-> a2-2 priority) f0-0)
+          (set! v1-0 a1-1)
+          (set! f0-0 (-> a2-2 priority))
+          )
+        )
+      (label cfg-10)
+      (b! (nonzero? a1-1) cfg-1 :delay (nop!))
+      )
+    (label cfg-12)
+    (-> this requests v1-0)
+    )
+  )
+
+(deftype vehicle-hud-chooser (structure)
+  ((cur   vehicle-hud-requests  :inline)
+   (last  vehicle-hud-requests  :inline)
+   )
+  (:methods
+    (vehicle-hud-chooser-method-9 (_type_ handle float) symbol)
+    )
+  )
+
+
+(defmethod vehicle-hud-chooser-method-9 ((this vehicle-hud-chooser) (arg0 handle) (arg1 float))
+  (let ((s3-0 (current-time)))
+    (when (!= s3-0 (-> this cur time))
+      (if (zero? (-> this cur time))
+          (vehicle-hud-requests-method-9 (-> this cur))
+          )
+      (mem-copy! (the-as pointer (-> this last)) (the-as pointer (-> this cur)) 72)
+      (set! (-> this cur time) s3-0)
+      (vehicle-hud-requests-method-9 (-> this cur))
+      )
+    )
+  (let ((v1-10 (vehicle-hud-requests-method-11 (-> this cur))))
+    (when (< (-> v1-10 priority) arg1)
+      (set! (-> v1-10 handle) arg0)
+      (set! (-> v1-10 priority) arg1)
+      )
+    )
+  (let ((s4-1 #f))
+    (let ((v1-12 (vehicle-hud-requests-method-10 (-> this last))))
+      (if (and (handle->process arg0) (= (-> v1-12 handle) arg0))
+          (set! s4-1 #t)
+          )
+      )
+    s4-1
+    )
+  )
+
+(define *vehicle-hud-chooser* (new 'static 'vehicle-hud-chooser))
+
+(define *pilot-edge-grab-info* (new 'static 'pilot-edge-grab-info))
+
+(defmethod deactivate ((this vehicle))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (vehicle-method-106 this)
+  (call-parent-method this)
+  (none)
+  )
+
+;; WARN: Return type mismatch entity-perm-status vs object.
+(defmethod init-from-entity! ((this vehicle) (arg0 entity-actor))
+  (process-entity-status! this (entity-perm-status dead) #t)
+  )
+
+(defmethod rigid-body-object-method-37 ((this vehicle))
+  (let ((t9-0 (method-of-type rigid-body-object rigid-body-object-method-37)))
+    (t9-0 this)
+    )
+  (cond
+    ((logtest? #x10000 (-> this info flags))
+     (set! (-> this rbody force-callback) (method-of-object this apply-gravity))
+     )
+    ((logtest? #x20000 (-> this info flags))
+     (set! (-> this rbody force-callback) (method-of-object this apply-gravity1))
+     )
+    )
+  (vehicle-method-62 this)
+  (init-part! (-> this info))
+  (none)
+  )
+
+(defmethod check-player-get-on ((this vehicle) (arg0 process-focusable))
+  (with-pp
+    (and (not (focus-test? arg0 dead grabbed in-head under-water pole flut tube pilot))
+         (or (not (focus-test? arg0 edge-grab)) (logtest? (-> this v-flags) (vehicle-flag player-edge-grabbing)))
+         (-> *setting-control* user-current pilot)
+         (let ((v1-8 (new 'stack-no-clear 'event-message-block)))
+           (set! (-> v1-8 from) (process->ppointer pp))
+           (set! (-> v1-8 num-params) 1)
+           (set! (-> v1-8 message) 'query)
+           (set! (-> v1-8 param 0) (the-as uint 'mode))
+           (let ((v1-9 (send-event-function arg0 v1-8)))
+             (and (or (= v1-9 #f) (= v1-9 'board)) (or (logtest? (vehicle-flag waiting-for-player) (-> this v-flags))
+                                                       (-> *setting-control* user-current vehicle-hijacking)
+                                                       )
+                  )
+             )
+           )
+         )
+    )
+  )
+
+(defmethod vehicle-method-128 ((this vehicle))
+  #t
+  )
+
+(defmethod vehicle-method-129 ((this vehicle))
+  (let ((f0-0 (-> this player-dist2))
+        (f1-0 102400.0)
+        )
+    (when (< f0-0 (* f1-0 f1-0))
+      (let ((s5-0 (new 'stack-no-clear 'mystery-vehicle-type0)))
+        (set! (-> s5-0 floats 4) (+ 8192.0 (-> this root root-prim local-sphere w)))
+        (if (logtest? (vehicle-flag ai-driving) (-> this v-flags))
+            (set! (-> s5-0 floats 4) (* 1.5 (-> s5-0 floats 4)))
+            )
+        (set! (-> s5-0 mat 0 uvec quad) (-> (target-pos 0) quad))
+        (+! (-> s5-0 mat 0 uvec y) 8192.0)
+        (let* ((v1-14 (-> s5-0 mat 1))
+               (a3-0 (-> this node-list data 0 bone transform))
+               (a0-5 (-> a3-0 rvec quad))
+               (a1-0 (-> a3-0 uvec quad))
+               (a2-0 (-> a3-0 fvec quad))
+               (a3-1 (-> a3-0 trans quad))
+               )
+          (set! (-> v1-14 rvec quad) a0-5)
+          (set! (-> v1-14 uvec quad) a1-0)
+          (set! (-> v1-14 fvec quad) a2-0)
+          (set! (-> v1-14 trans quad) a3-1)
+          )
+        (set! (-> s5-0 mat 0 fvec quad) (-> s5-0 mat 1 trans quad))
+        (set! (-> s5-0 floats 2) (- (-> s5-0 mat 0 uvec y) (-> s5-0 mat 0 fvec y)))
+        (let ((f0-9 (vector-vector-xz-distance-squared (-> s5-0 mat 0 uvec) (-> s5-0 mat 0 fvec)))
+              (f1-7 (-> s5-0 floats 4))
+              )
+          (when (and (< f0-9 (* f1-7 f1-7))
+                     (< -81920.0 (-> s5-0 floats 2))
+                     (and (< (-> s5-0 floats 2) 20480.0) *target* (check-player-get-on this *target*))
+                     )
+            (let ((s2-0 #f)
+                  (s4-1 #f)
+                  (s3-0 #f)
+                  )
+              (let ((a2-2 (get-best-seat this (-> s5-0 mat 0 uvec) (vehicle-seat-flag vsf0) 0)))
+                (when (!= a2-2 -1)
+                  (vehicle-method-66 this (-> s5-0 mat 0 fvec) a2-2)
+                  (vector+float*! (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 fvec) (-> s5-0 mat 1 uvec) 4096.0)
+                  )
+                )
+              (set! (-> s5-0 floats 1) (vector-vector-distance-squared (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 uvec)))
+              (let ((f0-14 (-> s5-0 floats 1))
+                    (f1-12 81920.0)
+                    )
+                (when (< f0-14 (* f1-12 f1-12))
+                  (set! (-> s5-0 cquery start-pos quad) (-> s5-0 mat 0 uvec quad))
+                  (vector-! (-> s5-0 cquery move-dist) (-> s5-0 mat 0 fvec) (-> s5-0 mat 0 uvec))
+                  (let ((v1-38 (-> s5-0 cquery)))
+                    (set! (-> v1-38 radius) 4096.0)
+                    (set! (-> v1-38 collide-with)
+                          (collide-spec
+                            backgnd
+                            crate
+                            civilian
+                            enemy
+                            obstacle
+                            hit-by-player-list
+                            hit-by-others-list
+                            player-list
+                            collectable
+                            blocking-plane
+                            tobot
+                            pusher
+                            vehicle-mesh
+                            obstacle-for-jak
+                            shield
+                            )
+                          )
+                    (set! (-> v1-38 ignore-process0) this)
+                    (set! (-> v1-38 ignore-process1) #f)
+                    (set! (-> v1-38 ignore-pat)
+                          (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                          )
+                    (set! (-> v1-38 action-mask) (collide-action solid))
+                    )
+                  (set! s2-0 (< (fill-and-probe-using-line-sphere *collide-cache* (-> s5-0 cquery)) 0.0))
+                  0
+                  )
+                )
+              (when s2-0
+                (when (and (or (< -14336.0 (-> s5-0 floats 2)) (logtest? (-> this v-flags) (vehicle-flag player-edge-grabbing)))
+                           (not (logtest? (vehicle-flag no-hijack gun-dark-2-zero-g) (-> this v-flags)))
+                           )
+                  (set! s4-1 #t)
+                  (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 (sqrtf (-> s5-0 floats 1)))))
+                  )
+                (when (and (not s4-1)
+                           (and (< (-> s5-0 floats 2) -8192.0) (not (logtest? (-> *target* focus-status) (focus-status edge-grab))))
+                           )
+                  (matrix-4x4-inverse! (-> s5-0 mat 2) (-> s5-0 mat 1))
+                  (vector-matrix*! (the-as vector (-> s5-0 mat)) (-> s5-0 mat 0 uvec) (-> s5-0 mat 2))
+                  (set! (-> s5-0 floats 0) 81920.0)
+                  (dotimes (s2-1 (-> this info rider grab-rail-count))
+                    (let ((s1-0 (-> this info rider grab-rail-array s2-1)))
+                      (vector-! (-> s5-0 mat 0 trans) (the-as vector (-> s5-0 mat)) (the-as vector (-> s1-0 local-pos)))
+                      (when #t
+                        (let ((f30-0 (vector-segment-distance-point!
+                                       (the-as vector (-> s5-0 mat))
+                                       (the-as vector (-> s1-0 local-pos))
+                                       (-> s1-0 local-pos 1)
+                                       (-> s5-0 mat 0 trans)
+                                       )
+                                     )
+                              )
+                          (when (< f30-0 (-> s5-0 floats 0))
+                            (set! (-> s5-0 floats 0) f30-0)
+                            (set! (-> s5-0 vec 0 quad) (-> s5-0 mat 0 trans quad))
+                            (vector-! (-> s5-0 vec 1) (-> s1-0 local-pos 1) (the-as vector (-> s1-0 local-pos)))
+                            (vector-normalize! (-> s5-0 vec 1) 1.0)
+                            (set! s3-0 #t)
+                            (set! (-> s5-0 floats 3) (* (-> this hit-points) (/ 40960.0 f30-0)))
+                            )
+                          )
+                        )
+                      )
+                    0
+                    )
+                  )
+                (set! s3-0 (or s4-1 s3-0))
+                (when (and s3-0 (and (vehicle-hud-chooser-method-9 *vehicle-hud-chooser* (process->handle this) (-> s5-0 floats 3))
+                                     (can-display-query? this "vehicle" (/ 1.0 (-> s5-0 floats 3)))
+                                     )
+                           )
+                  (cond
+                    ((vehicle-method-128 this)
+                     (vehicle-method-144 this)
+                     (when (cpad-pressed? 0 triangle)
+                       (cond
+                         (s4-1
+                           (when (send-event *target* 'change-mode 'pilot this 0 #f)
+                             (logior! (-> this v-flags) (vehicle-flag player-driving))
+                             (logclear! (-> this v-flags) (vehicle-flag ai-driving))
+                             (vehicle-method-80 this)
+                             )
+                           )
+                         (else
+                           (set! (-> s5-0 proc 0) (process->handle this))
+                           (mem-copy! (the-as pointer *pilot-edge-grab-info*) (the-as pointer (-> s5-0 vec)) 40)
+                           (if (send-event *target* 'pilot-edge-grab *pilot-edge-grab-info*)
+                               (format 0 "vehicle::check-player-get-on: (send-event *target* 'pilot-edge-grab self)~%")
+                               )
+                           )
+                         )
+                       )
+                     )
+                    (else
+                      (vehicle-method-145 this)
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (cond
+    ((and (logtest? (vehicle-flag player-driving) (-> this v-flags)) *target* (!= (-> this crash-level) 3))
+     (if (focus-test? *target* pilot-riding)
+         (vehicle-method-134 this)
+         )
+     )
+    (else
+      (vehicle-method-81 this)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-144 ((this vehicle))
+  (let ((gp-0
+          (new 'stack 'font-context *font-default-matrix* 22 320 0.0 (font-color default) (font-flags shadow kerning))
+          )
+        )
+    (let ((v1-1 gp-0))
+      (set! (-> v1-1 width) (the float 350))
+      )
+    (let ((v1-2 gp-0))
+      (set! (-> v1-2 height) (the float 80))
+      )
+    (let ((v1-3 gp-0)
+          (a0-5 (-> *setting-control* user-default language))
+          )
+      (set! (-> v1-3 scale) (if (or (= a0-5 (language-enum korean)) (= a0-5 (language-enum russian)))
+                                0.9
+                                0.7
+                                )
+            )
+      )
+    (set! (-> gp-0 flags) (font-flags shadow kerning large))
+    (print-game-text
+      (lookup-text! *common-text* (text-id text-0083) #f)
+      gp-0
+      #f
+      44
+      (bucket-id hud-draw-hud-alpha)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-145 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-106 ((this vehicle))
+  (sound-stop (-> this scrape-sound-id))
+  (set! (-> this scrape-sound-envelope) 0.0)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-63 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-64 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-65 ((this vehicle))
+  (-> this info rider seat-count)
+  )
+
+(defmethod vehicle-method-66 ((this vehicle) (arg0 vector) (arg1 int))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (set! (-> v1-0 quad) (-> this info rider seat-array arg1 position quad))
+    (set! (-> v1-0 w) 1.0)
+    (vector-matrix*! arg0 v1-0 (-> this node-list data 0 bone transform))
+    )
+  0
+  (none)
+  )
+
+(defmethod get-rider-in-seat ((this vehicle) (arg0 int))
+  (let ((v0-0 (the-as process #f)))
+    (if (< arg0 (-> this info rider seat-count))
+        (set! v0-0 (handle->process (-> this rider-array arg0)))
+        )
+    v0-0
+    )
+  )
+
+(defmethod find-rider ((this vehicle))
+  (let ((gp-0 (the-as process #f)))
+    (countdown (s4-0 (-> this info rider seat-count))
+      (when (logtest? (-> this info rider seat-array s4-0 flags) (vehicle-seat-flag vsf0))
+        (let ((v1-7 (get-rider-in-seat this s4-0)))
+          (if v1-7
+              (set! gp-0 v1-7)
+              )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+(defmethod get-best-seat ((this vehicle) (arg0 vector) (arg1 vehicle-seat-flag) (arg2 int))
+  (let ((gp-0 -1))
+    (let ((f30-0 (the-as float #x7f800000))
+          (s1-0 (new 'stack-no-clear 'vector))
+          )
+      (countdown (s0-0 (-> this info rider seat-count))
+        (when (logtest? arg1 (-> this info rider seat-array s0-0 flags))
+          (let ((v1-7 arg2))
+            (when (cond
+                    ((zero? v1-7)
+                     #t
+                     )
+                    ((= v1-7 1)
+                     (not (get-rider-in-seat this s0-0))
+                     )
+                    ((= v1-7 2)
+                     (get-rider-in-seat this s0-0)
+                     )
+                    (else
+                      #f
+                      )
+                    )
+              (vehicle-method-66 this s1-0 s0-0)
+              (let ((f0-0 (vector-vector-distance-squared arg0 s1-0)))
+                (when (< f0-0 f30-0)
+                  (set! f30-0 f0-0)
+                  (set! gp-0 s0-0)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    gp-0
+    )
+  )
+
+(defmethod remove-riders ((this vehicle) (arg0 handle))
+  (let ((v1-1 (-> this info rider seat-count)))
+    (dotimes (a2-0 v1-1)
+      (if (= arg0 (handle->process (-> this rider-array a2-0)))
+          (set! (-> this rider-array a2-0) (the-as handle #f))
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod put-rider-in-seat ((this vehicle) (arg0 int) (arg1 process))
+  (if (< arg0 (-> this info rider seat-count))
+      (set! (-> this rider-array arg0) (process->handle arg1))
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-113 ((this vehicle) (arg0 vector) (arg1 int) (arg2 int))
+  (let ((v1-0 (new 'stack-no-clear 'vector)))
+    (vector+!
+      v1-0
+      (the-as vector (-> this info rider seat-array arg1))
+      (-> this info rider rider-hand-offset arg2)
+      )
+    (vector-matrix*! arg0 v1-0 (-> this node-list data 0 bone transform))
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-70 ((this vehicle))
+  (-> this info rider rider-stance)
+  )
+
+(defmethod vehicle-method-73 ((this vehicle))
+  (-> this controls steering)
+  )
+
+(defmethod get-linear-accel! ((this vehicle) (arg0 vector))
+  (set! (-> arg0 quad) (-> this lin-acceleration quad))
+  0
+  (none)
+  )
+
+(defmethod copy-vehicle-controls! ((this vehicle) (arg0 vehicle-controls))
+  (mem-copy! (the-as pointer arg0) (the-as pointer (-> this controls)) 24)
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch float vs none.
+(defmethod vehicle-method-150 ((this vehicle))
+  (-> this hit-points)
+  (none)
+  )
+
+(defmethod set-hit-points ((this vehicle) (arg0 float))
+  (set! (-> this hit-points) arg0)
+  0
+  (none)
+  )
+
+(defmethod apply-damage ((this vehicle) (arg0 float) (arg1 rigid-body-impact))
+  (case (-> arg1 pat event)
+    (((pat-event melt))
+     (set! arg0 (* 10.0 arg0))
+     (format #t "vehicle::apply-damage: hit melt (damage ~f)~%" arg0)
+     )
+    )
+  (if (logtest? (vehicle-flag ignore-damage) (-> this v-flags))
+      (set! arg0 0.0)
+      )
+  (when (logtest? (vehicle-flag player-driving) (-> this v-flags))
+    (if (or (and (logtest? (game-secrets invulnerable) (-> *game-info* secrets)) (logtest? #x200000 (-> this info flags)))
+            *debug-player-vehicle-unkillable*
+            )
+        (set! arg0 0.0)
+        )
+    (if (logtest? (game-secrets vehicle-hit-points) (-> *game-info* secrets))
+        (set! arg0 (* 0.5 arg0))
+        )
+    )
+  (set! (-> this hit-points) (- (-> this hit-points) (* arg0 (-> this damage-factor))))
+  (when (< (-> this hit-points) 0.0)
+    (logior! (-> this v-flags) (vehicle-flag dead))
+    (set! (-> this crash-level) 3)
+    )
+  (let ((s4-1 (-> arg1 prim-id))
+        (s3-0 0)
+        )
+    (while (nonzero? s4-1)
+      (when (and (logtest? s4-1 1) (< s3-0 (-> this info damage section-count)))
+        (let ((v1-37 (-> this section-array s3-0)))
+          (+! (-> v1-37 damage) (* 4.0 (-> this damage-factor) arg0))
+          )
+        (vehicle-method-114 this s3-0)
+        )
+      (set! s4-1 (shr s4-1 1))
+      (+! s3-0 1)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-114 ((this vehicle) (arg0 int))
+  (let* ((v1-2 (-> this section-array arg0))
+         (s4-0 (-> this info damage section-array arg0))
+         (s5-1
+           (max
+             0
+             (min (the int (* (-> v1-2 damage) (the float (-> s4-0 damage-seg-count)))) (+ (-> s4-0 damage-seg-count) -1))
+             )
+           )
+         )
+    (let ((a2-0 0))
+      (dotimes (v1-6 (-> s4-0 damage-seg-count))
+        (if (!= v1-6 s5-1)
+            (set! a2-0 (logior a2-0 (-> s4-0 damage-seg-array v1-6)))
+            )
+        )
+      (setup-masks (-> this draw) 0 a2-0)
+      )
+    (setup-masks (-> this draw) (the-as int (-> s4-0 damage-seg-array s5-1)) 0)
+    (when (> s5-1 0)
+      (if (not (logtest? (vehicle-flag lights-dead) (-> this v-flags)))
+          (sound-play "headlight-pop")
+          )
+      (set! (-> this v-flags) (the-as vehicle-flag (logior (vehicle-flag lights-dead) (-> this v-flags))))
+      (vehicle-method-126 this)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-76 ((this vehicle))
+  (set! (-> this v-flags) (the-as vehicle-flag (logclear (-> this v-flags) (vehicle-flag
+                                                                             disturbed
+                                                                             damaged
+                                                                             dead
+                                                                             player-touching
+                                                                             player-edge-grabbing
+                                                                             player-standing-on
+                                                                             persistent
+                                                                             impact
+                                                                             in-air
+                                                                             riding
+                                                                             player-driving
+                                                                             net-player-driving
+                                                                             ai-driving
+                                                                             waiting-for-player
+                                                                             ignition
+                                                                             turbo-boost
+                                                                             reverse-gear
+                                                                             flight-level-transition
+                                                                             alert
+                                                                             in-pursuit
+                                                                             target-in-sight
+                                                                             rammed-target
+                                                                             lights-on
+                                                                             lights-update
+                                                                             lights-dead
+                                                                             )
+                                                         )
+                                  )
+        )
+  (set! (-> this unknown-flags) (-> this v-flags))
+  (logior! (-> this rbody flags) (rigid-body-flag active))
+  (logclear! (-> this focus-status) (focus-status disable dead inactive))
+  (rigid-body-object-method-37 this)
+  (disable-physics! this)
+  (set! (-> this hit-points) 1.0)
+  (set! (-> this damage-factor) (-> this info damage inv-hit-points))
+  (set! (-> this crash-level) 0)
+  (set! (-> this power-fluctuation-factor) 0.02)
+  (set! (-> this power-level) 1.0)
+  (set! (-> this lights-factor) 0.0)
+  (set-time! (-> this state-time))
+  (let ((v1-19 (-> this info setup)))
+    (let ((a1-0 (-> v1-19 color-option-select)))
+      (set! (-> this draw color-mult quad) (-> v1-19 color a1-0 quad))
+      )
+    (+! (-> v1-19 color-option-select) 1)
+    (when (>= (-> v1-19 color-option-select) (-> v1-19 color-option-count))
+      (set! (-> v1-19 color-option-select) 0)
+      0
+      )
+    )
+  (dotimes (s5-0 (-> this info damage section-count))
+    (let ((v1-22 (-> this section-array s5-0)))
+      (set! (-> v1-22 damage) 0.0)
+      )
+    (vehicle-method-114 this s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-98 ((this vehicle))
+  (set! (-> this hit-points) 1.0)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-130 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-74 ((this vehicle) (arg0 int) (arg1 time-frame))
+  (when (< (-> this crash-level) arg0)
+    (set! (-> this crash-level) arg0)
+    (set! (-> this crash-duration) (the-as uint arg1))
+    (set! (-> this crash-time) (the-as uint (current-time)))
+    (set! (-> this force-scale) 0.0)
+    )
+  (when (and (>= 0.0 (-> this hit-points)) (!= (-> this crash-level) 3))
+    (logior! (-> this v-flags) (vehicle-flag dead))
+    (set! (-> this crash-level) 3)
+    (set! (-> this crash-duration) (the-as uint 1500))
+    (set! (-> this crash-time) (the-as uint (current-time)))
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-75 ((this vehicle))
+  (set! (-> this crash-level) 0)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-125 ((this vehicle))
+  (if (not (logtest? (vehicle-flag lights-dead) (-> this v-flags)))
+      (set! (-> this v-flags)
+            (the-as vehicle-flag (logior (vehicle-flag lights-on lights-update) (-> this v-flags)))
+            )
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-126 ((this vehicle))
+  (set! (-> this v-flags) (the-as vehicle-flag (logclear (-> this v-flags) (vehicle-flag lights-on))))
+  (set! (-> this v-flags) (the-as vehicle-flag (logior (vehicle-flag lights-update) (-> this v-flags))))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-135 ((this vehicle))
+  (when (not (logtest? (vehicle-flag ignition) (-> this v-flags)))
+    (logior! (-> this v-flags) (vehicle-flag ignition))
+    (sound-play-by-name (-> this info sound start-sound) (new-sound-id) 1024 0 0 (sound-group) #t)
+    (let ((s5-1 (-> this node-list data 0 bone transform))
+          (s4-1 (new 'stack-no-clear 'inline-array 'matrix 2))
+          )
+      (set-vector! (-> s4-1 0 fvec) 0.0 1.0 0.0 1.0)
+      (mem-copy! (the-as pointer (-> s4-1 1)) (the-as pointer s5-1) 64)
+      (dotimes (s3-0 2)
+        (vector-matrix*! (the-as vector (-> s4-1 0)) (-> this info particles exhaust-local-pos s3-0) s5-1)
+        (vector-rotate*! (-> s4-1 0 uvec) (-> this info particles exhaust-local-dir s3-0) s5-1)
+        (vector-cross! (-> s4-1 0 trans) (-> s4-1 0 uvec) (-> s4-1 0 fvec))
+        (vector-normalize! (-> s4-1 0 trans) 1.0)
+        (vector-cross! (-> s4-1 1 fvec) (-> s4-1 0 trans) (-> s4-1 0 uvec))
+        (set! (-> s4-1 1 rvec quad) (-> s4-1 0 trans quad))
+        (set! (-> s4-1 1 uvec quad) (-> s4-1 0 uvec quad))
+        (set! (-> s4-1 1 fvec quad) (-> s4-1 0 fvec quad))
+        (set! (-> s4-1 1 trans quad) (-> s4-1 0 rvec quad))
+        (if (logtest? (-> *part-group-id-table* 225 flags) (sp-group-flag sp13))
+            (part-tracker-spawn
+              part-tracker-subsampler
+              :to *entity-pool*
+              :group (-> *part-group-id-table* 225)
+              :mat-joint (-> s4-1 1)
+              )
+            (part-tracker-spawn
+              part-tracker
+              :to *entity-pool*
+              :group (-> *part-group-id-table* 225)
+              :mat-joint (-> s4-1 1)
+              )
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-136 ((this vehicle))
+  (if (logtest? (vehicle-flag ignition) (-> this v-flags))
+      (logclear! (-> this v-flags) (vehicle-flag ignition))
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-137 ((this vehicle))
+  (let ((a0-2 (find-nearest-nav-mesh (-> this root trans) (the-as float #x7f800000))))
+    (when a0-2
+      (add-process-drawable-to-nav-mesh a0-2 this #t)
+      (vehicle-method-139 this)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-139 ((this vehicle))
+  (logior! (-> this nav flags) (nav-control-flag display-marks))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-138 ((this vehicle))
+  (let ((v1-0 (-> this nav)))
+    (when v1-0
+      (remove-process-drawable (-> v1-0 state mesh) this)
+      (set! (-> this nav) #f)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-141 ((this vehicle))
+  (or (logtest? (vehicle-flag dead waiting-for-player) (-> this v-flags))
+      (and (logtest? (vehicle-flag player-driving net-player-driving ai-driving) (-> this v-flags))
+           (not (logtest? (-> this v-flags) (vehicle-flag on-flight-level)))
+           )
+      )
+  )
+
+(defmethod vehicle-method-140 ((this vehicle))
+  (let ((v1-1 (vehicle-method-141 this))
+        (s5-0 (-> this nav))
+        )
+    (cond
+      (v1-1
+        (cond
+          (s5-0
+            (do-navigation-to-destination (-> s5-0 state) (-> this root trans))
+            (when (not (logtest? (-> s5-0 state flags) (nav-state-flag in-mesh)))
+              (let ((a0-4 (find-nearest-nav-mesh (-> this root trans) (the-as float #x7f800000))))
+                (when (and a0-4 (!= a0-4 (-> s5-0 state mesh)))
+                  (change-to a0-4 this)
+                  (logclear! (-> this nav flags) (nav-control-flag output-sphere-hash))
+                  )
+                )
+              )
+            )
+          (else
+            (vehicle-method-137 this)
+            )
+          )
+        )
+      (else
+        (if s5-0
+            (vehicle-method-138 this)
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-80 ((this vehicle))
+  (when (not (logtest? (vehicle-flag camera) (-> this v-flags)))
+    (vehicle-method-82 this)
+    (logior! (-> this v-flags) (vehicle-flag camera))
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-81 ((this vehicle))
+  (when (logtest? (vehicle-flag camera) (-> this v-flags))
+    (vehicle-method-83 this)
+    (logclear! (-> this v-flags) (vehicle-flag camera))
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-82 ((this vehicle))
+  (logclear! (-> this v-flags) (vehicle-flag camera-bike-mode camera-rapid-tracking-mode))
+  (set! (-> this cam-speed-interp) 0.0)
+  (set-setting! 'string-min-height 'abs (-> this info camera string-min-height) 0)
+  (set-setting! 'string-max-height 'abs (-> this info camera string-max-height) 0)
+  (set-setting! 'head-offset 'abs (-> this info camera head-offset) 0)
+  (set-setting! 'foot-offset 'abs (-> this info camera foot-offset) 0)
+  (set-setting! 'target-height 'abs (meters 0) 0)
+  (persist-with-delay *setting-control* 'mode-name (seconds 0.2) 'mode-name 'cam-fixed 0.0 0)
+  (persist-with-delay *setting-control* 'interp-time (seconds 0.05) 'interp-time 'abs 0.0 0)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-83 ((this vehicle))
+  (remove-setting! 'bike-mode)
+  (remove-setting! 'rapid-tracking)
+  (remove-setting! 'fov)
+  (remove-setting! 'string-camera-ceiling)
+  (remove-setting! 'string-camera-floor)
+  (remove-setting! 'string-min-height)
+  (remove-setting! 'string-max-height)
+  (remove-setting! 'string-min-length)
+  (remove-setting! 'string-max-length)
+  (remove-setting! 'extra-follow-height)
+  (remove-setting! 'head-offset)
+  (remove-setting! 'foot-offset)
+  (remove-setting! 'target-height)
+  (remove-setting! 'slave-options)
+  (remove-setting! 'vertical-follow-matches-camera)
+  (remove-setting! 'mode-name)
+  (remove-setting! 'butt-handle)
+  (remove-setting! 'lock-sound-camera-to-target)
+  (remove-setting! 'interp-time)
+  (vehicle-method-148 this)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-84 ((this vehicle))
+  (when (not (logtest? (vehicle-flag camera-bike-mode) (-> this v-flags)))
+    (logior! (-> this v-flags) (vehicle-flag camera-bike-mode))
+    (set-setting! 'bike-mode #f 0.0 0)
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-85 ((this vehicle))
+  (when (logtest? (vehicle-flag camera-bike-mode) (-> this v-flags))
+    (logclear! (-> this v-flags) (vehicle-flag camera-bike-mode))
+    (remove-setting! 'bike-mode)
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-86 ((this vehicle))
+  (when (logtest? (vehicle-flag player-driving) (-> this v-flags))
+    (logior! (-> this v-flags) (vehicle-flag camera-rapid-tracking-mode))
+    (set-setting! 'rapid-tracking #f 0.0 0)
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-87 ((this vehicle))
+  (when (logtest? (vehicle-flag player-driving) (-> this v-flags))
+    (logclear! (-> this v-flags) (vehicle-flag camera-rapid-tracking-mode))
+    (remove-setting! 'rapid-tracking)
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-42 ((this vehicle))
+  (logior! (-> this v-flags) (vehicle-flag enable-collision))
+  (let ((v1-3 (-> this root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (-> this root backup-collide-as))
+    (set! (-> v1-3 prim-core collide-with) (-> this root backup-collide-with))
+    )
+  0
+  (none)
+  )
+
+(defmethod rigid-body-object-method-43 ((this vehicle))
+  (logclear! (-> this v-flags) (vehicle-flag enable-collision))
+  (let ((v1-3 (-> this root root-prim)))
+    (set! (-> v1-3 prim-core collide-as) (collide-spec))
+    (set! (-> v1-3 prim-core collide-with) (collide-spec))
+    )
+  0
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-99 ((this vehicle))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
+    (logclear! (-> v1-1 settings flags) (shadow-flags disable-draw))
+    )
+  0
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-100 ((this vehicle))
+  (let ((v1-1 (-> this draw shadow-ctrl)))
+    (logior! (-> v1-1 settings flags) (shadow-flags disable-draw))
+    )
+  0
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-148 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-147 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod apply-momentum! ((this vehicle))
+  (let ((s5-0 (-> this rbody)))
+    (when (not (logtest? (-> s5-0 flags) (rigid-body-flag enable-physics)))
+      (logior! (-> s5-0 flags) (rigid-body-flag enable-physics))
+      (rigid-body-control-method-28 s5-0 (-> this root trans) (-> this root quat))
+      (set! (-> s5-0 lin-velocity quad) (-> this root transv quad))
+      (vector-float*! (-> s5-0 lin-momentum) (-> s5-0 lin-velocity) (-> this info info mass))
+      (vector-reset! (-> s5-0 ang-momentum))
+      (vector-reset! (-> this lin-acceleration))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod disable-physics! ((this vehicle))
+  (set! (-> this force-scale) 1.0)
+  (logclear! (-> this rbody flags) (rigid-body-flag enable-physics))
+  (vehicle-method-106 this)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-107 ((this vehicle) (arg0 int) (arg1 process))
+  (let ((a0-1 (-> this squad)))
+    (when (and a0-1 arg1)
+      (if #t
+          (squad-control-method-18 a0-1 arg0 arg1)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-108 ((this vehicle) (arg0 int))
+  (set-alert-level0 (-> this squad) arg0)
+  0
+  (none)
+  )
+
+(defmethod impulse-handler ((this vehicle))
+  (if (and (not (focus-test? this inactive))
+           (not (and (-> this next-state) (= (-> this next-state name) 'explode)))
+           )
+      ((method-of-type rigid-body-object impulse-handler) this)
+      )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-109 ((this vehicle))
+  (vehicle-method-122 this)
+  (logior! (-> this focus-status) (focus-status inactive))
+  (set! (-> this event-hook) (-> (method-of-object this inactive) event))
+  (go (method-of-object this inactive))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-110 ((this vehicle))
+  (if (focus-test? this inactive)
+      (vehicle-method-123 this)
+      )
+  (go (method-of-object this active))
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod go-active ((this vehicle))
+  (go (method-of-object this waiting))
+  0
+  )
+
+(defmethod vehicle-method-134 ((this vehicle))
+  (go (method-of-object this player-control))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-132 ((this vehicle) (arg0 traffic-object-spawn-params))
+  (let ((v1-0 (-> arg0 behavior)))
+    (cond
+      ((= v1-0 1)
+       (vehicle-method-131 this arg0)
+       (vehicle-method-109 this)
+       )
+      ((zero? v1-0)
+       (go (method-of-object this idle))
+       )
+      ((= v1-0 4)
+       (go (method-of-object this player-control))
+       )
+      (else
+        (go (method-of-object this idle))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-124 ((this vehicle))
+  (if (= this *debug-actor*)
+      (format #t "hook-dead~%")
+      )
+  (logior! (-> this focus-status) (focus-status dead))
+  (vehicle-method-136 this)
+  (set! (-> this v-flags)
+        (the-as vehicle-flag (logclear
+                               (-> this v-flags)
+                               (vehicle-flag riding player-driving net-player-driving in-pursuit target-in-sight)
+                               )
+                )
+        )
+  (set! (-> this controls throttle) 0.0)
+  (set! (-> this controls steering) 0.0)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-133 ((this vehicle) (arg0 traffic-object-spawn-params))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-102 ((this vehicle))
+  (logtest? (vehicle-flag disturbed player-touching player-driving in-pursuit) (-> this v-flags))
+  )
+
+(defmethod vehicle-method-142 ((this vehicle))
+  (reset-momentum! (-> this rbody))
+  (none)
+  )
+
+(defmethod vehicle-method-103 ((this vehicle))
+  (local-vars (v1-8 float) (v1-13 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (when (time-elapsed? (-> this disturbed-time) (seconds 2))
+      (let* ((f0-0 (-> this camera-dist2))
+             (f1-0 0.000024414063)
+             (f0-1 (* f0-0 (* f1-0 f1-0)))
+             )
+        (.lvf vf1 (&-> (-> this rbody ang-velocity) quad))
+        (.add.w.vf vf2 vf0 vf0 :mask #b1)
+        (.mul.vf vf1 vf1 vf1)
+        (.mul.x.vf acc vf2 vf1 :mask #b1)
+        (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+        (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+        (.mov v1-8 vf1)
+        (when (and (< v1-8 f0-1) (begin
+                                   (.lvf vf1 (&-> (-> this rbody lin-velocity) quad))
+                                   (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                   (.mul.vf vf1 vf1 vf1)
+                                   (.mul.x.vf acc vf2 vf1 :mask #b1)
+                                   (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                                   (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                   (.mov v1-13 vf1)
+                                   (let ((f1-4 v1-13)
+                                         (f2-0 614.4)
+                                         )
+                                     (< f1-4 (* f0-1 (* f2-0 f2-0)))
+                                     )
+                                   )
+                   )
+          (logclear! (-> this v-flags) (vehicle-flag disturbed))
+          (vehicle-method-142 this)
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+(defmethod vehicle-method-79 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-115 ((this vehicle))
+  (dotimes (s5-0 (-> this info rider seat-count))
+    (let ((s4-0 (handle->process (-> this rider-array s5-0))))
+      (when (and s4-0 (focus-test? (the-as process-focusable s4-0) pilot-riding))
+        (vehicle-method-66 this (-> (the-as process-focusable s4-0) root trans) s5-0)
+        (set! (-> (the-as process-focusable s4-0) root transv quad) (-> this root transv quad))
+        (let ((f0-1 (the float (-> this info rider seat-array s5-0 angle))))
+          (quaternion-rotate-local-y! (-> (the-as process-focusable s4-0) root quat) (-> this root quat) f0-1)
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-146 ((this vehicle) (arg0 vector))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-149 ((this vehicle))
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-62 ((this vehicle))
+  (let ((v1-1 (-> this root root-prim))
+        (f0-0 0.0)
+        )
+    (dotimes (a0-1 (the-as int (-> v1-1 specific 0)))
+      (let ((a1-3 (-> (the-as collide-shape-prim-group v1-1) child a0-1 local-sphere)))
+        (set! f0-0 (fmax f0-0 (+ (vector-length a1-3) (-> a1-3 w))))
+        )
+      )
+    (vector-reset! (-> v1-1 local-sphere))
+    (set! (-> v1-1 local-sphere w) f0-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-116 ((this vehicle) (arg0 symbol))
+  (dotimes (s4-0 (-> this info rider seat-count))
+    (let* ((s3-0 (handle->process (-> this rider-array s4-0)))
+           (a0-5 (if (type? s3-0 process-focusable)
+                     s3-0
+                     )
+                 )
+           )
+      (send-event
+        a0-5
+        'attack-invinc
+        #f
+        (static-attack-info
+          :mask (vehicle-impulse-factor)
+          ((id (new-attack-id)) (damage 2.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode arg0))
+          )
+        )
+      )
+    (put-rider-in-seat this s4-0 (the-as process #f))
+    )
+  0
+  (none)
+  )

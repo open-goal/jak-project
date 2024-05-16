@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if HAVE_SIGNAL_H
+#ifdef HAVE_SIGNAL_H
 #include <signal.h>
 #endif
 
@@ -29,8 +29,8 @@
 #include "testutils.h"
 
 static SDL_AudioSpec spec;
-static Uint8 *sound = NULL;     /* Pointer to wave data */
-static Uint32 soundlen = 0;     /* Length of wave data */
+static Uint8 *sound = NULL; /* Pointer to wave data */
+static Uint32 soundlen = 0; /* Length of wave data */
 
 static int posindex = 0;
 static Uint32 positions[64];
@@ -44,9 +44,9 @@ quit(int rc)
 }
 
 void SDLCALL
-fillerup(void *_pos, Uint8 * stream, int len)
+fillerup(void *_pos, Uint8 *stream, int len)
 {
-    Uint32 pos = *((Uint32 *) _pos);
+    Uint32 pos = *((Uint32 *)_pos);
     Uint8 *waveptr;
     int waveleft;
 
@@ -65,17 +65,16 @@ fillerup(void *_pos, Uint8 * stream, int len)
     }
     SDL_memcpy(stream, waveptr, len);
     pos += len;
-    *((Uint32 *) _pos) = pos;
+    *((Uint32 *)_pos) = pos;
 }
 
 static int done = 0;
-void
-poked(int sig)
+void poked(int sig)
 {
     done = 1;
 }
 
-static const char*
+static const char *
 devtypestr(int iscapture)
 {
     return iscapture ? "capture" : "output";
@@ -90,17 +89,18 @@ iteration()
         if (e.type == SDL_QUIT) {
             done = 1;
         } else if (e.type == SDL_KEYUP) {
-            if (e.key.keysym.sym == SDLK_ESCAPE)
+            if (e.key.keysym.sym == SDLK_ESCAPE) {
                 done = 1;
+            }
         } else if (e.type == SDL_AUDIODEVICEADDED) {
             int index = e.adevice.which;
             int iscapture = e.adevice.iscapture;
             const char *name = SDL_GetAudioDeviceName(index, iscapture);
-            if (name != NULL)
-                SDL_Log("New %s audio device at index %u: %s\n", devtypestr(iscapture), (unsigned int) index, name);
-            else {
+            if (name) {
+                SDL_Log("New %s audio device at index %u: %s\n", devtypestr(iscapture), (unsigned int)index, name);
+            } else {
                 SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Got new %s device at index %u, but failed to get the name: %s\n",
-                    devtypestr(iscapture), (unsigned int) index, SDL_GetError());
+                             devtypestr(iscapture), (unsigned int)index, SDL_GetError());
                 continue;
             }
             if (!iscapture) {
@@ -111,31 +111,29 @@ iteration()
                 if (!dev) {
                     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't open '%s': %s\n", name, SDL_GetError());
                 } else {
-                    SDL_Log("Opened '%s' as %u\n", name, (unsigned int) dev);
+                    SDL_Log("Opened '%s' as %u\n", name, (unsigned int)dev);
                     SDL_PauseAudioDevice(dev, 0);
                 }
             }
         } else if (e.type == SDL_AUDIODEVICEREMOVED) {
-            dev = (SDL_AudioDeviceID) e.adevice.which;
-            SDL_Log("%s device %u removed.\n", devtypestr(e.adevice.iscapture), (unsigned int) dev);
+            dev = (SDL_AudioDeviceID)e.adevice.which;
+            SDL_Log("%s device %u removed.\n", devtypestr(e.adevice.iscapture), (unsigned int)dev);
             SDL_CloseAudioDevice(dev);
         }
     }
 }
 
 #ifdef __EMSCRIPTEN__
-void
-loop()
+void loop()
 {
-    if(done)
+    if (done)
         emscripten_cancel_main_loop();
     else
         iteration();
 }
 #endif
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int i;
     char *filename = NULL;
@@ -146,7 +144,7 @@ main(int argc, char *argv[])
     /* Load the SDL library */
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s\n", SDL_GetError());
-        return (1);
+        return 1;
     }
 
     /* Some targets (Mac CoreAudio) need an event queue for audio hotplug, so make and immediately hide a window. */
@@ -154,7 +152,7 @@ main(int argc, char *argv[])
 
     filename = GetResourceFilename(argc > 1 ? argv[1] : NULL, "sample.wav");
 
-    if (filename == NULL) {
+    if (!filename) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s\n", SDL_GetError());
         quit(1);
     }
@@ -165,16 +163,16 @@ main(int argc, char *argv[])
         quit(1);
     }
 
-#if HAVE_SIGNAL_H
+#ifdef HAVE_SIGNAL_H
     /* Set the signals */
 #ifdef SIGHUP
-    signal(SIGHUP, poked);
+    (void)signal(SIGHUP, poked);
 #endif
-    signal(SIGINT, poked);
+    (void)signal(SIGINT, poked);
 #ifdef SIGQUIT
-    signal(SIGQUIT, poked);
+    (void)signal(SIGQUIT, poked);
 #endif
-    signal(SIGTERM, poked);
+    (void)signal(SIGTERM, poked);
 #endif /* HAVE_SIGNAL_H */
 
     /* Show the list of available drivers */
@@ -201,7 +199,7 @@ main(int argc, char *argv[])
     SDL_FreeWAV(sound);
     SDL_free(filename);
     SDL_Quit();
-    return (0);
+    return 0;
 }
 
 /* vi: set ts=4 sw=4 expandtab: */

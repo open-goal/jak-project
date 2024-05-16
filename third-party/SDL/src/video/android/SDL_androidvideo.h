@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,9 +37,9 @@ extern void Android_SendResize(SDL_Window *window);
 typedef struct SDL_VideoData
 {
     SDL_Rect textRect;
-    int      isPaused;
-    int      isPausing;
-    int      pauseAudio;
+    int isPaused;
+    int isPausing;
+    int pauseAudio;
 } SDL_VideoData;
 
 extern int Android_SurfaceWidth;

@@ -12,12 +12,11 @@ enum class Language {
   Italian = 4,
   Japanese = 5,
   UK_English = 6,
-  // uk english?
+  Portuguese = 9
 };
 
 struct GameLaunchOptions {
   GameVersion game_version = GameVersion::Jak1;
   bool disable_display = false;
-  bool disable_debug_vm = true;
   int server_port = DECI2_PORT;
 };

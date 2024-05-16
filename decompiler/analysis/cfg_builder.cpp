@@ -4,7 +4,9 @@
  */
 
 #include "cfg_builder.h"
+
 #include "common/log/log.h"
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/IR2/Form.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
@@ -1428,7 +1430,9 @@ Form* try_sc_as_type_of_jak2(FormPool& pool, Function& f, const ShortCircuit* vt
   f.ir2.env.disable_def(b2_delay_op.dst(), f.warnings);
   f.ir2.env.disable_use(shift_left->expr().get_arg(0).var());
 
-  f.warnings.warning("Using new Jak 2 rtype-of");
+  if (f.ir2.env.version != GameVersion::Jak3) {
+    f.warnings.warning("Using new Jak 2 rtype-of");
+  }
   return b0_ptr;
 }
 

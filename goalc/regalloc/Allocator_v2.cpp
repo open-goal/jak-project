@@ -7,7 +7,7 @@
 #include "common/log/log.h"
 #include "common/util/Range.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 /*!
  Documentation:
@@ -332,7 +332,7 @@ const std::vector<emitter::Register>& get_alloc_order(int var_idx,
       if (is_gpr) {
         return REG_temp_first_order.gprs;
       } else {
-        return REG_temp_only_order.xmms;
+        return REG_temp_first_order.xmms;
       }
     }
   }
@@ -1060,8 +1060,10 @@ bool run_assignment_on_var(const AllocationInput& input,
       for (auto& reg : assign_order) {
         bool worked = check_register_assign(input, *cache, var_idx, reg);
         if (trace) {
-          lg::print("m2 trying var {} in {}: {}\n", cache->iregs.at(var_idx).to_string(),
-                    reg.print(), worked);
+          const auto& this_var = cache->vars.at(var_idx);
+          lg::print("m2 trying var {} in {} (live {} to {}): {}\n",
+                    cache->iregs.at(var_idx).to_string(), reg.print(), this_var.first_live(),
+                    this_var.last_live(), worked);
         }
         if (worked) {
           var.assign_to_register(reg);

@@ -1,5 +1,8 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(bundles "ENGINE.CGO" "GAME.CGO")
+
+(require "kernel/gcommon.gc")
 
 ;; name: rpc-h.gc
 ;; name in dgo: rpc-h
@@ -13,6 +16,8 @@
 (defconstant RPC-DGO 3)
 (defconstant RPC-LOAD-STR 4) ;; called STR in IOP code
 (defconstant RPC-PLAY-STR 5) ;; called PLAY in IOP code
+
+(defun-extern sound-buffer-dump int)
 
 ;; DECOMP BEGINS
 
@@ -35,7 +40,7 @@
   )
 
 (defmethod new rpc-buffer ((allocation symbol) (type-to-make type) (elt-size uint) (elt-count uint))
-  "Create a new rpc-buffer with room for elt-count elements of elt-size. 
+  "Create a new rpc-buffer with room for elt-count elements of elt-size.
    The element array is 64-byte aligned."
   ;; we make room for a buffer of size elt-size * elt-count that is _64 byte_ aligned.
   (let ((this (object-new allocation type-to-make (the int (+ (-> type-to-make size) 63 (* elt-size elt-count))))))
@@ -208,8 +213,9 @@
       (when (zero? (-> this rpc-port))
           ;; if we're RPC 0, this is evidently a situation to warn about.
           (format 0 "WARNING: too many sound commands queued~%")
-          ;;(sound-buffer-dump)
+          (sound-buffer-dump) ;; og:preserve-this added for debugging
           )
+      (format 0 "WARNING: flushing RPC port #~D~%" (-> this rpc-port)) ;; og:preserve-this
       ;; otherwise we just flush
       ;; seems kinda dangerous. these could be the wrong parameters...
       (call this (the-as uint 0) (the-as pointer 0) (the-as uint 0))

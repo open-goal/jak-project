@@ -14,7 +14,7 @@
 #include "goalc/debugger/DebugInfo.h"
 #include "goalc/emitter/IGen.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 using namespace emitter;
 

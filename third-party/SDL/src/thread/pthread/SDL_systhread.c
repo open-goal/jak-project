@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,7 @@
 
 #include <pthread.h>
 
-#if HAVE_PTHREAD_NP_H
+#ifdef HAVE_PTHREAD_NP_H
 #include <pthread_np.h>
 #endif
 
@@ -68,25 +68,23 @@ static const int sig_list[] = {
 };
 #endif
 
-static void *
-RunThread(void *data)
+static void *RunThread(void *data)
 {
 #ifdef __ANDROID__
     Android_JNI_SetupThread();
 #endif
-    SDL_RunThread((SDL_Thread *) data);
+    SDL_RunThread((SDL_Thread *)data);
     return NULL;
 }
 
 #if (defined(__MACOSX__) || defined(__IPHONEOS__)) && defined(HAVE_DLOPEN)
 static SDL_bool checked_setname = SDL_FALSE;
-static int (*ppthread_setname_np)(const char*) = NULL;
+static int (*ppthread_setname_np)(const char *) = NULL;
 #elif defined(__LINUX__) && defined(HAVE_DLOPEN)
 static SDL_bool checked_setname = SDL_FALSE;
-static int (*ppthread_setname_np)(pthread_t, const char*) = NULL;
+static int (*ppthread_setname_np)(pthread_t, const char *) = NULL;
 #endif
-int
-SDL_SYS_CreateThread(SDL_Thread * thread)
+int SDL_SYS_CreateThread(SDL_Thread *thread)
 {
     pthread_attr_t type;
 
@@ -101,14 +99,14 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
         #endif
         checked_setname = SDL_TRUE;
     }
-    #endif
+#endif
 
     /* Set the thread attributes */
     if (pthread_attr_init(&type) != 0) {
         return SDL_SetError("Couldn't initialize pthread attributes");
     }
     pthread_attr_setdetachstate(&type, PTHREAD_CREATE_JOINABLE);
-    
+
     /* Set caller-requested stack size. Otherwise: use the system default. */
     if (thread->stacksize) {
         pthread_attr_setstacksize(&type, thread->stacksize);
@@ -122,46 +120,45 @@ SDL_SYS_CreateThread(SDL_Thread * thread)
     return 0;
 }
 
-void
-SDL_SYS_SetupThread(const char *name)
+void SDL_SYS_SetupThread(const char *name)
 {
 #if !defined(__NACL__)
     int i;
     sigset_t mask;
 #endif /* !__NACL__ */
 
-    if (name != NULL) {
+    if (name) {
         #if (defined(__MACOSX__) || defined(__IPHONEOS__) || defined(__LINUX__)) && defined(HAVE_DLOPEN)
         SDL_assert(checked_setname);
-        if (ppthread_setname_np != NULL) {
+        if (ppthread_setname_np) {
             #if defined(__MACOSX__) || defined(__IPHONEOS__)
             ppthread_setname_np(name);
-            #elif defined(__LINUX__)
+#elif defined(__LINUX__)
             if (ppthread_setname_np(pthread_self(), name) == ERANGE) {
                 char namebuf[16]; /* Limited to 16 char */
-                SDL_strlcpy(namebuf, name, sizeof (namebuf));
+                SDL_strlcpy(namebuf, name, sizeof(namebuf));
                 ppthread_setname_np(pthread_self(), namebuf);
             }
-            #endif
+#endif
         }
-        #elif HAVE_PTHREAD_SETNAME_NP
-            #if defined(__NETBSD__)
-            pthread_setname_np(pthread_self(), "%s", name);
-            #else
-            if (pthread_setname_np(pthread_self(), name) == ERANGE) {
-                char namebuf[16]; /* Limited to 16 char */
-                SDL_strlcpy(namebuf, name, sizeof (namebuf));
-                pthread_setname_np(pthread_self(), namebuf);
-            }
-            #endif
-        #elif HAVE_PTHREAD_SET_NAME_NP
-            pthread_set_name_np(pthread_self(), name);
-        #elif defined(__HAIKU__)
-            /* The docs say the thread name can't be longer than B_OS_NAME_LENGTH. */
-            char namebuf[B_OS_NAME_LENGTH];
-            SDL_strlcpy(namebuf, name, sizeof (namebuf));
-            rename_thread(find_thread(NULL), namebuf);
-        #endif
+#elif defined(HAVE_PTHREAD_SETNAME_NP)
+#if defined(__NETBSD__)
+        pthread_setname_np(pthread_self(), "%s", name);
+#else
+        if (pthread_setname_np(pthread_self(), name) == ERANGE) {
+            char namebuf[16]; /* Limited to 16 char */
+            SDL_strlcpy(namebuf, name, sizeof(namebuf));
+            pthread_setname_np(pthread_self(), namebuf);
+        }
+#endif
+#elif defined(HAVE_PTHREAD_SET_NAME_NP)
+        pthread_set_name_np(pthread_self(), name);
+#elif defined(__HAIKU__)
+        /* The docs say the thread name can't be longer than B_OS_NAME_LENGTH. */
+        char namebuf[B_OS_NAME_LENGTH];
+        SDL_strlcpy(namebuf, name, sizeof(namebuf));
+        rename_thread(find_thread(NULL), namebuf);
+#endif
     }
 
    /* NativeClient does not yet support signals.*/
@@ -184,16 +181,14 @@ SDL_SYS_SetupThread(const char *name)
 #endif
 }
 
-SDL_threadID
-SDL_ThreadID(void)
+SDL_threadID SDL_ThreadID(void)
 {
-    return ((SDL_threadID) pthread_self());
+    return (SDL_threadID)pthread_self();
 }
 
-int
-SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
+int SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 {
-#if __NACL__ || __RISCOS__ || __OS2__
+#if defined(__NACL__) || defined(__RISCOS__) || defined(__OS2__)
     /* FIXME: Setting thread priority does not seem to be supported in NACL */
     return 0;
 #else
@@ -251,7 +246,7 @@ SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
         policy = pri_policy;
     }
 
-#if __LINUX__
+#ifdef __LINUX__
     {
         pid_t linuxTid = syscall(SYS_gettid);
         return SDL_LinuxSetThreadPriorityAndPolicy(linuxTid, priority, policy);
@@ -290,14 +285,12 @@ SDL_SYS_SetThreadPriority(SDL_ThreadPriority priority)
 #endif /* #if __NACL__ || __RISCOS__ */
 }
 
-void
-SDL_SYS_WaitThread(SDL_Thread * thread)
+void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
     pthread_join(thread->handle, 0);
 }
 
-void
-SDL_SYS_DetachThread(SDL_Thread * thread)
+void SDL_SYS_DetachThread(SDL_Thread *thread)
 {
     pthread_detach(thread->handle);
 }

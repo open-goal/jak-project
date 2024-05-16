@@ -3,6 +3,8 @@
  * Top-level compilation forms for each of the GOOS object types.
  */
 
+#include "common/util/string_util.h"
+
 #include "goalc/compiler/Compiler.h"
 #include "goalc/compiler/IR.h"
 
@@ -153,6 +155,8 @@ const std::unordered_map<
         {"reset-target", {"", &Compiler::compile_reset_target}},
         {":status", {"", &Compiler::compile_poke}},
         {"in-package", {"", &Compiler::compile_in_package}},
+        {"bundles", {"", &Compiler::compile_bundles}},
+        {"require", {"", &Compiler::compile_require}},
         {"reload", {"", &Compiler::compile_reload}},
         {"get-info", {"", &Compiler::compile_get_info}},
         {"autocomplete", {"", &Compiler::compile_autocomplete}},
@@ -161,6 +165,7 @@ const std::unordered_map<
         {"make", {"", &Compiler::compile_make}},
         {"print-debug-compiler-stats", {"", &Compiler::compile_print_debug_compiler_stats}},
         {"gen-docs", {"", &Compiler::compile_gen_docs}},
+        {"export-requires", {"", &Compiler::compile_export_requires}},
         {"gc-text", {"", &Compiler::compile_gc_text}},
 
         // CONDITIONAL COMPILATION
@@ -388,14 +393,46 @@ SymbolVal* Compiler::compile_get_sym_obj(const std::string& name, Env* env) {
 Val* Compiler::compile_get_symbol_value(const goos::Object& form,
                                         const std::string& name,
                                         Env* env) {
-  auto existing_symbol = m_symbol_types.find(m_goos.intern_ptr(name));
-  if (existing_symbol == m_symbol_types.end()) {
+  auto existing_symbol = m_symbol_types.lookup(m_goos.intern_ptr(name));
+  if (!existing_symbol) {
     throw_compiler_error(
         form, "The symbol {} was looked up as a global variable, but it does not exist.", name);
   }
 
-  auto ts = existing_symbol->second;
-  auto sext = m_ts.lookup_type_allow_partial_def(ts)->get_load_signed();
+  const auto& ts = *existing_symbol;
+  const auto& full_type = m_ts.lookup_type_allow_partial_def(ts);
+  if (m_settings.check_for_requires) {
+    if (full_type->m_metadata.definition_info.has_value() &&
+        !env->file_env()->m_missing_required_files.contains(
+            full_type->m_metadata.definition_info->filename) &&
+        env->file_env()->m_required_files.find(full_type->m_metadata.definition_info->filename) ==
+            env->file_env()->m_required_files.end() &&
+        !str_util::ends_with(full_type->m_metadata.definition_info->filename,
+                             env->file_env()->name() + ".gc")) {
+      lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+               full_type->m_metadata.definition_info->filename, name);
+      env->file_env()->m_missing_required_files.insert(
+          full_type->m_metadata.definition_info->filename);
+    } else {
+      // Try to lookup in symbol_info
+      const auto& symbol_info = m_symbol_info.lookup_exact_name(name);
+      if (!symbol_info.empty()) {
+        const auto& result = symbol_info.at(0);
+        if (result->m_def_location.has_value() &&
+            !env->file_env()->m_missing_required_files.contains(
+                result->m_def_location->file_path) &&
+            env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+                env->file_env()->m_required_files.end() &&
+            !str_util::ends_with(result->m_def_location->file_path,
+                                 env->file_env()->name() + ".gc")) {
+          lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                   result->m_def_location->file_path, name);
+          env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+        }
+      }
+    }
+  }
+  auto sext = full_type->get_load_signed();
   auto fe = env->function_env();
   auto sym = fe->alloc_val<SymbolVal>(name, m_ts.make_typespec("symbol"));
   auto re = fe->alloc_val<SymbolValueVal>(sym, ts, sext);
@@ -431,20 +468,38 @@ Val* Compiler::compile_symbol(const goos::Object& form, Env* env) {
     return lexical;
   }
 
-  auto global_constant = m_global_constants.find(form.as_symbol());
-  auto existing_symbol = m_symbol_types.find(form.as_symbol());
+  auto global_constant = m_global_constants.lookup(form.as_symbol());
 
   // see if it's a constant
-  if (global_constant != m_global_constants.end()) {
+  if (global_constant) {
+    auto existing_symbol = m_symbol_types.lookup(form.as_symbol());
     // check there is no symbol with the same name
-    if (existing_symbol != m_symbol_types.end()) {
+    if (existing_symbol) {
       throw_compiler_error(form,
                            "Ambiguous symbol: {} is both a global variable and a constant and it "
                            "is not clear which should be used here.");
     }
-
+    if (m_settings.check_for_requires) {
+      // TODO - these file checks are gross, replace with something more robust long-term
+      const auto& symbol_info =
+          m_symbol_info.lookup_exact_name(name, symbol_info::Kind::GLOBAL_VAR);
+      if (!symbol_info.empty()) {
+        const auto& result = symbol_info.at(0);
+        if (result->m_def_location.has_value() &&
+            !env->file_env()->m_missing_required_files.contains(
+                result->m_def_location->file_path) &&
+            env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+                env->file_env()->m_required_files.end() &&
+            !str_util::ends_with(result->m_def_location->file_path,
+                                 env->file_env()->name() + ".gc")) {
+          lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                   result->m_def_location->file_path, name);
+          env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+        }
+      }
+    }
     // got a global constant
-    return compile_error_guard(global_constant->second, env);
+    return compile_error_guard(*global_constant, env);
   }
 
   // none of those, so get a global symbol.

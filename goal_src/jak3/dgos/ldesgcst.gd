@@ -1,0 +1,9 @@
+("LDESGCST.DGO"
+ ("tpage-2660.go"
+  "tpage-2662.go"
+  "tpage-2661.go"
+  "daxter-highres-ag.go"
+  "jakc-highres-ag.go"
+  "sig-highres-ag.go"
+  "ldesgcst.go"
+ ))

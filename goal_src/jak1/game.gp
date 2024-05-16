@@ -1716,7 +1716,7 @@
  )
 
 
-(goal-src "engine/ps2/pad.gc" "pckernel-h")
+(goal-src "engine/ps2/pad.gc" "pckernel-h" "pc-cheats")
 
 (goal-src-sequence
  ;; prefix
@@ -2086,8 +2086,9 @@
 (goal-src "pc/features/autosplit-h.gc")
 (goal-src "pc/features/autosplit.gc" "autosplit-h" "task-control-h" "progress-static")
 (goal-src "pc/features/speedruns.gc" "speedruns-h" "autosplit-h")
+(goal-src "pc/pc-cheats.gc" "dma-buffer")
 (goal-src "pc/pckernel-h.gc" "dma-buffer")
-(goal-src "pc/pckernel-impl.gc" "pckernel-h")
+(goal-src "pc/pckernel-impl.gc" "pckernel-h" "pc-cheats")
 (goal-src "pc/util/pc-anim-util.gc" "target-h")
 (goal-src "pc/pckernel-common.gc" "pckernel-impl" "pc-anim-util" "settings" "video" "target-h" "autosplit-h" "speedruns-h")
 (goal-src "pc/pckernel.gc" "pckernel-common")

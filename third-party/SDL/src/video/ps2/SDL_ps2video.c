@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_PS2
+#ifdef SDL_VIDEO_DRIVER_PS2
 
 /* PS2 SDL video driver implementation; this is just enough to make an
  *  SDL-based application THINK it's got a working video driver, for
@@ -48,17 +48,17 @@
 
 /* PS2 driver bootstrap functions */
 
-static int PS2_SetDisplayMode(_THIS, SDL_VideoDisplay * display, SDL_DisplayMode * mode)
+static int PS2_SetDisplayMode(_THIS, SDL_VideoDisplay *display, SDL_DisplayMode *mode)
 {
     return 0;
 }
 
-static void PS2_DeleteDevice(SDL_VideoDevice * device)
+static void PS2_DeleteDevice(SDL_VideoDevice *device)
 {
     SDL_free(device);
 }
 
-static int PS2_CreateWindow(_THIS, SDL_Window * window)
+static int PS2_CreateWindow(_THIS, SDL_Window *window)
 {
     SDL_SetKeyboardFocus(window);
 
@@ -76,7 +76,7 @@ static int PS2_VideoInit(_THIS)
     current_mode.w = 640;
     current_mode.h = 480;
     current_mode.refresh_rate = 60;
-    
+
     /* 32 bpp for default */
     current_mode.format = SDL_PIXELFORMAT_ABGR8888;
     current_mode.driverdata = NULL;
@@ -94,7 +94,6 @@ static int PS2_VideoInit(_THIS)
 
 static void PS2_VideoQuit(_THIS)
 {
-    
 }
 
 static void PS2_PumpEvents(_THIS)
@@ -107,10 +106,10 @@ static SDL_VideoDevice *PS2_CreateDevice(void)
     SDL_VideoDevice *device;
 
     /* Initialize all variables that we clean on shutdown */
-    device = (SDL_VideoDevice *) SDL_calloc(1, sizeof(SDL_VideoDevice));
+    device = (SDL_VideoDevice *)SDL_calloc(1, sizeof(SDL_VideoDevice));
     if (!device) {
         SDL_OutOfMemory();
-        return (0);
+        return 0;
     }
 
     /* Set the function pointers */
@@ -125,9 +124,10 @@ static SDL_VideoDevice *PS2_CreateDevice(void)
 }
 
 VideoBootStrap PS2_bootstrap = {
-    "PS2", 
+    "PS2",
     "PS2 Video Driver",
-    PS2_CreateDevice
+    PS2_CreateDevice,
+    NULL /* no ShowMessageBox implementation */
 };
 
 #endif /* SDL_VIDEO_DRIVER_PS2 */

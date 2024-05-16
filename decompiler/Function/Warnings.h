@@ -7,7 +7,7 @@
 
 #include "common/util/Assert.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 class DecompWarnings {
@@ -36,7 +36,7 @@ class DecompWarnings {
 
   template <typename... Args>
   void error_and_throw(const std::string& str, Args&&... args) {
-    auto text = fmt::format(str, std::forward<Args>(args)...);
+    auto text = fmt::format(fmt::runtime(str), std::forward<Args>(args)...);
     _warning(Warning::Kind::ERR, false, text);
     throw std::runtime_error(text);
   }
@@ -99,7 +99,7 @@ class DecompWarnings {
 
   template <typename... Args>
   void _warning(Warning::Kind kind, bool unique, const std::string& str, Args&&... args) {
-    std::string msg = fmt::format(str, std::forward<Args>(args)...);
+    std::string msg = fmt::format(fmt::runtime(str), std::forward<Args>(args)...);
     if (unique) {
       if (unique_warnings.find(msg) != unique_warnings.end()) {
         return;

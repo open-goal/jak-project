@@ -7,3 +7,72 @@
 
 ;; DECOMP BEGINS
 
+(deftype mined-states (structure)
+  ((filter  vector        2 :inline)
+   (light   light-sphere  2)
+   )
+  )
+
+
+(defun set-mined-filter-light! ((arg0 string) (arg1 light-hash) (arg2 vector) (arg3 light-sphere))
+  (cond
+    ((and arg3 (nonzero? arg3))
+     (let ((v1-1 (-> arg3 color)))
+       (set! (-> v1-1 x) (-> arg2 x))
+       (set! (-> v1-1 y) (-> arg2 y))
+       (set! (-> v1-1 z) (-> arg2 z))
+       )
+     (set! (-> arg3 brightness) (-> arg2 w))
+     arg3
+     )
+    (else
+      (lookup-light-sphere-by-name arg0 arg1)
+      )
+    )
+  )
+
+(defun init-mood-mined ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 light-group 1)))
+    (set-vector! (-> v1-0 ambi color) 0.333 0.333 0.333 1.0)
+    (set! (-> v1-0 dir0 extra x) 0.0)
+    (set! (-> v1-0 dir1 extra x) 0.0)
+    (set! (-> v1-0 dir2 extra x) 0.0)
+    (set! (-> v1-0 ambi extra x) 1.0)
+    )
+  )
+
+(defbehavior update-mood-mined time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((s5-0 (the-as mined-states (-> arg0 state))))
+        (let ((s4-1 (-> *level* level arg2 bsp light-hash)))
+          (set! (-> s5-0 light 0)
+                (set-mined-filter-light! "light-3802" s4-1 (the-as vector (-> s5-0 filter)) (-> s5-0 light 0))
+                )
+          (set! (-> s5-0 light 1) (set-mined-filter-light! "light-3803" s4-1 (-> s5-0 filter 1) (-> s5-0 light 1)))
+          )
+        (set! (-> arg0 times 0 w) 1.0)
+        (set! (-> arg0 times 1 quad) (-> s5-0 filter 0 quad))
+        (set! (-> arg0 times 2 quad) (-> s5-0 filter 1 quad))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch vector vs none.
+(defun set-mined-filter! ((arg0 vector) (arg1 int))
+  (let ((v1-1 (level-get *level* 'mined)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as mined-states v1-2) filter arg1 quad) (-> arg0 quad))
+        )
+      )
+    )
+  (none)
+  )

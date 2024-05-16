@@ -1,0 +1,729 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; this file is debug only
+(declare-file (debug))
+
+;; definition for function history-channel->string
+(defun history-channel->string ((arg0 history-channel))
+  (case arg0
+    (((history-channel friction))
+     "friction"
+     )
+    (((history-channel transv-out))
+     "transv-out"
+     )
+    (((history-channel pat))
+     "pat"
+     )
+    (((history-channel transv-in))
+     "transv-in"
+     )
+    (((history-channel trans))
+     "trans"
+     )
+    (((history-channel local-normal))
+     "local-normal"
+     )
+    (((history-channel collide-status))
+     "collide-status"
+     )
+    (((history-channel time))
+     "time"
+     )
+    (((history-channel intersect))
+     "intersect"
+     )
+    (((history-channel surface-normal))
+     "surface-normal"
+     )
+    (((history-channel transv))
+     "transv"
+     )
+    (else
+      "*unknown*"
+      )
+    )
+  )
+
+;; definition of type history-elt
+(deftype history-elt (structure)
+  ((record-tag-bytes       uint8            4)
+   (record-tag             uint32                   :overlay-at (-> record-tag-bytes 0))
+   (record-id              uint16                   :overlay-at (-> record-tag-bytes 0))
+   (owner                  uint8                    :overlay-at (-> record-tag-bytes 2))
+   (channel                history-channel          :offset   4)
+   (timestamp              time-frame)
+   (origin                 vector           :inline)
+   (bytes                  uint8            16)
+   (vector                 vector           :inline :overlay-at (-> bytes 0))
+   (float                  float                    :overlay-at (-> bytes 0))
+   (collide-status         collide-status           :overlay-at (-> bytes 0))
+   (collide-reaction-flag  uint32                   :overlay-at (-> bytes 8))
+   (pat                    pat-surface              :overlay-at (-> bytes 0))
+   )
+  )
+
+;; definition for method 3 of type history-elt
+(defmethod inspect ((this history-elt))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'history-elt)
+  (format #t "~1Trecord-tag-bytes[4] @ #x~X~%" (-> this record-tag-bytes))
+  (format #t "~1Trecord-tag: ~D~%" (-> this record-tag))
+  (format #t "~1Trecord-id: ~D~%" (-> this record-id))
+  (format #t "~1Towner: ~D~%" (-> this owner))
+  (format #t "~1Tchannel: ~D~%" (-> this channel))
+  (format #t "~1Ttimestamp: ~D~%" (-> this timestamp))
+  (format #t "~1Torigin: #<vector @ #x~X>~%" (-> this origin))
+  (format #t "~1Tbytes[16] @ #x~X~%" (-> this vector))
+  (format #t "~1Tvector: #<vector @ #x~X>~%" (-> this vector))
+  (format #t "~1Tfloat: ~f~%" (-> this vector x))
+  (format #t "~1Tcollide-status: ~D~%" (-> this collide-status))
+  (format #t "~1Tcollide-reaction-flag: ~D~%" (-> this vector z))
+  (format #t "~1Tpat: ~D~%" (-> this vector x))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type history-iterator
+(deftype history-iterator (basic)
+  ((max-age       uint32)
+   (owner         uint8)
+   (proc          process)
+   (out           object)
+   (channel-mask  uint64)
+   (index         int32)
+   (done?         symbol)
+   )
+  (:methods
+    (new (symbol type uint) _type_)
+    (frame-counter-delta (_type_ history-elt) time-frame)
+    (update-entries! (_type_) history-elt)
+    (get-age (_type_ history-elt) float)
+    )
+  )
+
+;; definition for method 3 of type history-iterator
+(defmethod inspect ((this history-iterator))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tmax-age: ~D~%" (-> this max-age))
+  (format #t "~1Towner: ~D~%" (-> this owner))
+  (format #t "~1Tproc: ~A~%" (-> this proc))
+  (format #t "~1Tout: ~A~%" (-> this out))
+  (format #t "~1Tchannel-mask: ~D~%" (-> this channel-mask))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tdone?: ~A~%" (-> this done?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type history
+(deftype history (basic)
+  ((alloc-index       int32)
+   (allocated-length  int32)
+   (elts              history-elt  :inline :dynamic)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (clear-record-tags! (_type_ history-channel uint uint) history-elt)
+    (clear-history-entries! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type history
+(defmethod inspect ((this history))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Talloc-index: ~D~%" (-> this alloc-index))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Telts[0] @ #x~X~%" (-> this elts))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 4 of type history
+(defmethod length ((this history))
+  (-> this allocated-length)
+  )
+
+;; definition for method 5 of type history
+;; WARN: Return type mismatch uint vs int.
+(defmethod asize-of ((this history))
+  (the-as int (+ (-> this type size) (* 48 (-> this allocated-length))))
+  )
+
+;; definition for method 0 of type history
+(defmethod new history ((allocation symbol) (type-to-make type) (arg0 int))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (+ (-> type-to-make size) (* 48 arg0))))))
+    (set! (-> v0-0 allocated-length) arg0)
+    v0-0
+    )
+  )
+
+;; definition for method 10 of type history
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-history-entries! ((this history))
+  (set! (-> this alloc-index) 0)
+  (countdown (v1-0 (-> this allocated-length))
+    (let ((a1-3 (-> this elts v1-0)))
+      (set! (-> a1-3 record-tag) (the-as uint 0))
+      (set! (-> a1-3 timestamp) 0)
+      )
+    0
+    )
+  0
+  (none)
+  )
+
+;; definition (perm) for symbol *history*, type history
+(define-perm *history* history (new 'debug 'history 4096))
+
+;; failed to figure out what this is:
+(clear-history-entries! *history*)
+
+;; definition for method 9 of type history
+;; WARN: new jak 2 until loop case, check carefully
+(defmethod clear-record-tags! ((this history) (arg0 history-channel) (arg1 uint) (arg2 uint))
+  (let* ((t1-0 (-> this alloc-index))
+         (v1-0 (-> this elts))
+         (v0-0 (-> v1-0 t1-0))
+         )
+    (let ((t2-0 (-> v0-0 record-tag))
+          (t0-2 (-> v0-0 timestamp))
+          )
+      (set! (-> v0-0 channel) arg0)
+      (set! (-> v0-0 record-id) arg1)
+      (set! (-> v0-0 owner) arg2)
+      (set! (-> v0-0 timestamp) (-> *display* base-clock frame-counter))
+      (let* ((a1-4 (-> this allocated-length))
+             (a2-2 (mod (+ t1-0 1) a1-4))
+             )
+        (set! (-> this alloc-index) a2-2)
+        (when (nonzero? t2-0)
+          (until #f
+            (let ((a0-4 (-> v1-0 a2-2)))
+              (if (!= t0-2 (-> a0-4 timestamp))
+                  (return v0-0)
+                  )
+              (set! (-> a0-4 record-tag) (the-as uint 0))
+              )
+            (set! a2-2 (mod (+ a2-2 1) a1-4))
+            )
+          #f
+          )
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 0 of type history-iterator
+(defmethod new history-iterator ((allocation symbol) (type-to-make type) (arg0 uint))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> v0-0 max-age) arg0)
+    (set! (-> v0-0 owner) (the-as uint 1))
+    (set! (-> v0-0 proc) #f)
+    (set! (-> v0-0 out) *stdcon*)
+    (set! (-> v0-0 channel-mask) (the-as uint -1))
+    (set! (-> v0-0 index) (-> *history* alloc-index))
+    (set! (-> v0-0 done?) #f)
+    v0-0
+    )
+  )
+
+;; definition for method 10 of type history-iterator
+(defmethod update-entries! ((this history-iterator))
+  (let ((v1-0 *history*)
+        (a1-2 (-> *display* base-clock frame-counter))
+        )
+    (while (not (-> this done?))
+      (let ((a2-1 (+ (-> this index) -1)))
+        (if (< a2-1 0)
+            (set! a2-1 (+ (-> v1-0 allocated-length) -1))
+            )
+        (set! (-> this index) a2-1)
+        (if (= a2-1 (-> v1-0 alloc-index))
+            (set! (-> this done?) #t)
+            )
+        (let ((a2-5 (-> v1-0 elts a2-1)))
+          (when (nonzero? (-> a2-5 record-tag))
+            (when (< (the-as time-frame (-> this max-age)) (- a1-2 (-> a2-5 timestamp)))
+              (set! (-> this done?) #t)
+              (return (the-as history-elt #f))
+              )
+            (if (= (-> a2-5 owner) (-> this owner))
+                (return a2-5)
+                )
+            )
+          )
+        )
+      )
+    )
+  (the-as history-elt #f)
+  )
+
+;; definition for method 11 of type history-iterator
+(defmethod get-age ((this history-iterator) (arg0 history-elt))
+  (- 1.0 (fmin 1.0 (/ (the float (+ (- 1 (-> arg0 timestamp)) (-> *display* base-clock frame-counter)))
+                      (the float (+ (-> this max-age) 1))
+                      )
+               )
+     )
+  )
+
+;; definition for method 9 of type history-iterator
+(defmethod frame-counter-delta ((this history-iterator) (arg0 history-elt))
+  (- (-> *display* base-clock frame-counter) (-> arg0 timestamp))
+  )
+
+;; definition for function history-print
+;; INFO: Used lq/sq
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Stack slot offset 16 signed mismatch
+;; WARN: Return type mismatch int vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defun history-print ((arg0 history-iterator))
+  (local-vars
+    (sv-16 object)
+    (sv-24 int)
+    (sv-32 int)
+    (sv-40 history-elt)
+    (sv-48 time-frame)
+    (sv-56 uint)
+    (sv-64 collide-status)
+    (sv-72 float)
+    (sv-80 string)
+    (sv-96 string)
+    )
+  (set! sv-16 (-> arg0 out))
+  (set! sv-24 -1)
+  (set! sv-32 0)
+  (until #f
+    (set! sv-40 (update-entries! arg0))
+    (if (not sv-40)
+        (goto cfg-71)
+        )
+    (when (logtest? (-> arg0 channel-mask) (ash 1 (the-as int (-> sv-40 channel))))
+      (set! sv-48 (frame-counter-delta arg0 sv-40))
+      (set! sv-56 (-> sv-40 record-id))
+      (cond
+        ((!= sv-24 sv-48)
+         (set! sv-24 (the-as int sv-48))
+         (set! sv-32 (the-as int sv-56))
+         (format sv-16 "~3D ~4X " sv-48 (-> sv-40 record-id))
+         )
+        ((!= sv-32 sv-56)
+         (set! sv-32 (the-as int sv-56))
+         (format sv-16 "    ~4X " (-> sv-40 record-id))
+         )
+        (else
+          (format sv-16 "         ")
+          )
+        )
+      (let ((v1-22 (-> sv-40 channel)))
+        (cond
+          ((or (= v1-22 (history-channel trans))
+               (or (= v1-22 (history-channel transv))
+                   (= v1-22 (history-channel transv-in))
+                   (= v1-22 (history-channel transv-out))
+                   (= v1-22 (history-channel intersect))
+                   )
+               )
+           (format
+             sv-16
+             "~-15S: ~14Mm ~14Mm ~14Mm~%"
+             (history-channel->string (-> sv-40 channel))
+             (-> sv-40 vector x)
+             (-> sv-40 vector y)
+             (-> sv-40 vector z)
+             )
+           )
+          ((or (= v1-22 (history-channel local-normal)) (= v1-22 (history-channel surface-normal)))
+           (format
+             sv-16
+             "~-15S: ~14f  ~14f  ~14f~%"
+             (history-channel->string (-> sv-40 channel))
+             (-> sv-40 vector x)
+             (-> sv-40 vector y)
+             (-> sv-40 vector z)
+             )
+           )
+          ((= v1-22 (history-channel pat))
+           (let* ((s2-0 (-> sv-40 vector x))
+                  (s5-2 format)
+                  (s4-2 sv-16)
+                  (s3-2 "~-15S: #x~6X  mode:~-8S  material:~-10S  event:~S~%")
+                  (s1-0 (history-channel->string (-> sv-40 channel)))
+                  (s0-0 s2-0)
+                  )
+             (set! sv-80 (pat-mode->string (the-as pat-surface s2-0)))
+             (set! sv-96 (pat-material->string (the-as pat-surface s2-0)))
+             (let ((t2-0 (pat-event->string (the-as pat-surface s2-0))))
+               (s5-2 s4-2 s3-2 s1-0 s0-0 sv-80 sv-96 t2-0)
+               )
+             )
+           )
+          ((= v1-22 (history-channel collide-status))
+           (set! sv-64 (-> sv-40 collide-status))
+           (set! sv-72 (-> sv-40 vector z))
+           (format sv-16 "~-15S: #x~6X " (history-channel->string (-> sv-40 channel)) sv-64)
+           (let ((s5-4 sv-64))
+             (if (= (logand s5-4 (collide-status touch-background)) (collide-status touch-background))
+                 (format sv-16 "touch-background ")
+                 )
+             (if (= (logand s5-4 (collide-status on-special-surface)) (collide-status on-special-surface))
+                 (format sv-16 "on-special-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-wall)) (collide-status touch-wall))
+                 (format sv-16 "touch-wall ")
+                 )
+             (if (= (logand s5-4 (collide-status on-surface)) (collide-status on-surface))
+                 (format sv-16 "on-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status impact-surface)) (collide-status impact-surface))
+                 (format sv-16 "impact-surface ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-ceiling)) (collide-status touch-ceiling))
+                 (format sv-16 "touch-ceiling ")
+                 )
+             (if (= (logand s5-4 (collide-status on-ground)) (collide-status on-ground))
+                 (format sv-16 "on-ground ")
+                 )
+             (if (= (logand s5-4 (collide-status glance)) (collide-status glance))
+                 (format sv-16 "glance ")
+                 )
+             (if (= (logand s5-4 (collide-status blocked)) (collide-status blocked))
+                 (format sv-16 "blocked ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-edge)) (collide-status touch-edge))
+                 (format sv-16 "touch-edge ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-ceiling-sticky)) (collide-status touch-ceiling-sticky))
+                 (format sv-16 "touch-ceiling-sticky ")
+                 )
+             (if (= (logand s5-4 (collide-status on-water)) (collide-status on-water))
+                 (format sv-16 "on-water ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-actor)) (collide-status touch-actor))
+                 (format sv-16 "touch-actor ")
+                 )
+             (if (= (logand (collide-status probe-hit) s5-4) (collide-status probe-hit))
+                 (format sv-16 "probe-hit ")
+                 )
+             (if (= (logand s5-4 (collide-status stuck)) (collide-status stuck))
+                 (format sv-16 "stuck ")
+                 )
+             (if (= (logand s5-4 (collide-status no-touch)) (collide-status no-touch))
+                 (format sv-16 "no-touch ")
+                 )
+             (if (= (logand s5-4 (collide-status touch-surface)) (collide-status touch-surface))
+                 (format sv-16 "touch-surface ")
+                 )
+             )
+           (format sv-16 " #x~6X~%" sv-72)
+           )
+          ((= v1-22 (history-channel friction))
+           (let ((f30-0 (-> sv-40 vector x)))
+             (format sv-16 "~-15S: ~f~%" (history-channel->string (-> sv-40 channel)) f30-0)
+             )
+           )
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-71)
+  0
+  (none)
+  )
+
+;; definition for function history-draw
+;; WARN: Return type mismatch int vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defun history-draw ((arg0 history-iterator))
+  (local-vars (sv-16 vector) (sv-20 vector) (sv-24 number))
+  (set! sv-16 (the-as vector #f))
+  (set! sv-20 (the-as vector #f))
+  (set! sv-24 0)
+  (until #f
+    (let ((s5-0 (update-entries! arg0)))
+      (if (not s5-0)
+          (goto cfg-34)
+          )
+      (when (logtest? (-> arg0 channel-mask) (ash 1 (the-as int (-> s5-0 channel))))
+        (let* ((f0-0 (get-age arg0 s5-0))
+               (v1-8 (the int (lerp 4.0 128.0 f0-0)))
+               )
+          (case (-> s5-0 channel)
+            (((history-channel trans))
+             (if sv-16
+                 (add-debug-line
+                   #t
+                   (bucket-id debug-no-zbuf1)
+                   sv-16
+                   (-> s5-0 vector)
+                   (the-as rgba (logior #xffff00 (shl v1-8 24)))
+                   #f
+                   (the-as rgba -1)
+                   )
+                 (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 vector) (the-as rgba (logior #xffff00 (shl v1-8 24))))
+                 )
+             (set! sv-16 (-> s5-0 vector))
+             )
+            (((history-channel intersect))
+             (if sv-20
+                 (add-debug-line
+                   #t
+                   (bucket-id debug-no-zbuf1)
+                   sv-20
+                   (-> s5-0 vector)
+                   (the-as rgba (logior #xffffff (shl v1-8 24)))
+                   #f
+                   (the-as rgba -1)
+                   )
+                 (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 vector) (the-as rgba (logior #xffffff (shl v1-8 24))))
+                 )
+             (set! sv-20 (-> s5-0 vector))
+             )
+            (((history-channel transv))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior (shl v1-8 24) #xff00))
+               )
+             )
+            (((history-channel transv-in))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior #x408040 (shl v1-8 24)))
+               )
+             )
+            (((history-channel transv-out))
+             (add-debug-vector
+               #t
+               (bucket-id debug-no-zbuf1)
+               (-> s5-0 origin)
+               (-> s5-0 vector)
+               (meters 0.000024414063)
+               (the-as rgba (logior #x404080 (shl v1-8 24)))
+               )
+             )
+            (((history-channel local-normal) (history-channel surface-normal))
+             (let ((t1-7
+                     (logand (the-as uint (-> *pat-mode-info* (shr (shl (the-as int sv-24) 54) 61) hilite-color))
+                             (the-as uint #xffffffff00ffffff)
+                             )
+                     )
+                   )
+               (add-debug-vector
+                 #t
+                 (bucket-id debug-no-zbuf1)
+                 (-> s5-0 origin)
+                 (-> s5-0 vector)
+                 (meters 1)
+                 (the-as rgba (logior t1-7 (shl v1-8 24)))
+                 )
+               )
+             )
+            (((history-channel pat))
+             (set! sv-24 (-> s5-0 vector x))
+             )
+            (((history-channel friction))
+             (let ((f0-3 (-> s5-0 vector x))
+                   (a3-10 (new 'stack-no-clear 'vector))
+                   )
+               (set-vector! a3-10 0.0 (* -8192.0 f0-3) 0.0 1.0)
+               (add-debug-vector
+                 #t
+                 (bucket-id debug-no-zbuf1)
+                 (-> s5-0 origin)
+                 a3-10
+                 (meters 0.00024414062)
+                 (the-as rgba (logior #xffffff (shl v1-8 24)))
+                 )
+               )
+             )
+            )
+          )
+        )
+      )
+    )
+  #f
+  (label cfg-34)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+0

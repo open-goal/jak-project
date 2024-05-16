@@ -1,0 +1,178 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type railx-states
+(deftype railx-states (structure)
+  ((pulses     pulse-state  6 :inline)
+   (blue       pulse-state  :inline :overlay-at (-> pulses 0))
+   (yellow     pulse-state  :inline :overlay-at (-> pulses 1))
+   (warp       pulse-state  :inline :overlay-at (-> pulses 2))
+   (spill      pulse-state  :inline :overlay-at (-> pulses 3))
+   (egg        pulse-state  :inline :overlay-at (-> pulses 4))
+   (transform  pulse-state  :inline :overlay-at (-> pulses 5))
+   (flicker    float)
+   )
+  )
+
+;; definition for method 3 of type railx-states
+(defmethod inspect ((this railx-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'railx-states)
+  (format #t "~1Tpulses[6] @ #x~X~%" (-> this pulses))
+  (format #t "~1Tblue: #<pulse-state @ #x~X>~%" (-> this pulses))
+  (format #t "~1Tyellow: #<pulse-state @ #x~X>~%" (-> this yellow))
+  (format #t "~1Twarp: #<pulse-state @ #x~X>~%" (-> this warp))
+  (format #t "~1Tspill: #<pulse-state @ #x~X>~%" (-> this spill))
+  (format #t "~1Tegg: #<pulse-state @ #x~X>~%" (-> this egg))
+  (format #t "~1Ttransform: #<pulse-state @ #x~X>~%" (-> this transform))
+  (format #t "~1Tflicker: ~f~%" (-> this flicker))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function init-mood-railx
+;; WARN: Return type mismatch vector vs float.
+(defun init-mood-railx ((arg0 mood-context))
+  (-> arg0 state)
+  (set-vector! (-> arg0 times 1) 0.0 0.5 1.0 1.0)
+  (let ((v0-0 (-> arg0 times 2)))
+    (set! (-> v0-0 x) 1.0)
+    (set! (-> v0-0 y) 1.0)
+    (set! (-> v0-0 z) 0.5)
+    (set! (-> v0-0 w) 1.0)
+    (the-as float v0-0)
+    )
+  )
+
+;; definition for function update-railx-lights
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defun update-railx-lights ((arg0 mood-context))
+  (let ((v1-0 (-> arg0 current-fog)))
+    (set! (-> v1-0 fog-color x) 0.0)
+    (set! (-> v1-0 fog-color y) 0.0)
+    (set! (-> v1-0 fog-color z) 0.0)
+    (set! (-> v1-0 fog-color w) 128.0)
+    )
+  (set! (-> arg0 current-fog fog-dists x) 819200.0)
+  (set! (-> arg0 current-fog fog-dists y) 1392640.0)
+  (set! (-> arg0 current-fog fog-dists w) 128.0)
+  (set! (-> arg0 current-fog fog-dists z) 255.0)
+  (let ((s1-0 (-> arg0 light-group))
+        (gp-0 (-> arg0 light-group 1))
+        )
+    (let ((s4-0 (new 'static 'vector :z 1.0))
+          (s2-0 (new 'static 'vector :x 1.0 :y 1.0))
+          (s3-0 (the-as object (-> arg0 state)))
+          (s5-0 (-> *math-camera* inv-camera-rot))
+          )
+      (vector-float*!
+        (the-as vector (-> s1-0 0 ambi color))
+        s4-0
+        (fmax 0.333 (-> (the-as railx-states s3-0) blue brightness))
+        )
+      (vector+float*!
+        (the-as vector (-> s1-0 0 ambi color))
+        (the-as vector (-> s1-0 0 ambi color))
+        s2-0
+        (fmax 0.333 (-> (the-as railx-states s3-0) yellow brightness))
+        )
+      (set! (-> s1-0 0 dir0 color quad) (-> s1-0 0 ambi color quad))
+      (set! (-> s1-0 0 dir1 color quad) (-> s1-0 0 ambi color quad))
+      (let ((a1-3 (new 'static 'vector :x 0.834 :y 0.4815 :z 0.2691))
+            (s0-0 (new 'static 'vector :x -0.8451 :y -0.2182 :z -0.488))
+            )
+        (vector-matrix*! (the-as vector (-> s1-0 0)) a1-3 s5-0)
+        (vector-matrix*! (the-as vector (-> s1-0 0 dir1)) s0-0 s5-0)
+        )
+      (set! (-> s1-0 0 ambi extra x) 0.2)
+      (set! (-> s1-0 0 dir0 extra x) 0.8)
+      (set! (-> s1-0 0 dir1 extra x) 0.8)
+      (set! (-> s1-0 0 dir2 extra x) 0.0)
+      (vector-float*! (the-as vector (-> gp-0 ambi color)) s4-0 (-> (the-as railx-states s3-0) blue brightness))
+      (vector+float*!
+        (the-as vector (-> gp-0 ambi color))
+        (the-as vector (-> gp-0 ambi color))
+        s2-0
+        (* 0.5 (-> (the-as railx-states s3-0) yellow brightness))
+        )
+      (vector-float*! (the-as vector (-> gp-0 dir0 color)) s4-0 (-> (the-as railx-states s3-0) blue brightness))
+      (set! (-> gp-0 dir1 color quad) (-> gp-0 ambi color quad))
+      (let ((a1-6 (new 'static 'vector :x 0.44725248 :y 0.77455187 :z 0.44725248))
+            (s4-1 (new 'static 'vector :x -0.44725248 :y -0.77455187 :z -0.44725248))
+            )
+        (vector-matrix*! (the-as vector (-> gp-0 dir0)) a1-6 s5-0)
+        (vector-matrix*! (the-as vector (-> gp-0 dir1)) s4-1 s5-0)
+        )
+      )
+    (set! (-> gp-0 ambi extra x) 0.2)
+    (set! (-> gp-0 dir0 extra x) 0.5)
+    (set! (-> gp-0 dir1 extra x) 0.4)
+    (set! (-> gp-0 dir2 extra x) 0.0)
+    )
+  (none)
+  )
+
+;; definition for function update-mood-railx
+;; WARN: Return type mismatch int vs none.
+(defbehavior update-mood-railx time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (update-mood-interior arg0 #f)
+  (update-railx-lights arg0)
+  (cond
+    ((< (the-as uint 8) (the-as uint (-> *time-of-day-context* mode)))
+     (palette-select-special arg0)
+     )
+    (else
+      (let ((gp-0 (the-as object (-> arg0 state))))
+        (set! (-> arg0 times 0 w) 1.0)
+        (update-mood-pulse arg0 1 0 0.0 1.0 0.0 0.0)
+        (update-mood-pulse arg0 2 16 0.0 1.0 0.0 0.0)
+        (update-mood-pulse arg0 3 32 0.875 0.125 (* 65536.0 (seconds-per-frame)) 0.0)
+        (update-mood-pulse arg0 4 48 0.0 1.0 0.0 0.0)
+        (set! (-> arg0 times 5 w) (if (< 36408.89 (-> (the-as railx-states gp-0) flicker))
+                                      0.475
+                                      0.55
+                                      )
+              )
+        (update-mood-pulse arg0 6 64 0.0 1.0 0.0 0.0)
+        (update-mood-pulse arg0 7 80 0.0 1.0 0.0 0.0)
+        (when (not (paused?))
+          (let ((f0-6 (+ (-> (the-as railx-states gp-0) flicker) (* 393216.0 (seconds-per-frame)))))
+            (set! (-> (the-as railx-states gp-0) flicker) (- f0-6 (* (the float (the int (/ f0-6 65536.0))) 65536.0)))
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function set-railx-light-brightness!
+;; WARN: Return type mismatch float vs none.
+(defun set-railx-light-brightness! ((arg0 int) (arg1 float) (arg2 float))
+  (let ((v1-1 (level-get *level* 'railx)))
+    (when v1-1
+      (let ((v1-2 (the-as object (-> v1-1 mood-context state))))
+        (set! (-> (the-as railx-states v1-2) pulses arg0 target-brightness) arg1)
+        (set! (-> (the-as railx-states (+ (the-as uint v1-2) (* arg0 16))) blue speed) arg2)
+        )
+      )
+    )
+  (let ((v1-5 (level-get *level* 'railcst)))
+    (when v1-5
+      (let ((v1-6 (the-as object (-> v1-5 mood-context state))))
+        (set! (-> (the-as railx-states v1-6) pulses arg0 target-brightness) arg1)
+        (set! (-> (the-as railx-states (+ (the-as uint v1-6) (* arg0 16))) blue speed) arg2)
+        )
+      )
+    )
+  (none)
+  )
+
+
+
+

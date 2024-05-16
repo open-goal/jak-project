@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -40,6 +40,8 @@ typedef struct {
     /* What location we last saw the cursor move to. */
     CGFloat lastMoveX;
     CGFloat lastMoveY;
+    /* If we just turned on relative mode, and should skip a single mouse motion event. */
+    SDL_bool justEnabledRelative;
 } SDL_MouseData;
 
 @interface NSCursor (InvisibleCursor)

@@ -12,7 +12,7 @@
 #include "goalc/listener/Listener.h"
 #include "gtest/gtest.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 namespace GoalTest {
@@ -37,7 +37,7 @@ std::string escaped_string(const std::string& in) {
 std::string CompilerTestRunner::test_file_name(std::string templateStr) {
   const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
-  std::string outFile = fmt::format(templateStr, test_info->name());
+  std::string outFile = fmt::format(fmt::runtime(templateStr), test_info->name());
   std::replace(outFile.begin(), outFile.end(), '/', '_');
   return outFile;
 }
@@ -137,6 +137,15 @@ void runtime_with_kernel_jak2() {
   GameLaunchOptions game_options;
   game_options.disable_display = true;
   game_options.game_version = GameVersion::Jak2;
+  exec_runtime(game_options, argc, argv);
+}
+
+void runtime_with_kernel_jak3() {
+  constexpr int argc = 4;
+  const char* argv[argc] = {"", "-fakeiso", "-debug", "-nosound"};
+  GameLaunchOptions game_options;
+  game_options.disable_display = true;
+  game_options.game_version = GameVersion::Jak3;
   exec_runtime(game_options, argc, argv);
 }
 

@@ -5,5 +5,128 @@
 ;; name in dgo: types-h
 ;; dgos: GAME
 
+(defmacro s.w! (location value)
+  "Utility macro to store a 32-bit value at a given address. Performs _no_ type checking."
+  `(set! (-> (the-as (pointer uint32) ,location) 0) (the-as uint32 ,value))
+  )
+
+(defmacro l.wu (location)
+  "Load an unsigned 32-bit value from a given address. Performs _no_ type checking."
+  `(-> (the-as (pointer uint32) ,location) 0)
+  )
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Common Units
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; in-game durations, distances, and rotations are stored in special formats.
+;; these macros/constants convert from literals to the correct format.
+;; for example, (meters 4.0) will give you a distance representing 4 in-game meters.
+
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
+(defglobalconstant METER_LENGTH 4096.0)
+
+(defmacro meters (x)
+  "Convert number to meters.
+   If the input is a constant float or integer, the result will be a
+   compile time constant float. Otherwise, it will not be constant.
+   Returns float."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
+  (cond
+    ((float? x)
+     (* METER_LENGTH x)
+     )
+    ((integer? x)
+     (* METER_LENGTH x)
+     )
+    (#t
+     `(* METER_LENGTH ,x)
+     )
+    )
+  )
+
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
+(defglobalconstant DEGREES_PER_ROT 65536.0)
+
+;; this was deg in GOAL
+(defmacro degrees (x)
+  "Convert number to degrees unit.
+   Will keep a constant float/int constant."
+  (cond
+    ((or (float? x) (integer? x))
+     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
+     )
+    (#t
+     `(* (/ (the float ,x) 360.0)
+         DEGREES_PER_ROT
+         )
+     )
+    )
+  )
+
+(defmacro fsec (x)
+  "Convert number to seconds unit.
+   Returns float."
+  (cond
+    ((or (integer? x) (float? x))
+     (* 1.0 TICKS_PER_SECOND x)
+     )
+    (#t
+     `(* 1.0 TICKS_PER_SECOND ,x)
+     )
+    )
+  )
+
+
 ;; DECOMP BEGINS
 
+(deftype basic-reserved (basic)
+  ()
+  (:methods
+    (basic-reserved-method-9 () none)
+    (basic-reserved-method-10 () none)
+    (basic-reserved-method-11 () none)
+    (basic-reserved-method-12 () none)
+    (basic-reserved-method-13 () none)
+    (basic-reserved-method-14 () none)
+    (basic-reserved-method-15 () none)
+    (basic-reserved-method-16 () none)
+    (basic-reserved-method-17 () none)
+    (basic-reserved-method-18 () none)
+    (basic-reserved-method-19 () none)
+    (basic-reserved-method-20 () none)
+    (basic-reserved-method-21 () none)
+    (basic-reserved-method-22 () none)
+    (basic-reserved-method-23 () none)
+    (basic-reserved-method-24 () none)
+    (basic-reserved-method-25 () none)
+    (basic-reserved-method-26 () none)
+    (basic-reserved-method-27 () none)
+    (basic-reserved-method-28 () none)
+    )
+  )
+
+(deftype part-id (uint32)
+  ()
+  )
+
+;; og:preserve-this
+;; unused, and not supported in the compiler, since the linker would need to link to the type object, which
+;; means the type needs to be allocated, and we'd need to know the number of methods.
+;; technically, the compiler does support this through the `(type-ref sage-finalboss :method-count 53)` feature,
+;; but it seems like too much work to support this in the decompiler for an array that's not even used...
+; (new 'static 'boxed-array :type type
+;   pilot-info
+;   flut-info
+;   mech-info
+;   turret-info
+;   indax-info
+;   tube-info
+;   race-mesh
+;   )

@@ -12,6 +12,7 @@
 #include "decompiler/level_extractor/BspHeader.h"
 #include "decompiler/level_extractor/extract_actors.h"
 #include "decompiler/level_extractor/extract_collide_frags.h"
+#include "decompiler/level_extractor/extract_hfrag.h"
 #include "decompiler/level_extractor/extract_joint_group.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "decompiler/level_extractor/extract_shrub.h"
@@ -28,25 +29,9 @@ namespace decompiler {
 std::optional<ObjectFileRecord> get_bsp_file(const std::vector<ObjectFileRecord>& records,
                                              const std::string& dgo_name) {
   std::optional<ObjectFileRecord> result;
-  bool found = false;
-  for (auto& file : records) {
-    if (file.name.length() > 4 && file.name.substr(file.name.length() - 4) == "-vis") {
-      ASSERT(!found);
-      found = true;
-      result = file;
-    }
-  }
-
-  if (!result) {
-    if (str_util::ends_with(dgo_name, ".DGO") || str_util::ends_with(dgo_name, ".CGO")) {
-      auto expected_name = dgo_name.substr(0, dgo_name.length() - 4);
-      for (auto& c : expected_name) {
-        c = tolower(c);
-      }
-      if (!records.empty() && expected_name == records.back().name) {
-        return records.back();
-      }
-    }
+  if (str_util::ends_with(dgo_name, ".DGO")) {
+    // only DGOs are valid levels, and the last file is the bsp file
+    result = records.at(records.size() - 1);
   }
   return result;
 }
@@ -93,7 +78,6 @@ tfrag3::Texture make_texture(u32 id,
 void add_all_textures_from_level(tfrag3::Level& lev,
                                  const std::string& level_name,
                                  const TextureDB& tex_db) {
-  ASSERT(lev.textures.empty());
   const auto& level_it = tex_db.texture_ids_per_level.find(level_name);
   if (level_it != tex_db.texture_ids_per_level.end()) {
     for (auto id : level_it->second) {
@@ -126,12 +110,14 @@ void extract_art_groups_from_level(const ObjectFileDB& db,
                                    const std::string& dgo_name,
                                    tfrag3::Level& level_data,
                                    std::map<std::string, level_tools::ArtData>& art_group_data) {
-  const auto& files = db.obj_files_by_dgo.at(dgo_name);
-  for (const auto& file : files) {
-    if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
-      const auto& ag_file = db.lookup_record(file);
-      extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
-      extract_joint_group(ag_file, db.dts, db.version(), art_group_data);
+  if (db.obj_files_by_dgo.count(dgo_name)) {
+    const auto& files = db.obj_files_by_dgo.at(dgo_name);
+    for (const auto& file : files) {
+      if (file.name.length() > 3 && !file.name.compare(file.name.length() - 3, 3, "-ag")) {
+        const auto& ag_file = db.lookup_record(file);
+        extract_merc(ag_file, tex_db, db.dts, tex_remap, level_data, false, db.version());
+        extract_joint_group(ag_file, db.dts, db.version(), art_group_data);
+      }
     }
   }
 }
@@ -143,16 +129,15 @@ std::vector<level_tools::TextureRemap> extract_tex_remap(const ObjectFileDB& db,
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
   }
-  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
+  std::string level_name = bsp_rec->name;
 
   lg::info("Processing level {} ({})", dgo_name, level_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
 
-  level_tools::DrawStats draw_stats;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version(), true);
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, db.version(), true);
 
   return bsp_header.texture_remap_table;
 }
@@ -161,7 +146,6 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
                                               const TextureDB& tex_db,
                                               const std::string& dgo_name,
                                               const Config& config,
-                                              bool extract_collision,
                                               tfrag3::Level& level_data) {
   auto hacks = config.hacks;
   auto bsp_rec = get_bsp_file(db.obj_files_by_dgo.at(dgo_name), dgo_name);
@@ -169,18 +153,23 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
     lg::warn("Skipping extract for {} because the BSP file was not found", dgo_name);
     return {};
   }
-  std::string level_name = bsp_rec->name.substr(0, bsp_rec->name.length() - 4);
 
-  lg::info("Processing level {} ({})", dgo_name, level_name);
+  lg::info("Processing {}...", dgo_name);
   const auto& bsp_file = db.lookup_record(*bsp_rec);
   bool ok = is_valid_bsp(bsp_file.linked_data);
   ASSERT(ok);
 
-  level_tools::DrawStats draw_stats;
-  // draw_stats.debug_print_dma_data = true;
   level_tools::BspHeader bsp_header;
-  bsp_header.read_from_file(bsp_file.linked_data, db.dts, &draw_stats, db.version());
+  bsp_header.read_from_file(bsp_file.linked_data, db.dts, db.version());
   ASSERT((int)bsp_header.drawable_tree_array.trees.size() == bsp_header.drawable_tree_array.length);
+
+  // grrr.....
+  if (db.version() == GameVersion::Jak1 && dgo_name == "TIT.DGO" && bsp_header.name == "intro") {
+    bsp_header.name = "title";
+  } else if (db.version() == GameVersion::Jak1 && dgo_name == "DEM.DGO" &&
+             bsp_header.name == "intro") {
+    bsp_header.name = "demo";
+  }
 
   /*
   level_tools::PrintSettings settings;
@@ -208,7 +197,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       auto as_tfrag_tree = dynamic_cast<level_tools::DrawableTreeTfrag*>(draw_tree.get());
       ASSERT(as_tfrag_tree);
       std::vector<std::pair<int, int>> expected_missing_textures;
-      auto it = hacks.missing_textures_by_level.find(level_name);
+      auto it = hacks.missing_textures_by_level.find(bsp_header.name);
       if (it != hacks.missing_textures_by_level.end()) {
         expected_missing_textures = it->second;
       }
@@ -220,7 +209,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       }
       extract_tfrag(as_tfrag_tree, fmt::format("{}-{}", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, expected_missing_textures, level_data,
-                    false, level_name, atest_disable_flag);
+                    false, bsp_header.name, atest_disable_flag);
     } else if (draw_tree->my_type() == "drawable-tree-instance-tie") {
       auto as_tie_tree = dynamic_cast<level_tools::DrawableTreeInstanceTie*>(draw_tree.get());
       ASSERT(as_tie_tree);
@@ -232,14 +221,15 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
       ASSERT(as_shrub_tree);
       extract_shrub(as_shrub_tree, fmt::format("{}-{}-shrub", dgo_name, i++),
                     bsp_header.texture_remap_table, tex_db, {}, level_data, false, db.version());
-    } else if (draw_tree->my_type() == "drawable-tree-collide-fragment" && extract_collision) {
+    } else if (draw_tree->my_type() == "drawable-tree-collide-fragment" &&
+               config.extract_collision) {
       auto as_collide_frags =
           dynamic_cast<level_tools::DrawableTreeCollideFragment*>(draw_tree.get());
       ASSERT(as_collide_frags);
       ASSERT(!got_collide);
       got_collide = true;
       extract_collide_frags(as_collide_frags, all_ties, config,
-                            fmt::format("{}-{}-collide", dgo_name, i++), level_data, false);
+                            fmt::format("{}-{}-collide", dgo_name, i++), level_data);
     } else {
       lg::print("  unsupported tree {}\n", draw_tree->my_type());
     }
@@ -248,9 +238,12 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
   if (bsp_header.collide_hash.num_items) {
     ASSERT(!got_collide);
     extract_collide_frags(bsp_header.collide_hash, all_ties, config,
-                          fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data, false);
+                          fmt::format("{}-{}-collide", dgo_name, i++), db.dts, level_data);
   }
-  level_data.level_name = level_name;
+  if (bsp_header.hfrag) {
+    extract_hfrag(bsp_header, tex_db, &level_data);
+  }
+  level_data.level_name = bsp_header.name;
 
   return bsp_header;
 }
@@ -463,7 +456,6 @@ MercSwapData load_merc_model(u32 current_idx_count,
 void extract_common(const ObjectFileDB& db,
                     const TextureDB& tex_db,
                     const std::string& dgo_name,
-                    bool dump_levels,
                     const fs::path& output_folder,
                     const Config& config) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
@@ -497,6 +489,9 @@ void extract_common(const ObjectFileDB& db,
   for (auto& tex : merc_data.new_textures) {
     tfrag_level.textures.push_back(tex);
   }
+
+  add_all_textures_from_level(tfrag_level, "ARTSPOOL", tex_db);
+  extract_art_groups_from_level(db, tex_db, {}, "ARTSPOOL", tfrag_level, art_group_data);
 
   std::set<std::string> textures_we_have;
 
@@ -541,7 +536,7 @@ void extract_common(const ObjectFileDB& db,
       output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
       compressed.data(), compressed.size());
 
-  if (dump_levels) {
+  if (config.rip_levels) {
     auto file_path = file_util::get_jak_project_dir() / "glb_out" / "common.glb";
     file_util::create_dir_if_needed_for_file(file_path);
     save_level_foreground_as_gltf(tfrag_level, art_group_data, file_path);
@@ -552,8 +547,6 @@ void extract_from_level(const ObjectFileDB& db,
                         const TextureDB& tex_db,
                         const std::string& dgo_name,
                         const Config& config,
-                        bool dump_level,
-                        bool extract_collision,
                         const fs::path& output_folder,
                         const fs::path& entities_folder) {
   if (db.obj_files_by_dgo.count(dgo_name) == 0) {
@@ -565,8 +558,7 @@ void extract_from_level(const ObjectFileDB& db,
   add_all_textures_from_level(level_data, dgo_name, tex_db);
 
   // the bsp header file data
-  auto bsp_header =
-      extract_bsp_from_level(db, tex_db, dgo_name, config, extract_collision, level_data);
+  auto bsp_header = extract_bsp_from_level(db, tex_db, dgo_name, config, level_data);
   extract_art_groups_from_level(db, tex_db, bsp_header.texture_remap_table, dgo_name, level_data,
                                 art_group_data);
 
@@ -574,15 +566,14 @@ void extract_from_level(const ObjectFileDB& db,
   level_data.serialize(ser);
   auto compressed =
       compression::compress_zstd(ser.get_save_result().first, ser.get_save_result().second);
-  lg::info("stats for {}", dgo_name);
+  lg::info("stats for {}", level_data.level_name);
   print_memory_usage(level_data, ser.get_save_result().second);
   lg::info("compressed: {} -> {} ({:.2f}%)", ser.get_save_result().second, compressed.size(),
            100.f * compressed.size() / ser.get_save_result().second);
-  file_util::write_binary_file(
-      output_folder / fmt::format("{}.fr3", dgo_name.substr(0, dgo_name.length() - 4)),
-      compressed.data(), compressed.size());
+  file_util::write_binary_file(output_folder / fmt::format("{}.fr3", level_data.level_name),
+                               compressed.data(), compressed.size());
 
-  if (dump_level) {
+  if (config.rip_levels) {
     auto back_file_path = file_util::get_jak_project_dir() / "glb_out" /
                           fmt::format("{}_background.glb", level_data.level_name);
     file_util::create_dir_if_needed_for_file(back_file_path);
@@ -601,18 +592,15 @@ void extract_all_levels(const ObjectFileDB& db,
                         const std::vector<std::string>& dgo_names,
                         const std::string& common_name,
                         const Config& config,
-                        bool debug_dump_level,
-                        bool extract_collision,
                         const fs::path& output_path) {
-  extract_common(db, tex_db, common_name, debug_dump_level, output_path, config);
+  extract_common(db, tex_db, common_name, output_path, config);
   auto entities_dir = file_util::get_jak_project_dir() / "decompiler_out" /
                       game_version_names[config.game_version] / "entities";
   file_util::create_dir_if_needed(entities_dir);
   SimpleThreadGroup threads;
   threads.run(
       [&](int idx) {
-        extract_from_level(db, tex_db, dgo_names[idx], config, debug_dump_level, extract_collision,
-                           output_path, entities_dir);
+        extract_from_level(db, tex_db, dgo_names[idx], config, output_path, entities_dir);
       },
       dgo_names.size());
   threads.join();

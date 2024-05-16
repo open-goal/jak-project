@@ -1,0 +1,13 @@
+("DESJUMP.DGO"
+ ("wcar-catapult.o"
+  "desert-jump.o"
+  "tpage-3220.go"
+  "tpage-2768.go"
+  "tpage-2769.go"
+  "tpage-2766.go"
+  "catapult-ag.go"
+  "interceptor-ag.go"
+  "wascity-airlock-debris-ag.go"
+  "beam-generator-ag.go"
+  "desjump.go"
+ ))

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_THREAD_OS2
+#ifdef SDL_THREAD_OS2
 
 /* An implementation of semaphores for OS/2 */
 
@@ -39,13 +39,12 @@ struct SDL_semaphore {
 };
 
 
-SDL_sem *
-SDL_CreateSemaphore(Uint32 initial_value)
+SDL_sem *SDL_CreateSemaphore(Uint32 initial_value)
 {
     ULONG ulRC;
     SDL_sem *pSDLSem = SDL_malloc(sizeof(SDL_sem));
 
-    if (pSDLSem == NULL) {
+    if (!pSDLSem) {
         SDL_OutOfMemory();
         return NULL;
     }
@@ -70,8 +69,7 @@ SDL_CreateSemaphore(Uint32 initial_value)
     return pSDLSem;
 }
 
-void
-SDL_DestroySemaphore(SDL_sem * sem)
+void SDL_DestroySemaphore(SDL_sem * sem)
 {
     if (!sem) return;
 
@@ -80,15 +78,14 @@ SDL_DestroySemaphore(SDL_sem * sem)
     SDL_free(sem);
 }
 
-int
-SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
+int SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
 {
     ULONG ulRC;
     ULONG ulStartTime, ulCurTime;
     ULONG ulTimeout;
     ULONG cPost;
 
-    if (sem == NULL)
+    if (!sem)
         return SDL_InvalidParamError("sem");
 
     if (timeout != SEM_INDEFINITE_WAIT)
@@ -129,24 +126,21 @@ SDL_SemWaitTimeout(SDL_sem * sem, Uint32 timeout)
     return 0;
 }
 
-int
-SDL_SemTryWait(SDL_sem * sem)
+int SDL_SemTryWait(SDL_sem * sem)
 {
     return SDL_SemWaitTimeout(sem, 0);
 }
 
-int
-SDL_SemWait(SDL_sem * sem)
+int SDL_SemWait(SDL_sem * sem)
 {
     return SDL_SemWaitTimeout(sem, SDL_MUTEX_MAXWAIT);
 }
 
-Uint32
-SDL_SemValue(SDL_sem * sem)
+Uint32 SDL_SemValue(SDL_sem * sem)
 {
     ULONG ulRC;
 
-    if (sem == NULL) {
+    if (!sem) {
         SDL_InvalidParamError("sem");
         return 0;
     }
@@ -161,12 +155,11 @@ SDL_SemValue(SDL_sem * sem)
     return ulRC;
 }
 
-int
-SDL_SemPost(SDL_sem * sem)
+int SDL_SemPost(SDL_sem * sem)
 {
     ULONG ulRC;
 
-    if (sem == NULL)
+    if (!sem)
         return SDL_InvalidParamError("sem");
 
     ulRC = DosRequestMutexSem(sem->hMtx, SEM_INDEFINITE_WAIT);

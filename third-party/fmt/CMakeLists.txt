@@ -1,9 +1,9 @@
-cmake_minimum_required(VERSION 3.8...3.25)
+cmake_minimum_required(VERSION 3.8...3.26)
 
 # Fallback for using newer policies on CMake <3.12.
-if(${CMAKE_VERSION} VERSION_LESS 3.12)
+if (${CMAKE_VERSION} VERSION_LESS 3.12)
   cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-endif()
+endif ()
 
 # Determine if fmt is built as a subproject (using add_subdirectory)
 # or if it is the master project.
@@ -24,15 +24,86 @@ function(join result_var)
   set(${result_var} "${result}" PARENT_SCOPE)
 endfunction()
 
+# DEPRECATED! Should be merged into add_module_library.
 function(enable_module target)
   if (MSVC)
     set(BMI ${CMAKE_CURRENT_BINARY_DIR}/${target}.ifc)
     target_compile_options(${target}
       PRIVATE /interface /ifcOutput ${BMI}
       INTERFACE /reference fmt=${BMI})
+    set_target_properties(${target} PROPERTIES ADDITIONAL_CLEAN_FILES ${BMI})
+    set_source_files_properties(${BMI} PROPERTIES GENERATED ON)
   endif ()
-  set_target_properties(${target} PROPERTIES ADDITIONAL_CLEAN_FILES ${BMI})
-  set_source_files_properties(${BMI} PROPERTIES GENERATED ON)
+endfunction()
+
+# Adds a library compiled with C++20 module support.
+# `enabled` is a CMake variables that specifies if modules are enabled.
+# If modules are disabled `add_module_library` falls back to creating a
+# non-modular library.
+#
+# Usage:
+#   add_module_library(<name> [sources...] FALLBACK [sources...] [IF enabled])
+function(add_module_library name)
+  cmake_parse_arguments(AML "" "IF" "FALLBACK" ${ARGN})
+  set(sources ${AML_UNPARSED_ARGUMENTS})
+
+  add_library(${name})
+  set_target_properties(${name} PROPERTIES LINKER_LANGUAGE CXX)
+
+  if (NOT ${${AML_IF}})
+    # Create a non-modular library.
+    target_sources(${name} PRIVATE ${AML_FALLBACK})
+    return()
+  endif ()
+
+  # Modules require C++20.
+  target_compile_features(${name} PUBLIC cxx_std_20)
+  if (CMAKE_COMPILER_IS_GNUCXX)
+    target_compile_options(${name} PUBLIC -fmodules-ts)
+  endif ()
+
+  # `std` is affected by CMake options and may be higher than C++20.
+  get_target_property(std ${name} CXX_STANDARD)
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(pcms)
+    foreach (src ${sources})
+      get_filename_component(pcm ${src} NAME_WE)
+      set(pcm ${pcm}.pcm)
+
+      # Propagate -fmodule-file=*.pcm to targets that link with this library.
+      target_compile_options(
+        ${name} PUBLIC -fmodule-file=${CMAKE_CURRENT_BINARY_DIR}/${pcm})
+
+      # Use an absolute path to prevent target_link_libraries prepending -l
+      # to it.
+      set(pcms ${pcms} ${CMAKE_CURRENT_BINARY_DIR}/${pcm})
+      add_custom_command(
+        OUTPUT ${pcm}
+        COMMAND ${CMAKE_CXX_COMPILER}
+                -std=c++${std} -x c++-module --precompile -c
+                -o ${pcm} ${CMAKE_CURRENT_SOURCE_DIR}/${src}
+                "-I$<JOIN:$<TARGET_PROPERTY:${name},INCLUDE_DIRECTORIES>,;-I>"
+        # Required by the -I generator expression above.
+        COMMAND_EXPAND_LISTS
+        DEPENDS ${src})
+    endforeach ()
+
+    # Add .pcm files as sources to make sure they are built before the library.
+    set(sources)
+    foreach (pcm ${pcms})
+      get_filename_component(pcm_we ${pcm} NAME_WE)
+      set(obj ${pcm_we}.o)
+      # Use an absolute path to prevent target_link_libraries prepending -l.
+      set(sources ${sources} ${pcm} ${CMAKE_CURRENT_BINARY_DIR}/${obj})
+      add_custom_command(
+        OUTPUT ${obj}
+        COMMAND ${CMAKE_CXX_COMPILER} $<TARGET_PROPERTY:${name},COMPILE_OPTIONS>
+                -c -o ${obj} ${pcm}
+        DEPENDS ${pcm})
+    endforeach ()
+  endif ()
+  target_sources(${name} PRIVATE ${sources})
 endfunction()
 
 include(CMakeParseArguments)
@@ -83,14 +154,6 @@ option(FMT_OS "Include core requiring OS (Windows/Posix) " ON)
 option(FMT_MODULE "Build a module instead of a traditional library." OFF)
 option(FMT_SYSTEM_HEADERS "Expose headers with marking them as system." OFF)
 
-set(FMT_CAN_MODULE OFF)
-if (CMAKE_CXX_STANDARD GREATER 17 AND NOT MSVC)
-  set(FMT_CAN_MODULE ON)
-endif ()
-if (NOT FMT_CAN_MODULE)
-  set(FMT_MODULE OFF)
-  message(STATUS "Module support is disabled.")
-endif ()
 if (FMT_TEST AND FMT_MODULE)
   # The tests require {fmt} to be compiled as traditional library
   message(STATUS "Testing is incompatible with build mode 'module'.")
@@ -99,9 +162,13 @@ set(FMT_SYSTEM_HEADERS_ATTRIBUTE "")
 if (FMT_SYSTEM_HEADERS)
   set(FMT_SYSTEM_HEADERS_ATTRIBUTE SYSTEM)
 endif ()
+if (CMAKE_SYSTEM_NAME STREQUAL "MSDOS")
+  set(FMT_TEST OFF)
+  message(STATUS "MSDOS is incompatible with gtest")
+endif ()
 
 # Get version from core.h
-file(READ core.h core_h)
+file(READ include/fmt/core.h core_h)
 if (NOT core_h MATCHES "FMT_VERSION ([0-9]+)([0-9][0-9])([0-9][0-9])")
   message(FATAL_ERROR "Cannot get FMT_VERSION from core.h.")
 endif ()
@@ -123,6 +190,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
   "${CMAKE_CURRENT_SOURCE_DIR}/support/cmake")
 
 include(CheckCXXCompilerFlag)
+include(JoinPaths)
 
 if (FMT_MASTER_PROJECT AND NOT DEFINED CMAKE_CXX_VISIBILITY_PRESET)
   set_verbose(CMAKE_CXX_VISIBILITY_PRESET hidden CACHE STRING
@@ -200,24 +268,27 @@ endif ()
 function(add_headers VAR)
   set(headers ${${VAR}})
   foreach (header ${ARGN})
-    set(headers ${headers} ${header})
+    set(headers ${headers} include/fmt/${header})
   endforeach()
   set(${VAR} ${headers} PARENT_SCOPE)
 endfunction()
 
 # Define the fmt library, its includes and the needed defines.
-add_headers(FMT_HEADERS color.h core.h format.h
-                        format-inl.h os.h ranges.h)
-if (FMT_MODULE)
-  set(FMT_SOURCES fmt.cc)
-elseif (FMT_OS)
-  set(FMT_SOURCES format.cc os.cc)
-else()
-  set(FMT_SOURCES format.cc)
+add_headers(FMT_HEADERS args.h chrono.h color.h compile.h core.h format.h
+                        format-inl.h os.h ostream.h printf.h ranges.h std.h
+                        xchar.h)
+set(FMT_SOURCES src/format.cc)
+if (FMT_OS)
+  set(FMT_SOURCES ${FMT_SOURCES} src/os.cc)
 endif ()
 
-add_library(fmt ${FMT_SOURCES} ${FMT_HEADERS})
+add_module_library(fmt src/fmt.cc FALLBACK
+                   ${FMT_SOURCES} ${FMT_HEADERS} README.md ChangeLog.md
+                   IF FMT_MODULE)
 add_library(fmt::fmt ALIAS fmt)
+if (FMT_MODULE)
+  enable_module(fmt)
+endif ()
 
 if (FMT_WERROR)
   target_compile_options(fmt PRIVATE ${WERROR_FLAG})
@@ -225,11 +296,12 @@ endif ()
 if (FMT_PEDANTIC)
   target_compile_options(fmt PRIVATE ${PEDANTIC_COMPILE_FLAGS})
 endif ()
-if (FMT_MODULE)
-  enable_module(fmt)
-endif ()
 
-target_compile_features(fmt PUBLIC cxx_std_11)
+if (cxx_std_11 IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+  target_compile_features(fmt PUBLIC cxx_std_11)
+else ()
+  message(WARNING "Feature cxx_std_11 is unknown for the CXX compiler")
+endif ()
 
 target_include_directories(fmt ${FMT_SYSTEM_HEADERS_ATTRIBUTE} PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -240,7 +312,15 @@ set(FMT_DEBUG_POSTFIX d CACHE STRING "Debug library postfix.")
 set_target_properties(fmt PROPERTIES
   VERSION ${FMT_VERSION} SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR}
   PUBLIC_HEADER "${FMT_HEADERS}"
-  DEBUG_POSTFIX "${FMT_DEBUG_POSTFIX}")
+  DEBUG_POSTFIX "${FMT_DEBUG_POSTFIX}"
+
+  # Workaround for Visual Studio 2017:
+  # Ensure the .pdb is created with the same name and in the same directory
+  # as the .lib. Newer VS versions already do this by default, but there is no
+  # harm in setting it for those too. Ignored by other generators.
+  COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+  COMPILE_PDB_NAME "fmt"
+  COMPILE_PDB_NAME_DEBUG "fmt${FMT_DEBUG_POSTFIX}")
 
 # Set FMT_LIB_NAME for pkg-config fmt.pc. We cannot use the OUTPUT_NAME target
 # property because it's not set by default.
@@ -250,11 +330,11 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif ()
 
 if (BUILD_SHARED_LIBS)
-  target_compile_definitions(fmt PRIVATE FMT_EXPORT INTERFACE FMT_SHARED)
+  target_compile_definitions(fmt PRIVATE FMT_LIB_EXPORT INTERFACE FMT_SHARED)
 endif ()
 if (FMT_SAFE_DURATION_CAST)
   target_compile_definitions(fmt PUBLIC FMT_SAFE_DURATION_CAST)
-endif()
+endif ()
 
 add_library(fmt-header-only INTERFACE)
 add_library(fmt::fmt-header-only ALIAS fmt-header-only)
@@ -262,9 +342,73 @@ add_library(fmt::fmt-header-only ALIAS fmt-header-only)
 target_compile_definitions(fmt-header-only INTERFACE FMT_HEADER_ONLY=1)
 target_compile_features(fmt-header-only INTERFACE cxx_std_11)
 
-target_include_directories(fmt-header-only ${FMT_SYSTEM_HEADERS_ATTRIBUTE} INTERFACE
+target_include_directories(fmt-header-only
+  ${FMT_SYSTEM_HEADERS_ATTRIBUTE} INTERFACE
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:${FMT_INC_DIR}>)
+
+# Install targets.
+if (FMT_INSTALL)
+  include(CMakePackageConfigHelpers)
+  set_verbose(FMT_CMAKE_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/fmt CACHE STRING
+              "Installation directory for cmake files, a relative path that "
+              "will be joined with ${CMAKE_INSTALL_PREFIX} or an absolute "
+              "path.")
+  set(version_config ${PROJECT_BINARY_DIR}/fmt-config-version.cmake)
+  set(project_config ${PROJECT_BINARY_DIR}/fmt-config.cmake)
+  set(pkgconfig ${PROJECT_BINARY_DIR}/fmt.pc)
+  set(targets_export_name fmt-targets)
+
+  set_verbose(FMT_LIB_DIR ${CMAKE_INSTALL_LIBDIR} CACHE STRING
+              "Installation directory for libraries, a relative path that "
+              "will be joined to ${CMAKE_INSTALL_PREFIX} or an absolute path.")
+
+  set_verbose(FMT_PKGCONFIG_DIR ${CMAKE_INSTALL_LIBDIR}/pkgconfig CACHE STRING
+              "Installation directory for pkgconfig (.pc) files, a relative "
+              "path that will be joined with ${CMAKE_INSTALL_PREFIX} or an "
+              "absolute path.")
+
+  # Generate the version, config and target files into the build directory.
+  write_basic_package_version_file(
+    ${version_config}
+    VERSION ${FMT_VERSION}
+    COMPATIBILITY AnyNewerVersion)
+
+  join_paths(libdir_for_pc_file "\${exec_prefix}" "${FMT_LIB_DIR}")
+  join_paths(includedir_for_pc_file "\${prefix}" "${FMT_INC_DIR}")
+
+  configure_file(
+    "${PROJECT_SOURCE_DIR}/support/cmake/fmt.pc.in"
+    "${pkgconfig}"
+    @ONLY)
+  configure_package_config_file(
+    ${PROJECT_SOURCE_DIR}/support/cmake/fmt-config.cmake.in
+    ${project_config}
+    INSTALL_DESTINATION ${FMT_CMAKE_DIR})
+
+  set(INSTALL_TARGETS fmt fmt-header-only)
+
+  # Install the library and headers.
+  install(TARGETS ${INSTALL_TARGETS} EXPORT ${targets_export_name}
+          LIBRARY DESTINATION ${FMT_LIB_DIR}
+          ARCHIVE DESTINATION ${FMT_LIB_DIR}
+          PUBLIC_HEADER DESTINATION "${FMT_INC_DIR}/fmt"
+          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+  # Use a namespace because CMake provides better diagnostics for namespaced
+  # imported targets.
+  export(TARGETS ${INSTALL_TARGETS} NAMESPACE fmt::
+         FILE ${PROJECT_BINARY_DIR}/${targets_export_name}.cmake)
+
+  # Install version, config and target files.
+  install(
+    FILES ${project_config} ${version_config}
+    DESTINATION ${FMT_CMAKE_DIR})
+  install(EXPORT ${targets_export_name} DESTINATION ${FMT_CMAKE_DIR}
+          NAMESPACE fmt::)
+
+  install(FILES "${pkgconfig}" DESTINATION "${FMT_PKGCONFIG_DIR}")
+endif ()
 
 if (FMT_DOC)
   add_subdirectory(doc)
@@ -304,6 +448,6 @@ if (FMT_MASTER_PROJECT AND EXISTS ${gitignore})
   set(CPACK_SOURCE_IGNORE_FILES ${ignored_files})
   set(CPACK_SOURCE_PACKAGE_FILE_NAME fmt-${FMT_VERSION})
   set(CPACK_PACKAGE_NAME fmt)
-  set(CPACK_RESOURCE_FILE_README ${PROJECT_SOURCE_DIR}/README.rst)
+  set(CPACK_RESOURCE_FILE_README ${PROJECT_SOURCE_DIR}/README.md)
   include(CPack)
 endif ()

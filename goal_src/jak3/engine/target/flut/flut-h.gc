@@ -5,5 +5,72 @@
 ;; name in dgo: flut-h
 ;; dgos: GAME
 
+;; +++flut-flag
+(defenum flut-flag
+  :type uint64
+  :bitfield #t
+  (ff0 0)
+  (ff1 1)
+  (ff2 2)
+  (ff3 3)
+  )
+;; ---flut-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype flut-info (basic)
+  ((entity            entity-actor)
+   (flut-trans        vector      :inline)
+   (flut-quat         vector      :inline)
+   (flut-scale        vector      :inline)
+   (prev-quat         quaternion  :inline)
+   (stick-lock        symbol)
+   (flap-sound-id     uint32)
+   (mode-sound-bank   connection)
+   (mode              basic)
+   (color-index       int32)
+   (as-daxter?        symbol)
+   (art-group-backup  art-group)
+   (flut-start-time   time-frame)
+   (wild-turn-time    time-frame)
+   (wild-turn-rate    degrees)
+   (attack-id         uint32)
+   )
+  )
+
+
+(deftype flut (process-focusable)
+  ((root               collide-shape-moving :override)
+   (extra-trans        vector                :inline)
+   (condition          int32)
+   (shadow-backup      shadow-geo)
+   (rider              handle)
+   (nav-sphere-handle  handle)
+   (probe-time         time-frame)
+   (count-lock         symbol)
+   (flags              flut-flag)
+   (mode               symbol)
+   (color-index        int32)
+   (minimap            connection-minimap)
+   )
+  (:state-methods
+    wait-for-start
+    idle
+    (pickup (state flut))
+    wait-for-return
+    die
+    )
+  (:methods
+    (flut-method-33 (_type_) symbol)
+    (spawn-part-and-sound! (_type_) none)
+    )
+  )
+
+
+(defskelgroup skel-flut flut-saddle flut-saddle-lod0-jg -1
+              ((flut-saddle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              :shadow flut-saddle-shadow-mg
+              :sort 1
+              )

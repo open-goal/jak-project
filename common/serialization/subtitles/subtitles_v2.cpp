@@ -5,7 +5,7 @@
 
 #include "subtitles_v1.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 void to_json(json& j, const SubtitleLineMetadata& obj) {
   json_serialize(frame_start);
@@ -373,7 +373,7 @@ bool GameSubtitleDB::write_subtitle_db_to_files(const GameVersion game_version) 
       file_util::write_text_file(dump_path, lines_file.dump(2));
     }
   } catch (std::exception& ex) {
-    lg::error(ex.what());
+    lg::error("{}", ex.what());
     return false;
   }
   return true;

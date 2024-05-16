@@ -115,10 +115,9 @@ class Tie3 : public BucketRenderer {
     const std::vector<tfrag3::StripDraw>* draws = nullptr;
     const std::vector<tfrag3::InstancedStripDraw>* wind_draws = nullptr;
     const std::vector<tfrag3::TieWindInstance>* instance_info = nullptr;
-    const std::vector<tfrag3::TimeOfDayColor>* colors = nullptr;
+    const tfrag3::PackedTimeOfDay* colors = nullptr;
     const tfrag3::BVH* vis = nullptr;
     const u32* index_data = nullptr;
-    SwizzledTimeOfDay tod_cache;
     std::vector<std::array<math::Vector4f, 4>> wind_matrix_cache;
     GLuint wind_vertex_index_buffer;
     std::vector<u32> wind_vertex_index_offsets;

@@ -1,0 +1,103 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function make-debug-sphere-table
+;; INFO: Used lq/sq
+(defun make-debug-sphere-table ((arg0 vector-array) (arg1 float) (arg2 float))
+  "Create a table of lines on a sphere."
+  (local-vars (sv-80 vector) (sv-96 vector) (sv-112 int))
+  (let ((s2-0 (new-stack-vector0))
+        (f30-0 1.0)
+        (s5-0 0)
+        )
+    (set-vector! s2-0 0.0 0.0 0.0 1.0)
+    (dotimes (s1-0 (the int arg2))
+      (let ((f28-0 (* f30-0 (sin (* (the float s1-0) (/ 32768.0 arg2)))))
+            (f26-0 (* f30-0 (sin (* (the float (+ s1-0 1)) (/ 32768.0 arg2)))))
+            (s0-0 (new-stack-vector0))
+            )
+        (set! sv-80 (new 'stack-no-clear 'vector))
+        (set! (-> sv-80 quad) (the-as uint128 0))
+        (set! sv-96 (new 'stack-no-clear 'vector))
+        (set! (-> sv-96 quad) (the-as uint128 0))
+        (set! (-> s0-0 y) (+ (-> s2-0 y) (* (cos (* (the float s1-0) (/ 32768.0 arg2))) f30-0)))
+        (set! (-> sv-80 y) (-> s0-0 y))
+        (set! (-> sv-96 y) (+ (-> s2-0 y) (* (cos (* (the float (+ s1-0 1)) (/ 32768.0 arg2))) f30-0)))
+        (set! sv-112 0)
+        (while (< sv-112 (the int arg1))
+          (set! (-> s0-0 x) (+ (-> s2-0 x) (* (cos (* (the float sv-112) (/ 65536.0 arg1))) f28-0)))
+          (set! (-> s0-0 z) (+ (-> s2-0 z) (* (sin (* (the float sv-112) (/ 65536.0 arg1))) f28-0)))
+          (set! (-> sv-80 x) (+ (-> s2-0 x) (* (cos (* (the float (+ sv-112 1)) (/ 65536.0 arg1))) f28-0)))
+          (set! (-> sv-80 z) (+ (-> s2-0 z) (* (sin (* (the float (+ sv-112 1)) (/ 65536.0 arg1))) f28-0)))
+          (set! (-> sv-96 x) (+ (-> s2-0 x) (* (cos (* (the float sv-112) (/ 65536.0 arg1))) f26-0)))
+          (set! (-> sv-96 z) (+ (-> s2-0 z) (* (sin (* (the float sv-112) (/ 65536.0 arg1))) f26-0)))
+          (set! (-> arg0 data s5-0 quad) (-> s0-0 quad))
+          (set! (-> arg0 data (+ s5-0 1) quad) (-> sv-80 quad))
+          (set! (-> arg0 data (+ s5-0 2) quad) (-> sv-96 quad))
+          (+! s5-0 3)
+          (set! sv-112 (+ sv-112 1))
+          )
+        )
+      )
+    (set! (-> arg0 length) s5-0)
+    )
+  arg0
+  )
+
+;; this part is debug only
+(when *debug-segment*
+;; definition for symbol *debug-sphere-table*, type (array vector-array)
+(define *debug-sphere-table* (new 'debug 'boxed-array vector-array 10))
+
+)
+;; definition for function add-debug-sphere-from-table
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun add-debug-sphere-from-table ((arg0 bucket-id) (arg1 vector) (arg2 meters) (arg3 rgba) (arg4 int))
+  "Draw a sphere out of debug lines, using the precomputed table of lines."
+  (local-vars (sv-32 vector-array) (sv-36 vector))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         )
+    (if (zero? (-> *debug-sphere-table* arg4))
+        (set! (-> *debug-sphere-table* arg4)
+              (make-debug-sphere-table (new 'debug 'vector-array (* (* 3 arg4) arg4)) (the float arg4) (the float arg4))
+              )
+        )
+    (set! sv-32 (-> *debug-sphere-table* arg4))
+    (set! sv-36 (the-as vector (new-stack-vector0)))
+    (let ((s2-1 (new-stack-vector0))
+          (s1-1 (new-stack-vector0))
+          (s0-0 (the-as object (-> sv-32 data)))
+          )
+      (.lvf vf1 (&-> arg1 quad))
+      (.mov vf2 arg2)
+      (countdown (s4-1 (/ (-> sv-32 length) 3))
+        (.lvf vf3 (&-> (the-as (inline-array vector) s0-0) 0 quad))
+        (.lvf vf4 (&-> (the-as (inline-array vector) s0-0) 1 quad))
+        (.lvf vf5 (&-> (the-as (inline-array vector) s0-0) 2 quad))
+        (set! s0-0 (-> (the-as (inline-array vector) s0-0) 3))
+        (.mul.x.vf vf3 vf3 vf2)
+        (.mul.x.vf vf4 vf4 vf2)
+        (.mul.x.vf vf5 vf5 vf2)
+        (.add.vf vf3 vf3 vf1)
+        (.add.vf vf4 vf4 vf1)
+        (.add.vf vf5 vf5 vf1)
+        (.svf (&-> s2-1 quad) vf3)
+        (.svf (&-> s1-1 quad) vf4)
+        (.svf (&-> sv-36 quad) vf5)
+        (add-debug-line #t arg0 s2-1 s1-1 arg3 #f (the-as rgba -1))
+        (add-debug-line #t arg0 s2-1 sv-36 arg3 #f (the-as rgba -1))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+
+
+

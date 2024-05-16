@@ -1,0 +1,452 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *vehicle-rigid-body-queue*, type rigid-body-queue
+(define *vehicle-rigid-body-queue* (new 'static 'rigid-body-queue))
+
+;; definition for symbol *vehicle-info*, type vehicle-info
+(define *vehicle-info* (new 'static 'vehicle-info))
+
+;; failed to figure out what this is:
+(dotimes (v1-2 44)
+  (set! (-> *vehicle-info* handle-by-vehicle-type v1-2) (the-as handle #f))
+  )
+
+;; definition for function vehicle-entity-hack
+;; WARN: Return type mismatch int vs none.
+(defun vehicle-entity-hack ((arg0 int))
+  (with-pp
+    (case arg0
+      ((27)
+       (set! (-> pp level) (-> *traffic-info* vehicle-level))
+       )
+      (else
+        (set! (-> pp level) (level-get *level* (-> *traffic-info* vehicle-levels arg0)))
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition of type vehicle-manager
+(deftype vehicle-manager (process)
+  ()
+  (:state-methods
+    idle
+    active
+    )
+  (:methods
+    (vehicle-manager-method-16 (_type_) none)
+    (vehicle-manager-method-17 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type vehicle-manager
+(defmethod inspect ((this vehicle-manager))
+  (when (not this)
+    (set! this this)
+    (goto cfg-68)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~A~%" (-> this name))
+  (format #t "~1Tmask: #x~X : (process-mask " (-> this mask))
+  (let ((s5-0 (-> this mask)))
+    (if (= (logand s5-0 (process-mask process-tree)) (process-mask process-tree))
+        (format #t "process-tree ")
+        )
+    (if (= (logand s5-0 (process-mask target)) (process-mask target))
+        (format #t "target ")
+        )
+    (if (= (logand (process-mask collectable) s5-0) (process-mask collectable))
+        (format #t "collectable ")
+        )
+    (if (= (logand (process-mask projectile) s5-0) (process-mask projectile))
+        (format #t "projectile ")
+        )
+    (if (= (logand s5-0 (process-mask sleep-code)) (process-mask sleep-code))
+        (format #t "sleep-code ")
+        )
+    (if (= (logand s5-0 (process-mask actor-pause)) (process-mask actor-pause))
+        (format #t "actor-pause ")
+        )
+    (if (= (logand (process-mask metalhead) s5-0) (shl #x8000 16))
+        (format #t "metalhead ")
+        )
+    (if (= (logand (process-mask bot) s5-0) (process-mask bot))
+        (format #t "bot ")
+        )
+    (if (= (logand (process-mask vehicle) s5-0) (process-mask vehicle))
+        (format #t "vehicle ")
+        )
+    (if (= (logand (process-mask enemy) s5-0) (process-mask enemy))
+        (format #t "enemy ")
+        )
+    (if (= (logand (process-mask entity) s5-0) (process-mask entity))
+        (format #t "entity ")
+        )
+    (if (= (logand s5-0 (process-mask heap-shrunk)) (process-mask heap-shrunk))
+        (format #t "heap-shrunk ")
+        )
+    (if (= (logand (process-mask sidekick) s5-0) (process-mask sidekick))
+        (format #t "sidekick ")
+        )
+    (if (= (logand s5-0 (process-mask going)) (process-mask going))
+        (format #t "going ")
+        )
+    (if (= (logand s5-0 (process-mask execute)) (process-mask execute))
+        (format #t "execute ")
+        )
+    (if (= (logand (process-mask civilian) s5-0) (process-mask civilian))
+        (format #t "civilian ")
+        )
+    (if (= (logand (process-mask death) s5-0) (process-mask death))
+        (format #t "death ")
+        )
+    (if (= (logand (process-mask guard) s5-0) (process-mask guard))
+        (format #t "guard ")
+        )
+    (if (= (logand s5-0 (process-mask no-kill)) (process-mask no-kill))
+        (format #t "no-kill ")
+        )
+    (if (= (logand (process-mask kg-robot) s5-0) (process-mask kg-robot))
+        (format #t "kg-robot ")
+        )
+    (if (= (logand (process-mask platform) s5-0) (process-mask platform))
+        (format #t "platform ")
+        )
+    (if (= (logand s5-0 (process-mask freeze)) (process-mask freeze))
+        (format #t "freeze ")
+        )
+    (if (= (logand s5-0 (process-mask sleep)) (process-mask sleep))
+        (format #t "sleep ")
+        )
+    (if (= (logand s5-0 (process-mask progress)) (process-mask progress))
+        (format #t "progress ")
+        )
+    (if (= (logand s5-0 (process-mask menu)) (process-mask menu))
+        (format #t "menu ")
+        )
+    (if (= (logand (process-mask camera) s5-0) (process-mask camera))
+        (format #t "camera ")
+        )
+    (if (= (logand (process-mask ambient) s5-0) (process-mask ambient))
+        (format #t "ambient ")
+        )
+    (if (= (logand s5-0 (process-mask dark-effect)) (process-mask dark-effect))
+        (format #t "dark-effect ")
+        )
+    (if (= (logand (process-mask crate) s5-0) (process-mask crate))
+        (format #t "crate ")
+        )
+    (if (= (logand s5-0 (process-mask kernel-run)) (process-mask kernel-run))
+        (format #t "kernel-run ")
+        )
+    (if (= (logand s5-0 (process-mask movie)) (process-mask movie))
+        (format #t "movie ")
+        )
+    (if (= (logand s5-0 (process-mask pause)) (process-mask pause))
+        (format #t "pause ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tclock: ~A~%" (-> this clock))
+  (format #t "~1Tparent: #x~X~%" (-> this parent))
+  (format #t "~1Tbrother: #x~X~%" (-> this brother))
+  (format #t "~1Tchild: #x~X~%" (-> this child))
+  (format #t "~1Tppointer: #x~X~%" (-> this ppointer))
+  (format #t "~1Tself: ~A~%" (-> this self))
+  (format #t "~1Tpool: ~A~%" (-> this pool))
+  (format #t "~1Tstatus: ~A~%" (-> this status))
+  (format #t "~1Tpid: ~D~%" (-> this pid))
+  (format #t "~1Tmain-thread: ~A~%" (-> this main-thread))
+  (format #t "~1Ttop-thread: ~A~%" (-> this top-thread))
+  (format #t "~1Tentity: ~A~%" (-> this entity))
+  (format #t "~1Tlevel: ~A~%" (-> this level))
+  (format #t "~1Tstate: ~A~%" (-> this state))
+  (format #t "~1Tprev-state: ~A~%" (-> this prev-state))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~1Tstate-stack: ~A~%" (-> this state-stack))
+  (format #t "~1Ttrans-hook: ~A~%" (-> this trans-hook))
+  (format #t "~1Tpost-hook: ~A~%" (-> this post-hook))
+  (format #t "~1Tevent-hook: ~A~%" (-> this event-hook))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Theap-base: #x~X~%" (-> this heap-base))
+  (format #t "~1Theap-top: #x~X~%" (-> this heap-top))
+  (format #t "~1Theap-cur: #x~X~%" (-> this heap-cur))
+  (format #t "~1Tstack-frame-top: ~A~%" (-> this stack-frame-top))
+  (format #t "~1Theap: #<kheap @ #x~X>~%" (&-> this heap-base))
+  (format #t "~1Tconnection-list: ~`connectable`P~%" (-> this connection-list))
+  (format #t "~1Tstack[0] @ #x~X~%" (-> this stack))
+  (label cfg-68)
+  this
+  )
+
+;; definition for method 7 of type vehicle-manager
+;; WARN: Return type mismatch process vs vehicle-manager.
+(defmethod relocate ((this vehicle-manager) (offset int))
+  (set! *vehicle-manager* this)
+  (if *vehicle-manager*
+      (set! *vehicle-manager* (&+ *vehicle-manager* offset))
+      )
+  (the-as vehicle-manager ((method-of-type process relocate) this offset))
+  )
+
+;; definition for method 10 of type vehicle-manager
+(defmethod deactivate ((this vehicle-manager))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *vehicle-manager* #f)
+  (remove-setting *setting-control* this 'task-mask)
+  (apply-settings *setting-control*)
+  ((method-of-type process deactivate) this)
+  (none)
+  )
+
+;; definition for method 17 of type vehicle-manager
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-manager-method-17 ((this vehicle-manager))
+  0
+  (none)
+  )
+
+;; definition for function vehicle-manager-event-handler
+(defbehavior vehicle-manager-event-handler vehicle-manager ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('no-extra-bank)
+     (remove-setting! 'extra-bank)
+     )
+    (('extra-bank)
+     (let ((a3-1 (-> arg3 param 0)))
+       (set-setting! 'extra-bank a3-1 0.0 0)
+       )
+     )
+    )
+  )
+
+;; definition for function vehicle-manager-init-by-other
+(defbehavior vehicle-manager-init-by-other vehicle-manager ()
+  (stack-size-set! (-> self main-thread) 128)
+  (vehicle-entity-hack 27)
+  (set! *vehicle-manager* self)
+  (vehicle-manager-method-17 self)
+  (add-setting! 'task-mask 'clear 0.0 (task-mask vehicle))
+  (set! (-> self event-hook) vehicle-manager-event-handler)
+  (set! *rigid-body-queue-manager*
+        (the-as rigid-body-queue-manager (rigid-body-queue-manager-spawn *vehicle-rigid-body-queue* self))
+        )
+  (go-virtual idle)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (vehicle-manager)
+  :virtual #t
+  :event vehicle-manager-event-handler
+  :code (behavior ()
+    (suspend)
+    (suspend)
+    (go-virtual active)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (vehicle-manager)
+  :virtual #t
+  :event vehicle-manager-event-handler
+  :code sleep-code
+  )
+
+;; definition for function vehicle-manager-start
+;; WARN: Return type mismatch int vs none.
+(defun vehicle-manager-start ((arg0 process))
+  (if *vehicle-manager*
+      (change-parent *vehicle-manager* arg0)
+      (process-spawn vehicle-manager :name "vehicle-manager" :to arg0)
+      )
+  0
+  (none)
+  )
+
+;; definition for function vehicle-manager-kill
+;; WARN: Return type mismatch symbol vs none.
+(defun vehicle-manager-kill ()
+  (kill-by-type vehicle-manager *active-pool*)
+  (none)
+  )
+
+;; definition for function vehicle-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defbehavior vehicle-init-by-other vehicle ((arg0 int) (arg1 traffic-object-spawn-params))
+  (stack-size-set! (-> self main-thread) 16)
+  (logior! (-> self mask) (process-mask vehicle))
+  (init-collision! self)
+  (set! (-> self root trans quad) (-> arg1 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg1 rotation))
+  (set! (-> self root transv quad) (-> arg1 velocity quad))
+  (if (logtest? (-> arg1 flags) (traffic-spawn-flags tsf6))
+      (vehicle-method-149 self)
+      )
+  (if (not (logtest? (-> arg1 flags) (traffic-spawn-flags tsf0)))
+      (vehicle-entity-hack arg0)
+      )
+  (init-rbody-control! self)
+  (rigid-body-queue-method-11 *vehicle-rigid-body-queue* self)
+  (if (logtest? (-> arg1 flags) (traffic-spawn-flags tsf5))
+      (set! (-> self v-flags) (the-as vehicle-flag (logior (vehicle-flag unique) (-> self v-flags))))
+      )
+  (set! (-> self traffic-priority-id) (the-as int (-> arg1 id)))
+  (vehicle-method-132 self arg1)
+  )
+
+;; definition for function vehicle-spawn-hack
+;; WARN: Return type mismatch process vs vehicle.
+(defun vehicle-spawn-hack ((arg0 type) (arg1 traffic-object-spawn-params) (arg2 process))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((s3-0 (get-process *default-dead-pool* arg0 #x4000 1))
+           (v1-1 (when s3-0
+                   (let ((t9-1 (method-of-type process activate)))
+                     (t9-1 s3-0 arg2 "vehicle" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 vehicle-init-by-other 27 arg1)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (when v1-1
+        (set! gp-0 (-> v1-1 0))
+        (change-parent gp-0 *vehicle-manager*)
+        )
+      )
+    (if (and gp-0 (logtest? (-> arg1 flags) (traffic-spawn-flags tsf1)))
+        (vehicle-method-133 (the-as vehicle gp-0) arg1)
+        )
+    (the-as vehicle gp-0)
+    )
+  )
+
+;; definition for function vehicle-spawn
+;; WARN: Return type mismatch process vs process-drawable.
+(defun vehicle-spawn ((arg0 vehicle-type) (arg1 traffic-object-spawn-params))
+  (let ((gp-0 (the-as process #f)))
+    (cond
+      ((level-get *level* (-> *traffic-info* vehicle-levels arg0))
+       (let* ((a1-3 (type-from-vehicle-type arg0))
+              (s3-0 (get-process *default-dead-pool* a1-3 #x4000 1))
+              (a0-4 (when s3-0
+                      (let ((t9-3 (method-of-type process activate)))
+                        (t9-3 s3-0 *vehicle-manager* "vehicle" (the-as pointer #x70004000))
+                        )
+                      (run-now-in-process s3-0 vehicle-init-by-other arg0 arg1)
+                      (-> s3-0 ppointer)
+                      )
+                    )
+              )
+         (when a0-4
+           (set! gp-0 (-> a0-4 0))
+           (when (logtest? (-> arg1 flags) (traffic-spawn-flags tsf5))
+             (send-event (handle->process (-> *vehicle-info* handle-by-vehicle-type arg0)) 'go-die)
+             (set! (-> *vehicle-info* handle-by-vehicle-type arg0) (process->handle gp-0))
+             )
+           )
+         )
+       )
+      (else
+        0
+        )
+      )
+    (if (and gp-0 (logtest? (-> arg1 flags) (traffic-spawn-flags tsf1)))
+        (vehicle-method-133 (the-as vehicle gp-0) arg1)
+        )
+    (the-as process-drawable gp-0)
+    )
+  )
+
+;; definition for function type-from-vehicle-type
+(defun type-from-vehicle-type ((arg0 vehicle-type))
+  (case arg0
+    (((vehicle-type h-bike-a))
+     h-bike-a
+     )
+    (((vehicle-type h-bike-b))
+     h-bike-b
+     )
+    (((vehicle-type h-bike-c))
+     h-bike-c
+     )
+    (((vehicle-type h-bike-d))
+     h-bike-d
+     )
+    (((vehicle-type h-car-a))
+     h-car-a
+     )
+    (((vehicle-type h-car-b))
+     h-car-b
+     )
+    (((vehicle-type h-car-c))
+     h-car-c
+     )
+    (((vehicle-type h-hellcat))
+     h-hellcat
+     )
+    (((vehicle-type h-warf))
+     h-warf
+     )
+    (((vehicle-type h-glider))
+     h-glider
+     )
+    (((vehicle-type h-sled))
+     h-sled
+     )
+    (((vehicle-type h-kg-pickup))
+     h-kg-pickup
+     )
+    (((vehicle-type v-turtle))
+     v-turtle
+     )
+    (((vehicle-type v-snake))
+     v-snake
+     )
+    (((vehicle-type v-scorpion))
+     v-scorpion
+     )
+    (((vehicle-type v-toad))
+     v-toad
+     )
+    (((vehicle-type v-fox))
+     v-fox
+     )
+    (((vehicle-type v-rhino))
+     v-rhino
+     )
+    (((vehicle-type v-mirage))
+     v-mirage
+     )
+    (((vehicle-type v-x-ride))
+     v-x-ride
+     )
+    (((vehicle-type v-marauder))
+     v-marauder
+     )
+    (((vehicle-type v-faccar))
+     v-faccar
+     )
+    (((vehicle-type v-catapult))
+     v-catapult
+     )
+    (((vehicle-type v-marauder-b))
+     v-marauder-b
+     )
+    (((vehicle-type evan-test-bike))
+     evan-test-bike
+     )
+    (((vehicle-type wbike-test))
+     wbike-test
+     )
+    (((vehicle-type test-car))
+     test-car
+     )
+    (else
+      (the-as type #f)
+      )
+    )
+  )

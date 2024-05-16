@@ -5,5 +5,167 @@
 ;; name in dgo: process-focusable
 ;; dgos: GAME
 
+;; +++focus-status
+(defenum focus-status
+  :type uint64
+  :bitfield #t
+  (disable 0) ;; if set, all collide checks fail
+  (dead 1)    ;; if set, all collide checks fail
+  (ignore 2)
+  (inactive 3)
+  (dangerous 4)
+  (in-air 5)
+  (hit 6)
+  (grabbed 7)
+  (in-head 8)
+  (touch-water 9)
+  (on-water 10)
+  (under-water 11)
+  (edge-grab 12)
+  (pole 13)
+  (pilot-riding 14)
+  (flut 15)
+  (tube 16)
+  (light 17)
+  (board 18)
+  (gun 19)
+  (pilot 20) ;; also racer?
+  (mech 21)
+  (dark 22)
+  (rail 23)
+  (halfpipe 24)
+  (carry 25)
+  (super 26)
+  (shooting 27)
+  (indax 28)
+  (arrestable 29)
+  (teleporting 30)
+  (invulnerable 31)
+  (turret 32)
+  (no-gravity 33)
+  (gun-no-target 34)
+  )
+;; ---focus-status
+
+
+(defmacro focus-test? (pfoc &rest status)
+  `(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
+
+;; +++search-info-flag
+(defenum search-info-flag
+  :type uint32
+  :bitfield #t
+  (abort 0)
+  (crate 1)
+  (guard 2)
+  (attackable 3)
+  (enemy 4)
+  (attackable-priority 5)
+  (high-priority 6)
+  (on-screen 7)
+  (prefer-dist 8)
+  (prefer-angle 9)
+  (prefer-xz 10)
+  (cull-angle 11)
+  (cull-angle-simple 12)
+  (cull-xz 13)
+  (back-point 14)
+  (combo 15)
+  (probe 16)
+  (probe-camera 17)
+  (prefer-center 18)
+  )
+;; ---search-info-flag
+
+
 ;; DECOMP BEGINS
 
+(deftype process-focusable (process-drawable)
+  ((self          process-focusable           :override)
+   (ppointer      (pointer process-focusable) :override)
+   (root          collide-shape               :override)
+   (focus-status  focus-status)
+   )
+  (:methods
+    (process-mask->search-info-flag (_type_) search-info-flag)
+    (get-trans (_type_ int) vector)
+    (get-quat (_type_ int) quaternion)
+    (get-transv (_type_) vector)
+    (time-to-apex-or-ground (_type_ int) int)
+    (get-water-height (_type_) meters)
+    (get-notice-time (_type_) time-frame)
+    (get-inv-mass (_type_) float)
+    )
+  )
+
+
+;; WARN: Return type mismatch int vs search-info-flag.
+(defmethod process-mask->search-info-flag ((this process-focusable))
+  (let ((search-flag (search-info-flag)))
+    (let ((mask (-> this mask)))
+      (if (logtest? (process-mask crate) mask)
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag crate))))
+          )
+      (if (logtest? (process-mask guard) mask)
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag guard))))
+          )
+      (if (logtest? (process-mask enemy) mask)
+          (set! search-flag (the-as search-info-flag (logior (the-as int search-flag) (search-info-flag enemy))))
+          )
+      )
+    (the-as search-info-flag search-flag)
+    )
+  )
+
+;; WARN: Return type mismatch structure vs vector.
+(defmethod get-trans ((this process-focusable) (mode int))
+  "Get the `trans` for this process."
+  (let ((cshape (-> this root)))
+    (the-as vector (cond
+                     ((zero? mode)
+                      (-> cshape trans)
+                      )
+                     ((and (= mode 1) (type? cshape collide-shape-moving))
+                      (-> (the-as collide-shape-moving cshape) gspot-pos)
+                      )
+                     ((and (or (= mode 2) (= mode 3) (= mode 10)) (type? cshape collide-shape))
+                      ;; og:preserve-this added check here so we don't use invalid bones
+                      (if (logtest? (-> this draw status) (draw-control-status uninited))
+                          (-> (the-as collide-shape-moving cshape) trans)
+                          (-> (the-as collide-shape-moving cshape) root-prim prim-core))
+                      )
+                     (else
+                       (-> cshape trans)
+                       )
+                     )
+            )
+    )
+  )
+
+(defmethod get-transv ((this process-focusable))
+  "Get the `transv` for this process."
+  (-> this root transv)
+  )
+
+(defmethod get-quat ((this process-focusable) (arg0 int))
+  "Get the quaternion for this process."
+  (-> this root quat)
+  )
+
+(defmethod time-to-apex-or-ground ((this process-focusable) (arg0 int))
+  0
+  )
+
+;; WARN: Return type mismatch int vs meters.
+(defmethod get-water-height ((this process-focusable))
+  (the-as meters 0)
+  )
+
+(defmethod get-inv-mass ((this process-focusable))
+  0.0
+  )
+
+;; WARN: Return type mismatch int vs time-frame.
+(defmethod get-notice-time ((this process-focusable))
+  (the-as time-frame 0)
+  )

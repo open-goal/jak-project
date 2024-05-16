@@ -31,9 +31,11 @@ class MouseDevice : public InputDevice {
                      const CommandBindingGroups& commands,
                      std::shared_ptr<PadData> data,
                      std::optional<InputBindAssignmentMeta>& bind_assignment) override;
-  void close_device() override{
-      // there is nothing to close
+  // clang-format off
+  void close_device() override {
+    // there is nothing to close
   };
+  // clang-format on
 
   void enable_relative_mode(const bool enable);
   void enable_camera_control(const bool enable);
@@ -55,6 +57,13 @@ class MouseDevice : public InputDevice {
   bool m_control_movement = false;
   float m_xsens = -15.0;
   float m_ysens = 10.0;
+
+  // Tracking motion
+  int m_last_xcoord = 0;
+  int m_last_ycoord = 0;
+  bool m_mouse_moved_x = false;
+  bool m_mouse_moved_y = false;
+  int m_frame_counter = 0;
 
   bool is_action_already_active(const u32 sdl_keycode, const bool player_movement);
 };

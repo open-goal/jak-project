@@ -5,5 +5,42 @@
 ;; name in dgo: video-h
 ;; dgos: GAME
 
+(define-extern set-graphics-mode (function none))
+(define-extern get-video-mode (function symbol))
+(define-extern get-aspect-ratio (function symbol))
+(define-extern set-progressive-scan (function symbol none))
+
 ;; DECOMP BEGINS
 
+(deftype video-params (structure)
+  "Parameters for the framebuffer."
+  ((set-video-mode               symbol)
+   (reset-video-mode             symbol)
+   (display-fbp                  int32)
+   (relative-x-scale             float  :offset  16)
+   (display-dx                   int32)
+   (display-dy                   int32)
+   (display-sy                   int32)
+   (relative-x-scale-reciprical  float)
+   (screen-pages-high            int32)
+   (smode2                       uint64)
+   )
+  )
+
+
+(define *video-params* (new 'static 'video-params
+                         :set-video-mode #f
+                         :reset-video-mode #f
+                         :display-fbp #xa4
+                         :relative-x-scale 1.0
+                         :display-dy 8
+                         :display-sy #xe0
+                         :relative-x-scale-reciprical 1.0
+                         :screen-pages-high 13
+                         )
+        )
+
+;; og:preserve-this added
+(defmacro correct-x-int (pos)
+  `(the int (* (-> *video-params* relative-x-scale) (the float ,pos)))
+  )

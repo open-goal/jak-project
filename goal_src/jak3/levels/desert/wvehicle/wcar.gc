@@ -5,5 +5,4256 @@
 ;; name in dgo: wcar
 ;; dgos: LPATK, LFACCAR, WASALL
 
+(deftype wcar-proj-init-by-other-params (structure)
+  ((params projectile-init-by-other-params :inline :offset 0)
+   (vec1 vector :inline :offset 32)
+   (mat0 matrix :inline :offset 128)
+   (mat1 matrix :inline :offset 192)
+   (vec0 vector 8 :inline :offset 256)
+   (barrel-idx int8 :offset 384)
+   )
+  )
+
+(deftype wcar-stack-type1 (structure)
+  ((vec0 vector 10 :inline :offset 0)
+   (vec1 vector 3 :inline :offset 176)
+   (float01 float :offset 252)
+   (float0 float :offset 256)
+   (float2 float :offset 260)
+   )
+  )
+
 ;; DECOMP BEGINS
 
+(define *v-turtle-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 3.0
+      :inv-mass 0.33333334
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 819.2 :z -409.6 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 3.5) (meters 2.5) (meters 5.5))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-turtle-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-turtle)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 83886080.0
+      :inertia 8192.0
+      :drag 0.2
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 4000.0
+      :min-rpm 700.0
+      :max-rpm 6000.0
+      :peak-torque-rpm 3200.0
+      :powerband-width-rpm 4000.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 4096.0
+      :upshift-rpm 4500.0
+      :downshift-rpm 2500.0
+      :final-drive-ratio 9.0
+      :gear-ratio-array (new 'static 'array float 8 -3.375 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 5033165000.0
+      :turbo-boost-factor 0.7
+      :turbo-boost-duration (seconds 3.5)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4551.1113
+      :tire-steering-speed-factor 34816.0
+      :tire-steering-speed-bias 40960.0
+      :ackermann-factor 0.3
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.516
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.98539996
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.35
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 1.5
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 40960.0
+      :air-pitch-torque 81920.0
+      :air-angular-damping 0.97
+      :hop-turn-torque 225280.0
+      :ground-torque-scale 0.45
+      :ai-steering-factor 4.0
+      :ai-throttle-factor 0.5
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 4.5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 9011.2 :z -4915.2 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 12288.0 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 12288.0 :w 1.0)
+        (new 'static 'vector :y 12288.0 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "turt-scrape")
+      :glance-sound (static-sound-name "turt-glance")
+      :impact-sound (static-sound-name "turt-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "turt-flutter")
+      :water-sound (static-sound-name "turt-water")
+      :jump-sound (static-sound-name "turt-hop")
+      :turbo-sound (static-sound-name "turt-boost")
+      :bank-replace '((wasall1 wasturt))
+      :idle-rpm 900.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 3000.0
+      :engine-crossover-rpm 4000.0
+      :start-sound (static-sound-name "turt-start")
+      :stop-sound (static-sound-name "turt-stop")
+      :idle-sound (static-sound-name "turt-idle")
+      :engine-sound (static-sound-name "turt-steady")
+      :susp-creak-sound (static-sound-name "turt-bounce")
+      :susp-bottom-out-sound (static-sound-name "turt-bottom")
+      :susp-speed-threshold 81920.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "turt-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "turt-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "turt-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "turt-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "turt-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "turt-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 5120.0 :y 3276.8 :z -12697.6 :w 1.0)
+        (new 'static 'vector :x -5120.0 :y 3276.8 :z -12697.6 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 5242.88 :y 3399.68 :z -12288.0 :w 1.0)
+        (new 'static 'vector :x -5242.88 :y 3399.68 :z -12288.0 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 0.4 :y 0.1 :z -1.0 :w 1.0)
+        (new 'static 'vector :x -0.4 :y 0.1 :z -1.0 :w 1.0)
+        )
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1024.0 :y 5120.0 :z -10240.0 :w 1.0)
+        (new 'static 'vector :x -1024.0 :y 5120.0 :z -10240.0 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 1843.2 :y 2867.2 :z 8601.6 :w 1.0)
+        (new 'static 'vector :x -1843.2 :y 2867.2 :z 8601.6 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2457.6 :y 6758.4 :z -11264.0 :w 1.0)
+        (new 'static 'vector :x -2457.6 :y 6758.4 :z -11264.0 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 0.8333333
+      :hit-points 29.997
+      :inv-hit-points 0.033336665
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 4300.8 :y -491.52 :z 9420.8 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf4)
+        :inertia 4300800.0
+        :radius 2334.72
+        :susp-arm-length 2867.2
+        :steer-arm-length 1638.4
+        :scale 1.4
+        :travel 2867.2
+        :probe-y-offset -2048.0
+        :width 2867.2
+        :suspension-spring 0.6
+        :suspension-damping 0.4
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.79
+        :probe-radius 2048.0
+        :tread-texture "tread-turtle"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 3891.2 :y 409.6 :z -10035.199 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2)
+        :inertia 4915200.0
+        :radius 2334.72
+        :susp-arm-length 3481.6
+        :steer-arm-length 2048.0
+        :scale 1.6
+        :travel 3440.6401
+        :probe-y-offset -1474.56
+        :width 2867.2
+        :suspension-spring 0.7
+        :suspension-damping 0.4
+        :forward-grip 1.15
+        :side-grip 1.15
+        :max-brake-torque 1.0
+        :settle-pos 0.79
+        :probe-radius 2457.6
+        :tread-texture "tread-turtle"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 4341.76
+      :settle-rot-x -546.13336
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 1
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info :position (new 'static 'vector :y 2007.04 :z 819.2 :w (the-as float #x10000)))
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1228.8 :y 614.4 :z -368.64 :w 1.0)
+        (new 'static 'vector :x -1228.8 :y 614.4 :z -368.64 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-turtle)
+    )
+  )
+
+(define *v-snake-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 8.0
+      :inv-mass 0.125
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 409.6 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 5) (meters 2.5) (meters 6.5))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-snake-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-snake)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 167772160.0
+      :inertia 16384.0
+      :drag 0.2
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 5500.0
+      :min-rpm 600.0
+      :max-rpm 7500.0
+      :peak-torque-rpm 3800.0
+      :powerband-width-rpm 4100.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 8192.0
+      :upshift-rpm 5500.0
+      :downshift-rpm 3200.0
+      :final-drive-ratio 14.0
+      :gear-ratio-array (new 'static 'array float 8 -2.25 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 3355443200.0
+      :turbo-boost-factor 0.75
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-bias 0.5
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4369.067
+      :tire-steering-speed-factor 38912.0
+      :tire-steering-speed-bias 36864.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 2.178
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 1.4157
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.35
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 1.0
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 81920.0
+      :air-pitch-torque 163840.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 737280.0
+      :ground-torque-scale 0.55
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :x -2048.0 :y 6144.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "snake-scrape")
+      :glance-sound (static-sound-name "snake-glance")
+      :impact-sound (static-sound-name "snake-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "snake-flutter")
+      :water-sound (static-sound-name "snake-water")
+      :jump-sound (static-sound-name "snake-hop")
+      :turbo-sound (static-sound-name "snake-boost")
+      :bank-replace '((wasall1 wassnake))
+      :idle-rpm 1300.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 4700.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "snake-start")
+      :stop-sound (static-sound-name "snake-stop")
+      :idle-sound (static-sound-name "snake-idle")
+      :engine-sound (static-sound-name "snake-steady")
+      :susp-creak-sound (static-sound-name "snake-bounce")
+      :susp-bottom-out-sound (static-sound-name "snake-bottom")
+      :susp-speed-threshold 61440.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector :x -2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 1.0
+      :hit-points 39.996
+      :inv-hit-points 0.025002502
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1843.2 :y 901.12 :z 7864.32 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf3 vwf4)
+        :inertia 6144000.0
+        :radius 3399.68
+        :susp-arm-length 5939.2
+        :steer-arm-length 1638.4
+        :scale 1.2
+        :travel 4055.04
+        :probe-y-offset -2580.48
+        :width 3276.8
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 0.9
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 2457.6
+        :tread-texture "tread-snake"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1351.68 :y 1638.4 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 3399.68
+        :susp-arm-length 8069.12
+        :steer-arm-length 1638.4
+        :scale 1.5
+        :travel 4300.8
+        :probe-y-offset -4710.4
+        :width 3276.8
+        :suspension-spring 0.5
+        :suspension-damping 0.3
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 1820.4445
+        :settle-pos 0.76
+        :probe-radius 2867.2
+        :tread-texture "tread-snake"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5324.8
+      :settle-rot-x 764.5866
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 2
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -2252.8 :y 819.2 :z -720.896 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 2252.8 :y 819.2 :z -720.896 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1310.72 :y 409.6 :z -614.4 :w 1.0)
+        (new 'static 'vector :x -1310.72 :y 409.6 :z -409.6 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-snake)
+    )
+  )
+
+(define *v-scorpion-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 24.0
+      :inv-mass 0.041666668
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y -4096.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 8) (meters 4) (meters 8))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-scorpion-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-scorpion)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 335544320.0
+      :inertia 65536.0
+      :drag 0.4
+      :idle-rpm 500.0
+      :clutch-min-rpm 800.0
+      :clutch-max-rpm 5100.0
+      :min-rpm 300.0
+      :max-rpm 6500.0
+      :peak-torque-rpm 3400.0
+      :powerband-width-rpm 4180.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 16384.0
+      :upshift-rpm 5000.0
+      :downshift-rpm 1000.0
+      :final-drive-ratio 30.0
+      :gear-ratio-array (new 'static 'array float 8 -1.35 1.8225001 1.35 1.0 0.0 0.0 0.0 0.0)
+      :gear-count 4
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 5033165000.0
+      :turbo-boost-factor 0.5
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-bias 0.2
+      :player-turn-anim-min -0.2
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 2002.4889
+      :tire-steering-speed-factor 40960.0
+      :tire-steering-speed-bias 40960.0
+      :ackermann-factor 0.8
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.0
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.65
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.4
+      :rolling-resistance 0.16
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 3.0
+      :jump-thrust-factor 1.5
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 512000.0
+      :air-pitch-torque 1024000.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 2580480.0
+      :ground-torque-scale 0.75
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 6.5)
+      :string-max-height (meters 6.5)
+      :string-min-length (meters 10.049999)
+      :string-max-length (meters 13.125)
+      :min-fov 16384.0
+      :max-fov 18204.445
+      :head-offset 4096.0
+      :foot-offset -4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :x -2867.2 :y 6144.0 :z 8601.6 :w 1.0)
+        (new 'static 'vector :x -40960.0 :y 30720.0 :w 1.0)
+        (new 'static 'vector :x 40960.0 :y 30720.0 :w 1.0)
+        (new 'static 'vector :y 30720.0 :z 40960.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "scorp-scrape")
+      :glance-sound (static-sound-name "scorp-glance")
+      :impact-sound (static-sound-name "scorp-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "scorp-flutter")
+      :water-sound (static-sound-name "scorp-water")
+      :jump-sound (static-sound-name "scorp-hop")
+      :turbo-sound (static-sound-name "scorp-boost")
+      :bank-replace '((wasall1 wasscorp))
+      :idle-rpm 700.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 800.0
+      :engine-rpm 2500.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "scorp-start")
+      :stop-sound (static-sound-name "scorp-stop")
+      :idle-sound (static-sound-name "scorp-idle")
+      :engine-sound (static-sound-name "scorp-steady")
+      :susp-creak-sound (static-sound-name "scorp-bounce")
+      :susp-bottom-out-sound (static-sound-name "scorp-bottom")
+      :susp-speed-threshold 40960.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "scorp-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "scorp-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "scorp-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "scorp-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "scorp-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "scorp-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3686.4 :y 4096.0 :z -7372.8 :w 1.0)
+        (new 'static 'vector :x -3686.4 :y 4096.0 :z -7372.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3686.4 :y 4915.2 :z -4096.0 :w 1.0)
+        (new 'static 'vector :x -3686.4 :y 4915.2 :z -4096.0 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :y 1.0 :w 1.0) (new 'static 'vector :y 1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 6144.0 :z -1638.4 :w 1.0)
+        (new 'static 'vector :x -6144.0 :z -1638.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 5939.2 :y -1228.8 :z 18841.6 :w 1.0)
+        (new 'static 'vector :x -5939.2 :y -1228.8 :z 18841.6 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 7577.6 :y -2048.0 :z -18022.4 :w 1.0)
+        (new 'static 'vector :x -7577.6 :y -2048.0 :z -18022.4 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 1.0
+      :hit-points 79.992
+      :inv-hit-points 0.012501251
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 3686.4 :y -4096.0 :z 14336.0 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf4)
+        :inertia 32768000.0
+        :radius 2048.0
+        :susp-arm-length 12288.0
+        :steer-arm-length 2048.0
+        :scale 4.0
+        :travel 7864.3203
+        :probe-y-offset -4423.68
+        :width 2048.0
+        :suspension-spring 0.36
+        :suspension-damping 0.2
+        :forward-grip 1.3
+        :side-grip 1.4
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.81
+        :probe-radius 4096.0
+        :tread-texture "tread-scorpion"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 3686.4 :y -4096.0 :z -12492.8 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf4)
+        :inertia 32768000.0
+        :radius 2048.0
+        :susp-arm-length 12288.0
+        :steer-arm-length 2048.0
+        :scale 4.0
+        :travel 7864.3203
+        :probe-y-offset -4423.68
+        :width 2048.0
+        :suspension-spring 0.36
+        :suspension-damping 0.2
+        :forward-grip 1.3
+        :side-grip 1.4
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 4096.0
+        :tread-texture "tread-scorpion"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 13598.72
+      :settle-rot-x -163.84
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -2730.6667
+      :gun-pitch-max 5461.3335
+      :gun-z-offset 11059.2
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 2
+      :rider-stance #x2
+      :attach-point-count 14
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -3072.0 :y 204.8 :z 12697.6 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 3072.0 :y 204.8 :z 12697.6 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x -1638.4 :y 6963.2 :z 13107.2 :w 1.0)
+        (new 'static 'vector :x -4300.8 :y 6963.2 :z 13107.2 :w 1.0)
+        )
+      :attach-point-array (new 'static 'inline-array vehicle-attach-point 14
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 2867.2 :z 16384.0 :w 1.0)
+          :rot (new 'static 'vector :x -3640.889 :y 32768.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -2867.2 :z 16384.0 :w 1.0)
+          :rot (new 'static 'vector :x -3640.889 :y 32768.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 6144.0 :y 2048.0 :z 14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -7281.778 :y 32768.0 :z 7281.778 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -6144.0 :y 2048.0 :z 14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -7281.778 :y 32768.0 :z -7281.778 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 8192.0 :z 4096.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y -16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -8192.0 :z 4096.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y 16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 7372.8 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y -16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -7372.8 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y 16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 2867.2 :y 4096.0 :z 2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -1820.4445 :y -1820.4445 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -2867.2 :y 4096.0 :z 2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -1820.4445 :y 1820.4445 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 2867.2 :y 2048.0 :z -16384.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -2867.2 :z -15155.2 :w 1.0)
+          :rot (new 'static 'vector :x -9102.223 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 6144.0 :y 2048.0 :z -14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -8192.0 :z -7281.778 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -6144.0 :y 2048.0 :z -14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -8192.0 :z 7281.778 :w 1.0)
+          )
+        )
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-scorpion)
+    )
+  )
+
+(define *v-toad-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 16.0
+      :inv-mass 0.0625
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 819.2 :z 2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 6) (meters 4) (meters 10))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-toad-constants*
+    :flags #x386318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-toad)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 117440510.0
+      :inertia 8192.0
+      :drag 0.4
+      :idle-rpm 500.0
+      :clutch-min-rpm 800.0
+      :clutch-max-rpm 5100.0
+      :min-rpm 300.0
+      :max-rpm 6500.0
+      :peak-torque-rpm 3400.0
+      :powerband-width-rpm 4180.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 4096.0
+      :upshift-rpm 5000.0
+      :downshift-rpm 2000.0
+      :final-drive-ratio 20.0
+      :gear-ratio-array (new 'static 'array float 8 -1.8225001 2.4603753 1.8225001 1.35 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 60.0
+      :engine-intake-factor 1.0
+      :brake-factor 3355443200.0
+      :turbo-boost-factor 0.8
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4551.1113
+      :tire-steering-speed-factor 45056.0
+      :tire-steering-speed-bias 36864.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.694
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 1.1011
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.3
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 2.0
+      :jump-thrust-factor 2.4
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 151552.0
+      :air-pitch-torque 307200.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 614400.0
+      :ground-torque-scale 0.4
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 3)
+      :string-max-height (meters 4.5)
+      :string-min-length (meters 6)
+      :string-max-length (meters 9)
+      :min-fov 16384.0
+      :max-fov 18204.445
+      :head-offset 4096.0
+      :foot-offset -4096.0
+      :normal-max-angle-offset 21845.334
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :x -2048.0 :y 10649.6 :z -4915.2 :w 1.0)
+        (new 'static 'vector :x -40960.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 40960.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 40960.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "toad-scrape")
+      :glance-sound (static-sound-name "toad-glance")
+      :impact-sound (static-sound-name "toad-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "toad-flutter")
+      :water-sound (static-sound-name "toad-water")
+      :jump-sound (static-sound-name "toad-hop")
+      :turbo-sound (static-sound-name "toad-boost")
+      :bank-replace '((wasall1 wastoad))
+      :idle-rpm 900.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 700.0
+      :engine-rpm 5300.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "toad-start")
+      :stop-sound (static-sound-name "toad-stop")
+      :idle-sound (static-sound-name "toad-idle")
+      :engine-sound (static-sound-name "toad-steady")
+      :susp-creak-sound (static-sound-name "toad-bounce")
+      :susp-bottom-out-sound (static-sound-name "toad-bottom")
+      :susp-speed-threshold 40960.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "toad-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "toad-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "toad-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "toad-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "toad-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "toad-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :taillight-count 2
+      :thruster-flame-width (meters 1)
+      :thruster-flame-length (meters 6)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :y 5447.68 :z -14336.0 :w 1.0)
+        (new 'static 'vector :y 5447.68 :z -14336.0 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2457.6 :y -1228.8 :z -5324.8 :w 1.0)
+        (new 'static 'vector :x -2457.6 :y -1228.8 :z -5324.8 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3072.0 :z -1638.4 :w 1.0)
+        (new 'static 'vector :x -3072.0 :z -1638.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2457.6 :y 9830.4 :z -8192.0 :w 1.0)
+        (new 'static 'vector :x -2457.6 :y 9830.4 :z -8192.0 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 0.6666667
+      :hit-points 49.995
+      :inv-hit-points 0.020002
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :y -3686.4 :z 19456.0 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf4)
+        :inertia 2048000.0
+        :radius 4915.2
+        :susp-arm-length 12288.0
+        :steer-arm-length 2048.0
+        :scale 1.0
+        :travel 12288.0
+        :width 4096.0
+        :suspension-spring 0.3
+        :suspension-damping 0.051
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.606
+        :probe-radius 4096.0
+        :tread-texture "tread-toad"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 2048.0 :y 819.2 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 4915.2
+        :susp-arm-length 13516.8
+        :scale 1.5
+        :travel 8601.6
+        :probe-y-offset -3686.4001
+        :width 2867.2
+        :suspension-spring 0.65
+        :suspension-damping 0.1
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.8
+        :probe-radius 4096.0
+        :tread-texture "tread-toad"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 9338.88
+      :settle-rot-x 91.022224
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 1
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -2457.6 :y 3276.8 :z -1228.8 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1228.8 :y 942.08 :z -860.16 :w 1.0)
+        (new 'static 'vector :x -1433.6 :y 942.08 :z -860.16 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-toad)
+    )
+  )
+
+(define *v-fox-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 8.0
+      :inv-mass 0.125
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 409.6 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 3) (meters 6.5))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-fox-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-fox)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 218103800.0
+      :inertia 16384.0
+      :drag 0.2
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 5500.0
+      :min-rpm 600.0
+      :max-rpm 7500.0
+      :peak-torque-rpm 3800.0
+      :powerband-width-rpm 4100.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 8192.0
+      :upshift-rpm 5500.0
+      :downshift-rpm 3200.0
+      :final-drive-ratio 11.0
+      :gear-ratio-array (new 'static 'array float 8 -2.25 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 3355443200.0
+      :turbo-boost-factor 0.9
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4369.067
+      :tire-steering-speed-factor 38379.52
+      :tire-steering-speed-bias 20480.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.3310001
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.86515
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.32
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 1.5
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 81920.0
+      :air-pitch-torque 163840.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 491520.0
+      :ground-torque-scale 1.0
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 6144.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "snake-scrape")
+      :glance-sound (static-sound-name "snake-glance")
+      :impact-sound (static-sound-name "snake-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "snake-flutter")
+      :water-sound (static-sound-name "snake-water")
+      :jump-sound (static-sound-name "snake-hop")
+      :turbo-sound (static-sound-name "snake-boost")
+      :bank-replace '((wasall1 wassnake))
+      :idle-rpm 1300.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 4700.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "snake-start")
+      :stop-sound (static-sound-name "snake-stop")
+      :idle-sound (static-sound-name "snake-idle")
+      :engine-sound (static-sound-name "snake-steady")
+      :susp-creak-sound (static-sound-name "snake-bounce")
+      :susp-bottom-out-sound (static-sound-name "snake-bottom")
+      :susp-speed-threshold 61440.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 1)
+      :thruster-flame-length (meters 6)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :y 3686.4 :z -15564.8 :w 1.0)
+        (new 'static 'vector :y 3686.4 :z -15564.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector :x -2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 1.0
+      :hit-points 33.329998
+      :inv-hit-points 0.030003002
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1843.2 :y 901.12 :z 7864.32 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf3 vwf4)
+        :inertia 6144000.0
+        :radius 4915.2
+        :susp-arm-length 5939.2
+        :steer-arm-length 1638.4
+        :scale 0.83199996
+        :travel 4055.04
+        :probe-y-offset -2580.48
+        :width 4096.0
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 0.9
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 2457.6
+        :tread-texture "tread-toad"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1351.68 :y 1638.4 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 4915.2
+        :susp-arm-length 8069.12
+        :steer-arm-length 1638.4
+        :scale 1.04
+        :travel 4300.8
+        :probe-y-offset -4710.4
+        :width 4096.0
+        :suspension-spring 0.5
+        :suspension-damping 0.3
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 1820.4445
+        :settle-pos 0.76
+        :probe-radius 2867.2
+        :tread-texture "tread-toad"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5324.8
+      :settle-rot-x 764.5866
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 1
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :y 1638.4 :z -5324.8 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1310.72 :y 409.6 :z -614.4 :w 1.0)
+        (new 'static 'vector :x -1310.72 :y 409.6 :z -409.6 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-fox)
+    )
+  )
+
+(define *v-rhino-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 30.0
+      :inv-mass 0.033333335
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y -4096.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 7) (meters 4) (meters 8))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-rhino-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-rhino)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 335544320.0
+      :inertia 65536.0
+      :drag 0.4
+      :idle-rpm 500.0
+      :clutch-min-rpm 800.0
+      :clutch-max-rpm 5100.0
+      :min-rpm 300.0
+      :max-rpm 6500.0
+      :peak-torque-rpm 3400.0
+      :powerband-width-rpm 4180.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 16384.0
+      :upshift-rpm 5000.0
+      :downshift-rpm 1000.0
+      :final-drive-ratio 28.0
+      :gear-ratio-array (new 'static 'array float 8 -1.35 2.4603753 1.8225001 1.35 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 5033165000.0
+      :turbo-boost-factor 4.0
+      :turbo-boost-duration (seconds 0.25)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 2002.4889
+      :tire-steering-speed-factor 51200.0
+      :tire-steering-speed-bias 40960.0
+      :ackermann-factor 0.8
+      :tire-friction-factor 1.0
+      :tire-static-friction 0.9
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.585
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.4
+      :rolling-resistance 0.16
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 3.0
+      :jump-thrust-factor 1.5
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.125
+      :player-weight 122880.0
+      :air-roll-torque 512000.0
+      :air-pitch-torque 1024000.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 4300800.0
+      :ground-torque-scale 0.37
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 5.655)
+      :string-max-height (meters 5.655)
+      :string-min-length (meters 10.049999)
+      :string-max-length (meters 13.125)
+      :min-fov 16384.0
+      :max-fov 18204.445
+      :head-offset 4096.0
+      :foot-offset -4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :x -4915.2 :y 14336.0 :z -8192.0 :w 1.0)
+        (new 'static 'vector :x -40960.0 :y 30720.0 :w 1.0)
+        (new 'static 'vector :x 40960.0 :y 30720.0 :w 1.0)
+        (new 'static 'vector :y 30720.0 :z 40960.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "rhino-scrape")
+      :glance-sound (static-sound-name "rhino-glance")
+      :impact-sound (static-sound-name "rhino-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "car-by-1")
+      :water-sound (static-sound-name "rhino-water")
+      :jump-sound (static-sound-name "rhino-hop")
+      :turbo-sound (static-sound-name "rhino-boost")
+      :bank-replace '((wasall1 wasrhino))
+      :idle-rpm 500.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 800.0
+      :engine-rpm 3785.0
+      :engine-crossover-rpm 1400.0
+      :start-sound (static-sound-name "rhino-start")
+      :stop-sound (static-sound-name "rhino-stop")
+      :idle-sound (static-sound-name "rhino-idle")
+      :engine-sound (static-sound-name "rhino-steady")
+      :susp-creak-sound (static-sound-name "rhino-bounce")
+      :susp-bottom-out-sound (static-sound-name "rhino-bottom")
+      :susp-speed-threshold 40960.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "rhino-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "rhino-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "rhino-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "rhino-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "rhino-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "rhino-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 1.5)
+      :thruster-flame-length (meters 5)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 4915.2 :y 2744.32 :z -19660.8 :w 1.0)
+        (new 'static 'vector :x -4915.2 :y 2744.32 :z -19660.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3686.4 :y 4915.2 :z -4096.0 :w 1.0)
+        (new 'static 'vector :x -3686.4 :y 4915.2 :z -4096.0 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :y 1.0 :w 1.0) (new 'static 'vector :y 1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 6144.0 :z -1638.4 :w 1.0)
+        (new 'static 'vector :x -6144.0 :z -1638.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 5939.2 :y -1228.8 :z 18841.6 :w 1.0)
+        (new 'static 'vector :x -5939.2 :y -1228.8 :z 18841.6 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 7577.6 :y -2048.0 :z -18022.4 :w 1.0)
+        (new 'static 'vector :x -7577.6 :y -2048.0 :z -18022.4 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 1.0
+      :hit-points 79.992
+      :inv-hit-points 0.012501251
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 7372.8 :y -4096.0 :z 15769.6 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf4)
+        :inertia 32768000.0
+        :radius 2048.0
+        :susp-arm-length 7372.8
+        :steer-arm-length 2048.0
+        :scale 4.0
+        :travel 7208.9604
+        :probe-y-offset -5079.0396
+        :width 1638.4
+        :suspension-spring 0.55
+        :suspension-damping 0.3
+        :forward-grip 1.3
+        :side-grip 1.4
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.81
+        :probe-radius 4505.6
+        :tread-texture "tread-interceptor-rhino"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 7372.8 :y -4096.0 :z -12902.4 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf4)
+        :inertia 32768000.0
+        :radius 2048.0
+        :susp-arm-length 8192.0
+        :steer-arm-length 2048.0
+        :scale 4.0
+        :travel 7208.9604
+        :probe-y-offset -5079.0396
+        :width 1638.4
+        :suspension-spring 0.55
+        :suspension-damping 0.3
+        :forward-grip 1.3
+        :side-grip 1.4
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 4505.6
+        :tread-texture "tread-interceptor-rhino"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 14663.68
+      :settle-rot-x -163.84
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -21845.334
+      :gun-yaw-max 21845.334
+      :gun-pitch-min -5461.3335
+      :gun-pitch-max 8192.0
+      :gun-z-offset 6963.2
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 2
+      :rider-stance #x2
+      :attach-point-count 14
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -4915.2 :y 4915.2 :z -4096.0 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 4915.2 :y 4915.2 :z -4096.0 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 614.4 :z -1024.0 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 614.4 :z -1024.0 :w 1.0)
+        )
+      :attach-point-array (new 'static 'inline-array vehicle-attach-point 14
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 2867.2 :z 16384.0 :w 1.0)
+          :rot (new 'static 'vector :x -3640.889 :y 32768.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -2867.2 :z 16384.0 :w 1.0)
+          :rot (new 'static 'vector :x -3640.889 :y 32768.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 6144.0 :y 2048.0 :z 14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -7281.778 :y 32768.0 :z 7281.778 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -6144.0 :y 2048.0 :z 14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -7281.778 :y 32768.0 :z -7281.778 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 8192.0 :z 4096.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y -16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -8192.0 :z 4096.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y 16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 7372.8 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y -16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -7372.8 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :y 16384.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 2867.2 :y 4096.0 :z 2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -1820.4445 :y -1820.4445 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -2867.2 :y 4096.0 :z 2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -1820.4445 :y 1820.4445 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 2867.2 :y 2048.0 :z -16384.0 :w 1.0)
+          :rot (new 'static 'vector :x -12743.111 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -2867.2 :z -15155.2 :w 1.0)
+          :rot (new 'static 'vector :x -9102.223 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 6144.0 :y 2048.0 :z -14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -8192.0 :z -7281.778 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -6144.0 :y 2048.0 :z -14336.0 :w 1.0)
+          :rot (new 'static 'vector :x -8192.0 :z 7281.778 :w 1.0)
+          )
+        )
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-rhino)
+    )
+  )
+
+(define *v-mirage-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 10.0
+      :inv-mass 0.1
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 409.6 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 5.5) (meters 3) (meters 7))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-mirage-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-mirage)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 218103800.0
+      :inertia 16384.0
+      :drag 0.2
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 5500.0
+      :min-rpm 600.0
+      :max-rpm 7500.0
+      :peak-torque-rpm 3800.0
+      :powerband-width-rpm 4100.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 8192.0
+      :upshift-rpm 5500.0
+      :downshift-rpm 3200.0
+      :final-drive-ratio 12.5
+      :gear-ratio-array (new 'static 'array float 8 -2.25 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 3355443200.0
+      :turbo-boost-factor 0.9
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-bias 0.5
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4369.067
+      :tire-steering-speed-factor 38379.52
+      :tire-steering-speed-bias 20480.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.3310001
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.86515
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.35
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 2.0
+      :jump-thrust-factor 1.0
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 81920.0
+      :air-pitch-torque 163840.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 1392640.0
+      :ground-torque-scale 1.0
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :x -2048.0 :y 6144.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "mir-scrape")
+      :glance-sound (static-sound-name "mir-glance")
+      :impact-sound (static-sound-name "mir-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "mir-flutter")
+      :water-sound (static-sound-name "mir-water")
+      :jump-sound (static-sound-name "mir-hop")
+      :turbo-sound (static-sound-name "mir-boost")
+      :bank-replace '((wasall1 wasmir))
+      :idle-rpm 1300.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 4700.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "mir-start")
+      :stop-sound (static-sound-name "mir-stop")
+      :idle-sound (static-sound-name "mir-idle")
+      :engine-sound (static-sound-name "mir-steady")
+      :susp-creak-sound (static-sound-name "mir-bounce")
+      :susp-bottom-out-sound (static-sound-name "mir-bottom")
+      :susp-speed-threshold 61440.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "mir-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "mir-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "mir-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "mir-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "mir-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "mir-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector :x -2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 0.8
+      :hit-points 46.662
+      :inv-hit-points 0.021430716
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1843.2 :y 901.12 :z 7864.32 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf3 vwf4)
+        :inertia 6144000.0
+        :radius 3399.68
+        :susp-arm-length 5939.2
+        :steer-arm-length 1638.4
+        :scale 1.1
+        :travel 4055.04
+        :probe-y-offset -2580.48
+        :width 3276.8
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 0.9
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 2457.6
+        :tread-texture "tread-interceptor-rhino"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1351.68 :y 1638.4 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 3399.68
+        :susp-arm-length 8069.12
+        :steer-arm-length 1638.4
+        :scale 1.5
+        :travel 4300.8
+        :probe-y-offset -4710.4
+        :width 3276.8
+        :suspension-spring 0.5
+        :suspension-damping 0.3
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 1820.4445
+        :settle-pos 0.76
+        :probe-radius 2867.2
+        :tread-texture "tread-interceptor-rhino"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5324.8
+      :settle-rot-x 764.5866
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 0.75 :y 0.9 :z 1.05 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 2
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -2252.8 :y 819.2 :z -720.896 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 2252.8 :y 819.2 :z -720.896 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1310.72 :y 409.6 :z -614.4 :w 1.0)
+        (new 'static 'vector :x -1310.72 :y 409.6 :z -409.6 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-mirage)
+    )
+  )
+
+(define *v-x-ride-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 8.0
+      :inv-mass 0.125
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 409.6 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 4) (meters 3) (meters 6.5))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-x-ride-constants*
+    :flags #x387318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-x-ride)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 234881020.0
+      :inertia 16384.0
+      :drag 0.2
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 5500.0
+      :min-rpm 600.0
+      :max-rpm 7500.0
+      :peak-torque-rpm 3800.0
+      :powerband-width-rpm 4100.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 8192.0
+      :upshift-rpm 5500.0
+      :downshift-rpm 3200.0
+      :final-drive-ratio 10.0
+      :gear-ratio-array (new 'static 'array float 8 -2.25 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 3355443200.0
+      :turbo-boost-factor 0.9
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4369.067
+      :tire-steering-speed-factor 38379.52
+      :tire-steering-speed-bias 20480.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.694
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 1.1011
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.3
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 1.6
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 81920.0
+      :air-pitch-torque 163840.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 491520.0
+      :ground-torque-scale 0.75
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 6144.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "snake-scrape")
+      :glance-sound (static-sound-name "snake-glance")
+      :impact-sound (static-sound-name "snake-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "snake-flutter")
+      :water-sound (static-sound-name "snake-water")
+      :jump-sound (static-sound-name "snake-hop")
+      :turbo-sound (static-sound-name "snake-boost")
+      :bank-replace '((wasall1 wassnake))
+      :idle-rpm 1300.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 4700.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "snake-start")
+      :stop-sound (static-sound-name "snake-stop")
+      :idle-sound (static-sound-name "snake-idle")
+      :engine-sound (static-sound-name "snake-steady")
+      :susp-creak-sound (static-sound-name "snake-bounce")
+      :susp-bottom-out-sound (static-sound-name "snake-bottom")
+      :susp-speed-threshold 61440.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "snake-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 1)
+      :thruster-flame-length (meters 6)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :y 3686.4 :z -15564.8 :w 1.0)
+        (new 'static 'vector :y 3686.4 :z -15564.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector :x -2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 1.0
+      :hit-points 39.996
+      :inv-hit-points 0.025002502
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1843.2 :y 901.12 :z 7864.32 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf3 vwf4)
+        :inertia 6144000.0
+        :radius 3399.68
+        :susp-arm-length 5939.2
+        :steer-arm-length 1638.4
+        :scale 1.2
+        :travel 4055.04
+        :probe-y-offset -2580.48
+        :width 3276.8
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 0.9
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 2457.6
+        :tread-texture "tread-snake"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1351.68 :y 1638.4 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 3399.68
+        :susp-arm-length 8069.12
+        :steer-arm-length 1638.4
+        :scale 1.5
+        :travel 4300.8
+        :probe-y-offset -4710.4
+        :width 3276.8
+        :suspension-spring 0.5
+        :suspension-damping 0.3
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 1820.4445
+        :settle-pos 0.76
+        :probe-radius 2867.2
+        :tread-texture "tread-snake"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5324.8
+      :settle-rot-x 764.5866
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 0.9 :y 1.1 :z 0.9 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 1
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :y 1638.4 :z -5324.8 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1310.72 :y 409.6 :z -614.4 :w 1.0)
+        (new 'static 'vector :x -1310.72 :y 409.6 :z -409.6 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    :name-text (text-id progress-inventory-v-x-ride)
+    )
+  )
+
+(define *v-marauder-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 8.0
+      :inv-mass 0.125
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 409.6 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 5) (meters 2.5) (meters 6.5))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-marauder-constants*
+    :flags #x81310
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-marauder)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 117440510.0
+      :inertia 16384.0
+      :drag 0.4
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 5500.0
+      :min-rpm 700.0
+      :max-rpm 6500.0
+      :peak-torque-rpm 3800.0
+      :powerband-width-rpm 4100.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 8192.0
+      :upshift-rpm 5500.0
+      :downshift-rpm 2000.0
+      :final-drive-ratio 12.5
+      :gear-ratio-array (new 'static 'array float 8 -2.25 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 1677721600.0
+      :turbo-boost-factor 0.9
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-bias 0.5
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4369.067
+      :tire-steering-speed-factor 38379.52
+      :tire-steering-speed-bias 20480.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.3310001
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.86515
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.35
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 1.0
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 81920.0
+      :air-pitch-torque 163840.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 1392640.0
+      :ground-torque-scale 1.0
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 6963.2 :z -6144.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "inter-scrape")
+      :glance-sound (static-sound-name "inter-glance")
+      :impact-sound (static-sound-name "inter-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "inter-flutter")
+      :water-sound (static-sound-name "inter-water")
+      :jump-sound (static-sound-name "snake-hop")
+      :turbo-sound (static-sound-name "snake-boost")
+      :bank-replace '((wasall1 wassnake))
+      :idle-rpm 1300.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 4700.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "snake-start")
+      :stop-sound (static-sound-name "snake-stop")
+      :idle-sound (static-sound-name "inter-idle")
+      :engine-sound (static-sound-name "inter-steady")
+      :susp-creak-sound (static-sound-name "inter-bounce")
+      :susp-bottom-out-sound (static-sound-name "inter-bottom")
+      :susp-speed-threshold 61440.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector :x -2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 2.0
+      :hit-points 30.0
+      :inv-hit-points 0.033333335
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 1.0
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1843.2 :y 901.12 :z 7864.32 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf3 vwf4)
+        :inertia 6144000.0
+        :radius 3399.68
+        :susp-arm-length 5939.2
+        :steer-arm-length 1638.4
+        :scale 1.2
+        :travel 4055.04
+        :probe-y-offset -2580.48
+        :width 3276.8
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 0.9
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 546.13336
+        :settle-pos 0.78
+        :probe-radius 2457.6
+        :tread-texture "tread-interceptor-rhino"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 1351.68 :y 1638.4 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 3399.68
+        :susp-arm-length 8069.12
+        :steer-arm-length 1638.4
+        :scale 1.5
+        :travel 4300.8
+        :probe-y-offset -4710.4
+        :width 3276.8
+        :suspension-spring 0.5
+        :suspension-damping 0.3
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :camber 1820.4445
+        :settle-pos 0.8
+        :probe-radius 2867.2
+        :tread-texture "tread-interceptor-rhino"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5488.64
+      :settle-rot-x 728.1778
+      :shadow-bot-clip -32768.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 2
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -2252.8 :y 819.2 :z -720.896 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 2252.8 :y 819.2 :z -720.896 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1310.72 :y 409.6 :z -614.4 :w 1.0)
+        (new 'static 'vector :x -1310.72 :y 409.6 :z -409.6 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    )
+  )
+
+(define *v-faccar-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 8.0
+      :inv-mass 0.125
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 819.2 :z -409.6 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 6.5) (meters 3) (meters 8))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-faccar-constants*
+    :flags #x287318
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-faccar)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 83886080.0
+      :inertia 8192.0
+      :drag 0.2
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 4000.0
+      :min-rpm 700.0
+      :max-rpm 6000.0
+      :peak-torque-rpm 3200.0
+      :powerband-width-rpm 4000.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 4096.0
+      :upshift-rpm 4500.0
+      :downshift-rpm 2900.0
+      :final-drive-ratio 9.0
+      :gear-ratio-array (new 'static 'array float 8 -3.375 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 5033165000.0
+      :turbo-boost-factor 2.0
+      :turbo-boost-duration (seconds 0.25)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4551.1113
+      :tire-steering-speed-factor 34816.0
+      :tire-steering-speed-bias 40960.0
+      :ackermann-factor 0.3
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.516
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.98539996
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.35
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 2.0
+      :jump-thrust-factor 1.5
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 40960.0
+      :air-pitch-torque 81920.0
+      :air-angular-damping 0.97
+      :hop-turn-torque 1228800.0
+      :ground-torque-scale 0.45
+      :ai-steering-factor 4.0
+      :ai-throttle-factor 0.5
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 4.5)
+      :string-min-length (meters 5)
+      :string-max-length (meters 12.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :x -2457.6 :y 9011.2 :z -4915.2 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 12288.0 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 12288.0 :w 1.0)
+        (new 'static 'vector :y 12288.0 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.25
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "fac-scrape-mtl")
+      :glance-sound (static-sound-name "fac-glance")
+      :impact-sound (static-sound-name "fac-impact-hard")
+      :explode-sound (static-sound-name "fac-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "fac-flutter")
+      :water-sound (static-sound-name "fac-water")
+      :jump-sound (static-sound-name "fac-hop")
+      :turbo-sound (static-sound-name "fac-boost")
+      :bank-replace '((factory6 facveh))
+      :idle-rpm 1400.0
+      :idle-pitch-scale 0.25
+      :idle-crossover-rpm 1500.0
+      :engine-rpm 2500.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "fac-start")
+      :stop-sound (static-sound-name "fac-stop")
+      :idle-sound (static-sound-name "fac-idle")
+      :engine-sound (static-sound-name "fac-steady")
+      :susp-creak-sound (static-sound-name "fac-bounce")
+      :susp-bottom-out-sound (static-sound-name "fac-bottom")
+      :susp-speed-threshold 81920.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "fac-hum")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "fac-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "fac-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "fac-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "fac-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "fac-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 1
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2048.0 :y 1843.2 :z -14336.0 :w 1.0)
+        (new 'static 'vector :x -2048.0 :y 1843.2 :z -14336.0 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2048.0 :y 1843.2 :z -14336.0 :w 1.0)
+        (new 'static 'vector :x -2048.0 :y 1843.2 :z -14336.0 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1024.0 :y 5120.0 :z -10240.0 :w 1.0)
+        (new 'static 'vector :x -1024.0 :y 5120.0 :z -10240.0 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x -2867.2 :y 6963.2 :z 11059.2 :w 1.0)
+        (new 'static 'vector)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 7987.2 :z -12083.2 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 7987.2 :z -12083.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 0.8333333
+      :hit-points 29.997
+      :inv-hit-points 0.033336665
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 0.3333
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 4464.64 :y -655.36 :z 7864.32 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf4)
+        :inertia 4300800.0
+        :radius 3481.6
+        :susp-arm-length 4096.0
+        :steer-arm-length 1638.4
+        :scale 1.0
+        :travel 2457.6
+        :probe-y-offset -3276.8
+        :width 4096.0
+        :suspension-spring 0.4
+        :suspension-damping 0.5
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.79
+        :probe-radius 1720.32
+        :tread-texture "tread-scorpion"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 4444.16 :y -532.48 :z -12083.2 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2)
+        :inertia 4915200.0
+        :radius 3481.6
+        :susp-arm-length 4096.0
+        :steer-arm-length 2048.0
+        :scale 1.2
+        :travel 2867.2
+        :probe-y-offset -3276.8
+        :width 4096.0
+        :suspension-spring 0.7
+        :suspension-damping 0.4
+        :forward-grip 1.15
+        :side-grip 1.15
+        :max-brake-torque 1.0
+        :settle-pos 0.79
+        :probe-radius 2048.0
+        :tread-texture "tread-scorpion"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5693.44
+      :settle-rot-x -691.76886
+      :shadow-bot-clip -61440.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 1
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -2457.6 :y 1187.84 :z -819.2 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1228.8 :y 614.4 :z -368.64 :w 1.0)
+        (new 'static 'vector :x -1228.8 :y 614.4 :z -368.64 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    )
+  )
+
+(define *v-catapult-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 32.0
+      :inv-mass 0.03125
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.5
+      :cm-offset-joint (new 'static 'vector :y 409.6 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 12) (meters 8) (meters 25))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 40)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*v-catapult-constants*
+    :flags #x80010
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 v-catapult)
+    :engine (new 'static 'vehicle-engine-info
+      :max-torque 117440510.0
+      :inertia 16384.0
+      :drag 0.4
+      :idle-rpm 900.0
+      :clutch-min-rpm 2000.0
+      :clutch-max-rpm 5500.0
+      :min-rpm 700.0
+      :max-rpm 6500.0
+      :peak-torque-rpm 3800.0
+      :powerband-width-rpm 4100.0
+      )
+    :transmission (new 'static 'vehicle-transmission-info
+      :inertia 8192.0
+      :upshift-rpm 5500.0
+      :downshift-rpm 2000.0
+      :final-drive-ratio 25.0
+      :gear-ratio-array (new 'static 'array float 8 -2.25 3.375 2.25 1.5 1.0 0.0 0.0 0.0)
+      :gear-count 5
+      )
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 50)
+      :inv-max-engine-thrust 0.0000048828124
+      :engine-response-rate 10.0
+      :engine-intake-factor 1.0
+      :brake-factor 1677721600.0
+      :turbo-boost-factor 0.9
+      :turbo-boost-duration (seconds 2)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-bias 0.5
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 3)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 1.0
+      :air-drag-factor 1.0
+      :steering-fin-angle 1820.4445
+      :steering-thruster-factor 1.0
+      :steering-thruster-max-gain 1.0
+      :steering-thruster-half-gain-speed (meters 30)
+      :tire-steering-angle 4369.067
+      :tire-steering-speed-factor 38379.52
+      :tire-steering-speed-bias 20480.0
+      :ackermann-factor 0.45
+      :tire-friction-factor 1.0
+      :tire-static-friction 1.3310001
+      :tire-static-friction-speed (meters 2)
+      :tire-dynamic-friction 0.86515
+      :tire-dynamic-friction-speed (meters 4)
+      :tire-inv-max-friction-speed 0.000024414063
+      :airfoil-factor 1.0
+      :drag-force-factor 0.35
+      :rolling-resistance 0.08
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 1.0
+      :pitch-control-factor 1.0
+      :roll-control-factor 1.0
+      :jump-thrust-factor 1.0
+      :buoyancy-factor 0.03
+      :water-drag-factor 0.25
+      :player-weight 122880.0
+      :air-roll-torque 81920.0
+      :air-pitch-torque 163840.0
+      :air-angular-damping 0.98
+      :hop-turn-torque 1392640.0
+      :ground-torque-scale 1.0
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :turning-accel (meters 20)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 4.5)
+      :string-max-height (meters 15)
+      :string-min-length (meters 5)
+      :string-max-length (meters 15.5)
+      :min-fov 15109.688
+      :max-fov 17476.268
+      :head-offset 8192.0
+      :foot-offset 4096.0
+      :normal-max-angle-offset 5461.3335
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 6963.2 :z -6144.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 19251.2 :w 1.0)
+        (new 'static 'vector :y 19251.2 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.5
+      :engine-pitch-mod-amp 0.05
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "inter-scrape")
+      :glance-sound (static-sound-name "inter-glance")
+      :impact-sound (static-sound-name "inter-crash")
+      :explode-sound (static-sound-name "car-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "inter-load")
+      :water-sound (static-sound-name "inter-water")
+      :jump-sound (static-sound-name "snake-hop")
+      :turbo-sound (static-sound-name "snake-boost")
+      :bank-replace '((wasall1 wassnake))
+      :idle-rpm 1300.0
+      :idle-pitch-scale 0.5
+      :idle-crossover-rpm 1000.0
+      :engine-rpm 4700.0
+      :engine-crossover-rpm 2500.0
+      :start-sound (static-sound-name "snake-start")
+      :stop-sound (static-sound-name "snake-stop")
+      :idle-sound (static-sound-name "inter-idle")
+      :engine-sound (static-sound-name "inter-steady")
+      :susp-creak-sound (static-sound-name "inter-bounce")
+      :susp-bottom-out-sound (static-sound-name "inter-bottom")
+      :susp-speed-threshold 61440.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-road")
+          :speed 40960.0
+          :min-speed 20480.0
+          :max-speed 61440.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-dirt")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-sand")
+          :speed 40960.0
+          :max-speed 40960.0
+          :pitch-offset -0.5
+          :pitch-scale 0.25
+          :min-pitch -2.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-knobby")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 40960.0
+          :pitch-scale 0.125
+          :min-pitch -0.2
+          :max-pitch 0.2
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-skid-road")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :sound (static-sound-name "inter-skid-dirt")
+          :speed 40960.0
+          :min-speed 8192.0
+          :max-speed 16384.0
+          :pitch-offset -0.0625
+          :pitch-scale 0.0625
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 2
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 2)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4505.6 :z -15564.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -15974.4 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        (new 'static 'vector :x -1638.4 :y 4096.0 :z -13926.4 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 12288.0 :w 1.0)
+        (new 'static 'vector :x -12288.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector :x -2867.2 :y 2048.0 :z 10240.0 :w 1.0)
+        (new 'static 'vector)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        (new 'static 'vector :x -3276.8 :y 3276.8 :z -14131.2 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 0.6666667
+      :hit-points 80.0
+      :inv-hit-points 0.0125
+      :hit-threshold 8192.0
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 1.0
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :inv-lift-thruster-count 1.0
+      :engine-thrust-local-pos (new 'static 'vector :w 1.0)
+      :brake-local-pos (new 'static 'vector :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 20480.0 :y -2048.0 :z 15687.68 :w 1.0)
+        :flags (vehicle-wheel-flag vwf1 vwf3 vwf4)
+        :inertia 6144000.0
+        :radius 3399.68
+        :susp-arm-length 9420.8
+        :steer-arm-length 2457.6
+        :scale 2.4
+        :travel 9011.2
+        :probe-y-offset -4096.0
+        :width 4096.0
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 0.9
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.78
+        :probe-radius 409.6
+        :tread-texture "tread-interceptor-rhino"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :x 14336.0 :y -4096.0 :z -24166.4 :w 1.0)
+        :flags (vehicle-wheel-flag vwf0 vwf1 vwf2 vwf3 vwf5)
+        :inertia 10240000.0
+        :radius 3399.68
+        :susp-arm-length 10240.0
+        :steer-arm-length 3276.8
+        :scale 2.4
+        :travel 8192.0
+        :probe-y-offset -2867.2
+        :width 4096.0
+        :suspension-spring 0.6
+        :suspension-damping 0.3
+        :forward-grip 1.5
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.8
+        :probe-radius 409.6
+        :tread-texture "tread-interceptor-rhino"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 5488.64
+      :settle-rot-x 728.1778
+      :shadow-bot-clip -32768.0
+      :shadow-locus-dist 204800.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 2
+      :rider-stance #x2
+      :grab-rail-array #f
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -2252.8 :y 819.2 :z -720.896 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 2252.8 :y 819.2 :z -720.896 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info)
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1310.72 :y 409.6 :z -614.4 :w 1.0)
+        (new 'static 'vector :x -1310.72 :y 409.6 :z -409.6 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xda
+    :debris #f
+    )
+  )
+
+(define *wcar-explosion-info*
+  (new 'static 'vehicle-explosion-info
+    :joints (new 'static 'boxed-array :type joint-exploder-static-joint-params
+      (new 'static 'joint-exploder-static-joint-params :joint-index 3 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 4 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 5 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 6 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 7 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 8 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 9 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 10 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 11 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 12 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 13 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 14 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 15 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 16 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 17 :parent-joint-index -1)
+      (new 'static 'joint-exploder-static-joint-params :joint-index 18 :parent-joint-index -1)
+      )
+    :collide-spec (collide-spec backgnd)
+    :art-level 'wasall
+    :skel #f
+    :skel-name "skel-vehicle-explosion"
+    :anim 2
+    )
+  )
+
+(set! (-> *v-turtle-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-snake-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-scorpion-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-toad-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-fox-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-rhino-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-mirage-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-x-ride-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-marauder-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-faccar-constants* explosion) *wcar-explosion-info*)
+
+(set! (-> *v-catapult-constants* explosion) *wcar-explosion-info*)
+
+(deftype wcar-base (wvehicle)
+  ((rider-hand-joint-array  int8  2)
+   )
+  )
+
+
+(defmethod vehicle-method-113 ((this wcar-base) (arg0 vector) (arg1 int) (arg2 int))
+  (vector-matrix*!
+    arg0
+    (-> this info rider rider-hand-offset arg2)
+    (-> this node-list data (-> this rider-hand-joint-array arg1) bone transform)
+    )
+  0
+  (none)
+  )
+
+(deftype wcar-snake-base (wcar-base)
+  ((local-gun-pos    vector                  2 :inline)
+   (jmod-axles       joint-mod-rotate-local  4 :inline)
+   (jmod-shock-tops  joint-mod-rotate-local  4 :inline)
+   (jmod-shock-mids  joint-mod-set-local     4 :inline)
+   (jmod-guns        joint-mod-set-local     2 :inline)
+   )
+  )
+
+
+;; WARN: Return type mismatch float vs none.
+(defmethod wvehicle-method-169 ((this wcar-snake-base))
+  (set! (-> this i-barrel) (logand (+ (-> this i-barrel) 1) 1))
+  (let ((s5-0 (new 'stack-no-clear 'wcar-proj-init-by-other-params)))
+    (set! (-> s5-0 barrel-idx) (-> this i-barrel))
+    (set! (-> s5-0 vec0 7 x) 16384.0)
+    (set! (-> s5-0 vec0 7 y) 409600.0)
+    (set! (-> s5-0 vec0 7 w) 0.1736)
+    (set! (-> s5-0 vec0 7 z) 0.0)
+    (when (and (task-node-closed? (game-task-node desert-final-boss-introduction))
+               (not (task-node-closed? (game-task-node desert-final-boss-resolution)))
+               )
+      (set! (-> s5-0 vec0 7 x) 32768.0)
+      (set! (-> s5-0 vec0 7 w) 0.3419)
+      (set! (-> s5-0 vec0 7 z) -0.1736)
+      )
+    (let* ((v1-13 (-> s5-0 mat0))
+           (a3-0 (-> this rbody matrix))
+           (a0-4 (-> a3-0 rvec quad))
+           (a1-0 (-> a3-0 uvec quad))
+           (a2-0 (-> a3-0 fvec quad))
+           (a3-1 (-> a3-0 trans quad))
+           )
+      (set! (-> v1-13 rvec quad) a0-4)
+      (set! (-> v1-13 uvec quad) a1-0)
+      (set! (-> v1-13 fvec quad) a2-0)
+      (set! (-> v1-13 trans quad) a3-1)
+      )
+    (new 'static 'inline-array vector 2
+      (new 'static 'vector :x 3686.4 :y 5324.8 :z 6144.0 :w 1.0)
+      (new 'static 'vector :x -3686.4 :y 5324.8 :z 6144.0 :w 1.0)
+      )
+    (vector-matrix*! (the-as vector (-> s5-0 vec0)) (-> this local-gun-pos (-> s5-0 barrel-idx)) (-> s5-0 mat0))
+    0
+    (set! (-> s5-0 vec0 2 quad) (-> (new 'static 'vector :y 0.0871 :z 0.9961 :w 1.0) quad))
+    (vector-rotate*! (-> s5-0 vec0 3) (-> s5-0 vec0 2) (-> s5-0 mat0))
+    (vector-float*! (-> s5-0 vec0 4) (-> s5-0 vec0 3) (- (-> s5-0 vec0 7 y) (-> s5-0 vec0 7 x)))
+    (vector+float*!
+      (-> s5-0 vec0 1)
+      (the-as vector (-> s5-0 vec0))
+      (-> s5-0 vec0 3)
+      (+ 16384.0 (-> s5-0 vec0 7 x))
+      )
+    (let ((s4-0 (new 'stack 'boxed-array collide-shape 128)))
+      (set! (-> s4-0 length) (fill-actor-list-for-sphere
+                               *actor-hash*
+                               (-> s5-0 vec0 1)
+                               (-> s5-0 vec0 4)
+                               (-> s5-0 vec0 7 x)
+                               (the-as (pointer collide-shape) (-> s4-0 data))
+                               (-> s4-0 allocated-length)
+                               -1
+                               )
+            )
+      (let ((a0-14 (find-nearest-focusable
+                     (the-as (array collide-shape) s4-0)
+                     (-> s5-0 vec0 1)
+                     (-> s5-0 vec0 7 y)
+                     (search-info-flag attackable enemy attackable-priority high-priority)
+                     (search-info-flag)
+                     (-> s5-0 vec0 3)
+                     (the-as vector #f)
+                     2730.6667
+                     )
+                   )
+            )
+        (when a0-14
+          (set! (-> s5-0 vec0 6 quad) (-> (get-trans a0-14 3) quad))
+          (vector-! (-> s5-0 vec0 5) (-> s5-0 vec0 6) (the-as vector (-> s5-0 vec0)))
+          (matrix-transpose! (-> s5-0 mat1) (-> s5-0 mat0))
+          (vector-matrix*! (-> s5-0 vec0 2) (-> s5-0 vec0 5) (-> s5-0 mat1))
+          (set! (-> s5-0 vec0 2 x) 0.0)
+          (vector-normalize! (-> s5-0 vec0 2) 1.0)
+          (cond
+            ((< (-> s5-0 vec0 7 w) (-> s5-0 vec0 2 y))
+             (set! (-> s5-0 vec0 2 y) (-> s5-0 vec0 7 w))
+             (let ((f0-16 1.0)
+                   (f1-3 (-> s5-0 vec0 7 w))
+                   )
+               (set! (-> s5-0 vec0 2 z) (sqrtf (- f0-16 (* f1-3 f1-3))))
+               )
+             )
+            ((< (-> s5-0 vec0 2 y) (-> s5-0 vec0 7 z))
+             (set! (-> s5-0 vec0 2 y) (-> s5-0 vec0 7 z))
+             (let ((f0-21 1.0)
+                   (f1-7 (-> s5-0 vec0 7 z))
+                   )
+               (set! (-> s5-0 vec0 2 z) (sqrtf (- f0-21 (* f1-7 f1-7))))
+               )
+             )
+            )
+          (if (< 0.0 (-> s5-0 vec0 2 z))
+              (vector-rotate*! (-> s5-0 vec0 3) (-> s5-0 vec0 2) (-> s5-0 mat0))
+              )
+          )
+        )
+      )
+    (vector-float*! (-> s5-0 vec0 4) (-> s5-0 vec0 3) (-> s5-0 vec0 7 y))
+    (set! (-> s5-0 params ent) (-> this entity))
+    (set! (-> s5-0 params charge) 1.0)
+    (set! (-> s5-0 params options) (projectile-options))
+    (logclear! (-> s5-0 params options) (projectile-options po14 po15 po16))
+    (set! (-> s5-0 params pos quad) (-> s5-0 vec0 0 quad))
+    (set! (-> s5-0 params vel quad) (-> s5-0 vec0 4 quad))
+    (set! (-> s5-0 params notify-handle) (the-as handle #f))
+    (set! (-> s5-0 params owner-handle) (process->handle this))
+    (set! (-> s5-0 params target-handle) (the-as handle #f))
+    (set! (-> s5-0 params target-pos quad) (the-as uint128 0))
+    (set! (-> s5-0 params ignore-handle) (process->handle this))
+    (let* ((v1-58 *game-info*)
+           (a0-35 (+ (-> v1-58 attack-id) 1))
+           )
+      (set! (-> v1-58 attack-id) a0-35)
+      (set! (-> s5-0 params attack-id) a0-35)
+      )
+    (set! (-> s5-0 params timeout) (seconds 4))
+    (spawn-projectile v-snake-shot (-> s5-0 params) *rigid-body-queue-manager* *default-dead-pool*)
+    (let ((v1-63 (-> this jmod-guns (-> s5-0 barrel-idx))))
+      (set! (-> v1-63 transform trans z) -3276.8)
+      )
+    )
+  (none)
+  )
+
+(defmethod init-collision! ((this wcar-snake-base))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 8) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 9))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((a0-5 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> a0-5 prim-core action) (collide-action solid))
+      (set! (-> a0-5 transform-index) 0)
+      )
+    (let ((a0-7 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 4))))
+      (set! (-> a0-7 prim-core action) (collide-action solid))
+      (set! (-> a0-7 transform-index) 0)
+      )
+    (let ((a0-9 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 2))))
+      (set! (-> a0-9 prim-core action) (collide-action solid))
+      (set! (-> a0-9 transform-index) 0)
+      )
+    (let ((a0-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 8))))
+      (set! (-> a0-11 prim-core action) (collide-action solid))
+      (set! (-> a0-11 transform-index) 0)
+      )
+    (let ((a0-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 5))))
+      (set! (-> a0-13 prim-core action) (collide-action solid))
+      (set! (-> a0-13 transform-index) 0)
+      )
+    (let ((v1-20 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 80))))
+      (set! (-> v1-20 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-20 transform-index) 0)
+      (set! (-> v1-20 nav-radius) 20480.0)
+      )
+    (let ((v1-22 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 10))))
+      (set! (-> v1-22 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-22 transform-index) 0)
+      (set! (-> v1-22 nav-radius) 20480.0)
+      )
+    (let ((v1-24 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-24 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-24 transform-index) 3)
+      )
+    (set! (-> s5-0 nav-radius) 20480.0)
+    (let ((v1-26 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-26 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-26 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-flags) (nav-flags has-child-spheres))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-62 ((this wcar-snake-base))
+  (let ((s5-0 (-> this root root-prim)))
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 0 local-sphere))
+      (the-as pointer (new 'static 'vector :x 8192.0 :y 1638.4 :z 7864.32 :w 3276.8))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 1 local-sphere))
+      (the-as pointer (new 'static 'vector :x -8192.0 :y 1638.4 :z 7864.32 :w 3276.8))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 2 local-sphere))
+      (the-as pointer (new 'static 'vector :x 9011.2 :y 2048.0 :z -11878.4 :w 4915.2))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 3 local-sphere))
+      (the-as pointer (new 'static 'vector :x -9011.2 :y 2048.0 :z -11878.4 :w 4915.2))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 4 local-sphere))
+      (the-as pointer (new 'static 'vector :y 3317.76 :z 9011.2 :w 4915.2))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 5 local-sphere))
+      (the-as pointer (new 'static 'vector :y 3686.4 :z -1638.4 :w 6144.0))
+      16
+      )
+    (mem-copy!
+      (the-as pointer (-> (the-as collide-shape-prim-group s5-0) child 6 local-sphere))
+      (the-as pointer (new 'static 'vector :y 3276.8 :z -14336.0 :w 6144.0))
+      16
+      )
+    (set! (-> (the-as collide-shape-prim-group s5-0) child 7 local-sphere w) 20889.6)
+    )
+  ((method-of-type wcar-base vehicle-method-62) this)
+  0
+  (none)
+  )
+
+(defmethod vehicle-method-79 ((this wcar-snake-base))
+  (let ((s5-0 (new 'stack-no-clear 'inline-array 'quaternion 3)))
+    (set-vector! (-> s5-0 2) 1092.2667 1092.2667 0.0 0.0)
+    (dotimes (s4-0 (-> this info physics-model wheel-count))
+      (let ((s3-0 (-> this wheel s4-0)))
+        (-> s3-0 info)
+        (quaternion-set!
+          (-> s5-0 0)
+          0.0
+          0.0
+          (* (-> s3-0 sin-susp-ang) (-> s3-0 x-scale))
+          (+ 1.0 (-> s3-0 cos-susp-ang))
+          )
+        (quaternion-normalize! (-> s5-0 0))
+        (quaternion-axis-angle! (-> s5-0 1) 0.0 0.0 (-> s3-0 x-scale) (-> (&-> s5-0 0 data s4-0) 8))
+        )
+      (let ((v1-10 (-> this jmod-axles s4-0)))
+        (quaternion*! (-> v1-10 rotation) (-> s5-0 0) (-> s5-0 1))
+        )
+      0
+      )
+    )
+  (let ((s5-1 (new 'stack-no-clear 'wcar-stack-type1)))
+    (let* ((v1-16 (-> s5-1 vec0))
+           (a3-2 (-> this node-list data 0 bone transform))
+           (a0-9 (-> a3-2 rvec quad))
+           (a1-3 (-> a3-2 uvec quad))
+           (a2-3 (-> a3-2 fvec quad))
+           (a3-3 (-> a3-2 trans quad))
+           )
+      (set! (-> v1-16 0 quad) a0-9)
+      (set! (-> v1-16 1 quad) a1-3)
+      (set! (-> v1-16 2 quad) a2-3)
+      (set! (-> v1-16 3 quad) a3-3)
+      )
+    (set! (-> s5-1 vec0 4 quad) (-> (new 'static 'vector :x 3768.32 :y 3686.4 :z 6758.4 :w 1.0) quad))
+    (set! (-> s5-1 vec0 5 quad) (-> (new 'static 'vector :x 3768.32 :y 3686.4 :z 6758.4 :w 1.0) quad))
+    (set! (-> s5-1 vec0 6 quad) (-> (new 'static 'vector :x 5816.32 :y 5242.88 :z -11960.32 :w 1.0) quad))
+    (set! (-> s5-1 vec0 7 quad) (-> (new 'static 'vector :x 5816.32 :y 5242.88 :z -11960.32 :w 1.0) quad))
+    (set-vector! (-> s5-1 vec0 8) 25486.223 25486.223 29127.111 29127.111)
+    (dotimes (s4-1 4)
+      (let ((s3-1 (-> this wheel s4-1)))
+        (let ((v1-25 (-> s3-1 info)))
+          (set! (-> s5-1 float0) (+ -2048.0 (-> v1-25 susp-arm-length)))
+          (set! (-> s5-1 vec1 0 quad) (-> (the-as (pointer uint128) (+ (+ (* s4-1 16) 64) (the-as int s5-1)))))
+          (set! (-> s5-1 vec0 9 quad) (-> v1-25 local-pos quad))
+          )
+        (+! (-> s5-1 vec0 9 x) (* (-> s5-1 float0) (-> s3-1 cos-susp-ang)))
+        (+! (-> s5-1 vec0 9 y) (* (-> s5-1 float0) (-> s3-1 sin-susp-ang)))
+        (set! (-> s5-1 vec1 1 quad) (-> s5-1 vec0 9 quad))
+        (set! (-> s5-1 vec1 1 x) (* (-> s5-1 vec1 1 x) (-> s3-1 x-scale)))
+        (set! (-> s5-1 vec1 0 x) (* (-> s5-1 vec1 0 x) (-> s3-1 x-scale)))
+        (vector-! (-> s5-1 vec1 2) (-> s5-1 vec1 1) (the-as vector (-> s5-1 vec1)))
+        (set! (-> s5-1 float2)
+              (- (-> s5-1 vec0 8 data s4-1) (* (atan (-> s5-1 vec1 2 x) (-> s5-1 vec1 2 y)) (-> s3-1 x-scale)))
+              )
+        (let ((v1-34 (-> this jmod-shock-tops s4-1)))
+          (quaternion-axis-angle! (-> v1-34 rotation) 0.0 0.0 1.0 (-> s5-1 float2))
+          )
+        0
+        (let ((v1-38 (-> this jmod-shock-mids s4-1)))
+          (set! (-> v1-38 transform trans y) (* -1.0 (+ -3276.8 (vector-length (-> s5-1 vec1 2))) (-> s3-1 x-scale)))
+          )
+        )
+      0
+      0
+      )
+    )
+  (let ((f30-1 (seconds-per-frame)))
+    (dotimes (s5-2 2)
+      (let ((s4-2 (-> this jmod-guns s5-2)))
+        (seek! (-> s4-2 transform trans z) 0.0 (* 32768.0 f30-1))
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+(defskelgroup skel-v-turtle turtle turtle-lod0-jg turtle-idle-ja
+              ((turtle-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3.5)
+              :shadow turtle-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-v-turtle-wheel turtle turtle-wheel-lod0-jg turtle-wheel-idle-ja
+              ((turtle-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.75)
+              :shadow turtle-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-turtle-wheel-blur turtle turtle-wheel-blur-lod0-jg turtle-wheel-blur-idle-ja
+              ((turtle-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.75)
+              :shadow turtle-wheel-blur-shadow-mg
+              )
+
+(defskelgroup skel-v-snake snake snake-lod0-jg snake-idle-ja
+              ((snake-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow snake-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-v-snake-wheel snake snake-wheel-lod0-jg snake-wheel-idle-ja
+              ((snake-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow snake-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-snake-wheel-blur snake snake-wheel-blur-lod0-jg snake-wheel-blur-idle-ja
+              ((snake-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow snake-wheel-blur-shadow-mg
+              )
+
+(defskelgroup skel-v-scorpion scorpion scorpion-lod0-jg scorpion-idle-ja
+              ((scorpion-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 7)
+              :shadow scorpion-shadow-mg
+              :origin-joint-index 3
+              )
+
+(defskelgroup skel-v-scorpion-wheel scorpion scorpion-wheel-lod0-jg scorpion-wheel-idle-ja
+              ((scorpion-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.55)
+              :shadow scorpion-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-scorpion-wheel-blur scorpion scorpion-wheel-blur-lod0-jg scorpion-wheel-blur-idle-ja
+              ((scorpion-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.55)
+              :shadow scorpion-wheel-blur-shadow-mg
+              )
+
+(defskelgroup skel-v-toad toad toad-lod0-jg toad-idle-ja
+              ((toad-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6)
+              :shadow toad-shadow-mg
+              )
+
+(defskelgroup skel-v-toad-wheel toad toad-wheel-lod0-jg toad-wheel-idle-ja
+              ((toad-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.44)
+              :shadow toad-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-toad-wheel-blur toad toad-wheel-blur-lod0-jg toad-wheel-blur-idle-ja
+              ((toad-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.44)
+              :shadow toad-wheel-blur-shadow-mg
+              )
+
+(defskelgroup skel-v-fox fox fox-lod0-jg fox-idle-ja
+              ((fox-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow fox-shadow-mg
+              )
+
+(defskelgroup skel-v-fox-wheel fox fox-wheel-lod0-jg fox-wheel-idle-ja
+              ((fox-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow fox-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-fox-wheel-blur fox fox-wheel-blur-lod0-jg fox-wheel-blur-idle-ja
+              ((fox-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow fox-wheel-blur-shadow-mg
+              )
+
+(defskelgroup skel-v-rhino rhino rhino-lod0-jg rhino-idle-ja
+              ((rhino-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 8)
+              :shadow rhino-shadow-mg
+              )
+
+(defskelgroup skel-v-rhino-wheel rhino rhino-wheel-lod0-jg rhino-wheel-idle-ja
+              ((rhino-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 0.59)
+              :shadow rhino-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-mirage snake snake-lod0-jg snake-idle-ja
+              ((snake-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow snake-shadow-mg
+              )
+
+(defskelgroup skel-v-mirage-wheel snake snake-wheel-lod0-jg snake-wheel-idle-ja
+              ((snake-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow snake-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-mirage-wheel-blur snake snake-wheel-blur-lod0-jg snake-wheel-blur-idle-ja
+              ((snake-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow snake-wheel-blur-shadow-mg
+              )
+
+(defskelgroup skel-v-x-ride fox fox-lod0-jg fox-idle-ja
+              ((fox-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 5)
+              :shadow fox-shadow-mg
+              )
+
+(defskelgroup skel-v-x-ride-wheel fox fox-wheel-lod0-jg fox-wheel-idle-ja
+              ((fox-wheel-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow fox-wheel-shadow-mg
+              )
+
+(defskelgroup skel-v-x-ride-wheel-blur fox fox-wheel-blur-lod0-jg fox-wheel-blur-idle-ja
+              ((fox-wheel-blur-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 1.15)
+              :shadow fox-wheel-blur-shadow-mg
+              )

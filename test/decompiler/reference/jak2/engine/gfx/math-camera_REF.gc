@@ -3,6 +3,14 @@
 
 ;; definition of type fog-corrector
 (deftype fog-corrector (structure)
+  "The math-camera matrices are used to compute fogging values, which are a per-vertex uint8 that
+tells the GS how 'foggy' the color should be. This should be proportional to how far away the vertex
+is. There is a scaling factor applied so the fog intensity isn't affected by the field of view angle.
+
+The fog-corrector stores a fog-end fog-start value that is corrected for the field of view.
+The actual correction factor is computed in cam-update.gc.
+Without this corrector, the fogginess of the world would change as the FOV changes
+(for example, when Jak gets on the zoomer, the FOV changes slightly)."
   ((fog-end    float)
    (fog-start  float)
    )
@@ -24,6 +32,7 @@
 ;; definition for function fog-corrector-setup
 ;; WARN: Return type mismatch float vs none.
 (defun fog-corrector-setup ((arg0 fog-corrector) (arg1 math-camera))
+  "Set the fog corrector based on the supplied math-camera."
   (set! (-> arg0 fog-end) (* (-> arg1 fog-end) (-> arg1 fov-correction-factor)))
   (set! (-> arg0 fog-start) (* (-> arg1 fog-start) (-> arg1 fov-correction-factor)))
   (none)
@@ -43,6 +52,8 @@
 ;; ERROR: Failed store: (s.w! (+ a0-43 8) a1-10) at op 463
 ;; ERROR: Failed store: (s.w! (+ a0-43 12) a1-11) at op 465
 (defun update-math-camera ((arg0 math-camera) (arg1 symbol) (arg2 symbol) (arg3 float))
+  "Compute some one-time camera constants.
+These should only change when changing aspect ratio."
   (local-vars (sv-16 float))
   (set! (-> arg0 x-ratio) (tan (* 0.5 arg3)))
   (if (= arg2 'aspect4x3)
@@ -264,6 +275,7 @@
 
 ;; definition for function math-cam-start-smoothing
 (defun math-cam-start-smoothing ((arg0 float) (arg1 float))
+  "Unused camera smoothing."
   (set! (-> *math-camera* smooth-step) (/ 1.0 arg0))
   (set! (-> *math-camera* smooth-t) arg1)
   (matrix->quaternion (-> *math-camera* inv-camera-rot-smooth-from) (-> *math-camera* inv-camera-rot-smooth))
@@ -272,6 +284,9 @@
 ;; definition for function move-target-from-pad
 ;; INFO: Used lq/sq
 (defun move-target-from-pad ((arg0 transform) (arg1 int))
+  "Unused function to adjust trans based on inputs from the pad.
+This function must be extremely old because it takes a non-quaternion transform,
+and all [[target]] stuff uses quaternions."
   (let ((s4-0 (new-stack-vector0)))
     (set! (-> s4-0 x) (cond
                         ((cpad-hold? arg1 circle)
@@ -334,6 +349,9 @@
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-vector! ((arg0 vector) (arg1 vector))
+  "Apply camera transformation to a point. Return true if it is visible or not.
+This returns the point in GS coords, but as float instead of int, so it's
+not really useful. See [[transform-point-qword!]] for more details."
   (local-vars (v1-2 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -382,6 +400,8 @@
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-qword! ((arg0 vector4w) (arg1 vector))
+  "Apply camera transformation to point, returning fixed point 28.4 position
+that can be given to the GS directly."
   (local-vars (v1-2 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -431,6 +451,7 @@
 ;; ERROR: Inline assembly instruction marked with TODO - [TODO.VCLIP]
 ;; ERROR: Unsupported inline assembly instruction kind - [cfc2.i v1, Clipping]
 (defun transform-point-vector-scale! ((arg0 vector) (arg1 vector))
+  "Similar to transform-point-qword! but returns the scale factor instead."
   (local-vars (v0-0 float) (v1-2 int))
   (rlet ((acc :class vf)
          (Q :class vf)
@@ -480,6 +501,7 @@
 ;; definition for function reverse-transform-point!
 ;; WARN: Return type mismatch vector vs none.
 (defun reverse-transform-point! ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 vector))
+  "Likely transform arg3 from screen space to world coords, using arg1/arg2 for... something."
   (let* ((v1-1 (-> *math-camera* perspective))
          (s2-0 (-> *math-camera* camera-rot))
          (f30-0 (* (/ (-> v1-1 vector 2 w) (-> v1-1 vector 0 x)) (-> *math-camera* hmge-scale w)))
@@ -509,6 +531,9 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch symbol vs none.
 (defun init-for-transform ((arg0 matrix))
+  "Sets up VU0 registers with camera info.
+This is probably a very old function and it's only used by camera debug.
+It stashes some data in vector float registers that must be there before calling transform-float-point."
   (local-vars (v1-14 float))
   (rlet ((vf1 :class vf)
          (vf17 :class vf)

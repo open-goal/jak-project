@@ -1,9 +1,10 @@
-// Copyright: 2021 - 2022, Ziemas
+// Copyright: 2021 - 2024, Ziemas
 // SPDX-License-Identifier: ISC
 #pragma once
 
 #include <memory>
 #include <mutex>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -18,7 +19,6 @@
 #include "game/sound/989snd/vagvoice.h"
 
 #include "third-party/cubeb/cubeb/include/cubeb/cubeb.h"
-#include "third-party/span.hpp"
 
 namespace snd {
 
@@ -32,7 +32,7 @@ class Player {
   // player(player&& other) noexcept = default;
   // player& operator=(player&& other) noexcept = default;
 
-  BankHandle LoadBank(nonstd::span<u8> bank);
+  BankHandle LoadBank(std::span<u8> bank);
 
   u32 PlaySound(BankHandle bank, u32 sound, s32 vol, s32 pan, s32 pm, s32 pb);
   u32 PlaySoundByName(BankHandle bank,

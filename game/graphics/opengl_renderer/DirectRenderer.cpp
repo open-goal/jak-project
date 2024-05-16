@@ -6,7 +6,7 @@
 
 #include "game/graphics/pipelines/opengl.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/imgui/imgui.h"
 
 DirectRenderer::ScissorState DirectRenderer::m_scissor;
@@ -818,7 +818,7 @@ void DirectRenderer::handle_ad(const u8* data,
       handle_scissor(value);
       break;
     case GsRegisterAddress::XYOFFSET_1:
-      ASSERT(render_state->version == GameVersion::Jak2);  // hardcoded jak 2 scissor vals in handle
+      ASSERT(render_state->version >= GameVersion::Jak2);  // hardcoded jak 2 scissor vals in handle
       handle_xyoffset(value);
       break;
     case GsRegisterAddress::COLCLAMP:

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,7 +23,7 @@
 #ifndef SDL_cocoaopengl_h_
 #define SDL_cocoaopengl_h_
 
-#if SDL_VIDEO_OPENGL_CGL
+#ifdef SDL_VIDEO_OPENGL_CGL
 
 #include "SDL_atomic.h"
 #import <Cocoa/Cocoa.h>
@@ -58,7 +58,7 @@ struct SDL_GLDriverData
 - (void)setWindow:(SDL_Window *)window;
 - (SDL_Window*)window;
 - (void)explicitUpdate;
-- (void)dealloc;
+- (void)cleanup;
 
 @property (retain, nonatomic) NSOpenGLPixelFormat* openglPixelFormat;  // macOS 10.10 has -[NSOpenGLContext pixelFormat] but this handles older OS releases.
 

@@ -2,13 +2,16 @@
 
 #include "formatter_tree.h"
 
+#include "common/formatter/rules/formatting_rules.h"
+#include "common/formatter/rules/rule_config.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
+#include "common/util/ast_util.h"
 #include "common/util/string_util.h"
 
 #include "tree_sitter/api.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 // Declare the `tree_sitter_opengoal` function, which is
 // implemented by the `tree-sitter-opengoal` library.
@@ -30,7 +33,19 @@ int hang_indentation_width(const FormatterTreeNode& curr_node) {
   return 1 + hang_indentation_width(first_elt);
 }
 
-// TODO - compute length of each node and store it
+// TODO - this doesn't account for paren's width contribution!
+int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
+  if (curr_node.token) {
+    return curr_node.token->length();
+  }
+  int width = 1;
+  for (const auto& ref : curr_node.refs) {
+    width += get_total_form_inlined_width(ref);
+  }
+  return width + 1;
+}
+
+// TODO - compute length of each node and store it AOT
 void apply_formatting_config(
     FormatterTreeNode& curr_node,
     std::optional<std::shared_ptr<formatter_rules::config::FormFormattingConfig>>
@@ -51,6 +66,7 @@ void apply_formatting_config(
       curr_node.formatting_config = predefined_config.value();
     }
   } else if (config_from_parent) {
+    // TODO - doesn't merge just replaces, a bit inflexible
     predefined_config = *config_from_parent.value();
     curr_node.formatting_config = predefined_config.value();
   }
@@ -67,10 +83,10 @@ void apply_formatting_config(
   //
   // Otherwise, we always default to a hang.
   //
-  // NOTE - any modifications here to child elements could be superseeded later in the recursion
-  // in order to maintain your sanity, only modify things here that _arent_ touched by default
+  // NOTE - any modifications here to child elements could be superseeded later in the recursion!
+  // In order to maintain your sanity, only modify things here that _arent_ touched by default
   // configurations.  These are explicitly prepended with `parent_mutable_`
-  if (!predefined_config) {
+  if (!predefined_config && !curr_node.formatting_config.config_set) {
     if (curr_node.metadata.is_top_level) {
       curr_node.formatting_config.indentation_width = 0;
       curr_node.formatting_config.hang_forms = false;
@@ -104,6 +120,8 @@ void apply_formatting_config(
   }
   // If we are hanging, lets determine the indentation width since it is based on the form itself
   if (curr_node.formatting_config.hang_forms) {
+    // TODO - this isn't being calculated for a pre-defined config
+    // TODO - another idea is to do this during consolidation
     curr_node.formatting_config.indentation_width = hang_indentation_width(curr_node);
   }
   // iterate through the refs
@@ -121,17 +139,37 @@ void apply_formatting_config(
       }
     }
   }
-}
-
-int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
-  if (curr_node.token) {
-    return curr_node.token->length();
+  // Precompute the column widths for things like deftype fields
+  if (curr_node.formatting_config.determine_column_widths_for_list_elements) {
+    // iterate through each ref and find the max length of each index (may be a token, may not be!)
+    // then store that info in each list element's `list_element_column_widths` to be used when
+    // printing out the tokens (pad width)
+    // Find the maximum number of columns
+    int max_columns = 0;
+    for (const auto& field : curr_node.refs) {
+      if ((int)field.refs.size() > max_columns) {
+        max_columns = field.refs.size();
+      }
+    }
+    // Now find the column max widths
+    std::vector<int> column_max_widths = {};
+    for (int col = 0; col < max_columns; col++) {
+      column_max_widths.push_back(0);
+      for (const auto& field : curr_node.refs) {
+        if ((int)field.refs.size() > col) {
+          const auto width = get_total_form_inlined_width(field.refs.at(col));
+          if (width > column_max_widths.at(col)) {
+            column_max_widths[col] = width;
+          }
+        }
+      }
+    }
+    // Apply column info to every list
+    for (auto& field : curr_node.refs) {
+      field.formatting_config.list_element_column_widths = column_max_widths;
+      field.formatting_config.config_set = true;
+    }
   }
-  int width = 1;
-  for (const auto& ref : curr_node.refs) {
-    width += get_total_form_inlined_width(ref);
-  }
-  return width + 1;
 }
 
 bool form_contains_comment(const FormatterTreeNode& curr_node) {
@@ -163,6 +201,9 @@ bool form_contains_node_that_prevents_inlining(const FormatterTreeNode& curr_nod
 
 bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
   using namespace formatter_rules;
+  if (curr_node.formatting_config.force_inline) {
+    return true;
+  }
   // First off, we cannot inline the top level
   if (curr_node.metadata.is_top_level) {
     return false;
@@ -191,17 +232,20 @@ bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
 }
 
 std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
-                                          std::vector<std::string> output = {},
+                                          std::vector<std::string> /*output*/ = {},
                                           int cursor_pos = 0) {
   using namespace formatter_rules;
   if (!curr_node.token && curr_node.refs.empty()) {
     // special case to handle an empty list
+    if (curr_node.node_prefix) {
+      return {fmt::format("{}()", curr_node.node_prefix.value())};
+    }
     return {"()"};
   }
 
   // If its a token, just print the token and move on
   if (curr_node.token) {
-    return {curr_node.token.value()};
+    return {curr_node.token_str()};
   }
 
   bool inline_form = can_node_be_inlined(curr_node, cursor_pos);
@@ -220,13 +264,19 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     // Add new line entry
     if (ref.token) {
       // Cleanup block-comments
-      std::string val = ref.token.value();
+      std::string val = ref.token_str();
       if (ref.metadata.node_type == "block_comment") {
         // TODO - change this sanitization to return a list of lines instead of a single new-lined
         // line
-        val = comments::format_block_comment(ref.token.value());
+        val = comments::format_block_comment(ref.token_str());
       }
       form_lines.push_back(val);
+      if (!curr_node.metadata.is_top_level && i == (int)curr_node.refs.size() - 1 &&
+          (ref.metadata.is_comment)) {
+        // if there's an inline comment at the end of a form, we have to force the paren to the next
+        // line and do a new-line paren this is ugly, but we have no choice!
+        form_lines.push_back("");
+      }
     } else {
       // If it's not a token, we have to recursively build up the form
       // TODO - add the cursor_pos here
@@ -250,6 +300,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
       if ((next_ref.metadata.node_type == "comment" && next_ref.metadata.is_inline) ||
           (curr_node.formatting_config.has_constant_pairs &&
            constant_pairs::is_element_second_in_constant_pair(curr_node, next_ref, i + 1))) {
+        // TODO
+        // has issues with not consolidating first lines, this should probably just be moved to
+        // outside this loop for simplicity, do it later
         if (next_ref.token) {
           form_lines.at(form_lines.size() - 1) += fmt::format(" {}", next_ref.token.value());
           i++;
@@ -260,6 +313,10 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
           }
           i++;
         }
+        if (!curr_node.metadata.is_top_level && next_ref.metadata.node_type == "comment" &&
+            (i + 1) == (int)curr_node.refs.size()) {
+          form_lines.push_back("");
+        }
       }
     }
     // If we are at the top level, potential separate with a new line
@@ -269,8 +326,12 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   }
 
   // Consolidate any lines if the configuration requires it
+  // TODO there is a hack here so that multi-line forms that are consolidated still line up properly
+  // i have to make consolidate a more first-class feature of the config
   if (curr_node.formatting_config.inline_until_index(form_lines)) {
     std::vector<std::string> new_form_lines = {};
+    const auto original_form_head_width = str_util::split(form_lines.at(0), '\n').at(0).length();
+    bool consolidating_lines = true;
     for (int i = 0; i < (int)form_lines.size(); i++) {
       if (i < curr_node.formatting_config.inline_until_index(form_lines)) {
         if (new_form_lines.empty()) {
@@ -279,15 +340,35 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
           new_form_lines.at(0) += fmt::format(" {}", form_lines.at(i));
         }
       } else {
-        new_form_lines.push_back(form_lines.at(i));
+        if (str_util::starts_with(form_lines.at(i), " ") && consolidating_lines) {
+          new_form_lines.push_back(fmt::format(
+              "{}{}", str_util::repeat(original_form_head_width, " "), form_lines.at(i)));
+        } else {
+          consolidating_lines = false;
+          new_form_lines.push_back(form_lines.at(i));
+        }
       }
     }
     form_lines = new_form_lines;
   }
 
+  // Add any column padding
+  if (!curr_node.formatting_config.list_element_column_widths.empty()) {
+    for (int i = 0; i < (int)form_lines.size(); i++) {
+      const auto& token = form_lines.at(i);
+      if (i < (int)form_lines.size() - 1) {
+        form_lines[i] = str_util::pad_right(
+            token, curr_node.formatting_config.list_element_column_widths.at(i), ' ');
+      }
+    }
+  }
+
   // Apply necessary indentation to each line and add parens
   if (!curr_node.metadata.is_top_level) {
     std::string form_surround_start = "(";
+    if (curr_node.node_prefix) {
+      form_surround_start = fmt::format("{}(", curr_node.node_prefix.value());
+    }
     std::string form_surround_end = ")";
     form_lines[0] = fmt::format("{}{}", form_surround_start, form_lines[0]);
     form_lines[form_lines.size() - 1] =
@@ -314,16 +395,14 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   return form_lines;
 }
 
-std::string join_formatted_lines(const std::vector<std::string> lines) {
-  // TODO - respect original file line endings
-  return fmt::format("{}", fmt::join(lines, "\n"));
+std::string join_formatted_lines(const std::vector<std::string>& lines,
+                                 const std::string& line_ending) {
+  return fmt::format("{}", fmt::join(lines, line_ending));
 }
 
 std::optional<std::string> formatter::format_code(const std::string& source) {
   // Create a parser.
   std::shared_ptr<TSParser> parser(ts_parser_new(), TreeSitterParserDeleter());
-
-  // Set the parser's language (JSON in this case).
   ts_parser_set_language(parser.get(), tree_sitter_opengoal());
 
   // Build a syntax tree based on source code stored in a string.
@@ -333,7 +412,11 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
 
   // Get the root node of the syntax tree.
   TSNode root_node = ts_tree_root_node(tree.get());
-  if (ts_node_is_null(root_node) || ts_node_has_error(root_node)) {
+  if (ts_node_is_null(root_node)) {
+    lg::error("null root node");
+    return std::nullopt;
+  } else if (ts_node_has_error(root_node)) {
+    lg::error("grammar parsing error, go figure it out!");
     return std::nullopt;
   }
 
@@ -352,7 +435,8 @@ std::optional<std::string> formatter::format_code(const std::string& source) {
     const auto formatted_lines = apply_formatting(formatting_tree.root);
     // 4. Now we joint he lines together, it's easier when formatting to leave all lines independent
     // so adding indentation is easier
-    const auto formatted_source = join_formatted_lines(formatted_lines);
+    const auto formatted_source =
+        join_formatted_lines(formatted_lines, file_util::get_majority_file_line_endings(source));
     return formatted_source;
   } catch (std::exception& e) {
     lg::error("Unable to format code - {}", e.what());

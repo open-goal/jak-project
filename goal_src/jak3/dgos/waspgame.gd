@@ -1,0 +1,10 @@
+("WASPGAME.DGO"
+ ("was-pre-game.o"
+  "tpage-1662.go"
+  "tpage-1561.go"
+  "neo-satellite-heart-ag.go"
+  "neo-satellite-fma-ag.go"
+  "neo-satellite-game-ring-ag.go"
+  "neo-satellite-ps-symbols-ag.go"
+  "waspgame.go"
+ ))

@@ -13,7 +13,7 @@
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace decompiler {
 
@@ -179,7 +179,7 @@ goos::Object decompile_function_at_label(const DecompilerLabel& label,
     auto other_func = file->try_get_function_at_label(label);
     if (other_func && other_func->ir2.env.has_local_vars() && other_func->ir2.top_form &&
         other_func->ir2.expressions_succeeded) {
-      auto out = final_output_lambda(*other_func);
+      auto out = final_output_lambda(*other_func, file->version);
       if (in_static_pair) {
         return pretty_print::build_list("unquote", out);
       } else {
@@ -690,7 +690,7 @@ goos::Object decompile_sound_spec(const TypeSpec& type,
     the_macro.push_back(pretty_print::to_symbol(fmt::format(":num {}", num)));
   }
   if (group != 1) {
-    the_macro.push_back(pretty_print::to_symbol(fmt::format(":group {}", num)));
+    the_macro.push_back(pretty_print::to_symbol(fmt::format(":group {}", group)));
   }
   if ((mask & 1) || volume != 1024) {
     implicit_mask |= 1 << 0;
@@ -967,6 +967,86 @@ const std::unordered_map<
                {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
                {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
                {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+         }},
+        {GameVersion::Jak3,
+         {
+             {"ocean-near-indices",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-near-index"), 32)}}},
+             {"ocean-mid-masks", {{"data", ArrayFieldDecompMeta(TypeSpec("ocean-mid-mask"), 8)}}},
+             {"lightning-probe-vars",
+              {{"probe-dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
+             {"continue-point",
+              {{"want", ArrayFieldDecompMeta(TypeSpec("level-buffer-state-small"), 8)}}},
+             {"task-manager-info",
+              {{"sphere-array", ArrayFieldDecompMeta(TypeSpec("sphere"), 16)}}},
+             {"sparticle-launcher",
+              {{"init-specs", ArrayFieldDecompMeta(TypeSpec("sp-field-init-spec"), 16)}}},
+             {"sparticle-launch-group",
+              {{"launcher", ArrayFieldDecompMeta(TypeSpec("sparticle-group-item"), 32)}}},
+             {"simple-sprite-system",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("sprite-glow-data"), 64)}}},
+             {"actor-hash-bucket",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("actor-cshape-ptr"), 16)}}},
+             {"nav-mesh",
+              {{"poly-array", ArrayFieldDecompMeta(TypeSpec("nav-poly"), 64)},
+               {"nav-control-array", ArrayFieldDecompMeta(TypeSpec("nav-control"), 288)}}},
+             {"enemy-info",
+              {{"idle-anim-script", ArrayFieldDecompMeta(TypeSpec("idle-control-frame"), 32)}}},
+             {"nav-enemy-info",
+              {{"idle-anim-script", ArrayFieldDecompMeta(TypeSpec("idle-control-frame"), 32)}}},
+             {"vehicle-rider-info",
+              {{"grab-rail-array", ArrayFieldDecompMeta(TypeSpec("vehicle-grab-rail-info"), 48)},
+               {"attach-point-array", ArrayFieldDecompMeta(TypeSpec("vehicle-attach-point"), 32)}}},
+             {"vehicle-setup-info", {{"color", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
+             {"desbeast-path", {{"node", ArrayFieldDecompMeta(TypeSpec("desbeast-node"), 32)}}},
+             {"race-info",
+              {{"turbo-pad-array", ArrayFieldDecompMeta(TypeSpec("race-turbo-pad"), 32)},
+               {"racer-array", ArrayFieldDecompMeta(TypeSpec("race-racer-info"), 16)},
+               {"decision-point-array",
+                ArrayFieldDecompMeta(TypeSpec("race-decision-point"), 16)}}},
+             {"flyingsaw-graph", {{"node", ArrayFieldDecompMeta(TypeSpec("flyingsaw-node"), 48)}}},
+             {"nav-network-info",
+              {{"adjacency", ArrayFieldDecompMeta(TypeSpec("nav-network-adjacency"), 16)}}},
+             {"forest-path-points-static",
+              {{"points", ArrayFieldDecompMeta(TypeSpec("vector"), 16)}}},
+             {"xz-height-map",
+              {{"data", ArrayFieldDecompMeta(TypeSpec("int8"),
+                                             1,
+                                             ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+             {"was-pre-game-game",
+              {{"wave", ArrayFieldDecompMeta(TypeSpec("was-pre-game-wave"), 32)}}},
+             {"lizard-graph",
+              {{"point", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"edge", ArrayFieldDecompMeta(TypeSpec("lizard-graph-edge"), 16)}}},
+             {"terraformer-graph",
+              {{"node", ArrayFieldDecompMeta(TypeSpec("terraformer-node"), 32)},
+               {"edge", ArrayFieldDecompMeta(TypeSpec("terraformer-edge"), 16)}}},
+             {"bombbot-path", {{"node", ArrayFieldDecompMeta(TypeSpec("bombbot-node"), 32)}}},
+             {"ai-task-pool",
+              {{"tasks", ArrayFieldDecompMeta(TypeSpec("uint32"),
+                                              4,
+                                              ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+             {"bot-course", {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)}}},
+             {"ashelin-course",
+              {{"spots", ArrayFieldDecompMeta(TypeSpec("bot-spot"), 32)},
+               {"speeches", ArrayFieldDecompMeta(TypeSpec("bot-speech-info"), 16)},
+               {"dirs", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"speech-tunings", ArrayFieldDecompMeta(TypeSpec("bot-speech-tuning"), 16)}}},
+             {"ctyport-mine-layout",
+              {{"stored-handles",
+                ArrayFieldDecompMeta(TypeSpec("handle"),
+                                     8,
+                                     ArrayFieldDecompMeta::Kind::REF_TO_INTEGER_ARR)}}},
+             {"deschase-path", {{"node", ArrayFieldDecompMeta(TypeSpec("deschase-node"), 32)}}},
+             {"tpath-info",
+              // TODO - should be able to just decompile the `anims` field
+              {{"anim1", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
+               {"anim2", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)},
+               {"anim3", ArrayFieldDecompMeta(TypeSpec("tpath-control-frame"), 16)}}},
+             {"blow-tower-path",
+              // TODO - should be able to just decompile the `anims` field
+              {{"pts", ArrayFieldDecompMeta(TypeSpec("vector"), 16)},
+               {"node-info", ArrayFieldDecompMeta(TypeSpec("blow-tower-node-info"), 32)}}},
          }}};
 
 goos::Object decompile_structure(const TypeSpec& type,
@@ -1162,7 +1242,10 @@ goos::Object decompile_structure(const TypeSpec& type,
         auto len = field.array_size();
         auto stride = ts.get_size_in_type(field) / len;
         ASSERT(stride == field_type_info->get_size_in_memory());
-
+        if (field.type() == TypeSpec("int128") || field.type() == TypeSpec("uint128")) {
+          lg::die("Trying to decompile field {} of {} as an array of type {} not supported",
+                  field.name(), type_info->get_name(), field.type().print());
+        }
         field_defs_out.emplace_back(
             field.name(), decompile_value_array(field.type(), field_type_info, len, stride,
                                                 field_start, obj_words, ts));
@@ -1443,7 +1526,7 @@ goos::Object decompile_structure(const TypeSpec& type,
         } else if (word.kind() == LinkedWord::EMPTY_PTR) {
           field_defs_out.emplace_back(field.name(), pretty_print::to_symbol("'()"));
         } else if (word.kind() == LinkedWord::TYPE_PTR) {
-          if (field.type() != TypeSpec("type")) {
+          if (!ts.tc(field.type(), TypeSpec("type"))) {
             throw std::runtime_error(
                 fmt::format("Field {} in type {} offset {} had a reference to type {}, but the "
                             "type of the field is not type.",
@@ -1507,6 +1590,11 @@ goos::Object bitfield_defs_print(const TypeSpec& type,
       result.push_back(pretty_print::to_symbol(fmt::format(
           ":{} {}", def.field_name,
           bitfield_defs_print(def.nested_field->field_type, def.nested_field->fields).print())));
+    } else if (def.is_float) {
+      float f;
+      memcpy(&f, &def.value, 4);
+      result.push_back(
+          pretty_print::to_symbol(fmt::format(":{} {}", def.field_name, float_to_string(f, true))));
     } else {
       result.push_back(
           pretty_print::to_symbol(fmt::format(":{} #x{:x}", def.field_name, def.value)));
@@ -1689,7 +1777,8 @@ goos::Object decompile_boxed_array(const TypeSpec& type,
       throw std::runtime_error("Invalid basic in decompile_boxed_array");
     }
     // TODO - ideally this wouldn't be hard-coded
-    if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array") {
+    if (type_ptr.symbol_name() == "array" || type_ptr.symbol_name() == "texture-anim-array" ||
+        type_ptr.symbol_name() == "progress-icon-array") {
       auto content_type_ptr_word_idx = type_ptr_word_idx + 3;
       auto& content_type_ptr = words.at(label.target_segment).at(content_type_ptr_word_idx);
       if (content_type_ptr.kind() != LinkedWord::TYPE_PTR) {
@@ -2049,9 +2138,10 @@ std::vector<BitFieldConstantDef> decompile_bitfield_from_int(const TypeSpec& typ
   return *try_decompile_bitfield_from_int(type, ts, value, true, {});
 }
 
-std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
-                                                          const TypeSystem& ts,
-                                                          u64 value) {
+std::optional<std::vector<std::string>> try_decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                                             const TypeSystem& ts,
+                                                                             u64 value,
+                                                                             bool require_success) {
   u64 reconstructed = 0;
   std::vector<std::string> result;
   auto type_info = ts.try_enum_lookup(type.base_type());
@@ -2087,10 +2177,14 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
   }
 
   if (reconstructed != value) {
-    throw std::runtime_error(fmt::format(
-        "Failed to decompile bitfield enum {}. Original value is 0x{:x} but we could only "
-        "make 0x{:x} using the available fields.",
-        type.print(), value, reconstructed));
+    if (require_success) {
+      throw std::runtime_error(fmt::format(
+          "Failed to decompile bitfield enum {}. Original value is 0x{:x} but we could only "
+          "make 0x{:x} using the available fields.",
+          type.print(), value, reconstructed));
+    } else {
+      return std::nullopt;
+    }
   }
 
   if (bit_count == (int)result.size()) {
@@ -2106,6 +2200,14 @@ std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
   }
 
   return result;
+}
+
+std::vector<std::string> decompile_bitfield_enum_from_int(const TypeSpec& type,
+                                                          const TypeSystem& ts,
+                                                          u64 value) {
+  auto ret = try_decompile_bitfield_enum_from_int(type, ts, value, true);
+  ASSERT(ret.has_value());
+  return *ret;
 }
 
 std::string decompile_int_enum_from_int(const TypeSpec& type, const TypeSystem& ts, u64 value) {

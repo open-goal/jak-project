@@ -18,16 +18,20 @@
 
 (defmethod update! ((this autosplit-info))
   ;; general statistics
-  (set! (-> this num-orbs) (the int (-> *game-info* skill-total)))
-  (set! (-> this num-skullgems) (the int (-> *game-info* gem-total)))
-  ;; ending conditions
-  ;; all collectables
-  ;; - check for all orbs (which require all missions conveniently)
-  ;; - also check for all darkjak powers
-  (set! (-> this all-collectables-acquired?)
-        (if (and (logtest? (-> *game-info* features) (game-feature darkjak-giant))
-                 (>= (-> this num-orbs) 286))
-          1 0))
+  ;; when we are blacked out in loads the value of these are temporarily 0, and that messes with the auto splitter.
+  (let ((in-blackout? (>= (-> *game-info* blackout-time) (current-time))))
+    (when (not in-blackout?)
+      (set! (-> this num-orbs) (the int (-> *game-info* skill-total)))
+      (set! (-> this num-skullgems) (the int (-> *game-info* gem-total)))
+      ;; ending conditions
+      ;; all collectables
+      ;; - check for all orbs (which require all missions conveniently)
+      ;; - also check for all darkjak powers
+      (set! (-> this all-collectables-acquired?)
+            (if (and (logtest? (-> *game-info* features) (game-feature darkjak-giant))
+                    (>= (-> this num-orbs) 286))
+              1 0)))
+  )
   ;; loading/cutscene related flags
   (set! (-> this in-cutscene?) (if (movie?) 1 0))
   ;; need resolution flags

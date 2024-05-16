@@ -18,7 +18,7 @@
 #include "gtest/gtest.h"
 #include "test/all_jak1_symbols.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 TEST(CommonUtil, CpuInfo) {
   setup_cpu_info();

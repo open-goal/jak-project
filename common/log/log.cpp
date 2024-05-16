@@ -1,10 +1,11 @@
 #include "log.h"
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <mutex>
 
-#include "third-party/fmt/color.h"
+#include "fmt/color.h"
 #ifdef _WIN32  // see lg::initialize
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -106,13 +107,38 @@ void log_print(const char* message) {
     }
 
     if (gLogger.stdout_log_level < lg::level::off_unless_die) {
-      fmt::print(message);
+      fmt::print("{}", message);
+      fflush(stdout);
+      fflush(stderr);
+    }
+  }
+}
+
+void log_vprintf(const char* format, va_list arg_list) {
+  {
+    // We always immediately flush prints because since it has no associated level
+    // it could be anything from a fatal error to a useless debug log.
+    std::lock_guard<std::mutex> lock(gLogger.mutex);
+    va_list arg_list_2;
+    va_copy(arg_list_2, arg_list);
+    if (gLogger.fp) {
+      // Log to File
+      vfprintf(gLogger.fp, format, arg_list);
+      fflush(gLogger.fp);
+    }
+
+    if (gLogger.stdout_log_level < lg::level::off_unless_die) {
+      vprintf(format, arg_list_2);
       fflush(stdout);
       fflush(stderr);
     }
   }
 }
 }  // namespace internal
+
+void printstd(const char* format, va_list arg_list) {
+  internal::log_vprintf(format, arg_list);
+}
 
 // how many extra log files for a single program should be kept?
 constexpr int LOG_ROTATE_MAX = 10;

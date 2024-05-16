@@ -7,3 +7,443 @@
 
 ;; DECOMP BEGINS
 
+(defmethod draw ((this hud-race-timer))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    266
+    (the int (+ 50.0 (* -100.0 (-> this offset))))
+    )
+  (let ((s5-0 (new 'stack-no-clear 'array 'time-frame 5)))
+    (set! (-> s5-0 0) (the-as time-frame (min #x1b773f (-> *game-info* race-timer))))
+    (set! (-> s5-0 2) (the-as time-frame (/ (-> s5-0 0) #x4650)))
+    (set! (-> s5-0 1) (- (-> s5-0 0) (the-as time-frame (* #x4650 (-> s5-0 2)))))
+    (set! (-> s5-0 3) (the-as time-frame (/ (-> s5-0 1) 300)))
+    (set! (-> s5-0 1) (- (-> s5-0 1) (the-as time-frame (* 300 (-> s5-0 3)))))
+    (set! (-> s5-0 4) (the-as time-frame (the int (* 0.33333334 (the float (-> s5-0 1))))))
+    (clear (-> this strings 0 text))
+    (clear (-> this strings 1 text))
+    (clear (-> this strings 2 text))
+    (format (-> this strings 0 text) "~2,'0D:" (-> s5-0 2))
+    (format (-> this strings 1 text) "~2,'0D:" (-> s5-0 3))
+    (format (-> this strings 2 text) "~2,'0D" (-> s5-0 4))
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -40 -22)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (-> this strings 0 pos) 40 0)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 2 pos)) (-> this strings 1 pos) 33 0)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-race-timer))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-race-timer))
+  (race-vehicle-entity-hack)
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-center) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "hud-timerboard-01" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (set! (-> this sprites 0 scale-x) 2.8)
+  (set! (-> this sprites 0 scale-y) 2.0)
+  (dotimes (s5-0 3)
+    (alloc-string-if-needed this s5-0)
+    (let ((v1-11 (-> this strings s5-0)))
+      (set! (-> v1-11 scale) 0.7)
+      (set! (-> v1-11 flags) (font-flags middle large))
+      (set! (-> v1-11 color) (font-color green))
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod draw ((this hud-race-lap-counter))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    504
+    (the int (+ 20.0 (* -100.0 (-> this offset))))
+    )
+  (set! (-> this strings 0 scale) 0.55)
+  (format (clear (-> this strings 0 text)) "~D/~D" (-> this values 0 current) (-> this values 1 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -40 5)
+  (set-as-offset-from! (-> this sprites 1) (the-as vector4w (-> this sprites)) -20 0)
+  (set-as-offset-from! (-> this sprites 2) (the-as vector4w (-> this sprites 1)) -50 0)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-race-lap-counter))
+  (set! (-> this values 0 target) (-> *game-info* race-current-lap-count))
+  (set! (-> this values 1 target) (-> *game-info* race-total-lap-count))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-race-lap-counter))
+  (race-vehicle-entity-hack)
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-lap-03" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color green))
+  (set! (-> this sprites 1 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-lap-02" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 2 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-lap-01" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  0
+  (none)
+  )
+
+(defmethod draw ((this hud-race-position))
+  (local-vars (s4-0 int))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    20
+    (the int (+ 20.0 (* -100.0 (-> this offset))))
+    )
+  (let ((s5-0 (-> this values 0 current)))
+    (dotimes (v1-2 16)
+      (set! (-> this sprites v1-2 scale-x) 0.0)
+      (set! (-> this sprites v1-2 scale-y) 0.0)
+      )
+    (set! (-> this sprites s5-0 scale-x) 0.8)
+    (set! (-> this sprites s5-0 scale-y) 0.8)
+    (set-as-offset-from! (-> this sprites s5-0) (the-as vector4w (-> this sprites)) 0 0)
+    0
+    (let ((v1-14 (-> *common-text* language-id)))
+      (cond
+        ((or (= v1-14 4) (or (= v1-14 3) (= v1-14 9)))
+         (set! s4-0 12)
+         )
+        ((= v1-14 1)
+         (set! s4-0 (if (> s5-0 0)
+                        14
+                        13
+                        )
+               )
+         )
+        ((= v1-14 7)
+         (set! s4-0 15)
+         )
+        ((or (= v1-14 8) (= v1-14 2))
+         (set! s4-0 -1)
+         )
+        (else
+          (set! s4-0 (min 11 (+ s5-0 8)))
+          )
+        )
+      )
+    (when (!= s4-0 -1)
+      (set-as-offset-from!
+        (-> this sprites s4-0)
+        (the-as vector4w (-> this sprites s5-0))
+        (if (zero? s5-0)
+            28
+            52
+            )
+        0
+        )
+      (set! (-> this sprites s4-0 scale-x) 0.8)
+      (set! (-> this sprites s4-0 scale-y) 0.8)
+      )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-race-position))
+  (set! (-> this values 0 target) (-> *game-info* race-position))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-race-position))
+  (race-vehicle-entity-hack)
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-01" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 1 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-02" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 2 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-03" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 3 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-04" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 4 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-05" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 5 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-06" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 6 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-07" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 7 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-nmbr-08" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 8 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-st" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 9 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-nd" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 10 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-rd" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 11 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-th" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 12 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-o" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 13 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-er" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 14 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-e" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  (set! (-> this sprites 15 tid)
+        (the-as
+          texture-id
+          (lookup-level-texture-by-name "stadiumb-hud-ord-korean" (-> this level) (the-as (pointer texture-page) #f))
+          )
+        )
+  0
+  (none)
+  )
+
+(defmethod draw ((this hud-race-final-stats))
+  (local-vars (sv-112 font-context) (sv-128 string) (sv-144 string))
+  (let* ((s1-0 *race-state*)
+         (s5-0 (-> s1-0 racer-array (-> s1-0 i-player)))
+         )
+    30
+    (let ((s2-0 (- (-> s5-0 finish-time) (-> s1-0 race-start-time))))
+      (new 'static 'font-context)
+      (let* ((s4-0 0)
+             (s3-0 (+ s4-0 3))
+             )
+        (set! sv-112
+              (new 'stack 'font-context *font-default-matrix* 0 0 0.0 (font-color default) (font-flags shadow kerning))
+              )
+        (set! (-> this strings 0 scale) 0.0)
+        (set! (-> sv-112 origin x) 45.0)
+        (set! (-> sv-112 origin y) 20.0)
+        (let ((v1-11 sv-112))
+          (set! (-> v1-11 width) (the float 422))
+          )
+        (let ((v1-12 sv-112))
+          (set! (-> v1-12 height) (the float 80))
+          )
+        (let ((a0-6 sv-112))
+          (set! (-> a0-6 color) (font-color red))
+          )
+        (let ((a0-7 sv-112))
+          (set! (-> a0-7 flags) (font-flags kerning middle middle-vert large))
+          )
+        (let ((s0-0 80))
+          (let ((v1-15 sv-112))
+            (set! (-> v1-15 scale) 1.6)
+            )
+          (when (= (-> *setting-control* user-default language) (language-enum german))
+            (let ((v1-18 sv-112))
+              (set! (-> v1-18 scale) 1.0)
+              )
+            )
+          (cond
+            ((-> s1-0 player-win?)
+             (let ((s1-1 print-game-text)
+                   (a0-13 (lookup-text! *common-text* (text-id text-0076) #f))
+                   (a2-2 #f)
+                   (a3-1 44)
+                   (t0-1 579)
+                   )
+               (s1-1 a0-13 sv-112 a2-2 a3-1 (the-as bucket-id t0-1))
+               )
+             )
+            (else
+              (print-game-text
+                (lookup-text! *common-text* (text-id text-0077) #f)
+                sv-112
+                #f
+                44
+                (bucket-id hud-draw-hud-alpha)
+                )
+              )
+            )
+          (set! (-> this strings 1 scale) 0.5)
+          (set! (-> this strings 1 flags) (font-flags shadow kerning large))
+          (set-hud-piece-position!
+            (the-as hud-sprite (-> this strings 1 pos))
+            128
+            (the int (+ (- 188.0 (the float s0-0)) (* -100.0 (-> this offset))))
+            )
+          (let ((s1-3 format))
+            (set! sv-128 (clear (-> this strings 1 text)))
+            (let ((a1-7 (lookup-text! *common-text* (text-id text-0078) #f)))
+              (s1-3 sv-128 a1-7)
+              )
+            )
+          (set-hud-piece-position!
+            (the-as hud-sprite (-> this strings 2 pos))
+            384
+            (the int (+ (- 188.0 (the float s0-0)) (* -100.0 (-> this offset))))
+            )
+          )
+        (set! (-> this strings 2 scale) 0.5)
+        (set! (-> this strings 2 flags) (font-flags shadow kerning right large))
+        (print-time (clear (-> this strings 2 text)) (the-as time-frame s2-0))
+        (while (and (< 1 (-> s5-0 lap-count)) (< s3-0 (+ (* (-> s5-0 lap-count) 2) 2)))
+          (let ((s2-1 (-> s5-0 lap-time-array (+ (- -1 s4-0) (-> s5-0 lap-count)))))
+            (set! (-> this strings s3-0 scale) 0.5)
+            (set! (-> this strings s3-0 flags) (font-flags shadow kerning large))
+            (set! (-> this strings s3-0 color) (font-color white))
+            (set-as-offset-from!
+              (the-as hud-sprite (+ (the-as uint (-> this strings 0 pos)) (* s3-0 32)))
+              (-> this strings 1 pos)
+              5
+              (+ (* 28 s4-0) 40)
+              )
+            (let ((s1-5 format)
+                  (s0-1 (clear (-> this strings s3-0 text)))
+                  )
+              (set! sv-144 "~S ~D")
+              (let ((a2-10 (lookup-text! *common-text* (text-id text-0079) #f))
+                    (a3-4 (+ s4-0 1))
+                    )
+                (s1-5 s0-1 sv-144 a2-10 a3-4)
+                )
+              )
+            (let ((s3-1 (+ s3-0 1)))
+              (set! (-> this strings s3-1 scale) 0.5)
+              (set! (-> this strings s3-1 flags) (font-flags shadow kerning right large))
+              (set! (-> this strings s3-1 color) (font-color white))
+              (set-as-offset-from!
+                (the-as hud-sprite (+ (the-as uint (-> this strings 0 pos)) (* s3-1 32)))
+                (-> this strings 2 pos)
+                0
+                (+ (* 28 s4-0) 40)
+                )
+              (print-time (clear (-> this strings s3-1 text)) (the-as time-frame s2-1))
+              (+! s4-0 1)
+              (set! s3-0 (+ s3-1 1))
+              )
+            )
+          )
+        )
+      )
+    )
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+(defmethod update-values! ((this hud-race-final-stats))
+  (logclear! (-> this flags) (hud-flags disable))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+(defmethod init-callback ((this hud-race-final-stats))
+  (race-vehicle-entity-hack)
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel supertitle) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (dotimes (s5-0 14)
+    (alloc-string-if-needed this s5-0)
+    )
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color red))
+  (set! (-> this strings 1 flags) (font-flags kerning large))
+  (set! (-> this strings 1 color) (font-color white))
+  (set! (-> this strings 2 flags) (font-flags kerning large))
+  (set! (-> this strings 2 color) (font-color white))
+  0
+  (none)
+  )

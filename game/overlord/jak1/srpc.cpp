@@ -24,15 +24,16 @@
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/magic_enum.hpp"
 
 using namespace iop;
 
 namespace jak1 {
 constexpr int SRPC_MESSAGE_SIZE = 0x50;
+constexpr int SRPC_MESSAGE_COUNT = 128;
 static uint8_t gLoaderBuf[SRPC_MESSAGE_SIZE];
-static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * 128];
+static uint8_t gPlayerBuf[SRPC_MESSAGE_SIZE * SRPC_MESSAGE_COUNT];
 static u32 gInfoEE = 0;  // EE address where we should send info on each frame.
 s16 gFlava;
 u32 gFreeMem = 0;
@@ -62,8 +63,8 @@ u32 Thread_Player() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player, gPlayerBuf, nullptr, nullptr,
-                    &dq);
+  sceSifRegisterRpc(&serve, PLAYER_RPC_ID[g_game_version], RPC_Player, gPlayerBuf,
+                    SRPC_MESSAGE_SIZE * SRPC_MESSAGE_COUNT, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -79,8 +80,8 @@ u32 Thread_Loader() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf, nullptr, nullptr,
-                    &dq);
+  sceSifRegisterRpc(&serve, LOADER_RPC_ID[g_game_version], RPC_Loader, gLoaderBuf,
+                    SRPC_MESSAGE_SIZE, nullptr, nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;

@@ -5,5 +5,84 @@
 ;; name in dgo: aligner-h
 ;; dgos: GAME
 
+(defenum align-flags
+  :bitfield #t
+  :type uint32
+  (disabled) ;; keep object velocity
+  (af01)
+  (af02)
+  (af03)
+  (af04)
+  (af05)
+  )
+
+;; +++align-opts
+(defenum align-opts
+  :bitfield #t
+  :type uint32
+  (adjust-x-vel)
+  (adjust-y-vel)
+  (adjust-xz-vel)
+  (keep-other-velocities)
+  (adjust-quat) ;; 16
+  (alop0)
+  (alop1)
+  (alop2)
+  (alop3)
+  (alop4)
+  (alop5)
+  (no-gravity)
+  (ignore-y-if-zero)
+  )
+;; ---align-opts
+
+
+;; +++align-flags
+(defenum align-flags
+  :bitfield #t
+  :type uint32
+  (disabled) ;; keep object velocity
+  (af01)
+  (af02)
+  (af03)
+  (af04)
+  (af05)
+  )
+;; ---align-flags
+
+
 ;; DECOMP BEGINS
 
+(deftype align-control (basic)
+  ((flags        align-flags)
+   (process      process-drawable)
+   (frame-group  art-joint-anim)
+   (frame-num    float)
+   (matrix       matrix      2 :inline)
+   (transform    transform   2 :inline)
+   (delta        transformq  :inline)
+   (last-speed   meters)
+   (align        transformq  :inline :overlay-at (-> transform 0 trans data 0))
+   )
+  (:methods
+    (new (symbol type process) _type_)
+    (compute-alignment! (_type_) transformq)
+    (align! (_type_ align-opts float float float) trsqv)
+    (align-vel-and-quat-only! (_type_ align-opts vector int float float) trsqv)
+    (first-transform (_type_) transform)
+    (second-transform (_type_) transform)
+    )
+  )
+
+
+;; WARN: Return type mismatch object vs align-control.
+(defmethod new align-control ((allocation symbol) (type-to-make type) (arg0 process))
+  (let ((this (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (when (zero? this)
+      (go process-drawable-art-error "memory")
+      (return (the-as align-control 0))
+      )
+    (set! (-> this process) (the-as process-drawable arg0))
+    (the-as align-control this)
+    )
+  )

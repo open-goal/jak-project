@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_VITA && SDL_VIDEO_VITA_PVR && SDL_VIDEO_VITA_PVR_OGL
+#if defined(SDL_VIDEO_DRIVER_VITA) && defined(SDL_VIDEO_VITA_PVR) && defined(SDL_VIDEO_VITA_PVR_OGL)
 #include <stdlib.h>
 #include <string.h>
 #include <psp2/kernel/modulemgr.h>
@@ -45,20 +45,17 @@ void getFBSize(int *width, int *height)
     *height = FB_HEIGHT;
 }
 
-int
-VITA_GL_LoadLibrary(_THIS, const char *path)
+int VITA_GL_LoadLibrary(_THIS, const char *path)
 {
     PVRSRV_PSP2_APPHINT hint;
-    char* override = SDL_getenv("VITA_MODULE_PATH");
-    char* skip_init = SDL_getenv("VITA_PVR_SKIP_INIT");
-    char* default_path = "app0:module";
+    char *override = SDL_getenv("VITA_MODULE_PATH");
+    char *skip_init = SDL_getenv("VITA_PVR_SKIP_INIT");
+    char *default_path = "app0:module";
     char target_path[MAX_PATH];
 
-    if (skip_init == NULL) // we don't care about actual value
-    {
-        if (override != NULL)
-        {
-          default_path = override;
+    if (!skip_init) { // we don't care about actual value
+        if (override) {
+            default_path = override;
         }
 
         sceKernelLoadStartModule("vs0:sys/external/libfios2.suprx", 0, NULL, 0, NULL, NULL);
@@ -82,11 +79,10 @@ VITA_GL_LoadLibrary(_THIS, const char *path)
         PVRSRVCreateVirtualAppHint(&hint);
     }
 
-    return SDL_EGL_LoadLibrary(_this, path, (NativeDisplayType) 0, 0);
+    return SDL_EGL_LoadLibrary(_this, path, (NativeDisplayType)0, 0);
 }
 
-SDL_GLContext
-VITA_GL_CreateContext(_THIS, SDL_Window * window)
+SDL_GLContext VITA_GL_CreateContext(_THIS, SDL_Window *window)
 {
     char gl_version[3];
     SDL_GLContext context = NULL;
@@ -99,10 +95,9 @@ VITA_GL_CreateContext(_THIS, SDL_Window * window)
     _this->gl_config.minor_version = 0;
     _this->gl_config.profile_mask = SDL_GL_CONTEXT_PROFILE_ES;
 
-    context = SDL_EGL_CreateContext(_this, ((SDL_WindowData *) window->driverdata)->egl_surface);
+    context = SDL_EGL_CreateContext(_this, ((SDL_WindowData *)window->driverdata)->egl_surface);
 
-    if (context != NULL)
-    {
+    if (context != NULL) {
         FB_WIDTH = window->w;
         FB_HEIGHT = window->h;
         set_getprocaddress((void *(*)(const char *))eglGetProcAddress);
@@ -121,8 +116,7 @@ VITA_GL_CreateContext(_THIS, SDL_Window * window)
     return context;
 }
 
-void *
-VITA_GL_GetProcAddress(_THIS, const char *proc)
+void *VITA_GL_GetProcAddress(_THIS, const char *proc)
 {
     return gl4es_GetProcAddress(proc);
 }

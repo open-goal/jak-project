@@ -5,5 +5,467 @@
 ;; name in dgo: main-h
 ;; dgos: GAME
 
+(declare-type debug-menu-context basic)
+(define-extern movie? (function symbol))
+(define-extern paused? (function symbol))
+(define-extern demo? (function symbol))
+(define-extern kiosk? (function symbol))
+(define-extern scene-select? (function symbol))
+(define-extern set-blackout-frames (function time-frame none))
+(define-extern set-master-mode (function symbol none))
+(define-extern on (function symbol process))
+(define-extern toggle-pause (function int))
+
+;; +++main-h:collide-spec
+(defenum collide-spec
+  :bitfield #t
+  :type uint32
+  (backgnd 0)
+  (jak 1)
+  (bot 2)
+  (crate 3)
+  (civilian 4)
+  (enemy 5)
+  (obstacle 6)
+  (vehicle-sphere 7)
+  (hit-by-player-list 8)
+  (hit-by-others-list 9)
+  (player-list 10)
+  (water 11)
+  (collectable 12)
+  (blocking-plane 13)
+  (projectile 14)
+  (jak-vulnerable 15)
+  (camera-blocker 16)
+  (los-blocker 17)
+  (notice-blue-eco-powerup 18)
+  (tobot 19)
+  (pusher 20)
+  (vehicle-mesh 21)
+  (bot-targetable 22)
+  (jak-vehicle 23)
+  (special-obstacle 24)
+  (mech-punch 25)
+  (obstacle-for-jak 26)
+  (vehicle-mesh-probeable 27)
+  (impenetrable-obj 28)
+  (shield 29)
+  (vehicle-mesh-no-block-use 30)
+  (vehicle-sphere-no-probe 31)
+  )
+;; ---main-h:collide-spec
+
+;; +++main-h:strip-lines-controls
+(defenum strip-lines-controls
+  :type int64
+  (none 0)
+  ; (strippable 1)
+  ; (convertible 2)
+  ; (good 3)
+  ; (edgeable 4)
+  ; (ordinary 8)
+  ; (color-mismatch 16)
+  ; (shader-mismatch 32)
+  ; (uv-mismatch 64)
+  ; (too-big 128)
+  ; (bad 240)
+  ; (all-edges 255)
+  ; (strips 256)
+  ; (frags 512)
+  )
+;; ---main-h:strip-lines-controls
+
+;; +++main-h:scene-controls
+(defenum scene-controls
+  :type int64
+  :bitfield #t
+  (channel)
+  (anim-name)
+  (dma-size)
+  (bounds-spheres)
+  (actors)
+  (actor-marks)
+  (special-fma-spheres)
+  (scene-controls-7)
+  (scene-controls-8)
+  (display-controls)
+  )
+;; ---main-h:scene-controls
+
+;; +++main-h:bot-marks-controls
+(defenum bot-marks-controls
+  :type int64
+  (all-off 0)
+  (course-spots 1)
+  (task-spots 2)
+  (all-on 3)
+  (bmc04 4)
+  (bmc05 5)
+  (bmc06 6)
+  (bmc07 7)
+  (bmc08 8)
+  (bmc09 9)
+  (bmc10 10)
+  (bmc11 11)
+  (bmc12 12)
+  (bmc13 13)
+  (bmc14 14)
+  (bmc15 15)
+  (bmc16 16)
+  )
+;; ---main-h:bot-marks-controls
+
+;; +++main-h:race-marks-controls
+(defenum race-marks-controls
+  :type int64
+  (all-off 0)
+  (path0-red 1)
+  (path1-green 2)
+  (path2-blue 4)
+  (path3-yellow 8)
+  (path4-cyan 16)
+  (path5-violet 32)
+  (path6-orange 64)
+  (path7-black 128)
+  (all-paths-on 255)
+  (rmc2040 2040)
+  )
+;; ---main-h:race-marks-controls
+
+;; +++main-h:race-selection
+(defenum race-selection
+  :type int64
+  (desertb-race-record 0)
+  (rs1 1)
+  (desrally-record 2)
+  )
+;; ---main-h:race-selection
+
+;; +++main-h:subdivide-setting
+(defenum subdivide-setting
+  :type int64
+  (textured 0)
+  (outline 1)
+  (gouraud 2)
+  (hack 3))
+;; ---main-h:subdivide-setting
+
+;; +++main-h:ocean-height-hack
+(defenum ocean-height-hack
+  :type int64
+  ; (zero 1)
+  ; (far-below 2)
+  ; (sewer-start 3)
+  ; (sewer-hi 4)
+  ; (sewer-med 5)
+  ; (sewer-lo 6)
+  )
+;; ---main-h:ocean-height-hack
+
+(define-extern *progress-cheat* symbol)
+(define-extern *last-master-mode* symbol)
+
 ;; DECOMP BEGINS
 
+(define *stats-poly* #f)
+
+(define *stats-memory* #f)
+
+(define *stats-memory-short* #f)
+
+(define *stats-memory-level-index* 0)
+
+(define *stats-collide* #f)
+
+(define *stats-bsp* #f)
+
+(define *stats-buffer* #f)
+
+(define *stats-target* #f)
+
+(define *stats-profile-bars* #f)
+
+(define *stats-perf* #f)
+
+(define *artist-all-visible* #f)
+
+(define *artist-flip-visible* #f)
+
+(define *artist-fix-visible* #f)
+
+(define *artist-fix-frustum* #f)
+
+(define *artist-error-spheres* #f)
+
+(define *artist-use-menu-subdiv* #f)
+
+(define *display-profile* #t)
+
+(define *display-sidekick-stats* #f)
+
+(define *display-quad-stats* #f)
+
+(define *display-tri-stats* #f)
+
+(define *display-ground-stats* #f)
+
+(define *display-collision-marks* #f)
+
+(define *display-collide-cache* #f)
+
+(define *display-render-collision* #f)
+
+(define *display-hipri-collision-marks* #f)
+
+(define *display-edge-collision-marks* #f)
+
+(define *display-geo-marks* #f)
+
+(define *display-target-marks* #f)
+
+(define *target-rc-board-controls* #f)
+
+(define *display-collide-history* 0)
+
+(define *amy-cam* #f)
+
+(define *display-xyz-axes* #f)
+
+(define *display-cam-collide-history* #f)
+
+(define *record-cam-collide-history* #f)
+
+(define *display-cam-master-marks* #f)
+
+(define *display-cam-other* #f)
+
+(define *display-camera-marks* #f)
+
+(define *camera-no-mip-correction* #f)
+
+(define *camera-turbo-free* #f)
+
+(define *display-cam-los-info* #f)
+
+(define *display-cam-los-debug* #f)
+
+(define *display-cam-los-marks* #f)
+
+(define *display-cam-coll-marks* #f)
+
+(define *display-camera-info* #f)
+
+(define *display-camera-old-stats* #f)
+
+(define *display-camera-last-attacker* #f)
+
+(define *display-file-info* #f)
+
+(define *display-actor-marks* #f)
+
+(define *display-sprite-info* #f)
+
+(define *display-sprite-marks* #f)
+
+(define *display-sprite-spheres* #f)
+
+(define *display-entity-errors* #t)
+
+(define *display-capture-mode* #f)
+
+(define *display-instance-info* #f)
+
+(define *display-deci-count* #f)
+
+(define *sync-dma* #f)
+
+(define *display-strip-lines* (the-as strip-lines-controls 0))
+
+(define *display-battle-marks* #f)
+
+(define *display-joint-axes* #f)
+
+(define *display-nav-marks* #f)
+
+(define *display-nav-network* #f)
+
+(define *display-path-marks* #f)
+
+(define *display-vol-marks* #f)
+
+(define *display-water-marks* #f)
+
+(define *display-nav-mesh* #f)
+
+(define *display-race-mesh* #f)
+
+(define *display-actor-pointer* #f)
+
+(define *display-actor-vis* #f)
+
+(define *display-actor-graph* #f)
+
+(define *display-traffic-height-map* #f)
+
+(define *display-trail-graph* #f)
+
+(define *display-color-bars* #f)
+
+(define *display-bug-report* #f)
+
+(define *display-level-border* #f)
+
+(define *display-memcard-info* #f)
+
+(define *display-split-boxes* #f)
+
+(define *display-split-box-info* #f)
+
+(define *display-texture-distances* #f)
+
+(define *display-texture-download* #f)
+
+(define *display-art-control* #f)
+
+(define *display-gui-control* #f)
+
+(define *display-level-spheres* #f)
+
+(define *time-of-day-fast* #f)
+
+(define *display-iop-info* #f)
+
+(define *ambient-sound-class* #t)
+
+(define *slow-frame-rate* #f)
+
+(define *display-region-marks* #f)
+
+(define *execute-regions* #t)
+
+(define *debug-pause* #f)
+
+(define *debug-view-anims* #f)
+
+(define *debug-unkillable* #f)
+
+(define *debug-player-vehicle-unkillable* #f)
+
+(define *debug-actor* (the-as process #f))
+
+(define *gun-marks* #f)
+
+(define *bug-report-output-mode* (if *debug-segment*
+                                     'file-stream
+                                     '*stdcon*
+                                     )
+        )
+
+(define *display-scene-control* (the-as scene-controls 0))
+
+(define *display-bot-marks* (the-as bot-marks-controls 0))
+
+(define *display-race-marks* (the-as race-marks-controls 0))
+
+(define *race-record-path* #f)
+
+(define *select-race* (the-as race-selection 0))
+
+(define *select-race-path* 0)
+
+(define *bot-record-path* -1)
+
+(define *subdivide-draw-mode* (the-as subdivide-setting 0))
+
+(define *subdivide-scissor-draw-mode* (the-as subdivide-setting 0))
+
+(define *subdivide-foreground-draw-mode* (the-as subdivide-setting 0))
+
+(define *subdivide-ocean-draw-mode* (the-as subdivide-setting 0))
+
+(define *ocean-height-hack* (the-as ocean-height-hack 0))
+
+(define-perm *dproc* process #f)
+
+(define *run* #f)
+
+(define *teleport* #f)
+
+(define *teleport-count* 0)
+
+(define *draw-hook* nothing)
+
+(define *debug-hook* '())
+
+(define *menu-hook* (the-as (function debug-menu-context) nothing))
+
+(define *progress-hook* nothing)
+
+(define *dma-timeout-hook* nothing)
+
+(deftype frame-stats (structure)
+  ((field-time  time-frame  2)
+   (field       int32)
+   )
+  )
+
+
+(define *frame-stats* (new 'static 'frame-stats))
+
+(deftype screen-filter (basic)
+  ((draw?           symbol)
+   (bucket          bucket-id)
+   (depth           int32)
+   (ztest           uint64)
+   (color           vector  :inline)
+   (color-src       vector  :inline)
+   (color-dest      vector  :inline)
+   (extra           vector  :inline)
+   (speed           float   :overlay-at (-> extra data 0))
+   (current-interp  float   :overlay-at (-> extra data 1))
+   (lock-vsync?     symbol)
+   )
+  (:methods
+    (draw (_type_) none)
+    (setup (_type_ vector vector float bucket-id int int symbol) none)
+    (disable (_type_) none)
+    )
+  )
+
+(define-extern *screen-filter* screen-filter)
+
+(deftype col-rend (basic)
+  ((draw?                symbol)
+   (outline?             symbol)
+   (show-back-faces?     symbol)
+   (show-normals?        symbol)
+   (ghost-hidden?        symbol)
+   (show-only            uint32)
+   (cspec                collide-spec)
+   (track                uint8)
+   (bbox-radius          float)
+   (bbox-center          vector  :inline)
+   (camera-to-bbox-dist  float)
+   )
+  (:methods
+    (draw (_type_) none)
+    )
+  )
+
+
+(define *col-rend* (new 'static 'col-rend
+                     :draw? #f
+                     :outline? #t
+                     :show-back-faces? #t
+                     :show-normals? #f
+                     :ghost-hidden? #t
+                     :cspec (collide-spec crate civilian enemy)
+                     :track #x1
+                     :bbox-radius 24576.0
+                     :camera-to-bbox-dist 65536.0
+                     )
+        )
+
+(defun-debug debug-actor? ((arg0 object))
+  (= arg0 *debug-actor*)
+  )

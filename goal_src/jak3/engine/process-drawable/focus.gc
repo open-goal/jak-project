@@ -7,3 +7,54 @@
 
 ;; DECOMP BEGINS
 
+(deftype focus (structure)
+  "A structure that keeps a handle to a [[process-focusable]]."
+  ((handle        handle)
+   (collide-with  collide-spec)
+   )
+  (:methods
+    (clear-focused (_type_) none)
+    (collide-spec-match? (_type_ process-focusable) object)
+    (reset-to-collide-spec (_type_ collide-spec) none)
+    (try-update-focus (_type_ process-focusable) symbol)
+    )
+  )
+
+
+(defmethod reset-to-collide-spec ((this focus) (cspec collide-spec))
+  "Reset this focus with the given [[collide-spec]]."
+  (set! (-> this collide-with) cspec)
+  (set! (-> this handle) (the-as handle #f))
+  0
+  (none)
+  )
+
+(defmethod collide-spec-match? ((this focus) (proc process-focusable))
+  "If the focused process is not dead,
+   check that the [[collide-spec]] of the focus and the process match."
+  (when (and proc (not (logtest? (-> proc focus-status) (focus-status disable dead))))
+    (let* ((root (-> proc root))
+           (cshape (if (type? root collide-shape)
+                       root
+                       )
+                   )
+           )
+      (and cshape (logtest? (-> this collide-with) (-> cshape root-prim prim-core collide-as)))
+      )
+    )
+  )
+
+(defmethod try-update-focus ((this focus) (proc process-focusable))
+  "Try to set the `handle` of this focus to the given process."
+  (when (!= (handle->process (-> this handle)) proc)
+    (set! (-> this handle) (process->handle proc))
+    #t
+    )
+  )
+
+(defmethod clear-focused ((this focus))
+  "Reset the focus' handle."
+  (set! (-> this handle) (the-as handle #f))
+  0
+  (none)
+  )

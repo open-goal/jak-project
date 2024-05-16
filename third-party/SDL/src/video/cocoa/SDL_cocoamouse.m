@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_COCOA
+#ifdef SDL_VIDEO_DRIVER_COCOA
 
 #include "SDL_events.h"
 #include "SDL_cocoamouse.h"
@@ -63,8 +63,7 @@
 @end
 
 
-static SDL_Cursor *
-Cocoa_CreateDefaultCursor()
+static SDL_Cursor *Cocoa_CreateDefaultCursor()
 { @autoreleasepool
 {
     NSCursor *nscursor;
@@ -82,8 +81,7 @@ Cocoa_CreateDefaultCursor()
     return cursor;
 }}
 
-static SDL_Cursor *
-Cocoa_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
+static SDL_Cursor *Cocoa_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 { @autoreleasepool
 {
     NSImage *nsimage;
@@ -108,8 +106,7 @@ Cocoa_CreateCursor(SDL_Surface * surface, int hot_x, int hot_y)
 /* there are .pdf files of some of the cursors we need, installed by default on macOS, but not available through NSCursor.
    If we can load them ourselves, use them, otherwise fallback to something standard but not super-great.
    Since these are under /System, they should be available even to sandboxed apps. */
-static NSCursor *
-LoadHiddenSystemCursor(NSString *cursorName, SEL fallback)
+static NSCursor *LoadHiddenSystemCursor(NSString *cursorName, SEL fallback)
 {
     NSString *cursorPath = [@"/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/Resources/cursors" stringByAppendingPathComponent:cursorName];
     NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:[cursorPath stringByAppendingPathComponent:@"info.plist"]];
@@ -146,8 +143,7 @@ LoadHiddenSystemCursor(NSString *cursorName, SEL fallback)
     return cursor;
 }
 
-static SDL_Cursor *
-Cocoa_CreateSystemCursor(SDL_SystemCursor id)
+static SDL_Cursor *Cocoa_CreateSystemCursor(SDL_SystemCursor id)
 { @autoreleasepool
 {
     NSCursor *nscursor = NULL;
@@ -206,16 +202,14 @@ Cocoa_CreateSystemCursor(SDL_SystemCursor id)
     return cursor;
 }}
 
-static void
-Cocoa_FreeCursor(SDL_Cursor * cursor)
+static void Cocoa_FreeCursor(SDL_Cursor * cursor)
 { @autoreleasepool
 {
     CFBridgingRelease(cursor->driverdata);
     SDL_free(cursor);
 }}
 
-static int
-Cocoa_ShowCursor(SDL_Cursor * cursor)
+static int Cocoa_ShowCursor(SDL_Cursor * cursor)
 { @autoreleasepool
 {
     SDL_VideoDevice *device = SDL_GetVideoDevice();
@@ -231,8 +225,7 @@ Cocoa_ShowCursor(SDL_Cursor * cursor)
     return 0;
 }}
 
-static SDL_Window *
-SDL_FindWindowAtPoint(const int x, const int y)
+static SDL_Window *SDL_FindWindowAtPoint(const int x, const int y)
 {
     const SDL_Point pt = { x, y };
     SDL_Window *i;
@@ -246,8 +239,7 @@ SDL_FindWindowAtPoint(const int x, const int y)
     return NULL;
 }
 
-static int
-Cocoa_WarpMouseGlobal(int x, int y)
+static int Cocoa_WarpMouseGlobal(int x, int y)
 {
     CGPoint point;
     SDL_Mouse *mouse = SDL_GetMouse();
@@ -288,19 +280,26 @@ Cocoa_WarpMouseGlobal(int x, int y)
     return 0;
 }
 
-static void
-Cocoa_WarpMouse(SDL_Window * window, int x, int y)
+static void Cocoa_WarpMouse(SDL_Window * window, int x, int y)
 {
     Cocoa_WarpMouseGlobal(window->x + x, window->y + y);
 }
 
-static int
-Cocoa_SetRelativeMouseMode(SDL_bool enabled)
+static int Cocoa_SetRelativeMouseMode(SDL_bool enabled)
 {
+    SDL_Window *window = SDL_GetKeyboardFocus();
     CGError result;
-    SDL_Window *window;
     SDL_WindowData *data;
     if (enabled) {
+        if (window) {
+            /* make sure the mouse isn't at the corner of the window, as this can confuse things if macOS thinks a window resize is happening on the first click. */
+            SDL_MouseData *mousedriverdata = (SDL_MouseData*)SDL_GetMouse()->driverdata;
+            const CGPoint point = CGPointMake((float)(window->x + (window->w / 2)), (float)(window->y + (window->h / 2)));
+            if (mousedriverdata) {
+                mousedriverdata->justEnabledRelative = SDL_TRUE;
+            }
+            CGWarpMouseCursorPosition(point);
+        }
         DLog("Turning on.");
         result = CGAssociateMouseAndMouseCursorPosition(NO);
     } else {
@@ -314,7 +313,6 @@ Cocoa_SetRelativeMouseMode(SDL_bool enabled)
     /* We will re-apply the non-relative mode when the window gets focus, if it
      * doesn't have focus right now.
      */
-    window = SDL_GetKeyboardFocus();
     if (!window) {
         return 0;
     }
@@ -338,16 +336,14 @@ Cocoa_SetRelativeMouseMode(SDL_bool enabled)
     return 0;
 }
 
-static int
-Cocoa_CaptureMouse(SDL_Window *window)
+static int Cocoa_CaptureMouse(SDL_Window *window)
 {
     /* our Cocoa event code already tracks the mouse outside the window,
         so all we have to do here is say "okay" and do what we always do. */
     return 0;
 }
 
-static Uint32
-Cocoa_GetGlobalMouseState(int *x, int *y)
+static Uint32 Cocoa_GetGlobalMouseState(int *x, int *y)
 {
     const NSUInteger cocoaButtons = [NSEvent pressedMouseButtons];
     const NSPoint cocoaLocation = [NSEvent mouseLocation];
@@ -365,8 +361,7 @@ Cocoa_GetGlobalMouseState(int *x, int *y)
     return retval;
 }
 
-int
-Cocoa_InitMouse(_THIS)
+int Cocoa_InitMouse(_THIS)
 {
     NSPoint location;
     SDL_Mouse *mouse = SDL_GetMouse();
@@ -394,8 +389,7 @@ Cocoa_InitMouse(_THIS)
     return 0;
 }
 
-static void
-Cocoa_HandleTitleButtonEvent(_THIS, NSEvent *event)
+static void Cocoa_HandleTitleButtonEvent(_THIS, NSEvent *event)
 {
     SDL_Window *window;
     NSWindow *nswindow = [event window];
@@ -428,8 +422,7 @@ Cocoa_HandleTitleButtonEvent(_THIS, NSEvent *event)
     }
 }
 
-void
-Cocoa_HandleMouseEvent(_THIS, NSEvent *event)
+void Cocoa_HandleMouseEvent(_THIS, NSEvent *event)
 {
     SDL_Mouse *mouse;
     SDL_MouseData *driverdata;
@@ -475,6 +468,11 @@ Cocoa_HandleMouseEvent(_THIS, NSEvent *event)
     seenWarp = driverdata->seenWarp;
     driverdata->seenWarp = NO;
 
+    if (driverdata->justEnabledRelative) {
+        driverdata->justEnabledRelative = SDL_FALSE;
+        return;  // dump the first event back.
+    }
+
     location =  [NSEvent mouseLocation];
     lastMoveX = driverdata->lastMoveX;
     lastMoveY = driverdata->lastMoveY;
@@ -508,8 +506,7 @@ Cocoa_HandleMouseEvent(_THIS, NSEvent *event)
     SDL_SendMouseMotion(mouse->focus, mouseID, 1, (int)deltaX, (int)deltaY);
 }
 
-void
-Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
+void Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
 {
     SDL_MouseID mouseID;
     SDL_MouseWheelDirection direction;
@@ -546,8 +543,7 @@ Cocoa_HandleMouseWheel(SDL_Window *window, NSEvent *event)
     SDL_SendMouseWheel(window, mouseID, x, y, direction);
 }
 
-void
-Cocoa_HandleMouseWarp(CGFloat x, CGFloat y)
+void Cocoa_HandleMouseWarp(CGFloat x, CGFloat y)
 {
     /* This makes Cocoa_HandleMouseEvent ignore the delta caused by the warp,
      * since it gets included in the next movement event.
@@ -560,8 +556,7 @@ Cocoa_HandleMouseWarp(CGFloat x, CGFloat y)
     DLog("(%g, %g)", x, y);
 }
 
-void
-Cocoa_QuitMouse(_THIS)
+void Cocoa_QuitMouse(_THIS)
 {
     SDL_Mouse *mouse = SDL_GetMouse();
     if (mouse) {

@@ -15,7 +15,7 @@
 
 #include "common/util/FileUtil.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace goos {
 
@@ -85,9 +85,9 @@ std::pair<int, int> SourceText::get_containing_line(int offset) {
 /*!
  * Read text from a file.
  */
-FileText::FileText(const std::string& filename, const std::string& description_name)
-    : m_filename(filename), m_desc_name(description_name) {
-  m_text = file_util::read_text_file(m_filename);
+FileText::FileText(const std::string& file_path, const std::string& description_name)
+    : m_filepath(file_path), m_desc_name(description_name) {
+  m_text = file_util::read_text_file(m_filepath);
   build_offsets();
 }
 

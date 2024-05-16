@@ -1,6 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(require "engine/ui/progress/progress.gc")
+
+
 #|
 
   Code for the progress menu in the PC port. The original code is still loaded, this just has some overriden functions.
@@ -153,18 +156,8 @@
     (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vsync) :scale #t)
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
     (new 'static 'game-option :option-type (game-option-type msaa) :name (text-id msaa) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type frame-rate) :name (text-id frame-rate) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
-    (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
-    )
-  )
-
-(define *graphic-options-no-frame-rate-pc* (new 'static 'boxed-array :type game-option
-    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id game-resolution) :scale #t :param3 (game-option-menu resolution))
-    (new 'static 'game-option :option-type (game-option-type display-mode) :name (text-id display-mode) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vsync) :scale #t)
-    (new 'static 'game-option :option-type (game-option-type menu) :name (text-id aspect-ratio) :scale #t :param3 (game-option-menu aspect-ratio))
-    (new 'static 'game-option :option-type (game-option-type msaa) :name (text-id msaa) :scale #t)
+    (new 'static 'game-option :option-type (game-option-type frame-rate) :name (text-id frame-rate) :scale #t
+      :option-disabled-func (lambda () (or (-> *pc-settings* speedrunner-mode?) (<= (pc-get-active-display-refresh-rate) 60))))
     (new 'static 'game-option :option-type (game-option-type menu) :name (text-id ps2-options) :scale #t :param3 (game-option-menu gfx-ps2-options))
     (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)
     )
@@ -245,7 +238,7 @@
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-controller) :scale #t :param3 (game-option-menu controller-binds)
     :option-disabled-func (lambda () (<= (pc-get-controller-count) 0)))
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-keyboard) :scale #t :param3 (game-option-menu keyboard-binds)
-    :option-disabled-func (lambda () (not (-> *pc-settings* keyboard-enabled?))))
+    :option-disabled-func (lambda () (not (pc-get-keyboard-enabled?))))
   (new 'static 'game-option :option-type (game-option-type menu) :name (text-id input-opts-binds-mouse) :scale #t :param3 (game-option-menu mouse-binds)
     :option-disabled-func (lambda () (not (-> *pc-settings* mouse-enabled?))))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
@@ -257,7 +250,8 @@
   (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-enable-kb) :scale #t
     :on-change (lambda ((val object))
                 (let ((val-sym (the-as symbol val)))
-                  (set-enable-keyboard! *pc-settings* val-sym)
+                  (pc-set-keyboard-enabled! val-sym)
+                  (set! (-> *pc-settings* keyboard-enabled?) val-sym)
                   (none))))
   (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id input-opts-enable-mouse) :scale #t
     :on-change (lambda ((val object))
@@ -277,7 +271,7 @@
   (new 'static 'game-option :option-type (game-option-type confirmation) :name (text-id restore-defaults) :scale #t
     :on-confirm (lambda ()
                  (reset-input *pc-settings* 'input #t)
-                 (set-enable-keyboard! *pc-settings* (-> *pc-settings* keyboard-enabled?))
+                 (pc-set-keyboard-enabled! (-> *pc-settings* keyboard-enabled?))
                  (update-mouse-controls! *pc-settings*)
                  (none)))
   (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
@@ -578,7 +572,7 @@
         (num-resolutions (pc-get-num-resolutions))
         (num-resolutions-added 0))
     (when (> num-resolutions 0)
-      (pc-get-window-size (the-as (pointer int32) (& window-width)) (the-as (pointer int32) (& window-height)))
+      (pc-get-window-size (& window-width) (& window-height))
       (set! window-aspect-ratio (/ (the float window-width) (the float window-height)))
       (dotimes (i num-resolutions)
         (let ((res-width 0)
@@ -873,20 +867,15 @@
                                                             *main-options-secrets*
                                                             *main-options-pc*))
   (set! (-> *options-remap* (progress-screen game-settings)) *game-options-pc*)
+  (set! (-> *options-remap* (progress-screen graphic-settings)) *graphic-options-pc*)
   (let ((max-refresh-rate (pc-get-active-display-refresh-rate)))
     (cond
       ((> max-refresh-rate 100)
-        (set! (-> *options-remap* (progress-screen graphic-settings)) *graphic-options-pc*)
         (set! *carousell-frame-rate* *carousell-frame-rate-150fps*)
         )
       ((> max-refresh-rate 60)
-        (set! (-> *options-remap* (progress-screen graphic-settings)) *graphic-options-pc*)
         (set! *carousell-frame-rate* *carousell-frame-rate-100fps*)
-        )
-      (else
-        (set! (-> *options-remap* (progress-screen graphic-settings)) *graphic-options-no-frame-rate-pc*)
-        )
-      ))
+        )))
 
   (set! (-> *options-remap* (progress-screen sound-settings))             *sound-options-pc*)
   (set! (-> *options-remap* (progress-screen memcard-no-space))           *ok-options*)
@@ -974,13 +963,6 @@
   (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
-  ;; disable changes to frame-rate while in speedrunner mode
-  ;; todo move this to the creation
-  (set! (-> *graphic-options-pc* 6 option-disabled-func) (lambda () (-> *pc-settings* speedrunner-mode?)))
-
-  (set! (-> *graphic-options-no-frame-rate-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
-  (set! (-> *graphic-options-no-frame-rate-pc* 2 value-to-modify) (&-> *pc-settings* vsync?))
-  (set! (-> *graphic-options-no-frame-rate-pc* 4 value-to-modify) (&-> *progress-carousell* int-backup))
 
   (set! (-> *misc-options* 0 value-to-modify) (&-> *pc-settings* money-starburst?))
   (set! (-> *misc-options* 1 value-to-modify) (&-> *pc-settings* discord-rpc?))
@@ -2441,7 +2423,7 @@
                   )
                 )
                 (else
-                  ;; this option is not selected :-(
+                  ;; this option is not selected
                   (case (-> options index option-type)
                     (((game-option-type slider)
                       (game-option-type aspect-ratio)

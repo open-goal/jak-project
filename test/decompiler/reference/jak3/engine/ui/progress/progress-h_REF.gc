@@ -1,0 +1,1752 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type progress-list
+(deftype progress-list (basic)
+  ()
+  (:methods
+    (progress-list-method-9 (_type_ int) game-task-info)
+    )
+  )
+
+;; definition for method 3 of type progress-list
+(defmethod inspect ((this progress-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type progress-list-level
+(deftype progress-list-level (progress-list)
+  ((act   int32)
+   (mode  symbol)
+   )
+  )
+
+;; definition for method 3 of type progress-list-level
+(defmethod inspect ((this progress-list-level))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tact: ~D~%" (-> this act))
+  (format #t "~1Tmode: ~A~%" (-> this mode))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type progress-box
+(deftype progress-box (structure)
+  ((aspect4x3   hud-box  :inline)
+   (aspect16x9  hud-box  :inline)
+   )
+  )
+
+;; definition for method 3 of type progress-box
+(defmethod inspect ((this progress-box))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'progress-box)
+  (format #t "~1Taspect4x3: #<hud-box @ #x~X>~%" (-> this aspect4x3))
+  (format #t "~1Taspect16x9: #<hud-box @ #x~X>~%" (-> this aspect16x9))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type progress
+(deftype progress (process-drawable)
+  ((scissor-stack            vector      8 :inline)
+   (scissor-count            int32)
+   (current-options          menu-option-list)
+   (menu-transition          float)
+   (option-index             int32)
+   (current-index            int32)
+   (want-option-index        int32)
+   (next-option-index        int32)
+   (graphic-index            int32)
+   (selected-option          symbol)
+   (current                  symbol)
+   (next                     symbol)
+   (ring-angle               float)
+   (ring-want-angle          float)
+   (init-quat                quaternion  :inline)
+   (pos-transition           float)
+   (anim-frame               float)
+   (swing                    float)
+   (main-menu                symbol)
+   (state-array              symbol      8)
+   (option-index-stack       int32       8)
+   (state-pos                int32)
+   (secret-buying            basic)
+   (secret-buy-choice        basic)
+   (scanlines-alpha          float)
+   (start-time               time-frame)
+   (which-slot               int32)
+   (starting-state           basic)
+   (yes-no-choice            basic)
+   (time-out                 time-frame)
+   (last-sound               time-frame)
+   (last-move                time-frame)
+   (center-x-backup          int32)
+   (center-y-backup          int32)
+   (flip-horizontal          basic)
+   (flip-vertical            basic)
+   (progressive-scan         basic)
+   (aspect-ratio             basic)
+   (video-mode               basic)
+   (stereo-mode-backup       int32)
+   (vibrations               basic)
+   (subtitles                basic)
+   (languages                int32       3)
+   (subtitle-language-index  int32       :overlay-at (-> languages 0))
+   (language-index           int32       :overlay-at (-> languages 1))
+   (audio-language-index     int32       :overlay-at (-> languages 2))
+   (current-task-index       int32)
+   (current-line-index       int32)
+   (first-closed-line-index  int32)
+   (extra-text-state         int32)
+   (current-task             game-task)
+   (num-open-tasks-found     int32)
+   (num-closed-tasks-found   int32)
+   (num-unlocked-secrets     int32)
+   (total-num-tasks          int32)
+   (missions-total-spacing   float)
+   (clear-screen             symbol)
+   (progress-id              uint32)
+   (lock-tick-count          int32)
+   )
+  (:state-methods
+    come-in
+    idle
+    go-away
+    gone
+    )
+  (:methods
+    (init-defaults (_type_) object)
+    (respond-to-cpad (_type_) none)
+    (gone? (_type_) object)
+    (can-go-back? (_type_) symbol)
+    (get-state-check-card (_type_ symbol) symbol)
+    (push-state (_type_) int)
+    (pop-state (_type_) int)
+    (set-next-state (_type_ symbol int) int)
+    (set-menu-options (_type_ symbol) int)
+    (progress-method-33 (_type_ progress-box) none)
+    (progress-method-34 (_type_) none)
+    (get-scissor-stack-top (_type_) vector)
+    (get-language-by-idx (_type_ int) int)
+    (progress-method-37 (_type_) none)
+    (progress-method-38 (_type_ font-context float) none)
+    (progress-method-39 (_type_) none)
+    (progress-method-40 (_type_ font-context int int float) none)
+    (progress-method-41 (_type_ progress-box float) none)
+    (progress-method-42 (_type_ progress-box float) none)
+    (progress-method-43 (_type_ progress-box float) none)
+    (progress-method-44 (_type_ font-context string) none)
+    (progress-method-45 (_type_ font-context float float string float float int) float)
+    (progress-method-46 (_type_ font-context float int) none)
+    (progress-method-47 (_type_ font-context symbol symbol) none)
+    (draw-prev-next-footer (_type_ font-context float) none)
+    (draw-yes-no-style-footer (_type_ font-context text-id text-id) none)
+    (progress-method-50 (_type_ font-context text-id text-id text-id symbol symbol float) none)
+    (progress-method-51 (_type_ font-context) none)
+    (progress-method-52 (_type_ font-context string float float float float float) none)
+    (progress-method-53 (_type_ font-context) none)
+    )
+  )
+
+;; definition for method 3 of type progress
+(defmethod inspect ((this progress))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tscissor-stack[8] @ #x~X~%" (-> this scissor-stack))
+  (format #t "~2Tscissor-count: ~D~%" (-> this scissor-count))
+  (format #t "~2Tcurrent-options: ~A~%" (-> this current-options))
+  (format #t "~2Tmenu-transition: ~f~%" (-> this menu-transition))
+  (format #t "~2Toption-index: ~D~%" (-> this option-index))
+  (format #t "~2Tcurrent-index: ~D~%" (-> this current-index))
+  (format #t "~2Twant-option-index: ~D~%" (-> this want-option-index))
+  (format #t "~2Tnext-option-index: ~D~%" (-> this next-option-index))
+  (format #t "~2Tgraphic-index: ~D~%" (-> this graphic-index))
+  (format #t "~2Tselected-option: ~A~%" (-> this selected-option))
+  (format #t "~2Tcurrent: ~A~%" (-> this current))
+  (format #t "~2Tnext: ~A~%" (-> this next))
+  (format #t "~2Tring-angle: ~f~%" (-> this ring-angle))
+  (format #t "~2Tring-want-angle: ~f~%" (-> this ring-want-angle))
+  (format #t "~2Tinit-quat: #<quaternion @ #x~X>~%" (-> this init-quat))
+  (format #t "~2Tpos-transition: ~f~%" (-> this pos-transition))
+  (format #t "~2Tanim-frame: ~f~%" (-> this anim-frame))
+  (format #t "~2Tswing: ~f~%" (-> this swing))
+  (format #t "~2Tmain-menu: ~A~%" (-> this main-menu))
+  (format #t "~2Tstate-array[8] @ #x~X~%" (-> this state-array))
+  (format #t "~2Toption-index-stack[8] @ #x~X~%" (-> this option-index-stack))
+  (format #t "~2Tstate-pos: ~D~%" (-> this state-pos))
+  (format #t "~2Tsecret-buying: ~A~%" (-> this secret-buying))
+  (format #t "~2Tsecret-buy-choice: ~A~%" (-> this secret-buy-choice))
+  (format #t "~2Tscanlines-alpha: ~f~%" (-> this scanlines-alpha))
+  (format #t "~2Tstart-time: ~D~%" (-> this start-time))
+  (format #t "~2Twhich-slot: ~D~%" (-> this which-slot))
+  (format #t "~2Tstarting-state: ~A~%" (-> this starting-state))
+  (format #t "~2Tyes-no-choice: ~A~%" (-> this yes-no-choice))
+  (format #t "~2Ttime-out: ~D~%" (-> this time-out))
+  (format #t "~2Tlast-sound: ~D~%" (-> this last-sound))
+  (format #t "~2Tlast-move: ~D~%" (-> this last-move))
+  (format #t "~2Tcenter-x-backup: ~D~%" (-> this center-x-backup))
+  (format #t "~2Tcenter-y-backup: ~D~%" (-> this center-y-backup))
+  (format #t "~2Tflip-horizontal: ~A~%" (-> this flip-horizontal))
+  (format #t "~2Tflip-vertical: ~A~%" (-> this flip-vertical))
+  (format #t "~2Tprogressive-scan: ~A~%" (-> this progressive-scan))
+  (format #t "~2Taspect-ratio: ~A~%" (-> this aspect-ratio))
+  (format #t "~2Tvideo-mode: ~A~%" (-> this video-mode))
+  (format #t "~2Tstereo-mode-backup: ~D~%" (-> this stereo-mode-backup))
+  (format #t "~2Tvibrations: ~A~%" (-> this vibrations))
+  (format #t "~2Tsubtitles: ~A~%" (-> this subtitles))
+  (format #t "~2Tlanguages[3] @ #x~X~%" (-> this languages))
+  (format #t "~2Tsubtitle-language-index: ~D~%" (-> this subtitle-language-index))
+  (format #t "~2Tlanguage-index: ~D~%" (-> this language-index))
+  (format #t "~2Taudio-language-index: ~D~%" (-> this audio-language-index))
+  (format #t "~2Tcurrent-task-index: ~D~%" (-> this current-task-index))
+  (format #t "~2Tcurrent-line-index: ~D~%" (-> this current-line-index))
+  (format #t "~2Tfirst-closed-line-index: ~D~%" (-> this first-closed-line-index))
+  (format #t "~2Textra-text-state: ~D~%" (-> this extra-text-state))
+  (format #t "~2Tcurrent-task: ~D~%" (-> this current-task))
+  (format #t "~2Tnum-open-tasks-found: ~D~%" (-> this num-open-tasks-found))
+  (format #t "~2Tnum-closed-tasks-found: ~D~%" (-> this num-closed-tasks-found))
+  (format #t "~2Tnum-unlocked-secrets: ~D~%" (-> this num-unlocked-secrets))
+  (format #t "~2Ttotal-num-tasks: ~D~%" (-> this total-num-tasks))
+  (format #t "~2Tmissions-total-spacing: ~f~%" (-> this missions-total-spacing))
+  (format #t "~2Tclear-screen: ~A~%" (-> this clear-screen))
+  (format #t "~2Tprogress-id: ~D~%" (-> this progress-id))
+  (format #t "~2Tlock-tick-count: ~D~%" (-> this lock-tick-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type progress-work
+(deftype progress-work (structure)
+  ((full-screen       progress-box  :inline)
+   (small-screen      progress-box  :inline)
+   (header            progress-box  :inline)
+   (body              progress-box  :inline)
+   (body-footer       progress-box  :inline)
+   (footer            progress-box  :inline)
+   (sub-header        progress-box  :inline)
+   (sub-body          progress-box  :inline)
+   (sub-body-footer   progress-box  :inline)
+   (highscore-0       progress-box  :inline)
+   (highscore-1       progress-box  :inline)
+   (highscore-body    progress-box  :inline)
+   (load-save-0a      progress-box  :inline)
+   (load-save-0b      progress-box  :inline)
+   (load-save-1a      progress-box  :inline)
+   (load-save-1b      progress-box  :inline)
+   (load-save-2a      progress-box  :inline)
+   (load-save-2b      progress-box  :inline)
+   (load-save-3a      progress-box  :inline)
+   (load-save-3b      progress-box  :inline)
+   (last-slot-saved   int32)
+   (selected-num      int32)
+   (secrets-unlocked  basic)
+   (hero-mode-save    symbol)
+   )
+  )
+
+;; definition for method 3 of type progress-work
+(defmethod inspect ((this progress-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'progress-work)
+  (format #t "~1Tfull-screen: #<progress-box @ #x~X>~%" (-> this full-screen))
+  (format #t "~1Tsmall-screen: #<progress-box @ #x~X>~%" (-> this small-screen))
+  (format #t "~1Theader: #<progress-box @ #x~X>~%" (-> this header))
+  (format #t "~1Tbody: #<progress-box @ #x~X>~%" (-> this body))
+  (format #t "~1Tbody-footer: #<progress-box @ #x~X>~%" (-> this body-footer))
+  (format #t "~1Tfooter: #<progress-box @ #x~X>~%" (-> this footer))
+  (format #t "~1Tsub-header: #<progress-box @ #x~X>~%" (-> this sub-header))
+  (format #t "~1Tsub-body: #<progress-box @ #x~X>~%" (-> this sub-body))
+  (format #t "~1Tsub-body-footer: #<progress-box @ #x~X>~%" (-> this sub-body-footer))
+  (format #t "~1Thighscore-0: #<progress-box @ #x~X>~%" (-> this highscore-0))
+  (format #t "~1Thighscore-1: #<progress-box @ #x~X>~%" (-> this highscore-1))
+  (format #t "~1Thighscore-body: #<progress-box @ #x~X>~%" (-> this highscore-body))
+  (format #t "~1Tload-save-0a: #<progress-box @ #x~X>~%" (-> this load-save-0a))
+  (format #t "~1Tload-save-0b: #<progress-box @ #x~X>~%" (-> this load-save-0b))
+  (format #t "~1Tload-save-1a: #<progress-box @ #x~X>~%" (-> this load-save-1a))
+  (format #t "~1Tload-save-1b: #<progress-box @ #x~X>~%" (-> this load-save-1b))
+  (format #t "~1Tload-save-2a: #<progress-box @ #x~X>~%" (-> this load-save-2a))
+  (format #t "~1Tload-save-2b: #<progress-box @ #x~X>~%" (-> this load-save-2b))
+  (format #t "~1Tload-save-3a: #<progress-box @ #x~X>~%" (-> this load-save-3a))
+  (format #t "~1Tload-save-3b: #<progress-box @ #x~X>~%" (-> this load-save-3b))
+  (format #t "~1Tlast-slot-saved: ~D~%" (-> this last-slot-saved))
+  (format #t "~1Tselected-num: ~D~%" (-> this selected-num))
+  (format #t "~1Tsecrets-unlocked: ~A~%" (-> this secrets-unlocked))
+  (format #t "~1Thero-mode-save: ~A~%" (-> this hero-mode-save))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type progress-icon-part
+(deftype progress-icon-part (structure)
+  ((offset  vector2w  :inline)
+   (tex-id  texture-id)
+   (bucket  bucket-id)
+   (flags   progress-icon-flags)
+   )
+  )
+
+;; definition for method 3 of type progress-icon-part
+(defmethod inspect ((this progress-icon-part))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'progress-icon-part)
+  (format #t "~1Toffset: #<vector2w @ #x~X>~%" (-> this offset))
+  (format #t "~1Ttex-id: ~D~%" (-> this tex-id))
+  (format #t "~1Tbucket: ~D~%" (-> this bucket))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type progress-icon-array
+(deftype progress-icon-array (array)
+  ((icons  progress-icon-part  :dynamic :offset  16)
+   )
+  (:methods
+    (draw-icon-array! (_type_ int int float float rgba float) none)
+    )
+  )
+
+;; definition for method 3 of type progress-icon-array
+(defmethod inspect ((this progress-icon-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Ttype: ~A~%" (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tcontent-type: ~A~%" (-> this content-type))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-option
+(deftype menu-option (basic)
+  ((name              text-id)
+   (menu-option-type  uint32)
+   (offset-y          float)
+   (box               hud-box  1 :inline)
+   )
+  (:methods
+    (respond-progress (_type_ progress symbol) int)
+    (draw-option (_type_ progress font-context int symbol) none)
+    (menu-option-method-11 () none)
+    )
+  )
+
+;; definition for method 3 of type menu-option
+(defmethod inspect ((this menu-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-slider-option
+(deftype menu-slider-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+;; definition for method 3 of type menu-slider-option
+(defmethod inspect ((this menu-slider-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-sound-slider-option
+(deftype menu-sound-slider-option (menu-slider-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-sound-slider-option
+(defmethod inspect ((this menu-sound-slider-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-picture-slider-option
+(deftype menu-picture-slider-option (menu-slider-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-picture-slider-option
+(defmethod inspect ((this menu-picture-slider-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-sub-menu-option
+(deftype menu-sub-menu-option (menu-option)
+  ((next-state  symbol)
+   )
+  )
+
+;; definition for method 3 of type menu-sub-menu-option
+(defmethod inspect ((this menu-sub-menu-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-stereo-mode-sound-option
+(deftype menu-stereo-mode-sound-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-stereo-mode-sound-option
+(defmethod inspect ((this menu-stereo-mode-sound-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-unlocked-sub-menu-option
+(deftype menu-unlocked-sub-menu-option (menu-sub-menu-option)
+  ((mask   uint64)
+   (value  int32)
+   )
+  )
+
+;; definition for method 3 of type menu-unlocked-sub-menu-option
+(defmethod inspect ((this menu-unlocked-sub-menu-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (format #t "~1Tmask: ~D~%" (-> this mask))
+  (format #t "~1Tvalue: ~D~%" (-> this value))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-save-sub-menu-option
+(deftype menu-save-sub-menu-option (menu-sub-menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-save-sub-menu-option
+(defmethod inspect ((this menu-save-sub-menu-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-main-menu-option
+(deftype menu-main-menu-option (menu-option)
+  ((next-state  symbol)
+   )
+  )
+
+;; definition for method 3 of type menu-main-menu-option
+(defmethod inspect ((this menu-main-menu-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-memcard-slot-option
+(deftype menu-memcard-slot-option (menu-option)
+  ((sprites  hud-sprite  5 :inline)
+   (pad      uint8       32)
+   )
+  )
+
+;; definition for method 3 of type menu-memcard-slot-option
+(defmethod inspect ((this menu-memcard-slot-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsprites[5] @ #x~X~%" (-> this sprites))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-loading-option
+(deftype menu-loading-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-loading-option
+(defmethod inspect ((this menu-loading-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-insufficient-space-option
+(deftype menu-insufficient-space-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-insufficient-space-option
+(defmethod inspect ((this menu-insufficient-space-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-secrets-insufficient-space-option
+(deftype menu-secrets-insufficient-space-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-secrets-insufficient-space-option
+(defmethod inspect ((this menu-secrets-insufficient-space-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-hero-mode-message-option
+(deftype menu-hero-mode-message-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-hero-mode-message-option
+(defmethod inspect ((this menu-hero-mode-message-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-insert-card-option
+(deftype menu-insert-card-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-insert-card-option
+(defmethod inspect ((this menu-insert-card-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-error-loading-option
+(deftype menu-error-loading-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-error-loading-option
+(defmethod inspect ((this menu-error-loading-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-error-auto-saving-option
+(deftype menu-error-auto-saving-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-error-auto-saving-option
+(defmethod inspect ((this menu-error-auto-saving-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-card-removed-option
+(deftype menu-card-removed-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-card-removed-option
+(defmethod inspect ((this menu-card-removed-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-error-disc-removed-option
+(deftype menu-error-disc-removed-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-error-disc-removed-option
+(defmethod inspect ((this menu-error-disc-removed-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-error-reading-option
+(deftype menu-error-reading-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-error-reading-option
+(defmethod inspect ((this menu-error-reading-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-icon-info-option
+(deftype menu-icon-info-option (menu-option)
+  ((sprites  hud-sprite  2 :inline)
+   )
+  )
+
+;; definition for method 3 of type menu-icon-info-option
+(defmethod inspect ((this menu-icon-info-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsprites[2] @ #x~X~%" (-> this sprites))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-format-card-option
+(deftype menu-format-card-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-format-card-option
+(defmethod inspect ((this menu-format-card-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-already-exists-option
+(deftype menu-already-exists-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-already-exists-option
+(defmethod inspect ((this menu-already-exists-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-create-game-option
+(deftype menu-create-game-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-create-game-option
+(defmethod inspect ((this menu-create-game-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-video-mode-warning-option
+(deftype menu-video-mode-warning-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-video-mode-warning-option
+(defmethod inspect ((this menu-video-mode-warning-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-video-mode-ok-option
+(deftype menu-video-mode-ok-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-video-mode-ok-option
+(defmethod inspect ((this menu-video-mode-ok-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-progressive-mode-warning-option
+(deftype menu-progressive-mode-warning-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-progressive-mode-warning-option
+(defmethod inspect ((this menu-progressive-mode-warning-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-progressive-mode-ok-option
+(deftype menu-progressive-mode-ok-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-progressive-mode-ok-option
+(defmethod inspect ((this menu-progressive-mode-ok-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-select-start-option
+(deftype menu-select-start-option (menu-option)
+  ((current-index   float)
+   (target-index    float)
+   (selected-index  int32)
+   (scroll-speed    float)
+   )
+  )
+
+;; definition for method 3 of type menu-select-start-option
+(defmethod inspect ((this menu-select-start-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tselected-index: ~D~%" (-> this selected-index))
+  (format #t "~1Tscroll-speed: ~f~%" (-> this scroll-speed))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-select-scene-option
+(deftype menu-select-scene-option (menu-option)
+  ((current-index   float)
+   (target-index    float)
+   (selected-index  int32)
+   (scroll-speed    float)
+   )
+  )
+
+;; definition for method 3 of type menu-select-scene-option
+(defmethod inspect ((this menu-select-scene-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tselected-index: ~D~%" (-> this selected-index))
+  (format #t "~1Tscroll-speed: ~f~%" (-> this scroll-speed))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-bigmap-option
+(deftype menu-bigmap-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-bigmap-option
+(defmethod inspect ((this menu-bigmap-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type paged-menu-option
+(deftype paged-menu-option (menu-option)
+  ((page-index       int32)
+   (prev-page-index  int32)
+   (num-pages        int32)
+   (slide-dir        float)
+   )
+  )
+
+;; definition for method 3 of type paged-menu-option
+(defmethod inspect ((this paged-menu-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tpage-index: ~D~%" (-> this page-index))
+  (format #t "~1Tprev-page-index: ~D~%" (-> this prev-page-index))
+  (format #t "~1Tnum-pages: ~D~%" (-> this num-pages))
+  (format #t "~1Tslide-dir: ~f~%" (-> this slide-dir))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-missions-option
+(deftype menu-missions-option (paged-menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (scroll-speed   float)
+   (on-screen      basic)
+   )
+  )
+
+;; definition for method 3 of type menu-missions-option
+(defmethod inspect ((this menu-missions-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tpage-index: ~D~%" (-> this page-index))
+  (format #t "~1Tprev-page-index: ~D~%" (-> this prev-page-index))
+  (format #t "~1Tnum-pages: ~D~%" (-> this num-pages))
+  (format #t "~1Tslide-dir: ~f~%" (-> this slide-dir))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tscroll-speed: ~f~%" (-> this scroll-speed))
+  (format #t "~1Ton-screen: ~A~%" (-> this on-screen))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type highscore-page-info
+(deftype highscore-page-info (structure)
+  ((text          text-id)
+   (secret        game-secrets)
+   (game-score    uint8)
+   (icon          uint32)
+   (icon-scalex   float)
+   (icon-scaley   float)
+   (icon-offsetx  float)
+   (icon-offsety  float)
+   )
+  (:methods
+    (highscore-page-info-method-9 (_type_ progress font-context float float) none)
+    (highscore-page-info-method-10 (_type_ font-context float float float) none)
+    (highscore-page-info-method-11 (_type_ font-context int float float float) none)
+    (highscore-time->string (_type_ float) string)
+    )
+  )
+
+;; definition for method 3 of type highscore-page-info
+(defmethod inspect ((this highscore-page-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'highscore-page-info)
+  (format #t "~1Ttext: ~D~%" (-> this text))
+  (format #t "~1Tsecret: ~D~%" (-> this secret))
+  (format #t "~1Tgame-score: ~D~%" (-> this game-score))
+  (format #t "~1Ticon: ~D~%" (-> this icon))
+  (format #t "~1Ticon-scalex: ~f~%" (-> this icon-scalex))
+  (format #t "~1Ticon-scaley: ~f~%" (-> this icon-scaley))
+  (format #t "~1Ticon-offsetx: ~f~%" (-> this icon-offsetx))
+  (format #t "~1Ticon-offsety: ~f~%" (-> this icon-offsety))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-highscores-option
+(deftype menu-highscores-option (menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (num-pages      int32)
+   (pages          paged-menu-option  16)
+   (info           (array highscore-page-info))
+   )
+  (:methods
+    (menu-highscores-option-method-12 (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type menu-highscores-option
+(defmethod inspect ((this menu-highscores-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tnum-pages: ~D~%" (-> this num-pages))
+  (format #t "~1Tpages[16] @ #x~X~%" (-> this pages))
+  (format #t "~1Tinfo: ~A~%" (-> this info))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type controls-string-info
+(deftype controls-string-info (structure)
+  ((button   text-id)
+   (action   text-id)
+   (feature  game-feature)
+   (secret   game-secrets)
+   (vehicle  game-vehicles)
+   )
+  (:methods
+    (controls-string-info-method-9 (_type_ progress font-context float float float float float) none)
+    )
+  )
+
+;; definition for method 3 of type controls-string-info
+(defmethod inspect ((this controls-string-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'controls-string-info)
+  (format #t "~1Tbutton: ~D~%" (-> this button))
+  (format #t "~1Taction: ~D~%" (-> this action))
+  (format #t "~1Tfeature: ~D~%" (-> this feature))
+  (format #t "~1Tsecret: ~D~%" (-> this secret))
+  (format #t "~1Tvehicle: ~D~%" (-> this vehicle))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type controls-page-info
+(deftype controls-page-info (structure)
+  ((title          text-id)
+   (feature        game-feature)
+   (secret         game-secrets)
+   (vehicle        game-vehicles)
+   (current-index  float)
+   (target-index   float)
+   (num-text       int32)
+   (on-screen      symbol)
+   (text           game-text  9)
+   (strings        (array controls-string-info))
+   )
+  (:methods
+    (init-text! (_type_) int)
+    (controls-page-info-method-10 (_type_) none)
+    (controls-page-info-method-11 (_type_ progress font-context float float) none)
+    )
+  )
+
+;; definition for method 3 of type controls-page-info
+(defmethod inspect ((this controls-page-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'controls-page-info)
+  (format #t "~1Ttitle: ~D~%" (-> this title))
+  (format #t "~1Tfeature: ~D~%" (-> this feature))
+  (format #t "~1Tsecret: ~D~%" (-> this secret))
+  (format #t "~1Tvehicle: ~D~%" (-> this vehicle))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tnum-text: ~D~%" (-> this num-text))
+  (format #t "~1Ton-screen: ~A~%" (-> this on-screen))
+  (format #t "~1Ttext[9] @ #x~X~%" (-> this text))
+  (format #t "~1Tstrings: ~A~%" (-> this strings))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-controls-option
+(deftype menu-controls-option (paged-menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (pages          controls-page-info  7 :offset  76)
+   (info           (array controls-page-info))
+   )
+  (:methods
+    (menu-controls-option-method-12 (_type_) int)
+    )
+  )
+
+;; definition for method 3 of type menu-controls-option
+(defmethod inspect ((this menu-controls-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tpage-index: ~D~%" (-> this page-index))
+  (format #t "~1Tprev-page-index: ~D~%" (-> this prev-page-index))
+  (format #t "~1Tnum-pages: ~D~%" (-> this num-pages))
+  (format #t "~1Tslide-dir: ~f~%" (-> this slide-dir))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tnum-pages: ~D~%" (-> this num-pages))
+  (format #t "~1Tpages[7] @ #x~X~%" (-> this pages))
+  (format #t "~1Tinfo: ~A~%" (-> this info))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type secret-item-option
+(deftype secret-item-option (menu-option)
+  ((cost              int32)
+   (secret            game-secrets)
+   (avail-after       game-task-node)
+   (required-secrets  game-secrets)
+   (mask-secrets      game-secrets)
+   (flags             secret-item-option-flags)
+   )
+  (:methods
+    (secret-item-option-method-12 (_type_) int)
+    (secret-item-option-method-13 (_type_) game-vehicles)
+    )
+  )
+
+;; definition for method 3 of type secret-item-option
+(defmethod inspect ((this secret-item-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tcost: ~D~%" (-> this cost))
+  (format #t "~1Tsecret: ~D~%" (-> this secret))
+  (format #t "~1Tavail-after: ~D~%" (-> this avail-after))
+  (format #t "~1Trequired-secrets: ~D~%" (-> this required-secrets))
+  (format #t "~1Tmask-secrets: ~D~%" (-> this mask-secrets))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-secret-option
+(deftype menu-secret-option (menu-option)
+  ((current-index    float)
+   (target-index     float)
+   (selected-index   int32)
+   (buy-menu         symbol)
+   (available-title  symbol)
+   )
+  )
+
+;; definition for method 3 of type menu-secret-option
+(defmethod inspect ((this menu-secret-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tselected-index: ~D~%" (-> this selected-index))
+  (format #t "~1Tbuy-menu: ~A~%" (-> this buy-menu))
+  (format #t "~1Tavailable-title: ~A~%" (-> this available-title))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-option-list
+(deftype menu-option-list (basic)
+  ((y-center  int32)
+   (y-space   int32)
+   (scale     float)
+   (options   (array menu-option))
+   )
+  )
+
+;; definition for method 3 of type menu-option-list
+(defmethod inspect ((this menu-option-list))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Ty-center: ~D~%" (-> this y-center))
+  (format #t "~1Ty-space: ~D~%" (-> this y-space))
+  (format #t "~1Tscale: ~f~%" (-> this scale))
+  (format #t "~1Toptions: ~A~%" (-> this options))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-qr-option
+(deftype menu-qr-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-qr-option
+(defmethod inspect ((this menu-qr-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-restart-mission-qr-option
+(deftype menu-restart-mission-qr-option (menu-qr-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-restart-mission-qr-option
+(defmethod inspect ((this menu-restart-mission-qr-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-quit-qr-option
+(deftype menu-quit-qr-option (menu-qr-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-quit-qr-option
+(defmethod inspect ((this menu-quit-qr-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-graphic-option
+(deftype menu-graphic-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+;; definition for method 3 of type menu-graphic-option
+(defmethod inspect ((this menu-graphic-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-on-off-progressive-scan-graphic-option
+(deftype menu-on-off-progressive-scan-graphic-option (menu-graphic-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-on-off-progressive-scan-graphic-option
+(defmethod inspect ((this menu-on-off-progressive-scan-graphic-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-aspect-ratio-option
+(deftype menu-aspect-ratio-option (menu-graphic-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-aspect-ratio-option
+(defmethod inspect ((this menu-aspect-ratio-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-center-screen-graphic-option
+(deftype menu-center-screen-graphic-option (menu-graphic-option)
+  ((next-state  symbol)
+   )
+  )
+
+;; definition for method 3 of type menu-center-screen-graphic-option
+(defmethod inspect ((this menu-center-screen-graphic-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (format #t "~1Tnext-state: ~A~%" (-> this next-state))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-video-mode-option
+(deftype menu-video-mode-option (menu-graphic-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-video-mode-option
+(defmethod inspect ((this menu-video-mode-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-camera-option
+(deftype menu-camera-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+;; definition for method 3 of type menu-camera-option
+(defmethod inspect ((this menu-camera-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-game-option
+(deftype menu-game-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+;; definition for method 3 of type menu-game-option
+(defmethod inspect ((this menu-game-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-language-option
+(deftype menu-language-option (menu-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-language-option
+(defmethod inspect ((this menu-language-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-on-off-game-vibrations-option
+(deftype menu-on-off-game-vibrations-option (menu-game-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-on-off-game-vibrations-option
+(defmethod inspect ((this menu-on-off-game-vibrations-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-on-off-game-subtitles-option
+(deftype menu-on-off-game-subtitles-option (menu-game-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-on-off-game-subtitles-option
+(defmethod inspect ((this menu-on-off-game-subtitles-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-language-game-option
+(deftype menu-language-game-option (menu-game-option)
+  ()
+  )
+
+;; definition for method 3 of type menu-language-game-option
+(defmethod inspect ((this menu-language-game-option))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tsetting-offset: ~D~%" (-> this setting-offset))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type inventory-item
+(deftype inventory-item (structure)
+  ((icon        inventory-icon)
+   (icon-scale  float)
+   (offset      vector2  :offset  16)
+   (feature     game-feature)
+   (vehicle     game-vehicles)
+   (item        game-items)
+   )
+  (:methods
+    (item-obtained? (_type_) symbol)
+    (inventory-item-method-10 (_type_ progress font-context float float symbol) none)
+    )
+  )
+
+;; definition for method 3 of type inventory-item
+(defmethod inspect ((this inventory-item))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'inventory-item)
+  (format #t "~1Ticon: ~D~%" (-> this icon))
+  (format #t "~1Ticon-scale: ~f~%" (-> this icon-scale))
+  (format #t "~1Toffset: #<vector2 @ #x~X>~%" (-> this offset))
+  (format #t "~1Tfeature: ~D~%" (-> this feature))
+  (format #t "~1Tvehicle: ~D~%" (-> this vehicle))
+  (format #t "~1Titem: ~D~%" (-> this item))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type inventory-item-group
+(deftype inventory-item-group (structure)
+  ((name         text-id)
+   (index-left   uint8)
+   (index-right  uint8)
+   (index-up     uint8)
+   (index-down   uint8)
+   (items        (array inventory-item))
+   )
+  (:methods
+    (have-items? (_type_) symbol)
+    (inventory-item-group-method-10 (_type_ progress font-context float float int) none)
+    )
+  )
+
+;; definition for method 3 of type inventory-item-group
+(defmethod inspect ((this inventory-item-group))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'inventory-item-group)
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tindex-left: ~D~%" (-> this index-left))
+  (format #t "~1Tindex-right: ~D~%" (-> this index-right))
+  (format #t "~1Tindex-up: ~D~%" (-> this index-up))
+  (format #t "~1Tindex-down: ~D~%" (-> this index-down))
+  (format #t "~1Titems: ~A~%" (-> this items))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type inventory-screen
+(deftype inventory-screen (structure)
+  ((name           text-id)
+   (current-index  uint8)
+   (groups         (array inventory-item-group))
+   )
+  (:methods
+    (inventory-screen-method-9 (_type_ progress font-context float float) none)
+    )
+  )
+
+;; definition for method 3 of type inventory-screen
+(defmethod inspect ((this inventory-screen))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'inventory-screen)
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tcurrent-index: ~D~%" (-> this current-index))
+  (format #t "~1Tgroups: ~A~%" (-> this groups))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type menu-inventory
+(deftype menu-inventory (menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (screens        (array inventory-screen))
+   )
+  )
+
+;; definition for method 3 of type menu-inventory
+(defmethod inspect ((this menu-inventory))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tname: ~D~%" (-> this name))
+  (format #t "~1Tmenu-option-type: ~D~%" (-> this menu-option-type))
+  (format #t "~1Toffset-y: ~f~%" (-> this offset-y))
+  (format #t "~1Tbox[1] @ #x~X~%" (-> this box))
+  (format #t "~1Tcurrent-index: ~f~%" (-> this current-index))
+  (format #t "~1Ttarget-index: ~f~%" (-> this target-index))
+  (format #t "~1Tscreens: ~A~%" (-> this screens))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

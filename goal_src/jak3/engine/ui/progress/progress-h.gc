@@ -5,5 +5,745 @@
 ;; name in dgo: progress-h
 ;; dgos: GAME
 
+(declare-type progress process)
+(declare-type progress-work structure)
+(define-extern *progress-process* (pointer progress))
+(define-extern activate-progress (function process symbol none))
+(define-extern *progress-work* progress-work)
+(define-extern progress-allowed? (function symbol))
+(define-extern deactivate-progress (function none))
+(define-extern hide-progress-screen (function none))
+(define-extern menu-secrets-notify-task-node-close (function game-task-node none))
+
+;; +++progress-icon-flags
+(defenum progress-icon-flags
+  :type uint32
+  :bitfield #t
+  (pi0 0)
+  (pi1 1)
+  (pi2 2)
+  (pi3 3)
+  (pi4 4)
+  (pi5 5)
+  (pi6 6)
+  (pi7 7)
+  (pi8 8)
+  (pi9 9)
+  (pi10 10)
+  (pi11 11)
+  (pi12 12)
+  (pi13 13)
+  (pi14 14)
+  (pi15 15)
+  (pi16 16)
+  (pi17 17)
+  (pi18 18)
+  (pi19 19)
+  (pi20 20)
+  (pi21 21)
+  (pi22 22)
+  (pi23 23)
+  (pi24 24)
+  (pi25 25)
+  (pi26 26)
+  (pi27 27)
+  (pi28 28)
+  (pi29 29)
+  (pi30 30)
+  (pi31 31)
+  )
+;; ---progress-icon-flags
+
+
+;; +++inventory-icon
+(defenum inventory-icon
+  :type uint32
+  (icon0 0)
+  (icon1 1)
+  (icon2 2)
+  (icon3 3)
+  (icon4 4)
+  (icon5 5)
+  (icon6 6)
+  (icon7 7)
+  (icon8 8)
+  (icon9 9)
+  (icon10 10)
+  (icon11 11)
+  (icon12 12)
+  (icon13 13)
+  (icon14 14)
+  (icon15 15)
+  (v-turtle 16)
+  (v-snake 17)
+  (v-toad 18)
+  (v-scorpion 19)
+  (v-rhino 20)
+  (v-fox 21)
+  (v-mirage 22)
+  (v-x-ride 23)
+  (armor3 24)
+  (armor0 25)
+  (armor1 26)
+  (armor2 27)
+  (darkjak-bomb0 28)
+  (darkjak-bomb1 29)
+  (artifact-invis 30)
+  (darkjak-smack 31)
+  (lightjak-swoop 32)
+  (lightjak-regen 33)
+  (lightjak-shield 34)
+  (lightjak-freeze 35)
+  (gun-red-1 36)
+  (gun-red-2 37)
+  (gun-red-3 38)
+  (gun-yellow-1 39)
+  (gun-yellow-2 40)
+  (gun-yellow-3 41)
+  (gun-blue-1 42)
+  (gun-blue-2 43)
+  (gun-blue-3 44)
+  (gun-dark-1 45)
+  (gun-dark-2 46)
+  (gun-dark-3 47)
+  (pass-wascity 48)
+  (amulet2 49)
+  (amulet0 50)
+  (amulet1 51)
+  (seal-of-mar 52)
+  (board 53)
+  (pass-factory 54)
+  (artifact-holocube 55)
+  (artifact-beam-generator 56)
+  (artifact-prism 57)
+  (artifact-quantum-reflector 58)
+  (artifact-time-map 59)
+  (light-eco-crystal 60)
+  (dark-eco-crystal 61)
+  (eco-sphere 62)
+  (icon63 63)
+  )
+;; ---inventory-icon
+
+
+(declare-type menu-option-list basic)
+
+;; +++secret-item-option-flags
+(defenum secret-item-option-flags
+  :type uint8
+  :bitfield #t
+  (sf0)
+  (sf1)
+  (sf2)
+  (sf3)
+  (sf4)
+  (sf5)
+  (sf6)
+  (sf7)
+  )
+;; ---secret-item-option-flags
+
+
 ;; DECOMP BEGINS
 
+(deftype progress-list (basic)
+  ()
+  (:methods
+    (progress-list-method-9 (_type_ int) game-task-info)
+    )
+  )
+
+
+(deftype progress-list-level (progress-list)
+  ((act   int32)
+   (mode  symbol)
+   )
+  )
+
+
+(deftype progress-box (structure)
+  ((aspect4x3   hud-box  :inline)
+   (aspect16x9  hud-box  :inline)
+   )
+  )
+
+
+(deftype progress (process-drawable)
+  ((scissor-stack            vector      8 :inline)
+   (scissor-count            int32)
+   (current-options          menu-option-list)
+   (menu-transition          float)
+   (option-index             int32)
+   (current-index            int32)
+   (want-option-index        int32)
+   (next-option-index        int32)
+   (graphic-index            int32)
+   (selected-option          symbol)
+   (current                  symbol)
+   (next                     symbol)
+   (ring-angle               float)
+   (ring-want-angle          float)
+   (init-quat                quaternion  :inline)
+   (pos-transition           float)
+   (anim-frame               float)
+   (swing                    float)
+   (main-menu                symbol)
+   (state-array              symbol      8)
+   (option-index-stack       int32       8)
+   (state-pos                int32)
+   (secret-buying            basic)
+   (secret-buy-choice        basic)
+   (scanlines-alpha          float)
+   (start-time               time-frame)
+   (which-slot               int32)
+   (starting-state           basic)
+   (yes-no-choice            basic)
+   (time-out                 time-frame)
+   (last-sound               time-frame)
+   (last-move                time-frame)
+   (center-x-backup          int32)
+   (center-y-backup          int32)
+   (flip-horizontal          basic)
+   (flip-vertical            basic)
+   (progressive-scan         basic)
+   (aspect-ratio             basic)
+   (video-mode               basic)
+   (stereo-mode-backup       int32)
+   (vibrations               basic)
+   (subtitles                basic)
+   (languages                int32       3)
+   (subtitle-language-index  int32       :overlay-at (-> languages 0))
+   (language-index           int32       :overlay-at (-> languages 1))
+   (audio-language-index     int32       :overlay-at (-> languages 2))
+   (current-task-index       int32)
+   (current-line-index       int32)
+   (first-closed-line-index  int32)
+   (extra-text-state         int32)
+   (current-task             game-task)
+   (num-open-tasks-found     int32)
+   (num-closed-tasks-found   int32)
+   (num-unlocked-secrets     int32)
+   (total-num-tasks          int32)
+   (missions-total-spacing   float)
+   (clear-screen             symbol)
+   (progress-id              uint32)
+   (lock-tick-count          int32)
+   )
+  (:state-methods
+    come-in
+    idle
+    go-away
+    gone
+    )
+  (:methods
+    (init-defaults (_type_) object)
+    (respond-to-cpad (_type_) none)
+    (gone? (_type_) object)
+    (can-go-back? (_type_) symbol)
+    (get-state-check-card (_type_ symbol) symbol)
+    (push-state (_type_) int)
+    (pop-state (_type_) int)
+    (set-next-state (_type_ symbol int) int)
+    (set-menu-options (_type_ symbol) int)
+    (progress-method-33 (_type_ progress-box) none)
+    (progress-method-34 (_type_) none)
+    (get-scissor-stack-top (_type_) vector)
+    (get-language-by-idx (_type_ int) int)
+    (progress-method-37 (_type_) none)
+    (progress-method-38 (_type_ font-context float) none)
+    (progress-method-39 (_type_) none)
+    (progress-method-40 (_type_ font-context int int float) none)
+    (progress-method-41 (_type_ progress-box float) none)
+    (progress-method-42 (_type_ progress-box float) none)
+    (progress-method-43 (_type_ progress-box float) none)
+    (progress-method-44 (_type_ font-context string) none)
+    (progress-method-45 (_type_ font-context float float string float float int) float)
+    (progress-method-46 (_type_ font-context float int) none)
+    (progress-method-47 (_type_ font-context symbol symbol) none)
+    (draw-prev-next-footer (_type_ font-context float) none)
+    (draw-yes-no-style-footer (_type_ font-context text-id text-id) none)
+    (progress-method-50 (_type_ font-context text-id text-id text-id symbol symbol float) none)
+    (progress-method-51 (_type_ font-context) none)
+    (progress-method-52 (_type_ font-context string float float float float float) none)
+    (progress-method-53 (_type_ font-context) none)
+    )
+  )
+
+
+(deftype progress-work (structure)
+  ((full-screen       progress-box  :inline)
+   (small-screen      progress-box  :inline)
+   (header            progress-box  :inline)
+   (body              progress-box  :inline)
+   (body-footer       progress-box  :inline)
+   (footer            progress-box  :inline)
+   (sub-header        progress-box  :inline)
+   (sub-body          progress-box  :inline)
+   (sub-body-footer   progress-box  :inline)
+   (highscore-0       progress-box  :inline)
+   (highscore-1       progress-box  :inline)
+   (highscore-body    progress-box  :inline)
+   (load-save-0a      progress-box  :inline)
+   (load-save-0b      progress-box  :inline)
+   (load-save-1a      progress-box  :inline)
+   (load-save-1b      progress-box  :inline)
+   (load-save-2a      progress-box  :inline)
+   (load-save-2b      progress-box  :inline)
+   (load-save-3a      progress-box  :inline)
+   (load-save-3b      progress-box  :inline)
+   (last-slot-saved   int32)
+   (selected-num      int32)
+   (secrets-unlocked  basic)
+   (hero-mode-save    symbol)
+   )
+  )
+
+
+(deftype progress-icon-part (structure)
+  ((offset  vector2w  :inline)
+   (tex-id  texture-id)
+   (bucket  bucket-id)
+   (flags   progress-icon-flags)
+   )
+  )
+
+
+(deftype progress-icon-array (array)
+  ((icons  progress-icon-part  :dynamic :offset  16)
+   )
+  (:methods
+    (draw-icon-array! (_type_ int int float float rgba float) none)
+    )
+  )
+
+
+(deftype menu-option (basic)
+  ((name              text-id)
+   (menu-option-type  uint32)
+   (offset-y          float)
+   (box               hud-box  1 :inline)
+   )
+  (:methods
+    (respond-progress (_type_ progress symbol) int)
+    (draw-option (_type_ progress font-context int symbol) none)
+    (menu-option-method-11 () none)
+    )
+  )
+
+
+(deftype menu-slider-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+
+(deftype menu-sound-slider-option (menu-slider-option)
+  ()
+  )
+
+
+(deftype menu-picture-slider-option (menu-slider-option)
+  ()
+  )
+
+
+(deftype menu-sub-menu-option (menu-option)
+  ((next-state  symbol)
+   )
+  )
+
+
+(deftype menu-stereo-mode-sound-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-unlocked-sub-menu-option (menu-sub-menu-option)
+  ((mask   uint64)
+   (value  int32)
+   )
+  )
+
+
+(deftype menu-save-sub-menu-option (menu-sub-menu-option)
+  ()
+  )
+
+
+(deftype menu-main-menu-option (menu-option)
+  ((next-state  symbol)
+   )
+  )
+
+
+(deftype menu-memcard-slot-option (menu-option)
+  ((sprites  hud-sprite  5 :inline)
+   (pad      uint8       32)
+   )
+  )
+
+
+(deftype menu-loading-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-insufficient-space-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-secrets-insufficient-space-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-hero-mode-message-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-insert-card-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-error-loading-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-error-auto-saving-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-card-removed-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-error-disc-removed-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-error-reading-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-icon-info-option (menu-option)
+  ((sprites  hud-sprite  2 :inline)
+   )
+  )
+
+
+(deftype menu-format-card-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-already-exists-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-create-game-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-video-mode-warning-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-video-mode-ok-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-progressive-mode-warning-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-progressive-mode-ok-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-select-start-option (menu-option)
+  ((current-index   float)
+   (target-index    float)
+   (selected-index  int32)
+   (scroll-speed    float)
+   )
+  )
+
+
+(deftype menu-select-scene-option (menu-option)
+  ((current-index   float)
+   (target-index    float)
+   (selected-index  int32)
+   (scroll-speed    float)
+   )
+  )
+
+
+(deftype menu-bigmap-option (menu-option)
+  ()
+  )
+
+
+(deftype paged-menu-option (menu-option)
+  ((page-index       int32)
+   (prev-page-index  int32)
+   (num-pages        int32)
+   (slide-dir        float)
+   )
+  )
+
+
+(deftype menu-missions-option (paged-menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (scroll-speed   float)
+   (on-screen      basic)
+   )
+  )
+
+
+(deftype highscore-page-info (structure)
+  ((text          text-id)
+   (secret        game-secrets)
+   (game-score    uint8)
+   (icon          uint32)
+   (icon-scalex   float)
+   (icon-scaley   float)
+   (icon-offsetx  float)
+   (icon-offsety  float)
+   )
+  (:methods
+    (highscore-page-info-method-9 (_type_ progress font-context float float) none)
+    (highscore-page-info-method-10 (_type_ font-context float float float) none)
+    (highscore-page-info-method-11 (_type_ font-context int float float float) none)
+    (highscore-time->string (_type_ float) string)
+    )
+  )
+
+
+(deftype menu-highscores-option (menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (num-pages      int32)
+   (pages          paged-menu-option  16)
+   (info           (array highscore-page-info))
+   )
+  (:methods
+    (menu-highscores-option-method-12 (_type_) int)
+    )
+  )
+
+
+(deftype controls-string-info (structure)
+  ((button   text-id)
+   (action   text-id)
+   (feature  game-feature)
+   (secret   game-secrets)
+   (vehicle  game-vehicles)
+   )
+  (:methods
+    (controls-string-info-method-9 (_type_ progress font-context float float float float float) none)
+    )
+  )
+
+
+(deftype controls-page-info (structure)
+  ((title          text-id)
+   (feature        game-feature)
+   (secret         game-secrets)
+   (vehicle        game-vehicles)
+   (current-index  float)
+   (target-index   float)
+   (num-text       int32)
+   (on-screen      symbol)
+   (text           game-text  9)
+   (strings        (array controls-string-info))
+   )
+  (:methods
+    (init-text! (_type_) int)
+    (controls-page-info-method-10 (_type_) none)
+    (controls-page-info-method-11 (_type_ progress font-context float float) none)
+    )
+  )
+
+
+(deftype menu-controls-option (paged-menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (pages          controls-page-info  7 :offset  76)
+   (info           (array controls-page-info))
+   )
+  (:methods
+    (menu-controls-option-method-12 (_type_) int)
+    )
+  )
+
+
+(deftype secret-item-option (menu-option)
+  ((cost              int32)
+   (secret            game-secrets)
+   (avail-after       game-task-node)
+   (required-secrets  game-secrets)
+   (mask-secrets      game-secrets)
+   (flags             secret-item-option-flags)
+   )
+  (:methods
+    (secret-item-option-method-12 (_type_) int)
+    (secret-item-option-method-13 (_type_) game-vehicles)
+    )
+  )
+
+
+(deftype menu-secret-option (menu-option)
+  ((current-index    float)
+   (target-index     float)
+   (selected-index   int32)
+   (buy-menu         symbol)
+   (available-title  symbol)
+   )
+  )
+
+
+(deftype menu-option-list (basic)
+  ((y-center  int32)
+   (y-space   int32)
+   (scale     float)
+   (options   (array menu-option))
+   )
+  )
+
+
+(deftype menu-qr-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-restart-mission-qr-option (menu-qr-option)
+  ()
+  )
+
+
+(deftype menu-quit-qr-option (menu-qr-option)
+  ()
+  )
+
+
+(deftype menu-graphic-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+
+(deftype menu-on-off-progressive-scan-graphic-option (menu-graphic-option)
+  ()
+  )
+
+
+(deftype menu-aspect-ratio-option (menu-graphic-option)
+  ()
+  )
+
+
+(deftype menu-center-screen-graphic-option (menu-graphic-option)
+  ((next-state  symbol)
+   )
+  )
+
+
+(deftype menu-video-mode-option (menu-graphic-option)
+  ()
+  )
+
+
+(deftype menu-camera-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+
+(deftype menu-game-option (menu-option)
+  ((setting-offset  uint32)
+   )
+  )
+
+
+(deftype menu-language-option (menu-option)
+  ()
+  )
+
+
+(deftype menu-on-off-game-vibrations-option (menu-game-option)
+  ()
+  )
+
+
+(deftype menu-on-off-game-subtitles-option (menu-game-option)
+  ()
+  )
+
+
+(deftype menu-language-game-option (menu-game-option)
+  ()
+  )
+
+
+(deftype inventory-item (structure)
+  ((icon        inventory-icon)
+   (icon-scale  float)
+   (offset      vector2  :offset  16)
+   (feature     game-feature)
+   (vehicle     game-vehicles)
+   (item        game-items)
+   )
+  (:methods
+    (item-obtained? (_type_) symbol)
+    (inventory-item-method-10 (_type_ progress font-context float float symbol) none)
+    )
+  )
+
+
+(deftype inventory-item-group (structure)
+  ((name         text-id)
+   (index-left   uint8)
+   (index-right  uint8)
+   (index-up     uint8)
+   (index-down   uint8)
+   (items        (array inventory-item))
+   )
+  (:methods
+    (have-items? (_type_) symbol)
+    (inventory-item-group-method-10 (_type_ progress font-context float float int) none)
+    )
+  )
+
+
+(deftype inventory-screen (structure)
+  ((name           text-id)
+   (current-index  uint8)
+   (groups         (array inventory-item-group))
+   )
+  (:methods
+    (inventory-screen-method-9 (_type_ progress font-context float float) none)
+    )
+  )
+
+
+(deftype menu-inventory (menu-option)
+  ((current-index  float)
+   (target-index   float)
+   (screens        (array inventory-screen))
+   )
+  )

@@ -16,12 +16,11 @@
 #include "SDL_main.h"
 
 #ifdef main
-#  undef main
+#undef main
 #endif /* main */
 
 /* Pop up an out of memory message, returns to Windows */
-static BOOL
-OutOfMemory(void)
+static BOOL OutOfMemory(void)
 {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal Error", "Out of memory - aborting", NULL);
     return FALSE;
@@ -29,23 +28,22 @@ OutOfMemory(void)
 
 #if defined(_MSC_VER)
 /* The VC++ compiler needs main/wmain defined */
-# define console_ansi_main main
-# if UNICODE
-#  define console_wmain wmain
-# endif
+#define console_ansi_main main
+#if UNICODE
+#define console_wmain wmain
+#endif
 #endif
 
 /* Gets the arguments with GetCommandLine, converts them to argc and argv
    and calls SDL_main */
-static int
-main_getcmdline(void)
+static int main_getcmdline(void)
 {
     LPWSTR *argvw;
     char **argv;
     int i, argc, result;
 
     argvw = CommandLineToArgvW(GetCommandLineW(), &argc);
-    if (argvw == NULL) {
+    if (!argvw) {
         return OutOfMemory();
     }
 
@@ -66,7 +64,7 @@ main_getcmdline(void)
             return OutOfMemory();
         }
         len = (DWORD)SDL_strlen(arg);
-        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len + 1);
+        argv[i] = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, (size_t)len + 1);
         if (!argv[i]) {
             return OutOfMemory();
         }
@@ -91,25 +89,22 @@ main_getcmdline(void)
 }
 
 /* This is where execution begins [console apps, ansi] */
-int
-console_ansi_main(int argc, char *argv[])
+int console_ansi_main(int argc, char *argv[])
 {
     return main_getcmdline();
 }
 
-
 #if UNICODE
 /* This is where execution begins [console apps, unicode] */
-int
-console_wmain(int argc, wchar_t *wargv[], wchar_t *wenvp)
+int console_wmain(int argc, wchar_t *wargv[], wchar_t *wenvp)
 {
     return main_getcmdline();
 }
 #endif
 
 /* This is where execution begins [windowed apps] */
-int WINAPI
-WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw)
+int WINAPI MINGW32_FORCEALIGN
+WinMain(HINSTANCE hInst, HINSTANCE hPrev, LPSTR szCmdLine, int sw) /* NOLINT(readability-inconsistent-declaration-parameter-name) */
 {
     return main_getcmdline();
 }

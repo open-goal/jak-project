@@ -17,15 +17,8 @@ on:
 jobs:
   build:
     name: Intel
-    runs-on: macos-11
+    runs-on: macos-12
     timeout-minutes: 120
-
-    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
-      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
-      BUILDCACHE_COMPRESS_FORMAT: ZSTD
-      BUILDCACHE_COMPRESS_LEVEL: 19
-      BUILDCACHE_DIRECT_MODE: true
-      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
 
     steps:
       - name: Checkout Repository
@@ -34,11 +27,13 @@ jobs:
       - name: Install Package Dependencies
         run: brew install cmake nasm ninja
 
-      - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v2.1.0
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2.13
         with:
-          cache_key: macos-11-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
-          buildcache_tag: v0.28.1
+          variant: sccache
+          key: macos-12-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: macos-12-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          max-size: 1000M
 
       - name: CMake Generation
         env:
@@ -46,8 +41,8 @@ jobs:
           CXX: clang++
         run: |
           cmake -B build --preset=${{ inputs.cmakePreset }} \
-            -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache \
-            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build Project
         run: cmake --build build --parallel $((`sysctl -n hw.logicalcpu`))

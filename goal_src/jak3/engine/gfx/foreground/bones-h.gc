@@ -5,5 +5,89 @@
 ;; name in dgo: bones-h
 ;; dgos: GAME
 
+(defenum bone-calc-flags
+  :type uint16
+  :bitfield #t
+  (write-ripple-data 0)
+  (no-cam-rot 1)
+  )
+
 ;; DECOMP BEGINS
 
+(deftype bone-buffer (structure)
+  ((joint   matrix    16 :inline)
+   (bone    bone      16 :inline)
+   (output  pris-mtx  16 :inline)
+   )
+  )
+
+
+(deftype bone-layout (structure)
+  ((data    uint16                   8)
+   (joint   (inline-array matrix)    2 :overlay-at (-> data 0))
+   (bone    (inline-array bone)      2 :overlay-at (-> data 4))
+   (output  (inline-array pris-mtx)  2 :offset  16)
+   (unused  uint32                   2 :offset  24)
+   )
+  )
+
+
+(deftype bone-regs (structure)
+  ((dma-buf     dma-buffer)
+   (wait-count  uint32)
+   (in-count    uint32)
+   (sp-size     uint32)
+   (sp-bufnum   uint32)
+   (joint-ptr   (inline-array joint))
+   (bone-ptr    (inline-array bone))
+   (num-bones   uint32)
+   (mtxs        (inline-array pris-mtx))
+   )
+  )
+
+
+(deftype bone-work (structure)
+  ((layout  bone-layout  :inline)
+   (regs    bone-regs    :inline)
+   )
+  )
+
+
+(deftype bone-debug (structure)
+  ((time-ctr  uint32)
+   (timing    uint32  360)
+   )
+  )
+
+
+(deftype bone-memory (structure)
+  ((work    bone-work    :inline)
+   (buffer  bone-buffer  2 :inline)
+   )
+  )
+
+
+(deftype bone-calculation (structure)
+  ((flags                bone-calc-flags)
+   (num-bones            uint16)
+   (matrix-area          (inline-array pris-mtx))
+   (joints               (inline-array joint))
+   (bones                (inline-array bone))
+   (ripple-scale         float)
+   (ripple-y-scale       float)
+   (ripple-normal-scale  float)
+   (ripple-area          (inline-array vector))
+   (ripple-vec           vector  :inline :overlay-at ripple-scale)
+   (next                 bone-calculation)
+   (dummy-1              uint32)
+   (dummy-2              uint32)
+   (dummy-3              uint32)
+   )
+  )
+
+
+(deftype bone-calculation-list (structure)
+  ((first  bone-calculation)
+   (next   bone-calculation)
+   )
+  )

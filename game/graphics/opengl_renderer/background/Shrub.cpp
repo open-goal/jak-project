@@ -45,7 +45,7 @@ void Shrub::render(DmaFollower& dma, SharedRenderState* render_state, ScopedProf
   memcpy(&m_pc_port_data, pc_port_data.data, sizeof(TfragPcPortData));
   m_pc_port_data.level_name[11] = '\0';
 
-  if (render_state->version == GameVersion::Jak2) {
+  if (render_state->version >= GameVersion::Jak2) {
     // jak 2 proto visibility
     auto proto_mask_data = dma.read_and_advance();
     m_proto_vis_data = proto_mask_data.data;
@@ -74,7 +74,7 @@ void Shrub::update_load(const LevelData* loader_data) {
   m_trees.resize(lev_data->shrub_trees.size());
 
   size_t max_draws = 0;
-  size_t time_of_day_count = 0;
+  u32 time_of_day_count = 0;
   size_t max_num_grps = 0;
   size_t max_inds = 0;
 
@@ -90,7 +90,7 @@ void Shrub::update_load(const LevelData* loader_data) {
     }
     max_num_grps = std::max(max_num_grps, num_grps);
 
-    time_of_day_count = std::max(tree.time_of_day_colors.size(), time_of_day_count);
+    time_of_day_count = std::max(tree.time_of_day_colors.color_count, time_of_day_count);
     max_inds = std::max(tree.indices.size(), max_inds);
     u32 verts = tree.unpacked.vertices.size();
     glGenVertexArrays(1, &m_trees[l_tree].vao);
@@ -107,7 +107,6 @@ void Shrub::update_load(const LevelData* loader_data) {
     }
     m_trees[l_tree].colors = &tree.time_of_day_colors;
     m_trees[l_tree].index_data = tree.indices.data();
-    m_trees[l_tree].tod_cache = swizzle_time_of_day(tree.time_of_day_colors);
     glBindBuffer(GL_ARRAY_BUFFER, m_trees[l_tree].vertex_buffer);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -281,29 +280,21 @@ void Shrub::render_tree(int idx,
     return;
   }
 
-  if (m_color_result.size() < tree.colors->size()) {
-    m_color_result.resize(tree.colors->size());
+  if (m_color_result.size() < tree.colors->color_count) {
+    m_color_result.resize(tree.colors->color_count);
   }
 
   Timer interp_timer;
-#ifndef __aarch64__
-  if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
-  } else {
-    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
-  }
-#else
-  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
-#endif
+  interp_time_of_day(settings.camera.itimes, *tree.colors, m_color_result.data());
   tree.perf.tod_time.add(interp_timer.getSeconds());
 
   Timer setup_timer;
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                  m_color_result.data());
+  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->color_count, GL_RGBA,
+                  GL_UNSIGNED_INT_8_8_8_8_REV, m_color_result.data());
 
-  first_tfrag_draw_setup(settings, render_state, ShaderId::SHRUB);
+  first_tfrag_draw_setup(settings.camera, render_state, ShaderId::SHRUB);
 
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);

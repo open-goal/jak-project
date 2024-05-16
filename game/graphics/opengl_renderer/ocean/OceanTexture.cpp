@@ -68,6 +68,7 @@ void OceanTexture::init_textures(TexturePool& pool, GameVersion version) {
       m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP_JAK1);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       m_tex0_gpu = pool.give_texture_and_load_to_vram(in, OCEAN_TEX_TBP_JAK2);
       break;
   }

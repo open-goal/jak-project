@@ -1,0 +1,3125 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; failed to figure out what this is:
+(defskelgroup skel-gekko gekko gekko-lod0-jg -1
+              ((gekko-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 4)
+              :shadow gekko-shadow-mg
+              :origin-joint-index 16
+              )
+
+;; definition of type gekko-foot-info
+(deftype gekko-foot-info (structure)
+  ((ground-pos      vector      :inline)
+   (ground-normal   vector      :inline)
+   (foot-transform  transformq  :inline)
+   (leg-ik          joint-mod-ik)
+   )
+  )
+
+;; definition for method 3 of type gekko-foot-info
+(defmethod inspect ((this gekko-foot-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gekko-foot-info)
+  (format #t "~1Tground-pos: #<vector @ #x~X>~%" (-> this ground-pos))
+  (format #t "~1Tground-normal: #<vector @ #x~X>~%" (-> this ground-normal))
+  (format #t "~1Tfoot-transform: #<transformq @ #x~X>~%" (-> this foot-transform))
+  (format #t "~1Tleg-ik: ~A~%" (-> this leg-ik))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gekko-ik-setup
+(deftype gekko-ik-setup (structure)
+  ((elbow-index     int32)
+   (hand-index      int32)
+   (effector-index  int32)
+   (hand-dist       float)
+   )
+  )
+
+;; definition for method 3 of type gekko-ik-setup
+(defmethod inspect ((this gekko-ik-setup))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gekko-ik-setup)
+  (format #t "~1Telbow-index: ~D~%" (-> this elbow-index))
+  (format #t "~1Thand-index: ~D~%" (-> this hand-index))
+  (format #t "~1Teffector-index: ~D~%" (-> this effector-index))
+  (format #t "~1Thand-dist: ~f~%" (-> this hand-dist))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *gekko-ik-setup*, type (inline-array gekko-ik-setup)
+(define *gekko-ik-setup*
+  (new 'static 'inline-array gekko-ik-setup 4
+    (new 'static 'gekko-ik-setup :elbow-index 9 :hand-index 10 :effector-index 10 :hand-dist 1224.704)
+    (new 'static 'gekko-ik-setup :elbow-index 13 :hand-index 14 :effector-index 14 :hand-dist 1224.704)
+    (new 'static 'gekko-ik-setup :elbow-index 19 :hand-index 20 :effector-index 20 :hand-dist 1638.4)
+    (new 'static 'gekko-ik-setup :elbow-index 29 :hand-index 30 :effector-index 30 :hand-dist 1638.4)
+    )
+  )
+
+;; definition for symbol *gekko-foot-offset*, type (array gekko-foot-info)
+(define *gekko-foot-offset*
+  (the-as (array gekko-foot-info) (new 'static 'boxed-array :type vector
+                                    (new 'static 'vector :x 2281.472 :z 2424.832 :w 1.0)
+                                    (new 'static 'vector :x -2281.472 :z 2424.832 :w 1.0)
+                                    (new 'static 'vector :x 2301.952 :z -2424.832 :w 1.0)
+                                    (new 'static 'vector :x -2301.952 :z -2424.832 :w 1.0)
+                                    )
+                                  )
+  )
+
+;; definition of type gekko-shadow-spot
+(deftype gekko-shadow-spot (structure)
+  ((position  vector  :inline)
+   (normal    vector  :inline)
+   (valid?    symbol)
+   (pat       uint32)
+   )
+  )
+
+;; definition for method 3 of type gekko-shadow-spot
+(defmethod inspect ((this gekko-shadow-spot))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'gekko-shadow-spot)
+  (format #t "~1Tposition: #<vector @ #x~X>~%" (-> this position))
+  (format #t "~1Tnormal: #<vector @ #x~X>~%" (-> this normal))
+  (format #t "~1Tvalid?: ~A~%" (-> this valid?))
+  (format #t "~1Tpat: ~D~%" (-> this pat))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type gekko
+(deftype gekko (nav-enemy)
+  ((shadow-spot      gekko-shadow-spot  :inline)
+   (foot             gekko-foot-info    4 :inline)
+   (rot-matrix       matrix             :inline)
+   (gspot-normal     vector             :inline)
+   (tilt-quat        quaternion         :inline)
+   (dest-to-me-dir   vector             :inline)
+   (turn-face-point  vector             :inline)
+   (flags            gekko-flag)
+   (attack-time      time-frame)
+   (last-turn-time   time-frame)
+   (fade             float)
+   (rot-mult         float)
+   (move-speed       float)
+   (move-decel       float)
+   (turn-next-state  (state gekko))
+   (path-wall        path-control)
+   (scared-timer     time-frame)
+   (scale            float)
+   (probe-len        float)
+   )
+  (:state-methods
+    active-wall
+    hostile-wall
+    turn-wall
+    attack-wall
+    knocked-wall
+    jump-off-wall
+    jump-off-wall-falling
+    jump-off-wall-recover
+    pre-attack
+    attack
+    turn
+    turn-quick
+    )
+  (:methods
+    (gekko-method-202 (_type_) none)
+    (gekko-method-203 (_type_) none)
+    (gekko-method-204 (_type_) none)
+    (gekko-method-205 (_type_) none)
+    (gekko-method-206 (_type_) none)
+    (gekko-method-207 (_type_) none)
+    (gekko-method-208 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type gekko
+(defmethod inspect ((this gekko))
+  (when (not this)
+    (set! this this)
+    (goto cfg-14)
+    )
+  (let ((t9-0 (method-of-type nav-enemy inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tshadow-spot: #<gekko-shadow-spot @ #x~X>~%" (-> this shadow-spot))
+  (format #t "~2Tfoot[4] @ #x~X~%" (-> this foot))
+  (format #t "~2Trot-matrix: #<matrix @ #x~X>~%" (-> this rot-matrix))
+  (format #t "~2Tgspot-normal: #<vector @ #x~X>~%" (-> this gspot-normal))
+  (format #t "~2Ttilt-quat: #<quaternion @ #x~X>~%" (-> this tilt-quat))
+  (format #t "~2Tdest-to-me-dir: #<vector @ #x~X>~%" (-> this dest-to-me-dir))
+  (format #t "~2Tturn-face-point: #<vector @ #x~X>~%" (-> this turn-face-point))
+  (format #t "~2Tflags: #x~X : (gekko-flag " (-> this flags))
+  (let ((s5-0 (-> this flags)))
+    (if (= (logand s5-0 (gekko-flag update-tilt)) (gekko-flag update-tilt))
+        (format #t "update-tilt ")
+        )
+    (if (= (logand s5-0 (gekko-flag follow-terrain)) (gekko-flag follow-terrain))
+        (format #t "follow-terrain ")
+        )
+    (if (= (logand s5-0 (gekko-flag on-wall?)) (gekko-flag on-wall?))
+        (format #t "on-wall? ")
+        )
+    (if (= (logand s5-0 (gekko-flag update-foot-position?)) (gekko-flag update-foot-position?))
+        (format #t "update-foot-position? ")
+        )
+    (if (= (logand s5-0 (gekko-flag falling-off-wall?)) (gekko-flag falling-off-wall?))
+        (format #t "falling-off-wall? ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~2Tattack-time: ~D~%" (-> this attack-time))
+  (format #t "~2Tlast-turn-time: ~D~%" (-> this last-turn-time))
+  (format #t "~2Tfade: ~f~%" (-> this fade))
+  (format #t "~2Trot-mult: ~f~%" (-> this rot-mult))
+  (format #t "~2Tmove-speed: ~f~%" (-> this move-speed))
+  (format #t "~2Tmove-decel: ~f~%" (-> this move-decel))
+  (format #t "~2Tturn-next-state: ~A~%" (-> this turn-next-state))
+  (format #t "~2Tpath-wall: ~A~%" (-> this path-wall))
+  (format #t "~2Tscared-timer: ~D~%" (-> this scared-timer))
+  (format #t "~2Tscale: ~f~%" (-> this scale))
+  (format #t "~2Tprobe-len: ~f~%" (-> this probe-len))
+  (label cfg-14)
+  this
+  )
+
+;; definition for symbol *fact-info-gekko-defaults*, type fact-info-enemy-defaults
+(define *fact-info-gekko-defaults*
+  (new 'static 'fact-info-enemy-defaults :idle-distance (meters 140) :pickup-type 9)
+  )
+
+;; definition for symbol *gekko-nav-enemy-info*, type nav-enemy-info
+(define *gekko-nav-enemy-info*
+  (new 'static 'nav-enemy-info
+    :use-die-falling #t
+    :use-victory #f
+    :use-jump-blocked #f
+    :debug-draw-neck #f
+    :jump-debug-draw #f
+    :move-to-ground #f
+    :hover-if-no-ground #f
+    :idle-anim-script (new 'static 'inline-array idle-control-frame 3
+      (new 'static 'idle-control-frame :command (idle-control-cmd push) :param0 30)
+      (new 'static 'idle-control-frame
+        :command (idle-control-cmd play)
+        :anim #x4
+        :param0 5
+        :param1 5
+        :param2 '((new 'static 'bfloat :data 0.5) (new 'static 'bfloat :data 0.5))
+        )
+      (new 'static 'idle-control-frame)
+      )
+    :idle-anim 3
+    :notice-anim 4
+    :hostile-anim 14
+    :hit-anim 3
+    :knocked-anim 23
+    :knocked-land-anim 18
+    :die-anim 32
+    :die-falling-anim 3
+    :victory-anim -1
+    :jump-wind-up-anim 33
+    :jump-in-air-anim 34
+    :jump-land-anim 35
+    :neck-joint 6
+    :look-at-joint 6
+    :bullseye-joint 16
+    :sound-hit (static-sound-name "gekko-get-hit")
+    :sound-die (static-sound-name "gekko-die")
+    :notice-distance (meters 80)
+    :notice-distance-delta (meters 10)
+    :proximity-notice-distance (meters 5)
+    :default-hit-points 5.0
+    :gnd-collide-with (collide-spec backgnd)
+    :overlaps-others-collide-with-filter (collide-spec jak bot player-list)
+    :penetrate-knocked (penetrate
+      touch
+      generic-attack
+      lunge
+      flop
+      punch
+      spin
+      roll
+      uppercut
+      bonk
+      tube
+      vehicle
+      flut-attack
+      board
+      mech
+      mech-punch
+      mech-bonk
+      dark-skin
+      dark-punch
+      dark-bomb
+      dark-smack
+      flut
+      shield
+      explode
+      jak-yellow-shot
+      jak-red-shot
+      jak-blue-shot
+      jak-dark-shot
+      enemy-yellow-shot
+      enemy-dark-shot
+      eco-yellow
+      eco-red
+      eco-blue
+      eco-green
+      knocked
+      jak-red-shockwave
+      jak-dark-nuke
+      jak-dark-blackhole
+      emp-blast
+      penetrate38
+      penetrate39
+      penetrate40
+      penetrate41
+      penetrate42
+      penetrate43
+      penetrate44
+      penetrate45
+      penetrate46
+      penetrate47
+      penetrate48
+      penetrate49
+      penetrate50
+      penetrate51
+      penetrate52
+      penetrate53
+      penetrate54
+      penetrate55
+      penetrate56
+      penetrate57
+      penetrate58
+      penetrate59
+      penetrate60
+      penetrate61
+      penetrate64
+      penetrate63
+      )
+    :movement-gravity (meters -100)
+    :friction 0.8
+    :attack-shove-back (meters 7)
+    :attack-shove-up (meters 4)
+    :attack-mode 'generic
+    :attack-damage 2
+    :recover-gnd-collide-with (collide-spec backgnd crate obstacle hit-by-others-list pusher)
+    :knocked-can-land-timeout (seconds 0.1)
+    :knocked-recover-timeout (seconds 2)
+    :ragdoll-blend-out-time (seconds 0.4)
+    :ragdoll-rotate-velocity-mult 0.5
+    :jump-height-min (meters 3)
+    :jump-height-factor 0.5
+    :knocked-seek-ry-clamp -1.0
+    :knocked-soft-vxz-lo 113049.6
+    :knocked-soft-vxz-hi 149094.4
+    :knocked-soft-vy-lo 122880.0
+    :knocked-soft-vy-hi 163840.0
+    :knocked-medium-vxz-lo 147456.0
+    :knocked-medium-vxz-hi 196608.0
+    :knocked-medium-vy-lo 135168.0
+    :knocked-medium-vy-hi 151552.0
+    :knocked-hard-vxz-lo 78643.2
+    :knocked-hard-vxz-hi 117964.8
+    :knocked-hard-vy-lo 183500.8
+    :knocked-hard-vy-hi 209715.2
+    :knocked-huge-vxz-lo 164659.2
+    :knocked-huge-vxz-hi 249036.8
+    :knocked-huge-vy-lo 183500.8
+    :knocked-huge-vy-hi 217907.2
+    :knocked-yellow-vxz-lo 40960.0
+    :knocked-yellow-vxz-hi 49152.0
+    :knocked-yellow-vy-lo 57344.0
+    :knocked-yellow-vy-hi 81920.0
+    :knocked-red-vxz-lo 24576.0
+    :knocked-red-vxz-hi 196608.0
+    :knocked-red-vy-lo 94208.0
+    :knocked-red-vy-hi 151552.0
+    :knocked-blue-vxz-lo 40960.0
+    :knocked-blue-vxz-hi 49152.0
+    :knocked-blue-vy-lo 24576.0
+    :knocked-blue-vy-hi 81920.0
+    :ragdoll-info (new 'static 'ragdoll-setup
+      :orient-tform (new 'static 'vector :x -0.9169 :y -0.314 :z 0.2441 :w 2358.841)
+      :scale (new 'static 'vector :x 1.0 :y 1.0 :z 1.0)
+      :bg-collide-with (collide-spec backgnd jak obstacle player-list)
+      :joint-setup (new 'static 'boxed-array :type ragdoll-joint-setup
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 4
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9998 :z -0.0145 :w 18690.63)
+          :geo-tform (new 'static 'vector :x 0.9998 :y -0.0109 :z 0.0086 :w 14092.443)
+          :axial-slop 426.98523
+          :max-angle 1820.4445
+          :coll-rad 2079.5393
+          :hit-sound (static-sound-name "gekko-bf")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 3
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9998 :z 0.0177 :w 29970.05)
+          :geo-tform (new 'static 'vector :x 0.9998 :z 0.0088 :w 32808.543)
+          :axial-slop 426.98523
+          :max-angle 1456.3556
+          :coll-rad 1224.2944
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 5
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9998 :z 0.0185 :w 31347.709)
+          :geo-tform (new 'static 'vector :x 0.9998 :y -0.0016 :z 0.0092 :w 28653.906)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1338.9824
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 6
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9998 :z 0.0186 :w 6233.548)
+          :geo-tform (new 'static 'vector :x -0.9994 :y -0.0202 :z -0.0091 :w 8968.311)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1183.3344
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 7
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.2363 :y -0.0265 :z -0.971 :w 16298.385)
+          :geo-tform (new 'static 'vector :x 0.7523 :y 0.6222 :z -0.2161 :w 22609.957)
+          :axial-slop 426.98523
+          :max-angle 3640.889
+          :coll-rad 1150.5664
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 8
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9842 :y 0.081 :z 0.1544 :w 6309.4785)
+          :geo-tform (new 'static 'vector :x -0.6984 :y 0.5454 :z 0.4627 :w 18388.328)
+          :axial-slop 426.98523
+          :max-angle 4619.2505
+          :coll-rad 1282.4576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 9
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3794 :y -0.0126 :z 0.925 :w 14670.799)
+          :geo-tform (new 'static 'vector :x -0.2831 :y 0.9394 :z 0.1922 :w 13051.641)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1127.2192
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 10
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3743 :y -0.0189 :z 0.9269 :w 4210.943)
+          :geo-tform (new 'static 'vector :x 0.8507 :y -0.4889 :z -0.1902 :w 19701.232)
+          :axial-slop 426.98523
+          :max-angle 4029.8452
+          :coll-rad 1333.248
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 11
+          :parent-joint 4
+          :pre-tform (new 'static 'vector :x 0.3447 :y 0.1703 :z 0.9229 :w 16305.849)
+          :geo-tform (new 'static 'vector :x 0.7264 :y -0.5892 :z 0.3528 :w 20835.006)
+          :axial-slop 426.98523
+          :max-angle 3640.889
+          :coll-rad 1124.352
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 12
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9835 :y -0.1776 :z 0.0185 :w 3334.3625)
+          :geo-tform (new 'static 'vector :x -0.6955 :y -0.5474 :z -0.4643 :w 18426.193)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1088.3073
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 13
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3701 :y 0.0165 :z -0.9283 :w 14670.671)
+          :geo-tform (new 'static 'vector :x -0.2795 :y -0.9402 :z -0.1922 :w 13170.697)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1053.4912
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 14
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3607 :y 0.023 :z -0.932 :w 4213.7646)
+          :geo-tform (new 'static 'vector :x -0.8814 :y -0.119 :z 0.456 :w 16534.57)
+          :axial-slop 426.98523
+          :max-angle 4029.8452
+          :coll-rad 1327.104
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 15
+          :parent-joint 3
+          :pre-tform (new 'static 'vector :x -0.9993 :y -0.005 :z -0.0354 :w 5877.141)
+          :geo-tform (new 'static 'vector :x -0.9998 :y -0.0126 :z -0.0087 :w 12748.154)
+          :axial-slop 426.98523
+          :max-angle 1367.4814
+          :coll-rad 1144.832
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 16
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9994 :z -0.0227 :w 17.585493)
+          :geo-tform (new 'static 'vector :x -0.9998 :y -0.0126 :z -0.0087 :w 12762.499)
+          :axial-slop 426.98523
+          :max-angle 1537.784
+          :coll-rad 1164.0833
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 17
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.514 :y 0.0096 :z -0.8572 :w 14720.624)
+          :geo-tform (new 'static 'vector :x -0.9145 :y -0.3788 :z 0.1386 :w 11441.111)
+          :axial-slop 426.98523
+          :max-angle 2730.6667
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 18
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9968 :y 0.0073 :z 0.075 :w 8037.281)
+          :geo-tform (new 'static 'vector :x 0.7911 :y -0.1717 :z 0.5867 :w 14446.993)
+          :axial-slop 426.98523
+          :max-angle 3665.7927
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 19
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7222 :y 0.0125 :z 0.6908 :w 14193.806)
+          :geo-tform (new 'static 'vector :x -0.9861 :y -0.1063 :z -0.1272 :w 19499.127)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 20
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9636 :y 0.0018 :z -0.2657 :w 19342.15)
+          :geo-tform (new 'static 'vector :x 0.3582 :y -0.8755 :z -0.3234 :w 7445.891)
+          :axial-slop 426.98523
+          :max-angle 4029.8452
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 21
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9163 :y -0.0016 :z -0.3995 :w 3475.2285)
+          :geo-tform (new 'static 'vector :x -0.8003 :y -0.5296 :z -0.2795 :w 11328.59)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1264.8448
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 22
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x -0.9998 :y 0.0016 :z 0.0099 :w 1182.9977)
+          :geo-tform (new 'static 'vector :x 0.9958 :y -0.0876 :z 0.0087 :w 2150.4365)
+          :axial-slop 426.98523
+          :max-angle 1456.3556
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 23
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9998 :y -0.0055 :z 0.0172 :w 2143.81)
+          :geo-tform (new 'static 'vector :x -0.0003 :y -1.0 :w 177.23846)
+          :axial-slop 426.98523
+          :max-angle 2002.4889
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 24
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.4534 :y -0.8907 :z -0.0071 :w 14.345102)
+          :geo-tform (new 'static 'vector :y -1.0 :w 167.15321)
+          :axial-slop 426.98523
+          :max-angle 2730.6667
+          :coll-rad 638.5664
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 25
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9993 :z 0.0309)
+          :geo-tform (new 'static 'vector :x -0.0002 :y -1.0 :w 167.15321)
+          :axial-slop 426.98523
+          :max-angle 3458.8445
+          :coll-rad 526.7456
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 26
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9993 :z 0.0309)
+          :geo-tform (new 'static 'vector :x -0.0003 :y -0.9998 :w 167.15321)
+          :axial-slop 426.98523
+          :max-angle 4187.0225
+          :coll-rad 355.5328
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 27
+          :parent-joint 16
+          :pre-tform (new 'static 'vector :x -0.5197 :y 0.0089 :z 0.8538 :w 14715.818)
+          :geo-tform (new 'static 'vector :x -0.921 :y 0.3571 :z -0.1527 :w 11310.513)
+          :axial-slop 426.98523
+          :max-angle 3640.889
+          :coll-rad 935.936
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 28
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9975 :y 0.0082 :z -0.0651 :w 8052.2993)
+          :geo-tform (new 'static 'vector :x 0.8026 :y 0.1536 :z -0.5763 :w 14394.364)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 29
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.7269 :y 0.0057 :z -0.6861 :w 14192.44)
+          :geo-tform (new 'static 'vector :x -0.9887 :y 0.0952 :z 0.1121 :w 19467.068)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 30
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.9719 :y -0.0073 :z 0.2335 :w 19440.309)
+          :geo-tform (new 'static 'vector :x 0.3657 :y 0.866 :z 0.3398 :w 7188.9897)
+          :axial-slop 426.98523
+          :max-angle 4029.8452
+          :coll-rad 924.0576
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 31
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9024 :y 0.0007 :z 0.4302 :w 3461.2112)
+          :geo-tform (new 'static 'vector :x -0.8144 :y 0.5124 :z 0.2716 :w 11174.926)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 1215.2832
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 32
+          :parent-joint 10
+          :pre-tform (new 'static 'vector :x -0.6151 :y -0.6097 :z -0.4993 :w 12937.025)
+          :geo-tform (new 'static 'vector :x -0.0868 :y -0.921 :z -0.3792 :w 8346.01)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 650.4448
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 33
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.921 :y 0.1397 :z -0.3634 :w 2869.6938)
+          :geo-tform (new 'static 'vector :x -0.319 :y -0.9406 :z -0.1124 :w 8966.345)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 489.8816
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 34
+          :parent-joint 10
+          :pre-tform (new 'static 'vector :x 0.7723 :y 0.6006 :z -0.2057 :w 11225.279)
+          :geo-tform (new 'static 'vector :x 0.0707 :y 0.9922 :z -0.0988 :w 20417.65)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 575.0784
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 35
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.3531 :y -0.0993 :z -0.9298 :w 2126.9346)
+          :geo-tform (new 'static 'vector :y 0.9937 :z 0.1082 :w 35917.625)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 545.9968
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 36
+          :parent-joint 10
+          :pre-tform (new 'static 'vector :x 0.9417 :y 0.2245 :z 0.2487 :w 15554.733)
+          :geo-tform (new 'static 'vector :x 0.07 :y 0.9965 :z 0.0389 :w 36169.848)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 541.4912
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 37
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.3319 :y -0.0751 :z -0.9401 :w 1665.7977)
+          :geo-tform (new 'static 'vector :x 0.3686 :y 0.9253 :z -0.0855 :w 33224.6)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 489.0624
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 38
+          :parent-joint 14
+          :pre-tform (new 'static 'vector :x 0.9477 :y -0.2105 :z -0.239 :w 14735.951)
+          :geo-tform (new 'static 'vector :x 0.477 :y 0.0276 :z 0.8779 :w 34298.176)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 596.7872
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 39
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.1272 :y 0.0794 :z 0.9883 :w 1645.9913)
+          :geo-tform (new 'static 'vector :x 0.5577 :y 0.3476 :z 0.7531 :w 36094.316)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 496.4352
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 40
+          :parent-joint 14
+          :pre-tform (new 'static 'vector :x 0.7784 :y -0.6029 :z 0.1728 :w 8814.884)
+          :geo-tform (new 'static 'vector :x -0.3 :y 0.025 :z 0.9532 :w 34750.32)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 620.9536
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 41
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x -0.5386 :y 0.0881 :z 0.8378 :w 2062.2178)
+          :geo-tform (new 'static 'vector :x -0.2608 :y -0.1063 :z 0.9592 :w 33021.97)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 600.064
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 42
+          :parent-joint 14
+          :pre-tform (new 'static 'vector :x -0.6597 :y 0.605 :z 0.4453 :w 10974.531)
+          :geo-tform (new 'static 'vector :x 0.8782 :y 0.1516 :z -0.4526 :w 32356.781)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 614.4
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        (new 'static 'ragdoll-joint-setup
+          :joint-index 43
+          :parent-joint -1
+          :pre-tform (new 'static 'vector :x 0.9724 :y -0.131 :z 0.1908 :w 2849.3416)
+          :geo-tform (new 'static 'vector :x 0.8708 :y 0.0597 :z -0.4875 :w 30132.617)
+          :axial-slop 426.98523
+          :max-angle 4576.015
+          :coll-rad 458.752
+          :hit-sound (static-sound-name "gekko-ragdoll")
+          )
+        )
+      )
+    :shadow-size (meters 2)
+    :shadow-max-y (meters 1)
+    :shadow-min-y (meters -1)
+    :shadow-locus-dist (meters 150)
+    :gem-joint -1
+    :gem-offset (new 'static 'sphere :r 163840.0)
+    :knocked-off #t
+    :callback-info #f
+    :use-momentum #f
+    :use-frustration #f
+    :use-stop-chase #f
+    :use-circling #f
+    :use-pacing #f
+    :walk-anim 3
+    :turn-anim -1
+    :run-anim 14
+    :taunt-anim -1
+    :run-travel-speed (meters 14)
+    :run-acceleration (meters 6)
+    :run-turning-acceleration (meters 60)
+    :walk-travel-speed (meters 5)
+    :walk-acceleration (meters 6)
+    :walk-turning-acceleration (meters 30)
+    :maximum-rotation-rate (degrees 450)
+    :notice-nav-radius (meters 40)
+    :frustration-distance (meters 8)
+    :frustration-time (seconds 4)
+    :blocked-time (seconds 0.3)
+    :circle-dist-lo 20480.0
+    :circle-dist-hi 61440.0
+    :nav-mesh #f
+    )
+  )
+
+;; failed to figure out what this is:
+(set! (-> *gekko-nav-enemy-info* fact-defaults) *fact-info-gekko-defaults*)
+
+;; definition for method 120 of type gekko
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy-collision! ((this gekko))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrated-by)
+          (penetrate
+            generic-attack
+            lunge
+            flop
+            punch
+            spin
+            roll
+            uppercut
+            bonk
+            tube
+            flut-attack
+            board
+            mech-punch
+            dark-punch
+            dark-smack
+            flut
+            )
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 8) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 9))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec enemy))
+      (set! (-> s4-0 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list pusher)
+            )
+      (set! (-> s4-0 prim-core action) (collide-action solid can-ride deadly no-standon))
+      (set-vector! (-> s4-0 local-sphere) 0.0 4915.2 0.0 12288.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-13 prim-core collide-with)
+            (collide-spec backgnd jak bot crate obstacle hit-by-others-list player-list pusher)
+            )
+      (set-vector! (-> v1-13 local-sphere) 0.0 4915.2 0.0 4915.2)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-15 prim-core action) (collide-action solid))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 2457.6)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-17 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 4)
+      (set-vector! (-> v1-17 local-sphere) 0.0 0.0 0.0 3276.8)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-19 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-19 prim-core action) (collide-action solid deadly))
+      (set! (-> v1-19 transform-index) 6)
+      (set-vector! (-> v1-19 local-sphere) 0.0 -819.2 1638.4 1638.4)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-21 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 16)
+      (set-vector! (-> v1-21 local-sphere) 0.0 0.0 0.0 1638.4)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-23 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-23 prim-core action) (collide-action solid))
+      (set! (-> v1-23 transform-index) 24)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 1228.8)
+      )
+    (let ((v1-25 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-25 prim-core collide-as) (collide-spec enemy))
+      (set! (-> v1-25 prim-core action) (collide-action solid deadly))
+      (set! (-> v1-25 transform-index) 10)
+      (set-vector! (-> v1-25 local-sphere) 0.0 0.0 0.0 1228.8)
+      )
+    (set-vector!
+      (-> (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0)) local-sphere)
+      0.0
+      4096.0
+      0.0
+      8192.0
+      )
+    (set! (-> s5-0 nav-radius) 8192.0)
+    (let ((v1-29 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-29 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-29 prim-core collide-with))
+      )
+    (set! (-> s5-0 max-iteration-count) (the-as uint 3))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate idle (gekko)
+  :virtual #t
+  :trans (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy idle) trans)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (if (time-elapsed? (-> self state-time) (seconds 0.5))
+        (logclear! (-> self flags) (gekko-flag update-foot-position? follow-terrain update-tilt))
+        )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active-wall (gekko)
+  :virtual #t
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy active) enter))
+    (let ((v1-3 (-> self draw shadow-ctrl)))
+      (logclear! (-> v1-3 settings flags) (shadow-flags disable-draw))
+      )
+    0
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #t)
+      )
+    )
+  :trans (-> (method-of-type nav-enemy active) trans)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! gekko-wall-idle0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate notice (gekko)
+  :virtual #t
+  :enter (behavior ()
+    (set! (-> self attack-time) (+ (current-time) (seconds -3.5)))
+    (set! (-> self last-turn-time) (+ (current-time) (seconds -100)))
+    (if (logtest? (-> self flags) (gekko-flag on-wall?))
+        (gekko-method-206 self)
+        (go-virtual hostile)
+        )
+    )
+  )
+
+;; definition for function hostile-wall-trans
+;; WARN: Return type mismatch object vs none.
+(defbehavior hostile-wall-trans gekko ()
+  (local-vars (gp-2 vector) (f0-0 float))
+  (if (rnd-chance? self 0.75)
+      (sound-play "gekko-slither")
+      )
+  (cond
+    ((and (time-elapsed? (-> self attack-time) (seconds 3))
+          (and (get-focus! self)
+               (begin
+                 (set! gp-2 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans)))
+                 (set! f0-0 (vector-length gp-2))
+                 (< f0-0 163840.0)
+                 )
+               (or (< 20480.0 f0-0) (not (logtest? (-> self flags) (gekko-flag on-wall?))))
+               (< (vector-dot
+                    (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
+                    (vector-normalize-copy! (new 'stack-no-clear 'vector) gp-2 1.0)
+                    )
+                  (cos 30.0)
+                  )
+               )
+          )
+     (gekko-method-207 self)
+     )
+    ((or (< (vector-vector-planar-distance (-> self root trans) (-> self move-dest) (-> self rot-matrix uvec)) 8192.0)
+         (or (< (vector-dot
+                  (-> self dest-to-me-dir)
+                  (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self move-dest))
+                  )
+                0.0
+                )
+             (time-elapsed? (-> self state-time) (seconds 5))
+             )
+         )
+     (gekko-method-206 self)
+     )
+    ((and (< (vector-vector-xz-distance (-> self root trans) (-> self focus-pos)) 61440.0)
+          (let ((gp-3 (new 'stack-no-clear 'vector)))
+            (and (closest-point-on-mesh (-> self nav) gp-3 (-> self focus-pos) (the-as nav-poly #f))
+                 (< (vector-vector-xz-distance gp-3 (-> self focus-pos)) 409.6)
+                 )
+            )
+          )
+     (go-virtual jump-off-wall)
+     )
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate hostile-wall (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy hostile) enter))
+    (set-time! (-> self state-time))
+    (logior! (-> self flags) (gekko-flag update-foot-position? follow-terrain update-tilt))
+    (set-look-at-mode! self 2)
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.017))
+    (let ((f30-0 (/ 1.0 (-> self scale))))
+      (until #f
+        (hostile-wall-trans)
+        (ja-no-eval :group! gekko-wall-run0-a-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        (hostile-wall-trans)
+        (ja-no-eval :group! gekko-wall-run0-b-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((gp-0 (-> self root)))
+      (vector-normalize-copy!
+        (-> gp-0 transv)
+        (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> gp-0 quat))
+        40960.0
+        )
+      (vector-v++! (-> gp-0 trans) (-> gp-0 transv))
+      )
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate turn-wall (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (let ((v1-2 self))
+      (set! (-> v1-2 enemy-flags) (the-as enemy-flag (logclear (-> v1-2 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-2 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-5 self))
+      (set! (-> v1-5 enemy-flags) (the-as enemy-flag (logclear (-> v1-5 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (logior! (-> self flags) (gekko-flag follow-terrain update-tilt))
+    (logior! (-> self flags) (gekko-flag update-foot-position?))
+    )
+  :exit (behavior ()
+    (set-time! (-> self last-turn-time))
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (when (!= (-> self turn-next-state) (method-of-type gekko attack-wall))
+      (set-look-at-mode! self 1)
+      (let* ((v1-7 (ja-group))
+             (gp-0 (if (and v1-7 (= v1-7 gekko-wall-run0-a-ja))
+                       25
+                       24
+                       )
+                   )
+             )
+        (ja-channel-push! 1 (seconds 0.03))
+        (dotimes (s5-0 (if (time-elapsed? (-> self last-turn-time) (seconds 1))
+                           1
+                           6
+                           )
+                       )
+          (ja-no-eval :group! (-> self draw art-group data gp-0) :num! (seek! max 0.5) :frame-num 0.0)
+          (until (ja-done? 0)
+            (suspend)
+            (ja :num! (seek! max 0.5))
+            )
+          )
+        )
+      )
+    (set-look-at-mode! self 2)
+    (let* ((f0-8 (vector-dot
+                   (vector-cross!
+                     (new 'stack-no-clear 'vector)
+                     (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
+                     (vector-negate! (new 'stack-no-clear 'vector) (-> self dest-to-me-dir))
+                     )
+                   (-> self rot-matrix uvec)
+                   )
+                 )
+           (gp-3 (if (< f0-8 0.0)
+                     8
+                     9
+                     )
+                 )
+           )
+      (set! (-> self rot-mult) (if (< f0-8 0.0)
+                                   1.0
+                                   -1.0
+                                   )
+            )
+      (let ((v1-47 self))
+        (set! (-> v1-47 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-47 enemy-flags))))
+        )
+      0
+      (logior! (-> self flags) (gekko-flag update-foot-position?))
+      (if (rnd-chance? self 0.75)
+          (sound-play "gekko-slither")
+          )
+      (ja-channel-push! 1 (seconds 0.017))
+      (ja-no-eval :group! (-> self draw art-group data gp-3) :num! (loop!) :frame-num 0.0)
+      )
+    (until (enemy-method-104 self (-> self turn-face-point) 910.2222)
+      (suspend)
+      (ja :num! (loop!))
+      )
+    (go (-> self turn-next-state))
+    )
+  :post (behavior ()
+    (let ((a0-0 self))
+      (if (logtest? (enemy-flag ef38) (-> a0-0 enemy-flags))
+          (quaternion-rotate-local-y!
+            (-> self root quat)
+            (-> self root quat)
+            (* -81920.0 (seconds-per-frame) (-> self rot-mult))
+            )
+          )
+      )
+    (vector-float*! (-> self root transv) (-> self root transv) 0.6)
+    (vector-v++! (-> self root trans) (-> self root transv))
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate attack-wall (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logclear (-> v1-3 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    (logior! (-> self flags) (gekko-flag follow-terrain update-tilt))
+    (set-look-at-mode! self 1)
+    )
+  :exit (behavior ()
+    (set-time! (-> self attack-time))
+    )
+  :code (behavior ()
+    (let* ((v1-2 (ja-group))
+           (gp-0 (if (and v1-2 (= v1-2 gekko-wall-run0-a-ja))
+                     25
+                     24
+                     )
+                 )
+           )
+      (ja-channel-push! 1 (seconds 0.03))
+      (let ((s5-0 (current-time))
+            (s4-0 150)
+            (f30-0 0.5)
+            )
+        (ja-no-eval :group! (-> self draw art-group data gp-0) :num! (loop! f30-0) :frame-num 0.0)
+        (until (time-elapsed? s5-0 s4-0)
+          (suspend)
+          (ja :num! (loop! f30-0))
+          )
+        )
+      (let ((s5-1 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node gekko-lod0-jg head)))
+            (s4-1 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> s4-1 quad) (-> self focus-pos quad))
+        (set! (-> s4-1 y) (- (-> s4-1 y) (* 4096.0 (rnd-float-range self 0.0 10.0))))
+        (sound-play "gekko-shot")
+        (spawn-metalhead-projectile (the-as metalhead-shot self) s5-1 s4-1 532480.0)
+        )
+      (logclear! (-> self flags) (gekko-flag update-foot-position?))
+      (ja-channel-push! 1 1)
+      (ja-no-eval :group! gekko-wall-shoot0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      (ja-channel-push! 1 (seconds 0.06))
+      (logior! (-> self flags) (gekko-flag update-foot-position?))
+      (dotimes (s5-2 2)
+        (ja-no-eval :group! (-> self draw art-group data gp-0) :num! (seek! max 0.5) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max 0.5))
+          )
+        )
+      )
+    (gekko-method-206 self)
+    )
+  :post (behavior ()
+    (seek! (-> self fade) 1.0 (seconds-per-frame))
+    (set! (-> self draw force-fade) (the-as uint (the int (-> self fade))))
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate knocked-wall (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    ((-> (method-of-type nav-enemy knocked) enter))
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #f)
+      )
+    (logclear! (-> self flags) (gekko-flag follow-terrain update-tilt on-wall?))
+    (logior! (-> self flags) (gekko-flag update-foot-position? falling-off-wall?))
+    (set! (-> self probe-len) 18432.0)
+    )
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (logclear! (-> self flags) (gekko-flag falling-off-wall?))
+    )
+  :trans (behavior ()
+    ((-> (method-of-type nav-enemy knocked) trans))
+    (let ((a1-1 (quaternion-from-two-vectors-max-angle!
+                  (new 'stack-no-clear 'quaternion)
+                  (-> self rot-matrix uvec)
+                  *y-vector*
+                  (* 49152.0 (seconds-per-frame))
+                  )
+                )
+          (v1-4 (-> self root))
+          )
+      (quaternion*! (-> v1-4 quat) a1-1 (-> v1-4 quat))
+      )
+    )
+  :code (-> (method-of-type nav-enemy knocked) code)
+  :post (behavior ()
+    ((the-as (function none) (-> (method-of-type nav-enemy knocked) post)))
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate jump-off-wall (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (stop-look-at! self)
+    (logior! (-> self enemy-flags) (enemy-flag lock-focus))
+    (logclear! (-> self mask) (process-mask actor-pause))
+    (let* ((v1-8 *game-info*)
+           (a0-4 (+ (-> v1-8 attack-id) 1))
+           )
+      (set! (-> v1-8 attack-id) a0-4)
+      (set! (-> self attack-id) a0-4)
+      )
+    (set! (-> self root penetrate-using) (penetrate lunge vehicle knocked))
+    (logclear! (-> self root status) (collide-status
+                                       on-surface
+                                       on-ground
+                                       touch-surface
+                                       touch-wall
+                                       touch-ceiling
+                                       touch-actor
+                                       on-special-surface
+                                       touch-edge
+                                       blocked
+                                       on-water
+                                       impact-surface
+                                       touch-background
+                                       stuck
+                                       glance
+                                       )
+               )
+    (when (not (logtest? (-> self root root-prim prim-core action) (collide-action no-normal-reset)))
+      (let ((v1-20 (-> self root dynam gravity-normal)))
+        (set! (-> self root local-normal quad) (-> v1-20 quad))
+        (set! (-> self root surface-normal quad) (-> v1-20 quad))
+        (set! (-> self root poly-normal quad) (-> v1-20 quad))
+        )
+      (set! (-> self root coverage) 0.0)
+      (set! (-> self root touch-angle) 0.0)
+      )
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (enemy-method-50 self 3)
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #f)
+      )
+    (set! (-> self probe-len) 18432.0)
+    (logclear! (-> self flags) (gekko-flag follow-terrain update-tilt on-wall?))
+    (logior! (-> self flags) (gekko-flag update-foot-position?))
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! gekko-jump-to-ground-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-virtual jump-off-wall-falling)
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate jump-off-wall-falling (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-1 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans))))
+      (set! (-> v1-1 y) 0.0)
+      (vector-float*! (-> self root transv) v1-1 1.5)
+      )
+    (set-time! (-> self state-time))
+    )
+  :trans #f
+  :code (behavior ()
+    (local-vars (s4-0 collide-shape-moving))
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! gekko-jump-to-ground-in-air-ja :num! (seek!))
+    (let ((gp-0 0)
+          (s5-0 0)
+          )
+      (until (or (>= gp-0 3)
+                 (and (logtest? (-> s4-0 status) (collide-status on-ground)) (>= 16384.0 (-> s4-0 transv y)))
+                 (and (>= s5-0 3)
+                      (let ((f0-7 40.96))
+                        (>= (* f0-7 f0-7) (vector-vector-distance-squared (-> s4-0 trans-old) (-> s4-0 trans-old-old)))
+                        )
+                      (let ((f0-10 40.96))
+                        (>= (* f0-10 f0-10) (vector-vector-distance-squared (-> s4-0 trans-old-old) (-> s4-0 trans-old-old-old)))
+                        )
+                      )
+                 )
+        (if (time-elapsed? (-> self state-time) (seconds 2))
+            (go-die self)
+            )
+        (if (logtest? (-> self root status) (collide-status on-surface))
+            (+! gp-0 1)
+            )
+        (suspend)
+        (ja :num! (seek!))
+        (+! s5-0 1)
+        (set! s4-0 (-> self root))
+        )
+      )
+    (go-virtual jump-off-wall-recover)
+    )
+  :post (behavior ()
+    (let ((a1-1 (quaternion-from-two-vectors-max-angle!
+                  (new 'stack-no-clear 'quaternion)
+                  (-> self rot-matrix uvec)
+                  *y-vector*
+                  (* 49152.0 (seconds-per-frame))
+                  )
+                )
+          (v1-2 (-> self root))
+          )
+      (quaternion*! (-> v1-2 quat) a1-1 (-> v1-2 quat))
+      )
+    (nav-enemy-falling-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate jump-off-wall-recover (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (gekko-method-208 self)
+    (set! (-> self root penetrate-using) (penetrate))
+    0
+    )
+  :exit (behavior ()
+    (local-vars (v1-9 enemy-flag) (v1-11 enemy-flag) (v1-13 enemy-flag))
+    (enemy-method-50 self 0)
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (let ((v1-8 (-> self enemy-flags)))
+      (if (logtest? v1-8 (enemy-flag vulnerable-backup))
+          (set! v1-9 (logior v1-8 (enemy-flag vulnerable)))
+          (set! v1-9 (logclear v1-8 (enemy-flag vulnerable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-9)
+    (let ((v1-10 (-> self enemy-flags)))
+      (if (logtest? v1-10 (enemy-flag attackable-backup))
+          (set! v1-11 (logior v1-10 (enemy-flag attackable)))
+          (set! v1-11 (logclear v1-10 (enemy-flag attackable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-11)
+    (let ((v1-12 (-> self enemy-flags)))
+      (if (logtest? (enemy-flag trackable-backup) v1-12)
+          (set! v1-13 (logior (enemy-flag trackable) v1-12))
+          (set! v1-13 (logclear v1-12 (enemy-flag trackable)))
+          )
+      )
+    (set! (-> self enemy-flags) v1-13)
+    (logclear! (-> self enemy-flags) (enemy-flag lock-focus))
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #t)
+      )
+    (logior! (-> self flags) (gekko-flag follow-terrain update-tilt))
+    )
+  :trans (behavior ()
+    (if (and (time-elapsed? (-> self state-time) (seconds 0.2)) (within-gspot-range? self))
+        (go-die self)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-set! 1)
+    (ja-no-eval :group! gekko-jump-to-ground-end-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (ja-channel-push! 1 (seconds 0.2))
+    (dotimes (gp-0 2)
+      (ja-no-eval :group! gekko-idle0-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    (if (enemy-method-109 self)
+        (go-die self)
+        (go-best-state self)
+        )
+    )
+  :post (behavior ()
+    (nav-enemy-simple-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (gekko)
+  :virtual #t
+  :enter (behavior ()
+    (if (logtest? (-> self flags) (gekko-flag on-wall?))
+        (go-virtual active-wall)
+        )
+    (let ((t9-1 (-> (method-of-type nav-enemy active) enter)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :code (behavior ()
+    (until #f
+      (let* ((f30-1 (* 0.5 (rnd-float-range self 0.9 1.1)))
+             (v1-5 (ja-group))
+             (s5-0 (if (and v1-5 (= v1-5 gekko-run0-a-ja))
+                       25
+                       24
+                       )
+                   )
+             (s4-0 (set-reaction-time! self (seconds 0.007) (seconds 0.017)))
+             (gp-0 (new 'stack-no-clear 'vector))
+             )
+        (nav-enemy-method-164 self)
+        (let ((a1-2 (-> self nav state)))
+          (set! (-> gp-0 quad) (-> a1-2 target-pos quad))
+          )
+        (let ((v1-13 self))
+          (set! (-> v1-13 enemy-flags) (the-as enemy-flag (logclear (-> v1-13 enemy-flags) (enemy-flag ef37))))
+          (set! (-> v1-13 nav callback-info) *null-nav-callback-info*)
+          )
+        0
+        (ja-channel-push! 1 (seconds 0.2))
+        (dotimes (s3-0 s4-0)
+          (ja-no-eval :group! (-> self draw art-group data s5-0) :num! (seek! max f30-1) :frame-num 0.0)
+          (until (ja-done? 0)
+            (if (= (-> self skel root-channel 0) (-> self skel channel))
+                (logclear! (-> self flags) (gekko-flag update-foot-position?))
+                )
+            (suspend)
+            (ja :num! (seek! max f30-1))
+            )
+          )
+        (when (not (enemy-method-104 self gp-0 8192.0))
+          (let ((v1-48 self))
+            (set! (-> v1-48 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-48 enemy-flags))))
+            )
+          0
+          (logior! (-> self flags) (gekko-flag update-foot-position?))
+          (ja-channel-push! 1 (seconds 0.06))
+          (let ((a0-26 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+                (v1-54 (vector-! (new 'stack-no-clear 'vector) gp-0 (-> self root trans)))
+                (f30-2 0.5)
+                (f28-0 1.0)
+                )
+            (cond
+              ((< 0.0 (vector-dot a0-26 v1-54))
+               (ja-no-eval :group! gekko-turn-left0-ja :num! (loop! f30-2) :frame-num 0.0)
+               )
+              (else
+                (ja-no-eval :group! gekko-turn-right0-ja :num! (loop! f30-2) :frame-num 0.0)
+                (set! f28-0 (* -1.0 f28-0))
+                )
+              )
+            (until (enemy-method-104 self gp-0 6371.5557)
+              (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* -81920.0 (seconds-per-frame) f28-0))
+              (suspend)
+              (ja :num! (loop! f30-2))
+              )
+            )
+          )
+        )
+      (let* ((v1-86 (ja-group))
+             (gp-1 (if (and v1-86 (= v1-86 gekko-idle0-ja))
+                       14
+                       15
+                       )
+                   )
+             (v1-91 (ja-group))
+             (s5-1 (if (and v1-91 (= v1-91 gekko-idle0-ja))
+                       15
+                       14
+                       )
+                   )
+             (s4-1 (set-reaction-time! self (seconds 0.017) (seconds 0.027)))
+             )
+        (let ((v1-95 self))
+          (if (not (logtest? (enemy-flag ef37) (-> v1-95 enemy-flags)))
+              (set! (-> v1-95 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-95 enemy-flags))))
+              )
+          (set! (-> v1-95 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-95 enemy-flags))))
+          (set! (-> v1-95 nav callback-info) (-> v1-95 enemy-info callback-info))
+          )
+        0
+        (ja-channel-push! 1 (seconds 0.2))
+        (let ((f30-3 (/ 0.5 (-> self scale))))
+          (dotimes (s3-1 s4-1)
+            (ja-no-eval :group! (-> self draw art-group data gp-1) :num! (seek! max f30-3) :frame-num 0.0)
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek! max f30-3))
+              )
+            (ja-no-eval :group! (-> self draw art-group data s5-1) :num! (seek! max f30-3) :frame-num 0.0)
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek! max f30-3))
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; definition for function gekko-stare-code
+;; WARN: Return type mismatch symbol vs none.
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior gekko-stare-code gekko ()
+  (let* ((f30-1 (* 0.5 (rnd-float-range self 0.9 1.1)))
+         (v1-5 (ja-group))
+         (gp-0 (if (and v1-5 (= v1-5 gekko-run0-a-ja))
+                   25
+                   24
+                   )
+               )
+         )
+    (until #f
+      (cond
+        ((enemy-method-104 self (-> self focus-pos) 8192.0)
+         (let ((v1-10 self))
+           (set! (-> v1-10 enemy-flags) (the-as enemy-flag (logclear (-> v1-10 enemy-flags) (enemy-flag ef38))))
+           )
+         0
+         (let ((v1-14 (ja-group)))
+           (if (not (and v1-14 (= v1-14 (-> self draw art-group data gp-0))))
+               (ja-channel-push! 1 (seconds 0.12))
+               )
+           )
+         (ja-no-eval :group! (-> self draw art-group data gp-0) :num! (seek! max f30-1) :frame-num 0.0)
+         (until (ja-done? 0)
+           (if (= (-> self skel root-channel 0) (-> self skel channel))
+               (logclear! (-> self flags) (gekko-flag update-foot-position?))
+               )
+           (suspend)
+           (ja :num! (seek! max f30-1))
+           )
+         )
+        ((or (enemy-method-104 self (-> self focus-pos) 30947.555) (rnd-chance? self 0.3))
+         (let ((v1-50 self))
+           (set! (-> v1-50 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-50 enemy-flags))))
+           )
+         0
+         (logior! (-> self flags) (gekko-flag update-foot-position?))
+         (ja-channel-push! 1 (seconds 0.06))
+         (let ((a0-28 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+               (v1-56 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans)))
+               (f28-0 0.5)
+               )
+           (if (< 0.0 (vector-dot a0-28 v1-56))
+               (ja-no-eval :group! gekko-turn-left0-ja :num! (loop! f28-0) :frame-num 0.0)
+               (ja-no-eval :group! gekko-turn-right0-ja :num! (loop! f28-0) :frame-num 0.0)
+               )
+           (until (enemy-method-104 self (-> self focus-pos) 6371.5557)
+             (suspend)
+             (ja :num! (loop! f28-0))
+             )
+           )
+         )
+        (else
+          (go-virtual turn-quick)
+          )
+        )
+      )
+    )
+  #f
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate stare (gekko)
+  :virtual #t
+  :code gekko-stare-code
+  )
+
+;; failed to figure out what this is:
+(defstate flee (gekko)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy flee) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #t)
+      )
+    (logior! (-> self flags) (gekko-flag update-foot-position? follow-terrain update-tilt))
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.015))
+    (until #f
+      (let ((f30-0 (/ (rnd-float-range self 0.9 1.1) (-> self scale))))
+        (ja-no-eval :group! gekko-run0-a-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        (ja-no-eval :group! gekko-run0-b-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate hostile (gekko)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy hostile) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #t)
+      )
+    (logior! (-> self flags) (gekko-flag update-foot-position? follow-terrain update-tilt))
+    (let ((v1-13 self))
+      (set! (-> v1-13 enemy-flags) (the-as enemy-flag (logclear (-> v1-13 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.12))
+    (until #f
+      (let ((f30-0 (rnd-float-range self 0.9 1.1)))
+        (ja-no-eval :group! gekko-run0-a-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        (gekko-method-203 self)
+        (ja-no-eval :group! gekko-run0-b-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (until (ja-done? 0)
+          (suspend)
+          (ja :num! (seek! max f30-0))
+          )
+        )
+      (gekko-method-203 self)
+      )
+    #f
+    )
+  :post (behavior ()
+    (let ((s4-1 (vector-! (new 'stack-no-clear 'vector) (-> self root trans) (-> self focus-pos)))
+          (gp-0 (new 'stack-no-clear 'vector))
+          )
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s4-1 y) 0.0)
+        (vector-xz-normalize! s4-1 24576.0)
+        (vector+! gp-0 (-> self focus-pos) s4-1)
+        (set! (-> s5-0 quad) (-> gp-0 quad))
+        (closest-point-on-mesh (-> self nav) s5-0 gp-0 (the-as nav-poly #f))
+        (set! (-> self move-dest quad) (-> s5-0 quad))
+        )
+      (let ((v1-8 (-> self nav state)))
+        (logclear! (-> v1-8 flags) (nav-state-flag directional-mode))
+        (logior! (-> v1-8 flags) (nav-state-flag target-poly-dirty))
+        (set! (-> v1-8 target-pos quad) (-> gp-0 quad))
+        )
+      )
+    0
+    (nav-enemy-method-187 self)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate pre-attack (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (set! (-> self move-speed) (vector-length (-> self root transv)))
+    (set! (-> self move-decel) (fmax 163840.0 (* 0.00012207031 (-> self move-speed) (-> self move-speed))))
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 0.3))
+      (cond
+        ((and (get-focus! self)
+              (enemy-method-104 self (-> self focus-pos) 8192.0)
+              (let ((f0-0 (vector-vector-distance (-> self root trans) (-> self focus-pos))))
+                (< f0-0 40960.0)
+                (and (< 4096.0 f0-0) (gekko-method-204 self))
+                )
+              )
+         (go-virtual attack)
+         )
+        (else
+          (set! (-> self scared-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range self 0.8 2.1)))))
+          (go-best-state self)
+          )
+        )
+      )
+    )
+  :code gekko-stare-code
+  :post (behavior ()
+    (seek! (-> self move-speed) 0.0 (* (-> self move-decel) (seconds-per-frame)))
+    (vector-normalize-copy!
+      (-> self root transv)
+      (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> self root quat))
+      (-> self move-speed)
+      )
+    (vector+! (-> self move-dest) (-> self root trans) (-> self root transv))
+    (vector-v++! (-> self root trans) (-> self root transv))
+    (nav-enemy-face-focus-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate attack (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #f)
+      )
+    (logclear! (-> self flags) (gekko-flag update-foot-position? update-tilt))
+    (set-look-at-mode! self 1)
+    (logior! (-> self focus-status) (focus-status dangerous))
+    (let ((v1-14 (-> self root root-prim)))
+      (let ((a0-4 (-> (the-as collide-shape-prim-group v1-14) child 6)))
+        (set! (-> a0-4 prim-core collide-as) (collide-spec enemy))
+        (+! (-> a0-4 local-sphere w) 3276.8)
+        )
+      (+! (-> v1-14 local-sphere w) 6144.0)
+      )
+    (let ((v1-16 self))
+      (set! (-> v1-16 enemy-flags) (the-as enemy-flag (logclear (-> v1-16 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-16 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-19 self))
+      (set! (-> v1-19 enemy-flags) (the-as enemy-flag (logclear (-> v1-19 enemy-flags) (enemy-flag ef38))))
+      )
+    0
+    )
+  :exit (behavior ()
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #t)
+      )
+    (logior! (-> self flags) (gekko-flag update-foot-position? follow-terrain update-tilt))
+    (if (logtest? (-> self enemy-flags) (enemy-flag dangerous-backup))
+        (logior! (-> self focus-status) (focus-status dangerous))
+        (logclear! (-> self focus-status) (focus-status dangerous))
+        )
+    (let ((v1-16 (-> self root root-prim)))
+      (let ((a0-3 (-> (the-as collide-shape-prim-group v1-16) child 6)))
+        (set! (-> a0-3 prim-core collide-as) (collide-spec))
+        (+! (-> a0-3 local-sphere w) -3276.8)
+        )
+      (+! (-> v1-16 local-sphere w) -6144.0)
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.2))
+    (ja-no-eval :group! gekko-attack0-start-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (let ((v1-24 self))
+      (if (not (logtest? (enemy-flag ef37) (-> v1-24 enemy-flags)))
+          (set! (-> v1-24 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef39) (-> v1-24 enemy-flags))))
+          )
+      (set! (-> v1-24 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef37) (-> v1-24 enemy-flags))))
+      (set! (-> v1-24 nav callback-info) (-> v1-24 enemy-info callback-info))
+      )
+    0
+    (let ((gp-0 (-> self nav)))
+      (set! (-> gp-0 target-speed) (lerp-scale
+                                     24576.0
+                                     110592.0
+                                     (vector-vector-xz-distance (-> self root trans) (-> self focus-pos))
+                                     4096.0
+                                     24576.0
+                                     )
+            )
+      )
+    0
+    (ja-no-eval :group! gekko-attack0-mid-ja :num! (seek! max (/ 1.0 (-> self scale))) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max (/ 1.0 (-> self scale))))
+      )
+    (nav-enemy-method-177 self)
+    (let ((v1-55 self))
+      (set! (-> v1-55 enemy-flags) (the-as enemy-flag (logclear (-> v1-55 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-55 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (set-time! (-> self attack-time))
+    (ja-no-eval :group! gekko-attack0-land-ja :num! (seek!) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek!))
+      )
+    (go-best-state self)
+    )
+  :post nav-enemy-chase-post
+  )
+
+;; failed to figure out what this is:
+(defstate turn (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    (let ((v1-3 self))
+      (set! (-> v1-3 enemy-flags) (the-as enemy-flag (logior (enemy-flag ef38) (-> v1-3 enemy-flags))))
+      )
+    0
+    (logclear! (-> self flags) (gekko-flag follow-terrain))
+    )
+  :trans (behavior ()
+    (if (enemy-method-104 self (-> self focus-pos) 2730.6667)
+        (go-best-state self)
+        )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (let ((a0-2 (vector-x-quaternion! (new 'stack-no-clear 'vector) (-> self root quat)))
+            (v1-2 (vector-! (new 'stack-no-clear 'vector) (-> self focus-pos) (-> self root trans)))
+            (f30-0 (/ 1.0 (-> self scale)))
+            )
+        (cond
+          ((< 0.0 (vector-dot a0-2 v1-2))
+           (ja-no-eval :group! gekko-turn-left0-ja :num! (seek! max f30-0) :frame-num 0.0)
+           (until (ja-done? 0)
+             (suspend)
+             (ja :num! (seek! max f30-0))
+             )
+           )
+          (else
+            (ja-no-eval :group! gekko-turn-right0-ja :num! (seek! max f30-0) :frame-num 0.0)
+            (until (ja-done? 0)
+              (suspend)
+              (ja :num! (seek! max f30-0))
+              )
+            )
+          )
+        )
+      )
+    #f
+    )
+  :post nav-enemy-face-focus-post
+  )
+
+;; failed to figure out what this is:
+(defstate turn-quick (gekko)
+  :virtual #t
+  :event enemy-event-handler
+  :enter (behavior ()
+    (let ((v1-0 self))
+      (set! (-> v1-0 enemy-flags) (the-as enemy-flag (logclear (-> v1-0 enemy-flags) (enemy-flag ef37))))
+      (set! (-> v1-0 nav callback-info) *null-nav-callback-info*)
+      )
+    0
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (ja-no-eval :group! gekko-turn-hop0-ja :num! (seek! max (/ 1.0 (-> self scale))) :frame-num 0.0)
+    (until (ja-done? 0)
+      (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* 98304.0 (seconds-per-frame)))
+      (suspend)
+      (ja :num! (seek! max (/ 1.0 (-> self scale))))
+      )
+    (ja-no-eval :group! gekko-turn-hop0-land-ja :num! (seek! max (/ 1.0 (-> self scale))) :frame-num 0.0)
+    (until (ja-done? 0)
+      (suspend)
+      (ja :num! (seek! max (/ 1.0 (-> self scale))))
+      )
+    (if (nav-enemy-method-174 self)
+        (go-stare2 self)
+        )
+    (go-best-state self)
+    )
+  :post nav-enemy-simple-post
+  )
+
+;; failed to figure out what this is:
+(defstate jump (gekko)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy jump) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #f)
+      )
+    (logclear! (-> self flags) (gekko-flag follow-terrain update-tilt on-wall?))
+    (logior! (-> self flags) (gekko-flag update-foot-position? falling-off-wall?))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate knocked (gekko)
+  :virtual #t
+  :enter (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) enter)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #f)
+      )
+    (set! (-> self probe-len) 18432.0)
+    (logclear! (-> self flags) (gekko-flag follow-terrain update-tilt on-wall?))
+    (logior! (-> self flags) (gekko-flag update-foot-position?))
+    (set-vector!
+      (-> (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))) ragdoll gravity-target)
+      0.0
+      -1.5
+      0.0
+      1.0
+      )
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    0
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate knocked-recover (gekko)
+  :virtual #t
+  :exit (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked-recover) exit)))
+      (if t9-0
+          (t9-0)
+          )
+      )
+    (dotimes (gp-0 4)
+      (enable-set! (-> self foot gp-0 leg-ik) #t)
+      )
+    (logior! (-> self flags) (gekko-flag follow-terrain update-tilt))
+    )
+  :code (behavior ()
+    (gekko-method-208 self)
+    (ja-channel-push! 1 (seconds 0.4))
+    (ja-no-eval :group! gekko-run0-a-ja :num! (seek!) :frame-num 0.0)
+    (enable-ragdoll! (-> (the-as ragdoll-proc (handle->process (-> self ragdoll-proc))) ragdoll) self)
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 0.4))
+        (suspend)
+        )
+      )
+    (if (enemy-method-109 self)
+        (go-die self)
+        (go-hostile self)
+        )
+    )
+  :post (behavior ()
+    (let ((t9-0 (-> (method-of-type nav-enemy knocked-recover) post)))
+      (if t9-0
+          ((the-as (function none) t9-0))
+          )
+      )
+    )
+  )
+
+;; definition for function gekko-foot-rot-handler
+;; WARN: Return type mismatch matrix vs none.
+(defun gekko-foot-rot-handler ((arg0 cspace) (arg1 transformq))
+  (let ((v1-0 (-> arg0 param2)))
+    (cspace<-transformq! arg0 (the-as transformq (&-> (the-as gekko v1-0) pool)))
+    )
+  (none)
+  )
+
+;; definition for function gekko-postbind
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun gekko-postbind ((arg0 draw-control) (arg1 cspace-array))
+  (local-vars
+    (sv-560 float)
+    (sv-640 vector)
+    (sv-688 float)
+    (sv-692 vector)
+    (sv-696 vector)
+    (sv-976 cspace)
+    (sv-980 gekko-foot-info)
+    (sv-984 vector)
+    (sv-988 vector)
+    (sv-992 (function vector vector vector vector float))
+    (sv-1008 vector)
+    (sv-1024 vector)
+    (sv-1040 vector)
+    (sv-1056 joint-mod-ik)
+    (sv-1072 vector)
+    (sv-1088 vector)
+    )
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((gp-0 (the-as gekko (-> arg0 process))))
+      (let ((s3-0 (-> gp-0 root)))
+        (let ((s2-0 (new 'stack-no-clear 'collide-query))
+              (f30-0 (-> gp-0 probe-len))
+              )
+          (set! sv-560 (the-as float 2048.0))
+          (quaternion->matrix (-> gp-0 rot-matrix) (-> gp-0 root quat))
+          (let ((v1-2 1)
+                (a0-2 (new 'stack-no-clear 'inline-array 'vector 1))
+                )
+            (set! (-> a0-2 0 quad) (-> s3-0 trans quad))
+            (set! (-> a0-2 0 w)
+                  (+ 409.6 sv-560 (sqrtf (+ (* 25600.0 (-> gp-0 scale) (-> gp-0 scale)) (* 0.25 f30-0 f30-0))))
+                  )
+            (let ((a1-6 s2-0))
+              (set! (-> a1-6 best-dist) (the-as float a0-2))
+              (set! (-> a1-6 best-other-prim) (the-as collide-shape-prim v1-2))
+              (set! (-> a1-6 collide-with) (collide-spec backgnd))
+              (set! (-> a1-6 ignore-process0) gp-0)
+              (set! (-> a1-6 ignore-process1) #f)
+              (set! (-> a1-6 ignore-pat) (-> gp-0 root pat-ignore-mask))
+              (set! (-> a1-6 best-my-prim) (the-as collide-shape-prim #t))
+              (set! (-> a1-6 action-mask) (collide-action solid))
+              )
+            )
+          (fill-using-spheres *collide-cache* s2-0)
+          (dotimes (s1-0 4)
+            (let ((s0-0 (-> gp-0 foot s1-0)))
+              (set! sv-1056 (-> s0-0 leg-ik))
+              (set! sv-1008
+                    (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg1 data (-> *gekko-ik-setup* s1-0 hand-index)))
+                    )
+              (let ((v0-3
+                      (vector<-cspace! (new 'stack-no-clear 'vector) (-> arg1 data (-> *gekko-ik-setup* s1-0 effector-index)))
+                      )
+                    )
+                (set! sv-640 (vector-! (new 'stack-no-clear 'vector) v0-3 sv-1008))
+                )
+              (let ((v1-28 (if (logtest? (-> gp-0 flags) (gekko-flag on-wall?))
+                               (-> gp-0 rot-matrix uvec)
+                               *y-vector*
+                               )
+                           )
+                    )
+                (vector+float*! (-> s2-0 start-pos) sv-1008 v1-28 (* 0.5 f30-0))
+                (vector-float*! (-> s2-0 move-dist) v1-28 (- f30-0))
+                )
+              (let ((v1-29 s2-0))
+                (set! (-> v1-29 radius) sv-560)
+                (set! (-> v1-29 collide-with) (collide-spec backgnd))
+                (set! (-> v1-29 ignore-process0) #f)
+                (set! (-> v1-29 ignore-process1) #f)
+                (set! (-> v1-29 ignore-pat) (-> gp-0 root pat-ignore-mask))
+                (set! (-> v1-29 action-mask) (collide-action solid))
+                )
+              (set! sv-688 (probe-using-line-sphere *collide-cache* s2-0))
+              (set! sv-692 (new 'stack-no-clear 'vector))
+              (set! sv-696 (new 'stack-no-clear 'vector))
+              (cond
+                ((>= sv-688 0.0)
+                 (let ((v0-5 (vector-normalize-copy! (new 'stack-no-clear 'vector) (-> s2-0 move-dist) 1.0)))
+                   (vector+float*! sv-692 (-> s2-0 start-pos) (-> s2-0 move-dist) sv-688)
+                   (vector-! sv-696 sv-692 (-> s2-0 best-other-tri intersect))
+                   (vector+float*! sv-692 sv-692 v0-5 (-> s2-0 radius))
+                   )
+                 (vector-normalize! sv-696 1.0)
+                 )
+                (else
+                  (set! (-> sv-692 quad) (-> sv-1008 quad))
+                  (set! (-> sv-692 y) (-> gp-0 root gspot-pos y))
+                  (set! (-> sv-696 quad) (-> gp-0 rot-matrix uvec quad))
+                  )
+                )
+              (if (logtest? (-> gp-0 flags) (gekko-flag on-wall?))
+                  (set! (-> s0-0 ground-normal quad) (-> sv-696 quad))
+                  (set! (-> s0-0 ground-normal quad) (-> *y-vector* quad))
+                  )
+              (when (logtest? (-> gp-0 flags) (gekko-flag update-foot-position?))
+                (set! sv-992 intersect-ray-plane)
+                (let* ((a1-22 (vector-negate! (new 'stack-no-clear 'vector) (-> gp-0 rot-matrix uvec)))
+                       (a2-4 (-> gp-0 root trans))
+                       (a3-1 (-> gp-0 rot-matrix uvec))
+                       (f0-13 (sv-992 sv-1008 a1-22 a2-4 a3-1))
+                       )
+                  (vector+float*! sv-692 sv-692 (-> s0-0 ground-normal) f0-13)
+                  )
+                (vector+! sv-692 sv-692 sv-640)
+                )
+              0.0
+              (let ((f28-0 (* 2457.6 (-> gp-0 scale)))
+                    (v0-9 (vector<-cspace! (new 'stack-no-clear 'vector) (-> gp-0 node-list data 3)))
+                    )
+                (set! sv-1024 (new 'stack-no-clear 'vector))
+                (set! sv-1040 (new 'stack-no-clear 'vector))
+                (vector+float*! v0-9 v0-9 (-> gp-0 rot-matrix uvec) 3072.0)
+                (let ((f28-1 (+ 3072.0 f28-0)))
+                  (when (< (vector-line-distance-point!
+                             sv-692
+                             v0-9
+                             (vector+! (new 'stack-no-clear 'vector) v0-9 (-> gp-0 rot-matrix fvec))
+                             sv-1024
+                             )
+                           f28-1
+                           )
+                    (vector-! sv-1040 sv-692 sv-1024)
+                    (vector-normalize! sv-1040 f28-1)
+                    (let ((v1-64 sv-692))
+                      (.mov.vf vf6 vf0 :mask #b1000)
+                      (.lvf vf4 (&-> sv-1024 quad))
+                      (.lvf vf5 (&-> sv-1040 quad))
+                      (.add.vf vf6 vf4 vf5 :mask #b111)
+                      (.svf (&-> v1-64 quad) vf6)
+                      )
+                    0
+                    )
+                  )
+                )
+              (vector-seek!
+                (-> s0-0 ground-pos)
+                sv-692
+                (* (fmax 61440.0 (* 1.2 (vector-length (-> s3-0 transv)))) (seconds-per-frame))
+                )
+              (let ((t9-13 (method-of-object sv-1056 set-ik-target!))
+                    (a1-33 (-> s0-0 ground-pos))
+                    )
+                (t9-13 sv-1056 a1-33)
+                )
+              )
+            )
+          )
+        (let ((s2-1 (new 'stack-no-clear 'vector)))
+          (let ((s1-1 (new 'stack-no-clear 'vector)))
+            (vector-reset! s2-1)
+            (vector-reset! s1-1)
+            (dotimes (s0-1 4)
+              (vector+! s2-1 s2-1 (the-as vector (-> gp-0 foot s0-1)))
+              (when (> s0-1 0)
+                (set! sv-1072
+                      (vector-normalize!
+                        (vector-! (new 'stack-no-clear 'vector) (the-as vector (-> gp-0 foot s0-1)) (the-as vector (-> gp-0 foot)))
+                        1.0
+                        )
+                      )
+                (set! sv-1088 (new 'stack-no-clear 'vector))
+                (let ((v1-83 (-> gp-0 rot-matrix uvec))
+                      (a0-46 sv-1072)
+                      )
+                  (.lvf vf1 (&-> v1-83 quad))
+                  (.lvf vf2 (&-> a0-46 quad))
+                  )
+                (.outer.product.a.vf acc vf1 vf2)
+                (.outer.product.b.vf vf3 vf2 vf1 acc)
+                (.svf (&-> sv-1088 quad) vf3)
+                (vector-normalize! sv-1088 1.0)
+                (let ((a1-41 s1-1)
+                      (v1-85 s1-1)
+                      (a0-48 (new 'stack-no-clear 'vector))
+                      )
+                  (.lvf vf1 (&-> sv-1072 quad))
+                  (.lvf vf2 (&-> sv-1088 quad))
+                  (.outer.product.a.vf acc vf1 vf2)
+                  (.outer.product.b.vf vf3 vf2 vf1 acc)
+                  (.svf (&-> a0-48 quad) vf3)
+                  (vector+! a1-41 v1-85 a0-48)
+                  )
+                )
+              )
+            (vector-float*! s2-1 s2-1 0.25)
+            (vector-normalize-copy! (-> gp-0 gspot-normal) s1-1 1.0)
+            )
+          (when (logtest? (-> gp-0 flags) (gekko-flag follow-terrain))
+            (set! (-> gp-0 root gspot-pos quad) (-> s2-1 quad))
+            (let ((a2-15 (vector-! (new 'stack-no-clear 'vector) s2-1 (-> s3-0 trans))))
+              (vector+float*!
+                (-> s3-0 trans)
+                (-> s3-0 trans)
+                (-> gp-0 rot-matrix uvec)
+                (* 0.9 (vector-dot a2-15 (-> gp-0 rot-matrix uvec)))
+                )
+              )
+            )
+          )
+        (when (logtest? (-> gp-0 flags) (gekko-flag update-tilt))
+          (let ((s2-2 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> s3-0 quat)))
+                (a2-18 (quaternion-from-two-vectors-max-angle-partial!
+                         (new 'stack-no-clear 'quaternion)
+                         (-> gp-0 rot-matrix uvec)
+                         (-> gp-0 gspot-normal)
+                         21845.334
+                         (* 8.0 (seconds-per-frame))
+                         )
+                       )
+                (s1-2 (new 'stack-no-clear 'vector))
+                )
+            (quaternion-slerp! (-> gp-0 tilt-quat) (-> gp-0 tilt-quat) a2-18 1.0)
+            (vector-orient-by-quat! s1-2 (-> gp-0 rot-matrix uvec) (-> gp-0 tilt-quat))
+            (forward-up-nopitch->quaternion (-> s3-0 quat) s2-2 s1-2)
+            )
+          )
+        )
+      (dotimes (s3-1 4)
+        (set! sv-976 (-> arg1 data (-> *gekko-ik-setup* s3-1 effector-index)))
+        (set! sv-980 (the-as gekko-foot-info (+ (the-as uint (-> gp-0 foot 0 foot-transform)) (* 96 s3-1))))
+        (set! sv-984 (new 'stack-no-clear 'vector))
+        (set! sv-988 (new 'stack-no-clear 'vector))
+        (quaternion-from-two-vectors!
+          (the-as quaternion sv-988)
+          (-> gp-0 rot-matrix uvec)
+          (the-as vector (+ (the-as uint (-> gp-0 foot 0 ground-normal)) (* 96 s3-1)))
+          )
+        (vector<-cspace! (-> sv-980 ground-pos) sv-976)
+        (matrix->quaternion (the-as quaternion sv-984) (-> sv-976 bone transform))
+        (quaternion*!
+          (the-as quaternion (-> sv-980 ground-normal))
+          (the-as quaternion sv-988)
+          (the-as quaternion sv-984)
+          )
+        )
+      (logclear! (-> gp-0 skel status) (joint-control-status no-joint-callbacks))
+      (draw-control-method-14 arg0 arg1 (-> gp-0 skel))
+      (logior! (-> gp-0 skel status) (joint-control-status no-joint-callbacks))
+      )
+    0
+    0
+    (none)
+    )
+  )
+
+;; definition for function gekko-postbind-callback
+(defun gekko-postbind-callback ((arg0 draw-control) (arg1 cspace-array) (arg2 joint-control))
+  (gekko-postbind arg0 arg1)
+  (none)
+  )
+
+;; definition for method 203 of type gekko
+;; WARN: Return type mismatch int vs none.
+(defmethod gekko-method-203 ((this gekko))
+  ((-> (method-of-type nav-enemy hostile) trans))
+  (when (< (vector-vector-xz-distance (-> this root trans) (-> this move-dest)) 8192.0)
+    (let* ((s5-0 (-> this focus-pos))
+           (v1-6 (vector-! (new 'stack-no-clear 'vector) s5-0 (-> this root trans)))
+           (f30-0 (sqrtf (+ (* (-> v1-6 x) (-> v1-6 x)) (* (-> v1-6 z) (-> v1-6 z)))))
+           )
+      (cond
+        ((and (get-focus! this) (and (and (< f30-0 32768.0) (< 16384.0 f30-0)) (enemy-method-104 this s5-0 6371.5557)))
+         (go (method-of-object this pre-attack))
+         )
+        ((< 32768.0 f30-0)
+         (cond
+           ((not (enemy-method-104 this s5-0 29127.111))
+            (go (method-of-object this turn-quick))
+            )
+           ((not (enemy-method-104 this s5-0 6371.5557))
+            (go (method-of-object this turn))
+            )
+           )
+         )
+        )
+      )
+    (set! (-> this scared-timer) (+ (current-time) (the int (* 300.0 (rnd-float-range this 1.3 2.25)))))
+    (go-best-state this)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 204 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defmethod gekko-method-204 ((this gekko))
+  (let ((s3-0 (new 'stack-no-clear 'vector)))
+    (set! (-> s3-0 quad) (-> this root trans quad))
+    (let* ((s5-0 (new 'stack-no-clear 'vector))
+           (s4-0 (closest-point-on-mesh (-> this nav) s5-0 s3-0 (the-as nav-poly #f)))
+           )
+      (when (and s4-0 (< (vector-vector-xz-distance s5-0 s3-0) 4096.0))
+        (let* ((s3-2 (vector-! (new 'stack-no-clear 'vector) (-> this focus-pos) s5-0))
+               (f30-0 (vector-length s3-2))
+               (s2-0 (new 'stack 'clamp-travel-vector-to-mesh-return-info))
+               )
+          (vector-float*! s3-2 s3-2 (/ (* 8192.0 (-> this scale)) f30-0))
+          (clamp-vector-to-mesh-no-gaps (-> this nav) s5-0 s4-0 s3-2 s2-0)
+          (not (-> s2-0 found-boundary))
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 107 of type gekko
+(defmethod is-pfoc-in-mesh? ((this gekko) (arg0 process-focusable) (arg1 vector))
+  (if (and arg0 (not arg1))
+      (set! arg1 (get-trans arg0 1))
+      )
+  (when arg1
+    (let* ((f0-0 (-> arg1 y))
+           (v1-4 (-> this root))
+           (f1-0 (-> v1-4 trans y))
+           (a0-2 (-> this fact))
+           )
+      (when (and (< f0-0 (+ f1-0 (-> a0-2 notice-top))) (< (- f1-0 (-> a0-2 notice-bottom)) f0-0))
+        (let* ((f30-0 (if (logtest? (-> this flags) (gekko-flag on-wall?))
+                          (-> this enemy-info notice-nav-radius)
+                          8192.0
+                          )
+                      )
+               (f0-2 f30-0)
+               )
+          (or (>= (* f0-2 f0-2) (vector-vector-xz-distance-squared (-> v1-4 trans) arg1))
+              (is-in-mesh? (-> this nav) arg1 f30-0)
+              )
+          )
+        )
+      )
+    )
+  )
+
+;; definition for method 109 of type gekko
+;; INFO: Used lq/sq
+(defmethod enemy-method-109 ((this gekko))
+  (let ((gp-0 (-> this root))
+        (s3-0 (-> this nav state))
+        )
+    (do-navigation-to-destination s3-0 (-> gp-0 trans))
+    (let ((s5-0 (new 'stack-no-clear 'vector)))
+      (cond
+        ((logtest? (-> s3-0 flags) (nav-state-flag in-mesh))
+         (set! (-> s5-0 quad) (-> gp-0 trans quad))
+         )
+        (else
+          (if (or (not (closest-point-on-mesh (-> this nav) s5-0 (-> gp-0 trans) (-> s3-0 current-poly)))
+                  (let ((f0-0 16384.0))
+                    (< (* f0-0 f0-0) (vector-vector-xz-distance-squared s5-0 (-> gp-0 trans)))
+                    )
+                  (and (and (-> this next-state) (= (-> this next-state name) 'knocked-recover))
+                       (< (-> gp-0 trans y) (+ -8192.0 (-> s5-0 y)))
+                       (< (+ 12288.0 (-> s5-0 y)) (-> gp-0 trans y))
+                       )
+                  )
+              (return #t)
+              )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 206 of type gekko
+;; WARN: Return type mismatch object vs none.
+(defmethod gekko-method-206 ((this gekko))
+  (set-look-at-mode! this 2)
+  (gekko-method-205 this)
+  (set! (-> this turn-next-state) (method-of-type gekko hostile-wall))
+  (go (method-of-object this turn-wall))
+  (none)
+  )
+
+;; definition for method 207 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod gekko-method-207 ((this gekko))
+  (set-look-at-mode! this 1)
+  (set! (-> this turn-face-point quad) (-> this focus-pos quad))
+  (set! (-> this turn-next-state) (method-of-type gekko attack-wall))
+  (go (method-of-object this turn-wall))
+  (none)
+  )
+
+;; definition for method 113 of type gekko
+(defmethod get-focus! ((this gekko))
+  (let* ((t9-0 (method-of-type nav-enemy get-focus!))
+         (v0-0 (t9-0 this))
+         )
+    (cond
+      ((and v0-0
+            (or (logtest? (-> this flags) (gekko-flag on-wall?)) (time-elapsed? (-> this attack-time) (seconds 3)))
+            )
+       (empty)
+       v0-0
+       )
+      (else
+        (the-as process-focusable #f)
+        )
+      )
+    )
+  )
+
+;; definition for method 205 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod gekko-method-205 ((this gekko))
+  (cond
+    ((zero? (-> this path-wall))
+     (go process-drawable-art-error "no path-wall")
+     )
+    (else
+      (let ((s5-0 (-> this path-wall curve num-cverts)))
+        (if (<= s5-0 0)
+            (go process-drawable-art-error "no path-wall")
+            )
+        (let ((s2-0 (rnd-int this s5-0))
+              (s4-0 (new 'stack-no-clear 'vector))
+              )
+          (countdown (s3-0 s5-0)
+            (get-point-in-path! (-> this path-wall) s4-0 (the float s2-0) 'interp)
+            (if (< 8192.0 (vector-vector-xz-distance s4-0 (-> this root trans)))
+                (goto cfg-11)
+                )
+            (set! s2-0 (mod (+ s2-0 1) s5-0))
+            )
+          (label cfg-11)
+          (set! (-> this move-dest quad) (-> s4-0 quad))
+          (set! (-> this turn-face-point quad) (-> s4-0 quad))
+          )
+        )
+      (vector-! (-> this dest-to-me-dir) (-> this root trans) (-> this move-dest))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 108 of type gekko
+;; WARN: disable def twice: 33. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod enemy-method-108 ((this gekko) (arg0 process-focusable))
+  (or (< (current-time) (-> this scared-timer))
+      (let ((v1-4 (handle->process (-> this focus handle))))
+        (if v1-4
+            (and (or (focus-test? (the-as process-focusable v1-4) disable dead ignore grabbed)
+                     (and (not (logtest? (-> this flags) (gekko-flag on-wall?)))
+                          (not (time-elapsed? (-> this attack-time) (seconds 3)))
+                          )
+                     )
+                 (< (vector-vector-distance (-> this focus-pos) (-> this root trans)) 49152.0)
+                 )
+            #f
+            )
+        )
+      )
+  )
+
+;; definition for method 85 of type gekko
+(defmethod knocked-anim ((this gekko) (arg0 enemy-knocked-info))
+  (ja-channel-push! 1 0)
+  (cond
+    ((logtest? (-> this flags) (gekko-flag falling-off-wall?))
+     (let ((a0-2 (-> this skel root-channel 0)))
+       (set! (-> a0-2 frame-group) (the-as art-joint-anim (-> this draw art-group data 23)))
+       (set! (-> a0-2 param 0)
+             (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 23)) frames num-frames) -1))
+             )
+       (set! (-> a0-2 param 1) (-> arg0 anim-speed))
+       (set! (-> a0-2 frame-num) 0.0)
+       (joint-control-channel-group! a0-2 (the-as art-joint-anim (-> this draw art-group data 23)) num-func-seek!)
+       )
+     )
+    (else
+      (let ((a0-3 (-> this skel root-channel 0)))
+        (set! (-> a0-3 frame-group) (the-as art-joint-anim (-> this draw art-group data 29)))
+        (set! (-> a0-3 param 0)
+              (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 29)) frames num-frames) -1))
+              )
+        (set! (-> a0-3 param 1) (-> arg0 anim-speed))
+        (set! (-> a0-3 frame-num) 0.0)
+        (joint-control-channel-group! a0-3 (the-as art-joint-anim (-> this draw art-group data 29)) num-func-seek!)
+        )
+      )
+    )
+  #t
+  )
+
+;; definition for method 86 of type gekko
+(defmethod knocked-land-anim ((this gekko) (arg0 enemy-knocked-info))
+  (let ((v1-2 (if (> (-> this skel active-channels) 0)
+                  (-> this skel root-channel 0 frame-group)
+                  )
+              )
+        )
+    (cond
+      ((and v1-2 (= v1-2 (-> this draw art-group data 23)))
+       (let ((v1-7 (-> this skel root-channel 0)))
+         (set! (-> v1-7 frame-group) (the-as art-joint-anim (-> this draw art-group data 18)))
+         (set! (-> v1-7 param 0)
+               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 18)) frames num-frames) -1))
+               )
+         (set! (-> v1-7 param 1) (-> arg0 anim-speed))
+         (set! (-> v1-7 frame-num) 0.0)
+         (joint-control-channel-group! v1-7 (the-as art-joint-anim (-> this draw art-group data 18)) num-func-seek!)
+         )
+       )
+      ((= (-> this hit-points) 0.0)
+       (let ((v1-11 (-> this skel root-channel 0)))
+         (set! (-> v1-11 frame-group) (the-as art-joint-anim (-> this draw art-group data 31)))
+         (set! (-> v1-11 param 0)
+               (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 31)) frames num-frames) -1))
+               )
+         (set! (-> v1-11 param 1) (-> arg0 anim-speed))
+         (set! (-> v1-11 frame-num) 0.0)
+         (joint-control-channel-group! v1-11 (the-as art-joint-anim (-> this draw art-group data 31)) num-func-seek!)
+         )
+       )
+      (else
+        (let ((v1-15 (-> this skel root-channel 0)))
+          (set! (-> v1-15 frame-group) (the-as art-joint-anim (-> this draw art-group data 30)))
+          (set! (-> v1-15 param 0)
+                (the float (+ (-> (the-as art-joint-anim (-> this draw art-group data 30)) frames num-frames) -1))
+                )
+          (set! (-> v1-15 param 1) (-> arg0 anim-speed))
+          (set! (-> v1-15 frame-num) 0.0)
+          (joint-control-channel-group! v1-15 (the-as art-joint-anim (-> this draw art-group data 30)) num-func-seek!)
+          )
+        )
+      )
+    )
+  #t
+  )
+
+;; definition for method 78 of type gekko
+(defmethod go-hostile ((this gekko))
+  (if (logtest? (-> this flags) (gekko-flag on-wall?))
+      (gekko-method-206 this)
+      (go (method-of-object this hostile))
+      )
+  )
+
+;; definition for method 54 of type gekko
+;; INFO: Used lq/sq
+(defmethod get-knockback-dir! ((this gekko) (arg0 vector))
+  (local-vars (v1-2 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set! (-> arg0 quad) (-> this incoming attack-direction quad))
+    (.lvf vf1 (&-> arg0 quad))
+    (.add.w.vf vf2 vf0 vf0 :mask #b1)
+    (.mul.vf vf1 vf1 vf1)
+    (.mul.x.vf acc vf2 vf1 :mask #b1)
+    (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+    (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+    (.mov v1-2 vf1)
+    (when (= v1-2 0.0)
+      (vector-z-quaternion! arg0 (-> this root quat))
+      (vector-negate-in-place! arg0)
+      )
+    (vector-flatten! arg0 arg0 (-> this rot-matrix uvec))
+    (vector-normalize! arg0 1.0)
+    )
+  )
+
+;; definition for method 56 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch vector vs object.
+(defmethod knocked-handler ((this gekko) (arg0 vector))
+  (get-knockback-dir! this arg0)
+  (let ((s4-0 (-> this enemy-info))
+        (f28-0 0.0)
+        (f30-0 0.0)
+        )
+    (let ((v1-2 (-> this incoming knocked-type)))
+      (set! f30-0 (cond
+                    ((= v1-2 (knocked-type explode-or-darkjak))
+                     (let ((f30-1 (rnd-float-range this 0.0 1.0)))
+                       (set! f28-0 (lerp (-> s4-0 knocked-hard-vxz-lo) (-> s4-0 knocked-hard-vxz-hi) f30-1))
+                       (lerp (-> s4-0 knocked-hard-vy-lo) (-> s4-0 knocked-hard-vy-hi) f30-1)
+                       )
+                     )
+                    ((= v1-2 (knocked-type mech-punch))
+                     (let ((f30-2 (rnd-float-range this 0.0 1.0)))
+                       (set! f28-0 (lerp (-> s4-0 knocked-medium-vxz-lo) (-> s4-0 knocked-medium-vxz-hi) f30-2))
+                       (lerp (-> s4-0 knocked-medium-vy-lo) (-> s4-0 knocked-medium-vy-hi) f30-2)
+                       )
+                     )
+                    ((= v1-2 (knocked-type dark-shot))
+                     (let ((f30-3 (rnd-float-range this 0.0 1.0)))
+                       (set! f28-0 (lerp (-> s4-0 knocked-huge-vxz-lo) (-> s4-0 knocked-huge-vxz-hi) f30-3))
+                       (lerp (-> s4-0 knocked-huge-vy-lo) (-> s4-0 knocked-huge-vy-hi) f30-3)
+                       )
+                     )
+                    ((= v1-2 (knocked-type yellow-shot))
+                     (vector-rotate90-around-y! arg0 arg0)
+                     (let ((v1-12 (new 'stack-no-clear 'vector)))
+                       (vector-! v1-12 (-> this incoming attacker-pos) (-> this root trans))
+                       (set! (-> v1-12 y) 0.0)
+                       (if (< 0.0 (vector-dot v1-12 arg0))
+                           (vector-negate! arg0 arg0)
+                           )
+                       )
+                     (let ((f30-4 (rnd-float-range this 0.0 1.0)))
+                       (set! f28-0 (lerp (-> s4-0 knocked-yellow-vxz-lo) (-> s4-0 knocked-yellow-vxz-hi) f30-4))
+                       (lerp (-> s4-0 knocked-yellow-vy-lo) (-> s4-0 knocked-yellow-vy-hi) f30-4)
+                       )
+                     )
+                    ((= v1-2 (knocked-type red-shot))
+                     (let* ((f1-2 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
+                            (f0-18 1.0)
+                            (f2-0 61440.0)
+                            (f1-3 (fmin f1-2 (* f2-0 f2-0)))
+                            (f2-3 61440.0)
+                            (f30-6 (* (- f0-18 (/ f1-3 (* f2-3 f2-3))) (rnd-float-range this 0.8 1.0)))
+                            )
+                       (set! f28-0 (lerp (-> s4-0 knocked-red-vxz-lo) (-> s4-0 knocked-red-vxz-hi) f30-6))
+                       (lerp (-> s4-0 knocked-red-vy-lo) (-> s4-0 knocked-red-vy-hi) f30-6)
+                       )
+                     )
+                    ((= v1-2 (knocked-type blue-shot))
+                     (let* ((f1-5 (vector-vector-xz-distance-squared (target-pos 0) (-> this root trans)))
+                            (f0-24 1.0)
+                            (f2-6 122880.0)
+                            (f1-6 (fmin f1-5 (* f2-6 f2-6)))
+                            (f2-9 122880.0)
+                            (f26-0 (* (- f0-24 (/ f1-6 (* f2-9 f2-9))) (rnd-float-range this 0.8 1.0)))
+                            )
+                       (set! f28-0 (lerp (-> s4-0 knocked-blue-vxz-lo) (-> s4-0 knocked-blue-vxz-hi) f26-0))
+                       (cond
+                         ((>= (the-as uint 4) (-> this incoming blue-juggle-count))
+                          (lerp (-> s4-0 knocked-blue-vy-lo) (-> s4-0 knocked-blue-vy-hi) f26-0)
+                          )
+                         (else
+                           (if (zero? (rnd-int this 3))
+                               (set! f30-0 40960.0)
+                               )
+                           f30-0
+                           )
+                         )
+                       )
+                     )
+                    ((= v1-2 (knocked-type vehicle))
+                     (set! (-> arg0 quad) (-> this incoming attack-direction quad))
+                     f30-0
+                     )
+                    (else
+                      (let ((f30-7 (rnd-float-range this 0.0 1.0)))
+                        (set! f28-0 (lerp (-> s4-0 knocked-soft-vxz-lo) (-> s4-0 knocked-soft-vxz-hi) f30-7))
+                        (lerp (-> s4-0 knocked-soft-vy-lo) (-> s4-0 knocked-soft-vy-hi) f30-7)
+                        )
+                      )
+                    )
+            )
+      )
+    (vector-float*! arg0 arg0 f28-0)
+    (vector-flatten! arg0 arg0 (-> this rot-matrix uvec))
+    (vector+float*! arg0 arg0 (-> this rot-matrix uvec) f30-0)
+    )
+  )
+
+;; definition for method 103 of type gekko
+;; INFO: Used lq/sq
+(defmethod enemy-method-103 ((this gekko) (arg0 vector) (arg1 float))
+  (let ((s4-0 (vector-z-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> s5-0 quad) (-> arg0 quad))
+    (vector-flatten! s4-0 s4-0 (-> this rot-matrix uvec))
+    (vector-normalize! s4-0 1.0)
+    (vector-flatten! s5-0 s5-0 (-> this rot-matrix uvec))
+    (vector-normalize! s5-0 1.0)
+    (>= (vector-dot s4-0 s5-0) (cos arg1))
+    )
+  )
+
+;; definition for method 125 of type gekko
+(defmethod ragdoll-settled? ((this gekko))
+  (local-vars (v1-18 gekko-shadow-spot))
+  (let ((s5-0 (handle->process (-> this ragdoll-proc))))
+    (or (not s5-0)
+        (or (ragdoll-proc-method-19 (the-as ragdoll-proc s5-0))
+            (and (time-elapsed? (-> this state-time) (seconds 2))
+                 (< (vector-length (-> (the-as ragdoll-proc s5-0) ragdoll ragdoll-joints 0 velocity))
+                    (* 49152.0 (seconds-per-frame))
+                    )
+                 (< (cos (* 16384.0 (seconds-per-frame))) (-> (the-as ragdoll-proc s5-0) ragdoll rotate-vel w))
+                 (begin (set! v1-18 (-> this shadow-spot)) (< (- (-> this root trans y) (-> v1-18 position y)) 6144.0))
+                 (>= (fabs (vector-dot (-> v1-18 normal) *y-vector*))
+                     (-> *pat-mode-info* (shr (shl (-> v1-18 pat) 54) 61) wall-angle)
+                     )
+                 )
+            )
+        )
+    )
+  )
+
+;; definition for method 208 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod gekko-method-208 ((this gekko))
+  (dotimes (s5-0 4)
+    (let ((s4-0 (-> this foot s5-0))
+          (s3-0 (-> *gekko-ik-setup* s5-0))
+          )
+      (set! (-> s4-0 ground-normal quad) (-> this rot-matrix uvec quad))
+      (vector<-cspace! (-> s4-0 ground-pos) (-> this node-list data (-> s3-0 hand-index)))
+      (vector+float*! (-> s4-0 ground-pos) (-> s4-0 ground-pos) (-> s4-0 ground-normal) (-> s3-0 hand-dist))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 110 of type gekko
+(defmethod send-attack ((this gekko) (arg0 process) (arg1 touching-shapes-entry) (arg2 uint))
+  (sound-play "gekko-impact")
+  ((method-of-type nav-enemy send-attack) this arg0 arg1 arg2)
+  )
+
+;; definition for method 59 of type gekko
+;; INFO: Used lq/sq
+(defmethod enemy-common-post ((this gekko))
+  (let ((a0-2 (handle->process (-> this focus handle))))
+    (if a0-2
+        (set! (-> this focus-pos quad) (-> (get-trans (the-as process-focusable a0-2) 3) quad))
+        )
+    )
+  (if (and (nonzero? (-> this path-wall)) (not (logtest? (-> this path-wall flags) (path-control-flag not-found))))
+      (debug-draw (-> this path-wall))
+      )
+  (gekko-method-202 this)
+  ((method-of-type nav-enemy enemy-common-post) this)
+  (none)
+  )
+
+;; definition for method 202 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod gekko-method-202 ((this gekko))
+  (cond
+    ((and (-> this draw shadow)
+          (zero? (-> this draw cur-lod))
+          (logtest? (-> this draw status) (draw-control-status on-screen))
+          )
+     (new 'stack-no-clear 'vector)
+     (new 'stack-no-clear 'vector)
+     (let ((s4-0 (new 'stack-no-clear 'collide-query))
+           (s5-0 (vector-negate! (new 'stack-no-clear 'vector) (-> this rot-matrix uvec)))
+           (f30-0 81920.0)
+           )
+       (set! (-> s4-0 start-pos quad) (-> this root trans quad))
+       (vector-normalize-copy! (-> s4-0 move-dist) s5-0 f30-0)
+       (let ((v1-10 s4-0))
+         (set! (-> v1-10 radius) 3276.8)
+         (set! (-> v1-10 collide-with) (collide-spec backgnd))
+         (set! (-> v1-10 ignore-process0) this)
+         (set! (-> v1-10 ignore-process1) #f)
+         (set! (-> v1-10 ignore-pat)
+               (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+               )
+         (set! (-> v1-10 action-mask) (collide-action solid))
+         )
+       (let ((f28-0 (fill-and-probe-using-line-sphere *collide-cache* s4-0)))
+         (cond
+           ((>= f28-0 0.0)
+            (let ((v1-14 (-> this draw shadow-ctrl)))
+              (logclear! (-> v1-14 settings flags) (shadow-flags disable-draw))
+              )
+            0
+            (set! (-> this shadow-spot valid?) #t)
+            (let ((s3-0 (-> s4-0 best-other-tri)))
+              (let ((v1-18 (vector+float*! (new 'stack-no-clear 'vector) (-> s4-0 start-pos) (-> s4-0 move-dist) f28-0)))
+                (set! (-> this shadow-spot position quad) (-> s3-0 intersect quad))
+                (vector-! (-> this shadow-spot normal) v1-18 (-> s3-0 intersect))
+                )
+              (vector-normalize! (-> this shadow-spot normal) 1.0)
+              (set! (-> this shadow-spot pat) (the-as uint (-> s3-0 pat)))
+              )
+            (let ((a1-10 (-> this root trans))
+                  (f0-3 (* f28-0 f30-0))
+                  )
+              (shadow-control-method-14
+                (-> this draw shadow-ctrl)
+                a1-10
+                s5-0
+                (fmax 32768.0 (* 409600.0 f28-0))
+                (+ -12288.0 f0-3)
+                (+ 12288.0 f0-3)
+                )
+              )
+            )
+           (else
+             (let ((v1-29 (-> this draw shadow-ctrl)))
+               (logior! (-> v1-29 settings flags) (shadow-flags disable-draw))
+               )
+             0
+             (set! (-> this shadow-spot valid?) #f)
+             )
+           )
+         )
+       )
+     )
+    (else
+      (let ((v1-33 (-> this draw shadow-ctrl)))
+        (logior! (-> v1-33 settings flags) (shadow-flags disable-draw))
+        )
+      0
+      (set! (-> this shadow-spot valid?) #f)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 50 of type gekko
+;; WARN: Return type mismatch int vs none.
+(defmethod enemy-method-50 ((this gekko) (arg0 int))
+  (let ((v1-0 arg0))
+    (cond
+      ((or (zero? v1-0) (= v1-0 2))
+       (let ((v1-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0))
+             (a0-4 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 7))
+             )
+         (set! (-> v1-4 prim-core action) (collide-action))
+         (set! (-> a0-4 prim-core action) (collide-action))
+         (set! (-> v1-4 prim-core collide-as) (collide-spec))
+         (set! (-> a0-4 prim-core collide-as) (collide-spec))
+         )
+       0
+       )
+      ((= v1-0 1)
+       (let ((v1-8 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0)))
+         (set! (-> v1-8 prim-core action) (collide-action solid deadly))
+         (set! (-> v1-8 prim-core collide-as) (collide-spec enemy))
+         )
+       )
+      ((= v1-0 3)
+       (let ((v1-12 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 0))
+             (a0-9 (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 7))
+             )
+         (set! (-> v1-12 prim-core action) (collide-action solid deadly))
+         (set! (-> a0-9 prim-core action) (collide-action solid deadly))
+         (set! (-> v1-12 prim-core collide-as) (collide-spec enemy))
+         (set! (-> a0-9 prim-core collide-as) (collide-spec enemy))
+         )
+       )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 82 of type gekko
+(defmethod event-handler ((this gekko) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('hit 'hit-knocked)
+     (logclear! (-> this mask) (process-mask actor-pause))
+     (logclear! (-> this focus-status) (focus-status dangerous))
+     (logclear! (-> this enemy-flags) (enemy-flag use-notice-distance))
+     (logior! (-> this enemy-flags) (enemy-flag alert))
+     (logior! (-> this focus-status) (focus-status hit))
+     (if (= (-> this hit-points) 0.0)
+         (logior! (-> this focus-status) (focus-status dead))
+         )
+     (logclear! (-> this enemy-flags) (enemy-flag lock-focus))
+     (enemy-method-69 this)
+     (logior! (-> this enemy-flags) (enemy-flag lock-focus))
+     (process-contact-action arg0)
+     (send-event arg0 'get-attack-count 1)
+     (freeze-hit-begin)
+     (if (logtest? (-> this flags) (gekko-flag on-wall?))
+         (go (method-of-object this knocked-wall))
+         (go (method-of-object this knocked))
+         )
+     #t
+     )
+    (else
+      ((method-of-type nav-enemy event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 67 of type gekko
+(defmethod coin-flip? ((this gekko))
+  #f
+  )
+
+;; definition for method 7 of type gekko
+(defmethod relocate ((this gekko) (offset int))
+  (dotimes (v1-0 4)
+    (if (nonzero? (-> this foot v1-0 leg-ik))
+        (&+! (-> this foot v1-0 leg-ik) offset)
+        )
+    )
+  (if (nonzero? (-> this path-wall))
+      (&+! (-> this path-wall) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for method 121 of type gekko
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod init-enemy! ((this gekko))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-gekko" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (init-enemy-defaults! this *gekko-nav-enemy-info*)
+  (set! (-> this scale) (rnd-float-range this 1.15 1.35))
+  (let ((f0-1 (-> this scale)))
+    (set-vector! (-> this root scale) f0-1 f0-1 f0-1 1.0)
+    )
+  (let ((v1-9 (-> this neck)))
+    (set! (-> v1-9 up) (the-as uint 1))
+    (set! (-> v1-9 nose) (the-as uint 2))
+    (set! (-> v1-9 ear) (the-as uint 0))
+    (set! (-> v1-9 max-dist) 167936.0)
+    (set-vector! (-> v1-9 twist-max) 11832.889 15473.777 0.0 1.0)
+    (set! (-> v1-9 ignore-angle) 16384.0)
+    )
+  (set! (-> this align) (new 'process 'align-control this))
+  (set! (-> this path-wall) (new 'process 'path-control this 'wall 0.0 (the-as entity #f) #t))
+  (if (nonzero? (-> this path-wall))
+      (logior! (-> this path-wall flags) (path-control-flag display draw-line draw-point draw-text))
+      )
+  (dotimes (s5-1 4)
+    (let ((s4-1 (-> this foot s5-1)))
+      (set! (-> s4-1 leg-ik)
+            (new 'process 'joint-mod-ik this (-> *gekko-ik-setup* s5-1 elbow-index) (-> *gekko-ik-setup* s5-1 hand-dist))
+            )
+      (set! (-> s4-1 leg-ik user-float) (the float s5-1))
+      (set! (-> s4-1 leg-ik elbow-pole-vector-axis) (the-as uint 2))
+      (set! (-> s4-1 leg-ik elbow-rotation-axis) (the-as uint 0))
+      (let ((a0-18 (-> this node-list data (-> *gekko-ik-setup* s5-1 effector-index))))
+        (set! (-> a0-18 param0) gekko-foot-rot-handler)
+        (set! (-> a0-18 param1) this)
+        (set! (-> a0-18 param2) (the-as basic s4-1))
+        )
+      (set! (-> s4-1 foot-transform scale quad) (-> *identity-vector* quad))
+      )
+    )
+  (logior! (-> this foot 2 leg-ik flags) (joint-mod-ik-flags elbow-trans-neg))
+  (logior! (-> this foot 3 leg-ik flags) (joint-mod-ik-flags elbow-trans-neg))
+  (logior! (-> this foot 0 leg-ik flags) (joint-mod-ik-flags elbow-rot-neg))
+  (logior! (-> this foot 1 leg-ik flags) (joint-mod-ik-flags elbow-rot-neg))
+  (set! (-> this skel postbind-function) gekko-postbind-callback)
+  (logior! (-> this skel status) (joint-control-status no-joint-callbacks))
+  (quaternion-rotate-local-y!
+    (-> this root quat)
+    (-> this root quat)
+    (* 182.04445 (rnd-float-range this 170.0 190.0))
+    )
+  (quaternion-copy! (-> this tilt-quat) *unity-quaternion*)
+  (set! (-> this scared-timer) 0)
+  (set! (-> this root pause-adjust-distance) 368640.0)
+  (let ((s5-3 (new 'stack-no-clear 'vector))
+        (s4-3 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+        )
+    (dotimes (s3-1 4)
+      (vector-orient-by-quat! s5-3 (the-as vector (-> *gekko-foot-offset* s3-1)) (-> this root quat))
+      (vector+float*! (the-as vector (-> this foot s3-1)) (-> this root trans) s5-3 (-> this scale))
+      (set! (-> (the-as (pointer uint128) (+ (the-as uint (-> this foot 0 ground-normal)) (* 96 s3-1))))
+            (-> s4-3 quad)
+            )
+      )
+    )
+  (logior! (-> this flags) (gekko-flag update-foot-position? follow-terrain update-tilt on-wall?))
+  (set! (-> this probe-len) 24576.0)
+  0
+  (none)
+  )
+
+;; definition for method 89 of type gekko
+(defmethod within-gspot-range? ((this gekko))
+  (let ((s5-0 (-> this root))
+        (a1-0 (new 'stack-no-clear 'collide-query))
+        (gp-0 #t)
+        )
+    (when (find-ground
+            s5-0
+            a1-0
+            (-> this enemy-info recover-gnd-collide-with)
+            8192.0
+            81920.0
+            1024.0
+            (the-as process #f)
+            )
+      (let ((f0-1 (- (-> s5-0 trans y) (-> s5-0 gspot-pos y))))
+        (if (and (>= f0-1 -4096.0) (>= 8192.0 f0-1))
+            (set! gp-0 #f)
+            )
+        )
+      )
+    gp-0
+    )
+  )
+
+;; definition of type gecko
+(deftype gecko (gekko)
+  ()
+  )
+
+;; definition for method 3 of type gecko
+(defmethod inspect ((this gecko))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type gekko inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

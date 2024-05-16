@@ -1,0 +1,485 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mhcity-puffer
+(deftype mhcity-puffer (process-focusable)
+  ((period    uint64      :offset 216)
+   (duration  uint64)
+   (offset    uint64)
+   (is-jump?  basic)
+   (jump-y    float)
+   (jump-z    float)
+   (traj      trajectory  :inline)
+   )
+  (:state-methods
+    active
+    blowing
+    blowing-prep
+    puffer-active-base-state
+    )
+  (:methods
+    (init-collision! (_type_ float) none)
+    (get-skel (_type_) art-group)
+    (update (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type mhcity-puffer
+(defmethod inspect ((this mhcity-puffer))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-focusable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tperiod: ~D~%" (-> this period))
+  (format #t "~2Tduration: ~D~%" (-> this duration))
+  (format #t "~2Toffset: ~D~%" (-> this offset))
+  (format #t "~2Tis-jump?: ~A~%" (-> this is-jump?))
+  (format #t "~2Tjump-y: ~f~%" (-> this jump-y))
+  (format #t "~2Tjump-z: ~f~%" (-> this jump-z))
+  (format #t "~2Ttraj: #<trajectory @ #x~X>~%" (-> this traj))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 33 of type mhcity-puffer
+(defmethod get-skel ((this mhcity-puffer))
+  (art-group-get-by-name *level* "skel-mhcity-puffer" (the-as (pointer level) #f))
+  )
+
+;; definition for method 32 of type mhcity-puffer
+;; WARN: Return type mismatch collide-shape vs none.
+(defmethod init-collision! ((this mhcity-puffer) (arg0 float))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 4)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 (* 12288.0 arg0))
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 11 of type mhcity-puffer
+(defmethod init-from-entity! ((this mhcity-puffer) (arg0 entity-actor))
+  (init-collision! this 1.0)
+  (process-drawable-from-entity! this arg0)
+  (process-drawable-scale-from-entity! this arg0)
+  (let ((f0-0 (res-lump-float (-> this entity) 'rotoffset)))
+    (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-0)
+    )
+  (set! (-> this jump-y) (* 4096.0 (res-lump-float arg0 'jump-y :default 20.0)))
+  (set! (-> this jump-z) (* 4096.0 (res-lump-float arg0 'jump-z :default 10.0)))
+  (initialize-skeleton this (the-as skeleton-group (get-skel this)) (the-as pair 0))
+  (set! (-> this part) (create-launch-control (-> *part-group-id-table* 319) this))
+  (set! (-> this period) (the-as uint 1200))
+  (set! (-> this duration) (the-as uint 750))
+  (set! (-> this is-jump?) (the-as basic #t))
+  (set! (-> this offset) (the-as uint (mod (the-as int (rand-uint31-gen *random-generator*)) 301)))
+  (set-time! (-> this state-time))
+  (set! (-> this state-time) (- (-> this state-time) (the-as int (-> this offset))))
+  (let ((s5-2 (new 'stack-no-clear 'vector)))
+    (let ((s4-1 (new 'stack-no-clear 'vector)))
+      (vector-float*! s5-2 *up-vector* (-> this jump-y))
+      (vector-z-quaternion! s4-1 (-> this root quat))
+      (set! (-> s4-1 y) 0.0)
+      (vector-normalize! s4-1 1.0)
+      (vector+float*! s5-2 s5-2 s4-1 (-> this jump-z))
+      )
+    (setup-from-to-duration!
+      (-> this traj)
+      (-> this root trans)
+      (vector+! (new 'stack-no-clear 'vector) (-> this root trans) s5-2)
+      1.0
+      -327680.0
+      )
+    )
+  (cond
+    ((task-node-closed? (game-task-node city-destroy-darkeco-resolution))
+     (process-entity-status! this (entity-perm-status dead) #t)
+     (deactivate this)
+     )
+    (else
+      (go (method-of-object this active))
+      )
+    )
+  )
+
+;; definition of type puffer-init-by-other-params
+(deftype puffer-init-by-other-params (structure)
+  ((pos       vector      :inline)
+   (orient    quaternion  :inline)
+   (scale     float)
+   (period    uint64)
+   (duration  uint64)
+   (offset    uint64)
+   (jump-y    float)
+   (jump-z    float)
+   )
+  )
+
+;; definition for method 3 of type puffer-init-by-other-params
+(defmethod inspect ((this puffer-init-by-other-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'puffer-init-by-other-params)
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Torient: #<quaternion @ #x~X>~%" (-> this orient))
+  (format #t "~1Tscale: ~f~%" (-> this scale))
+  (format #t "~1Tperiod: ~D~%" (-> this period))
+  (format #t "~1Tduration: ~D~%" (-> this duration))
+  (format #t "~1Toffset: ~D~%" (-> this offset))
+  (format #t "~1Tjump-y: ~f~%" (-> this jump-y))
+  (format #t "~1Tjump-z: ~f~%" (-> this jump-z))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function puffer-init-by-other
+;; INFO: Used lq/sq
+(defbehavior puffer-init-by-other mhcity-puffer ((arg0 puffer-init-by-other-params))
+  (set! (-> self level) (level-get *level* 'lctydest))
+  (init-collision! self (-> arg0 scale))
+  (set! (-> self root trans quad) (-> arg0 pos quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 orient))
+  (initialize-skeleton
+    self
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-mhcity-puffer" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (set-vector! (-> self root scale) (-> arg0 scale) (-> arg0 scale) (-> arg0 scale) 1.0)
+  (set! (-> self part) (create-launch-control (-> *part-group-id-table* 319) self))
+  (set! (-> self period) (the-as uint 1200))
+  (set! (-> self duration) (the-as uint 750))
+  (set! (-> self offset) (the-as uint (mod (the-as int (rand-uint31-gen *random-generator*)) 301)))
+  (set-time! (-> self state-time))
+  (set! (-> self state-time) (- (-> self state-time) (the-as int (-> self offset))))
+  (set! (-> self jump-y) (-> arg0 jump-y))
+  (set! (-> self jump-z) (-> arg0 jump-z))
+  (let ((gp-1 (new 'stack-no-clear 'vector)))
+    (let ((s5-1 (new 'stack-no-clear 'vector)))
+      (vector-float*! gp-1 *up-vector* (-> self jump-y))
+      (vector-z-quaternion! s5-1 (-> self root quat))
+      (set! (-> s5-1 y) 0.0)
+      (vector-normalize! s5-1 1.0)
+      (vector+float*! gp-1 gp-1 s5-1 (-> self jump-z))
+      )
+    (setup-from-to-duration!
+      (-> self traj)
+      (-> self root trans)
+      (vector+! (new 'stack-no-clear 'vector) (-> self root trans) gp-1)
+      1.0
+      -327680.0
+      )
+    )
+  (set-time! (-> self state-time))
+  (set! (-> self state-time) (- (-> self state-time) (the-as int (-> self offset))))
+  (go-virtual active)
+  )
+
+;; definition for method 34 of type mhcity-puffer
+;; WARN: Return type mismatch int vs none.
+;; WARN: disable def twice: 18. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+(defmethod update ((this mhcity-puffer))
+  (if (>= (mod (- (current-time) (-> this state-time)) (the-as time-frame (-> this period)))
+          (the-as int (-> this duration))
+          )
+      (go (method-of-object this active))
+      )
+  (let ((v1-9 (cond
+                (#f
+                  (and *target*
+                       (< (vector-vector-xz-distance (-> this root trans) (target-pos 0)) 8192.0)
+                       (< (fabs (- (-> this root trans y) (-> (target-pos 0) y))) 20480.0)
+                       )
+                  )
+                (else
+                  (when *target*
+                    (let ((s5-2 (vector-! (new 'stack-no-clear 'vector) (get-trans *target* 3) (-> this root trans)))
+                          (v1-19 (vector-y-quaternion! (new 'stack-no-clear 'vector) (-> this root quat)))
+                          )
+                      0.0
+                      0.0
+                      (let ((f0-7 (vector-dot s5-2 v1-19)))
+                        (when (and (< f0-7 32768.0) (>= f0-7 0.0))
+                          (let ((f1-4 (vector-length s5-2)))
+                            (< (sqrtf (- (* f1-4 f1-4) (* f0-7 f0-7))) 8192.0)
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+        )
+    (when v1-9
+      (let ((s5-3 (new 'stack-no-clear 'vector)))
+        (let ((s4-1 (new 'stack-no-clear 'vector)))
+          (vector-float*! s5-3 *up-vector* (-> this jump-y))
+          (vector-z-quaternion! s4-1 (-> this root quat))
+          (set! (-> s4-1 y) 0.0)
+          (vector-normalize! s4-1 1.0)
+          (vector+float*! s5-3 s5-3 s4-1 (-> this jump-z))
+          )
+        (send-event
+          *target*
+          'launch-dir
+          (vector+!
+            (new 'stack-no-clear 'vector)
+            s5-3
+            (vector-! (new 'stack-no-clear 'vector) (-> this root trans) (target-pos 0))
+            )
+          300
+          -929038336
+          )
+        )
+      (persist-with-delay *setting-control* 'rapid-tracking (seconds 0.9) 'rapid-tracking #f 0.0 0)
+      )
+    )
+  (spawn-from-mat (-> this part) (-> this node-list data 0 bone transform))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate puffer-active-base-state (mhcity-puffer)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('move-to)
+       (set! (-> self root trans quad) (-> (the-as vector (-> block param 0)) quad))
+       (quaternion-copy! (-> self root quat) (the-as quaternion (-> block param 1)))
+       )
+      )
+    )
+  :trans (behavior ()
+    (if *display-path-marks*
+        (debug-draw (-> self traj))
+        )
+    (rider-trans)
+    )
+  :code sleep-code
+  :post (behavior ()
+    (rider-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate blowing-prep (mhcity-puffer)
+  :virtual #t
+  :parent (mhcity-puffer puffer-active-base-state)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((f30-0 14.0))
+      (ja :group! mhcity-puffer-spit-ja :num! (seek! f30-0 0.7) :frame-num 0.0)
+      (until (>= (ja-frame-num 0) 14.0)
+        (ja :num! (seek! f30-0 0.7))
+        (suspend)
+        )
+      )
+    (go-virtual blowing)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate blowing (mhcity-puffer)
+  :virtual #t
+  :parent (mhcity-puffer puffer-active-base-state)
+  :trans (behavior ()
+    (update self)
+    (let ((v1-3 (-> self state parent)))
+      (when v1-3
+        (let ((t9-1 (-> v1-3 trans)))
+          (if t9-1
+              (t9-1)
+              )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! mhcity-puffer-spit-loop-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (mhcity-puffer)
+  :virtual #t
+  :parent (mhcity-puffer puffer-active-base-state)
+  :trans (behavior ()
+    (if (< (mod (- (current-time) (-> self state-time)) (the-as time-frame (-> self period)))
+           (the-as int (-> self duration))
+           )
+        (go-virtual blowing-prep)
+        )
+    (let ((v1-9 (-> self state parent)))
+      (when v1-9
+        (let ((t9-1 (-> v1-9 trans)))
+          (if t9-1
+              (t9-1)
+              )
+          )
+        )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! mhcity-puffer-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-mhcity-puffer-large mhcity-puffer-large mhcity-puffer-large-lod0-jg mhcity-puffer-large-idle-ja
+              ((mhcity-puffer-large-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 3)
+              )
+
+;; definition of type mhcity-puffer-large
+(deftype mhcity-puffer-large (mhcity-puffer)
+  ()
+  )
+
+;; definition for method 3 of type mhcity-puffer-large
+(defmethod inspect ((this mhcity-puffer-large))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type mhcity-puffer inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 33 of type mhcity-puffer-large
+(defmethod get-skel ((this mhcity-puffer-large))
+  (art-group-get-by-name *level* "skel-mhcity-puffer-large" (the-as (pointer level) #f))
+  )
+
+;; definition for method 32 of type mhcity-puffer-large
+;; WARN: Return type mismatch collide-shape vs none.
+(defmethod init-collision! ((this mhcity-puffer-large) (arg0 float))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak hit-by-others-list player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 4)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 (* 20480.0 arg0))
+      (set! (-> s5-0 total-prims) (the-as uint 1))
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> s5-0 event-self) 'touched)
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate blowing-prep (mhcity-puffer-large)
+  :virtual #t
+  :parent (mhcity-puffer-large puffer-active-base-state)
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (let ((f30-0 14.0))
+      (ja :group! mhcity-puffer-large-spit-ja :num! (seek! f30-0 0.7) :frame-num 0.0)
+      (until (>= (ja-frame-num 0) 14.0)
+        (ja :num! (seek! f30-0 0.7))
+        (suspend)
+        )
+      )
+    (go-virtual blowing)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate blowing (mhcity-puffer-large)
+  :virtual #t
+  :parent (mhcity-puffer-large puffer-active-base-state)
+  :trans (behavior ()
+    (let ((t9-1 (-> (find-parent-state) trans)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! mhcity-puffer-large-spit-loop-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (mhcity-puffer-large)
+  :virtual #t
+  :parent (mhcity-puffer-large puffer-active-base-state)
+  :trans (behavior ()
+    (let ((t9-1 (-> (find-parent-state) trans)))
+      (if t9-1
+          (t9-1)
+          )
+      )
+    )
+  :code (behavior ()
+    (ja-channel-push! 1 (seconds 0.1))
+    (until #f
+      (ja-no-eval :group! mhcity-puffer-large-idle-ja :num! (seek!) :frame-num 0.0)
+      (until (ja-done? 0)
+        (suspend)
+        (ja :num! (seek!))
+        )
+      )
+    #f
+    )
+  )
+
+
+
+

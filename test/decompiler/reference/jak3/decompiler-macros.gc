@@ -1,0 +1,1729 @@
+;; This file should contain an implementation for all macros that the decompiler uses in its output.
+
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
+(defmacro new-stack-vector0 ()
+  "Get a stack vector that's set to 0.
+   This is more efficient than (new 'stack 'vector) because
+   this doesn't call the constructor."
+  `(let ((vec (new 'stack-no-clear 'vector)))
+     (set! (-> vec quad) (the-as uint128 0))
+     vec
+     )
+  )
+
+(defmacro set-vector! (v xv yv zv wv)
+  "Set all fields in a vector"
+  (with-gensyms (vec)
+     `(let ((,vec ,v))
+       (set! (-> ,vec x) ,xv)
+       (set! (-> ,vec y) ,yv)
+       (set! (-> ,vec z) ,zv)
+       (set! (-> ,vec w) ,wv)
+       ,vec
+       ))
+     )
+
+(defmacro new-stack-quaternion0 ()
+  "Get a stack quaternion that's set to 0.
+   This is more efficient than (new 'stack 'quaternion) because
+   this doesn't call the constructor."
+  `(let ((q (new 'stack-no-clear 'quaternion)))
+     (set! (-> q quad) (the-as uint128 0))
+     q
+     )
+  )
+
+(defmacro with-pp (&rest body)
+  "execute the body with pp bound to the current process register."
+  `(rlet ((pp :reg r13 :reset-here #t :type process))
+         ,@body)
+  )
+
+(defconstant PP (with-pp pp))
+
+(defmacro current-time ()
+  `(-> PP clock frame-counter)
+  )
+
+(defmacro seconds-per-frame ()
+  `(-> PP clock seconds-per-frame)
+  )
+
+(defmacro make-u128 (upper lower)
+  `(rlet ((result :class i128)
+          (upper-xmm :class i128)
+          (lower-xmm :class i128))
+     (.mov upper-xmm ,upper)
+     (.mov lower-xmm ,lower)
+     (.pcpyld result upper-xmm lower-xmm)
+     (the uint result)
+     )
+  )
+
+(defmacro handle->process (handle)
+  "Convert a handle to a process. If the process no longer exists, returns #f."
+  `(let ((the-handle (the-as handle ,handle)))
+     (if (-> the-handle process) ;; if we don't point to a process, kernel sets this to #f
+         (let ((proc (-> (-> the-handle process))))
+           (if (= (-> the-handle pid) (-> proc pid)) ;; make sure it's the same process
+               proc
+               )
+           )
+         )
+     )
+  )
+
+(defmacro ppointer->process (ppointer)
+  "convert a (pointer process) to a process."
+  ;; this uses the self field, which seems to always just get set to the object.
+  ;; confirmed in Jak 1 that using self here is useless, not sure...
+  `(let ((the-pp ,ppointer))
+     (if the-pp (-> the-pp 0 self))
+     )
+  )
+
+(defmacro defbehavior (name process-type bindings &rest body)
+  "define a new behavior. This is simply a function where self is bound to the process register,
+   which is assumed to have type process-type."
+  (if (and
+       (> (length body) 1)     ;; more than one thing in function
+       (string? (first body))  ;; first thing is a string
+       )
+      ;; then it's a docstring and we ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@(cdr body)))
+      ;; otherwise don't ignore it.
+      `(define ,name (lambda :name ,name :behavior ,process-type ,bindings ,@body))
+      )
+  )
+
+(defmacro process->ppointer (proc)
+  "safely get a (pointer process) from a process, returning #f if invalid."
+  `(let ((the-proc ,proc))
+     (if the-proc (-> the-proc ppointer))
+     )
+  )
+
+(defmacro ppointer->handle (pproc)
+  `(let ((the-process (the-as (pointer process) ,pproc)))
+      (new 'static 'handle :process the-process :pid (-> the-process 0 pid))
+      )
+  )
+
+(defmacro process->handle (proc)
+  "convert a process to a handle. if proc is #f, returns a #f handle."
+  `(ppointer->handle (process->ppointer (the-as process ,proc)))
+  )
+
+;; use a compile-time list to keep track of the type of an anonymous behavior.
+(seval (define *defstate-type-stack* '()))
+(desfun def-state-check-behavior (beh-form beh-type)
+  "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
+
+  (when (and (pair? beh-form) (eq? (first beh-form) 'behavior))
+    (push! *defstate-type-stack* beh-type)
+    )
+  )
+(defmacro clear-def-state-stack ()
+  (set! *defstate-type-stack* '())
+  `(none)
+  )
+
+;; set when inside a defstate.
+(seval (define *defstate-current-type* #f))
+(seval (define *defstate-current-state-name* #f))
+
+;; *no-state* is just used for the compiler to know whether a handler was actually set or not
+(defmacro defstate (state-name parents
+                               &key (virtual #f)
+                               &key (parent #f)
+                               &key (event *no-state*)
+                               &key (enter *no-state*)
+                               &key (trans *no-state*)
+                               &key (exit *no-state*)
+                               &key (code *no-state*)
+                               &key (post *no-state*)
+                               &rest body
+                               )
+  "Define a new state!"
+
+  (with-gensyms (new-state)
+    (let ((defstate-type (first parents))
+          (docstring ""))
+      (when (and (> (length body) 1) (string? (first body)))
+        (set! docstring (first body)))
+      (when (not (null? *defstate-type-stack*))
+        (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
+                 *defstate-type-stack*)
+        )
+      (set! *defstate-type-stack* '())
+      (when virtual
+        (set! *defstate-current-type* defstate-type)
+        (set! *defstate-current-state-name* state-name)
+        )
+      ;; check for default handlers
+      (let ((default-handlers (assoc defstate-type *default-state-handlers*)))
+          (when default-handlers
+              ;;(fmt #t "found default-handlers for {}: {}\n" defstate-type default-handlers)
+              ;; event
+              (set! default-handlers (cadr default-handlers))
+              (when (and (eq? event '*no-state*) (car default-handlers))
+                  (set! event (car default-handlers)))
+              ;; enter
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? enter '*no-state*) (car default-handlers))
+                  (set! enter (car default-handlers)))
+              ;; trans
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? trans '*no-state*) (car default-handlers))
+                  (set! trans (car default-handlers)))
+              ;; exit
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? exit '*no-state*) (car default-handlers))
+                  (set! exit (car default-handlers)))
+              ;; code
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? code '*no-state*) (car default-handlers))
+                  (set! code (car default-handlers)))
+              ;; post
+              (set! default-handlers (cdr default-handlers))
+              (when (and (eq? post '*no-state*) (car default-handlers))
+                  (set! post (car default-handlers)))
+
+              (set! default-handlers (cdr default-handlers))
+              )
+          )
+      (def-state-check-behavior event defstate-type)
+      (def-state-check-behavior enter defstate-type)
+      (def-state-check-behavior trans defstate-type)
+      (def-state-check-behavior exit defstate-type)
+      (def-state-check-behavior code defstate-type)
+      (def-state-check-behavior post defstate-type)
+      `(let ((,new-state (new 'static 'state
+                              :name (quote ,state-name)
+                              :next #f
+                              :exit #f
+                              :code #f
+                              :trans #f
+                              :post #f
+                              :enter #f
+                              :event #f
+                              )
+                         ))
+         ;; the compiler will set the fields of the given state and define the symbol.
+         ;; This way it can check the individual function types, make sure they make sense, and create
+         ;; a state with the appropriate type.
+         ,(cond
+           ((and virtual parent)
+            `(begin
+              (inherit-state ,new-state ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
+              (set! (-> ,new-state parent) ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
+              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+            )
+           (virtual
+            `(begin
+              (set! (-> ,new-state parent) #f)
+              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+            )
+           (parent
+            `(begin
+              (inherit-state ,new-state (the state ,parent))
+              (set! (-> ,new-state parent) (the state ,parent))
+              (define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+            )
+           (#t
+            `(begin
+              (set! (-> ,new-state parent) #f)
+              (define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
+            )
+           )
+         )
+      )
+    )
+  )
+
+
+(defmacro find-parent-state ()
+  "Find the first different implementation of the current virtual state above this one."
+  (when (or (not *defstate-current-type*)
+            (not *defstate-current-state-name*))
+    (error "use of find-parent-state outside of a defstate.")
+    )
+  `(cast-to-method-type
+     ,*defstate-current-type*
+     ,*defstate-current-state-name*
+     (find-parent-method ,*defstate-current-type* (method-id-of-type ,*defstate-current-type* ,*defstate-current-state-name*))
+    )
+  )
+
+(defmacro call-parent-method (&rest args)
+  "Find the first different implementation of the current method in a parent type and call it with these arguments."
+  `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
+    ,@args)
+  )
+
+
+(defmacro behavior (bindings &rest body)
+  "Define an anonymous behavior for a process state. This may only be used inside a defstate!"
+
+  (let ((behavior-type (first *defstate-type-stack*)))
+    (pop! *defstate-type-stack*)
+    `(lambda :behavior ,behavior-type ,bindings ,@body)
+    )
+  )
+
+;; set the default handler functions for a process's state handlers
+(seval (define *default-state-handlers* '()))
+(defmacro defstatehandler (proc
+                           &key (event #f)
+                           &key (enter #f)
+                           &key (trans #f)
+                           &key (exit #f)
+                           &key (code #f)
+                           &key (post #f))
+  (let ((old (assoc proc *default-state-handlers*))
+        (new (list proc (list event enter trans exit code post))))
+      (if (not old)
+          (append!! *default-state-handlers* new) ;; add new set of default handlers
+          (dolist (hnd *default-state-handlers*)  ;; replace old handlers with new ones
+            (when (eq? (car hnd) old)
+              (set-car! hnd new)
+              )
+            )
+          )
+      )
+  `(none)
+  )
+
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
+  "Branch!"
+  ;; evaluate the predicate
+  `(let ((should-branch ,pred))
+     ;; normal delay slot:
+     ,delay
+     (when should-branch
+       ,likely-delay
+       (goto ,destination)
+       )
+     )
+  )
+
+;; meters are stored as (usually) a float, scaled by 4096.
+;; this gives you reasonable accuracy as an integer.
+(defglobalconstant METER_LENGTH 4096.0)
+
+(defmacro meters (x)
+  "Convert number to meters.
+   If the input is a constant float or integer, the result will be a
+   compile time constant float. Otherwise, it will not be constant.
+   Returns float."
+
+  ;; we don't have enough constant propagation for the compiler to figure this out.
+  (cond
+    ((float? x)
+     (* METER_LENGTH x)
+     )
+    ((integer? x)
+     (* METER_LENGTH x)
+     )
+    (#t
+     `(* METER_LENGTH ,x)
+     )
+    )
+  )
+
+;; rotations are stored in 65,536ths of a full rotation.
+;; like with meters, you get a reasonable accuracy as an integer.
+;; additionally, it is a power-of-two, so wrapping rotations can be done
+;; quickly by converting to an int, masking, and back to float
+(defglobalconstant DEGREES_PER_ROT 65536.0)
+
+;; this was deg in GOAL
+(defmacro degrees (x)
+  "Convert number to degrees unit.
+   Will keep a constant float/int constant."
+  (cond
+    ((or (float? x) (integer? x))
+     (* DEGREES_PER_ROT (/ (+ 0.0 x) 360.0))
+     )
+    (#t
+     `(* (/ (the float ,x) 360.0)
+         DEGREES_PER_ROT
+         )
+     )
+    )
+  )
+
+;; times are stored in 300ths of a second.
+;; this divides evenly into frames at both 50 and 60 fps.
+;; typically these are stored as integers as more precision is not useful.
+;; an unsigned 32-bit integer can store about 150 days
+(defglobalconstant TICKS_PER_SECOND 300) ;; 5 t/frame @ 60fps, 6 t/frame @ 50fps
+
+;; this was usec in GOAL
+(defmacro seconds (x)
+  "Convert number to seconds unit.
+   Returns uint."
+  (cond
+    ((integer? x)
+     (* TICKS_PER_SECOND x)
+     )
+    ((float? x)
+     (* 1 (* 1.0 x TICKS_PER_SECOND))
+     )
+    (#t
+     `(the uint (* TICKS_PER_SECOND ,x))
+     )
+    )
+  )
+
+(defmacro fsec (x)
+  "Convert number to seconds unit.
+   Returns float."
+  (cond
+    ((or (integer? x) (float? x))
+     (* 1.0 TICKS_PER_SECOND x)
+     )
+    (#t
+     `(* 1.0 TICKS_PER_SECOND ,x)
+     )
+    )
+  )
+
+(fake-asm .sync.l)
+(fake-asm .sync.p)
+(fake-asm .mfc0 dest src)
+(fake-asm .mtc0 dest src)
+(fake-asm .mtpc dest src)
+(fake-asm .mfpc dest src)
+(fake-asm .mtdab src)
+(fake-asm .mtdabm src)
+
+(defmacro suspend ()
+  '(none)
+  )
+
+(defmacro empty-form ()
+  '(none)
+  )
+
+(defmacro .sync.l ()
+  `(none))
+
+(defmacro seek! (place target rate)
+  "Macro to use seek in-place. place is the base, and where the result is stored."
+  `(set! ,place (seek ,place ,target ,rate))
+  )
+
+(defmacro seekl! (place target rate)
+  "Macro to use seekl in-place. place is the base, and where the result is stored."
+  `(set! ,place (seekl ,place ,target ,rate))
+  )
+
+;; pad
+(defmacro cpad-pressed (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-rel 0)
+  )
+
+(defmacro cpad-hold (pad-idx)
+  `(-> *cpad-list* cpads ,pad-idx button0-abs 0)
+  )
+
+(defmacro cpad-pressed? (pad-idx &rest buttons)
+  `(logtest? (cpad-pressed ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro cpad-hold? (pad-idx &rest buttons)
+  `(logtest? (cpad-hold ,pad-idx) (pad-buttons ,@buttons))
+  )
+
+(defmacro mouse-pressed ()
+  `(-> *mouse* button0-rel 0)
+  )
+
+(defmacro mouse-hold ()
+  `(-> *mouse* button0-abs 0)
+  )
+
+(defmacro mouse-pressed? (&rest buttons)
+  `(logtest? (mouse-pressed) (mouse-buttons ,@buttons))
+  )
+
+(defmacro mouse-hold? (&rest buttons)
+  `(logtest? (mouse-hold) (mouse-buttons ,@buttons))
+  )
+
+(defmacro gs-reg-list (&rest reg-ids)
+  "Generate a giftag register descriptor list from reg-ids."
+
+  (let ((reg-count (length reg-ids)))
+    (when (> (length reg-ids) 16)
+      (ferror "too many regs passed to gs-reg-list")
+      )
+    (let ((list-to-splice '())
+          (cur-lst reg-ids)
+          (i -1))
+
+        ;; this is questionable.
+        (while (and (not (null? cur-lst)) (< i 15))
+          (push! list-to-splice (cons 'gif-reg-id (cons (car cur-lst) '())))
+          (push! list-to-splice (string->symbol-format ":regs{}" (inc! i)))
+          (pop! cur-lst)
+          )
+
+        `(new 'static 'gif-tag-regs
+            ,@list-to-splice
+            )
+        )
+  #| ;; the opengoal compiler does not have enough constant propagation for this for now
+    (let ((i -1))
+
+      `(the-as gif-tag-regs (logior ,@(apply (lambda (x)
+          `(shl (the-as uint (gif-reg-id ,x)) ,(* 4 (inc! i)))
+                ) reg-ids)
+              ))
+
+      )|#
+    )
+  )
+
+(defmacro dma-buffer-add-base-type (buf pkt dma-type &rest body)
+  "Base macro for adding stuff to a dma-buffer. Don't use this directly!"
+
+  (with-gensyms (dma-buf)
+    `(let* ((,dma-buf ,buf)
+            (,pkt (the-as ,dma-type (-> ,dma-buf base))))
+
+          ,@body
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-base-data (buf data-type forms)
+  "Base macro for adding data words to a dma-buffer.
+   Each form in forms is converted into data-type and added to the buffer. NO TYPE CHECKING is performed, so be careful!"
+
+  (with-gensyms (dma-buf ptr)
+    `(let* ((,dma-buf ,buf)
+            (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
+
+          ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
+
+          (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type))))
+
+        )
+    )
+  )
+
+
+(defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data after the tag and continue from after that point)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,qwc))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ref-vif2 (buf qwc addr vif0 vif1)
+  "Add a dma-packet to a dma-buffer.
+   The packet is made up of a 'cnt' DMAtag (transfer qwc qwords of data at addr and continue from after the tag)
+    and includes two vif-tags for vifcode, or something else if needed."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ref) :qwc ,qwc :addr (the-as int ,addr)))
+
+        (set! (-> ,pkt vif0) ,vif0)
+        (set! (-> ,pkt vif1) ,vif1)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-ret (buf)
+  "Add a dma-packet to a dma-buffer. This packet simply does a DMA 'return' "
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt dma-packet
+
+        (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id ret) :qwc 0))
+
+        (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+        (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-gif-tag (buf giftag gifregs)
+  "Add a giftag to a dma-buffer."
+
+  (with-gensyms (pkt)
+    `(dma-buffer-add-base-type ,buf ,pkt gs-gif-tag
+
+        (set! (-> ,pkt tag) ,giftag)
+
+        (set! (-> ,pkt regs) ,gifregs)
+
+        )
+    )
+  )
+
+(defmacro dma-buffer-add-uint64 (buf &rest body)
+  "Add 64-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint64 ,body)
+  )
+
+(defmacro dma-buffer-add-uint128 (buf &rest body)
+  "Add 128-bit words to a dma-buffer. See dma-buffer-add-base-data"
+
+  `(dma-buffer-add-base-data ,buf uint128 ,body)
+  )
+
+(defmacro dma-buffer-add-gs-set-flusha (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   The packet runs the flusha command which waits for GIF transfer to end and VU1 microprogram to stop.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd flusha))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro dma-buffer-add-gs-set (buf &rest reg-list)
+  "Add a gif cnt dma packet to a dma-buffer for setting GS registers. Up to 16 can be set at once.
+   reg-list is a list of pairs where the car is the register name and the cadr is the value to be set for that register."
+
+  (let ((reg-count (length reg-list))
+        (qwc (+ (length reg-list) 1))
+        (reg-names (apply first reg-list))
+        (reg-datas (apply second reg-list))
+        )
+    `(begin
+      ;; dma tag
+      (dma-buffer-add-cnt-vif2 ,buf ,qwc
+                              (new 'static 'vif-tag :cmd (vif-cmd nop))
+                              (new 'static 'vif-tag :cmd (vif-cmd direct) :imm ,qwc)
+                              )
+
+      ;; gif tag for editing gs regs
+      (dma-buffer-add-gif-tag ,buf (new 'static 'gif-tag64 :nloop 1 :eop 1 :nreg ,reg-count)
+                                   (gs-reg-list a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d a+d)
+                                   )
+
+      ;; gs regs
+      (dma-buffer-add-uint64 ,buf
+          ,@(apply2 (lambda (x) x) (lambda (x) `(gs-reg64 ,x)) reg-datas reg-names)
+          )
+      )
+    )
+  )
+
+(defmacro with-dma-bucket (bindings &rest body)
+  "Start a new dma-bucket in body that will be finished at the end.
+   The bindings are the dma-buffer, dma-bucket and bucket-id respectively."
+
+  (let ((buf (first bindings))
+        (bucket (second bindings))
+        (bucket-id (third bindings))
+        )
+
+      (with-gensyms (buf-start bucket-edge pkt)
+        `(let ((,buf-start (-> ,buf base)))
+
+            ,@body
+
+            ;; we end the chain with a next.  The bucket system will patch the next chain to this,
+            ;; and then patch all the buckets togehter before sending the DMA.
+            (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
+                (let ((,pkt (the-as dma-packet (-> ,buf base))))
+
+                  (set! (-> ,pkt dma) (new 'static 'dma-tag :id (dma-tag-id next)))
+                  (set! (-> ,pkt vif0) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+                  (set! (-> ,pkt vif1) (new 'static 'vif-tag :cmd (vif-cmd nop)))
+
+                  (set! (-> ,buf base) (&+ (the-as pointer ,pkt) (size-of dma-packet)))
+
+                  )
+                (dma-bucket-insert-tag ,bucket ,bucket-id
+                      ,buf-start ;; the first thing in this chain, bucket will patch previous to this
+                      ,bucket-edge ;; end of this chain (ptr to next tag)
+                      )
+                )
+            )
+        )
+
+      )
+  )
+
+(defmacro with-dma-buffer-add-bucket (bindings &key (bucket-group (-> (current-frame) bucket-group)) &rest body)
+  "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
+   usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body)
+   example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf)) ...)"
+
+  `(let ((,(caar bindings) ,(cadar bindings)))
+    (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings))
+      ,@body
+      )
+    )
+  )
+
+(defmacro def-mips2c (name type)
+  "Define a mips2c object (typically a function)."
+  `(begin
+     (define-extern ,name ,type)
+     (set! ,name (the-as ,type (__pc-get-mips2c ,(symbol->string name))))
+     )
+  )
+
+(defmacro copy-and-set-field (original field-name field-value)
+  `(let ((temp-copy ,original))
+     (set! (-> temp-copy ,field-name) ,field-value)
+     temp-copy
+     )
+  )
+
+(defmacro res-lump-data (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  "Helper macro to get data from a res-lump without interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-data-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  "Helper macro to get start of data from a res-lump."
+  `(the-as ,type ((method-of-type res-lump get-property-data)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as pointer #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time -1000000000.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-struct-exact (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (time 0.0))
+  `(the-as ,type ((method-of-type res-lump get-property-struct)
+                  ,lump
+                  ,name
+                  'exact
+                  ,time
+                  (the-as structure #f)
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-value (lump name type &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default (the-as uint128 0)) &key (time -1000000000.0))
+  "Helper macro to get a value from a res-lump with no interpolation."
+  `(the-as ,type ((method-of-type res-lump get-property-value)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+           )
+  )
+
+(defmacro res-lump-float (lump name &key (tag-ptr (the-as (pointer res-tag) #f)) &key (default 0.0) &key (time -1000000000.0))
+  "Helper macro to get a float from a res-lump with no interpolation."
+  `((method-of-type res-lump get-property-value-float)
+                  ,lump
+                  ,name
+                  'interp
+                  ,time
+                  ,default
+                  ,tag-ptr
+                  *res-static-buf*
+                  )
+  )
+
+;; cause the current process to change state
+(defmacro go (next-state &rest args)
+  `(with-pp
+     (go-hook pp ,next-state ,@args)
+     )
+  )
+
+(defmacro go-virtual (state-name &key (proc self) &rest args)
+  "Change the current process to the virtual state of the given process."
+  `(go (method-of-object ,proc ,state-name) ,@args)
+  )
+
+;; run the given function in a process right now.
+;; will return to here when:
+;;  - you return
+;;  - you deactivate
+;;  - you go
+;;  - you throw to 'initialize
+(defmacro run-now-in-process (proc func &rest args)
+  `((the (function _varargs_ object) run-function-in-process)
+    ,proc ,func ,@args
+    )
+  )
+
+;; sets the main thread of the given process to run the given thing.
+;; this resets the main thread stack back to the top
+(defmacro run-next-time-in-process (proc func &rest args)
+  `((the (function _varargs_ object) set-to-run)
+    (-> ,proc main-thread) ,func ,@args
+    )
+  )
+
+(defmacro send-event (proc msg &key (from (with-pp pp)) &rest params)
+  "Send an event to a process. This should be used over send-event-function"
+
+  `(let ((event-data (new 'stack-no-clear 'event-message-block)))
+        (set! (-> event-data from) (process->ppointer ,from))
+        (set! (-> event-data num-params) ,(length params))
+        (set! (-> event-data message) ,msg)
+        ,@(apply-i (lambda (x i) `(set! (-> event-data param ,i) (the-as uint ,x))) params)
+        (send-event-function ,proc event-data)
+        )
+  )
+
+(defmacro setting-control-func! (func s &rest args)
+  (let ((argb #f)
+        (argi 0)
+        (argf 0.0)
+        (setting (cadr s)))
+    (cond
+      (#t
+        (set! argb (car args))
+        (set! argf (cadr args))
+        (set! argi (caddr args))
+        )
+      )
+    `(,func *setting-control* (with-pp pp) ,s ,argb ,argf ,argi)
+    )
+  )
+
+(defmacro add-setting! (s &rest args)
+  `(setting-control-func! add-setting ,s ,@args)
+  )
+(defmacro set-setting! (s &rest args)
+  `(setting-control-func! set-setting ,s ,@args)
+  )
+(defmacro remove-setting! (s)
+  `(remove-setting *setting-control* (with-pp pp) ,s)
+  )
+
+(defmacro static-sound-name (str)
+  "Convert a string constant to a static sound-name."
+
+  ;; all this is done at compile-time so we can come up with 2
+  ;; 64-bit constants to use
+  (when (> (string-length str) 16)
+    (error "static-sound-name got a string that is too long")
+    )
+  (let ((lo-val 0)
+        (hi-val 0)
+        )
+    (dotimes (i (string-length str))
+      (if (>= i 8)
+          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
+          (+! lo-val (ash (string-ref str i) (* 8 i)))
+          )
+      )
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
+    )
+  )
+
+;; TODO change macro back once sound-group is figured out for jak 3
+(defmacro sound-play (name &key (id (new-sound-id))
+                           &key (vol 100.0) &key (pitch 0) &key (bend 0)
+                           &key (group sfx)
+                           &key (position #t))
+  `(sound-play-by-name (static-sound-name ,name) ,id (the int (* (/ 1024.0 100.0) ,vol)) (the int (* 1524.0 ,pitch)) ,bend (sound-group) ,position))
+
+(defmacro sound-vol (vol)
+  "convert to sound volume units"
+  (if (number? vol)
+      (* 1 (/ (* vol 1024) 100))
+      `(the int (/ (* ,vol 1024) 100))
+      )
+  )
+
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
+                                  &key (volume #f)
+                                  &key (pitch-mod 0)
+                                  &key (fo-min 0) &key (fo-max 0)
+                                  &key (fo-curve 0)
+                                  &key (mask ()))
+  (let ((snd-mask mask)
+        (snd-volume 100.0))
+    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
+    (when (nonzero? fo-curve) (cons! snd-mask 'fo-curve))
+    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
+    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
+    `(new 'static 'sound-spec
+          :sound-name (static-sound-name ,name)
+          :num ,num
+          :group ,group
+          :volume (sound-vol ,snd-volume)
+          :pitch-mod ,pitch-mod
+          :fo-min ,fo-min
+          :fo-max ,fo-max
+          :fo-curve ,fo-curve
+          :mask (sound-mask ,@snd-mask)
+          ))
+  )
+
+(defmacro time-elapsed? (time duration)
+  `(>= (- (current-time) ,time) ,duration)
+  )
+
+(defmacro set-time! (time)
+  `(set! ,time (current-time))
+  )
+
+(defconstant *scratch-memory-top* (the pointer #x70004000))
+(defconstant DPROCESS_STACK_SIZE #x8000)
+
+(defconstant *kernel-dram-stack* (&+ *dram-stack* DPROCESS_STACK_SIZE))
+
+(defmacro process-spawn-function (proc-type func &key (from *default-dead-pool*) &key (to *default-pool*) &key (name #f) &key (stack-size #x4000) &key (stack *scratch-memory-top*) &rest args)
+  "Start a new process that runs a function on its main thread.
+   Returns a pointer to the new process (or #f? on error)."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size 1))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string (-> ,proc-type symbol))) ,stack)
+          (run-next-time-in-process ,new-proc ,func ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro process-spawn (proc-type &key (init #f)
+                                   &key (from *default-dead-pool*)
+                                   &key (to *default-pool*)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 1)
+                                   &rest args)
+  "Start a new process and run an init function on it.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+
+  (with-gensyms (new-proc)
+    `(let ((,new-proc (the-as ,proc-type (get-process ,from ,proc-type ,stack-size ,unk))))
+        (when ,new-proc
+          ((method-of-type ,proc-type activate) ,new-proc ,to ,(if name name `(symbol->string ,proc-type)) ,stack)
+          (run-now-in-process ,new-proc ,(if init init (string->symbol (fmt #f "{}-init-by-other" proc-type))) ,@args)
+          (the (pointer ,proc-type) (-> ,new-proc ppointer))
+          )
+        )
+    )
+  )
+
+;; look up the index of an art element in an art group.
+(desfun art-elt-index (ag-name elt-name)
+  (if (number? elt-name)
+      elt-name
+      (let ((ag-info (hash-table-try-ref *art-info* (symbol->string ag-name))))
+        (if (not (car ag-info))
+            (error (symbol->string ag-name))
+            (let ((elt-info (hash-table-try-ref (cdr ag-info) (symbol->string elt-name))))
+              (if (not (car elt-info))
+                  (error (symbol->string ag-name))
+                  (cadr (cdr elt-info)))
+              )
+            )
+        )
+      )
+  )
+
+(defmacro joint-node-index (jg-name name)
+  (let ((jg-info (hash-table-try-ref *jg-info* (symbol->string jg-name))))
+      (if (not (car jg-info))
+          -1
+          (let ((joint-node (hash-table-try-ref (cdr jg-info) (if (integer? name) (int->string name) (symbol->string name)))))
+              (if (not (car joint-node))
+                  -1
+                  (cadr (cdr joint-node)))
+              )
+          )
+      )
+  )
+
+(defmacro joint-node (jg name)
+  `(-> self node-list data (joint-node-index ,jg ,name))
+  )
+
+(defmacro static-spherem (x y z r)
+  "creates a static vector using meters where the w component is used as sphere radius. for a 'real' sphere use static-bspherem."
+  `(new 'static 'vector :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+(defmacro static-bspherem (x y z r)
+  `(new 'static 'sphere :x (meters ,x) :y (meters ,y) :z (meters ,z) :w (meters ,r))
+  )
+
+(defmacro static-cloth-params (ag-name args)
+ `(let ((parms (new 'static 'cloth-params)))
+    ,@(apply (lambda (x) (if (and (eq? (car x) 'mesh) (not (integer? (cadr x))))
+                           `(set! (-> parms ,(car x)) ,(art-elt-index ag-name (cadr x)))
+                           `(set! (-> parms ,(car x)) ,(cadr x))
+                           )) args)
+    parms
+    )
+  )
+
+(defglobalconstant ART_GROUP_FILE_VERSION 8)
+
+(defmacro defskelgroup (name ag-name joint-geom joint-anim lods
+                        &key (shadow 0)
+                        &key bounds
+                        &key (longest-edge 0.0)
+                        &key (texture-level 0)
+                        &key (sort 0)
+                        &key (version ART_GROUP_FILE_VERSION) ;; do NOT use this!
+                        &key (origin-joint-index 0)
+                        &key (shadow-joint-index 0)
+                        &key (light-index 0)
+                        &key (global-effects 0)
+                        &key (clothing ())
+                        )
+  "Define a new static skeleton-group."
+  `(let ((skel (new 'static 'skeleton-group
+                        :name ,(symbol->string name)
+                        :extra #f
+                        :info #f
+                        :art-group-name ,(symbol->string ag-name)
+                        :bounds ,bounds
+                        :longest-edge ,longest-edge
+                        :texture-level ,texture-level
+                        :version ,version
+                        :shadow ,(art-elt-index (string->symbol-format "{}-ag" ag-name) shadow)
+                        :shadow-joint-index ,shadow-joint-index
+                        :origin-joint-index ,origin-joint-index
+                        :max-lod ,(- (length lods) 1)
+                        :sort ,sort
+                        :light-index ,light-index
+                        :global-effects ,global-effects
+                        :clothing #f
+                        )))
+
+        ;; set cloth params array if present
+        (when ,(neq? clothing '())
+          (set! (-> skel clothing) (new 'static 'boxed-array :type cloth-params :length 0 :allocated-length ,(length clothing)))
+          ,@(apply-i (lambda (x i)
+            `(set! (-> skel clothing ,i) (static-cloth-params ,(string->symbol-format "{}-ag" ag-name) ,x))) clothing)
+          (set! (-> skel clothing length) ,(length clothing))
+          )
+
+        ;; set joint geometry and joint bones
+        (set! (-> skel jgeo) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-geom))
+        (set! (-> skel janim) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) joint-anim))
+
+        ;; set lods
+        ,@(apply-i (lambda (x i)
+                      `(begin
+                          (set! (-> skel mgeo ,i) ,(art-elt-index (string->symbol-format "{}-ag" ag-name) (car x)))
+                          (set! (-> skel lod-dist ,i) ,(cadr x))
+                          )
+                      ) lods)
+
+        ;; define skel group
+        (define ,name skel)
+        ;; add to level
+        (add-to-loading-level ,name)
+        )
+  )
+
+(defmacro get-art-by-name (this name type)
+  "Helper macro for casting the result of get-art-by-name-method. Generated by decompiler."
+  `(the-as ,type (get-art-by-name-method ,this ,name ,type))
+  )
+
+(defmacro vftoi15.xyzw (dst src)
+  "convert to 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 32768.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro ja-group (&key (chan 0))
+  "get the frame group for self. default channel is 0, the base channel. returns #f if no frame group."
+  `(if (> (-> self skel active-channels) ,chan)
+       (-> self skel root-channel ,chan frame-group))
+  )
+
+(defmacro ja-group? (group &key (chan 0))
+  "is self in this frame group on this channel? default is channel 0, which is the base channel."
+  `(= (ja-group) ,group)
+  )
+
+(defmacro focus-test? (pfoc &rest status)
+  `(logtest? (-> (the process-focusable ,pfoc) focus-status) (focus-status ,@status)))
+
+(defmacro ja (&key (chan 0)
+              &key (group! #f)
+              &key (num! #f)
+              &key (param0 #f)
+              &key (param1 #f)
+              &key (param2 #f)
+              &key (num-func #f)
+              &key (frame-num #f)
+              &key (frame-interp0 #f)
+              &key (frame-interp1 #f)
+              &key (dist #f)
+              &key (eval? #t)
+              )
+  "set various joint anim parameters for self and eval them.
+   you can use this for playing animations!
+   chan         = the channel to modify. defaults to 0 (base channel). this is usually what you want.
+   group!       = when not #f, set this as the new frame-group. defaults to #f
+   num!         = set the frame playback function. this is what determines what frame an animation is at. funcs below.
+                  #f = no func will be set, and there wont be a frame eval.
+   num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
+   param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param2       = 3rd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   frame-num    = set the frame-num field.
+   frame-interp0 = set the first value of the frame-interp array.
+   frame-interp1 = set the second value of the frame-interp array.
+   dist         = set the dist field.
+   available num! functions:
+   - (+!)       = advance anim.
+   - (-!)       = reverse anim.
+   - (identity num) = play 'num' frame.
+   - (seek! target speed) = animate towards frame target at a speed.
+                            speed is optional and defaults to 1.0 when not provided.
+                            target is optional and defaults to the last frame of the animation.
+                            if you want to set the speed, you therefore must also set the target.
+                            target can be max (no quote), which is just the same as the default value.
+   - (loop! speed)  = loop animation at a speed. default speed is 1.0 when not provided.
+   - (chan channel) = copy frame from another channel.
+   - min = the start of the animation.
+   - max = the end of the animation.
+   - zero = frame zero.
+   "
+
+  (let* ((num-args (if (pair? num!) (cdr num!) '()))
+        (num! (if (pair? num!) (car num!) num!))
+        (nf (cond
+              ((or (eq? num! 'identity)
+                   (eq? num! 'min)
+                   (eq? num! 'max)
+                   (eq? num! 'zero))
+                   'num-func-identity)
+              ((eq? num! 'none) 'num-func-none)
+              ((eq? num! '+!) 'num-func-+!)
+              ((eq? num! '-!) 'num-func--!)
+              ((eq? num! 'seek!) 'num-func-seek!)
+              ((eq? num! 'loop!) 'num-func-loop!)
+              ((eq? num! 'blend-in!) 'num-func-blend-in!)
+              ((eq? num! 'chan) 'num-func-chan)
+              ))
+        (p0 (if param0 param0
+                (cond
+                  ((eq? num! 'chan) `(the float ,(car num-args)))
+                  ((eq? num! '+!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! '-!)    (if (null? num-args) 1.0 (car num-args)))
+                  ((eq? num! 'loop!) (if (null? num-args) 1.0 (if (eq? 'max (car num-args))
+                                                                  (if group!
+                                                                      `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                                                      `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                                                      )
+                                                                  (car num-args))))
+                  ((eq? num! 'seek!) (if (or (null? num-args) (eq? (car num-args) 'max))
+                                         (if group!
+                                             `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                             `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                             )
+                                         (car num-args)))
+                  )))
+        (p1 (if param1 param1
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
+        (p2 (if param2 param2
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
+        (frame-num (cond
+                      ((eq? 'max frame-num) (if group!
+                                                `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
+                                                `(the float (1- (-> ja-ch frame-group frames num-frames)))
+                                                ))
+                      ((eq? 'zero frame-num) 0)
+                      (#t frame-num)))
+        (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
+      )
+  `(let ((ja-ch (-> self skel root-channel ,chan)))
+      ,(if frame-interp0 `(set! (-> ja-ch frame-interp 0) ,frame-interp0) `(none))
+      ,(if frame-interp1 `(set! (-> ja-ch frame-interp 1) ,frame-interp1) `(none))
+      ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
+      ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
+      ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
+      ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if p2 `(set! (-> ja-ch param 2) ,p2) `(none))
+      ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
+      ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
+      ,(if nf
+          `(,(if eval? 'joint-control-channel-group-eval! 'joint-control-channel-group!)
+              ja-ch (the art-joint-anim ,group!) ,nf)
+          `(none))
+      ,(cond
+        ((eq? num! 'min) `(set! (-> ja-ch frame-num) 0.0))
+        ((eq? num! 'max) (if group!
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) frames num-frames))))
+                             `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group frames num-frames))))
+                             ))
+        ((and (eq? num! 'identity) (not (null? num-args))) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        (#t `(none))
+        )
+      ))
+  )
+
+(defmacro ja-no-eval (&key (chan 0)
+                      &key (group! #f)
+                      &key (num! #f)
+                      &key (param0 #f)
+                      &key (param1 #f)
+                      &key (param2 #f)
+                      &key (num-func #f)
+                      &key (frame-num #f)
+                      &key (frame-interp0 #f)
+                      &key (frame-interp1 #f)
+                      &key (dist #f)
+                      )
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :param2 ,param2 :num-func ,num-func :frame-num ,frame-num :frame-interp0 ,frame-interp0 :frame-interp1 ,frame-interp1 :dist ,dist)
+  )
+
+(defmacro script-eval (script &key (key (process->ppointer PP)) &key (proc PP) &key (vector (the-as vector #f)))
+  `(eval! (new 'stack 'script-context ,key ,proc ,vector) ,script))
+
+(defmacro sp-item (launcher
+                    &key (fade-after 0.0)
+                    &key (falloff-to 0.0)
+                    &key (flags ())
+                    &key (period 0)
+                    &key (length 0)
+                    &key (offset 0)
+                    &key (hour-mask 0)
+                    &key (binding 0)
+                    )
+  `(new 'static 'sparticle-group-item
+        :launcher ,launcher
+        :fade-after ,fade-after
+        :falloff-to ,falloff-to
+        :flags (sp-group-item-flag ,@flags)
+        :period ,period
+        :length ,length
+        :offset ,offset
+        :hour-mask ,hour-mask
+        :binding ,binding
+        )
+  )
+
+(defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds
+                             &key (rotate (0.0 0.0 0.0)) &key (scale (1.0 1.0 1.0)))
+  "define a new part group. defines a constant with the name of the group with the ID as its value"
+  `(begin
+    (defconstant ,name ,id)
+    (set! (-> *part-group-id-table* ,id)
+      (new 'static 'sparticle-launch-group
+          :duration ,duration
+          :linger-duration ,linger-duration
+          :flags (sp-group-flag ,@flags)
+          :bounds ,bounds
+          :name ,(symbol->string name)
+          :length ,(length parts)
+          :launcher (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)
+          :rotate-x ,(car rotate)
+          :rotate-y ,(cadr rotate)
+          :rotate-z ,(caddr rotate)
+          :scale-x ,(car scale)
+          :scale-y ,(cadr scale)
+          :scale-z ,(caddr scale)
+          )
+      )
+    )
+  )
+
+(desfun param-float? (p)
+         (or (float? p) (and (pair? p) (eq? 'meters (car p))) (and (pair? p) (eq? 'degrees (car p))))
+         )
+
+(desfun param-int? (p)
+         (or (integer? p) (and (pair? p) (eq? 'seconds (car p))))
+         )
+
+(desfun param-symbol? (p)
+         (and (pair? p) (eq? 'quote (car p)))
+         )
+
+(seval (begin
+(define *sparticle-fields* (make-string-hash-table))
+(doenum (name val 'sp-field-id)
+  (hash-table-set!
+    *sparticle-fields*
+    (if (string-starts-with? (symbol->string name) "spt-")
+        (string->symbol (string-substr (symbol->string name) 4 0))
+        name)
+    (list
+      val name (member name '(spt-vel-x
+                              spt-vel-y
+                              spt-vel-z
+                              spt-scalevel-x
+                              spt-scalevel-y
+                              spt-rotvel-x
+                              spt-rotvel-y
+                              spt-rotvel-z
+                              spt-fade-r
+                              spt-fade-g
+                              spt-fade-b
+                              spt-fade-a
+                              spt-accel-x
+                              spt-accel-y
+                              spt-accel-z))
+      )
+    )
+  )
+;; you cannot define these fields ever.
+(define *sparticle-fields-banned* '(misc-fields-start
+                                    misc-fields-end
+                                    sprite-fields-start
+                                    sprite-fields-end
+                                    cpu-fields-start
+                                    cpu-fields-end
+                                    launch-fields-start
+                                    launch-fields-end
+                                    end
+                                    ))
+))
+
+;; the last field ID defined, to make sure that fields are defined in order.
+(seval (define *last-field-id* -1))
+
+(desfun process-init-spec (x)
+  (let* ((head (symbol->string (car x)))
+                          (params (cdr x))
+                          (field-name (string->symbol (string-substr head 1 0)))
+                          (field-lookup (hash-table-try-ref *sparticle-fields* field-name))
+                          (field (cdr field-lookup))
+                          (store? (member ':store params))
+                          (param-count (if store? (1- (length params)) (length params)))
+                          )
+                      (when (not (car field-lookup))
+                        (fmt #t "unknown sparticle field {}\n" x))
+                      (when (neq? (string-ref head 0) #\:)
+                        (fmt #t "invalid sparticle field {}\n" x))
+                      ; (when (member field-name *sparticle-fields-banned*)
+                      ;   (fmt #t "you cannot use sparticle field {}\n" field-name))
+                    (let ((field-id (car field))
+                          (field-enum-name (cadr field))
+                          (vel? (and #f (caddr field)))
+                          (param0 (and (>= param-count 1) (first params)))
+                          (param1 (and (>= param-count 2) (second params)))
+                          (param2 (and (>= param-count 3) (third params))))
+                      (when (>= *last-field-id* field-id)
+                        (fmt #t "field {} must come after field {}, not before\n" field-name (car (nth *last-field-id* *sparticle-fields*)))
+                        )
+                      (set! *last-field-id* field-id)
+                      (cond
+                        ((eq? field-name 'flags)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@param0) :random-mult 1)
+                          )
+                        ((eq? field-name 'texture)
+                          (if (eq? (car param0) 'new)
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,(string->symbol-format "{}-{}" (car param0) (cadr param0)) :flags (sp-flag int))
+                            )
+                          )
+                        ((eq? field-name 'next-launcher)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,param0 :flags (sp-flag launcher))
+                          )
+                        ((eq? field-name 'sound)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :sound ,param0 :flags (sp-flag object))
+                          )
+                        ((and (= 2 param-count) (symbol? param0) (eq? param0 ':copy))
+                          (let* ((other-field-lookup (hash-table-try-ref *sparticle-fields* (cadr (member ':copy params))))
+                                 (other-field (cdr other-field-lookup))
+                                 (other-field-id (car other-field)))
+                            (when (>= other-field-id field-id)
+                             (fmt #t "warning copying to sparticle field {} from {} - you can only copy from fields before this one!\n" field-name (cadr other-field))                             )
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag copy-from-other)
+                                                              :initial-value ,(- other-field-id field-id) :random-mult 1)
+                            )
+                          )
+                        ((and (= 2 param-count) (symbol? param0) (eq? param0 ':data))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag object)
+                                                            :object ,(cadr (member ':data params)))
+                          )
+                        ((and (= 1 param-count) (param-symbol? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag symbol)
+                                                            :sym ,param0)
+                          )
+                        ((and (= 1 param-count) (param-float? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef 0.0
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 2 param-count) (param-float? param0) (param-float? param1))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef ,(if vel? `(/ ,param1 60.0) param1)
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 3 param-count) (param-float? param0) (param-float? param1) (param-float? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef ,param1
+                                                            :random-multf ,(if vel? `(/ ,param2 60.0) param2))
+                          )
+                        ((and (= 3 param-count) (param-float? param0) (param-int? param1) (param-float? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float-int-rand)
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-range ,param1
+                                                            :random-multf ,(if vel? `(/ ,param2 60.0) param2))
+                          )
+                        ((and (= 1 param-count) (param-int? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range 0
+                                                            :random-mult 1)
+                          )
+                        ((and (= 2 param-count) (param-int? param0) (param-int? param1))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range ,param1
+                                                            :random-mult 1)
+                          )
+                        ((and (= 3 param-count) (param-int? param0) (param-int? param1) (param-int? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range ,param1
+                                                            :random-mult ,param2)
+                          )
+                        (#t
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                          )
+                        )
+                      )
+                    )
+  )
+
+(defmacro defpart (id &key (init-specs ()))
+  "define a new sparticle-launcher"
+  (begin
+    (set! *last-field-id* -1)
+    `(set! (-> *part-id-table* ,id)
+        (new 'static 'sparticle-launcher
+            :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                    ,@(apply process-init-spec init-specs)
+                    (new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                    )))
+    )
+  )
+
+(defmacro static-attack-info (&key (mask ()) args)
+  (let ((mask-actual mask))
+    (dolist (it args)
+      (when (not (member (caar it) mask-actual))
+        (cons! mask-actual (caar it))
+        )
+      )
+    `(let ((atk (new 'static 'attack-info :mask (attack-mask ,@mask-actual))))
+        ,@(apply (lambda (x) (if (or (eq? (car x) 'vector)
+                                     (eq? (car x) 'intersection)
+                                     (eq? (car x) 'attacker-velocity))
+                                 `(vector-copy! (-> atk ,(car x)) ,(cadr x))
+                                 `(set! (-> atk ,(car x)) ,(cadr x))
+                                )) args)
+        atk)
+    )
+  )
+
+(defmacro new-attack-id ()
+  "generate a new attack-id"
+  `(1+! (-> *game-info* attack-id))
+  )
+
+;; inserted by the decompiler if a c->goal bool conversion can't be compacted into a single
+;; expression.
+(defmacro cmove-#f-zero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest #f)
+       (set! ,dest ,src)
+       )
+   )
+
+(defmacro cmove-#f-nonzero (dest condition src)
+  `(if (zero? ,condition)
+       (set! ,dest ,src)
+       (set! ,dest #f)
+       )
+   )
+
+(defmacro launch-particles (&key (system *sp-particle-system-2d*)
+                                 particle
+                                 origin
+                                 &key (launch-state (the-as sparticle-launch-state #f))
+                                 &key (launch-control (the-as sparticle-launch-control #f))
+                                 &key (rate 1.0)
+                                 &key (origin-is-matrix #f))
+  (if origin-is-matrix
+      `(sp-launch-particles-var
+         ,system
+         ,particle
+         (the matrix ,origin)
+         ,launch-state
+         ,launch-control
+         ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+      `(begin
+         (vector-copy! (-> *launch-matrix* trans) (the vector ,origin))
+         (sp-launch-particles-var
+            ,system
+            ,particle
+            *launch-matrix*
+            ,launch-state
+            ,launch-control
+            ,rate #|(if (= (get-video-mode) 'custom) (/ (-> *display* time-factor) 5.0) ,rate)|#)
+         )
+      )
+  )
+
+(defmacro current-frame ()
+  `(-> *display* frames (-> *display* on-screen))
+  )
+
+(defmacro vftoi4.xyzw (dst src)
+  "convert to 28.4 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 16.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro defmethod-mips2c (name method-id method-type)
+  "Define a mips2c method."
+  `(method-set! ,method-type ,method-id (__pc-get-mips2c ,name))
+  )
+
+(defconstant GIF_REGS_ALL_AD
+  (new 'static 'gif-tag-regs
+       :regs0 (gif-reg-id a+d)
+       :regs1 (gif-reg-id a+d)
+       :regs2 (gif-reg-id a+d)
+       :regs3 (gif-reg-id a+d)
+       :regs4 (gif-reg-id a+d)
+       :regs5 (gif-reg-id a+d)
+       :regs6 (gif-reg-id a+d)
+       :regs7 (gif-reg-id a+d)
+       :regs8 (gif-reg-id a+d)
+       :regs9 (gif-reg-id a+d)
+       :regs10 (gif-reg-id a+d)
+       :regs11 (gif-reg-id a+d)
+       :regs12 (gif-reg-id a+d)
+       :regs13 (gif-reg-id a+d)
+       :regs14 (gif-reg-id a+d)
+       :regs15 (gif-reg-id a+d)
+       )
+  )
+
+(defmacro .movz (result value check original)
+  `(if (= ,check 0)
+       (set! ,result (the-as int ,value))
+       (set! ,result (the-as int ,original))
+       )
+  )
+
+(defmacro get-texture (name tpage)
+  `(lookup-texture-by-id ,(string->symbol-format "{}-{}" name tpage))
+  )
+
+(defmacro vitof12.xyzw (dst src)
+  "convert from a 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000244140625)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
+
+(defmacro set-part-tracker-params (type group duration callback userdata target mat-joint subsample-num)
+  `(case ,type
+    ((part-tracker)
+     (set! (-> *part-tracker-params-default* group) ,group)
+     (set! (-> *part-tracker-params-default* duration) ,duration)
+     (set! (-> *part-tracker-params-default* callback) ,callback)
+     (set! (-> *part-tracker-params-default* userdata) ,userdata)
+     (set! (-> *part-tracker-params-default* target) ,target)
+     (set! (-> *part-tracker-params-default* mat-joint) ,mat-joint)
+     )
+    (else
+     (set! (-> *part-tracker-subsampler-params-default* group) ,group)
+     (set! (-> *part-tracker-subsampler-params-default* duration) ,duration)
+     (set! (-> *part-tracker-subsampler-params-default* callback) ,callback)
+     (set! (-> *part-tracker-subsampler-params-default* userdata) ,userdata)
+     (set! (-> *part-tracker-subsampler-params-default* target) ,target)
+     (set! (-> *part-tracker-subsampler-params-default* mat-joint) ,mat-joint)
+     (set! (-> *part-tracker-subsampler-params-default* subsample-num) ,subsample-num)
+     )
+    )
+  )
+
+(defmacro part-tracker-spawn (type &key (group #f)
+                                   &key (to #f)
+                                   &key (name #f)
+                                   &key (stack-size #x4000)
+                                   &key (stack *scratch-memory-top*)
+                                   &key (unk 0)
+                                   &key (duration (seconds 0))
+                                   &key (callback #f)
+                                   &key (userdata (the uint #f))
+                                   &key (target #f)
+                                   &key (mat-joint *launch-matrix*)
+                                   &key (subsample-num 1.0))
+  "Specialized `process-spawn` macro for [[part-tracker]]s.
+   Returns a pointer to the new process, or #f (or is it 0?) if something goes wrong."
+  (with-gensyms (new-tracker)
+    `(let ((,new-tracker (the-as ,type (get-process *default-dead-pool* ,type ,stack-size ,unk))))
+        (when ,new-tracker
+          ((method-of-type ,type activate) ,new-tracker ,to ,(if name name `(symbol->string (quote ,type))) ,stack)
+          (set-part-tracker-params ,type ,group ,duration ,callback ,userdata ,target ,mat-joint ,subsample-num)
+          (run-now-in-process ,new-tracker
+            (if (= ,type part-tracker) part-tracker-init part-tracker-subsampler-init)
+            (if (= ,type part-tracker) *part-tracker-params-default* *part-tracker-subsampler-params-default*))
+          (the (pointer ,type) (-> ,new-tracker ppointer))
+          )
+        )
+    )
+  )
+
+(defmacro .sll (result in sa)
+  `(set! ,result (sext32 (the-as int (shl (logand ,in #xffffffff) ,sa))))
+  )
+
+(defmacro vftoi12.xyzw (dst src)
+  "convert to 20.12 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+  `(begin
+    (rlet ((temp :class vf))
+      (set! temp 4096.0)
+      (.mul.x.vf temp ,src temp)
+      (.ftoi.vf ,dst temp)
+      )
+    )
+  )
+
+(defmacro vitof15.xyzw (dst src)
+  "convert from a 17.15 integer. This does the multiply while the number is still
+   a float. This will have issues for very large floats, but it seems like this
+   is how PCSX2 does it as well, so maybe it's right?
+   NOTE: this is the only version of the instruction used in Jak 1, so we
+   don't need to worry about masks."
+
+`(begin
+   (rlet ((temp :class vf))
+         (.itof.vf ,dst ,src)
+         (set! temp 0.000030517578125)
+         (.mul.x.vf ,dst ,dst temp)
+         )
+   )
+)
+
+(import "goal_src/jak3/engine/data/tpages.gc")
+(import "goal_src/jak3/engine/data/textures.gc")

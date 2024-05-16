@@ -21,7 +21,7 @@
 
 #include "goalc/debugger/DebugInfo.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace emitter {
 
@@ -493,6 +493,7 @@ void ObjectGenerator::emit_link_type_pointer(int seg, const TypeSystem* ts) {
         out.push_back(ts->get_type_method_count(rec.first));
         break;
       case GameVersion::Jak2:
+      case GameVersion::Jak3:  // jak3 opengoal uses same format as jak2 for code.
         // the linker/intern_type functions do the +3.
         out.push_back(ts->get_type_method_count(rec.first) / 4);
         break;

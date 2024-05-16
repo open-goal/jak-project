@@ -1647,6 +1647,14 @@
       (if (and (!= *master-mode* 'menu) *stats-collide*)
           (print-collide-stats)
           )
+      (when (and (!= *master-mode* 'menu) *stats-joint*)
+        (format *stdcon* "joint calls: ~D~%" (-> *new-joint-decompressor-stats* num-calls))
+        (format *stdcon* "joint anims: ~D~%" (-> *new-joint-decompressor-stats* num-anims))
+        (format *stdcon* "joint joints: ~D~%" (-> *new-joint-decompressor-stats* num-joints))
+        (format *stdcon* "joint time us: ~D~%" (-> *new-joint-decompressor-stats* total-time))
+
+        (reset! *new-joint-decompressor-stats*)
+        )
       )
     (start-perf-stat-collection)
 
@@ -1762,18 +1770,17 @@
   (tick! (-> arg0 bg-clock))
   (set! (-> arg0 bg-clock frame-counter) (the-as time-frame (mod (-> arg0 bg-clock frame-counter) #x69780)))
   (tick! (-> arg0 part-clock))
-  ;; og:preserve-this screenshot stuff
-  ; (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))
-  ;   (let ((v1-43 (-> *screen-shot-work* size)))
-  ;     (if (!= (-> *screen-shot-work* count) (* v1-43 v1-43))
-  ;         (store-image *screen-shot-work*)
-  ;         )
-  ;     )
-  ;   (+! (-> *screen-shot-work* count) -1)
-  ;   (if (= (-> *screen-shot-work* count) -1)
-  ;       (set! (-> *screen-shot-work* size) -1)
-  ;       )
-  ;   )
+  (when (and (nonzero? *screen-shot-work*) (!= (-> *screen-shot-work* count) -1))
+    (let ((v1-43 (-> *screen-shot-work* size)))
+      (if (!= (-> *screen-shot-work* count) (* v1-43 v1-43))
+          (store-image *screen-shot-work*)
+          )
+      )
+    (+! (-> *screen-shot-work* count) -1)
+    (if (= (-> *screen-shot-work* count) -1)
+        (set! (-> *screen-shot-work* size) -1)
+        )
+    )
 
   (let ((s5-1 (-> arg0 frames arg1)))
     (if *sync-dma*
@@ -2030,12 +2037,12 @@
 
         ;; screenshot/pause stuff.
         (determine-pause-mode)
-        ; (when (and (nonzero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (!= (-> *screen-shot-work* size) -1))
-        ;   (let ((v1-77 (-> *screen-shot-work* size)))
-        ;     (set! (-> *screen-shot-work* count) (* v1-77 v1-77))
-        ;     )
-        ;   (set-master-mode 'pause)
-        ;   )
+        (when (and (nonzero? *screen-shot-work*) (= (-> *screen-shot-work* count) -1) (!= (-> *screen-shot-work* size) -1))
+          (let ((v1-77 (-> *screen-shot-work* size)))
+            (set! (-> *screen-shot-work* count) (* v1-77 v1-77))
+            )
+          (set-master-mode 'pause)
+          )
 
         ;; prepare engine for the next frame
         (display-frame-start arg0 frame-to-render next-dog)

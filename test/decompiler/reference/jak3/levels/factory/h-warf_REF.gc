@@ -1,0 +1,1925 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *h-warf-center-of-level*, type vector
+(define *h-warf-center-of-level* (new 'static 'vector :x 1228800.0 :z 1024000.0 :w 1.0))
+
+;; failed to figure out what this is:
+(defskelgroup skel-h-warf hellcat hellcat-lod0-jg hellcat-idle-ja
+              ((hellcat-lod0-mg (meters 20)) (hellcat-lod1-mg (meters 40)) (hellcat-lod2-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 6.8)
+              :shadow hellcat-shadow-mg
+              :origin-joint-index 3
+              )
+
+;; definition for symbol *h-warf-constants*, type rigid-body-vehicle-constants
+(define *h-warf-constants*
+  (new 'static 'rigid-body-vehicle-constants
+    :info (new 'static 'rigid-body-info
+      :mass 10.0
+      :inv-mass 0.1
+      :linear-damping 1.0
+      :angular-damping 1.0
+      :bounce-factor 0.4
+      :friction-factor 0.05
+      :bounce-mult-factor 1.22
+      :cm-offset-joint (new 'static 'vector :y 2048.0 :z -2048.0 :w 1.0)
+      :inertial-tensor-box (new 'static 'array meters 3 (meters 6) (meters 6) (meters 6))
+      )
+    :extra (new 'static 'rigid-body-object-extra-info
+      :max-time-step 0.033333335
+      :gravity (meters 20)
+      :idle-distance (meters 50)
+      :attack-force-scale 1.0
+      )
+    :name '*h-warf-constants*
+    :flags #x40408
+    :object-type (traffic-type vehicle-task)
+    :guard-type #xb
+    :vehicle-type (vehicle-type-u8 vt27)
+    :transmission (new 'static 'vehicle-transmission-info :gear-count 1)
+    :handling (new 'static 'vehicle-handling-info
+      :max-engine-thrust (meters 30)
+      :inv-max-engine-thrust 0.000008138021
+      :engine-response-rate 60.0
+      :engine-intake-factor 1.0
+      :brake-factor 2.25
+      :turbo-boost-factor 1.0
+      :turbo-boost-duration (seconds 1)
+      :max-xz-speed (meters 30)
+      :player-turn-anim-min -1.0
+      :player-turn-anim-max 1.0
+      :pilot-x-accel-factor 1.0
+      :pilot-y-accel-factor 1.0
+      :pilot-z-accel-factor 1.0
+      :ground-probe-distance (meters 4.5)
+      :cos-ground-effect-angle 0.42261827
+      :spring-lift-factor 0.3
+      :air-drag-factor 1.0
+      :steering-thruster-factor 30.0
+      :steering-thruster-max-gain 2.0
+      :steering-thruster-half-gain-speed (meters 300)
+      :tire-steering-speed-factor 61440.0
+      :tire-friction-factor 0.5
+      :tire-static-friction 0.55
+      :tire-dynamic-friction 0.4
+      :tire-dynamic-friction-speed (meters 2)
+      :tire-inv-max-friction-speed 0.000034877234
+      :airfoil-factor 1.0
+      :drag-force-factor 1.0
+      :speed-scrubbing-drag 10.0
+      :speed-limiting-drag 0.5
+      :pitch-control-factor 0.5
+      :roll-control-factor 1.0
+      :jump-thrust-factor 0.5
+      :buoyancy-factor 1.0
+      :water-drag-factor 1.0
+      :player-weight 163840.0
+      :player-shift-x (meters 0.6)
+      :player-shift-z (meters 1)
+      :air-angular-damping 1.0
+      :ground-torque-scale 1.0
+      :ai-steering-factor 1.0
+      :ai-throttle-factor 1.0
+      )
+    :target-speed-offset (meters -2)
+    :turning-accel (meters 12)
+    :camera (new 'static 'vehicle-camera-info
+      :string-min-height (meters 6.5)
+      :string-max-height (meters 6.5)
+      :string-min-length (meters 13.4)
+      :string-max-length (meters 17.5)
+      :min-fov 16384.0
+      :max-fov 18204.445
+      :head-offset 4096.0
+      :foot-offset -4096.0
+      :air-max-angle-offset 5461.3335
+      :max-lookaround-speed 40960.0
+      :look-pos-array (new 'static 'inline-array vector 4
+        (new 'static 'vector :y 11059.2 :z -51200.0 :w 1.0)
+        (new 'static 'vector :x -20480.0 :y 14336.0 :w 1.0)
+        (new 'static 'vector :x 20480.0 :y 14336.0 :w 1.0)
+        (new 'static 'vector :y 14336.0 :z 20480.0 :w 1.0)
+        )
+      )
+    :sound (new 'static 'vehicle-sound-info
+      :engine-pitch-scale 0.25
+      :engine-pitch-mod-amp 0.025
+      :engine-sound-select 8
+      :thrust-sound (static-sound-name "bike-thrust")
+      :scrape-sound (static-sound-name "impact-hard")
+      :glance-sound (static-sound-name "impact-soft")
+      :impact-sound (static-sound-name "impact-hard")
+      :explode-sound (static-sound-name "hellcat-explode")
+      :explode2-sound (static-sound-name "vehicle-explo-b")
+      :extra-sound (static-sound-name "car-by-8")
+      :bank-replace '()
+      :idle-pitch-scale 1.0
+      :idle-crossover-rpm 1000.0
+      :engine-crossover-rpm 4000.0
+      :start-sound (static-sound-name "vehicl-ignition")
+      :susp-speed-threshold 40960.0
+      :tire-roll-sounds (new 'static 'inline-array vehicle-sound-loop-info 4
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      :tire-slide-sounds (new 'static 'inline-array vehicle-sound-loop-info 2
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        (new 'static 'vehicle-sound-loop-info
+          :speed 409600.0
+          :max-speed 409600.0
+          :pitch-scale 1.0
+          :min-pitch -10.0
+          :max-pitch 10.0
+          )
+        )
+      )
+    :particles (new 'static 'vehicle-particle-info
+      :headlight-count 3
+      :taillight-count 2
+      :thruster-flame-width (meters 0.6)
+      :thruster-flame-length (meters 1)
+      :thruster-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 6144.0 :y 4096.0 :z -17612.8 :w 1.0)
+        (new 'static 'vector :x -6144.0 :y 4096.0 :z -17612.8 :w 1.0)
+        )
+      :exhaust-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 6144.0 :y 5529.6 :z -17612.8 :w 1.0)
+        (new 'static 'vector :x -6144.0 :y 5529.6 :z -17612.8 :w 1.0)
+        )
+      :exhaust-local-dir (new 'static 'inline-array vector 2 (new 'static 'vector :z -1.0 :w 1.0) (new 'static 'vector :z -1.0 :w 1.0))
+      :smoke-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2048.0 :y 4096.0 :z -16384.0 :w 1.0)
+        (new 'static 'vector :x -2048.0 :y 4096.0 :z -16384.0 :w 1.0)
+        )
+      :smoke-local-vel (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 2048.0 :w 1.0)
+        (new 'static 'vector :x -2048.0 :w 1.0)
+        )
+      :headlight-local-pos (new 'static 'inline-array vector 3
+        (new 'static 'vector :x 5734.4 :y 1843.2 :z 15769.6 :w 1.0)
+        (new 'static 'vector :x -5734.4 :y 1843.2 :z 15769.6 :w 1.0)
+        (new 'static 'vector :y 6963.2 :z 6922.24 :w 1.0)
+        )
+      :taillight-local-pos (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 10362.88 :y 4710.4 :z -16998.4 :w 1.0)
+        (new 'static 'vector :x -10362.88 :y 4710.4 :z -16998.4 :w 1.0)
+        )
+      )
+    :damage (new 'static 'vehicle-damage-info
+      :inv-toughness-factor 0.005
+      :hit-points 30.0
+      :inv-hit-points 0.033333335
+      :hit-small 102400.0
+      :hit-big 131072.0
+      :hit-deadly 286720.0
+      :impact-damage-factor 1.0
+      :section-count 4
+      :section-array (new 'static 'inline-array vehicle-section-info 4
+        (new 'static 'vehicle-section-info
+          :damage-seg-array (new 'static 'array uint64 3 #x200 #x20 #x2)
+          :damage-seg-count 3
+          )
+        (new 'static 'vehicle-section-info
+          :damage-seg-array (new 'static 'array uint64 3 #x400 #x40 #x4)
+          :damage-seg-count 3
+          )
+        (new 'static 'vehicle-section-info
+          :damage-seg-array (new 'static 'array uint64 3 #x800 #x80 #x8)
+          :damage-seg-count 3
+          )
+        (new 'static 'vehicle-section-info
+          :damage-seg-array (new 'static 'array uint64 3 #x1000 #x100 #x10)
+          :damage-seg-count 3
+          )
+        )
+      )
+    :physics-model (new 'static 'vehicle-physics-model-info
+      :lift-thruster-count 2
+      :roll-thruster-count 2
+      :stabilizer-count 4
+      :inv-lift-thruster-count 0.5
+      :lift-thruster-array (new 'static 'inline-array vehicle-attach-point 4
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :y 2048.0 :z 8192.0 :w 1.0)
+          :rot (new 'static 'vector :y -1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :y 2048.0 :z -12288.0 :w 1.0)
+          :rot (new 'static 'vector :y -1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point)
+        (new 'static 'vehicle-attach-point)
+        )
+      :roll-thruster-array (new 'static 'inline-array vehicle-attach-point 2
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x 6963.2 :y 2867.2 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x 0.3 :y -0.6 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :x -6963.2 :y 2867.2 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x -0.3 :y -0.6 :w 1.0)
+          )
+        )
+      :stabilizer-array (new 'static 'inline-array vehicle-attach-point 6
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+          :rot (new 'static 'vector :x 1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :y 2048.0 :z 6144.0 :w 1.0)
+          :rot (new 'static 'vector :x 1.0 :w 0.5)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :y 2048.0 :z -2048.0 :w 1.0)
+          :rot (new 'static 'vector :x 1.0 :w 2.0)
+          )
+        (new 'static 'vehicle-attach-point
+          :local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+          :rot (new 'static 'vector :y 1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-attach-point)
+        (new 'static 'vehicle-attach-point)
+        )
+      :engine-thrust-local-pos (new 'static 'vector :y 2048.0 :z -7782.4 :w 1.0)
+      :brake-local-pos (new 'static 'vector :y 2048.0 :z -10240.0 :w 1.0)
+      :wheel-count 4
+      :drive-wheel-count 2
+      :front-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :w 1.0)
+        :inertia 1.0
+        :radius 4096.0
+        :scale 1.0
+        :travel 2048.0
+        :width 4096.0
+        :suspension-spring 0.5
+        :suspension-damping 0.5
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.8
+        :probe-radius 409.6
+        :tread-texture "common-white"
+        )
+      :rear-wheel (new 'static 'vehicle-wheel-info
+        :local-pos (new 'static 'vector :w 1.0)
+        :inertia 1.0
+        :radius 4096.0
+        :scale 1.0
+        :travel 2048.0
+        :width 4096.0
+        :suspension-spring 0.5
+        :suspension-damping 0.5
+        :forward-grip 1.0
+        :side-grip 1.0
+        :max-brake-torque 1.0
+        :settle-pos 0.8
+        :probe-radius 409.6
+        :tread-texture "common-white"
+        )
+      )
+    :setup (new 'static 'vehicle-setup-info
+      :settle-height 6144.0
+      :shadow-bot-clip -40960.0
+      :shadow-locus-dist 409600.0
+      :color-option-count 1
+      :color (new 'static 'inline-array vector 1 (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0))
+      :gun-yaw-min -65536.0
+      :gun-yaw-max 65536.0
+      :gun-pitch-min -16384.0
+      :gun-pitch-max 16384.0
+      )
+    :rider (new 'static 'vehicle-rider-info
+      :seat-count 3
+      :rider-stance #x1
+      :grab-rail-count 6
+      :grab-rail-array (new 'static 'inline-array vehicle-grab-rail-info 6
+        (new 'static 'vehicle-grab-rail-info
+          :local-pos (new 'static 'inline-array vector 2
+            (new 'static 'vector :x 3686.4 :y 409.6 :z 24576.0 :w 1.0)
+            (new 'static 'vector :x 3276.8 :y 409.6 :z 25395.2 :w 1.0)
+            )
+          :normal (new 'static 'vector :x 1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-grab-rail-info
+          :local-pos (new 'static 'inline-array vector 2
+            (new 'static 'vector :x -3276.8 :y 409.6 :z 25395.2 :w 1.0)
+            (new 'static 'vector :x -3686.4 :y 409.6 :z 24576.0 :w 1.0)
+            )
+          :normal (new 'static 'vector :x -1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-grab-rail-info
+          :local-pos (new 'static 'inline-array vector 2
+            (new 'static 'vector :x 8601.6 :z -409.6 :w 1.0)
+            (new 'static 'vector :x 8601.6 :y -409.6 :z 2867.2 :w 1.0)
+            )
+          :normal (new 'static 'vector :x 1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-grab-rail-info
+          :local-pos (new 'static 'inline-array vector 2
+            (new 'static 'vector :x -8601.6 :y -409.6 :z 2867.2 :w 1.0)
+            (new 'static 'vector :x -8601.6 :z -409.6 :w 1.0)
+            )
+          :normal (new 'static 'vector :x -1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-grab-rail-info
+          :local-pos (new 'static 'inline-array vector 2
+            (new 'static 'vector :y -409.6 :z -15974.4 :w 1.0)
+            (new 'static 'vector :x 10240.0 :y -409.6 :z -13926.4 :w 1.0)
+            )
+          :normal (new 'static 'vector :z -1.0 :w 1.0)
+          )
+        (new 'static 'vehicle-grab-rail-info
+          :local-pos (new 'static 'inline-array vector 2
+            (new 'static 'vector :x -10240.0 :y -409.6 :z -13926.4 :w 1.0)
+            (new 'static 'vector :y -409.6 :z -15974.4 :w 1.0)
+            )
+          :normal (new 'static 'vector :z -1.0 :w 1.0)
+          )
+        )
+      :seat-array (new 'static 'inline-array vehicle-seat-info 4
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x 5120.0 :y 819.2 :z 2457.6 :w (the-as float #x10000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :x -5120.0 :y 819.2 :z 2457.6 :w (the-as float #x20000))
+          )
+        (new 'static 'vehicle-seat-info
+          :position (new 'static 'vector :y 3686.4 :z -8192.0 :w (the-as float #x40000))
+          )
+        (new 'static 'vehicle-seat-info)
+        )
+      :rider-hand-offset (new 'static 'inline-array vector 2
+        (new 'static 'vector :x 1351.68 :y 2048.0 :w 1.0)
+        (new 'static 'vector :x -1351.68 :y 2048.0 :w 1.0)
+        )
+      :attach-point-array #f
+      )
+    :explosion #f
+    :explosion-part #xdb
+    :debris #f
+    )
+  )
+
+;; definition of type h-warf
+(deftype h-warf (hvehicle)
+  ((minalt                float)
+   (curalt                float)
+   (maxalt                float)
+   (forward               vector      :inline)
+   (langvel               vector      :inline)
+   (rollerr               float)
+   (pitcherr              float)
+   (straighterr           float)
+   (alterr                float)
+   (rolling               symbol)
+   (speed                 float)
+   (poierr                float)
+   (poipos                float)
+   (poivel                float)
+   (bigshotcount          int8)
+   (deathspin             symbol)
+   (deathrot              vector      :inline)
+   (birth                 time-frame)
+   (stop-time             time-frame)
+   (bounce-state?         symbol)
+   (bounce-angle          float)
+   (fire-time             time-frame  4)
+   (l1-fire-time          time-frame)
+   (l1-recharge-time      time-frame)
+   (snd-cmd-time          time-frame)
+   (damage-loop           sound-id)
+   (damage-loop-playing?  symbol)
+   (damage-loop-index     uint8)
+   (engine-sound          sound-id)
+   (engine-boost-sound    sound-id)
+   (wind-noise-sound      sound-id)
+   (wind-noise-playing?   symbol)
+   (track-obj             handle)
+   (track-joint           int8)
+   (wind                  float)
+   )
+  (:methods
+    (h-warf-method-162 (_type_ time-frame) symbol)
+    (h-warf-method-163 (_type_ vector) float)
+    (draw-thrusters (_type_ float vector vector) none)
+    )
+  )
+
+;; definition for method 3 of type h-warf
+(defmethod inspect ((this h-warf))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hvehicle inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tminalt: ~f~%" (-> this minalt))
+  (format #t "~2Tcuralt: ~f~%" (-> this curalt))
+  (format #t "~2Tmaxalt: ~f~%" (-> this maxalt))
+  (format #t "~2Tforward: #<vector @ #x~X>~%" (-> this forward))
+  (format #t "~2Tlangvel: #<vector @ #x~X>~%" (-> this langvel))
+  (format #t "~2Trollerr: ~f~%" (-> this rollerr))
+  (format #t "~2Tpitcherr: ~f~%" (-> this pitcherr))
+  (format #t "~2Tstraighterr: ~f~%" (-> this straighterr))
+  (format #t "~2Talterr: ~f~%" (-> this alterr))
+  (format #t "~2Trolling: ~A~%" (-> this rolling))
+  (format #t "~2Tspeed: ~f~%" (-> this speed))
+  (format #t "~2Tpoierr: ~f~%" (-> this poierr))
+  (format #t "~2Tpoipos: ~f~%" (-> this poipos))
+  (format #t "~2Tpoivel: ~f~%" (-> this poivel))
+  (format #t "~2Tbigshotcount: ~D~%" (-> this bigshotcount))
+  (format #t "~2Tdeathspin: ~A~%" (-> this deathspin))
+  (format #t "~2Tdeathrot: #<vector @ #x~X>~%" (-> this deathrot))
+  (format #t "~2Tbirth: ~D~%" (-> this birth))
+  (format #t "~2Tstop-time: ~D~%" (-> this stop-time))
+  (format #t "~2Tbounce-state?: ~A~%" (-> this bounce-state?))
+  (format #t "~2Tbounce-angle: ~f~%" (-> this bounce-angle))
+  (format #t "~2Tfire-time[4] @ #x~X~%" (-> this fire-time))
+  (format #t "~2Tl1-fire-time: ~D~%" (-> this l1-fire-time))
+  (format #t "~2Tl1-recharge-time: ~D~%" (-> this l1-recharge-time))
+  (format #t "~2Tsnd-cmd-time: ~D~%" (-> this snd-cmd-time))
+  (format #t "~2Tdamage-loop: ~D~%" (-> this damage-loop))
+  (format #t "~2Tdamage-loop-playing?: ~A~%" (-> this damage-loop-playing?))
+  (format #t "~2Tdamage-loop-index: ~D~%" (-> this damage-loop-index))
+  (format #t "~2Tengine-sound: ~D~%" (-> this engine-sound))
+  (format #t "~2Tengine-boost-sound: ~D~%" (-> this engine-boost-sound))
+  (format #t "~2Twind-noise-sound: ~D~%" (-> this wind-noise-sound))
+  (format #t "~2Twind-noise-playing?: ~A~%" (-> this wind-noise-playing?))
+  (format #t "~2Ttrack-obj: ~D~%" (-> this track-obj))
+  (format #t "~2Ttrack-joint: ~D~%" (-> this track-joint))
+  (format #t "~2Twind: ~f~%" (-> this wind))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 7 of type h-warf
+(defmethod relocate ((this h-warf) (offset int))
+  (call-parent-method this offset)
+  )
+
+;; definition for function impact-reduction
+(defun impact-reduction ((arg0 int))
+  (fmax 0.0 (fmin 1.0 (* 0.0026666669 (the float (+ (- -90 arg0) (current-time))))))
+  )
+
+;; definition for function steer-attenuation
+(defun steer-attenuation ((arg0 int))
+  0.0
+  (let ((f0-2 (- 1.0 (fmax 0.0 (fmin 1.0 (* 0.0033333334 (the float (+ (- -90 arg0) (current-time)))))))))
+    (* f0-2 f0-2)
+    )
+  )
+
+;; definition of type warf-asc
+(deftype warf-asc (structure)
+  ((asc  float)
+   (des  float)
+   )
+  )
+
+;; definition for method 3 of type warf-asc
+(defmethod inspect ((this warf-asc))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'warf-asc)
+  (format #t "~1Tasc: ~f~%" (-> this asc))
+  (format #t "~1Tdes: ~f~%" (-> this des))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function ascention-atten!
+(defun ascention-atten! ((arg0 float))
+  (let ((v0-0 (new 'static 'vector)))
+    0.0
+    (cond
+      ((< arg0 1286144.0)
+       (set! (-> v0-0 x) 1.0)
+       (set! (-> v0-0 y) 0.0)
+       )
+      ((< arg0 1331200.0)
+       (let ((f0-6 (- 1.0 (* 0.000022194603 (- 1331200.0 arg0)))))
+         (set! (-> v0-0 x) (+ 1.0 (* 0.0 f0-6)))
+         (set! (-> v0-0 y) (* 0.7 f0-6))
+         )
+       )
+      ((< arg0 1351680.0)
+       (let ((f0-10 (- 1.0 (* 0.000048828126 (- 1351680.0 arg0)))))
+         (set! (-> v0-0 x) (+ 1.0 (* 0.0 f0-10)))
+         (set! (-> v0-0 y) (+ 0.7 (* 0.3 f0-10)))
+         )
+       )
+      ((< arg0 1638400.0)
+       (let ((f0-15 (- 1.0 (* 0.0000034877232 (- 1638400.0 arg0)))))
+         (set! (-> v0-0 x) (+ 1.0 (* -0.5 f0-15)))
+         (set! (-> v0-0 y) (+ 1.0 (* 0.0 f0-15)))
+         )
+       )
+      ((< arg0 1761280.0)
+       (let ((f0-20 (- 1.0 (* 0.000008138021 (- 1761280.0 arg0)))))
+         (set! (-> v0-0 x) (+ 0.5 (* -0.5 f0-20)))
+         (set! (-> v0-0 y) (+ 1.0 (* 0.0 f0-20)))
+         )
+       )
+      (else
+        (set! (-> v0-0 x) 0.0)
+        (set! (-> v0-0 y) 1.0)
+        )
+      )
+    v0-0
+    )
+  )
+
+;; definition for method 34 of type h-warf
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this h-warf))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (set! (-> s5-0 penetrate-using) (penetrate vehicle))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 7) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 8))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 26624.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 1))))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 0)
+      (set-vector! (-> v1-11 local-sphere) 4096.0 1228.8 9011.2 6144.0)
+      )
+    (let ((v1-13 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 4))))
+      (set! (-> v1-13 prim-core action) (collide-action solid))
+      (set! (-> v1-13 transform-index) 0)
+      (set-vector! (-> v1-13 local-sphere) -4096.0 1228.8 9011.2 6144.0)
+      )
+    (let ((v1-15 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-15 prim-core action) (collide-action solid nav-sphere))
+      (set! (-> v1-15 transform-index) 0)
+      (set-vector! (-> v1-15 local-sphere) 0.0 2048.0 -409.6 6144.0)
+      (set! (-> v1-15 nav-radius) 24576.0)
+      )
+    (let ((v1-17 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 10))))
+      (set! (-> v1-17 prim-core action) (collide-action solid))
+      (set! (-> v1-17 transform-index) 0)
+      (set-vector! (-> v1-17 local-sphere) 0.0 4096.0 -10240.0 8192.0)
+      )
+    (let ((v1-19 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 2))))
+      (set! (-> v1-19 prim-core action) (collide-action solid))
+      (set! (-> v1-19 transform-index) 0)
+      (set-vector! (-> v1-19 local-sphere) 10240.0 2048.0 -8192.0 6144.0)
+      )
+    (let ((v1-21 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 8))))
+      (set! (-> v1-21 prim-core action) (collide-action solid))
+      (set! (-> v1-21 transform-index) 0)
+      (set-vector! (-> v1-21 local-sphere) -10240.0 2048.0 -8192.0 6144.0)
+      )
+    (let ((v1-23 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-23 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-23 transform-index) 3)
+      (set-vector! (-> v1-23 local-sphere) 0.0 0.0 0.0 26624.0)
+      )
+    (set! (-> s5-0 nav-radius) 20480.0)
+    (let ((v1-25 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-25 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-25 prim-core collide-with))
+      )
+    (set! (-> s5-0 nav-flags) (nav-flags has-child-spheres))
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 162 of type h-warf
+(defmethod h-warf-method-162 ((this h-warf) (arg0 time-frame))
+  (let ((a3-0 0)
+        (v1-0 -1)
+        )
+    (dotimes (a2-0 4)
+      (when (< a3-0 (- (current-time) (-> this fire-time a2-0)))
+        (set! a3-0 (the-as int (- (current-time) (-> this fire-time a2-0))))
+        (set! v1-0 a2-0)
+        )
+      )
+    (when (and (>= v1-0 0) (time-elapsed? (-> this fire-time v1-0) arg0))
+      (set-time! (-> this fire-time v1-0))
+      (return #t)
+      )
+    )
+  #f
+  )
+
+;; definition for method 91 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod control-hook-player ((this h-warf))
+  (local-vars (sv-1040 vector))
+  (b! (focus-test? *target* dead grabbed) cfg-39 :delay (nop!))
+  (let ((s5-0 (new 'stack-no-clear 'matrix)))
+    (matrix-rotate-y! s5-0 (* 182.04445 (seconds-per-frame) (* 180.0 (-> this controls steering))))
+    (vector-rotate*! (-> this forward) (-> this forward) s5-0)
+    )
+  (call-parent-method this)
+  (when (and (cpad-pressed? 0 r1) (h-warf-method-162 this (seconds 1)))
+    (let ((s3-0 (-> this node-list data 0 bone transform))
+          (s4-0 (new 'stack-no-clear 'vector))
+          (s2-0 (new 'stack-no-clear 'vector))
+          (s5-1 (new 'stack-no-clear 'projectile-init-by-other-params))
+          )
+      (set-vector! s2-0 0.0 7372.8 10649.6 1.0)
+      (vector-matrix*! s4-0 s2-0 s3-0)
+      (sound-play "hellcat-fire")
+      (set! (-> s5-1 ent) (-> this entity))
+      (set! (-> s5-1 charge) 1.0)
+      (set! (-> s5-1 options) (projectile-options po13))
+      (logclear! (-> s5-1 options) (projectile-options po14 po15 po16))
+      (set! (-> s5-1 pos quad) (-> s4-0 quad))
+      (set! (-> s5-1 notify-handle) (the-as handle #f))
+      (set! (-> s5-1 owner-handle) (process->handle *target*))
+      (set! (-> s5-1 target-handle) (the-as handle #f))
+      (set! (-> s5-1 target-pos quad) (the-as uint128 0))
+      (set! (-> s5-1 ignore-handle) (process->handle (send-event this 'get-vehicle)))
+      (let* ((v1-33 *game-info*)
+             (a0-26 (+ (-> v1-33 attack-id) 1))
+             )
+        (set! (-> v1-33 attack-id) a0-26)
+        (set! (-> s5-1 attack-id) a0-26)
+        )
+      (set! (-> s5-1 timeout) (seconds 4))
+      (set-vector! s2-0 0.0 0.0 4096000.0 1.0)
+      (vector-rotate*! (-> s5-1 vel) s2-0 s3-0)
+      (vector+! (-> s5-1 vel) (-> s5-1 vel) (-> this rbody lin-velocity))
+      (let ((s1-1 (new 'stack 'boxed-array collide-shape 128))
+            (s0-1 (new 'stack-no-clear 'vector))
+            )
+        (set! sv-1040 (new 'stack-no-clear 'vector))
+        0
+        (set-vector! s2-0 0.0 0.0 204800.0 1.0)
+        (vector-matrix*! s0-1 s2-0 s3-0)
+        (set-vector! s2-0 0.0 0.0 1658880.0 1.0)
+        (vector-rotate*! sv-1040 s2-0 s3-0)
+        (set! (-> s0-1 w) 32768.0)
+        (set! (-> sv-1040 w) 32768.0)
+        (set! (-> s1-1 length) (fill-actor-list-for-sphere
+                                 *actor-hash*
+                                 s0-1
+                                 sv-1040
+                                 (-> sv-1040 w)
+                                 (the-as (pointer collide-shape) (-> s1-1 data))
+                                 (-> s1-1 allocated-length)
+                                 -1
+                                 )
+              )
+        (let ((a0-41 (find-nearest-focusable
+                       (the-as (array collide-shape) s1-1)
+                       s0-1
+                       1658880.0
+                       (search-info-flag prefer-angle cull-angle-simple)
+                       (search-info-flag)
+                       (-> s3-0 fvec)
+                       s4-0
+                       10922.667
+                       )
+                     )
+              )
+          (when a0-41
+            (vector-! (-> s5-1 vel) (get-trans a0-41 3) (-> s5-1 pos))
+            (vector-normalize! (-> s5-1 vel) 4096000.0)
+            )
+          )
+        )
+      (spawn-projectile gun-warf-shot s5-1 this *default-dead-pool*)
+      )
+    0
+    )
+  (when (and (time-elapsed? (-> this l1-recharge-time) (seconds 20)) (< (-> this bigshotcount) 8))
+    (set-time! (-> this l1-recharge-time))
+    (+! (-> this bigshotcount) 1)
+    (factory-shotsleft (-> this bigshotcount))
+    )
+  (when (and (> (-> this bigshotcount) 0) (cpad-pressed? 0 l1) (time-elapsed? (-> this l1-fire-time) (seconds 2)))
+    (set-time! (-> this l1-fire-time))
+    (let ((s4-3 (-> this node-list data 0 bone transform)))
+      (let ((s2-1 (new 'stack-no-clear 'vector))
+            (s3-1 (new 'stack-no-clear 'vector))
+            (s5-2 (new 'stack-no-clear 'projectile-init-by-other-params))
+            )
+        (set-vector! s3-1 0.0 7372.8 18841.6 1.0)
+        (vector-matrix*! s2-1 s3-1 s4-3)
+        (set! (-> s5-2 ent) (-> this entity))
+        (set! (-> s5-2 charge) 1.0)
+        (set! (-> s5-2 options) (projectile-options))
+        (logclear! (-> s5-2 options) (projectile-options po14 po15 po16))
+        (set! (-> s5-2 pos quad) (-> s2-1 quad))
+        (set! (-> s5-2 notify-handle) (the-as handle #f))
+        (set! (-> s5-2 owner-handle) (the-as handle #f))
+        (set! (-> s5-2 target-handle) (the-as handle #f))
+        (set! (-> s5-2 target-pos quad) (the-as uint128 0))
+        (set! (-> s5-2 ignore-handle) (process->handle (send-event this 'get-vehicle)))
+        (let* ((v1-90 *game-info*)
+               (a0-63 (+ (-> v1-90 attack-id) 1))
+               )
+          (set! (-> v1-90 attack-id) a0-63)
+          (set! (-> s5-2 attack-id) a0-63)
+          )
+        (set! (-> s5-2 timeout) (seconds 10))
+        (set! (-> s5-2 damage) 64.0)
+        (logior! (-> s5-2 options) (projectile-options po14))
+        (set-vector! s3-1 0.0 0.0 819200.0 1.0)
+        (vector-rotate*! (-> s5-2 vel) s3-1 s4-3)
+        (vector+! (-> s5-2 vel) (-> s5-2 vel) (-> this rbody lin-velocity))
+        (sound-play "hellcat-firealt")
+        (spawn-projectile warf-projectile s5-2 this *default-dead-pool*)
+        )
+      )
+    (+! (-> this bigshotcount) -1)
+    (factory-shotsleft (-> this bigshotcount))
+    )
+  (label cfg-39)
+  0
+  (none)
+  )
+
+;; definition for method 79 of type h-warf
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-79 ((this h-warf))
+  0
+  (none)
+  )
+
+;; definition for method 106 of type h-warf
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-106 ((this h-warf))
+  (let ((t9-0 (method-of-type hvehicle vehicle-method-106)))
+    (t9-0 this)
+    )
+  (when (-> this damage-loop-playing?)
+    (sound-stop (-> this damage-loop))
+    (set! (-> this damage-loop-playing?) #f)
+    (set! (-> this damage-loop-index) (the-as uint 0))
+    0
+    )
+  (when (nonzero? (-> this wind-noise-sound))
+    (sound-stop (-> this wind-noise-sound))
+    (set! (-> this wind-noise-playing?) #f)
+    (set! (-> this wind-noise-sound) (new 'static 'sound-id))
+    0
+    )
+  (when (nonzero? (-> this engine-sound))
+    (sound-stop (-> this engine-sound))
+    (set! (-> this engine-sound) (new 'static 'sound-id))
+    0
+    )
+  (when (nonzero? (-> this engine-boost-sound))
+    (sound-stop (-> this engine-boost-sound))
+    (set! (-> this engine-boost-sound) (new 'static 'sound-id))
+    0
+    )
+  (none)
+  )
+
+;; definition for method 38 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod rigid-body-object-method-38 ((this h-warf))
+  (let ((t9-0 (method-of-type hvehicle rigid-body-object-method-38)))
+    (t9-0 this)
+    )
+  0.0
+  (let ((f0-2 (+ 1.0 (fmax 0.0 (fmin 1.0 (* 0.0000024414062 (-> this speed)))))))
+    (sound-play-by-name
+      (static-sound-name "hellcat-engine")
+      (-> this engine-sound)
+      1024
+      (the int (* 1524.0 f0-2))
+      0
+      (sound-group)
+      (-> this root trans)
+      )
+    )
+  (sound-play-by-name
+    (static-sound-name "hellcat-boost")
+    (-> this engine-boost-sound)
+    (the int (* 1024.0 (-> this engine-thrust)))
+    1524
+    0
+    (sound-group)
+    (-> this root trans)
+    )
+  0.0
+  (let ((v1-11 (new 'stack-no-clear 'vector)))
+    (set! (-> v1-11 quad) (-> this rbody ang-velocity quad))
+    (let ((f0-10 (* 0.25 (fabs (-> v1-11 y)))))
+      (set! (-> v1-11 y) 0.0)
+      (let* ((f0-11 (+ f0-10 (vector-length v1-11)))
+             (f0-13 (fmax 0.0 (fmin 1.0 f0-11)))
+             )
+        (seek! (-> this wind) f0-13 (* 2.0 (seconds-per-frame)))
+        )
+      )
+    )
+  (cond
+    (#f
+      (when (-> this wind-noise-playing?)
+        (sound-stop (-> this wind-noise-sound))
+        (set! (-> this wind-noise-playing?) #f)
+        )
+      )
+    (else
+      (sound-play-by-name
+        (static-sound-name "hellcat-bank")
+        (-> this wind-noise-sound)
+        (the int (* 1024.0 (-> this wind)))
+        (the int (* 1524.0 (+ 0.7 (* 0.25 (-> this wind)))))
+        0
+        (sound-group)
+        (-> this root trans)
+        )
+      (set! (-> this wind-noise-playing?) #t)
+      )
+    )
+  (when (time-elapsed? (-> this snd-cmd-time) (seconds 2))
+    (set-time! (-> this snd-cmd-time))
+    (cond
+      ((< (-> this hit-points) 0.15)
+       (if (!= (-> this damage-loop-index) 3)
+           (sound-stop (-> this damage-loop))
+           )
+       (sound-play "damage-high" :id (-> this damage-loop))
+       (set! (-> this damage-loop-playing?) #t)
+       (set! (-> this damage-loop-index) (the-as uint 3))
+       )
+      ((< (-> this hit-points) 0.2)
+       (if (!= (-> this damage-loop-index) 2)
+           (sound-stop (-> this damage-loop))
+           )
+       (sound-play "damage-med" :id (-> this damage-loop))
+       (set! (-> this damage-loop-playing?) #t)
+       (set! (-> this damage-loop-index) (the-as uint 2))
+       )
+      ((< (-> this hit-points) 0.5)
+       (if (!= (-> this damage-loop-index) 1)
+           (sound-stop (-> this damage-loop))
+           )
+       (sound-play "damage-low" :id (-> this damage-loop))
+       (set! (-> this damage-loop-playing?) #t)
+       (set! (-> this damage-loop-index) (the-as uint 1))
+       )
+      ((and (-> this damage-loop-playing?) (< 0.5 (-> this hit-points)))
+       (sound-stop (-> this damage-loop))
+       (set! (-> this damage-loop-playing?) #f)
+       (set! (-> this damage-loop-index) (the-as uint 0))
+       0
+       )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 35 of type h-warf
+;; WARN: Return type mismatch int vs none.
+(defmethod init-rbody-control! ((this h-warf))
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-h-warf" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (alloc-rbody-control! this *h-warf-constants*)
+  (vector-reset! (-> this deathrot))
+  (set-time! (-> this birth))
+  (set-time! (-> this stop-time))
+  (set! (-> this deathspin) #f)
+  (set! (-> this rbody angular-damping) 0.97)
+  (set-vector! (-> this forward) 0.0 0.0 1.0 1.0)
+  (set! (-> this bigshotcount) 8)
+  (factory-shotsleft (-> this bigshotcount))
+  (set! (-> this minalt) 1288192.0)
+  (set! (-> this maxalt) 1966080.0)
+  (set! (-> this curalt) (-> this minalt))
+  (set! (-> this rollerr) 0.0)
+  (set! (-> this alterr) 0.0)
+  (set! (-> this pitcherr) 0.0)
+  (set! (-> this straighterr) 0.0)
+  (set! (-> this rolling) #f)
+  (set! (-> this speed) 0.0)
+  (set! (-> this poierr) 0.0)
+  (set! (-> this poipos) 0.0)
+  (set! (-> this poivel) 0.0)
+  (set! (-> this bounce-state?) #f)
+  (set! (-> this bounce-angle) 0.0)
+  (set! (-> this wind) 0.0)
+  (set! (-> this engine-sound) (new-sound-id))
+  (set! (-> this engine-boost-sound) (new-sound-id))
+  (set! (-> this wind-noise-sound) (new-sound-id))
+  (set! (-> this wind-noise-playing?) #f)
+  (set! (-> this damage-loop) (new-sound-id))
+  (set! (-> this damage-loop-playing?) #f)
+  (set! (-> this damage-loop-index) (the-as uint 0))
+  (set-time! (-> this snd-cmd-time))
+  (dotimes (v1-18 4)
+    (set! (-> this fire-time v1-18) (+ (current-time) (seconds -4)))
+    )
+  (set-time! (-> this l1-fire-time))
+  (set-time! (-> this l1-recharge-time))
+  (set! *war-factory-vehicle-mask* (-> this draw seg-mask))
+  (set! *war-factory-effects-mask* (-> this draw effect-mask))
+  0
+  (none)
+  )
+
+;; definition for method 46 of type h-warf
+(defmethod apply-damage ((this h-warf) (arg0 float) (arg1 rigid-body-impact))
+  (cpad-set-buzz! (-> *cpad-list* cpads 0) 1 178 (seconds 0.25))
+  (let ((s4-0 0.4))
+    (set! *war-factory-vehicle-mask* (-> this draw seg-mask))
+    (set! *war-factory-effects-mask* (-> this draw effect-mask))
+    (call-parent-method this s4-0 arg1)
+    )
+  (none)
+  )
+
+;; definition for method 48 of type h-warf
+;; WARN: Return type mismatch vehicle-flag vs none.
+(defmethod on-impact ((this h-warf) (arg0 rigid-body-impact))
+  (call-parent-method this arg0)
+  (set! (-> this bounce-state?) #t)
+  (set! (-> this bounce-angle) 0.0)
+  (when (< (-> this speed) 2048.0)
+    (if (time-elapsed? (-> this stop-time) (seconds 1))
+        (set-time! (-> this stop-time))
+        )
+    (when (time-elapsed? (-> this stop-time) (seconds 0.5))
+      (set! (-> this hit-points) -1.0)
+      (logior! (-> this v-flags) (vehicle-flag dead))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 97 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-97 ((this h-warf) (arg0 float) (arg1 vehicle-physics-work))
+  (local-vars (v1-107 float))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let ((s3-0 (-> this rbody)))
+      (mem-copy! (the-as pointer (-> arg1 mat)) (the-as pointer (-> s3-0 matrix)) 64)
+      (let* ((f28-0 (* -1.0 (-> this controls steering) (-> this info handling tire-steering-angle)))
+             (f30-0 (cos f28-0))
+             (f0-2 (sin f28-0))
+             )
+        (set! (-> arg1 steering-axis x) f30-0)
+        (set! (-> arg1 steering-axis y) 0.0)
+        (set! (-> arg1 steering-axis z) f0-2)
+        )
+      (vector-rotate*! (-> arg1 steering-axis) (-> arg1 steering-axis) (-> arg1 mat))
+      (logior! (-> this v-flags) (vehicle-flag in-air))
+      (logclear! (-> this v-flags) (vehicle-flag on-ground on-flight-level))
+      (vector-reset! (-> arg1 ground-normal))
+      (set! (-> arg1 ground-normal y) 1.0)
+      (let ((f30-1 (-> this info handling ground-probe-distance)))
+        (let ((s2-0 (new 'stack-no-clear 'collide-query)))
+          (vector-reset! (-> arg1 lift-dir))
+          (set! (-> arg1 lift-dir y) -1.0)
+          (set! (-> arg1 speed-factor)
+                (fmax 0.0 (fmin 0.9 (* 0.000008138021 (+ -40960.0 (vector-length (-> s3-0 lin-velocity))))))
+                )
+          (when (logtest? (-> this info flags) 1)
+            (vector-float*! (-> arg1 tmp) (-> arg1 mat uvec) -1.0)
+            (let ((t9-4 vector-lerp!)
+                  (a0-7 (-> arg1 lift-dir))
+                  (a1-4 (-> arg1 lift-dir))
+                  (a2-3 (-> arg1 tmp))
+                  (f0-8 (-> arg1 speed-factor))
+                  )
+              (t9-4 a0-7 a1-4 a2-3 (* f0-8 f0-8))
+              )
+            (vector-normalize! (-> arg1 lift-dir) 1.0)
+            )
+          (vector-float*! (-> s2-0 move-dist) (-> arg1 lift-dir) (the-as float f30-1))
+          (let ((v1-26 s2-0))
+            (set! (-> v1-26 radius) 409.6)
+            (set! (-> v1-26 collide-with) (collide-spec
+                                            backgnd
+                                            bot
+                                            obstacle
+                                            hit-by-player-list
+                                            hit-by-others-list
+                                            player-list
+                                            water
+                                            collectable
+                                            blocking-plane
+                                            pusher
+                                            vehicle-mesh-probeable
+                                            shield
+                                            vehicle-sphere-no-probe
+                                            )
+                  )
+            (set! (-> v1-26 ignore-process0) #f)
+            (set! (-> v1-26 ignore-process1) #f)
+            (set! (-> v1-26 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nopilot #x1))
+            (set! (-> v1-26 action-mask) (collide-action solid))
+            )
+          (dotimes (s1-0 (-> this info physics-model lift-thruster-count))
+            (let ((v1-29 (-> this info physics-model lift-thruster-array s1-0))
+                  (s0-0 (-> arg1 probe-work-array s1-0))
+                  )
+              (vector-reset! (-> s0-0 tire-force))
+              (set! (-> s0-0 local-pos quad) (-> v1-29 local-pos quad))
+              (set! (-> s0-0 local-normal quad) (-> v1-29 rot quad))
+              (vector-matrix*! (-> s0-0 world-pos) (-> s0-0 local-pos) (-> arg1 mat))
+              (let ((a1-9 (-> s0-0 probe-pos)))
+                (let ((v1-32 (-> s0-0 world-pos)))
+                  (let ((a0-22 (-> arg1 mat uvec)))
+                    (let ((a2-6 (-> this info handling ground-probe-offset)))
+                      (.mov vf7 a2-6)
+                      )
+                    (.lvf vf5 (&-> a0-22 quad))
+                    )
+                  (.lvf vf4 (&-> v1-32 quad))
+                  )
+                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                (.mul.x.vf acc vf5 vf7 :mask #b111)
+                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.svf (&-> a1-9 quad) vf6)
+                )
+              (rigid-body-control-method-23 s3-0 (-> s0-0 probe-pos) (-> s0-0 velocity))
+              (set! (-> s0-0 wheel-axis quad) (-> (the-as vector (if (< 0.0 (-> s0-0 local-pos z))
+                                                                     (-> arg1 steering-axis)
+                                                                     (the-as vector (-> arg1 mat))
+                                                                     )
+                                                          )
+                                                  quad
+                                                  )
+                    )
+              (set! (-> s0-0 ground-pos quad) (-> s0-0 probe-pos quad))
+              (set! (-> s0-0 ground-pos y) 0.0)
+              (vector-reset! (-> s0-0 ground-normal))
+              (when (logtest? (-> this v-flags) (vehicle-flag enable-collision))
+                (set! (-> s2-0 start-pos quad) (-> s0-0 probe-pos quad))
+                (let ((f0-15 (probe-using-line-sphere *collide-cache* s2-0)))
+                  (cond
+                    ((and (>= f0-15 0.0) (!= (-> s2-0 best-other-tri pat mode) 1))
+                     (logclear! (-> this v-flags) (vehicle-flag in-air))
+                     (logior! (-> this v-flags) (vehicle-flag on-ground))
+                     (set! (-> s0-0 ground-pos y) (- (-> s0-0 probe-pos y) (* f0-15 f30-1)))
+                     (set! (-> s0-0 ground-normal quad) (-> s2-0 best-other-tri normal quad))
+                     (set! (-> arg1 ground-normal quad) (-> s0-0 ground-normal quad))
+                     )
+                    (else
+                      (set! (-> s0-0 ground-pos y) (+ -81920.0 (-> s3-0 position y)))
+                      )
+                    )
+                  )
+                0
+                )
+              )
+            )
+          )
+        (set! (-> this lift-thrust 0) 0.0)
+        (set! (-> this lift-thrust 1) 0.0)
+        (set! (-> this lift-thrust 2) 0.0)
+        (set! (-> this lift-thrust 3) 0.0)
+        (set! (-> this roll-thrust 0) 0.0)
+        (set! (-> this roll-thrust 1) 0.0)
+        (when (>= 1 (-> this force-level))
+          (dotimes (s2-1 (-> this info physics-model lift-thruster-count))
+            (let ((s1-1 (-> arg1 probe-work-array s2-1)))
+              (set! (-> arg1 world-pos quad) (-> s1-1 world-pos quad))
+              (set! (-> arg1 velocity quad) (-> s1-1 velocity quad))
+              (let* ((f1-12 (fmax 4096.0 (fmin (- (-> s1-1 probe-pos y) (-> s1-1 ground-pos y)) f30-1)))
+                     (f28-1 (- 1.0 (/ (+ -4096.0 f1-12) (+ -4096.0 f30-1))))
+                     )
+                (if (>= (-> this info handling cos-ground-effect-angle) (vector-dot (-> s1-1 ground-normal) (-> arg1 mat uvec)))
+                    (set! f28-1 0.0)
+                    )
+                (set! (-> arg1 tmp y) 0.0)
+                (set! (-> arg1 tmp x) (-> arg1 velocity z))
+                (set! (-> arg1 tmp z) (- (-> arg1 velocity x)))
+                (vector-normalize! (-> arg1 tmp) 1.0)
+                (vector+float*!
+                  (-> arg1 normal)
+                  (-> s1-1 ground-normal)
+                  (-> arg1 tmp)
+                  (- (vector-dot (-> s1-1 ground-normal) (-> arg1 tmp)))
+                  )
+                (let ((v1-80 (-> arg1 force))
+                      (a0-45 (-> arg1 normal))
+                      (f0-37 (* 2.0 f28-1))
+                      (f1-17 arg0)
+                      )
+                  (vector-float*! v1-80 a0-45 (* f0-37
+                                                 (/ 1.0 f1-17)
+                                                 (-> this info physics-model inv-lift-thruster-count)
+                                                 (-> this info info mass)
+                                                 (fmax 0.0 (- (vector-dot (-> arg1 velocity) (-> arg1 normal))))
+                                                 )
+                                  )
+                  )
+                (apply-impact! s3-0 (-> arg1 world-pos) (-> arg1 force))
+                (vector+! (-> s1-1 tire-force) (-> s1-1 tire-force) (-> arg1 force))
+                (let ((f0-51 (* 8.0
+                                (-> this info info mass)
+                                (-> this info extra gravity)
+                                (-> this info physics-model inv-lift-thruster-count)
+                                (+ (* (-> this info handling spring-lift-factor) f28-1)
+                                   (* 0.75 (-> this jump-thrust) (-> this info handling jump-thrust-factor))
+                                   )
+                                (- (+ 1.0 (* 2.0 (rand-vu) (-> this power-fluctuation-factor))) (-> this power-fluctuation-factor))
+                                )
+                             )
+                      )
+                  (+! (-> this lift-thrust s2-1) f0-51)
+                  (vector-float*! (-> arg1 force) (-> arg1 lift-dir) (* -1.0 f0-51))
+                  )
+                )
+              (apply-impact! s3-0 (-> arg1 world-pos) (-> arg1 force))
+              (vector+! (-> s1-1 tire-force) (-> s1-1 tire-force) (-> arg1 force))
+              (when (and (< 0.0 (-> this info handling tire-friction-factor)) (let ((f0-54 0.0))
+                                                                                (.lvf vf1 (&-> (-> s1-1 ground-normal) quad))
+                                                                                (.add.w.vf vf2 vf0 vf0 :mask #b1)
+                                                                                (.mul.vf vf1 vf1 vf1)
+                                                                                (.mul.x.vf acc vf2 vf1 :mask #b1)
+                                                                                (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+                                                                                (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+                                                                                (.mov v1-107 vf1)
+                                                                                (< f0-54 v1-107)
+                                                                                )
+                         )
+                (vector+float*!
+                  (-> arg1 normal)
+                  (-> s1-1 wheel-axis)
+                  (-> s1-1 ground-normal)
+                  (- (vector-dot (-> s1-1 wheel-axis) (-> s1-1 ground-normal)))
+                  )
+                (vector-normalize! (-> arg1 normal) 1.0)
+                (set! (-> arg1 world-pos quad) (-> s3-0 position quad))
+                (set! (-> arg1 velocity quad) (-> s3-0 lin-velocity quad))
+                (vector-! (-> arg1 p-body) (-> arg1 world-pos) (-> s3-0 position))
+                (vector-cross! (-> arg1 tmp) (-> arg1 p-body) (-> arg1 normal))
+                (vector-rotate*! (-> arg1 tmp) (-> arg1 tmp) (-> s3-0 inv-i-world))
+                (vector-cross! (-> arg1 tmp) (-> arg1 tmp) (-> arg1 p-body))
+                (set! (-> arg1 vel-dot-norm) (vector-dot (-> arg1 velocity) (-> arg1 normal)))
+                (let ((f0-61 (fabs (-> arg1 vel-dot-norm))))
+                  (set! (-> arg1 friction-coef)
+                        (smooth-interp
+                          (-> this info handling tire-static-friction)
+                          (-> this info handling tire-dynamic-friction)
+                          f0-61
+                          (-> this info handling tire-static-friction-speed)
+                          (-> this info handling tire-dynamic-friction-speed)
+                          )
+                        )
+                  )
+                (set! (-> arg1 friction-coef)
+                      (* (-> arg1 friction-coef) (+ 1.0 (* -0.75 (fmax 0.0 (fmin 1.0 (-> this engine-thrust))))))
+                      )
+                (let ((f0-69 (* (-> arg1 friction-coef)
+                                (-> this info handling tire-friction-factor)
+                                (fmax 0.0 (vector-dot (-> s1-1 ground-normal) (-> s1-1 tire-force)))
+                                )
+                             )
+                      )
+                  (set! (-> arg1 impulse) (/ (* -1.0 (-> arg1 vel-dot-norm))
+                                             (* arg0 (+ (-> s3-0 info inv-mass) (vector-dot (-> arg1 normal) (-> arg1 tmp))))
+                                             )
+                        )
+                  (set! (-> arg1 impulse) (fmax (fmin (-> arg1 impulse) f0-69) (- f0-69)))
+                  )
+                (vector-float*! (-> arg1 force) (-> arg1 normal) (-> arg1 impulse))
+                (apply-impact! s3-0 (-> arg1 world-pos) (-> arg1 force))
+                )
+              )
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 163 of type h-warf
+;; INFO: Used lq/sq
+(defmethod h-warf-method-163 ((this h-warf) (arg0 vector))
+  (let ((s3-0 (new 'stack-no-clear 'matrix))
+        (s1-0 (new 'stack-no-clear 'matrix))
+        (s2-0 (new 'stack-no-clear 'vector))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    0.0
+    (forward-up->inv-matrix s1-0 arg0 *up-vector*)
+    (matrix-transpose! s1-0 s1-0)
+    (set! (-> s2-0 quad) (-> this rbody matrix fvec quad))
+    (set! (-> s2-0 y) 0.0)
+    (vector-normalize! s2-0 1.0)
+    (vector-rotate*! s2-0 s2-0 s1-0)
+    (let ((f0-3 (vector-dot arg0 (-> this rbody matrix fvec))))
+      (if (< (-> s2-0 x) 0.0)
+          (- f0-3)
+          )
+      )
+    (vector-! s5-0 *h-warf-center-of-level* (-> this root trans))
+    (set! (-> s5-0 x) (fabs (-> s5-0 x)))
+    (set! (-> s5-0 y) 0.0)
+    (set! (-> s5-0 z) (fabs (-> s5-0 z)))
+    0.0
+    (let* ((f1-1 (atan (-> s2-0 x) (- (-> s2-0 z))))
+           (f30-0 (fmax -1.0 (fmin 1.0 (* 0.000030517578 f1-1))))
+           )
+      (matrix-transpose! s3-0 (-> this rbody matrix))
+      (vector-rotate*! arg0 (-> this forward) s3-0)
+      (set! f30-0 (cond
+                    ((or (< 1187840.0 (-> s5-0 x)) (< 1187840.0 (-> s5-0 z)))
+                     (if (or (= (-> this controls steering) 0.0)
+                             (and (< 0.0 f30-0) (< 0.0 (-> this controls steering)))
+                             (and (< f30-0 0.0) (< (-> this controls steering) 0.0))
+                             )
+                         (set! f30-0 (fmax -1.0 (fmin 1.0 (+ f30-0 (-> this controls steering)))))
+                         )
+                     f30-0
+                     )
+                    (else
+                      (-> this controls steering)
+                      )
+                    )
+            )
+      f30-0
+      )
+    )
+  )
+
+;; definition for function world-to-local-vec!
+(defun world-to-local-vec! ((arg0 vector) (arg1 vector) (arg2 matrix))
+  (let ((s4-0 (new 'stack-no-clear 'matrix)))
+    (matrix-transpose! s4-0 arg2)
+    (vector-rotate*! arg0 arg1 s4-0)
+    )
+  )
+
+;; definition for method 31 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod apply-gravity! ((this h-warf) (arg0 float))
+  (let ((s3-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'stack-no-clear 'vector))
+        )
+    (when (movie?)
+      (logior! (-> this draw status) (draw-control-status no-draw))
+      (disable-physics! this)
+      )
+    (when (and (not (logtest? (-> this v-flags) (vehicle-flag dead))) (not (time-elapsed? (-> this birth) (seconds 1))))
+      (set! (-> this rbody lin-momentum quad) (-> this rbody matrix fvec quad))
+      (vector-normalize! (-> this rbody lin-momentum) 204800.0)
+      (vector-float*! (-> this rbody lin-momentum) (-> this rbody lin-momentum) (-> this rbody info mass))
+      )
+    (set! (-> this rbody angular-damping) 0.97)
+    (when (and (logtest? (-> this v-flags) (vehicle-flag dead)) (not (-> this deathspin)))
+      (set! (-> this rbody angular-damping) 1.0)
+      (set! (-> this hit-points) -1.0)
+      (logior! (-> this v-flags) (vehicle-flag dead))
+      (set! (-> this deathspin) #t)
+      (set-vector! s3-0 4096.0 0.0 0.0 1.0)
+      (vector+! s3-0 s3-0 (-> this info info cm-offset-joint))
+      (vector-matrix*! s3-0 s3-0 (-> this rbody matrix))
+      (vector-float*! s4-0 (-> this rbody matrix uvec) (* 4096.0 (rand-vu-float-range -40000.0 40000.0)))
+      (rigid-body-control-method-22 (-> this rbody) s3-0 s4-0)
+      )
+    (let ((s2-2 (new 'stack-no-clear 'vehicle-physics-work)))
+      (set! (-> s2-2 world-pos w) (steer-attenuation (the-as int (-> this impact-time))))
+      (set! (-> s2-2 world-pos x) 0.0)
+      (when (and (< 0.0 (-> this rbody matrix uvec y))
+                 (and (logtest? (-> this v-flags) (vehicle-flag riding)) (not (-> this bounce-state?)))
+                 )
+        (vector-! (the-as vector (-> s2-2 mat)) (-> this root trans) *h-warf-center-of-level*)
+        (set! (-> s2-2 mat rvec y) 0.0)
+        (vector-normalize! (the-as vector (-> s2-2 mat)) 1.0)
+        (set! (-> s2-2 world-pos x) (h-warf-method-163 this (the-as vector (-> s2-2 mat))))
+        (set! (-> s2-2 world-normal x) (-> s2-2 world-pos x))
+        (vector-reset! s3-0)
+        (vector+! s3-0 s3-0 (-> this info info cm-offset-joint))
+        (vector-matrix*! s3-0 s3-0 (-> this rbody matrix))
+        (+! (-> s3-0 z) 4096.0)
+        (set! (-> s2-2 velocity quad) (-> *x-vector* quad))
+        (let ((f0-19 (* 0.00024414062 (vector-length (-> this rbody lin-velocity)))))
+          (set! (-> s2-2 world-pos z) (/ 1.0 f0-19))
+          )
+        (set! (-> s2-2 world-pos z) (fmin 0.1 (-> s2-2 world-pos z)))
+        (set! (-> s2-2 world-pos z) (* 49152000.0 (-> s2-2 world-pos z) (-> s2-2 world-pos x)))
+        (vector-float*! s4-0 (-> s2-2 velocity) (-> s2-2 world-pos z))
+        (rigid-body-control-method-22 (-> this rbody) s3-0 s4-0)
+        )
+      (when (and (logtest? (-> this v-flags) (vehicle-flag riding)) (-> this bounce-state?))
+        (let ((s0-0 (new 'stack-no-clear 'vector))
+              (s1-1 (new 'stack-no-clear 'vector))
+              )
+          (set! (-> s0-0 quad) (-> this rbody matrix rvec quad))
+          (set! (-> s0-0 y) 0.0000000001)
+          (vector-normalize! s0-0 1.0)
+          (set! (-> s2-2 world-pos x) (* 0.00024414062 (vector-dot (-> this rbody lin-velocity) s0-0)))
+          (world-to-local-vec! s1-1 (-> this rbody lin-velocity) (-> this rbody matrix))
+          (set! (-> s2-2 world-pos x) (atan2-rad (-> s1-1 x) (-> s1-1 z)))
+          )
+        (set! (-> s2-2 world-pos y) (- (-> s2-2 world-pos x) (-> this straighterr)))
+        (set! (-> this straighterr) (-> s2-2 world-pos x))
+        (set-vector! s3-0 40960.0 0.0 0.0 1.0)
+        (vector+! s3-0 s3-0 (-> this info info cm-offset-joint))
+        (vector-matrix*! s3-0 s3-0 (-> this rbody matrix))
+        (vector-float*!
+          s4-0
+          (-> this rbody matrix fvec)
+          (- (+ (* 4096000.0 (-> s2-2 world-pos y)) (* 409600.0 (-> s2-2 world-pos x))))
+          )
+        (rigid-body-control-method-22 (-> this rbody) s3-0 s4-0)
+        (if (= (-> this bounce-angle) 0.0)
+            (set! (-> this bounce-angle) (-> s2-2 world-pos x))
+            )
+        (when (or (< (fabs (-> s2-2 world-pos x)) 0.01)
+                  (and (< (-> s2-2 world-pos x) 0.0) (< 0.0 (-> this bounce-angle)))
+                  (and (< 0.0 (-> s2-2 world-pos x)) (< (-> this bounce-angle) 0.0))
+                  )
+          (set! (-> this bounce-state?) #f)
+          (set! (-> this bounce-angle) 0.0)
+          (set! (-> this straighterr) 0.0)
+          )
+        )
+      0.0
+      0.0
+      (let ((f0-57 (-> this speed)))
+        (set! (-> s2-2 world-pos z) (-> s2-2 world-normal x))
+        (if (< 1.0 (-> s2-2 world-pos z))
+            (set! (-> s2-2 world-pos z) 1.0)
+            )
+        (if (< (-> s2-2 world-pos z) -1.0)
+            (set! (-> s2-2 world-pos z) -1.0)
+            )
+        (let ((f0-61 (fmax 0.0 (fmin 1.0 (* 0.000012207031 (+ -20480.0 f0-57))))))
+          (matrix-rotate-z! (the-as matrix (-> s2-2 mat uvec)) (* 14563.556 (-> s2-2 world-pos z) f0-61))
+          )
+        )
+      (matrix*! (the-as matrix (-> s2-2 mat uvec)) (the-as matrix (-> s2-2 mat uvec)) (-> this rbody matrix))
+      (set! (-> s2-2 world-pos x) (- (-> s2-2 mat uvec y)))
+      (set! (-> s2-2 world-pos y) (- (-> s2-2 world-pos x) (-> this rollerr)))
+      (set! (-> this rollerr) (-> s2-2 world-pos x))
+      (let ((f30-1 (+ (* 32768000.0 (-> s2-2 world-pos y)) (* 1638400.0 (-> s2-2 world-pos x)))))
+        (set-vector! s3-0 4096.0 0.0 0.0 1.0)
+        0.0
+        (let ((s1-2 (new 'stack-no-clear 'matrix)))
+          (let ((f0-76 (* 16384.0 (fmax -1.0 (fmin 1.0 (* 0.0000000012207031 (-> this rbody ang-velocity y) (fabs f30-1))))))
+                )
+            (matrix-rotate-y! s1-2 f0-76)
+            )
+          (vector-rotate*! s3-0 s3-0 s1-2)
+          )
+        (vector+! s3-0 s3-0 (-> this info info cm-offset-joint))
+        (vector-matrix*! s3-0 s3-0 (-> this rbody matrix))
+        (vector-float*! s4-0 (-> this rbody matrix uvec) f30-1)
+        )
+      (if (and (>= 1 (-> this force-level)) (not (-> this rolling)))
+          (rigid-body-control-method-22 (-> this rbody) s3-0 s4-0)
+          )
+      (if (>= (-> this force-level) 1)
+          (set! (-> this curalt) (-> this rbody matrix trans y))
+          )
+      (set! (-> this speed) (vector-dot (-> this rbody lin-velocity) (-> this rbody matrix fvec)))
+      0.0
+      (let* ((v1-138 (-> this rbody lin-velocity))
+             (f28-0 (sqrtf (+ (* (-> v1-138 x) (-> v1-138 x)) (* (-> v1-138 z) (-> v1-138 z)))))
+             (f30-2 (fmax 0.0 (fmin 1.0 (* 0.000030517578 (+ -4096.0 f28-0)))))
+             )
+        (set! (-> s2-2 world-pos x)
+              (* f30-2 (atan (-> this rbody lin-velocity y) (vector-length (-> this rbody lin-velocity))))
+              )
+        (if (< 15473.777 (-> s2-2 world-pos x))
+            (set! (-> s2-2 world-pos x) 15473.777)
+            )
+        (if (< (-> s2-2 world-pos x) -15473.777)
+            (set! (-> s2-2 world-pos x) -15473.777)
+            )
+        (cond
+          ((< (vector-dot (-> this rbody matrix fvec) (-> this rbody lin-velocity)) -16384.0)
+           (set! (-> s2-2 world-pos x) (- (-> s2-2 world-pos x)))
+           (set! (-> this curalt)
+                 (- (-> this curalt)
+                    (* (-> this controls lean-z) (+ (* -8192.0 (seconds-per-frame)) (* -0.1 (seconds-per-frame) f28-0)))
+                    )
+                 )
+           )
+          (else
+            (+! (-> this curalt)
+                (* (-> this controls lean-z) (+ (* -8192.0 (seconds-per-frame)) (* -0.1 (seconds-per-frame) f28-0)))
+                )
+            )
+          )
+        (when #f
+          (set-vector!
+            s4-0
+            0.0
+            (* 40.96 (-> this info info mass) (- 1.0 f30-2) (- (-> this curalt) (-> this rbody matrix trans y)))
+            0.0
+            1.0
+            )
+          (add-force! (-> this rbody) s4-0)
+          )
+        )
+      (if (< (-> this maxalt) (-> this curalt))
+          (set! (-> this curalt) (-> this maxalt))
+          )
+      (if (< (-> this curalt) (-> this minalt))
+          (set! (-> this curalt) (-> this minalt))
+          )
+      (matrix-rotate-x! (the-as matrix (-> s2-2 mat uvec)) (-> s2-2 world-pos x))
+      (matrix*! (the-as matrix (-> s2-2 mat uvec)) (the-as matrix (-> s2-2 mat uvec)) (-> this rbody matrix))
+      (set! (-> s2-2 world-pos x) (-> s2-2 mat trans y))
+      (set! (-> s2-2 world-pos y) (- (-> s2-2 world-pos x) (-> this pitcherr)))
+      (set! (-> this pitcherr) (-> s2-2 world-pos x))
+      (set-vector! s3-0 0.0 0.0 4096.0 1.0)
+      (vector+! s3-0 s3-0 (-> this info info cm-offset-joint))
+      (vector-matrix*! s3-0 s3-0 (-> this rbody matrix))
+      (vector-float*!
+        s4-0
+        (-> this rbody matrix uvec)
+        (- (+ (* 196608000.0 (-> s2-2 world-pos y)) (* 16384000.0 (-> s2-2 world-pos x))))
+        )
+      )
+    (if (and (not (-> this rolling))
+             (or (logtest? (-> this v-flags) (vehicle-flag dead)) (>= 1 (-> this force-level)))
+             (>= (-> this speed) 0.0)
+             )
+        (rigid-body-control-method-22 (-> this rbody) s3-0 s4-0)
+        )
+    (when (< (-> this maxalt) (-> this rbody matrix trans y))
+      (vector-float*! s4-0 *up-vector* (* -2000.0 (- (-> this rbody matrix trans y) (-> this maxalt))))
+      (add-force! (-> this rbody) s4-0)
+      )
+    (when (and (< (-> this rbody matrix trans y) (-> this minalt))
+               (not (logtest? (-> this v-flags) (vehicle-flag dead)))
+               )
+      (when (< (-> this speed) 0.0)
+        (set! (-> this hit-points) -1.0)
+        (logior! (-> this v-flags) (vehicle-flag dead))
+        )
+      (vector-float*! s4-0 *up-vector* (* -2000.0 (- (-> this rbody matrix trans y) (-> this minalt))))
+      (add-force! (-> this rbody) s4-0)
+      )
+    (let ((f0-134 (-> this speed)))
+      (let ((f1-64 (-> this controls throttle))
+            (f2-21 (-> this controls brake))
+            )
+        0.0
+        (if (= f1-64 0.0)
+            (set! f2-21 0.1)
+            )
+        (let ((f1-66 (* 3276800.0 (- f1-64 (* 4.0 f2-21)))))
+          (if (and (< 204800.0 f0-134) (< 0.0 f1-66))
+              (set! f1-66 0.0)
+              )
+          (if (< f0-134 153600.0)
+              (set! f1-66 1638400.0)
+              )
+          (vector-float*! s4-0 (-> this rbody matrix fvec) f1-66)
+          )
+        )
+      (set! (-> s4-0 y) 0.0)
+      (if (and (logtest? (-> this v-flags) (vehicle-flag riding))
+               (and (not (logtest? (-> this v-flags) (vehicle-flag dead))) (or (not (-> this bounce-state?)) (< 0.0 f0-134)))
+               )
+          (add-force! (-> this rbody) s4-0)
+          )
+      )
+    (vector-float*! s4-0 (-> this rbody lin-velocity) (- (-> this info handling drag-force-factor)))
+    (add-force! (-> this rbody) s4-0)
+    (let ((s3-1 (new 'stack-no-clear 'vector)))
+      0.0
+      (let ((f30-3 (impact-reduction (the-as int (-> this impact-time)))))
+        (set! (-> s3-1 quad) (-> this rbody matrix rvec quad))
+        (set! (-> s3-1 y) 0.0000000001)
+        (vector-normalize! s3-1 1.0)
+        (vector-float*!
+          s4-0
+          (the-as vector (-> this rbody matrix))
+          (* -512.0 (vector-dot (-> this rbody lin-velocity) s3-1) f30-3)
+          )
+        )
+      )
+    (set! (-> s4-0 y) 0.0)
+    (if (and (not (logtest? (-> this v-flags) (vehicle-flag dead))) (not (-> this bounce-state?)))
+        (add-force! (-> this rbody) s4-0)
+        )
+    (when #f
+      (vector-float*!
+        s4-0
+        (-> this rbody matrix uvec)
+        (* -128.0 (vector-dot (-> this rbody lin-velocity) (-> this rbody matrix uvec)))
+        )
+      (add-force! (-> this rbody) s4-0)
+      )
+    (vector-reset! s4-0)
+    0.0
+    (let ((v1-258 (ascention-atten! (-> this root trans y)))
+          (f0-149 (* -15.0 (-> this controls lean-z) (-> this speed)))
+          )
+      (let ((f1-75 1.5)
+            (a0-104 (-> this rbody lin-velocity))
+            )
+        (if (< (* f1-75 (sqrtf (+ (* (-> a0-104 x) (-> a0-104 x)) (* (-> a0-104 z) (-> a0-104 z)))))
+               (fabs (-> this rbody lin-velocity y))
+               )
+            (set! f0-149 0.0)
+            )
+        )
+      (if (< 0.0 (-> this controls lean-z))
+          (set! (-> s4-0 y) (+ (* -20.0 (-> this rbody lin-velocity y)) (* f0-149 (-> v1-258 y))))
+          (set! (-> s4-0 y) (+ (* -20.0 (-> this rbody lin-velocity y)) (* f0-149 (-> v1-258 x))))
+          )
+      )
+    (when #t
+      (let ((s3-2 (new 'stack-no-clear 'vector))
+            (s2-3 (new 'stack-no-clear 'vector))
+            )
+        0.0
+        (when (not (logtest? (-> this v-flags) (vehicle-flag dead)))
+          (set! (-> s3-2 quad) (-> this rbody lin-velocity quad))
+          (vector-normalize! s3-2 1.0)
+          (let ((f0-156 (vector-dot s3-2 s4-0)))
+            (vector-float*! s2-3 s3-2 f0-156)
+            )
+          (vector-! s4-0 s4-0 s2-3)
+          (add-force! (-> this rbody) s4-0)
+          (when (or (< 81920.0 (-> this speed)) (< (-> this rbody lin-velocity y) 0.0))
+            (vector-float*! s4-0 *up-vector* (* -1.0 (-> this info info mass) (-> this info extra gravity)))
+            (let ((f0-163 (vector-dot s3-2 s4-0)))
+              (vector-float*! s4-0 s3-2 f0-163)
+              )
+            (add-force! (-> this rbody) s4-0)
+            )
+          )
+        )
+      )
+    (when (logtest? (-> this v-flags) (vehicle-flag dead))
+      (let* ((f2-39 (fmax 1.0 (* 0.00024414062 (vector-length (-> this rbody lin-velocity)))))
+             (f0-166 (+ -1.5 (* 50.0 (/ 1.0 f2-39))))
+             )
+        (if (logtest? (-> this v-flags) (vehicle-flag dead))
+            (set! f0-166 2.0)
+            )
+        (when (< 0.0 f0-166)
+          (vector-float*! s4-0 *up-vector* (* -1.0 (-> this info info mass) (-> this info extra gravity) f0-166))
+          (add-force! (-> this rbody) s4-0)
+          )
+        )
+      )
+    )
+  (let ((a2-15 (new 'stack-no-clear 'vehicle-physics-work)))
+    (vehicle-method-97 this arg0 a2-15)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 94 of type h-warf
+(defmethod vehicle-method-94 ((this h-warf))
+  ((method-of-type vehicle vehicle-method-94) this)
+  (none)
+  )
+
+;; definition for method 51 of type h-warf
+;; INFO: Used lq/sq
+(defmethod touch-handler ((this h-warf) (arg0 process-focusable) (arg1 touching-shapes-entry))
+  (b!
+    (or (not (logtest? (process-mask target crate enemy guard civilian) (-> arg0 mask)))
+        (and (logtest? (-> arg0 mask) (process-mask target)) (focus-test? arg0 dangerous pilot))
+        )
+    cfg-32
+    :delay (nop!)
+    )
+  (let ((s5-0 (new 'stack-no-clear 'rigid-body-impact))
+        (s2-0 (new 'stack-no-clear 'vector))
+        (f30-0 (get-inv-mass arg0))
+        )
+    (init-rbody-impact-from-tshape! this s5-0 arg1)
+    (if (logtest? (-> this rbody flags) (rigid-body-flag enable-physics))
+        (rigid-body-control-method-23 (-> this rbody) (-> s5-0 point) (-> s5-0 velocity))
+        (set! (-> s5-0 velocity quad) (-> this root transv quad))
+        )
+    (let ((v1-17 (-> arg0 root)))
+      (set! (-> s2-0 quad) (-> v1-17 transv quad))
+      (vector-! (-> s5-0 velocity) (-> v1-17 transv) (-> s5-0 velocity))
+      )
+    (let ((f0-1 (vector-dot (-> s5-0 velocity) (-> s5-0 normal))))
+      (when (< f0-1 0.0)
+        (set! (-> s5-0 impulse) (* -1.0 (/ 1.0 (+ f30-0 (-> this info info inv-mass))) f0-1))
+        (vector+float*! s2-0 s2-0 (-> s5-0 normal) (* 3.1 f30-0 (-> s5-0 impulse)))
+        (set! (-> s2-0 y) (fmax (* 49152.0 f30-0) (-> s2-0 y)))
+        (when (or (logtest? (vehicle-flag in-pursuit) (-> this v-flags)) (!= arg0 *target*))
+          (when (>= (the-as uint (- (current-time) (the-as int (-> this sent-attack-time)))) (the-as uint 150))
+            (set! (-> this sent-attack-time) (the-as uint (current-time)))
+            (let* ((v1-40 *game-info*)
+                   (a0-18 (+ (-> v1-40 attack-id) 1))
+                   )
+              (set! (-> v1-40 attack-id) a0-18)
+              (set! (-> this outgoing-attack-id) a0-18)
+              )
+            )
+          (let ((f0-10 (+ 0.5 (* 0.000024414063 (-> s5-0 impulse)))))
+            (when (send-event
+                    arg0
+                    'attack
+                    arg1
+                    (static-attack-info :mask (vehicle-impulse-factor) ((id (-> this outgoing-attack-id))
+                                                                        (damage f0-10)
+                                                                        (vehicle-damage-factor 1.0)
+                                                                        (vehicle-impulse-factor 1.0)
+                                                                        (attacker (process->handle (find-rider this)))
+                                                                        (mode 'vehicle)
+                                                                        (vector s2-0)
+                                                                        (penetrate-using (penetrate vehicle))
+                                                                        )
+                                        )
+                    )
+              )
+            )
+          )
+        (impulse-handler this)
+        (vector-float*! (new 'stack-no-clear 'vector) (-> s5-0 normal) (* -1.0 (-> s5-0 impulse)))
+        (rigid-body-control-method-12 (-> this rbody) 1.0)
+        (init-velocities! (-> this rbody))
+        (when #f
+          (set-time! (-> *debug-vehicle-work* impact-time))
+          (mem-copy! (the-as pointer (-> *debug-vehicle-work* impact)) (the-as pointer s5-0) 64)
+          (let ((v1-71 (-> arg1 head)))
+            (set! (-> *debug-vehicle-work* prim-sphere1 quad) (-> v1-71 prim1 cprim prim-core world-sphere quad))
+            (set! (-> *debug-vehicle-work* prim-sphere2 quad) (-> v1-71 prim2 cprim prim-core world-sphere quad))
+            )
+          (add-debug-x #t (bucket-id debug-no-zbuf1) (-> s5-0 point) *color-blue*)
+          (add-debug-vector
+            #t
+            (bucket-id debug-no-zbuf1)
+            (-> s5-0 point)
+            (-> s5-0 normal)
+            (-> s5-0 impulse)
+            *color-blue*
+            )
+          )
+        (on-impact this s5-0)
+        (if (and (-> this next-state) (= (-> this next-state name) 'idle))
+            (go (method-of-object this waiting))
+            )
+        )
+      )
+    )
+  (label cfg-32)
+  #t
+  )
+
+;; definition for method 77 of type h-warf
+(defmethod vehicle-method-77 ((this h-warf))
+  (set! (-> *game-info* health-bar-vehicle) (-> this hit-points))
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 164 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod draw-thrusters ((this h-warf) (arg0 float) (arg1 vector) (arg2 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (when (not (logtest? (-> this v-flags) (vehicle-flag dead)))
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (set! (-> s5-0 quad) (-> arg2 quad))
+        (let ((s4-0 (new 'stack-no-clear 'matrix)))
+          (quaternion->matrix s4-0 (-> this root quat))
+          (let ((a2-1 (matrix-transpose! (new 'stack-no-clear 'matrix) s4-0)))
+            (vector-rotate*! (-> this langvel) (-> this rbody ang-velocity) a2-1)
+            )
+          (cond
+            ((not (-> this bounce-state?))
+             (vector-rotate-around-axis! s5-0 (the-as quaternion arg2) (* -2184.5334 (-> this langvel x)) (-> s4-0 rvec))
+             (vector-rotate-around-axis! s5-0 (the-as quaternion s5-0) (* -1820.4445 (-> this langvel y)) (-> s4-0 uvec))
+             (vector-rotate-around-axis!
+               s5-0
+               (the-as quaternion s5-0)
+               (* 182.04445 (-> this langvel z) (* 5.0 arg0))
+               (-> s4-0 rvec)
+               )
+             )
+            (else
+              (set! (-> s5-0 quad) (-> arg2 quad))
+              )
+            )
+          (set! (-> s4-0 trans quad) (-> arg1 quad))
+          (dotimes (s3-1 15)
+            (let* ((f28-0 (* 0.06666667 (- 15.0 (the float s3-1))))
+                   (f26-0 (* f28-0 (rand-vu-float-range 8192.0 9011.2)))
+                   (f30-0 (* f28-0 (rand-vu-float-range 8192.0 12288.0)))
+                   )
+              (let ((a1-9 (-> s4-0 trans)))
+                (let ((v1-18 (-> s4-0 trans)))
+                  (let ((a0-12 s5-0))
+                    (let ((a2-7 (+ (* 819.2 f28-0) (* 1024.0 (-> this engine-thrust) f28-0))))
+                      (.mov vf7 a2-7)
+                      )
+                    (.lvf vf5 (&-> a0-12 quad))
+                    )
+                  (.lvf vf4 (&-> v1-18 quad))
+                  )
+                (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+                (.mul.x.vf acc vf5 vf7 :mask #b111)
+                (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+                (.svf (&-> a1-9 quad) vf6)
+                )
+              (set! (-> *part-id-table* 2761 init-specs 11 initial-valuef)
+                    (+ (rand-vu-float-range 0.0 5.0) (* 60.0 f28-0 (-> this engine-thrust)) (* 40.0 f28-0))
+                    )
+              (set! (-> *part-id-table* 2761 init-specs 8 initial-valuef)
+                    (+ (* 215.0 (-> this engine-thrust)) (* 40.0 f28-0))
+                    )
+              (set! (-> *part-id-table* 2761 init-specs 10 initial-valuef)
+                    (the float (- 255 (the int (* 255.0 (-> this engine-thrust)))))
+                    )
+              (set! (-> *part-id-table* 2761 init-specs 3 initial-valuef) f26-0)
+              (set! (-> *part-id-table* 2761 init-specs 7 initial-valuef) f26-0)
+              (set! (-> *part-id-table* 2762 init-specs 4 initial-valuef) (* 255.0 f28-0 (-> this engine-thrust)))
+              (set! (-> *part-id-table* 2762 init-specs 5 initial-valuef)
+                    (the float (- 28 (the int (* 28.0 f28-0 (-> this engine-thrust)))))
+                    )
+              (set! (-> *part-id-table* 2762 init-specs 6 initial-valuef)
+                    (the float (- 255 (the int (* 255.0 f28-0 (-> this engine-thrust)))))
+                    )
+              (set! (-> *part-id-table* 2762 init-specs 7 initial-valuef)
+                    (+ (rand-vu-float-range 0.0 (* 40.0 (-> this engine-thrust)))
+                       (* 20.0 f28-0 (-> this engine-thrust))
+                       (the float (* 30 (the int f28-0)))
+                       )
+                    )
+              (set! (-> *part-id-table* 2762 init-specs 2 initial-valuef) f30-0)
+              (set! (-> *part-id-table* 2762 init-specs 3 initial-valuef) f30-0)
+              )
+            (launch-particles (-> *part-id-table* 2761) s4-0 :origin-is-matrix #t)
+            (launch-particles (-> *part-id-table* 2762) s4-0 :origin-is-matrix #t)
+            )
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 78 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod vehicle-method-78 ((this h-warf))
+  (let ((t9-0 (method-of-type vehicle vehicle-method-78)))
+    (t9-0 this)
+    )
+  (when (logtest? (-> this rbody flags) (rigid-body-flag enable-physics))
+    (let ((s5-0 (new 'stack-no-clear 'h-warf-stack-var0)))
+      (quaternion->matrix (-> s5-0 mat) (-> this root quat))
+      (set! (-> s5-0 mat trans quad) (-> this root trans quad))
+      (set-vector! (-> s5-0 vec1) 0.0 0.0 -1.0 1.0)
+      (vector-rotate*! (-> s5-0 vec1) (-> s5-0 vec1) (-> s5-0 mat))
+      (when (< 0.0 (-> this info particles thruster-flame-length))
+        (let ((f30-0 (fmax 0.01 (* (-> this info particles thruster-flame-length)
+                                   (-> this power-level)
+                                   (-> this force-scale)
+                                   (-> this engine-thrust)
+                                   )
+                           )
+                     )
+              )
+          (fmin (-> this info particles thruster-flame-width) f30-0)
+          )
+        (dotimes (s4-0 2)
+          (vector-matrix*! (-> s5-0 vec0) (-> this info particles thruster-local-pos s4-0) (-> s5-0 mat))
+          (draw-thrusters
+            this
+            (if (zero? s4-0)
+                -1.0
+                1.0
+                )
+            (-> s5-0 vec0)
+            (-> s5-0 vec1)
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 54 of type h-warf
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod rigid-body-object-method-54 ((this h-warf))
+  (cond
+    ((logtest? (vehicle-flag tracking-mode) (-> this v-flags))
+     (let ((a0-3 (the-as process-focusable (handle->process (-> this track-obj)))))
+       (when a0-3
+         (let ((s5-0 (new 'stack-no-clear 'vehicle-physics-work)))
+           (let* ((v1-7 (-> s5-0 mat))
+                  (a3-0 (-> a0-3 node-list data (-> this track-joint) bone transform))
+                  (a0-9 (-> a3-0 rvec quad))
+                  (a1-3 (-> a3-0 uvec quad))
+                  (a2-0 (-> a3-0 fvec quad))
+                  (a3-1 (-> a3-0 trans quad))
+                  )
+             (set! (-> v1-7 rvec quad) a0-9)
+             (set! (-> v1-7 uvec quad) a1-3)
+             (set! (-> v1-7 fvec quad) a2-0)
+             (set! (-> v1-7 trans quad) a3-1)
+             )
+           (set! (-> s5-0 velocity quad) (-> s5-0 mat trans quad))
+           (matrix->quaternion (the-as quaternion (-> s5-0 force)) (-> s5-0 mat))
+           (rigid-body-control-method-28 (-> this rbody) (-> s5-0 velocity) (the-as quaternion (-> s5-0 force)))
+           )
+         (vector-reset! (-> this rbody lin-velocity))
+         (vector-reset! (-> this rbody ang-velocity))
+         )
+       )
+     (set! (-> this rbody time-remaining) 0.0)
+     )
+    (else
+      (call-parent-method this)
+      )
+    )
+  (none)
+  )
+
+;; definition for method 49 of type h-warf
+(defmethod rbody-event-handler ((this h-warf) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('tracking-mode)
+     (let ((v1-1 (-> arg3 param 0))
+           (a0-2 (-> arg3 param 1))
+           )
+       (set! (-> this track-obj) (the-as handle v1-1))
+       (set! (-> this track-joint) (the-as int a0-2))
+       )
+     (let ((v0-0 (the-as object (logior (vehicle-flag tracking-mode) (-> this v-flags)))))
+       (set! (-> this v-flags) (the-as vehicle-flag v0-0))
+       v0-0
+       )
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )

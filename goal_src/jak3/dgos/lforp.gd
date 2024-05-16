@@ -1,0 +1,12 @@
+("LFORP.DGO"
+ ("egg-spider.o"
+  "tpage-2237.go"
+  "tpage-2357.go"
+  "tpage-2402.go"
+  "daxter-highres-ag.go"
+  "jakc-highres-ag.go"
+  "mh-plant-ag.go"
+  "egg-spider-ag.go"
+  "shoulder-plates-ag.go"
+  "lforplnt-vis.go"
+ ))

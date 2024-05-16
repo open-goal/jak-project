@@ -6,7 +6,7 @@
 
 #include "decompiler/util/data_decompile.h"
 
-#include "third-party/fmt/format.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 // sparticle fields.
@@ -337,7 +337,8 @@ const SparticleFieldDecomp field_kind_jak2[73] = {
 
 const std::unordered_map<GameVersion, const SparticleFieldDecomp*> field_kinds = {
     {GameVersion::Jak1, field_kind_jak1},
-    {GameVersion::Jak2, field_kind_jak2}};
+    {GameVersion::Jak2, field_kind_jak2},
+    {GameVersion::Jak3, field_kind_jak2}};
 
 float word_as_float(const LinkedWord& w) {
   ASSERT(w.kind() == LinkedWord::PLAIN_DATA);
@@ -400,9 +401,22 @@ void assert_spec_flag_float(const std::vector<LinkedWord>& words, const std::str
 
 std::string decompile_sparticle_texture(const std::vector<LinkedWord>& words,
                                         const TypeSystem& ts,
-                                        const std::string& flag_name) {
+                                        const std::string& flag_name,
+                                        const Env& env) {
   assert_spec_flag_int_single_field(words, flag_name);
 
+  // try to use texture constants
+  auto textures = env.dts->textures;
+  auto combo_id = words.at(1).data;
+  u16 tpage = (combo_id & 0xfff00000) >> 20;
+  u16 idx = (combo_id & 0x000fff00) >> 8;
+  auto fixed_id = tpage << 16 | idx;
+  if (!textures.empty() && textures.find(fixed_id) != textures.end()) {
+    auto tex = textures.at(fixed_id);
+    return pretty_print::build_list(tex.name, tex.tpage_name).print();
+  }
+
+  // default to texture id if it fails
   const auto tex_id_type = TypeSpec("texture-id");
   auto tex_id_str = bitfield_defs_print(
       tex_id_type, decompile_bitfield_from_int(tex_id_type, ts, words.at(1).data));
@@ -659,7 +673,8 @@ goos::Object decompile_sparticle_field_init(const std::vector<decompiler::Linked
                                             goos::Object sound_spec,
                                             goos::Object userdata,
                                             const TypeSystem& ts,
-                                            GameVersion version) {
+                                            GameVersion version,
+                                            const Env& env) {
   auto field_name = decompile_int_enum_from_int(TypeSpec("sp-field-id"), ts, field_id);
   const auto& field_info = field_kinds.at(version)[field_id];
   if (!field_info.known) {
@@ -689,7 +704,7 @@ goos::Object decompile_sparticle_field_init(const std::vector<decompiler::Linked
     // let's handle things on a more specific level now
     switch (field_info.kind) {
       case FieldKind::TEXTURE_ID:
-        result = decompile_sparticle_texture(words, ts, flag_name);
+        result = decompile_sparticle_texture(words, ts, flag_name, env);
         break;
       case FieldKind::FLOAT:
         result = decompile_sparticle_float(words, flag_name, false);

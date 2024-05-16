@@ -307,6 +307,7 @@
 
 ;; definition for method 10 of type metalkor
 (defmethod deactivate ((this metalkor))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (-> this wing-sound-playing)
       (sound-stop (-> this wing-sound))
       )
@@ -316,14 +317,14 @@
 
 ;; definition for method 7 of type metalkor
 ;; WARN: Return type mismatch process-focusable vs metalkor.
-(defmethod relocate ((this metalkor) (arg0 int))
+(defmethod relocate ((this metalkor) (offset int))
   (if (nonzero? (-> this shot-anticipate))
-      (&+! (-> this shot-anticipate) arg0)
+      (&+! (-> this shot-anticipate) offset)
       )
   (if (nonzero? (-> this neck))
-      (&+! (-> this neck) arg0)
+      (&+! (-> this neck) offset)
       )
-  (the-as metalkor ((method-of-type process-focusable relocate) this arg0))
+  (the-as metalkor ((method-of-type process-focusable relocate) this offset))
   )
 
 ;; definition for method 20 of type metalkor
@@ -534,29 +535,29 @@
                       )
                     )
             )
-      (let ((v1-24 (-> self skel root-channel 1)))
-        (set! (-> v1-24 frame-interp 1) f30-2)
-        (set! (-> v1-24 frame-interp 0) f30-2)
-        )
+      (ja :chan 1 :frame-interp0 f30-2 :frame-interp1 f30-2)
       )
     )
   (none)
   )
 
 ;; definition for function metalkor-get-gem-tracker
-;; WARN: Return type mismatch process vs none.
+;; WARN: Return type mismatch process vs gem-tracker.
+;; WARN: disable def twice: 9. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
+;; WARN: disable def twice: 26. This may happen when a cond (no else) is nested inside of another conditional, but it should be rare.
 (defbehavior metalkor-get-gem-tracker metalkor ((arg0 process-focusable))
-  (cond
-    ((type? arg0 metalkor-wasp)
-     (handle->process (-> self wasp-gem-tracker))
-     )
-    ((type? arg0 metalkor-flitter)
-     (handle->process (-> self flitter-gem-tracker))
-     )
-    (else
-      )
-    )
-  (none)
+  (the-as gem-tracker (cond
+                        ((type? arg0 metalkor-wasp)
+                         (handle->process (-> self wasp-gem-tracker))
+                         )
+                        ((type? arg0 metalkor-flitter)
+                         (handle->process (-> self flitter-gem-tracker))
+                         )
+                        (else
+                          (the-as process #f)
+                          )
+                        )
+          )
   )
 
 ;; definition for function metalkor-handler
@@ -623,7 +624,7 @@
        (set! (-> s4-0 param 3) (-> arg3 param 3))
        (set! (-> s4-0 param 4) (-> arg3 param 4))
        (set! (-> s4-0 param 5) (-> arg3 param 5))
-       (send-event-function (the-as process-tree (metalkor-get-gem-tracker (the-as process-focusable arg0))) s4-0)
+       (send-event-function (metalkor-get-gem-tracker (the-as process-focusable arg0)) s4-0)
        )
      )
     (('setup-flitter-gem)

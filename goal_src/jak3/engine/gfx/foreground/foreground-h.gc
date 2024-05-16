@@ -5,5 +5,161 @@
 ;; name in dgo: foreground-h
 ;; dgos: GAME
 
+(declare-type merc-effect structure)
+(declare-type foreground-globals structure)
+(define-extern vu-lights<-light-group! (function vu-lights light-group none))
+(define-extern *foreground-draw-engine* engine)
+(define-extern *default-shadow-settings* shadow-settings)
+(define-extern *foreground* foreground-globals)
+(define-extern foreground-draw-hud (function draw-control dma-buffer float none))
+
 ;; DECOMP BEGINS
 
+(deftype mercneric-chain (structure)
+  "A DMA chain for drawing with mercneric, and metadata needed to append.
+This chain is assumed to run with a specific tpage from a specific level available."
+  ((first       uint32)
+   (next        uint32)
+   (state       generic-bucket-state  :inline)
+   (vu1-bucket  bucket-id)
+   )
+  :pack-me
+  )
+
+
+(deftype merc-chain (structure)
+  "A DMA chain for drawing with merc.
+This chain is assumed to run with a specific tpage from a specific level available."
+  ((first       dma-packet)
+   (patch       dma-packet)
+   (vu1-bucket  bucket-id)
+   )
+  :pack-me
+  )
+
+
+(deftype foreground-bucket (structure)
+  "A foreground bucket is merc, emerc, and mercneric chain for a given texture mode."
+  ((merc       merc-chain       :inline)
+   (emerc      merc-chain       :inline)
+   (mercneric  mercneric-chain  :inline)
+   )
+  )
+
+
+(deftype foreground-level-buckets (structure)
+  "Collection of buckets for a single level.
+Each bucket has a different texture. The order is:
+tfrag, pris, shrub, alpha, water, pris, pris2"
+  ((data  foreground-bucket  7 :inline)
+   )
+  )
+
+
+(deftype foreground-bucket-grid (structure)
+  "Array of buckets for each level, plus the single warp chain shared between everybody."
+  ((level-buckets  foreground-level-buckets  11 :inline)
+   (warp-chain     mercneric-chain           :inline)
+   )
+  )
+
+
+(deftype foreground-regs (structure)
+  "Frequently accessed foreground values. These are in scratchpad for fast access
+during foreground processing."
+  ((dist                   float)
+   (merc-used              uint32)
+   (emerc-used             uint32)
+   (mercneric-used         uint32)
+   (use-isometric          uint32)
+   (base-start             dma-packet)
+   (joint-ptr              (inline-array joint))
+   (bone-ptr               (inline-array bone))
+   (num-bones              uint32)
+   (mtxs                   (inline-array pris-mtx))
+   (dma-buf                dma-buffer)
+   (default-texture-index  uint32)
+   (mercneric-chain        mercneric-chain)
+   (level-buckets          foreground-level-buckets)
+   )
+  )
+
+
+(deftype foreground-work (structure)
+  "Memory map for scratchpad during foreground processing.
+This is not used by the renderers, bone matrix, or joint code - just the code
+that assigns stuff to buckets and prepares DMA for merc (or requests for generic merc)."
+  ((regs            foreground-regs         :inline)
+   (draw-index-map  uint8                   11 :offset  64)
+   (grid            foreground-bucket-grid  :inline)
+   (bounds          sphere                  :inline)
+   (lights          vu-lights               :inline)
+   (distance        vector                  :inline)
+   (next-tmpl       dma-packet              :inline)
+   )
+  )
+
+
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 0]
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 1]
+(defun invalidate-cache-line ((arg0 pointer))
+  ;; og:preserve-this
+  ; (.sync.l)
+  ; (.cache dxwbin arg0 0)
+  ; (.sync.l)
+  ; (.cache dxwbin arg0 1)
+  ; (.sync.l)
+  0
+  )
+
+(deftype texscroll-globals (structure)
+  "List of all merc-effects that need texscroll applied."
+  ((requests  int32)
+   (effects   merc-effect  32)
+   )
+  )
+
+
+(deftype merc-effect-bucket-info (structure)
+  "Scratch info computed per-merc-effect by the foreground code, then later read by merc
+DMA generation. This is only for the currently-processing merc model's effects."
+  ((color-fade      rgba)
+   (alpha           uint8  :offset   3)
+   (merc-path       uint8)
+   (ignore-alpha    uint8)
+   (disable-draw    uint8)
+   (disable-envmap  uint8)
+   )
+  :pack-me
+  )
+
+
+(deftype merc-bucket-info (structure)
+  "Scratch info for the current merc-ctrl. Written by the foreground code, read by merc DMA generation."
+  ((light                        vu-lights                :inline)
+   (needs-clip                   int32)
+   (need-mercprime-if-merc       int32)
+   (must-use-mercneric-for-clip  int32)
+   (effect                       merc-effect-bucket-info  64 :inline)
+   )
+  )
+
+
+(deftype foreground-globals (structure)
+  "The foreground renderer state: all DMA chains, settings for the current merc-ctrl, texscroll list."
+  ((foreground-grid   foreground-bucket-grid  :inline)
+   (merc-bucket-info  merc-bucket-info        :inline)
+   (texscroll         texscroll-globals       :inline)
+   )
+  )
+
+
+(deftype shadow-dma-packet (structure)
+  "DMA tag for submitting shadow data."
+  ((tag       generic-merc-tag  :inline)
+   (settings  shadow-settings   :inline)
+   (geo-ref   dma-packet        :inline)
+   (mtx-ref   dma-packet        :inline)
+   (end-tag   dma-packet        :inline)
+   )
+  )

@@ -12,9 +12,9 @@
 #include "decompiler/ObjectFile/ObjectFileDB.h"
 #include "test/offline/config/config.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/ranges.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
+#include "fmt/ranges.h"
 
 OfflineTestThreadManager g_offline_test_thread_manager;
 
@@ -50,9 +50,10 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
 
   dc.db = std::make_unique<decompiler::ObjectFileDB>(
       dgo_paths, dc.config->obj_file_name_map_file, std::vector<fs::path>{},
-      std::vector<fs::path>{}, std::vector<fs::path>{}, *dc.config);
+      std::vector<fs::path>{}, std::vector<fs::path>{}, std::vector<fs::path>{}, *dc.config);
   dc.db->dts.art_group_info = dc.config->art_group_info_dump;
   dc.db->dts.jg_info = dc.config->jg_info_dump;
+  dc.db->dts.textures = dc.config->texture_info_dump;
 
   std::unordered_set<std::string> db_files;
   for (auto& files_by_name : dc.db->obj_files_by_name) {
@@ -112,14 +113,14 @@ std::vector<std::future<OfflineTestThreadResult>> distribute_work(
   for (const auto& [dgo, work] : work_colls) {
     total_files += work.source_files.size();
   }
-  int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
+  // int divisor = (total_files + work_groups.size() - 1) / work_groups.size();
 
   // Divide up the work
   int file_idx = 0;
   for (const auto& [dgo, work] : work_colls) {
     // source files
     for (auto& source_file : work.source_files) {
-      auto& wg = work_groups.at(file_idx / divisor);
+      auto& wg = work_groups.at(file_idx % work_groups.size());
       wg.dgo_set.insert(dgo);
       wg.work_collection.source_files.push_back(source_file);
       file_idx++;

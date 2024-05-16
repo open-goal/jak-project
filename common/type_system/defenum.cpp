@@ -13,7 +13,7 @@
 #include "common/util/BitUtils.h"
 #include "common/util/string_util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace {
 const goos::Object& car(const goos::Object* x) {
@@ -58,10 +58,11 @@ EnumType* parse_defenum(const goos::Object& defenum,
   auto& enum_name_obj = car(iter);
   iter = cdr(iter);
   // check for docstring
+  std::optional<std::string> maybe_docstring;
   if (iter->is_pair() && car(iter).is_string()) {
-    // TODO - docstring - store and use docstring if coming from the compiler
     if (symbol_metadata) {
-      symbol_metadata->docstring = str_util::trim_newline_indents(car(iter).as_string()->data);
+      maybe_docstring = str_util::trim_newline_indents(car(iter).as_string()->data);
+      symbol_metadata->docstring = maybe_docstring.value();
     }
     iter = cdr(iter);
   }
@@ -157,6 +158,7 @@ EnumType* parse_defenum(const goos::Object& defenum,
   if (is_type("integer", base_type, ts)) {
     auto parent = ts->get_type_of_type<ValueType>(base_type.base_type());
     auto new_type = std::make_unique<EnumType>(parent, name, is_bitfield, entries);
+    new_type->m_metadata.docstring = maybe_docstring;
     new_type->set_runtime_type(parent->get_runtime_name());
     return dynamic_cast<EnumType*>(ts->add_type(name, std::move(new_type)));
   } else {

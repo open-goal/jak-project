@@ -13,7 +13,7 @@
 #include "common/type_system/state.h"
 #include "common/util/string_util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 /*!
  * Missing Features
@@ -84,12 +84,10 @@ double get_float(const goos::Object& obj) {
   throw std::runtime_error(obj.print() + " was supposed to be an number, but isn't");
 }
 
-void add_field(
-    StructureType* structure,
-    TypeSystem* ts,
-    const goos::Object& def,
-    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>&
-        constants) {
+void add_field(StructureType* structure,
+               TypeSystem* ts,
+               const goos::Object& def,
+               goos::EnvironmentMap* constants) {
   auto rest = &def;
 
   auto name = symbol_string(car(rest));
@@ -113,9 +111,8 @@ void add_field(
     if (car(rest).is_int()) {
       array_size = car(rest).integer_obj.value;
       rest = cdr(rest);
-    } else if (car(rest).is_symbol() &&
-               constants.find((car(rest)).as_symbol()) != constants.end()) {
-      array_size = get_int(constants[(car(rest)).as_symbol()]);
+    } else if (car(rest).is_symbol() && constants && constants->lookup((car(rest)).as_symbol())) {
+      array_size = get_int(*constants->lookup((car(rest)).as_symbol()));
       rest = cdr(rest);
     }
 
@@ -543,13 +540,11 @@ void declare_state(Type* type,
   });
 }
 
-StructureDefResult parse_structure_def(
-    StructureType* type,
-    TypeSystem* ts,
-    const goos::Object& fields,
-    const goos::Object& options,
-    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>&
-        constants) {
+StructureDefResult parse_structure_def(StructureType* type,
+                                       TypeSystem* ts,
+                                       const goos::Object& fields,
+                                       const goos::Object& options,
+                                       goos::EnvironmentMap* constants) {
   StructureDefResult result;
   for_each_in_list(fields, [&](const goos::Object& o) { add_field(type, ts, o, constants); });
   TypeFlags flags;
@@ -811,18 +806,11 @@ TypeSpec parse_typespec(const TypeSystem* type_system, const goos::Object& src) 
   return {};
 }
 
-DeftypeResult parse_deftype(
-    const goos::Object& deftype,
-    TypeSystem* ts,
-    std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>*
-        constants) {
+DeftypeResult parse_deftype(const goos::Object& deftype,
+                            TypeSystem* ts,
+                            goos::EnvironmentMap* constants) {
   DefinitionMetadata symbol_metadata;
-  std::unordered_map<goos::InternedSymbolPtr, goos::Object, goos::InternedSymbolPtr::hash>
-      no_consts;
-  auto& constants_to_use = no_consts;
-  if (constants != nullptr) {
-    constants_to_use = *constants;
-  }
+  goos::EnvironmentMap no_consts;
 
   auto iter = &deftype;
 
@@ -861,8 +849,7 @@ DeftypeResult parse_deftype(
     }
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, pto->get_name());
-    auto sr =
-        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     structure_result = sr;
@@ -891,8 +878,7 @@ DeftypeResult parse_deftype(
     ASSERT(pto);
     new_type->inherit(pto);
     ts->forward_declare_type_as(name, pto->get_name());
-    auto sr =
-        parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants_to_use);
+    auto sr = parse_structure_def(new_type.get(), ts, field_list_obj, options_obj, constants);
     result.flags = sr.flags;
     result.create_runtime_type = sr.generate_runtime_type;
     structure_result = sr;

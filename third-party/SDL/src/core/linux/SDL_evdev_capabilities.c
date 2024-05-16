@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
   Copyright (C) 2020 Collabora Ltd.
 
   This software is provided 'as-is', without any express or implied
@@ -23,27 +23,27 @@
 
 #include "SDL_evdev_capabilities.h"
 
-
-#if HAVE_LINUX_INPUT_H
+#ifdef HAVE_LINUX_INPUT_H
 
 /* missing defines in older Linux kernel headers */
 #ifndef BTN_TRIGGER_HAPPY
 #define BTN_TRIGGER_HAPPY 0x2c0
 #endif
 #ifndef BTN_DPAD_UP
-#define BTN_DPAD_UP       0x220
+#define BTN_DPAD_UP 0x220
 #endif
 #ifndef KEY_ALS_TOGGLE
-#define KEY_ALS_TOGGLE    0x230
+#define KEY_ALS_TOGGLE 0x230
 #endif
 
 extern int
-SDL_EVDEV_GuessDeviceClass(unsigned long bitmask_ev[NBITS(EV_MAX)],
-                           unsigned long bitmask_abs[NBITS(ABS_MAX)],
-                           unsigned long bitmask_key[NBITS(KEY_MAX)],
-                           unsigned long bitmask_rel[NBITS(REL_MAX)])
+SDL_EVDEV_GuessDeviceClass(const unsigned long bitmask_ev[NBITS(EV_MAX)],
+                           const unsigned long bitmask_abs[NBITS(ABS_MAX)],
+                           const unsigned long bitmask_key[NBITS(KEY_MAX)],
+                           const unsigned long bitmask_rel[NBITS(REL_MAX)])
 {
-    struct range {
+    struct range
+    {
         unsigned start;
         unsigned end;
     };
@@ -114,7 +114,7 @@ SDL_EVDEV_GuessDeviceClass(unsigned long bitmask_ev[NBITS(EV_MAX)],
         unsigned i;
         unsigned long found = 0;
 
-        for (i = 0; i < BTN_MISC/BITS_PER_LONG; ++i) {
+        for (i = 0; i < BTN_MISC / BITS_PER_LONG; ++i) {
             found |= bitmask_key[i];
         }
         /* If there are no keys in the lower block, check the higher blocks */
@@ -138,8 +138,9 @@ SDL_EVDEV_GuessDeviceClass(unsigned long bitmask_ev[NBITS(EV_MAX)],
     /* the first 32 bits are ESC, numbers, and Q to D; if we have any of
      * those, consider it a keyboard device; do not test KEY_RESERVED, though */
     keyboard_mask = 0xFFFFFFFE;
-    if ((bitmask_key[0] & keyboard_mask) != 0)
+    if ((bitmask_key[0] & keyboard_mask) != 0) {
         devclass |= SDL_UDEV_DEVICE_KEYBOARD; /* ID_INPUT_KEYBOARD */
+    }
 
     return devclass;
 }

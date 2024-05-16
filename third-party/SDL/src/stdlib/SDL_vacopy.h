@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,15 +22,15 @@
 /* Do our best to make sure va_copy is working */
 #if defined(__NGAGE__)
 #undef va_copy
-#define va_copy(dst, src)   dst = src
+#define va_copy(dst, src) dst = src
 
 #elif defined(_MSC_VER) && _MSC_VER <= 1800
 /* Visual Studio 2013 tries to link with _vacopy in the C runtime. Newer versions do an inline assignment */
 #undef va_copy
-#define va_copy(dst, src)   dst = src
+#define va_copy(dst, src) dst = src
 
 #elif defined(__GNUC__) && (__GNUC__ < 3)
-#define va_copy(dst, src)   __va_copy(dst, src)
+#define va_copy(dst, src) __va_copy(dst, src)
 #endif
 
 /* vi: set ts=4 sw=4 expandtab: */

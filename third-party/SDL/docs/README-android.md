@@ -13,22 +13,22 @@ supported, but you can use the "android-project-ant" directory as a template.
 Requirements
 ================================================================================
 
-Android SDK (version 31 or later)
+Android SDK (version 34 or later)
 https://developer.android.com/sdk/index.html
 
 Android NDK r15c or later
 https://developer.android.com/tools/sdk/ndk/index.html
 
-Minimum API level supported by SDL: 16 (Android 4.1)
+Minimum API level supported by SDL: 19 (Android 4.4)
 
 
 How the port works
 ================================================================================
 
 - Android applications are Java-based, optionally with parts written in C
-- As SDL apps are C-based, we use a small Java shim that uses JNI to talk to 
+- As SDL apps are C-based, we use a small Java shim that uses JNI to talk to
   the SDL library
-- This means that your application C code must be placed inside an Android 
+- This means that your application C code must be placed inside an Android
   Java project, along with some C support code that communicates with Java
 - This eventually produces a standard Android .apk package
 
@@ -68,14 +68,22 @@ Finally, a word of caution: re running androidbuild.sh wipes any changes you may
 done in the build directory for the app!
 
 
-For more complex projects, follow these instructions:
-    
-1. Copy the android-project directory wherever you want to keep your projects
-   and rename it to the name of your project.
-2. Move or symlink this SDL directory into the "<project>/app/jni" directory
-3. Edit "<project>/app/jni/src/Android.mk" to include your source files
 
-4a. If you want to use Android Studio, simply open your <project> directory and start building.
+For more complex projects, follow these instructions:
+
+1. Get the source code for SDL and copy the 'android-project' directory located at SDL/android-project to a suitable location. Also make sure to rename it to your project name (In these examples: YOURPROJECT).
+
+   (The 'android-project' directory can basically be seen as a sort of starting point for the android-port of your project. It contains the glue code between the Android Java 'frontend' and the SDL code 'backend'. It also contains some standard behaviour, like how events should be handled, which you will be able to change.)
+
+2. Move or [symlink](https://en.wikipedia.org/wiki/Symbolic_link) the SDL directory into the "YOURPROJECT/app/jni" directory
+
+(This is needed as the source of SDL has to be compiled by the Android compiler)
+
+3. Edit "YOURPROJECT/app/jni/src/Android.mk" to include your source files.
+
+(They should be separated by spaces after the "LOCAL_SRC_FILES := " declaration)
+
+4a. If you want to use Android Studio, simply open your 'YOURPROJECT' directory and start building.
 
 4b. If you want to build manually, run './gradlew installDebug' in the project directory. This compiles the .java, creates an .apk with the native code embedded, and installs it on any connected Android device
 
@@ -83,9 +91,9 @@ For more complex projects, follow these instructions:
 If you already have a project that uses CMake, the instructions change somewhat:
 
 1. Do points 1 and 2 from the instruction above.
-2. Edit "<project>/app/build.gradle" to comment out or remove sections containing ndk-build
+2. Edit "YOURPROJECT/app/build.gradle" to comment out or remove sections containing ndk-build
    and uncomment the cmake sections. Add arguments to the CMake invocation as needed.
-3. Edit "<project>/app/jni/CMakeLists.txt" to include your project (it defaults to
+3. Edit "YOURPROJECT/app/jni/CMakeLists.txt" to include your project (it defaults to
    adding the "src" subdirectory). Note that you'll have SDL2, SDL2main and SDL2-static
    as targets in your project, so you should have "target_link_libraries(yourgame SDL2 SDL2main)"
    in your CMakeLists.txt file. Also be aware that you should use add_library() instead of
@@ -132,15 +140,15 @@ Here's an example of a minimal class file:
 
     --- MyGame.java --------------------------
     package com.gamemaker.game;
-    
-    import org.libsdl.app.SDLActivity; 
-    
+
+    import org.libsdl.app.SDLActivity;
+
     /**
-     * A sample wrapper class that just calls SDLActivity 
-     */ 
-    
+     * A sample wrapper class that just calls SDLActivity
+     */
+
     public class MyGame extends SDLActivity { }
-    
+
     ------------------------------------------
 
 Then replace "SDLActivity" in AndroidManifest.xml with the name of your
@@ -179,7 +187,7 @@ may want to keep this fact in mind when building your APK, specially when large
 files are involved.
 For more information on which extensions get compressed by default and how to
 disable this behaviour, see for example:
-    
+
 http://ponystyle.com/blog/2010/03/26/dealing-with-asset-compression-in-android-apps/
 
 
@@ -350,7 +358,7 @@ I get output from addr2line showing that it's in the quit function, in testsprit
 You can add logging to your code to help show what's happening:
 
     #include <android/log.h>
-    
+
     __android_log_print(ANDROID_LOG_INFO, "foo", "Something happened! x = %d", x);
 
 If you need to build without optimization turned on, you can create a file called
@@ -423,13 +431,13 @@ The Tegra Graphics Debugger is available from NVidia here:
 https://developer.nvidia.com/tegra-graphics-debugger
 
 
-Why is API level 16 the minimum required?
+Why is API level 19 the minimum required?
 ================================================================================
 
-The latest NDK toolchain doesn't support targeting earlier than API level 16.
-As of this writing, according to https://developer.android.com/about/dashboards/index.html
-about 99% of the Android devices accessing Google Play support API level 16 or
-higher (January 2018).
+The latest NDK toolchain doesn't support targeting earlier than API level 19.
+As of this writing, according to https://www.composables.com/tools/distribution-chart
+about 99.7% of the Android devices accessing Google Play support API level 19 or
+higher (August 2023).
 
 
 A note regarding the use of the "dirty rectangles" rendering technique
@@ -440,7 +448,7 @@ where you only update a portion of the screen on each frame, you may notice a
 variety of visual glitches on Android, that are not present on other platforms.
 This is caused by SDL's use of EGL as the support system to handle OpenGL ES/ES2
 contexts, in particular the use of the eglSwapBuffers function. As stated in the
-documentation for the function "The contents of ancillary buffers are always 
+documentation for the function "The contents of ancillary buffers are always
 undefined after calling eglSwapBuffers".
 Setting the EGL_SWAP_BEHAVIOR attribute of the surface to EGL_BUFFER_PRESERVED
 is not possible for SDL as it requires EGL 1.4, available only on the API level
@@ -459,7 +467,7 @@ Two legitimate ways:
 Activity by calling Activity.finish().
 
 - Android OS can decide to terminate your application by calling onDestroy()
-(see Activity life cycle). Your application will receive a SDL_QUIT event you 
+(see Activity life cycle). Your application will receive a SDL_QUIT event you
 can handle to save things and quit.
 
 Don't call exit() as it stops the activity badly.

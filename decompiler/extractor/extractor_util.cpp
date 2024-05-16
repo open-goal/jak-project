@@ -23,7 +23,7 @@ const std::unordered_map<int, std::string> game_iso_territory_map = {
 
 std::string get_territory_name(int territory) {
   ASSERT_MSG(game_iso_territory_map.count(territory),
-             fmt::format("territory {} not found in territory name map"));
+             fmt::format("territory {} not found in territory name map", territory));
   return game_iso_territory_map.at(territory);
 }
 
@@ -267,6 +267,11 @@ std::tuple<uint64_t, int> calculate_extraction_hash(const fs::path& extracted_is
   int filec = 0;
   for (auto const& dir_entry : fs::recursive_directory_iterator(extracted_iso_path)) {
     if (dir_entry.is_regular_file()) {
+      // skip the `buildinfo.json` file, we make that -- not relevant!
+      if (dir_entry.path().filename() == "buildinfo.json") {
+        lg::warn("skipping buildinfo.json, that is a file our tools generate");
+        continue;
+      }
       auto buffer = file_util::read_binary_file(dir_entry.path().string());
       auto hash = XXH64(buffer.data(), buffer.size(), 0);
       combined_hash ^= hash;

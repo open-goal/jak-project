@@ -5,5 +5,140 @@
 ;; name in dgo: spatial-hash-h
 ;; dgos: GAME
 
+(declare-type grid-hash-work structure)
+
 ;; DECOMP BEGINS
 
+(deftype grid-hash-word (uint8)
+  ()
+  )
+
+(deftype grid-hash-box (structure)
+  "Integer coordinate box for the spatial hash grid."
+  ((min  int8  3)
+   (max  int8  3)
+   )
+  :pack-me
+  )
+
+
+(deftype grid-hash (basic)
+  "The grid-hash is the basic 3D grid used in the spatial-hash, which is used for runtime
+actor collision dectection by hashing actor spheres into grid cells, and avoiding the typical
+O(n^2) 'check everybody against everybody' collision loop."
+  ((work                 grid-hash-work)
+   (search-box           grid-hash-box  :inline)
+   (bucket-size          int16)
+   (axis-scale           float          3)
+   (dimension-array      int8           3)
+   (vertical-cell-count  int8)
+   (bucket-array         (pointer grid-hash-word))
+   (box-min              float          3)
+   (box-max              float          3)
+   (object-count         int16)
+   (bucket-count         int16)
+   (min-cell-size        float)
+   (bucket-memory-size   int32)
+   (mem-bucket-array     (pointer grid-hash-word))
+   (spr-bucket-array     (pointer grid-hash-word))
+   (debug-draw           symbol)
+   (use-scratch-ram      symbol)
+   )
+  (:methods
+    (new (symbol type int) _type_)
+    (update-grid-for-objects-in-box (_type_ int vector vector) none)
+    (clear-bucket-array (_type_) none)
+    (setup-search-box (_type_ int vector vector vector) none)
+    (search-for-point (_type_ vector) (pointer uint8))
+    (search-for-sphere (_type_ vector float) (pointer uint8))
+    (draw (_type_ rgba) none)
+    (dump-grid-info (_type_) none)
+    (verify-bits-in-bucket (_type_ grid-hash-box grid-hash-box) none)
+    (box-of-everything (_type_ object grid-hash-box) none)
+    (grid-hash-method-18 (_type_ grid-hash-box int) none)
+    (grid-hash-method-19 (_type_ grid-hash-box int) none)
+    (do-search! (_type_ grid-hash-box (pointer uint8)) none)
+    (set-up-box (_type_ grid-hash-box vector vector) none)
+    (sphere-to-grid-box (_type_ grid-hash-box sphere) none)
+    (line-sphere-to-grid-box (_type_ grid-hash-box vector vector float) none)
+    (update-grid (_type_) none)
+    )
+  )
+
+
+(deftype find-nav-sphere-ids-params (structure)
+  ((bsphere      sphere  :inline)
+   (y-threshold  float)
+   (len          int16)
+   (max-len      int16)
+   (mask         uint8)
+   (array        (pointer uint8))
+   )
+  )
+
+;; og:preserve-this added
+(deftype nav-stack-type (structure)
+  "nav-mesh::12"
+  ((nav-id-params find-nav-sphere-ids-params :inline :offset 0)
+   (vec1 vector :inline :offset 32)
+   (vec2 vector :inline :offset 48)
+   (vec3 vector :inline :offset 64)
+   (byte01 int8 :offset 64)
+   (byte02 int8 :offset 65)
+   (byte03 int8 :offset 66)
+   (byte04 int8 :offset 67)
+   (vec4 vector :inline :offset 80)
+   (vec5 vector :inline :offset 96)
+   (vec6 vector :inline :offset 112)
+   (byte-arr uint8 20 :offset 128)
+   )
+  )
+
+
+(deftype sphere-hash (grid-hash)
+  "An extension of grid hash that holds spheres inside of the grid."
+  ((sphere-array      (inline-array sphere))
+   (max-object-count  int16)
+   (pad               int16)
+   (mem-sphere-array  uint32)
+   (spr-sphere-array  uint32)
+   )
+  (:methods
+    (new (symbol type int int) _type_)
+    (clear-objects! (_type_) none)
+    (add-a-sphere (_type_ vector) int)
+    (add-a-sphere-with-flag (_type_ vector int) int)
+    (update-from-spheres (_type_) none)
+    (sphere-hash-method-29 (_type_ find-nav-sphere-ids-params) none)
+    (find-nav-sphere-ids (_type_ find-nav-sphere-ids-params int int) symbol)
+    (add-sphere-with-mask-and-id (_type_ vector vector float int) symbol)
+    (sphere-hash-method-32 (_type_ sphere int) symbol)
+    )
+  )
+
+
+(deftype hash-object-info (structure)
+  ((object  basic)
+   )
+  )
+
+
+(deftype spatial-hash (sphere-hash)
+  "An extension of sphere-hash that associates an object with each sphere."
+  ((object-array      (inline-array hash-object-info))
+   (mem-object-array  (inline-array hash-object-info))
+   (spr-object-array  (inline-array hash-object-info))
+   )
+  (:methods
+    (new (symbol type int int) _type_)
+    (spatial-hash-method-33 (_type_ vector hash-object-info) none)
+    (add-an-object (_type_ bounding-box (pointer collide-shape) int) int)
+    (fill-actor-list-for-box (_type_ vector (pointer collide-shape) int) int)
+    (fill-actor-list-for-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
+    (fill-actor-list-for-line-sphere (_type_ vector vector float (pointer collide-shape) int int) int)
+    (fill-actor-list-for-vec+r (_type_ vector (pointer collide-shape)) int)
+    (spatial-hash-method-39 (_type_ object hash-object-info) int)
+    )
+  )
+
+(define-extern *actor-hash* spatial-hash)

@@ -16,13 +16,6 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 60
 
-    env: # overrides: https://github.com/mbitsnbites/buildcache/blob/master/doc/configuration.md
-      BUILDCACHE_MAX_CACHE_SIZE: 1000000000 # 1gb
-      BUILDCACHE_COMPRESS_FORMAT: ZSTD
-      BUILDCACHE_COMPRESS_LEVEL: 19
-      BUILDCACHE_DIRECT_MODE: true
-      BUILDCACHE_LOG_FILE: ${{ github.workspace }}/buildcache.log
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -37,10 +30,13 @@ jobs:
             choco install ${{ github.workspace }}/third-party/nasm/old/nasm.2.15.05.nupkg
           }
 
-      - name: Setup Buildcache
-        uses: mikehardy/buildcache-action@v2.1.0
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2.13
         with:
-          cache_key: windows-2022-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          variant: sccache
+          key: windows-2022-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: windows-2022-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          max-size: 1000M
 
       - uses: ilammy/msvc-dev-cmd@v1
 
@@ -52,7 +48,7 @@ jobs:
 
       - name: CMake Generation - MSVC
         shell: cmd
-        run: cmake -B build --preset=${{ inputs.cmakePreset }} -DCMAKE_C_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe -DCMAKE_CXX_COMPILER_LAUNCHER=${{ github.workspace }}/buildcache/bin/buildcache.exe .
+        run: cmake -B build --preset=${{ inputs.cmakePreset }} -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache .
 
       - name: Build Project
         shell: cmd

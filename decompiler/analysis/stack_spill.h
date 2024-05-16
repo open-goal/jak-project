@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "common/util/Range.h"
+
 #include "decompiler/Disasm/Instruction.h"
 #include "decompiler/util/StackSpillMap.h"
 

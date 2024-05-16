@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,8 +34,7 @@
 static struct timeval start;
 static SDL_bool ticks_started = SDL_FALSE;
 
-void
-SDL_TicksInit(void)
+void SDL_TicksInit(void)
 {
     if (ticks_started) {
         return;
@@ -45,14 +44,12 @@ SDL_TicksInit(void)
     gettimeofday(&start, NULL);
 }
 
-void
-SDL_TicksQuit(void)
+void SDL_TicksQuit(void)
 {
     ticks_started = SDL_FALSE;
 }
 
-Uint64
-SDL_GetTicks64(void)
+Uint64 SDL_GetTicks64(void)
 {
     struct timeval now;
 
@@ -64,14 +61,12 @@ SDL_GetTicks64(void)
     return (Uint64)(((Sint64)(now.tv_sec - start.tv_sec) * 1000) + ((now.tv_usec - start.tv_usec) / 1000));
 }
 
-Uint64
-SDL_GetPerformanceCounter(void)
+Uint64 SDL_GetPerformanceCounter(void)
 {
     return SDL_GetTicks64();
 }
 
-Uint64
-SDL_GetPerformanceFrequency(void)
+Uint64 SDL_GetPerformanceFrequency(void)
 {
     return 1000;
 }
@@ -79,8 +74,9 @@ SDL_GetPerformanceFrequency(void)
 void SDL_Delay(Uint32 ms)
 {
     const Uint32 max_delay = 0xffffffffUL / 1000;
-    if(ms > max_delay)
+    if (ms > max_delay) {
         ms = max_delay;
+    }
     sceKernelDelayThreadCB(ms * 1000);
 }
 

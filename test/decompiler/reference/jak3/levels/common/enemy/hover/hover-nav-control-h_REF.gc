@@ -1,0 +1,550 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *debug-hover*, type symbol
+(define *debug-hover* #f)
+
+;; definition of type nav-network-adjacency
+(deftype nav-network-adjacency (structure)
+  ((index  int32)
+   (dist   float)
+   )
+  )
+
+;; definition for method 3 of type nav-network-adjacency
+(defmethod inspect ((this nav-network-adjacency))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'nav-network-adjacency)
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tdist: ~f~%" (-> this dist))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type nav-network-adjacency-array
+(deftype nav-network-adjacency-array (inline-array-class)
+  ((data  nav-network-adjacency  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type nav-network-adjacency-array
+(defmethod inspect ((this nav-network-adjacency-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> nav-network-adjacency-array heap-base) (the-as uint 16))
+
+;; definition of type list-node
+(deftype list-node (structure)
+  ((next  list-node)
+   (prev  list-node)
+   )
+  )
+
+;; definition for method 3 of type list-node
+(defmethod inspect ((this list-node))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'list-node)
+  (format #t "~1Tnext: #<list-node @ #x~X>~%" (-> this next))
+  (format #t "~1Tprev: #<list-node @ #x~X>~%" (-> this prev))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type nav-network-path-node
+(deftype nav-network-path-node (list-node)
+  ((row-index      int32)
+   (status         net-path-node-status)
+   (parent         nav-network-path-node)
+   (cost-to-start  float)
+   (cost-to-end    float)
+   )
+  )
+
+;; definition for method 3 of type nav-network-path-node
+(defmethod inspect ((this nav-network-path-node))
+  (when (not this)
+    (set! this this)
+    (goto cfg-8)
+    )
+  (format #t "[~8x] ~A~%" this 'nav-network-path-node)
+  (format #t "~1Tnext: #<list-node @ #x~X>~%" (-> this next))
+  (format #t "~1Tprev: #<list-node @ #x~X>~%" (-> this prev))
+  (format #t "~1Trow-index: ~D~%" (-> this row-index))
+  (format #t "~1Tstatus: #x~X : (net-path-node-status " (-> this status))
+  (let ((s5-0 (-> this status)))
+    (if (= (logand s5-0 (net-path-node-status closed)) (net-path-node-status closed))
+        (format #t "closed ")
+        )
+    (if (= (logand s5-0 (net-path-node-status open)) (net-path-node-status open))
+        (format #t "open ")
+        )
+    )
+  (format #t ")~%")
+  (format #t "~1Tparent: #<nav-network-path-node @ #x~X>~%" (-> this parent))
+  (format #t "~1Tcost-to-start: ~f~%" (-> this cost-to-start))
+  (format #t "~1Tcost-to-end: ~f~%" (-> this cost-to-end))
+  (label cfg-8)
+  this
+  )
+
+;; definition of type nav-network-info
+(deftype nav-network-info (structure)
+  ((path-node  nav-network-path-node  :inline)
+   (pos        vector                 :inline)
+   (index      int32)
+   (sub-graph  int32)
+   (count      int32)
+   (adjacency  (inline-array nav-network-adjacency))
+   )
+  )
+
+;; definition for method 3 of type nav-network-info
+(defmethod inspect ((this nav-network-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'nav-network-info)
+  (format #t "~1Tpath-node: #<nav-network-path-node @ #x~X>~%" (-> this path-node))
+  (format #t "~1Tpos: #<vector @ #x~X>~%" (-> this pos))
+  (format #t "~1Tindex: ~D~%" (-> this index))
+  (format #t "~1Tsub-graph: ~D~%" (-> this sub-graph))
+  (format #t "~1Tcount: ~D~%" (-> this count))
+  (format #t "~1Tadjacency: #x~X~%" (-> this adjacency))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type nav-network-info-array
+(deftype nav-network-info-array (inline-array-class)
+  ((data  nav-network-info  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type nav-network-info-array
+(defmethod inspect ((this nav-network-info-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> nav-network-info-array heap-base) (the-as uint 64))
+
+;; definition of type nav-network-edge
+(deftype nav-network-edge (structure)
+  ((start-index  int32)
+   (end-index    int32)
+   (radius       float)
+   (sub-graph    int32)
+   )
+  )
+
+;; definition for method 3 of type nav-network-edge
+(defmethod inspect ((this nav-network-edge))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'nav-network-edge)
+  (format #t "~1Tstart-index: ~D~%" (-> this start-index))
+  (format #t "~1Tend-index: ~D~%" (-> this end-index))
+  (format #t "~1Tradius: ~f~%" (-> this radius))
+  (format #t "~1Tsub-graph: ~D~%" (-> this sub-graph))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hover-nav-sphere
+(deftype hover-nav-sphere (list-node)
+  ((sphere  sphere  :inline)
+   (handle  handle)
+   (timer   time-frame)
+   )
+  )
+
+;; definition for method 3 of type hover-nav-sphere
+(defmethod inspect ((this hover-nav-sphere))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hover-nav-sphere)
+  (format #t "~1Tnext: #<list-node @ #x~X>~%" (-> this next))
+  (format #t "~1Tprev: #<list-node @ #x~X>~%" (-> this prev))
+  (format #t "~1Tsphere: #<sphere @ #x~X>~%" (-> this sphere))
+  (format #t "~1Thandle: ~D~%" (-> this handle))
+  (format #t "~1Ttimer: ~D~%" (-> this timer))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hover-nav-path-segment
+(deftype hover-nav-path-segment (list-node)
+  ((curve-matrix  matrix  :inline)
+   (pos-index     int32   2)
+   (dist          float)
+   (du            float)
+   )
+  (:methods
+    (set-du (_type_ float) none)
+    )
+  )
+
+;; definition for method 3 of type hover-nav-path-segment
+(defmethod inspect ((this hover-nav-path-segment))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hover-nav-path-segment)
+  (format #t "~1Tnext: #<list-node @ #x~X>~%" (-> this next))
+  (format #t "~1Tprev: #<list-node @ #x~X>~%" (-> this prev))
+  (format #t "~1Tcurve-matrix: #<matrix @ #x~X>~%" (-> this curve-matrix))
+  (format #t "~1Tpos-index[2] @ #x~X~%" (-> this pos-index))
+  (format #t "~1Tdist: ~f~%" (-> this dist))
+  (format #t "~1Tdu: ~f~%" (-> this du))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type hover-nav-path-segment
+;; WARN: Return type mismatch int vs none.
+(defmethod set-du ((this hover-nav-path-segment) (arg0 float))
+  (set! (-> this du) (/ arg0 (-> this dist)))
+  0
+  (none)
+  )
+
+;; definition of type hover-nav-path-info
+(deftype hover-nav-path-info (structure)
+  ((segment-list  hover-nav-path-segment)
+   (tail-segment  hover-nav-path-segment)
+   (curr-segment  hover-nav-path-segment)
+   )
+  :pack-me
+  (:methods
+    (hover-nav-path-info-method-9 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type hover-nav-path-info
+(defmethod inspect ((this hover-nav-path-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hover-nav-path-info)
+  (format #t "~1Tsegment-list: #<hover-nav-path-segment @ #x~X>~%" (-> this segment-list))
+  (format #t "~1Ttail-segment: #<hover-nav-path-segment @ #x~X>~%" (-> this tail-segment))
+  (format #t "~1Tcurr-segment: #<hover-nav-path-segment @ #x~X>~%" (-> this curr-segment))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type nav-network-data
+(deftype nav-network-data (structure)
+  ((node-array  (array nav-network-info))
+   (edge-array  (array nav-network-edge))
+   )
+  )
+
+;; definition for method 3 of type nav-network-data
+(defmethod inspect ((this nav-network-data))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'nav-network-data)
+  (format #t "~1Tnode-array: ~A~%" (-> this node-array))
+  (format #t "~1Tedge-array: ~A~%" (-> this edge-array))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *dummy-adjacency*, type nav-network-data
+(define *dummy-adjacency* (new 'static 'nav-network-data
+                            :node-array (new 'static 'boxed-array :type nav-network-info)
+                            :edge-array (new 'static 'boxed-array :type nav-network-edge)
+                            )
+        )
+
+;; definition of type path-index-array
+(deftype path-index-array (inline-array-class)
+  ((data  int8  :dynamic)
+   )
+  )
+
+;; definition for method 3 of type path-index-array
+(defmethod inspect ((this path-index-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> path-index-array heap-base) (the-as uint 4))
+
+;; definition of type nav-network
+(deftype nav-network (basic)
+  ((network            (array nav-network-info))
+   (edge               (array nav-network-edge))
+   (control-handle     handle)
+   (list-table         list-node               5 :offset  32)
+   (open-list          nav-network-path-node     :overlay-at (-> list-table 0))
+   (closed-list        nav-network-path-node     :overlay-at (-> list-table 1))
+   (sphere-list        hover-nav-sphere          :overlay-at (-> list-table 3))
+   (free-segment-list  hover-nav-path-segment    :overlay-at (-> list-table 2))
+   (free-sphere-list   hover-nav-sphere          :overlay-at (-> list-table 4))
+   (segment-pool       (pointer hover-nav-path-segment))
+   (sphere-pool        (pointer hover-nav-sphere))
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (alloc-nav-network-for-level! (_type_ int int) none)
+    (init-by-other! (_type_ level nav-network-data) none)
+    (nav-network-method-11 (_type_) none)
+    (reset! (_type_) none)
+    (nav-network-method-13 (_type_ int nav-network-path-node) nav-network-path-node)
+    (nav-network-method-14 (_type_ int nav-network-path-node) object)
+    (nav-network-method-15 (_type_ nav-network-path-node) object)
+    (nav-network-method-16 (_type_ nav-network-path-node) none)
+    (nav-network-method-17 (_type_) nav-network-path-node)
+    (close-node! (_type_ nav-network-path-node) net-path-node-status)
+    (nav-network-method-19 (_type_ nav-network-path-node) none)
+    (nav-network-method-20 (_type_ nav-network-path-node vector) none)
+    (nav-network-method-21 (_type_ int vector) none)
+    (nav-network-method-22 (_type_ object int int) none)
+    (nav-network-method-23 (_type_ hover-nav-path-info vector vector int int) hover-nav-path-segment)
+    (nav-network-method-24 (_type_ hover-nav-path-info) none)
+    (nav-network-method-25 (_type_ hover-nav-path-info int int int vector) symbol)
+    (nav-network-method-26 (_type_ process collide-prim-core) none)
+    (nav-network-method-27 (_type_ vector process vector vector float) vector)
+    (nav-network-method-28 (_type_) none)
+    (inspect-lists (_type_) none)
+    (nav-network-method-30 (_type_) none)
+    (get-network-info (_type_) (array nav-network-info))
+    (nav-network-method-32 (_type_ vector int) int)
+    (nav-network-method-33 (_type_ vector vector int) int)
+    (nav-network-method-34 (_type_ vector vector int) int)
+    (nav-network-method-35 (_type_ vector vector int) symbol)
+    (nav-network-method-36 (_type_ bounding-box) none)
+    (print-vis-bbox (_type_ string) none)
+    )
+  )
+
+;; definition for method 3 of type nav-network
+(defmethod inspect ((this nav-network))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tnetwork: ~A~%" (-> this network))
+  (format #t "~1Tedge: ~A~%" (-> this edge))
+  (format #t "~1Tcontrol-handle: ~D~%" (-> this control-handle))
+  (format #t "~1Tlist-table[5] @ #x~X~%" (-> this list-table))
+  (format #t "~1Topen-list: #<nav-network-path-node @ #x~X>~%" (-> this open-list))
+  (format #t "~1Tclosed-list: #<nav-network-path-node @ #x~X>~%" (-> this closed-list))
+  (format #t "~1Tsphere-list: #<hover-nav-sphere @ #x~X>~%" (-> this sphere-list))
+  (format #t "~1Tfree-segment-list: #<hover-nav-path-segment @ #x~X>~%" (-> this free-segment-list))
+  (format #t "~1Tfree-sphere-list: #<hover-nav-sphere @ #x~X>~%" (-> this free-sphere-list))
+  (format #t "~1Tsegment-pool: #x~X~%" (-> this segment-pool))
+  (format #t "~1Tsphere-pool: #x~X~%" (-> this sphere-pool))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 31 of type nav-network
+(defmethod get-network-info ((this nav-network))
+  (-> this network)
+  )
+
+;; definition of type hover-nav-params
+(deftype hover-nav-params (structure)
+  ((max-speed               float)
+   (max-acceleration        float)
+   (max-rotation-rate       float)
+   (friction                float)
+   (nav-collide-prim-index  int32)
+   )
+  )
+
+;; definition for method 3 of type hover-nav-params
+(defmethod inspect ((this hover-nav-params))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hover-nav-params)
+  (format #t "~1Tmax-speed: ~f~%" (-> this max-speed))
+  (format #t "~1Tmax-acceleration: ~f~%" (-> this max-acceleration))
+  (format #t "~1Tmax-rotation-rate: ~f~%" (-> this max-rotation-rate))
+  (format #t "~1Tfriction: ~f~%" (-> this friction))
+  (format #t "~1Tnav-collide-prim-index: ~D~%" (-> this nav-collide-prim-index))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hover-fixed-path-info
+(deftype hover-fixed-path-info (structure)
+  ((path           path-control)
+   (start-index    int32)
+   (end-index      int32)
+   (current-index  int32)
+   (step           int32)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type hover-fixed-path-info
+(defmethod inspect ((this hover-fixed-path-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'hover-fixed-path-info)
+  (format #t "~1Tpath: ~A~%" (-> this path))
+  (format #t "~1Tstart-index: ~D~%" (-> this start-index))
+  (format #t "~1Tend-index: ~D~%" (-> this end-index))
+  (format #t "~1Tcurrent-index: ~D~%" (-> this current-index))
+  (format #t "~1Tstep: ~D~%" (-> this step))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type hover-nav-control
+(deftype hover-nav-control (basic)
+  ((root                         collide-shape-moving)
+   (fixed-path-info              hover-fixed-path-info  :inline)
+   (path-info                    hover-nav-path-info    :inline)
+   (transvv                      vector                 :inline)
+   (dest-pos                     vector                 :inline)
+   (dest-vel                     vector                 :inline)
+   (dest-move-dir                vector                 :inline)
+   (dest-offset                  vector                 :inline)
+   (move-dir                     vector                 :inline)
+   (nav-collide-impulse          vector                 :inline)
+   (nav                          nav-network)
+   (flags                        hover-nav-flags)
+   (params                       hover-nav-params)
+   (path-timer                   time-frame)
+   (sub-graph                    int32)
+   (nav-collide-impulse-len      float)
+   (dest-speed                   float)
+   (local-dist                   float)
+   (speed                        float)
+   (max-los-speed                float)
+   (target-speed                 float)
+   (target-acceleration          float)
+   (u-param                      float)
+   (speed-dest                   float)
+   (curr-dest-pt                 int32)
+   (max-speed-multiplier         float)
+   (max-acceleration-multiplier  float)
+   )
+  (:methods
+    (new (symbol type process collide-shape-moving hover-nav-params) _type_)
+    (hover-nav-control-method-9 (_type_) none)
+    (hover-nav-control-method-10 (_type_ vector vector vector) none)
+    (hover-nav-control-method-11 (_type_) none)
+    (hover-nav-control-method-12 (_type_ vector) none)
+    (hover-nav-control-method-13 (_type_) none)
+    (set-multipliers (_type_ float float) none)
+    (hover-nav-control-method-15 (_type_ vector) vector)
+    (hover-nav-control-method-16 (_type_ vector) vector)
+    (hover-nav-control-method-17 (_type_) collide-prim-core)
+    (hover-nav-control-method-18 (_type_ path-control int int) none)
+    (hover-nav-control-method-19 (_type_) none)
+    (hover-nav-control-method-20 (_type_) none)
+    (get-curr-segment (_type_) hover-nav-path-segment)
+    (hover-nav-control-method-22 (_type_) symbol)
+    (hover-nav-control-method-23 (_type_ vector) float)
+    (hover-nav-control-method-24 (_type_ vector vector) symbol)
+    (hover-nav-control-method-25 (_type_) none)
+    (probe-background (_type_ vector vector float) symbol)
+    (hover-nav-control-method-27 (_type_ vector vector) int)
+    (hover-nav-control-method-28 (_type_ vector vector) int)
+    (hover-nav-control-method-29 (_type_ vector vector) symbol)
+    (hover-nav-control-method-30 (_type_ vector vector) float)
+    (hover-nav-control-method-31 (_type_) float)
+    (hover-nav-control-method-32 (_type_ vector) none)
+    (hover-nav-control-method-33 (_type_) float)
+    (hover-nav-control-method-34 (_type_) float)
+    )
+  )
+
+;; definition for method 3 of type hover-nav-control
+(defmethod inspect ((this hover-nav-control))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Troot: ~A~%" (-> this root))
+  (format #t "~1Tfixed-path-info: #<hover-fixed-path-info @ #x~X>~%" (-> this fixed-path-info))
+  (format #t "~1Tpath-info: #<hover-nav-path-info @ #x~X>~%" (-> this path-info))
+  (format #t "~1Ttransvv: #<vector @ #x~X>~%" (-> this transvv))
+  (format #t "~1Tdest-pos: #<vector @ #x~X>~%" (-> this dest-pos))
+  (format #t "~1Tdest-vel: #<vector @ #x~X>~%" (-> this dest-vel))
+  (format #t "~1Tdest-move-dir: #<vector @ #x~X>~%" (-> this dest-move-dir))
+  (format #t "~1Tdest-offset: #<vector @ #x~X>~%" (-> this dest-offset))
+  (format #t "~1Tmove-dir: #<vector @ #x~X>~%" (-> this move-dir))
+  (format #t "~1Tnav-collide-impulse: #<vector @ #x~X>~%" (-> this nav-collide-impulse))
+  (format #t "~1Tnav: ~A~%" (-> this nav))
+  (format #t "~1Tflags: ~D~%" (-> this flags))
+  (format #t "~1Tparams: #<hover-nav-params @ #x~X>~%" (-> this params))
+  (format #t "~1Tpath-timer: ~D~%" (-> this path-timer))
+  (format #t "~1Tsub-graph: ~D~%" (-> this sub-graph))
+  (format #t "~1Tnav-collide-impulse-len: ~f~%" (-> this nav-collide-impulse-len))
+  (format #t "~1Tdest-speed: ~f~%" (-> this dest-speed))
+  (format #t "~1Tlocal-dist: ~f~%" (-> this local-dist))
+  (format #t "~1Tspeed: ~f~%" (-> this speed))
+  (format #t "~1Tmax-los-speed: ~f~%" (-> this max-los-speed))
+  (format #t "~1Ttarget-speed: ~f~%" (-> this target-speed))
+  (format #t "~1Ttarget-acceleration: ~f~%" (-> this target-acceleration))
+  (format #t "~1Tu-param: ~f~%" (-> this u-param))
+  (format #t "~1Tspeed-dest: ~f~%" (-> this speed-dest))
+  (format #t "~1Tcurr-dest-pt: ~D~%" (-> this curr-dest-pt))
+  (format #t "~1Tmax-speed-multiplier: ~f~%" (-> this max-speed-multiplier))
+  (format #t "~1Tmax-acceleration-multiplier: ~f~%" (-> this max-acceleration-multiplier))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *hover-nav-time-offset*, type int
+(define *hover-nav-time-offset* 0)
+
+;; failed to figure out what this is:
+0

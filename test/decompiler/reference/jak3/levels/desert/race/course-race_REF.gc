@@ -1,0 +1,1082 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *v-snake-racer-constants*, type rigid-body-vehicle-constants
+(define *v-snake-racer-constants* (new 'static 'rigid-body-vehicle-constants))
+
+;; definition for symbol *v-mirage-racer-constants*, type rigid-body-vehicle-constants
+(define *v-mirage-racer-constants* (new 'static 'rigid-body-vehicle-constants))
+
+;; definition for symbol *v-fox-racer-constants*, type rigid-body-vehicle-constants
+(define *v-fox-racer-constants* (new 'static 'rigid-body-vehicle-constants))
+
+;; definition for symbol *v-x-ride-racer-constants*, type rigid-body-vehicle-constants
+(define *v-x-ride-racer-constants* (new 'static 'rigid-body-vehicle-constants))
+
+;; definition for symbol *v-marauder-racer-constants*, type rigid-body-vehicle-constants
+(define *v-marauder-racer-constants* (new 'static 'rigid-body-vehicle-constants))
+
+;; failed to figure out what this is:
+(mem-copy! (the-as pointer *v-snake-racer-constants*) (the-as pointer *v-snake-constants*) 2584)
+
+;; failed to figure out what this is:
+(mem-copy! (the-as pointer *v-mirage-racer-constants*) (the-as pointer *v-mirage-constants*) 2584)
+
+;; failed to figure out what this is:
+(mem-copy! (the-as pointer *v-fox-racer-constants*) (the-as pointer *v-fox-constants*) 2584)
+
+;; failed to figure out what this is:
+(mem-copy! (the-as pointer *v-x-ride-racer-constants*) (the-as pointer *v-x-ride-constants*) 2584)
+
+;; failed to figure out what this is:
+(mem-copy! (the-as pointer *v-marauder-racer-constants*) (the-as pointer *v-marauder-constants*) 2584)
+
+;; failed to figure out what this is:
+(set! (-> *v-snake-racer-constants* name) '*v-snake-racer-constants*)
+
+;; failed to figure out what this is:
+(set! (-> *v-mirage-racer-constants* name) '*v-mirage-racer-constants*)
+
+;; failed to figure out what this is:
+(set! (-> *v-fox-racer-constants* name) '*v-fox-racer-constants*)
+
+;; failed to figure out what this is:
+(set! (-> *v-x-ride-racer-constants* name) '*v-x-ride-racer-constants*)
+
+;; failed to figure out what this is:
+(set! (-> *v-marauder-racer-constants* name) '*v-marauder-racer-constants*)
+
+;; definition of type task-manager-race
+(deftype task-manager-race (task-manager)
+  ((start-pos       vector  :inline)
+   (start-continue  continue-point)
+   (scene-player    handle)
+   (race-started?   symbol)
+   (player-won?     symbol)
+   )
+  (:state-methods
+    finished
+    )
+  (:methods
+    (task-manager-race-method-33 (_type_) none)
+    (task-manager-race-method-34 (_type_) none)
+    (task-manager-race-method-35 (_type_) none)
+    (task-manager-race-method-36 (_type_) none)
+    (task-manager-race-method-37 (_type_) none)
+    (task-manager-race-method-38 (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type task-manager-race
+(defmethod inspect ((this task-manager-race))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstart-pos: #<vector @ #x~X>~%" (-> this start-pos))
+  (format #t "~2Tstart-continue: ~A~%" (-> this start-continue))
+  (format #t "~2Tscene-player: ~D~%" (-> this scene-player))
+  (format #t "~2Trace-started?: ~A~%" (-> this race-started?))
+  (format #t "~2Tplayer-won?: ~A~%" (-> this player-won?))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 37 of type task-manager-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-37 ((this task-manager-race))
+  (go (method-of-object this finished))
+  0
+  (none)
+  )
+
+;; definition for method 10 of type task-manager-race
+(defmethod deactivate ((this task-manager-race))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (speech-table-reset! *speech-control*)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-race
+(defmethod set-time-limit ((this task-manager-race))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this race-started?) #f)
+  (set! (-> this player-won?) #f)
+  (task-manager-race-method-34 this)
+  (set-setting! 'board #f 0.0 0)
+  (spawn-dust-storm-randomizer this)
+  (none)
+  )
+
+;; definition for method 30 of type task-manager-race
+(defmethod taskman-event-handler ((this task-manager-race) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('race-win)
+     (set! (-> this player-won?) #t)
+     (task-manager-race-method-37 this)
+     )
+    (('race-lose)
+     (task-manager-race-method-37 this)
+     )
+    (else
+      ((method-of-type task-manager taskman-event-handler) this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition for method 26 of type task-manager-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-race))
+  (let ((t9-0 (method-of-type task-manager task-manager-method-26)))
+    (t9-0 this)
+    )
+  (let ((s5-0 (handle->process (-> this player-vehicle))))
+    (when (not (if (type? s5-0 process-focusable)
+                   s5-0
+                   )
+               )
+      (let ((v1-5 *target*))
+        (if (and v1-5 (focus-test? v1-5 pilot-riding))
+            (set! (-> this player-vehicle) (-> v1-5 pilot vehicle))
+            )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 33 of type task-manager-race
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defmethod task-manager-race-method-33 ((this task-manager-race))
+  (let* ((s5-0 *race-state*)
+         (s4-0 (-> s5-0 info))
+         (s3-0 (new 'stack-no-clear 'course-race-stack-var0))
+         )
+    (set! (-> s3-0 vec1 quad) (-> s5-0 info start-sphere quad))
+    (set! (-> s3-0 vec2 quad) (-> s5-0 info start-dir quad))
+    (set! (-> s3-0 params object-type) (traffic-type vehicle-task))
+    (set! (-> s3-0 params behavior) (the-as uint 10))
+    (set! (-> s3-0 params id) (the-as uint 0))
+    (set! (-> s3-0 params nav-mesh) #f)
+    (set! (-> s3-0 params nav-branch) #f)
+    (set! (-> s3-0 params proc) #f)
+    (set! (-> s3-0 params handle) (the-as handle #f))
+    (set! (-> s3-0 params user-data) (the-as uint 0))
+    (set! (-> s3-0 params flags) (traffic-spawn-flags tsf6))
+    (set! (-> s3-0 params guard-type) (the-as uint 11))
+    (set! (-> s3-0 params entity) #f)
+    (vector-reset! (-> s3-0 params velocity))
+    (forward-up-nopitch->quaternion (-> s3-0 params rotation) (-> s3-0 vec2) (new 'static 'vector :y 1.0 :w 1.0))
+    (dotimes (s2-0 (-> s4-0 racer-count))
+      (let ((v1-10 (-> s5-0 racer-array s2-0))
+            (s1-0 (-> s4-0 racer-array s2-0))
+            )
+        (set! (-> s3-0 params position quad) (-> v1-10 start-position quad))
+        (set! (-> s3-0 params id) (the-as uint s2-0))
+        (set! (-> s3-0 params user-data) (-> s1-0 rider))
+        (logior! (-> s3-0 params flags) (traffic-spawn-flags tsf1))
+        (logclear! (-> s3-0 params flags) (traffic-spawn-flags tsf5))
+        (vector-reset! (-> s3-0 params velocity))
+        (let ((a0-16 (-> s1-0 rider)))
+          (when (or (zero? a0-16) (= a0-16 1))
+            (set! (-> this start-pos quad) (-> v1-10 start-position quad))
+            (logclear! (-> s3-0 params flags) (traffic-spawn-flags tsf1))
+            (logior! (-> s3-0 params flags) (traffic-spawn-flags tsf5))
+            )
+          )
+        (when (!= s2-0 (-> s5-0 i-player))
+          (let ((s0-0 (vehicle-spawn (the-as vehicle-type (-> s1-0 vehicle)) (-> s3-0 params))))
+            (when s0-0
+              (init-racers! s5-0 s0-0 s2-0)
+              (case (-> s1-0 rider)
+                ((2)
+                 (kleever-rider-spawn s0-0)
+                 )
+                ((3 4 5 6 7 8 9)
+                 (wland-driver-spawn s0-0)
+                 )
+                )
+              )
+            (if (not s0-0)
+                (format 0 "failed to spawn race vehicle~%")
+                )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 34 of type task-manager-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-34 ((this task-manager-race))
+  0
+  (none)
+  )
+
+;; definition for method 38 of type task-manager-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-38 ((this task-manager-race))
+  (set-setting! 'music 'desrace 0.0 0)
+  0
+  (none)
+  )
+
+;; definition for function task-manager-race-pre-race-sequence
+;; WARN: Return type mismatch symbol vs none.
+(defbehavior task-manager-race-pre-race-sequence task-manager-race ()
+  (send-event *target* 'continue (get-continue-by-name *game-info* (the-as string (-> self start-continue))))
+  (dotimes (gp-1 10)
+    (suspend)
+    )
+  (none)
+  )
+
+;; definition for method 35 of type task-manager-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-35 ((this task-manager-race))
+  (task-manager-race-pre-race-sequence)
+  0
+  (none)
+  )
+
+;; definition for method 36 of type task-manager-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-36 ((this task-manager-race))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-race)
+  :virtual #t
+  )
+
+;; failed to figure out what this is:
+(defstate finished (task-manager-race)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (if (and (= message 'target) (= (-> block param 0) 'die))
+        #f
+        (task-manager-event-handler proc argc message block)
+        )
+    )
+  :code (behavior ()
+    (send-event (ppointer->process *race-manager*) 'show-stats)
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate complete (task-manager-race)
+  :virtual #t
+  :code (behavior ()
+    (task-manager-race-method-36 self)
+    (let ((t9-2 (-> (find-parent-state) code)))
+      (if t9-2
+          ((the-as (function none) t9-2))
+          )
+      )
+    )
+  )
+
+;; definition of type task-manager-desert-course-race
+(deftype task-manager-desert-course-race (task-manager-race)
+  ((fail-plane  vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type task-manager-desert-course-race
+(defmethod inspect ((this task-manager-desert-course-race))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tfail-plane: #<vector @ #x~X>~%" (-> this fail-plane))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 21 of type task-manager-desert-course-race
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch float vs none.
+(defmethod set-time-limit ((this task-manager-desert-course-race))
+  (let ((t9-0 (method-of-type task-manager-race set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this start-pos quad) (-> (new 'static 'vector :x 11540444.0 :y 91835.19 :z 956374.6 :w 1.0) quad))
+  (set! (-> this fail-plane quad) (-> (new 'static 'vector :x -0.9241 :z -0.3819 :w 1.0) quad))
+  (set! (-> this fail-plane w)
+        (- (vector-dot (-> this fail-plane) (new 'static 'vector :x 10571776.0 :z 1187840.0 :w 1.0)))
+        )
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-desert-course-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-method-26 ((this task-manager-desert-course-race))
+  (let ((t9-0 (method-of-type task-manager-race task-manager-method-26)))
+    (t9-0 this)
+    )
+  (when (-> this race-started?)
+    (let ((f0-1 (vector4-dot (target-pos 0) (-> this fail-plane))))
+      (if (< 0.0 f0-1)
+          (send-event this 'fail)
+          )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 33 of type task-manager-desert-course-race
+;; WARN: Return type mismatch symbol vs none.
+(defmethod task-manager-race-method-33 ((this task-manager-desert-course-race))
+  (call-parent-method this)
+  (let ((gp-1 *race-state*)
+        (s5-0 *v-marauder-constants*)
+        )
+    (dotimes (s4-0 4)
+      (let ((s3-0 (handle->process (-> gp-1 racer-array s4-0 racer))))
+        (when s3-0
+          (let* ((v1-8 (-> (the-as vehicle s3-0) info vehicle-type))
+                 (s2-0 (cond
+                         ((= v1-8 (vehicle-type-u8 v-snake))
+                          *v-snake-racer-constants*
+                          )
+                         ((= v1-8 (vehicle-type-u8 v-mirage))
+                          *v-mirage-racer-constants*
+                          )
+                         ((= v1-8 (vehicle-type-u8 v-fox))
+                          *v-fox-racer-constants*
+                          )
+                         ((= v1-8 (vehicle-type-u8 v-x-ride))
+                          *v-x-ride-racer-constants*
+                          )
+                         (else
+                           *v-marauder-racer-constants*
+                           )
+                         )
+                       )
+                 )
+            (mem-copy! (the-as pointer (-> s2-0 engine)) (the-as pointer (-> s5-0 engine)) 40)
+            (mem-copy! (the-as pointer (-> s2-0 transmission)) (the-as pointer (-> s5-0 transmission)) 49)
+            (mem-copy! (the-as pointer (-> s2-0 sound)) (the-as pointer (-> s5-0 sound)) 656)
+            (send-event s3-0 'set-rigid-body-info s2-0)
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 34 of type task-manager-desert-course-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-34 ((this task-manager-desert-course-race))
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-start)
+    (new 'static 'speech-type-info
+      :priority 10
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string "klev104" "klev105" "klev112")
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-win)
+    (new 'static 'speech-type-info
+      :priority 10
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string "klev136" "klev137" "klev138" "klev139")
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-lose)
+    (new 'static 'speech-type-info
+      :priority 10
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string "klev140" "klev141" "klev142")
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-last-lap)
+    (new 'static 'speech-type-info
+      :priority 3
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string "klev120" "klev127" "klev135")
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-ambient)
+    (new 'static 'speech-type-info
+      :priority 1
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 24)
+      :max-delay (seconds 36)
+      :list (new 'static 'boxed-array :type string "klev118" "klev128")
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errrol-hit)
+    (new 'static 'speech-type-info
+      :priority 1
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string "klev117" "klev119" "klev121" "klev122" "klev125" "klev126")
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-pass)
+    (new 'static 'speech-type-info
+      :priority 3
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string
+        "klev106"
+        "klev107"
+        "klev108"
+        "klev109"
+        "klev111"
+        "klev113"
+        "klev114"
+        "klev115"
+        "klev123"
+        "klev132"
+        )
+      )
+    )
+  (speech-table-set!
+    *speech-control*
+    (speech-type race-errol-got-passed)
+    (new 'static 'speech-type-info
+      :priority 3
+      :delay-pre-time (seconds 1)
+      :request-timeout (seconds 1)
+      :min-delay (seconds 1)
+      :max-delay (seconds 1)
+      :list (new 'static 'boxed-array :type string "klev113" "klev130" "klev133" "klev134")
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function task-manager-desert-course-race-pre-race-sequence
+;; INFO: Used lq/sq
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+;; WARN: new jak 2 until loop case, check carefully
+(defbehavior task-manager-desert-course-race-pre-race-sequence task-manager-desert-course-race ()
+  (let ((gp-0 (new 'stack-no-clear 'task-arrow-params)))
+    (set! (-> gp-0 pos quad) (-> self start-pos quad))
+    (quaternion-identity! (-> gp-0 quat))
+    (set! (-> gp-0 flags) (task-arrow-flags taf3 taf5))
+    (set! (-> gp-0 map-icon) (the-as uint 12))
+    (set! (-> self arrow) (process->handle (task-arrow-spawn gp-0 self)))
+    )
+  (set-setting! 'turbo #f 0.0 0)
+  (until #f
+    (let* ((gp-1 (handle->process (-> self player-vehicle)))
+           (v1-11 (if (type? gp-1 process-focusable)
+                      gp-1
+                      )
+                  )
+           )
+      (when (and v1-11 (not (logtest? (-> (the-as process-focusable v1-11) focus-status) (focus-status dead))))
+        (if (< (vector-vector-xz-distance (-> self start-pos) (-> (the-as process-focusable v1-11) root trans)) 245760.0)
+            (goto cfg-21)
+            )
+        )
+      )
+    (suspend)
+    )
+  #f
+  (label cfg-21)
+  (send-event (handle->process (-> self arrow)) 'leave)
+  (set-setting! 'allow-progress #f 0.0 0)
+  (set-setting! 'entity-name "camera-323" 0.0 0)
+  (send-event (handle->process (-> self player-vehicle)) 'go-die)
+  (send-event *target* 'continue (get-continue-by-name *game-info* "desertb-race-pre-start"))
+  (dotimes (gp-3 10)
+    (suspend)
+    )
+  (until #f
+    (if (and *target* (focus-test? *target* pilot-riding))
+        (goto cfg-48)
+        )
+    (suspend)
+    )
+  #f
+  (until #f
+    (label cfg-48)
+    (let* ((gp-4 (handle->process (-> self player-vehicle)))
+           (a0-37 (if (type? gp-4 process-focusable)
+                      gp-4
+                      )
+                  )
+           )
+      (if (and a0-37 (not (logtest? (-> (the-as process-focusable a0-37) focus-status) (focus-status dead))))
+          (goto cfg-62)
+          )
+      )
+    (suspend)
+    )
+  #f
+  (label cfg-62)
+  (send-event (handle->process (-> self player-vehicle)) 'set-control-hook-ai)
+  (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-position (-> self start-pos))
+  (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-speed #x47c80000)
+  (send-event (handle->process (-> self player-vehicle)) 'ai-ignore-nav-mesh #t)
+  (until #f
+    (let* ((gp-5 (handle->process (-> self player-vehicle)))
+           (v1-90 (if (type? gp-5 process-focusable)
+                      gp-5
+                      )
+                  )
+           )
+      (when v1-90
+        (if (< (vector-vector-xz-distance (-> (the-as process-focusable v1-90) root trans) (-> self start-pos)) 73728.0)
+            (goto cfg-103)
+            )
+        )
+      )
+    (suspend)
+    )
+  #f
+  (label cfg-103)
+  (send-event (handle->process (-> self player-vehicle)) 'ai-set-target-speed 0)
+  (until #f
+    (let* ((gp-6 (handle->process (-> self player-vehicle)))
+           (v1-107 (if (type? gp-6 process-focusable)
+                       gp-6
+                       )
+                   )
+           )
+      (when v1-107
+        (if (< (vector-length (-> (the-as process-focusable v1-107) root transv)) 4096.0)
+            (goto cfg-123)
+            )
+        )
+      )
+    (suspend)
+    )
+  #f
+  (label cfg-123)
+  (let ((gp-7 (current-time)))
+    (until (time-elapsed? gp-7 (seconds 1))
+      (suspend)
+      )
+    )
+  (send-event (handle->process (-> self player-vehicle)) 'go-die)
+  (remove-setting! 'entity-name)
+  (send-event *target* 'continue (get-continue-by-name *game-info* "desertb-race-start"))
+  (dotimes (gp-9 10)
+    (suspend)
+    )
+  (until #f
+    (if (and *target* (focus-test? *target* pilot-riding))
+        (return #f)
+        )
+    (suspend)
+    )
+  #f
+  )
+
+;; definition for method 35 of type task-manager-desert-course-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-35 ((this task-manager-desert-course-race))
+  (if (not (task-node-closed? (game-task-node desert-course-race-post-intro)))
+      (task-manager-desert-course-race-pre-race-sequence)
+      )
+  0
+  (none)
+  )
+
+;; definition for method 38 of type task-manager-desert-course-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-38 ((this task-manager-desert-course-race))
+  (set-setting! 'music 'desrace 0.0 0)
+  (remove-setting! 'turbo)
+  (task-node-close! (game-task-node desert-course-race-post-intro) 'event)
+  0
+  (none)
+  )
+
+;; definition for method 36 of type task-manager-desert-course-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-36 ((this task-manager-desert-course-race))
+  (talker-spawn-func (-> *talker-speech* 82) *entity-pool* (target-pos 0) (the-as region #f))
+  0
+  (none)
+  )
+
+;; definition for method 37 of type task-manager-desert-course-race
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-37 ((this task-manager-desert-course-race))
+  (let ((a1-0 (new 'static 'inline-array vector 2
+                (new 'static 'vector :x 11730125.0 :y 98304.0 :z 773324.8 :w 1.0)
+                (new 'static 'vector :x 12165120.0 :y 98304.0 :z 1052672.0 :w 1.0)
+                )
+              )
+        )
+    (blocking-plane-spawn (the-as curve-control #f) a1-0 122880.0)
+    )
+  (go (method-of-object this finished))
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-desert-course-race)
+  :virtual #t
+  :code (behavior ()
+    (let ((t1-0 1))
+      (set-setting! 'vehicles 'set (shr t1-0 32) t1-0)
+      )
+    (set! (-> self start-continue) (the-as continue-point "desertb-race-start"))
+    (let ((t9-2 (-> (find-parent-state) code)))
+      (if t9-2
+          ((the-as (function none) t9-2))
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate finished (task-manager-desert-course-race)
+  :virtual #t
+  :code (behavior ()
+    (when (-> self player-won?)
+      (set! (-> self scene-player)
+            (ppointer->handle
+              (process-spawn scene-player :init scene-player-init "desert-courserace-win" #t #f :name "scene-player")
+              )
+            )
+      (task-node-close! (game-task-node desert-course-race-win) 'event)
+      (send-event (ppointer->process *race-manager*) 'kill-npc-racers)
+      (let ((gp-1 (current-time)))
+        (until (time-elapsed? gp-1 (seconds 1))
+          (suspend)
+          )
+        )
+      (while (handle->process (-> self scene-player))
+        (suspend)
+        )
+      )
+    (let ((t9-6 (-> (find-parent-state) code)))
+      (if t9-6
+          ((the-as (function none) t9-6))
+          )
+      )
+    )
+  )
+
+;; definition of type bbush-time-trial-hud-info
+(deftype bbush-time-trial-hud-info (structure)
+  ((goal      float)
+   (goal-cup  uint8)
+   )
+  )
+
+;; definition for method 3 of type bbush-time-trial-hud-info
+(defmethod inspect ((this bbush-time-trial-hud-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'bbush-time-trial-hud-info)
+  (format #t "~1Tgoal: ~f~%" (-> this goal))
+  (format #t "~1Tgoal-cup: ~D~%" (-> this goal-cup))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *bbush-time-trial-hud-info*, type bbush-time-trial-hud-info
+(define *bbush-time-trial-hud-info* (new 'static 'bbush-time-trial-hud-info))
+
+;; definition of type hud-wasbbv-goal-time
+(deftype hud-wasbbv-goal-time (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-wasbbv-goal-time
+(defmethod inspect ((this hud-wasbbv-goal-time))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 15 of type hud-wasbbv-goal-time
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-wasbbv-goal-time))
+  (local-vars (v1-7 int) (s5-0 int))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ (* -130.0 (-> this offset)) (* 65.0 (-> *video-params* relative-x-scale))))
+    70
+    )
+  0
+  1
+  (case (-> *bbush-time-trial-hud-info* goal-cup)
+    ((1)
+     (set! s5-0 313)
+     (set! v1-7 3)
+     )
+    ((2)
+     (set! s5-0 312)
+     (set! v1-7 8)
+     )
+    ((3)
+     (set! s5-0 311)
+     (set! v1-7 5)
+     )
+    (else
+      (set! s5-0 310)
+      (set! v1-7 1)
+      )
+    )
+  (set! (-> this strings 0 color) (the-as font-color v1-7))
+  (set! (-> this strings 1 color) (the-as font-color v1-7))
+  (clear (-> this strings 0 text))
+  (clear (-> this strings 1 text))
+  (print-time (-> this strings 0 text) (the-as time-frame (the int (-> *bbush-time-trial-hud-info* goal))))
+  (let ((s4-0 format)
+        (s3-0 (-> this strings 1 text))
+        (s2-0 "~S")
+        )
+    (format (clear *temp-string*) (lookup-text! *common-text* (the-as text-id s5-0) #f))
+    (s4-0 s3-0 s2-0 *temp-string*)
+    )
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) 0 -8)
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 1 pos)) (the-as vector4w (-> this sprites)) -40 -40)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-wasbbv-goal-time
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-wasbbv-goal-time))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-upper-left) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid) (the-as texture-id (get-texture hud-scoreboard-01 level-default-minimap)))
+  (set! (-> this sprites 0 scale-x) 1.8)
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf3))
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 0.5)
+  (set! (-> this strings 0 flags) (font-flags kerning middle large))
+  (set! (-> this strings 0 color) (font-color red))
+  (alloc-string-if-needed this 1)
+  (set! (-> this strings 1 scale) 0.65)
+  (set! (-> this strings 1 flags) (font-flags kerning large))
+  (set! (-> this strings 1 color) (font-color red))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-bbush-time-trial-1
+(deftype task-manager-bbush-time-trial-1 (task-manager-race)
+  ((game-score  uint8)
+   (hud-goal    handle)
+   )
+  )
+
+;; definition for method 3 of type task-manager-bbush-time-trial-1
+(defmethod inspect ((this task-manager-bbush-time-trial-1))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tgame-score: ~D~%" (-> this game-score))
+  (format #t "~2Thud-goal: ~D~%" (-> this hud-goal))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 38 of type task-manager-bbush-time-trial-1
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-38 ((this task-manager-bbush-time-trial-1))
+  (set-setting! 'music 'destrial 0.0 0)
+  0
+  (none)
+  )
+
+;; definition for method 33 of type task-manager-bbush-time-trial-1
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-33 ((this task-manager-bbush-time-trial-1))
+  0
+  (none)
+  )
+
+;; definition for method 21 of type task-manager-bbush-time-trial-1
+(defmethod set-time-limit ((this task-manager-bbush-time-trial-1))
+  (call-parent-method this)
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-bbush-time-trial-1)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self start-continue) (the-as continue-point "desertb-time-trial-start"))
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set! (-> self game-score) (the-as uint 2))
+    (let ((v1-6 (game-info-method-29 *game-info* (the-as int (-> self game-score))))
+          (gp-0 *bbush-time-trial-hud-info*)
+          )
+      (set! (-> gp-0 goal-cup) (the-as uint (+ v1-6 1)))
+      (set! (-> gp-0 goal)
+            (game-info-method-31 *game-info* (the-as int (-> self game-score)) (the-as int (-> gp-0 goal-cup)))
+            )
+      )
+    (set! (-> self hud-goal)
+          (ppointer->handle
+            (process-spawn hud-wasbbv-goal-time :init hud-init-by-other :name "hud-wasbbv-goal-time" :to self)
+            )
+          )
+    (let ((t9-7 (-> (find-parent-state) code)))
+      (if t9-7
+          ((the-as (function none) t9-7))
+          )
+      )
+    )
+  )
+
+;; definition of type des-rally-bollard
+(deftype des-rally-bollard (process-drawable)
+  ((root  collide-shape :override)
+   )
+  (:state-methods
+    idle
+    )
+  )
+
+;; definition for method 3 of type des-rally-bollard
+(defmethod inspect ((this des-rally-bollard))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-des-rally-bollard des-rally-bollard des-rally-bollard-lod0-jg des-rally-bollard-idle-ja
+              ((des-rally-bollard-lod0-mg (meters 20)) (des-rally-bollard-lod1-mg (meters 999999)))
+              :bounds (static-spherem 0 10 0 10.4)
+              )
+
+;; failed to figure out what this is:
+(defstate idle (des-rally-bollard)
+  :virtual #t
+  :trans (behavior ()
+    (if (nonzero? (-> self part))
+        (spawn-from-cspace (-> self part) (joint-node des-rally-bollard-lod0-jg firepart))
+        )
+    )
+  :code (behavior ()
+    (ja :group! (ja-group) :num! min)
+    (ja-post)
+    (sleep-code)
+    )
+  )
+
+;; definition for method 12 of type des-rally-bollard
+(defmethod run-logic? ((this des-rally-bollard))
+  "Should this process be run? Checked by execute-process-tree."
+  #t
+  )
+
+;; definition for method 11 of type des-rally-bollard
+(defmethod init-from-entity! ((this des-rally-bollard) (arg0 entity-actor))
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (let ((v1-4 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-4 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-4 prim-core action) (collide-action solid))
+      (set! (-> v1-4 transform-index) 3)
+      (set-vector! (-> v1-4 local-sphere) 0.0 20480.0 0.0 21299.2)
+      (set! (-> s4-0 total-prims) (the-as uint 1))
+      (set! (-> s4-0 root-prim) v1-4)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-7 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-7 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-7 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-des-rally-bollard" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (update-transforms (-> this root))
+  (let ((v1-15 (res-lump-value arg0 'particle-select uint128 :time -1000000000.0)))
+    (if (= (the-as uint v1-15) 1)
+        (set! (-> this part) (create-launch-control (-> *part-group-id-table* 339) this))
+        )
+    )
+  (go (method-of-object this idle))
+  )
+
+;; definition of type task-manager-bbush-rally
+(deftype task-manager-bbush-rally (task-manager-race)
+  ((game-score  uint8)
+   (hud-goal    handle)
+   )
+  )
+
+;; definition for method 3 of type task-manager-bbush-rally
+(defmethod inspect ((this task-manager-bbush-rally))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager-race inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tgame-score: ~D~%" (-> this game-score))
+  (format #t "~2Thud-goal: ~D~%" (-> this hud-goal))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 33 of type task-manager-bbush-rally
+;; WARN: Return type mismatch symbol vs none.
+(defmethod task-manager-race-method-33 ((this task-manager-bbush-rally))
+  (let ((gp-0 *race-state*))
+    (let ((v1-0 (-> gp-0 info)))
+      (set! (-> v1-0 racer-array 4 vehicle) (the-as uint (-> *game-info* current-vehicle)))
+      )
+    (call-parent-method this)
+    (let ((s5-1 *v-x-ride-constants*))
+      (dotimes (s4-0 4)
+        (let ((s3-0 (handle->process (-> gp-0 racer-array s4-0 racer))))
+          (when s3-0
+            (let* ((v1-10 (-> (the-as vehicle s3-0) info vehicle-type))
+                   (s2-0 (cond
+                           ((= v1-10 (vehicle-type-u8 v-snake))
+                            *v-snake-racer-constants*
+                            )
+                           ((= v1-10 (vehicle-type-u8 v-mirage))
+                            *v-mirage-racer-constants*
+                            )
+                           ((= v1-10 (vehicle-type-u8 v-fox))
+                            *v-fox-racer-constants*
+                            )
+                           ((= v1-10 (vehicle-type-u8 v-x-ride))
+                            *v-x-ride-racer-constants*
+                            )
+                           (else
+                             *v-marauder-racer-constants*
+                             )
+                           )
+                         )
+                   )
+              (mem-copy! (the-as pointer (-> s2-0 handling)) (the-as pointer (-> s5-1 handling)) 220)
+              (mem-copy! (the-as pointer (-> s2-0 damage)) (the-as pointer (-> s5-1 damage)) 168)
+              (mem-copy! (the-as pointer (-> s2-0 engine)) (the-as pointer (-> s5-1 engine)) 40)
+              (mem-copy! (the-as pointer (-> s2-0 transmission)) (the-as pointer (-> s5-1 transmission)) 49)
+              (send-event s3-0 'set-rigid-body-info s2-0)
+              )
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 38 of type task-manager-bbush-rally
+;; WARN: Return type mismatch int vs none.
+(defmethod task-manager-race-method-38 ((this task-manager-bbush-rally))
+  (set-setting! 'music 'desrally 0.0 0)
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-bbush-rally)
+  :virtual #t
+  :code (behavior ()
+    (set! (-> self start-continue) (the-as continue-point "desrally-race-start"))
+    (set! (-> self game-score) (the-as uint 3))
+    (let ((v1-3 (game-info-method-29 *game-info* (the-as int (-> self game-score))))
+          (gp-0 *bbush-time-trial-hud-info*)
+          )
+      (set! (-> gp-0 goal-cup) (the-as uint (+ v1-3 1)))
+      (set! (-> gp-0 goal)
+            (game-info-method-31 *game-info* (the-as int (-> self game-score)) (the-as int (-> gp-0 goal-cup)))
+            )
+      )
+    (set! (-> self hud-goal)
+          (ppointer->handle
+            (process-spawn hud-wasbbv-goal-time :init hud-init-by-other :name "hud-wasbbv-goal-time" :to self)
+            )
+          )
+    (let ((t9-6 (-> (find-parent-state) code)))
+      (if t9-6
+          ((the-as (function none) t9-6))
+          )
+      )
+    )
+  )

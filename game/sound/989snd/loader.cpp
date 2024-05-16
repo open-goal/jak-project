@@ -1,4 +1,4 @@
-// Copyright: 2021 - 2022, Ziemas
+// Copyright: 2021 - 2024, Ziemas
 // SPDX-License-Identifier: ISC
 #include "loader.h"
 
@@ -12,7 +12,7 @@
 
 #include "game/sound/989snd/musicbank.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace snd {
 
@@ -27,7 +27,7 @@ void FileAttributes::Read(BinaryReader& data) {
   num_chunks = data.read<u32>();
 
   where.resize(num_chunks);
-  for (int i = 0; i < num_chunks; i++) {
+  for (size_t i = 0; i < num_chunks; i++) {
     where[i].offset = data.read<u32>();
     where[i].size = data.read<u32>();
   }
@@ -191,7 +191,7 @@ static Grain ReadGrainV2(BinaryReader& data, BinaryReader grainData, u8* samples
   return grain;
 };
 
-SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> samples) {
+SFXBlock* SFXBlock::ReadBlock(std::span<u8> bank_data, std::span<u8> samples) {
   BinaryReader data(bank_data);
   // auto block = std::make_unique<SFXBlock>();
   auto block = new SFXBlock();
@@ -215,16 +215,16 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
 
   s16 NumSounds = data.read<s16>();
   block->Sounds.resize(NumSounds);
-  s16 NumGrains = data.read<s16>();
-  s16 NumVAGs = data.read<s16>();
+  [[maybe_unused]] s16 NumGrains = data.read<s16>();
+  [[maybe_unused]] s16 NumVAGs = data.read<s16>();
 
   u32 FirstSound = data.read<u32>();
   u32 FirstGrain = data.read<u32>();
 
-  u32 VagsInSR = data.read<u32>();
-  u32 VagDataSize = data.read<u32>();
-  u32 SRAMAllocSize = data.read<u32>();
-  u32 NextBlock = data.read<u32>();
+  [[maybe_unused]] u32 VagsInSR = data.read<u32>();
+  [[maybe_unused]] u32 VagDataSize = data.read<u32>();
+  [[maybe_unused]] u32 SRAMAllocSize = data.read<u32>();
+  [[maybe_unused]] u32 NextBlock = data.read<u32>();
   u32 GrainData = 0;
   if (block->Version >= 2) {
     GrainData = data.read<u32>();
@@ -313,9 +313,9 @@ SFXBlock* SFXBlock::ReadBlock(nonstd::span<u8> bank_data, nonstd::span<u8> sampl
   return block;
 }
 
-MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
-                               nonstd::span<u8> samples,
-                               nonstd::span<u8> midi_data) {
+MusicBank* MusicBank::ReadBank(std::span<u8> bank_data,
+                               std::span<u8> samples,
+                               std::span<u8> midi_data) {
   BinaryReader data(bank_data);
   // auto bank = std::make_unique<MusicBank>();
   auto bank = new MusicBank();
@@ -344,12 +344,12 @@ MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
   bank->Sounds.resize(NumSounds);
   s16 NumProgs = data.read<s16>();
   bank->Progs.resize(NumProgs);
-  s16 NumTones = data.read<s16>();
-  s16 NumVAGs = data.read<s16>();
+  [[maybe_unused]] s16 NumTones = data.read<s16>();
+  [[maybe_unused]] s16 NumVAGs = data.read<s16>();
 
   u32 FirstSound = data.read<u32>();
   u32 FirstProg = data.read<u32>();
-  u32 FirstTone = data.read<u32>();
+  [[maybe_unused]] u32 FirstTone = data.read<u32>();
 
   // vagsinsr
   data.read<u32>();
@@ -388,7 +388,7 @@ MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
     }
   }
 
-  auto seq_buf = nonstd::span<u8>(bank->SeqData.get(), midi_data.size_bytes());
+  auto seq_buf = std::span<u8>(bank->SeqData.get(), midi_data.size_bytes());
   BinaryReader seq_data(seq_buf);
   FileAttributes fa;
   fa.Read(seq_data);
@@ -407,7 +407,7 @@ MusicBank* MusicBank::ReadBank(nonstd::span<u8> bank_data,
   return bank;
 }
 
-BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
+BankHandle Loader::BankLoad(std::span<u8> bank) {
   BinaryReader reader(bank);
   FileAttributes fa;
   fa.Read(reader);
@@ -419,17 +419,15 @@ BankHandle Loader::BankLoad(nonstd::span<u8> bank) {
 
   reader.set_seek(fa.where[0].offset);
   u32 fourcc = reader.read<u32>();
-  nonstd::span<u8> bank_data(nonstd::span<u8>(bank).subspan(fa.where[0].offset, fa.where[0].size));
-  nonstd::span<u8> sample_data(
-      nonstd::span<u8>(bank).subspan(fa.where[1].offset, fa.where[1].size));
+  std::span<u8> bank_data(std::span<u8>(bank).subspan(fa.where[0].offset, fa.where[0].size));
+  std::span<u8> sample_data(std::span<u8>(bank).subspan(fa.where[1].offset, fa.where[1].size));
 
   if (fourcc == snd::fourcc("SBv2")) {
     if (fa.num_chunks != 3) {
       fmt::print("SBv2 without midi data not supported\n");
       return 0;
     }
-    nonstd::span<u8> midi_data(
-        nonstd::span<u8>(bank).subspan(fa.where[2].offset, fa.where[2].size));
+    std::span<u8> midi_data(std::span<u8>(bank).subspan(fa.where[2].offset, fa.where[2].size));
 
     auto bank = MusicBank::ReadBank(bank_data, sample_data, midi_data);
     mBanks.emplace_back(bank);

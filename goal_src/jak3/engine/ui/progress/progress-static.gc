@@ -7,3 +7,3456 @@
 
 ;; DECOMP BEGINS
 
+(defskelgroup skel-hud-ring hud-ring hud-ring-lod0-jg hud-ring-idle-ja
+              ((hud-ring-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 55)
+              )
+
+(defskelgroup skel-hud-ring-part hud-ring hud-ring-part-lod0-jg hud-ring-part-idle-ja
+              ((hud-ring-part-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 55)
+              )
+
+(define *main-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (text-id progress-bigmap) :next-state 'bigmap)
+      (new 'static 'menu-main-menu-option :name (text-id progress-missions) :next-state 'missions)
+      (new 'static 'menu-main-menu-option :name (text-id progress-highscores) :next-state 'highscores)
+      (new 'static 'menu-main-menu-option :name (text-id progress-inventory) :next-state 'inventory)
+      (new 'static 'menu-main-menu-option :name (text-id progress-controls) :next-state 'controls)
+      (new 'static 'menu-main-menu-option :name (text-id progress-options) :next-state 'options)
+      (new 'static 'menu-main-menu-option :name (text-id progress-load-save) :next-state 'select-load)
+      (new 'static 'menu-main-menu-option :name (text-id progress-save-game) :next-state 'select-save)
+      (new 'static 'menu-main-menu-option :name (text-id progress-secrets) :next-state 'secret)
+      (new 'static 'menu-main-menu-option :name (text-id progress-qr) :next-state 'quit-restart)
+      )
+    )
+  )
+
+(define *main-options-debug*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (text-id progress-select-start) :next-state 'select-start)
+      (new 'static 'menu-main-menu-option :name (text-id progress-select-pre-start) :next-state 'select-pre-start)
+      (new 'static 'menu-main-menu-option
+        :name (text-id progress-select-kiosk-start)
+        :next-state 'select-kiosk-start
+        )
+      (new 'static 'menu-main-menu-option :name (text-id progress-scene-player-act-1) :next-state 'select-scene)
+      (new 'static 'menu-main-menu-option :name (text-id progress-scene-player-act-2) :next-state 'select-scene)
+      (new 'static 'menu-main-menu-option :name (text-id progress-scene-player-act-3) :next-state 'select-scene)
+      (new 'static 'menu-main-menu-option :name (text-id progress-load-save) :next-state 'select-load)
+      (new 'static 'menu-main-menu-option :name (text-id progress-save-game) :next-state 'select-save)
+      (new 'static 'menu-main-menu-option :name (text-id progress-secrets) :next-state 'unlocked-secrets)
+      )
+    )
+  )
+
+(define *main-kiosk-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (text-id progress-exit-demo) :next-state 'back)
+      )
+    )
+  )
+
+(define *main-demo-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (text-id progress-demo-return-to-title) :next-state 'back)
+      (new 'static 'menu-main-menu-option :name (text-id progress-options) :next-state 'options)
+      (new 'static 'menu-main-menu-option :name (text-id progress-back) :next-state 'back)
+      )
+    )
+  )
+
+(define *main-demo-shared-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-main-menu-option :name (text-id progress-exit-demo) :next-state 'back)
+      (new 'static 'menu-main-menu-option :name (text-id progress-demo-return-to-title) :next-state 'back)
+      (new 'static 'menu-main-menu-option :name (text-id progress-options) :next-state 'options)
+      )
+    )
+  )
+
+(define *title*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-title-new-game)
+        :offset-y 0.2
+        :next-state 'select-save-title
+        )
+      (new 'static 'menu-sub-menu-option :name (text-id progress-load-save) :offset-y 0.45 :next-state 'select-load)
+      (new 'static 'menu-sub-menu-option :name (text-id progress-options) :offset-y 0.7 :next-state 'title-options)
+      )
+    )
+  )
+
+(define *title-secret*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-title-new-game)
+        :offset-y 0.15
+        :next-state 'select-save-title
+        )
+      (new 'static 'menu-sub-menu-option :name (text-id progress-load-save) :offset-y 0.35 :next-state 'select-load)
+      (new 'static 'menu-sub-menu-option :name (text-id progress-options) :offset-y 0.55 :next-state 'title-options)
+      (new 'static 'menu-sub-menu-option
+        :name (text-id progress-secrets)
+        :offset-y 0.75
+        :next-state 'unlocked-secrets
+        )
+      )
+    )
+  )
+
+(define *unlocked-secrets* (new 'static 'menu-option-list
+                             :y-center #xc6
+                             :y-space 30
+                             :scale 0.82
+                             :options (new 'static 'boxed-array :type menu-option
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-level-select-act-1)
+                                 :offset-y 0.0384
+                                 :next-state 'select-start
+                                 :mask #x20
+                                 :value 1
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-level-select-act-2)
+                                 :offset-y 0.1153
+                                 :next-state 'select-start
+                                 :mask #x40
+                                 :value 2
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-level-select-act-3)
+                                 :offset-y 0.1923
+                                 :next-state 'select-start
+                                 :mask #x80
+                                 :value 3
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-scrap-book)
+                                 :offset-y 0.2692
+                                 :next-state 'go-away
+                                 :mask #x100
+                                 :value 1
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-mega-scrap-book)
+                                 :offset-y 0.3461
+                                 :next-state 'go-away
+                                 :mask #x200
+                                 :value 2
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-jak1-mdl-viewer)
+                                 :offset-y 0.423
+                                 :next-state 'select-model
+                                 :mask #x800
+                                 :value 1
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-jak2-mdl-viewer)
+                                 :offset-y 0.5
+                                 :next-state 'select-model
+                                 :mask #x1000
+                                 :value 2
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-jak3-mdl-viewer)
+                                 :offset-y 0.5769
+                                 :next-state 'select-model
+                                 :mask #x2000
+                                 :value 3
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-scene-player-act-1)
+                                 :offset-y 0.6538
+                                 :next-state 'select-scene
+                                 :mask #x2
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-scene-player-act-2)
+                                 :offset-y 0.7307
+                                 :next-state 'select-scene
+                                 :mask #x4
+                                 :value 1
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-scene-player-act-3)
+                                 :offset-y 0.8076
+                                 :next-state 'select-scene
+                                 :mask #x8
+                                 :value 2
+                                 )
+                               (new 'static 'menu-unlocked-sub-menu-option
+                                 :name (text-id progress-title-commentary)
+                                 :offset-y 0.8846
+                                 :next-state 'select-scene
+                                 :mask #x10
+                                 :value 3
+                                 )
+                               )
+                             )
+        )
+
+(define *options-options* (new 'static 'menu-option-list
+                            :y-center #xa6
+                            :y-space 20
+                            :scale 0.7
+                            :options (new 'static 'boxed-array :type menu-option
+                              (new 'static 'menu-sub-menu-option
+                                :name (text-id progress-game-options)
+                                :offset-y 0.1
+                                :next-state 'game-options
+                                )
+                              (new 'static 'menu-sub-menu-option
+                                :name (text-id progress-graphic-options)
+                                :offset-y 0.275
+                                :next-state 'graphic-options
+                                )
+                              (new 'static 'menu-sub-menu-option
+                                :name (text-id progress-sound-options)
+                                :offset-y 0.45
+                                :next-state 'sound-options
+                                )
+                              (new 'static 'menu-sub-menu-option
+                                :name (text-id progress-picture-options)
+                                :offset-y 0.625
+                                :next-state 'picture-options
+                                )
+                              (new 'static 'menu-sub-menu-option
+                                :name (text-id progress-camera-options)
+                                :offset-y 0.8
+                                :next-state 'camera-options
+                                )
+                              )
+                            )
+        )
+
+(define *language-options*
+  (new 'static 'menu-option-list
+    :y-center #xb9
+    :y-space 24
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-language-option :name (text-id progress-language) :offset-y 0.4)
+      )
+    )
+  )
+
+(define *game-options* (new 'static 'menu-option-list
+                         :y-center #xb0
+                         :y-space 24
+                         :scale 0.82
+                         :options (new 'static 'boxed-array :type menu-option
+                           (new 'static 'menu-on-off-game-vibrations-option
+                             :name (text-id progress-vibration)
+                             :menu-option-type #x3
+                             :setting-offset #x744
+                             )
+                           (new 'static 'menu-on-off-game-subtitles-option
+                             :name (text-id progress-subtitles)
+                             :menu-option-type #x4
+                             :setting-offset #x85c
+                             )
+                           (new 'static 'menu-language-game-option
+                             :name (text-id progress-subtitle-language)
+                             :menu-option-type #x5
+                             :offset-y 0.5
+                             )
+                           (new 'static 'menu-language-game-option
+                             :name (text-id progress-language)
+                             :menu-option-type #x6
+                             :offset-y 0.665
+                             )
+                           (new 'static 'menu-language-game-option
+                             :name (text-id progress-audio-language)
+                             :menu-option-type #x7
+                             :offset-y 0.83
+                             )
+                           )
+                         )
+        )
+
+(define *game-options-demo* (new 'static 'menu-option-list
+                              :y-center #xda
+                              :y-space 30
+                              :scale 0.82
+                              :options (new 'static 'boxed-array :type menu-option
+                                (new 'static 'menu-on-off-game-vibrations-option
+                                  :name (text-id progress-vibration)
+                                  :menu-option-type #x3
+                                  :setting-offset #x744
+                                  )
+                                (new 'static 'menu-on-off-game-subtitles-option
+                                  :name (text-id progress-subtitles)
+                                  :menu-option-type #x4
+                                  :setting-offset #x85c
+                                  )
+                                )
+                              )
+        )
+
+(define *graphic-options* (new 'static 'menu-option-list
+                            :y-center #xc6
+                            :y-space 30
+                            :scale 0.82
+                            :options (new 'static 'boxed-array :type menu-option
+                              (new 'static 'menu-center-screen-graphic-option
+                                :name (text-id progress-graphics-center-screen)
+                                :menu-option-type #x8
+                                :offset-y 0.3
+                                )
+                              (new 'static 'menu-aspect-ratio-option
+                                :name (text-id progress-graphics-aspect-ratio)
+                                :menu-option-type #x9
+                                :offset-y 0.5
+                                )
+                              (new 'static 'menu-on-off-progressive-scan-graphic-option
+                                :name (text-id progress-graphics-progressive-scan)
+                                :menu-option-type #xa
+                                :offset-y 0.75
+                                :setting-offset #x768
+                                )
+                              )
+                            )
+        )
+
+(define *graphic-title-options-pal* (new 'static 'menu-option-list
+                                      :y-center #xc6
+                                      :y-space 30
+                                      :scale 0.82
+                                      :options (new 'static 'boxed-array :type menu-option
+                                        (new 'static 'menu-center-screen-graphic-option
+                                          :name (text-id progress-graphics-center-screen)
+                                          :menu-option-type #x8
+                                          :offset-y 0.25
+                                          )
+                                        (new 'static 'menu-aspect-ratio-option
+                                          :name (text-id progress-graphics-aspect-ratio)
+                                          :menu-option-type #x9
+                                          :offset-y 0.4
+                                          )
+                                        (new 'static 'menu-on-off-progressive-scan-graphic-option
+                                          :name (text-id progress-graphics-progressive-scan)
+                                          :menu-option-type #xa
+                                          :offset-y 0.6
+                                          :setting-offset #x768
+                                          )
+                                        (new 'static 'menu-video-mode-option
+                                          :name (text-id progress-graphics-video-mode)
+                                          :menu-option-type #xb
+                                          :offset-y 0.8
+                                          )
+                                        )
+                                      )
+        )
+
+(define *sound-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-sound-slider-option
+        :name (text-id progress-sfx-volume)
+        :offset-y 0.3
+        :setting-offset #x7ec
+        )
+      (new 'static 'menu-sound-slider-option
+        :name (text-id progress-music-volume)
+        :offset-y 0.5
+        :setting-offset #x7f4
+        )
+      (new 'static 'menu-sound-slider-option
+        :name (text-id progress-speech-volume)
+        :offset-y 0.7
+        :setting-offset #x7fc
+        )
+      (new 'static 'menu-stereo-mode-sound-option :name (text-id progress-sound-format) :offset-y 0.81)
+      )
+    )
+  )
+
+(define *picture-options* (new 'static 'menu-option-list
+                            :y-center #xc6
+                            :y-space 30
+                            :scale 0.82
+                            :options (new 'static 'boxed-array :type menu-option
+                              (new 'static 'menu-picture-slider-option
+                                :name (text-id progress-picture-contrast)
+                                :offset-y 0.15
+                                :setting-offset #x990
+                                )
+                              (new 'static 'menu-picture-slider-option
+                                :name (text-id progress-picture-brightness)
+                                :offset-y 0.4
+                                :setting-offset #x98c
+                                )
+                              )
+                            )
+        )
+
+(define *camera-options* (new 'static 'menu-option-list
+                           :y-center #xc8
+                           :y-space 80
+                           :scale 0.7
+                           :options (new 'static 'boxed-array :type menu-option
+                             (new 'static 'menu-camera-option
+                               :name (text-id progress-camera-horizontal)
+                               :menu-option-type #xc
+                               :offset-y 0.35
+                               :setting-offset #x1254
+                               )
+                             (new 'static 'menu-camera-option
+                               :name (text-id progress-camera-vertical)
+                               :menu-option-type #xd
+                               :offset-y 0.65
+                               :setting-offset #x1250
+                               )
+                             )
+                           )
+        )
+
+(define *quit-restart-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-restart-mission-qr-option :name (text-id progress-restart-mission) :offset-y 0.4)
+      (new 'static 'menu-quit-qr-option :name (text-id progress-quit-game) :offset-y 0.65)
+      )
+    )
+  )
+
+(define *load-save-options* (new 'static 'menu-option-list
+                              :y-center #xdc
+                              :y-space 30
+                              :scale 0.82
+                              :options (new 'static 'boxed-array :type menu-option
+                                (new 'static 'menu-memcard-slot-option)
+                                (new 'static 'menu-memcard-slot-option)
+                                (new 'static 'menu-memcard-slot-option)
+                                (new 'static 'menu-memcard-slot-option)
+                                )
+                              )
+        )
+
+(define *save-options-title* (new 'static 'menu-option-list
+                               :y-center #xdc
+                               :y-space 30
+                               :scale 0.82
+                               :options (new 'static 'boxed-array :type menu-option
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-memcard-slot-option)
+                                 (new 'static 'menu-save-sub-menu-option
+                                   :name (text-id progress-continue-without-save)
+                                   :offset-y 0.875
+                                   :next-state 'continue
+                                   )
+                                 )
+                               )
+        )
+
+(define *loading-options* (new 'static 'menu-option-list
+                            :y-center #xc6
+                            :y-space 30
+                            :scale 0.82
+                            :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-loading-option))
+                            )
+        )
+
+(define *insufficient-space-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-insufficient-space-option))
+    )
+  )
+
+(define *hero-mode-message-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-hero-mode-message-option))
+    )
+  )
+
+(define *secrets-insufficient-space-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-secrets-insufficient-space-option))
+    )
+  )
+
+(define *insert-card-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-insert-card-option))
+    )
+  )
+
+(define *error-loading-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-loading-option))
+    )
+  )
+
+(define *error-auto-saving-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-auto-saving-option))
+    )
+  )
+
+(define *card-removed-options*
+  (new 'static 'menu-option-list
+    :y-center #x104
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-card-removed-option))
+    )
+  )
+
+(define *error-disc-removed-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-disc-removed-option))
+    )
+  )
+
+(define *error-reading-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-error-reading-option))
+    )
+  )
+
+(define *icon-info-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-icon-info-option))
+    )
+  )
+
+(define *format-card-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-format-card-option))
+    )
+  )
+
+(define *already-exists-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-already-exists-option))
+    )
+  )
+
+(define *create-game-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-create-game-option))
+    )
+  )
+
+(define *video-mode-warning-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-video-mode-warning-option))
+    )
+  )
+
+(define *video-mode-ok-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-video-mode-ok-option))
+    )
+  )
+
+(define *progressive-mode-warning-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-progressive-mode-warning-option))
+    )
+  )
+
+(define *progressive-mode-ok-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-progressive-mode-ok-option))
+    )
+  )
+
+(define *select-start-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-select-start-option))
+    )
+  )
+
+(define *select-scene-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-select-scene-option))
+    )
+  )
+
+(define *bigmap-options* (new 'static 'menu-option-list
+                           :y-center #xc6
+                           :y-space 30
+                           :scale 0.82
+                           :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-bigmap-option))
+                           )
+        )
+
+(define *missions-options* (new 'static 'menu-option-list
+                             :y-center #xc6
+                             :y-space 30
+                             :scale 0.82
+                             :options (new 'static 'boxed-array :type menu-option (new 'static 'menu-missions-option))
+                             )
+        )
+
+(define *highscores-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-highscores-option :info (new 'static 'boxed-array :type highscore-page-info
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-satelite-game)
+                                                     :game-score #x1
+                                                     :icon #x48
+                                                     :icon-scalex 0.7
+                                                     :icon-scaley 0.7
+                                                     :icon-offsetx 60.0
+                                                     :icon-offsety 1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-racetrack-time-trial)
+                                                     :game-score #x2
+                                                     :icon #x10
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 74.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-wasteland-run)
+                                                     :game-score #x3
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-single-hang-time)
+                                                     :game-score #x4
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-total-hang-time)
+                                                     :game-score #x5
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-single-distance)
+                                                     :game-score #x6
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-total-distance)
+                                                     :game-score #x7
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-roll-challenge)
+                                                     :game-score #x8
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-spargus-turret-game)
+                                                     :game-score #x9
+                                                     :icon #x49
+                                                     :icon-scalex 0.85
+                                                     :icon-scaley 0.85
+                                                     :icon-offsetx 64.0
+                                                     :icon-offsety -2.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-jetboard-challenge)
+                                                     :game-score #xa
+                                                     :icon #x35
+                                                     :icon-scalex 1.0
+                                                     :icon-scaley 1.0
+                                                     :icon-offsetx 80.0
+                                                     :icon-offsety -10.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-gun-yellow-2-course)
+                                                     :game-score #xb
+                                                     :icon #x28
+                                                     :icon-scalex 0.85
+                                                     :icon-scaley 0.85
+                                                     :icon-offsetx 96.0
+                                                     :icon-offsety 8.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-gun-red-2-course)
+                                                     :game-score #xc
+                                                     :icon #x25
+                                                     :icon-scalex 0.85
+                                                     :icon-scaley 0.85
+                                                     :icon-offsetx 96.0
+                                                     :icon-offsety 8.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-ratchet-gun-course)
+                                                     :secret (game-secrets gungame-ratchet)
+                                                     :game-score #xd
+                                                     :icon #x47
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 64.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-clank-gun-course)
+                                                     :secret (game-secrets gungame-ratchet)
+                                                     :game-score #xe
+                                                     :icon #x46
+                                                     :icon-scalex 0.7
+                                                     :icon-scaley 0.7
+                                                     :icon-offsetx 54.0
+                                                     :icon-offsety 1.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-eco-grid-game)
+                                                     :game-score #xf
+                                                     :icon #x4a
+                                                     :icon-scalex 0.85
+                                                     :icon-scaley 0.85
+                                                     :icon-offsetx 64.0
+                                                     :icon-offsety 3.0
+                                                     )
+                                                   (new 'static 'highscore-page-info
+                                                     :text (text-id progress-highscores-marauder-challenge)
+                                                     :game-score #x10
+                                                     :icon #x11
+                                                     :icon-scalex 0.75
+                                                     :icon-scaley 0.75
+                                                     :icon-offsetx 78.0
+                                                     :icon-offsety -1.0
+                                                     )
+                                                   )
+                                           )
+      )
+    )
+  )
+
+(define *controls-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-controls-option
+        :info (new 'static 'boxed-array :type controls-page-info
+          (new 'static 'controls-page-info
+            :title (text-id text-0601)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross)
+                :action (text-id progress-controls-jump)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-circle)
+                :action (text-id progress-controls-kick)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-square)
+                :action (text-id progress-controls-punch)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-triangle)
+                :action (text-id progress-controls-use)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l1)
+                :action (text-id progress-controls-crouch)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2)
+                :action (text-id progress-controls-use-eco-powers)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r1)
+                :action (text-id progress-controls-shoot)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r2)
+                :action (text-id progress-controls-board-get-on)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-weapon-cycle)
+                :action (text-id progress-controls-weapon-select)
+                :feature (game-feature gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1)
+                )
+              )
+            )
+          (new 'static 'controls-page-info
+            :title (text-id progress-controls-advanced-moves)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross-cross)
+                :action (text-id progress-controls-double-jump)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-lanalog-l1)
+                :action (text-id progress-controls-wheel)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross-square)
+                :action (text-id progress-controls-flop)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross-square-cross)
+                :action (text-id progress-controls-super-flop)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l1-square)
+                :action (text-id progress-controls-crouch-uppercut)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross-circle)
+                :action (text-id progress-controls-attack-air)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l1-cross)
+                :action (text-id progress-controls-high-jump)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-roll-cross)
+                :action (text-id progress-controls-wheel-flip)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-square-cross)
+                :action (text-id progress-controls-uppercut)
+                )
+              )
+            )
+          (new 'static 'controls-page-info
+            :title (text-id progress-controls-weapon-moves)
+            :feature (game-feature gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross-circle-r1)
+                :action (text-id progress-controls-rapid-fire-shower)
+                :feature (game-feature gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-attack-r1)
+                :action (text-id progress-controls-wastelander-move)
+                :feature (game-feature gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-weapon-cycle)
+                :action (text-id progress-controls-weapon-select)
+                :feature (game-feature gun-red-1 gun-yellow-1 gun-blue-1 gun-dark-1)
+                )
+              )
+            )
+          (new 'static 'controls-page-info
+            :title (text-id progress-controls-jetboard-moves)
+            :feature (game-feature board)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross)
+                :action (text-id progress-controls-jump)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-hold-l1-cross)
+                :action (text-id progress-controls-board-launch)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r1-lanalog)
+                :action (text-id progress-controls-board-spin)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l1-lanalog)
+                :action (text-id progress-controls-board-trick)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2-lanalog)
+                :action (text-id progress-controls-board-grab)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r2-2)
+                :action (text-id progress-controls-board-get-off)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-360-spin)
+                :action (text-id progress-controls-board-boost)
+                :feature (game-feature board)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-triangle-2)
+                :action (text-id progress-controls-board-reverse)
+                :feature (game-feature board)
+                )
+              )
+            )
+          (new 'static 'controls-page-info
+            :title (text-id progress-controls-vehicle)
+            :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-x-2)
+                :action (text-id progress-controls-accelerate)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-circle-2)
+                :action (text-id progress-controls-handbrake)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-square-2)
+                :action (text-id progress-controls-brake)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-triangle-3)
+                :action (text-id progress-controls-exit-vehicle)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r1-2)
+                :action (text-id progress-controls-vehicle-fire-weapon)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r2-3)
+                :action (text-id progress-controls-vehicle-turbo)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l1-2)
+                :action (text-id progress-controls-vehicle-jump)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2-2)
+                :action (text-id progress-controls-rear-view)
+                :vehicle (game-vehicles v-turtle v-snake v-scorpion v-toad v-fox v-rhino v-mirage v-x-ride)
+                )
+              )
+            )
+          (new 'static 'controls-page-info
+            :title (text-id progress-controls-darkjak)
+            :feature (game-feature darkjak-smack darkjak-bomb0 darkjak-bomb1 artifact-invis)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-cross-square-2)
+                :action (text-id progress-controls-dark-bomb)
+                :feature (game-feature darkjak-bomb0)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-square-cross-2)
+                :action (text-id progress-controls-dark-blast)
+                :feature (game-feature darkjak-bomb1)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-r1-3)
+                :action (text-id progress-controls-dark-strike)
+                :feature (game-feature darkjak-smack)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-triangle-4)
+                :action (text-id progress-controls-dark-invis)
+                :feature (game-feature artifact-invis)
+                )
+              )
+            )
+          (new 'static 'controls-page-info
+            :title (text-id progress-controls-lightjak)
+            :feature (game-feature lightjak)
+            :strings (new 'static 'boxed-array :type controls-string-info
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2-triangle)
+                :action (text-id progress-controls-lightjak-regen)
+                :feature (game-feature lightjak-regen)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2-square)
+                :action (text-id progress-controls-lightjak-freeze)
+                :feature (game-feature lightjak-freeze)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2-circle)
+                :action (text-id progress-controls-lightjak-shield)
+                :feature (game-feature lightjak-shield)
+                )
+              (new 'static 'controls-string-info
+                :button (text-id progress-controls-pad-l2-cross)
+                :action (text-id progress-controls-lightjak-wings)
+                :feature (game-feature lightjak-swoop)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(define *secret-options*
+  (new 'static 'menu-option-list
+    :y-center #xc6
+    :y-space 30
+    :scale 0.82
+    :options (new 'static 'boxed-array :type menu-option
+      (new 'static 'menu-secret-option :selected-index 1 :buy-menu #f :available-title #f)
+      )
+    )
+  )
+
+(define *language-name-remap* (new 'static 'boxed-array :type text-id
+                                (text-id progress-language-english)
+                                (text-id progress-language-french)
+                                (text-id progress-language-german)
+                                (text-id progress-language-spanish)
+                                (text-id progress-language-italian)
+                                (text-id progress-language-commentary)
+                                (text-id progress-language-japanese)
+                                (text-id progress-language-korean)
+                                (text-id progress-language-russian)
+                                (text-id progress-language-portuguese)
+                                (text-id progress-language-dutch)
+                                (text-id progress-language-english-uk)
+                                )
+        )
+
+(define *audio-language-remap*
+  (new 'static 'boxed-array :type uint8 #x0 #x1 #x2 #x3 #x4 #x5 #x0 #x0 #x0 #x0 #x0 #xb)
+  )
+
+(define *stereo-mode-name-remap* (new 'static 'boxed-array :type text-id
+                                   (text-id progress-sound-mono)
+                                   (text-id progress-sound-stereo)
+                                   (text-id progress-sound-surround)
+                                   )
+        )
+
+(define *hud-ring-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x40 #x80 #x10 #x400 #x8 #x4 #x20 #x100 #x200 #x2)
+  )
+
+(define *hud-ring-kiosk-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x80 #x2 #x200 #x200 #x200 #x200 #x200 #x200 #x200 #x200)
+  )
+
+(define *hud-ring-demo-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x80 #x4 #x2 #x200 #x200 #x200 #x200 #x200 #x200 #x200)
+  )
+
+(define *hud-ring-demo-shared-graphic-remap*
+  (new 'static 'boxed-array :type uint64 #x80 #x8 #x4 #x2 #x200 #x200 #x200 #x200 #x200 #x200)
+  )
+
+(deftype hud-scene-info (basic)
+  ((name      string)
+   (continue  string)
+   (info      object)
+   (text      text-id)
+   )
+  )
+
+
+(define *hud-select-scene-act1*
+  (new 'static 'boxed-array :type hud-scene-info
+    (new 'static 'hud-scene-info
+      :continue "wasintro-start"
+      :info '("intro-drop" "intro-lost" "intro-ffhq" "intro-tired" "intro-palace" "intro-rescue")
+      :text (text-id scene-intro-drop)
+      )
+    (new 'static 'hud-scene-info
+      :continue "waspala-intro-training"
+      :info '("intro-training" "arena-training-1-intro")
+      :text (text-id scene-intro-training)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-pre-fight-1"
+      :info '("arena-fight-1-intro")
+      :text (text-id scene-arena-fight-1-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-1-res")
+      :text (text-id scene-arena-fight-1-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-wascity-chase"
+      :info '("wascity-chase-intro")
+      :text (text-id scene-wascity-chase-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-seem"
+      :info '("wascity-pre-game-intro")
+      :text (text-id scene-wascity-pre-game-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-seem"
+      :info '("wascity-pre-game-res")
+      :text (text-id scene-wascity-pre-game-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-course-race-intro")
+      :text (text-id scene-desert-course-race-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-artifact-race-1-intro")
+      :text (text-id scene-desert-artifact-race-1-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-artifact-race-1-res")
+      :text (text-id scene-desert-artifact-race-1-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascitya-seem"
+      :info '("wascity-leaper-race-intro")
+      :text (text-id scene-wascity-leaper-race-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-flut"
+      :info '("wascity-leaper-race-res")
+      :text (text-id scene-wascity-leaper-race-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-hover-intro")
+      :text (text-id scene-desert-hover-info)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-hover-movie"
+      :info '("desert-hover-res")
+      :text (text-id scene-desert-hover-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "waspala-start"
+      :info '("arena-fight-2-intro")
+      :text (text-id scene-arena-fight-2-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-2-res")
+      :text (text-id scene-arena-fight-2-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-catch-lizards-intro")
+      :text (text-id scene-desert-catch-lizards-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-lizard-corral"
+      :info '("desert-lizard-catch")
+      :text (text-id scene-desert-lizard-catch)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-lizard-corral"
+      :info '("desert-lizard-catch-2")
+      :text (text-id scene-desert-lizard-catch-2)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-lizard-corral"
+      :info '("desert-lizard-resolution")
+      :text (text-id scene-desert-lizard-resolution)
+      )
+    (new 'static 'hud-scene-info
+      :continue "waspala-start"
+      :info '("desert-rescue-intro")
+      :text (text-id scene-desert-rescue-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templex-start"
+      :info '("temple-climb-intro")
+      :text (text-id scene-temple-climb-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templex-pre-hang"
+      :info '("temple-climb-res")
+      :text (text-id scene-temple-climb-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "volcanox-vola-start"
+      :info '("desert-glide-res")
+      :text (text-id scene-desert-glide-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "volcano-movie"
+      :info '("volcano-darkeco-res")
+      :text (text-id scene-volcano-darkeco-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templeb-oracle-movie"
+      :info '("temple-oracle-intro")
+      :text (text-id scene-temple-oracle-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templeb-start"
+      :info '("temple-oracle-res")
+      :text (text-id scene-temple-oracle-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-gungame"
+      :info '("wascity-gun-intro")
+      :text (text-id scene-wascity-gun-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-gungame"
+      :info '("wascity-gun-res")
+      :text (text-id scene-wascity-gun-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-3-intro")
+      :text (text-id scene-arena-fight-3-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-3-res")
+      :text (text-id scene-arena-fight-3-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "waspala-start"
+      :info '("nest-eggs-intro")
+      :text (text-id scene-nest-eggs-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-ashelin-movie"
+      :info '("desert-oasis-defense-res")
+      :text (text-id scene-desert-oasis-defense-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-ashelin-movie"
+      :info '("desert-oasis-defense-res-b")
+      :text (text-id scene-desert-oasis-defense-res-b)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templea-mardoor"
+      :info '("temple-tests-intro")
+      :text (text-id scene-temple-tests-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "combn-start"
+      :info '("catacomb-get-shield")
+      :text (text-id scene-catacomb-get-shield)
+      )
+    (new 'static 'hud-scene-info
+      :continue "comba-elevator"
+      :info '("temple-tests-res-b")
+      :text (text-id scene-temple-tests-res-b)
+      )
+    (new 'static 'hud-scene-info
+      :continue "minec-start"
+      :info '("catacombs-travel-res")
+      :text (text-id scene-catacombs-travel-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "prebot-intro"
+      :info '("mine-boss-intro")
+      :text (text-id scene-mine-boss-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "prebot-fight"
+      :info '("mine-boss-res")
+      :text (text-id scene-mine-boss-res)
+      )
+    )
+  )
+
+(define *hud-select-scene-act2* (new 'static 'boxed-array :type hud-scene-info
+                                  (new 'static 'hud-scene-info
+                                    :continue "ctygenb-samos"
+                                    :info '("sewer-met-hum-intro")
+                                    :text (text-id scene-sewer-met-hum-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("city-port-fight-intro")
+                                    :text (text-id scene-city-port-fight-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("city-port-attack-intro")
+                                    :text (text-id scene-city-port-attack-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "ctyport-hiphog"
+                                    :info '("ctyport-attack-get-on-nuke")
+                                    :text (text-id scene-ctyport-attack-get-on-nuke)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "ctyport-attack-res"
+                                    :info '("city-port-attack-res")
+                                    :text (text-id scene-city-port-attack-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "gungame-start"
+                                    :info '("city-gun-course-intro")
+                                    :text (text-id scene-city-gun-course-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "gungame-start"
+                                    :info '("city-gun-course-1-res")
+                                    :text (text-id scene-city-gun-course-1-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("city-sniper-fight-intro")
+                                    :text (text-id scene-city-sniper-fight-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("sewer-kg-met-intro")
+                                    :text (text-id scene-sewer-kg-met-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "mhcitya-fma"
+                                    :info '("city-get-dark-punch")
+                                    :text (text-id scene-city-get-dark-punch)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "ctyinda-grid-res-a"
+                                    :info '("city-destroy-grid-res")
+                                    :text (text-id scene-city-destroy-grid-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "gungame-start"
+                                    :info '("city-gun-course-2-intro")
+                                    :text (text-id scene-city-gun-course-2-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "gungame-start"
+                                    :info '("city-gun-course-2-res")
+                                    :text (text-id scene-city-gun-course-2-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "ctyhijack-res"
+                                    :info '("city-hijack-vehicle-res")
+                                    :text (text-id scene-city-hijack-vehicle-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("port-assault-intro")
+                                    :text (text-id scene-port-assault-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "desertg-egg-wall-scene"
+                                    :info '("nest-hunt-intro")
+                                    :text (text-id scene-nest-hunt-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "desertg-hunt-res-start"
+                                    :info '("nest-hunt-res")
+                                    :text (text-id scene-nest-hunt-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "waspala-start"
+                                    :info '("desert-jump-mission-intro")
+                                    :text (text-id scene-desert-jump-mission-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "wasdoors-desert"
+                                    :info '("desert-beast-battle-intro")
+                                    :text (text-id scene-desert-beast-battle-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "wasdoors-desert"
+                                    :info '("desert-artifact-race-2-intro")
+                                    :text (text-id scene-desert-artifact-race-2-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "foresta-start"
+                                    :info '("forest-ring-chase-res")
+                                    :text (text-id scene-forest-ring-chase-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("city-blow-barricade-intro")
+                                    :text (text-id scene-city-blow-barricade-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "hiphog-movie"
+                                    :info '("city-blow-barricade-res")
+                                    :text (text-id scene-city-blow-barricade-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "freehq-movie"
+                                    :info '("city-protect-hq-intro")
+                                    :text (text-id scene-city-protect-hq-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "sewe-switch"
+                                    :info '("sewer-hum-kg-res")
+                                    :text (text-id scene-sewer-hum-kg-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "freehq-movie"
+                                    :info '("city-protect-hq-res")
+                                    :text (text-id scene-city-protect-hq-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "vinroom-movie"
+                                    :info '("city-power-game-intro")
+                                    :text (text-id scene-city-power-game-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "vinroom-movie"
+                                    :info '("city-power-game-res")
+                                    :text (text-id scene-city-power-game-res)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "freehq-movie"
+                                    :info '("factory-sky-battle-intro")
+                                    :text (text-id scene-factory-sky-battle-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "factorya-intro-b"
+                                    :info '("factory-sky-battle-intro-b")
+                                    :text (text-id scene-factory-sky-battle-intro-b)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "factoryd-start"
+                                    :info '("factory-boss-intro")
+                                    :text (text-id scene-factory-boss-intro)
+                                    )
+                                  (new 'static 'hud-scene-info
+                                    :continue "factoryd-start"
+                                    :info '("factory-boss-res")
+                                    :text (text-id scene-factory-boss-res)
+                                    )
+                                  )
+        )
+
+(define *hud-select-scene-act3*
+  (new 'static 'boxed-array :type hud-scene-info
+    (new 'static 'hud-scene-info
+      :continue "freehq-movie"
+      :info "temple-defend-intro"
+      :text (text-id scene-temple-defend-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templeb-glide"
+      :info "temple-jak-gets-light-glide"
+      :text (text-id scene-temple-jak-gets-light-glide)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templed-start"
+      :info "temple-defend-res"
+      :text (text-id scene-temple-defend-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-gungame"
+      :info "wascity-defend-res"
+      :text (text-id scene-wascity-defend-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "forest-pillar-start"
+      :info "forest-turn-on-machine-res"
+      :text (text-id scene-forest-turn-on-machine-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "precura-foresta"
+      :info "precursor-tour-res"
+      :text (text-id scene-precursor-tour-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "freehq-movie"
+      :info "city-blow-tower-intro"
+      :text (text-id scene-city-blow-tower-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "mhcityb-tower-fma"
+      :info "tower-destroy-intro"
+      :text (text-id scene-tower-destroy-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "ltowerb-fma"
+      :info "tower-destroy-res"
+      :text (text-id scene-tower-destroy-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "onintent-start"
+      :info "city-find-catacomb-ent-intro"
+      :text (text-id scene-city-find-catacomb-ent-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "stadium-tunnel"
+      :info "palace-ruins-patrol-intro"
+      :text (text-id scene-palace-ruins-patrol-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "rubblea-start"
+      :info "palace-ruins-attack-intro"
+      :text (text-id scene-palace-ruins-attack-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "rubblec-fma"
+      :info "palace-ruins-attack-res"
+      :text (text-id scene-palace-ruins-attack-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "railx-start"
+      :info "catacombs-wild-ride-res"
+      :text (text-id scene-catacombs-wild-ride-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "precurd-start"
+      :info "precursor-destroy-ship-res"
+      :text (text-id scene-precursor-destroy-ship-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "precurd-start"
+      :info "desert-final-boss-intro-a"
+      :text (text-id scene-desert-final-boss-intro-a)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasall-final-boss-intro-movie"
+      :info "desert-final-boss-intro"
+      :text (text-id scene-desert-final-boss-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-boss-res-b"
+      :info "desert-jak-gets-on-t-b"
+      :text (text-id scene-desert-jak-gets-on-t-b)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-boss-res-b"
+      :info "desert-jak-gets-on-t-c"
+      :text (text-id scene-desert-jak-gets-on-t-c)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-final-boss-res-movie-a"
+      :info "desert-final-boss-res"
+      :text (text-id scene-desert-final-boss-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-final-boss-res-movie-scene-player"
+      :info "desert-final-boss-res-b"
+      :text (text-id scene-desert-final-boss-res-b)
+      )
+    (new 'static 'hud-scene-info :continue "wasstada-outro" :info "arena-outro" :text (text-id scene-arena-outro))
+    )
+  )
+
+(define *hud-select-scene-commentary*
+  (new 'static 'boxed-array :type hud-scene-info
+    (new 'static 'hud-scene-info
+      :continue "wasintro-start"
+      :info '("intro-drop")
+      :text (text-id scene-intro-drop)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasintro-palace"
+      :info '("intro-palace")
+      :text (text-id commentary-intro-palace)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasintro-rescue"
+      :info '("intro-rescue")
+      :text (text-id commentary-intro-rescue)
+      )
+    (new 'static 'hud-scene-info
+      :continue "waspala-intro-training"
+      :info '("intro-training")
+      :text (text-id commentary-intro-training)
+      )
+    (new 'static 'hud-scene-info
+      :continue "waspala-intro-training"
+      :info '("arena-training-1-intro")
+      :text (text-id scene-intro-training)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-pre-fight-1"
+      :info '("arena-fight-1-intro")
+      :text (text-id scene-arena-fight-1-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-1-res")
+      :text (text-id scene-arena-fight-1-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-seem"
+      :info '("wascity-pre-game-intro")
+      :text (text-id scene-wascity-pre-game-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-seem"
+      :info '("wascity-pre-game-res")
+      :text (text-id scene-wascity-pre-game-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-course-race-intro")
+      :text (text-id scene-desert-course-race-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascitya-seem"
+      :info '("wascity-leaper-race-intro")
+      :text (text-id scene-wascity-leaper-race-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-hover-movie"
+      :info '("desert-hover-res")
+      :text (text-id scene-desert-hover-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-2-res")
+      :text (text-id scene-arena-fight-2-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasdoors-desert"
+      :info '("desert-catch-lizards-intro")
+      :text (text-id scene-desert-catch-lizards-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templex-start"
+      :info '("temple-climb-intro")
+      :text (text-id scene-temple-climb-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templex-pre-hang"
+      :info '("temple-climb-res")
+      :text (text-id scene-temple-climb-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "volcano-movie"
+      :info '("volcano-darkeco-res")
+      :text (text-id scene-volcano-darkeco-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templeb-oracle-movie"
+      :info '("temple-oracle-intro")
+      :text (text-id scene-temple-oracle-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wascityb-gungame"
+      :info '("wascity-gun-intro")
+      :text (text-id scene-wascity-gun-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasstada-fight"
+      :info '("arena-fight-3-intro")
+      :text (text-id scene-arena-fight-3-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-ashelin-movie"
+      :info '("desert-oasis-defense-res")
+      :text (text-id scene-desert-oasis-defense-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-ashelin-movie"
+      :info '("desert-oasis-defense-res-b")
+      :text (text-id scene-desert-oasis-defense-res-b)
+      )
+    (new 'static 'hud-scene-info
+      :continue "prebot-intro"
+      :info '("mine-boss-intro")
+      :text (text-id scene-mine-boss-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "hiphog-movie"
+      :info '("city-port-fight-intro")
+      :text (text-id scene-city-port-fight-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "hiphog-movie"
+      :info '("city-port-attack-intro")
+      :text (text-id scene-city-port-attack-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "ctyport-hiphog"
+      :info '("ctyport-attack-get-on-nuke")
+      :text (text-id scene-ctyport-attack-get-on-nuke)
+      )
+    (new 'static 'hud-scene-info
+      :continue "gungame-start"
+      :info '("city-gun-course-intro")
+      :text (text-id scene-city-gun-course-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "gungame-start"
+      :info '("city-gun-course-2-intro")
+      :text (text-id scene-city-gun-course-2-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "ctyhijack-res"
+      :info '("city-hijack-vehicle-res")
+      :text (text-id scene-city-hijack-vehicle-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "mhcitya-fma"
+      :info '("city-get-dark-punch")
+      :text (text-id scene-city-get-dark-punch)
+      )
+    (new 'static 'hud-scene-info
+      :continue "hiphog-movie"
+      :info '("port-assault-intro")
+      :text (text-id scene-port-assault-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desertg-hunt-res-start"
+      :info '("nest-hunt-res")
+      :text (text-id scene-nest-hunt-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "hiphog-movie"
+      :info '("city-blow-barricade-intro")
+      :text (text-id scene-city-blow-barricade-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "freehq-movie"
+      :info '("city-protect-hq-res")
+      :text (text-id scene-city-protect-hq-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "sewe-switch"
+      :info '("sewer-hum-kg-res")
+      :text (text-id scene-sewer-hum-kg-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "factoryd-start"
+      :info '("factory-boss-intro")
+      :text (text-id scene-factory-boss-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "templed-start"
+      :info "temple-defend-res"
+      :text (text-id scene-temple-defend-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "precura-foresta"
+      :info "precursor-tour-res"
+      :text (text-id scene-precursor-tour-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "freehq-movie"
+      :info "city-blow-tower-intro"
+      :text (text-id scene-city-blow-tower-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "rubblea-start"
+      :info "palace-ruins-attack-intro"
+      :text (text-id scene-palace-ruins-attack-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "rubblec-fma"
+      :info "palace-ruins-attack-res"
+      :text (text-id scene-palace-ruins-attack-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "railx-start"
+      :info "catacombs-wild-ride-res"
+      :text (text-id scene-catacombs-wild-ride-res)
+      )
+    (new 'static 'hud-scene-info
+      :continue "wasall-final-boss-intro-movie"
+      :info "desert-final-boss-intro"
+      :text (text-id scene-desert-final-boss-intro)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-boss-res-a"
+      :info "desert-jak-gets-on-t-a"
+      :text (text-id scene-desert-jak-gets-on-t-a)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-boss-res-b"
+      :info "desert-jak-gets-on-t-b"
+      :text (text-id scene-desert-jak-gets-on-t-b)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-boss-res-b"
+      :info "desert-jak-gets-on-t-c"
+      :text (text-id scene-desert-jak-gets-on-t-c)
+      )
+    (new 'static 'hud-scene-info
+      :continue "desert-final-boss-res-movie-scene-player"
+      :info "desert-final-boss-res-b"
+      :text (text-id scene-desert-final-boss-res-b)
+      )
+    (new 'static 'hud-scene-info :continue "wasstada-outro" :info "arena-outro" :text (text-id scene-arena-outro))
+    )
+  )
+
+(define *progress-icon-arrays* (new 'static 'boxed-array :type progress-icon-array
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x11 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x12 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x13 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x14 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x9 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #xa :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #xb :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #xc :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x4c :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x4d :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x4e :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x4f :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x1d :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x1e :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x1f :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x20 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x40 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x41 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x42 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x43 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x60 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x61 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x62 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x63 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x64 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x65 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x66 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x67 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x68 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x69 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x6a :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x6b :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x88 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x89 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x8a :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x8b :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x6c :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x6d :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x6e :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x6f :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x70 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x71 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x72 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x73 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x74 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x75 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x76 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x77 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x78 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x79 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x7a :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x7b :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x7c :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x7d :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x7e :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x7f :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x80 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x81 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x82 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x83 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x84 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x85 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 64))
+                                     :tex-id (new 'static 'texture-id :index #x86 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 64))
+                                     :tex-id (new 'static 'texture-id :index #x87 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x15 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x16 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x11 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x12 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x13 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x14 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #xf :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x10 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #xd :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #xe :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x9 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #xa :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #xb :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #xc :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x17 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x18 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x1 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x2 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 20))
+                                     :tex-id (new 'static 'texture-id :index #x3 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x1a :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x19 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x1b :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x1c :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x2e :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x2f :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x30 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x2d :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 16 0))
+                                     :tex-id (new 'static 'texture-id :index #x35 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 48 0))
+                                     :tex-id (new 'static 'texture-id :index #x38 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x36 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x38 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x37 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x38 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x39 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x3d :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x3a :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 64 0))
+                                     :tex-id (new 'static 'texture-id :index #x3d :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 8 0))
+                                     :tex-id (new 'static 'texture-id :index #x3b :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 72 0))
+                                     :tex-id (new 'static 'texture-id :index #x3c :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 4))
+                                     :tex-id (new 'static 'texture-id :index #x4 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 32 0))
+                                     :tex-id (new 'static 'texture-id :index #x8 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 -28))
+                                     :tex-id (new 'static 'texture-id :index #x5 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 32 0))
+                                     :tex-id (new 'static 'texture-id :index #x8 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 8 -12))
+                                     :tex-id (new 'static 'texture-id :index #x6 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 8 20))
+                                     :tex-id (new 'static 'texture-id :index #x7 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 40 0))
+                                     :tex-id (new 'static 'texture-id :index #x8 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 12 0))
+                                     :tex-id (new 'static 'texture-id :index #x31 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 76 0))
+                                     :tex-id (new 'static 'texture-id :index #x34 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 12 0))
+                                     :tex-id (new 'static 'texture-id :index #x32 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 76 0))
+                                     :tex-id (new 'static 'texture-id :index #x34 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 12 0))
+                                     :tex-id (new 'static 'texture-id :index #x33 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 76 0))
+                                     :tex-id (new 'static 'texture-id :index #x34 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 15))
+                                     :tex-id (new 'static 'texture-id :index #x21 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 6 0))
+                                     :tex-id (new 'static 'texture-id :index #x2a :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 18 14))
+                                     :tex-id (new 'static 'texture-id :index #x2b :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 33 3))
+                                     :tex-id (new 'static 'texture-id :index #x2c :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x28 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 15))
+                                     :tex-id (new 'static 'texture-id :index #x23 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 15))
+                                     :tex-id (new 'static 'texture-id :index #x1e :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 6))
+                                     :tex-id (new 'static 'texture-id :index #x22 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 6))
+                                     :tex-id (new 'static 'texture-id :index #x1d :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x26 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x27 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x29 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 15))
+                                     :tex-id (new 'static 'texture-id :index #x25 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 15))
+                                     :tex-id (new 'static 'texture-id :index #x1f :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 -2))
+                                     :tex-id (new 'static 'texture-id :index #x20 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x28 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x35 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x26 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x2d :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x31 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x30 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x36 :page #x11)
+                                     :bucket (bucket-id hud-draw-hud-alpha)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x3f :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x42 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x43 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x44 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x40 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   (new 'static 'progress-icon-part
+                                     :offset (new 'static 'vector2w :data (new 'static 'array int32 2 0 32))
+                                     :tex-id (new 'static 'texture-id :index #x41 :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     )
+                                   )
+                                 (new 'static 'progress-icon-array :type progress-icon-part
+                                   (new 'static 'progress-icon-part
+                                     :tex-id (new 'static 'texture-id :index #x3e :page #xd15)
+                                     :bucket (bucket-id hud-draw-pris2)
+                                     :flags (progress-icon-flags pi3)
+                                     )
+                                   )
+                                 )
+        )
+
+(define *inventory* (new 'static 'menu-option-list
+                      :y-center #xa6
+                      :y-space 20
+                      :scale 0.7
+                      :options (new 'static 'boxed-array :type menu-option
+                        (new 'static 'menu-inventory
+                          :screens (new 'static 'boxed-array :type inventory-screen
+                            (new 'static 'inventory-screen
+                              :name (text-id progress-inventory-vehicles)
+                              :groups (new 'static 'boxed-array :type inventory-item-group
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-turtle)
+                                  :index-left #x3
+                                  :index-right #x1
+                                  :index-up #x4
+                                  :index-down #x4
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-turtle)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.15))
+                                      :vehicle (game-vehicles v-turtle)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-snake)
+                                  :index-right #x2
+                                  :index-up #x5
+                                  :index-down #x5
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-snake)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.275 0.15))
+                                      :vehicle (game-vehicles v-snake)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-toad)
+                                  :index-left #x1
+                                  :index-right #x3
+                                  :index-up #x6
+                                  :index-down #x6
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-toad)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.15))
+                                      :vehicle (game-vehicles v-toad)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-scorpion)
+                                  :index-left #x2
+                                  :index-up #x7
+                                  :index-down #x7
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-scorpion)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.75 0.15))
+                                      :vehicle (game-vehicles v-scorpion)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-rhino)
+                                  :index-left #x7
+                                  :index-right #x5
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-rhino)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.525))
+                                      :vehicle (game-vehicles v-rhino)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-fox)
+                                  :index-left #x4
+                                  :index-right #x6
+                                  :index-up #x1
+                                  :index-down #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-fox)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.275 0.525))
+                                      :vehicle (game-vehicles v-fox)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-mirage)
+                                  :index-left #x5
+                                  :index-right #x7
+                                  :index-up #x2
+                                  :index-down #x2
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-mirage)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.525))
+                                      :vehicle (game-vehicles v-mirage)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-v-x-ride)
+                                  :index-left #x6
+                                  :index-right #x4
+                                  :index-up #x3
+                                  :index-down #x3
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon v-x-ride)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.75 0.525))
+                                      :vehicle (game-vehicles v-x-ride)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            (new 'static 'inventory-screen
+                              :name (text-id progress-inventory-guns)
+                              :groups (new 'static 'boxed-array :type inventory-item-group
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-red-1)
+                                  :index-left #x2
+                                  :index-right #x1
+                                  :index-up #x9
+                                  :index-down #x3
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-red-1)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.125))
+                                      :feature (game-feature gun-red-1)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-red-2)
+                                  :index-right #x2
+                                  :index-up #xa
+                                  :index-down #x4
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-red-2)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.35 0.125))
+                                      :feature (game-feature gun-red-2)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-red-3)
+                                  :index-left #x1
+                                  :index-up #xb
+                                  :index-down #x5
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-red-3)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.65 0.125))
+                                      :feature (game-feature gun-red-3)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-yellow-1)
+                                  :index-left #x5
+                                  :index-right #x4
+                                  :index-down #x6
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-yellow-1)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.31))
+                                      :feature (game-feature gun-yellow-1)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-yellow-2)
+                                  :index-left #x3
+                                  :index-right #x5
+                                  :index-up #x1
+                                  :index-down #x7
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-yellow-2)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.35 0.31))
+                                      :feature (game-feature gun-yellow-2)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-yellow-3)
+                                  :index-left #x4
+                                  :index-right #x3
+                                  :index-up #x2
+                                  :index-down #x8
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-yellow-3)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.65 0.31))
+                                      :feature (game-feature gun-yellow-3)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-blue-1)
+                                  :index-left #x8
+                                  :index-right #x7
+                                  :index-up #x3
+                                  :index-down #x9
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-blue-1)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.525))
+                                      :feature (game-feature gun-blue-1)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-blue-2)
+                                  :index-left #x6
+                                  :index-right #x8
+                                  :index-up #x4
+                                  :index-down #xa
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-blue-2)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.35 0.525))
+                                      :feature (game-feature gun-blue-2)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-blue-3)
+                                  :index-left #x7
+                                  :index-right #x6
+                                  :index-up #x5
+                                  :index-down #xb
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-blue-3)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.65 0.525))
+                                      :feature (game-feature gun-blue-3)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-dark-1)
+                                  :index-left #xb
+                                  :index-right #xa
+                                  :index-up #x6
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-dark-1)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.725))
+                                      :feature (game-feature gun-dark-1)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-dark-2)
+                                  :index-left #x9
+                                  :index-right #xb
+                                  :index-up #x7
+                                  :index-down #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-dark-2)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.35 0.725))
+                                      :feature (game-feature gun-dark-2)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-gun-dark-3)
+                                  :index-left #xa
+                                  :index-right #x9
+                                  :index-up #x8
+                                  :index-down #x2
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon gun-dark-3)
+                                      :icon-scale 0.9
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.65 0.725))
+                                      :feature (game-feature gun-dark-3)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            (new 'static 'inventory-screen
+                              :name (text-id progress-inventory-armor)
+                              :groups (new 'static 'boxed-array :type inventory-item-group
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-armor0)
+                                  :index-left #x3
+                                  :index-right #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon armor0)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.05 0.3))
+                                      :feature (game-feature armor0)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-armor1)
+                                  :index-right #x2
+                                  :index-up #x1
+                                  :index-down #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon armor1)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.275 0.3))
+                                      :feature (game-feature armor1)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-armor2)
+                                  :index-left #x1
+                                  :index-right #x3
+                                  :index-up #x2
+                                  :index-down #x2
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon armor2)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.3))
+                                      :feature (game-feature armor2)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-armor3)
+                                  :index-left #x2
+                                  :index-up #x3
+                                  :index-down #x3
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon armor3)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.75 0.3))
+                                      :feature (game-feature armor3)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            (new 'static 'inventory-screen
+                              :name (text-id progress-inventory-darkjak)
+                              :groups (new 'static 'boxed-array :type inventory-item-group
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-dark-bomb)
+                                  :index-left #x3
+                                  :index-right #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon darkjak-bomb0)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.04 0.3))
+                                      :feature (game-feature darkjak-bomb0)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-dark-blast)
+                                  :index-right #x2
+                                  :index-up #x1
+                                  :index-down #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon darkjak-bomb1)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.29 0.3))
+                                      :feature (game-feature darkjak-bomb1)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-artifact-invis)
+                                  :index-left #x1
+                                  :index-right #x3
+                                  :index-up #x2
+                                  :index-down #x2
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon artifact-invis)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.54 0.3))
+                                      :feature (game-feature artifact-invis)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-dark-strike)
+                                  :index-left #x2
+                                  :index-up #x3
+                                  :index-down #x3
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon darkjak-smack)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.79 0.3))
+                                      :feature (game-feature darkjak-smack)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            (new 'static 'inventory-screen
+                              :name (text-id progress-inventory-lightjak)
+                              :groups (new 'static 'boxed-array :type inventory-item-group
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-lightjak-regen)
+                                  :index-left #x3
+                                  :index-right #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon lightjak-regen)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.04 0.3))
+                                      :feature (game-feature lightjak-regen)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-lightjak-freeze)
+                                  :index-right #x2
+                                  :index-up #x1
+                                  :index-down #x1
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon lightjak-freeze)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.29 0.3))
+                                      :feature (game-feature lightjak-freeze)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-lightjak-shield)
+                                  :index-left #x1
+                                  :index-right #x3
+                                  :index-up #x2
+                                  :index-down #x2
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon lightjak-shield)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.54 0.3))
+                                      :feature (game-feature lightjak-shield)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-lightjak-swoop)
+                                  :index-left #x2
+                                  :index-up #x3
+                                  :index-down #x3
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon lightjak-swoop)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.79 0.3))
+                                      :feature (game-feature lightjak-swoop)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            (new 'static 'inventory-screen
+                              :name (text-id progress-inventory-items)
+                              :groups (new 'static 'boxed-array :type inventory-item-group
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-war-amulet)
+                                  :index-left #x4
+                                  :index-right #x1
+                                  :index-up #xa
+                                  :index-down #x5
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon amulet2)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.025 0.05))
+                                      :item (game-items amulet2)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon amulet1)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.025 0.05))
+                                      :item (game-items amulet1)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon amulet0)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.025 0.05))
+                                      :item (game-items amulet0)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-pass-wascity)
+                                  :index-right #x2
+                                  :index-up #xa
+                                  :index-down #x6
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon pass-wascity)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.225 0.05))
+                                      :item (game-items pass-front-gate)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-seal-of-mar)
+                                  :index-left #x1
+                                  :index-right #x3
+                                  :index-up #xb
+                                  :index-down #x7
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon seal-of-mar)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.425 0.05))
+                                      :item (game-items seal-of-mar)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-board)
+                                  :index-left #x2
+                                  :index-right #x4
+                                  :index-up #xb
+                                  :index-down #x8
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon board)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.625 0.05))
+                                      :feature (game-feature board)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-pass-factory)
+                                  :index-left #x3
+                                  :index-up #xc
+                                  :index-down #x9
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon pass-factory)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.825 0.05))
+                                      :item (game-items cypher-gliph)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-holocube)
+                                  :index-left #x9
+                                  :index-right #x6
+                                  :index-down #xa
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon artifact-holocube)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.025 0.35))
+                                      :item (game-items artifact-holocube)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-beam-generator)
+                                  :index-left #x5
+                                  :index-right #x7
+                                  :index-up #x1
+                                  :index-down #xa
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon artifact-beam-generator)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.225 0.35))
+                                      :item (game-items artifact-av-generator)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-prism)
+                                  :index-left #x6
+                                  :index-right #x8
+                                  :index-up #x2
+                                  :index-down #xb
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon artifact-prism)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.425 0.35))
+                                      :item (game-items artifact-av-prism)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-quantum-reflector)
+                                  :index-left #x7
+                                  :index-right #x9
+                                  :index-up #x3
+                                  :index-down #xb
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon artifact-quantum-reflector)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.625 0.35))
+                                      :item (game-items artifact-av-reflector)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-time-map)
+                                  :index-left #x8
+                                  :index-right #x5
+                                  :index-up #x4
+                                  :index-down #xc
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon artifact-time-map)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.825 0.35))
+                                      :item (game-items artifact-av-map)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-dark-eco-crystal)
+                                  :index-left #xc
+                                  :index-right #xb
+                                  :index-up #x5
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon dark-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.025 0.65))
+                                      :item (game-items dark-eco-crystal0)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon dark-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.105 0.65))
+                                      :item (game-items dark-eco-crystal1)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon dark-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.185 0.65))
+                                      :item (game-items dark-eco-crystal2)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon dark-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.265 0.65))
+                                      :item (game-items dark-eco-crystal3)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-light-eco-crystal)
+                                  :index-left #xa
+                                  :index-right #xc
+                                  :index-up #x7
+                                  :index-down #x2
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon light-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.425 0.65))
+                                      :item (game-items light-eco-crystal0)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon light-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.485 0.65))
+                                      :item (game-items light-eco-crystal1)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon light-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.545 0.65))
+                                      :item (game-items light-eco-crystal2)
+                                      )
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon light-eco-crystal)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.605 0.65))
+                                      :item (game-items light-eco-crystal3)
+                                      )
+                                    )
+                                  )
+                                (new 'static 'inventory-item-group
+                                  :name (text-id progress-inventory-eco-sphere)
+                                  :index-left #xb
+                                  :index-right #xa
+                                  :index-up #x9
+                                  :index-down #x4
+                                  :items (new 'static 'boxed-array :type inventory-item
+                                    (new 'static 'inventory-item
+                                      :icon (inventory-icon eco-sphere)
+                                      :icon-scale 1.0
+                                      :offset (new 'static 'vector2 :data (new 'static 'array float 2 0.825 0.65))
+                                      :item (game-items dark-eco-crystal3)
+                                      )
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        )
+                      )
+        )

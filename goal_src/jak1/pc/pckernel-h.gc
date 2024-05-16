@@ -1,6 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(require "engine/ps2/pad.gc")
+
+
 #|
 
   This file contains code that we need for the PC port of the game specifically.
@@ -83,10 +86,6 @@
   (direct3d)
   )
 
-
-(defmacro pc-cheats? (obj &rest cheats)
-  `(logtest? ,obj (pc-cheats ,@cheats)))
-
 ;; music log info
 (deftype pc-music-log-entry (structure)
   ((name  symbol)
@@ -110,17 +109,17 @@
    ;; "generic" graphics settings
    (target-fps int16) ;; the target framerate of the game
    ;; game resolution?
-   (width int32)
-   (height int32)
+   (width int64)
+   (height int64)
    ;; window size. resolution = window size in windowed mode.
-   (window-width int32)
-   (window-height int32)
+   (window-width int64)
+   (window-height int64)
    ;; reported window framebuffer size from OS
-   (framebuffer-width int32)
-   (framebuffer-height int32)
+   (framebuffer-width int64)
+   (framebuffer-height int64)
    ;; the region to draw in that framebuffer. rest is cleared to black.
-   (framebuffer-scissor-width int32)
-   (framebuffer-scissor-height int32)
+   (framebuffer-scissor-width int64)
+   (framebuffer-scissor-height int64)
    (dpi-x float) ;; DPI width scale
    (dpi-y float) ;; DPI height scale
    (aspect-ratio-auto? symbol) ;; if on, aspect ratio is calculated automatically based on game display size.
@@ -152,7 +151,7 @@
    (controller-led-max-brightness float)
    (controller-led-color          rgbaf :inline)
    (stick-deadzone float) ;; analog stick deadzone. 0-1
-   (keyboard-enabled? symbol)
+   (keyboard-enabled? symbol) ;; NOTE - this is here solely to satisfy jak 1's menu design, the setting has been moved into `input-settings.json`
    (mouse-enabled? symbol)
    (mouse-camera? symbol)
    (mouse-xsens float)
@@ -201,7 +200,7 @@
    (third-camera-v-inverted? symbol) ;; third-person vertical camera inverted
    (music-fadeout?  symbol) ;; music fadeout toggle.
    (music-fadein?   symbol) ;; music fadein toggle.
-   
+
    (territory   int16)
 
    (bingo pc-bingo-info :inline) ;; bingo integration. does nothing for now.
@@ -258,7 +257,6 @@
     (commit-to-file (_type_) none)
     (load-settings (_type_) int)
     (set-ignore-controller-in-bg! (_type_ symbol) none)
-    (set-enable-keyboard! (_type_ symbol) none)
     (update-mouse-controls! (_type_) none)
     (debug-font-scale-factor (_type_) float)
     )
@@ -296,7 +294,7 @@
 
 (defmethod reset pc-settings ((obj pc-settings) (call-handlers symbol))
   "Reset everything back to default settings
-   
+
    If call-handlers = #t then events will be sent to the runtime kernel to update OS settings
    such as window size, etc.
    If you just want to set the settings and handle the fields yourself later, set call-handlers to #f
@@ -344,9 +342,23 @@
   (set! (-> obj letterbox?) #t)
 
   ;; get screen size and set to borderless at screen res (if retail)
-  (pc-get-active-display-size (&-> obj width) (&-> obj height))
+  (cond
+    ((> (pc-get-num-resolutions) 0)
+     ;; pick first available resolution by default
+     (pc-get-resolution 0 (&-> obj width) (&-> obj height))
+     )
+    (else
+     ;; somehow didn't get a single resolution. this is pretty bad.
+     (pc-get-active-display-size (&-> obj width) (&-> obj height))
+     (max! (-> obj width) PC_MIN_WIDTH)
+     (max! (-> obj height) PC_MIN_HEIGHT)
+     (format 0 "!!!! failed to get any screen resolutions !!!!")
+     )
+    )
+  (format 0 "fullscreen resolution defaulted to ~D x ~D~%" (-> obj width) (-> obj height))
   (if (not *debug-segment*)
-      (set-display-mode! obj 'borderless call-handlers))
+      (set-display-mode! obj 'borderless call-handlers)
+      (set-display-mode! obj 'windowed call-handlers))
   (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA) ;; default msaa
   0)
 
@@ -375,9 +387,9 @@
     (set! (-> obj controller-led-min-brightness) 0.25)
     (set! (-> obj controller-led-max-brightness) 1.0)
     )
-  
+
   (when (or (= device 'all) (= device 'input))
-    (set! (-> obj keyboard-enabled?) #t)
+    (set! (-> obj keyboard-enabled?) #f)
     (set! (-> obj mouse-enabled?) #f)
     (set! (-> obj auto-hide-cursor?) #t)
     )
@@ -457,6 +469,11 @@
   `(symbol-member? (-> *pc-settings* display-mode) '(fullscreen borderless)))
 
 
+(defun bcd->dec ((bcd uint))
+  "Convert a number encoded in BCD to its decimal equivalent"
+  (+ (* (shr (logand bcd #xf0) 4) 10) (logand bcd #x0f)))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; cheats
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -507,7 +524,7 @@
 
   (dolist (ex extra)
     (set! out (cons (car ex) out)))
-  
+
   out)
   )
 
@@ -549,3 +566,44 @@
 (defun-extern real-movie? symbol)
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; entity debugging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(when *debug-segment*
+
+(deftype entity-debug-inspect (basic)
+  (
+   (scroll-y int16)
+   (scroll-y-max int16)
+   (entity entity)
+   (show-actor-info symbol)
+   (show-long-info symbol)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (set-entity! (_type_ entity) entity)
+    (update-pad (_type_ int) none)
+    )
+  )
+
+(defmethod new entity-debug-inspect ((allocation symbol) (type-to-make type))
+  "make a new entity-debug-inspect object"
+
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+
+    (set! (-> obj scroll-y) 0)
+    (set! (-> obj scroll-y-max) 0)
+    (set! (-> obj entity) (the entity #f))
+    (set! (-> obj show-actor-info) #f)
+    (set! (-> obj show-long-info) #f)
+    obj
+    )
+  )
+
+
+(define *entity-debug-inspect* (new 'debug 'entity-debug-inspect))
+
+
+) ;; when debug_segment

@@ -12,7 +12,7 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 class WithGameTests : public ::testing::Test {
  public:
@@ -783,7 +783,7 @@ TEST_F(WithGameTests, StaticTypeArray) {
                                           {"matched!\n0\n"});
 }
 
-TEST_F(WithGameTests, StaticArraySubtypeDraft) {
+TEST_F(WithGameTests, StaticArraySubtype) {
   shared_compiler->runner.run_static_test(testCategory, "test-static-array-subtype.gc",
                                           {"length - 2\ntest\n1\n0\n"});
 }

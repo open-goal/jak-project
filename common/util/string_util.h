@@ -18,7 +18,9 @@ int line_count(const std::string& str);
 bool valid_regex(const std::string& regex);
 std::string diff(const std::string& lhs, const std::string& rhs);
 /// Default splits on \n characters
+/// DEPRECATED - stop using it, limited as it only takes a char
 std::vector<std::string> split(const ::std::string& str, char delimiter = '\n');
+std::vector<std::string> split_string(const std::string& str, const std::string& delimiter = "\n");
 std::string join(const std::vector<std::string>& strs, const std::string& join_with);
 std::vector<std::string> regex_get_capture_groups(const std::string& str, const std::string& regex);
 bool replace(std::string& str, const std::string& from, const std::string& to);
@@ -33,4 +35,5 @@ std::string to_lower(const std::string& str);
 /// Is this a valid character for a hex number?
 bool hex_char(char c);
 std::string titlize(const std::string& str);
+std::string pad_right(const std::string& input, const int width, const char padding_char);
 }  // namespace str_util

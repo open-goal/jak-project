@@ -10,7 +10,7 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 namespace {
 std::string reg_kind_to_string(RegClass kind) {

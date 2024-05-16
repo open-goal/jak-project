@@ -5,5 +5,249 @@
 ;; name in dgo: nav-graph-h
 ;; dgos: DESRESC, HGA, WWD, CWI, LFACTORY
 
+(declare-type nav-node structure)
+
+;; +++nav-branch-clock-type
+(defenum nav-branch-clock-type
+  :type uint8
+  (no-clock 0)
+  (clock2 1)
+  (clock3 2)
+  (clock4 3)
+  )
+;; ---nav-branch-clock-type
+
+
+;; +++nav-branch-clock-mask
+(defenum nav-branch-clock-mask
+  :type uint8
+  :bitfield #t
+  (phase-1 0)
+  (phase-1a 1)
+  (phase-2 2)
+  (phase-2a 3)
+  (phase-3 4)
+  (phase-3a 5)
+  (phase-4 6)
+  (phase-4a 7)
+  )
+;; ---nav-branch-clock-mask
+
+
+;; +++nav-branch-flags
+(defenum nav-branch-flags
+  :bitfield #t
+  :type uint8
+  (nabflags-0)
+  (nabflags-1)
+  (nabflags-2)
+  (nabflags-3)
+  (nabflags-4)
+  (nabflags-5)
+  (nabflags-6)
+  (nabflags-7)
+  )
+;; ---nav-branch-flags
+
+
+;; +++nav-node-flag-byte
+(defenum nav-node-flag-byte
+  "The same as [[nav-node-flag]] but more compact"
+  :type uint8
+  :bitfield #t
+  (visited 0)
+  (blocked 1)
+  (pedestrian 2)
+  (selected 3)
+  (hidden 4)
+  )
+;; ---nav-node-flag-byte
+
+
 ;; DECOMP BEGINS
 
+(deftype nav-branch (structure)
+  ((node                 nav-node  2)
+   (src-node             nav-node  :overlay-at (-> node 0))
+   (dest-node            nav-node  :overlay-at (-> node 1))
+   (temp-dest-node-id    int32     :overlay-at (-> node 1))
+   (speed-limit          uint8)
+   (density              uint8)
+   (clock-type           nav-branch-clock-type)
+   (clock-mask           nav-branch-clock-mask)
+   (territory            uint8     :overlay-at clock-type)
+   (exclusive-branch-id  uint8     :overlay-at clock-mask)
+   (max-user-count       uint8)
+   (user-count           uint8)
+   (width                uint8)
+   (flags                nav-branch-flags)
+   )
+  (:methods
+    (set-default-density-speed-and-width (_type_) none)
+    (debug-print (_type_ object int) none)
+    (get-density (_type_) float)
+    (get-speed-limit (_type_) float)
+    (get-width (_type_) float)
+    (user-limit-reached? (_type_) symbol)
+    (dest-node-id-at-max? (_type_) symbol)
+    (set-density (_type_ float) none)
+    (set-speed-limit (_type_ float) none)
+    (set-width (_type_ float) none)
+    (set-src-node (_type_ nav-node) none)
+    (set-dst-node (_type_ nav-node) none)
+    )
+  )
+
+
+(deftype nav-node (structure)
+  ((data          uint32                     8)
+   (position      vector                     :inline :overlay-at (-> data 0))
+   (pos-x         float                              :overlay-at (-> data 0))
+   (pos-y         float                              :overlay-at (-> data 1))
+   (pos-z         float                              :overlay-at (-> data 2))
+   (angle         uint16                             :overlay-at (-> data 3))
+   (id            uint16                             :offset  14)
+   (radius        uint8                              :overlay-at (-> data 4))
+   (branch-count  int8                               :offset  17)
+   (flags         nav-node-flag-byte                 :offset  18)
+   (pad0          int8                       1       :offset  19)
+   (branch-array  (inline-array nav-branch)          :overlay-at (-> data 5))
+   (nav-mesh-id   uint32                             :overlay-at (-> data 6))
+   (level         symbol                             :overlay-at (-> data 7))
+   )
+  (:methods
+    (debug-draw (_type_) none)
+    (debug-print (_type_ symbol string) none)
+    (remove-branch-by-idx (_type_ int) none)
+    (init-from-pt-and-heading (_type_ vector vector) none)
+    (set-pos-xyz (_type_ vector) none)
+    (set-angle-from-heading (_type_ vector) none)
+    (set-id-and-link-branches-back (_type_ uint) none)
+    (set-radius (_type_ float) none)
+    (set-angle (_type_ float) none)
+    (get-position (_type_ vector) vector)
+    (calc-sine-and-cosine! (_type_ vector) vector)
+    (get-angle (_type_) float)
+    (get-radius (_type_) float)
+    )
+  )
+
+
+(defmethod get-density ((this nav-branch))
+  (* 0.0078125 (the float (-> this density)))
+  )
+
+(defmethod get-speed-limit ((this nav-branch))
+  (* 1024.0 (the float (-> this speed-limit)))
+  )
+
+(defmethod get-width ((this nav-branch))
+  (* 256.0 (the float (-> this width)))
+  )
+
+(defmethod user-limit-reached? ((this nav-branch))
+  (>= (-> this user-count) (-> this max-user-count))
+  )
+
+(defmethod get-radius ((this nav-node))
+  (* 1024.0 (the float (-> this radius)))
+  )
+
+(defmethod get-angle ((this nav-node))
+  (the float (-> this angle))
+  )
+
+(defmethod calc-sine-and-cosine! ((this nav-node) (arg0 vector))
+  (let ((f0-1 (the float (-> this angle)))
+        (s5-0 (new 'stack-no-clear 'vector))
+        )
+    (sincos! s5-0 f0-1)
+    (set! (-> arg0 x) (-> s5-0 y))
+    (set! (-> arg0 y) 0.0)
+    (set! (-> arg0 z) (- (-> s5-0 x)))
+    )
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+(defmethod get-position ((this nav-node) (arg0 vector))
+  (set! (-> arg0 quad) (-> this position quad))
+  (set! (-> arg0 w) 1.0)
+  arg0
+  )
+
+(deftype nav-graph-link (structure)
+  ((id             uint32)
+   (dest-graph-id  uint32)
+   (src-branch-id  uint16)
+   (dest-node-id   uint16)
+   (dest-graph     basic)
+   (dummy-node     nav-node  :inline)
+   )
+  )
+
+
+(deftype nav-graph (basic)
+  ((node-count    int16)
+   (branch-count  int16)
+   (node-array    (inline-array nav-node))
+   (branch-array  (inline-array nav-branch))
+   (link-count    int16)
+   (pad2          uint16)
+   (link-array    (inline-array nav-graph-link))
+   (first-node    int16)
+   (pad0          uint16)
+   (patched       symbol)
+   (id            uint32)
+   (pad1          uint32  6)
+   )
+  (:methods
+    (new (symbol type int int int uint) _type_)
+    (debug-draw-nodes (_type_) none)
+    (find-nearest-nav-node (_type_ vector symbol) nav-node)
+    (print-nav-graph (_type_) none)
+    (set-first-node (_type_) none)
+    (nav-graph-method-13 (_type_ int int) none)
+    (nav-graph-method-14 (_type_ int int) none)
+    (reset! (_type_) none)
+    (add-node (_type_ int) nav-node)
+    (link-node-to-graph (_type_ nav-node) none)
+    (reset-branch-array (_type_ nav-node int) none)
+    (nav-graph-method-19 (_type_ int int int int int int) none)
+    (nav-graph-method-20 (_type_ int int) none)
+    (move-selected-to-height-map-height (_type_) none)
+    (select-nodes-in-range (_type_ int int) none)
+    (deselect-nodes-in-range (_type_ int int) none)
+    (toggle-select-nodes-in-range (_type_ int int) none)
+    (select-nodes-in-level (_type_ symbol symbol) none)
+    (select-nodes-by-nav-mesh-id (_type_ int symbol) none)
+    (select-nodes-by-flags (_type_ nav-node-flag-byte nav-node-flag-byte symbol) none)
+    (print-selected-nodes (_type_) none)
+    (assign-selected-nodes-to-level (_type_ symbol) none)
+    (assign-selected-nodes-to-nav-mesh (_type_ uint) none)
+    (set-radius-of-selected-nodes (_type_ float) none)
+    (set-speed-limit-of-selected (_type_ float) none)
+    (set-density-of-selected (_type_ float) none)
+    (set-width-of-selected (_type_ float) none)
+    (or-flags-of-selected-nodes (_type_ nav-node-flag-byte) none)
+    (and-flags-of-selected-nodes (_type_ nav-node-flag-byte) none)
+    (offset-pos-of-selected (_type_ vector) none)
+    (nav-graph-method-38 (_type_) none)
+    (nav-graph-method-39 (_type_) none)
+    (nav-graph-method-40 (_type_ int) int)
+    (node-at-idx (_type_ int) nav-node)
+    (patch-nodes (_type_) none)
+    (copy-to-mysql-graph (_type_ mysql-nav-graph string) none)
+    (from-editor (_type_ mysql-nav-graph symbol) none)
+    )
+  )
+
+
+(defmethod node-at-idx ((this nav-graph) (arg0 int))
+  (let ((v0-0 (the-as nav-node #f)))
+    (if (and (>= arg0 0) (< arg0 (-> this node-count)))
+        (set! v0-0 (-> this node-array arg0))
+        )
+    v0-0
+    )
+  )

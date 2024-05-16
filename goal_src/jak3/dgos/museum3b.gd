@@ -1,0 +1,12 @@
+("MUSEUM3B.DGO"
+ ("tpage-3415.go"
+  "tpage-3416.go"
+  "brutter-highres-ag.go"
+  "krew-ag.go"
+  "vin-ag.go"
+  "crocadog-highres-ag.go"
+  "baron-highres-ag.go"
+  "errol-highres-ag.go"
+  "kid-highres-ag.go"
+  "museum3b.go"
+ ))

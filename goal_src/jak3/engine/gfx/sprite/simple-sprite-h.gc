@@ -7,3 +7,43 @@
 
 ;; DECOMP BEGINS
 
+(deftype sprite-glow-data (structure)
+  ((position    vector  :inline)
+   (size-x      float             :overlay-at (-> position data 3))
+   (size-probe  float             :offset  16)
+   (z-offset    float)
+   (rot-angle   float)
+   (size-y      float)
+   (color       rgbaf   :inline)
+   (fade-a      float)
+   (fade-b      float)
+   (tex-id      texture-id)
+   (dummy       uint32)
+   (quads       vector  4 :inline :overlay-at position)
+   )
+  (:methods
+    (set-trans (_type_ vector) none)
+    )
+  )
+
+
+(defmethod set-trans ((this sprite-glow-data) (arg0 vector))
+  (let ((f0-0 (-> this position w)))
+    (set! (-> this position quad) (-> arg0 quad))
+    (set! (-> this position w) f0-0)
+    )
+  0
+  (none)
+  )
+
+(deftype simple-sprite-system (structure)
+  ((count      int16)
+   (max-count  int16)
+   (data       (inline-array sprite-glow-data))
+   )
+  (:methods
+    (add! (_type_ sprite-glow-data) none)
+    (draw-all-sprites! (_type_ dma-buffer) none)
+    (clear! (_type_) none)
+    )
+  )

@@ -1,0 +1,12 @@
+("LWASSIG.DGO"
+ ("nst-eggs-h.o"
+  "sig-rider.o"
+  "nst-gas.o"
+  "nst-tasks.o"
+  "tpage-1343.go"
+  "tpage-1488.go"
+  "tpage-1698.go"
+  "tpage-1843.go"
+  "sig-rider-ag.go"
+  "lwassig.go"
+ ))

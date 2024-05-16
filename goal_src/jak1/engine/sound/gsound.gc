@@ -1,5 +1,15 @@
 ;;-*-Lisp-*-
 (in-package goal)
+(bundles "ENGINE.CGO" "GAME.CGO")
+
+(require "engine/game/settings-h.gc")
+(require "engine/camera/cam-update-h.gc")
+(require "engine/game/main-h.gc")
+(require "engine/ui/progress/progress-h.gc")
+(require "engine/entity/entity-h.gc")
+(require "engine/game/effect-control-h.gc")
+(require "engine/ps2/rpc-h.gc")
+(require "engine/sound/gsound-h.gc")
 
 ;; name: gsound.gc
 ;; name in dgo: gsound
@@ -68,7 +78,7 @@
   )
 
 (defun is-cd-in? ()
-  
+
   (declare (inline))
   (zero? (-> *sound-iop-info* nocd))
   )
@@ -202,7 +212,7 @@
                (command (-> cmd command))
             )
             (if (= command (sound-command play))
-              (format #t "~D ~A ~G~%" i a3-0 (-> cmd name))
+              (format #t "~D ~A ~G~%" i a3-0 (&-> cmd name)) ;; og:preserve-this it's meant to point to the name i guess...
               (format #t "~D ~A~%" i a3-0)
               )
             )
@@ -246,7 +256,6 @@
     ((not (is-cd-in?))
      (if (or (not *progress-process*)
              (!= (-> *progress-process* 0 display-state) (progress-screen no-disc)))
-
        (activate-progress *dproc* (progress-screen no-disc))
        )
      )
@@ -254,7 +263,6 @@
     ((not (is-cd-good?))
      (if (or (not *progress-process*)
              (!= (-> *progress-process* 0 display-state) (progress-screen bad-disc)))
-
        (activate-progress *dproc* (progress-screen bad-disc))
        )
      )
@@ -863,16 +871,16 @@
   `(begin
     ;; append a new music to the flava table
     (set! (-> *flava-table* row (-> *flava-table* count) music) (quote ,name))
-    
+
     ;; reset this music's flavas
     (dotimes (n 50)
       (set! (-> *flava-table* row (-> *flava-table* count) flava n) 0)
       )
-    
+
     ;; increase the music count
     ;; (this should probably be done after...)
     (1+! (-> *flava-table* count))
-    
+
     ;; set the flavas or whatever they're called
     ,@(apply (lambda (x) `(set! (-> *flava-table* row (1- (-> *flava-table* count)) flava (music-flava ,(first x))) ,(second x))) flavas)
     )

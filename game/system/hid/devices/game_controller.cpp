@@ -2,7 +2,7 @@
 
 #include "game/system/hid/sdl_util.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 GameController::GameController(int sdl_device_id,
                                std::shared_ptr<game_settings::InputSettings> settings)
@@ -91,6 +91,23 @@ void GameController::process_event(const SDL_Event& event,
                binds.button_axii.find(event.caxis.axis) != binds.button_axii.end()) {
       // Binding re-assignment
       if (bind_assignment) {
+        // In the event that the user binds an analog input to the confirm binds
+        // (ie. a trigger on X) we wait until it hits a neutral position (0)
+        // before proceeding to rebind.
+        //
+        // TODO - this still isn't perfect as the data mutation below will trigger it after the bind
+        // assignment has been set but atleast it's in a mostly working state right now
+        if (!bind_assignment->seen_controller_confirm_neutral) {
+          for (const auto& confirm_bind : bind_assignment->controller_confirmation_binds) {
+            if (confirm_bind.sdl_idx == event.caxis.axis) {
+              if (event.caxis.value <= 0) {
+                bind_assignment->seen_controller_confirm_neutral = true;
+              }
+              return;
+            }
+          }
+        }
+
         if (bind_assignment->device_type == InputDeviceType::CONTROLLER &&
             !bind_assignment->for_analog) {
           binds.assign_button_bind(event.caxis.axis, bind_assignment.value(), true);

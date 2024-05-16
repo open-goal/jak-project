@@ -1,0 +1,364 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function emerc-vu1-initialize-chain
+;; INFO: Used lq/sq
+(defun emerc-vu1-initialize-chain ((gif-packet dma-gif-packet))
+  (let ((gp-0 (the-as object (merc-vu1-add-vu-function (the-as dma-packet gif-packet) emerc-vu1-block 1))))
+    (set! (-> (the-as dma-gif-packet gp-0) dma-vif dma) (new 'static 'dma-tag :qwc #xb :id (dma-tag-id cnt)))
+    (set! (-> (the-as dma-gif-packet gp-0) dma-vif vif0) (new 'static 'vif-tag :imm #x404 :cmd (vif-cmd stcycl)))
+    (set! (-> (the-as dma-gif-packet gp-0) dma-vif vif1) (new 'static 'vif-tag :cmd (vif-cmd stmod)))
+    (set! (-> (the-as (pointer vif-tag) gp-0) 4) (new 'static 'vif-tag :imm #x1ba :cmd (vif-cmd base)))
+    (set! (-> (the-as (pointer vif-tag) gp-0) 5) (new 'static 'vif-tag :imm #xfe46 :cmd (vif-cmd offset)))
+    (set! (-> (the-as (pointer vif-tag) gp-0) 6) (new 'static 'vif-tag))
+    (set! (-> (the-as (pointer vif-tag) gp-0) 7) (new 'static 'vif-tag :num #x9 :cmd (vif-cmd unpack-v4-32)))
+    (let ((s5-0 (the-as emerc-vu1-low-mem (&+ (the-as dma-gif-packet gp-0) 32))))
+      (set! (-> s5-0 tri-strip-gif tag)
+            (new 'static 'gif-tag64
+              :pre #x1
+              :prim (new 'static 'gs-prim :prim (gs-prim-type tri-strip) :iip #x1 :tme #x1 :fge #x1)
+              :nreg #x3
+              )
+            )
+      (set! (-> s5-0 tri-strip-gif regs)
+            (new 'static 'gif-tag-regs :regs0 (gif-reg-id st) :regs1 (gif-reg-id rgbaq) :regs2 (gif-reg-id xyzf2))
+            )
+      (set! (-> s5-0 tri-strip-gif word 3) (shr (make-u128 0 (shl #x303e4000 32)) 32))
+      (set! (-> s5-0 ad-gif tag) (new 'static 'gif-tag64 :nloop #x5 :nreg #x1))
+      (set! (-> s5-0 ad-gif regs) (new 'static 'gif-tag-regs :regs0 (gif-reg-id a+d)))
+      (set! (-> s5-0 hvdf-offset quad) (-> *math-camera* hvdf-off quad))
+      (quad-copy! (the-as pointer (-> s5-0 perspective)) (the-as pointer (-> *math-camera* perspective)) 4)
+      (set-vector! (-> s5-0 fog) (-> *math-camera* pfog0) (-> *math-camera* fog-min) (-> *math-camera* fog-max) 0.0)
+      (set-vector!
+        (-> s5-0 unperspect)
+        (/ 1.0 (-> *math-camera* perspective rvec x))
+        (/ 1.0 (-> *math-camera* perspective uvec y))
+        0.5
+        (/ 1.0 (-> *math-camera* perspective fvec w))
+        )
+      )
+    (let ((v1-21 (-> (the-as (inline-array dma-packet) gp-0) 11)))
+      (set! (-> v1-21 dma) (new 'static 'dma-tag :id (dma-tag-id cnt)))
+      (set! (-> v1-21 vif0) (new 'static 'vif-tag))
+      (set! (-> v1-21 vif1) (new 'static 'vif-tag :cmd (vif-cmd mscal) :msk #x1 :imm #x0))
+      (&+ v1-21 16)
+      )
+    )
+  )
+
+;; definition for function emerc-vu1-init-buffer
+;; WARN: Return type mismatch int vs none.
+(defun emerc-vu1-init-buffer ((bucket bucket-id) (arg1 gs-test) (arg2 int))
+  (let ((disp *display*)
+        (block-len (+ (* (+ (/ (-> emerc-vu1-block qlength) 127) 1) 16) 256))
+        )
+    (+! (-> disp mem-reserve-size) block-len)
+    (when (not (-> disp dma-buffer-overflow))
+      (let ((dma-buf (-> disp frames (-> disp on-screen) global-buf)))
+        (if (< (-> dma-buf real-buffer-end) (the-as int (&+ (-> dma-buf base) block-len)))
+            (set! (-> disp dma-buffer-overflow) #t)
+            )
+        )
+      (when (not (-> disp dma-buffer-overflow))
+        (let ((dma-bucket (-> *display* frames (-> *display* on-screen) bucket-group bucket)))
+          (when (!= dma-bucket (-> dma-bucket last))
+            (let* ((buf (-> *display* frames (-> *display* on-screen) global-buf))
+                   (base (-> buf base))
+                   )
+              (set! (-> buf base) (the-as pointer (emerc-vu1-initialize-chain (the-as dma-gif-packet (-> buf base)))))
+              (dma-buffer-add-gs-set buf (test-1 arg1))
+              (let ((packet (the-as object (-> buf base))))
+                (set! (-> (the-as (pointer uint64) packet)) (logior #x20000000 (shr (shl (-> dma-bucket next) 33) 1)))
+                (set! (-> (the-as dma-packet packet) vif0) (new 'static 'vif-tag))
+                (set! (-> (the-as dma-packet packet) vif1) (new 'static 'vif-tag))
+                (set! (-> buf base) (&+ (the-as pointer packet) 16))
+                )
+              (set! (-> dma-bucket next) (the-as uint base))
+              )
+            )
+          )
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for function emerc-vu1-init-buffers
+;; WARN: Return type mismatch int vs none.
+(defun emerc-vu1-init-buffers ()
+  (when (logtest? (vu1-renderer-mask emerc) (-> *display* vu1-enable-user))
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l0-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l1-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l2-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l3-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l4-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l5-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l6-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l7-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l8-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l9-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-lcom-tfrag)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l0-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l1-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l2-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l3-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l4-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l5-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l6-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l7-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l8-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l9-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-lcom-pris)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l0-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l1-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l2-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l3-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l4-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l5-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l6-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l7-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l8-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l9-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-lcom-shrub)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l0-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l1-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l2-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l3-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l4-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l5-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l6-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l7-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l8-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l9-alpha)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l0-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l1-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l2-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l3-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l4-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l5-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l6-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l7-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l8-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-l9-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    (emerc-vu1-init-buffer
+      (bucket-id emerc-lcom-pris2)
+      (new 'static 'gs-test :zte #x1 :ztst (gs-ztest greater-equal))
+      0
+      )
+    )
+  0
+  (none)
+  )

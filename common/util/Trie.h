@@ -12,7 +12,7 @@
  * It owns the memory for the objects it stores.
  * Doing an insert will create a copy of your object.
  *
- * Other that deleting the whole thing, there is no support for removing a node.
+ * Other than deleting the whole thing, there is no support for removing a node.
  */
 template <typename T>
 class Trie {
@@ -150,7 +150,7 @@ class Trie {
 };
 
 template <typename T>
-Trie<T>::~Trie<T>() {
+Trie<T>::~Trie() {
   m_root.delete_children();
   m_size = 0;
 }

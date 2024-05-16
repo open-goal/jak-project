@@ -23,14 +23,15 @@
 #include "game/graphics/gfx.h"
 #include "game/graphics/opengl_renderer/OpenGLRenderer.h"
 #include "game/graphics/opengl_renderer/debug_gui.h"
+#include "game/graphics/screenshot.h"
 #include "game/graphics/texture/TexturePool.h"
 #include "game/runtime.h"
 #include "game/sce/libscf.h"
 #include "game/system/hid/input_manager.h"
 #include "game/system/hid/sdl_util.h"
 
+#include "fmt/core.h"
 #include "third-party/SDL/include/SDL.h"
-#include "third-party/fmt/core.h"
 #include "third-party/imgui/imgui.h"
 #include "third-party/imgui/imgui_impl_opengl3.h"
 #include "third-party/imgui/imgui_impl_sdl.h"
@@ -73,7 +74,7 @@ struct GraphicsData {
   FrameLimiter frame_limiter;
   Timer engine_timer;
   double last_engine_time = 1. / 60.;
-  float pmode_alp = 0.f;
+  float pmode_alp = 1.f;
 
   std::string imgui_log_filename, imgui_filename;
   GameVersion version;
@@ -100,7 +101,7 @@ static int gl_init(GfxGlobalSettings& settings) {
     auto p = scoped_prof("startup::sdl::init_sdl");
     // remove SDL garbage from hooking signal handler.
     SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
       sdl_util::log_error("Could not initialize SDL, exiting");
       dialogs::create_error_message_dialog("Critical Error Encountered",
                                            "Could not initialize SDL, exiting");
@@ -130,8 +131,9 @@ static int gl_init(GfxGlobalSettings& settings) {
       SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     }
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+#ifndef __APPLE__
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#ifdef __APPLE__
+#else
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 #endif
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
@@ -398,15 +400,20 @@ void render_game_frame(int game_width,
       options.quick_screenshot = true;
       options.screenshot_path = file_util::make_screenshot_filepath(g_game_version);
     }
-    if (g_gfx_data->debug_gui.get_screenshot_flag()) {
+    // note : it's important we call get_screenshot_flag first because it modifies state
+    if (g_gfx_data->debug_gui.get_screenshot_flag() || g_want_screenshot) {
+      g_want_screenshot = false;
       options.save_screenshot = true;
-      options.game_res_w = g_gfx_data->debug_gui.screenshot_width;
-      options.game_res_h = g_gfx_data->debug_gui.screenshot_height;
+      options.internal_res_screenshot = true;
+      options.game_res_w = g_screen_shot_settings->width;
+      options.game_res_h = g_screen_shot_settings->height;
+      options.window_framebuffer_width = options.game_res_w;
+      options.window_framebuffer_height = options.game_res_h;
       options.draw_region_width = options.game_res_w;
       options.draw_region_height = options.game_res_h;
-      options.msaa_samples = g_gfx_data->debug_gui.screenshot_samples;
-      options.screenshot_path = file_util::make_screenshot_filepath(
-          g_game_version, g_gfx_data->debug_gui.screenshot_name());
+      options.msaa_samples = g_screen_shot_settings->msaa;
+      options.screenshot_path =
+          file_util::make_screenshot_filepath(g_game_version, get_screen_shot_name());
     }
 
     options.draw_small_profiler_window =
@@ -488,8 +495,8 @@ void GLDisplay::render() {
   // Before we process the current frames SDL events we for keyboard/mouse button inputs.
   //
   // This technically means that keyboard/mouse button inputs will be a frame behind but the
-  // event-based code is buggy and frankly not worth stressing over.  Leaving this as a note incase
-  // someone complains. Binding handling is still taken care of by the event code though.
+  // event-based code is limiting (there aren't enough events to achieve a totally stateless
+  // approach). Binding handling is still taken care of by the event code though.
   {
     auto p = scoped_prof("sdl-input-monitor-poll-for-kb-mouse");
     ImGuiIO& io = ImGui::GetIO();

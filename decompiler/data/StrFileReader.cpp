@@ -13,7 +13,7 @@
 #include "game/common/overlord_common.h"
 #include "game/common/str_rpc_types.h"
 
-#include "third-party/fmt/format.h"
+#include "fmt/format.h"
 
 namespace decompiler {
 StrFileReader::StrFileReader(const fs::path& file_path, GameVersion version) : m_version(version) {
@@ -22,6 +22,7 @@ StrFileReader::StrFileReader(const fs::path& file_path, GameVersion version) : m
       init_jak1(file_path);
       break;
     case GameVersion::Jak2:
+    case GameVersion::Jak3:
       init_jak2(file_path);
       break;
     default:
@@ -186,6 +187,21 @@ FullName extract_name(const std::string& file_info_name) {
 }
 
 }  // namespace
+
+std::string StrFileReader::get_chunk_art_name(int idx) const {
+  const auto& file_info_string = get_art_group_file_info_string();
+  const auto& chunk = m_chunks.at(idx);
+  int offset;
+  if (find_string_in_data(chunk.data(), int(chunk.size()), file_info_string, &offset)) {
+    offset += file_info_string.length();
+  } else {
+    ASSERT_MSG(false, fmt::format("did not find string '{}'", file_info_string));
+  }
+
+  // extract the name info as a "name" + "chunk id" + "-ag.go" format.
+  return extract_name(get_string_of_max_length((const char*)(chunk.data() + offset), 128)).name +
+         "-ag";
+}
 
 /*!
  * Look inside the chunks to determine the source file name.

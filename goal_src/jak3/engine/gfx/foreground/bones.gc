@@ -7,3 +7,373 @@
 
 ;; DECOMP BEGINS
 
+(define *bone-calculation-list* (new 'global 'bone-calculation-list))
+
+(defun bone-list-init ()
+  "Initialize the linked list of bone-calculations."
+  (let ((v1-0 *bone-calculation-list*))
+    (set! (-> v1-0 first) (the-as bone-calculation 0))
+    (set! (-> v1-0 next) (the-as bone-calculation 0))
+    )
+  0
+  0
+  (none)
+  )
+
+(bone-list-init)
+
+(define bones-vu0-block (new 'static 'vu-function :length 54 :qlength 27))
+
+(defun bones-set-sqwc ()
+  "Set the SQWC register for bones joint DMA."
+  (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x4))
+  (none)
+  )
+
+(defun bones-reset-sqwc ()
+  "Reset the SQWC register for normal DMA."
+  (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1))
+  (none)
+  )
+
+(defun bones-init ((arg0 dma-buffer))
+  "Initialize scratchpad for bones."
+
+  ;; since we re-implemented the bone math, we don't need any scratchpad/DMA stuff
+  ; (let ((v1-1 (-> (the-as bone-memory #x70000000) work)))
+  ;   (+ #x70000000 0)
+  ;   (set! (-> v1-1 layout joint 0) (the-as (inline-array matrix) (-> (the-as bone-memory #x70000000) buffer)))
+  ;   (set! (-> v1-1 layout joint 1) (the-as (inline-array matrix) (-> (the-as bone-memory #x70000000) buffer 1)))
+  ;   (set! (-> v1-1 layout bone 0) (-> (the-as bone-memory #x70000000) buffer 0 bone))
+  ;   (set! (-> v1-1 layout bone 1) (-> (the-as bone-memory #x70000000) buffer 1 bone))
+  ;   (set! (-> v1-1 layout output 0) (-> (the-as bone-memory #x70000000) buffer 0 output))
+  ;   (set! (-> v1-1 layout output 1) (-> (the-as bone-memory #x70000000) buffer 1 output))
+  ;   )
+  ; (let ((gp-0 *vu0-dma-list*))
+  ;   (let ((v1-2 gp-0))
+  ;     (set! (-> v1-2 base) (-> v1-2 data))
+  ;     (set! (-> v1-2 end) (the-as pointer (+ (+ (-> v1-2 allocated-length) 28) (the-as int v1-2))))
+  ;     )
+  ;   (dma-buffer-add-vu-function gp-0 bones-vu0-block 0)
+  ;   (let* ((v1-3 gp-0)
+  ;          (a0-20 (the-as object (-> v1-3 base)))
+  ;          )
+  ;     (set! (-> (the-as dma-packet a0-20) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+  ;     (set! (-> (the-as (pointer uint64) a0-20) 1) (the-as uint 0))
+  ;     (set! (-> v1-3 base) (&+ (the-as pointer a0-20) 16))
+  ;     )
+  ;   (.sync.l)
+  ;   (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)
+  ;   )
+  0
+  (none)
+  )
+
+;; (def-mips2c bones-mtx-calc (function (inline-array pris-mtx) (inline-array joint) (inline-array bone) uint object none))
+
+(defmacro .cross.vf (out a b)
+  `(begin
+     (.outer.product.a.vf acc ,a ,b)
+     (.outer.product.b.vf ,out ,b ,a acc)
+     )
+  )
+
+(defun new-bones-mtx-calc-asm ((output (inline-array pris-mtx)) (joints (inline-array joint)) (bones (inline-array bone)) (cam matrix) (count int))
+  ;; (declare (print-asm))
+  (dotimes (i (- count 1))
+    (let ((b (-> bones (+ i 1) transform))
+          (j (-> joints i bind-pose))
+          (out (-> output (+ i 1)))
+          )
+      (rlet (
+             (tmat0 :class vf)
+             (tmat1 :class vf)
+             (tmat2 :class vf)
+             (tmat3 :class vf)
+             (nmat0 :class vf)
+             (nmat1 :class vf)
+             (nmat2 :class vf)
+             (nmat3 :class vf)
+             (acc :class vf  )
+             (vf0 :class vf  )
+             (cam0 :class vf )
+             (cam1 :class vf )
+             (cam2 :class vf )
+             (cam3 :class vf )
+             )
+
+            (init-vf0-vector)
+
+            ;; load bind-pose to tmat:
+            (.lvf tmat0 (&-> j quad 0))
+            (.lvf tmat1 (&-> j quad 1))
+            (.lvf tmat2 (&-> j quad 2))
+            (.lvf tmat3 (&-> j quad 3))
+
+            ;; load bone to nmat
+            (.lvf nmat0 (&-> b quad 0))
+            (.lvf nmat1 (&-> b quad 1))
+            (.lvf nmat2 (&-> b quad 2))
+            (.lvf nmat3 (&-> b quad 3))
+
+            ;; multiply, store in tmat
+            (.mul.x.vf acc nmat0 tmat0)
+            (.add.mul.y.vf acc nmat1 tmat0 acc)
+            (.add.mul.z.vf acc nmat2 tmat0 acc)
+            (.add.mul.w.vf tmat0 nmat3 tmat0 acc)
+            (.mul.x.vf acc nmat0 tmat1)
+            (.add.mul.y.vf acc nmat1 tmat1 acc)
+            (.add.mul.z.vf acc nmat2 tmat1 acc)
+            (.add.mul.w.vf tmat1 nmat3 tmat1 acc)
+            (.mul.x.vf acc nmat0 tmat2)
+            (.add.mul.y.vf acc nmat1 tmat2 acc)
+            (.add.mul.z.vf acc nmat2 tmat2 acc)
+            (.add.mul.w.vf tmat2 nmat3 tmat2 acc)
+            (.mul.x.vf acc nmat0 tmat3)
+            (.add.mul.y.vf acc nmat1 tmat3 acc)
+            (.add.mul.z.vf acc nmat2 tmat3 acc)
+            (.add.mul.w.vf tmat3 nmat3 tmat3 acc)
+
+            ;; compute inverse transpose, storing in nmat
+            (.cross.vf nmat0 tmat1 tmat2)
+            (.cross.vf nmat1 tmat2 tmat0)
+            (.cross.vf nmat2 tmat0 tmat1)
+
+            ;; dot nmat0 and tmat0
+            (.mul.vf acc nmat0 tmat0)
+            (.add.y.vf acc acc acc :mask #b1)
+            (.add.z.vf acc acc acc :mask #b1)
+
+            ;; divide!
+            (.div.vf acc vf0 acc :fsf #b11 :ftf #b0)
+
+            ;; scale nmat:
+            (.mul.x.vf nmat0 nmat0 acc)
+            (.mul.x.vf nmat1 nmat1 acc)
+            (.mul.x.vf nmat2 nmat2 acc)
+
+            ;; load camera
+            (.lvf cam0 (&-> cam quad 0))
+            (.lvf cam1 (&-> cam quad 1))
+            (.lvf cam2 (&-> cam quad 2))
+            (.lvf cam3 (&-> cam quad 3))
+
+            ;; multiply tmat by camera
+            (.mul.x.vf acc cam0 tmat0)
+            (.add.mul.y.vf acc cam1 tmat0 acc)
+            (.add.mul.z.vf acc cam2 tmat0 acc)
+            (.add.mul.w.vf tmat0 cam3 tmat0 acc)
+            (.mul.x.vf acc cam0 tmat1)
+            (.add.mul.y.vf acc cam1 tmat1 acc)
+            (.add.mul.z.vf acc cam2 tmat1 acc)
+            (.add.mul.w.vf tmat1 cam3 tmat1 acc)
+            (.mul.x.vf acc cam0 tmat2)
+            (.add.mul.y.vf acc cam1 tmat2 acc)
+            (.add.mul.z.vf acc cam2 tmat2 acc)
+            (.add.mul.w.vf tmat2 cam3 tmat2 acc)
+            (.mul.x.vf acc cam0 tmat3)
+            (.add.mul.y.vf acc cam1 tmat3 acc)
+            (.add.mul.z.vf acc cam2 tmat3 acc)
+            (.add.mul.w.vf tmat3 cam3 tmat3 acc)
+
+            ;; store tmat
+            (.svf (&-> out t-mtx quad 0) tmat0)
+            (.svf (&-> out t-mtx quad 1) tmat1)
+            (.svf (&-> out t-mtx quad 2) tmat2)
+            (.svf (&-> out t-mtx quad 3) tmat3)
+
+            ;; multiply nmat
+            (.mul.x.vf acc cam0 nmat0)
+            (.add.mul.y.vf acc cam1 nmat0 acc)
+            (.add.mul.z.vf nmat0 cam2 nmat0 acc)
+            (.mul.x.vf acc cam0 nmat1)
+            (.add.mul.y.vf acc cam1 nmat1 acc)
+            (.add.mul.z.vf nmat1 cam2 nmat1 acc)
+            (.mul.x.vf acc cam0 nmat2)
+            (.add.mul.y.vf acc cam1 nmat2 acc)
+            (.add.mul.z.vf nmat2 cam2 nmat2 acc)
+
+            ;; store nmat
+            (.svf (&-> out n-mtx quad 0) nmat0)
+            (.svf (&-> out n-mtx quad 1) nmat1)
+            (.svf (&-> out n-mtx quad 2) nmat2)
+            )
+      )
+    )
+  (none)
+  )
+
+
+(defun bones-mtx-calc-execute ()
+  "Compute skinning matrices"
+  (local-vars (v1-30 float) (a0-31 int) (a0-33 int))
+  (rlet ((vf1 :class vf)
+         ; (vf25 :class vf)
+         ; (vf26 :class vf)
+         ; (vf27 :class vf)
+         ; (vf28 :class vf)
+         ; (vf29 :class vf)
+         ; (vf30 :class vf)
+         ; (vf31 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         )
+        (with-profiler 'bones *profile-bones-color*
+          (start-profiling! (-> *perf-stats* data (perf-stat-bucket bones)))
+
+          ;; scratchpad not needed
+          ; (let ((v1-24 (-> (the-as bone-memory #x70000000) work)))
+          ;   (+ #x70000000 0)
+          ;   (set! (-> v1-24 layout joint 0) (the-as (inline-array matrix) (-> (the-as bone-memory #x70000000) buffer)))
+          ;   (set! (-> v1-24 layout joint 1) (the-as (inline-array matrix) (-> (the-as bone-memory #x70000000) buffer 1)))
+          ;   (set! (-> v1-24 layout bone 0) (-> (the-as bone-memory #x70000000) buffer 0 bone))
+          ;   (set! (-> v1-24 layout bone 1) (-> (the-as bone-memory #x70000000) buffer 1 bone))
+          ;   (set! (-> v1-24 layout output 0) (-> (the-as bone-memory #x70000000) buffer 0 output))
+          ;   (set! (-> v1-24 layout output 1) (-> (the-as bone-memory #x70000000) buffer 1 output))
+          ;   )
+          ; (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x4))
+          (let* ((v1-26 *bone-calculation-list*)
+                 (gp-1 *identity-matrix*)
+                 (s5-1 (-> *math-camera* camera-rot))
+                 (s4-1 (-> v1-26 first))
+                 )
+            (while (nonzero? s4-1)
+              (let ((v1-29 (if (logtest? (-> s4-1 flags) (bone-calc-flags no-cam-rot))
+                               gp-1
+                               s5-1
+                               )
+                           )
+                    )
+                ; (.lvf vf28 (&-> v1-29 rvec quad))
+                ; (.lvf vf29 (&-> v1-29 uvec quad))
+                ; (.lvf vf30 (&-> v1-29 fvec quad))
+                ; (.lvf vf31 (&-> v1-29 trans quad))
+                ; (.lvf vf25 (&-> v1-29 rvec quad))
+                ; (.lvf vf26 (&-> v1-29 uvec quad))
+                ; (.lvf vf27 (&-> v1-29 fvec quad))
+
+                ;;(.mov v1-30 vf27)
+                ;; (bones-mtx-calc (-> s4-1 matrix-area) (-> s4-1 joints) (-> s4-1 bones) (-> s4-1 num-bones) v1-29)
+                (new-bones-mtx-calc-asm (-> s4-1 matrix-area) (-> s4-1 joints) (-> s4-1 bones) v1-29 (the int (-> s4-1 num-bones)))
+
+                (when (logtest? (-> s4-1 flags) (bone-calc-flags write-ripple-data))
+                  (let* ((a2-1 s4-1)
+                         (v1-34 (-> a2-1 num-bones))
+                         (a0-28 (the-as pris-mtx (-> a2-1 matrix-area)))
+                         (a1-11 (the-as pris-mtx (-> a2-1 ripple-area)))
+                         )
+                    (.lvf vf1 (&-> a2-1 ripple-vec quad))
+                    (label cfg-15)
+                    (.lvf vf5 (&-> a0-28 t-mtx uvec quad))
+                    (.lvf vf6 (&-> a0-28 t-mtx trans quad))
+                    (.lvf vf7 (&-> a0-28 n-mtx quad 0))
+                    (.lvf vf8 (&-> a0-28 n-mtx quad 2))
+                    (.mul.x.vf vf4 vf5 vf1)
+                    (.mul.y.vf vf5 vf5 vf1)
+                    (let ((a3-1 (-> a0-28 t-mtx rvec quad)))
+                      (.mul.z.vf vf7 vf7 vf1)
+                      (let ((a2-2 (-> a0-28 t-mtx fvec quad)))
+                        (.mul.z.vf vf8 vf8 vf1)
+                        (set! (-> a1-11 t-mtx rvec quad) a3-1)
+                        (let ((a3-2 (-> a0-28 n-mtx quad 1)))
+                          (.sub.vf vf6 vf6 vf4)
+                          (set! (-> a1-11 t-mtx fvec quad) a2-2)
+                          (.svf (&-> a1-11 t-mtx uvec quad) vf5)
+                          (set! (-> a1-11 n-mtx quad 1) a3-2)
+                          )
+                        )
+                      )
+                    (+! v1-34 -1)
+                    (.svf (&-> a1-11 n-mtx quad 0) vf7)
+                    ;;(.addiu a0-28 a0-28 128)
+                    (&+! a0-28 128)
+                    (.svf (&-> a1-11 t-mtx trans quad) vf6)
+                    ;;(.addiu a1-11 a1-11 128)
+                    (&+! a1-11 128)
+                    (b! (nonzero? v1-34) cfg-15 :delay (.svf (&-> (the (inline-array vector) a1-11) -2 quad) vf8))
+                    )
+                  0
+                  )
+                (set! s4-1 (-> s4-1 next))
+                )
+              )
+            )
+          ;; (set! (-> (the-as dma-bank-control #x1000e000) sqwc) (new 'static 'dma-sqwc :sqwc #x1 :tqwc #x1))
+          (bone-list-init)
+          (stop-profiling! (-> *perf-stats* data (perf-stat-bucket bones)))
+          )
+        0
+        (none)
+        )
+  )
+
+(defun-debug dump-qword ((arg0 qword))
+  "Print out a qword to stdout."
+  (let ((v1-0 arg0))
+    (format
+      0
+      "~8,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X~%"
+      v1-0
+      (-> v1-0 data 0)
+      (-> v1-0 data 1)
+      (-> v1-0 data 2)
+      (-> v1-0 data 3)
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug dump-mem ((arg0 pointer) (arg1 int))
+  "Print memory to stdout as hex and float."
+  (dotimes (s4-0 arg1)
+    (format
+      0
+      "~8,'0X: ~8,'0X ~8,'0X ~8,'0X ~8,'0X"
+      (&+ arg0 (* (* s4-0 4) 4))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (* s4-0 4) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 1) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 2) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 3) 4))))
+      )
+    (format
+      0
+      "      ~F ~F ~F ~F ~%"
+      (-> (the-as (pointer uint32) (&+ arg0 (* (* s4-0 4) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 1) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 2) 4))))
+      (-> (the-as (pointer uint32) (&+ arg0 (* (+ (* s4-0 4) 3) 4))))
+      )
+    )
+  0
+  (none)
+  )
+
+(defun-debug bones-debug ()
+  "Empty."
+  0
+  (none)
+  )
+
+(defun-debug dump-bone-mem ()
+  "Dump scratchpad memory for joints, bones, and output."
+  (format 0 "==  joints 0 ===========~%")
+  (dump-mem (the-as pointer (+ 80 #x70000000)) 64)
+  (format 0 "==  bones 0 ============~%")
+  (dump-mem (the-as pointer (+ 1104 #x70000000)) 80)
+  (format 0 "==  output 0 ===========~%")
+  (dump-mem (the-as pointer (+ 2384 #x70000000)) 128)
+  (format 0 "~%~%~%")
+  (format 0 "==  joints 1 ===========~%")
+  (dump-mem (the-as pointer (+ 4432 #x70000000)) 64)
+  (format 0 "==  bones 1 ============~%")
+  (dump-mem (the-as pointer (+ 5456 #x70000000)) 80)
+  (format 0 "==  output 1 ===========~%")
+  (dump-mem (the-as pointer (+ 6736 #x70000000)) 128)
+  (format 0 "========================~%~%")
+  0
+  (none)
+  )

@@ -27,18 +27,18 @@
   )
 
 ;; definition for method 8 of type texture-page
-(defmethod mem-usage ((this texture-page) (arg0 memory-usage-block) (arg1 int))
-  (set! (-> arg0 length) (max 80 (-> arg0 length)))
-  (set! (-> arg0 data 79 name) "texture")
-  (+! (-> arg0 data 79 count) (-> this length))
+(defmethod mem-usage ((this texture-page) (usage memory-usage-block) (flags int))
+  (set! (-> usage length) (max 80 (-> usage length)))
+  (set! (-> usage data 79 name) "texture")
+  (+! (-> usage data 79 count) (-> this length))
   (let ((v1-7 (- (asize-of this) (the-as int (* (-> this size) 4)))))
     (dotimes (a0-6 (-> this length))
       (if (-> this data a0-6)
           (+! v1-7 64)
           )
       )
-    (+! (-> arg0 data 79 used) v1-7)
-    (+! (-> arg0 data 79 total) (logand -16 (+ v1-7 15)))
+    (+! (-> usage data 79 used) v1-7)
+    (+! (-> usage data 79 total) (logand -16 (+ v1-7 15)))
     )
   this
   )
@@ -2152,7 +2152,7 @@
 
 ;; definition for method 7 of type texture-page-dir
 ;; INFO: Return type mismatch texture-page-dir vs none.
-(defmethod relocate ((this texture-page-dir) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page-dir) (heap kheap) (name (pointer uint8)))
   (set! *texture-page-dir* this)
   (none)
   )
@@ -2196,7 +2196,7 @@
 
 ;; definition for method 7 of type texture-page
 ;; INFO: Return type mismatch texture-page vs none.
-(defmethod relocate ((this texture-page) (arg0 kheap) (arg1 (pointer uint8)))
+(defmethod relocate ((this texture-page) (heap kheap) (name (pointer uint8)))
   (local-vars (s4-0 texture-page-dir-entry))
   (cond
     ((or (not this) (not (file-info-correct-version? (-> this info) (file-kind tpage) 0)))
@@ -2214,7 +2214,7 @@
        (let ((a3-0 (-> this id)))
          (set! s4-0 (-> *texture-page-dir* entries a3-0))
          (set! (-> *texture-relocate-later* memcpy) #f)
-         ((-> *texture-pool* allocate-func) *texture-pool* this arg0 (the-as int a3-0))
+         ((-> *texture-pool* allocate-func) *texture-pool* this heap (the-as int a3-0))
          )
        (not (-> *texture-relocate-later* memcpy))
        )

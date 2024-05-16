@@ -2,30 +2,42 @@
 
 #include "sdl_util.h"
 
-#include "third-party/fmt/core.h"
-#include "third-party/fmt/format.h"
+#include "common/global_profiler/GlobalProfiler.h"
+
+#include "fmt/core.h"
+#include "fmt/format.h"
 
 DisplayManager::DisplayManager(SDL_Window* window)
     : m_window(window), m_selected_fullscreen_display_id(0) {
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("display_manager::init");
+    m_display_settings.load_settings();
 #ifdef _WIN32
-  // Windows hint to disable OS level forced scaling and allow native resolution at non 100% scales
-  SetProcessDPIAware();
+    // Windows hint to disable OS level forced scaling and allow native resolution at non 100%
+    // scales
+    SetProcessDPIAware();
 #endif
-  update_curr_display_info();
-  update_video_modes();
-  // Load display settings from a file
-  m_display_settings = game_settings::DisplaySettings();
-  // Adjust window / monitor position
-  initialize_window_position_from_settings();
+    update_curr_display_info();
+    update_video_modes();
+    // Load display settings from a file
+    m_display_settings = game_settings::DisplaySettings();
+    // Adjust window / monitor position
+    initialize_window_position_from_settings();
+  }
 }
 
 DisplayManager::~DisplayManager() {
-  if (m_window_display_mode == WindowDisplayMode::Windowed) {
-    m_display_settings.display_id = m_active_display_id;
-    m_display_settings.window_xpos = m_window_xpos;
-    m_display_settings.window_ypos = m_window_ypos;
+  prof().instant_event("ROOT");
+  {
+    auto p = scoped_prof("display_manager::destroy");
+    if (m_window_display_mode == WindowDisplayMode::Windowed) {
+      m_display_settings.display_id = m_active_display_id;
+      m_display_settings.window_xpos = m_window_xpos;
+      m_display_settings.window_ypos = m_window_ypos;
+    }
+    m_display_settings.save_settings();
   }
-  m_display_settings.save_settings();
 }
 
 void DisplayManager::initialize_window_position_from_settings() {
@@ -191,6 +203,7 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
     case WindowDisplayMode::Windowed:
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
+        lg::info("windowed mode - resizing window to {}x{}", m_window_width, m_window_height);
         SDL_SetWindowSize(m_window, m_window_width, m_window_height);
       } else {
         sdl_util::log_error("unable to change window to windowed mode");
@@ -208,6 +221,8 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
                                           m_selected_fullscreen_display_id));
         } else {
           // 2. move it to the right monitor
+          lg::info("preparing fullscreen - moving window to {},{} on display id {}",
+                   display_bounds.x + 50, display_bounds.y + 50, m_selected_fullscreen_display_id);
           SDL_SetWindowPosition(m_window, display_bounds.x + 50, display_bounds.y + 50);
           if (mode == WindowDisplayMode::Fullscreen) {
             update_video_modes();
@@ -216,6 +231,8 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
             // Some people are weird and don't use the monitor's maximum supported resolution
             // in which case, we use what the user actually has selected.
             const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
+            lg::info("preparing fullscreen - setting window resolution to {}x{}",
+                     display_res.screen_width, display_res.screen_height);
             set_window_size(display_res.screen_width, display_res.screen_height);
           }
           // 3. fullscreen it!

@@ -36,6 +36,10 @@ Matcher Matcher::reg(Register reg) {
   return m;
 }
 
+Matcher Matcher::s6() {
+  return Matcher::reg(Register(Reg::GPR, Reg::S6));
+}
+
 Matcher Matcher::op(const GenericOpMatcher& op, const std::vector<Matcher>& args) {
   Matcher m;
   m.m_kind = Kind::GENERIC_OP;
@@ -234,6 +238,15 @@ Matcher Matcher::let(bool is_star,
   Matcher m;
   m.m_kind = Kind::LET;
   m.m_let_is_star = is_star;
+  m.m_entry_matchers = entries;
+  m.m_sub_matchers = elts;
+  return m;
+}
+
+Matcher Matcher::unmerged_let(const std::vector<LetEntryMatcher>& entries,
+                              const std::vector<Matcher>& elts) {
+  Matcher m;
+  m.m_kind = Kind::UNMERGED_LET;
   m.m_entry_matchers = entries;
   m.m_sub_matchers = elts;
   return m;
@@ -714,6 +727,68 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
           }
         }
         return true;
+      }
+      return false;
+    }
+
+    case Kind::UNMERGED_LET: {
+      auto as_let = dynamic_cast<LetElement*>(input->try_as_single_active_element());
+      if (as_let) {
+        size_t entries_matched = 0;
+        Form* innermost_let_body = nullptr;
+        // first try to find the innermost let, matching all let entries with the entry matchers
+        // throughout
+        as_let->apply_form([&](Form* form) {
+          for (int idx = 0; idx < form->size(); idx++) {
+            auto* f = form->at(idx);
+            // if this is the entry of the outermost let, try to do the first match
+            if (f->parent_form->parent_element == as_let) {
+              if (m_entry_matchers.at(entries_matched)
+                      .do_match(as_let->entries().at(0), maps_out, env)) {
+                entries_matched++;
+              } else {
+                return;
+              }
+            }
+            auto let = dynamic_cast<LetElement*>(f);
+            if (!let) {
+              continue;
+            }
+
+            auto let_body = dynamic_cast<LetElement*>(let->body()->at(0));
+            if (!let_body) {
+              break;
+            }
+
+            if (entries_matched == m_entry_matchers.size()) {
+              break;
+            }
+
+            if (m_entry_matchers.at(entries_matched)
+                    .do_match(let_body->entries().at(0), maps_out, env)) {
+              entries_matched++;
+            } else {
+              return;
+            }
+
+            if (entries_matched == m_entry_matchers.size()) {
+              innermost_let_body = let_body->body();
+              return;
+            }
+          }
+        });
+
+        if (entries_matched == m_entry_matchers.size() && innermost_let_body) {
+          // now match body of innermost let
+          for (int i = 0; i < (int)m_sub_matchers.size(); ++i) {
+            Form fake;
+            fake.elts().push_back(innermost_let_body->elts().at(i));
+            if (!m_sub_matchers.at(i).do_match(&fake, maps_out, env)) {
+              return false;
+            }
+          }
+          return true;
+        }
       }
       return false;
     }

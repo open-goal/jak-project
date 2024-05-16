@@ -5,5 +5,156 @@
 ;; name in dgo: subdivide-h
 ;; dgos: GAME
 
+(define-extern *perf-stats* perf-stat-array)
+
 ;; DECOMP BEGINS
 
+(deftype subdivide-settings (basic)
+  "Input settings for distances for switching mesh level of details.
+These are set by the level code and read by rendering code."
+  ((dist    float  5)
+   (meters  float  5)
+   (close   float  12)
+   (far     float  12)
+   )
+  (:methods
+    (new (symbol type float float) _type_)
+    )
+  )
+
+
+(defmethod new subdivide-settings ((allocation symbol) (type-to-make type) (arg0 float) (arg1 float))
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (dotimes (v1-2 10)
+      (set! (-> v0-0 close v1-2) arg0)
+      (set! (-> v0-0 far v1-2) arg1)
+      )
+    v0-0
+    )
+  )
+
+(deftype subdivide-dists (structure)
+  "Unused subdivide distances. Internally, tfrag/tie figure these out instead."
+  ((data    uint32   32 :offset   0)
+   (vector  vector   8  :overlay-at (-> data 0))
+   (k0s     uint128  4  :overlay-at (-> data 0))
+   (k1s     uint128  4  :overlay-at (-> data 16))
+   )
+  )
+
+
+(deftype terrain-stats (structure)
+  "Desptie the name `terrain-stats`, these are more general triangle stats for all renderers."
+  ((pris                      tr-stat  :inline)
+   (tie-generic               tr-stat  :inline)
+   (tie-vanish                tr-stat  :inline)
+   (tie                       tr-stat  :inline)
+   (tie-scissor               tr-stat  :inline)
+   (tie-envmap                tr-stat  :inline)
+   (tie-envmap-scissor        tr-stat  :inline)
+   (tie-trans                 tr-stat  :inline)
+   (tie-scissor-trans         tr-stat  :inline)
+   (tie-envmap-trans          tr-stat  :inline)
+   (tie-envmap-scissor-trans  tr-stat  :inline)
+   (tie-water                 tr-stat  :inline)
+   (tie-scissor-water         tr-stat  :inline)
+   (tie-envmap-water          tr-stat  :inline)
+   (tie-envmap-scissor-water  tr-stat  :inline)
+   (shrub-near                tr-stat  :inline)
+   (shrub                     tr-stat  :inline)
+   (tfrag-scissor             tr-stat  :inline)
+   (tfrag                     tr-stat  :inline)
+   (billboard                 tr-stat  :inline)
+   (tfrag-trans               tr-stat  :inline)
+   (tfrag-scissor-trans       tr-stat  :inline)
+   (tfrag-water               tr-stat  :inline)
+   (tfrag-scissor-water       tr-stat  :inline)
+   (trans-pris                tr-stat  :inline)
+   (trans-shrub               tr-stat  :inline)
+   (ocean-mid                 tr-stat  :inline)
+   (ocean-near                tr-stat  :inline)
+   (shadow                    tr-stat  :inline)
+   (hfrag                     tr-stat  :inline)
+   (total                     tr-stat  :inline)
+   )
+  )
+
+
+(deftype background-area (structure)
+  "Scratchpad memory layout for most background rendering
+This uses the full scratchpad so it should only be used when the stack isn't on the scratchpad (rendering code).
+Interestingly, dma-area went from a union of all the -dma types to a plain array of bytes in jak 3."
+  ((dma-area  uint8  14336)
+   (vis-list  uint8  2048)
+   )
+  )
+
+
+(deftype foreground-area (structure)
+  "Scratchpad memory layout for most foreground rendering."
+  ((generic-work     generic-work     :inline :offset   0)
+   (foreground-work  foreground-work  :inline :offset   0)
+   (joint-work       joint-work       :inline :offset   0)
+   (bone-mem         bone-memory      :inline :offset   0)
+   (shadow-work      shadow-work      :inline :offset   0)
+   )
+  )
+
+
+(deftype region-prim-area (structure)
+  "Scratchpad memory layout for regions."
+  ((region-prim-list         region-prim-list        :inline)
+   (pos                      vector                  :inline)
+   (exit-pos                 vector                  :inline)
+   (ray                      vector                  :inline)
+   (exit-ray                 vector                  :inline)
+   (region-enter-count       int32)
+   (region-enter-list        region                  320)
+   (region-enter-prim-list   drawable-region-sphere  320)
+   (region-exit-count        int32)
+   (region-exit-list         region                  320)
+   (region-exit-prim-list    drawable-region-sphere  320)
+   (region-inside-count      int32)
+   (region-inside-list       region                  320)
+   (region-inside-prim-list  drawable-region-sphere  320)
+   (region-start-count       int32)
+   (region-start-list        region                  320)
+   (region-start-prim-list   drawable-region-sphere  320)
+   )
+  (:methods
+    (track-entered-region! (_type_ drawable-region-sphere) int)
+    (track-exited-region! (_type_ drawable-region-sphere) int)
+    (track-inside-region! (_type_ drawable-region-sphere) int)
+    (track-start-region! (_type_ drawable-region-sphere) int)
+    )
+  )
+
+
+(deftype sprite-area (structure)
+  "Scratchpad memory layout for sprites."
+  ((clock-data  vector  22 :inline)
+   (buffer      uint8   :dynamic)
+   )
+  )
+
+
+(deftype work-area (structure)
+  "All scratchpad memory layouts."
+  ((background   background-area   :inline :offset   0)
+   (foreground   foreground-area   :inline :offset   0)
+   (region-prim  region-prim-area  :inline :offset   0)
+   (sprite       sprite-area       :inline :offset   0)
+   )
+  )
+
+
+(deftype terrain-context (structure)
+  "Useless wrapper around work-area. (this added some stuff in jak 1)"
+  ((work  work-area  :inline)
+   )
+  )
+
+
+(define *terrain-stats* (new 'global 'terrain-stats))
+
+(define *collide-stats* (new 'global 'collide-stats))

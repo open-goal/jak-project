@@ -5,5 +5,155 @@
 ;; name in dgo: sync-info-h
 ;; dgos: GAME
 
+;; +++sync-flags
+(defenum sync-flags
+  :type uint64
+  :bitfield #t
+  (pong 0)
+  )
+;; ---sync-flags
+
+
 ;; DECOMP BEGINS
 
+(deftype sync-info-params (structure)
+  "Parameters used to set up a [[sync-info]]."
+  ((sync-type   symbol)
+   (sync-flags  sync-flags)
+   (entity      entity-actor)
+   (period      uint32)
+   (percent     float)
+   (ease-in     float)
+   (ease-out    float)
+   (pause-in    float)
+   (pause-out   float)
+   )
+  )
+
+
+(deftype sync-info (structure)
+  ((sync-flags  sync-flags)
+   (offset      float)
+   (period      uint32)
+   )
+  (:methods
+    (get-current-phase-no-mod (_type_) float)
+    (get-phase-offset (_type_) float)
+    (get-norm! (_type_ int) float)
+    (get-scaled-val! (_type_ float int) float)
+    (initialize! (_type_ sync-info-params) none)
+    (get-timeframe-offset! (_type_ time-frame) time-frame)
+    (sync-now! (_type_ float) none)
+    )
+  )
+
+
+(deftype sync-linear (sync-info)
+  ()
+  :pack-me
+  )
+
+
+(deftype sync-eased (sync-info)
+  ((tlo        float)
+   (thi        float)
+   (ylo        float)
+   (m2         float)
+   (yend       float)
+   (pause-in   float)
+   (pause-out  float)
+   )
+  :pack-me
+  )
+
+
+(deftype sync-paused (sync-info)
+  ((pause-in   float)
+   (pause-out  float)
+   )
+  :pack-me
+  )
+
+
+(deftype delayed-rand-float (structure)
+  ((min-time    int32)
+   (max-time    int32)
+   (max-val     float)
+   (timer       int32)
+   (start-time  time-frame)
+   (value       float)
+   )
+  :pack-me
+  (:methods
+    (set-params! (_type_ int int float) float)
+    (reset! (_type_) float)
+    (update! (_type_) float)
+    (update-and-clear! (_type_) float)
+    )
+  )
+
+
+(deftype oscillating-float (structure)
+  ((value    float)
+   (target   float)
+   (vel      float)
+   (max-vel  float)
+   (damping  float)
+   (accel    float)
+   )
+  :allow-misaligned
+  (:methods
+    (set-params! (_type_ float float float float) float)
+    (update! (_type_ float) float)
+    )
+  )
+
+
+(deftype bouncing-float (structure)
+  ((osc         oscillating-float  :inline)
+   (max-value   float)
+   (min-value   float)
+   (elasticity  float)
+   (state       int32)
+   )
+  :allow-misaligned
+  (:methods
+    (set-params! (_type_ float float float float float float float) float)
+    (update! (_type_ float) float)
+    (at-min? (_type_) symbol)
+    (at-max? (_type_) symbol)
+    )
+  )
+
+
+(deftype delayed-rand-vector (structure)
+  ((min-time    int32)
+   (max-time    int32)
+   (xz-max      float)
+   (y-max       float)
+   (timer       int32)
+   (start-time  time-frame)
+   (value       vector  :inline)
+   )
+  (:methods
+    (set-params! (_type_ int int float float) vector)
+    (update-now! (_type_) vector)
+    (update-with-delay! (_type_) vector)
+    (update-with-delay-or-reset! (_type_) vector)
+    )
+  )
+
+
+(deftype oscillating-vector (structure)
+  ((value    vector  :inline)
+   (target   vector  :inline)
+   (vel      vector  :inline)
+   (max-vel  float)
+   (damping  float)
+   (accel    float)
+   )
+  (:methods
+    (set-params! (_type_ vector float float float) vector)
+    (update! (_type_ vector) vector)
+    )
+  )

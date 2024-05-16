@@ -2,6 +2,7 @@
 
 #include "TP_Type.h"
 
+#include "common/goos/Printer.h"
 #include "common/goos/Reader.h"
 #include "common/log/log.h"
 #include "common/type_system/defenum.h"
@@ -11,7 +12,7 @@
 #include "decompiler/Disasm/Register.h"
 
 namespace decompiler {
-DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) {
+DecompilerTypeSystem::DecompilerTypeSystem(GameVersion version) : m_version(version) {
   ts.add_builtin_types(version);
 }
 
@@ -70,6 +71,26 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         }
         symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
         add_symbol(sym_name.as_symbol().name_ptr, parse_typespec(&ts, sym_type), symbol_metadata);
+      } else if (car(o).as_symbol() == "def-event-handler") {
+        auto symbol_metadata = DefinitionMetadata();
+        auto* rest = &cdr(o);
+        auto sym_name = car(*rest);
+        rest = &cdr(*rest);
+        // check for docstring
+        if (rest->is_pair() && car(*rest).is_string()) {
+          symbol_metadata.docstring = str_util::trim_newline_indents(car(*rest).as_string()->data);
+          rest = &cdr(*rest);
+        }
+        if (!cdr(*rest).is_empty_list()) {
+          throw std::runtime_error("malformed def-event-handler");
+        }
+        auto behavior_tag = std::string(car(*rest).as_symbol().name_ptr);
+        std::vector<std::string> signature = {
+            "function", "process",   "int",       "symbol", "event-message-block",
+            "object",   ":behavior", behavior_tag};
+        auto sym_type = pretty_print::build_list(signature);
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        add_symbol(sym_name.as_symbol().name_ptr, parse_typespec(&ts, sym_type), symbol_metadata);
       } else if (car(o).as_symbol() == "deftype") {
         auto dtr = parse_deftype(cdr(o), &ts);
         dtr.type_info->m_metadata.definition_info = m_reader.db.get_short_info_for(o);
@@ -106,6 +127,29 @@ void DecompilerTypeSystem::parse_type_defs(const std::vector<std::string>& file_
         // so far, enums are never runtime types so there's no symbol for them.
       } else {
         throw std::runtime_error("Decompiler cannot parse " + car(o).print());
+      }
+    } catch (std::exception& e) {
+      auto info = m_reader.db.get_info_for(o);
+      lg::error("{} when parsing decompiler type file:{}", e.what(), info);
+      throw;
+    }
+  });
+}
+
+void DecompilerTypeSystem::parse_enum_defs(const std::vector<std::string>& file_path) {
+  auto read = m_reader.read_from_file(file_path);
+  auto& data = cdr(read);
+
+  for_each_in_list(data, [&](goos::Object& o) {
+    try {
+      if (car(o).as_symbol() == "defenum") {
+        auto symbol_metadata = DefinitionMetadata();
+        parse_defenum(cdr(o), &ts, &symbol_metadata);
+        symbol_metadata.definition_info = m_reader.db.get_short_info_for(o);
+        auto* rest = &cdr(o);
+        const auto& enum_name = car(*rest).as_symbol();
+        symbol_metadata_map[enum_name.name_ptr] = symbol_metadata;
+        // so far, enums are never runtime types so there's no symbol for them.
       }
     } catch (std::exception& e) {
       auto info = m_reader.db.get_info_for(o);

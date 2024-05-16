@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,6 +23,8 @@
 #define SDL_RENDER_VITA_GXM_SHADERS_H
 
 #include <psp2/gxm.h>
+
+/* *INDENT-OFF* */ /* clang-format off */
 
 #define gxm_shader_clear_f_size 232
 static const unsigned char gxm_shader_clear_f[gxm_shader_clear_f_size] = {
@@ -268,12 +270,14 @@ static const unsigned char gxm_shader_texture_v[gxm_shader_texture_v_size] = {
     0x6f, 0x72, 0x00, 0x77, 0x76, 0x70, 0x00, 0x00, 
 };
 
-static const SceGxmProgram *const clearVertexProgramGxp         = (const SceGxmProgram *)gxm_shader_clear_v;
-static const SceGxmProgram *const clearFragmentProgramGxp       = (const SceGxmProgram *)gxm_shader_clear_f;
-static const SceGxmProgram *const colorVertexProgramGxp         = (const SceGxmProgram *)gxm_shader_color_v;
-static const SceGxmProgram *const colorFragmentProgramGxp       = (const SceGxmProgram *)gxm_shader_color_f;
-static const SceGxmProgram *const textureVertexProgramGxp       = (const SceGxmProgram *)gxm_shader_texture_v;
-static const SceGxmProgram *const textureFragmentProgramGxp     = (const SceGxmProgram *)gxm_shader_texture_f;
+/* *INDENT-ON* */ /* clang-format on */
+
+static const SceGxmProgram *const clearVertexProgramGxp = (const SceGxmProgram *)gxm_shader_clear_v;
+static const SceGxmProgram *const clearFragmentProgramGxp = (const SceGxmProgram *)gxm_shader_clear_f;
+static const SceGxmProgram *const colorVertexProgramGxp = (const SceGxmProgram *)gxm_shader_color_v;
+static const SceGxmProgram *const colorFragmentProgramGxp = (const SceGxmProgram *)gxm_shader_color_f;
+static const SceGxmProgram *const textureVertexProgramGxp = (const SceGxmProgram *)gxm_shader_texture_v;
+static const SceGxmProgram *const textureFragmentProgramGxp = (const SceGxmProgram *)gxm_shader_texture_f;
 
 #endif // SDL_RENDER_VITA_GXM_SHADERS_H
 

@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,8 @@
 
 static SDLTest_CommonState *state;
 
-typedef struct {
+typedef struct
+{
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Texture *background;
@@ -44,13 +45,12 @@ quit(int rc)
     exit(rc);
 }
 
-void
-Draw(DrawState *s)
+void Draw(DrawState *s)
 {
     SDL_Rect viewport;
     SDL_Texture *target;
-    SDL_Point *center=NULL;
-    SDL_Point origin = {0,0};
+    SDL_Point *center = NULL;
+    SDL_Point origin = { 0, 0 };
 
     SDL_RenderGetViewport(s->renderer, &viewport);
 
@@ -98,8 +98,9 @@ void loop()
         SDLTest_CommonEvent(state, &event, &done);
     }
     for (i = 0; i < state->num_windows; ++i) {
-        if (state->windows[i] == NULL)
+        if (state->windows[i] == NULL) {
             continue;
+        }
         Draw(&drawstates[i]);
     }
 #ifdef __EMSCRIPTEN__
@@ -109,8 +110,7 @@ void loop()
 #endif
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     int i;
     int frames;
@@ -157,12 +157,12 @@ main(int argc, char *argv[])
     while (!done) {
         ++frames;
         loop();
-        }
+    }
 #endif
     /* Print out some timing information */
     now = SDL_GetTicks();
     if (now > then) {
-        double fps = ((double) frames * 1000) / (now - then);
+        double fps = ((double)frames * 1000) / (now - then);
         SDL_Log("%2.2f frames per second\n", fps);
     }
 

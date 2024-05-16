@@ -105,8 +105,6 @@ void Tie3::load_from_fr3_data(const LevelData* loader_data) {
       // wind metadata
       lod_tree[l_tree].instance_info = &tree.wind_instance_info;
       lod_tree[l_tree].wind_draws = &tree.instanced_wind_draws;
-      // preprocess colors for faster interpolation (TODO: move to loader)
-      lod_tree[l_tree].tod_cache = swizzle_time_of_day(tree.colors);
       // OpenGL index buffer (fixed index buffer for multidraw system)
       lod_tree[l_tree].index_buffer = loader_data->tie_data[l_geo][l_tree].index_buffer;
       lod_tree[l_tree].category_draw_indices = tree.category_draw_indices;
@@ -319,7 +317,7 @@ bool Tie3::set_up_common_data_from_dma(DmaFollower& dma, SharedRenderState* rend
     memcpy(&m_wind_data, wind_data.data, sizeof(WindWork));
   }
 
-  if (render_state->version == GameVersion::Jak2) {
+  if (render_state->version >= GameVersion::Jak2) {
     // jak 2 proto visibility
     auto proto_mask_data = dma.read_and_advance();
     m_common_data.proto_vis_data = proto_mask_data.data;
@@ -423,24 +421,16 @@ void Tie3::setup_tree(int idx,
   }
 
   // update time of day
-  if (m_color_result.size() < tree.colors->size()) {
-    m_color_result.resize(tree.colors->size());
+  if (m_color_result.size() < tree.colors->color_count) {
+    m_color_result.resize(tree.colors->color_count);
   }
 
-#ifndef __aarch64__
-  if (m_use_fast_time_of_day) {
-    interp_time_of_day_fast(settings.camera.itimes, tree.tod_cache, m_color_result.data());
-  } else {
-    interp_time_of_day_slow(settings.camera.itimes, *tree.colors, m_color_result.data());
-  }
-#else
-  interp_time_of_day_slow(settings.itimes, *tree.colors, m_color_result.data());
-#endif
+  interp_time_of_day(settings.camera.itimes, *tree.colors, m_color_result.data());
 
   glActiveTexture(GL_TEXTURE10);
   glBindTexture(GL_TEXTURE_1D, tree.time_of_day_texture);
-  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->size(), GL_RGBA, GL_UNSIGNED_INT_8_8_8_8_REV,
-                  m_color_result.data());
+  glTexSubImage1D(GL_TEXTURE_1D, 0, 0, tree.colors->color_count, GL_RGBA,
+                  GL_UNSIGNED_INT_8_8_8_8_REV, m_color_result.data());
 
   // update proto vis mask
   if (proto_vis_data) {
@@ -546,7 +536,7 @@ void Tie3::draw_matching_draws_for_tree(int idx,
   auto shader_id = use_envmap ? ShaderId::ETIE_BASE : ShaderId::TFRAG3;
 
   // setup OpenGL shader
-  first_tfrag_draw_setup(settings, render_state, shader_id);
+  first_tfrag_draw_setup(settings.camera, render_state, shader_id);
 
   if (use_envmap) {
     // if we use envmap, use the envmap-style math for the base draw to avoid rounding issue.
@@ -648,7 +638,7 @@ void Tie3::envmap_second_pass_draw(const Tree& tree,
                                    SharedRenderState* render_state,
                                    ScopedProfilerNode& prof,
                                    tfrag3::TieCategory category) {
-  first_tfrag_draw_setup(settings, render_state, ShaderId::ETIE);
+  first_tfrag_draw_setup(settings.camera, render_state, ShaderId::ETIE);
   glBindVertexArray(tree.vao);
   glBindBuffer(GL_ARRAY_BUFFER, tree.vertex_buffer);
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,

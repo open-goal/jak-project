@@ -12,8 +12,8 @@
 
 #include "decompiler/util/DecompilerTypeSystem.h"
 
+#include "fmt/core.h"
 #include "third-party/CLI11.hpp"
-#include "third-party/fmt/core.h"
 #include "third-party/json.hpp"
 
 int main(int argc, char** argv) {
@@ -56,14 +56,19 @@ int main(int argc, char** argv) {
 
   decompiler::DecompilerTypeSystem dts(game_version);
 
-  // TODO - this could be better (have a jak1 folder)
-  if (game_version == GameVersion::Jak1) {
-    dts.parse_type_defs({"decompiler", "config", "all-types.gc"});
-  } else if (game_version == GameVersion::Jak2) {
-    dts.parse_type_defs({"decompiler", "config", "jak2", "all-types.gc"});
-  } else {
-    lg::error("unsupported game version");
-    return 1;
+  switch (game_version) {
+    case GameVersion::Jak1:
+      dts.parse_type_defs({"decompiler", "config", "jak1", "all-types.gc"});
+      break;
+    case GameVersion::Jak2:
+      dts.parse_type_defs({"decompiler", "config", "jak2", "all-types.gc"});
+      break;
+    case GameVersion::Jak3:
+      dts.parse_type_defs({"decompiler", "config", "jak3", "all-types.gc"});
+      break;
+    default:
+      lg::error("unsupported game version");
+      return 1;
   }
 
   auto results = nlohmann::json::array({});

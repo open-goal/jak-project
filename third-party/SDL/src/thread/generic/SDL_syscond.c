@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,7 +34,7 @@
  * will be chosen at runtime), the function names need to be
  * suffixed
  */
-#if !SDL_THREAD_GENERIC_COND_SUFFIX
+#ifndef SDL_THREAD_GENERIC_COND_SUFFIX
 #define SDL_CreateCond_generic      SDL_CreateCond
 #define SDL_DestroyCond_generic     SDL_DestroyCond
 #define SDL_CondSignal_generic      SDL_CondSignal
@@ -53,12 +53,11 @@ typedef struct SDL_cond_generic
 } SDL_cond_generic;
 
 /* Create a condition variable */
-SDL_cond *
-SDL_CreateCond_generic(void)
+SDL_cond *SDL_CreateCond_generic(void)
 {
     SDL_cond_generic *cond;
 
-    cond = (SDL_cond_generic *) SDL_malloc(sizeof(SDL_cond_generic));
+    cond = (SDL_cond_generic *)SDL_malloc(sizeof(SDL_cond_generic));
     if (cond) {
         cond->lock = SDL_CreateMutex();
         cond->wait_sem = SDL_CreateSemaphore(0);
@@ -75,8 +74,7 @@ SDL_CreateCond_generic(void)
 }
 
 /* Destroy a condition variable */
-void
-SDL_DestroyCond_generic(SDL_cond * _cond)
+void SDL_DestroyCond_generic(SDL_cond *_cond)
 {
     SDL_cond_generic *cond = (SDL_cond_generic *)_cond;
     if (cond) {
@@ -94,8 +92,7 @@ SDL_DestroyCond_generic(SDL_cond * _cond)
 }
 
 /* Restart one of the threads that are waiting on the condition variable */
-int
-SDL_CondSignal_generic(SDL_cond * _cond)
+int SDL_CondSignal_generic(SDL_cond *_cond)
 {
     SDL_cond_generic *cond = (SDL_cond_generic *)_cond;
     if (!cond) {
@@ -119,8 +116,7 @@ SDL_CondSignal_generic(SDL_cond * _cond)
 }
 
 /* Restart all threads that are waiting on the condition variable */
-int
-SDL_CondBroadcast_generic(SDL_cond * _cond)
+int SDL_CondBroadcast_generic(SDL_cond *_cond)
 {
     SDL_cond_generic *cond = (SDL_cond_generic *)_cond;
     if (!cond) {
@@ -174,8 +170,7 @@ Thread B:
     SDL_CondSignal(cond);
     SDL_UnlockMutex(lock);
  */
-int
-SDL_CondWaitTimeout_generic(SDL_cond * _cond, SDL_mutex * mutex, Uint32 ms)
+int SDL_CondWaitTimeout_generic(SDL_cond *_cond, SDL_mutex *mutex, Uint32 ms)
 {
     SDL_cond_generic *cond = (SDL_cond_generic *)_cond;
     int retval;
@@ -230,8 +225,7 @@ SDL_CondWaitTimeout_generic(SDL_cond * _cond, SDL_mutex * mutex, Uint32 ms)
 }
 
 /* Wait on the condition variable forever */
-int
-SDL_CondWait_generic(SDL_cond * cond, SDL_mutex * mutex)
+int SDL_CondWait_generic(SDL_cond *cond, SDL_mutex *mutex)
 {
     return SDL_CondWaitTimeout_generic(cond, mutex, SDL_MUTEX_MAXWAIT);
 }

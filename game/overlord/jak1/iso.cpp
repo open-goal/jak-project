@@ -73,6 +73,7 @@ s32 iso_thread;
 s32 dgo_thread;
 s32 str_thread;
 s32 play_thread;
+constexpr int kRpcBuffSize = sizeof(RPC_Dgo_Cmd);
 static RPC_Dgo_Cmd sRPCBuff[1];
 DgoCommand sLoadDGO;  // renamed from scmd to sLoadDGO in Jak 2
 
@@ -281,7 +282,8 @@ u32 DGOThread() {
   CpuDisableIntr();
   sceSifInitRpc(0);
   sceSifSetRpcQueue(&dq, GetThreadId());
-  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, nullptr, nullptr, &dq);
+  sceSifRegisterRpc(&serve, DGO_RPC_ID[g_game_version], RPC_DGO, sRPCBuff, kRpcBuffSize, nullptr,
+                    nullptr, &dq);
   CpuEnableIntr();
   sceSifRpcLoop(&dq);
   return 0;
@@ -1195,7 +1197,7 @@ static u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
   if (vag->buffer_number == 0) {
     // first buffer, set stuff up
     u32* data = (u32*)buffer_header->data;
-    if (data[0] != 0x70474156 /* 'pGAV' */ && data[0] != 0x56414770 /* 'VAGp' */) {
+    if (data[0] != 0x70474156 /* 'VAGp' */ && data[0] != 0x56414770 /* 'pGAV' */) {
       vag->stop = true;
       buffer_header->data_size = 0;
       return CMD_STATUS_IN_PROGRESS;
@@ -1203,7 +1205,7 @@ static u32 ProcessVAGData(IsoMessage* _cmd, IsoBufferHeader* buffer_header) {
 
     vag->sample_rate = data[4];
     vag->data_left = data[3];
-    if (data[0] == 0x70474156 /* 'pGAV' */) {
+    if (data[0] == 0x70474156 /* 'VAGp' */) {
       vag->sample_rate = bswap(vag->sample_rate);
       vag->data_left = bswap(vag->data_left);
     }

@@ -5,5 +5,304 @@
 ;; name in dgo: mood-h
 ;; dgos: GAME
 
+(declare-type sky-color-day structure)
+(declare-type mood-context structure)
+
+(define-extern movie? (function symbol))
+
+(define-extern clear-mood-context (function mood-context symbol))
+
 ;; DECOMP BEGINS
 
+(deftype mood-channel (structure)
+  ((data  float    24)
+   (vecs  vector4  6 :inline :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype mood-channel-group (structure)
+  ((data  mood-channel  4 :inline)
+   )
+  )
+
+
+(deftype mood-fog (structure)
+  ((fog-color    vector  :inline)
+   (fog-dists    vector  :inline)
+   (fog-start    meters  :overlay-at (-> fog-dists data 0))
+   (fog-end      meters  :overlay-at (-> fog-dists data 1))
+   (fog-max      float   :overlay-at (-> fog-dists data 2))
+   (fog-min      float   :overlay-at (-> fog-dists data 3))
+   (erase-color  vector  :inline)
+   )
+  )
+
+
+(deftype mood-fog-table (structure)
+  ((data   mood-fog  8 :inline)
+   (_data  uint128   24 :overlay-at data)
+   )
+  )
+
+
+(deftype mood-color (structure)
+  ((lgt-color  vector  :inline)
+   (amb-color  vector  :inline)
+   )
+  )
+
+
+(deftype mood-direction-table (structure)
+  ((data  vector  4 :inline)
+   )
+  )
+
+
+(deftype mood-color-table (structure)
+  ((data   mood-color  8 :inline)
+   (_data  uint128     16 :overlay-at data)
+   )
+  )
+
+
+(deftype mood-sky-table (structure)
+  ((data  vector  8 :inline)
+   )
+  )
+
+
+(deftype mood-clouds (structure)
+  ((cloud-min  float)
+   (cloud-max  float)
+   )
+  )
+
+
+(deftype mood-weather (structure)
+  ((data   float  2)
+   (cloud  float  :overlay-at (-> data 0))
+   (fog    float  :overlay-at (-> data 1))
+   )
+  :pack-me
+  :allow-misaligned
+  )
+
+
+(deftype mood-iweather (structure)
+  ((data   int32  2)
+   (cloud  int32  :overlay-at (-> data 0))
+   (fog    int32  :overlay-at (-> data 1))
+   )
+  :allow-misaligned
+  )
+
+
+(deftype mood-range (structure)
+  ((data       float    4)
+   (min-cloud  float    :overlay-at (-> data 0))
+   (max-cloud  float    :overlay-at (-> data 1))
+   (min-fog    float    :overlay-at (-> data 2))
+   (max-fog    float    :overlay-at (-> data 3))
+   (quad       uint128  :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype mood-filters-table (structure)
+  ((data  vector  8 :inline)
+   )
+  )
+
+
+(deftype mood-table (basic)
+  ((mood-fog-table        mood-fog-table)
+   (mood-color-table      mood-color-table)
+   (mood-channel-group    mood-channel-group)
+   (mood-direction-table  mood-direction-table)
+   (mood-sky-table        mood-sky-table)
+   (mood-interp-table     sky-color-day)
+   )
+  )
+
+
+(deftype light-state (structure)
+  ((time  float)
+   (fade  float)
+   )
+  :pack-me
+  )
+
+
+(deftype flicker-state (structure)
+  ((flicker-off  uint8)
+   (flicker-on   uint8)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype florescent-state (structure)
+  ((value   float)
+   (delay   int8)
+   (delay2  int8)
+   )
+  )
+
+
+(deftype electricity-state (structure)
+  ((value  float)
+   (scale  float)
+   )
+  :pack-me
+  )
+
+
+(deftype pulse-state (structure)
+  ((pulse              float)
+   (brightness         float)
+   (target-brightness  float)
+   (speed              float)
+   )
+  :pack-me
+  )
+
+
+(deftype strobe-state (structure)
+  ((time  float)
+   )
+  )
+
+
+(deftype flames-state (structure)
+  ((time    float)
+   (index   uint8)
+   (length  uint8)
+   (height  uint8)
+   )
+  :pack-me
+  )
+
+
+(deftype mood-context-core (structure)
+  ((current-fog           mood-fog  :inline)
+   (current-sky-color     vector    :inline)
+   (current-env-color     vector    :inline)
+   (current-prt-color     vector    :inline)
+   (current-shadow-color  vector    :inline)
+   )
+  )
+
+
+(deftype mood-context-core2 (mood-context-core)
+  ((light-group  light-group  8 :inline)
+   )
+  )
+
+
+(deftype mood-context-core3 (mood-context-core2)
+  ((times  vector  8 :inline)
+   )
+  )
+
+
+(deftype mood-context (mood-context-core3)
+  ((itimes  vector4w  4 :inline)
+   (state   uint32    32)
+   (data    uint128   123 :overlay-at (-> current-fog fog-color data 0))
+   )
+  )
+
+
+(deftype mood-control-work (structure)
+  ((color           vector4w       :inline)
+   (weather         mood-weather   :inline)
+   (iweather        mood-iweather  :inline)
+   (interp          mood-weather   :inline)
+   (index           int32          4)
+   (color-interp    float)
+   (color-index     int32          2)
+   (channel-interp  float)
+   (channel-index   int32          2)
+   (cloud-interp    float)
+   (cloud-index     int32          2)
+   )
+  )
+
+
+(deftype mood-control (mood-table)
+  ((mood-clouds             mood-clouds)
+   (current-interp          mood-weather        :inline)
+   (target-interp           mood-weather        :inline)
+   (speed-interp            mood-weather        :inline)
+   (range                   mood-range          :inline)
+   (time-until-random       mood-weather        :inline)
+   (time-until-random-min   mood-weather        :inline)
+   (time-until-random-max   mood-weather        :inline)
+   (current-special-interp  float)
+   (target-special-interp   float)
+   (rate-special-interp     float)
+   (display-flag            symbol)
+   (overide-weather-flag    symbol)
+   (pad                     int32)
+   (overide                 mood-weather        :inline)
+   (lightning-index         int32)
+   (lightning-val           int32)
+   (lightning-time          int32)
+   (lightning-time2         float)
+   (lightning-time3         float)
+   (lightning-flash         float)
+   (lightning-id            sound-id)
+   (lightning-count0        uint32)
+   (lightning-count1        uint32)
+   (lightning-count2        uint32)
+   (rain-id                 sound-id)
+   (sound-pitch             float)
+   (fogs                    mood-fog-table      9)
+   (colors                  mood-color-table    3)
+   (channels                mood-channel-group  3)
+   (clouds                  mood-clouds         9)
+   )
+  (:methods
+    (init-weather! (_type_) none)
+    (set-cloud-and-fog-interp! (_type_ float float float float) none)
+    (update-mood-range! (_type_ float float float float) none)
+    (set-time-for-random-weather! (_type_ float float) none)
+    (set-special-interps! (_type_ float float symbol) none)
+    (weather-event-concluded? (_type_) symbol)
+    (set-lightning-time! (_type_ int int float) none)
+    (apply-mood-clouds-and-fog (_type_ mood-control-work) none)
+    (apply-mood-fog (_type_ mood-control-work mood-color-table mood-color-table mood-color-table float) none)
+    (apply-fog-height (_type_ mood-control-work float float float float) none)
+    (apply-mood-colors (_type_ mood-control-work) none)
+    (mood-control-method-20 (_type_ mood-control-work mood-color-table mood-color-table mood-color-table float) none)
+    (apply-mood-channels (_type_ mood-control-work) none)
+    (adjust-num-clouds (_type_ mood-control-work) none)
+    (gen-lightning-and-thunder! (_type_ int) none)
+    (play-or-stop-lightning-sfx! (_type_ sound-spec vector) none)
+    )
+  )
+
+
+(defmethod set-special-interps! ((this mood-control) (target-interp float) (rate-interp float) (set-current-interp? symbol))
+  "Sets the `*-special-interp` values with the given values
+   @param! this The [[mood-control]]
+   @param target-interp Clamped between 0.0 and 1.0
+   @param rate-interp Value to set [[this::rate-special-interp]]
+   @param set-current-interp? Uses `target-interp` to set [[this::current-special-interp]
+   @returns [[none]]"
+  (let ((clamped-interp (fmax 0.0 (fmin 1.0 target-interp))))
+    (set! (-> this target-special-interp) clamped-interp)
+    (set! (-> this rate-special-interp) rate-interp)
+    (if set-current-interp?
+        (set! (-> this current-special-interp) clamped-interp)
+        )
+    )
+  0
+  (none)
+  )
+
+(defmethod weather-event-concluded? ((this mood-control))
+  "@returns [[#t]] if [[this::override-weather-flag]] is set, we aren't in a cutscene and [[this::current-special-interp]] is equal to `0.0`"
+  (and (-> this overide-weather-flag) (not (movie?)) (= (-> this current-special-interp) 0.0))
+  )

@@ -1,0 +1,11 @@
+("LGUNRNC.DGO"
+ ("tpage-3171.go"
+  "gun-rc-four-eyes-ag.go"
+  "gun-rc-three-eyes-ag.go"
+  "gun-rc-three-eyes-bonus-ag.go"
+  "gun-clank-ag.go"
+  "gun-rc-two-eyes-ag.go"
+  "gun-rc-one-eye-ag.go"
+  "gun-rachet-ag.go"
+  "lgunrnc.go"
+ ))

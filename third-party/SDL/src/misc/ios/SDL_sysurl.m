@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,14 +23,14 @@
 
 #import <UIKit/UIKit.h>
 
-int
-SDL_SYS_OpenURL(const char *url)
-{ @autoreleasepool {
+int SDL_SYS_OpenURL(const char *url)
+{
+    @autoreleasepool {
 
-    NSString *nsstr = [NSString stringWithUTF8String:url];
-    NSURL *nsurl = [NSURL URLWithString:nsstr];
-    return [[UIApplication sharedApplication] openURL:nsurl] ? 0 : -1;
-}}
+        NSString *nsstr = [NSString stringWithUTF8String:url];
+        NSURL *nsurl = [NSURL URLWithString:nsstr];
+        return [[UIApplication sharedApplication] openURL:nsurl] ? 0 : -1;
+    }
+}
 
 /* vi: set ts=4 sw=4 expandtab: */
-

@@ -1,0 +1,341 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type mercneric-chain
+(deftype mercneric-chain (structure)
+  "A DMA chain for drawing with mercneric, and metadata needed to append.
+This chain is assumed to run with a specific tpage from a specific level available."
+  ((first       uint32)
+   (next        uint32)
+   (state       generic-bucket-state  :inline)
+   (vu1-bucket  bucket-id)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type mercneric-chain
+(defmethod inspect ((this mercneric-chain))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'mercneric-chain)
+  (format #t "~1Tfirst: #x~X~%" (-> this first))
+  (format #t "~1Tnext: #x~X~%" (-> this next))
+  (format #t "~1Tstate: #<generic-bucket-state @ #x~X>~%" (-> this state))
+  (format #t "~1Tvu1-bucket: ~D~%" (-> this vu1-bucket))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type merc-chain
+(deftype merc-chain (structure)
+  "A DMA chain for drawing with merc.
+This chain is assumed to run with a specific tpage from a specific level available."
+  ((first       dma-packet)
+   (patch       dma-packet)
+   (vu1-bucket  bucket-id)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type merc-chain
+(defmethod inspect ((this merc-chain))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'merc-chain)
+  (format #t "~1Tfirst: #<dma-packet @ #x~X>~%" (-> this first))
+  (format #t "~1Tpatch: #<dma-packet @ #x~X>~%" (-> this patch))
+  (format #t "~1Tvu1-bucket: ~D~%" (-> this vu1-bucket))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type foreground-bucket
+(deftype foreground-bucket (structure)
+  "A foreground bucket is merc, emerc, and mercneric chain for a given texture mode."
+  ((merc       merc-chain       :inline)
+   (emerc      merc-chain       :inline)
+   (mercneric  mercneric-chain  :inline)
+   )
+  )
+
+;; definition for method 3 of type foreground-bucket
+(defmethod inspect ((this foreground-bucket))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'foreground-bucket)
+  (format #t "~1Tmerc: #<merc-chain @ #x~X>~%" (-> this merc))
+  (format #t "~1Temerc: #<merc-chain @ #x~X>~%" (-> this emerc))
+  (format #t "~1Tmercneric: #<mercneric-chain @ #x~X>~%" (-> this mercneric))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type foreground-level-buckets
+(deftype foreground-level-buckets (structure)
+  "Collection of buckets for a single level.
+Each bucket has a different texture. The order is:
+tfrag, pris, shrub, alpha, water, pris, pris2"
+  ((data  foreground-bucket  7 :inline)
+   )
+  )
+
+;; definition for method 3 of type foreground-level-buckets
+(defmethod inspect ((this foreground-level-buckets))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'foreground-level-buckets)
+  (format #t "~1Tdata[7] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type foreground-bucket-grid
+(deftype foreground-bucket-grid (structure)
+  "Array of buckets for each level, plus the single warp chain shared between everybody."
+  ((level-buckets  foreground-level-buckets  11 :inline)
+   (warp-chain     mercneric-chain           :inline)
+   )
+  )
+
+;; definition for method 3 of type foreground-bucket-grid
+(defmethod inspect ((this foreground-bucket-grid))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'foreground-bucket-grid)
+  (format #t "~1Tlevel-buckets[11] @ #x~X~%" (-> this level-buckets))
+  (format #t "~1Twarp-chain: #<mercneric-chain @ #x~X>~%" (-> this warp-chain))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type foreground-regs
+(deftype foreground-regs (structure)
+  "Frequently accessed foreground values. These are in scratchpad for fast access
+during foreground processing."
+  ((dist                   float)
+   (merc-used              uint32)
+   (emerc-used             uint32)
+   (mercneric-used         uint32)
+   (use-isometric          uint32)
+   (base-start             dma-packet)
+   (joint-ptr              (inline-array joint))
+   (bone-ptr               (inline-array bone))
+   (num-bones              uint32)
+   (mtxs                   (inline-array pris-mtx))
+   (dma-buf                dma-buffer)
+   (default-texture-index  uint32)
+   (mercneric-chain        mercneric-chain)
+   (level-buckets          foreground-level-buckets)
+   )
+  )
+
+;; definition for method 3 of type foreground-regs
+(defmethod inspect ((this foreground-regs))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'foreground-regs)
+  (format #t "~1Tdist: ~f~%" (-> this dist))
+  (format #t "~1Tmerc-used: ~D~%" (-> this merc-used))
+  (format #t "~1Temerc-used: ~D~%" (-> this emerc-used))
+  (format #t "~1Tmercneric-used: ~D~%" (-> this mercneric-used))
+  (format #t "~1Tuse-isometric: ~D~%" (-> this use-isometric))
+  (format #t "~1Tbase-start: #<dma-packet @ #x~X>~%" (-> this base-start))
+  (format #t "~1Tjoint-ptr: #x~X~%" (-> this joint-ptr))
+  (format #t "~1Tbone-ptr: #x~X~%" (-> this bone-ptr))
+  (format #t "~1Tnum-bones: ~D~%" (-> this num-bones))
+  (format #t "~1Tmtxs: #x~X~%" (-> this mtxs))
+  (format #t "~1Tdma-buf: ~A~%" (-> this dma-buf))
+  (format #t "~1Tdefault-texture-index: ~D~%" (-> this default-texture-index))
+  (format #t "~1Tmercneric-chain: #<mercneric-chain @ #x~X>~%" (-> this mercneric-chain))
+  (format #t "~1Tlevel-buckets: #<foreground-level-buckets @ #x~X>~%" (-> this level-buckets))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type foreground-work
+(deftype foreground-work (structure)
+  "Memory map for scratchpad during foreground processing.
+This is not used by the renderers, bone matrix, or joint code - just the code
+that assigns stuff to buckets and prepares DMA for merc (or requests for generic merc)."
+  ((regs            foreground-regs         :inline)
+   (draw-index-map  uint8                   11 :offset  64)
+   (grid            foreground-bucket-grid  :inline)
+   (bounds          sphere                  :inline)
+   (lights          vu-lights               :inline)
+   (distance        vector                  :inline)
+   (next-tmpl       dma-packet              :inline)
+   )
+  )
+
+;; definition for method 3 of type foreground-work
+(defmethod inspect ((this foreground-work))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'foreground-work)
+  (format #t "~1Tregs: #<foreground-regs @ #x~X>~%" (-> this regs))
+  (format #t "~1Tdraw-index-map[11] @ #x~X~%" (-> this draw-index-map))
+  (format #t "~1Tgrid: #<foreground-bucket-grid @ #x~X>~%" (-> this grid))
+  (format #t "~1Tbounds: #<sphere @ #x~X>~%" (-> this bounds))
+  (format #t "~1Tlights: #<vu-lights @ #x~X>~%" (-> this lights))
+  (format #t "~1Tdistance: #<vector @ #x~X>~%" (-> this distance))
+  (format #t "~1Tnext-tmpl: #<dma-packet @ #x~X>~%" (-> this next-tmpl))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function invalidate-cache-line
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 0]
+;; ERROR: Unsupported inline assembly instruction kind - [cache dxwbin a0, 1]
+(defun invalidate-cache-line ((arg0 pointer))
+  (.sync.l)
+  (.cache dxwbin arg0 0)
+  (.sync.l)
+  (.cache dxwbin arg0 1)
+  (.sync.l)
+  0
+  )
+
+;; definition of type texscroll-globals
+(deftype texscroll-globals (structure)
+  "List of all merc-effects that need texscroll applied."
+  ((requests  int32)
+   (effects   merc-effect  32)
+   )
+  )
+
+;; definition for method 3 of type texscroll-globals
+(defmethod inspect ((this texscroll-globals))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'texscroll-globals)
+  (format #t "~1Trequests: ~D~%" (-> this requests))
+  (format #t "~1Teffects[32] @ #x~X~%" (-> this effects))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type merc-effect-bucket-info
+(deftype merc-effect-bucket-info (structure)
+  "Scratch info computed per-merc-effect by the foreground code, then later read by merc
+DMA generation. This is only for the currently-processing merc model's effects."
+  ((color-fade      rgba)
+   (alpha           uint8  :offset   3)
+   (merc-path       uint8)
+   (ignore-alpha    uint8)
+   (disable-draw    uint8)
+   (disable-envmap  uint8)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type merc-effect-bucket-info
+(defmethod inspect ((this merc-effect-bucket-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'merc-effect-bucket-info)
+  (format #t "~1Tcolor-fade: ~D~%" (-> this color-fade))
+  (format #t "~1Tmerc-path: ~D~%" (-> this merc-path))
+  (format #t "~1Tignore-alpha: ~D~%" (-> this ignore-alpha))
+  (format #t "~1Tdisable-draw: ~D~%" (-> this disable-draw))
+  (format #t "~1Tdisable-envmap: ~D~%" (-> this disable-envmap))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type merc-bucket-info
+(deftype merc-bucket-info (structure)
+  "Scratch info for the current merc-ctrl. Written by the foreground code, read by merc DMA generation."
+  ((light                        vu-lights                :inline)
+   (needs-clip                   int32)
+   (need-mercprime-if-merc       int32)
+   (must-use-mercneric-for-clip  int32)
+   (effect                       merc-effect-bucket-info  64 :inline)
+   )
+  )
+
+;; definition for method 3 of type merc-bucket-info
+(defmethod inspect ((this merc-bucket-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'merc-bucket-info)
+  (format #t "~1Tlight: #<vu-lights @ #x~X>~%" (-> this light))
+  (format #t "~1Tneeds-clip: ~D~%" (-> this needs-clip))
+  (format #t "~1Tneed-mercprime-if-merc: ~D~%" (-> this need-mercprime-if-merc))
+  (format #t "~1Tmust-use-mercneric-for-clip: ~D~%" (-> this must-use-mercneric-for-clip))
+  (format #t "~1Teffect[64] @ #x~X~%" (-> this effect))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type foreground-globals
+(deftype foreground-globals (structure)
+  "The foreground renderer state: all DMA chains, settings for the current merc-ctrl, texscroll list."
+  ((foreground-grid   foreground-bucket-grid  :inline)
+   (merc-bucket-info  merc-bucket-info        :inline)
+   (texscroll         texscroll-globals       :inline)
+   )
+  )
+
+;; definition for method 3 of type foreground-globals
+(defmethod inspect ((this foreground-globals))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'foreground-globals)
+  (format #t "~1Tforeground-grid: #<foreground-bucket-grid @ #x~X>~%" (-> this foreground-grid))
+  (format #t "~1Tmerc-bucket-info: #<merc-bucket-info @ #x~X>~%" (-> this merc-bucket-info))
+  (format #t "~1Ttexscroll: #<texscroll-globals @ #x~X>~%" (-> this texscroll))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type shadow-dma-packet
+(deftype shadow-dma-packet (structure)
+  "DMA tag for submitting shadow data."
+  ((tag       generic-merc-tag  :inline)
+   (settings  shadow-settings   :inline)
+   (geo-ref   dma-packet        :inline)
+   (mtx-ref   dma-packet        :inline)
+   (end-tag   dma-packet        :inline)
+   )
+  )
+
+;; definition for method 3 of type shadow-dma-packet
+(defmethod inspect ((this shadow-dma-packet))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'shadow-dma-packet)
+  (format #t "~1Ttag: #<generic-merc-tag @ #x~X>~%" (-> this tag))
+  (format #t "~1Tsettings: #<shadow-settings @ #x~X>~%" (-> this settings))
+  (format #t "~1Tgeo-ref: #<dma-packet @ #x~X>~%" (-> this geo-ref))
+  (format #t "~1Tmtx-ref: #<dma-packet @ #x~X>~%" (-> this mtx-ref))
+  (format #t "~1Tend-tag: #<dma-packet @ #x~X>~%" (-> this end-tag))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+0

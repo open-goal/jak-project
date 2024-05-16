@@ -478,11 +478,15 @@
                                &key (exit *no-state*)
                                &key (code *no-state*)
                                &key (post *no-state*)
+                               &rest body
                                )
   "Define a new state!"
 
   (with-gensyms (new-state)
-    (let ((defstate-type (first parents)))
+    (let ((defstate-type (first parents))
+          (docstring ""))
+      (when (and (> (length body) 1) (string? (first body)))
+        (set! docstring (first body)))
       (when (not (null? *defstate-type-stack*))
         (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
                  *defstate-type-stack*)
@@ -545,8 +549,8 @@
          ;; This way it can check the individual function types, make sure they make sense, and create
          ;; a state with the appropriate type.
          ,(if virtual
-              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
-              `(define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              `(define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
 
          )
@@ -841,9 +845,11 @@
               &key (num! #f)
               &key (param0 #f)
               &key (param1 #f)
+              &key (param2 #f)
               &key (num-func #f)
               &key (frame-num #f)
-              &key (frame-interp #f)
+              &key (frame-interp0 #f)
+              &key (frame-interp1 #f)
               &key (dist #f)
               &key (eval? #t)
               )
@@ -856,8 +862,10 @@
    num-func     = sets the num-func field for the channel. this lets you change the function with eval'ing.
    param0       = 1st parameter for the playback function. ONLY USE THESE WITH num-func !!
    param1       = 2nd parameter for the playback function. ONLY USE THESE WITH num-func !!
+   param2       = 3rd parameter for the playback function. ONLY USE THESE WITH num-func !!
    frame-num    = set the frame-num field.
-   frame-interp = set the frame-interp field.
+   frame-interp0 = set the first value of the frame-interp array.
+   frame-interp1 = set the second value of the frame-interp array.
    dist         = set the dist field.
    available num! functions:
    - (+!)       = advance anim.
@@ -913,6 +921,10 @@
                 (cond
                   ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
                   )))
+        (p2 (if param2 param2
+                (cond
+                  ((eq? num! 'seek!) (if (or (null? num-args) (null? (cdr num-args))) 1.0 (cadr num-args)))
+                  )))
         (frame-num (cond
                       ((eq? 'max frame-num) (if group!
                                                 `(the float (1- (-> (the art-joint-anim ,group!) frames num-frames)))
@@ -923,11 +935,13 @@
         (frame-group (if (or p0 p1 frame-num (not nf)) group! #f))
       )
   `(let ((ja-ch (-> self skel root-channel ,chan)))
-      ,(if frame-interp `(set! (-> ja-ch frame-interp) ,frame-interp) `(none))
+      ,(if frame-interp0 `(set! (-> ja-ch frame-interp 0) ,frame-interp0) `(none))
+      ,(if frame-interp1 `(set! (-> ja-ch frame-interp 1) ,frame-interp1) `(none))
       ,(if dist `(set! (-> ja-ch dist) ,dist) `(none))
       ,(if frame-group `(set! (-> ja-ch frame-group) (the art-joint-anim ,frame-group)) `(none))
       ,(if p0 `(set! (-> ja-ch param 0) ,p0) `(none))
       ,(if p1 `(set! (-> ja-ch param 1) ,p1) `(none))
+      ,(if p2 `(set! (-> ja-ch param 2) ,p2) `(none))
       ,(if num-func `(set! (-> ja-ch num-func) ,num-func) `(none))
       ,(if frame-num `(set! (-> ja-ch frame-num) ,frame-num) `(none))
       ,(if nf
@@ -940,7 +954,7 @@
                              `(set! (-> ja-ch frame-num) (the float (1- (-> (the art-joint-anim ,group!) frames num-frames))))
                              `(set! (-> ja-ch frame-num) (the float (1- (-> ja-ch frame-group frames num-frames))))
                              ))
-        ((eq? num! 'identity) `(set! (-> ja-ch frame-num) ,(car num-args)))
+        ((and (eq? num! 'identity) (not (null? num-args))) `(set! (-> ja-ch frame-num) ,(car num-args)))
         (#t `(none))
         )
       ))
@@ -951,12 +965,14 @@
                       &key (num! #f)
                       &key (param0 #f)
                       &key (param1 #f)
+                      &key (param2 #f)
                       &key (num-func #f)
                       &key (frame-num #f)
-                      &key (frame-interp #f)
+                      &key (frame-interp0 #f)
+                      &key (frame-interp1 #f)
                       &key (dist #f)
                       )
-  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :num-func ,num-func :frame-num ,frame-num :frame-interp ,frame-interp :dist ,dist)
+  `(ja :eval? #f :chan ,chan :group! ,group! :num! ,num! :param0 ,param0 :param1 ,param1 :param2 ,param2 :num-func ,num-func :frame-num ,frame-num :frame-interp0 ,frame-interp0 :frame-interp1 ,frame-interp1 :dist ,dist)
   )
 
 (defconstant GIF_REGS_ALL_AD

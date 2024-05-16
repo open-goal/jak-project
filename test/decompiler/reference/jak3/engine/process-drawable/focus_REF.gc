@@ -1,0 +1,73 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type focus
+(deftype focus (structure)
+  "A structure that keeps a handle to a [[process-focusable]]."
+  ((handle        handle)
+   (collide-with  collide-spec)
+   )
+  (:methods
+    (clear-focused (_type_) none)
+    (collide-spec-match? (_type_ process-focusable) object)
+    (reset-to-collide-spec (_type_ collide-spec) none)
+    (try-update-focus (_type_ process-focusable) symbol)
+    )
+  )
+
+;; definition for method 3 of type focus
+(defmethod inspect ((this focus))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'focus)
+  (format #t "~1Thandle: ~D~%" (-> this handle))
+  (format #t "~1Tcollide-with: ~D~%" (-> this collide-with))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type focus
+;; WARN: Return type mismatch int vs none.
+(defmethod reset-to-collide-spec ((this focus) (cspec collide-spec))
+  "Reset this focus with the given [[collide-spec]]."
+  (set! (-> this collide-with) cspec)
+  (set! (-> this handle) (the-as handle #f))
+  0
+  (none)
+  )
+
+;; definition for method 10 of type focus
+(defmethod collide-spec-match? ((this focus) (proc process-focusable))
+  "If the focused process is not dead,
+   check that the [[collide-spec]] of the focus and the process match."
+  (when (and proc (not (logtest? (-> proc focus-status) (focus-status disable dead))))
+    (let* ((root (-> proc root))
+           (cshape (if (type? root collide-shape)
+                       root
+                       )
+                   )
+           )
+      (and cshape (logtest? (-> this collide-with) (-> cshape root-prim prim-core collide-as)))
+      )
+    )
+  )
+
+;; definition for method 12 of type focus
+(defmethod try-update-focus ((this focus) (proc process-focusable))
+  "Try to set the `handle` of this focus to the given process."
+  (when (!= (handle->process (-> this handle)) proc)
+    (set! (-> this handle) (process->handle proc))
+    #t
+    )
+  )
+
+;; definition for method 9 of type focus
+;; WARN: Return type mismatch int vs none.
+(defmethod clear-focused ((this focus))
+  "Reset the focus' handle."
+  (set! (-> this handle) (the-as handle #f))
+  0
+  (none)
+  )

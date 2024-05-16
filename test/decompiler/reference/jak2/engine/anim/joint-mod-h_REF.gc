@@ -3,6 +3,8 @@
 
 ;; definition of type joint-mod
 (deftype joint-mod (basic)
+  "Utility to modify a joint transform from code, rather than just getting it from animation.
+This is used to make jak look toward an enemy, for example."
   ((mode                     joint-mod-mode)
    (process                  process-drawable)
    (joint                    cspace)
@@ -149,14 +151,16 @@
 
 ;; definition (debug) for function joint-mod-debug-draw
 ;; WARN: Return type mismatch int vs none.
-(defun-debug joint-mod-debug-draw ((arg0 joint-mod))
-  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> arg0 joint bone transform) (meters 2))
+(defun-debug joint-mod-debug-draw ((jmod joint-mod))
+  "Debug draw the bone transform for the associated bone of a joint-mod"
+  (add-debug-matrix #t (bucket-id debug-no-zbuf1) (-> jmod joint bone transform) (meters 2))
   0
   (none)
   )
 
 ;; definition for method 12 of type joint-mod
 (defmethod reset-blend! ((this joint-mod))
+  "Set the blend to 0."
   (set! (-> this blend) 0.0)
   this
   )
@@ -248,6 +252,7 @@
 
 ;; definition of type joint-mod-set-local
 (deftype joint-mod-set-local (basic)
+  "Override the trans, quat, and scale of the joint transform. The component to override is selected by the flag."
   ((transform        transformq  :inline)
    (set-rotation     symbol)
    (set-scale        symbol)
@@ -278,6 +283,7 @@
 ;; definition for function joint-mod-set-local-callback
 ;; INFO: Used lq/sq
 (defun joint-mod-set-local-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-rotate-local. See comment on that type."
   (let ((v1-0 (the-as joint-mod-set-local (-> arg0 param1))))
     (cond
       ((-> v1-0 enable)
@@ -328,6 +334,8 @@
 
 ;; definition of type joint-mod-add-local
 (deftype joint-mod-add-local (basic)
+  "Add to the trans, rotate the quat, and multiply the scale of the joint transform. The components can be selected by the flag.
+Unlike jak 2, this actually multiplies the scale, instead of adding."
   ((transform        transformq  :inline)
    (add-rotation     symbol)
    (add-scale        symbol)
@@ -357,6 +365,7 @@
 
 ;; definition for function joint-mod-add-local-callback
 (defun joint-mod-add-local-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-add-local. See comment on that type."
   (let ((s4-0 (the-as joint-mod-add-local (-> arg0 param1))))
     (when (-> s4-0 enable)
       (if (-> s4-0 add-translation)
@@ -402,6 +411,8 @@
 
 ;; definition of type joint-mod-set-world
 (deftype joint-mod-set-world (basic)
+  "Directly overwrite the _bone_ transform (ignoring the parent entirely).
+This does not pay attention to the flags."
   ((transform   transformq  :inline)
    (node-index  int32)
    (enable      symbol)
@@ -428,6 +439,7 @@
 ;; definition for function joint-mod-set-world-callback
 ;; WARN: Return type mismatch object vs none.
 (defun joint-mod-set-world-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-set-world. See comment on that type."
   (let ((v1-0 (the-as joint-mod-set-world (-> arg0 param1))))
     (if (-> v1-0 enable)
         (cspace<-transformq! arg0 (-> v1-0 transform))
@@ -456,6 +468,8 @@
 
 ;; definition of type joint-mod-blend-local
 (deftype joint-mod-blend-local (basic)
+  "Blend the _joint_ transform between this transform and the animated one.
+Then, apply the normal parented transform."
   ((transform        transformq  :inline)
    (blend-transform  transformq  :inline)
    (node-index       int32)
@@ -485,6 +499,7 @@
 
 ;; definition for function joint-mod-blend-local-callback
 (defun joint-mod-blend-local-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-blend-local. See comment on that type."
   (let ((gp-0 (the-as joint-mod-blend-local (-> arg0 param1))))
     (cond
       ((-> gp-0 enable)
@@ -526,6 +541,7 @@
 
 ;; definition of type joint-mod-spinner
 (deftype joint-mod-spinner (basic)
+  "Control a joint by just spinning it around an axis."
   ((spin-axis  vector  :inline)
    (angle      float)
    (spin-rate  float)
@@ -552,31 +568,32 @@
   )
 
 ;; definition for function joint-mod-spinner-callback
-(defun joint-mod-spinner-callback ((arg0 cspace) (arg1 transformq))
-  (let ((gp-0 (the-as joint-mod-spinner (-> arg0 param1))))
+(defun joint-mod-spinner-callback ((bone-cspace cspace) (joint-transform transformq))
+  "cspace callback for joint-mod-spinner. Update the cspace's bone from the parent transformq, plus the rotation from this spinner."
+  (let ((gp-0 (the-as joint-mod-spinner (-> bone-cspace param1))))
     (when (-> gp-0 enable)
       (let ((f30-0
               (the float (sar (shl (the int (+ (-> gp-0 angle) (* (-> gp-0 spin-rate) (seconds-per-frame)))) 48) 48))
               )
             )
-        (quaternion-vector-angle! (-> arg1 quat) (-> gp-0 spin-axis) f30-0)
+        (quaternion-vector-angle! (-> joint-transform quat) (-> gp-0 spin-axis) f30-0)
         (set! (-> gp-0 angle) f30-0)
         )
       )
     )
-  (cspace<-parented-transformq-joint! arg0 arg1)
+  (cspace<-parented-transformq-joint! bone-cspace joint-transform)
   (none)
   )
 
 ;; definition for method 0 of type joint-mod-spinner
 ;; INFO: Used lq/sq
-(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (arg0 process-drawable) (arg1 int) (arg2 vector) (arg3 float))
+(defmethod new joint-mod-spinner ((allocation symbol) (type-to-make type) (proc process-drawable) (bone-idx int) (axis vector) (rate float))
   (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-    (set! (-> v0-0 spin-axis quad) (-> arg2 quad))
-    (set! (-> v0-0 spin-rate) arg3)
+    (set! (-> v0-0 spin-axis quad) (-> axis quad))
+    (set! (-> v0-0 spin-rate) rate)
     (set! (-> v0-0 enable) #t)
     (set! (-> v0-0 angle) 0.0)
-    (let ((a0-3 (-> arg0 node-list data arg1)))
+    (let ((a0-3 (-> proc node-list data bone-idx)))
       (set! (-> a0-3 param0) joint-mod-spinner-callback)
       (set! (-> a0-3 param1) v0-0)
       )
@@ -586,6 +603,7 @@
 
 ;; definition of type joint-mod-blend-world
 (deftype joint-mod-blend-world (basic)
+  "Blend the _bone_ transform between this one and the animated one."
   ((transform        transformq  :inline)
    (blend-transform  transformq  :inline)
    (blend-flags      joint-mod-blend-flags)
@@ -618,6 +636,7 @@
 ;; definition for function joint-mod-blend-world-callback
 ;; WARN: Return type mismatch object vs none.
 (defun joint-mod-blend-world-callback ((arg0 cspace) (arg1 transformq))
+  "Callback for joint-mod-blend-local. See comment on that type."
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
          (vf5 :class vf)
@@ -737,6 +756,7 @@
 
 ;; definition for function joint-mod-rotate-local-callback
 (defun joint-mod-rotate-local-callback ((arg0 cspace) (arg1 transformq))
+  "Apply an additional rotation to the transform (left side quaternion multiplication"
   (let ((v1-0 (the-as joint-mod-rotate-local (-> arg0 param1))))
     (new 'stack-no-clear 'vector)
     (if (-> v1-0 enable)

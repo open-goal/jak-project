@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_AUDIO_DRIVER_HAIKU
+#ifdef SDL_AUDIO_DRIVER_HAIKU
 
 /* Allow access to the audio stream on Haiku */
 
@@ -42,8 +42,7 @@ extern "C"
 
 /* !!! FIXME: have the callback call the higher level to avoid code dupe. */
 /* The Haiku callback for handling the audio buffer */
-static void
-FillSound(void *device, void *stream, size_t len,
+static void FillSound(void *device, void *stream, size_t len,
           const media_raw_audio_format & format)
 {
     SDL_AudioDevice *audio = (SDL_AudioDevice *) device;
@@ -60,7 +59,7 @@ FillSound(void *device, void *stream, size_t len,
     } else {
         SDL_assert(audio->spec.size == len);
 
-        if (audio->stream == NULL) {  /* no conversion necessary. */
+        if (!audio->stream) {  /* no conversion necessary. */
             callback(audio->callbackspec.userdata, (Uint8 *) stream, len);
         } else {  /* streaming/converting */
             const int stream_len = audio->callbackspec.size;
@@ -85,8 +84,7 @@ FillSound(void *device, void *stream, size_t len,
     SDL_UnlockMutex(audio->mixer_lock);
 }
 
-static void
-HAIKUAUDIO_CloseDevice(_THIS)
+static void HAIKUAUDIO_CloseDevice(_THIS)
 {
     if (_this->hidden->audio_obj) {
         _this->hidden->audio_obj->Stop();
@@ -100,8 +98,7 @@ static const int sig_list[] = {
     SIGHUP, SIGINT, SIGQUIT, SIGPIPE, SIGALRM, SIGTERM, SIGWINCH, 0
 };
 
-static inline void
-MaskSignals(sigset_t * omask)
+static inline void MaskSignals(sigset_t * omask)
 {
     sigset_t mask;
     int i;
@@ -113,15 +110,13 @@ MaskSignals(sigset_t * omask)
     sigprocmask(SIG_BLOCK, &mask, omask);
 }
 
-static inline void
-UnmaskSignals(sigset_t * omask)
+static inline void UnmaskSignals(sigset_t * omask)
 {
     sigprocmask(SIG_SETMASK, omask, NULL);
 }
 
 
-static int
-HAIKUAUDIO_OpenDevice(_THIS, const char *devname)
+static int HAIKUAUDIO_OpenDevice(_THIS, const char *devname)
 {
     media_raw_audio_format format;
     SDL_AudioFormat test_format;
@@ -208,14 +203,12 @@ HAIKUAUDIO_OpenDevice(_THIS, const char *devname)
     return 0;
 }
 
-static void
-HAIKUAUDIO_Deinitialize(void)
+static void HAIKUAUDIO_Deinitialize(void)
 {
     SDL_QuitBeApp();
 }
 
-static SDL_bool
-HAIKUAUDIO_Init(SDL_AudioDriverImpl * impl)
+static SDL_bool HAIKUAUDIO_Init(SDL_AudioDriverImpl * impl)
 {
     /* Initialize the Be Application, if it's not already started */
     if (SDL_InitBeApp() < 0) {

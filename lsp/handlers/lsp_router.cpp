@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 
 #include "lsp/handlers/initialize.h"
+#include "lsp/handlers/text_document/type_hierarchy.h"
 #include "lsp/protocol/error_codes.h"
 #include "text_document/completion.h"
 #include "text_document/document_color.h"
@@ -12,7 +13,15 @@
 #include "text_document/go_to.h"
 #include "text_document/hover.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
+
+json error_resp(ErrorCodes error_code, const std::string& error_message) {
+  json error{
+      {"code", static_cast<int>(error_code)},
+      {"message", error_message},
+  };
+  return json{{"error", error}};
+}
 
 LSPRoute::LSPRoute() : m_route_type(LSPRouteType::NOOP) {}
 
@@ -29,39 +38,41 @@ LSPRoute::LSPRoute(std::function<std::optional<json>(Workspace&, int, json)> req
     : m_route_type(LSPRouteType::REQUEST_RESPONSE), m_request_handler(request_handler) {}
 
 void LSPRouter::init_routes() {
+  m_routes["exit"] = LSPRoute([](Workspace& /*workspace*/, nlohmann::json /*params*/) {
+    lg::info("Shutting down LSP due to explicit request");
+    exit(0);
+  });
   m_routes["shutdown"] = LSPRoute(
       [](Workspace& /*workspace*/, int /*id*/, nlohmann::json /*params*/) -> std::optional<json> {
-        lg::info("Shutting down LSP due to explicit request");
-        exit(0);
+        lg::info("Received shutdown request");
+        return error_resp(ErrorCodes::UnknownErrorCode, "Problem occurred while existing");
       });
-  m_routes["initialize"] = LSPRoute(initialize_handler);
+  m_routes["initialize"] = LSPRoute(lsp_handlers::initialize);
   m_routes["initialize"].m_generic_post_action = [](Workspace& workspace) {
     workspace.set_initialized(true);
   };
   m_routes["initialized"] = LSPRoute();
-  m_routes["textDocument/documentSymbol"] = LSPRoute(document_symbols_handler);
-  m_routes["textDocument/didOpen"] = LSPRoute(did_open_handler, did_open_push_diagnostics);
-  m_routes["textDocument/didChange"] = LSPRoute(did_change_handler, did_change_push_diagnostics);
-  m_routes["textDocument/didClose"] = LSPRoute(did_close_handler);
-  m_routes["textDocument/hover"] = LSPRoute(hover_handler);
-  m_routes["textDocument/definition"] = LSPRoute(go_to_definition_handler);
-  m_routes["textDocument/completion"] = LSPRoute(get_completions_handler);
-  m_routes["textDocument/documentColor"] = LSPRoute(document_color_handler);
-  m_routes["textDocument/formatting"] = LSPRoute(formatting_handler);
+  m_routes["textDocument/documentSymbol"] = LSPRoute(lsp_handlers::document_symbols);
+  m_routes["textDocument/didOpen"] =
+      LSPRoute(lsp_handlers::did_open, lsp_handlers::did_open_push_diagnostics);
+  m_routes["textDocument/didChange"] =
+      LSPRoute(lsp_handlers::did_change, lsp_handlers::did_change_push_diagnostics);
+  m_routes["textDocument/didClose"] = LSPRoute(lsp_handlers::did_close);
+  m_routes["textDocument/willSave"] = LSPRoute(lsp_handlers::will_save);
+  m_routes["textDocument/hover"] = LSPRoute(lsp_handlers::hover);
+  m_routes["textDocument/definition"] = LSPRoute(lsp_handlers::go_to_definition);
+  m_routes["textDocument/completion"] = LSPRoute(lsp_handlers::get_completions);
+  m_routes["textDocument/documentColor"] = LSPRoute(lsp_handlers::document_color);
+  m_routes["textDocument/formatting"] = LSPRoute(lsp_handlers::formatting);
+  m_routes["textDocument/prepareTypeHierarchy"] = LSPRoute(lsp_handlers::prepare_type_hierarchy);
+  m_routes["typeHierarchy/supertypes"] = LSPRoute(lsp_handlers::supertypes_type_hierarchy);
+  m_routes["typeHierarchy/subtypes"] = LSPRoute(lsp_handlers::subtypes_type_hierarchy);
   // TODO - m_routes["textDocument/signatureHelp"] = LSPRoute(get_completions_handler);
-  // Not Yet Supported Routes, noops
+  // Not Supported Routes, noops
   m_routes["$/cancelRequest"] = LSPRoute();
   m_routes["textDocument/documentLink"] = LSPRoute();
   m_routes["textDocument/codeLens"] = LSPRoute();
   m_routes["textDocument/colorPresentation"] = LSPRoute();
-}
-
-json error_resp(ErrorCodes error_code, const std::string& error_message) {
-  json error{
-      {"code", static_cast<int>(error_code)},
-      {"message", error_message},
-  };
-  return json{{"error", error}};
 }
 
 std::string LSPRouter::make_response(const json& result) {

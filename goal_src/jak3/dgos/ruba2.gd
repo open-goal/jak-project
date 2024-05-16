@@ -1,0 +1,9 @@
+("RUBA2.DGO"
+ ("tpage-2508.go"
+  "tpage-2509.go"
+  "tpage-2510.go"
+  "rub-tower-ag.go"
+  "rub-electric-gate-panel-b-ag.go"
+  "rub-electric-gate-panel-a-ag.go"
+  "rubblea2-vis.go"
+ ))

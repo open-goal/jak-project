@@ -5,5 +5,167 @@
 ;; name in dgo: particle-curves
 ;; dgos: GAME
 
+;; +++particle-curve-flags
+(defenum particle-curve-flags
+  :type uint64
+  :bitfield #t
+  (pcf0 0)
+  (pcf1 1)
+  (pcf2 2)
+  )
+;; ---particle-curve-flags
+
+(define-extern *alpha-fast* curve2d-fast)
+(define-extern *unity-fast* curve2d-fast)
+(define-extern *ccro* curve-color-fast)
+(define-extern *scale-curve* curve2d-fast)
+(define-extern *scale-range* curve2d-fast)
+
 ;; DECOMP BEGINS
 
+(deftype particle-curve-settings (structure)
+  ((color-start      basic)
+   (alpha-start      basic)
+   (scale-x-start    basic)
+   (scale-y-start    basic)
+   (r-scalar         basic)
+   (g-scalar         basic)
+   (b-scalar         basic)
+   (a-scalar         basic)
+   (scale-x-scalar   basic)
+   (scale-y-scalar   basic)
+   (lifetime-base    time-frame)
+   (lifetime-offset  time-frame)
+   (flags            particle-curve-flags)
+   )
+  )
+
+
+(def-mips2c birth-func-curve (function int sparticle-cpuinfo sparticle-launchinfo none))
+
+(def-mips2c live-func-curve (function sparticle-system sparticle-cpuinfo vector none))
+
+(defpart 69
+  :init-specs ((:texture (middot level-default-sprite))
+    (:birth-func 'birth-func-curve)
+    (:num 1.0)
+    (:scale-x (meters 1))
+    (:scale-y :copy scale-x)
+    (:r 128.0)
+    (:g 128.0)
+    (:b 128.0)
+    (:a 128.0)
+    (:vel-y (meters 0.01))
+    (:timer (seconds 16.667))
+    (:flags ())
+    (:userdata 0.0)
+    (:func 'live-func-curve)
+    (:conerot-x (degrees -30) (degrees 60))
+    (:conerot-z (degrees -30) (degrees 60))
+    (:rotate-y (degrees 0) (degrees 3600))
+    )
+  )
+
+(if #t
+    (set! *alpha-fast* (new 'static 'curve2d-fast
+                         :xs (new 'static 'vector :y -0.25 :z -0.5 :w -1.0)
+                         :ys (new 'static 'vector :x 1.0 :y 0.75 :z 0.5)
+                         :one-over-x-deltas (new 'static 'vector :x -1.0 :y -1.0 :z -1.0 :w 1.0)
+                         )
+          )
+    )
+
+(if #t
+    (set! *unity-fast* (new 'static 'curve2d-fast
+                         :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                         :ys (new 'static 'vector :x 1.0 :y 1.0 :z 2.0 :w 3.0)
+                         :one-over-x-deltas (new 'static 'vector :y 1.0 :z 1.0 :w 1.0)
+                         )
+          )
+    )
+
+(if #t
+    (set! *ccro* (new 'static 'curve-color-fast
+                   :xs (new 'static 'vector :y -0.4 :z -0.7 :w -1.0)
+                   :ys (new 'static 'inline-array vector 4
+                     (new 'static 'vector :x 128.0 :w 128.0)
+                     (new 'static 'vector :x 128.0 :y 128.0 :w 128.0)
+                     (new 'static 'vector :x 128.0 :y 128.0 :z 128.0 :w 128.0)
+                     (new 'static 'vector :y 128.0 :w 128.0)
+                     )
+                   :one-over-x-deltas (new 'static 'vector :x 2.5 :y 3.3333335 :z 3.3333333 :w 1.0)
+                   )
+          )
+    )
+
+(if #t
+    (set! *scale-curve* (new 'static 'curve2d-fast
+                          :xs (new 'static 'vector :y -0.3 :z -0.7 :w -1.0)
+                          :ys (new 'static 'vector :x 1.0 :y 0.1 :z 0.1 :w 6.0)
+                          :one-over-x-deltas (new 'static 'vector :x -2.9999998 :z 19.666666 :w 1.0)
+                          )
+          )
+    )
+
+(if #t
+    (set! *scale-range* (new 'static 'curve2d-fast
+                          :xs (new 'static 'vector :y -1.0 :z -2.0 :w -3.0)
+                          :ys (new 'static 'vector :x 0.3 :y 0.4 :z 1.4 :w 2.4)
+                          :one-over-x-deltas (new 'static 'vector :x 0.099999994 :y 1.0 :z 1.0000001 :w 1.0)
+                          )
+          )
+    )
+
+(define *part-function-curve-test-curve-settings* (new 'static 'particle-curve-settings
+                                                    :lifetime-base (seconds 1.5)
+                                                    :lifetime-offset (seconds 1)
+                                                    :flags (particle-curve-flags pcf0)
+                                                    )
+        )
+
+(set! (-> *part-id-table* 69 init-specs 12 initial-valuef)
+      (the-as float *part-function-curve-test-curve-settings*)
+      )
+
+(set! (-> *part-function-curve-test-curve-settings* color-start) *ccro*)
+
+(set! (-> *part-function-curve-test-curve-settings* alpha-start) *unity-fast*)
+
+(set! (-> *part-function-curve-test-curve-settings* scale-x-start) *scale-range*)
+
+(set! (-> *part-function-curve-test-curve-settings* scale-y-start) #f)
+
+(set! (-> *part-function-curve-test-curve-settings* r-scalar) #f)
+
+(set! (-> *part-function-curve-test-curve-settings* g-scalar) #f)
+
+(set! (-> *part-function-curve-test-curve-settings* b-scalar) #f)
+
+(set! (-> *part-function-curve-test-curve-settings* a-scalar) *alpha-fast*)
+
+(set! (-> *part-function-curve-test-curve-settings* scale-x-scalar) *scale-curve*)
+
+(set! (-> *part-function-curve-test-curve-settings* scale-y-scalar) #f)
+
+;; WARN: Return type mismatch symbol vs none.
+(defun ptest ()
+  (dotimes (gp-0 1000)
+    (let ((t9-0 sp-launch-particles-var)
+          (a0-0 *sp-particle-system-2d*)
+          (a1-0 (-> *part-id-table* 69))
+          (a2-0 *launch-matrix*)
+          )
+      (let ((v1-1 (-> a2-0 trans))
+            (a3-0 (new 'stack-no-clear 'vector))
+            )
+        (set! (-> a3-0 x) 0.0)
+        (set! (-> a3-0 y) 40960.0)
+        (set! (-> a3-0 z) 0.0)
+        (set! (-> a3-0 w) 1.0)
+        (set! (-> v1-1 quad) (-> a3-0 quad))
+        )
+      (t9-0 a0-0 a1-0 a2-0 (the-as sparticle-launch-state #f) (the-as sparticle-launch-control #f) 1.0)
+      )
+    )
+  (none)
+  )

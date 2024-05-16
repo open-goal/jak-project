@@ -9,7 +9,7 @@
 #include "common/util/FileUtil.h"
 #include "common/common_types.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 #ifdef OS_POSIX
@@ -42,8 +42,17 @@ void GlobalProfiler::set_max_events(size_t event_count) {
   m_nodes.resize(event_count);
 }
 
+void GlobalProfiler::set_waiting_for_event(const std::string& event_name) {
+  if (!event_name.empty()) {
+    m_waiting_for_event = event_name;
+  }
+}
+
 void GlobalProfiler::event(const char* name, ProfNode::Kind kind) {
-  if (!m_enabled) {
+  if (m_waiting_for_event && m_waiting_for_event.value() == name) {
+    m_ignore_events = true;
+  }
+  if (!m_enabled || m_ignore_events) {
     return;
   }
   size_t my_idx = (m_next_idx++ % m_nodes.size());
@@ -68,7 +77,7 @@ void GlobalProfiler::begin_event(const char* name) {
 }
 
 void GlobalProfiler::end_event() {
-  if (!m_enabled) {
+  if (!m_enabled || m_ignore_events) {
     return;
   }
   size_t my_idx = (m_next_idx++ % m_nodes.size());
@@ -166,7 +175,7 @@ void GlobalProfiler::dump_to_json(const std::string& path) {
       lg::debug("out of order: {} {} {} ms", event.ts / 1000.f, info.debug / 1000.f,
                 (info.debug - event.ts) / 1000000.f);
       lg::debug("  idx: {}, range {} {}", event_idx, info.lowest_at_target, info.highest_at_target);
-      lg::debug("  now: {}", m_next_idx);
+      lg::debug("  now: {}", m_next_idx.load());
     }
     info.debug = event.ts;
   }

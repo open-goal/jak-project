@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -25,15 +25,15 @@
 #include "../../SDL_internal.h"
 
 extern int SDL_SW_FillTriangle(SDL_Surface *dst,
-        SDL_Point *d0, SDL_Point *d1, SDL_Point *d2,
-        SDL_BlendMode blend, SDL_Color c0, SDL_Color c1, SDL_Color c2);
+                               SDL_Point *d0, SDL_Point *d1, SDL_Point *d2,
+                               SDL_BlendMode blend, SDL_Color c0, SDL_Color c1, SDL_Color c2);
 
 extern int SDL_SW_BlitTriangle(
-        SDL_Surface *src,
-        SDL_Point *s0, SDL_Point *s1, SDL_Point *s2,
-        SDL_Surface *dst,
-        SDL_Point *d0, SDL_Point *d1, SDL_Point *d2,
-        SDL_Color c0, SDL_Color c1, SDL_Color c2);
+    SDL_Surface *src,
+    SDL_Point *s0, SDL_Point *s1, SDL_Point *s2,
+    SDL_Surface *dst,
+    SDL_Point *d0, SDL_Point *d1, SDL_Point *d2,
+    SDL_Color c0, SDL_Color c1, SDL_Color c2);
 
 extern void trianglepoint_2_fixedpoint(SDL_Point *a);
 

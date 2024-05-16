@@ -7,7 +7,7 @@
 #include "common/goos/Reader.h"
 #include "common/log/log.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 ///////////////////
 // Env
@@ -116,6 +116,10 @@ std::vector<std::string> GlobalEnv::list_files_with_prefix(const std::string& pr
     }
   }
   return matches;
+}
+
+std::vector<std::unique_ptr<FileEnv>>& GlobalEnv::get_files() {
+  return m_files;
 }
 
 ///////////////////

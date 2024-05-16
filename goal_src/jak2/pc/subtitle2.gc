@@ -57,7 +57,7 @@
   ;; invalid name so return invalid scene.
   (if (not name)
       (return (the subtitle2-scene #f)))
-  
+
   ;; bounds checking
   (when (> (length name) (-> *vag-temp-string* allocated-length))
       (format 0 "vag temp string is too short!! wanted: ~D chars~%" (length name)))
@@ -80,7 +80,7 @@
 (defmethod get-line-at-pos ((obj subtitle2-scene) (pos float) (index int))
   "return the subtitle line at that position. #f = none found
    index is which line to return, since you can have multiple lines that cover the same position."
-   
+
   (let ((found 0))
 
       (dotimes (i (length obj))
@@ -90,7 +90,7 @@
             (return (-> obj lines i)))
           (1+! found)
           )))
-  
+
   (the subtitle2-line #f))
 
 
@@ -365,7 +365,7 @@
   (set-origin! font (the int (/ (- 512.0 (-> font width)) 2))
                     (the int (* (if (-> self have-message?) 0.524 0.698) 416)))
   (set-height! font (the int (* (-> *SUBTITLE2-bank* lines) 44)))
-  
+
   ;; if we have the minimap, set the right border to 74.4% of screen width. shrink if larger than that.
   ;; TODO scale this with aspect.
   (when (and (-> self have-minimap?)
@@ -378,7 +378,7 @@
 
 (defmethod draw-subtitles ((self subtitle2))
   "do the subtitle drawing"
-  
+
   ;; check the gui queue for lines to add to the line queue
   (let ((line-queue-old (if (zero? (-> self line-queue-idx)) (-> self lines 0) (-> self lines 1)))
         (line-queue     (if (zero? (-> self line-queue-idx)) (-> self lines 1) (-> self lines 0)))
@@ -488,20 +488,20 @@
       (1+! lines-done)
       )
     )
-  
+
   (set! (-> self have-subtitles?) subtitles-drawn?)
   (when (not (-> self have-subtitles?))
     (set-action! *gui-control* (gui-action hidden) (-> self gui-id)
                 (gui-channel none) (gui-action none) (the-as string #f) (the-as (function gui-connection symbol) #f) (the-as process #f)))
 
   (set! (-> self font origin y) start-y)))
-  
+
   0)
 
 (when *debug-segment*
 (defmethod debug-print-queue ((self subtitle2))
   "print the queue to *stdcon0*"
-  
+
   (format *stdcon0* "q: ~%")
   (dotimes (i PC_SUBTITLE_QUEUE_SIZE)
     (if (-> self queue i gui)
@@ -520,7 +520,7 @@
 
 (defmethod debug-print-speakers ((self subtitle2))
   "print all speakers onscreen"
-  
+
   (if (not *subtitle2-text*)
       (return 0))
 
@@ -640,14 +640,14 @@
   :post (behavior ()
 
     (draw-subtitles self)
-    
+
     (when *debug-segment*
       (if *display-subtitle-speakers*
           (debug-print-speakers self))
       (if PC_SUBTITLE_DEBUG
           (debug-print-queue self))
       )
-    
+
     (when (-> self movie-mode?)
       (set! (-> self movie-gui) #f)
       (set! (-> self movie-mode?) #f)

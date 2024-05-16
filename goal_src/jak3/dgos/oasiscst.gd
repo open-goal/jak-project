@@ -1,0 +1,11 @@
+("OASISCST.DGO"
+ ("tpage-1600.go"
+  "tpage-1601.go"
+  "daxter-highres-ag.go"
+  "jakc-highres-ag.go"
+  "ashelin-highres-ag.go"
+  "interceptor-wheel-fma-ag.go"
+  "kidmedallion-ag.go"
+  "particleman-ag.go"
+  "oasiscst.go"
+ ))

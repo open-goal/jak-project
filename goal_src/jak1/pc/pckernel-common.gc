@@ -1,6 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(require "engine/gfx/sprite/sparticle/sparticle-launcher.gc")
+
+
 #|
 
   This file contains new code that we need for the PC port of the game specifically.
@@ -254,11 +257,6 @@
     )
   )
 
-(defun bcd->dec ((bcd uint))
-  "Convert a number encoded in BCD to its decimal equivalent"
-    (+ (* (shr (logand bcd #xf0) 4) 10) (logand bcd #x0f))
-  )
-
 (defun real-movie? ()
   "are we in an actual cutscene and should letterbox the view?"
   (and (nonzero? movie?) (movie?)))
@@ -375,12 +373,6 @@
   (pc-ignore-background-controller-events! val)
   (none))
 
-(defmethod set-enable-keyboard! pc-settings ((obj pc-settings) (val symbol))
-  "sets whether to ignore keyboard input events"
-  (set! (-> obj keyboard-enabled?) val)
-  (pc-set-keyboard-enabled! val)
-  (none))
-
 (defmethod update-mouse-controls! pc-settings ((obj pc-settings))
   "Uses whatever is set on the [[pc-settings]] to update the runtime on how it should interpret mouse events"
   (pc-set-mouse-options! (-> obj mouse-enabled?) (-> obj mouse-camera?) (-> obj mouse-movement?))
@@ -393,7 +385,7 @@
   "return the debug font scale factor to be used."
   (declare (inline))
   (if (-> this debug-font-scale-auto?)
-      (/ (-> this debug-font-scale) (max 1.0 (/ (the float (get-current-game-height this)) PC_BASE_HEIGHT)))
+      (/ (-> this debug-font-scale) (fmax 1.0 (/ (the float (get-current-game-height this)) PC_BASE_HEIGHT)))
       (-> this debug-font-scale)))
 
 
@@ -587,8 +579,8 @@
             ;; remember to delete this when major changes to the version number are made
             (when (and (= PC_KERNEL_VER_MAJOR 1)
                        (= PC_KERNEL_VER_MINOR 10)
-                       (or (!= PC_KERNEL_VER_BUILD (-> version build))
-                           (!= PC_KERNEL_VER_REVISION (-> version revision))))
+                       (or (> 3 (-> version build))
+                           (and (= 3 (-> version build)) (> 1 (-> version revision)))))
                 ;; 1.10 upgrade: turn envmap on
                 (set! (-> obj force-envmap?) #t)
                 )
@@ -668,7 +660,9 @@
     (("controller-eco-led?") (set! (-> obj controller-led-eco?) (file-stream-read-symbol file)))
     (("controller-heat-led?") (set! (-> obj controller-led-heat?) (file-stream-read-symbol file)))
     (("stick-deadzone") (set! (-> obj stick-deadzone) (file-stream-read-float file)))
-    (("keyboard-enabled?") (set-enable-keyboard! obj (file-stream-read-symbol file)))
+    ;; TODO - remove this eventually, setting moved into json input-settings
+    ;; has to stay here or the settings parsing code explodes
+    (("keyboard-enabled?") (file-stream-read-symbol file))
     (("mouse-enabled?") (set! (-> obj mouse-enabled?) (file-stream-read-symbol file)))
     (("mouse-camera?") (set! (-> obj mouse-camera?) (file-stream-read-symbol file)))
     (("mouse-xsens") (set! (-> obj mouse-xsens) (file-stream-read-float file)))
@@ -707,7 +701,6 @@
     (("panic")
       (when (file-stream-read-symbol file)
         (reset obj #t)
-        (set-display-mode! obj #f #t)
         (return #f)
         )
       )
@@ -755,7 +748,6 @@
   (format file "  (controller-led-min-brightness ~f)~%" (-> obj controller-led-min-brightness))
   (format file "  (controller-led-max-brightness ~f)~%" (-> obj controller-led-max-brightness))
   (format file "  (stick-deadzone ~f)~%" (-> obj stick-deadzone))
-  (format file "  (keyboard-enabled? ~A)~%" (-> obj keyboard-enabled?))
   (format file "  (mouse-enabled? ~A)~%" (-> obj mouse-enabled?))
   (format file "  (mouse-camera? ~A)~%" (-> obj mouse-camera?))
   (format file "  (mouse-xsens ~f)~%" (-> obj mouse-xsens))
@@ -813,13 +805,19 @@
 (defmethod load-settings pc-settings ((obj pc-settings))
   "load"
   (format (clear *pc-temp-string-1*) "~S/pc-settings.gc" *pc-settings-folder*)
-  (if (pc-filepath-exists? *pc-temp-string-1*)
-    (begin
+  (cond
+    ((pc-filepath-exists? *pc-temp-string-1*)
       (format 0 "[PC] PC Settings found at '~S'...loading!~%" *pc-temp-string-1*)
       (unless (read-from-file obj *pc-temp-string-1*)
         (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
-        (reset obj #t)))
-    (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*))
+        (reset obj #t)
+        )
+      )
+    (else
+      (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
+      (reset obj #t)
+      )
+    )
   0)
 
 (defmethod initialize pc-settings ((obj pc-settings))
@@ -829,6 +827,7 @@
   ;; if saved settings are corrupted or not found, the object will be fully reset to use all defaults
   (load-settings obj)
   ;; any post-operations that need to be done after loading
+  (set! (-> obj keyboard-enabled?) (pc-get-keyboard-enabled?))
   (update-mouse-controls! obj)
   obj)
 
@@ -844,35 +843,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (when *debug-segment*
-
-(deftype entity-debug-inspect (basic)
-  (
-   (scroll-y int16)
-   (scroll-y-max int16)
-   (entity entity)
-   (show-actor-info symbol)
-   (show-long-info symbol)
-   )
-  (:methods
-    (new (symbol type) _type_)
-    (set-entity! (_type_ entity) entity)
-    (update-pad (_type_ int) none)
-    )
-  )
-
-(defmethod new entity-debug-inspect ((allocation symbol) (type-to-make type))
-  "make a new entity-debug-inspect object"
-
-  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
-
-    (set! (-> obj scroll-y) 0)
-    (set! (-> obj scroll-y-max) 0)
-    (set! (-> obj entity) (the entity #f))
-    (set! (-> obj show-actor-info) #f)
-    (set! (-> obj show-long-info) #f)
-    obj
-    )
-  )
 
 (defmethod update-pad entity-debug-inspect ((obj entity-debug-inspect) (pad-idx int))
   "respond to pad inputs"
@@ -893,9 +863,6 @@
   (minmax! (-> obj scroll-y) 0 (-> obj scroll-y-max))
 
   (none))
-
-
-(define *entity-debug-inspect* (new 'debug 'entity-debug-inspect))
 
 ) ;; when debug_segment
 

@@ -74,24 +74,26 @@ tasks:
         msg: "Couldn't locate compiler executable in '{{.GOALC_BIN_RELEASE_DIR}}/goalc'"
     cmds:
       - "{{.GOALC_BIN_RELEASE_DIR}}/goalc --user-auto --game {{.GAME}}"
-  format:
-    desc: "Format code"
-    cmds:
-      - cmd: python ./scripts/cpp/format-includes.py
-      - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
-      # npm install -g prettier
-      - cmd: npx prettier --write ./decompiler/config/jak1/**/*.jsonc
-        ignore_error: true
-      - cmd: npx prettier --write ./decompiler/config/jak2/**/*.jsonc
-        ignore_error: true
   format-json:
     desc: "Format code"
     cmds:
       # npm install -g prettier
-      - cmd: npx prettier --write ./decompiler/config/jak1/**/*.jsonc
+      - cmd: npx prettier --write ./decompiler/config/jak*/**/*.jsonc
         ignore_error: true
-      - cmd: npx prettier --write ./decompiler/config/jak2/**/*.jsonc
-        ignore_error: true
+  format:
+    desc: "Format code"
+    cmds:
+      - cmd: python ./scripts/cpp/format-includes.py
+      - cmd: python ./scripts/ci/lint-trailing-whitespace.py --fix
+      - cmd: python ./third-party/run-clang-format/run-clang-format.py -r common decompiler game goalc test tools lsp -i
+      - task: format-json
+  format-gsrc:
+    desc: "Run formatter on gsrc file"
+    preconditions:
+      - sh: test -f {{.FORMATTER_BIN_RELEASE_DIR}}/formatter{{.EXE_FILE_EXTENSION}}
+        msg: "Couldn't locate formatter executable in '{{.FORMATTER_BIN_RELEASE_DIR}}/formatter'"
+    cmds:
+      - "{{.FORMATTER_BIN_RELEASE_DIR}}/formatter --write --file '{{.FILE}}'"
   # DECOMPILING
   decomp:
     cmds:
@@ -104,7 +106,7 @@ tasks:
       - python ./scripts/tasks/clean-decomp.py --game "{{.GAME}}"
   lint-gsrc-file:
     cmds:
-      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file {{.FILE}}
+      - python ./scripts/gsrc/lint-gsrc-file.py --game {{.GAME}} --file "{{.FILE}}"
   update-gsrc:
     cmds:
       - python ./scripts/gsrc/update-gsrc-via-refs.py --game "{{.GAME}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler" --decompiler_config {{.DECOMP_CONFIG}} --version {{.DECOMP_CONFIG_VERSION}}
@@ -114,8 +116,26 @@ tasks:
   update-gsrc-file:
     cmds:
       - task: decomp-file
-      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file {{.FILE}}
+      - python ./scripts/gsrc/update-from-decomp.py --game "{{.GAME}}" --file "{{.FILE}}"
       - task: lint-gsrc-file
+  copy-common-naming:
+    cmds:
+      - python ./scripts/gsrc/copy-common-naming.py --file "{{.FILE}}" --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"
+      - task: format-json
+  copy-common-naming-from-refs:
+    cmds:
+      - python ./scripts/gsrc/copy-common-naming.py --update-names-from-refs --decompiler "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler"
+      - task: format-json
+  # ASSET RIPPING
+  rip-textures:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"save_texture_pngs\": true}'"
+  rip-levels:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"rip_levels\": true}'"
+  rip-collision:
+    cmds:
+      - "{{.DECOMP_BIN_RELEASE_DIR}}/decompiler \"./decompiler/config/{{.DECOMP_CONFIG}}\" \"./iso_data\" \"./decompiler_out\" --version \"{{.DECOMP_CONFIG_VERSION}}\" --config-override '{\"decompile_code\": false, \"levels_extract\": true, \"extract_collision\": true, \"rip_collision\": true}'"
   # TOOLS
   analyze-ee-memory:
     cmds:
@@ -141,6 +161,9 @@ tasks:
     desc: Finds and tries to fix invalid translation Characters
     cmds:
       - python ./scripts/ci/lint-characters.py --fix
+  lint:
+    cmds:
+      - python ./scripts/ci/lint-trailing-whitespace.py
   # TESTS
   offline-tests: # ran by jenkins
     cmds:
@@ -166,9 +189,6 @@ tasks:
         ignore_error: true
       - python ./scripts/update_decomp_reference.py ./failures ./test/decompiler/reference/ --game {{.GAME}}
       - task: offline-test-file
-  type-test-jak1:
-    cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak1TypeConsistency*" --gtest_break_on_failure'
   type-test:
     cmds:
-      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*Jak2TypeConsistency*" --gtest_break_on_failure'
+      - cmd: '{{.GOALCTEST_BIN_RELEASE_DIR}}/goalc-test --gtest_brief=0 --gtest_filter="*{{.TYPE_CONSISTENCY_TEST_FILTER}}*" --gtest_break_on_failure'

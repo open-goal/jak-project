@@ -3,6 +3,7 @@
 
 ;; definition of type profile-work
 (deftype profile-work (structure)
+  "DMA templates for profile drawing."
   ((sprite-tmpl  dma-gif-packet  :inline)
    (line-tmpl    dma-gif-packet  :inline)
    (last-index   int32)
@@ -75,6 +76,7 @@
 ;; definition for method 10 of type profile-segment-array
 ;; WARN: Return type mismatch int vs none.
 (defmethod start-frame! ((this profile-segment-array))
+  "Restart the profiler for the start of a frame."
   (set! (-> this count) 0)
   (set! (-> this depth) 0)
   (set! (-> this max-depth) 0)
@@ -87,6 +89,7 @@
 ;; definition for method 11 of type profile-segment-array
 ;; WARN: Return type mismatch int vs none.
 (defmethod start-segment! ((this profile-segment-array) (arg0 symbol) (arg1 rgba))
+  "Start an event."
   (when (and *dproc* *debug-segment*)
     (let ((s4-0 (-> this data (-> this count))))
       (let ((s3-0 (-> this base-time)))
@@ -108,6 +111,7 @@
 ;; definition for method 12 of type profile-segment-array
 ;; WARN: Return type mismatch int vs none.
 (defmethod end-segment! ((this profile-segment-array))
+  "Stop the most recently started event."
   (when (and *dproc* *debug-segment*)
     (let* ((v1-4 (+ (-> this depth) -1))
            (s5-0 (-> this segment v1-4))
@@ -399,7 +403,8 @@
 
 ;; definition for method 9 of type profile-array
 ;; WARN: Return type mismatch int vs none.
-(defmethod setup-categories! ((this profile-array))
+(defmethod postprocess-data! ((this profile-array))
+  "Create the collapsed summary of the collected data."
   (dotimes (s5-0 2)
     (let ((s3-0 (-> *profile-array* data s5-0))
           (s4-0 *profile-collapse*)
@@ -559,6 +564,7 @@
 ;; INFO: Used lq/sq
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw-bars! ((this profile-array) (arg0 dma-buffer) (arg1 int))
+  "Generate DMA data for drawing the profile bars."
   (local-vars (sv-16 (function _varargs_ object)) (sv-32 (function _varargs_ object)))
   (dma-buffer-add-gs-set arg0
                          (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
@@ -737,6 +743,7 @@
 ;; definition for method 11 of type profile-array
 ;; WARN: Return type mismatch int vs none.
 (defmethod draw-text! ((this profile-array))
+  "Generate DMA data for drawing the profile information screen."
   (let ((gp-0 *profile-collapse*))
     (dotimes (s5-0 (-> gp-0 count))
       (when (or (nonzero? (-> gp-0 data s5-0 count)) (nonzero? (-> gp-0 data s5-0 vu-count)))

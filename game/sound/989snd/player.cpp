@@ -1,4 +1,4 @@
-// Copyright: 2021 - 2022, Ziemas
+// Copyright: 2021 - 2024, Ziemas
 // SPDX-License-Identifier: ISC
 #include "player.h"
 
@@ -6,7 +6,7 @@
 
 #include "sfxblock.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
@@ -233,7 +233,7 @@ void Player::SetMasterVolume(u32 group, s32 volume) {
   }
 }
 
-BankHandle Player::LoadBank(nonstd::span<u8> bank) {
+BankHandle Player::LoadBank(std::span<u8> bank) {
   std::scoped_lock lock(mTickLock);
   return mLoader.BankLoad(bank);
 }

@@ -17,7 +17,7 @@
 #include "goalc/emitter/Register.h"
 #include "goalc/listener/Listener.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 
 /*!
  * Is the target halted? If we don't know or aren't connected, returns false.
@@ -165,7 +165,9 @@ std::string Debugger::get_info_about_addr(u32 addr) {
     if (map_loc.empty) {
       return "Unknown Address";
     }
-    std::string result = fmt::format("Object: {}\n", map_loc.obj_name);
+    std::string result = fmt::format("Object: {} {} (0x{:x} to 0x{:x}) offset 0x{:x}\n",
+                                     map_loc.obj_name, map_loc.seg_id, map_loc.start_addr,
+                                     map_loc.end_addr, addr - map_loc.start_addr);
     u64 obj_offset = addr - map_loc.start_addr;
     FunctionDebugInfo* info = nullptr;
     std::string name;
@@ -222,11 +224,6 @@ InstructionPointerInfo Debugger::get_rip_info(u64 rip) {
   return result;
 }
 
-void print_and_append_to_string(std::string& str, const std::string& log) {
-  str += log;
-  lg::print(log);
-}
-
 std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
                                                     u64 rsp,
                                                     std::optional<std::string> dump_path) {
@@ -236,14 +233,13 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
   lg::print("Backtrace:\n");
   std::vector<BacktraceFrame> bt;
 
-  if (rip == m_debug_context.base) {
+  bool null_pc = rip == m_debug_context.base;
+  if (null_pc) {
     // we jumped to NULL.
-    print_and_append_to_string(backtrace_contents,
-                               "Jumped to GOAL 0x0. Attempting to find previous function.\n");
+
     u64 next_rip = 0;
     if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base)) {
-      print_and_append_to_string(backtrace_contents,
-                                 "  failed to read return address off of the stack\n");
+      lg::print("Failed to read return address off of the stack!\n");
       return {};
     }
 
@@ -253,10 +249,9 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
 
   int fails = 0;
   while (true) {
-    print_and_append_to_string(
-        backtrace_contents,
-        fmt::format("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp,
-                    rsp - m_debug_context.base, rip, rip - m_debug_context.base));
+    std::string this_backtrace;
+    this_backtrace = fmt::format("   rsp: 0x{:x} (#x{:x}) rip: 0x{:x} (#x{:x})\n", rsp,
+                                 rsp - m_debug_context.base, rip, rip - m_debug_context.base);
     BacktraceFrame frame;
     frame.rip_info = get_rip_info(rip);
     frame.rsp_at_rip = rsp;
@@ -264,19 +259,18 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
     if (frame.rip_info.knows_function && frame.rip_info.func_debug &&
         frame.rip_info.func_debug->stack_usage) {
       fails = 0;
-      print_and_append_to_string(backtrace_contents,
-                                 "<====================== CALL STACK ======================>\n");
-      print_and_append_to_string(backtrace_contents,
-                                 fmt::format("{} from {}\n", frame.rip_info.function_name,
-                                             frame.rip_info.func_debug->obj_name));
+      this_backtrace += "<====================== CALL STACK ======================>\n";
+      this_backtrace += fmt::format("{} from {}\n", frame.rip_info.function_name,
+                                    frame.rip_info.func_debug->obj_name);
       // we're good!
       auto disasm = disassemble_at_rip(frame.rip_info);
-      print_and_append_to_string(backtrace_contents, fmt::format("{}\n", disasm.text));
+      this_backtrace += fmt::format("{}\n", disasm.text);
       u64 rsp_at_call = rsp + *frame.rip_info.func_debug->stack_usage;
 
       u64 next_rip = 0;
       if (!read_memory_if_safe<u64>(&next_rip, rsp_at_call - m_debug_context.base)) {
-        print_and_append_to_string(backtrace_contents, "Invalid return address encountered!\n");
+        this_backtrace += "Invalid return address encountered!\n";
+        backtrace_contents = this_backtrace + backtrace_contents;
         break;
       }
 
@@ -286,7 +280,7 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
     } else {
       if (!frame.rip_info.knows_function) {
         if (fails == 0) {
-          print_and_append_to_string(backtrace_contents, "Unknown Function at rip\n");
+          this_backtrace += "Unknown Function at rip\n";
         }
 
         /*
@@ -323,16 +317,17 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
           }
         } else*/
         if (fails > 70) {
-          print_and_append_to_string(
-              backtrace_contents,
+          this_backtrace +=
               "Backtrace was too long. Exception might have happened outside GOAL code, or the "
-              "stack frame is too long.\n");
+              "stack frame is too long.\n";
+          backtrace_contents = this_backtrace + backtrace_contents;
           break;
         }
         // attempt to backtrace anyway! if this fails then rip
         u64 next_rip = 0;
         if (!read_memory_if_safe<u64>(&next_rip, rsp - m_debug_context.base - 8)) {
-          print_and_append_to_string(backtrace_contents, "Invalid return address encountered!\n");
+          this_backtrace += "Invalid return address encountered!\n";
+          backtrace_contents = this_backtrace + backtrace_contents;
           break;
         }
 
@@ -341,21 +336,24 @@ std::vector<BacktraceFrame> Debugger::get_backtrace(u64 rip,
         ++fails;
         // break;
       } else if (!frame.rip_info.func_debug) {
-        print_and_append_to_string(
-            backtrace_contents,
-            fmt::format("Function {} has no debug info.\n", frame.rip_info.function_name));
+        this_backtrace +=
+            fmt::format("Function {} has no debug info.\n", frame.rip_info.function_name);
+        backtrace_contents = this_backtrace + backtrace_contents;
         break;
       } else {
-        print_and_append_to_string(
-            backtrace_contents,
-            fmt::format("Function {} with no stack frame data.\n", frame.rip_info.function_name));
+        this_backtrace +=
+            fmt::format("Function {} with no stack frame data.\n", frame.rip_info.function_name);
+        backtrace_contents = this_backtrace + backtrace_contents;
         break;
       }
     }
 
     bt.push_back(frame);
+
+    backtrace_contents = this_backtrace + backtrace_contents;
   }
 
+  lg::print("{}\n", backtrace_contents);
   if (dump_path) {
     file_util::write_text_file(dump_path.value(), backtrace_contents);
   }
@@ -447,21 +445,21 @@ void Debugger::update_break_info(std::optional<std::string> dump_path) {
   m_memory_map = m_listener->build_memory_map();
   // lg::print("{}", m_memory_map.print());
   read_symbol_table();
-  m_regs_valid = false;
-  if (!xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break)) {
-    lg::print("[Debugger] get_regs_now failed after break, something is wrong\n");
-  } else {
-    m_regs_valid = true;
-    lg::print("{}", m_regs_at_break.print_gprs());
-  }
+  m_regs_valid = xdbg::get_regs_now(m_debug_context.tid, &m_regs_at_break);
 
   if (regs_valid()) {
     m_break_info = get_rip_info(m_regs_at_break.rip);
     update_continue_info();
-    auto dis = disassemble_at_rip(m_break_info);
-    lg::print("{}\n", dis.text);
 
     get_backtrace(m_regs_at_break.rip, m_regs_at_break.gprs[emitter::RSP], dump_path);
+    auto dis = disassemble_at_rip(m_break_info);
+    lg::print("{}\n", dis.text);
+  }
+
+  if (!m_regs_valid) {
+    lg::print("[Debugger] get_regs_now failed after break, something is wrong\n");
+  } else {
+    lg::print("{}", m_regs_at_break.print_gprs());
   }
 }
 
@@ -732,6 +730,93 @@ void Debugger::read_symbol_table_jak2() {
             m_symbol_name_to_offset_map.size(), timer.getMs());
 }
 
+void Debugger::read_symbol_table_jak3() {
+  using namespace jak3_symbols;
+  using namespace jak3;
+  ASSERT(is_valid() && is_attached() && is_halted());
+  u32 bytes_read = 0;
+  u32 reads = 0;
+  Timer timer;
+
+  constexpr int kS7Offset = ((GOAL_MAX_SYMBOLS / 2) * 4 + 1);
+  static_assert(kS7Offset == 0x8001);  // this is what we have hardcoded now
+  u32 st_base = m_debug_context.s7 - kS7Offset;
+  u32 empty_pair_offset =
+      (m_debug_context.s7 + S7_OFF_FIX_SYM_EMPTY_PAIR /*- PAIR_OFFSET*/) - st_base;
+
+  constexpr u32 kSymbolMemSize = 2 * (GOAL_MAX_SYMBOLS * 4);  // symbol, then strings.
+  std::vector<u8> mem;
+  mem.resize(kSymbolMemSize);
+
+  if (!xdbg::read_goal_memory(mem.data(), kSymbolMemSize, st_base, m_debug_context,
+                              m_memory_handle)) {
+    lg::print("Read failed during read_symbol_table\n");
+    return;
+  }
+  reads++;
+  bytes_read += kSymbolMemSize;
+
+  m_symbol_name_to_offset_map.clear();
+  m_symbol_offset_to_name_map.clear();
+  m_symbol_name_to_value_map.clear();
+
+  // now loop through all the symbols
+  for (int i = 0; i < GOAL_MAX_SYMBOLS; i++) {
+    u32 offset = i * 4;
+    if (offset == empty_pair_offset) {
+      continue;
+    }
+    auto sym_val = *(u32*)(mem.data() + offset);
+    auto info = *(u32*)(mem.data() + offset + kSymbolMemSize / 2);
+    if (info) {
+      // now get the string.
+      char str_buff[128];
+      if (!xdbg::read_goal_memory((u8*)str_buff, 128, info + 4, m_debug_context, m_memory_handle)) {
+        lg::print("Read symbol string failed during read_symbol_table\n");
+        return;
+      }
+      reads++;
+      bytes_read += 128;
+      // just in case
+      str_buff[127] = '\0';
+
+      // GOAL sym - s7
+      auto sym_offset = s32(offset + st_base) - s32(m_debug_context.s7);
+      //      ASSERT(sym_offset >= -SYM_TABLE_MEM_SIZE / 4);
+      //      ASSERT(sym_offset < SYM_TABLE_MEM_SIZE / 4);
+
+      std::string str(str_buff);
+      if (str.length() >= 60) {
+        lg::print("Invalid symbol #x{:x}!\n", sym_offset);
+        continue;
+      }
+
+      // update maps
+      if (m_symbol_name_to_offset_map.find(str) != m_symbol_name_to_offset_map.end()) {
+        if (str == "asize-of-basic-func") {
+          // this is an actual bug in kscheme. The bug has no effect, but we replicate it so that
+          // the symbol table layout is closer.
+
+          // to hide this duplicate symbol, we append "-hack-copy" to the end of it.
+          str += "-hack-copy";
+        } else {
+          lg::print("Symbol {} (#x{:x}) appears multiple times!\n", str, sym_offset);
+          continue;
+          // ASSERT(false);
+        }
+      }
+
+      m_symbol_name_to_offset_map[str] = sym_offset;
+      m_symbol_offset_to_name_map[sym_offset] = str;
+      m_symbol_name_to_value_map[str] = sym_val;
+    }
+  }
+
+  ASSERT(m_symbol_offset_to_name_map.size() == m_symbol_name_to_offset_map.size());
+  lg::print("Read symbol table ({} bytes, {} reads, {} symbols, {:.2f} ms)\n", bytes_read, reads,
+            m_symbol_name_to_offset_map.size(), timer.getMs());
+}
+
 /*!
  * Read the GOAL Symbol table from an attached and halted target.
  */
@@ -742,6 +827,9 @@ void Debugger::read_symbol_table() {
       break;
     case GameVersion::Jak2:
       read_symbol_table_jak2();
+      break;
+    case GameVersion::Jak3:
+      read_symbol_table_jak3();
       break;
     default:
       ASSERT(false);

@@ -3,11 +3,14 @@
 #include <optional>
 #include <string>
 
-#include "goalc/compiler/SymbolInfo.h"
+#include "goalc/compiler/symbol_info.h"
 
 #include "third-party/json.hpp"
 
 using json = nlohmann::json;
+
+// TODO - deprecate this file in factor of the now consolidated `SymbolInfo`
+// which now contains comprehensive info on all forms of symbols
 
 namespace Docs {
 
@@ -69,6 +72,7 @@ struct FieldDocumentation {
 void to_json(json& j, const FieldDocumentation& obj);
 
 struct TypeMethodDocumentation {
+  // TODO - relevant?
   int id;
   std::string name;
   bool is_override = false;
@@ -89,6 +93,7 @@ struct TypeDocumentation {
   std::optional<DefinitionLocation> def_location;
   int size;
   std::vector<FieldDocumentation> fields = {};
+  // TODO - who cares, remove this probably
   int method_count;
   std::vector<TypeMethodDocumentation> methods = {};
   std::vector<TypeStateDocumentation> states = {};
@@ -96,10 +101,14 @@ struct TypeDocumentation {
 void to_json(json& j, const TypeDocumentation& obj);
 
 struct MethodDocumentation {
+  // TODO - relevant?
   int id;
   bool is_builtin;
   std::string name;
   std::string description = "";
+  // TODO - this is `object` sometimes, for example `(defmethod print ((this light))`
+  // i believe this is because we always grab the first symbol, but of course, overridden methods
+  // dont work like that so things are likely working as intended
   std::string type;
   std::optional<DefinitionLocation> def_location;
   // TODO - need to track function calls to determine this, obviously cant be determined from just
@@ -139,13 +148,14 @@ struct SymbolDocumentation {
   // TODO - forward declared symbols
   std::string name;
   std::string description = "";
-  SymbolInfo::Kind kind;
+  symbol_info::Kind kind;
   std::optional<DefinitionLocation> def_location = {};
   std::vector<DefinitionLocation> forward_declared_in = {};
 };
 void to_json(json& j, const SymbolDocumentation& obj);
 
-std::vector<ArgumentDocumentation> get_args_from_docstring(std::vector<GoalArg> args,
-                                                           std::string docstring);
+std::vector<ArgumentDocumentation> get_args_from_docstring(
+    std::vector<symbol_info::ArgumentInfo> args,
+    std::string docstring);
 
 }  // namespace Docs

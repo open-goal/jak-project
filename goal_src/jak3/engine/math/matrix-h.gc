@@ -5,5 +5,103 @@
 ;; name in dgo: matrix-h
 ;; dgos: GAME
 
+(defmacro new-stack-matrix0 ()
+  "Get a new matrix on the stack that's set to zero."
+  `(let ((mat (new 'stack-no-clear 'matrix)))
+     (set! (-> mat quad 0) (the-as uint128 0))
+     (set! (-> mat quad 1) (the-as uint128 0))
+     (set! (-> mat quad 2) (the-as uint128 0))
+     (set! (-> mat quad 3) (the-as uint128 0))
+     mat
+     )
+  )
+
 ;; DECOMP BEGINS
 
+(deftype matrix (structure)
+  "A 4x4 matrix, stored in row-major order.
+some, but not all, functions assume that a matrix is an affine transform.
+others assume that the rotation has no scale or shear (and that its inverse is its transpose)."
+  ((data    float    16)
+   (vector  vector   4  :inline  :overlay-at (-> data 0))
+   (quad    uint128  4       :overlay-at (-> data 0))
+   (rvec    vector   :inline :overlay-at (-> data 0))
+   (uvec    vector   :inline :overlay-at (-> data 4))
+   (fvec    vector   :inline :overlay-at (-> data 8))
+   (trans   vector   :inline :overlay-at (-> data 12))
+   )
+  (:methods
+    (transform-vectors! (_type_ (inline-array vector) (inline-array vector) int) none)
+    )
+  )
+
+
+(deftype matrix3 (structure)
+  "A 3x3 matrix, stored in row-major order.
+NOTE: the rows each have an extra 4-bytes of padding,
+so this is really a 3x4 matrix.
+This type is rarely used."
+  ((data    float    12)
+   (vector  vector   3 :inline :overlay-at (-> data 0))
+   (quad    uint128  3         :overlay-at (-> data 0))
+   )
+  )
+
+
+(deftype matrix4h (structure)
+  "A matrix stored using 16-bit integers.
+Note that these usually have different scaling for the 4th row which
+contains the translation in an affine transform.
+So you generally should not unpack these to floats without knowing where they came from
+and how they were originally packed (for example, in tie/shrub)."
+  ((data      int16     16)
+   (vector4h  vector4h  4 :overlay-at (-> data 0))
+   (long      int64     4 :overlay-at (-> data 0))
+   )
+  )
+
+
+(defun matrix-copy! ((arg0 matrix) (arg1 matrix))
+  "Copy arg1 to arg0"
+  (let ((v1-0 (-> arg1 rvec quad))
+        (a2-0 (-> arg1 uvec quad))
+        (a3-0 (-> arg1 fvec quad))
+        (a1-1 (-> arg1 trans quad))
+        )
+    (set! (-> arg0 rvec quad) v1-0)
+    (set! (-> arg0 uvec quad) a2-0)
+    (set! (-> arg0 fvec quad) a3-0)
+    (set! (-> arg0 trans quad) a1-1)
+    )
+  arg0
+  )
+
+(defun matrix<-vector-yz-exact! ((arg0 matrix) (arg1 vector) (arg2 vector))
+  (set! (-> arg0 fvec quad) (-> arg1 quad))
+  (set! (-> arg0 uvec quad) (-> arg2 quad))
+  (vector-cross! (-> arg0 rvec) (-> arg0 uvec) arg1)
+  arg0
+  )
+
+(defun matrix<-vector-yz! ((arg0 matrix) (arg1 vector) (arg2 vector))
+  (set! (-> arg0 fvec quad) (-> arg1 quad))
+  (vector-cross! (-> arg0 rvec) arg2 arg1)
+  (vector-normalize! (-> arg0 rvec) 1.0)
+  (vector-cross! (-> arg0 uvec) arg1 (-> arg0 rvec))
+  (set! (-> arg0 rvec w) 1.0)
+  (set! (-> arg0 uvec w) 1.0)
+  (set! (-> arg0 fvec w) 1.0)
+  arg0
+  )
+
+(defun matrix<-vector-z! ((arg0 matrix) (arg1 vector))
+  (let* ((s3-0 (new 'stack-no-clear 'vector))
+         (v1-0 (vector-get-closest-perpendicular! s3-0 arg1 (vector-get-unique! (new 'stack-no-clear 'vector) arg1)))
+         (s4-1 arg0)
+         )
+    (set! (-> s4-1 fvec quad) (-> arg1 quad))
+    (set! (-> s4-1 uvec quad) (-> v1-0 quad))
+    (vector-cross! (-> s4-1 rvec) (-> s4-1 uvec) arg1)
+    )
+  arg0
+  )

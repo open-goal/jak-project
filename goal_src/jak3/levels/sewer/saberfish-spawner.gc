@@ -7,3 +7,1525 @@
 
 ;; DECOMP BEGINS
 
+(deftype path-index-array (inline-array-class)
+  ((data  int8  :dynamic)
+   )
+  )
+
+
+(set! (-> path-index-array heap-base) (the-as uint 1))
+
+(deftype nav-mesh-jump (structure)
+  ((mesh       nav-mesh)
+   (paths      path-index-array)
+   (in-water?  symbol)
+   )
+  )
+
+
+(deftype nav-mesh-jump-array (inline-array-class)
+  ((data  nav-mesh-jump  :inline :dynamic)
+   )
+  )
+
+
+(set! (-> nav-mesh-jump-array heap-base) (the-as uint 16))
+
+(deftype saberfish-spawner-command (structure)
+  ((command        symbol)
+   (message        symbol)
+   (initial-state  symbol)
+   (parent         handle)
+   )
+  )
+
+
+(deftype saberfish-spawn-query (structure)
+  ((alive-count  int16)
+   )
+  )
+
+
+(deftype saberfish-spawner (process-drawable)
+  ((jump-paths             (array path-control))
+   (nav-mesh-jumps         nav-mesh-jump-array)
+   (live-count             int8)
+   (last-spawned-process   handle)
+   (mgr-parent             handle)
+   (spawned-saberfish      handle  128)
+   (num-spawned-saberfish  int32)
+   )
+  (:state-methods
+    saberfish-spawner-base-state
+    )
+  (:methods
+    (saberfish-spawner-method-21 (_type_) none)
+    (saberfish-spawner-method-22 (_type_ vector saberfish-find-behavior) int)
+    (draw-paths (_type_) none)
+    (saberfish-spawner-method-24 (_type_ saberfish) int)
+    (spawn-saberfish (_type_ symbol symbol process) none)
+    (saberfish-spawner-method-26 (_type_ process int symbol event-message-block) object)
+    )
+  )
+
+
+(defmethod init-from-entity! ((this saberfish-spawner) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (process-entity-set! this arg0)
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this num-spawned-saberfish) 0)
+  (set! (-> this last-spawned-process) (the-as handle #f))
+  (let ((s5-1 0))
+    (let ((s4-0 (-> ((method-of-type res-lump lookup-tag-idx) (-> this entity) 'path 'base -1000000000.0) lo)))
+      (when (>= (the-as int s4-0) 0)
+        (let ((s3-0 (the-as int s4-0))
+              (v1-6 (-> this entity tag s4-0))
+              )
+          0
+          (while (= (-> v1-6 name) (-> this entity tag s4-0 name))
+            (make-property-data (-> this entity) 0.0 (the-as res-tag-pair s3-0) (the-as pointer #f))
+            (+! s5-1 1)
+            (+! s3-0 1)
+            (set! v1-6 (-> this entity tag s3-0))
+            )
+          )
+        )
+      )
+    (let ((a3-2 (* (/ s5-1 2) 2)))
+      (set! (-> this jump-paths) (new 'process 'boxed-array path-control a3-2))
+      )
+    )
+  0.0
+  (dotimes (s5-2 (-> this jump-paths length))
+    (set! (-> this jump-paths s5-2)
+          (new 'process 'path-control this 'path (the float s5-2) (the-as entity #f) #f)
+          )
+    (logior! (-> this jump-paths s5-2 flags) (path-control-flag display draw-line draw-point draw-text))
+    )
+  0
+  (set! sv-16 (new 'static 'res-tag))
+  (res-lump-struct (-> this entity) 'nav-mesh-actor structure :tag-ptr (& sv-16))
+  (let ((s5-3 (-> sv-16 elt-count)))
+    (set! (-> this nav-mesh-jumps) (new 'process 'nav-mesh-jump-array (the-as int s5-3)))
+    (dotimes (s4-1 (the-as int s5-3))
+      (let ((v1-38 (nav-mesh-from-res-tag (-> this entity) 'nav-mesh-actor s4-1)))
+        (if v1-38
+            (set! (-> this nav-mesh-jumps data s4-1 mesh) v1-38)
+            )
+        )
+      )
+    )
+  (saberfish-spawner-method-21 this)
+  (let ((f0-3 (res-lump-float (-> this entity) 'rotoffset)))
+    (quaternion-rotate-y! (-> this root quat) (-> this root quat) f0-3)
+    )
+  (let ((t9-13 (method-of-type res-lump get-property-struct))
+        (a0-32 (-> this entity))
+        (a1-16 'trans-offset)
+        (a2-9 'interp)
+        (a3-6 -1000000000.0)
+        (t0-3 (new 'stack-no-clear 'vector))
+        )
+    (set! (-> t0-3 x) 0.0)
+    (set! (-> t0-3 y) 0.0)
+    (set! (-> t0-3 z) 0.0)
+    (set! (-> t0-3 w) 1.0)
+    (let ((v1-49 (the-as vector (t9-13 a0-32 a1-16 a2-9 a3-6 t0-3 (the-as (pointer res-tag) #f) *res-static-buf*))))
+      (vector+! (-> this root trans) (-> this root trans) v1-49)
+      )
+    )
+  (go (method-of-object this saberfish-spawner-base-state))
+  )
+
+(defstate saberfish-spawner-base-state (saberfish-spawner)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (saberfish-spawner-method-26 self proc argc message block)
+    )
+  :enter (behavior ()
+    '()
+    )
+  :trans (behavior ()
+    (draw-paths self)
+    )
+  :code sleep-code
+  )
+
+(define *temporary-closest-nav-mesh-indices* (new 'static 'array int8 64
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               0
+                                               )
+        )
+
+(define *temporary-num-paths-per-nav-mesh-count* (the-as (pointer uint8) (new 'static 'array int8 64
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           0
+                                                                           )
+                                                                         )
+        )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod saberfish-spawner-method-21 ((this saberfish-spawner))
+  (dotimes (v1-0 64)
+    (set! (-> *temporary-closest-nav-mesh-indices* v1-0) -1)
+    (set! (-> *temporary-num-paths-per-nav-mesh-count* v1-0) (the-as uint 0))
+    )
+  (dotimes (s5-0 (-> this jump-paths length))
+    (let ((a0-5 (-> this jump-paths s5-0)))
+      -1
+      (let ((s4-0 (new 'stack-no-clear 'vector)))
+        (get-point-at-percent-along-path! a0-5 s4-0 0.5 'interp)
+        (let ((v1-9 (saberfish-spawner-method-22 this s4-0 (saberfish-find-behavior none))))
+          (set! (-> *temporary-closest-nav-mesh-indices* s5-0) v1-9)
+          (cond
+            ((>= v1-9 0)
+             (+! (-> *temporary-num-paths-per-nav-mesh-count* v1-9) 1)
+             )
+            (else
+              )
+            )
+          )
+        )
+      )
+    )
+  (dotimes (s5-1 (-> this nav-mesh-jumps length))
+    (let* ((s4-1 (-> this nav-mesh-jumps data s5-1))
+           (s3-0 s5-1)
+           (a2-2 (-> *temporary-num-paths-per-nav-mesh-count* s3-0))
+           (s2-0 0)
+           )
+      (set! (-> s4-1 paths) (new 'process 'path-index-array (the-as int a2-2)))
+      (dotimes (v1-20 (-> this jump-paths length))
+        (when (= (-> *temporary-closest-nav-mesh-indices* v1-20) s3-0)
+          (set! (-> s4-1 paths data s2-0) v1-20)
+          (set! (-> s4-1 in-water?) (= (logand v1-20 1) 1))
+          (+! s2-0 1)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+(defmethod saberfish-spawner-method-22 ((this saberfish-spawner) (arg0 vector) (arg1 saberfish-find-behavior))
+  (local-vars (v1-16 float) (sv-64 nav-poly) (sv-72 int) (sv-80 number) (sv-84 vector) (sv-88 symbol))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         )
+    (init-vf0-vector)
+    (set! sv-64 (new 'stack-no-clear 'nav-poly))
+    (set! sv-72 -1)
+    (set! sv-80 24576.0)
+    (set! sv-84 arg0)
+    (set! sv-88 (in-water<-find-behavior arg1))
+    (set! (-> sv-64 data 20) (the-as uint 7))
+    (dotimes (s4-0 (-> this nav-mesh-jumps length))
+      (let ((a0-4 (-> this nav-mesh-jumps data s4-0 mesh)))
+        (when a0-4
+          (when (or (= arg1 (saberfish-find-behavior none)) (= (-> this nav-mesh-jumps data s4-0 in-water?) sv-88))
+            (vector-! (the-as vector (-> sv-64 vertex)) sv-84 (the-as vector (-> a0-4 bounds)))
+            (.lvf vf1 (&-> (-> sv-64 vertex) 0 quad))
+            (.add.w.vf vf2 vf0 vf0 :mask #b1)
+            (.mul.vf vf1 vf1 vf1)
+            (.mul.x.vf acc vf2 vf1 :mask #b1)
+            (.add.mul.y.vf acc vf2 vf1 acc :mask #b1)
+            (.add.mul.z.vf vf1 vf2 vf1 acc :mask #b1)
+            (.mov v1-16 vf1)
+            (let ((f0-1 v1-16)
+                  (f1-0 (-> a0-4 bounds r))
+                  )
+              (when (< f0-1 (* f1-0 f1-0))
+                (set! (-> sv-64 vertex1 x) 409600.0)
+                (nav-mesh-method-46 a0-4 sv-64)
+                (when (>= (the-as float sv-80) (-> sv-64 vertex1 w))
+                  (set! sv-80 (-> sv-64 vertex1 w))
+                  (set! sv-72 s4-0)
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    sv-72
+    )
+  )
+
+(defmethod relocate ((this saberfish-spawner) (offset int))
+  (when (nonzero? (-> this jump-paths))
+    (dotimes (v1-2 (-> this jump-paths length))
+      (if (nonzero? (-> this jump-paths v1-2))
+          (&+! (-> this jump-paths v1-2) offset)
+          )
+      )
+    )
+  (when (nonzero? (-> this nav-mesh-jumps))
+    (dotimes (v1-7 (-> this nav-mesh-jumps length))
+      (if (nonzero? (-> this nav-mesh-jumps data v1-7 paths))
+          (&+! (-> this nav-mesh-jumps data v1-7 paths) offset)
+          )
+      )
+    )
+  (if (nonzero? (-> this jump-paths))
+      (&+! (-> this jump-paths) offset)
+      )
+  (if (nonzero? (-> this nav-mesh-jumps))
+      (&+! (-> this nav-mesh-jumps) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; WARN: Return type mismatch symbol vs none.
+(defmethod draw-paths ((this saberfish-spawner))
+  (dotimes (s5-0 (-> this jump-paths length))
+    (debug-draw (-> this jump-paths s5-0))
+    )
+  (none)
+  )
+
+(defmethod saberfish-spawner-method-24 ((this saberfish-spawner) (arg0 saberfish))
+  (local-vars
+    (sv-48 float)
+    (sv-56 int)
+    (sv-64 number)
+    (sv-68 vector)
+    (sv-72 vector)
+    (sv-160 (function path-control vector vector symbol float))
+    (sv-176 vector)
+    (sv-192 vector)
+    (sv-208 vector)
+    )
+  (set! (-> arg0 dest-nav-mesh-index) (-> arg0 desired-dest-mesh-index))
+  (set! sv-48 (the-as float -1.0))
+  (set! sv-56 -1)
+  (set! sv-64 40960000000.0)
+  (let ((v1-4 (new 'stack-no-clear 'vector)))
+    (set! (-> v1-4 quad) (-> arg0 root trans quad))
+    (set! sv-68 v1-4)
+    )
+  (set! sv-72 (new 'stack-no-clear 'vector))
+  (cond
+    ((saberfish-method-243 arg0)
+     (vector-! sv-72 (-> arg0 desired-dest-nav-point) (-> arg0 root trans))
+     (set! (-> sv-72 y) 0.0)
+     )
+    (else
+      (vector-z-quaternion! sv-72 (-> arg0 root quat))
+      (set! (-> sv-72 y) 0.0)
+      (vector-normalize! sv-72 61440.0)
+      )
+    )
+  (set! sv-56 -1)
+  (when (>= (-> arg0 current-nav-mesh-index) 0)
+    (let ((s4-0 (-> this nav-mesh-jumps data (-> arg0 current-nav-mesh-index))))
+      (dotimes (s3-0 (-> s4-0 paths length))
+        (let* ((s2-0 (-> s4-0 paths data s3-0))
+               (s1-0 (-> this jump-paths s2-0))
+               )
+          0.0
+          0.0
+          (let* ((f0-6 (cond
+                         (#f
+                           (path-control-method-23 s1-0 sv-68)
+                           )
+                         (else
+                           (let ((s0-0 s1-0))
+                             (set! sv-160 (method-of-object s0-0 path-control-method-28))
+                             (set! sv-176 sv-68)
+                             (set! sv-192 sv-72)
+                             (let ((a3-0 (not (saberfish-method-243 arg0))))
+                               (sv-160 s0-0 sv-176 sv-192 a3-0)
+                               )
+                             )
+                           )
+                         )
+                       )
+                 (f30-0 (fmax 0.0 (fmin 1.0 f0-6)))
+                 (s0-1 vector-vector-xz-distance)
+                 )
+            (set! sv-208 sv-68)
+            (let* ((a1-8 (get-point-at-percent-along-path! s1-0 (new 'stack-no-clear 'vector) f30-0 'interp))
+                   (f0-8 (s0-1 sv-208 a1-8))
+                   )
+              (when (< f0-8 (the-as float sv-64))
+                (set! sv-64 f0-8)
+                (set! sv-56 s2-0)
+                (set! sv-48 f30-0)
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  (cond
+    ((>= sv-56 0)
+     (let* ((v1-41 (if (saberfish-method-243 arg0)
+                       -1
+                       1
+                       )
+                   )
+            (s3-1 (-> this jump-paths sv-56))
+            (s4-1 (-> this jump-paths (+ sv-56 v1-41)))
+            )
+       (if (or (< (+ sv-56 v1-41) 0) (>= (+ sv-56 v1-41) (-> this jump-paths length)))
+           (return 0)
+           )
+       (let ((s2-1 (new 'stack-no-clear 'vector))
+             (s5-1 (new 'stack-no-clear 'vector))
+             )
+         (let ((s0-2 (new 'stack-no-clear 'vector))
+               (s1-1 (new 'stack-no-clear 'vector))
+               (f30-1 0.4)
+               )
+           (get-point-at-percent-along-path! s3-1 (-> arg0 jump-point-start) sv-48 'interp)
+           (if (saberfish-method-243 arg0)
+               (set! f30-1 0.24)
+               )
+           (vector-! s5-1 (-> arg0 jump-point-start) (-> arg0 root trans))
+           (get-point-at-percent-along-path! s3-1 s0-2 (+ -0.05 sv-48) 'interp)
+           (get-point-at-percent-along-path! s3-1 s1-1 (+ 0.05 sv-48) 'interp)
+           (vector-! s2-1 s1-1 s0-2)
+           (vector-normalize! s2-1 1.0)
+           (set! (-> s5-1 y) 0.0)
+           (vector-normalize! s5-1 1.0)
+           (when (< f30-1 (fabs (vector-dot s5-1 s2-1)))
+             (set! sv-48 (path-control-method-23 s3-1 sv-68))
+             (get-point-at-percent-along-path! s3-1 (-> arg0 jump-point-start) sv-48 'interp)
+             )
+           )
+         (cond
+           ((saberfish-method-243 arg0)
+            (let ((f0-20 (path-control-method-28 s4-1 (-> arg0 jump-point-start) sv-72 #f)))
+              (get-point-at-percent-along-path! s4-1 (-> arg0 jump-point-end) f0-20 'interp)
+              )
+            )
+           (else
+             (let ((f0-21 (path-control-method-23 s4-1 (-> arg0 jump-point-start))))
+               (get-point-at-percent-along-path! s4-1 (-> arg0 jump-point-end) f0-21 'interp)
+               )
+             )
+           )
+         (vector-! s5-1 (-> arg0 jump-point-end) (-> arg0 jump-point-start))
+         (set! (-> s5-1 y) 0.0)
+         (vector-normalize! s5-1 1.0)
+         )
+       )
+     (let ((v1-74 (-> arg0 nav state))
+           (a0-46 (-> arg0 jump-point-start))
+           )
+       (logclear! (-> v1-74 flags) (nav-state-flag directional-mode))
+       (logior! (-> v1-74 flags) (nav-state-flag target-poly-dirty))
+       (set! (-> v1-74 target-pos quad) (-> a0-46 quad))
+       )
+     0
+     )
+    (else
+      )
+    )
+  0
+  )
+
+(defmethod saberfish-spawner-method-26 ((this saberfish-spawner) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-0 object))
+  (case arg2
+    (('transition-terrain-begin)
+     (saberfish-spawner-method-24 this (the-as saberfish arg0))
+     )
+    (('saberfish-query)
+     (let ((gp-0 (the-as saberfish-spawner-query-msg (-> arg3 param 0))))
+       (case (-> gp-0 query-type)
+         (((saberfish-query-type set-nav-idx))
+          (set! v0-0 (saberfish-spawner-method-22 this (the-as vector (&-> gp-0 mesh)) (-> gp-0 behavior)))
+          (set! (-> gp-0 closest-nav-mesh-index) (the-as int v0-0))
+          v0-0
+          )
+         (((saberfish-query-type set-mesh))
+          (set! v0-0 (-> this nav-mesh-jumps data (-> gp-0 closest-nav-mesh-index) mesh))
+          (set! (-> gp-0 mesh) (the-as nav-mesh v0-0))
+          v0-0
+          )
+         (((saberfish-query-type set-in-water))
+          (set! v0-0 (-> this nav-mesh-jumps data (-> gp-0 closest-nav-mesh-index) in-water?))
+          (set! (-> gp-0 in-water?) (the-as symbol v0-0))
+          v0-0
+          )
+         (((saberfish-query-type can-go-to-ground?))
+          (send-event (handle->process (-> this mgr-parent)) 'query-can-go-to-ground? gp-0)
+          )
+         )
+       )
+     )
+    (('spawn-command)
+     (set! (-> this mgr-parent) (process->handle arg0))
+     (let ((v1-17 (the-as saberfish-spawner-command (-> arg3 param 0))))
+       (case (-> v1-17 command)
+         (('spawn-enemy)
+          (spawn-saberfish this (-> v1-17 message) (-> v1-17 initial-state) (handle->process (-> v1-17 parent)))
+          )
+         )
+       )
+     )
+    (('child-die)
+     (set! v0-0 (+ (-> this live-count) -1))
+     (set! (-> this live-count) (the-as int v0-0))
+     v0-0
+     )
+    (('saberfish-spawn-query)
+     (let ((v1-22 (the-as saberfish-spawn-query (-> arg3 param 0))))
+       (set! v0-0 (-> this live-count))
+       (set! (-> v1-22 alive-count) (the-as int v0-0))
+       )
+     v0-0
+     )
+    (('saberfish-ground-query)
+     (let ((v1-23 (the-as saberfish-spawn-query (-> arg3 param 0))))
+       (set! (-> v1-23 alive-count) 0)
+       (dotimes (a1-21 (-> this num-spawned-saberfish))
+         (let ((a2-14 (-> this spawned-saberfish a1-21)))
+           (when (handle->process a2-14)
+             (let ((a2-15 (the-as saberfish (handle->process a2-14))))
+               (if (or (= (-> a2-15 ground-state) 4)
+                       (and (-> a2-15 next-state) (let ((a2-19 (-> a2-15 next-state name)))
+                                                    (or (= a2-19 'transition-terrain-move-towards-initial-jump)
+                                                        (= a2-19 'jump)
+                                                        (= a2-19 'transition-terrain-jump-from-water)
+                                                        )
+                                                    )
+                            )
+                       )
+                   (+! (-> v1-23 alive-count) 1)
+                   )
+               )
+             )
+           )
+         )
+       )
+     #f
+     )
+    (('forward-event)
+     (send-event
+       (handle->process (-> this last-spawned-process))
+       (the-as symbol (-> arg3 param 0))
+       (-> arg3 param 1)
+       )
+     )
+    )
+  )
+
+(defmethod spawn-saberfish ((this saberfish-spawner) (arg0 symbol) (arg1 symbol) (arg2 process))
+  (if (not arg2)
+      (set! arg2 this)
+      )
+  (let ((s4-0 (new 'stack-no-clear 'saberfish-init-by-other-params)))
+    (if (= arg1 'saberfish-crawl-out-of-tube)
+        (sound-play "sf-spawner")
+        )
+    (set! (-> s4-0 trans quad) (-> this entity extra trans quad))
+    (quaternion-copy! (-> s4-0 quat) (-> this entity quat))
+    (set! (-> s4-0 entity) (-> this entity))
+    (set! (-> s4-0 directed?) #f)
+    (set! (-> s4-0 no-initial-move-to-ground?) #f)
+    (set! (-> s4-0 art-level) #f)
+    (set! (-> s4-0 spawn-parent) (process->handle this))
+    (set! (-> s4-0 message) arg0)
+    (set! (-> s4-0 initial-state) arg1)
+    (set! (-> s4-0 pos quad) (-> this root trans quad))
+    (quaternion-copy! (-> s4-0 orient) (-> this root quat))
+    (set! (-> this last-spawned-process)
+          (ppointer->handle (process-spawn saberfish this s4-0 :name "saberfish" :to arg2))
+          )
+    )
+  (+! (-> this live-count) 1)
+  (set! (-> this spawned-saberfish (-> this num-spawned-saberfish)) (-> this last-spawned-process))
+  (+! (-> this num-spawned-saberfish) 1)
+  (when (>= (-> this num-spawned-saberfish) 128)
+    (set! (-> this num-spawned-saberfish) 0)
+    0
+    )
+  0
+  (none)
+  )
+
+(deftype saberfish-spawn-manager-base (process)
+  ((actor-group            (pointer actor-group))
+   (actor-group-count      int32)
+   (total-num-spawned      int32)
+   (total-alive            int32)
+   (spawn-timer            time-frame)
+   (state-time             time-frame)
+   (allowed-on-land-count  int8)
+   )
+  (:state-methods
+    active
+    idle
+    )
+  (:methods
+    (go-active (_type_) object)
+    (get-alive-count (_type_) int)
+    (get-alive-count-grounded (_type_ int) int)
+    )
+  )
+
+
+(defmethod init-from-entity! ((this saberfish-spawn-manager-base) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  ;; og:preserve-this added
+  (stack-size-set! (-> this main-thread) 2048)
+  (set-setting! 'gem-pool-index #f 0.0 2)
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-3 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-3 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-3))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> this allowed-on-land-count) 2)
+  (logclear! (-> this mask) (process-mask actor-pause))
+  (set! (-> this total-num-spawned) 0)
+  (set! (-> this total-alive) 0)
+  (set! (-> this spawn-timer) 0)
+  (go-active this)
+  )
+
+(defmethod get-alive-count-grounded ((this saberfish-spawn-manager-base) (arg0 int))
+  (with-pp
+    (let ((s4-0 (new 'stack-no-clear 'saberfish-spawn-query))
+          (gp-0 0)
+          )
+      (dotimes (s3-0 (-> this actor-group-count))
+        (dotimes (s2-0 (-> this actor-group s3-0 length))
+          (set! (-> s4-0 alive-count) 0)
+          (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-1 from) (process->ppointer pp))
+            (set! (-> a1-1 num-params) 1)
+            (set! (-> a1-1 message) 'saberfish-ground-query)
+            (set! (-> a1-1 param 0) (the-as uint s4-0))
+            (let ((t9-0 send-event-function)
+                  (v1-7 (-> this actor-group s3-0 data s2-0 actor))
+                  )
+              (t9-0
+                (if v1-7
+                    (-> v1-7 extra process)
+                    )
+                a1-1
+                )
+              )
+            )
+          (+! gp-0 (-> s4-0 alive-count))
+          )
+        )
+      gp-0
+      )
+    )
+  )
+
+(defmethod get-alive-count ((this saberfish-spawn-manager-base))
+  (with-pp
+    (let ((s4-0 (new 'stack-no-clear 'saberfish-spawn-query))
+          (gp-0 0)
+          )
+      (dotimes (s3-0 (-> this actor-group-count))
+        (dotimes (s2-0 (-> this actor-group s3-0 length))
+          (set! (-> s4-0 alive-count) 0)
+          (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+            (set! (-> a1-0 from) (process->ppointer pp))
+            (set! (-> a1-0 num-params) 1)
+            (set! (-> a1-0 message) 'saberfish-spawn-query)
+            (set! (-> a1-0 param 0) (the-as uint s4-0))
+            (let ((t9-0 send-event-function)
+                  (v1-7 (-> this actor-group s3-0 data s2-0 actor))
+                  )
+              (t9-0
+                (if v1-7
+                    (-> v1-7 extra process)
+                    )
+                a1-0
+                )
+              )
+            )
+          (+! gp-0 (-> s4-0 alive-count))
+          )
+        )
+      gp-0
+      )
+    )
+  )
+
+(defstate active (saberfish-spawn-manager-base)
+  :virtual #t
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defstate idle (saberfish-spawn-manager-base)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual active)
+       )
+      )
+    )
+  :code sleep-code
+  )
+
+(defbehavior saberfish-mgr-event-handler saberfish-spawn-manager-base ((arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (case arg2
+    (('trigger)
+     (if (and (-> self next-state) (= (-> self next-state name) 'idle))
+         (go-virtual active)
+         )
+     )
+    (('query-can-go-to-ground?)
+     (let ((gp-0 (the-as saberfish-spawner-query-msg (-> arg3 param 0)))
+           (v0-0 (the-as object (< (get-alive-count-grounded self arg1) (-> self allowed-on-land-count))))
+           )
+       (set! (-> gp-0 in-water?) (the-as symbol v0-0))
+       v0-0
+       )
+     )
+    )
+  )
+
+(defmethod go-active ((this saberfish-spawn-manager-base))
+  (go (method-of-object this active))
+  )
+
+(deftype saberfish-mgr-room1 (saberfish-spawn-manager-base)
+  ()
+  )
+
+
+(defstate active (saberfish-mgr-room1)
+  :virtual #t
+  :event saberfish-mgr-event-handler
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'saberfish-spawner-command))
+          (s4-0 (-> self actor-group 0 data))
+          (s5-0 (-> self actor-group 0 data 1))
+          )
+      (set! (-> gp-0 parent) (process->handle self))
+      (set! (-> gp-0 command) 'spawn-enemy)
+      (set! (-> gp-0 initial-state) 'saberfish-crawl-out-of-tube)
+      (set! (-> self allowed-on-land-count) 2)
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.1))
+        (suspend)
+        )
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 1)
+        (set! (-> a1-0 message) 'spawn-command)
+        (set! (-> a1-0 param 0) (the-as uint gp-0))
+        (let ((t9-0 send-event-function)
+              (v1-20 (-> s4-0 0 actor))
+              )
+          (t9-0
+            (if v1-20
+                (-> v1-20 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.5))
+        (suspend)
+        )
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 1)
+        (set! (-> a1-1 message) 'spawn-command)
+        (set! (-> a1-1 param 0) (the-as uint gp-0))
+        (let ((t9-1 send-event-function)
+              (v1-33 (-> s5-0 actor))
+              )
+          (t9-1
+            (if v1-33
+                (-> v1-33 extra process)
+                )
+            a1-1
+            )
+          )
+        )
+      (until (>= 1 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-2 from) (process->ppointer self))
+        (set! (-> a1-2 num-params) 1)
+        (set! (-> a1-2 message) 'spawn-command)
+        (set! (-> a1-2 param 0) (the-as uint gp-0))
+        (let ((t9-3 send-event-function)
+              (v1-43 (-> s4-0 0 actor))
+              )
+          (t9-3
+            (if v1-43
+                (-> v1-43 extra process)
+                )
+            a1-2
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1.5))
+        (suspend)
+        )
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-3 from) (process->ppointer self))
+        (set! (-> a1-3 num-params) 1)
+        (set! (-> a1-3 message) 'spawn-command)
+        (set! (-> a1-3 param 0) (the-as uint gp-0))
+        (let ((t9-4 send-event-function)
+              (v1-56 (-> s5-0 actor))
+              )
+          (t9-4
+            (if v1-56
+                (-> v1-56 extra process)
+                )
+            a1-3
+            )
+          )
+        )
+      (until (>= 2 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) (process->ppointer self))
+        (set! (-> a1-4 num-params) 1)
+        (set! (-> a1-4 message) 'spawn-command)
+        (set! (-> a1-4 param 0) (the-as uint gp-0))
+        (let ((t9-6 send-event-function)
+              (v1-66 (-> s4-0 0 actor))
+              )
+          (t9-6
+            (if v1-66
+                (-> v1-66 extra process)
+                )
+            a1-4
+            )
+          )
+        )
+      (set! (-> self allowed-on-land-count) 3)
+      (until (>= 1 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-5 from) (process->ppointer self))
+        (set! (-> a1-5 num-params) 1)
+        (set! (-> a1-5 message) 'spawn-command)
+        (set! (-> a1-5 param 0) (the-as uint gp-0))
+        (let ((t9-8 send-event-function)
+              (v1-77 (-> s5-0 actor))
+              )
+          (t9-8
+            (if v1-77
+                (-> v1-77 extra process)
+                )
+            a1-5
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.3))
+        (suspend)
+        )
+      (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-6 from) (process->ppointer self))
+        (set! (-> a1-6 num-params) 1)
+        (set! (-> a1-6 message) 'spawn-command)
+        (set! (-> a1-6 param 0) (the-as uint gp-0))
+        (let ((t9-9 send-event-function)
+              (v1-90 (-> s4-0 0 actor))
+              )
+          (t9-9
+            (if v1-90
+                (-> v1-90 extra process)
+                )
+            a1-6
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.7))
+        (suspend)
+        )
+      (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-7 from) (process->ppointer self))
+        (set! (-> a1-7 num-params) 1)
+        (set! (-> a1-7 message) 'spawn-command)
+        (set! (-> a1-7 param 0) (the-as uint gp-0))
+        (let ((t9-10 send-event-function)
+              (v1-102 (-> s4-0 0 actor))
+              )
+          (t9-10
+            (if v1-102
+                (-> v1-102 extra process)
+                )
+            a1-7
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 2.5))
+        (suspend)
+        )
+      (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-8 from) (process->ppointer self))
+        (set! (-> a1-8 num-params) 1)
+        (set! (-> a1-8 message) 'spawn-command)
+        (set! (-> a1-8 param 0) (the-as uint gp-0))
+        (let ((t9-11 send-event-function)
+              (v1-115 (-> s5-0 actor))
+              )
+          (t9-11
+            (if v1-115
+                (-> v1-115 extra process)
+                )
+            a1-8
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1))
+        (suspend)
+        )
+      (until (>= 3 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-9 from) (process->ppointer self))
+        (set! (-> a1-9 num-params) 1)
+        (set! (-> a1-9 message) 'spawn-command)
+        (set! (-> a1-9 param 0) (the-as uint gp-0))
+        (let ((t9-13 send-event-function)
+              (v1-130 (-> s5-0 actor))
+              )
+          (t9-13
+            (if v1-130
+                (-> v1-130 extra process)
+                )
+            a1-9
+            )
+          )
+        )
+      )
+    (until #f
+      (suspend)
+      )
+    #f
+    )
+  )
+
+(defmethod go-active ((this saberfish-mgr-room1))
+  (go (method-of-object this idle))
+  )
+
+(deftype saberfish-mgr-room2 (saberfish-spawn-manager-base)
+  ()
+  (:state-methods
+    stage-0
+    stage-1
+    stage-2
+    )
+  )
+
+
+(defmethod go-active ((this saberfish-mgr-room2))
+  (cond
+    ((task-node-closed? (game-task-node sewer-kg-met-button0-pressed))
+     (process-entity-status! this (entity-perm-status dead) #t)
+     (go empty-state)
+     )
+    (else
+      (go (method-of-object this stage-0))
+      )
+    )
+  )
+
+(defstate stage-0 (saberfish-mgr-room2)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger-start)
+       (go-virtual stage-1)
+       )
+      (else
+        (saberfish-mgr-event-handler proc argc message block)
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'saberfish-spawner-command)))
+      (set! (-> gp-0 parent) (process->handle self))
+      (set! (-> gp-0 command) 'spawn-enemy)
+      (set! (-> gp-0 initial-state) 'saberfish-sitting-on-land)
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.1))
+        (suspend)
+        )
+      (set! (-> self allowed-on-land-count) 3)
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 1)
+        (set! (-> a1-0 message) 'spawn-command)
+        (set! (-> a1-0 param 0) (the-as uint gp-0))
+        (let ((t9-0 send-event-function)
+              (v1-18 (-> self actor-group 1 data 0 actor))
+              )
+          (t9-0
+            (if v1-18
+                (-> v1-18 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 1)
+        (set! (-> a1-1 message) 'spawn-command)
+        (set! (-> a1-1 param 0) (the-as uint gp-0))
+        (let ((t9-1 send-event-function)
+              (v1-27 (-> self actor-group 1 data 1 actor))
+              )
+          (t9-1
+            (if v1-27
+                (-> v1-27 extra process)
+                )
+            a1-1
+            )
+          )
+        )
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-2 from) (process->ppointer self))
+        (set! (-> a1-2 num-params) 1)
+        (set! (-> a1-2 message) 'spawn-command)
+        (set! (-> a1-2 param 0) (the-as uint gp-0))
+        (let ((t9-2 send-event-function)
+              (v1-36 (-> self actor-group 1 data 2 actor))
+              )
+          (t9-2
+            (if v1-36
+                (-> v1-36 extra process)
+                )
+            a1-2
+            )
+          )
+        )
+      )
+    (sleep-code)
+    )
+  )
+
+(defstate stage-1 (saberfish-mgr-room2)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('trigger)
+       (go-virtual stage-2)
+       )
+      (else
+        (saberfish-mgr-event-handler proc argc message block)
+        )
+      )
+    )
+  :code (behavior ()
+    (let ((v1-0 (new 'stack-no-clear 'saberfish-spawner-command)))
+      (set! (-> v1-0 parent) (process->handle self))
+      )
+    (set! (-> self allowed-on-land-count) 4)
+    (set-time! (-> self spawn-timer))
+    (until (time-elapsed? (-> self spawn-timer) (seconds 0.7))
+      (suspend)
+      )
+    (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-4 from) (process->ppointer self))
+      (set! (-> a1-4 num-params) 2)
+      (set! (-> a1-4 message) 'forward-event)
+      (set! (-> a1-4 param 0) (the-as uint 'saberfish-command))
+      (set! (-> a1-4 param 1) (the-as uint 'go-alive))
+      (let ((t9-0 send-event-function)
+            (v1-16 (-> self actor-group 1 data 0 actor))
+            )
+        (t9-0
+          (if v1-16
+              (-> v1-16 extra process)
+              )
+          a1-4
+          )
+        )
+      )
+    (set-time! (-> self spawn-timer))
+    (until (time-elapsed? (-> self spawn-timer) (seconds 0.7))
+      (suspend)
+      )
+    (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-5 from) (process->ppointer self))
+      (set! (-> a1-5 num-params) 2)
+      (set! (-> a1-5 message) 'forward-event)
+      (set! (-> a1-5 param 0) (the-as uint 'saberfish-command))
+      (set! (-> a1-5 param 1) (the-as uint 'go-alive))
+      (let ((t9-1 send-event-function)
+            (v1-33 (-> self actor-group 1 data 1 actor))
+            )
+        (t9-1
+          (if v1-33
+              (-> v1-33 extra process)
+              )
+          a1-5
+          )
+        )
+      )
+    (set-time! (-> self spawn-timer))
+    (until (time-elapsed? (-> self spawn-timer) (seconds 0.7))
+      (suspend)
+      )
+    (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+      (set! (-> a1-6 from) (process->ppointer self))
+      (set! (-> a1-6 num-params) 2)
+      (set! (-> a1-6 message) 'forward-event)
+      (set! (-> a1-6 param 0) (the-as uint 'saberfish-command))
+      (set! (-> a1-6 param 1) (the-as uint 'go-alive))
+      (let ((t9-2 send-event-function)
+            (v1-50 (-> self actor-group 1 data 2 actor))
+            )
+        (t9-2
+          (if v1-50
+              (-> v1-50 extra process)
+              )
+          a1-6
+          )
+        )
+      )
+    (sleep-code)
+    )
+  )
+
+(defstate stage-2 (saberfish-mgr-room2)
+  :virtual #t
+  :event saberfish-mgr-event-handler
+  :enter (behavior ()
+    '()
+    )
+  :code (behavior ()
+    (let ((gp-0 (new 'stack-no-clear 'saberfish-spawner-command)))
+      (set! (-> gp-0 parent) (process->handle self))
+      (set! (-> gp-0 command) 'spawn-enemy)
+      (set! (-> gp-0 initial-state) 'saberfish-swimming)
+      (let ((a1-0 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-0 from) (process->ppointer self))
+        (set! (-> a1-0 num-params) 1)
+        (set! (-> a1-0 message) 'spawn-command)
+        (set! (-> a1-0 param 0) (the-as uint gp-0))
+        (let ((t9-0 send-event-function)
+              (v1-11 (-> self actor-group 2 data 0 actor))
+              )
+          (t9-0
+            (if v1-11
+                (-> v1-11 extra process)
+                )
+            a1-0
+            )
+          )
+        )
+      (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-1 from) (process->ppointer self))
+        (set! (-> a1-1 num-params) 1)
+        (set! (-> a1-1 message) 'spawn-command)
+        (set! (-> a1-1 param 0) (the-as uint gp-0))
+        (let ((t9-1 send-event-function)
+              (v1-20 (-> self actor-group 2 data 1 actor))
+              )
+          (t9-1
+            (if v1-20
+                (-> v1-20 extra process)
+                )
+            a1-1
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1))
+        (suspend)
+        )
+      (until (>= 3 (get-alive-count self))
+        (suspend)
+        )
+      (set! (-> gp-0 initial-state) 'saberfish-crawl-out-of-tube)
+      (let ((a1-2 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-2 from) (process->ppointer self))
+        (set! (-> a1-2 num-params) 1)
+        (set! (-> a1-2 message) 'spawn-command)
+        (set! (-> a1-2 param 0) (the-as uint gp-0))
+        (let ((t9-3 send-event-function)
+              (v1-39 (-> self actor-group 0 data 1 actor))
+              )
+          (t9-3
+            (if v1-39
+                (-> v1-39 extra process)
+                )
+            a1-2
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.5))
+        (suspend)
+        )
+      (let ((a1-3 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-3 from) (process->ppointer self))
+        (set! (-> a1-3 num-params) 1)
+        (set! (-> a1-3 message) 'spawn-command)
+        (set! (-> a1-3 param 0) (the-as uint gp-0))
+        (let ((t9-4 send-event-function)
+              (v1-54 (-> self actor-group 0 data 0 actor))
+              )
+          (t9-4
+            (if v1-54
+                (-> v1-54 extra process)
+                )
+            a1-3
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1))
+        (suspend)
+        )
+      (until (>= 3 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-4 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-4 from) (process->ppointer self))
+        (set! (-> a1-4 num-params) 1)
+        (set! (-> a1-4 message) 'spawn-command)
+        (set! (-> a1-4 param 0) (the-as uint gp-0))
+        (let ((t9-6 send-event-function)
+              (v1-72 (-> self actor-group 0 data 0 actor))
+              )
+          (t9-6
+            (if v1-72
+                (-> v1-72 extra process)
+                )
+            a1-4
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.5))
+        (suspend)
+        )
+      (let ((a1-5 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-5 from) (process->ppointer self))
+        (set! (-> a1-5 num-params) 1)
+        (set! (-> a1-5 message) 'spawn-command)
+        (set! (-> a1-5 param 0) (the-as uint gp-0))
+        (let ((t9-7 send-event-function)
+              (v1-87 (-> self actor-group 0 data 1 actor))
+              )
+          (t9-7
+            (if v1-87
+                (-> v1-87 extra process)
+                )
+            a1-5
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.5))
+        (suspend)
+        )
+      (until (>= 4 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-6 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-6 from) (process->ppointer self))
+        (set! (-> a1-6 num-params) 1)
+        (set! (-> a1-6 message) 'spawn-command)
+        (set! (-> a1-6 param 0) (the-as uint gp-0))
+        (let ((t9-9 send-event-function)
+              (v1-105 (-> self actor-group 0 data 0 actor))
+              )
+          (t9-9
+            (if v1-105
+                (-> v1-105 extra process)
+                )
+            a1-6
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1))
+        (suspend)
+        )
+      (until (>= 2 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-7 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-7 from) (process->ppointer self))
+        (set! (-> a1-7 num-params) 1)
+        (set! (-> a1-7 message) 'spawn-command)
+        (set! (-> a1-7 param 0) (the-as uint gp-0))
+        (let ((t9-11 send-event-function)
+              (v1-123 (-> self actor-group 0 data 0 actor))
+              )
+          (t9-11
+            (if v1-123
+                (-> v1-123 extra process)
+                )
+            a1-7
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 0.5))
+        (suspend)
+        )
+      (let ((a1-8 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-8 from) (process->ppointer self))
+        (set! (-> a1-8 num-params) 1)
+        (set! (-> a1-8 message) 'spawn-command)
+        (set! (-> a1-8 param 0) (the-as uint gp-0))
+        (let ((t9-12 send-event-function)
+              (v1-138 (-> self actor-group 0 data 0 actor))
+              )
+          (t9-12
+            (if v1-138
+                (-> v1-138 extra process)
+                )
+            a1-8
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1.5))
+        (suspend)
+        )
+      (let ((a1-9 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-9 from) (process->ppointer self))
+        (set! (-> a1-9 num-params) 1)
+        (set! (-> a1-9 message) 'spawn-command)
+        (set! (-> a1-9 param 0) (the-as uint gp-0))
+        (let ((t9-13 send-event-function)
+              (v1-153 (-> self actor-group 0 data 1 actor))
+              )
+          (t9-13
+            (if v1-153
+                (-> v1-153 extra process)
+                )
+            a1-9
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1))
+        (suspend)
+        )
+      (let ((a1-10 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-10 from) (process->ppointer self))
+        (set! (-> a1-10 num-params) 1)
+        (set! (-> a1-10 message) 'spawn-command)
+        (set! (-> a1-10 param 0) (the-as uint gp-0))
+        (let ((t9-14 send-event-function)
+              (v1-168 (-> self actor-group 0 data 0 actor))
+              )
+          (t9-14
+            (if v1-168
+                (-> v1-168 extra process)
+                )
+            a1-10
+            )
+          )
+        )
+      (until (>= 3 (get-alive-count self))
+        (suspend)
+        )
+      (let ((a1-11 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-11 from) (process->ppointer self))
+        (set! (-> a1-11 num-params) 1)
+        (set! (-> a1-11 message) 'spawn-command)
+        (set! (-> a1-11 param 0) (the-as uint gp-0))
+        (let ((t9-16 send-event-function)
+              (v1-180 (-> self actor-group 0 data 1 actor))
+              )
+          (t9-16
+            (if v1-180
+                (-> v1-180 extra process)
+                )
+            a1-11
+            )
+          )
+        )
+      (set-time! (-> self spawn-timer))
+      (until (time-elapsed? (-> self spawn-timer) (seconds 1))
+        (suspend)
+        )
+      (let ((a1-12 (new 'stack-no-clear 'event-message-block)))
+        (set! (-> a1-12 from) (process->ppointer self))
+        (set! (-> a1-12 num-params) 1)
+        (set! (-> a1-12 message) 'spawn-command)
+        (set! (-> a1-12 param 0) (the-as uint gp-0))
+        (let ((t9-17 send-event-function)
+              (v1-195 (-> self actor-group 0 data 1 actor))
+              )
+          (t9-17
+            (if v1-195
+                (-> v1-195 extra process)
+                )
+            a1-12
+            )
+          )
+        )
+      )
+    (sleep-code)
+    )
+  )

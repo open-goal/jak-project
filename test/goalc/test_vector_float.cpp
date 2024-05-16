@@ -9,7 +9,7 @@
 #include "gtest/gtest.h"
 #include "test/goalc/framework/test_runner.h"
 
-#include "third-party/fmt/core.h"
+#include "fmt/core.h"
 #include "third-party/json.hpp"
 
 class WithMinimalGameTests : public ::testing::Test {
@@ -166,7 +166,7 @@ struct VectorFloatTestCase_TwoOperand : VectorFloatTestCase {
     input1.setJson(data, "v1");
     input2.setJson(data, "v2");
     dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
+    data["operation"] = fmt::format("{}", func);
     if (destinationMask == -1) {
       data["destinationMask"] = false;
     } else {
@@ -301,7 +301,7 @@ struct VectorFloatTestCase_SingleOperand : VectorFloatTestCase {
   void setJson(nlohmann::json& data, std::string func) {
     input1.setJson(data, "v1");
     dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
+    data["operation"] = fmt::format("{}", func);
     if (destinationMask == -1) {
       data["destinationMask"] = false;
     } else {
@@ -377,7 +377,7 @@ struct VectorFloatTestCase_TwoOperandACC : VectorFloatTestCase {
     input2.setJson(data, "v2");
     acc.setJson(data, "acc");
     dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
+    data["operation"] = fmt::format("{}", func);
     if (destinationMask == -1) {
       data["destinationMask"] = false;
     } else {
@@ -473,7 +473,7 @@ struct VectorFloatTestCase_TwoOperandQuotient : VectorFloatTestCase {
     input1.setJson(data, "v1");
     input2.setJson(data, "v2");
     dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
+    data["operation"] = fmt::format("{}", func);
     data["ftf"] = fmt::format("{:b}", ftf);
     data["fsf"] = fmt::format("{:b}", fsf);
   }
@@ -542,7 +542,7 @@ struct VectorFloatTestCase_OneOperandQuotient : VectorFloatTestCase {
   void setJson(nlohmann::json& data, std::string func) {
     input1.setJson(data, "v1");
     dest.setJson(data, "dest");
-    data["operation"] = fmt::format(func);
+    data["operation"] = fmt::format("{}", func);
     data["ftf"] = fmt::format("{:b}", ftf);
   }
 };

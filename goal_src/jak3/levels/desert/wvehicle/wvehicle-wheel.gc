@@ -7,3 +7,436 @@
 
 ;; DECOMP BEGINS
 
+(deftype vehicle-wheel-init-params (structure)
+  ((skel                  skeleton-group)
+   (skel-blur             skeleton-group)
+   (level                 symbol)
+   (radius                float)
+   (collision-mesh-index  int8)
+   (position              vector      :inline)
+   (rotation              quaternion  :inline)
+   (scale                 vector      :inline)
+   )
+  )
+
+
+(define *vehicle-wheel-constants* (new 'static 'rigid-body-object-constants
+                                    :info (new 'static 'rigid-body-info
+                                      :mass 1.0
+                                      :inv-mass 1.0
+                                      :linear-damping 0.995
+                                      :angular-damping 0.995
+                                      :bounce-factor 0.5
+                                      :friction-factor 0.5
+                                      :bounce-mult-factor 1.22
+                                      :cm-offset-joint (new 'static 'vector :w 1.0)
+                                      :inertial-tensor-box (new 'static 'array meters 3 (meters 2) (meters 3) (meters 3))
+                                      )
+                                    :extra (new 'static 'rigid-body-object-extra-info
+                                      :max-time-step 0.033333335
+                                      :gravity (meters 50)
+                                      :idle-distance (meters 50)
+                                      :attack-force-scale 1.0
+                                      )
+                                    :name '*vehicle-wheel-constants*
+                                    )
+        )
+
+(deftype vehicle-wheel (rigid-body-object)
+  ((collision-enable?  symbol)
+   (normal-look        lod-set  :inline)
+   (blur-look          lod-set  :inline)
+   )
+  (:state-methods
+    explode
+    fade-out
+    die
+    )
+  (:methods
+    (init-collision! (_type_ vehicle-wheel-init-params) none :replace)
+    )
+  )
+
+
+(defmethod init-collision! ((this vehicle-wheel) (arg0 vehicle-wheel-init-params))
+  (cond
+    ((< (-> arg0 collision-mesh-index) 0)
+     (let ((s4-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+       (set! (-> s4-0 dynam) (copy *standard-dynamics* 'process))
+       (set! (-> s4-0 reaction) cshape-reaction-default)
+       (set! (-> s4-0 no-reaction)
+             (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+             )
+       (set! (-> s4-0 penetrate-using) (penetrate vehicle))
+       (let ((v1-8 (new 'process 'collide-shape-prim-sphere s4-0 (the-as uint 0))))
+         (set! (-> v1-8 prim-core action) (collide-action solid))
+         (set! (-> v1-8 transform-index) 0)
+         (set-vector! (-> v1-8 local-sphere) 0.0 0.0 0.0 (-> arg0 radius))
+         (set! (-> s4-0 total-prims) (the-as uint 1))
+         (set! (-> s4-0 root-prim) v1-8)
+         )
+       (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+       (let ((v1-11 (-> s4-0 root-prim)))
+         (set! (-> s4-0 backup-collide-as) (-> v1-11 prim-core collide-as))
+         (set! (-> s4-0 backup-collide-with) (-> v1-11 prim-core collide-with))
+         )
+       (set! (-> this root) s4-0)
+       )
+     )
+    (else
+      (let ((s4-1 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+        (set! (-> s4-1 dynam) (copy *standard-dynamics* 'process))
+        (set! (-> s4-1 reaction) cshape-reaction-default)
+        (set! (-> s4-1 no-reaction)
+              (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+              )
+        (set! (-> s4-1 penetrate-using) (penetrate vehicle))
+        (let ((s3-0 (new 'process 'collide-shape-prim-group s4-1 (the-as uint 2) 0)))
+          (set! (-> s4-1 total-prims) (the-as uint 3))
+          (set! (-> s3-0 prim-core action) (collide-action solid))
+          (set-vector! (-> s3-0 local-sphere) 0.0 0.0 0.0 (-> arg0 radius))
+          (set! (-> s4-1 root-prim) s3-0)
+          )
+        (let ((v1-24 (new 'process 'collide-shape-prim-sphere s4-1 (the-as uint 0))))
+          (set! (-> v1-24 prim-core action) (collide-action solid))
+          (set! (-> v1-24 transform-index) 0)
+          (set-vector! (-> v1-24 local-sphere) 0.0 0.0 0.0 (-> arg0 radius))
+          )
+        (let ((v1-26
+                (new 'process 'collide-shape-prim-mesh s4-1 (the-as uint (-> arg0 collision-mesh-index)) (the-as uint 0))
+                )
+              )
+          (set! (-> v1-26 prim-core action) (collide-action solid rideable))
+          (set! (-> v1-26 transform-index) 3)
+          (set-vector! (-> v1-26 local-sphere) 0.0 0.0 0.0 (-> arg0 radius))
+          )
+        (set! (-> s4-1 nav-radius) (* 0.75 (-> s4-1 root-prim local-sphere w)))
+        (let ((v1-29 (-> s4-1 root-prim)))
+          (set! (-> s4-1 backup-collide-as) (-> v1-29 prim-core collide-as))
+          (set! (-> s4-1 backup-collide-with) (-> v1-29 prim-core collide-with))
+          )
+        (set! (-> this root) s4-1)
+        )
+      )
+    )
+  (iterate-prims
+    (-> this root)
+    (lambda ((arg0 collide-shape-prim))
+      (let ((v1-0 (-> arg0 prim-core prim-type)))
+        (cond
+          ((= v1-0 -1)
+           (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                    backgnd
+                                                    bot
+                                                    crate
+                                                    civilian
+                                                    enemy
+                                                    obstacle
+                                                    vehicle-sphere
+                                                    hit-by-player-list
+                                                    hit-by-others-list
+                                                    collectable
+                                                    pusher
+                                                    shield
+                                                    vehicle-sphere-no-probe
+                                                    )
+                 )
+           (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-sphere-no-probe))
+           )
+          ((= v1-0 1)
+           (set! (-> arg0 prim-core collide-with) (collide-spec jak player-list))
+           (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-mesh-no-block-use))
+           )
+          ((zero? v1-0)
+           (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                    backgnd
+                                                    jak
+                                                    bot
+                                                    crate
+                                                    civilian
+                                                    enemy
+                                                    obstacle
+                                                    vehicle-sphere
+                                                    hit-by-player-list
+                                                    hit-by-others-list
+                                                    player-list
+                                                    collectable
+                                                    pusher
+                                                    shield
+                                                    vehicle-sphere-no-probe
+                                                    )
+                 )
+           (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-mesh-no-block-use vehicle-sphere-no-probe))
+           )
+          )
+        )
+      (none)
+      )
+    )
+  0
+  (none)
+  )
+
+(defmethod init-rbody-control! ((this vehicle-wheel))
+  (alloc-rbody-control! this *vehicle-wheel-constants*)
+  (logior! (-> this rbody flags) (rigid-body-flag enable-collision))
+  (set! (-> this root max-iteration-count) (the-as uint 3))
+  (set! (-> this max-time-step) 0.033333335)
+  (set! (-> this draw shadow-ctrl)
+        (new 'process 'shadow-control -43008.0 -2048.0 69632.0 (the-as vector #f) (shadow-flags) 245760.0)
+        )
+  (set! (-> this focus-status)
+        (the-as focus-status (logior (focus-status gun-no-target) (-> this focus-status)))
+        )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch int vs object.
+(defmethod rigid-body-object-method-30 ((this vehicle-wheel))
+  (ja-post)
+  (if (logtest? (-> this rbody flags) (rigid-body-flag enable-collision))
+      (update-transforms (-> this root))
+      )
+  0
+  )
+
+(defmethod rbody-post ((this vehicle-wheel))
+  (let ((v1-0 (new 'stack-no-clear 'rigid-body-move-work)))
+    (set! (-> v1-0 cquery start-pos quad) (-> this rbody position quad))
+    (vector-float*! (-> v1-0 cquery move-dist) (-> this rbody lin-velocity) (seconds-per-frame))
+    (let ((a0-4 (-> v1-0 cquery)))
+      (set! (-> a0-4 radius) (+ 4096.0 (-> this root root-prim local-sphere w)))
+      (set! (-> a0-4 collide-with) (collide-spec
+                                     backgnd
+                                     jak
+                                     bot
+                                     crate
+                                     civilian
+                                     enemy
+                                     obstacle
+                                     vehicle-sphere
+                                     hit-by-player-list
+                                     hit-by-others-list
+                                     player-list
+                                     collectable
+                                     blocking-plane
+                                     pusher
+                                     vehicle-mesh-probeable
+                                     shield
+                                     vehicle-sphere-no-probe
+                                     )
+            )
+      (set! (-> a0-4 ignore-process0) this)
+      (set! (-> a0-4 ignore-process1) #f)
+      (set! (-> a0-4 ignore-pat) (new 'static 'pat-surface :noentity #x1 :nopilot #x1 :probe #x1))
+      (set! (-> a0-4 action-mask) (collide-action solid))
+      )
+    (fill-using-line-sphere *collide-cache* (-> v1-0 cquery))
+    )
+  (if *display-collide-cache*
+      (debug-draw *collide-cache*)
+      )
+  (rigid-body-object-method-32 this)
+  (rigid-body-object-method-38 this)
+  (update-rbody-transform! (-> this rbody) (-> this root))
+  (rigid-body-object-method-30 this)
+  0
+  (none)
+  )
+
+(defstate idle (vehicle-wheel)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (local-vars (v0-2 object))
+    (case message
+      (('explode)
+       (lods-assign! (-> self draw) (-> self normal-look))
+       (let ((a0-4 (-> self draw color-mult)))
+         (vector-float*! (the-as vector a0-4) (the-as vector a0-4) 0.25)
+         )
+       (set! (-> self rbody position quad) (-> self root trans quad))
+       (quaternion-copy! (the-as quaternion (-> self rbody rot)) (-> self root quat))
+       (let ((v1-10 (-> block param 0)))
+         (when v1-10
+           (vector-float*! (-> self rbody lin-momentum) (the-as vector v1-10) (-> self info info mass))
+           (go-virtual explode)
+           )
+         )
+       )
+      (('enable-collision)
+       (set! v0-2 (logior (-> self rbody flags) (rigid-body-flag enable-collision)))
+       (set! (-> self rbody flags) (the-as rigid-body-flag v0-2))
+       v0-2
+       )
+      (('disable-collision)
+       (set! v0-2 (logclear (-> self rbody flags) (rigid-body-flag enable-collision)))
+       (set! (-> self rbody flags) (the-as rigid-body-flag v0-2))
+       v0-2
+       )
+      (('hide)
+       (set! v0-2 (logior (-> self draw status) (draw-control-status no-draw)))
+       (set! (-> self draw status) (the-as draw-control-status v0-2))
+       v0-2
+       )
+      (('unhide)
+       (set! v0-2 (logclear (-> self draw status) (draw-control-status no-draw)))
+       (set! (-> self draw status) (the-as draw-control-status v0-2))
+       v0-2
+       )
+      )
+    )
+  :enter (behavior ()
+    (iterate-prims
+      (-> self root)
+      (lambda ((arg0 collide-shape-prim))
+        (let ((v1-0 (-> arg0 prim-core prim-type)))
+          (cond
+            ((= v1-0 -1)
+             (set! (-> arg0 prim-core collide-with) (collide-spec))
+             (set! (-> arg0 prim-core collide-as) (collide-spec))
+             0
+             )
+            ((or (= v1-0 1) (zero? v1-0))
+             (set! (-> arg0 prim-core collide-with) (collide-spec jak player-list))
+             (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-mesh-no-block-use))
+             )
+            )
+          )
+        (none)
+        )
+      )
+    )
+  :trans #f
+  :post (behavior ()
+    (rigid-body-object-method-30 self)
+    )
+  )
+
+(defstate explode (vehicle-wheel)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('impact-impulse)
+       (logior! (-> self root penetrated-by) (penetrate vehicle))
+       #t
+       )
+      )
+    )
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logior! (-> self rbody flags) (rigid-body-flag enable-physics))
+    (iterate-prims
+      (-> self root)
+      (lambda ((arg0 collide-shape-prim))
+        (let ((v1-0 (-> arg0 prim-core prim-type)))
+          (cond
+            ((or (= v1-0 -1) (zero? v1-0))
+             (set! (-> arg0 prim-core collide-with) (collide-spec
+                                                      backgnd
+                                                      bot
+                                                      crate
+                                                      civilian
+                                                      enemy
+                                                      obstacle
+                                                      vehicle-sphere
+                                                      hit-by-player-list
+                                                      hit-by-others-list
+                                                      collectable
+                                                      pusher
+                                                      shield
+                                                      vehicle-sphere-no-probe
+                                                      )
+                   )
+             (set! (-> arg0 prim-core collide-as) (collide-spec vehicle-sphere-no-probe))
+             )
+            ((= v1-0 1)
+             (set! (-> arg0 prim-core collide-with) (collide-spec))
+             (set! (-> arg0 prim-core collide-as) (collide-spec))
+             0
+             )
+            )
+          )
+        (none)
+        )
+      )
+    )
+  :trans #f
+  :code sleep-code
+  :post (behavior ()
+    (rbody-post self)
+    (if (time-elapsed? (-> self state-time) (seconds 4))
+        (go-virtual fade-out)
+        )
+    )
+  )
+
+(defstate fade-out (vehicle-wheel)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    (logior! (-> self draw status) (draw-control-status force-fade))
+    )
+  :code sleep-code
+  :post (behavior ()
+    (set! (-> self draw force-fade)
+          (the-as
+            uint
+            (the int (fmax 0.0 (- 128.0 (* 0.42666668 (the float (- (current-time) (-> self state-time)))))))
+            )
+          )
+    (if (< (-> self draw force-fade) (the-as uint 2))
+        (go-virtual die)
+        )
+    (rbody-post self)
+    )
+  )
+
+(defstate die (vehicle-wheel)
+  :virtual #t
+  :code (behavior ()
+    (cleanup-for-death self)
+    )
+  )
+
+(defbehavior vehicle-wheel-init-by-other vehicle-wheel ((arg0 vehicle-wheel-init-params))
+  (logior! (-> self mask) (process-mask vehicle))
+  (init-collision! self arg0)
+  (set! (-> self root trans quad) (-> arg0 position quad))
+  (quaternion-copy! (-> self root quat) (-> arg0 rotation))
+  (set! (-> self root scale quad) (-> arg0 scale quad))
+  (set! (-> self level) (the-as level (-> arg0 level)))
+  (initialize-skeleton self (-> arg0 skel) (the-as pair 0))
+  (setup-lods! (-> self normal-look) (-> arg0 skel) (-> self draw art-group) (-> self entity))
+  (setup-lods! (-> self blur-look) (-> arg0 skel-blur) (-> self draw art-group) (-> self entity))
+  (set! (-> self normal-look lod 0 dist) 819200.0)
+  (set! (-> self blur-look lod 0 dist) 819200.0)
+  (set! (-> self draw lod-set lod 0 dist) 819200.0)
+  (let ((f0-6 (fmax (fmax (fabs (-> arg0 scale x)) (fabs (-> arg0 scale y))) (fabs (-> arg0 scale z)))))
+    (set! (-> self draw bounds w) (* (-> arg0 skel bounds w) f0-6))
+    (set! (-> self draw longest-edge) (* (-> arg0 skel longest-edge) f0-6))
+    )
+  (init-rbody-control! self)
+  (go-virtual idle)
+  )
+
+;; WARN: Return type mismatch process vs vehicle-wheel.
+(defun vehicle-wheel-spawn ((arg0 process) (arg1 vehicle-wheel-init-params))
+  (let ((gp-0 (the-as process #f)))
+    (let* ((s3-0 (get-process *default-dead-pool* vehicle-wheel #x4000 1))
+           (v1-1 (when s3-0
+                   (let ((t9-1 (method-of-type process activate)))
+                     (t9-1 s3-0 arg0 "vehicle-wheel" (the-as pointer #x70004000))
+                     )
+                   (run-now-in-process s3-0 vehicle-wheel-init-by-other arg1)
+                   (-> s3-0 ppointer)
+                   )
+                 )
+           )
+      (if v1-1
+          (set! gp-0 (-> v1-1 0))
+          )
+      )
+    (the-as vehicle-wheel gp-0)
+    )
+  )

@@ -1,0 +1,11 @@
+("STA.DGO"
+ ("stadium-mood.o"
+  "stadium-part.o"
+  "tpage-1591.go"
+  "tpage-2553.go"
+  "tpage-1592.go"
+  "tpage-2514.go"
+  "daxter-highres-ag.go"
+  "light-eco-vent-ag.go"
+  "stadium-vis.go"
+ ))

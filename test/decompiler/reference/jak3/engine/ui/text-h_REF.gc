@@ -1,0 +1,62 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type game-text
+(deftype game-text (structure)
+  ((id    text-id)
+   (text  string)
+   )
+  :pack-me
+  )
+
+;; definition for method 3 of type game-text
+(defmethod inspect ((this game-text))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'game-text)
+  (format #t "~1Tid: ~D~%" (-> this id))
+  (format #t "~1Ttext: ~A~%" (-> this text))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type game-text-info
+(deftype game-text-info (basic)
+  ((length       int32)
+   (language-id  int32)
+   (group-name   string)
+   (data         game-text  :inline :dynamic)
+   )
+  (:methods
+    (lookup-text! (_type_ text-id symbol) string)
+    )
+  )
+
+;; definition for method 3 of type game-text-info
+(defmethod inspect ((this game-text-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tlanguage-id: ~D~%" (-> this language-id))
+  (format #t "~1Tgroup-name: ~A~%" (-> this group-name))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *text-group-names*, type (array string)
+(define *text-group-names* (new 'static 'boxed-array :type string "common"))
+
+;; definition for symbol *common-text-heap*, type kheap
+(define *common-text-heap* (new 'global 'kheap))
+
+;; definition for symbol *common-text*, type game-text-info
+(define *common-text* (the-as game-text-info #f))
+
+;; failed to figure out what this is:
+0

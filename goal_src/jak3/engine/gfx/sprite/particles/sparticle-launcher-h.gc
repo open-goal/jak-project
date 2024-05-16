@@ -5,5 +5,598 @@
 ;; name in dgo: sparticle-launcher-h
 ;; dgos: GAME
 
+(declare-type sprite-vec-data-3d structure)
+(declare-type sparticle-cpuinfo structure)
+(declare-type sparticle-system structure)
+
+(define-extern unlink-part-group-by-heap (function kheap int))
+(define-extern particle-adgif-cache-flush (function none))
+(define-extern execute-part-engine (function none))
+(define-extern execute-particle-local-space-engine (function int none))
+
+;; +++sp-field-id
+(defenum sp-field-id
+  :type uint16
+  ;; todo copied from jak 2
+  (misc-fields-start 0)
+  (spt-texture 1)
+  (spt-anim 2)
+  (spt-anim-speed 3)
+  (spt-birth-func 4)
+  (spt-joint/refpoint 5)
+  (spt-num 6)
+  (spt-sound 7)
+  (misc-fields-end 8)
+
+  (sprite-fields-start 9)
+  (spt-x 10)
+  (spt-y 11)
+  (spt-z 12)
+  (spt-scale-x 13)
+  (spt-rot-x 14)
+  (spt-rot-y 15)
+  (spt-rot-z 16)
+  (spt-scale-y 17)
+  (spt-r 18)
+  (spt-g 19)
+  (spt-b 20)
+  (spt-a 21)
+  (sprite-fields-end 22)
+
+  (cpu-fields-start 23)
+  (spt-omega 24)
+  (spt-vel-x 25)
+  (spt-vel-y 26)
+  (spt-vel-z 27)
+  (spt-scalevel-x 28)
+  (spt-rotvel-x 29)
+  (spt-rotvel-y 30)
+  (spt-rotvel-z 31)
+  (spt-scalevel-y 32)
+  (spt-fade-r 33)
+  (spt-fade-g 34)
+  (spt-fade-b 35)
+  (spt-fade-a 36)
+  (spt-accel-x 37)
+  (spt-accel-y 38)
+  (spt-accel-z 39)
+  (spt-dummy 40)
+  (spt-quat-x 41)
+  (spt-quat-y 42)
+  (spt-quat-z 43)
+  (spt-quad-w 44)
+  (spt-friction 45)
+  (spt-timer 46)
+  (spt-flags 47)
+  (spt-userdata 48)
+  (spt-func 49)
+  (spt-next-time 50)
+  (spt-next-launcher 51)
+  (cpu-fields-end 52)
+
+  (launch-fields-start 53)
+  (spt-launchrot-x 54)
+  (spt-launchrot-y 55)
+  (spt-launchrot-z 56)
+  (spt-launchrot-w 57)
+  (spt-conerot-x 58)
+  (spt-conerot-y 59)
+  (spt-conerot-z 60)
+  (spt-conerot-w 61)
+  (spt-rotate-x 62)
+  (spt-rotate-y 63)
+  (spt-rotate-z 64)
+
+  (spt-conerot-radius 65)
+  (spt-mat-scale-x 66)
+  (spt-mat-scale-y 67)
+  (spt-mat-scale-z 68)
+  (launch-fields-end 69)
+
+  (spt-scale 70)
+  (spt-scalevel 71)
+  (spt-end 72)
+  )
+;; ---sp-field-id
+
+
+;; +++sp-flag
+(defenum sp-flag
+  :type uint16
+  ;; todo copied from jak 2
+  (int 0) ;; int
+  (float 1) ;; float
+  (float-int-rand 2) ;; float with int rand
+  (copy-from-other 3) ;; copy
+  (object 4) ;; label
+  (symbol 5) ;; symbol
+  (launcher 6) ;; launcher from id
+  (float-store 7) ;; float and store result in *sp-temp*
+  )
+;; ---sp-flag
+
+
+;; +++sp-group-item-flag
+(defenum sp-group-item-flag
+  :bitfield #t
+  :type uint16
+  (is-3d)
+  (sp1)
+  (sp2)
+  (sp3)
+  (sp4)
+  (sp5)
+  (sp6)
+  (sp7)
+  (sp8)
+  (sp9)
+  (sp10)
+  (sp11)
+  (sp12)
+  (sp13)
+  (sp14)
+  (sp15)
+  )
+;; ---sp-group-item-flag
+
+
+;; +++sp-launch-state-flags
+(defenum sp-launch-state-flags
+  :bitfield #t
+  :type uint16
+  (sp0)
+  (sp1)
+  (sp2)
+  )
+;; ---sp-launch-state-flags
+
+
+;; +++sp-group-flag
+(defenum sp-group-flag
+  :bitfield #t
+  :type uint16
+  (sp0)
+  (sp1)
+  (sp2)
+  (sp3)
+  (sp4)
+  (sp5)
+  (sp6)
+  (sp7)
+  (sp8)
+  (sp9)
+  (sp10)
+  (sp11)
+  (sp12)
+  (sp13)
+  (sp14)
+  (sp15)
+  )
+;; ---sp-group-flag
+
+
+(defmacro sp-item (launcher
+                    &key (fade-after 0.0)
+                    &key (falloff-to 0.0)
+                    &key (flags ())
+                    &key (period 0)
+                    &key (length 0)
+                    &key (offset 0)
+                    &key (hour-mask 0)
+                    &key (binding 0)
+                    )
+  `(new 'static 'sparticle-group-item
+        :launcher ,launcher
+        :fade-after ,fade-after
+        :falloff-to ,falloff-to
+        :flags (sp-group-item-flag ,@flags)
+        :period ,period
+        :length ,length
+        :offset ,offset
+        :hour-mask ,hour-mask
+        :binding ,binding
+        )
+  )
+
+(defmacro defpartgroup (name &key id &key parts &key (duration 3000) &key (linger-duration 1500) &key (flags ()) &key bounds
+                             &key (rotate (0.0 0.0 0.0)) &key (scale (1.0 1.0 1.0)))
+  "define a new part group. defines a constant with the name of the group with the ID as its value"
+  `(begin
+    (defconstant ,name ,id)
+    (set! (-> *part-group-id-table* ,id)
+      (new 'static 'sparticle-launch-group
+          :duration ,duration
+          :linger-duration ,linger-duration
+          :flags (sp-group-flag ,@flags)
+          :bounds ,bounds
+          :name ,(symbol->string name)
+          :length ,(length parts)
+          :launcher (new 'static 'inline-array sparticle-group-item ,(length parts) ,@parts)
+          :rotate-x ,(car rotate)
+          :rotate-y ,(cadr rotate)
+          :rotate-z ,(caddr rotate)
+          :scale-x ,(car scale)
+          :scale-y ,(cadr scale)
+          :scale-z ,(caddr scale)
+          )
+      )
+    )
+  )
+
+(desfun param-float? (p)
+         (or (float? p) (and (pair? p) (eq? 'meters (car p))) (and (pair? p) (eq? 'degrees (car p))))
+         )
+
+(desfun param-int? (p)
+         (or (integer? p) (and (pair? p) (eq? 'seconds (car p))))
+         )
+
+(desfun param-symbol? (p)
+         (and (pair? p) (eq? 'quote (car p)))
+         )
+
+(seval (begin
+(define *sparticle-fields* (make-string-hash-table))
+(doenum (name val 'sp-field-id)
+  (hash-table-set!
+    *sparticle-fields*
+    (if (string-starts-with? (symbol->string name) "spt-")
+        (string->symbol (string-substr (symbol->string name) 4 0))
+        name)
+    (list
+      val name (member name '(spt-vel-x
+                              spt-vel-y
+                              spt-vel-z
+                              spt-scalevel-x
+                              spt-scalevel-y
+                              spt-rotvel-x
+                              spt-rotvel-y
+                              spt-rotvel-z
+                              spt-fade-r
+                              spt-fade-g
+                              spt-fade-b
+                              spt-fade-a
+                              spt-accel-x
+                              spt-accel-y
+                              spt-accel-z))
+      )
+    )
+  )
+;; you cannot define these fields ever.
+(define *sparticle-fields-banned* '(misc-fields-start
+                                    misc-fields-end
+                                    sprite-fields-start
+                                    sprite-fields-end
+                                    cpu-fields-start
+                                    cpu-fields-end
+                                    launch-fields-start
+                                    launch-fields-end
+                                    end
+                                    ))
+))
+
+;; the last field ID defined, to make sure that fields are defined in order.
+(seval (define *last-field-id* -1))
+
+(desfun process-init-spec (x)
+  (let* ((head (symbol->string (car x)))
+                          (params (cdr x))
+                          (field-name (string->symbol (string-substr head 1 0)))
+                          (field-lookup (hash-table-try-ref *sparticle-fields* field-name))
+                          (field (cdr field-lookup))
+                          (store? (member ':store params))
+                          (param-count (if store? (1- (length params)) (length params)))
+                          )
+                      (when (not (car field-lookup))
+                        (fmt #t "unknown sparticle field {}\n" x))
+                      (when (neq? (string-ref head 0) #\:)
+                        (fmt #t "invalid sparticle field {}\n" x))
+                      ; (when (member field-name *sparticle-fields-banned*)
+                      ;   (fmt #t "you cannot use sparticle field {}\n" field-name))
+                    (let ((field-id (car field))
+                          (field-enum-name (cadr field))
+                          (vel? (and #f (caddr field)))
+                          (param0 (and (>= param-count 1) (first params)))
+                          (param1 (and (>= param-count 2) (second params)))
+                          (param2 (and (>= param-count 3) (third params))))
+                      (when (>= *last-field-id* field-id)
+                        (fmt #t "field {} must come after field {}, not before\n" field-name (car (nth *last-field-id* *sparticle-fields*)))
+                        )
+                      (set! *last-field-id* field-id)
+                      (cond
+                        ((eq? field-name 'flags)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value (sp-cpuinfo-flag ,@param0) :random-mult 1)
+                          )
+                        ((eq? field-name 'texture)
+                          (if (eq? (car param0) 'new)
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,param0 :flags (sp-flag int))
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :tex ,(string->symbol-format "{}-{}" (car param0) (cadr param0)) :flags (sp-flag int))
+                            )
+                          )
+                        ((eq? field-name 'next-launcher)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :initial-value ,param0 :flags (sp-flag launcher))
+                          )
+                        ((eq? field-name 'sound)
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :sound ,param0 :flags (sp-flag object))
+                          )
+                        ((and (= 2 param-count) (symbol? param0) (eq? param0 ':copy))
+                          (let* ((other-field-lookup (hash-table-try-ref *sparticle-fields* (cadr (member ':copy params))))
+                                 (other-field (cdr other-field-lookup))
+                                 (other-field-id (car other-field)))
+                            (when (>= other-field-id field-id)
+                             (fmt #t "warning copying to sparticle field {} from {} - you can only copy from fields before this one!\n" field-name (cadr other-field))                             )
+                            `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag copy-from-other)
+                                                              :initial-value ,(- other-field-id field-id) :random-mult 1)
+                            )
+                          )
+                        ((and (= 2 param-count) (symbol? param0) (eq? param0 ':data))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag object)
+                                                            :object ,(cadr (member ':data params)))
+                          )
+                        ((and (= 1 param-count) (param-symbol? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag symbol)
+                                                            :sym ,param0)
+                          )
+                        ((and (= 1 param-count) (param-float? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef 0.0
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 2 param-count) (param-float? param0) (param-float? param1))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef ,(if vel? `(/ ,param1 60.0) param1)
+                                                            :random-multf 1.0)
+                          )
+                        ((and (= 3 param-count) (param-float? param0) (param-float? param1) (param-float? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag ,(if store? 'float-store 'float))
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-rangef ,param1
+                                                            :random-multf ,(if vel? `(/ ,param2 60.0) param2))
+                          )
+                        ((and (= 3 param-count) (param-float? param0) (param-int? param1) (param-float? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag float-int-rand)
+                                                            :initial-valuef ,(if vel? `(/ ,param0 60.0) param0)
+                                                            :random-range ,param1
+                                                            :random-multf ,(if vel? `(/ ,param2 60.0) param2))
+                          )
+                        ((and (= 1 param-count) (param-int? param0))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range 0
+                                                            :random-mult 1)
+                          )
+                        ((and (= 2 param-count) (param-int? param0) (param-int? param1))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range ,param1
+                                                            :random-mult 1)
+                          )
+                        ((and (= 3 param-count) (param-int? param0) (param-int? param1) (param-int? param2))
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id ,field-enum-name) :flags (sp-flag int)
+                                                            :initial-value ,param0
+                                                            :random-range ,param1
+                                                            :random-mult ,param2)
+                          )
+                        (#t
+                          `(new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                          )
+                        )
+                      )
+                    )
+  )
+
+(defmacro defpart (id &key (init-specs ()))
+  "define a new sparticle-launcher"
+  (begin
+    (set! *last-field-id* -1)
+    `(set! (-> *part-id-table* ,id)
+        (new 'static 'sparticle-launcher
+            :init-specs (new 'static 'inline-array sp-field-init-spec ,(1+ (length init-specs))
+                    ,@(apply process-init-spec init-specs)
+                    (new 'static 'sp-field-init-spec :field (sp-field-id spt-end))
+                    )))
+    )
+  )
+
+(define-extern local-space-proc-joint (function particle-local-space-info none))
+(define-extern *particle-quat* quaternion)
+
 ;; DECOMP BEGINS
 
+(deftype sparticle-birthinfo (structure)
+  "Used internally by the sparticle code."
+  ((sprite        uint32)
+   (anim          int32)
+   (anim-speed    float)
+   (birth-func    basic)
+   (joint-ppoint  int32)
+   (num-to-birth  float)
+   (sound         basic)
+   (dataf         float   1 :overlay-at sprite)
+   (data          uint32  1 :overlay-at sprite)
+   )
+  )
+
+
+(deftype sp-field-init-spec (structure)
+  "Part of a particle definition - how to initialize a field of a particle."
+  ((field           sp-field-id)
+   (flags           sp-flag)
+   (initial-valuef  float)
+   (random-rangef   float)
+   (random-multf    float)
+   (initial-value   int32       :overlay-at initial-valuef)
+   (random-range    int32       :overlay-at random-rangef)
+   (random-mult     int32       :overlay-at random-multf)
+   (func            symbol      :overlay-at initial-valuef)
+   (tex             texture-id  :overlay-at initial-valuef)
+   (pntr            pointer     :overlay-at initial-valuef)
+   (object          basic       :overlay-at initial-valuef)
+   (sym             symbol      :overlay-at initial-valuef)
+   (sound           sound-spec  :overlay-at initial-valuef)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype sparticle-launcher (basic)
+  "A definition of a single particle, as a list of init specs."
+  ((birthaccum  float)
+   (soundaccum  float)
+   (init-specs  (inline-array sp-field-init-spec))
+   )
+  (:methods
+    (get-field-spec-by-id (_type_ sp-field-id) sp-field-init-spec)
+    (setup-special-textures (_type_ string) none)
+    )
+  )
+
+
+(deftype sparticle-group-item (structure)
+  "A reference to a single sparticle-launcher (by ID) and some parameters for using it."
+  ((launcher    uint32)
+   (fade-after  meters)
+   (falloff-to  meters)
+   (flags       sp-group-item-flag)
+   (period      uint16)
+   (length      uint16)
+   (offset      int16)
+   (hour-mask   uint32)
+   (binding     uint32)
+   )
+  )
+
+
+(deftype sparticle-launch-state (structure)
+  "The state associated with a launcher of a given sparticle."
+  ((group-item  sparticle-group-item)
+   (flags       sp-launch-state-flags)
+   (randomize   uint16)
+   (center      vector)
+   (sprite3d    sprite-vec-data-3d)
+   (sprite      sparticle-cpuinfo)
+   (offset      uint32)
+   (accum       float)
+   (spawn-time  uint32)
+   (control     sparticle-launch-control)
+   (swarm       basic   :overlay-at offset)
+   (seed        uint32  :overlay-at accum)
+   (time        uint32  :overlay-at spawn-time)
+   (spec        basic   :overlay-at sprite)
+   (id          uint32  :overlay-at sprite3d)
+   )
+  )
+
+
+(deftype sparticle-launch-group (basic)
+  "Definition of multiple a particle-group, which is a collection of particle effects."
+  ((length           int16)
+   (duration         uint16)
+   (linger-duration  uint16)
+   (flags            sp-group-flag)
+   (name             string)
+   (launcher         (inline-array sparticle-group-item))
+   (rotate-x         degrees)
+   (rotate-y         degrees)
+   (rotate-z         degrees)
+   (scale-x          float)
+   (scale-y          float)
+   (scale-z          float)
+   (bounds           sphere  :inline)
+   )
+  (:methods
+    (create-launch-control (_type_ process) sparticle-launch-control)
+    )
+  )
+
+
+(define *launch-matrix* (matrix-identity! (new 'global 'matrix)))
+
+(deftype sparticle-launch-control (inline-array-class)
+  "Top-level type containing all the state needed to launch a particle group.
+These are typically owned by a process, and allocated on the process heap.
+These refer to static particle definitions, and then spawn particles that are tracked by the
+particle system itself. This type just holds the launching-related state."
+  ((group                sparticle-launch-group)
+   (proc                 process-drawable)
+   (local-clock          int32)
+   (fade                 float)
+   (matrix               int8)
+   (state-mode           uint8                      3)
+   (state-counter        uint32)
+   (local-space-binding  particle-local-space-info          :overlay-at fade)
+   (last-spawn-frame     int32)
+   (last-spawn-time      int32)
+   (origin               matrix                     :inline)
+   (center               vector                     :inline :overlay-at (-> origin data 12))
+   (data                 sparticle-launch-state     :inline :dynamic)
+   )
+  (:methods
+    (initialize (_type_ sparticle-launch-group process-drawable) none)
+    (is-visible? (_type_ vector) symbol)
+    (spawn (_type_ vector) object)
+    (spawn-from-mat (_type_ matrix) none)
+    (spawn-from-cspace (_type_ cspace) none)
+    (kill-particles (_type_) none)
+    (set-local-space-info (_type_ particle-local-space-info) none)
+    )
+  )
+
+
+(set! (-> sparticle-launch-control heap-base) (the-as uint 48))
+
+(deftype sparticle-subsampler (basic)
+  ((spt-num      float)
+   (sp-system    sparticle-system)
+   (sp-launcher  sparticle-launcher)
+   (spawn-mat    matrix  :inline)
+   (inited?      symbol)
+   )
+  (:methods
+    (new (symbol type sparticle-system sparticle-launcher float) _type_)
+    (init-with-vec! (_type_ vector) vector)
+    (init-with-mat! (_type_ matrix) matrix)
+    )
+  )
+
+
+(defmethod new sparticle-subsampler ((allocation symbol) (type-to-make type) (arg0 sparticle-system) (arg1 sparticle-launcher) (arg2 float))
+  (let ((s3-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (if (zero? s3-0)
+        (go process-drawable-art-error "sparticle-subsampler")
+        )
+    (set! (-> s3-0 sp-launcher) arg1)
+    (set! (-> s3-0 inited?) #f)
+    (set! (-> s3-0 sp-system) arg0)
+    (set! (-> s3-0 spt-num) arg2)
+    (matrix-identity! (-> s3-0 spawn-mat))
+    s3-0
+    )
+  )
+
+(defun compute-rot-in-screenspace ((arg0 vector))
+  "Unclear what this does, but I'm not actually sure it makes sense. Unused"
+  0.0
+  (let ((a0-1 (-> (math-camera-matrix) fvec)))
+    0.0
+    (let ((v1-0 (new 'stack-no-clear 'vector)))
+      (let ((f0-3 (vector-dot a0-1 arg0)))
+        (vector-float*! v1-0 a0-1 f0-3)
+        )
+      (vector-! arg0 arg0 v1-0)
+      )
+    )
+  (let ((a2-1 (matrix-transpose! (new 'stack-no-clear 'matrix) (math-camera-matrix))))
+    (vector-matrix*! arg0 arg0 a2-1)
+    )
+  (the float (sar (shl (the int (atan (-> arg0 y) (* -1.0 (-> arg0 x)))) 48) 48))
+  )
+
+(define-extern lookup-part-group-by-name (function string sparticle-launch-group))
+(define-extern sparticle-motion-blur (function sparticle-system sparticle-cpuinfo vector none))
+(define-extern sp-launch-particles-var (function sparticle-system sparticle-launcher matrix sparticle-launch-state sparticle-launch-control float none))
+(define-extern *part-id-table* (array sparticle-launcher))
+(define-extern *part-group-id-table* (array sparticle-launch-group))
+(define-extern sparticle-set-conerot (function sparticle-launcher vector none))

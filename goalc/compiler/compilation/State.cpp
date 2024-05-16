@@ -45,8 +45,10 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   //  state_name
   //  state_parent
   //  state object
+  //  docstring
   //  named args for enter/exit/trans/post/event/code
-  va_check(form, args, {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL, {}},
+  va_check(form, args,
+           {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL, {}, goos::ObjectType::STRING},
            {
                {"enter", {true, {}}},
                {"exit", {true, {}}},
@@ -55,6 +57,11 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                {"event", {true, {}}},
                {"code", {true, {}}},
            });
+
+  std::string docstring = "";
+  if (args.unnamed.size() == 4 && args.unnamed.at(3).is_string()) {
+    docstring = args.unnamed.at(3).as_string()->data;
+  }
 
   Val* code_value = NULL;
   Val* enter_value = NULL;
@@ -98,10 +105,10 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
   }
 
   auto& state_name = args.unnamed.at(0).as_symbol();
-  auto existing_var = m_symbol_types.find(state_name);
+  auto existing_var = m_symbol_types.lookup(state_name);
 
   TypeSpec type_to_use;
-  if (existing_var == m_symbol_types.end()) {
+  if (!existing_var) {
     // we're a new state. we must have a type.
     if (!state_type) {
       throw_compiler_error(form,
@@ -110,17 +117,29 @@ Val* Compiler::compile_define_state_hook(const goos::Object& form,
                            state_name.name_ptr);
     }
     type_to_use = *state_type;
-    m_symbol_types[state_name] = *state_type;
+    m_symbol_types.set(state_name, *state_type);
   } else {
-    type_to_use = existing_var->second;
+    type_to_use = *existing_var;
     if (state_type) {
-      typecheck(form, existing_var->second, *state_type,
+      typecheck(form, *existing_var, *state_type,
                 fmt::format("type of state {}", state_name.name_ptr));
     }
   }
 
   auto sym_val = env->function_env()->alloc_val<SymbolVal>(state_name.name_ptr, type_to_use);
 
+  std::vector<symbol_info::ArgumentInfo> arg_info = {};
+  if (code_value) {
+    auto as_lambda = dynamic_cast<LambdaVal*>(code_value);
+    if (as_lambda) {
+      for (const auto& arg : as_lambda->lambda.params) {
+        arg_info.push_back({.name = arg.name, .type = arg.type.base_type()});
+      }
+    }
+  }
+
+  m_symbol_info.add_state(state_name.name_ptr, state_parent_type.print(), false, arg_info, form,
+                          docstring);
   env->emit_ir<IR_SetSymbolValue>(form, sym_val, state_object);
 
   return get_none();
@@ -141,10 +160,15 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   //  state_name
   //  state_parent
   //  state object
+  //  docstring
   //  is_override
   //  named args for enter/exit/trans/post/event/code
   va_check(form, args,
-           {goos::ObjectType::SYMBOL, goos::ObjectType::SYMBOL, {}, goos::ObjectType::SYMBOL},
+           {goos::ObjectType::SYMBOL,
+            goos::ObjectType::SYMBOL,
+            {},
+            goos::ObjectType::STRING,
+            goos::ObjectType::SYMBOL},
            {
                {"enter", {true, {}}},
                {"exit", {true, {}}},
@@ -153,6 +177,11 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
                {"event", {true, {}}},
                {"code", {true, {}}},
            });
+
+  std::string docstring = "";
+  if (args.unnamed.size() == 5 && args.unnamed.at(3).is_string()) {
+    docstring = args.unnamed.at(3).as_string()->data;
+  }
 
   Val* code_value = NULL;
   Val* enter_value = NULL;
@@ -184,7 +213,7 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
   MethodInfo parent_method_info;
   auto parent_of_parent_type = m_ts.lookup_type(state_parent.name_ptr)->get_parent();
   if (m_ts.try_lookup_method(parent_of_parent_type, state_name.name_ptr, &parent_method_info) &&
-      args.unnamed.at(3).as_symbol() == "#f") {
+      args.unnamed.at(4).as_symbol() == "#f") {
     // need to call inherit state TODO
     auto inherit_state_func =
         compile_get_symbol_value(form, "inherit-state", env)->to_gpr(form, env);
@@ -233,6 +262,19 @@ Val* Compiler::compile_define_virtual_state_hook(const goos::Object& form,
           state_type->print(), child_method_info.defined_in_type);
     }
   }
+
+  std::vector<symbol_info::ArgumentInfo> arg_info = {};
+  if (code_value) {
+    auto as_lambda = dynamic_cast<LambdaVal*>(code_value);
+    if (as_lambda) {
+      for (const auto& arg : as_lambda->lambda.params) {
+        arg_info.push_back({.name = arg.name, .type = arg.type.base_type()});
+      }
+    }
+  }
+
+  m_symbol_info.add_state(state_name.name_ptr, state_parent_type.print(), true, arg_info, form,
+                          docstring);
 
   return get_none();
 }

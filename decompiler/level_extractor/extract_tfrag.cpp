@@ -8,6 +8,7 @@
 #include "common/util/FileUtil.h"
 
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
+#include "decompiler/level_extractor/extract_common.h"
 #include "decompiler/util/Error.h"
 
 namespace decompiler {
@@ -1677,9 +1678,7 @@ std::vector<TFragDraw> emulate_tfrag_execution(const level_tools::TFragment& fra
   }
 
 end:
-  [[maybe_unused]] int total_dvert = 0;
   for (auto& draw : all_draws) {
-    total_dvert += draw.verts.size();
     draw.tfrag_id = frag.id;
   }
 
@@ -2166,12 +2165,7 @@ void emulate_tfrags(int geom,
 }
 
 void extract_time_of_day(const level_tools::DrawableTreeTfrag* tree, tfrag3::TfragTree& out) {
-  out.colors.resize(tree->time_of_day.height);
-  for (int i = 0; i < (int)tree->time_of_day.height; i++) {
-    for (int j = 0; j < 8; j++) {
-      memcpy(out.colors[i].rgba[j].data(), &tree->time_of_day.colors[i * 8 + j], 4);
-    }
-  }
+  out.colors = pack_colors(tree->time_of_day);
 }
 
 void merge_groups(std::vector<tfrag3::StripDraw::VisGroup>& grps) {

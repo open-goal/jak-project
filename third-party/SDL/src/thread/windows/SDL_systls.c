@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 
 #include "../../SDL_internal.h"
 
-#if SDL_THREAD_WINDOWS
+#ifdef SDL_THREAD_WINDOWS
 
 #include "../../core/windows/SDL_windows.h"
 
@@ -32,7 +32,7 @@
 #include <fibersapi.h>
 
 #ifndef TLS_OUT_OF_INDEXES
-#define TLS_OUT_OF_INDEXES  FLS_OUT_OF_INDEXES
+#define TLS_OUT_OF_INDEXES FLS_OUT_OF_INDEXES
 #endif
 
 #define TlsAlloc()  FlsAlloc(NULL)
@@ -43,8 +43,7 @@
 static DWORD thread_local_storage = TLS_OUT_OF_INDEXES;
 static SDL_bool generic_local_storage = SDL_FALSE;
 
-SDL_TLSData *
-SDL_SYS_GetTLSData(void)
+SDL_TLSData *SDL_SYS_GetTLSData(void)
 {
     if (thread_local_storage == TLS_OUT_OF_INDEXES && !generic_local_storage) {
         static SDL_SpinLock lock;
@@ -67,8 +66,7 @@ SDL_SYS_GetTLSData(void)
     return (SDL_TLSData *)TlsGetValue(thread_local_storage);
 }
 
-int
-SDL_SYS_SetTLSData(SDL_TLSData *data)
+int SDL_SYS_SetTLSData(SDL_TLSData *data)
 {
     if (generic_local_storage) {
         return SDL_Generic_SetTLSData(data);

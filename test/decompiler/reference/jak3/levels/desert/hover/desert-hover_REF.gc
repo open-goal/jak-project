@@ -1,0 +1,256 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type hud-beast
+(deftype hud-beast (hud)
+  ()
+  )
+
+;; definition for method 3 of type hud-beast
+(defmethod inspect ((this hud-beast))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type hud inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 15 of type hud-beast
+;; WARN: Return type mismatch int vs none.
+(defmethod draw ((this hud-beast))
+  (set-hud-piece-position!
+    (the-as hud-sprite (-> this sprites))
+    (the int (+ 462.0 (* 130.0 (-> this offset))))
+    165
+    )
+  (format (clear (-> this strings 0 text)) "~D" (-> this values 0 current))
+  (set-as-offset-from! (the-as hud-sprite (-> this strings 0 pos)) (the-as vector4w (-> this sprites)) -20 50)
+  ((method-of-type hud draw) this)
+  0
+  (none)
+  )
+
+;; definition for method 16 of type hud-beast
+;; WARN: Return type mismatch int vs none.
+(defmethod update-values! ((this hud-beast))
+  (set! (-> this values 0 target) (the int (-> *game-info* counter)))
+  ((method-of-type hud update-values!) this)
+  0
+  (none)
+  )
+
+;; definition for method 17 of type hud-beast
+;; WARN: Return type mismatch int vs none.
+(defmethod init-callback ((this hud-beast))
+  (set! (-> this gui-id)
+        (add-process *gui-control* this (gui-channel hud-center-right) (gui-action hidden) (-> this name) 81920.0 0)
+        )
+  (logior! (-> this flags) (hud-flags show))
+  (set! (-> this sprites 0 tid)
+        (the-as texture-id (lookup-texture-by-id (new 'static 'texture-id :page #xaa7)))
+        )
+  (set! (-> this sprites 0 flags) (hud-sprite-flags hsf2))
+  (set! (-> this sprites 0 scale-x) 1.0)
+  (set! (-> this sprites 0 scale-y) 1.0)
+  (alloc-string-if-needed this 0)
+  (set! (-> this strings 0 scale) 1.0)
+  (set! (-> this strings 0 flags) (font-flags shadow kerning middle large))
+  0
+  (none)
+  )
+
+;; definition of type task-manager-desert-hover
+(deftype task-manager-desert-hover (task-manager)
+  ((vehicle-h          handle)
+   (actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (end-time           time-frame)
+   (pad                uint8  8)
+   )
+  )
+
+;; definition for method 3 of type task-manager-desert-hover
+(defmethod inspect ((this task-manager-desert-hover))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tvehicle-h: ~D~%" (-> this vehicle-h))
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tend-time: ~D~%" (-> this end-time))
+  (format #t "~2Thud-counter: ~D~%" (-> this hud-counter))
+  (label cfg-7)
+  this
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-desert-hover)
+  :virtual #t
+  :enter (behavior ()
+    (set-setting! 'extra-bank '((desert2 desbst1)) 0.0 0)
+    (let ((t1-1 2))
+      (set-setting! 'vehicles 'set (shr t1-1 32) t1-1)
+      )
+    (set! (-> self vehicle-h) (the-as handle #f))
+    (set-setting! 'music 'deshover 0.0 0)
+    (set-setting! 'allow-logo #f 0.0 0)
+    (spawn-dust-storm-randomizer self)
+    )
+  :code sleep-code
+  )
+
+;; definition for method 21 of type task-manager-desert-hover
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch object vs none.
+(defmethod set-time-limit ((this task-manager-desert-hover))
+  (local-vars (sv-16 res-tag))
+  (let ((t9-0 (method-of-type task-manager set-time-limit)))
+    (t9-0 this)
+    )
+  (set! (-> this end-time) 0)
+  (set! (-> this hud-counter)
+        (ppointer->handle (process-spawn hud-beast :init hud-init-by-other :name "hud-beast" :to this))
+        )
+  (let ((a0-9 (entity-by-name "tmanager-2")))
+    (when a0-9
+      (set! (-> this entity) (the-as entity-actor a0-9))
+      (set! sv-16 (new 'static 'res-tag))
+      (let ((v0-6 (res-lump-data a0-9 'actor-groups pointer :tag-ptr (& sv-16))))
+        (cond
+          ((and v0-6 (nonzero? (-> sv-16 elt-count)))
+           (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+           (set! (-> this actor-group) (the-as (pointer actor-group) v0-6))
+           )
+          (else
+            (format 0 "ERROR: ~s: entity missing actor-group!~%" (game-task->string (-> this node-info task)))
+            )
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition for method 26 of type task-manager-desert-hover
+;; WARN: Return type mismatch time-frame vs none.
+(defmethod task-manager-method-26 ((this task-manager-desert-hover))
+  (with-pp
+    (let ((t9-0 (method-of-type task-manager task-manager-method-26)))
+      (t9-0 this)
+      )
+    (if (and (not (handle->process (-> this vehicle-h)))
+             *target*
+             (focus-test? *target* pilot-riding)
+             (= (-> *target* pilot vehicle) (-> *vehicle-info* handle-by-vehicle-type 13))
+             )
+        (set! (-> this vehicle-h) (-> *target* pilot vehicle))
+        )
+    (let* ((s5-0 (handle->process (-> *vehicle-info* handle-by-vehicle-type 13)))
+           (a0-12 (if (type? s5-0 process-focusable)
+                      s5-0
+                      )
+                  )
+           )
+      (if (and a0-12 (focus-test? (the-as process-focusable a0-12) dead))
+          (send-event this 'fail)
+          )
+      )
+    (let ((s5-1 0))
+      (let ((s4-0 2400))
+        (dotimes (s3-0 (length (-> this actor-group 0)))
+          (if (not (logtest? (-> this actor-group 0 data s3-0 actor extra perm status) (entity-perm-status dead)))
+              (+! s5-1 1)
+              )
+          )
+        (case s5-1
+          ((1)
+           (set! s4-0 600)
+           )
+          ((2)
+           (set! s4-0 630)
+           )
+          ((3)
+           (set! s4-0 1200)
+           )
+          ((4)
+           (set! s4-0 2400)
+           )
+          )
+        (dotimes (s3-1 (length (-> this actor-group 0)))
+          (let ((v1-49 (-> this actor-group 0 data s3-1))
+                (a1-4 (new 'stack-no-clear 'event-message-block))
+                )
+            (set! (-> a1-4 from) (process->ppointer pp))
+            (set! (-> a1-4 num-params) 1)
+            (set! (-> a1-4 message) 'shoot-delay)
+            (set! (-> a1-4 param 0) (the-as uint s4-0))
+            (let ((t9-4 send-event-function)
+                  (v1-50 (-> v1-49 actor))
+                  )
+              (t9-4
+                (if v1-50
+                    (-> v1-50 extra process)
+                    )
+                a1-4
+                )
+              )
+            )
+          )
+        )
+      (when (nonzero? (-> this end-time))
+        (gui-control-method-12
+          *gui-control*
+          this
+          (gui-channel art-load)
+          (gui-action queue)
+          "desert-hover-res"
+          0
+          -1.0
+          (new 'static 'sound-id)
+          )
+        (if (< (-> this end-time) (current-time))
+            (send-event this 'complete)
+            )
+        )
+      (cond
+        ((zero? s5-1)
+         (when (-> this hud-counter)
+           (send-event (handle->process (-> this hud-counter)) 'hide-and-die)
+           (set! (-> this hud-counter) (the-as handle #f))
+           )
+         )
+        (else
+          (set! (-> *game-info* counter) (the float s5-1))
+          )
+        )
+      (if (and (zero? (-> this end-time)) (zero? s5-1))
+          (set! (-> this end-time) (+ (current-time) (seconds 2)))
+          )
+      )
+    (none)
+    )
+  )
+
+;; definition for method 25 of type task-manager-desert-hover
+;; WARN: Return type mismatch float vs none.
+(defmethod task-manager-method-25 ((this task-manager-desert-hover))
+  ((method-of-type task-manager task-manager-method-25) this)
+  (update-rates! (-> *display* entity-clock) 1.0)
+  (update-rates! (-> *display* target-clock) 1.0)
+  (none)
+  )
+
+
+
+

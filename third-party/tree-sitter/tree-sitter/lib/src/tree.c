@@ -1,3 +1,5 @@
+#define _POSIX_C_SOURCE 200112L
+
 #include "tree_sitter/api.h"
 #include "./array.h"
 #include "./get_changed_ranges.h"
@@ -12,7 +14,7 @@ TSTree *ts_tree_new(
 ) {
   TSTree *result = ts_malloc(sizeof(TSTree));
   result->root = root;
-  result->language = language;
+  result->language = ts_language_copy(language);
   result->included_ranges = ts_calloc(included_range_count, sizeof(TSRange));
   memcpy(result->included_ranges, included_ranges, included_range_count * sizeof(TSRange));
   result->included_range_count = included_range_count;
@@ -30,6 +32,7 @@ void ts_tree_delete(TSTree *self) {
   SubtreePool pool = ts_subtree_pool_new(0);
   ts_subtree_release(&pool, self->root);
   ts_subtree_pool_delete(&pool);
+  ts_language_delete(self->language);
   ts_free(self->included_ranges);
   ts_free(self);
 }
@@ -98,23 +101,23 @@ TSRange *ts_tree_included_ranges(const TSTree *self, uint32_t *length) {
   return ranges;
 }
 
-TSRange *ts_tree_get_changed_ranges(const TSTree *self, const TSTree *other, uint32_t *count) {
+TSRange *ts_tree_get_changed_ranges(const TSTree *old_tree, const TSTree *new_tree, uint32_t *length) {
   TreeCursor cursor1 = {NULL, array_new()};
   TreeCursor cursor2 = {NULL, array_new()};
-  ts_tree_cursor_init(&cursor1, ts_tree_root_node(self));
-  ts_tree_cursor_init(&cursor2, ts_tree_root_node(other));
+  ts_tree_cursor_init(&cursor1, ts_tree_root_node(old_tree));
+  ts_tree_cursor_init(&cursor2, ts_tree_root_node(new_tree));
 
   TSRangeArray included_range_differences = array_new();
   ts_range_array_get_changed_ranges(
-    self->included_ranges, self->included_range_count,
-    other->included_ranges, other->included_range_count,
+    old_tree->included_ranges, old_tree->included_range_count,
+    new_tree->included_ranges, new_tree->included_range_count,
     &included_range_differences
   );
 
   TSRange *result;
-  *count = ts_subtree_get_changed_ranges(
-    &self->root, &other->root, &cursor1, &cursor2,
-    self->language, &included_range_differences, &result
+  *length = ts_subtree_get_changed_ranges(
+    &old_tree->root, &new_tree->root, &cursor1, &cursor2,
+    old_tree->language, &included_range_differences, &result
   );
 
   array_delete(&included_range_differences);
@@ -125,17 +128,36 @@ TSRange *ts_tree_get_changed_ranges(const TSTree *self, const TSTree *other, uin
 
 #ifdef _WIN32
 
+#include <io.h>
+#include <windows.h>
+
+int _ts_dup(HANDLE handle) {
+  HANDLE dup_handle;
+  if (!DuplicateHandle(
+    GetCurrentProcess(), handle,
+    GetCurrentProcess(), &dup_handle,
+    0, FALSE, DUPLICATE_SAME_ACCESS
+  )) return -1;
+
+  return _open_osfhandle((intptr_t)dup_handle, 0);
+}
+
 void ts_tree_print_dot_graph(const TSTree *self, int fd) {
-  (void)self;
-  (void)fd;
+  FILE *file = _fdopen(_ts_dup((HANDLE)_get_osfhandle(fd)), "a");
+  ts_subtree_print_dot_graph(self->root, self->language, file);
+  fclose(file);
 }
 
 #else
 
 #include <unistd.h>
 
-void ts_tree_print_dot_graph(const TSTree *self, int fd) {
-  FILE *file = fdopen(dup(fd), "a");
+int _ts_dup(int file_descriptor) {
+  return dup(file_descriptor);
+}
+
+void ts_tree_print_dot_graph(const TSTree *self, int file_descriptor) {
+  FILE *file = fdopen(_ts_dup(file_descriptor), "a");
   ts_subtree_print_dot_graph(self->root, self->language, file);
   fclose(file);
 }

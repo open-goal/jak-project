@@ -5,5 +5,211 @@
 ;; name in dgo: display-h
 ;; dgos: GAME
 
+#|@file
+At any point in time, there are 3 frames in progress:
+- one frame is fully rendered and being drawn on the screen.
+  this frame just sits in the frame buffer, and isn't tracked by the display system.
+- one frame is being rendered
+  (frame buffer is being written to by GS, VU1 sending tris to GS, VIF1 feeding VU1)
+  this frame needs a DMA buffer that is full, and being read by VIF1
+- one frame is being set up. The engine is running gameplay code and generating DMA data
+  this frame also needs a DMA buffer, which is being filled up.
+|#
+
+; (defconstant DEFAULT_ALL_RENDERERS
+;   (vu1-renderer-mask
+;     sky ocean ocean-wave tfrag tie tie-envmap tie-scissor tie-envmap-scissor
+;     tie-vanish generic merc emerc shrubbery shrub-near billboard shrubbery-vanish
+;     tfrag-trans tie-scissor-trans tie-trans tie-envmap-trans tie-envmap-scissor-trans
+;     tfrag-water tie-scissor-water tie-water tie-envmap-water tie-envmap-scissor-water
+;     sprite shadow rn31 rn32 rn33 depth-cue rn36
+;     )
+;   )
+
 ;; DECOMP BEGINS
 
+(deftype display-frame (basic)
+  ((buffer         dma-buffer                 11)
+   (calc-buf       dma-buffer                         :overlay-at (-> buffer 1))
+   (vu1-buf        dma-buffer                         :overlay-at (-> buffer 1))
+   (debug-buf      dma-buffer                         :overlay-at (-> buffer 8))
+   (global-buf     dma-buffer                         :overlay-at (-> buffer 9))
+   (bucket-group   (inline-array dma-bucket)          :overlay-at (-> buffer 10))
+   (profile-array  profile-array              :inline :offset  48)
+   (start-time     uint64                             :offset  56)
+   (run-time       uint64                             :offset  64)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    )
+  )
+
+
+(defmethod new display-frame ((allocation symbol) (type-to-make type))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set! (-> gp-0 calc-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 global-buf) (the-as dma-buffer 0))
+    (set! (-> gp-0 debug-buf) (the-as dma-buffer 0))
+    (when *debug-segment*
+      (set! (-> gp-0 profile-array data 0) (new 'debug 'profile-segment-array))
+      (set! (-> gp-0 profile-array data 1) (new 'debug 'profile-segment-array))
+      )
+    gp-0
+    )
+  )
+
+(deftype display (basic)
+  ((on-screen             int32)
+   (last-screen           int32)
+   (frames                display-frame  2)
+   (bgcolor               gs-bgcolor)
+   (pmode                 gs-pmode)
+   (clock                 clock          22)
+   (session-clock         clock          :overlay-at (-> clock 0))
+   (game-clock            clock          :overlay-at (-> clock 1))
+   (base-clock            clock          :overlay-at (-> clock 2))
+   (real-clock            clock          :overlay-at (-> clock 3))
+   (frame-clock           clock          :overlay-at (-> clock 4))
+   (real-frame-clock      clock          :overlay-at (-> clock 5))
+   (target-clock          clock          :overlay-at (-> clock 6))
+   (entity-clock          clock          :overlay-at (-> clock 7))
+   (part-clock            clock          :overlay-at (-> clock 8))
+   (bg-clock              clock          :overlay-at (-> clock 9))
+   (camera-clock          clock          :overlay-at (-> clock 10))
+   (total-game-clock      clock          :overlay-at (-> clock 11))
+   (user0-clock           clock          :overlay-at (-> clock 12))
+   (user1-clock           clock          :overlay-at (-> clock 13))
+   (user2-clock           clock          :overlay-at (-> clock 14))
+   (user3-clock           clock          :overlay-at (-> clock 15))
+   (user4-clock           clock          :overlay-at (-> clock 16))
+   (user5-clock           clock          :overlay-at (-> clock 17))
+   (user6-clock           clock          :overlay-at (-> clock 18))
+   (user7-clock           clock          :overlay-at (-> clock 19))
+   (user8-clock           clock          :overlay-at (-> clock 20))
+   (user9-clock           clock          :overlay-at (-> clock 21))
+   (time-factor           float)
+   (dog-ratio             float)
+   (vblank-start-time     int64          2)
+   (total-run-time        uint64)
+   (run-half-speed        symbol)
+   (vu1-enable-user       vu1-renderer-mask)
+   (vu1-enable-user-menu  vu1-renderer-mask)
+   (force-sync            uint32)
+   (mem-reserve-size      uint32)
+   (dma-buffer-overflow   symbol)
+   )
+  (:methods
+    (new (symbol type int int int int int) _type_)
+    (set-time-ratios (_type_ float) float)
+    )
+  )
+
+(define-extern set-display (function display display))
+
+(defmethod new display ((allocation symbol) (type-to-make type) (arg0 int) (arg1 int) (arg2 int) (arg3 int) (arg4 int))
+  (let ((gp-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (set-display gp-0)
+    (set! (-> gp-0 frames 0) (new 'global 'display-frame))
+    (set! (-> gp-0 frames 1) (new 'global 'display-frame))
+    (set! (-> gp-0 pmode) (new 'static 'gs-pmode :en1 #x1 :crtmd #x1 :mmod #x1 :slbg #x1))
+    (set! (-> gp-0 run-half-speed) #f)
+    (set! (-> gp-0 vu1-enable-user-menu) (vu1-renderer-mask
+                                           sky
+                                           rn4
+                                           rn5
+                                           hfrag
+                                           hfrag-scissor
+                                           tfrag
+                                           tie-scissor
+                                           tie
+                                           etie
+                                           etie-scissor
+                                           tie-vanish
+                                           generic
+                                           merc
+                                           emerc
+                                           shrubbery
+                                           shrub-near
+                                           billboard
+                                           shrub-vanish
+                                           tfrag-trans
+                                           tie-scissor-trans
+                                           tie-trans
+                                           etie-trans
+                                           etie-scissor-trans
+                                           tfrag-water
+                                           tie-scissor-water
+                                           tie-water
+                                           etie-water
+                                           etie-scissor-water
+                                           sprite
+                                           rn32
+                                           rn33
+                                           rn34
+                                           rn36
+                                           )
+          )
+    (set! (-> gp-0 vu1-enable-user) (vu1-renderer-mask
+                                      sky
+                                      rn4
+                                      rn5
+                                      hfrag
+                                      hfrag-scissor
+                                      tfrag
+                                      tie-scissor
+                                      tie
+                                      etie
+                                      etie-scissor
+                                      tie-vanish
+                                      generic
+                                      merc
+                                      emerc
+                                      shrubbery
+                                      shrub-near
+                                      billboard
+                                      shrub-vanish
+                                      tfrag-trans
+                                      tie-scissor-trans
+                                      tie-trans
+                                      etie-trans
+                                      etie-scissor-trans
+                                      tfrag-water
+                                      tie-scissor-water
+                                      tie-water
+                                      etie-water
+                                      etie-scissor-water
+                                      sprite
+                                      rn32
+                                      rn33
+                                      rn34
+                                      rn36
+                                      )
+          )
+    gp-0
+    )
+  )
+
+(define *pre-draw-hook* (the-as (function object none) nothing))
+
+(define *post-draw-hook* (the-as (function dma-buffer none) nothing))
+
+(define-extern *display* display)
+
+(defmacro current-frame ()
+  `(-> *display* frames (-> *display* on-screen))
+  )
+
+(defmacro integral-current-time ()
+  `(-> *display* integral-frame-counter)
+  )
+
+(defmacro real-current-time ()
+  `(-> *display* real-frame-counter)
+  )
+
+;; debug stuff really
+(defmacro get-screen-x (frac)
+  `(the int (* ,frac 512)))
+
+(defmacro get-screen-y (frac)
+  `(the int (* ,frac 416)))

@@ -14,8 +14,8 @@
 #include "common/util/Assert.h"
 #include "common/util/math_util.h"
 
-#include "third-party/fmt/color.h"
-#include "third-party/fmt/core.h"
+#include "fmt/color.h"
+#include "fmt/core.h"
 
 namespace {
 template <typename... Args>
@@ -28,7 +28,7 @@ template <typename... Args>
   }
 
   throw std::runtime_error(
-      fmt::format("Type Error: {}", fmt::format(str, std::forward<Args>(args)...)));
+      fmt::format("Type Error: {}", fmt::format(fmt::runtime(str), std::forward<Args>(args)...)));
 }
 }  // namespace
 
@@ -548,6 +548,7 @@ MethodInfo TypeSystem::override_method(Type* type,
                            existing_info.name,
                            existing_info.type,
                            type->get_name(),
+                           type->get_name(),
                            existing_info.no_virtual,
                            false,
                            true,
@@ -607,6 +608,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
                              method_name,
                              ts,
                              type->get_name(),
+                             type->get_name(),
                              no_virtual,
                              true,
                              false,
@@ -645,6 +647,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
                                method_name,
                                ts,
                                type->get_name(),
+                               type->get_name(),
                                no_virtual,
                                false,
                                false,
@@ -678,8 +681,8 @@ MethodInfo TypeSystem::overlay_method(Type* type,
   }
 
   // use the existing ID.
-  return type->add_method({existing_info.id, method_name, ts, type->get_name(), false, true, false,
-                           docstring, std::make_optional(method_overlay_name)});
+  return type->add_method({existing_info.id, method_name, ts, type->get_name(), type->get_name(),
+                           false, true, false, docstring, std::make_optional(method_overlay_name)});
 }
 
 MethodInfo TypeSystem::define_method(const std::string& type_name,
@@ -709,8 +712,10 @@ MethodInfo TypeSystem::define_method(Type* type,
   // look up the method
   MethodInfo existing_info;
   bool got_existing = try_lookup_method(type, method_name, &existing_info);
-
   if (got_existing) {
+    // The lookup will return a parents method, but the type should be equal
+    // to the type in question (it's a child)
+    existing_info.type_name = type->get_name();
     // Update the docstring
     existing_info.docstring = docstring;
     int bad_arg_idx = -99;
@@ -758,7 +763,7 @@ MethodInfo TypeSystem::add_new_method(Type* type,
     return existing;
   } else {
     return type->add_new_method(
-        {0, "new", ts, type->get_name(), false, false, false, docstring, {}});
+        {0, "new", ts, type->get_name(), type->get_name(), false, false, false, docstring, {}});
   }
 }
 
@@ -1442,6 +1447,21 @@ std::vector<std::string> TypeSystem::search_types_by_parent_type(
   return results;
 }
 
+std::vector<std::string> TypeSystem::search_types_by_parent_type_strict(
+    const std::string& parent_type) {
+  std::vector<std::string> results = {};
+  for (const auto& [type_name, type_info] : m_types) {
+    // Only NullType's have no parent
+    if (!type_info->has_parent()) {
+      continue;
+    }
+    if (type_info->get_parent() == parent_type) {
+      results.push_back(type_name);
+    }
+  }
+  return results;
+}
+
 std::vector<std::string> TypeSystem::search_types_by_minimum_method_id(
     const int minimum_method_id,
     const std::optional<std::vector<std::string>>& existing_matches) {
@@ -1482,8 +1502,7 @@ std::vector<std::string> TypeSystem::search_types_by_size(
     }
   } else {
     for (const auto& [type_name, type_info] : m_types) {
-      // Only NullType's have no parent
-      if (!type_info->has_parent()) {
+      if (dynamic_cast<NullType*>(type_info.get())) {
         continue;
       }
       const auto size_of_type = m_types[type_name]->get_size_in_memory();
@@ -2113,7 +2132,7 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
   }
   for (size_t i = start_field; i < (size_t)end_field; ++i) {
     const auto& field = st->fields().at(i);
-    auto type = ts.lookup_type(field.type());
+    auto type = ts.lookup_type_allow_partial_def(field.type());
     if (field.is_dynamic() || field.offset() > offset || field.user_placed() != want_fixed) {
       continue;
     }
@@ -2147,6 +2166,12 @@ std::optional<std::string> find_best_field_in_structure(const TypeSystem& ts,
     } else {
       int rel_offset = offset - field.offset();
       // array case (and array encompasses what we want)
+      ASSERT_MSG(
+          type->get_size_in_memory() > 0,
+          fmt::format(
+              "In type {}, type size was 0 for array field {} of type {}, check that the type "
+              "is fully defined.",
+              st->get_name(), field.name(), field.type().print()));
       int array_idx = rel_offset / type->get_size_in_memory();
       if (!field.is_inline() &&
           field.offset() + field.array_size() * type->get_load_size() > offset) {

@@ -1,6 +1,8 @@
 #include "find_defpartgroup.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/util/BitUtils.h"
+
 #include "decompiler/IR2/Form.h"
 #include "decompiler/IR2/GenericElementMatcher.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"

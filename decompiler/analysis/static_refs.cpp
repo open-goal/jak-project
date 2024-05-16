@@ -1,6 +1,8 @@
 #include "static_refs.h"
+
 #include "common/goos/PrettyPrinter.h"
 #include "common/log/log.h"
+
 #include "decompiler/Function/Function.h"
 #include "decompiler/ObjectFile/LinkedObjectFile.h"
 #include "decompiler/analysis/final_output.h"
@@ -46,7 +48,7 @@ bool try_convert_lambda(const Function& parent_function,
       if (defstate_behavior) {
         result = final_output_defstate_anonymous_behavior(*other_func, dts);
       } else {
-        result = final_output_lambda(*other_func);
+        result = final_output_lambda(*other_func, dts.version());
       }
 
       f->clear();

@@ -5,5 +5,911 @@
 ;; name in dgo: math
 ;; dgos: GAME
 
+(defmacro init-vf0-vector ()
+  "Initializes the VF0 vector which is a constant vector in the VU set to <0,0,0,1>"
+  `(.lvf vf0 (new 'static 'vector :x 0.0 :y 0.0 :z 0.0 :w 1.0))
+  )
+
 ;; DECOMP BEGINS
 
+(defun truncate ((arg0 float))
+  "Round (toward zero) to an integer.
+@param arg0 float to truncate"
+  (the float (the int arg0))
+  )
+
+(defun round ((arg0 float))
+  "Round to the nearest integer"
+  (the float (the int (+ 0.5 arg0)))
+  )
+
+(defun floor ((arg0 float))
+  "Round (down) to an integer"
+  (let ((f0-3 (the float (the int arg0))))
+    (if (or (>= arg0 0.0) (= arg0 f0-3))
+        f0-3
+        (+ -1.0 f0-3)
+        )
+    )
+  )
+
+(defun ceil ((arg0 float))
+  "Round (up) to an integer"
+  (let ((f0-3 (the float (the int arg0))))
+    (if (or (>= 0.0 arg0) (= arg0 f0-3))
+        f0-3
+        (+ 1.0 f0-3)
+        )
+    )
+  )
+
+(defun integral? ((arg0 float))
+  "Is this number an integer?"
+  (= (the float (the int arg0)) arg0)
+  )
+
+(defun fractional-part ((arg0 float))
+  "Get the fractional part of a float."
+  (- arg0 (the float (the int arg0)))
+  )
+
+(defun odd? ((arg0 int))
+  "Is the number odd?"
+  (= (logand arg0 1) 1)
+  )
+
+(defun even? ((arg0 int))
+  "Is the number even?"
+  (not (odd? arg0))
+  )
+
+(defun sawtooth-wave ((arg0 float))
+  "Sample a sawtooth with period 1. In range (0, 1)"
+  (let ((f0-2 (- arg0 (the float (the int arg0)))))
+    (if (< f0-2 0.0)
+        (set! f0-2 (+ 1.0 f0-2))
+        )
+    f0-2
+    )
+  )
+
+(defun triangle-wave ((arg0 float))
+  "Sample a triangle wave. Period is 4, in range (-1, 1) (so slope is 1 or -1)."
+  (let* ((f0-1 (* 0.25 (+ -1.0 arg0)))
+         (f0-3 (- f0-1 (the float (the int f0-1))))
+         )
+    (if (< f0-3 0.0)
+        (set! f0-3 (+ 1.0 f0-3))
+        )
+    (+ -1.0 (fabs (+ -2.0 (* 4.0 f0-3))))
+    )
+  )
+
+(defun log-x-plus-1-order9 ((arg0 float))
+  "Fast approximation of ln(x + 1). Probably only accurate for x in [0, 1]."
+  (* arg0
+     (+ 1.0
+        (* arg0
+           (+ -0.5
+              (* arg0
+                 (+ 0.33333334
+                    (* arg0
+                       (+ -0.25
+                          (* arg0 (+ 0.2 (* arg0 (+ -0.16666666 (* arg0 (+ 0.14285715 (* arg0 (+ -0.125 (* 0.11111111 arg0)))))))))
+                          )
+                       )
+                    )
+                 )
+              )
+           )
+        )
+     )
+  )
+
+(defun logf ((arg0 float))
+  "Natural log."
+  (let ((v1-1 (the-as int (+ (shr (the-as int arg0) 23) -126)))
+        (a0-2 (the-as number (logior #x3f000000 (logand (the-as uint #x807fffff) (the-as uint arg0)))))
+        )
+    ;; og:preserve-this
+    (when (< (the-as float a0-2) 0.70710677)
+      (set! a0-2 (+ (the-as float a0-2) (the-as float a0-2)))
+      (set! v1-1 (the-as int (+ (the-as uint v1-1) -1)))
+      )
+    (let ((f0-5 (+ -1.0 (the-as float a0-2))))
+      (+ (* f0-5
+            (+ 1.0
+               (* f0-5
+                  (+ -0.5
+                     (* f0-5
+                        (+ 0.33333334
+                           (* f0-5
+                              (+ -0.25
+                                 (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (* 0.11111111 f0-5)))))))))
+                                 )
+                              )
+                           )
+                        )
+                     )
+                  )
+               )
+            )
+         (* 0.6931472 (the float v1-1))
+         )
+      )
+    )
+  )
+
+(defun log2f ((arg0 float))
+  "Log base 2."
+  (let ((v1-1 (the-as int (+ (shr (the-as int arg0) 23) -126)))
+        (a0-2 (the-as number (logior #x3f000000 (logand (the-as uint #x807fffff) (the-as uint arg0)))))
+        )
+    ;; og:preserve-this
+    (when (< (the-as float a0-2) 0.70710677)
+      (set! a0-2 (+ (the-as float a0-2) (the-as float a0-2)))
+      (set! v1-1 (the-as int (+ (the-as uint v1-1) -1)))
+      )
+    (let* ((f0-5 (+ -1.0 (the-as float a0-2)))
+           (f0-7
+             (* f0-5
+                (+ 1.0
+                   (* f0-5
+                      (+ -0.5
+                         (* f0-5
+                            (+ 0.33333334
+                               (* f0-5
+                                  (+ -0.25
+                                     (* f0-5 (+ 0.2 (* f0-5 (+ -0.16666666 (* f0-5 (+ 0.14285715 (* f0-5 (+ -0.125 (* 0.11111111 f0-5)))))))))
+                                     )
+                                  )
+                               )
+                            )
+                         )
+                      )
+                   )
+                )
+             )
+           )
+      (+ (* 1.442695 f0-7) (the float v1-1))
+      )
+    )
+  )
+
+(deftype float-type (uint32)
+  ()
+  )
+
+(define exp-slead (new 'static 'array float 32
+                    1.0
+                    1.0218964
+                    1.0442734
+                    1.0671387
+                    1.0905075
+                    1.1143799
+                    1.1387863
+                    1.1637192
+                    1.1892014
+                    1.2152405
+                    1.2418518
+                    1.2690506
+                    1.2968369
+                    1.3252335
+                    1.354248
+                    1.3839035
+                    1.4142075
+                    1.4451752
+                    1.4768219
+                    1.5091629
+                    1.5422058
+                    1.5759735
+                    1.6104889
+                    1.645752
+                    1.6817856
+                    1.7186127
+                    1.7562485
+                    1.7947083
+                    1.8340073
+                    1.8741608
+                    1.9151993
+                    1.9571381
+                    )
+        )
+
+(define exp-strail (new 'static 'array float 32
+                     0.0
+                     0.0000007863494
+                     0.00000040596257
+                     0.0000017288019
+                     0.00000022534104
+                     0.0000068597833
+                     0.0000023188388
+                     0.0000056815315
+                     0.0000057600223
+                     0.0000068814647
+                     0.000006005433
+                     0.0000003590472
+                     0.0000027016238
+                     0.000003183687
+                     0.000007500062
+                     0.000006378546
+                     0.000006103877
+                     0.0000056360786
+                     0.0000042465254
+                     0.0000015247614
+                     0.000005014861
+                     0.000007334366
+                     0.0000014403477
+                     0.000003525029
+                     0.000007247011
+                     0.000006627224
+                     0.0000036862523
+                     0.00000082304996
+                     0.0000008232258
+                     0.0000068675085
+                     0.000007281612
+                     0.000006062652
+                     )
+        )
+
+(defun exp ((arg float))
+  "Compute e^x."
+  (local-vars
+   (f0 float)
+   (f1 float)
+   (f2 float)
+   (f3 float)
+   (f4 float)
+   (f5 float)
+   (f6 float)
+   (f7 float)
+   (f8 float)
+   (f10 float)
+   (f11 float)
+   (f12 float)
+   (f13 float)
+   (f14 float)
+   (f15 float)
+   (f16 float)
+   (f17 float)
+   (f18 float)
+   (a2 int)
+   (v0 float)
+   (v1 int)
+   (a1 int)
+   (a3 int)
+   (t0 int)
+   (a0-2 int)
+   )
+
+  (set! f0 arg)
+  (set! f0 (fabs f0))
+  (set! f1 (the-as float #x435c6bba))
+  ;;(b! (>=.s f1 f0) L44 (nop!))
+  (when-goto (>= f1 f0) L44)
+
+  (set! f0 0.0)
+  (set! f1 arg)
+  ;;(b! (>=.s f0 f1) L42 (nop!))
+  (when-goto (>= f0 f1) L42)
+
+  (set! v0 (the-as float #x7f7fffff))
+  ;;(b! #t L43 (nop!))
+  (goto L43)
+
+  (label L42)
+  (set! v0 (the-as float #x0))
+
+  (label L43)
+  ;;(b! #t L49 (nop!))
+  (goto L49)
+
+
+  (label L44)
+  (set! f1 (the-as float #x33000000))
+  ;;(b! (>=.s f0 f1) L45 (nop!))
+  (when-goto (>= f0 f1) L45)
+
+  (set! f0 (the-as float #x3f800000))
+  (set! f1 arg)
+  (set! f0 (+ f0 f1))
+  (set! v0 f0)
+  ;;(b! #t L49 (nop!))
+  (goto L49)
+
+  (label L45)
+  (set! f16 (the-as float #x4238aa3b))
+  (set! f12 (the-as float #x3cb17200))
+  (set! f13 (the-as float #x333fbe8e))
+  (set! f14 (the-as float #x3f000044))
+  (set! f15 (the-as float #x3e2aaaec))
+  (set! f0 arg)
+  (set! f0 (* f0 f16))
+  ;;(set! f0 (f2i f0))
+  ;;(set! a2 (fpr->gpr f0))
+  (set! a2 (the int f0))
+  (set! v1 (logand a2 31))
+  (set! a1 (- a2 v1))
+  (set! a3 512)
+  (set! t0 a2)
+  ;;(bl! (<0.si t0) L46 (no-delay!))
+  ;;(set! t0 (- t0))
+  (set! t0 (abs t0))
+
+  ;;(label L46)
+  ;;(b! (>=.si a3 t0) L47 (nop!))
+  (when-goto (>= a3 t0) L47)
+  ;;(set! f17 a1)
+  ;;(set! f18 v1)
+  ;;(set! f17 (i2f f17))
+  ;;(set! f18 (i2f f18))
+  (set! f17 (the float a1))
+  (set! f18 (the float v1))
+  (set! f17 (* f17 f12))
+  (set! f18 (* f18 f12))
+  (set! f0 arg)
+  (set! f17 (- f0 f17))
+  ;;(b! #t L48 (set! f2 (-.s f17 f18)))
+  (set! f2 (- f17 f18))
+  (goto L48)
+
+  (label L47)
+  ;;(set! f17 (gpr->fpr a2))
+  ;;(set! f17 (i2f f17))
+  (set! f17 (the float a2))
+  (set! f17 (* f17 f12))
+  (set! f0 arg)
+  (set! f2 (- f0 f17))
+
+  (label L48)
+  (set! a0-2 (- a2))
+  ;;(set! f17 (gpr->fpr a0))
+  ;;(set! f17 (i2f f17))
+  (set! f17 (the float a0-2))
+  (set! f3 (* f17 f13))
+  (set! a0-2 (sar a1 5))
+  (set! f4 (+ f2 f3))
+  (set! f6 (* f4 f15))
+  (set! f6 (+ f14 f6))
+  (set! f6 (* f4 f6))
+  (set! f6 (* f4 f6))
+  (set! f5 (+ f3 f6))
+  (set! f5 (+ f2 f5))
+  ;;(set! a1 exp-slead)
+  ;;(set! a2 (sll v1 2))
+  ;;(set! a1 (+ a1 a2))
+  ;;(set! f10 (l.f a1))
+  (set! f10 (-> exp-slead v1))
+  ;;(set! a1 exp-strail)
+  ;;(set! v1 (sll v1 2))
+  ;;(set! v1 (+ a1 v1))
+  ;;(set! f11 (l.f v1))
+  (set! f11 (-> exp-strail v1))
+  (set! f7 (+ f10 f11))
+  (set! f8 (* f7 f5))
+  (set! f8 (+ f11 f8))
+  (set! f8 (+ f8 f10))
+  (set! v1 (the-as int f8))
+  (set! a0-2 (logand a0-2 511))
+  (set! a0-2 (shl a0-2 23))
+  (set! v0 (the-as float (+ v1 a0-2)))
+  (label L49)
+  v0
+  )
+
+(defun pow ((arg0 float) (arg1 float))
+  "Compute arg0^arg1"
+  (exp (* arg1 (logf arg0)))
+  )
+
+(defun print-exp ((arg0 float))
+  "Print in the format AeB where A is in the range (1, 10)"
+  (let* ((f30-1 (floor (/ (logf (fabs arg0)) (logf 10.0))))
+         (f0-4 (pow 10.0 f30-1))
+         )
+    (format #t "~fe~d" (/ arg0 f0-4) (the int f30-1))
+    )
+  0
+  (none)
+  )
+
+(deftype rgba (uint32)
+  ((r uint8 :offset   0 :size   8)
+   (g uint8 :offset   8 :size   8)
+   (b uint8 :offset  16 :size   8)
+   (a uint8 :offset  24 :size   8)
+   )
+  )
+
+(defmacro static-rgba (r g b a)
+  "make a new static rgba"
+  `(new 'static 'rgba :r ,r :g ,g :b ,b :a ,a)
+  )
+
+(defmacro static-rgba-uint (col)
+  "make a new static rgba"
+  `(the-as rgba ,col)
+  )
+
+(deftype xyzw (uint128)
+  ()
+  )
+
+(deftype xyzwh (uint128)
+  ()
+  )
+
+(defun print-time ((arg0 object) (arg1 time-frame))
+  "Print a [[time-frame]] as h:mm:ss."
+  0
+  0
+  0
+  (let* ((f0-1 (* 0.0033333334 (the float arg1)))
+         (a2-0 (the int (* 0.016666668 f0-1)))
+         (f0-2 (- f0-1 (* 60.0 (the float a2-0))))
+         (a3-0 (the int f0-2))
+         (f0-3 (- f0-2 (the float a3-0)))
+         (t0-0 (the int (* 100.0 f0-3)))
+         )
+    (format arg0 "~d:~2,'0,d:~2,'0,d" a2-0 a3-0 t0-0)
+    )
+  0
+  (none)
+  )
+
+;; WARN: Return type mismatch uint vs int.
+(defun log2 ((arg0 int))
+  "Log base 2."
+  (the-as int (+ (sar (the-as int (the float arg0)) 23) -127))
+  )
+
+(defun seek ((arg0 float) (arg1 float) (arg2 float))
+  "Move arg0 toward arg1 by at most arg2."
+  (let ((f2-0 (- arg1 arg0)))
+    (cond
+      ((>= arg2 (fabs f2-0))
+       arg1
+       )
+      ((>= f2-0 0.0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+(defun seek-ease ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Move arg0 toward arg1, and slow down before reaching the end.
+When farther than arg3 away, move by at most arg2.
+When closer than arg3, linearly ramp down the movement amount from arg2 to 0 but no lower than arg4."
+  (let ((f2-0 (- arg1 arg0)))
+    (when (>= arg3 (fabs f2-0))
+      (set! arg2 (* arg2 (- 1.0 (/ (- arg3 (fabs f2-0)) arg3))))
+      (if (< arg2 arg4)
+          (set! arg2 arg4)
+          )
+      )
+    (cond
+      ((>= arg2 (fabs f2-0))
+       arg1
+       )
+      ((>= f2-0 0.0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+(defun seek-ease-in-out ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float) (arg5 float) (arg6 float))
+  "Move arg0 toward arg2, and slow down at the start and end.
+When within arg4 of arg1 (at the beginning of movement), ramp up speed, with a minimum speed of arg6
+When within arg5 of arg2 (at the end of movement), ramp down speed, with a minimum speed of arg5
+Normally, move at most arg3"
+  (let ((f2-0 (- arg2 arg0)))
+    (let ((f4-1 (- arg0 arg1)))
+      (when (>= arg4 (fabs f4-1))
+        (set! arg3 (* arg3 (- 1.0 (/ (- arg4 (fabs f4-1)) arg4))))
+        (if (< arg3 arg6)
+            (set! arg3 arg6)
+            )
+        )
+      )
+    (when (>= arg5 (fabs f2-0))
+      (set! arg3 (* arg3 (- 1.0 (/ (- arg5 (fabs f2-0)) arg5))))
+      (if (< arg3 arg6)
+          (set! arg3 arg6)
+          )
+      )
+    (cond
+      ((>= arg3 (fabs f2-0))
+       arg2
+       )
+      ((>= f2-0 0.0)
+       (+ arg0 arg3)
+       )
+      (else
+        (- arg0 arg3)
+        )
+      )
+    )
+  )
+
+(defun lerp ((arg0 float) (arg1 float) (arg2 float))
+  "Linearly interpolate between arg0 and arg1."
+  (+ arg0 (* arg2 (- arg1 arg0)))
+  )
+
+(defun-debug lerp-scale-old ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Linearly remap arg2 in [arg3, arg4] to [arg0, arg1].
+This is the jak 1 implementation, which I claimed was a bad implementation..."
+  (let ((f0-1 (fmax 0.0 (fmin 1.0 (/ (- arg2 arg3) (- arg4 arg3))))))
+    (+ (* (- 1.0 f0-1) arg0) (* f0-1 arg1))
+    )
+  )
+
+;; ERROR: Unsupported inline assembly instruction kind - [mula.s f0, f2]
+;; ERROR: Unsupported inline assembly instruction kind - [madd.s f0, f1, f3]
+(defun lerp-scale ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Linearly remap arg2 in [arg3, arg4] to [arg0, arg1].
+More efficient than the -old version."
+  (local-vars (f0-2 float))
+  (let* ((v1-0 1.0)
+         (f1-0 0.0)
+         (f0-0 v1-0)
+         (f4-0 arg2)
+         (f2-0 arg3)
+         (f3-0 arg4)
+         (f1-2 (fmin (fmax (/ (- f4-0 f2-0) (- f3-0 f2-0)) f1-0) f0-0))
+         (f0-1 (- f0-0 f1-2))
+         (f2-3 arg0)
+         (f3-1 arg1)
+         )
+    ;; og:preserve-this
+    ; (.mula.s f0-1 f2-3)
+    ; (.madd.s f0-2 f1-2 f3-1)
+    (set! f0-2 (+ (* f0-1 f2-3) (* f1-2 f3-1)))
+    )
+  f0-2
+  )
+
+(defun lerp-scale-clamp ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Clamp the input, then linearly remap arg2 in [arg3, arg4] to [arg0, arg1]."
+  (let ((a2-1 (fmax (fmin arg2 arg4) arg3)))
+    (lerp-scale arg0 arg1 a2-1 arg3 arg4)
+    )
+  )
+
+(defun lerp-clamp ((arg0 float) (arg1 float) (arg2 float))
+  "Linearly interpolate between arg0 and arg1. arg2 is clamped to [0, 1]"
+  (cond
+    ((>= 0.0 arg2)
+     arg0
+     )
+    ((>= arg2 1.0)
+     arg1
+     )
+    (else
+      (+ (* (- 1.0 arg2) arg0) (* arg2 arg1))
+      )
+    )
+  )
+
+;; WARN: Return type mismatch int vs rgba.
+(defun rgba-lerp ((arg0 rgba) (arg1 rgba) (arg2 rgba))
+  (local-vars
+    (v0-0 uint128)
+    (v1-0 uint128)
+    (v1-1 uint128)
+    (a0-1 uint128)
+    (a0-2 uint128)
+    (a1-1 uint128)
+    (a2-1 uint128)
+    )
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         )
+    (init-vf0-vector)
+    (.pextlb v1-0 0 arg0)
+    (.pextlb a0-1 0 arg1)
+    (.pextlh v1-1 0 v1-0)
+    (.pextlh a0-2 0 a0-1)
+    (.mov vf1 v1-1)
+    (.mov vf2 a0-2)
+    (.mov vf3 arg2)
+    (.itof.vf vf1 vf1)
+    (.itof.vf vf2 vf2)
+    (.mul.w.vf acc vf1 vf0)
+    (.add.mul.x.vf acc vf2 vf3 acc)
+    (.sub.mul.x.vf vf1 vf1 vf3 acc)
+    (.ftoi.vf vf3 vf1)
+    (.mov a1-1 vf3)
+    (.ppach a2-1 (the-as uint128 0) a1-1)
+    (.ppacb v0-0 (the-as uint128 0) a2-1)
+    (the-as rgba v0-0)
+    )
+  )
+
+(defun seekl ((arg0 int) (arg1 int) (arg2 int))
+  "Move arg0 toward arg1, by at most arg2."
+  (let* ((v1-0 (- arg1 arg0))
+         (a3-0 (abs v1-0))
+         )
+    (cond
+      ((>= arg2 a3-0)
+       arg1
+       )
+      ((>= v1-0 0)
+       (+ arg0 arg2)
+       )
+      (else
+        (- arg0 arg2)
+        )
+      )
+    )
+  )
+
+(defmacro seek! (place target rate)
+  "Macro to use seek in-place. place is the base, and where the result is stored."
+  `(set! ,place (seek ,place ,target ,rate))
+  )
+
+(defmacro seekl! (place target rate)
+  "Macro to use seekl in-place. place is the base, and where the result is stored."
+  `(set! ,place (seekl ,place ,target ,rate))
+  )
+
+(defmacro seek-ease! (place target rate min-threshold rate-min)
+  "Macro to use seek-ease in-place. place is the base, and where the result is stored."
+  `(set! ,place (seek-ease ,place ,target ,rate ,min-threshold ,rate-min))
+  )
+
+;; in the PS2 there is a R register for generating random numbers
+;; it is a "32-bit" register, but the upper bits are fixed so it always
+;; represents a float in (1, 2).
+;; we don't have this register on x86, so we add a special global: *_vu-reg-R_*
+(define *_vu-reg-R_* 0)
+
+(defun rand-vu-init ((seed float))
+  "Initialize the VU0 random generator."
+  ;; (.ctc2.i R arg0)
+  ;; (.cfc2.i v0 R)
+  (set! *_vu-reg-R_*
+        (logior #x3F800000 (logand (the-as int seed) #x007FFFFF))
+        )
+  (the-as float *_vu-reg-R_*)
+  )
+
+(rand-vu-init 1.418091)
+
+(defun rand-vu ()
+  "Get a random number in [0, 1) and advance the random generator."
+  ;; (.vrget.xyzw vf1) - get current random
+  (let ((current-random *_vu-reg-R_*))
+    ;; here they update the random generate with some junk
+    ;; for now, we don't do this in OpenGOAL.
+    ;; (.vsqrty Q vf1)
+    ;; (.vaddq.x vf2 vf0 Q) ;; you're not allowed to do this!
+    ;; (.vrxorw vf2)
+
+    ;; and advance
+    ;; (.vrnext.xyzw vf1)
+    (let ((x (logand 1 (shr current-random 4)))
+          (y (logand 1 (shr current-random 22)))
+          )
+      (set! current-random (shl current-random 1))
+      (set! current-random (logxor current-random (logxor x y)))
+      (logxor! current-random (pc-rand))
+      (set! *_vu-reg-R_* (logior #x3f800000 (logand current-random #x7fffff)))
+      )
+    )
+
+  ;; (.vsubw.xyzw vf1 vf1 vf0)
+  ;; (.qmfc2.i v0 vf1)
+  (- (the-as float *_vu-reg-R_*) 1.0)
+  )
+
+(defun rand-vu-nostep ()
+  "Get the number currently in the random generator.
+   This will be equal to the last call of (rand-vu)
+   This will not update the random generator"
+  (- (the-as float *_vu-reg-R_*) 1.0)
+  )
+
+(defun rand-vu-float-range ((arg0 float) (arg1 float))
+  "Get a random float in between arg0 and arg1."
+  (+ arg0 (* (rand-vu) (- arg1 arg0)))
+  )
+
+(defun rand-vu-percent? ((arg0 float))
+  "Get a boolean that's true with the given probability (in 0, 1)."
+  (>= arg0 (rand-vu))
+  )
+
+(defun rand-vu-int-range ((arg0 int) (arg1 int))
+  "Get an integer in the given range (inclusive)."
+  (if (< arg0 arg1)
+      (set! arg1 (+ arg1 1))
+      (set! arg0 (+ arg0 1))
+      )
+  (let ((f0-4 (rand-vu-float-range (the float arg0) (the float arg1))))
+    (if (< f0-4 0.0)
+        (set! f0-4 (+ -1.0 f0-4))
+        )
+    (the int f0-4)
+    )
+  )
+
+(defun rand-vu-int-count ((arg0 int))
+  "Get an integer in the range [0, max)."
+  (the int (* (rand-vu) (the float arg0)))
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defun rand-vu-int-count-excluding ((arg0 int) (arg1 int))
+  "Get an integer in the range [0, arg0).
+If bit n is set in arg1, exclude this value from being returned."
+  (let ((s4-0 0)
+        (s5-0 0)
+        )
+    (let ((v1-0 1))
+      (while (nonzero? arg0)
+        (+! arg0 -1)
+        (if (not (logtest? arg1 v1-0))
+            (+! s4-0 1)
+            )
+        (set! v1-0 (* v1-0 2))
+        )
+      )
+    (when (> s4-0 0)
+      (let ((v1-4 (the int (* (rand-vu) (the float s4-0))))
+            (a0-1 1)
+            )
+        (until #f
+          (while (logtest? arg1 a0-1)
+            (nop!)
+            (nop!)
+            (+! s5-0 1)
+            (set! a0-1 (* a0-1 2))
+            )
+          (if (zero? v1-4)
+              (goto cfg-14)
+              )
+          (+! v1-4 -1)
+          (+! s5-0 1)
+          (set! a0-1 (* a0-1 2))
+          )
+        )
+      #f
+      )
+    (label cfg-14)
+    s5-0
+    )
+  )
+
+;; WARN: new jak 2 until loop case, check carefully
+(defun rand-vu-int-range-exclude ((arg0 int) (arg1 int) (arg2 int))
+  "Get an integer in the range [0, arg0), excluding arg2.
+Note that this doesn't use bits like rand-vu-int-count-excluding."
+  (until #f
+    (let ((v1-0 (rand-vu-int-range arg0 arg1)))
+      (if (!= v1-0 arg2)
+          (return v1-0)
+          )
+      )
+    )
+  (the-as int #f)
+  )
+
+(deftype random-generator (basic)
+  ((seed  uint32)
+   )
+  )
+
+
+(define *random-generator* (new 'global 'random-generator))
+
+(set! (-> *random-generator* seed) (the-as uint #x666edd1e))
+
+(defmacro sext32-64 (x)
+  "Sign extend a 32-bit value to 64-bits"
+  `(sar (shl ,x 32) 32)
+  )
+
+(defun rand-uint31-gen ((gen random-generator))
+  "Generate a supposedly random integer.
+  Note, this might not quite be right.
+  But the highest bit is always zero, like it says
+  and it looks kinda random to me."
+  (let* ((sd (-> gen seed))
+         ;; addiu v1, r0, 16807
+         ;; mult3 v0, v1, a1
+         (prod (imul64 16807 sd))
+         ;; mfhi v1
+         (hi (shr prod 32)) ;; sign extend this?
+         (lo (sar (shl prod 32) 32))
+         ;; daddu v1, v1, v1
+         (v1 (+ hi hi))
+         ;; srl a1, v0, 31
+         (a1 (logand #xffffffff (shr lo 31)))
+         ;; or v1, v1, a1
+         ;; daddu v0, v0 v1
+         (result (+ lo (logior v1 a1)))
+        )
+    (set! result (shr (logand #xffffffff (shl result 1)) 1))
+    (set! (-> gen seed) result)
+    (the uint result)
+    )
+  )
+
+(defun cube-root ((arg0 float))
+  "Cube root with cool trick that I don't understand."
+  (cond
+    ((!= arg0 0.0)
+     (let* ((v1-0 arg0)
+            (a1-2 (+ (logand (shr (the-as int v1-0) 23) 255) -127))
+            (f0-1 (the-as float
+                          (logior (logand (the-as uint #x807fffff) (the-as uint v1-0)) (shl (+ (/ (the-as int a1-2) 3) 127) 23))
+                          )
+                  )
+            )
+       ;; somehow f0-1 is a reasonable approximation of cube-root.
+       ;; then we do 6 iterations of newton's method to get a more accurate answer.
+       (dotimes (v1-3 6)
+         (set! f0-1 (- f0-1
+                       (/ (- (* (* f0-1 f0-1) f0-1) arg0)
+                          (* 3.0 f0-1 f0-1)
+                          )
+                       )
+               )
+         )
+       f0-1
+       )
+     )
+    (else
+      0.0
+      )
+    )
+  )
+
+(defun int-noise ((arg0 int))
+  "Generate random-ish floats in range -1, 1."
+  (let ((v1-1 (logxor (shl arg0 13) arg0)))
+    (- 1.0 (* 0.0000000009313226
+              (the float (logand #x7fffffff (+ #x5208dd0d (* v1-1 (+ #xc0ae5 (* (* #x3d73 v1-1) v1-1))))))
+              )
+       )
+    )
+  )
+
+(defun smooth-step ((arg0 float))
+  "Interpolate between 0, 1 with a cubic polynomial.
+These are picked so f(0) = 0, f(1) = 1, f'(0) = f'(1) = 0."
+  (cond
+    ((>= 0.0 arg0)
+     0.0
+     )
+    ((>= arg0 1.0)
+     1.0
+     )
+    (else
+      (* arg0 arg0 (+ 3.0 (* -2.0 arg0)))
+      )
+    )
+  )
+
+(defun smooth-interp ((arg0 float) (arg1 float) (arg2 float) (arg3 float) (arg4 float))
+  "Remap arg2 from (arg3, arg4) to (arg0, arg1), using cubic interpolation.
+Satisfies:
+- f(arg3) = arg0
+- f(arg4) = arg1
+- f'(arg3) = f'(arg4) = 0"
+  (+ arg0 (* (- arg1 arg0) (smooth-step (/ (- arg2 arg3) (- arg4 arg3)))))
+  )

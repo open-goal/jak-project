@@ -5,5 +5,142 @@
 ;; name in dgo: scene-h
 ;; dgos: GAME
 
+;; +++scene-flags
+(defenum scene-flags
+  :bitfield #t
+  :type uint32
+  (scf0 0)
+  (scf1 1)
+  (scf2 2)
+  (scf3 3)
+  (scf4 4)
+  (scf5 5)
+  (scf6 6)
+  (scf7 7)
+  (scf8 8)
+  (scf9 9)
+  (scf10 10)
+  (scf11 11)
+  (scf12 12)
+  (scf13 13)
+  (scf14 14)
+  (scf15 15)
+  )
+;; ---scene-flags
+
+
+(declare-type scene-player process-drawable)
+(declare-type scene art-group)
+
+(define-extern scene-player-init (function object symbol string none :behavior scene-player))
+(define-extern scene-lookup (function basic scene))
+
 ;; DECOMP BEGINS
 
+(deftype scene-actor (basic)
+  ((name                 string)
+   (level                symbol)
+   (art-group            string)
+   (prefix               string)
+   (draw-frames          pair)
+   (scissor-frames       pair)
+   (shadow-frames        pair)
+   (cloth-reset-frames   pair)
+   (cloth-commands       pair)
+   (camera               int16)
+   (light-index          uint8)
+   (shadow-mask          uint8)
+   (shadow-values        uint32)
+   (flags                uint32)
+   (command-list         pair)
+   (shadow-flags         int32)
+   (shadow-volume-joint  basic)
+   (draw-seg             uint64)
+   (no-draw-seg          uint64)
+   (last-frame           float)
+   (process              handle)
+   )
+  (:methods
+    (setup-manipy-for-scene! (_type_ scene-player) (pointer process))
+    )
+  )
+
+
+(deftype scene (art-group)
+  ((scene-flags       scene-flags)
+   (mask-to-clear     process-mask)
+   (entity            string)
+   (art-group         string)
+   (anim              string)
+   (parts             int32)
+   (command-list      pair)
+   (cut-list          pair)
+   (wait-max-time     time-frame)
+   (wait-air-time     time-frame)
+   (wait-ground-time  time-frame)
+   (actor             (array scene-actor))
+   (load-point        basic)
+   (end-point         basic)
+   (borrow            pair)
+   (sfx-volume        float)
+   (ambient-volume    float)
+   (music-volume      float)
+   (music-delay       float)
+   (scene-task        uint16)
+   (on-running        pair)
+   (on-complete       pair)
+   )
+  (:methods
+    (init-spool-by-scene! (_type_ spool-anim) spool-anim)
+    (load-scene (_type_) scene)
+    )
+  )
+
+
+(deftype scene-player (process-drawable)
+  ((scene-list            (array scene))
+   (scene                 scene)
+   (scene-index           int32)
+   (anim                  spool-anim)
+   (next-anim             spool-anim)
+   (camera                handle)
+   (main-entity           entity-actor)
+   (wait                  symbol)
+   (old-target-pos        transformq  :inline)
+   (pre-cut-frame         basic)
+   (preload-continue      string)
+   (preload-sound         basic)
+   (dma-max               uint32)
+   (gui-id                sound-id)
+   (aborted?              symbol)
+   (scene-start-time      time-frame)
+   (targ-speed            float)
+   (cur-speed             float)
+   (speed-change-time     time-frame)
+   (speed-press-time      time-frame)
+   (speed-change-speed    float)
+   (subtitle-change-time  time-frame)
+   (user-sound            sound-id    4)
+   (last-frame            float)
+   (end-point             basic)
+   (blackout-end          basic)
+   (new-trans-hook        (function none))
+   (cur-trans-hook        (function none))
+   (user-data             uint64)
+   )
+  (:state-methods
+    (wait symbol)
+    release
+    play-anim
+    )
+  (:methods
+    (scene-player-method-23 (_type_ string symbol) none)
+    (scene-player-method-24 (_type_ scene symbol) scene)
+    (scene-player-method-25 (_type_ float float) none)
+    )
+  )
+
+
+(define *scene-player* (the-as (pointer scene-player) #f))
+
+(define *debug-menu-scene-play* (the-as object #f))

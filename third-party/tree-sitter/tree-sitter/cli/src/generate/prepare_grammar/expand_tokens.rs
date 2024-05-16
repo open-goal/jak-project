@@ -4,17 +4,14 @@ use crate::generate::nfa::{CharacterSet, Nfa, NfaState};
 use crate::generate::rules::{Precedence, Rule};
 use anyhow::{anyhow, Context, Result};
 use lazy_static::lazy_static;
-use regex::Regex;
 use regex_syntax::ast::{
-    parse, Ast, Class, ClassPerlKind, ClassSet, ClassSetBinaryOpKind, ClassSetItem,
-    ClassUnicodeKind, RepetitionKind, RepetitionRange,
+    parse, Ast, ClassPerlKind, ClassSet, ClassSetBinaryOpKind, ClassSetItem, ClassUnicodeKind,
+    RepetitionKind, RepetitionRange,
 };
 use std::collections::HashMap;
 use std::i32;
 
 lazy_static! {
-    static ref CURLY_BRACE_REGEX: Regex =
-        Regex::new(r#"(^|[^\\pP])\{([^}]*[^0-9A-Fa-f,}][^}]*)\}"#).unwrap();
     static ref UNICODE_CATEGORIES: HashMap<&'static str, Vec<u32>> =
         serde_json::from_str(UNICODE_CATEGORIES_JSON).unwrap();
     static ref UNICODE_PROPERTIES: HashMap<&'static str, Vec<u32>> =
@@ -25,11 +22,10 @@ lazy_static! {
         serde_json::from_str(UNICODE_PROPERTY_ALIASES_JSON).unwrap();
 }
 
-const UNICODE_CATEGORIES_JSON: &'static str = include_str!("./unicode-categories.json");
-const UNICODE_PROPERTIES_JSON: &'static str = include_str!("./unicode-properties.json");
-const UNICODE_CATEGORY_ALIASES_JSON: &'static str = include_str!("./unicode-category-aliases.json");
-const UNICODE_PROPERTY_ALIASES_JSON: &'static str = include_str!("./unicode-property-aliases.json");
-const ALLOWED_REDUNDANT_ESCAPED_CHARS: [char; 4] = ['!', '\'', '"', '/'];
+const UNICODE_CATEGORIES_JSON: &str = include_str!("./unicode-categories.json");
+const UNICODE_PROPERTIES_JSON: &str = include_str!("./unicode-properties.json");
+const UNICODE_CATEGORY_ALIASES_JSON: &str = include_str!("./unicode-category-aliases.json");
+const UNICODE_PROPERTY_ALIASES_JSON: &str = include_str!("./unicode-property-aliases.json");
 
 struct NfaBuilder {
     nfa: Nfa,
@@ -51,7 +47,7 @@ fn get_implicit_precedence(rule: &Rule) -> i32 {
     }
 }
 
-fn get_completion_precedence(rule: &Rule) -> i32 {
+const fn get_completion_precedence(rule: &Rule) -> i32 {
     if let Rule::Metadata { params, .. } = rule {
         if let Precedence::Integer(p) = params.precedence {
             return p;
@@ -60,43 +56,18 @@ fn get_completion_precedence(rule: &Rule) -> i32 {
     0
 }
 
-fn preprocess_regex(content: &str) -> String {
-    let content = CURLY_BRACE_REGEX.replace(content, "$1\\{$2\\}");
-    let mut result = String::with_capacity(content.len());
-    let mut is_escaped = false;
-    for c in content.chars() {
-        if is_escaped {
-            if ALLOWED_REDUNDANT_ESCAPED_CHARS.contains(&c) {
-                result.push(c);
-            } else {
-                result.push('\\');
-                result.push(c);
-            }
-            is_escaped = false;
-        } else if c == '\\' {
-            is_escaped = true;
-        } else {
-            result.push(c);
-        }
-    }
-    if is_escaped {
-        result.push('\\');
-    }
-    result
-}
-
-pub(crate) fn expand_tokens(mut grammar: ExtractedLexicalGrammar) -> Result<LexicalGrammar> {
+pub fn expand_tokens(mut grammar: ExtractedLexicalGrammar) -> Result<LexicalGrammar> {
     let mut builder = NfaBuilder {
         nfa: Nfa::new(),
         is_sep: true,
         precedence_stack: vec![0],
     };
 
-    let separator_rule = if grammar.separators.len() > 0 {
+    let separator_rule = if grammar.separators.is_empty() {
+        Rule::Blank
+    } else {
         grammar.separators.push(Rule::Blank);
         Rule::repeat(Rule::choice(grammar.separators))
-    } else {
-        Rule::Blank
     };
 
     let mut variables = Vec::new();
@@ -139,17 +110,16 @@ pub(crate) fn expand_tokens(mut grammar: ExtractedLexicalGrammar) -> Result<Lexi
 impl NfaBuilder {
     fn expand_rule(&mut self, rule: &Rule, mut next_state_id: u32) -> Result<bool> {
         match rule {
-            Rule::Pattern(s) => {
-                let s = preprocess_regex(s);
-                let ast = parse::Parser::new().parse(&s)?;
-                self.expand_regex(&ast, next_state_id)
+            Rule::Pattern(s, f) => {
+                let ast = parse::Parser::new().parse(s)?;
+                self.expand_regex(&ast, next_state_id, f.contains('i'))
             }
             Rule::String(s) => {
                 for c in s.chars().rev() {
                     self.push_advance(CharacterSet::empty().add_char(c), next_state_id);
                     next_state_id = self.nfa.last_state_id();
                 }
-                Ok(s.len() > 0)
+                Ok(!s.is_empty())
             }
             Rule::Choice(elements) => {
                 let mut alternative_state_ids = Vec::new();
@@ -170,7 +140,7 @@ impl NfaBuilder {
             }
             Rule::Seq(elements) => {
                 let mut result = false;
-                for element in elements.into_iter().rev() {
+                for element in elements.iter().rev() {
                     if self.expand_rule(element, next_state_id)? {
                         result = true;
                     }
@@ -206,16 +176,46 @@ impl NfaBuilder {
                 result
             }
             Rule::Blank => Ok(false),
-            _ => Err(anyhow!("Grammar error: Unexpected rule {:?}", rule)),
+            _ => Err(anyhow!("Grammar error: Unexpected rule {rule:?}")),
         }
     }
 
-    fn expand_regex(&mut self, ast: &Ast, mut next_state_id: u32) -> Result<bool> {
+    fn expand_regex(
+        &mut self,
+        ast: &Ast,
+        mut next_state_id: u32,
+        case_insensitive: bool,
+    ) -> Result<bool> {
+        const fn inverse_char(c: char) -> char {
+            match c {
+                'a'..='z' => (c as u8 - b'a' + b'A') as char,
+                'A'..='Z' => (c as u8 - b'A' + b'a') as char,
+                c => c,
+            }
+        }
+
+        fn with_inverse_char(mut chars: CharacterSet) -> CharacterSet {
+            for char in chars.clone().chars() {
+                let inverted = inverse_char(char);
+                if char != inverted {
+                    chars = chars.add_char(inverted);
+                }
+            }
+            chars
+        }
+
         match ast {
             Ast::Empty(_) => Ok(false),
             Ast::Flags(_) => Err(anyhow!("Regex error: Flags are not supported")),
             Ast::Literal(literal) => {
-                self.push_advance(CharacterSet::from_char(literal.c), next_state_id);
+                let mut char_set = CharacterSet::from_char(literal.c);
+                if case_insensitive {
+                    let inverted = inverse_char(literal.c);
+                    if literal.c != inverted {
+                        char_set = char_set.add_char(inverted);
+                    }
+                }
+                self.push_advance(char_set, next_state_id);
                 Ok(true)
             }
             Ast::Dot(_) => {
@@ -223,70 +223,82 @@ impl NfaBuilder {
                 Ok(true)
             }
             Ast::Assertion(_) => Err(anyhow!("Regex error: Assertions are not supported")),
-            Ast::Class(class) => match class {
-                Class::Unicode(class) => {
-                    let mut chars = self.expand_unicode_character_class(&class.kind)?;
-                    if class.negated {
-                        chars = chars.negate();
-                    }
-                    self.push_advance(chars, next_state_id);
-                    Ok(true)
+            Ast::ClassUnicode(class) => {
+                let mut chars = self.expand_unicode_character_class(&class.kind)?;
+                if class.negated {
+                    chars = chars.negate();
                 }
-                Class::Perl(class) => {
-                    let mut chars = self.expand_perl_character_class(&class.kind);
-                    if class.negated {
-                        chars = chars.negate();
-                    }
-                    self.push_advance(chars, next_state_id);
-                    Ok(true)
+                if case_insensitive {
+                    chars = with_inverse_char(chars);
                 }
-                Class::Bracketed(class) => {
-                    let mut chars = self.translate_class_set(&class.kind)?;
-                    if class.negated {
-                        chars = chars.negate();
-                    }
-                    self.push_advance(chars, next_state_id);
-                    Ok(true)
+                self.push_advance(chars, next_state_id);
+                Ok(true)
+            }
+            Ast::ClassPerl(class) => {
+                let mut chars = self.expand_perl_character_class(&class.kind);
+                if class.negated {
+                    chars = chars.negate();
                 }
-            },
+                if case_insensitive {
+                    chars = with_inverse_char(chars);
+                }
+                self.push_advance(chars, next_state_id);
+                Ok(true)
+            }
+            Ast::ClassBracketed(class) => {
+                let mut chars = self.translate_class_set(&class.kind)?;
+                if class.negated {
+                    chars = chars.negate();
+                }
+                if case_insensitive {
+                    chars = with_inverse_char(chars);
+                }
+                self.push_advance(chars, next_state_id);
+                Ok(true)
+            }
             Ast::Repetition(repetition) => match repetition.op.kind {
                 RepetitionKind::ZeroOrOne => {
-                    self.expand_zero_or_one(&repetition.ast, next_state_id)
+                    self.expand_zero_or_one(&repetition.ast, next_state_id, case_insensitive)
                 }
                 RepetitionKind::OneOrMore => {
-                    self.expand_one_or_more(&repetition.ast, next_state_id)
+                    self.expand_one_or_more(&repetition.ast, next_state_id, case_insensitive)
                 }
                 RepetitionKind::ZeroOrMore => {
-                    self.expand_zero_or_more(&repetition.ast, next_state_id)
+                    self.expand_zero_or_more(&repetition.ast, next_state_id, case_insensitive)
                 }
                 RepetitionKind::Range(RepetitionRange::Exactly(count)) => {
-                    self.expand_count(&repetition.ast, count, next_state_id)
+                    self.expand_count(&repetition.ast, count, next_state_id, case_insensitive)
                 }
                 RepetitionKind::Range(RepetitionRange::AtLeast(min)) => {
-                    if self.expand_zero_or_more(&repetition.ast, next_state_id)? {
-                        self.expand_count(&repetition.ast, min, next_state_id)
+                    if self.expand_zero_or_more(&repetition.ast, next_state_id, case_insensitive)? {
+                        self.expand_count(&repetition.ast, min, next_state_id, case_insensitive)
                     } else {
                         Ok(false)
                     }
                 }
                 RepetitionKind::Range(RepetitionRange::Bounded(min, max)) => {
-                    let mut result = self.expand_count(&repetition.ast, min, next_state_id)?;
+                    let mut result =
+                        self.expand_count(&repetition.ast, min, next_state_id, case_insensitive)?;
                     for _ in min..max {
                         if result {
                             next_state_id = self.nfa.last_state_id();
                         }
-                        if self.expand_zero_or_one(&repetition.ast, next_state_id)? {
+                        if self.expand_zero_or_one(
+                            &repetition.ast,
+                            next_state_id,
+                            case_insensitive,
+                        )? {
                             result = true;
                         }
                     }
                     Ok(result)
                 }
             },
-            Ast::Group(group) => self.expand_regex(&group.ast, next_state_id),
+            Ast::Group(group) => self.expand_regex(&group.ast, next_state_id, case_insensitive),
             Ast::Alternation(alternation) => {
                 let mut alternative_state_ids = Vec::new();
-                for ast in alternation.asts.iter() {
-                    if self.expand_regex(&ast, next_state_id)? {
+                for ast in &alternation.asts {
+                    if self.expand_regex(ast, next_state_id, case_insensitive)? {
                         alternative_state_ids.push(self.nfa.last_state_id());
                     } else {
                         alternative_state_ids.push(next_state_id);
@@ -304,7 +316,7 @@ impl NfaBuilder {
             Ast::Concat(concat) => {
                 let mut result = false;
                 for ast in concat.asts.iter().rev() {
-                    if self.expand_regex(&ast, next_state_id)? {
+                    if self.expand_regex(ast, next_state_id, case_insensitive)? {
                         result = true;
                         next_state_id = self.nfa.last_state_id();
                     }
@@ -316,7 +328,7 @@ impl NfaBuilder {
 
     fn translate_class_set(&self, class_set: &ClassSet) -> Result<CharacterSet> {
         match &class_set {
-            ClassSet::Item(item) => self.expand_character_class(&item),
+            ClassSet::Item(item) => self.expand_character_class(item),
             ClassSet::BinaryOp(binary_op) => {
                 let mut lhs_char_class = self.translate_class_set(&binary_op.lhs)?;
                 let mut rhs_char_class = self.translate_class_set(&binary_op.rhs)?;
@@ -335,13 +347,18 @@ impl NfaBuilder {
         }
     }
 
-    fn expand_one_or_more(&mut self, ast: &Ast, next_state_id: u32) -> Result<bool> {
+    fn expand_one_or_more(
+        &mut self,
+        ast: &Ast,
+        next_state_id: u32,
+        case_insensitive: bool,
+    ) -> Result<bool> {
         self.nfa.states.push(NfaState::Accept {
             variable_index: 0,
             precedence: 0,
         }); // Placeholder for split
         let split_state_id = self.nfa.last_state_id();
-        if self.expand_regex(&ast, split_state_id)? {
+        if self.expand_regex(ast, split_state_id, case_insensitive)? {
             self.nfa.states[split_state_id as usize] =
                 NfaState::Split(self.nfa.last_state_id(), next_state_id);
             Ok(true)
@@ -351,8 +368,13 @@ impl NfaBuilder {
         }
     }
 
-    fn expand_zero_or_one(&mut self, ast: &Ast, next_state_id: u32) -> Result<bool> {
-        if self.expand_regex(ast, next_state_id)? {
+    fn expand_zero_or_one(
+        &mut self,
+        ast: &Ast,
+        next_state_id: u32,
+        case_insensitive: bool,
+    ) -> Result<bool> {
+        if self.expand_regex(ast, next_state_id, case_insensitive)? {
             self.push_split(next_state_id);
             Ok(true)
         } else {
@@ -360,8 +382,13 @@ impl NfaBuilder {
         }
     }
 
-    fn expand_zero_or_more(&mut self, ast: &Ast, next_state_id: u32) -> Result<bool> {
-        if self.expand_one_or_more(&ast, next_state_id)? {
+    fn expand_zero_or_more(
+        &mut self,
+        ast: &Ast,
+        next_state_id: u32,
+        case_insensitive: bool,
+    ) -> Result<bool> {
+        if self.expand_one_or_more(ast, next_state_id, case_insensitive)? {
             self.push_split(next_state_id);
             Ok(true)
         } else {
@@ -369,10 +396,16 @@ impl NfaBuilder {
         }
     }
 
-    fn expand_count(&mut self, ast: &Ast, count: u32, mut next_state_id: u32) -> Result<bool> {
+    fn expand_count(
+        &mut self,
+        ast: &Ast,
+        count: u32,
+        mut next_state_id: u32,
+        case_insensitive: bool,
+    ) -> Result<bool> {
         let mut result = false;
         for _ in 0..count {
-            if self.expand_regex(ast, next_state_id)? {
+            if self.expand_regex(ast, next_state_id, case_insensitive)? {
                 result = true;
                 next_state_id = self.nfa.last_state_id();
             }
@@ -388,7 +421,7 @@ impl NfaBuilder {
             ClassSetItem::Union(union) => {
                 let mut result = CharacterSet::empty();
                 for item in &union.items {
-                    result = result.add(&self.expand_character_class(&item)?);
+                    result = result.add(&self.expand_character_class(item)?);
                 }
                 Ok(result)
             }
@@ -407,9 +440,8 @@ impl NfaBuilder {
                 }
                 Ok(set)
             }
-            _ => Err(anyhow!(
-                "Regex error: Unsupported character class syntax {:?}",
-                item
+            ClassSetItem::Ascii(_) => Err(anyhow!(
+                "Regex error: Unsupported character class syntax {item:?}",
             )),
         }
     }
@@ -430,15 +462,15 @@ impl NfaBuilder {
                 if actual_class_name.len() == 1 {
                     category_letter = actual_class_name.clone();
                 } else {
-                    let code_points = UNICODE_CATEGORIES
-                        .get(actual_class_name.as_str())
-                        .or_else(|| UNICODE_PROPERTIES.get(actual_class_name.as_str()))
-                        .ok_or_else(|| {
-                            anyhow!(
-                                "Regex error: Unsupported unicode character class {}",
-                                class_name
-                            )
-                        })?;
+                    let code_points =
+                        UNICODE_CATEGORIES
+                            .get(actual_class_name.as_str())
+                            .or_else(|| UNICODE_PROPERTIES.get(actual_class_name.as_str()))
+                            .ok_or_else(|| {
+                                anyhow!(
+                                    "Regex error: Unsupported unicode character class {class_name}",
+                                )
+                            })?;
                     for c in code_points {
                         if let Some(c) = std::char::from_u32(*c) {
                             chars = chars.add_char(c);
@@ -475,7 +507,9 @@ impl NfaBuilder {
                 .add_char(' ')
                 .add_char('\t')
                 .add_char('\r')
-                .add_char('\n'),
+                .add_char('\n')
+                .add_char('\x0B')
+                .add_char('\x0C'),
             ClassPerlKind::Word => CharacterSet::empty()
                 .add_char('_')
                 .add_range('A', 'Z')
@@ -563,7 +597,7 @@ mod tests {
         let table = [
             // regex with sequences and alternatives
             Row {
-                rules: vec![Rule::pattern("(a|b|c)d(e|f|g)h?")],
+                rules: vec![Rule::pattern("(a|b|c)d(e|f|g)h?", "")],
                 separators: vec![],
                 examples: vec![
                     ("ade1", Some((0, "ade"))),
@@ -574,13 +608,13 @@ mod tests {
             },
             // regex with repeats
             Row {
-                rules: vec![Rule::pattern("a*")],
+                rules: vec![Rule::pattern("a*", "")],
                 separators: vec![],
                 examples: vec![("aaa1", Some((0, "aaa"))), ("b", Some((0, "")))],
             },
             // regex with repeats in sequences
             Row {
-                rules: vec![Rule::pattern("a((bc)+|(de)*)f")],
+                rules: vec![Rule::pattern("a((bc)+|(de)*)f", "")],
                 separators: vec![],
                 examples: vec![
                     ("af1", Some((0, "af"))),
@@ -591,13 +625,13 @@ mod tests {
             },
             // regex with character ranges
             Row {
-                rules: vec![Rule::pattern("[a-fA-F0-9]+")],
+                rules: vec![Rule::pattern("[a-fA-F0-9]+", "")],
                 separators: vec![],
                 examples: vec![("A1ff0.", Some((0, "A1ff0")))],
             },
             // regex with perl character classes
             Row {
-                rules: vec![Rule::pattern("\\w\\d\\s")],
+                rules: vec![Rule::pattern("\\w\\d\\s", "")],
                 separators: vec![],
                 examples: vec![("_0  ", Some((0, "_0 ")))],
             },
@@ -611,7 +645,7 @@ mod tests {
             Row {
                 rules: vec![Rule::repeat(Rule::seq(vec![
                     Rule::string("{"),
-                    Rule::pattern("[a-f]+"),
+                    Rule::pattern("[a-f]+", ""),
                     Rule::string("}"),
                 ]))],
                 separators: vec![],
@@ -624,9 +658,9 @@ mod tests {
             // longest match rule
             Row {
                 rules: vec![
-                    Rule::pattern("a|bc"),
-                    Rule::pattern("aa"),
-                    Rule::pattern("bcd"),
+                    Rule::pattern("a|bc", ""),
+                    Rule::pattern("aa", ""),
+                    Rule::pattern("bcd", ""),
                 ],
                 separators: vec![],
                 examples: vec![
@@ -640,7 +674,7 @@ mod tests {
             },
             // regex with an alternative including the empty string
             Row {
-                rules: vec![Rule::pattern("a(b|)+c")],
+                rules: vec![Rule::pattern("a(b|)+c", "")],
                 separators: vec![],
                 examples: vec![
                     ("ac.", Some((0, "ac"))),
@@ -650,8 +684,8 @@ mod tests {
             },
             // separators
             Row {
-                rules: vec![Rule::pattern("[a-f]+")],
-                separators: vec![Rule::string("\\\n"), Rule::pattern("\\s")],
+                rules: vec![Rule::pattern("[a-f]+", "")],
+                separators: vec![Rule::string("\\\n"), Rule::pattern("\\s", "")],
                 examples: vec![
                     ("  a", Some((0, "a"))),
                     ("  \nb", Some((0, "b"))),
@@ -662,11 +696,11 @@ mod tests {
             // shorter tokens with higher precedence
             Row {
                 rules: vec![
-                    Rule::prec(Precedence::Integer(2), Rule::pattern("abc")),
-                    Rule::prec(Precedence::Integer(1), Rule::pattern("ab[cd]e")),
-                    Rule::pattern("[a-e]+"),
+                    Rule::prec(Precedence::Integer(2), Rule::pattern("abc", "")),
+                    Rule::prec(Precedence::Integer(1), Rule::pattern("ab[cd]e", "")),
+                    Rule::pattern("[a-e]+", ""),
                 ],
-                separators: vec![Rule::string("\\\n"), Rule::pattern("\\s")],
+                separators: vec![Rule::string("\\\n"), Rule::pattern("\\s", "")],
                 examples: vec![
                     ("abceef", Some((0, "abc"))),
                     ("abdeef", Some((1, "abde"))),
@@ -676,13 +710,13 @@ mod tests {
             // immediate tokens with higher precedence
             Row {
                 rules: vec![
-                    Rule::prec(Precedence::Integer(1), Rule::pattern("[^a]+")),
+                    Rule::prec(Precedence::Integer(1), Rule::pattern("[^a]+", "")),
                     Rule::immediate_token(Rule::prec(
                         Precedence::Integer(2),
-                        Rule::pattern("[^ab]+"),
+                        Rule::pattern("[^ab]+", ""),
                     )),
                 ],
-                separators: vec![Rule::pattern("\\s")],
+                separators: vec![Rule::pattern("\\s", "")],
                 examples: vec![("cccb", Some((1, "ccc")))],
             },
             Row {
@@ -704,7 +738,7 @@ mod tests {
             // nested choices within sequences
             Row {
                 rules: vec![Rule::seq(vec![
-                    Rule::pattern("[0-9]+"),
+                    Rule::pattern("[0-9]+", ""),
                     Rule::choice(vec![
                         Rule::Blank,
                         Rule::choice(vec![Rule::seq(vec![
@@ -713,7 +747,7 @@ mod tests {
                                 Rule::Blank,
                                 Rule::choice(vec![Rule::string("+"), Rule::string("-")]),
                             ]),
-                            Rule::pattern("[0-9]+"),
+                            Rule::pattern("[0-9]+", ""),
                         ])]),
                     ]),
                 ])],
@@ -730,7 +764,7 @@ mod tests {
             },
             // nested groups
             Row {
-                rules: vec![Rule::seq(vec![Rule::pattern(r#"([^x\\]|\\(.|\n))+"#)])],
+                rules: vec![Rule::seq(vec![Rule::pattern(r"([^x\\]|\\(.|\n))+", "")])],
                 separators: vec![],
                 examples: vec![("abcx", Some((0, "abc"))), ("abc\\0x", Some((0, "abc\\0")))],
             },
@@ -738,24 +772,24 @@ mod tests {
             Row {
                 rules: vec![
                     // Escaped forward slash (used in JS because '/' is the regex delimiter)
-                    Rule::pattern(r#"\/"#),
+                    Rule::pattern(r"\/", ""),
                     // Escaped quotes
-                    Rule::pattern(r#"\"\'"#),
+                    Rule::pattern(r#"\"\'"#, ""),
                     // Quote preceded by a literal backslash
-                    Rule::pattern(r#"[\\']+"#),
+                    Rule::pattern(r"[\\']+", ""),
                 ],
                 separators: vec![],
                 examples: vec![
                     ("/", Some((0, "/"))),
                     ("\"\'", Some((1, "\"\'"))),
-                    (r#"'\'a"#, Some((2, r#"'\'"#))),
+                    (r"'\'a", Some((2, r"'\'"))),
                 ],
             },
             // unicode property escapes
             Row {
                 rules: vec![
-                    Rule::pattern(r#"\p{L}+\P{L}+"#),
-                    Rule::pattern(r#"\p{White_Space}+\P{White_Space}+[\p{White_Space}]*"#),
+                    Rule::pattern(r"\p{L}+\P{L}+", ""),
+                    Rule::pattern(r"\p{White_Space}+\P{White_Space}+[\p{White_Space}]*", ""),
                 ],
                 separators: vec![],
                 examples: vec![
@@ -765,17 +799,17 @@ mod tests {
             },
             // unicode property escapes in bracketed sets
             Row {
-                rules: vec![Rule::pattern(r#"[\p{L}\p{Nd}]+"#)],
+                rules: vec![Rule::pattern(r"[\p{L}\p{Nd}]+", "")],
                 separators: vec![],
                 examples: vec![("abΨ12٣٣, ok", Some((0, "abΨ12٣٣")))],
             },
             // unicode character escapes
             Row {
                 rules: vec![
-                    Rule::pattern(r#"\u{00dc}"#),
-                    Rule::pattern(r#"\U{000000dd}"#),
-                    Rule::pattern(r#"\u00de"#),
-                    Rule::pattern(r#"\U000000df"#),
+                    Rule::pattern(r"\u{00dc}", ""),
+                    Rule::pattern(r"\U{000000dd}", ""),
+                    Rule::pattern(r"\u00de", ""),
+                    Rule::pattern(r"\U000000df", ""),
                 ],
                 separators: vec![],
                 examples: vec![
@@ -785,17 +819,15 @@ mod tests {
                     ("\u{00df}", Some((3, "\u{00df}"))),
                 ],
             },
-            // allowing un-escaped curly braces
             Row {
                 rules: vec![
-                    // Un-escaped curly braces
-                    Rule::pattern(r#"u{[0-9a-fA-F]+}"#),
+                    Rule::pattern(r"u\{[0-9a-fA-F]+\}", ""),
                     // Already-escaped curly braces
-                    Rule::pattern(r#"\{[ab]{3}\}"#),
+                    Rule::pattern(r"\{[ab]{3}\}", ""),
                     // Unicode codepoints
-                    Rule::pattern(r#"\u{1000A}"#),
+                    Rule::pattern(r"\u{1000A}", ""),
                     // Unicode codepoints (lowercase)
-                    Rule::pattern(r#"\u{1000b}"#),
+                    Rule::pattern(r"\u{1000b}", ""),
                 ],
                 separators: vec![],
                 examples: vec![
@@ -807,7 +839,7 @@ mod tests {
             },
             // Emojis
             Row {
-                rules: vec![Rule::pattern(r"\p{Emoji}+")],
+                rules: vec![Rule::pattern(r"\p{Emoji}+", "")],
                 separators: vec![],
                 examples: vec![
                     ("🐎", Some((0, "🐎"))),
@@ -820,7 +852,7 @@ mod tests {
             },
             // Intersection
             Row {
-                rules: vec![Rule::pattern(r"[[0-7]&&[4-9]]+")],
+                rules: vec![Rule::pattern(r"[[0-7]&&[4-9]]+", "")],
                 separators: vec![],
                 examples: vec![
                     ("456", Some((0, "456"))),
@@ -833,7 +865,7 @@ mod tests {
             },
             // Difference
             Row {
-                rules: vec![Rule::pattern(r"[[0-9]--[4-7]]+")],
+                rules: vec![Rule::pattern(r"[[0-9]--[4-7]]+", "")],
                 separators: vec![],
                 examples: vec![
                     ("123", Some((0, "123"))),
@@ -846,7 +878,7 @@ mod tests {
             },
             // Symmetric difference
             Row {
-                rules: vec![Rule::pattern(r"[[0-7]~~[4-9]]+")],
+                rules: vec![Rule::pattern(r"[[0-7]~~[4-9]]+", "")],
                 separators: vec![],
                 examples: vec![
                     ("123", Some((0, "123"))),
@@ -867,7 +899,7 @@ mod tests {
                 // [6-7]:                    y y
                 // [3-9]--[5-7]:       y y y     y y
                 // final regex:  y y   y y       y y
-                rules: vec![Rule::pattern(r"[[[0-5]--[2-4]]~~[[3-9]--[6-7]]]+")],
+                rules: vec![Rule::pattern(r"[[[0-5]--[2-4]]~~[[3-9]--[6-7]]]+", "")],
                 separators: vec![],
                 examples: vec![
                     ("01", Some((0, "01"))),
@@ -889,13 +921,13 @@ mod tests {
             let grammar = expand_tokens(ExtractedLexicalGrammar {
                 separators: separators.clone(),
                 variables: rules
-                    .into_iter()
+                    .iter()
                     .map(|rule| Variable::named("", rule.clone()))
                     .collect(),
             })
             .unwrap();
 
-            for (haystack, needle) in examples.iter() {
+            for (haystack, needle) in examples {
                 assert_eq!(simulate_nfa(&grammar, haystack), *needle);
             }
         }

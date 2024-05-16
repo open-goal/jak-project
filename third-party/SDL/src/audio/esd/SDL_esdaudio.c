@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_AUDIO_DRIVER_ESD
+#ifdef SDL_AUDIO_DRIVER_ESD
 
 /* Allow access to an ESD network stream mixing buffer */
 
@@ -64,21 +64,19 @@ static struct
 
 #undef SDL_ESD_SYM
 
-static void
-UnloadESDLibrary()
+static void UnloadESDLibrary()
 {
-    if (esd_handle != NULL) {
+    if (esd_handle) {
         SDL_UnloadObject(esd_handle);
         esd_handle = NULL;
     }
 }
 
-static int
-LoadESDLibrary(void)
+static int LoadESDLibrary(void)
 {
     int i, retval = -1;
 
-    if (esd_handle == NULL) {
+    if (!esd_handle) {
         esd_handle = SDL_LoadObject(esd_library);
         if (esd_handle) {
             retval = 0;
@@ -98,14 +96,12 @@ LoadESDLibrary(void)
 
 #else
 
-static void
-UnloadESDLibrary()
+static void UnloadESDLibrary()
 {
     return;
 }
 
-static int
-LoadESDLibrary(void)
+static int LoadESDLibrary(void)
 {
     return 0;
 }
@@ -114,8 +110,7 @@ LoadESDLibrary(void)
 
 
 /* This function waits until it is possible to write a full sound buffer */
-static void
-ESD_WaitDevice(_THIS)
+static void ESD_WaitDevice(_THIS)
 {
     Sint32 ticks;
 
@@ -140,8 +135,7 @@ ESD_WaitDevice(_THIS)
     }
 }
 
-static void
-ESD_PlayDevice(_THIS)
+static void ESD_PlayDevice(_THIS)
 {
     int written = 0;
 
@@ -164,14 +158,12 @@ ESD_PlayDevice(_THIS)
     }
 }
 
-static Uint8 *
-ESD_GetDeviceBuf(_THIS)
+static Uint8 *ESD_GetDeviceBuf(_THIS)
 {
     return (this->hidden->mixbuf);
 }
 
-static void
-ESD_CloseDevice(_THIS)
+static void ESD_CloseDevice(_THIS)
 {
     if (this->hidden->audio_fd >= 0) {
         SDL_NAME(esd_close) (this->hidden->audio_fd);
@@ -181,8 +173,7 @@ ESD_CloseDevice(_THIS)
 }
 
 /* Try to get the name of the program */
-static char *
-get_progname(void)
+static char *get_progname(void)
 {
     char *progname = NULL;
 #ifdef __LINUX__
@@ -194,7 +185,7 @@ get_progname(void)
     if (fp != NULL) {
         if (fgets(temp, sizeof(temp) - 1, fp)) {
             progname = SDL_strrchr(temp, '/');
-            if (progname == NULL) {
+            if (!progname) {
                 progname = temp;
             } else {
                 progname = progname + 1;
@@ -207,17 +198,15 @@ get_progname(void)
 }
 
 
-static int
-ESD_OpenDevice(_THIS, const char *devname)
+static int ESD_OpenDevice(_THIS, const char *devname)
 {
     esd_format_t format = (ESD_STREAM | ESD_PLAY);
     SDL_AudioFormat test_format = 0;
     int found = 0;
 
     /* Initialize all variables that we clean on shutdown */
-    this->hidden = (struct SDL_PrivateAudioData *)
-        SDL_malloc((sizeof *this->hidden));
-    if (this->hidden == NULL) {
+    this->hidden = (struct SDL_PrivateAudioData *)SDL_malloc(sizeof(*this->hidden));
+    if (!this->hidden) {
         return SDL_OutOfMemory();
     }
     SDL_zerop(this->hidden);
@@ -275,7 +264,7 @@ ESD_OpenDevice(_THIS, const char *devname)
     /* Allocate mixing buffer */
     this->hidden->mixlen = this->spec.size;
     this->hidden->mixbuf = (Uint8 *) SDL_malloc(this->hidden->mixlen);
-    if (this->hidden->mixbuf == NULL) {
+    if (!this->hidden->mixbuf) {
         return SDL_OutOfMemory();
     }
     SDL_memset(this->hidden->mixbuf, this->spec.silence, this->spec.size);
@@ -287,14 +276,12 @@ ESD_OpenDevice(_THIS, const char *devname)
     return 0;
 }
 
-static void
-ESD_Deinitialize(void)
+static void ESD_Deinitialize(void)
 {
     UnloadESDLibrary();
 }
 
-static SDL_bool
-ESD_Init(SDL_AudioDriverImpl * impl)
+static SDL_bool ESD_Init(SDL_AudioDriverImpl * impl)
 {
     if (LoadESDLibrary() < 0) {
         return SDL_FALSE;

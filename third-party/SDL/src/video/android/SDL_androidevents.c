@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,10 +20,11 @@
 */
 #include "../../SDL_internal.h"
 
-#if SDL_VIDEO_DRIVER_ANDROID
+#ifdef SDL_VIDEO_DRIVER_ANDROID
 
 #include "SDL_androidevents.h"
 #include "SDL_events.h"
+#include "SDL_hints.h"
 #include "SDL_androidkeyboard.h"
 #include "SDL_androidwindow.h"
 #include "../SDL_sysvideo.h"
@@ -32,7 +33,7 @@
 /* Can't include sysaudio "../../audio/android/SDL_androidaudio.h"
  * because of THIS redefinition */
 
-#if !SDL_AUDIO_DISABLED && SDL_AUDIO_DRIVER_ANDROID
+#if !defined(SDL_AUDIO_DISABLED) && defined(SDL_AUDIO_DRIVER_ANDROID)
 extern void ANDROIDAUDIO_ResumeDevices(void);
 extern void ANDROIDAUDIO_PauseDevices(void);
 #else
@@ -40,44 +41,45 @@ static void ANDROIDAUDIO_ResumeDevices(void) {}
 static void ANDROIDAUDIO_PauseDevices(void) {}
 #endif
 
-#if !SDL_AUDIO_DISABLED && SDL_AUDIO_DRIVER_OPENSLES
+#if !defined(SDL_AUDIO_DISABLED) && defined(SDL_AUDIO_DRIVER_OPENSLES)
 extern void openslES_ResumeDevices(void);
 extern void openslES_PauseDevices(void);
 #else
-static void openslES_ResumeDevices(void) {}
+static void openslES_ResumeDevices(void)
+{
+}
 static void openslES_PauseDevices(void) {}
 #endif
 
-#if !SDL_AUDIO_DISABLED && SDL_AUDIO_DRIVER_AAUDIO
+#if !defined(SDL_AUDIO_DISABLED) && defined(SDL_AUDIO_DRIVER_AAUDIO)
 extern void aaudio_ResumeDevices(void);
 extern void aaudio_PauseDevices(void);
-SDL_bool aaudio_DetectBrokenPlayState( void );
+SDL_bool aaudio_DetectBrokenPlayState(void);
 #else
-static void aaudio_ResumeDevices(void) {}
+static void aaudio_ResumeDevices(void)
+{
+}
 static void aaudio_PauseDevices(void) {}
-static SDL_bool aaudio_DetectBrokenPlayState( void ) { return SDL_FALSE; }
+static SDL_bool aaudio_DetectBrokenPlayState(void) { return SDL_FALSE; }
 #endif
 
-
-
 /* Number of 'type' events in the event queue */
-static int
-SDL_NumberOfEvents(Uint32 type)
+static int SDL_NumberOfEvents(Uint32 type)
 {
     return SDL_PeepEvents(NULL, 0, SDL_PEEKEVENT, type, type);
 }
 
-#if SDL_VIDEO_OPENGL_EGL
-static void
-android_egl_context_restore(SDL_Window *window)
+#ifdef SDL_VIDEO_OPENGL_EGL
+static void android_egl_context_restore(SDL_Window *window)
 {
     if (window) {
         SDL_Event event;
-        SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
-        if (SDL_GL_MakeCurrent(window, (SDL_GLContext) data->egl_context) < 0) {
+        SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
+        SDL_GL_MakeCurrent(window, NULL);
+        if (SDL_GL_MakeCurrent(window, (SDL_GLContext)data->egl_context) < 0) {
             /* The context is no longer valid, create a new one */
-            data->egl_context = (EGLContext) SDL_GL_CreateContext(window);
-            SDL_GL_MakeCurrent(window, (SDL_GLContext) data->egl_context);
+            data->egl_context = (EGLContext)SDL_GL_CreateContext(window);
+            SDL_GL_MakeCurrent(window, (SDL_GLContext)data->egl_context);
             event.type = SDL_RENDER_DEVICE_RESET;
             SDL_PushEvent(&event);
         }
@@ -85,12 +87,11 @@ android_egl_context_restore(SDL_Window *window)
     }
 }
 
-static void
-android_egl_context_backup(SDL_Window *window)
+static void android_egl_context_backup(SDL_Window *window)
 {
     if (window) {
         /* Keep a copy of the EGL Context so we can try to restore it when we resume */
-        SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+        SDL_WindowData *data = (SDL_WindowData *)window->driverdata;
         data->egl_context = SDL_GL_GetCurrentContext();
         /* We need to do this so the EGLSurface can be freed */
         SDL_GL_MakeCurrent(window, NULL);
@@ -106,15 +107,14 @@ android_egl_context_backup(SDL_Window *window)
  * No polling necessary
  */
 
-void
-Android_PumpEvents_Blocking(_THIS)
+void Android_PumpEvents_Blocking(_THIS)
 {
     SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
 
     if (videodata->isPaused) {
         SDL_bool isContextExternal = SDL_IsVideoContextExternal();
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
         /* Make sure this is the last thing we do before pausing */
         if (!isContextExternal) {
             SDL_LockMutex(Android_ActivityMutex);
@@ -141,7 +141,7 @@ Android_PumpEvents_Blocking(_THIS)
             aaudio_ResumeDevices();
 
             /* Restore the GL Context from here, as this operation is thread dependent */
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
             if (!isContextExternal && !SDL_HasEvent(SDL_QUIT)) {
                 SDL_LockMutex(Android_ActivityMutex);
                 android_egl_context_restore(Android_Window);
@@ -150,8 +150,9 @@ Android_PumpEvents_Blocking(_THIS)
 #endif
 
             /* Make sure SW Keyboard is restored when an app becomes foreground */
-            if (SDL_IsTextInputActive()) {
-                Android_StartTextInput(_this); /* Only showTextInput */
+            if (SDL_IsTextInputActive() &&
+                SDL_GetHintBoolean(SDL_HINT_ENABLE_SCREEN_KEYBOARD, SDL_TRUE)) {
+                Android_ShowScreenKeyboard(_this, Android_Window); /* Only showTextInput */
             }
         }
     } else {
@@ -176,14 +177,13 @@ Android_PumpEvents_Blocking(_THIS)
         }
     }
 
-    if ( aaudio_DetectBrokenPlayState() ) {
+    if (aaudio_DetectBrokenPlayState()) {
         aaudio_PauseDevices();
         aaudio_ResumeDevices();
     }
 }
 
-void
-Android_PumpEvents_NonBlocking(_THIS)
+void Android_PumpEvents_NonBlocking(_THIS)
 {
     SDL_VideoData *videodata = (SDL_VideoData *)_this->driverdata;
     static int backup_context = 0;
@@ -193,7 +193,7 @@ Android_PumpEvents_NonBlocking(_THIS)
         SDL_bool isContextExternal = SDL_IsVideoContextExternal();
         if (backup_context) {
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
             if (!isContextExternal) {
                 SDL_LockMutex(Android_ActivityMutex);
                 android_egl_context_backup(Android_Window);
@@ -210,7 +210,6 @@ Android_PumpEvents_NonBlocking(_THIS)
             backup_context = 0;
         }
 
-
         if (SDL_SemTryWait(Android_ResumeSem) == 0) {
 
             videodata->isPaused = 0;
@@ -226,7 +225,7 @@ Android_PumpEvents_NonBlocking(_THIS)
                 aaudio_ResumeDevices();
             }
 
-#if SDL_VIDEO_OPENGL_EGL
+#ifdef SDL_VIDEO_OPENGL_EGL
             /* Restore the GL Context from here, as this operation is thread dependent */
             if (!isContextExternal && !SDL_HasEvent(SDL_QUIT)) {
                 SDL_LockMutex(Android_ActivityMutex);
@@ -236,8 +235,9 @@ Android_PumpEvents_NonBlocking(_THIS)
 #endif
 
             /* Make sure SW Keyboard is restored when an app becomes foreground */
-            if (SDL_IsTextInputActive()) {
-                Android_StartTextInput(_this); /* Only showTextInput */
+            if (SDL_IsTextInputActive() &&
+                SDL_GetHintBoolean(SDL_HINT_ENABLE_SCREEN_KEYBOARD, SDL_TRUE)) {
+                Android_ShowScreenKeyboard(_this, Android_Window); /* Only showTextInput */
             }
         }
     } else {
@@ -263,7 +263,7 @@ Android_PumpEvents_NonBlocking(_THIS)
         }
     }
 
-    if ( aaudio_DetectBrokenPlayState() ) {
+    if (aaudio_DetectBrokenPlayState()) {
         aaudio_PauseDevices();
         aaudio_ResumeDevices();
     }

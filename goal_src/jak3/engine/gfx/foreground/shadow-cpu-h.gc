@@ -5,5 +5,238 @@
 ;; name in dgo: shadow-cpu-h
 ;; dgos: GAME
 
+;; +++shadow-flags
+(defenum shadow-flags
+  :bitfield #t
+  :type int32
+  (shdf00) ;; unused
+  (disable-fade)
+  (shdf02) ;; only set, never used.
+  (shdf03)
+  (shdf04) ;; unused
+  (disable-draw)
+  (shdf06)
+  (shdf07)
+  (shdf08)
+  )
+;; ---shadow-flags
+
+
+(declare-type shadow-vu1-constants structure)
+(define-extern shadow-execute-all (function dma-buffer none))
+
 ;; DECOMP BEGINS
 
+(deftype shadow-settings (structure)
+  "Settings used to draw a shadow."
+  ((center         vector        :inline)
+   (flags          shadow-flags          :overlay-at (-> center data 3))
+   (shadow-dir     vector        :inline)
+   (dist-to-locus  float                 :overlay-at (-> shadow-dir data 3))
+   (bot-plane      plane         :inline)
+   (top-plane      plane         :inline)
+   (fade-vec       vector        :inline :offset  64)
+   (fade-dist      float                 :overlay-at (-> fade-vec x))
+   (fade-start     float                 :overlay-at (-> fade-vec y))
+   (dummy-2        int32                 :overlay-at (-> fade-vec z))
+   (shadow-type    int32                 :overlay-at (-> fade-vec w))
+   )
+  )
+
+
+(deftype shadow-control (basic)
+  ((settings  shadow-settings  :inline)
+   )
+  (:methods
+    (new (symbol type float float float vector shadow-flags float) _type_)
+    (enable-draw (shadow-control) int)
+    (disable-draw (shadow-control) int)
+    (set-top-plane-offset (shadow-control float) int)
+    (set-bottom-plane-offset (shadow-control float) int)
+    (probe-line-for-shadow (_type_ vector float float float) none)
+    (shadow-control-method-14 (_type_ vector vector float float float) none)
+    )
+  )
+
+
+(defmethod enable-draw ((this shadow-control))
+  (logclear! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+(defmethod disable-draw ((this shadow-control))
+  (logior! (-> this settings flags) (shadow-flags disable-draw))
+  0
+  )
+
+(defmethod set-bottom-plane-offset ((this shadow-control) (arg0 float))
+  (set! (-> this settings bot-plane w) (- arg0))
+  0
+  )
+
+(defmethod set-top-plane-offset ((this shadow-control) (arg0 float))
+  (set! (-> this settings top-plane w) (- arg0))
+  0
+  )
+
+(deftype shadow-data (structure)
+  "DMA data for the shadow renderer."
+  ((dma-unpack-template  dma-packet  :inline)
+   (dma-cnt              dma-tag)
+   (vif-nop              vif-tag)
+   (vif-unpack-v4-8      vif-tag)
+   (pdc                  basic)
+   (dist                 float)
+   (waits                uint32)
+   (inside-volume?       uint32)
+   )
+  )
+
+
+(deftype shadow-work (structure)
+  ((shadow-data  shadow-data  :inline)
+   (inbuf        uint128      600)
+   )
+  )
+
+
+(deftype shadow-bucket (structure)
+  ((first         pointer)
+   (next          pointer)
+   (bucket-id     bucket-id)
+   (shadow-color  rgba)
+   (constants     shadow-vu1-constants)
+   )
+  :allow-misaligned
+  )
+
+
+(deftype shadow-globals (structure)
+  ((num-buckets  uint32)
+   (cur-bucket   uint32)
+   (bucket       shadow-bucket  3 :inline)
+   )
+  )
+
+
+(define *shadow-globals* (new 'global 'shadow-globals))
+
+(set! (-> *shadow-globals* bucket 0 bucket-id) (bucket-id shadow))
+
+(set! (-> *shadow-globals* bucket 1 bucket-id) (bucket-id shadow2))
+
+(set! (-> *shadow-globals* bucket 2 bucket-id) (bucket-id shadow3))
+
+(deftype shadow-vertex (structure)
+  ((x       float)
+   (y       float)
+   (z       float)
+   (weight  float)
+   )
+  )
+
+
+(deftype shadow-matrix-ref (structure)
+  ((joint-0  uint8)
+   (joint-1  uint8)
+   )
+  )
+
+
+(deftype shadow-edge (structure)
+  ((ind-0  uint8)
+   (ind-1  uint8)
+   (tri-0  uint8)
+   (tri-1  uint8)
+   )
+  )
+
+;; ERROR: failed type prop at 14: Could not figure out load: (set! a2 (l.hu gp))
+
+(deftype shadow-tri (structure)
+  ((ind-0  uint8)
+   (ind-1  uint8)
+   (ind-2  uint8)
+   (faces  uint8)
+   )
+  )
+
+
+; (deftype shadow-edge (structure)
+;   ((ind-0  uint8)
+;    (ind-1  uint8)
+;    (tri-0  uint8)
+;    (tri-1  uint8)
+;    )
+;   )
+
+
+(deftype shadow-frag-header (structure)
+  ((qwc-data          uint32)
+   (num-joints        uint32)
+   (num-verts         uint16)
+   (num-twos          uint16)
+   (num-single-tris   uint16)
+   (num-single-edges  uint16)
+   (num-double-tris   uint16)
+   (num-double-edges  uint16)
+   (ofs-verts         uint32)
+   (ofs-refs          uint32)
+   (ofs-single-tris   uint32)
+   (ofs-single-edges  uint32)
+   (ofs-double-tris   uint32)
+   (ofs-double-edges  uint32)
+   )
+  )
+
+
+(deftype shadow-frag-ref (structure)
+  ((header  shadow-frag-header)
+   (qwc     uint32)
+   )
+  :pack-me
+  )
+
+
+(deftype shadow-geo (art-element)
+  "The low poly model used for drawing the shadow."
+  ((version        uint32           :overlay-at (-> pad 0))
+   (total-size     uint32           :overlay-at (-> pad 4))
+   (total-qwc      uint32)
+   (num-joints     uint32)
+   (num-fragments  uint32)
+   (frags          shadow-frag-ref  :inline :dynamic)
+   )
+  )
+
+
+(defmethod new shadow-control ((allocation symbol)
+                             (type-to-make type)
+                             (arg0 float)
+                             (arg1 float)
+                             (arg2 float)
+                             (arg3 vector)
+                             (arg4 shadow-flags)
+                             (arg5 float)
+                             )
+  (let ((v0-0 (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+    (if arg3
+        (set! (-> v0-0 settings center quad) (-> arg3 quad))
+        )
+    (set! (-> v0-0 settings flags) arg4)
+    (set-vector! (-> v0-0 settings shadow-dir) 0.0 -1.0 0.0 arg2)
+    (set-vector! (-> v0-0 settings bot-plane) 0.0 1.0 0.0 (- arg0))
+    (set-vector! (-> v0-0 settings top-plane) 0.0 1.0 0.0 (- arg1))
+    (set! (-> v0-0 settings fade-dist) arg5)
+    (set! (-> v0-0 settings shadow-type) 0)
+    v0-0
+    )
+  )
+
+(define *shadow* #f)
+
+(define *shadow-object* #f)
+
+(define *shadow-debug* #f)
+
+(define *shadow-dma-buf* (new 'global 'dma-buffer 512))

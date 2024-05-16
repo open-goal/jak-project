@@ -1,0 +1,791 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for method 28 of type target
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 28 target) has a return type of none, but the expression builder found a return statement.
+(defmethod target-method-28 ((this target) (arg0 collide-cache) (arg1 collide-edge-spec))
+  (rlet ((vf1 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (set! (-> *edge-grab-info* found-edge?) #f)
+    (mem-copy! (the-as pointer (-> *collide-edge-work* spec)) (the-as pointer arg1) 320)
+    (let ((s5-0 *collide-edge-work*))
+      (set! (-> s5-0 process) (process->ppointer this))
+      (set! (-> s5-0 num-verts) (the-as uint 0))
+      (set! (-> s5-0 num-edges) (the-as uint 0))
+      (set! (-> s5-0 num-tris) (the-as uint 0))
+      (let ((v1-3 (-> this control)))
+        (set! (-> s5-0 ccache) arg0)
+        (.lvf vf1 (&-> s5-0 spec local-cache-fill-box min quad))
+        (.lvf vf2 (&-> s5-0 spec local-cache-fill-box max quad))
+        (set! (-> s5-0 cshape) v1-3)
+        (.lvf vf3 (&-> v1-3 trans quad))
+        )
+      (.add.vf vf1 vf1 vf3 :mask #b111)
+      (.add.vf vf2 vf2 vf3 :mask #b111)
+      (.svf (&-> s5-0 cache-fill-box min quad) vf1)
+      (.svf (&-> s5-0 cache-fill-box max quad) vf2)
+      (.lvf vf4 (&-> s5-0 spec local-within-reach-box min quad))
+      (.lvf vf5 (&-> s5-0 spec local-within-reach-box max quad))
+      (.add.vf vf4 vf4 vf3 :mask #b111)
+      (.add.vf vf5 vf5 vf3 :mask #b111)
+      (.ftoi.vf vf6 vf4)
+      (.ftoi.vf vf7 vf5)
+      (.svf (&-> s5-0 within-reach-box min quad) vf4)
+      (.svf (&-> s5-0 within-reach-box max quad) vf5)
+      (.svf (&-> s5-0 within-reach-box4w min quad) vf6)
+      (.svf (&-> s5-0 within-reach-box4w max quad) vf7)
+      (let ((s3-0 (new 'stack-no-clear 'collide-query)))
+        (set! (-> s3-0 collide-with) (-> this control root-prim prim-core collide-with))
+        (set! (-> s3-0 ignore-process0) this)
+        (set! (-> s3-0 ignore-process1) #f)
+        (set! (-> s3-0 ignore-pat) (-> s5-0 spec ignore-pat))
+        (set! (-> s3-0 action-mask) (collide-action solid))
+        (mem-copy! (the-as pointer (-> s3-0 bbox)) (the-as pointer (-> s5-0 cache-fill-box)) 32)
+        (fill-using-bounding-box arg0 s3-0)
+        )
+      (find-grabbable-tris s5-0)
+      (when (nonzero? (-> s5-0 num-tris))
+        (find-grabbable-edges s5-0)
+        (when (nonzero? (-> s5-0 num-edges))
+          (set! (-> s5-0 search-pt quad) (-> this control midpoint-of-hands quad))
+          (when (!= (-> *cpad-list* cpads (-> this control cpad number) stick0-speed) 0.0)
+            (set! (-> s5-0 search-dir-vec quad) (-> this control to-target-pt-xz quad))
+            (search-for-edges s5-0 (-> s5-0 hold-list))
+            (when (find-best-grab! s5-0 (-> s5-0 hold-list) *edge-grab-info*)
+              (set! (-> *edge-grab-info* found-edge?) #t)
+              (if (logtest? (-> s5-0 spec flags) (collide-edge-spec-flags send-event))
+                  (send-event this 'edge-grab)
+                  )
+              (return #f)
+              )
+            )
+          (vector-z-quaternion! (-> s5-0 search-dir-vec) (-> this control quat-for-control))
+          (search-for-edges s5-0 (-> s5-0 hold-list))
+          (when (find-best-grab! s5-0 (-> s5-0 hold-list) *edge-grab-info*)
+            (set! (-> *edge-grab-info* found-edge?) #t)
+            (if (logtest? (-> s5-0 spec flags) (collide-edge-spec-flags send-event))
+                (send-event this 'edge-grab)
+                )
+            )
+          0
+          )
+        )
+      )
+    0
+    (none)
+    )
+  )
+
+;; definition for method 9 of type collide-edge-work
+;; WARN: Return type mismatch int vs none.
+;; WARN: Function (method 9 collide-edge-work) has a return type of none, but the expression builder found a return statement.
+(defmethod search-for-edges ((this collide-edge-work) (arg0 collide-edge-hold-list))
+  (set! (-> arg0 num-allocs) (the-as uint 0))
+  (set! (-> arg0 num-attempts) (the-as uint 0))
+  (set! (-> arg0 head) #f)
+  (let ((s4-0 (the-as collide-edge-hold-item (-> arg0 items)))
+        (s3-0 (the-as collide-edge-edge (-> this edges)))
+        )
+    (countdown (s2-0 (-> this num-edges))
+      (when (not (-> s3-0 ignore))
+        (compute-center-point! this s3-0 (-> s4-0 center-pt))
+        (when (should-add-to-list? this s4-0 s3-0)
+          (add-to-list! arg0 s4-0)
+          (+! (-> arg0 num-allocs) 1)
+          (when (= (-> arg0 num-allocs) 32)
+            (format 0 "ERROR: Reached limit of edge grab hold items!~%")
+            (return #f)
+            )
+          (&+! s4-0 48)
+          )
+        )
+      (&+! s3-0 48)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 10 of type collide-edge-hold-list
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 10 collide-edge-hold-list)" 10 collide-edge-hold-list)
+
+;; definition of type pbhp-stack-vars
+(deftype pbhp-stack-vars (structure)
+  ((edge         collide-edge-edge)
+   (allocated    basic)
+   (neg-hold-pt  vector  :inline)
+   (split-vec    vector  :inline)
+   )
+  )
+
+;; definition for method 3 of type pbhp-stack-vars
+(defmethod inspect ((this pbhp-stack-vars))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'pbhp-stack-vars)
+  (format #t "~1Tedge: #<collide-edge-edge @ #x~X>~%" (-> this edge))
+  (format #t "~1Tallocated: ~A~%" (-> this allocated))
+  (format #t "~1Tneg-hold-pt: #<vector @ #x~X>~%" (-> this neg-hold-pt))
+  (format #t "~1Tsplit-vec: #<vector @ #x~X>~%" (-> this split-vec))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 19 of type collide-edge-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 19 collide-edge-work)" 19 collide-edge-work)
+
+;; definition for method 20 of type collide-edge-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs symbol.
+(defmethod check-grab-for-collisions ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
+  (local-vars (sv-656 vector) (sv-672 vector))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (let* ((s2-0 (-> arg0 edge))
+           (s1-0 (-> s2-0 etri ctri))
+           (s4-0 (-> s1-0 prim-index))
+           )
+      (let ((s0-0 (new 'stack-no-clear 'vector)))
+        (let ((a1-1 s0-0))
+          (let ((v1-1 (-> arg0 center-pt)))
+            (let ((a0-1 (-> s2-0 edge-vec-norm)))
+              (let ((a2-2 1105.92))
+                (.mov vf7 a2-2)
+                )
+              (.lvf vf5 (&-> a0-1 quad))
+              )
+            (.lvf vf4 (&-> v1-1 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a1-1 quad) vf6)
+          )
+        (let ((f0-1 (get-best-hand-point this (-> arg1 right-hand-hold) s0-0 (the-as int s4-0))))
+          (if (< 491.52 f0-1)
+              (return (the-as symbol #f))
+              )
+          )
+        (set! sv-672 s0-0)
+        (set! sv-656 (-> arg0 center-pt))
+        (let ((v0-2 (vector-negate! (new 'stack-no-clear 'vector) (-> s2-0 edge-vec-norm))))
+          (let ((v1-8 1105.92))
+            (.mov vf7 v1-8)
+            )
+          (.lvf vf5 (&-> v0-2 quad))
+          )
+        (.lvf vf4 (&-> sv-656 quad))
+        (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+        (.mul.x.vf acc vf5 vf7 :mask #b111)
+        (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+        (.svf (&-> sv-672 quad) vf6)
+        (let ((f0-3 (get-best-hand-point this (-> arg1 left-hand-hold) s0-0 (the-as int s4-0))))
+          (if (< 491.52 f0-3)
+              (return (the-as symbol #f))
+              )
+          )
+        )
+      (set! (-> arg1 tri-vertex 0 quad) (-> s1-0 vertex 0 quad))
+      (set! (-> arg1 world-vertex 4 quad) (-> s1-0 vertex 1 quad))
+      (set! (-> arg1 world-vertex 5 quad) (-> s1-0 vertex 2 quad))
+      (set! (-> arg1 edge-tri-pat) (-> s1-0 pat))
+      (set! (-> arg1 center-hold quad) (-> arg0 center-pt quad))
+      (set! (-> arg1 world-vertex 0 quad) (-> s2-0 vertex-ptr 0 0 quad))
+      (set! (-> arg1 world-vertex 1 quad) (-> s2-0 vertex-ptr 1 0 quad))
+      (set! (-> arg1 hanging-matrix uvec quad)
+            (-> (the-as collide-shape-moving (-> this process 0 root)) dynam gravity-normal quad)
+            )
+      (vector-normalize!
+        (vector-! (-> arg1 hanging-matrix fvec) (-> arg1 world-vertex 1) (the-as vector (-> arg1 world-vertex)))
+        1.0
+        )
+      (vector-normalize!
+        (vector-cross!
+          (the-as vector (-> arg1 hanging-matrix))
+          (-> arg1 hanging-matrix fvec)
+          (-> arg1 hanging-matrix uvec)
+          )
+        1.0
+        )
+      (vector-cross!
+        (-> arg1 hanging-matrix fvec)
+        (the-as vector (-> arg1 hanging-matrix))
+        (-> arg1 hanging-matrix uvec)
+        )
+      (set! (-> arg1 hanging-matrix trans quad) (-> arg1 center-hold quad))
+      (transform-vectors!
+        (-> arg1 hanging-matrix)
+        (-> this world-player-spheres)
+        (-> this spec local-player-spheres)
+        12
+        )
+      (let ((a1-12 (new 'stack-no-clear 'collide-query)))
+        (let ((v1-28 a1-12))
+          (set! (-> v1-28 best-dist) (the-as float (-> this world-player-spheres)))
+          (set! (-> v1-28 best-other-prim) (the-as collide-shape-prim 12))
+          (set! (-> v1-28 collide-with) (-> this cshape root-prim prim-core collide-with))
+          (set! (-> v1-28 ignore-process0) #f)
+          (set! (-> v1-28 ignore-process1) #f)
+          (set! (-> v1-28 ignore-pat)
+                (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                )
+          (set! (-> v1-28 best-my-prim) (the-as collide-shape-prim #t))
+          (set! (-> v1-28 action-mask) (collide-action solid))
+          )
+        (if (probe-using-spheres (-> this ccache) a1-12)
+            (return (the-as symbol #f))
+            )
+        )
+      (set! (-> arg1 status) (the-as uint 0))
+      (if (logtest? (-> this spec flags) (collide-edge-spec-flags find-adjacent-edge))
+          (find-adjacent-edge this arg0 arg1)
+          )
+      (let* ((v1-41 (the-as object (-> this ccache prims s4-0 prim)))
+             (a0-44 (-> (the-as collide-shape-prim v1-41) cshape))
+             )
+        (cond
+          (a0-44
+            (set! (-> arg1 actor-cshape-prim-offset) (- (the-as int v1-41) (the-as uint (the-as int (-> a0-44 process)))))
+            (set! (-> arg1 actor-handle) (process->handle (-> a0-44 process)))
+            (let ((a1-19
+                    (-> a0-44 process node-list data (-> (the-as collide-shape-prim v1-41) transform-index) bone transform)
+                    )
+                  (s5-1 (new 'stack-no-clear 'matrix))
+                  )
+              (matrix-4x4-inverse! s5-1 a1-19)
+              (dotimes (s4-1 8)
+                (vector-matrix*! (-> arg1 local-vertex s4-1) (-> arg1 world-vertex s4-1) s5-1)
+                )
+              )
+            )
+          (else
+            (set! (-> arg1 actor-cshape-prim-offset) 0)
+            (set! (-> arg1 actor-handle) (the-as handle #f))
+            )
+          )
+        )
+      )
+    (the-as symbol 0)
+    )
+  )
+
+;; definition of type faei-stack-vars
+(deftype faei-stack-vars (structure)
+  ((hold-edge-vec-norm  vector  :inline)
+   (adj-edge-vec-norm   vector  :inline)
+   (found-left?         symbol)
+   (left-dot            float)
+   (found-right?        symbol)
+   (right-dot           float)
+   )
+  )
+
+;; definition for method 3 of type faei-stack-vars
+(defmethod inspect ((this faei-stack-vars))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'faei-stack-vars)
+  (format #t "~1Thold-edge-vec-norm: #<vector @ #x~X>~%" (-> this hold-edge-vec-norm))
+  (format #t "~1Tadj-edge-vec-norm: #<vector @ #x~X>~%" (-> this adj-edge-vec-norm))
+  (format #t "~1Tfound-left?: ~A~%" (-> this found-left?))
+  (format #t "~1Tleft-dot: ~f~%" (-> this left-dot))
+  (format #t "~1Tfound-right?: ~A~%" (-> this found-right?))
+  (format #t "~1Tright-dot: ~f~%" (-> this right-dot))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 9 of type collide-edge-edge
+;; INFO: Used lq/sq
+(defmethod no-collision-at-edge ((this collide-edge-edge) (arg0 collide-edge-work) (arg1 edge-grab-info))
+  (let ((s4-0 (new 'stack-no-clear 'matrix))
+        (s5-0 (new 'stack-no-clear 'inline-array 'sphere 6))
+        )
+    (dotimes (s2-0 6)
+      ((method-of-type sphere new) (the-as symbol (-> s5-0 s2-0)) sphere)
+      )
+    (set! (-> s4-0 uvec quad)
+          (-> (the-as collide-shape-moving (-> arg0 process 0 root)) dynam gravity-normal quad)
+          )
+    (vector-normalize! (vector-! (-> s4-0 fvec) (-> this vertex-ptr 1 0) (-> this vertex-ptr 0 0)) 1.0)
+    (vector-normalize! (vector-cross! (-> s4-0 rvec) (-> s4-0 fvec) (-> s4-0 uvec)) 1.0)
+    (vector-cross! (-> s4-0 fvec) (-> s4-0 rvec) (-> s4-0 uvec))
+    (vector-average! (-> s4-0 trans) (-> this vertex-ptr 1 0) (-> this vertex-ptr 0 0))
+    (transform-vectors! s4-0 s5-0 (-> arg0 spec local-player-spheres) 6)
+    (let ((a1-11 (new 'stack-no-clear 'collide-query)))
+      (let ((v1-13 a1-11))
+        (set! (-> v1-13 best-dist) (the-as float s5-0))
+        (set! (-> v1-13 best-other-prim) (the-as collide-shape-prim 6))
+        (set! (-> v1-13 collide-with) (-> arg0 cshape root-prim prim-core collide-with))
+        (set! (-> v1-13 ignore-process0) #f)
+        (set! (-> v1-13 ignore-process1) #f)
+        (set! (-> v1-13 ignore-pat)
+              (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+              )
+        (set! (-> v1-13 best-my-prim) (the-as collide-shape-prim #t))
+        (set! (-> v1-13 action-mask) (collide-action solid))
+        )
+      (not (probe-using-spheres (-> arg0 ccache) a1-11))
+      )
+    )
+  )
+
+;; definition for method 13 of type collide-edge-work
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defmethod find-adjacent-edge ((this collide-edge-work) (arg0 collide-edge-hold-item) (arg1 edge-grab-info))
+  (let ((s5-0 (new 'stack-no-clear 'faei-stack-vars)))
+    (let* ((v1-0 (-> arg0 edge))
+           (s3-0 (-> v1-0 vertex-ptr 0 0))
+           (s2-0 (-> v1-0 vertex-ptr 1 0))
+           (s1-0 (the-as collide-edge-edge (-> this edges)))
+           )
+      (set! (-> s5-0 found-left?) #f)
+      (set! (-> s5-0 found-right?) #f)
+      (vector-! (-> s5-0 hold-edge-vec-norm) s2-0 s3-0)
+      (vector-normalize! (-> s5-0 hold-edge-vec-norm) 1.0)
+      (countdown (s0-0 (-> this num-edges))
+        (when (not (-> s1-0 ignore))
+          (let ((v1-6 (-> s1-0 vertex-ptr 1 0)))
+            (when (= v1-6 s3-0)
+              (vector-! (-> s5-0 adj-edge-vec-norm) v1-6 (-> s1-0 vertex-ptr 0 0))
+              (vector-normalize! (-> s5-0 adj-edge-vec-norm) 1.0)
+              (let ((f30-0 (vector-dot (-> s5-0 adj-edge-vec-norm) (-> s5-0 hold-edge-vec-norm))))
+                (when (and (or (not (-> s5-0 found-left?)) (< (-> s5-0 left-dot) f30-0) (< -0.7 f30-0))
+                           (no-collision-at-edge s1-0 this arg1)
+                           )
+                  (set! (-> s5-0 left-dot) f30-0)
+                  (set! (-> s5-0 found-left?) #t)
+                  (set! (-> arg1 adjacent-edge-left-vertex quad) (-> s1-0 vertex-ptr 0 0 quad))
+                  0
+                  )
+                )
+              )
+            )
+          (let ((v1-18 (-> s1-0 vertex-ptr 0 0)))
+            (when (= v1-18 s2-0)
+              (vector-! (-> s5-0 adj-edge-vec-norm) (-> s1-0 vertex-ptr 1 0) v1-18)
+              (vector-normalize! (-> s5-0 adj-edge-vec-norm) 1.0)
+              (let ((f30-1 (vector-dot (-> s5-0 adj-edge-vec-norm) (-> s5-0 hold-edge-vec-norm))))
+                (when (and (or (not (-> s5-0 found-right?)) (< (-> s5-0 right-dot) f30-1) (< -0.7 f30-1))
+                           (no-collision-at-edge s1-0 this arg1)
+                           )
+                  (set! (-> s5-0 right-dot) f30-1)
+                  (set! (-> s5-0 found-right?) #t)
+                  (set! (-> arg1 adjacent-edge-right-vertex quad) (-> s1-0 vertex-ptr 1 0 quad))
+                  0
+                  )
+                )
+              )
+            )
+          )
+        (&+! s1-0 48)
+        )
+      )
+    (let ((v1-31 (-> arg1 status)))
+      (if (-> s5-0 found-left?)
+          (set! v1-31 (logior v1-31 1))
+          )
+      (if (-> s5-0 found-right?)
+          (set! v1-31 (logior v1-31 2))
+          )
+      (set! (-> arg1 status) v1-31)
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type edge-grab-info
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 9 edge-grab-info)" 9 edge-grab-info)
+
+;; definition for method 17 of type collide-edge-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 17 collide-edge-work)" 17 collide-edge-work)
+
+;; definition for method 16 of type collide-edge-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 16 collide-edge-work)" 16 collide-edge-work)
+
+;; definition for method 15 of type collide-edge-work
+;; INFO: Used lq/sq
+(defmethod get-best-hand-point ((this collide-edge-work) (arg0 vector) (arg1 vector) (arg2 int))
+  (let ((f30-0 -1.0))
+    (let ((s2-0 (new 'stack-no-clear 'vector)))
+      (dotimes (s1-0 (the-as int (-> this num-edges)))
+        (let ((v1-4 (-> this edges s1-0)))
+          (when (not (-> v1-4 ignore))
+            (when (= (-> v1-4 etri ctri prim-index) arg2)
+              (let ((f0-0 (vector-segment-distance-point! arg1 (-> v1-4 vertex-ptr 0 0) (-> v1-4 vertex-ptr 1 0) s2-0)))
+                (when (or (< f30-0 0.0) (< f0-0 f30-0))
+                  (set! f30-0 f0-0)
+                  (set! (-> arg0 quad) (-> s2-0 quad))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    f30-0
+    )
+  )
+
+;; definition for method 18 of type collide-edge-work
+;; INFO: function output is handled by mips2c
+(defmethod-mips2c "(method 18 collide-edge-work)" 18 collide-edge-work)
+
+;; definition for method 14 of type collide-edge-work
+(defmethod compute-center-point! ((this collide-edge-work) (arg0 collide-edge-edge) (arg1 vector))
+  (local-vars (v1-1 float) (v1-2 float) (v1-3 float))
+  (rlet ((Q :class vf)
+         (vf0 :class vf)
+         (vf1 :class vf)
+         (vf10 :class vf)
+         (vf11 :class vf)
+         (vf2 :class vf)
+         (vf3 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         (vf8 :class vf)
+         (vf9 :class vf)
+         )
+    (init-vf0-vector)
+    (.mov.vf vf7 vf0)
+    (.lvf vf1 (&-> this search-pt quad))
+    (let ((f0-0 0.0))
+      (let ((v1-0 (-> arg0 vertex-ptr 0))
+            (a0-1 (-> arg0 vertex-ptr 1))
+            )
+        (.lvf vf2 (&-> v1-0 0 quad))
+        (.lvf vf3 (&-> a0-1 0 quad))
+        )
+      (.sub.vf vf4 vf1 vf2)
+      (.sub.vf vf5 vf3 vf2)
+      (.mul.vf vf6 vf5 vf5)
+      (.add.z.vf vf6 vf6 vf6 :mask #b1)
+      (.sqrt.vf Q vf6 :ftf #b0)
+      (nop!)
+      (.wait.vf)
+      (nop!)
+      (.add.vf vf6 vf0 Q :mask #b1)
+      (.nop.vf)
+      (.mov v1-1 vf6)
+      (let ((f1-0 v1-1))
+        (.div.vf Q vf0 vf6 :fsf #b11 :ftf #b0)
+        (.wait.vf)
+        (nop!)
+        (.add.vf vf8 vf0 Q :mask #b1)
+        (.mul.x.vf vf9 vf5 vf8)
+        (.mov v1-2 vf8)
+        (.mul.vf vf10 vf9 vf4)
+        (.add.z.vf vf10 vf10 vf10 :mask #b1)
+        (let ((f2-0 v1-2))
+          (.mov v1-3 vf10)
+          (let ((f3-0 v1-3))
+            (b! (< f3-0 f0-0) cfg-4 :likely-delay (set! f3-0 f0-0))
+            (b! (< f1-0 f3-0) cfg-4 :likely-delay (set! f3-0 f1-0))
+            (label cfg-4)
+            (let ((v1-4 (* f3-0 f2-0)))
+              (.mov vf11 v1-4)
+              )
+            )
+          )
+        )
+      )
+    (.mul.x.vf vf7 vf5 vf11 :mask #b111)
+    (.add.vf vf7 vf7 vf2 :mask #b111)
+    (.svf (&-> arg1 quad) vf7)
+    0.0
+    )
+  )
+
+;; definition for method 10 of type edge-grab-info
+;; WARN: Return type mismatch object vs none.
+(defmethod edge-grab-info-method-10 ((this edge-grab-info))
+  (add-debug-line
+    #t
+    (bucket-id debug-no-zbuf1)
+    (the-as vector (-> this world-vertex))
+    (-> this world-vertex 1)
+    (new 'static 'rgba :r #xff :a #x60)
+    #f
+    (the-as rgba -1)
+    )
+  (add-debug-sphere
+    #t
+    (bucket-id debug-no-zbuf1)
+    (-> this center-hold)
+    (meters 0.05)
+    (new 'static 'rgba :r #xff :g #xff :a #x80)
+    )
+  (add-debug-sphere
+    #t
+    (bucket-id debug-no-zbuf1)
+    (-> this left-hand-hold)
+    (meters 0.05)
+    (new 'static 'rgba :r #xff :g #xff :a #x60)
+    )
+  (add-debug-sphere
+    #t
+    (bucket-id debug-no-zbuf1)
+    (-> this right-hand-hold)
+    (meters 0.05)
+    (new 'static 'rgba :r #xff :g #xff :a #x60)
+    )
+  (if (logtest? (-> this status) 1)
+      (add-debug-line
+        #t
+        (bucket-id debug-no-zbuf1)
+        (-> this adjacent-edge-left-vertex)
+        (the-as vector (-> this world-vertex))
+        (new 'static 'rgba :r #x80 :a #x60)
+        #f
+        (the-as rgba -1)
+        )
+      )
+  (if (logtest? (-> this status) 2)
+      (add-debug-line
+        #t
+        (bucket-id debug-no-zbuf1)
+        (-> this world-vertex 1)
+        (-> this adjacent-edge-right-vertex)
+        (new 'static 'rgba :r #x80 :a #x60)
+        #f
+        (the-as rgba -1)
+        )
+      )
+  (add-debug-outline-triangle
+    #t
+    (bucket-id debug-no-zbuf1)
+    (the-as vector (-> this tri-vertex))
+    (-> this world-vertex 4)
+    (-> this world-vertex 5)
+    (new 'static 'rgba :r #xff :a #x30)
+    )
+  (cond
+    ((nonzero? (-> this actor-cshape-prim-offset))
+     (if (handle->process (-> this actor-handle))
+         (format *stdcon* "grab: ~A~%" (-> this actor-handle process 0 name))
+         (format *stdcon* "grab: invalid handle~%")
+         )
+     )
+    (else
+      (format *stdcon* "grab: ground~%")
+      )
+    )
+  (none)
+  )
+
+;; definition for method 10 of type collide-edge-work
+;; INFO: Used lq/sq
+(defmethod debug-draw-edges ((this collide-edge-work))
+  (local-vars (sv-32 (function _varargs_ object)))
+  (let ((gp-0 0))
+    (dotimes (s4-0 (the-as int (-> this num-edges)))
+      (let* ((v1-3 (-> this edges s4-0))
+             (a2-0 (-> v1-3 vertex-ptr 0 0))
+             (a3-0 (-> v1-3 vertex-ptr 1 0))
+             (s3-0 (new 'stack-no-clear 'vector))
+             )
+        (vector+! s3-0 a2-0 a3-0)
+        (vector-float*! s3-0 s3-0 0.5)
+        (cond
+          ((-> v1-3 ignore)
+           (add-debug-line
+             #t
+             (bucket-id debug-no-zbuf1)
+             a2-0
+             a3-0
+             (new 'static 'rgba :r #x7f :g #x7f :b #x7f :a #x50)
+             #f
+             (the-as rgba -1)
+             )
+           (+! gp-0 1)
+           gp-0
+           )
+          (else
+            (add-debug-vector
+              #t
+              (bucket-id debug-no-zbuf1)
+              s3-0
+              (-> v1-3 outward)
+              (meters 0.3)
+              (new 'static 'rgba :r #xff :a #x80)
+              )
+            (let ((s2-0 add-debug-text-3d)
+                  (s1-0 #t)
+                  (s0-0 577)
+                  )
+              (set! sv-32 format)
+              (let ((a0-10 (clear *temp-string*))
+                    (a1-4 "~D")
+                    (a2-2 s4-0)
+                    )
+                (sv-32 a0-10 a1-4 a2-2)
+                )
+              (s2-0 s1-0 (the-as bucket-id s0-0) *temp-string* s3-0 (font-color white) (the-as vector2h #f))
+              )
+            )
+          )
+        )
+      )
+    (format *stdcon* "found ~D edges (and ~D ignored)~%" (- (-> this num-edges) (the-as uint gp-0)) gp-0)
+    )
+  )
+
+;; definition for method 12 of type collide-edge-work
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw-sphere ((this collide-edge-work))
+  (dotimes (s5-0 (the-as int (-> this num-verts)))
+    (let ((a2-0 (-> this verts s5-0)))
+      (add-debug-sphere #t (bucket-id debug-no-zbuf1) a2-0 (meters 0.2) (new 'static 'rgba :r #xff :g #xff :a #x80))
+      )
+    )
+  0
+  (none)
+  )
+
+;; definition for method 9 of type collide-edge-hold-list
+;; INFO: Used lq/sq
+(defmethod debug-draw ((this collide-edge-hold-list))
+  (let ((s4-0 (-> this head))
+        (s5-0 0)
+        )
+    (let ((s3-0 (new 'stack-no-clear 'vector))
+          (s2-0 #t)
+          )
+      (set! (-> s3-0 quad) (-> *target* control midpoint-of-hands quad))
+      (while s4-0
+        (+! s5-0 1)
+        (set! (-> s3-0 y) (-> s4-0 center-pt y))
+        (add-debug-sphere #t (bucket-id debug-no-zbuf1) s3-0 (meters 0.1) (new 'static 'rgba :a #x80))
+        (cond
+          (s2-0
+            (set! s2-0 #f)
+            (add-debug-sphere
+              #t
+              (bucket-id debug-no-zbuf1)
+              (-> s4-0 center-pt)
+              (meters 0.15)
+              (new 'static 'rgba :r #xff :g #xff :a #x80)
+              )
+            (add-debug-sphere
+              #t
+              (bucket-id debug-no-zbuf1)
+              (-> s4-0 outward-pt)
+              (meters 0.1)
+              (new 'static 'rgba :r #xff :a #x80)
+              )
+            )
+          (else
+            (add-debug-sphere
+              #t
+              (bucket-id debug-no-zbuf1)
+              (-> s4-0 center-pt)
+              (meters 0.15)
+              (new 'static 'rgba :r #x7f :g #x7f :a #x40)
+              )
+            (add-debug-sphere
+              #t
+              (bucket-id debug-no-zbuf1)
+              (-> s4-0 outward-pt)
+              (meters 0.1)
+              (new 'static 'rgba :r #x7f :a #x40)
+              )
+            )
+          )
+        (set! s4-0 (-> s4-0 next))
+        )
+      )
+    (format *stdcon* "hold list has ~D item(s)~%" s5-0)
+    )
+  (dotimes (s5-1 (the-as int (-> this num-attempts)))
+    (add-debug-sphere
+      #t
+      (bucket-id debug-no-zbuf1)
+      (the-as vector (-> this attempts s5-1))
+      (meters 0.1)
+      (new 'static 'rgba :a #x40)
+      )
+    )
+  (format *stdcon* "hold list has ~D attempt(s)~%" (-> this num-attempts))
+  )
+
+;; definition for method 11 of type collide-edge-work
+;; WARN: Return type mismatch int vs none.
+(defmethod debug-draw-tris ((this collide-edge-work))
+  (dotimes (s5-0 (the-as int (-> this num-tris)))
+    (let* ((v1-3 (-> this tris s5-0 ctri))
+           (t1-0 (copy-and-set-field (-> *pat-mode-info* (-> v1-3 pat mode) color) a 64))
+           )
+      (add-debug-outline-triangle
+        #t
+        (bucket-id debug-no-zbuf1)
+        (the-as vector (-> v1-3 vertex))
+        (-> v1-3 vertex 1)
+        (-> v1-3 vertex 2)
+        t1-0
+        )
+      )
+    )
+  0
+  (none)
+  )
+
+;; failed to figure out what this is:
+(let ((v1-2 (new 'static 'surface
+              :name '*no-walk-surface*
+              :turnv 0.5
+              :turnvf 0.5
+              :turnvv 1.0
+              :turnvvf 1.0
+              :tiltv 1.0
+              :tiltvf 1.0
+              :tiltvv 1.0
+              :tiltvvf 1.0
+              :transv-max 0.7
+              :target-speed 0.7
+              :seek0 24576.0
+              :seek90 24576.0
+              :seek180 24576.0
+              :fric 23756.8
+              :nonlin-fric-dist 4091904.0
+              :slope-slip-angle 16384.0
+              :bend-speed 4.0
+              :alignv 0.5
+              :slope-up-traction 0.9
+              :align-speed 1.0
+              :flags (surface-flag no-turn-around turn-to-vel)
+              )
+            )
+      )
+  (set! *no-walk-surface* v1-2)
+  (set! (-> v1-2 exit-hook) nothing)
+  (set! (-> v1-2 mult-hook) (the-as (function surface surface surface int none) nothing))
+  (set! (-> v1-2 touch-hook) nothing)
+  (set! (-> v1-2 active-hook) nothing)
+  )
