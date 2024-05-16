@@ -8,7 +8,7 @@
 #include "goalc/build_level/collide/common/collide_common.h"
 
 class DataObjectGenerator;
-namespace jak2 {
+namespace jak3 {
 // High-level collision system idea:
 // Each level has a single collide-hash object storing all collision data.
 // The mesh is divided into "fragments". Each fragment is made up of triangles.
@@ -46,7 +46,7 @@ struct CollideBucket {
 };
 
 struct CollideFragment {
-  std::vector<PatSurface> pat_array;
+  std::vector<jak3::PatSurface> pat_array;
 
   // per-cell references to the index list
   std::vector<CollideBucket> buckets;
@@ -117,7 +117,7 @@ struct CollideHash {
 };
 
 CollideHash construct_collide_hash(const std::vector<jak1::CollideFace>& tris);
-CollideHash construct_collide_hash(const std::vector<CollideFace>& tris);
+CollideHash construct_collide_hash(const std::vector<jak3::CollideFace>& tris);
 
 size_t add_to_object_file(const CollideHash& hash, DataObjectGenerator& gen);
-}  // namespace jak2
+}  // namespace jak3

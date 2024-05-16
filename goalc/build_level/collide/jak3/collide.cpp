@@ -10,7 +10,8 @@
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
-namespace jak2 {
+class DataObjectGenerator;
+namespace jak3 {
 /*!
  * An axis-aligned bounding box
  */
@@ -136,20 +137,20 @@ bool bounding_box_bounding_box(const BoundingBox& a, const BoundingBox& b) {
 }
 
 /*!
- * Convert jak1-format PatSurface to Jak 2.
+ * Convert jak1-format PatSurface to Jak 3.
  */
-jak2::PatSurface jak2_pat(jak1::PatSurface jak1) {
-  jak2::PatSurface result;
+jak3::PatSurface jak3_pat(jak1::PatSurface jak1) {
+  jak3::PatSurface result;
 
   switch (jak1.get_mode()) {
     case jak1::PatSurface::Mode::GROUND:
-      result.set_mode(jak2::PatSurface::Mode::GROUND);
+      result.set_mode(jak3::PatSurface::Mode::GROUND);
       break;
     case jak1::PatSurface::Mode::WALL:
-      result.set_mode(jak2::PatSurface::Mode::WALL);
+      result.set_mode(jak3::PatSurface::Mode::WALL);
       break;
     case jak1::PatSurface::Mode::OBSTACLE:
-      result.set_mode(jak2::PatSurface::Mode::OBSTACLE);
+      result.set_mode(jak3::PatSurface::Mode::OBSTACLE);
       break;
     default:
       ASSERT_NOT_REACHED();
@@ -157,73 +158,73 @@ jak2::PatSurface jak2_pat(jak1::PatSurface jak1) {
 
   switch (jak1.get_material()) {
     case jak1::PatSurface::Material::STONE:
-      result.set_material(jak2::PatSurface::Material::STONE);
+      result.set_material(jak3::PatSurface::Material::STONE);
       break;
     case jak1::PatSurface::Material::ICE:
-      result.set_material(jak2::PatSurface::Material::ICE);
+      result.set_material(jak3::PatSurface::Material::ICE);
       break;
     case jak1::PatSurface::Material::QUICKSAND:
-      result.set_material(jak2::PatSurface::Material::QUICKSAND);
+      result.set_material(jak3::PatSurface::Material::QUICKSAND);
       break;
     case jak1::PatSurface::Material::WATERBOTTOM:
-      result.set_material(jak2::PatSurface::Material::WATERBOTTOM);
+      result.set_material(jak3::PatSurface::Material::WATERBOTTOM);
       break;
     case jak1::PatSurface::Material::TAR:
-      result.set_material(jak2::PatSurface::Material::TAR);
+      result.set_material(jak3::PatSurface::Material::TAR);
       break;
     case jak1::PatSurface::Material::SAND:
-      result.set_material(jak2::PatSurface::Material::SAND);
+      result.set_material(jak3::PatSurface::Material::SAND);
       break;
     case jak1::PatSurface::Material::WOOD:
-      result.set_material(jak2::PatSurface::Material::WOOD);
+      result.set_material(jak3::PatSurface::Material::WOOD);
       break;
     case jak1::PatSurface::Material::GRASS:
-      result.set_material(jak2::PatSurface::Material::GRASS);
+      result.set_material(jak3::PatSurface::Material::GRASS);
       break;
     case jak1::PatSurface::Material::PCMETAL:
-      result.set_material(jak2::PatSurface::Material::PCMETAL);
+      result.set_material(jak3::PatSurface::Material::PCMETAL);
       break;
     case jak1::PatSurface::Material::SNOW:
-      result.set_material(jak2::PatSurface::Material::SNOW);
+      result.set_material(jak3::PatSurface::Material::SNOW);
       break;
     case jak1::PatSurface::Material::DEEPSNOW:
-      result.set_material(jak2::PatSurface::Material::DEEPSNOW);
+      result.set_material(jak3::PatSurface::Material::DEEPSNOW);
       break;
     case jak1::PatSurface::Material::HOTCOALS:
-      result.set_material(jak2::PatSurface::Material::HOTCOALS);
+      result.set_material(jak3::PatSurface::Material::HOTCOALS);
       break;
     case jak1::PatSurface::Material::LAVA:
-      result.set_material(jak2::PatSurface::Material::LAVA);
+      result.set_material(jak3::PatSurface::Material::LAVA);
       break;
     case jak1::PatSurface::Material::CRWOOD:
-      result.set_material(jak2::PatSurface::Material::CRWOOD);
+      result.set_material(jak3::PatSurface::Material::CRWOOD);
       break;
     case jak1::PatSurface::Material::GRAVEL:
-      result.set_material(jak2::PatSurface::Material::GRAVEL);
+      result.set_material(jak3::PatSurface::Material::GRAVEL);
       break;
     case jak1::PatSurface::Material::DIRT:
-      result.set_material(jak2::PatSurface::Material::DIRT);
+      result.set_material(jak3::PatSurface::Material::DIRT);
       break;
     case jak1::PatSurface::Material::METAL:
-      result.set_material(jak2::PatSurface::Material::METAL);
+      result.set_material(jak3::PatSurface::Material::METAL);
       break;
     case jak1::PatSurface::Material::STRAW:
-      result.set_material(jak2::PatSurface::Material::STRAW);
+      result.set_material(jak3::PatSurface::Material::STRAW);
       break;
     case jak1::PatSurface::Material::TUBE:
-      result.set_material(jak2::PatSurface::Material::TUBE);
+      result.set_material(jak3::PatSurface::Material::TUBE);
       break;
     case jak1::PatSurface::Material::SWAMP:
-      result.set_material(jak2::PatSurface::Material::SWAMP);
+      result.set_material(jak3::PatSurface::Material::SWAMP);
       break;
     case jak1::PatSurface::Material::STOPPROJ:
-      result.set_material(jak2::PatSurface::Material::STOPPROJ);
+      result.set_material(jak3::PatSurface::Material::STOPPROJ);
       break;
     case jak1::PatSurface::Material::ROTATE:
-      result.set_material(jak2::PatSurface::Material::ROTATE);
+      result.set_material(jak3::PatSurface::Material::ROTATE);
       break;
     case jak1::PatSurface::Material::NEUTRAL:
-      result.set_material(jak2::PatSurface::Material::NEUTRAL);
+      result.set_material(jak3::PatSurface::Material::NEUTRAL);
       break;
     default:
       ASSERT_NOT_REACHED();
@@ -231,25 +232,25 @@ jak2::PatSurface jak2_pat(jak1::PatSurface jak1) {
 
   switch (jak1.get_event()) {
     case jak1::PatSurface::Event::NONE:
-      result.set_event(jak2::PatSurface::Event::NONE);
+      result.set_event(jak3::PatSurface::Event::NONE);
       break;
     case jak1::PatSurface::Event::DEADLY:
-      result.set_event(jak2::PatSurface::Event::DEADLY);
+      result.set_event(jak3::PatSurface::Event::DEADLY);
       break;
     case jak1::PatSurface::Event::ENDLESSFALL:
-      result.set_event(jak2::PatSurface::Event::ENDLESSFALL);
+      result.set_event(jak3::PatSurface::Event::ENDLESSFALL);
       break;
     case jak1::PatSurface::Event::BURN:
-      result.set_event(jak2::PatSurface::Event::BURN);
+      result.set_event(jak3::PatSurface::Event::BURN);
       break;
     case jak1::PatSurface::Event::DEADLYUP:
-      result.set_event(jak2::PatSurface::Event::DEADLYUP);
+      result.set_event(jak3::PatSurface::Event::DEADLYUP);
       break;
     case jak1::PatSurface::Event::BURNUP:
-      result.set_event(jak2::PatSurface::Event::BURNUP);
+      result.set_event(jak3::PatSurface::Event::BURNUP);
       break;
     case jak1::PatSurface::Event::MELT:
-      result.set_event(jak2::PatSurface::Event::MELT);
+      result.set_event(jak3::PatSurface::Event::MELT);
       break;
     default:
       ASSERT_NOT_REACHED();
@@ -265,21 +266,21 @@ jak2::PatSurface jak2_pat(jak1::PatSurface jak1) {
 }
 
 /*!
- * Construct a collide hash from a jak1 format mesh by converting to jak 2.
+ * Construct a collide hash from a jak1 format mesh by converting to jak 3.
  */
 CollideHash construct_collide_hash(const std::vector<jak1::CollideFace>& tris) {
-  std::vector<jak2::CollideFace> jak2_tris;
-  jak2_tris.reserve(tris.size());
+  std::vector<jak3::CollideFace> jak3_tris;
+  jak3_tris.reserve(tris.size());
 
   for (const auto& tri : tris) {
-    auto& new_tri = jak2_tris.emplace_back();
+    auto& new_tri = jak3_tris.emplace_back();
     for (int i = 0; i < 3; i++) {
       new_tri.v[i] = tri.v[i];
-      new_tri.pat = jak2_pat(tri.pat);
+      new_tri.pat = jak3_pat(tri.pat);
     }
   }
 
-  return construct_collide_hash(jak2_tris);
+  return construct_collide_hash(jak3_tris);
 }
 
 /*!
@@ -303,7 +304,7 @@ struct BBoxBuilder {
   }
 
   // modify box to include this tri.
-  void add_tri(const jak2::CollideFace& tri) {
+  void add_tri(const jak3::CollideFace& tri) {
     for (const auto& v : tri.v) {
       add_pt(v);
     }
@@ -354,7 +355,7 @@ struct FragStats {
 /*!
  * Find bounding box and average position for the triangles selected by indices.
  */
-FragStats compute_frag_stats(const std::vector<jak2::CollideFace>& tris,
+FragStats compute_frag_stats(const std::vector<jak3::CollideFace>& tris,
                              const std::vector<s32>& indices) {
   ASSERT(!tris.empty());
   ASSERT(!indices.empty());
@@ -404,7 +405,7 @@ struct CVertexHash {
  * How many unique vertices are there in this frag?
  * (currently using float equality, however, a smarter version could look at quantized vertices)
  */
-int unique_vertex_count(const Frag& frag, const std::vector<jak2::CollideFace>& tris) {
+int unique_vertex_count(const Frag& frag, const std::vector<jak3::CollideFace>& tris) {
   std::unordered_set<math::Vector3f, VectorHash> vmap;
   for (auto i : frag.tri_indices) {
     for (const auto& v : tris[i].v) {
@@ -419,7 +420,7 @@ int unique_vertex_count(const Frag& frag, const std::vector<jak2::CollideFace>& 
  */
 bool frag_is_valid_for_packing(const Frag& frag,
                                const FragStats& stats,
-                               const std::vector<jak2::CollideFace>& tris) {
+                               const std::vector<jak3::CollideFace>& tris) {
   if (frag.tri_indices.size() >= UINT8_MAX) {
     // the fragment has too many triangles. I think this can actually be UINT8_MAX and we
     // just put 0 as the size. However, this is confusing so let's just make the max 1 less
@@ -470,7 +471,7 @@ struct SplitStats {
 };
 
 SplitStats compute_split_stats(const Frag& frag,
-                               const std::vector<jak2::CollideFace>& tris,
+                               const std::vector<jak3::CollideFace>& tris,
                                const FragSplit& split) {
   SplitStats stats;
   BBoxBuilder bbox[2];
@@ -518,7 +519,7 @@ int idx_of_max(float a, float b, float c) {
 
 FragSplit pick_best_frag_split(const Frag& frag,
                                const FragStats& stats,
-                               const std::vector<jak2::CollideFace>& tris) {
+                               const std::vector<jak3::CollideFace>& tris) {
   // this is the tricky part.
 
   // I think the most important thing about splitting is that we should try to minimize overlapping
@@ -580,7 +581,7 @@ FragSplit pick_best_frag_split(const Frag& frag,
   return splits[idx_of_max(scores[0], scores[1], scores[2])];
 }
 
-Frag add_all_to_frag(const std::vector<jak2::CollideFace>& tris) {
+Frag add_all_to_frag(const std::vector<jak3::CollideFace>& tris) {
   ASSERT(!tris.empty());
 
   Frag ret;
@@ -593,7 +594,7 @@ Frag add_all_to_frag(const std::vector<jak2::CollideFace>& tris) {
 
 void split_frag(const Frag& in,
                 const FragSplit& split,
-                const std::vector<jak2::CollideFace>& tris,
+                const std::vector<jak3::CollideFace>& tris,
                 Frag* out_a,
                 Frag* out_b) {
   for (auto i : in.tri_indices) {
@@ -607,7 +608,7 @@ void split_frag(const Frag& in,
   }
 }
 
-std::vector<Frag> fragment_mesh(const std::vector<jak2::CollideFace>& tris) {
+std::vector<Frag> fragment_mesh(const std::vector<jak3::CollideFace>& tris) {
   struct FragAndStats {
     Frag f;
     FragStats s;
@@ -786,7 +787,8 @@ CollideHash build_grid_for_main_hash(std::vector<CollideFragment>&& frags) {
 /*!
  * Build a CollideFragment by "hashing" a list of triangles
  */
-CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, const Frag& frag) {
+jak3::CollideFragment build_grid_for_frag(const std::vector<jak3::CollideFace>& tris,
+                                          const Frag& frag) {
   CollideFragment result;
 
   // find the bounding box
@@ -798,7 +800,7 @@ CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, 
   // build vertex, poly, pat tables:
   std::vector<math::Vector<u16, 3>> vertices;
   std::vector<CollideFragmentPoly> polys;
-  std::vector<jak2::PatSurface> pats;
+  std::vector<jak3::PatSurface> pats;
 
   std::unordered_map<math::Vector<u16, 3>, size_t, CVertexHash> vertex_to_vertex_array_index;
   std::unordered_map<u32, size_t> pat_to_pat_array_index;
@@ -933,7 +935,7 @@ CollideFragment build_grid_for_frag(const std::vector<jak2::CollideFace>& tris, 
   return result;
 }
 
-CollideHash construct_collide_hash(const std::vector<jak2::CollideFace>& tris) {
+CollideHash construct_collide_hash(const std::vector<jak3::CollideFace>& tris) {
   CollideHash collide_hash;
 
   std::vector<Frag> frags = fragment_mesh(tris);
@@ -983,7 +985,7 @@ size_t add_pod_vector_to_object_file(DataObjectGenerator& gen, const std::vector
 
 size_t add_to_object_file(const CollideFragment& frag, DataObjectGenerator& gen) {
   // PAT ARRAY
-  static_assert(sizeof(jak2::PatSurface) == sizeof(u32));
+  static_assert(sizeof(jak3::PatSurface) == sizeof(u32));
   auto pat_array = add_pod_vector_to_object_file(gen, frag.pat_array);
 
   // Bucket ARRAY
@@ -1157,4 +1159,4 @@ size_t add_to_object_file(const CollideHash& hash, DataObjectGenerator& gen) {
 
   return result;
 }
-}  // namespace jak2
+}  // namespace jak3
