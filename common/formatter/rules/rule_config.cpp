@@ -197,6 +197,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"let*", new_binding_rule(5)},
     {"rlet", new_binding_rule(5)},
     {"when", new_flow_rule(2)},
+    {"#when", new_flow_rule(2)},
     {"countdown", new_flow_rule(2)},
     {"until", new_flow_rule(2)},
     {"loop", new_flow_rule(2)},
