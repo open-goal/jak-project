@@ -7,7 +7,7 @@
 using namespace gltf_util;
 namespace jak1 {
 
-std::map<int, size_t> joint_map;
+std::map<int, size_t> g_joint_map;
 
 size_t Joint::generate(DataObjectGenerator& gen) const {
   gen.align_to_basic();
@@ -18,7 +18,7 @@ size_t Joint::generate(DataObjectGenerator& gen) const {
   if (parent == -1) {
     gen.add_symbol_link("#f");
   } else {
-    gen.link_word_to_byte(gen.add_word(0), joint_map[parent]);
+    gen.link_word_to_byte(gen.add_word(0), g_joint_map[parent]);
   }
   for (int i = 0; i < 4; i++) {
     for (int j = 0; j < 4; j++) {
@@ -127,7 +127,7 @@ size_t ArtJointGeo::generate(DataObjectGenerator& gen) const {
   for (size_t i = 0; i < length; i++) {
     auto joint = data.at(i).generate(gen);
     gen.link_word_to_byte(joint_slots.at(i), joint);
-    joint_map[data.at(i).number] = joint;
+    g_joint_map[data.at(i).number] = joint;
   }
   auto res_header = lump.generate_header(gen, "res-lump");
   gen.link_word_to_byte(res_slot, res_header);
@@ -301,41 +301,43 @@ size_t generate_dummy_merc_ctrl(DataObjectGenerator& gen, const ArtGroup& ag) {
   gen.align_to_basic();
   gen.add_type_tag("merc-ctrl");
   size_t result = gen.current_offset_bytes();
-  gen.add_word(0);                                      // 4
-  gen.add_ref_to_string_in_pool(ag.name + "-lod0");     // 8
-  gen.add_word(0);                                      // 12
-  gen.add_symbol_link("#f");                            // 16 (res-lump)
-  gen.add_word(((ArtJointGeo*)ag.elts.at(0))->length);  // 20 (num-joints)
-  gen.add_word(0x0);                                    // 24 (pad)
-  gen.add_word(0x0);                                    // 28 (pad)
-  gen.add_word(0x4188ee86);                             // 32-112 (xyz-scale)
-  gen.add_word(0xc780ff80);                             // 36 (st-magic)
-  gen.add_word(0x40798000);                             // 40 (st-out-a)
-  gen.add_word(0x40eb4000);                             // 44 (st-out-b)
-  gen.add_word(0x4780ff80);                             // 48 (st-vif-add)
-  gen.add_word(0x50000);                                // 52 ((st-int-off << 16) + st-int-scale)
-  gen.add_word(0x1);                                    // 56 (effect-count)
-  gen.add_word(0x0);                                    // 60 (blend-target-count)
-  gen.add_word(0xe00005);                               // 64 ((fragment-count << 16) + tri-count)
-  gen.add_word(0x860101);                               // 68
-  gen.add_word(0x86011b);                               // 72
-  gen.add_word(0x0);                                    // 76
-  gen.add_word(0x0);                                    // 80
-  gen.add_word(0x120101);                               // 84
-  gen.add_word(0x83002c);                               // 88
-  gen.add_word(0x3e780184);                             // 92
-  gen.add_word(0x0);                                    // 96
-  gen.add_word(0x0);                                    // 100
-  gen.add_word(0x0);                                    // 104
-  gen.add_word(0x0);                                    // 108
-  auto frag_geo_slot = gen.add_word(0);                 // 112-140 (effect)
-  auto frag_ctrl_slot = gen.add_word(0);                // 116 (frag-ctrl)
-  gen.add_word(0x0);                                    // 120 (blend-data)
-  gen.add_word(0x0);                                    // 124 (blend-ctrl)
-  gen.add_word(0x50000);                                // 128
-  gen.add_word(0xe00000);                               // 132
-  gen.add_word(0x100011b);                              // 136
-  auto extra_info_slot = gen.add_word(0);               // 140 (extra-info)
+  // excluding align and prejoint
+  auto joints = ((ArtJointGeo*)ag.elts.at(0))->length - 2;
+  gen.add_word(0);                                   // 4
+  gen.add_ref_to_string_in_pool(ag.name + "-lod0");  // 8
+  gen.add_word(0);                                   // 12
+  gen.add_symbol_link("#f");                         // 16 (res-lump)
+  gen.add_word(joints);                              // 20 (num-joints)
+  gen.add_word(0x0);                                 // 24 (pad)
+  gen.add_word(0x0);                                 // 28 (pad)
+  gen.add_word(0x4188ee86);                          // 32-112 (xyz-scale)
+  gen.add_word(0xc780ff80);                          // 36 (st-magic)
+  gen.add_word(0x40798000);                          // 40 (st-out-a)
+  gen.add_word(0x40eb4000);                          // 44 (st-out-b)
+  gen.add_word(0x4780ff80);                          // 48 (st-vif-add)
+  gen.add_word(0x50000);                             // 52 ((st-int-off << 16) + st-int-scale)
+  gen.add_word(0x1);                                 // 56 (effect-count)
+  gen.add_word(0x0);                                 // 60 (blend-target-count)
+  gen.add_word(0xe00005);                            // 64 ((fragment-count << 16) + tri-count)
+  gen.add_word(0x860101);                            // 68
+  gen.add_word(0x86011b);                            // 72
+  gen.add_word(0x0);                                 // 76
+  gen.add_word(0x0);                                 // 80
+  gen.add_word(0x120101);                            // 84
+  gen.add_word(0x83002c);                            // 88
+  gen.add_word(0x3e780184);                          // 92
+  gen.add_word(0x0);                                 // 96
+  gen.add_word(0x0);                                 // 100
+  gen.add_word(0x0);                                 // 104
+  gen.add_word(0x0);                                 // 108
+  auto frag_geo_slot = gen.add_word(0);              // 112-140 (effect)
+  auto frag_ctrl_slot = gen.add_word(0);             // 116 (frag-ctrl)
+  gen.add_word(0x0);                                 // 120 (blend-data)
+  gen.add_word(0x0);                                 // 124 (blend-ctrl)
+  gen.add_word(0x50000);                             // 128
+  gen.add_word(0xe00000);                            // 132
+  gen.add_word(0x100011b);                           // 136
+  auto extra_info_slot = gen.add_word(0);            // 140 (extra-info)
   gen.link_word_to_byte(extra_info_slot, gen_dummy_extra_info(gen));
   gen.link_word_to_byte(frag_ctrl_slot, gen_dummy_frag_ctrl(gen));
   gen.link_word_to_byte(frag_geo_slot, gen_dummy_frag_geo(gen));
@@ -413,14 +415,15 @@ bool run_build_actor(const std::string& input_model,
   ArtJointAnim ja(ag.name, joints);
 
   jgeo.lump.add_res(
-      std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, -1000000000.0000));
+      std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
   // jgeo.lump.add_res(std::make_unique<ResVector>(
   //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
-  //     -1000000000.0000));
+  //     DEFAULT_RES_TIME));
   jgeo.lump.add_res(
-      std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, -1000000000.0000));
+      std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
   jgeo.lump.add_res(std::make_unique<ResFloat>(
-      "lod-dist", std::vector<float>{5000.0f * 4096.0f, 6000.0f * 4096.0f}, -1000000000.0000));
+      "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
+      DEFAULT_RES_TIME));
   jgeo.lump.sort_res();
 
   ag.elts.emplace_back(&jgeo);
@@ -431,10 +434,10 @@ bool run_build_actor(const std::string& input_model,
   ag.length = ag.elts.size();
 
   auto ag_file = ag.save_object_file();
-  lg::print("ag file size {} bytes\n", ag_file.size());
+  lg::info("ag file size {} bytes", ag_file.size());
   auto save_path = fs::path(ag_out);
   file_util::create_dir_if_needed_for_file(ag_out);
-  lg::print("Saving to {}\n", save_path.string());
+  lg::info("Saving to {}", save_path.string());
   file_util::write_binary_file(file_util::get_jak_project_dir() / save_path, ag_file.data(),
                                ag_file.size());
   return true;

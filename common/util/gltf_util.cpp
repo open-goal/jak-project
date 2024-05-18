@@ -163,8 +163,6 @@ ExtractedVertices gltf_vertices(const tinygltf::Model& model,
       }
       vtx_colors.insert(vtx_colors.end(), colors.begin(), colors.end());
     }
-
-    // ASSERT_MSG(color_attrib != attributes.end(), "Did not find color attribute.");
   }
 
   bool got_texture = false;

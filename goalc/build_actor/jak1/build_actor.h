@@ -7,20 +7,6 @@
 
 namespace jak1 {
 
-// void extract(MercExtractData& out,
-//              const tinygltf::Model& model,
-//              const std::vector<gltf_util::NodeWithTransform>& all_nodes,
-//              u32 index_offset,
-//              u32 vertex_offset,
-//              u32 tex_offset);
-
-// void merc_convert(MercSwapData& out, const MercExtractData& in);
-
-// MercSwapData load_merc_model(u32 current_idx_count,
-//                              u32 current_vtx_count,
-//                              u32 current_tex_count,
-//                              const std::string& path);
-
 struct Joint {
   std::string name;
   s32 number;
