@@ -374,6 +374,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
       m_psm32_to_psm8_16_16(16, 16, 16, 64),
       m_psm32_to_psm8_32_32(32, 32, 16, 64),
       m_psm32_to_psm8_64_64(64, 64, 64, 64),
+      m_version(version),
       m_sky_blend_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV),
       m_sky_final_texture(kFinalSkyTextureSize, kFinalSkyTextureSize, GL_UNSIGNED_INT_8_8_8_8_REV),
       m_sky_hires_blend_texture(kFinalSkyHiresTextureSize,
@@ -390,8 +391,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
                             GL_UNSIGNED_INT_8_8_8_8_REV),
       m_slime_final_scroll_texture(kFinalSlimeTextureSize,
                                    kFinalSlimeTextureSize,
-                                   GL_UNSIGNED_INT_8_8_8_8_REV),
-      m_version(version) {
+                                   GL_UNSIGNED_INT_8_8_8_8_REV) {
   glGenVertexArrays(1, &m_vao);
   glGenBuffers(1, &m_vertex_buffer);
   glBindVertexArray(m_vao);
