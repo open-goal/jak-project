@@ -33,7 +33,7 @@
 ;; so there's some weirdness to get all the method dispatch stuff to work around (you can only dispatch on one type)
 
 
-(defmethod should-push-away collide-shape ((obj collide-shape) (arg0 collide-shape) (arg1 collide-overlap-result))
+(defmethod should-push-away ((obj collide-shape) (arg0 collide-shape) (arg1 collide-overlap-result))
   "Find the overlap between two collide shapes.  This is the main entry point for the overlap algorithm.
    The result is returned in arg1. The obj is collided _with_ arg0 (meaning obj uses its collide-with, arg0 uses colide-as).
    The best-dist is only valid if the result is #t (it should be negative then)"
@@ -115,13 +115,13 @@
 ;; the should-push-away-test will update the collide-overlap-result. The best-dist will be negative if they overlap.
 ;; it works on collide prims.
 
-(defmethod should-push-away-test collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
+(defmethod should-push-away-test ((obj collide-shape-prim) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
   "Should be impossible to call - collide-shape-prim is abstract."
   (format 0 "ERROR: collide-shape-prim::should-push-away-test was called illegally!~%")
   (none)
   )
 
-(defmethod should-push-away-test collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
+(defmethod should-push-away-test ((obj collide-shape-prim-group) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
   "Update test for a group against an unknown prim.
    The grouip prims use their collide with "
   (local-vars (a1-3 float))
@@ -186,7 +186,7 @@
     )
   )
 
-(defmethod should-push-away-reverse-test collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-prim-group) (arg1 collide-overlap-result))
+(defmethod should-push-away-reverse-test ((obj collide-shape-prim) (arg0 collide-shape-prim-group) (arg1 collide-overlap-result))
   "This is a flipped version of should-push-away-test.
    the group uses their collide-as"
   (local-vars (a0-3 float))
@@ -246,7 +246,7 @@
     )
   )
 
-(defmethod should-push-away-test collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
+(defmethod should-push-away-test ((obj collide-shape-prim-mesh) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
   "Collide a prim with a mesh. The prim must be a sphere or group of spheres"
 
   ;; first, check the prim type
@@ -329,7 +329,7 @@
   (none)
   )
 
-(defmethod should-push-away-test collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
+(defmethod should-push-away-test ((obj collide-shape-prim-sphere) (arg0 collide-shape-prim) (arg1 collide-overlap-result))
   "The push away where we manually dispatch on the type of the second."
   (local-vars (v1-3 float))
   (rlet ((acc :class vf)
@@ -501,14 +501,14 @@
 ;; these use the "offense". The offense of the thing in the cache must be higher. If the cache has 0, we reject always.
 ;; these use the "solid" bit of action. This must be set on both.
 
-(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-mesh ((obj collide-shape-prim) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   "abstract base class version."
   (format 0 "ERROR: Unsupported prim type in collide-shape-prim::collide-with-collide-cache-prim-mesh!~%")
   (none)
   )
 
 
-(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-mesh ((obj collide-shape-prim-sphere) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   "Collide this sphere with the mesh in the real collide cache."
   (local-vars (v1-4 collide-offense))
   (rlet ((vf1 :class vf)
@@ -590,12 +590,12 @@
     )
   )
 
-(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   (format 0 "ERROR: collide-shape-prim-mesh vs. collide-cache-prim mesh is not currently supported!~%")
   (none)
   )
 
-(defmethod collide-with-collide-cache-prim-mesh collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-mesh ((obj collide-shape-prim-group) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   (let ((s3-0 (-> arg1 prim-core collide-as)))
     (dotimes (s2-0 (-> obj num-prims))
       (let ((a0-1 (-> obj prims s2-0)))
@@ -608,12 +608,12 @@
   (none)
   )
 
-(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-sphere ((obj collide-shape-prim) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   (format 0 "ERROR: Unsupported prim type in collide-shape-prim::collide-with-collide-cache-prim-sphere!~%")
   (none)
   )
 
-(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-sphere ((obj collide-shape-prim-sphere) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   (local-vars (v1-4 collide-offense) (a3-2 pat-surface))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -675,12 +675,12 @@
     )
   )
 
-(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-sphere ((obj collide-shape-prim-mesh) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   (format 0 "ERROR: collide-shape-prim-mesh vs. collide-cache-prim sphere is not currently supported!~%")
   (none)
   )
 
-(defmethod collide-with-collide-cache-prim-sphere collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
+(defmethod collide-with-collide-cache-prim-sphere ((obj collide-shape-prim-group) (arg0 collide-shape-intersect) (arg1 collide-cache-prim))
   (let ((s3-0 (-> arg1 prim-core collide-as)))
     (dotimes (s2-0 (-> obj num-prims))
       (let ((a0-1 (-> obj prims s2-0)))
@@ -901,7 +901,7 @@
   (none)
   )
 
-(defmethod set-and-handle-pat! collide-shape-moving ((obj collide-shape-moving) (arg0 pat-surface))
+(defmethod set-and-handle-pat! ((obj collide-shape-moving) (arg0 pat-surface))
   "Handle landing on the given pat-surface. This is likely target-specific."
   ;; set our pat
   (set! (-> obj cur-pat) arg0)
@@ -1085,7 +1085,7 @@
     )
   )
 
-(defmethod step-collison! collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 float))
+(defmethod step-collison! ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 float))
   "Take 1 step in the collision. Attempt to move at velocity of arg1, for arg2 of a step.
    The resulting velocity is stored in arg0. The amount of a step actually taken is returned."
 
@@ -1197,7 +1197,7 @@
   1.0
   )
 
-(defmethod integrate-and-collide! collide-shape ((obj collide-shape) (arg0 vector))
+(defmethod integrate-and-collide! ((obj collide-shape) (arg0 vector))
   "For a non-moving collide shape, we just move ourself. We have no reaction to anything we hit."
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
@@ -1222,7 +1222,7 @@
     )
   )
 
-(defmethod integrate-and-collide! collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+(defmethod integrate-and-collide! ((obj collide-shape-moving) (arg0 vector))
   "Integrate forward, with collisions and collision responses.
   This will adjust our velocity based on collision.
   It will process updates from hitting triangles with pat-surfaces
@@ -1283,7 +1283,7 @@
   (none)
   )
 
-(defmethod integrate-and-collide! control-info ((obj control-info) (arg0 vector))
+(defmethod integrate-and-collide! ((obj control-info) (arg0 vector))
   "Specialization of integrate and collide for the target"
   ;; time it
   (stopwatch-start (-> *collide-stats* total-target))
@@ -1400,7 +1400,7 @@
   )
 
 
-(defmethod move-to-ground-point! collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 vector))
+(defmethod move-to-ground-point! ((obj collide-shape-moving) (arg0 vector) (arg1 vector) (arg2 vector))
   "Move the collide shape to the ground immediately:
    arg0: ground point
    arg1: velocity (will be modified)
@@ -1419,7 +1419,7 @@
   (none)
   )
 
-(defmethod integrate-no-collide! collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+(defmethod integrate-no-collide! ((obj collide-shape-moving) (arg0 vector))
   "Integrate, but ignore all collisions.
    Will set both trans and shadow-pos"
   (local-vars (at-0 int))
@@ -1474,7 +1474,7 @@
     )
   )
 
-(defmethod collide-shape-moving-method-58 collide-shape-moving ((obj collide-shape-moving) (arg0 vector))
+(defmethod collide-shape-moving-method-58 ((obj collide-shape-moving) (arg0 vector))
   ;; not sure yet. moves shadow-pos, but possibly not trans.
   (integrate-no-collide! obj arg0)
   (let ((a1-1 (new 'stack-no-clear 'overlaps-others-params)))
@@ -1488,7 +1488,7 @@
   #f
   )
 
-(defmethod move-to-tri! collide-shape-moving ((obj collide-shape-moving) (arg0 collide-tri-result) (arg1 vector))
+(defmethod move-to-tri! ((obj collide-shape-moving) (arg0 collide-tri-result) (arg1 vector))
   "Move us to tri arg0, at point arg1."
   (move-to-point! obj arg1)
   (logior! (-> obj status) (cshape-moving-flags onsurf onground tsurf))
@@ -1506,7 +1506,7 @@
   (none)
   )
 
-(defmethod integrate-for-enemy-with-move-to-ground! collide-shape-moving ((obj collide-shape-moving)
+(defmethod integrate-for-enemy-with-move-to-ground! ((obj collide-shape-moving)
                                                                         (arg0 vector)
                                                                         (arg1 collide-kind)
                                                                         (arg2 float)
@@ -1610,7 +1610,7 @@
   (none)
   )
 
-(defmethod move-to-ground collide-shape-moving ((obj collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-kind))
+(defmethod move-to-ground ((obj collide-shape-moving) (arg0 float) (arg1 float) (arg2 symbol) (arg3 collide-kind))
   "Move to the ground now."
   (if *debug-segment*
       (add-frame
@@ -1658,7 +1658,7 @@
   #t
   )
 
-(defmethod compute-acc-due-to-gravity collide-shape-moving ((obj collide-shape-moving) (arg0 vector) (arg1 float))
+(defmethod compute-acc-due-to-gravity ((obj collide-shape-moving) (arg0 vector) (arg1 float))
   "Compute the acceleration due to gravity."
   (let* ((s4-0 (vector-negate! (new-stack-vector0) (-> obj dynam gravity))) ;; this is the acceleration from gravity.
          (a2-1 (-> obj local-normal))
@@ -1680,7 +1680,7 @@
   arg0
   )
 
-(defmethod fill-cache-integrate-and-collide! collide-shape ((obj collide-shape) (arg0 vector) (arg1 collide-kind))
+(defmethod fill-cache-integrate-and-collide! ((obj collide-shape) (arg0 vector) (arg1 collide-kind))
   "Fill the collide cache for the object, integrate, and handle collisions!"
   (local-vars (at-0 int))
   (rlet ((vf0 :class vf)
@@ -1721,7 +1721,7 @@
         )
   )
 
-(defmethod fill-cache-for-shape! collide-shape ((obj collide-shape) (arg0 float) (arg1 collide-kind))
+(defmethod fill-cache-for-shape! ((obj collide-shape) (arg0 float) (arg1 collide-kind))
   "Fill cache for a box."
   (let ((s5-0 (new 'stack-no-clear 'bounding-box)))
     (cond
@@ -1774,7 +1774,7 @@
      )
   )
 
-(defmethod build-bounding-box-for-shape collide-shape ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 collide-kind))
+(defmethod build-bounding-box-for-shape ((obj collide-shape) (arg0 bounding-box) (arg1 float) (arg2 collide-kind))
   "Build a bounding box containing the whole shape.
    If the box is empty, returns #f."
   (rlet ((vf0 :class vf)
@@ -1819,7 +1819,7 @@
   )
 
 ;; ERROR: Bad vector register dependency: vf31
-(defmethod add-to-bounding-box collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
+(defmethod add-to-bounding-box ((obj collide-shape-prim) (arg0 collide-kind))
   "Add a single prim to the bounding box. (just adds the bsphere)"
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -1837,7 +1837,7 @@
     )
   )
 
-(defmethod add-to-bounding-box collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-kind))
+(defmethod add-to-bounding-box ((obj collide-shape-prim-group) (arg0 collide-kind))
   "Add a group of prims."
   (local-vars (v1-0 int) (v1-10 none) (v1-11 int) (v1-19 float))
   (rlet ((vf1 :class vf)
@@ -1919,7 +1919,7 @@
     )
   )
 
-(defmethod add-to-non-empty-bounding-box collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-kind))
+(defmethod add-to-non-empty-bounding-box ((obj collide-shape-prim-group) (arg0 collide-kind))
   (local-vars (v1-0 int) (v1-8 float))
   (rlet ((vf1 :class vf)
          (vf2 :class vf)
@@ -1968,12 +1968,12 @@
 ;; prim lookup
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod find-prim-by-id collide-shape ((obj collide-shape) (arg0 uint))
+(defmethod find-prim-by-id ((obj collide-shape) (arg0 uint))
   "Find a prim in this shape with the given id."
   (find-prim-by-id (-> obj root-prim) arg0)
   )
 
-(defmethod find-prim-by-id collide-shape-prim ((obj collide-shape-prim) (arg0 uint))
+(defmethod find-prim-by-id ((obj collide-shape-prim) (arg0 uint))
   "Find a prim in this shape or its children with the given id."
   (if (= (-> obj prim-id) arg0) ;; it's us!
       (return obj)
@@ -1981,7 +1981,7 @@
   (the-as collide-shape-prim #f)
   )
 
-(defmethod find-prim-by-id collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 uint))
+(defmethod find-prim-by-id ((obj collide-shape-prim-group) (arg0 uint))
   "Find a prim in this shape or its children with the given id."
   (if (= (-> obj prim-id) arg0) ;; it's us
       (return obj)
@@ -2108,7 +2108,7 @@
   )
 
 
-(defmethod debug-draw collide-shape ((obj collide-shape))
+(defmethod debug-draw ((obj collide-shape))
   "Draw a collide shape"
   (if (sphere-in-view-frustum? (the-as sphere (-> obj root-prim prim-core)))
       (debug-draw-world-sphere (-> obj root-prim))
@@ -2138,14 +2138,14 @@
 ;; transform spheres by joints
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod update-transforms! collide-shape ((obj collide-shape))
+(defmethod update-transforms! ((obj collide-shape))
   "Update all transforms for this shape. After this is called, you can use the
    world-spheres."
   (update-transforms! (-> obj root-prim) (-> obj process))
   #f
   )
 
-(defmethod update-transforms! collide-shape-prim ((obj collide-shape-prim) (arg0 process-drawable))
+(defmethod update-transforms! ((obj collide-shape-prim) (arg0 process-drawable))
   "Update our world sphere, and our children's world sphere's too."
   (local-vars (a0-2 float) (a0-4 float) (a0-6 float))
   (rlet ((acc :class vf)
@@ -2218,21 +2218,21 @@
 ;; move by vector, move to point
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod move-by-vector! collide-shape ((obj collide-shape) (arg0 vector))
+(defmethod move-by-vector! ((obj collide-shape) (arg0 vector))
   "Adjust our position by the given vector"
   (vector+! (-> obj trans) (-> obj trans) arg0)
   (move-by-vector! (-> obj root-prim) arg0)
   (none)
   )
 
-(defmethod move-by-vector! collide-shape-prim ((obj collide-shape-prim) (arg0 vector))
+(defmethod move-by-vector! ((obj collide-shape-prim) (arg0 vector))
   "Adjust our position by the given vector"
   (vector+! (the-as vector (-> obj prim-core)) (the-as vector (-> obj prim-core)) arg0)
   (set! (-> obj prim-core world-sphere w) (-> obj local-sphere w))
   (none)
   )
 
-(defmethod move-by-vector! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 vector))
+(defmethod move-by-vector! ((obj collide-shape-prim-group) (arg0 vector))
   "Adjust our position by the given vector"
   (vector+! (the-as vector (-> obj prim-core)) (the-as vector (-> obj prim-core)) arg0)
   (set! (-> obj prim-core world-sphere w) (-> obj local-sphere w))
@@ -2252,7 +2252,7 @@
   (none)
   )
 
-(defmethod move-to-point! collide-shape ((obj collide-shape) (arg0 vector))
+(defmethod move-to-point! ((obj collide-shape) (arg0 vector))
   "Move us to exactly the given position."
   (let ((v1-0 (new 'stack-no-clear 'vector)))
     (vector-! v1-0 arg0 (-> obj trans))
@@ -2265,18 +2265,18 @@
 ;; construction functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod set-root-prim! collide-shape ((obj collide-shape) (arg0 collide-shape-prim))
+(defmethod set-root-prim! ((obj collide-shape) (arg0 collide-shape-prim))
   (set! (-> obj root-prim) arg0)
   arg0
   )
 
-(defmethod set-collide-with! collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
+(defmethod set-collide-with! ((obj collide-shape-prim) (arg0 collide-kind))
   (set! (-> obj collide-with) arg0)
   0
   (none)
   )
 
-(defmethod set-collide-with! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-kind))
+(defmethod set-collide-with! ((obj collide-shape-prim-group) (arg0 collide-kind))
   (set! (-> obj collide-with) arg0)
   (dotimes (s4-0 (-> obj num-prims))
     (set-collide-with! (-> obj prims s4-0) arg0)
@@ -2285,13 +2285,13 @@
   (none)
   )
 
-(defmethod set-collide-as! collide-shape-prim ((obj collide-shape-prim) (arg0 collide-kind))
+(defmethod set-collide-as! ((obj collide-shape-prim) (arg0 collide-kind))
   (set! (-> obj prim-core collide-as) arg0)
   0
   (none)
   )
 
-(defmethod set-collide-as! collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-kind))
+(defmethod set-collide-as! ((obj collide-shape-prim-group) (arg0 collide-kind))
   (set! (-> obj prim-core collide-as) arg0)
   (dotimes (s4-0 (-> obj num-prims))
     (set-collide-as! (-> obj prims s4-0) arg0)
@@ -2300,19 +2300,19 @@
   (none)
   )
 
-(defmethod set-root-prim-collide-with! collide-shape ((obj collide-shape) (arg0 collide-kind))
+(defmethod set-root-prim-collide-with! ((obj collide-shape) (arg0 collide-kind))
   (set-collide-with! (-> obj root-prim) arg0)
   0
   (none)
   )
 
-(defmethod set-root-prim-collide-as! collide-shape ((obj collide-shape) (arg0 collide-kind))
+(defmethod set-root-prim-collide-as! ((obj collide-shape) (arg0 collide-kind))
   (set-collide-as! (-> obj root-prim) arg0)
   0
   (none)
   )
 
-(defmethod append-prim collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-shape-prim))
+(defmethod append-prim ((obj collide-shape-prim-group) (arg0 collide-shape-prim))
   (let ((v1-0 (-> obj num-prims)))
     (cond
       ((>= v1-0 (-> obj allocated-prims))
@@ -2327,7 +2327,7 @@
   (none)
   )
 
-(defmethod find-collision-meshes collide-shape ((obj collide-shape))
+(defmethod find-collision-meshes ((obj collide-shape))
   (let ((s5-0 0))
     (let ((v1-1 (-> obj process draw)))
       (when (and (nonzero? v1-1) (-> v1-1 jgeo))
@@ -2345,13 +2345,13 @@
   (update-transforms! obj)
   )
 
-(defmethod num-mesh collide-shape-prim ((obj collide-shape-prim) (arg0 collide-shape-prim))
+(defmethod num-mesh ((obj collide-shape-prim) (arg0 collide-shape-prim))
   (local-vars (v0-0 int))
   (return 0)
   v0-0
   )
 
-(defmethod num-mesh collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-prim))
+(defmethod num-mesh ((obj collide-shape-prim-mesh) (arg0 collide-shape-prim))
   (let ((s4-0 (-> obj mesh-id)))
     (cond
       ((and (>= s4-0 0) (< s4-0 (length arg0)))
@@ -2367,7 +2367,7 @@
   (the-as int 0)
   )
 
-(defmethod num-mesh collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 collide-shape-prim))
+(defmethod num-mesh ((obj collide-shape-prim-group) (arg0 collide-shape-prim))
   (let ((gp-0 0))
     (countdown (s3-0 (-> obj num-prims))
       (+! gp-0 (num-mesh (-> obj prims s3-0) arg0))
@@ -2376,7 +2376,7 @@
     )
   )
 
-(defmethod change-mesh collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 int))
+(defmethod change-mesh ((obj collide-shape-prim-mesh) (arg0 int))
   "Change our mesh to the given mesh ID."
   (when (!= (-> obj mesh-id) arg0) ;; only if we don't have the right one.
     (let ((v1-3 (-> obj cshape process draw)))
@@ -2412,7 +2412,7 @@
   (none)
   )
 
-(defmethod init! collide-shape-intersect ((obj collide-shape-intersect) (arg0 vector))
+(defmethod init! ((obj collide-shape-intersect) (arg0 vector))
   "Initialize the intersection in the given direction."
   (set! (-> obj move-vec quad) (-> arg0 quad))
   (set! (-> obj best-u) -100000000.0)
@@ -2421,7 +2421,7 @@
   #f
   )
 
-(defmethod debug-draw-world-sphere collide-shape-prim ((obj collide-shape-prim))
+(defmethod debug-draw-world-sphere ((obj collide-shape-prim))
   "Draw our sphere"
   (add-debug-sphere
     #t
@@ -2432,7 +2432,7 @@
     )
   )
 
-(defmethod debug-draw-world-sphere collide-shape-prim-sphere ((obj collide-shape-prim-sphere))
+(defmethod debug-draw-world-sphere ((obj collide-shape-prim-sphere))
   "Draw our sphere"
   (add-debug-sphere
     #t
@@ -2453,7 +2453,7 @@
     )
   )
 
-(defmethod debug-draw-world-sphere collide-shape-prim-mesh ((obj collide-shape-prim-mesh))
+(defmethod debug-draw-world-sphere ((obj collide-shape-prim-mesh))
   "Draw our sphere"
   (add-debug-sphere
     #t
@@ -2464,7 +2464,7 @@
     )
   )
 
-(defmethod debug-draw-world-sphere collide-shape-prim-group ((obj collide-shape-prim-group))
+(defmethod debug-draw-world-sphere ((obj collide-shape-prim-group))
   "Draw our sphere"
   (add-debug-sphere
     #t
@@ -2479,7 +2479,7 @@
   #f
   )
 
-(defmethod do-push-aways! collide-shape ((obj collide-shape))
+(defmethod do-push-aways! ((obj collide-shape))
   "This is the main function to call to respond"
   (local-vars
     (at-0 int)
@@ -2841,7 +2841,7 @@
 ;; overlap test
 ;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod find-overlapping-shapes collide-shape ((obj collide-shape) (arg0 overlaps-others-params))
+(defmethod find-overlapping-shapes ((obj collide-shape) (arg0 overlaps-others-params))
   (local-vars
     (v1-2 symbol)
     (v1-7 symbol)
@@ -3100,13 +3100,13 @@
     )
   )
 
-(defmethod overlaps-others-test collide-shape-prim ((obj collide-shape-prim) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+(defmethod overlaps-others-test ((obj collide-shape-prim) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
   (format 0 "ERROR: Unsupported call to collide-shape-prim::overlaps-others-test!~%")
   #f
   )
 
 
-(defmethod overlaps-others-test collide-shape-prim-group ((obj collide-shape-prim-group) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+(defmethod overlaps-others-test ((obj collide-shape-prim-group) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
   (local-vars (a1-3 float))
   (rlet ((acc :class vf)
          (vf0 :class vf)
@@ -3161,7 +3161,7 @@
   )
 
 
-(defmethod overlaps-others-group collide-shape-prim ((obj collide-shape-prim) (arg0 overlaps-others-params) (arg1 collide-shape-prim-group))
+(defmethod overlaps-others-group ((obj collide-shape-prim) (arg0 overlaps-others-params) (arg1 collide-shape-prim-group))
   "Overlap, from group."
   (local-vars (a0-3 float))
   (rlet ((acc :class vf)
@@ -3216,7 +3216,7 @@
     )
   )
 
-(defmethod overlaps-others-test collide-shape-prim-sphere ((obj collide-shape-prim-sphere) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+(defmethod overlaps-others-test ((obj collide-shape-prim-sphere) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
   (local-vars (v1-26 collide-action))
   (let ((v1-0 (-> arg1 prim-core prim-type)))
     (b! (nonzero? v1-0) cfg-2 :delay (nop!))
@@ -3294,7 +3294,7 @@
     )
   )
 
-(defmethod overlaps-others-test collide-shape-prim-mesh ((obj collide-shape-prim-mesh) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
+(defmethod overlaps-others-test ((obj collide-shape-prim-mesh) (arg0 overlaps-others-params) (arg1 collide-shape-prim))
   (local-vars (v1-26 collide-action))
   (let ((v1-0 (-> arg1 prim-core prim-type)))
     (b! (nonzero? v1-0) cfg-2 :delay (nop!))
@@ -3367,28 +3367,28 @@
     )
   )
 
-(defmethod clear-collide-with-as collide-shape ((obj collide-shape))
+(defmethod clear-collide-with-as ((obj collide-shape))
   (set! (-> obj root-prim collide-with) (collide-kind))
   (set! (-> obj root-prim prim-core collide-as) (collide-kind))
   0
   (none)
   )
 
-(defmethod backup-collide-with-as collide-shape ((obj collide-shape))
+(defmethod backup-collide-with-as ((obj collide-shape))
   (set! (-> obj backup-collide-with) (-> obj root-prim collide-with))
   (set! (-> obj backup-collide-as) (-> obj root-prim prim-core collide-as))
   0
   (none)
   )
 
-(defmethod restore-collide-with-as collide-shape ((obj collide-shape))
+(defmethod restore-collide-with-as ((obj collide-shape))
   (set! (-> obj root-prim collide-with) (-> obj backup-collide-with))
   (set! (-> obj root-prim prim-core collide-as) (-> obj backup-collide-as))
   0
   (none)
   )
 
-(defmethod set-collide-kinds collide-shape ((obj collide-shape) (arg0 int) (arg1 collide-kind) (arg2 collide-kind))
+(defmethod set-collide-kinds ((obj collide-shape) (arg0 int) (arg1 collide-kind) (arg2 collide-kind))
   (let ((s3-0 (-> obj root-prim)))
     (if (logtest? (-> s3-0 prim-id) arg0)
         (set! (-> s3-0 prim-core collide-as) (logior (logclear (-> s3-0 prim-core collide-as) arg1) arg2))
@@ -3413,7 +3413,7 @@
   (none)
   )
 
-(defmethod set-collide-offense collide-shape ((obj collide-shape) (arg0 int) (arg1 collide-offense))
+(defmethod set-collide-offense ((obj collide-shape) (arg0 int) (arg1 collide-offense))
   (let ((s4-0 (-> obj root-prim)))
     (if (logtest? (-> s4-0 prim-id) arg0)
         (set! (-> s4-0 prim-core offense) arg1)
@@ -3438,7 +3438,7 @@
   (none)
   )
 
-(defmethod send-shove-back collide-shape ((obj collide-shape) (arg0 process) (arg1 touching-shapes-entry) (arg2 float) (arg3 float) (arg4 float))
+(defmethod send-shove-back ((obj collide-shape) (arg0 process) (arg1 touching-shapes-entry) (arg2 float) (arg3 float) (arg4 float))
   (local-vars (sv-144 process))
   (with-pp
     (when arg1
@@ -3490,7 +3490,7 @@
     )
   )
 
-(defmethod calc-shove-up collide-shape ((obj collide-shape) (arg0 attack-info) (arg1 float))
+(defmethod calc-shove-up ((obj collide-shape) (arg0 attack-info) (arg1 float))
   (set! (-> arg0 shove-up) arg1)
   (let* ((s3-0 (-> obj process path))
          (s2-0 (-> s3-0 curve num-cverts))
