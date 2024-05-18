@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include <vector>
 
-// TODO - some way to apply a config to all list elements (index configs with -1?)
 namespace formatter_rules {
 namespace config {
 struct FormFormattingConfig {
@@ -36,6 +35,8 @@ struct FormFormattingConfig {
 
   bool determine_column_widths_for_list_elements = false;
   std::vector<int> list_element_column_widths = {};
+
+  bool elide_top_level_newline = false;
 };
 
 extern const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config;

@@ -36,21 +36,28 @@ bool should_insert_blank_line(const FormatterTreeNode& containing_node,
   if (node.metadata.is_comment && node.metadata.num_blank_lines_following == 0) {
     return false;
   }
-  // If the next form is a comment and is inline, don't insert a comment
+  // If the next form is a comment and is inline, don't insert a new line
   if ((index + 1) < (int)containing_node.refs.size() &&
       containing_node.refs.at(index + 1).metadata.is_comment &&
       containing_node.refs.at(index + 1).metadata.is_inline) {
     return false;
   }
 
-  // TODO - only if the form doesn't fit on a single line
+  if (node.formatting_config.elide_top_level_newline) {
+    if ((index + 1) < (int)containing_node.refs.size() &&
+        containing_node.refs.at(index + 1).metadata.is_comment) {
+      return true;
+    }
+    return false;
+  }
+
   return true;
 }
 
 }  // namespace blank_lines
 
 namespace comments {
-std::string format_block_comment(const std::string& comment) {
+std::vector<std::string> format_block_comment(const std::string& comment) {
   // Normalize block comments, remove any trailing or leading whitespace
   // Only allow annotations on the first line, like #|@file
   // Don't mess with internal indentation as the user might intend it to be a certain way.
@@ -71,12 +78,18 @@ std::string format_block_comment(const std::string& comment) {
   // Remove trailing whitespace
   comment_contents = str_util::rtrim(comment_contents);
   // remove |#
-  // TODO - check suffix
-  comment_contents.pop_back();
-  comment_contents.pop_back();
+  if (str_util::ends_with(comment_contents, "|#")) {
+    comment_contents.pop_back();
+    comment_contents.pop_back();
+  }
   comment_contents = str_util::rtrim(comment_contents);
-  new_comment += fmt::format("\n{}\n|#", comment_contents);
-  return new_comment;
+  std::vector<std::string> lines = {new_comment};
+  const auto contents_as_lines = str_util::split_string(comment_contents, "\n");
+  for (const auto& line : contents_as_lines) {
+    lines.push_back(line);
+  }
+  lines.push_back("|#");
+  return lines;
 }
 }  // namespace comments
 

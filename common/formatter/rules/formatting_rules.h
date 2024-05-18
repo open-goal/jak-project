@@ -36,7 +36,7 @@ bool should_insert_blank_line(const FormatterTreeNode& containing_node,
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/comments.md
 namespace comments {
-std::string format_block_comment(const std::string& comment);
+std::vector<std::string> format_block_comment(const std::string& comment);
 }
 
 // Paired elements in a list will be kept in-line rather than the default new-line indentation

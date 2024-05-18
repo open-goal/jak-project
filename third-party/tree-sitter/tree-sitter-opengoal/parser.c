@@ -722,46 +722,18 @@ static inline bool sym_kwd_lit_character_set_2(int32_t c) {
 }
 
 static inline bool aux_sym_format_directive_type_token11_character_set_1(int32_t c) {
-  return (c < 'R'
-    ? (c < 'G'
+  return (c < 'V'
+    ? (c < 'J'
       ? (c < 'B'
         ? c == '$'
-        : c <= 'E')
-      : (c <= 'L' || c == 'O'))
-    : (c <= 'T' || (c < 'r'
-      ? (c < 'b'
-        ? (c >= 'X' && c <= 'Z')
-        : c <= 'o')
-      : (c <= 't' || (c >= 'x' && c <= 'z')))));
-}
-
-static inline bool aux_sym_format_directive_type_token11_character_set_2(int32_t c) {
-  return (c < 'R'
-    ? (c < 'G'
-      ? (c < 'B'
-        ? c == '$'
-        : c <= 'E')
-      : (c <= 'L' || c == 'O'))
-    : (c <= 'T' || (c < 'r'
-      ? (c < 'b'
-        ? (c >= 'V' && c <= 'Z')
-        : c <= 'o')
-      : (c <= 't' || (c >= 'x' && c <= 'z')))));
-}
-
-static inline bool aux_sym_format_directive_type_token11_character_set_3(int32_t c) {
-  return (c < 'R'
-    ? (c < 'G'
-      ? (c < 'B'
-        ? c == '$'
-        : (c <= 'B' || (c >= 'D' && c <= 'E')))
-      : (c <= 'H' || (c < 'N'
-        ? (c >= 'J' && c <= 'L')
-        : c <= 'O')))
-    : (c <= 'T' || (c < 'j'
-      ? (c < 'b'
-        ? (c >= 'V' && c <= 'Z')
-        : (c <= 'b' || (c >= 'd' && c <= 'h')))
+        : (c <= 'B' || (c >= 'D' && c <= 'H')))
+      : (c <= 'L' || (c < 'R'
+        ? (c >= 'N' && c <= 'O')
+        : c <= 'T')))
+    : (c <= 'Z' || (c < 'j'
+      ? (c < 'd'
+        ? c == 'b'
+        : c <= 'h')
       : (c <= 'o' || (c < 'w'
         ? (c >= 'r' && c <= 't')
         : c <= 'z')))));
@@ -864,8 +836,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (('[' <= lookahead && lookahead <= ']')) ADVANCE(68);
       if (('{' <= lookahead && lookahead <= '}')) ADVANCE(68);
       if (lookahead == '$' ||
-          ('B' <= lookahead && lookahead <= 'E') ||
-          ('G' <= lookahead && lookahead <= 'L') ||
+          ('B' <= lookahead && lookahead <= 'L') ||
           lookahead == 'N' ||
           lookahead == 'O' ||
           ('R' <= lookahead && lookahead <= 'T') ||
@@ -914,7 +885,14 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == '(' ||
           lookahead == ')') ADVANCE(56);
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(27);
-      if (aux_sym_format_directive_type_token11_character_set_1(lookahead)) ADVANCE(65);
+      if (lookahead == '$' ||
+          ('B' <= lookahead && lookahead <= 'L') ||
+          lookahead == 'O' ||
+          ('R' <= lookahead && lookahead <= 'T') ||
+          ('X' <= lookahead && lookahead <= 'Z') ||
+          ('b' <= lookahead && lookahead <= 'o') ||
+          ('r' <= lookahead && lookahead <= 't') ||
+          ('x' <= lookahead && lookahead <= 'z')) ADVANCE(65);
       END_STATE();
     case 2:
       if (lookahead == '\n') ADVANCE(49);
@@ -953,7 +931,14 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == '(' ||
           lookahead == ')') ADVANCE(56);
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(27);
-      if (aux_sym_format_directive_type_token11_character_set_2(lookahead)) ADVANCE(65);
+      if (lookahead == '$' ||
+          ('B' <= lookahead && lookahead <= 'L') ||
+          lookahead == 'O' ||
+          ('R' <= lookahead && lookahead <= 'T') ||
+          ('V' <= lookahead && lookahead <= 'Z') ||
+          ('b' <= lookahead && lookahead <= 'o') ||
+          ('r' <= lookahead && lookahead <= 't') ||
+          ('x' <= lookahead && lookahead <= 'z')) ADVANCE(65);
       END_STATE();
     case 3:
       if (lookahead == '"') ADVANCE(67);
@@ -983,7 +968,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == '~') ADVANCE(43);
       if (('+' <= lookahead && lookahead <= '-')) ADVANCE(7);
       if (('0' <= lookahead && lookahead <= '9')) ADVANCE(27);
-      if (aux_sym_format_directive_type_token11_character_set_3(lookahead)) ADVANCE(65);
+      if (aux_sym_format_directive_type_token11_character_set_1(lookahead)) ADVANCE(65);
       END_STATE();
     case 7:
       if (lookahead == '#') ADVANCE(9);
@@ -3147,7 +3132,9 @@ static const TSParseActionEntry ts_parse_actions[] = {
 #ifdef __cplusplus
 extern "C" {
 #endif
-#ifdef _WIN32
+#ifdef TREE_SITTER_HIDE_SYMBOLS
+#define TS_PUBLIC
+#elif defined(_WIN32)
 #define TS_PUBLIC __declspec(dllexport)
 #else
 #define TS_PUBLIC __attribute__((visibility("default")))

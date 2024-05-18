@@ -3,22 +3,103 @@
 namespace formatter_rules {
 namespace config {
 
+static FormFormattingConfig new_inlinable_simple_flow_rule() {
+  return {.config_set = true, .hang_forms = false};
+}
+
 static FormFormattingConfig new_permissive_flow_rule() {
   return {.config_set = true, .hang_forms = false, .combine_first_two_lines = true};
 }
 
-static FormFormattingConfig new_flow_rule(int start_index) {
+static FormFormattingConfig new_flow_rule(int start_index, bool has_constant_pairs = false) {
   return {.config_set = true,
           .hang_forms = false,
-          .inline_until_index = [start_index](const std::vector<std::string>& /*curr_lines*/) {
-            return start_index;
-          }};
+          .inline_until_index =
+              [start_index](const std::vector<std::string>& /*curr_lines*/) { return start_index; },
+          .has_constant_pairs = has_constant_pairs};
+}
+
+static FormFormattingConfig new_inlineable_flow_rule(int start_index,
+                                                     bool has_constant_pairs = false) {
+  return {.config_set = true,
+          .hang_forms = false,
+          .inline_until_index =
+              [start_index](const std::vector<std::string>& curr_lines) {
+                int total_width = 0;
+                for (const auto& line : curr_lines) {
+                  total_width += line.length();
+                  // an empty line implies a new-line was forced, this is bleeding implementation
+                  // details, but fine for now
+                  if (line.empty()) {
+                    return start_index;
+                  }
+                }
+                if (total_width <= 120) {
+                  return (int)curr_lines.size();
+                }
+                return start_index;
+              },
+          .has_constant_pairs = has_constant_pairs};
+}
+
+static FormFormattingConfig new_defstate_rule(int start_index, bool has_constant_pairs = false) {
+  FormFormattingConfig cfg = {
+      .config_set = true,
+      .hang_forms = false,
+      .inline_until_index =
+          [start_index](const std::vector<std::string>& /*curr_lines*/) { return start_index; },
+      .has_constant_pairs = has_constant_pairs};
+  // TODO - might be nice to have a function that returns a config based on a given index, instead
+  // of hardcoding them!
+  std::vector<int> state_handler_indexes = {4, 6, 8, 10,
+                                            12};  // NOTE - not all of these have to be defined
+  for (const auto& index : state_handler_indexes) {
+    auto temp_config = std::make_shared<FormFormattingConfig>();
+    temp_config->config_set = true;
+    temp_config->prevent_inlining = true;
+    temp_config->hang_forms = false;
+    temp_config->inline_until_index = [](const std::vector<std::string>& /*curr_lines*/) {
+      return 2;
+    };
+    temp_config->parent_mutable_extra_indent = 2;
+    cfg.index_configs.emplace(index, temp_config);
+  }
+  return cfg;
+}
+
+static FormFormattingConfig new_defmethod_rule(int start_index, bool has_constant_pairs = false) {
+  return {.config_set = true,
+          .hang_forms = false,
+          .inline_until_index =
+              [start_index](const std::vector<std::string>& curr_lines) {
+                if (curr_lines.size() >= 2 && curr_lines.at(1) == "new") {
+                  // defmethod was changed to omit the type name for everything except the `new`
+                  // method, so special case.
+                  return start_index + 1;
+                }
+                return start_index;
+              },
+          .has_constant_pairs = has_constant_pairs};
+}
+
+static FormFormattingConfig new_defnum_rule() {
+  auto temp_list_config = std::make_shared<FormFormattingConfig>();
+  temp_list_config->force_inline = true;
+  temp_list_config->hang_forms = false;
+  return {
+      .config_set = true,
+      .hang_forms = false,
+      .inline_until_index = [](const std::vector<std::string>& /*curr_lines*/) { return 2; },
+      .has_constant_pairs = true,
+      .default_index_config = temp_list_config,
+  };
 }
 
 static FormFormattingConfig new_deftype_rule(
     int start_index,
     const std::vector<int>& inlining_preventation_indices) {
   FormFormattingConfig cfg;
+  cfg.has_constant_pairs = true;
   cfg.config_set = true;
   cfg.hang_forms = false;
   cfg.inline_until_index = [start_index](std::vector<std::string> curr_lines) {
@@ -88,23 +169,39 @@ static FormFormattingConfig new_pair_rule(bool combine_first_two_expr) {
   return cfg;
 }
 
+static FormFormattingConfig new_top_level_inline_form(bool elide_new_line) {
+  return {.force_inline = true, .elide_top_level_newline = elide_new_line};
+}
+
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
     {"case", new_pair_rule(true)},
     {"cond", new_pair_rule(false)},
-    {"defmethod", new_flow_rule(3)},
+    {"in-package", new_top_level_inline_form(true)},
+    {"bundles", new_top_level_inline_form(true)},
+    {"require", new_top_level_inline_form(true)},
+    {"defenum", new_defnum_rule()},
+    {"defmethod", new_defmethod_rule(3)},
     {"deftype", new_deftype_rule(3, {3, 4, 5, 6})},
     {"defun", new_flow_rule(3)},
     {"defun-debug", new_flow_rule(3)},
     {"defbehavior", new_flow_rule(4)},
-    {"if", new_permissive_flow_rule()},
+    {"if", new_inlineable_flow_rule(2)},
     {"define", new_permissive_flow_rule()},
     {"define-extern", new_permissive_flow_rule()},
     {"defmacro", new_flow_rule(3)},
+    {"defstate", new_defstate_rule(3, true)},
+    {"behavior", new_flow_rule(2)},
     {"dotimes", new_flow_rule(2)},
     {"let", new_binding_rule(4)},
+    {"let*", new_binding_rule(5)},
     {"rlet", new_binding_rule(5)},
     {"when", new_flow_rule(2)},
+    {"countdown", new_flow_rule(2)},
+    {"until", new_flow_rule(2)},
+    {"while", new_flow_rule(2)},
     {"begin", new_flow_rule(0)},
+    {"with-pp", new_flow_rule(0)},
+    {"local-vars", new_inlinable_simple_flow_rule()},
     {"with-dma-buffer-add-bucket", new_flow_rule(2)}};
 }  // namespace config
 }  // namespace formatter_rules

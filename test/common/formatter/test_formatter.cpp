@@ -56,7 +56,7 @@ std::vector<TestDefinition> get_test_definitions(const fs::path& file_path) {
     if (!curr_test.name.empty() && line.empty()) {
       i++;
       while (true) {
-        if (contents.at(i) == "---") {
+        if (str_util::trim(contents.at(i)) == "---") {
           i++;
           curr_test.input = str_util::trim(curr_test.input);
           break;

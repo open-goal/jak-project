@@ -33,14 +33,16 @@ int hang_indentation_width(const FormatterTreeNode& curr_node) {
   return 1 + hang_indentation_width(first_elt);
 }
 
-// TODO - this doesn't account for paren's width contribution!
 int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
   if (curr_node.token) {
     return curr_node.token->length();
   }
   int width = 1;
-  for (const auto& ref : curr_node.refs) {
-    width += get_total_form_inlined_width(ref);
+  for (int i = 0; i < curr_node.refs.size(); i++) {
+    width += get_total_form_inlined_width(curr_node.refs.at(i));
+    if (i != curr_node.refs.size() - 1) {
+      width += 1;  // add the space between elements
+    }
   }
   return width + 1;
 }
@@ -104,7 +106,7 @@ void apply_formatting_config(
       if (curr_node.formatting_config.has_constant_pairs) {
         for (int i = 0; i < (int)curr_node.refs.size(); i++) {
           auto& child_ref = curr_node.refs.at(i);
-          const auto type = child_ref.metadata.node_type;
+          const auto& type = child_ref.metadata.node_type;
           if (constant_types.find(type) == constant_types.end() &&
               constant_pairs::is_element_second_in_constant_pair(curr_node, child_ref, i)) {
             child_ref.formatting_config.parent_mutable_extra_indent = 2;
@@ -151,10 +153,26 @@ void apply_formatting_config(
         max_columns = field.refs.size();
       }
     }
+    // if only one field has a value in the max col position, it looks weird for it to be indented
+    bool ignore_final_column_width = true;
+    int fields_with_atleast_max_col = 0;
+    for (const auto& field : curr_node.refs) {
+      if ((int)field.refs.size() == max_columns) {
+        fields_with_atleast_max_col++;
+        if (fields_with_atleast_max_col > 1) {
+          ignore_final_column_width = false;
+          break;
+        }
+      }
+    }
     // Now find the column max widths
     std::vector<int> column_max_widths = {};
     for (int col = 0; col < max_columns; col++) {
       column_max_widths.push_back(0);
+      // -2 because its the indentation before the final column that we want to skip
+      if (ignore_final_column_width && col == max_columns - 2) {
+        continue;
+      }
       for (const auto& field : curr_node.refs) {
         if ((int)field.refs.size() > col) {
           const auto width = get_total_form_inlined_width(field.refs.at(col));
@@ -264,13 +282,15 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     // Add new line entry
     if (ref.token) {
       // Cleanup block-comments
-      std::string val = ref.token_str();
       if (ref.metadata.node_type == "block_comment") {
-        // TODO - change this sanitization to return a list of lines instead of a single new-lined
-        // line
-        val = comments::format_block_comment(ref.token_str());
+        const auto comment_lines = comments::format_block_comment(ref.token_str());
+        for (const auto& line : comment_lines) {
+          form_lines.push_back(line);
+        }
+      } else {
+        form_lines.push_back(ref.token_str());
       }
-      form_lines.push_back(val);
+
       if (!curr_node.metadata.is_top_level && i == (int)curr_node.refs.size() - 1 &&
           (ref.metadata.is_comment)) {
         // if there's an inline comment at the end of a form, we have to force the paren to the next
@@ -306,6 +326,13 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
         if (next_ref.token) {
           form_lines.at(form_lines.size() - 1) += fmt::format(" {}", next_ref.token.value());
           i++;
+          // We have to handle hang-consolidation here or else it will never be reached above!
+          if (i == (int)curr_node.refs.size() - 1 && form_lines.size() > 1 &&
+              (curr_node.formatting_config.hang_forms ||
+               curr_node.formatting_config.combine_first_two_lines)) {
+            form_lines.at(0) += fmt::format(" {}", form_lines.at(1));
+            form_lines.erase(form_lines.begin() + 1);
+          }
         } else if (can_node_be_inlined(next_ref, cursor_pos)) {
           const auto& lines = apply_formatting(next_ref, {}, cursor_pos);  // TODO - cursor pos
           for (const auto& line : lines) {
@@ -379,7 +406,14 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     curr_form += str_util::repeat(curr_node.formatting_config.parent_mutable_extra_indent, " ");
   }
   if (inline_form) {
-    form_lines = {fmt::format("{}", fmt::join(form_lines, " "))};
+    // NOTE - not sure about this, if we are inlining a form, it always makes sense to eliminate
+    // trailing whitespace the only issue i can foresee is related to strings that span multiple
+    // lines.
+    std::vector<std::string> new_form_lines = {};
+    for (const auto& form_line : form_lines) {
+      new_form_lines.push_back(str_util::ltrim(form_line));
+    }
+    form_lines = {fmt::format("{}", fmt::join(new_form_lines, " "))};
   } else {
     for (int i = 0; i < (int)form_lines.size(); i++) {
       if (i > 0) {
