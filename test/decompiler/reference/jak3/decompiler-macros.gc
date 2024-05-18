@@ -146,11 +146,15 @@
                                &key (exit *no-state*)
                                &key (code *no-state*)
                                &key (post *no-state*)
+                               &rest body
                                )
   "Define a new state!"
 
   (with-gensyms (new-state)
-    (let ((defstate-type (first parents)))
+    (let ((defstate-type (first parents))
+          (docstring ""))
+      (when (and (> (length body) 1) (string? (first body)))
+        (set! docstring (first body)))
       (when (not (null? *defstate-type-stack*))
         (fmt #t "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
                  *defstate-type-stack*)
@@ -217,23 +221,26 @@
             `(begin
               (inherit-state ,new-state ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
               (set! (-> ,new-state parent) ,(if (pair? parent) `(method-of-type ,(car parent) ,(cadr parent)) `(the state ,parent)))
-              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
             )
            (virtual
-            `(define-virtual-state-hook ,state-name ,defstate-type ,new-state ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+            `(begin
+              (set! (-> ,new-state parent) #f)
+              (define-virtual-state-hook ,state-name ,defstate-type ,new-state ,docstring ,(eq? virtual 'override) :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              )
             )
            (parent
             `(begin
               (inherit-state ,new-state (the state ,parent))
               (set! (-> ,new-state parent) (the state ,parent))
-              (define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              (define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
             )
            (#t
             `(begin
               (set! (-> ,new-state parent) #f)
-              (define-state-hook ,state-name ,defstate-type ,new-state :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
+              (define-state-hook ,state-name ,defstate-type ,new-state ,docstring :event ,event :enter ,enter :trans ,trans :exit ,exit :code ,code :post ,post)
               )
             )
            )

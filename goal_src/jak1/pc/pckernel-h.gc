@@ -1,6 +1,9 @@
 ;;-*-Lisp-*-
 (in-package goal)
 
+(require "engine/ps2/pad.gc")
+
+
 #|
 
   This file contains code that we need for the PC port of the game specifically.
@@ -82,10 +85,6 @@
   (vulkan)
   (direct3d)
   )
-
-
-(defmacro pc-cheats? (obj &rest cheats)
-  `(logtest? ,obj (pc-cheats ,@cheats)))
 
 ;; music log info
 (deftype pc-music-log-entry (structure)
@@ -567,3 +566,44 @@
 (defun-extern real-movie? symbol)
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; entity debugging
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(when *debug-segment*
+
+(deftype entity-debug-inspect (basic)
+  (
+   (scroll-y int16)
+   (scroll-y-max int16)
+   (entity entity)
+   (show-actor-info symbol)
+   (show-long-info symbol)
+   )
+  (:methods
+    (new (symbol type) _type_)
+    (set-entity! (_type_ entity) entity)
+    (update-pad (_type_ int) none)
+    )
+  )
+
+(defmethod new entity-debug-inspect ((allocation symbol) (type-to-make type))
+  "make a new entity-debug-inspect object"
+
+  (let ((obj (object-new allocation type-to-make (the-as int (-> type-to-make size)))))
+
+    (set! (-> obj scroll-y) 0)
+    (set! (-> obj scroll-y-max) 0)
+    (set! (-> obj entity) (the entity #f))
+    (set! (-> obj show-actor-info) #f)
+    (set! (-> obj show-long-info) #f)
+    obj
+    )
+  )
+
+
+(define *entity-debug-inspect* (new 'debug 'entity-debug-inspect))
+
+
+) ;; when debug_segment

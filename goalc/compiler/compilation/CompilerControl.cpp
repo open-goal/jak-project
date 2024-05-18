@@ -312,6 +312,26 @@ Val* Compiler::compile_in_package(const goos::Object& form, const goos::Object& 
 }
 
 /*!
+ * TODO - this form will denote which .DGO/.CGO the file should be bundled within
+ */
+Val* Compiler::compile_bundles(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)form;
+  (void)rest;
+  (void)env;
+  return get_none();
+}
+
+/*!
+ * TODO - this form will denote a dependency for the given file
+ */
+Val* Compiler::compile_require(const goos::Object& form, const goos::Object& rest, Env* env) {
+  (void)form;
+  (void)rest;
+  (void)env;
+  return get_none();
+}
+
+/*!
  * Build dgo files. Takes a string argument pointing to the DGO description file, which is read
  * and parsed here.
  */
@@ -583,7 +603,6 @@ Val* Compiler::compile_update_macro_metadata(const goos::Object& form,
   auto& name = args.unnamed.at(0).as_symbol().name_ptr;
 
   auto arg_spec = m_goos.parse_arg_spec(form, args.unnamed.at(2));
-  m_macro_specs[name] = arg_spec;
   m_symbol_info.add_macro(name, arg_spec, form, args.unnamed.at(1).as_string()->data);
   return get_none();
 }
@@ -757,7 +776,8 @@ Compiler::generate_per_file_symbol_info() {
       macro_doc.name = sym_info->m_name;
       macro_doc.description = sym_info->m_docstring;
       macro_doc.def_location = def_loc;
-      const auto& arg_spec = m_macro_specs[macro_doc.name];
+      // TODO - rewrite all of this to use the new symbol map, make sure macros work
+      /*const auto& arg_spec = m_macro_specs[macro_doc.name];
       for (const auto& arg : arg_spec.unnamed) {
         macro_doc.args.push_back(arg);
       }
@@ -770,7 +790,7 @@ Compiler::generate_per_file_symbol_info() {
       }
       if (!arg_spec.rest.empty()) {
         macro_doc.variadic_arg = arg_spec.rest;
-      }
+      }*/
       file_doc.macros.push_back(macro_doc);
     } else if (sym_info->m_kind == symbol_info::Kind::METHOD) {
       Docs::MethodDocumentation method_doc;
@@ -804,7 +824,8 @@ Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, 
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::STRING},
            {{"force", {false, {goos::ObjectType::SYMBOL}}},
-            {"verbose", {false, {goos::ObjectType::SYMBOL}}}});
+            {"verbose", {false, {goos::ObjectType::SYMBOL}}},
+            {"report", {false, {goos::ObjectType::SYMBOL}}}});
   bool force = false;
   if (args.has_named("force")) {
     force = get_true_or_false(form, args.get_named("force"));
@@ -815,7 +836,12 @@ Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, 
     verbose = get_true_or_false(form, args.get_named("verbose"));
   }
 
-  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
+  bool report = false;
+  if (args.has_named("report")) {
+    report = get_true_or_false(form, args.get_named("report"));
+  }
+
+  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose, report);
   return get_none();
 }
 
@@ -852,6 +878,25 @@ Val* Compiler::compile_gen_docs(const goos::Object& form, const goos::Object& re
   file_util::write_text_file(
       doc_path / fmt::format("{}-file-docs.json", version_to_game_name(m_version)),
       file_docs_data.dump());
+
+  return get_none();
+}
+
+Val* Compiler::compile_export_requires(const goos::Object& form, const goos::Object& rest, Env*) {
+  auto args = get_va(form, rest);
+  va_check(form, args, {goos::ObjectType::STRING}, {});
+
+  const auto& export_path = fs::path(args.unnamed.at(0).as_string()->data);
+  lg::info("Saving require map to: {}", export_path.string());
+
+  json export_map;
+  for (const auto& file : m_global_env->get_files()) {
+    export_map[file->name()] = file->m_missing_required_files;
+  }
+
+  file_util::write_text_file(
+      export_path / fmt::format("{}-missing-requires.json", version_to_game_name(m_version)),
+      export_map.dump());
 
   return get_none();
 }

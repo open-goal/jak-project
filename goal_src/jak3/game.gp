@@ -268,10 +268,11 @@
 (cgo-file "railf.gd" common-dep)
 (cgo-file "railx.gd" common-dep)
 ; ;; precursor
-; (cgo-file "preca.gd" common-dep)
-; (cgo-file "precb.gd" common-dep)
-; (cgo-file "precc.gd" common-dep)
-; (cgo-file "precd.gd" common-dep)
+(cgo-file "lmech.gd" common-dep)
+(cgo-file "preca.gd" common-dep)
+(cgo-file "precb.gd" common-dep)
+(cgo-file "precc.gd" common-dep)
+(cgo-file "precd.gd" common-dep)
 ; ;; title/intro
 (cgo-file "win.gd" common-dep) ;; wasintro
 (cgo-file "title.gd" common-dep)
@@ -280,15 +281,15 @@
 (cgo-file "ipf.gd" common-dep) ;; intro-palace-fall
 (cgo-file "introcst.gd" common-dep)
 ; ;; outro
-; (cgo-file "outcast3.gd" common-dep)
-; (cgo-file "outrocst.gd" common-dep)
+(cgo-file "outcast3.gd" common-dep)
+(cgo-file "outrocst.gd" common-dep)
 ; ;; museum
-; (cgo-file "museum.gd" common-dep)
-; (cgo-file "museum2.gd" common-dep)
-; (cgo-file "museum3.gd" common-dep)
-; (cgo-file "museum3b.gd" common-dep)
-; (cgo-file "museum4.gd" common-dep)
-; (cgo-file "museum4b.gd" common-dep)
+(cgo-file "museum.gd" common-dep)
+(cgo-file "museum2.gd" common-dep)
+(cgo-file "museum3.gd" common-dep)
+(cgo-file "museum3b.gd" common-dep)
+(cgo-file "museum4.gd" common-dep)
+(cgo-file "museum4b.gd" common-dep)
 ;; test
 (cgo-file "halfpipe.gd" common-dep)
 ; ;; borrow
@@ -357,7 +358,6 @@
 (cgo-file "ljndklev.gd" common-dep)
 (cgo-file "lkeira.gd" common-dep)
 (cgo-file "lkleever.gd" common-dep)
-(cgo-file "lmech.gd" common-dep)
 (cgo-file "lmhca.gd" common-dep)
 (cgo-file "lmhcb.gd" common-dep)
 (cgo-file "lnstcst.gd" common-dep)
@@ -393,6 +393,17 @@
 (cgo-file "lwassig.gd" common-dep)
 (cgo-file "lwlandm.gd" common-dep)
 (cgo-file "lwstdpck.gd" common-dep)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Example Custom Level
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Set up the build system to build the level geometry
+;; this path is relative to the custom_levels/jak3 folder
+;; it should point to the .jsonc file that specifies the level.
+(build-custom-level "test-zone")
+;; the DGO file
+(custom-level-cgo "TSZ.DGO" "test-zone/testzone.gd")
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; ANIMATIONS

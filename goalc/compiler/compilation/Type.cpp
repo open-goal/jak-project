@@ -3,6 +3,7 @@
 #include "common/type_system/deftype.h"
 #include "common/type_system/state.h"
 #include "common/util/math_util.h"
+#include "common/util/string_util.h"
 
 #include "goalc/compiler/Compiler.h"
 #include "goalc/emitter/CallingConvention.h"
@@ -86,6 +87,33 @@ RegVal* Compiler::compile_get_method_of_object(const goos::Object& form,
     } else {
       throw_compiler_error(form, "Type {} has no method {}", compile_time_type.print(),
                            method_name);
+    }
+  }
+
+  if (m_settings.check_for_requires) {
+    std::vector<symbol_info::SymbolInfo*> symbol_info =
+        m_symbol_info.lookup_exact_method_name(method_info.name, compile_time_type.base_type());
+    // TODO - check for virtual state requirement, if i could track the defining form!
+    // if (symbol_info.empty()) {
+    //  // maybe it's a virtual state
+    //  symbol_info = m_symbol_info.lookup_exact_virtual_state_name(method_info.name,
+    //                                                              compile_time_type.base_type());
+    //  if (!symbol_info.empty()) {
+    //    int x = 0;
+    //  }
+    //}
+    if (!symbol_info.empty()) {
+      const auto& result = symbol_info.at(0);
+      if (result->m_def_location.has_value() &&
+          !env->file_env()->m_missing_required_files.contains(result->m_def_location->file_path) &&
+          env->file_env()->m_required_files.find(result->m_def_location->file_path) ==
+              env->file_env()->m_required_files.end() &&
+          !str_util::ends_with(result->m_def_location->file_path,
+                               env->file_env()->name() + ".gc")) {
+        lg::warn("Missing require in {} for {} over {}", env->file_env()->name(),
+                 result->m_def_location->file_path, method_info.name);
+        env->file_env()->m_missing_required_files.insert(result->m_def_location->file_path);
+      }
     }
   }
 
@@ -1464,7 +1492,11 @@ Val* Compiler::compile_defenum(const goos::Object& form, const goos::Object& res
   (void)form;
   (void)env;
 
-  parse_defenum(rest, &m_ts, {});
+  DefinitionMetadata def_metadata;
+  const auto new_enum = parse_defenum(rest, &m_ts, &def_metadata);
+  new_enum->m_metadata.definition_info = m_goos.reader.db.get_short_info_for(form);
+  m_symbol_info.add_enum(new_enum, form,
+                         def_metadata.docstring.has_value() ? def_metadata.docstring.value() : "");
   return get_none();
 }
 
@@ -1477,7 +1509,8 @@ u64 Compiler::enum_lookup(const goos::Object& form,
   if (e->is_bitfield()) {
     uint64_t value = 0;
     for_each_in_list(rest, [&](const goos::Object& o) {
-      auto kv = e->entries().find(symbol_string(o));
+      const auto test = symbol_string(o);
+      auto kv = e->entries().find(test);
       if (kv == e->entries().end()) {
         if (throw_on_error) {
           throw_compiler_error(form, "The value {} was not found in enum.", o.print());

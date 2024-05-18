@@ -39,6 +39,10 @@ struct CompilationOptions {
   bool print_time = false;              // print timing statistics
 };
 
+struct GlobalConstantInfo {
+  std::optional<goos::TextDb::ShortInfo> definition_info;
+};
+
 class Compiler {
  public:
   Compiler(GameVersion version,
@@ -122,19 +126,20 @@ class Compiler {
   listener::Listener m_listener;
   goos::Interpreter m_goos;
   Debugger m_debugger;
-  // TODO - this should be able to be removed, these are stored in `m_symbol_info`
-  std::unordered_map<std::string, goos::ArgumentSpec> m_macro_specs;
-  // TODO - this should be able to be removed, these are stored in `m_symbol_info`
+  MakeSystem m_make;
+  std::unique_ptr<REPL::Wrapper> m_repl;
+  CompilerSettings m_settings;
+  bool m_throw_on_define_extern_redefinition = false;  // TODO - move to settings
+
+  // State Tracking
+  symbol_info::SymbolInfoMap m_symbol_info;
   goos::InternedPtrMap<TypeSpec> m_symbol_types;
   goos::InternedPtrMap<goos::Object> m_global_constants;
   std::unordered_map<goos::InternedSymbolPtr, InlineableFunction, goos::InternedSymbolPtr::hash>
       m_inlineable_functions;
-  CompilerSettings m_settings;
-  bool m_throw_on_define_extern_redefinition = false;
+
+  // Overrides
   std::unordered_set<std::string> m_allow_inconsistent_definition_symbols;
-  MakeSystem m_make;
-  std::unique_ptr<REPL::Wrapper> m_repl;
-  symbol_info::SymbolInfoMap m_symbol_info;
 
   struct DebugStats {
     int num_spills = 0;
@@ -627,6 +632,8 @@ class Compiler {
   Val* compile_gs(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_set_config(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_in_package(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_bundles(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_require(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_build_dgo(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_reload(const goos::Object& form, const goos::Object& rest, Env* env);
   Val* compile_get_info(const goos::Object& form, const goos::Object& rest, Env* env);
@@ -638,6 +645,7 @@ class Compiler {
                                           const goos::Object& rest,
                                           Env* env);
   Val* compile_gen_docs(const goos::Object& form, const goos::Object& rest, Env* env);
+  Val* compile_export_requires(const goos::Object& form, const goos::Object& rest, Env*);
 
   // ControlFlow
   Condition compile_condition(const goos::Object& condition, Env* env, bool invert);

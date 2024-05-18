@@ -5,6 +5,7 @@
 ;; name in dgo: trail-h
 ;; dgos: GAME
 
+;; +++trail-node-flag
 (defenum trail-node-flag
   :type uint8
   :bitfield #t
@@ -12,7 +13,10 @@
   (tnf1 1)
   (tnf2 2)
   )
+;; ---trail-node-flag
 
+
+;; +++conn-flag
 (defenum conn-flag
   :type uint8
   :bitfield #t
@@ -20,7 +24,12 @@
   (cf1 1)
   (cf2 2)
   (cf3 3)
+  (cf4 4)
+  (cf5 5)
+  (cf6 6)
   )
+;; ---conn-flag
+
 
 (declare-type trail-graph basic)
 
@@ -42,7 +51,7 @@
   :pack-me
   (:methods
     (get-dist-score (_type_ vector) uint)
-    (debug-draw (_type_ int) none)
+    (debug-draw (_type_ int) symbol)
     (get-position (_type_ vector) vector)
     )
   )
@@ -122,7 +131,7 @@
 
 
 (deftype trail-cached-start-pov (structure)
-  ((last-updated       uint64)
+  ((last-updated       time-frame)
    (pov-can-see-start  uint64)
    (next-node-id       int32)
    (start-pos          vector  :inline)
@@ -146,12 +155,12 @@
    (conn-mask                  uint8)
    (node                       (inline-array trail-node))
    (conn                       (inline-array trail-conn))
-   (blocker                    uint32)
+   (blocker                    (inline-array trail-blocker))
    (conn-ids                   (pointer uint16))
    (visgroup                   (inline-array trail-conn-hash-cell))
    (visnode-ids                (pointer uint16))
    (conn-hash                  trail-conn-hash)
-   (cell-pov-bit-arrays        uint32)
+   (cell-pov-bit-arrays        (pointer uint64))
    (pov-can-see-goal           uint64)
    (cached-start-pov           trail-cached-start-pov  :inline)
    (orig-start-pos             vector                  :inline)
@@ -164,31 +173,31 @@
    (closed-bits                vector16ub              2 :inline :overlay-at closed-quads)
    )
   (:methods
-    (trail-graph-method-9 (_type_ int) none)
-    (trail-graph-method-10 (_type_ int) none)
+    (trail-graph-method-9 (_type_ int) int)
+    (trail-graph-method-10 (_type_ int) symbol)
     (trail-graph-method-11 (_type_ int int) trail-node)
-    (trail-graph-method-12 (_type_) none)
-    (trail-graph-method-13 (_type_ vector vector) none)
-    (debug-draw (_type_) none)
-    (trail-graph-method-15 (_type_ int) none)
-    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) none)
-    (trail-graph-method-17 (_type_) none)
+    (trail-graph-method-12 (_type_ trail-node vector) symbol)
+    (trail-graph-method-13 (_type_ vector vector) symbol)
+    (debug-draw (_type_) symbol)
+    (trail-graph-method-15 (_type_ int) symbol)
+    (trail-graph-method-16 (_type_ int (pointer uint16) vector vector rgba float) symbol)
+    (trail-graph-method-17 (_type_ vector vector) int)
     (trail-graph-method-18 (_type_ vector) int)
     (trail-graph-method-19 (_type_) none)
-    (trail-graph-method-20 (_type_ uint vector) none)
-    (trail-graph-method-21 (_type_) none)
-    (trail-graph-method-22 (_type_) none)
-    (trail-graph-method-23 (_type_) none)
-    (trail-graph-method-24 (_type_) none)
-    (trail-graph-method-25 (_type_ int) none)
-    (trail-graph-method-26 (_type_) none)
-    (trail-graph-method-27 (_type_) none)
-    (trail-graph-method-28 (_type_) none)
-    (trail-graph-method-29 (_type_) none)
-    (trail-graph-method-30 (_type_) none)
+    (trail-graph-method-20 (_type_ uint vector) vector)
+    (trail-graph-method-21 (_type_ (pointer uint16) int (pointer int32) (pointer float)) int)
+    (trail-graph-method-22 (_type_ int int) symbol)
+    (trail-graph-method-23 (_type_) symbol)
+    (trail-graph-method-24 (_type_ uint vector int int) symbol)
+    (trail-graph-method-25 (_type_ int) int)
+    (trail-graph-method-26 (_type_) int)
+    (trail-graph-method-27 (_type_) int)
+    (trail-graph-method-28 (_type_ trail-conn-search int int) symbol)
+    (trail-graph-method-29 (_type_ vector vector trail-cached-search-info) int)
+    (trail-graph-method-30 (_type_) int)
     (trail-graph-method-31 (_type_ int) none)
-    (trail-graph-method-32 (_type_) none)
-    (trail-graph-method-33 (_type_) none)
+    (trail-graph-method-32 (_type_) uint)
+    (trail-graph-method-33 (_type_ int) symbol)
     )
   )
 

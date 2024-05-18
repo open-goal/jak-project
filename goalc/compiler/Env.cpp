@@ -118,6 +118,10 @@ std::vector<std::string> GlobalEnv::list_files_with_prefix(const std::string& pr
   return matches;
 }
 
+std::vector<std::unique_ptr<FileEnv>>& GlobalEnv::get_files() {
+  return m_files;
+}
+
 ///////////////////
 // BlockEnv
 ///////////////////

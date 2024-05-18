@@ -548,6 +548,7 @@ MethodInfo TypeSystem::override_method(Type* type,
                            existing_info.name,
                            existing_info.type,
                            type->get_name(),
+                           type->get_name(),
                            existing_info.no_virtual,
                            false,
                            true,
@@ -607,6 +608,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
                              method_name,
                              ts,
                              type->get_name(),
+                             type->get_name(),
                              no_virtual,
                              true,
                              false,
@@ -645,6 +647,7 @@ MethodInfo TypeSystem::declare_method(Type* type,
                                method_name,
                                ts,
                                type->get_name(),
+                               type->get_name(),
                                no_virtual,
                                false,
                                false,
@@ -678,8 +681,8 @@ MethodInfo TypeSystem::overlay_method(Type* type,
   }
 
   // use the existing ID.
-  return type->add_method({existing_info.id, method_name, ts, type->get_name(), false, true, false,
-                           docstring, std::make_optional(method_overlay_name)});
+  return type->add_method({existing_info.id, method_name, ts, type->get_name(), type->get_name(),
+                           false, true, false, docstring, std::make_optional(method_overlay_name)});
 }
 
 MethodInfo TypeSystem::define_method(const std::string& type_name,
@@ -709,8 +712,10 @@ MethodInfo TypeSystem::define_method(Type* type,
   // look up the method
   MethodInfo existing_info;
   bool got_existing = try_lookup_method(type, method_name, &existing_info);
-
   if (got_existing) {
+    // The lookup will return a parents method, but the type should be equal
+    // to the type in question (it's a child)
+    existing_info.type_name = type->get_name();
     // Update the docstring
     existing_info.docstring = docstring;
     int bad_arg_idx = -99;
@@ -758,7 +763,7 @@ MethodInfo TypeSystem::add_new_method(Type* type,
     return existing;
   } else {
     return type->add_new_method(
-        {0, "new", ts, type->get_name(), false, false, false, docstring, {}});
+        {0, "new", ts, type->get_name(), type->get_name(), false, false, false, docstring, {}});
   }
 }
 

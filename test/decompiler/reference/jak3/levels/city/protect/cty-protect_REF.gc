@@ -1,0 +1,632 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type task-manager-protect-hq
+(deftype task-manager-protect-hq (task-manager)
+  ((gunships       handle  2)
+   (spawn-records  (array proc-focusable-spawner))
+   (spawn-index    int8)
+   (death-count    int8)
+   )
+  (:state-methods
+    fight-gunship
+    fight-gunship-2
+    wait-finish
+    )
+  (:methods
+    (gunship-spawn (_type_ protect-gunship-enemy-spawn-params) object)
+    (spawn-gunship (_type_ vector int float) handle)
+    (get-spawn-pos-for-ship (_type_ vector vector symbol) vector)
+    )
+  )
+
+;; definition for method 3 of type task-manager-protect-hq
+(defmethod inspect ((this task-manager-protect-hq))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type task-manager inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tgunships[2] @ #x~X~%" (-> this gunships))
+  (format #t "~2Tspawn-records: ~A~%" (-> this spawn-records))
+  (format #t "~2Tspawn-index: ~D~%" (-> this spawn-index))
+  (format #t "~2Tdeath-count: ~D~%" (-> this death-count))
+  (label cfg-4)
+  this
+  )
+
+;; definition for symbol *protect-object-count*, type (array int32)
+(define *protect-object-count*
+  (new 'static 'boxed-array :type int32 :length 13 :allocated-length 17 0 0 0 0 0 0 0 0 0 8 8 8 0)
+  )
+
+;; definition for method 20 of type task-manager-protect-hq
+(defmethod init! ((this task-manager-protect-hq))
+  (set-setting! 'music 'factoryb 0.0 0)
+  (set-setting! 'gun-target-guards? #f 0.0 0)
+  (set! (-> this spawn-records) (new 'process 'boxed-array proc-focusable-spawner 17))
+  (set-setting! 'disable-parking-spots? #t 0.0 0)
+  (dotimes (v1-7 2)
+    (set! (-> this gunships v1-7) (the-as handle #f))
+    (set! (-> *active-gunships* v1-7 proc) (the-as handle #f))
+    )
+  (dotimes (s5-0 17)
+    (set! (-> this spawn-records s5-0) (new 'process 'proc-focusable-spawner))
+    (alloc-records! (-> this spawn-records s5-0) (-> *protect-object-count* s5-0) 'process)
+    )
+  (set-setting! 'extra-bank '((cityhq3 citykg)) 0.0 0)
+  (set! (-> this spawn-index) 0)
+  (set-cloud-and-fog-interp! *mood-control* 1.0 1.0 50.0 50.0)
+  (set-time-for-random-weather! *mood-control* 100000000.0 100000000.0)
+  (send-event (ppointer->process *time-of-day*) 'change 'hour 16)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio 2.0)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 7 of type task-manager-protect-hq
+(defmethod relocate ((this task-manager-protect-hq) (offset int))
+  (dotimes (v1-0 17)
+    (if (nonzero? (-> this spawn-records v1-0))
+        (&+! (-> this spawn-records v1-0) offset)
+        )
+    )
+  (if (nonzero? (-> this spawn-records))
+      (&+! (-> this spawn-records) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition for function protect-type->type
+(defun protect-type->type ((arg0 gunship-cmd-spawn-type))
+  (case arg0
+    (((gunship-cmd-spawn-type guard-tazer)
+      (gunship-cmd-spawn-type guard-rifle)
+      (gunship-cmd-spawn-type guard-grenade)
+      )
+     crimson-guard
+     )
+    (((gunship-cmd-spawn-type grunt))
+     metalhead-grunt
+     )
+    (((gunship-cmd-spawn-type flitter))
+     metalhead-flitter
+     )
+    (((gunship-cmd-spawn-type unknown))
+     metalhead-predator
+     )
+    (((gunship-cmd-spawn-type roboguard))
+     roboguard-city
+     )
+    (((gunship-cmd-spawn-type turret))
+     flying-turret
+     )
+    (((gunship-cmd-spawn-type spydroid))
+     spydroid
+     )
+    (else
+      (the-as type #f)
+      )
+    )
+  )
+
+;; definition for symbol *protect-levels*, type (array symbol)
+(define *protect-levels* (new 'static 'boxed-array :type symbol :length 12 :allocated-length 17
+                           '#f
+                           'ctypepa
+                           'ctypepa
+                           'ctypesa
+                           'ctypesa
+                           'ctypesa
+                           'ctypesb
+                           'ctypesb
+                           'ctypepb
+                           'ctypesc
+                           'ctypesc
+                           'ctypesc
+                           )
+        )
+
+;; definition for function spawn-protect-enemy
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs handle.
+(defun spawn-protect-enemy ((arg0 int) (arg1 process))
+  (if (logtest? (process-mask enemy guard) (-> *kernel-context* prevent-from-run))
+      (return (the-as handle #f))
+      )
+  (let ((s4-0 (new 'stack-no-clear 'traffic-object-spawn-params)))
+    (set! (-> s4-0 velocity quad) (the-as uint128 0))
+    (set! (-> s4-0 behavior) (the-as uint 1))
+    (set! (-> s4-0 object-type) (city-target-type->traffic-object-type (the-as city-target-type arg0)))
+    (set! (-> s4-0 flags) (traffic-spawn-flags))
+    (logior! (-> s4-0 flags) (traffic-spawn-flags tsf7))
+    (set! (-> s4-0 nav-branch) #f)
+    (set! (-> s4-0 guard-type) (the-as uint 0))
+    (let ((s5-1 (get-process *default-dead-pool* (protect-type->type (the-as gunship-cmd-spawn-type arg0)) #x4000 1)))
+      (the-as handle (ppointer->handle (when s5-1
+                                         (let ((t9-3 (method-of-type process activate)))
+                                           (t9-3 s5-1 arg1 "protect-enemy" (the-as pointer #x70004000))
+                                           )
+                                         (run-now-in-process s5-1 citizen-init-by-other s4-0)
+                                         (-> s5-1 ppointer)
+                                         )
+                                       )
+              )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait (task-manager-protect-hq)
+  :virtual #t
+  :enter (behavior ()
+    (set-blackout-frames (seconds 10))
+    (let ((t9-2 (-> (find-parent-state) enter)))
+      (if t9-2
+          (t9-2)
+          )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate active (task-manager-protect-hq)
+  :virtual #t
+  :enter (behavior ()
+    (set-setting! 'city-sound '(cityprot) 0.0 2)
+    (set-setting! 'exclusive-task #f 0.0 (-> self node-info task))
+    (set-setting! 'airlock #f 0.0 0)
+    (let ((v1-8 (get-hatred-at-idx *cty-attack-controller* 9 0)))
+      (set! (-> v1-8 hatred) 1.0)
+      (set! (-> v1-8 hatred-dist) 245760.0)
+      (set! (-> v1-8 dist-scale) 0.25)
+      (set! (-> v1-8 attacker-scale) 0.0)
+      (set! (-> v1-8 max-consider-dist) 12288000.0)
+      )
+    (set! (-> *cty-attack-controller* target-attacker max-num-attackers) (the-as uint 100))
+    (let ((gp-0 (push-back-hatred *cty-attack-controller*)))
+      (set! (-> gp-0 hatred) 0.3)
+      (set! (-> gp-0 hatred-dist) 491520.0)
+      (set! (-> gp-0 dist-scale) 0.25)
+      (set! (-> gp-0 attacker-scale) 0.01)
+      (set! (-> gp-0 max-consider-dist) 12288000.0)
+      (set-hatred-indices *cty-attack-controller* gp-0 4 13)
+      (set-hatred-indices *cty-attack-controller* gp-0 3 13)
+      (set-hatred-indices *cty-attack-controller* gp-0 5 13)
+      )
+    )
+  :trans (behavior ()
+    ((-> (method-of-type task-manager active) trans))
+    )
+  :code (behavior ()
+    (while (< (-> self spawn-index) (-> self spawn-records length))
+      (dotimes (gp-0 (-> self spawn-records (-> self spawn-index) records length))
+        (set! (-> self spawn-records (-> self spawn-index) records data gp-0 proc)
+              (spawn-protect-enemy (-> self spawn-index) self)
+              )
+        )
+      (+! (-> self spawn-index) 1)
+      (suspend)
+      )
+    (go-virtual fight-gunship)
+    )
+  )
+
+;; definition for symbol *gunship-start-positions*, type (array vector)
+(define *gunship-start-positions*
+  (new 'static 'boxed-array :type vector (new 'static 'vector :x 2304696.2 :y 40345.6 :z -2179358.8 :w 1.0))
+  )
+
+;; failed to figure out what this is:
+(defstate fight-gunship (task-manager-protect-hq)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('gunship-destroyed)
+       (go-virtual fight-gunship-2)
+       )
+      (else
+        (task-manager-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (ff-squad-control-method-56 *ff-squad-control* 0 0 0)
+    (ff-squad-control-method-56 *ff-squad-control* 1 4 4)
+    (let ((a1-3 (get-spawn-pos-for-ship self (new 'stack-no-clear 'vector) *zero-vector* #t)))
+      (set! (-> self gunships 0) (spawn-gunship self a1-3 0 0.0))
+      )
+    )
+  :trans (behavior ()
+    (if (< 1228800.0 (vector-vector-xz-distance (target-pos 0) (-> *gunship-start-positions* 0)))
+        (send-event self 'fail)
+        )
+    ((-> (method-of-type task-manager active) trans))
+    (dotimes (gp-1 (-> self spawn-records length))
+      (check-inactive (-> self spawn-records gp-1))
+      )
+    )
+  :code (behavior ()
+    (suspend)
+    (set-blackout-frames 0)
+    (sleep-code)
+    )
+  )
+
+;; definition for symbol *fountain-center-pos*, type vector
+(define *fountain-center-pos* (new 'static 'vector :x 2298060.8 :y 31825.92 :z -2276925.5 :w 1.0))
+
+;; definition for method 37 of type task-manager-protect-hq
+;; INFO: Used lq/sq
+(defmethod get-spawn-pos-for-ship ((this task-manager-protect-hq) (arg0 vector) (arg1 vector) (arg2 symbol))
+  (let ((s5-0 0))
+    (let ((f30-0 409600000.0))
+      (dotimes (s2-0 (-> *protect-path* length))
+        (let ((s1-0 (-> *protect-path* s2-0)))
+          0.0
+          (when (and (< 122880.0 (vector-vector-xz-distance (target-pos 0) s1-0))
+                     (or (< (vector-length arg1) 4096.0) (< 122880.0 (vector-vector-xz-distance arg1 s1-0)))
+                     )
+            (let ((a0-6 (new 'stack 'sphere)))
+              (set! (-> a0-6 quad) (-> s1-0 quad))
+              (+! (-> a0-6 y) 36864.0)
+              (set! (-> a0-6 r) 61440.0)
+              (when (or arg2 (not (sphere-in-view-frustum? a0-6)))
+                (let ((f0-7 (vector-vector-xz-distance s1-0 *fountain-center-pos*)))
+                  (when (and (< 81920.0 f0-7) (< f0-7 f30-0))
+                    (set! f30-0 f0-7)
+                    (set! s5-0 s2-0)
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    (set! (-> arg0 quad) (-> *protect-path* s5-0 quad))
+    )
+  arg0
+  )
+
+;; definition for function get-protect-suck-t
+(defun get-protect-suck-t ()
+  (lerp-scale-clamp
+    0.0
+    1.0
+    (the float (-> *game-info* sub-task-list (game-task-node city-protect-hq-resolution) death-count))
+    3.0
+    10.0
+    )
+  )
+
+;; definition for method 36 of type task-manager-protect-hq
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs handle.
+(defmethod spawn-gunship ((this task-manager-protect-hq) (arg0 vector) (arg1 int) (arg2 float))
+  (let ((s5-0 (new 'stack-no-clear 'protect-gunship-init-params)))
+    (set! (-> s5-0 task-man) (process->handle this))
+    (set! (-> s5-0 script) *gunship-0-script*)
+    (set! (-> s5-0 num-stages) 2)
+    (set! (-> s5-0 self-index) arg1)
+    (set! (-> s5-0 difficulty) arg2)
+    (set! (-> s5-0 pos quad) (-> arg0 quad))
+    (quaternion-identity! (-> s5-0 quat))
+    (let ((f0-1 (get-protect-suck-t)))
+      (set! (-> s5-0 difficulty-scalar) (lerp 0.29 1.0 (- 1.0 f0-1)))
+      )
+    (the-as handle (ppointer->handle (process-spawn protect-gunship s5-0 :name "protect-gunship" :to this)))
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate wait-finish (task-manager-protect-hq)
+  :virtual #t
+  :event task-manager-event-handler
+  :enter (behavior ()
+    (dotimes (gp-0 17)
+      (dotimes (s5-0 (-> self spawn-records gp-0 records length))
+        (send-event
+          (handle->process (-> self spawn-records gp-0 records data s5-0 proc))
+          'attack
+          #f
+          (static-attack-info
+            :mask (vehicle-impulse-factor)
+            ((id (new-attack-id)) (damage 16.0) (vehicle-damage-factor 1.0) (vehicle-impulse-factor 1.0) (mode 'explode))
+            )
+          )
+        )
+      )
+    )
+  :trans (behavior ()
+    ((-> (method-of-type task-manager active) trans))
+    )
+  :code (behavior ()
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 1))
+        (suspend)
+        )
+      )
+    (talker-spawn-func (-> *talker-speech* 337) *entity-pool* (target-pos 0) (the-as region #f))
+    (let ((gp-2 (current-time)))
+      (until (time-elapsed? gp-2 (seconds 2.5))
+        (suspend)
+        )
+      )
+    (talker-spawn-func (-> *talker-speech* 336) *entity-pool* (target-pos 0) (the-as region #f))
+    (send-event self 'complete)
+    (sleep-code)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate fight-gunship-2 (task-manager-protect-hq)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('gunship-destroyed)
+       (+! (-> self death-count) 1)
+       (if (= (-> self death-count) 2)
+           (go-virtual wait-finish)
+           )
+       )
+      (else
+        (task-manager-event-handler proc argc message block)
+        )
+      )
+    )
+  :enter (behavior ()
+    (ff-squad-control-method-56 *ff-squad-control* 0 0 0)
+    (ff-squad-control-method-56 *ff-squad-control* 1 7 7)
+    (let ((gp-0 (get-spawn-pos-for-ship self (new 'stack-no-clear 'vector) *zero-vector* #f)))
+      (dotimes (s5-0 2)
+        (set! (-> self gunships s5-0) (spawn-gunship self gp-0 s5-0 1.0))
+        (set! (-> gp-0 quad) (-> (get-spawn-pos-for-ship self (new 'stack-no-clear 'vector) gp-0 #f) quad))
+        )
+      )
+    )
+  :trans (behavior ()
+    (if (< 1228800.0 (vector-vector-xz-distance (target-pos 0) (-> *gunship-start-positions* 0)))
+        (send-event self 'fail)
+        )
+    ((-> (method-of-type task-manager active) trans))
+    (dotimes (gp-1 (-> self spawn-records length))
+      (check-inactive (-> self spawn-records gp-1))
+      )
+    )
+  :code (behavior ()
+    (let ((gp-0 (current-time)))
+      (until (time-elapsed? gp-0 (seconds 1))
+        (suspend)
+        )
+      )
+    (talker-spawn-func (-> *talker-speech* 334) *entity-pool* (target-pos 0) (the-as region #f))
+    (sleep-code)
+    )
+  )
+
+;; definition for method 35 of type task-manager-protect-hq
+;; INFO: Used lq/sq
+(defmethod gunship-spawn ((this task-manager-protect-hq) (arg0 protect-gunship-enemy-spawn-params))
+  (let ((gp-0 (new 'stack-no-clear 'traffic-object-spawn-params)))
+    (set! (-> gp-0 velocity quad) (the-as uint128 0))
+    (set! (-> gp-0 position quad) (-> arg0 pos quad))
+    (quaternion-copy! (-> gp-0 rotation) (-> arg0 quat))
+    (set! (-> gp-0 behavior) (the-as uint 6))
+    (set! (-> gp-0 object-type)
+          (city-target-type->traffic-object-type (the-as city-target-type (-> arg0 spawn-type)))
+          )
+    (set! (-> gp-0 flags) (traffic-spawn-flags))
+    (set! (-> gp-0 handle) (-> arg0 parent))
+    (set! (-> gp-0 user-data) (the-as uint 0))
+    (set! (-> gp-0 proc) #f)
+    (logior! (-> gp-0 flags) (traffic-spawn-flags tsf7))
+    (set! (-> gp-0 nav-branch) #f)
+    (let ((s3-0 (new 'stack-no-clear 'vector)))
+      (let ((s2-0 (new 'stack-no-clear 'collide-query)))
+        (set! (-> s3-0 quad) (-> arg0 pos quad))
+        (vector+float*! (-> s2-0 start-pos) (-> arg0 pos) *up-vector* 24576.0)
+        (set! (-> s2-0 move-dist quad) (the-as uint128 0))
+        (set! (-> s2-0 move-dist y) -81920.0)
+        (let ((v1-11 s2-0))
+          (set! (-> v1-11 radius) 40.96)
+          (set! (-> v1-11 collide-with) (collide-spec backgnd))
+          (set! (-> v1-11 ignore-process0) #f)
+          (set! (-> v1-11 ignore-process1) #f)
+          (set! (-> v1-11 ignore-pat)
+                (new 'static 'pat-surface :noentity #x1 :nojak #x1 :probe #x1 :noendlessfall #x1 :board #x1)
+                )
+          (set! (-> v1-11 action-mask) (collide-action solid))
+          )
+        (if (>= (fill-and-probe-using-line-sphere *collide-cache* s2-0) 0.0)
+            (set! (-> s3-0 quad) (-> s2-0 best-other-tri intersect quad))
+            )
+        )
+      (set! (-> gp-0 nav-mesh) (find-nearest-nav-mesh-protect s3-0 (the-as float #x7f800000)))
+      )
+    (let ((v1-21 (get-last-unused-handle! (-> this spawn-records (-> arg0 spawn-type)))))
+      (send-event (handle->process v1-21) 'traffic-activate gp-0 *traffic-engine*)
+      )
+    )
+  )
+
+;; definition for method 30 of type task-manager-protect-hq
+(defmethod taskman-event-handler ((this task-manager-protect-hq) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
+  (local-vars (v0-1 object))
+  (case arg2
+    (('count-active)
+     (let ((s5-1 0))
+       (dotimes (s4-1 (-> this spawn-records length))
+         (case (city-target-type->cty-faction (the-as city-target-type s4-1))
+           (((cty-faction mh) (cty-faction kg))
+            (+! s5-1
+                (- (-> this spawn-records s4-1 unused-list allocated-length) (-> this spawn-records s4-1 unused-list length))
+                )
+            )
+           )
+         )
+       (return s5-1)
+       )
+     v0-1
+     )
+    (('gunship-spawn)
+     (let ((a1-3 (-> arg3 param 0)))
+       (gunship-spawn this (the-as protect-gunship-enemy-spawn-params a1-3))
+       )
+     )
+    (else
+      (call-parent-method this arg0 arg1 arg2 arg3)
+      )
+    )
+  )
+
+;; definition of type prot-crate
+(deftype prot-crate (process-drawable)
+  ((h-crate    handle  :offset 208)
+   (dummy-ent  entity-actor)
+   )
+  (:state-methods
+    active
+    )
+  (:methods
+    (spawn-crate (_type_) handle)
+    )
+  )
+
+;; definition for method 3 of type prot-crate
+(defmethod inspect ((this prot-crate))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Th-crate: ~D~%" (-> this h-crate))
+  (format #t "~2Tdummy-ent: ~A~%" (-> this dummy-ent))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type prot-crate
+(defmethod init-from-entity! ((this prot-crate) (arg0 entity-actor))
+  (set! (-> this root) (new 'process 'trsqv))
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this entity) arg0)
+  (set! (-> this h-crate) (the-as handle #f))
+  (set! (-> this dummy-ent) (the-as entity-actor (entity-by-name "crate-1148")))
+  (go (method-of-object this active))
+  )
+
+;; failed to figure out what this is:
+(defstate active (prot-crate)
+  :virtual #t
+  :trans (behavior ()
+    (if (handle->process (-> self h-crate))
+        (set-time! (-> self state-time))
+        )
+    (when (and (time-elapsed? (-> self state-time) (seconds 15)) (not (handle->process (-> self h-crate))))
+      (let ((a0-11 (new 'stack 'sphere)))
+        (set! (-> a0-11 quad) (-> self root trans quad))
+        (set! (-> a0-11 r) 8192.0)
+        (if (not (sphere-in-view-frustum? a0-11))
+            (spawn-crate self)
+            )
+        )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for method 21 of type prot-crate
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs handle.
+(defmethod spawn-crate ((this prot-crate))
+  (let ((s5-0 (new 'stack-no-clear 'vector))
+        (s4-0 (new 'static 'fact-info))
+        )
+    (set! (-> s5-0 quad) (-> this root trans quad))
+    (set! (-> s5-0 w) 1.0)
+    (set! (-> s4-0 pickup-type) (pickup-type ammo-random))
+    (let ((f30-0 (get-protect-suck-t)))
+      (set! (-> s4-0 pickup-spawn-amount) (the float (the int (lerp 1.0 3.0 f30-0))))
+      (set! (-> s4-0 pickup-amount) 10.0)
+      (format 0 "Suck t is ~f, pickup spawn ~f~%" f30-0 (-> s4-0 pickup-spawn-amount))
+      (when *target*
+        (let ((f28-0 (/ (-> *target* fact health) (-> *target* fact health-max))))
+          0.0
+          (let* ((f0-9 (lerp 0.3 0.5 f30-0))
+                 (f1-2 (- 1.0 f28-0))
+                 (f1-3 (* f1-2 f1-2))
+                 (f30-1 (lerp 0.0 f0-9 f1-3))
+                 (v1-13 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                 (v1-14 (the-as number (logior #x3f800000 v1-13)))
+                 )
+            (when (< (+ -1.0 (the-as float v1-14)) f30-1)
+              (set! (-> s4-0 pickup-type) (pickup-type health))
+              (set! (-> s4-0 pickup-spawn-amount) (-> *FACT-bank* health-small-inc))
+              (if (and (< 0.9 f30-1) (let* ((v1-23 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+                                            (v1-24 (the-as number (logior #x3f800000 v1-23)))
+                                            )
+                                       (< (+ -1.0 (the-as float v1-24)) 0.5)
+                                       )
+                       )
+                  (set! (-> s4-0 pickup-spawn-amount) (-> *FACT-bank* health-default-inc))
+                  )
+              )
+            )
+          )
+        )
+      )
+    (let* ((s4-1
+             (ppointer->process (process-spawn crate (-> this entity) s5-0 'blue s4-0 :name "crate" :to *entity-pool*))
+             )
+           (s5-1 (if (type? s4-1 process-focusable)
+                     s4-1
+                     )
+                 )
+           )
+      (let ((a0-18 s5-1))
+        (if a0-18
+            (process-entity-set! a0-18 (-> this dummy-ent))
+            )
+        )
+      (let ((v0-12 (process->handle s5-1)))
+        (set! (-> this h-crate) (the-as handle v0-12))
+        (the-as handle v0-12)
+        )
+      )
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate fail (task-manager-protect-hq)
+  :virtual #t
+  :enter (behavior ((arg0 resetter-params))
+    (let ((v1-0 *game-info*))
+      (set! (-> v1-0 gun-ammo 0) (fmax (-> v1-0 gun-ammo 0) (-> *FACT-bank* ammo-yellow-start)))
+      (set! (-> v1-0 gun-ammo 1) (fmax (-> v1-0 gun-ammo 1) (-> *FACT-bank* ammo-red-start)))
+      (set! (-> v1-0 gun-ammo 2) (fmax (-> v1-0 gun-ammo 2) (-> *FACT-bank* ammo-blue-start)))
+      (set! (-> v1-0 gun-ammo 3) (fmax (-> v1-0 gun-ammo 3) (-> *FACT-bank* ammo-dark-start)))
+      )
+    (let* ((t9-0 find-parent-method)
+           (a0-5 task-manager-protect-hq)
+           (t9-1 (-> (the-as (state resetter-params task-manager-protect-hq) (t9-0 a0-5 18)) enter))
+           )
+      (if t9-1
+          (t9-1 (the-as resetter-params a0-5))
+          )
+      )
+    )
+  )
+
+;; definition for method 25 of type task-manager-protect-hq
+;; WARN: Return type mismatch object vs none.
+(defmethod task-manager-method-25 ((this task-manager-protect-hq))
+  (set-time-for-random-weather! *mood-control* 0.0 0.0)
+  (send-event (ppointer->process *time-of-day*) 'change 'ratio 1.0)
+  (none)
+  )
