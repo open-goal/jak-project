@@ -281,7 +281,6 @@ namespace generic_no_light_proc { extern void link(); }
 namespace method_9_font_work { extern void link(); }
 namespace draw_string_asm { extern void link(); }
 namespace get_string_length { extern void link(); }
-namespace method_9_prim_strip { extern void link(); }
 namespace adgif_shader_texture_with_update { extern void link(); }
 namespace moving_sphere_triangle_intersect { extern void link(); }
 namespace collide_do_primitives { extern void link(); }
@@ -566,7 +565,6 @@ PerGameVersion<std::unordered_map<std::string, std::vector<void (*)()>>> gMips2C
      {"texture", {jak3::adgif_shader_texture_with_update::link}},
      {"collide-func",
       {jak3::moving_sphere_triangle_intersect::link, jak3::collide_do_primitives::link}},
-     {"prim", {jak3::method_9_prim_strip::link}},
      {"joint", {jak3::cspace_parented_transformq_joint::link}},
      {"foreground",
       {jak3::foreground_check_longest_edge_asm::link, jak3::foreground_generic_merc::link,

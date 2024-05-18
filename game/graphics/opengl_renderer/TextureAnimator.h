@@ -246,7 +246,7 @@ class TexturePool;
 
 class TextureAnimator {
  public:
-  TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level);
+  TextureAnimator(ShaderLibrary& shaders, const tfrag3::Level* common_level, GameVersion version);
   ~TextureAnimator();
   void handle_texture_anim_data(DmaFollower& dma,
                                 const u8* ee_mem,
@@ -259,7 +259,10 @@ class TextureAnimator {
 
  private:
   void copy_private_to_public();
-  void setup_texture_anims();
+  void setup_texture_anims_common();
+  void setup_texture_anims_jak2();
+  void setup_texture_anims_jak3();
+
   void setup_sky();
   void handle_upload_clut_16_16(const DmaTransfer& tf, const u8* ee_mem);
   void handle_generic_upload(const DmaTransfer& tf, const u8* ee_mem);
@@ -429,6 +432,7 @@ class TextureAnimator {
   static constexpr int kNumSlimeNoiseLayers = 4;
 
  private:
+  GameVersion m_version;
   Vector16ub m_random_table[kRandomTableSize];
   int m_random_index = 0;
 
@@ -451,3 +455,10 @@ class TextureAnimator {
   int m_slime_output_slot = -1;
   int m_slime_scroll_output_slot = -1;
 };
+
+int output_slot_by_idx(GameVersion version, const std::string& name);
+int update_opengl_noise_texture(GLuint texture,
+                                u8* temp,
+                                Vector16ub* random_table,
+                                int dim,
+                                int random_index_in);

@@ -1,0 +1,288 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *faccity-part-updater*, type lfaccity-pparticle-mover
+(define *faccity-part-updater* (the-as lfaccity-pparticle-mover #f))
+
+;; definition of type lfaccity-states
+(deftype lfaccity-states (structure)
+  ((light      light-state  :inline)
+   (roty       float)
+   (rotz       float)
+   (rot-bob    float)
+   (wobble     float)
+   (bob        float)
+   (zero-test  int32)
+   )
+  )
+
+;; definition for method 3 of type lfaccity-states
+(defmethod inspect ((this lfaccity-states))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'lfaccity-states)
+  (format #t "~1Tlight: #<light-state @ #x~X>~%" (-> this light))
+  (format #t "~1Troty: ~f~%" (-> this roty))
+  (format #t "~1Trotz: ~f~%" (-> this rotz))
+  (format #t "~1Trot-bob: ~f~%" (-> this rot-bob))
+  (format #t "~1Twobble: ~f~%" (-> this wobble))
+  (format #t "~1Tbob: ~f~%" (-> this bob))
+  (format #t "~1Tzero-test: ~D~%" (-> this zero-test))
+  (label cfg-4)
+  this
+  )
+
+;; definition for function update-mood-lfaccity
+;; WARN: Return type mismatch object vs none.
+(defbehavior update-mood-lfaccity time-of-day-proc ((arg0 mood-context) (arg1 float) (arg2 int))
+  (copy-mood-exterior arg0)
+  (when (and (= (-> *level* level arg2 status) 'active)
+             (< (the-as uint (-> *time-of-day-context* mode)) (the-as uint 9))
+             )
+    (let ((gp-1 (the-as object (-> arg0 state))))
+      (cond
+        ((level-get *level* 'factoryb)
+         (set-vector! (-> *math-camera* trans-other) 1228800.0 (-> (the-as lfaccity-states gp-1) bob) 1228800.0 1.0)
+         (let ((s3-0 (new 'stack-no-clear 'vector)))
+           (set-vector! s3-0 -409600.0 0.0 0.0 1.0)
+           (vector-rotate-y! s3-0 s3-0 (-> (the-as lfaccity-states gp-1) roty))
+           (vector+! (-> *math-camera* trans-other) (-> *math-camera* trans-other) s3-0)
+           )
+         )
+        ((or (level-get *level* 'factoryc) (level-get *level* 'factoryd))
+         (set-vector!
+           (-> *math-camera* trans-other)
+           696320.0
+           (+ -614400.0 (-> (the-as lfaccity-states gp-1) bob))
+           -368640.0
+           1.0
+           )
+         )
+        )
+      (update-mood-light arg0 5 0 1.0 0.0 arg1 0.0 2.0)
+      (let ((s5-1 *math-camera*))
+        (when (not (paused?))
+          (let ((s3-1 (new 'stack-no-clear 'quaternion))
+                (s4-1 (new 'stack-no-clear 'quaternion))
+                )
+            (quaternion-vector-angle! s3-1 *y-vector* (-> (the-as lfaccity-states gp-1) roty))
+            (quaternion-vector-angle! s4-1 *z-vector* (-> (the-as lfaccity-states gp-1) wobble))
+            (quaternion*! (-> s5-1 quat-other) s4-1 s3-1)
+            )
+          (let ((f0-17 (+ (-> (the-as lfaccity-states gp-1) roty) (* 910.2222 (seconds-per-frame)))))
+            (set! (-> (the-as lfaccity-states gp-1) roty) (- f0-17 (* (the float (the int (/ f0-17 65536.0))) 65536.0)))
+            )
+          (let ((f0-20 (+ (-> (the-as lfaccity-states gp-1) rotz) (* 8192.0 (seconds-per-frame)))))
+            (set! (-> (the-as lfaccity-states gp-1) rotz) (- f0-20 (* (the float (the int (/ f0-20 65536.0))) 65536.0)))
+            )
+          (set! (-> (the-as lfaccity-states gp-1) wobble) (* 910.2222 (sin (-> (the-as lfaccity-states gp-1) rotz))))
+          (let ((f0-26 (+ (-> (the-as lfaccity-states gp-1) rot-bob) (* 16384.0 (seconds-per-frame)))))
+            (set! (-> (the-as lfaccity-states gp-1) rot-bob)
+                  (- f0-26 (* (the float (the int (/ f0-26 65536.0))) 65536.0))
+                  )
+            )
+          (set! (-> (the-as lfaccity-states gp-1) bob)
+                (+ -40960.0 (* 40960.0 (sin (-> (the-as lfaccity-states gp-1) rot-bob))))
+                )
+          (send-event *faccity-part-updater* 'mood-update)
+          )
+        )
+      )
+    )
+  (none)
+  )
+
+;; definition of type faccity-pparticle-info
+(deftype faccity-pparticle-info (structure)
+  ((original-pos  vector  :inline)
+   (inited?       symbol)
+   )
+  )
+
+;; definition for method 3 of type faccity-pparticle-info
+(defmethod inspect ((this faccity-pparticle-info))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this 'faccity-pparticle-info)
+  (format #t "~1Toriginal-pos: #<vector @ #x~X>~%" (-> this original-pos))
+  (format #t "~1Tinited?: ~A~%" (-> this inited?))
+  (label cfg-4)
+  this
+  )
+
+;; definition of type faccity-pparticle-array
+(deftype faccity-pparticle-array (inline-array-class)
+  ((data  faccity-pparticle-info  :inline :dynamic)
+   )
+  )
+
+;; definition for method 3 of type faccity-pparticle-array
+(defmethod inspect ((this faccity-pparticle-array))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (format #t "[~8x] ~A~%" this (-> this type))
+  (format #t "~1Tlength: ~D~%" (-> this length))
+  (format #t "~1Tallocated-length: ~D~%" (-> this allocated-length))
+  (format #t "~1Tdata[0] @ #x~X~%" (-> this data))
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(set! (-> faccity-pparticle-array heap-base) (the-as uint 32))
+
+;; definition of type lfaccity-pparticle-mover
+(deftype lfaccity-pparticle-mover (process-drawable)
+  ((actor-group        (pointer actor-group))
+   (actor-group-count  int32)
+   (particles          faccity-pparticle-array)
+   )
+  (:state-methods
+    active
+    )
+  (:methods
+    (mood-update (_type_) symbol)
+    )
+  )
+
+;; definition for method 3 of type lfaccity-pparticle-mover
+(defmethod inspect ((this lfaccity-pparticle-mover))
+  (when (not this)
+    (set! this this)
+    (goto cfg-7)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tactor-group: #x~X~%" (-> this actor-group))
+  (dotimes (s5-0 (-> this actor-group-count))
+    (format #t "~T  [~D]~2Tactor-group: ~`actor-group`P~%" s5-0 (-> this actor-group s5-0))
+    )
+  (format #t "~2Tactor-group-count: ~D~%" (-> this actor-group-count))
+  (format #t "~2Tparticles: ~A~%" (-> this particles))
+  (label cfg-7)
+  this
+  )
+
+;; definition for method 11 of type lfaccity-pparticle-mover
+;; INFO: Used lq/sq
+(defmethod init-from-entity! ((this lfaccity-pparticle-mover) (arg0 entity-actor))
+  (local-vars (sv-16 res-tag))
+  (set! sv-16 (new 'static 'res-tag))
+  (let ((v1-1 (res-lump-data (-> this entity) 'actor-groups pointer :tag-ptr (& sv-16))))
+    (cond
+      ((and v1-1 (nonzero? (-> sv-16 elt-count)))
+       (set! (-> this actor-group) (the-as (pointer actor-group) v1-1))
+       (set! (-> this actor-group-count) (the-as int (-> sv-16 elt-count)))
+       )
+      (else
+        (set! (-> this actor-group) (the-as (pointer actor-group) #f))
+        (set! (-> this actor-group-count) 0)
+        0
+        )
+      )
+    )
+  (set! (-> this root) (new 'process 'trsqv))
+  (if (<= (-> this actor-group-count) 0)
+      (go process-drawable-art-error "actor group")
+      )
+  (set! (-> this entity extra vis-dist) 40960000000000.0)
+  (set! (-> this particles) (new 'process 'faccity-pparticle-array (-> this actor-group 0 length)))
+  (dotimes (v1-18 (-> this particles length))
+    (set! (-> this particles data v1-18 inited?) #f)
+    )
+  (set! *faccity-part-updater* this)
+  (go (method-of-object this active))
+  )
+
+;; definition for function lfaccity-pparticle-mover-init-by-other
+(defbehavior lfaccity-pparticle-mover-init-by-other lfaccity-pparticle-mover ((arg0 entity-actor))
+  (init-from-entity! self arg0)
+  )
+
+;; failed to figure out what this is:
+(defstate active (lfaccity-pparticle-mover)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('mood-update)
+       (mood-update self)
+       )
+      )
+    )
+  :code sleep-code
+  )
+
+;; definition for method 12 of type lfaccity-pparticle-mover
+(defmethod run-logic? ((this lfaccity-pparticle-mover))
+  "Should this process be run? Checked by execute-process-tree."
+  #t
+  )
+
+;; definition for method 10 of type lfaccity-pparticle-mover
+(defmethod deactivate ((this lfaccity-pparticle-mover))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
+  (set! *faccity-part-updater* #f)
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for method 21 of type lfaccity-pparticle-mover
+;; INFO: Used lq/sq
+(defmethod mood-update ((this lfaccity-pparticle-mover))
+  (let ((s5-0 (quaternion->matrix (new 'stack-no-clear 'matrix) (-> *math-camera* quat-other))))
+    (dotimes (s4-0 (-> this particles length))
+      (cond
+        ((-> this particles data s4-0 inited?)
+         (let ((v1-6 (vector-matrix*! (new 'stack-no-clear 'vector) (the-as vector (-> this particles data s4-0)) s5-0))
+               (a1-4 (-> this actor-group 0 data s4-0 actor))
+               )
+           (when a1-4
+             (let ((a1-5 (-> a1-4 extra process)))
+               (when a1-5
+                 (set! (-> (the-as process-drawable a1-5) root trans quad) (-> v1-6 quad))
+                 (vector+!
+                   (-> (the-as process-drawable a1-5) root trans)
+                   (-> (the-as process-drawable a1-5) root trans)
+                   (-> *math-camera* trans-other)
+                   )
+                 )
+               )
+             )
+           )
+         )
+        (else
+          (let ((v1-14 (-> this actor-group 0 data s4-0 actor)))
+            (when v1-14
+              (set! (-> this particles data s4-0 original-pos quad) (-> v1-14 extra trans quad))
+              (set! (-> this particles data s4-0 inited?) #t)
+              )
+            )
+          )
+        )
+      )
+    )
+  #f
+  )
+
+;; definition for method 7 of type lfaccity-pparticle-mover
+(defmethod relocate ((this lfaccity-pparticle-mover) (offset int))
+  (set! *faccity-part-updater* this)
+  (if *faccity-part-updater*
+      (set! *faccity-part-updater* (&+ *faccity-part-updater* offset))
+      )
+  (if (nonzero? (-> this particles))
+      (&+! (-> this particles) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+
+
+

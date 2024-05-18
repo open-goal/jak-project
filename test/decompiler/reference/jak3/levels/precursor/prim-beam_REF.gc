@@ -1,0 +1,263 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for symbol *default-prim-beam-appearance*, type prim-beam-settings
+(define *default-prim-beam-appearance* (new 'static 'prim-beam-settings
+                                         :width 4096.0
+                                         :color (new 'static 'rgba :r #xff :g #xff :a #x80)
+                                         :alpha 0.5
+                                         :tex-id #x100300
+                                         :num-tiles 1.0
+                                         )
+        )
+
+;; definition of type prim-beam
+(deftype prim-beam (process-drawable)
+  ((strip       prim-strip)
+   (pos0        vector              :inline)
+   (pos1        vector              :inline)
+   (appearance  prim-beam-settings  :inline)
+   (duration    time-frame          :offset 272)
+   )
+  (:state-methods
+    active
+    hidden
+    )
+  (:methods
+    (prim-beam-method-22 (_type_) none)
+    (prim-beam-method-23 (_type_) none)
+    (prim-beam-method-24 (_type_) none)
+    (init-strip! (_type_) none)
+    )
+  )
+
+;; definition for method 3 of type prim-beam
+(defmethod inspect ((this prim-beam))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tstrip: ~A~%" (-> this strip))
+  (format #t "~2Tpos0: #<vector @ #x~X>~%" (-> this pos0))
+  (format #t "~2Tpos1: #<vector @ #x~X>~%" (-> this pos1))
+  (format #t "~2Tappearance: #<prim-beam-settings @ #x~X>~%" (-> this appearance))
+  (format #t "~2Tstate-time: ~D~%" (-> this state-time))
+  (format #t "~2Tduration: ~D~%" (-> this duration))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 22 of type prim-beam
+;; WARN: Return type mismatch object vs none.
+(defmethod prim-beam-method-22 ((this prim-beam))
+  (set! (-> this strip)
+        (new 'process 'prim-strip 4 (the-as texture-id (-> this appearance tex-id)) (the-as string #f))
+        )
+  (set! (-> this strip bucket) (bucket-id generic-sprite-1))
+  (set! (-> this strip sink) (the-as uint 65))
+  (set! (-> this root) (new 'process 'trsqv))
+  (go (method-of-object this active))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defstate active (prim-beam)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('hide)
+       (go-virtual hidden)
+       )
+      (('die)
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (init-strip! self)
+    (set-time! (-> self state-time))
+    )
+  :trans (behavior ()
+    (prim-beam-method-24 self)
+    (if (and (> (-> self duration) 0) (time-elapsed? (-> self state-time) (-> self duration)))
+        (go empty-state)
+        )
+    )
+  :code sleep-code
+  )
+
+;; failed to figure out what this is:
+(defstate hidden (prim-beam)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('show)
+       (go-virtual active)
+       )
+      (('die)
+       (go empty-state)
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self strip num-verts) (the-as uint 0))
+    0
+    )
+  :code sleep-code
+  )
+
+;; definition for method 24 of type prim-beam
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch symbol vs none.
+(defmethod prim-beam-method-24 ((this prim-beam))
+  (let ((s3-0 (-> this strip data))
+        (s5-0 (new 'stack-no-clear 'vector))
+        (v1-1 (camera-pos))
+        (s4-0 (new 'stack-no-clear 'vector))
+        (s2-0 (new 'stack-no-clear 'vector))
+        (s1-0 (new 'stack-no-clear 'vector))
+        (f30-0 (-> this appearance width))
+        )
+    (set! (-> s5-0 quad) (-> this pos0 quad))
+    (vector-! s1-0 (-> this pos1) (-> this pos0))
+    (vector-! s2-0 v1-1 s5-0)
+    (set! (-> s2-0 quad) (-> (math-camera-matrix) fvec quad))
+    (vector-cross! s4-0 s2-0 s1-0)
+    (vector-normalize! s4-0 1.0)
+    (vector+float*! s5-0 (-> this pos0) s4-0 f30-0)
+    (set! (-> s3-0 0 pos quad) (-> s5-0 quad))
+    (set! (-> s3-0 0 stq z) 0.0)
+    (set! (-> s3-0 0 stq x) 0.0)
+    (set! (-> s3-0 0 stq y) 0.0)
+    (let ((v1-9 (-> s3-0 1)))
+      (vector+float*! s5-0 (-> this pos0) s4-0 (- f30-0))
+      (set! (-> v1-9 pos quad) (-> s5-0 quad))
+      (set! (-> v1-9 stq z) 0.0)
+      (set! (-> v1-9 stq x) 1.0)
+      (set! (-> v1-9 stq y) 0.0)
+      (let ((v1-10 (&+ v1-9 32)))
+        (vector+float*! s5-0 (-> this pos1) s4-0 f30-0)
+        (set! (-> v1-10 pos quad) (-> s5-0 quad))
+        (set! (-> v1-10 stq z) 0.0)
+        (set! (-> v1-10 stq x) 0.0)
+        (set! (-> v1-10 stq y) (-> this appearance num-tiles))
+        (let ((v1-11 (&+ v1-10 32)))
+          (vector+float*! s5-0 (-> this pos1) s4-0 (- f30-0))
+          (set! (-> v1-11 pos quad) (-> s5-0 quad))
+          (set! (-> v1-11 stq z) 0.0)
+          (set! (-> v1-11 stq x) 1.0)
+          (set! (-> v1-11 stq y) (-> this appearance num-tiles))
+          (&+ v1-11 32)
+          )
+        )
+      )
+    )
+  (let ((v1-14 (the-as object (-> this strip data))))
+    (dotimes (a0-19 4)
+      (set! (-> (the-as prim-vertex v1-14) col) (-> this appearance color))
+      (set! (-> (the-as prim-vertex v1-14) col a) (the int (* 128.0 (-> this appearance alpha))))
+      (set! v1-14 (&+ (the-as prim-vertex v1-14) 32))
+      )
+    )
+  (none)
+  )
+
+;; definition for method 25 of type prim-beam
+;; WARN: Return type mismatch uint vs none.
+(defmethod init-strip! ((this prim-beam))
+  (set! (-> this strip clamp) (new 'static 'gs-clamp))
+  (set! (-> this strip num-verts) (the-as uint 4))
+  (set! (-> this strip alpha) *simple-prim-additive*)
+  (set! (-> this strip adnops 0 cmds) (gs-reg64 test-1))
+  (set! (-> this strip data0)
+        (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest greater-equal))
+        )
+  (set! (-> this strip tex-id) (the-as texture-id (-> this appearance tex-id)))
+  (none)
+  )
+
+;; definition for method 7 of type prim-beam
+(defmethod relocate ((this prim-beam) (offset int))
+  (if (nonzero? (-> this strip))
+      (&+! (-> this strip) offset)
+      )
+  (call-parent-method this offset)
+  )
+
+;; definition of type prim-beam-tracker
+(deftype prim-beam-tracker (prim-beam)
+  ((track-obj1    handle)
+   (track-obj2    handle)
+   (track-joint1  int32)
+   (track-joint2  int32)
+   )
+  )
+
+;; definition for method 3 of type prim-beam-tracker
+(defmethod inspect ((this prim-beam-tracker))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type prim-beam inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Ttrack-obj1: ~D~%" (-> this track-obj1))
+  (format #t "~2Ttrack-obj2: ~D~%" (-> this track-obj2))
+  (format #t "~2Ttrack-joint1: ~D~%" (-> this track-joint1))
+  (format #t "~2Ttrack-joint2: ~D~%" (-> this track-joint2))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 24 of type prim-beam-tracker
+(defmethod prim-beam-method-24 ((this prim-beam-tracker))
+  (let ((v1-1 (the-as process-drawable (handle->process (-> this track-obj1)))))
+    (if v1-1
+        (vector<-cspace! (-> this pos0) (-> v1-1 node-list data (-> this track-joint1)))
+        )
+    )
+  (let ((v1-5 (the-as process-drawable (handle->process (-> this track-obj2)))))
+    (if v1-5
+        (vector<-cspace! (-> this pos1) (-> v1-5 node-list data (-> this track-joint2)))
+        )
+    )
+  (call-parent-method this)
+  (none)
+  )
+
+;; definition for function prim-beam-tracker-init-by-other
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch none vs object.
+(defbehavior prim-beam-tracker-init-by-other prim-beam-tracker ((arg0 prim-beam-tracker-params))
+  (set! (-> self track-obj1) (-> arg0 track-obj1))
+  (set! (-> self track-obj2) (-> arg0 track-obj2))
+  (set! (-> self track-joint1) (-> arg0 track-joint1))
+  (set! (-> self track-joint2) (-> arg0 track-joint2))
+  (if (-> arg0 pos0)
+      (set! (-> self pos0 quad) (-> arg0 pos0 quad))
+      )
+  (if (-> arg0 pos1)
+      (set! (-> self pos1 quad) (-> arg0 pos1 quad))
+      )
+  (set! (-> self duration) (-> arg0 duration))
+  (mem-copy! (the-as pointer (-> self appearance)) (the-as pointer (-> arg0 appearance)) 20)
+  (prim-beam-method-22 self)
+  )
+
+;; definition for function spawn-prim-beam-tracker
+;; WARN: Return type mismatch int vs handle.
+(defun spawn-prim-beam-tracker ((arg0 prim-beam-tracker-params) (arg1 symbol) (arg2 process))
+  (if (not arg1)
+      (set! arg1 '*default-prim-beam-appearance*)
+      )
+  (set! (-> arg0 appearance) (the-as prim-beam-settings (-> arg1 value)))
+  (the-as handle (ppointer->handle (process-spawn prim-beam-tracker arg0 :name "prim-beam-tracker" :to arg2)))
+  )
+
+
+
+

@@ -80,6 +80,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/TextureAnimator.cpp
+        graphics/opengl_renderer/TextureAnimatorDefs.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
         graphics/opengl_renderer/Warp.cpp
@@ -197,7 +198,6 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/generic_effect.cpp
         mips2c/jak3_functions/joint.cpp
         mips2c/jak3_functions/lights.cpp
-        mips2c/jak3_functions/prim.cpp
         mips2c/jak3_functions/sky.cpp
         mips2c/jak3_functions/texture.cpp
         mips2c/jak3_functions/particle_curves.cpp
