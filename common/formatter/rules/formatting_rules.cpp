@@ -12,6 +12,7 @@ namespace formatter_rules {
 // differentiate between a quoted symbol and a quoted form
 const std::set<std::string> constant_types = {"kwd_lit",  "num_lit",  "str_lit",
                                               "char_lit", "null_lit", "bool_lit"};
+const std::set<std::string> constant_type_forms = {"meters", "seconds", "degrees"};
 
 namespace constant_list {
 bool is_constant_list(const FormatterTreeNode& node) {
@@ -112,6 +113,34 @@ bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node
     return false;
   }
   return true;
+}
+
+// TODO - potentially remove the above
+bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
+                                            const FormatterTreeNode& curr_node) {
+  if (prev_node.metadata.node_type == "kwd_lit") {
+    // Handle standard constant types
+    if (constant_types.find(curr_node.metadata.node_type) != constant_types.end()) {
+      if (curr_node.metadata.node_type != "kwd_lit") {
+        // NOTE - there is ambiugity here which cannot be totally solved (i think?)
+        // if the element itself is also a keyword, assume this is two adjacent keywords and they
+        // should not be paired
+        return true;
+      }
+    }
+    // Quoted symbols
+    if (curr_node.metadata.node_type == "sym_name" && curr_node.node_prefix &&
+        curr_node.node_prefix.value() == "'") {
+      return true;
+    }
+    // Constant forms special cases (ie. meters)
+    if (!curr_node.refs.empty() &&
+        constant_type_forms.find(curr_node.refs.at(0).token_str()) !=
+            constant_type_forms.end()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool form_should_be_constant_paired(const FormatterTreeNode& node) {

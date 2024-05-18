@@ -186,6 +186,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"defun-debug", new_flow_rule(3)},
     {"defbehavior", new_flow_rule(4)},
     {"if", new_inlineable_flow_rule(2)},
+    {"#if", new_inlineable_flow_rule(2)},
     {"define", new_permissive_flow_rule()},
     {"define-extern", new_permissive_flow_rule()},
     {"defmacro", new_flow_rule(3)},
@@ -198,10 +199,12 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"when", new_flow_rule(2)},
     {"countdown", new_flow_rule(2)},
     {"until", new_flow_rule(2)},
+    {"loop", new_flow_rule(2)},
     {"while", new_flow_rule(2)},
     {"begin", new_flow_rule(0)},
     {"with-pp", new_flow_rule(0)},
     {"local-vars", new_inlinable_simple_flow_rule()},
-    {"with-dma-buffer-add-bucket", new_flow_rule(2)}};
+    {"with-dma-buffer-add-bucket", new_flow_rule(2)},
+    {"dma-bucket-insert-tag", new_flow_rule(2)}};
 }  // namespace config
 }  // namespace formatter_rules

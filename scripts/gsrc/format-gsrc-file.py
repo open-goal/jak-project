@@ -21,24 +21,34 @@ with open("./scripts/gsrc/format-jak1.json", "r") as f:
     formatting_progress = json.load(f)
 
 # find the next file
-index = 0
+curr_file = None
+curr_file_index = 0
+go_to_next = False
+open_file_in_vscode = False
+if apply_status == "next":
+    go_to_next = True
+    open_file_in_vscode = True
+
 for index, file in enumerate(formatting_progress):
     if file['status'] == 'not-formatted':
-        next_file = file['path']
-        break
+        if go_to_next:
+            print(f"Marking {file['path']} as formatted")
+            formatting_progress[index]['status'] = 'formatted'
+            go_to_next = False
+        else:
+            curr_file = file['path']
+            curr_file_index = index
+            if open_file_in_vscode:
+                subprocess.run(["C:\\Users\\xtvas\\AppData\\Local\\Programs\\Microsoft VS Code\\bin\\code.cmd", file['path']]) 
+            break
 
 # format it
-print(f"Formatting {next_file}")
-subprocess.run(["./out/build/Debug/bin/formatter", "--write", "--file", next_file]) 
+print(f"Formatting {curr_file}")
+subprocess.run(["./out/build/Debug/bin/formatter", "--write", "--file", curr_file]) 
 
 # save status
 if apply_status is not None and (apply_status == "skip" or apply_status == "next"):
-    if apply_status == "next":
-        formatting_progress[index]['status'] = 'formatted'
-        print(f"Marking {next_file} as formatted")
-    else:
-        formatting_progress[index]['status'] = 'skipped'
-        print(f"Marking {next_file} as skipped")
+    # TODO - add skip support back if i ever want to use it
     with open("./scripts/gsrc/format-jak1.json", "w") as f:
         f.write(json.dumps(formatting_progress, indent=2))
 

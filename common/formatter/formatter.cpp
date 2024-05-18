@@ -319,12 +319,13 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
       // combine the next inline comment or constant pair
       if ((next_ref.metadata.node_type == "comment" && next_ref.metadata.is_inline) ||
           (curr_node.formatting_config.has_constant_pairs &&
-           constant_pairs::is_element_second_in_constant_pair(curr_node, next_ref, i + 1))) {
+           constant_pairs::is_element_second_in_constant_pair(curr_node, next_ref, i + 1)) ||
+          constant_pairs::is_element_second_in_constant_pair_new(curr_node.refs.at(i), next_ref)) {
         // TODO
         // has issues with not consolidating first lines, this should probably just be moved to
         // outside this loop for simplicity, do it later
         if (next_ref.token) {
-          form_lines.at(form_lines.size() - 1) += fmt::format(" {}", next_ref.token.value());
+          form_lines.at(form_lines.size() - 1) += fmt::format(" {}", next_ref.token_str());
           i++;
           // We have to handle hang-consolidation here or else it will never be reached above!
           if (i == (int)curr_node.refs.size() - 1 && form_lines.size() > 1 &&

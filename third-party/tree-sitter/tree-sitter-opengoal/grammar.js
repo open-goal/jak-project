@@ -117,7 +117,7 @@ const CHARACTER =
 // \u205f => <medium mathematical space>
 // \u3000 => <ideographic space>
 const SYMBOL_HEAD =
-  /[^\f\n\r\t \/()\[\]{}"@~^;`\\,:#'0-9\u000B\u001C\u001D\u001E\u001F\u2028\u2029\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2008\u2009\u200a\u205f\u3000]/;
+  /[^\f\n\r\t \/()\[\]{}"@~^;`\\,:'0-9\u000B\u001C\u001D\u001E\u001F\u2028\u2029\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2008\u2009\u200a\u205f\u3000]/;
 
 const SYMBOL_BODY =
   choice(SYMBOL_HEAD,
@@ -205,7 +205,7 @@ module.exports = grammar({
       seq(field('numberOfArgs', $._format_token), '*'),
       '?',
       "Newline",
-      seq(repeat(choice($._format_token, ',')), /[$mrRbBdDgGxXeEoOsStTfFHhJjKkLlNnVwWyYzZ]/),
+      seq(repeat(choice($._format_token, ',')), /[$mMrRbBdDgGxXeEoOsStTfFHhJjKkLlNnVwWyYzZ]/),
     ),
     format_specifier: $ =>
       prec.left(seq(
