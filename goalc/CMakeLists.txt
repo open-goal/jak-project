@@ -6,6 +6,7 @@ add_library(compiler
         emitter/Register.cpp
         debugger/disassemble.cpp
         build_level/common/build_level.cpp
+        build_actor/common/MercExtract.cpp
         build_level/jak1/build_level.cpp
         build_level/jak2/build_level.cpp
         build_level/jak3/build_level.cpp
@@ -57,6 +58,7 @@ add_library(compiler
         data_compiler/dir_tpages.cpp
         data_compiler/game_count.cpp
         data_compiler/DataObjectGenerator.cpp
+        build_actor/jak1/build_actor.cpp
         debugger/Debugger.cpp
         debugger/DebugInfo.cpp
         listener/Listener.cpp
@@ -80,8 +82,9 @@ add_executable(goalc main.cpp)
 add_executable(goalc-simple simple_main.cpp)
 
 add_executable(build_level build_level/main.cpp)
+add_executable(build_actor build_actor/main.cpp)
 
 target_link_libraries(goalc common Zydis compiler)
 target_link_libraries(goalc-simple common Zydis compiler)
 target_link_libraries(build_level common Zydis compiler)
-
+target_link_libraries(build_actor common Zydis compiler)

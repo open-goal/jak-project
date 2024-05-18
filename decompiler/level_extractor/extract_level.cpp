@@ -19,6 +19,7 @@
 #include "decompiler/level_extractor/extract_tfrag.h"
 #include "decompiler/level_extractor/extract_tie.h"
 #include "decompiler/level_extractor/fr3_to_gltf.h"
+#include "goalc/build_actor/jak1/build_actor.h"
 
 namespace decompiler {
 

@@ -4,6 +4,7 @@
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 
+#include "goalc/build_actor/jak1/build_actor.h"
 #include "goalc/build_level/jak1/build_level.h"
 #include "goalc/build_level/jak2/build_level.h"
 #include "goalc/build_level/jak3/build_level.h"
@@ -295,4 +296,23 @@ bool BuildLevel3Tool::run(const ToolInput& task, const PathMap& path_map) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   return jak3::run_build_level(task.input.at(0), task.output.at(0), path_map.output_prefix);
+}
+
+BuildActorTool::BuildActorTool() : Tool("build-actor") {}
+
+bool BuildActorTool::needs_run(const ToolInput& task, const PathMap& path_map) {
+  (void)path_map;
+  if (task.input.size() != 1) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  // std::vector<std::string> deps{};
+  // return Tool::needs_run({task.input, deps, task.output, task.arg}, path_map);
+  return true;
+}
+
+bool BuildActorTool::run(const ToolInput& task, const PathMap& path_map) {
+  if (task.input.size() != 1) {
+    throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
+  }
+  return jak1::run_build_actor(task.input.at(0), task.output.at(0), path_map.output_prefix);
 }
