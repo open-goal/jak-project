@@ -6754,7 +6754,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype texture-anim-layer (structure)
-  ((extra           vector                                                          :inline :offset 240)
+  ((interpolated-color     vector :inline) ;; added
+   (interpolated-scale-offset vector :inline)
+   (interpolated-st-scale-offset vector :inline)
+   (interpolated-qs vector :inline)
+   (interpolated-rot vector :inline)
+   (extra           vector                                                          :inline :offset 240)
    (func            (function dma-buffer uint int int texture-anim-layer float int)         :offset-assert 256) ;; guessed by decompiler
    (func-id         symbol                                                                  :offset-assert 256 :overlay-at func) ;; guessed by decompiler
    (init-func       (function texture-anim-layer int)                                       :offset-assert 260) ;; guessed by decompiler
@@ -6766,6 +6771,8 @@
    (test            gs-test                                                                 :offset-assert 280) ;; gs-test
    (alpha           gs-alpha                                                                :offset-assert 288) ;; gs-alpha
    (clamp           gs-clamp                                                                :offset-assert 296) ;; gs-clamp
+   (start-vectors   vector 5 :inline :offset 80 :score -10) ;; added
+
    (start-color     vector                                                          :inline :offset 80)
    (start-scale     vector2                                                         :inline :offset 96)
    (start-offset    vector2                                                         :inline :offset 104)
@@ -6774,6 +6781,8 @@
    (start-qs        vector                                                          :inline :offset 128)
    (start-rot       degrees                                                                 :offset 144) ;; degrees
    (start-st-rot    degrees                                                                 :offset 148) ;; degrees
+   (end-vectors     vector 5 :inline :offset 160 :score -10) ;; added
+
    (end-color       vector                                                          :inline :offset 160)
    (end-scale       vector2                                                         :inline :offset 176)
    (end-offset      vector2                                                         :inline :offset 184)
@@ -30975,57 +30984,57 @@
 ;; texture-anim                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *texture-anim-work* object) ;; texture-anim-work
-;; (define-extern texture-anim-layer-interp function) ;; (function texture-anim-layer float none)
-;; (define-extern texture-anim-layer-add-shader function) ;; (function dma-buffer texture-anim-layer int none)
-;; (define-extern texture-anim-layer-add-clut-shader function) ;; (function dma-buffer texture-anim-layer int none)
-;; (define-extern texture-anim-layer-draw function) ;; (function dma-buffer int int texture-anim-layer none)
-;; (define-extern default-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern blend-clut-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern add-clut-texture-anim-layer-func function)
-;; (define-extern dest-blend-clut-texture-anim-layer-func function)
-;; (define-extern move-rg-to-ba-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern fill-rgb-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern texture-anim-draw-mip-shader function)
-;; (define-extern clear-texture-ids function)
-;; (define-extern texture-anim-draw-mips function)
+(define-extern *texture-anim-work* texture-anim-work)
+(define-extern texture-anim-layer-interp (function texture-anim-layer float none))
+(define-extern texture-anim-layer-add-shader (function dma-buffer texture-anim-layer int none))
+(define-extern texture-anim-layer-add-clut-shader (function dma-buffer texture-anim-layer int none))
+(define-extern texture-anim-layer-draw (function dma-buffer int int texture-anim-layer none))
+(define-extern default-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern blend-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern add-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern dest-blend-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern move-rg-to-ba-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern fill-rgb-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern texture-anim-draw-mip-shader (function dma-buffer texture int none))
+(define-extern clear-texture-ids (function texture none))
+(define-extern texture-anim-draw-mips (function dma-buffer texture none))
 (define-extern update-texture-anim (function bucket-id texture-anim-array none))
-;; (define-extern no-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern copy-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern copy-clut-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern set-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern set-clut-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern dest-texture-init function) ;; (function texture-anim none)
-;; (define-extern src-texture-init function) ;; (function texture-anim-layer none)
-;; (define-extern src-texture-init-mt8 function) ;; (function texture-anim-layer none)
-;; (define-extern make-noise-texture function) ;; (function pointer int int int none)
-;; (define-extern make-cloud-clut function) ;; (function (pointer uint32) float float none)
-;; (define-extern texture-anim-cloud-clut-upload function) ;; (function dma-buffer texture-anim none)
-;; (define-extern texture-anim-cloud-clut-init function) ;; (function texture-anim none)
-;; (define-extern make-slime-clut function) ;; (function (pointer uint32) none)
-;; (define-extern texture-anim-slime-clut-upload function) ;; (function dma-buffer texture-anim none)
-;; (define-extern texture-anim-slime-clut-init function) ;; (function texture-anim none)
-;; (define-extern make-ramp-clut function) ;; (function (pointer uint32) pointer object none)
-;; (define-extern make-alpha-ramp-clut function) ;; (function (pointer uint32) none)
-;; (define-extern noise-texture-init function) ;; (function texture-anim-layer none)
-;; (define-extern texture-anim-alpha-ramp-clut-upload function) ;; (function dma-buffer texture-anim none)
-;; (define-extern texture-anim-alpha-ramp-clut-init function) ;; (function texture-anim none)
-;; (define-extern texture-anim-overide-size-init function) ;; (function texture-anim none)
-;; (define-extern texture-anim-change-mt8h-init function) ;; (function texture-anim none)
-;; (define-extern *texture-anim-pages-table* object)
-;; (define-extern *texture-anim-mip-array* object)
+(define-extern no-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern copy-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern copy-clut-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern set-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern set-clut-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern dest-texture-init (function texture-anim none))
+(define-extern src-texture-init (function texture-anim-layer none))
+(define-extern src-texture-init-mt8 (function texture-anim-layer none))
+(define-extern make-noise-texture (function pointer int int int none))
+(define-extern make-cloud-clut (function (pointer uint32) float float none))
+(define-extern texture-anim-cloud-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-cloud-clut-init (function texture-anim none))
+(define-extern make-slime-clut (function (pointer uint32) none))
+(define-extern texture-anim-slime-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-slime-clut-init (function texture-anim none))
+(define-extern make-ramp-clut (function (pointer uint32) pointer object none))
+(define-extern make-alpha-ramp-clut (function (pointer uint32) none))
+(define-extern noise-texture-init (function texture-anim-layer none))
+(define-extern texture-anim-alpha-ramp-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-alpha-ramp-clut-init (function texture-anim none))
+(define-extern texture-anim-overide-size-init (function texture-anim none))
+(define-extern texture-anim-change-mt8h-init (function texture-anim none))
+(define-extern *texture-anim-pages-table* (pointer uint8))
+(define-extern *texture-anim-mip-array* (pointer uint16))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim-funcs             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern noise-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern cloud-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern cloud-texture-anim-func function) ;; (function dma-buffer texture-anim int)
-;; (define-extern fog-texture-anim-init function) ;; (function texture-anim int)
+(define-extern noise-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern cloud-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern cloud-texture-anim-func (function dma-buffer texture-anim int))
+(define-extern fog-texture-anim-init (function texture-anim int))
 (define-extern *fog-texture-work* fog-texture-work)
-;; (define-extern real-fog-texture-anim-func function) ;; (function dma-buffer texture-anim int)
-;; (define-extern fog-texture-anim-func function) ;; (function dma-buffer texture-anim int)
+(define-extern real-fog-texture-anim-func (function dma-buffer texture-anim int))
+(define-extern fog-texture-anim-func (function dma-buffer texture-anim int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim-tables            ;;
