@@ -312,7 +312,7 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     if (i == (int)curr_node.refs.size() - 1 && form_lines.size() > 1 &&
         (curr_node.formatting_config.hang_forms ||
          curr_node.formatting_config.combine_first_two_lines)) {
-      form_lines.at(0) += fmt::format(" {}", form_lines.at(1));
+      form_lines.at(0) += fmt::format(" {}", str_util::ltrim(form_lines.at(1)));
       form_lines.erase(form_lines.begin() + 1);
     } else if ((i + 1) < (int)curr_node.refs.size()) {
       const auto& next_ref = curr_node.refs.at(i + 1);
