@@ -340,6 +340,13 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
             form_lines.at(form_lines.size() - 1) += fmt::format(" {}", line);
           }
           i++;
+          // We have to handle hang-consolidation here or else it will never be reached above!
+          if (i == (int)curr_node.refs.size() - 1 && form_lines.size() > 1 &&
+              (curr_node.formatting_config.hang_forms ||
+               curr_node.formatting_config.combine_first_two_lines)) {
+            form_lines.at(0) += fmt::format(" {}", form_lines.at(1));
+            form_lines.erase(form_lines.begin() + 1);
+          }
         }
         if (!curr_node.metadata.is_top_level && next_ref.metadata.node_type == "comment" &&
             (i + 1) == (int)curr_node.refs.size()) {

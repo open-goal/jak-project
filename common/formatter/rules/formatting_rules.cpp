@@ -133,12 +133,24 @@ bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
         curr_node.node_prefix.value() == "'") {
       return true;
     }
-    // Constant forms special cases (ie. meters)
-    if (!curr_node.refs.empty() &&
-        constant_type_forms.find(curr_node.refs.at(0).token_str()) !=
-            constant_type_forms.end()) {
-      return true;
+    if (!curr_node.refs.empty()) {
+      // Constant forms special cases (ie. meters)
+      if (constant_type_forms.find(curr_node.refs.at(0).token_str()) != constant_type_forms.end()) {
+        return true;
+      }
+      // If they are just a list of symbol names (enum or simple method call)
+      bool all_symbols = true;
+      for (const auto& ref : curr_node.refs) {
+        if (ref.metadata.node_type != "sym_name") {
+          all_symbols = false;
+          break;
+        }
+      }
+      if (all_symbols) {
+        return true;
+      }
     }
+    
   }
   return false;
 }

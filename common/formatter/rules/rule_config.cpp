@@ -1,5 +1,7 @@
 #include "rule_config.h"
 
+#include "common/util/string_util.h"
+
 namespace formatter_rules {
 namespace config {
 
@@ -27,6 +29,12 @@ static FormFormattingConfig new_inlineable_flow_rule(int start_index,
               [start_index](const std::vector<std::string>& curr_lines) {
                 int total_width = 0;
                 for (const auto& line : curr_lines) {
+                  // Check for comments
+                  // TODO - this shows how this isn't really the best strategy but it holds up
+                  if (str_util::contains(line, ";")) {
+                    // Can't inline, there's a comment!
+                    return start_index;
+                  }
                   total_width += line.length();
                   // an empty line implies a new-line was forced, this is bleeding implementation
                   // details, but fine for now
@@ -49,10 +57,8 @@ static FormFormattingConfig new_defstate_rule(int start_index, bool has_constant
       .inline_until_index =
           [start_index](const std::vector<std::string>& /*curr_lines*/) { return start_index; },
       .has_constant_pairs = has_constant_pairs};
-  // TODO - might be nice to have a function that returns a config based on a given index, instead
-  // of hardcoding them!
-  std::vector<int> state_handler_indexes = {4, 6, 8, 10,
-                                            12};  // NOTE - not all of these have to be defined
+  std::vector<int> state_handler_indexes = {4,  6, 8, 10,
+                                            12, 14};  // NOTE - not all of these have to be defined
   for (const auto& index : state_handler_indexes) {
     auto temp_config = std::make_shared<FormFormattingConfig>();
     temp_config->config_set = true;
@@ -68,21 +74,46 @@ static FormFormattingConfig new_defstate_rule(int start_index, bool has_constant
 }
 
 static FormFormattingConfig new_defmethod_rule(int start_index, bool has_constant_pairs = false) {
-  return {.config_set = true,
-          .hang_forms = false,
-          .inline_until_index =
-              [start_index](const std::vector<std::string>& curr_lines) {
-                if (curr_lines.size() >= 2 && curr_lines.at(1) == "new") {
-                  // defmethod was changed to omit the type name for everything except the `new`
-                  // method, so special case.
-                  return start_index + 1;
-                }
-                return start_index;
-              },
-          .has_constant_pairs = has_constant_pairs};
+  // TODO - might be nice to have a function that returns a config based on a given index, instead
+  // of hardcoding them!
+  // Right now this only works for non-`new` methods (else we may bleed into the body of a normal
+  // method)
+  auto arg_list_config = std::make_shared<FormFormattingConfig>();
+  arg_list_config->force_inline = true;
+  arg_list_config->hang_forms = false;
+  FormFormattingConfig cfg = {.config_set = true,
+                              .hang_forms = false,
+                              .inline_until_index =
+                                  [start_index](const std::vector<std::string>& curr_lines) {
+                                    if (curr_lines.size() >= 2 && curr_lines.at(1) == "new") {
+                                      // defmethod was changed to omit the type name for everything
+                                      // except the `new` method, so special case.
+                                      return start_index + 1;
+                                    }
+                                    return start_index;
+                                  },
+                              .has_constant_pairs = has_constant_pairs};
+  cfg.index_configs.emplace(2, arg_list_config);
+  return cfg;
 }
 
-static FormFormattingConfig new_defnum_rule() {
+static FormFormattingConfig new_lambda_rule(int start_index, bool has_constant_pairs = false) {
+  FormFormattingConfig cfg = {.config_set = true,
+                              .hang_forms = false,
+                              .inline_until_index =
+                                  [start_index](const std::vector<std::string>& curr_lines) {
+                                    if (curr_lines.size() >= 2 && curr_lines.at(1) == ":behavior") {
+                                      // defmethod was changed to omit the type name for everything
+                                      // except the `new` method, so special case.
+                                      return start_index + 2;
+                                    }
+                                    return start_index;
+                                  },
+                              .has_constant_pairs = has_constant_pairs};
+  return cfg;
+}
+
+static FormFormattingConfig new_defenum_rule() {
   auto temp_list_config = std::make_shared<FormFormattingConfig>();
   temp_list_config->force_inline = true;
   temp_list_config->hang_forms = false;
@@ -179,8 +210,9 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"in-package", new_top_level_inline_form(true)},
     {"bundles", new_top_level_inline_form(true)},
     {"require", new_top_level_inline_form(true)},
-    {"defenum", new_defnum_rule()},
+    {"defenum", new_defenum_rule()},
     {"defmethod", new_defmethod_rule(3)},
+    {"lambda", new_lambda_rule(2)},
     {"deftype", new_deftype_rule(3, {3, 4, 5, 6})},
     {"defun", new_flow_rule(3)},
     {"defun-debug", new_flow_rule(3)},
@@ -188,8 +220,12 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"if", new_inlineable_flow_rule(2)},
     {"#if", new_inlineable_flow_rule(2)},
     {"define", new_permissive_flow_rule()},
+    {"defmethod-mips2c", new_permissive_flow_rule()},
     {"define-extern", new_permissive_flow_rule()},
     {"defmacro", new_flow_rule(3)},
+    {"defskelgroup", new_flow_rule(2, true)},
+    {"defpartgroup", new_flow_rule(2, true)},
+    {"defpart", new_flow_rule(2, true)},
     {"defstate", new_defstate_rule(3, true)},
     {"behavior", new_flow_rule(2)},
     {"dotimes", new_flow_rule(2)},
