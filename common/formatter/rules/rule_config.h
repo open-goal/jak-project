@@ -32,8 +32,11 @@ struct FormFormattingConfig {
   int parent_mutable_extra_indent = 0;
   std::optional<std::shared_ptr<FormFormattingConfig>> default_index_config;
   std::unordered_map<int, std::shared_ptr<FormFormattingConfig>> index_configs = {};
+  // TODO / NOTe - not fully implemented, only doing `parent_mutable_extra_indent` right now
+  std::unordered_map<int, std::shared_ptr<FormFormattingConfig>> index_config_override = {};
 
   bool determine_column_widths_for_list_elements = false;
+  int num_columns_to_compute_widths = 0;
   std::vector<int> list_element_column_widths = {};
 
   bool elide_top_level_newline = false;

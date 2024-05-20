@@ -130,7 +130,7 @@ bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
     }
     // Quoted symbols
     if (curr_node.metadata.node_type == "sym_name" && curr_node.node_prefix &&
-        curr_node.node_prefix.value() == "'") {
+        (curr_node.node_prefix.value() == "'" || curr_node.node_prefix.value() == ",")) {
       return true;
     }
     if (!curr_node.refs.empty()) {

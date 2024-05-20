@@ -51,7 +51,9 @@ int get_total_form_inlined_width(const FormatterTreeNode& curr_node) {
 void apply_formatting_config(
     FormatterTreeNode& curr_node,
     std::optional<std::shared_ptr<formatter_rules::config::FormFormattingConfig>>
-        config_from_parent = {}) {
+        config_from_parent = {},
+    std::optional<std::shared_ptr<formatter_rules::config::FormFormattingConfig>>
+        config_merge_from_parent = {}) {
   using namespace formatter_rules;
   // node is empty, base-case
   if (curr_node.token || curr_node.refs.empty()) {
@@ -66,6 +68,13 @@ void apply_formatting_config(
                          config::opengoal_form_config.end()) {
       predefined_config = config::opengoal_form_config.at(form_head.value());
       curr_node.formatting_config = predefined_config.value();
+    }
+
+    if (config_merge_from_parent) {
+      const auto& merge_config = *config_merge_from_parent.value();
+      curr_node.formatting_config.parent_mutable_extra_indent +=
+          merge_config.parent_mutable_extra_indent;
+      curr_node.formatting_config.prevent_inlining = merge_config.prevent_inlining;
     }
   } else if (config_from_parent) {
     // TODO - doesn't merge just replaces, a bit inflexible
@@ -131,13 +140,16 @@ void apply_formatting_config(
     auto& ref = curr_node.refs.at(i);
     if (!ref.token) {
       // If the child has a pre-defined configuration at that index, we pass it along
-      if (predefined_config &&
-          predefined_config->index_configs.find(i) != predefined_config->index_configs.end()) {
-        apply_formatting_config(ref, predefined_config->index_configs.at(i));
+      if (predefined_config && predefined_config->index_config_override.find(i) !=
+                                   predefined_config->index_config_override.end()) {
+        apply_formatting_config(ref, {}, predefined_config->index_config_override.at(i));
+      } else if (predefined_config && predefined_config->index_configs.find(i) !=
+                                          predefined_config->index_configs.end()) {
+        apply_formatting_config(ref, predefined_config->index_configs.at(i), {});
       } else if (predefined_config && predefined_config->default_index_config) {
-        apply_formatting_config(ref, predefined_config->default_index_config);
+        apply_formatting_config(ref, predefined_config->default_index_config, {});
       } else {
-        apply_formatting_config(ref);
+        apply_formatting_config(ref, {}, {});
       }
     }
   }
@@ -170,7 +182,8 @@ void apply_formatting_config(
     for (int col = 0; col < max_columns; col++) {
       column_max_widths.push_back(0);
       // -2 because its the indentation before the final column that we want to skip
-      if (ignore_final_column_width && col == max_columns - 2) {
+      if (col >= curr_node.formatting_config.num_columns_to_compute_widths ||
+          (ignore_final_column_width && col == max_columns - 2)) {
         continue;
       }
       for (const auto& field : curr_node.refs) {
@@ -220,6 +233,10 @@ bool form_contains_node_that_prevents_inlining(const FormatterTreeNode& curr_nod
 bool can_node_be_inlined(const FormatterTreeNode& curr_node, int cursor_pos) {
   using namespace formatter_rules;
   if (curr_node.formatting_config.force_inline) {
+    // Ensure there are no comments, this still trumps this
+    if (form_contains_comment(curr_node)) {
+      return false;
+    }
     return true;
   }
   // First off, we cannot inline the top level
@@ -408,10 +425,6 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     form_lines[0] = fmt::format("{}{}", form_surround_start, form_lines[0]);
     form_lines[form_lines.size() - 1] =
         fmt::format("{}{}", form_lines[form_lines.size() - 1], form_surround_end);
-  }
-  std::string curr_form = "";
-  if (curr_node.formatting_config.parent_mutable_extra_indent > 0) {
-    curr_form += str_util::repeat(curr_node.formatting_config.parent_mutable_extra_indent, " ");
   }
   if (inline_form) {
     // NOTE - not sure about this, if we are inlining a form, it always makes sense to eliminate
