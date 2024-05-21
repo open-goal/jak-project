@@ -121,7 +121,7 @@ const SYMBOL_HEAD =
 
 const SYMBOL_BODY =
   choice(SYMBOL_HEAD,
-    /[:#'0-9]/);
+    /[:#~'0-9]/);
 
 const SYMBOL =
   token(seq(SYMBOL_HEAD,

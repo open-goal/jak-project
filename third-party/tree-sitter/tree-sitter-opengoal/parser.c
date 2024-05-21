@@ -684,7 +684,7 @@ static inline bool sym_block_comment_character_set_1(int32_t c) {
       ? (c < 5760
         ? (c < '{'
           ? c == '`'
-          : c <= '~')
+          : c <= '}')
         : (c <= 5760 || (c >= 8192 && c <= 8198)))
       : (c <= 8202 || (c < 8287
         ? (c >= 8232 && c <= 8233)
@@ -708,7 +708,7 @@ static inline bool sym_block_comment_character_set_2(int32_t c) {
       ? (c < 5760
         ? (c < '}'
           ? c == '{'
-          : c <= '~')
+          : c <= '}')
         : (c <= 5760 || (c >= 8192 && c <= 8198)))
       : (c <= 8202 || (c < 8287
         ? (c >= 8232 && c <= 8233)
@@ -724,6 +724,32 @@ static inline bool sym_kwd_lit_character_set_1(int32_t c) {
           : c <= '\r')
         : (c <= ' ' || c == '"'))
       : (c <= ')' || (c < ':'
+        ? (c < '/'
+          ? c == ','
+          : c <= '/')
+        : (c <= ';' || c == '@'))))
+    : (c <= '^' || (c < 8192
+      ? (c < '}'
+        ? (c < '{'
+          ? c == '`'
+          : c <= '{')
+        : (c <= '~' || c == 5760))
+      : (c <= 8198 || (c < 8287
+        ? (c < 8232
+          ? (c >= 8200 && c <= 8202)
+          : c <= 8233)
+        : (c <= 8287 || c == 12288))))));
+}
+
+static inline bool sym_kwd_lit_character_set_2(int32_t c) {
+  return (c < '['
+    ? (c < '('
+      ? (c < 28
+        ? (c < '\t'
+          ? c == 0
+          : c <= '\r')
+        : (c <= ' ' || c == '"'))
+      : (c <= ')' || (c < ';'
         ? (c < '/'
           ? c == ','
           : c <= '/')
@@ -777,7 +803,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_1(int32_t c) {
         ? (c < '{'
           ? c == '`'
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -803,7 +829,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_2(int32_t c) {
         ? (c < '{'
           ? c == '`'
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -828,7 +854,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_3(int32_t c) {
       ? (c < 5760
         ? (c < '{'
           ? c == '`'
-          : c <= '~')
+          : c <= '}')
         : (c <= 5760 || (c >= 8192 && c <= 8198)))
       : (c <= 8202 || (c < 8287
         ? (c >= 8232 && c <= 8233)
@@ -853,7 +879,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_4(int32_t c) {
         ? (c < '{'
           ? (c >= '`' && c <= 'f')
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -884,7 +910,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_5(int32_t c) {
           ? c == 'f'
           : c <= 't')
         : (c <= 'x' || (c < 5760
-          ? (c >= '{' && c <= '~')
+          ? (c >= '{' && c <= '}')
           : c <= 5760)))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
@@ -911,7 +937,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_6(int32_t c) {
         ? (c < '{'
           ? c == '`'
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -940,7 +966,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_7(int32_t c) {
           ? c == 'b'
           : c <= 'x')
         : (c <= '{' || (c < 5760
-          ? (c >= '}' && c <= '~')
+          ? c == '}'
           : c <= 5760)))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
@@ -969,7 +995,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_8(int32_t c) {
         ? (c < '{'
           ? c == 'e'
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -997,7 +1023,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_9(int32_t c) {
         ? (c < '{'
           ? c == 'n'
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -1025,7 +1051,7 @@ static inline bool aux_sym__sym_unqualified_token1_character_set_10(int32_t c) {
         ? (c < '{'
           ? c == 'o'
           : c <= '{')
-        : (c <= '~' || c == 5760))
+        : (c <= '}' || c == 5760))
       : (c <= 8198 || (c < 8287
         ? (c < 8232
           ? (c >= 8200 && c <= 8202)
@@ -1340,7 +1366,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       END_STATE();
     case 31:
       ACCEPT_TOKEN(sym_kwd_lit);
-      if (!aux_sym__sym_unqualified_token1_character_set_1(lookahead)) ADVANCE(31);
+      if (!sym_kwd_lit_character_set_2(lookahead)) ADVANCE(31);
       END_STATE();
     case 32:
       ACCEPT_TOKEN(anon_sym_SQUOTE);
