@@ -347,7 +347,9 @@ void ResLump::generate_tag_list_and_data(DataObjectGenerator& gen, size_t header
     }
 
     res->write_data(gen);
-    ASSERT(gen.current_offset_bytes() - current_data_ptr == rec.reported_size);
+    ASSERT_MSG(gen.current_offset_bytes() - current_data_ptr == rec.reported_size,
+               fmt::format("reported size of {} does not match actual size of {}",
+                           rec.reported_size, gen.current_offset_bytes() - current_data_ptr));
     current_data_ptr = gen.current_offset_bytes();
   }
   ASSERT(gen.current_offset_bytes() == data_end);
