@@ -13,8 +13,6 @@
 #include "common/util/Timer.h"
 #include "common/util/gltf_util.h"
 
-#include "third-party/tiny_gltf/tiny_gltf.h"
-
 using namespace gltf_util;
 namespace gltf_mesh_extract {
 
@@ -200,12 +198,6 @@ std::optional<std::vector<jak1::CollideFace>> subdivide_face_if_needed(jak1::Col
     return std::nullopt;
   }
 }
-
-struct PatResult {
-  bool set = false;
-  bool ignore = false;
-  jak1::PatSurface pat;
-};
 
 PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/) {
   PatResult result;

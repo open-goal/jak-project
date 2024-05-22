@@ -2,6 +2,8 @@
 
 #include "common/log/log.h"
 
+#include "goalc/build_actor/common/MercExtract.h"
+
 #include "third-party/tiny_gltf/tiny_gltf.h"
 
 using namespace gltf_util;
@@ -376,14 +378,28 @@ std::vector<u8> ArtGroup::save_object_file() const {
   return gen.generate_v4();
 }
 
-bool run_build_actor(const std::string& input_model,
+int ArtGroup::get_joint_idx(const std::string& name) {
+  for (auto& elt : this->elts) {
+    if (elt && typeid(*elt) == typeid(ArtJointGeo)) {
+      auto jgeo = (ArtJointGeo*)elt;
+      for (auto& joint : jgeo->data) {
+        if (joint.name == name) {
+          return joint.number;
+        }
+      }
+    }
+  }
+  return -1;
+}
+
+bool run_build_actor(const std::string& mdl_name,
                      const std::string& ag_out,
-                     const std::string& output_prefix) {
+                     bool gen_collide_mesh) {
   std::string ag_name;
-  if (fs::exists(file_util::get_jak_project_dir() / input_model)) {
-    ag_name = fs::path(input_model).stem().string();
+  if (fs::exists(file_util::get_jak_project_dir() / mdl_name)) {
+    ag_name = fs::path(mdl_name).stem().string();
   } else {
-    ASSERT_MSG(false, "Model file not found: " + input_model);
+    ASSERT_MSG(false, "Model file not found: " + mdl_name);
   }
 
   ArtGroup ag(ag_name);
@@ -411,19 +427,62 @@ bool run_build_actor(const std::string& input_model,
   main_pose(3, 3) = 1.0f;
   Joint main("main", 2, 1, main_pose);
   joints.emplace_back(main);
+  std::vector<CollideMesh> mesh;
+  if (gen_collide_mesh) {
+    tinygltf::TinyGLTF loader;
+    tinygltf::Model model;
+    std::string err, warn;
+    bool res =
+        loader.LoadBinaryFromFile(&model, &err, &warn, file_util::get_jak_project_dir() / mdl_name);
+    ASSERT_MSG(warn.empty(), warn.c_str());
+    ASSERT_MSG(err.empty(), err.c_str());
+    ASSERT_MSG(res, "Failed to load GLTF file!");
+    auto all_nodes = flatten_nodes_from_all_scenes(model);
+    mesh = gen_collide_mesh_from_model(model, all_nodes, 3);
+  }
   ArtJointGeo jgeo(ag.name, joints);
   ArtJointAnim ja(ag.name, joints);
-
-  jgeo.lump.add_res(
-      std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
+  std::function write_cmesh_func = [](CollideMesh mesh, DataObjectGenerator& gen, bool packed) {
+    size_t result = gen.current_offset_bytes();
+    // gen.add_word(0xffffffff - mesh.joint_id);  // 4 (joint-id)
+    gen.add_word(mesh.joint_id);           // 4 (joint-id)
+    gen.add_word(mesh.num_tris);           // 8 (num-tris)
+    gen.add_word(mesh.num_verts);          // 12 (num-verts)
+    auto vertices_slot = gen.add_word(0);  // 16 (vertex-data)
+    gen.add_word(0);                       // 20 (pad)
+    gen.add_word(0);                       // 24 (pad)
+    gen.add_word(0);                       // 28 (pad)
+    for (auto& tri : mesh.tris) {
+      u32 word = (tri.vert_idx[0] & 0xff) + ((tri.vert_idx[1] << 8) & 0xff00) +
+                 ((tri.vert_idx[2] << 16) & 0xff0000);
+      gen.add_word(word);         // 0 (tris | vertex-index | unused)
+      gen.add_word(tri.pat.val);  // 4 (pat)
+    }
+    // vertex data start
+    gen.link_word_to_byte(vertices_slot, gen.current_offset_bytes());
+    for (auto& vert : mesh.vertices) {
+      gen.add_word_float(vert.x());
+      gen.add_word_float(vert.y());
+      gen.add_word_float(vert.z());
+      gen.add_word_float(vert.w());
+    }
+    return result;
+  };
+  if (!mesh.empty()) {
+    jgeo.lump.add_res(std::make_unique<ResArray<CollideMesh>>("collide-mesh-group", "collide-mesh",
+                                                              true, true, mesh, write_cmesh_func,
+                                                              DEFAULT_RES_TIME));
+  }
+  // jgeo.lump.add_res(
+  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
   // jgeo.lump.add_res(std::make_unique<ResVector>(
   //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
   //     DEFAULT_RES_TIME));
-  jgeo.lump.add_res(
-      std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
-  jgeo.lump.add_res(std::make_unique<ResFloat>(
-      "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
-      DEFAULT_RES_TIME));
+  // jgeo.lump.add_res(
+  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
+  // jgeo.lump.add_res(std::make_unique<ResFloat>(
+  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
+  //     DEFAULT_RES_TIME));
   jgeo.lump.sort_res();
 
   ag.elts.emplace_back(&jgeo);
