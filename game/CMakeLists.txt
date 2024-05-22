@@ -213,6 +213,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/merc_blend_shape.cpp
         mips2c/jak3_functions/wvehicle_part.cpp
         mips2c/jak3_functions/ripple.cpp
+        mips2c/jak3_functions/shadow.cpp
         mips2c/jak3_functions/ocean.cpp
         mips2c/jak3_functions/ocean_vu0.cpp
         mips2c/jak3_functions/generic_merc.cpp
