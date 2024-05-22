@@ -302,7 +302,7 @@ BuildActorTool::BuildActorTool() : Tool("build-actor") {}
 
 bool BuildActorTool::needs_run(const ToolInput& task, const PathMap& path_map) {
   (void)path_map;
-  if (task.input.size() != 1) {
+  if (task.input.size() > 2) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
   // std::vector<std::string> deps{};
@@ -311,8 +311,10 @@ bool BuildActorTool::needs_run(const ToolInput& task, const PathMap& path_map) {
 }
 
 bool BuildActorTool::run(const ToolInput& task, const PathMap& path_map) {
-  if (task.input.size() != 1) {
+  (void)path_map;
+  if (task.input.size() > 2) {
     throw std::runtime_error(fmt::format("Invalid amount of inputs to {} tool", name()));
   }
-  return jak1::run_build_actor(task.input.at(0), task.output.at(0), path_map.output_prefix);
+  auto gen_mesh = task.input.at(1) == "#t";
+  return jak1::run_build_actor(task.input.at(0), task.output.at(0), gen_mesh);
 }

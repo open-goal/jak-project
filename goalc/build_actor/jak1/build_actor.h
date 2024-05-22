@@ -139,12 +139,15 @@ struct CollideMesh {
   u32 num_tris;
   u32 num_verts;
   std::vector<math::Vector4f> vertices;
-  CollideMeshTri tris;
+  std::vector<CollideMeshTri> tris;
+
+  size_t calc_data_size() const {
+    return 40 + 16 * vertices.size() + sizeof(CollideMeshTri) * tris.size();
+  }
 };
 
 struct ArtJointGeo : ArtElement {
   std::vector<Joint> data;
-  CollideMesh mesh;
   ResLump lump;
 
   explicit ArtJointGeo(const std::string& name, const std::vector<Joint>& joints) {
@@ -202,9 +205,10 @@ struct ArtGroup : Art {
     info.maya_file_name = "Unknown";
   }
   std::vector<u8> save_object_file() const;
+  int get_joint_idx(const std::string& name);
 };
 
 bool run_build_actor(const std::string& input_model,
                      const std::string& output_file,
-                     const std::string& output_prefix);
+                     bool gen_collide_mesh);
 }  // namespace jak1
