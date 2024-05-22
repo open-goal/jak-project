@@ -897,7 +897,16 @@
               )
             (add-debug-matrix *display-sprite-marks* (bucket-id debug) (-> this origin) (meters 2))
             )
-          (sphere-in-view-frustum? (the-as sphere s5-1))
+          ;; og:preserve-this
+          ;; can we see it?
+          (#if (not PC_PORT)
+              (sphere-in-view-frustum? (the-as sphere s5-1))
+              (if (-> *pc-settings* ps2-parts?)
+                  ;; og:preserve-this launchers have larger bsphere if you have ps2 parts off
+                  (sphere-in-view-frustum? (the-as sphere s5-1))
+                  (sphere-in-view-frustum? (the-as sphere (begin (*! (-> s5-1 w) 4.0) s5-1)))
+                  )
+              )
           )
         )
       )
@@ -1205,6 +1214,12 @@
         (if (nonzero? (-> this matrix))
             (set! f30-0 0.0)
             )
+
+        ;; og:preserve-this if we have ps2 particles off, say we're at the camera
+        (with-pc
+          (if (not (-> *pc-settings* ps2-parts?))
+              (set! f30-0 0.0)))
+
         (let ((s2-1 (-> this length)))
           (b! #t cfg-102 :delay (nop!))
           (label cfg-26)
