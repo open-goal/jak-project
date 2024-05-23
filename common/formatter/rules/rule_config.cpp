@@ -277,6 +277,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"dolist", new_flow_rule(2)},
     {"process-spawn-function", new_flow_rule(2)},
     {"let", new_binding_rule(4)},
+    {"protect", new_binding_rule(4)},
     {"let*", new_binding_rule(5)},
     {"rlet", new_binding_rule(5)},
     {"when", new_flow_rule(2)},

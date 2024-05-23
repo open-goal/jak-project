@@ -82,7 +82,8 @@ const std::unordered_map<std::string, std::vector<std::string>> node_type_ignora
     {"list_lit", {"(", ")"}},
     {"quoting_lit", {"'"}},
     {"unquoting_lit", {","}},
-    {"quasi_quoting_lit", {"`"}}};
+    {"quasi_quoting_lit", {"`"}},
+    {"unquote_splicing_lit", {",@"}}};
 
 // TODO make an imperative version eventually
 void FormatterTree::construct_formatter_tree_recursive(const std::string& source,
@@ -110,6 +111,8 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
     next_node_prefix = ",";
   } else if (curr_node_type == "quasi_quoting_lit") {
     next_node_prefix = "`";
+  } else if (curr_node_type == "unquote_splicing_lit") {
+    next_node_prefix = ",@";
   }
   std::vector<std::string> skippable_nodes = {};
   if (node_type_ignorable_contents.find(curr_node_type) != node_type_ignorable_contents.end()) {

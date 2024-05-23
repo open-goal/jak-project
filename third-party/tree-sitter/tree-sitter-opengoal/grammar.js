@@ -67,11 +67,11 @@ const INTEGER =
 
 // TODO - does OG support negative hex/binary?
 const NUMBER =
-  token(prec(10, seq(optional(/[+-]/),
+  token(seq(optional(/[+-]/),
     choice(HEX_NUMBER,
       BINARY_NUMBER,
       FLOAT,
-      INTEGER))));
+      INTEGER)));
 
 const NULL =
   token('none');
@@ -126,6 +126,9 @@ const SYMBOL_BODY =
 const SYMBOL =
   token(seq(SYMBOL_HEAD,
     repeat(SYMBOL_BODY)));
+
+// Define a rule specifically for symbols starting with digits followed by non-digit characters
+const DIGIT_SYMBOL = token(seq(repeat1(DIGIT), SYMBOL_BODY, repeat(SYMBOL_BODY)));
 
 module.exports = grammar({
   name: 'opengoal',
@@ -237,7 +240,9 @@ module.exports = grammar({
       BOOLEAN,
 
     sym_lit: $ =>
-      seq(choice($._sym_unqualified)),
+      seq(choice($._sym_unqualified, $._digit_sym)),
+
+    _digit_sym: $ => field('name', alias(DIGIT_SYMBOL, $.sym_name)),
 
     _sym_unqualified: $ =>
       field('name', alias(choice("/", SYMBOL),
