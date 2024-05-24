@@ -361,15 +361,16 @@
   "Wait for chcr str to go to 0, indicating DMA
    is complete."
   (declare (inline))
-  (#cond (INSTANT_DMA
-           ;; nothing to do.
-           0)
-         (#t
-          (while (nonzero? (-> bank chcr str))
-            ;; they had a precise number of nops here.
-            ;; it turns out that spamming the DMA registers is not a good idea
-            ;; because it uses the main bus that the DMA is possibly also trying to use.
-            (nop!))))
+  (#cond
+    (INSTANT_DMA
+     ;; nothing to do.
+     0)
+    (#t
+     (while (nonzero? (-> bank chcr str))
+       ;; they had a precise number of nops here.
+       ;; it turns out that spamming the DMA registers is not a good idea
+       ;; because it uses the main bus that the DMA is possibly also trying to use.
+       (nop!))))
   (none))
 
 (defun dma-send-no-scratch ((bank dma-bank) (madr uint32) (qwc uint32))
@@ -395,14 +396,16 @@
    This doesn't seem like a very accurate way
    to find out how long it takes...
    This function is unused."
-  (#cond (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
-         (#t
-          (when (nonzero? (-> bank chcr str))
-            (let ((x (-> count))) (while (nonzero? (-> bank chcr str)) (+! x 1) (set! (-> count) x))))
-          0)))
+  (#cond
+    (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
+    (#t
+     (when (nonzero? (-> bank chcr str))
+       (let ((x (-> count))) (while (nonzero? (-> bank chcr str)) (+! x 1) (set! (-> count) x))))
+     0)))
 
 (defun dma-count-until-done ((bank dma-bank) (count (pointer int32)))
   "Like the previous one, kinda.
    This function is unused."
-  (#cond (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
-         (#t (while (nonzero? (-> bank chcr str)) (set! (-> count) (+ 1 (-> count)))))))
+  (#cond
+    (INSTANT_DMA (set! (-> count) INSTANT_DMA_COUNT) 0)
+    (#t (while (nonzero? (-> bank chcr str)) (set! (-> count) (+ 1 (-> count)))))))

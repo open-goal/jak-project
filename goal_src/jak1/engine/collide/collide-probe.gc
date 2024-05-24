@@ -59,28 +59,26 @@
     (format #t " "))
   (none))
 
-(defun-recursive probe-traverse-draw-node
-                 none
-                 ((arg0 draw-node) (arg1 int))
-                 "Print out info for a draw node, and recursively its children. They forgot to finish this one."
-                 (indent-to arg1)
-                 (format #t
-                         "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
-                         arg0
-                         (-> arg0 child-count)
-                         (-> arg0 flags)
-                         (-> arg0 distance)
-                         (-> arg0 child))
-                 (cond
-                   ((nonzero? (-> arg0 flags))
-                    (let ((s4-0 (-> arg0 child)))
-                      (dotimes (s3-0 (the-as int (-> arg0 child-count)))
-                        (probe-traverse-draw-node (the-as draw-node (+ (the-as uint s4-0) (* s3-0 32))) (+ arg1 1)))))
-                   (else
-                    ;; we hit the leaves.
-                    ))
-                 0
-                 (none))
+(defun-recursive probe-traverse-draw-node none ((arg0 draw-node) (arg1 int))
+  "Print out info for a draw node, and recursively its children. They forgot to finish this one."
+  (indent-to arg1)
+  (format #t
+          "[~08x] child-count: ~d, flags: ~d, dist: ~f, child: ~a~%"
+          arg0
+          (-> arg0 child-count)
+          (-> arg0 flags)
+          (-> arg0 distance)
+          (-> arg0 child))
+  (cond
+    ((nonzero? (-> arg0 flags))
+     (let ((s4-0 (-> arg0 child)))
+       (dotimes (s3-0 (the-as int (-> arg0 child-count)))
+         (probe-traverse-draw-node (the-as draw-node (+ (the-as uint s4-0) (* s3-0 32))) (+ arg1 1)))))
+    (else
+     ;; we hit the leaves.
+     ))
+  0
+  (none))
 
 (defun probe-traverse-inline-array-node ((arg0 drawable-inline-array-node) (arg1 int))
   "Print out a drawable-inline-array-node, and recursively all children"
@@ -172,22 +170,22 @@
 (defun collide-upload-vu0 ()
   "Upload the probe program to VU0."
   (#unless PC_PORT
-           (let ((gp-0 *vu0-dma-list*))
-             ;; reset the buffer
-             (let ((v1-0 gp-0))
-               (set! (-> v1-0 base) (-> v1-0 data))
-               (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length))))
-             ;; upload the function dma
-             (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
-             ;; end dma chain
-             (let* ((v1-1 gp-0)
-                    (a0-5 (the-as object (-> v1-1 base))))
-               (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
-               (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
-               (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16)))
-             ;; go!
-             (.sync.l)
-             (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)))
+    (let ((gp-0 *vu0-dma-list*))
+      ;; reset the buffer
+      (let ((v1-0 gp-0))
+        (set! (-> v1-0 base) (-> v1-0 data))
+        (set! (-> v1-0 end) (&-> v1-0 data-buffer (-> v1-0 allocated-length))))
+      ;; upload the function dma
+      (dma-buffer-add-vu-function gp-0 collide-vu0-block 0)
+      ;; end dma chain
+      (let* ((v1-1 gp-0)
+             (a0-5 (the-as object (-> v1-1 base))))
+        (set! (-> (the-as dma-packet a0-5) dma) (new 'static 'dma-tag :id (dma-tag-id end)))
+        (set! (-> (the-as (pointer uint64) a0-5) 1) (the-as uint 0))
+        (set! (-> v1-1 base) (&+ (the-as pointer a0-5) 16)))
+      ;; go!
+      (.sync.l)
+      (dma-buffer-send-chain (the-as dma-bank-source #x10008000) gp-0)))
   0
   (none))
 

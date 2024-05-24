@@ -209,9 +209,10 @@
           (format #t "~%")))
       (when detail
         (case (-> tag elt-type)
-          (((game-save-elt money-per-level) (game-save-elt deaths-per-level)
-                           ;; added in pc port
-                           (game-save-elt level-open-list))
+          (((game-save-elt money-per-level)
+            (game-save-elt deaths-per-level)
+            ;; added in pc port
+            (game-save-elt level-open-list))
            (dotimes (prog-lev-idx (-> tag elt-count))
              (let ((lev-name (progress-level-index->string prog-lev-idx)))
                (if lev-name
@@ -268,10 +269,10 @@
            (dotimes (i (* 8 (-> tag elt-count)))
              (awhen (text-id->string (the text-id i))
                     (unless (string= it "*unknown*")
-                            (format #t
-                                    "                 ~-32S: ~A~%"
-                                    it
-                                    (logtest? (-> (the-as (pointer uint8) (&+ (the-as pointer tag) 16)) (/ i 8)) (ash 1 (mod i 8))))))))
+                      (format #t
+                              "                 ~-32S: ~A~%"
+                              it
+                              (logtest? (-> (the-as (pointer uint8) (&+ (the-as pointer tag) 16)) (/ i 8)) (ash 1 (mod i 8))))))))
           (((game-save-elt task-list) (game-save-elt perm-list))
            (dotimes (i (-> tag elt-count))
              (let ((perm (the-as entity-perm (&+ (the-as pointer tag) 16 (* i 16)))))
@@ -784,15 +785,16 @@
 
 (defpart 2662
   :init-specs
-  ((:texture (new 'static 'texture-id :index #x6b :page #x1cf)) (:num 1.0)
-             (:scale-x (meters 1.5))
-             (:scale-y :copy scale-x)
-             (:r 128.0)
-             (:g 128.0)
-             (:b 128.0)
-             (:a 128.0)
-             (:timer (seconds 0.017))
-             (:flags (bit2 bit9 bit13))))
+  ((:texture (new 'static 'texture-id :index #x6b :page #x1cf))
+   (:num 1.0)
+   (:scale-x (meters 1.5))
+   (:scale-y :copy scale-x)
+   (:r 128.0)
+   (:g 128.0)
+   (:b 128.0)
+   (:a 128.0)
+   (:timer (seconds 0.017))
+   (:flags (bit2 bit9 bit13))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; auto-save process
@@ -863,9 +865,10 @@
         (let ((v1-23 gp-1)) (set! (-> v1-23 scale) 0.7))
         (let ((v1-24 gp-1)) (set! (-> v1-24 height) (the float 40)))
         (let ((s5-2 print-game-text))
-          ((the-as (function object string object none) format) (clear *temp-string*)
-                   (lookup-text! *common-text* (text-id memcard-do-not-remove) #f)
-                   1)
+          ((the-as (function object string object none) format)
+           (clear *temp-string*)
+           (lookup-text! *common-text* (text-id memcard-do-not-remove) #f)
+           1)
           (s5-2 *temp-string* gp-1 #f 128 22))))
     ;; flash the icon.
     (when (< (mod (-> *display* real-frame-counter) 300) 270)
@@ -908,7 +911,8 @@
   (cond
     ((= desired-mode 'auto-save)
      ;; also save pc settings.
-     (with-pc (commit-to-file *pc-settings*))
+     (with-pc
+       (commit-to-file *pc-settings*))
      (if (not (-> *setting-control* current auto-save)) (go-virtual error (mc-status-code no-auto-save)))
      (when (and (zero? (-> self card)) (-> *setting-control* current auto-save))
        (set! (-> self card) (-> *game-info* auto-save-card))

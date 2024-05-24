@@ -100,8 +100,7 @@
   (with-gensyms (dma-buf)
     `(let* ((,dma-buf ,buf)
            (,pkt (the-as ,dma-type (-> ,dma-buf base))))
-      ,@
-      body
+      ,@body
       (set! (-> ,dma-buf base) (&+ (the-as pointer ,pkt) (size-of ,dma-type))))))
 
 (defmacro dma-buffer-add-base-data (buf data-type forms)
@@ -110,8 +109,7 @@
   (with-gensyms (dma-buf ptr)
     `(let* ((,dma-buf ,buf)
            (,ptr (the-as (pointer ,data-type) (-> ,dma-buf base))))
-      ,@
-      (apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
+      ,@(apply-i (lambda (x i) `(set! (-> ,ptr ,i) (the-as ,data-type ,x))) forms)
       (set! (-> ,dma-buf base) (&+ (the-as pointer ,ptr) (* ,(length forms) (size-of ,data-type)))))))
 
 (defmacro dma-buffer-add-cnt-vif2 (buf qwc vif0 vif1)
@@ -213,8 +211,7 @@
         ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
         (dma-buffer-add-cnt-vif2 ,buf 0 (new 'static 'vif-tag :cmd (vif-cmd nop)) (new 'static 'vif-tag :cmd (vif-cmd direct)))
         ;; things with this buffer!
-        ,@
-        body
+        ,@body
         ;; patch qwc! just do the difference between the current ptr and the old one and turn it into qwords.
         ;; we take one qword out because it's the initial dmatag which isnt part of the count.
         ;; this rounds *down*, so make sure to fill the buffer in 128-bit boundaries.
@@ -241,8 +238,7 @@
         ;; setup the dmatag for PATH2 transfer, qwc is 0 (patched later)
         (dma-buffer-add-cnt-vif2 ,buf 0 (new 'static 'vif-tag :cmd (vif-cmd nop)) (new 'static 'vif-tag :cmd (vif-cmd direct)))
         ;; things with this buffer!
-        ,@
-        body
+        ,@body
         ;; we make the dmatag now! its at the start.
         (let ((,buf-qwc (/ (+ (- -16 (the-as int ,buf-start)) (the-as int (-> ,buf base))) 16)))
           (set! (-> ,buf-start dma) (new 'static 'dma-tag :id (dma-tag-id cnt) :qwc ,buf-qwc))
@@ -257,8 +253,7 @@
         (bucket-id (third bindings)))
     (with-gensyms (buf-start bucket-edge pkt)
       `(let ((,buf-start (-> ,buf base)))
-        ,@
-        body
+        ,@body
         ;; we end the chain with a next.  The bucket system will patch the next chain to this,
         ;; and then patch all the buckets togehter before sending the DMA.
         (let ((,bucket-edge (the (pointer dma-tag) (-> ,buf base))))
@@ -277,4 +272,4 @@
   "Bind a dma-buffer to a variable and use it on a block to allow adding things to a new bucket.
    usage: (with-dma-buffer-add-bucket ((buffer-name buffer) bucket-id) &rest body)
    example: (with-dma-buffer-add-bucket ((buf (-> (current-frame) debug-buf)) (bucket-id debug-no-zbuf)) ...)"
-  `(let ((,(caar bindings) ,(cadar bindings))) (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings)) ,@ body)))
+  `(let ((,(caar bindings) ,(cadar bindings))) (with-dma-bucket (,(caar bindings) ,bucket-group ,(cadr bindings)) ,@body)))

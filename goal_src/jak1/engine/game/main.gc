@@ -255,20 +255,20 @@
                         (cheats-sound-play *cheat-mode*)))
     ;; language cheat, REMOVED IN PC PORT because it's literally useless
     #|
-            (case (scf-get-territory)
-              ;; japan-only
-              ((GAME_TERRITORY_SCEI)
-                (check-cheat-code (-> *cheat-temp* 2) 0
-                    (l1 r1 l1 r1 triangle circle x square)
-                      (cpad-clear! 0 r1)
-                      (set! *progress-cheat* (if *progress-cheat*
-                                                   #f
-                                                   'language
-                                                   ))
-                      (cheats-sound-play *progress-cheat*)
-                    )
-               )
-              )
+                (case (scf-get-territory)
+                  ;; japan-only
+                  ((GAME_TERRITORY_SCEI)
+                    (check-cheat-code (-> *cheat-temp* 2) 0
+                        (l1 r1 l1 r1 triangle circle x square)
+                          (cpad-clear! 0 r1)
+                          (set! *progress-cheat* (if *progress-cheat*
+                                                       #f
+                                                       'language
+                                                       ))
+                          (cheats-sound-play *progress-cheat*)
+                        )
+                   )
+                  )
     |#
     ;; debug only PAL cheat
     (when *debug-segment*
@@ -366,7 +366,8 @@
       (with-profiler "foreground-effects"
         ;; with FP blerc, the vertices are modified in the PC renderer, so we can just skip
         ;; this call to save time.
-        (unless *use-fp-blerc* (blerc-execute))
+        (unless *use-fp-blerc*
+          (blerc-execute))
         (blerc-init)
         (texscroll-execute)
         (ripple-execute))
@@ -489,9 +490,10 @@
               (display-file-info)) ;; end dma let
             ) ;; end debug-segment
           ;; draw pause text.
-          (with-dma-buffer-add-bucket ((s3-1 (if *debug-segment* (-> disp frames (-> disp on-screen) frame debug-buf)
-                                                     (-> disp frames (-> disp on-screen) frame global-buf)))
-                                             (bucket-id debug))
+          (with-dma-buffer-add-bucket ((s3-1 (if *debug-segment*
+                                               (-> disp frames (-> disp on-screen) frame debug-buf)
+                                               (-> disp frames (-> disp on-screen) frame global-buf)))
+                                       (bucket-id debug))
             (if (and (= *master-mode* 'pause) (!= *cheat-mode* 'camera))
               (draw-string-xy (lookup-text! *common-text* (text-id pause) #f)
                               s3-1
@@ -563,7 +565,8 @@
 (defun on ((release-mode symbol))
   "Turn the game on."
   (when (not *dproc*)
-    (unless release-mode (if (= (-> *level* level0 status) 'inactive) (bg 'halfpipe)))
+    (unless release-mode
+      (if (= (-> *level* level0 status) 'inactive) (bg 'halfpipe)))
     (set! *run* #t)
     (let ((new-dproc (process-spawn-function process display-loop :name 'display :from *4k-dead-pool* :to *display-pool*)))
       (set! *dproc* (the process (ppointer->process new-dproc))))

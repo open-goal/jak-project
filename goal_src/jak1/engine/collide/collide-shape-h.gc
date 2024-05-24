@@ -143,7 +143,7 @@
 ;; this computes a "move-vec" and "u". If you move along "move-vec" by "u", you will move out of collsion.
 ;; It also tells you which primitives are colliding.
 (deftype collide-shape-intersect (basic)
-  ((move-vec       vector             :inline)
+  ((move-vec       vector :inline)
    (best-u         float)
    (best-tri       collide-tri-result :inline)
    (best-from-prim collide-shape-prim)
@@ -307,13 +307,13 @@
 ;; this is a 32-byte chunk of data that can be pulled out an put in collide caches
 ;; it stores the transformed world sphere and the collision settings
 (deftype collide-prim-core (structure)
-  ((world-sphere vector          :inline)
+  ((world-sphere vector :inline)
    (collide-as   collide-kind)
    (action       collide-action)
    (offense      collide-offense)
    (prim-type    int8)
-   (extra        uint8           2)
-   (quad         uint128         2       :overlay-at (-> world-sphere quad))))
+   (extra        uint8 2)
+   (quad         uint128 2 :overlay-at (-> world-sphere quad))))
 
 (declare-type collide-shape basic)
 
@@ -329,14 +329,14 @@
    (prim-id         uint32)
    (transform-index int8)
    (prim-core       collide-prim-core :inline)
-   (local-sphere    vector            :inline)
+   (local-sphere    vector :inline)
    (collide-with    collide-kind)
-   (world-sphere    vector            :inline     :overlay-at (-> prim-core world-sphere))
-   (collide-as      collide-kind      :overlay-at (-> prim-core collide-as))
-   (action          collide-action    :overlay-at (-> prim-core action))
-   (offense         collide-offense   :overlay-at (-> prim-core offense))
-   (prim-type       int8              :overlay-at (-> prim-core prim-type))
-   (radius          meters            :overlay-at (-> local-sphere w)))
+   (world-sphere    vector :inline :overlay-at (-> prim-core world-sphere))
+   (collide-as      collide-kind :overlay-at (-> prim-core collide-as))
+   (action          collide-action :overlay-at (-> prim-core action))
+   (offense         collide-offense :overlay-at (-> prim-core offense))
+   (prim-type       int8 :overlay-at (-> prim-core prim-type))
+   (radius          meters :overlay-at (-> local-sphere w)))
   (:methods
    (new (symbol type collide-shape uint int) _type_)
    (move-by-vector! (_type_ vector) none)
@@ -391,10 +391,10 @@
 ;; A group of collide-shape-prim's
 (deftype collide-shape-prim-group (collide-shape-prim)
   ((num-prims       int32)
-   (num-prims-u     uint32             :overlay-at num-prims)
+   (num-prims-u     uint32 :overlay-at num-prims)
    (allocated-prims int32)
    (prim            collide-shape-prim 1)
-   (prims           collide-shape-prim :dynamic    :overlay-at (-> prim 0)))
+   (prims           collide-shape-prim :dynamic :overlay-at (-> prim 0)))
   (:methods
    (new (symbol type collide-shape uint int) _type_)
    (append-prim (_type_ collide-shape-prim) none)
@@ -544,8 +544,8 @@
 ;; A collide-shape for independently moving objects
 (deftype collide-shape-moving (collide-shape)
   ((rider-time         time-frame)
-   (rider-last-move    vector                                                                                    :inline)
-   (trans-old          vector                                                                                    3 :inline)
+   (rider-last-move    vector :inline)
+   (trans-old          vector 3 :inline)
    (poly-pat           pat-surface)
    (cur-pat            pat-surface)
    (ground-pat         pat-surface)
@@ -555,12 +555,12 @@
    (reaction-flag      cshape-reaction-flags)
    (reaction           (function collide-shape-moving collide-shape-intersect vector vector cshape-moving-flags))
    (no-reaction        (function collide-shape-moving collide-shape-intersect vector vector none))
-   (local-normal       vector                                                                                    :inline)
-   (surface-normal     vector                                                                                    :inline)
-   (poly-normal        vector                                                                                    :inline)
-   (ground-poly-normal vector                                                                                    :inline)
-   (ground-touch-point vector                                                                                    :inline)
-   (shadow-pos         vector                                                                                    :inline)
+   (local-normal       vector :inline)
+   (surface-normal     vector :inline)
+   (poly-normal        vector :inline)
+   (ground-poly-normal vector :inline)
+   (ground-touch-point vector :inline)
+   (shadow-pos         vector :inline)
    (ground-impact-vel  meters)
    (surface-angle      float)
    (poly-angle         float)
@@ -616,11 +616,12 @@
 (defmethod new collide-shape-prim-group ((allocation symbol) (type-to-make type) (cshape collide-shape) (elt-count uint) (prim-id int))
   "Allocate a group of primitives."
   (let ((this (the collide-shape-prim-group
-                   ((method-of-type collide-shape-prim new) allocation
-                                    type-to-make
-                                    cshape
-                                    (the uint prim-id)
-                                    (the int (+ (-> type-to-make size) (* (+ elt-count -1) 4)))))))
+                   ((method-of-type collide-shape-prim new)
+                    allocation
+                    type-to-make
+                    cshape
+                    (the uint prim-id)
+                    (the int (+ (-> type-to-make size) (* (+ elt-count -1) 4)))))))
     (set! (-> this allocated-prims) (the int elt-count))
     (set! (-> this num-prims) 0)
     (set! (-> this prim-core prim-type) 0)
@@ -688,12 +689,9 @@
             'collide-prim-core
             :world-sphere
             (new 'static 'vector :w 204800000.0)
-            :collide-as
-            (collide-kind background)
-            :action
-            (collide-action solid)
-            :offense
-            (collide-offense indestructible)
+            :collide-as (collide-kind background)
+            :action (collide-action solid)
+            :offense (collide-offense indestructible)
             :prim-type 2)
        :local-sphere
        (new 'static 'vector :w 204800000.0)
@@ -708,12 +706,9 @@
             'collide-prim-core
             :world-sphere
             (new 'static 'vector :w 204800000.0)
-            :collide-as
-            (collide-kind water)
-            :action
-            (collide-action solid)
-            :offense
-            (collide-offense indestructible)
+            :collide-as (collide-kind water)
+            :action (collide-action solid)
+            :offense (collide-offense indestructible)
             :prim-type 2)
        :local-sphere
        (new 'static 'vector :w 204800000.0)

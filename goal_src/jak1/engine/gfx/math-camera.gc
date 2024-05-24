@@ -61,25 +61,26 @@
   (if (= aspect 'aspect4x3)
     (set! (-> math-cam y-ratio) (* (1 / ASPECT_4X3) (-> math-cam x-ratio)))
     (set! (-> math-cam y-ratio) (* (1 / ASPECT_16X9) (-> math-cam x-ratio))))
-  (with-pc (cond
-             ((-> *pc-settings* use-vis?)
-              ;; using game vis, cannot allow seeing more of the view
-              ;; crops excess aspect ratio at the top and bottom
-              ;(set! (-> math-cam y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
-              )
-             ((real-movie?)
-              ;; force the original 16x9 cropping during cutscenes.
-              (if (<= (-> *pc-settings* aspect-ratio) ASPECT_16X9)
-                (set! (-> math-cam y-ratio) (* (1 / (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
-                (begin
-                  (set! (-> math-cam y-ratio) (* (1 / ASPECT_16X9) (-> math-cam x-ratio)))
-                  (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9)))))
-             (else
-              ;; not using game vis, allow *extended* aspect ratios
-              ;; there is no vertical cropping, and you can see more of the sides
-              (set! (-> math-cam y-ratio) (* (1 / ASPECT_4X3) (-> math-cam x-ratio))) ;; same cropping as 4x3
-              (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
-              )))
+  (with-pc
+    (cond
+      ((-> *pc-settings* use-vis?)
+       ;; using game vis, cannot allow seeing more of the view
+       ;; crops excess aspect ratio at the top and bottom
+       ;(set! (-> math-cam y-ratio) (* (1/ (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
+       )
+      ((real-movie?)
+       ;; force the original 16x9 cropping during cutscenes.
+       (if (<= (-> *pc-settings* aspect-ratio) ASPECT_16X9)
+         (set! (-> math-cam y-ratio) (* (1 / (-> *pc-settings* aspect-ratio)) (-> math-cam x-ratio)))
+         (begin
+           (set! (-> math-cam y-ratio) (* (1 / ASPECT_16X9) (-> math-cam x-ratio)))
+           (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_16X9)))))
+      (else
+       ;; not using game vis, allow *extended* aspect ratios
+       ;; there is no vertical cropping, and you can see more of the sides
+       (set! (-> math-cam y-ratio) (* (1 / ASPECT_4X3) (-> math-cam x-ratio))) ;; same cropping as 4x3
+       (*! (-> math-cam x-ratio) (/ (-> *pc-settings* aspect-ratio) ASPECT_4X3)) ;; extend fov! shows more on the sides.
+       )))
   ;; compute some culling constants. Not sure what these mean yet
   (let ((x-rat (-> math-cam x-ratio))
         (y-rat (-> math-cam y-ratio))
