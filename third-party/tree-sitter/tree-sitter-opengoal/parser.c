@@ -789,7 +789,7 @@ static inline bool sym_kwd_lit_character_set_2(int32_t c) {
 static inline bool aux_sym_format_directive_type_token11_character_set_1(int32_t c) {
   return (c < 'V'
     ? (c < 'D'
-      ? (c < 'B'
+      ? (c < 'A'
         ? c == '$'
         : c <= 'B')
       : (c <= 'H' || (c < 'R'
@@ -1126,18 +1126,18 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == ';') ADVANCE(74);
       if (lookahead == '?') ADVANCE(74);
       if (lookahead == '@') ADVANCE(74);
+      if (lookahead == 'A') ADVANCE(74);
       if (lookahead == 'V') ADVANCE(74);
       if (lookahead == '\\') ADVANCE(39);
       if (lookahead == '^') ADVANCE(74);
       if (lookahead == '_') ADVANCE(74);
       if (lookahead == '`') ADVANCE(74);
+      if (lookahead == 'a') ADVANCE(74);
       if (lookahead == 'v') ADVANCE(74);
       if (lookahead == '|') ADVANCE(74);
       if (lookahead == '~') ADVANCE(49);
       if (lookahead == '<' ||
           lookahead == '>') ADVANCE(74);
-      if (lookahead == 'A' ||
-          lookahead == 'a') ADVANCE(74);
       if (lookahead == 'C' ||
           lookahead == 'c') ADVANCE(74);
       if (lookahead == 'I' ||
@@ -1169,19 +1169,19 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == ';') ADVANCE(66);
       if (lookahead == '?') ADVANCE(69);
       if (lookahead == '@') ADVANCE(45);
+      if (lookahead == 'A') ADVANCE(60);
       if (lookahead == 'N') ADVANCE(72);
       if (lookahead == 'V') ADVANCE(41);
       if (lookahead == '^') ADVANCE(54);
       if (lookahead == '_') ADVANCE(61);
       if (lookahead == '`') ADVANCE(67);
+      if (lookahead == 'a') ADVANCE(60);
       if (lookahead == 'v') ADVANCE(40);
       if (lookahead == '|') ADVANCE(52);
       if (lookahead == '~') ADVANCE(49);
       if (('+' <= lookahead && lookahead <= '-')) ADVANCE(7);
       if (lookahead == '<' ||
           lookahead == '>') ADVANCE(65);
-      if (lookahead == 'A' ||
-          lookahead == 'a') ADVANCE(60);
       if (lookahead == 'C' ||
           lookahead == 'c') ADVANCE(53);
       if (lookahead == 'I' ||
@@ -1216,17 +1216,17 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       if (lookahead == ';') ADVANCE(66);
       if (lookahead == '?') ADVANCE(69);
       if (lookahead == '@') ADVANCE(45);
+      if (lookahead == 'A') ADVANCE(60);
       if (lookahead == 'N') ADVANCE(72);
       if (lookahead == '^') ADVANCE(54);
       if (lookahead == '_') ADVANCE(61);
       if (lookahead == '`') ADVANCE(67);
+      if (lookahead == 'a') ADVANCE(60);
       if (lookahead == '|') ADVANCE(52);
       if (lookahead == '~') ADVANCE(49);
       if (('+' <= lookahead && lookahead <= '-')) ADVANCE(7);
       if (lookahead == '<' ||
           lookahead == '>') ADVANCE(65);
-      if (lookahead == 'A' ||
-          lookahead == 'a') ADVANCE(60);
       if (lookahead == 'C' ||
           lookahead == 'c') ADVANCE(53);
       if (lookahead == 'I' ||

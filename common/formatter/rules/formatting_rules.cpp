@@ -19,6 +19,9 @@ bool is_constant_list(const FormatterTreeNode& node) {
   if (!node.is_list() || node.refs.empty()) {
     return false;
   }
+  if (!node.refs.at(0).token) {
+    return true;
+  }
   const auto& type = node.refs.at(0).metadata.node_type;
   return constant_types.find(type) != constant_types.end();
 }
@@ -120,6 +123,7 @@ bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
                                             const FormatterTreeNode& curr_node) {
   if (prev_node.metadata.node_type == "kwd_lit") {
     // Handle standard constant types
+    // TODO - pair up sym_names as well
     if (constant_types.find(curr_node.metadata.node_type) != constant_types.end()) {
       if (curr_node.metadata.node_type != "kwd_lit") {
         // NOTE - there is ambiugity here which cannot be totally solved (i think?)
@@ -150,7 +154,6 @@ bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
         return true;
       }
     }
-    
   }
   return false;
 }

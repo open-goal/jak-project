@@ -102,7 +102,7 @@ bool run_tests(const fs::path& file_path, const bool only_important_tests) {
     if (only_important_tests && !str_util::starts_with(test.name, "!")) {
       continue;
     }
-    if (str_util::contains(test.output, "TODO")) {
+    if (str_util::contains(test.name, "TODO")) {
       // ignore the output
       fmt::print("  ⚠️ - {}\n", test.name);
       continue;

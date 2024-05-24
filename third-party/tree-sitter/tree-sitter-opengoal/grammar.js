@@ -208,7 +208,7 @@ module.exports = grammar({
       seq(field('numberOfArgs', $._format_token), '*'),
       '?',
       "Newline",
-      seq(repeat(choice($._format_token, ',')), /[$mMrRbBdDgGxXeEoOsStTfFHhJjKkLlNnVwWyYzZ]/),
+      seq(repeat(choice($._format_token, ',')), /[$AmMrRbBdDgGxXeEoOsStTfFHhJjKkLlNnVwWyYzZ]/),
     ),
     format_specifier: $ =>
       prec.left(seq(
