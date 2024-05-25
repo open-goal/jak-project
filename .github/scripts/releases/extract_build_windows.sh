@@ -24,4 +24,4 @@ cp -r $SOURCE/decompiler/config $DEST/data/decompiler/
 cp -r $SOURCE/goal_src $DEST/data
 cp -r $SOURCE/game/assets $DEST/data/game/
 cp -r $SOURCE/game/graphics/opengl_renderer/shaders $DEST/data/game/graphics/opengl_renderer
-cp -r $SOURCE/custom_levels $DEST/data
+cp -r $SOURCE/custom_assets $DEST/data

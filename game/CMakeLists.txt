@@ -80,6 +80,7 @@ set(RUNTIME_SOURCE
         graphics/opengl_renderer/sprite/Sprite3_Glow.cpp
         graphics/opengl_renderer/sprite/Sprite3.cpp
         graphics/opengl_renderer/TextureAnimator.cpp
+        graphics/opengl_renderer/TextureAnimatorDefs.cpp
         graphics/opengl_renderer/TextureUploadHandler.cpp
         graphics/opengl_renderer/VisDataHandler.cpp
         graphics/opengl_renderer/Warp.cpp
@@ -212,6 +213,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/merc_blend_shape.cpp
         mips2c/jak3_functions/wvehicle_part.cpp
         mips2c/jak3_functions/ripple.cpp
+        mips2c/jak3_functions/shadow.cpp
         mips2c/jak3_functions/ocean.cpp
         mips2c/jak3_functions/ocean_vu0.cpp
         mips2c/jak3_functions/generic_merc.cpp

@@ -349,7 +349,9 @@ void Hfrag::render_hfrag_level(Hfrag::HfragLevel* lev,
     b = false;
   }
   lev->stats = {};
-  for (u32 bucket_idx = 0; bucket_idx < lev->hfrag->buckets.size(); bucket_idx++) {
+
+  // bucket 0 is not drawn, although there is data there.
+  for (u32 bucket_idx = 1; bucket_idx < lev->hfrag->buckets.size(); bucket_idx++) {
     const auto& bucket = lev->hfrag->buckets[bucket_idx];
     for (u32 corner_idx : bucket.corners) {
       const auto& corner = lev->hfrag->corners[corner_idx];

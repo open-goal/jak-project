@@ -92,3 +92,10 @@ class BuildLevel3Tool : public Tool {
   bool run(const ToolInput& task, const PathMap& path_map) override;
   bool needs_run(const ToolInput& task, const PathMap& path_map) override;
 };
+
+class BuildActorTool : public Tool {
+ public:
+  BuildActorTool();
+  bool run(const ToolInput& task, const PathMap& path_map) override;
+  bool needs_run(const ToolInput& task, const PathMap& path_map) override;
+};

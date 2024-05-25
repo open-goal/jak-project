@@ -6754,7 +6754,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftype texture-anim-layer (structure)
-  ((extra           vector                                                          :inline :offset 240)
+  ((interpolated-color     vector :inline) ;; added
+   (interpolated-scale-offset vector :inline)
+   (interpolated-st-scale-offset vector :inline)
+   (interpolated-qs vector :inline)
+   (interpolated-rot vector :inline)
+   (extra           vector                                                          :inline :offset 240)
    (func            (function dma-buffer uint int int texture-anim-layer float int)         :offset-assert 256) ;; guessed by decompiler
    (func-id         symbol                                                                  :offset-assert 256 :overlay-at func) ;; guessed by decompiler
    (init-func       (function texture-anim-layer int)                                       :offset-assert 260) ;; guessed by decompiler
@@ -6766,6 +6771,8 @@
    (test            gs-test                                                                 :offset-assert 280) ;; gs-test
    (alpha           gs-alpha                                                                :offset-assert 288) ;; gs-alpha
    (clamp           gs-clamp                                                                :offset-assert 296) ;; gs-clamp
+   (start-vectors   vector 5 :inline :offset 80 :score -10) ;; added
+
    (start-color     vector                                                          :inline :offset 80)
    (start-scale     vector2                                                         :inline :offset 96)
    (start-offset    vector2                                                         :inline :offset 104)
@@ -6774,6 +6781,8 @@
    (start-qs        vector                                                          :inline :offset 128)
    (start-rot       degrees                                                                 :offset 144) ;; degrees
    (start-st-rot    degrees                                                                 :offset 148) ;; degrees
+   (end-vectors     vector 5 :inline :offset 160 :score -10) ;; added
+
    (end-color       vector                                                          :inline :offset 160)
    (end-scale       vector2                                                         :inline :offset 176)
    (end-offset      vector2                                                         :inline :offset 184)
@@ -13101,7 +13110,7 @@
 
 (deftype drawable-tree-region-prim (drawable-tree)
   "Top-level container for all regions of a level."
-  ((name basic :offset 8)
+  ((name symbol :offset 8)
    (data2 drawable-inline-array :dynamic :offset 32 :score 1))
   :method-count-assert 19
   :size-assert         #x20
@@ -30840,7 +30849,6 @@
 ;; shadow-cpu                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype shadow-stats (structure)
   ((num-single-tris  uint32  :offset-assert 0)
    (num-double-tris  uint32  :offset-assert 4)
@@ -30853,9 +30861,7 @@
   :size-assert         #x14
   :flag-assert         #x900000014
   )
-|#
 
-#|
 (deftype shadow-dcache (structure)
   ((vtx-table              uint32                :offset-assert 0)
    (single-edge-table      uint32                :offset-assert 4)
@@ -30883,40 +30889,38 @@
   :size-assert         #xb0
   :flag-assert         #x9000000b0
   )
-|#
 
-;; (define-extern *shadow-data* object) ;; shadow-data
-;; (define-extern shadow-invert-z-buf function) ;; (function dma-buffer none)
-;; (define-extern shadow-make-invert-buf function) ;; (function none)
-;; (define-extern *shadow-dma-invert-call* object) ;; pointer
-;; (define-extern shadow-dma-init function) ;; (function dma-buffer none)
-;; (define-extern shadow-dma-end function) ;; (function dma-buffer gs-rgbaq symbol int none)
-;; (define-extern shadow-vu0-block object) ;; vu-function
-;; (define-extern shadow-xform-verts function) ;; function
-;; (define-extern shadow-calc-dual-verts function) ;; function
-;; (define-extern shadow-scissor-edges function) ;; function
-;; (define-extern shadow-scissor-top function) ;; function
-;; (define-extern shadow-init-vars function) ;; function
-;; (define-extern shadow-find-facing-single-tris function) ;; function
-;; (define-extern shadow-find-single-edges function) ;; function
-;; (define-extern shadow-find-facing-double-tris function) ;; function
-;; (define-extern shadow-find-double-edges function) ;; function
-;; (define-extern shadow-add-verts function) ;; function
-;; (define-extern shadow-add-facing-single-tris function) ;; function
-;; (define-extern shadow-add-single-edges function) ;; function
-;; (define-extern shadow-add-single-tris function) ;; function
-;; (define-extern shadow-add-double-tris function) ;; function
-;; (define-extern shadow-add-double-edges function) ;; function
-;; (define-extern debug-draw-settings function) ;; (function shadow-settings symbol)
-;; (define-extern shadow-execute function) ;; (function shadow-dma-packet pointer pointer)
-;; (define-extern shadow-vu0-upload function) ;; (function none)
+(define-extern *shadow-data* shadow-data)
+(define-extern shadow-invert-z-buf (function dma-buffer none))
+(define-extern shadow-make-invert-buf (function none))
+(define-extern *shadow-dma-invert-call* pointer)
+(define-extern shadow-dma-init (function dma-buffer none))
+(define-extern shadow-dma-end (function dma-buffer gs-rgbaq symbol int none))
+(define-extern shadow-vu0-block vu-function)
+(define-extern shadow-xform-verts function)
+(define-extern shadow-calc-dual-verts function)
+(define-extern shadow-scissor-edges function)
+(define-extern shadow-scissor-top function)
+(define-extern shadow-init-vars function)
+(define-extern shadow-find-facing-single-tris function)
+(define-extern shadow-find-single-edges function)
+(define-extern shadow-find-facing-double-tris function)
+(define-extern shadow-find-double-edges function)
+(define-extern shadow-add-verts function)
+(define-extern shadow-add-facing-single-tris function)
+(define-extern shadow-add-single-edges function)
+(define-extern shadow-add-single-tris function)
+(define-extern shadow-add-double-tris function)
+(define-extern shadow-add-double-edges function)
+(define-extern debug-draw-settings (function shadow-settings symbol))
+(define-extern shadow-execute (function shadow-dma-packet pointer pointer))
+(define-extern shadow-vu0-upload (function none))
 (define-extern shadow-execute-all (function dma-buffer none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; shadow-vu1                     ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#|
 (deftype shadow-vu1-constants (structure)
   ((hmgescale vector     :inline :offset-assert 0)
    (invhscale vector     :inline :offset-assert 16)
@@ -30924,7 +30928,7 @@
    (texscale  vector     :inline :offset-assert 48)
    (hvdfoff   vector     :inline :offset-assert 64)
    (fog       vector     :inline :offset-assert 80)
-   (clrs      vector     2       :offset-assert 96) ;; guessed by decompiler
+   (clrs      vector   2 :inline :offset-assert 96) ;; guessed by decompiler
    (adgif     gs-gif-tag :inline :offset-assert 128)
    (texflush  gs-adcmd   :inline :offset-assert 144)
    (flush     gs-adcmd   :inline :offset-assert 160)
@@ -30935,9 +30939,7 @@
   :size-assert         #xd0
   :flag-assert         #x9000000d0
   )
-|#
 
-#|
 (deftype shadow-vu1-data (structure)
   ((adgif     gs-gif-tag :inline :offset-assert 0)
    (ad        gs-adcmd   :inline :offset-assert 16)
@@ -30946,20 +30948,19 @@
    (quadgif   gs-gif-tag :inline :offset-assert 64)
    (texoffset vector     :inline :offset-assert 80)
    (texscale  vector     :inline :offset-assert 96)
-   (clrs      qword      2       :offset-assert 112) ;; guessed by decompiler
+   (clrs      qword    2 :inline :offset-assert 112) ;; guessed by decompiler
    )
   :method-count-assert 9
   :size-assert         #x90
   :flag-assert         #x900000090
   )
-|#
 
-;; (define-extern *shadow-vu1-data* object) ;; shadow-vu1-data
-;; (define-extern shadow-vu1-block object) ;; vu-function
-;; (define-extern shadow-vu1-add-constants function) ;; (function dma-buffer int none)
-;; (define-extern shadow-vu1-patch-consts function) ;; (function symbol int none)
-;; (define-extern shadow-vu1-add-matrix function) ;; (function dma-buffer math-camera none)
-;; (define-extern shadow-vu1-init-buffer function) ;; (function dma-buffer int none)
+(define-extern *shadow-vu1-data* shadow-vu1-data)
+(define-extern shadow-vu1-block vu-function)
+(define-extern shadow-vu1-add-constants (function dma-buffer int none))
+(define-extern shadow-vu1-patch-consts (function symbol int none))
+(define-extern shadow-vu1-add-matrix (function dma-buffer math-camera none))
+(define-extern shadow-vu1-init-buffer (function dma-buffer int none))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; warp                           ;;
@@ -30975,57 +30976,57 @@
 ;; texture-anim                   ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern *texture-anim-work* object) ;; texture-anim-work
-;; (define-extern texture-anim-layer-interp function) ;; (function texture-anim-layer float none)
-;; (define-extern texture-anim-layer-add-shader function) ;; (function dma-buffer texture-anim-layer int none)
-;; (define-extern texture-anim-layer-add-clut-shader function) ;; (function dma-buffer texture-anim-layer int none)
-;; (define-extern texture-anim-layer-draw function) ;; (function dma-buffer int int texture-anim-layer none)
-;; (define-extern default-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern blend-clut-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern add-clut-texture-anim-layer-func function)
-;; (define-extern dest-blend-clut-texture-anim-layer-func function)
-;; (define-extern move-rg-to-ba-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern fill-rgb-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern texture-anim-draw-mip-shader function)
-;; (define-extern clear-texture-ids function)
-;; (define-extern texture-anim-draw-mips function)
+(define-extern *texture-anim-work* texture-anim-work)
+(define-extern texture-anim-layer-interp (function texture-anim-layer float none))
+(define-extern texture-anim-layer-add-shader (function dma-buffer texture-anim-layer int none))
+(define-extern texture-anim-layer-add-clut-shader (function dma-buffer texture-anim-layer int none))
+(define-extern texture-anim-layer-draw (function dma-buffer int int texture-anim-layer none))
+(define-extern default-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern blend-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern add-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern dest-blend-clut-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern move-rg-to-ba-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern fill-rgb-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern texture-anim-draw-mip-shader (function dma-buffer texture int none))
+(define-extern clear-texture-ids (function texture none))
+(define-extern texture-anim-draw-mips (function dma-buffer texture none))
 (define-extern update-texture-anim (function bucket-id texture-anim-array none))
-;; (define-extern no-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern copy-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern copy-clut-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern set-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern set-clut-alpha-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern dest-texture-init function) ;; (function texture-anim none)
-;; (define-extern src-texture-init function) ;; (function texture-anim-layer none)
-;; (define-extern src-texture-init-mt8 function) ;; (function texture-anim-layer none)
-;; (define-extern make-noise-texture function) ;; (function pointer int int int none)
-;; (define-extern make-cloud-clut function) ;; (function (pointer uint32) float float none)
-;; (define-extern texture-anim-cloud-clut-upload function) ;; (function dma-buffer texture-anim none)
-;; (define-extern texture-anim-cloud-clut-init function) ;; (function texture-anim none)
-;; (define-extern make-slime-clut function) ;; (function (pointer uint32) none)
-;; (define-extern texture-anim-slime-clut-upload function) ;; (function dma-buffer texture-anim none)
-;; (define-extern texture-anim-slime-clut-init function) ;; (function texture-anim none)
-;; (define-extern make-ramp-clut function) ;; (function (pointer uint32) pointer object none)
-;; (define-extern make-alpha-ramp-clut function) ;; (function (pointer uint32) none)
-;; (define-extern noise-texture-init function) ;; (function texture-anim-layer none)
-;; (define-extern texture-anim-alpha-ramp-clut-upload function) ;; (function dma-buffer texture-anim none)
-;; (define-extern texture-anim-alpha-ramp-clut-init function) ;; (function texture-anim none)
-;; (define-extern texture-anim-overide-size-init function) ;; (function texture-anim none)
-;; (define-extern texture-anim-change-mt8h-init function) ;; (function texture-anim none)
-;; (define-extern *texture-anim-pages-table* object)
-;; (define-extern *texture-anim-mip-array* object)
+(define-extern no-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern copy-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern copy-clut-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern set-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern set-clut-alpha-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern dest-texture-init (function texture-anim none))
+(define-extern src-texture-init (function texture-anim-layer none))
+(define-extern src-texture-init-mt8 (function texture-anim-layer none))
+(define-extern make-noise-texture (function pointer int int int none))
+(define-extern make-cloud-clut (function (pointer uint32) float float none))
+(define-extern texture-anim-cloud-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-cloud-clut-init (function texture-anim none))
+(define-extern make-slime-clut (function (pointer uint32) none))
+(define-extern texture-anim-slime-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-slime-clut-init (function texture-anim none))
+(define-extern make-ramp-clut (function (pointer uint32) pointer object none))
+(define-extern make-alpha-ramp-clut (function (pointer uint32) none))
+(define-extern noise-texture-init (function texture-anim-layer none))
+(define-extern texture-anim-alpha-ramp-clut-upload (function dma-buffer texture-anim none))
+(define-extern texture-anim-alpha-ramp-clut-init (function texture-anim none))
+(define-extern texture-anim-overide-size-init (function texture-anim none))
+(define-extern texture-anim-change-mt8h-init (function texture-anim none))
+(define-extern *texture-anim-pages-table* (pointer uint8))
+(define-extern *texture-anim-mip-array* (pointer uint16))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim-funcs             ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (define-extern noise-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern cloud-texture-anim-layer-func function) ;; (function dma-buffer uint int int texture-anim-layer float int)
-;; (define-extern cloud-texture-anim-func function) ;; (function dma-buffer texture-anim int)
-;; (define-extern fog-texture-anim-init function) ;; (function texture-anim int)
+(define-extern noise-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern cloud-texture-anim-layer-func (function dma-buffer uint int int texture-anim-layer float int))
+(define-extern cloud-texture-anim-func (function dma-buffer texture-anim int))
+(define-extern fog-texture-anim-init (function texture-anim int))
 (define-extern *fog-texture-work* fog-texture-work)
-;; (define-extern real-fog-texture-anim-func function) ;; (function dma-buffer texture-anim int)
-;; (define-extern fog-texture-anim-func function) ;; (function dma-buffer texture-anim int)
+(define-extern real-fog-texture-anim-func (function dma-buffer texture-anim int))
+(define-extern fog-texture-anim-func (function dma-buffer texture-anim int))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; texture-anim-tables            ;;

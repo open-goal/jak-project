@@ -87,9 +87,11 @@ add_library(common
         util/term_util.cpp
         util/Timer.cpp
         util/unicode_util.cpp
-        versions/versions.cpp)
+        util/gltf_util.cpp
+        versions/versions.cpp
+        )
 
-target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs)
+target_link_libraries(common fmt lzokay replxx libzstd_static tree-sitter sqlite3 libtinyfiledialogs tiny_gltf)
 
 if(WIN32)
     target_link_libraries(common wsock32 ws2_32 windowsapp)

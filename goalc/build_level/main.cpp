@@ -28,8 +28,9 @@ int main(int argc, char** argv) {
   lg::info("Build Level Tool", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   CLI::App app{"OpenGOAL Compiler / REPL"};
-  app.add_option("input-json", input_json,
-                 "Input JSON file (for example, custom_levels/jak2/test-zone/test-zone.jsonc)")
+  app.add_option(
+         "input-json", input_json,
+         "Input JSON file (for example, custom_assets/jak2/levels/test-zone/test-zone.jsonc)")
       ->required();
   app.add_option("output-file", output_file,
                  "Output .go file, (for example out/jak2/obj/test-zone.go)")
