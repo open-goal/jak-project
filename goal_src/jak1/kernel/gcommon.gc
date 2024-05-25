@@ -81,8 +81,7 @@
    This will not preserve the upper 64-bits of a 128-bit value."
   x)
 
-(defun 1 /
-  ((x float))
+(defun 1/ ((x float))
   "Reciprocal floating point"
   (declare (inline))
   (/ 1. x))
@@ -177,11 +176,11 @@
 
 (defun false-func ()
   "Return false"
-  #f)
+  '#f)
 
 (defun true-func ()
   "Return true"
-  #t)
+  '#t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; format
@@ -348,9 +347,9 @@
 
 (defun nmember ((this basic) (lst object))
   "Is this in the list lst? Check with the name= function."
-  (while (not (or (= lst ()) (name= (the-as basic (car lst)) this)))
+  (while (not (or (= lst '()) (name= (the-as basic (car lst)) this)))
     (set! lst (cdr lst)))
-  (if (!= lst ()) lst))
+  (if (!= lst '()) lst))
 
 (defun assoc ((item object) (alist object))
   "Is there an entry with key item in the association list alist?
@@ -749,7 +748,7 @@
   #f)
 
 ;; not sure what this is.
-(define *trace-list* ())
+(define *trace-list* '())
 
 (defun print-tree-bitmask ((bits int) (count int))
   "Print out a single entry for a process tree 'tree' diagram"
@@ -802,13 +801,13 @@
        ((nonzero? (logand (the-as int this) 3))
         ;; alignment is bad!
         (if name (format print-dest "ERROR: object #x~X ~S is not a valid object (misaligned)~%" this name))
-        #f)
+        '#f)
        ((not in-goal-mem)
         ;; address isn't within the memory we expect.
         (if name (format print-dest "ERROR: object #x~X ~S is not a valid object (bad address)~%" this name))
-        #f)
+        '#f)
        ;; otherwise, we're good!
-       (else #t))) ;; end (not expected-type) check
+       (else '#t))) ;; end (not expected-type) check
     ((and allow-false (not this))
      ;; we got a false, but its allowed!
      ;; note that we don't reject falses otherwise, as false is a perfectly valid symbol.
@@ -821,13 +820,13 @@
           ((nonzero? (logand (the-as int this) 15))
            (if name
              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type))
-           #f)
+           '#f)
           ((or (not in-goal-mem) (< (the-as uint this) (end-of-symbol-table)))
            ;; structures should never be in the symbol table, they have a slightly stricter allowed memory range.
            (if name
              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type))
-           #f)
-          (else #t)) ;; end structure check
+           '#f)
+          (else '#t)) ;; end structure check
         )
        ((= expected-type pair)
         ;; pair alignment is 8 bytes + 2.
@@ -835,32 +834,32 @@
           ((!= (logand (the-as int this) 7) PAIR_OFFSET)
            (if name
              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type))
-           #f)
+           '#f)
           ((not in-goal-mem)
            ;; the empty pair is in the symbol table, so we allow anything in GOAL memory.
            (if name
              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type))
-           #f)
+           '#f)
           ;; pass!
-          (else #t)))
+          (else '#t)))
        ((= expected-type binteger)
         (cond
           ;; binteger has 0 in the lower 3 bits.
-          ((zero? (logand (the-as int this) 7)) #t)
+          ((zero? (logand (the-as int this) 7)) '#t)
           (else
            (if name
              (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type))
-           #f)))
+           '#f)))
        ;; now we assume desired type is a basic.
        ((!= (logand (the-as int this) 7) BASIC_OFFSET)
         (if name
           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (misaligned)~%" this name expected-type))
-        #f)
+        '#f)
        ;; basics can be in the symbol table (basics are symbols...)
        ((not in-goal-mem)
         (if name
           (format print-dest "ERROR: object #x~X ~S is not a valid object of type '~A' (bad address)~%" this name expected-type))
-        #f)
+        '#f)
        ((and (= expected-type type) (!= (rtype-of this) type))
         ;; special case for type, check the runtime type of the object and be done.
         (if name
@@ -870,13 +869,13 @@
                   name
                   expected-type
                   (rtype-of this)))
-        #f)
+        '#f)
        (else
         ;; otherwise... we want to check and see if the type is actually a type.
         ;; we use valid? to do this check.
         ;; avoid infinite recursion by skipping this check if the expected-type is type.
         (cond
-          ((and (!= expected-type type) (not (valid? (rtype-of this) type #f #t 0)))
+          ((and (!= expected-type type) (not (valid? (rtype-of this) type '#f '#t 0)))
            (if name
              ;; note: print the invalid type as an address in case it's unprintable.
              (format print-dest
@@ -885,7 +884,7 @@
                      name
                      expected-type
                      (rtype-of this)))
-           #f)
+           '#f)
           ((not (type-type? (rtype-of this) expected-type))
            ;; type check failed.
            (if name
@@ -895,7 +894,7 @@
                      name
                      expected-type
                      (rtype-of this)))
-           #f)
+           '#f)
           ((= expected-type symbol)
            ;; got a symbol, expecting to be in the symbol table.
            (cond
@@ -906,8 +905,8 @@
                         this
                         name
                         expected-type))
-              #f)
-             (else #t)))
+              '#f)
+             (else '#t)))
           ;; not a symbol, so expecting to be outside st.
           ((< (the-as uint this) (end-of-symbol-table))
            (if name
@@ -916,8 +915,8 @@
                      this
                      name
                      expected-type))
-           #f)
-          (else #t)))))))
+           '#f)
+          (else '#t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; PC Port asm macros
@@ -937,7 +936,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; inserted by the decompiler for assembly branches.
-(defmacro b! (pred destination &key (delay ()) &key (likely-delay ()))
+(defmacro b! (pred destination &key (delay '()) &key (likely-delay '()))
   "Branch!"
   ;; evaluate the predicate
   `(let ((should-branch ,pred))

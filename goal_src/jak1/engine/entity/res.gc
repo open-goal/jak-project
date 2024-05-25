@@ -10,28 +10,28 @@
 ;; dgos: GAME, ENGINE
 
 #|
- res is a generic storage system for not very large data, used mostly for the game entities.
- These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
- The data is stored similar to an unboxed inline-array, the type of the data is stored in the res-tag.
- 
- A res-lump stores and is used to access all of the data for a single "resource", a collection of varying data.
- This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
- 
- A res-tag is a tag that contains information about a particular property of this resource, such as type, name, and amount of elements.
- For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
- 
- Keyframes are used to specify when/where the data is relevant.
- For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
- when it starts, somewhere in the middle, and at the end.
- You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
- the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
- 
- Properties are looked up from a res-lump using their name (a symbol).
- You can look up the data of the property you want directly using the various get-property methods.
- Curves can be quickly filled in using the get-curve-data! method.
- 
- 
- This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
+res is a generic storage system for not very large data, used mostly for the game entities.
+These res files store collections of data, which can be as values (int8, int16, int32, int64, uint8, uint16, uint32, uint64, float, vector), or any structure (as references), which are tagged and identified with a res-tag.
+The data is stored similar to an unboxed inline-array, the type of the data is stored in the res-tag.
+
+A res-lump stores and is used to access all of the data for a single "resource", a collection of varying data.
+This is similar to a C++ map or C# dictionary. The key is a res-tag and the value is the corresponding binary data.
+
+A res-tag is a tag that contains information about a particular property of this resource, such as type, name, and amount of elements.
+For example, information about an array of vectors that make up a path - for a moving platform - or an integer to store its entity ID.
+
+Keyframes are used to specify when/where the data is relevant.
+For example (this is made-up), say you have a camera spline, and you want the FOV to change at three specific points:
+when it starts, somewhere in the middle, and at the end.
+You would store an array of three FOV values. The key-frame field could then be used to say at which point in the spline
+the FOV should be at that value. If the camera is somewhere between those points, the result could then be interpolated.
+
+Properties are looked up from a res-lump using their name (a symbol).
+You can look up the data of the property you want directly using the various get-property methods.
+Curves can be quickly filled in using the get-curve-data! method.
+
+
+This is updated from the entity system used in Crash 2, which had most of these features and worked very similarly!
 |#
 
 (defmacro res-ref? (tag)
@@ -78,7 +78,7 @@
   "Allocate a new res-lump."
   (let ((this (object-new allocation
                           type-to-make
-                          (the int (+ (-> type-to-make size) (* (1 - data-count) (size-of res-tag)) data-size)))))
+                          (the int (+ (-> type-to-make size) (* (1- data-count) (size-of res-tag)) data-size)))))
     (set! (-> this allocated-length) data-count)
     (set! (-> this data-size) data-size)
     (set! (-> this length) 0)
@@ -380,14 +380,14 @@
             (tag-stop (+ (-> this length) -2)))
         (while (>= tag-stop i)
           (let* ((tag1 (-> this tag i))
-                 (tag2 (-> this tag (1 + i)))
+                 (tag2 (-> this tag (1+ i)))
                  (tag-name1 (deref uint64 (-> (symbol->string (-> tag1 name)) data)))
                  (tag-name2 (deref uint64 (-> (symbol->string (-> tag2 name)) data))))
             (when (or (< tag-name2 tag-name1) (and (= tag-name1 tag-name2) (< (-> tag2 key-frame) (-> tag1 key-frame))))
-              (1 +! tags-sorted)
+              (1+! tags-sorted)
               (set! (-> this tag i) tag2)
-              (set! (-> this tag (1 + i)) tag1)))
-          (1 +! i)))))
+              (set! (-> this tag (1+ i)) tag1)))
+          (1+! i)))))
   this)
 
 (defmethod allocate-data-memory-for-tag! ((this res-lump) (arg0 res-tag))
@@ -479,13 +479,13 @@
   (set! (-> arg0 inlined?) 1)
   (add-data! this arg0 (& arg1)) ;; note, only 32-bits are spilled to the stack here.
   #|
-      (local-vars (sv-16 object))
-      (set! sv-16 arg1)
-      (let* ((v1-0 arg0)
-             (a1-4 (copy-and-set-bf v1-0 :inlined? 1))
-             )
-       (add-data! this a1-4 (& sv-16))
-       )
+  (local-vars (sv-16 object))
+  (set! sv-16 arg1)
+  (let* ((v1-0 arg0)
+         (a1-4 (copy-and-set-bf v1-0 :inlined? 1))
+         )
+   (add-data! this a1-4 (& sv-16))
+   )
   |#
   )
 

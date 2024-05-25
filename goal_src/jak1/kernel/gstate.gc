@@ -8,47 +8,47 @@
 ;; dgos: KERNEL
 
 #|
- Summary of state system:
- 
- A process can be put into a state, using enter-state, or the go macro.
- This will set up the process to run the appropriate handler functions defined by the state.
- The state handlers are:
- - enter : gets run before trans on the first time the state is used. Can be #f. Must return.
- - trans : gets run before code each time the code is run. Can be #f. Must return.
- - code  : main thread. Can suspend. If it returns, the process dies
- - exit  : gets run when leaving a state. must return.
- - event : not sure of the details here yet.
- 
- You can use "go" to change the state of a process.  This causes the process main thread execution to be abandoned.
- If the main thread has exits/protects on the stack frame, they will be run first to clean up.
- 
- There are several ways to "go"
- - go during init: when a process is being initialized with run-function-in-process, you can "go".
- this causes the run-function-in-process to return immediately, and the next time the process is dispatched
- it will go into the other state.  This will automatically set the process to waiting-to-run,
- and shrink the process heap, if appropriate
- 
- - go from outside the process. You can temporarily set pp to another process, and have that
- process go to another state. The actual go will occur the next time the process is scheduled.
- Use the go-process macro to do this.
- 
- - go from a non-main thread in the right process. You can do a go from a temporary thread, like trans or post.
- If you do it from post, the go returns and the rest of the post runs. If you do it from any other thread, the temporary thread
- is immediately abandonded. Like the previous two, it will defer the actual go until the next time the
- process runs.
- 
- - go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
- to be cleaned up, and the old state's exit to be called.  It will reset the stack, then run the code.
- Unlike the others, this means you "go" immediately.
- 
- The compiler has two special hooks related to states: go-hook and define-state-hook.
- These take care of doing a go and a state definition and properly checking types.
- 
- The define-state-hook takes a state object and handlers and defines a global symbol
- with the appropriate state type.
- 
- The go-hook calls enter state and sets (-> proc next-state) for the given process.
- It type checks the arguments for the entry function.
+Summary of state system:
+
+A process can be put into a state, using enter-state, or the go macro.
+This will set up the process to run the appropriate handler functions defined by the state.
+The state handlers are:
+- enter : gets run before trans on the first time the state is used. Can be #f. Must return.
+- trans : gets run before code each time the code is run. Can be #f. Must return.
+- code  : main thread. Can suspend. If it returns, the process dies
+- exit  : gets run when leaving a state. must return.
+- event : not sure of the details here yet.
+
+You can use "go" to change the state of a process.  This causes the process main thread execution to be abandoned.
+If the main thread has exits/protects on the stack frame, they will be run first to clean up.
+
+There are several ways to "go"
+- go during init: when a process is being initialized with run-function-in-process, you can "go".
+  this causes the run-function-in-process to return immediately, and the next time the process is dispatched
+  it will go into the other state.  This will automatically set the process to waiting-to-run,
+  and shrink the process heap, if appropriate
+
+- go from outside the process. You can temporarily set pp to another process, and have that
+  process go to another state. The actual go will occur the next time the process is scheduled.
+  Use the go-process macro to do this.
+
+- go from a non-main thread in the right process. You can do a go from a temporary thread, like trans or post.
+  If you do it from post, the go returns and the rest of the post runs. If you do it from any other thread, the temporary thread
+  is immediately abandonded. Like the previous two, it will defer the actual go until the next time the
+  process runs.
+
+- go from the main thread of the main process. This causes the (-> pp state) to change, the stack frames
+  to be cleaned up, and the old state's exit to be called.  It will reset the stack, then run the code.
+  Unlike the others, this means you "go" immediately.
+
+The compiler has two special hooks related to states: go-hook and define-state-hook.
+These take care of doing a go and a state definition and properly checking types.
+
+The define-state-hook takes a state object and handlers and defines a global symbol
+with the appropriate state type.
+
+The go-hook calls enter state and sets (-> proc next-state) for the given process.
+It type checks the arguments for the entry function.
 |#
 
 (defmacro go (next-state &rest args)
@@ -109,7 +109,7 @@
 
 ;; use a compile-time list to keep track of the type of an anonymous behavior.
 (seval
-  (define *defstate-type-stack* ()))
+  (define *defstate-type-stack* '()))
 
 (desfun def-state-check-behavior (beh-form beh-type)
   "check if code block is an anonymous behavior. needed for anonymous behaviors on defstate."
@@ -117,7 +117,7 @@
     (push! *defstate-type-stack* beh-type)))
 
 (defmacro clear-def-state-stack ()
-  (set! *defstate-type-stack* ())
+  (set! *defstate-type-stack* '())
   `(none))
 
 ;; set when inside a defstate.
@@ -139,7 +139,7 @@
         (fmt #t
              "*defstate-type-stack* leaked! An error probably happened in a previous defstate. stack is: {}"
              *defstate-type-stack*))
-      (set! *defstate-type-stack* ())
+      (set! *defstate-type-stack* '())
       (when virtual
         (set! *defstate-current-type* defstate-type)
         (set! *defstate-current-state-name* state-name))
@@ -223,7 +223,7 @@
 
 ;; set the default handler functions for a process's state handlers
 (seval
-  (define *default-state-handlers* ()))
+  (define *default-state-handlers* '()))
 
 (defmacro defstatehandler (proc &key (event #f) &key (enter #f) &key (trans #f) &key (exit #f) &key (code #f) &key (post #f))
   (let ((old (assoc proc *default-state-handlers*))
@@ -276,7 +276,7 @@
 
 (defmethod print ((this state))
   "Print a state."
-  (format #t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
+  (format '#t "#<~A ~A @ #x~X>" (-> this type) (-> this name) this)
   this)
 
 (define-extern enter-state (function object object object object object object object))

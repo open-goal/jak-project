@@ -158,71 +158,71 @@
       (set! (-> origin z) (* (cos (* 3.0 (degrees dbg2))) (meters 100.)))
       (+! (-> origin x) (meters -50.)))
     #|
-            ;;; PROBE (at the frag finding level)
-        
-            ;; setup the collide work
-            (setup-collide-for-line-sphere origin line radius)
-        
-        
-        
-            ;; clear collide list
-            (set! (-> *collide-list* num-items) 0)
-        
-            ;; loop over active levels
-            (dotimes (lev-idx (-> *level* length))
-              (let ((lev (-> *level* level lev-idx)))
-                (when (= (-> lev status) 'active)
-                  ;; do the collision check!
-                  (collide-ray (-> lev bsp) 0 *collide-list*)
-                  )
-                )
-              )
-        
-            ;; print results
-            (format *stdcon* "got ~d in list~%" (-> *collide-list* num-items))
-            (format *stdcon* "cam at: ~`vector`P~%" (camera-pos))
-        
-            (let ((old-count 0))
-              ;; visualize results
-              (dotimes (i (-> *collide-list* num-items))
-                (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
-                      (inst (the instance-tie (-> *collide-list* items i inst))))
-                  (when inst
-                    (+! old-count 1)
-                    (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (-> inst bsphere w) (new 'static 'rgba :b #x80 :a #x80))
-                    )
-        
-                  (when (not inst)
-                    (+! old-count 1)
-                    ;;(format *stdcon* "NI: ~A~%" mesh)
-                    (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 5.0) (new 'static 'rgba :g #x80 :a #x80))
-                    )
-                  ;
-                  )
-                )
-        
-              ;; now test the other one
-              (set! (-> *collide-list* num-items) 0)
-              (collide-probe-make-list (-> *level* level 0) *collide-list*)
-        
-              ;; these should come out the same, if we did it right.
-              (format *stdcon* "COMPARE: ~d ~d~%" (-> *collide-list* num-items) old-count)
-        
-              (dotimes (i (-> *collide-list* num-items))
-                (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
-                      (inst (the instance-tie (-> *collide-list* items i inst))))
-                  (when inst
-                    (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (* 0.95 (-> inst bsphere w)) (new 'static 'rgba :b #x80 :r #x80 :a #x80))
-                    )
-        
-                  (when (not inst)
-                    ;;(format *stdcon* "NI: ~A~%" mesh)
-                    (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 6.0) (new 'static 'rgba :g #x30 :a #x80))
-                    )
-                  ;
-                  )
-                )
-              )
+    ;;; PROBE (at the frag finding level)
+
+    ;; setup the collide work
+    (setup-collide-for-line-sphere origin line radius)
+
+
+
+    ;; clear collide list
+    (set! (-> *collide-list* num-items) 0)
+
+    ;; loop over active levels
+    (dotimes (lev-idx (-> *level* length))
+      (let ((lev (-> *level* level lev-idx)))
+        (when (= (-> lev status) 'active)
+          ;; do the collision check!
+          (collide-ray (-> lev bsp) 0 *collide-list*)
+          )
+        )
+      )
+
+    ;; print results
+    (format *stdcon* "got ~d in list~%" (-> *collide-list* num-items))
+    (format *stdcon* "cam at: ~`vector`P~%" (camera-pos))
+
+    (let ((old-count 0))
+      ;; visualize results
+      (dotimes (i (-> *collide-list* num-items))
+        (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
+              (inst (the instance-tie (-> *collide-list* items i inst))))
+          (when inst
+            (+! old-count 1)
+            (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (-> inst bsphere w) (new 'static 'rgba :b #x80 :a #x80))
+            )
+
+          (when (not inst)
+            (+! old-count 1)
+            ;;(format *stdcon* "NI: ~A~%" mesh)
+            (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 5.0) (new 'static 'rgba :g #x80 :a #x80))
+            )
+          ;
+          )
+        )
+
+      ;; now test the other one
+      (set! (-> *collide-list* num-items) 0)
+      (collide-probe-make-list (-> *level* level 0) *collide-list*)
+
+      ;; these should come out the same, if we did it right.
+      (format *stdcon* "COMPARE: ~d ~d~%" (-> *collide-list* num-items) old-count)
+
+      (dotimes (i (-> *collide-list* num-items))
+        (let ((mesh (the collide-frag-mesh (-> *collide-list* items i mesh)))
+              (inst (the instance-tie (-> *collide-list* items i inst))))
+          (when inst
+            (add-debug-sphere #t (bucket-id debug-draw0) (-> inst bsphere) (* 0.95 (-> inst bsphere w)) (new 'static 'rgba :b #x80 :r #x80 :a #x80))
+            )
+
+          (when (not inst)
+            ;;(format *stdcon* "NI: ~A~%" mesh)
+            (add-debug-sphere #t (bucket-id debug-draw0) (vector-as-floats (-> mesh base-trans)) (meters 6.0) (new 'static 'rgba :g #x30 :a #x80))
+            )
+          ;
+          )
+        )
+      )
     |#
     ;; CCACHE (fill from bounding box)
     (let ((bbox-fake (new 'stack 'bounding-box))

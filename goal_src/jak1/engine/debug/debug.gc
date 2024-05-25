@@ -93,7 +93,8 @@
 (defun-debug internal-draw-debug-line ((bucket bucket-id) (p0 vector) (p1 vector) (first-color rgba) (mode symbol) (second-color rgba))
   "Draw a debug line from p0 to p1. Mode can be:
    'fade, 'fade-depth, or #f.
-   second-color can be -1 to just use the same color."
+   second-color can be -1 to just use the same color.
+   "
   (let ((a0-4 (-> (current-frame) debug-buf)))
     (if (< (the-as uint (shr (+ (&- (-> a0-4 end) (the-as uint (-> a0-4 base))) 15) 4)) (the-as uint #x8000))
       (return (the-as pointer #f))))
@@ -123,7 +124,7 @@
                                   (gs-reg-list rgbaq xyzf2 rgbaq xyzf2))
           (case mode
             (('fade-depth)
-             (let ((f0-3 (fminmax (* (1 / #xffffff) (the float (-> s4-0 vector 0 z))) 0.2 1.0)))
+             (let ((f0-3 (fminmax (* (1/ #xffffff) (the float (-> s4-0 vector 0 z))) 0.2 1.0)))
                (set! (-> s1-0 vector 0 x) (the int (* (the float (-> first-color r)) f0-3)))
                (set! (-> s1-0 vector 0 y) (the int (* (the float (-> first-color g)) f0-3)))
                (set! (-> s1-0 vector 0 z) (the int (* (the float (-> first-color b)) f0-3))))
@@ -135,7 +136,7 @@
              (set! (-> s1-0 vector 0 w) (the-as int (-> first-color a)))))
           (cond
             ((= mode 'fade-depth)
-             (let ((f0-7 (fminmax (* (1 / #xffffff) (the float (-> s4-0 vector 1 z))) 0.2 1.0)))
+             (let ((f0-7 (fminmax (* (1/ #xffffff) (the float (-> s4-0 vector 1 z))) 0.2 1.0)))
                (set! (-> s1-0 vector 1 x) (the int (* (the float (-> second-color r)) f0-7)))
                (set! (-> s1-0 vector 1 y) (the int (* (the float (-> second-color g)) f0-7)))
                (set! (-> s1-0 vector 1 z) (the int (* (the float (-> second-color b)) f0-7))))
@@ -179,10 +180,10 @@
   (when enable
     (let ((s4-0 (new 'stack-no-clear 'vector))
           (s3-0 (vector-3pt-cross! (new 'stack-no-clear 'vector) p0 p1 p2)))
-      (vector-float / ! s3-0 s3-0 (* (1 / METER_LENGTH) (vector-length s3-0)))
+      (vector-float/! s3-0 s3-0 (* (1/ METER_LENGTH) (vector-length s3-0)))
       (vector+! s4-0 p0 p1)
       (vector+! s4-0 s4-0 p2)
-      (vector-float / ! s4-0 s4-0 3.0)
+      (vector-float/! s4-0 s4-0 3.0)
       (vector+! s3-0 s3-0 s4-0)
       (add-debug-line #t bucket s4-0 s3-0 color #f (the-as rgba -1))))
   #f)
@@ -692,12 +693,12 @@
     (when (>= (-> arg0 h-first) (-> arg0 num-points))
       (set! (-> arg0 h-first) 0)))
   (when arg1
-    (dotimes (s5-1 (1 - (-> arg0 num-points)))
+    (dotimes (s5-1 (1- (-> arg0 num-points)))
       (if (!= (+ s5-1 1) (-> arg0 h-first))
         (add-debug-line #t
                         (bucket-id debug-no-zbuf)
                         (-> arg0 points s5-1)
-                        (-> arg0 points (1 + s5-1))
+                        (-> arg0 points (1+ s5-1))
                         (static-rgba #x80 #xc0 #x80 #x80)
                         #f
                         (the-as rgba -1)))))

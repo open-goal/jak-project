@@ -138,9 +138,8 @@ void FormatterTree::construct_formatter_tree_recursive(const std::string& source
       }
     } else {
       construct_formatter_tree_recursive(source, child_node, tree_node, next_node_prefix);
-      // TODO - im not sure if this is correct
-      if (node_prefix && !tree_node.refs.empty()) {
-        tree_node.refs.at(tree_node.refs.size() - 1).node_prefix = node_prefix;
+      if (next_node_prefix && !tree_node.refs.empty()) {
+        tree_node.refs.at(tree_node.refs.size() - 1).node_prefix = next_node_prefix;
       }
     }
   }
