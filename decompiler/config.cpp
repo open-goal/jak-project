@@ -96,6 +96,9 @@ Config make_config_via_json(nlohmann::json& json) {
   }
   config.disassemble_code = json.at("disassemble_code").get<bool>();
   config.decompile_code = json.at("decompile_code").get<bool>();
+  if (json.contains("format_code")) {
+    config.format_code = json.at("format_code").get<bool>();
+  }
   config.write_hex_near_instructions = json.at("write_hex_near_instructions").get<bool>();
   config.write_scripts = json.at("write_scripts").get<bool>();
   config.disassemble_data = json.at("disassemble_data").get<bool>();

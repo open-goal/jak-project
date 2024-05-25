@@ -11,6 +11,7 @@
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/util/string_util.h"
+#include <common/formatter/formatter.h>
 
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/analyze_inspect_method.h"
@@ -872,9 +873,22 @@ void ObjectFileDB::ir2_write_results(const fs::path& output_dir,
     auto file_name = output_dir / (obj.to_unique_name() + "_ir2.asm");
     file_util::write_text_file(file_name, file_text);
 
-    auto final = ir2_final_out(obj, imports, {});
+    auto unformatted_code = ir2_final_out(obj, imports, {});
     auto final_name = output_dir / (obj.to_unique_name() + "_disasm.gc");
-    file_util::write_text_file(final_name, final);
+    if (config.format_code) {
+      const auto formatted_code = formatter::format_code(unformatted_code);
+      if (!formatted_code) {
+        lg::error(
+            "Was unable to format the decompiled result of {}, make a github issue. Writing "
+            "unformatted code",
+            obj.to_unique_name());
+        file_util::write_text_file(final_name, unformatted_code);
+      } else {
+        file_util::write_text_file(final_name, formatted_code.value());
+      }
+    } else {
+      file_util::write_text_file(final_name, unformatted_code);
+    }
   }
 }
 

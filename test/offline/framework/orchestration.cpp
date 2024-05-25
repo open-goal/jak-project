@@ -38,6 +38,9 @@ OfflineTestDecompiler setup_decompiler(const OfflineTestWorkGroup& work,
     object_files.insert(file.name_in_dgo);  // todo, make this work with unique_name
   }
 
+  // skip formatting, adds unnecessary time to the process and the formatter has not been optimized
+  // yet
+  dc.config->format_code = false;
   dc.config->allowed_objects = object_files;
   // don't try to do this because we can't write the file
   dc.config->generate_symbol_definition_map = false;
