@@ -546,7 +546,8 @@
       (suspend)
       (update-transforms! (-> self root))
       (logior! (-> self mask) (process-mask sleep))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post ja-post)
 
 (defstate bounce-on (crate)
@@ -572,34 +573,35 @@
   :code
     (behavior ((arg0 handle))
       (set! (-> self target) arg0)
-      (loop (let* ((gp-0 (handle->process (-> self target)))
-                   (v1-4 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable)) gp-0)))
-              (when v1-4
-                (let* ((gp-1 (-> (the-as process-drawable v1-4) root))
-                       (v1-6 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) collide-shape)) gp-1)))
-                  (when v1-6
-                    (let* ((gp-2 (-> self root root-prim prim-core))
-                           (a1-3 (-> (the-as collide-shape v1-6) root-prim prim-core))
-                           (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3))))
-                      (when (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (!= (-> self defense) 'steel))
-                        (logior! (-> self fact options) (fact-options can-collect))
-                        (go-virtual die #f 0))
-                      (when (rand-vu-percent? 0.5)
-                        (let ((s5-0 (new 'stack-no-clear 'vector)))
-                          (set! (-> s5-0 quad) (-> gp-2 world-sphere quad))
-                          (dotimes (gp-3 3)
-                            (+! (-> s5-0 data gp-3) (rand-vu-float-range -5324.8 5324.8)))
-                          (eco-blue-glow s5-0)))
-                      (activate! (-> self smush)
-                                 (lerp-scale (rand-vu-float-range 0.1 0.3)
-                                             (rand-vu-float-range 0.0 0.02)
-                                             f30-0
-                                             (-> *FACT-bank* suck-suck-dist)
-                                             (-> *FACT-bank* suck-bounce-dist))
-                                 60
-                                 60
-                                 1.0
-                                 1.0))))))
+      (loop
+        (let* ((gp-0 (handle->process (-> self target)))
+               (v1-4 (if (and (nonzero? gp-0) (type-type? (-> gp-0 type) process-drawable)) gp-0)))
+          (when v1-4
+            (let* ((gp-1 (-> (the-as process-drawable v1-4) root))
+                   (v1-6 (if (and (nonzero? gp-1) (type-type? (-> gp-1 type) collide-shape)) gp-1)))
+              (when v1-6
+                (let* ((gp-2 (-> self root root-prim prim-core))
+                       (a1-3 (-> (the-as collide-shape v1-6) root-prim prim-core))
+                       (f30-0 (vector-vector-distance (the-as vector gp-2) (the-as vector a1-3))))
+                  (when (and (< f30-0 (-> *FACT-bank* suck-suck-dist)) (!= (-> self defense) 'steel))
+                    (logior! (-> self fact options) (fact-options can-collect))
+                    (go-virtual die #f 0))
+                  (when (rand-vu-percent? 0.5)
+                    (let ((s5-0 (new 'stack-no-clear 'vector)))
+                      (set! (-> s5-0 quad) (-> gp-2 world-sphere quad))
+                      (dotimes (gp-3 3)
+                        (+! (-> s5-0 data gp-3) (rand-vu-float-range -5324.8 5324.8)))
+                      (eco-blue-glow s5-0)))
+                  (activate! (-> self smush)
+                             (lerp-scale (rand-vu-float-range 0.1 0.3)
+                                         (rand-vu-float-range 0.0 0.02)
+                                         f30-0
+                                         (-> *FACT-bank* suck-suck-dist)
+                                         (-> *FACT-bank* suck-bounce-dist))
+                             60
+                             60
+                             1.0
+                             1.0))))))
         (suspend)))
   :post crate-post)
 
@@ -940,7 +942,8 @@
       (set-time! (-> self state-time))
       (suspend)
       (update-transforms! (-> self root))
-      (loop (set-time! (-> self state-time))
+      (loop
+        (set-time! (-> self state-time))
         (ja-post)
         (logior! (-> self mask) (process-mask sleep-code))
         (suspend)
@@ -988,6 +991,7 @@
   :virtual #t
   :code
     (behavior ()
-      (loop (if (or (not (-> self blocker)) (logtest? (-> self blocker extra perm status) (entity-perm-status complete)))
-              (go-virtual die #t 0))
+      (loop
+        (if (or (not (-> self blocker)) (logtest? (-> self blocker extra perm status) (entity-perm-status complete)))
+          (go-virtual die #t 0))
         (suspend))))

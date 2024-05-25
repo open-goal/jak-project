@@ -51,7 +51,8 @@
   :code
     (behavior ()
       (transform-post)
-      (loop (ja-no-eval :group! logtrap-idle-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! logtrap-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (when (logtest? (-> self draw status) (draw-status was-drawn))
             (cond
@@ -100,7 +101,8 @@
 (defstate towertop-idle (towertop)
   :code
     (behavior ()
-      (loop (ja-no-eval :group! towertop-idle-ja :num! (seek! max 0.4) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! towertop-idle-ja :num! (seek! max 0.4) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek! max 0.4)))))
@@ -140,7 +142,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (ja-no-eval :group! lurkerm-tall-sail-idle-ja :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! lurkerm-tall-sail-idle-ja :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
         (until (ja-done? 0)
           (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* 12743.111 (seconds-per-frame) (-> self speed)))
           (suspend)
@@ -205,7 +208,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! (-> self draw art-group data 4) :num! (seek! max (* 0.5 (-> self speed))) :frame-num 0.0)
         (until (ja-done? 0)
           (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* -12743.111 (seconds-per-frame) (-> self speed)))
           (suspend)
@@ -288,7 +292,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (ja-no-eval :group! lurkerm-piston-idle-ja :num! (seek! max (-> self speed)) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! lurkerm-piston-idle-ja :num! (seek! max (-> self speed)) :frame-num 0.0)
         (until (ja-done? 0)
           (let ((gp-0 (new-stack-vector0)))
             (set! (-> gp-0 quad) (-> self base quad))
@@ -366,7 +371,8 @@
     (behavior ()
       (ja-no-eval :num! (loop!) :frame-num 0.0)
       (ja-post)
-      (loop (suspend)
+      (loop
+        (suspend)
         (when (logtest? (-> self draw status) (draw-status was-drawn))
           (ja :num! (loop! (-> self speed)))
           (ja-post)))))
@@ -441,32 +447,33 @@
     (behavior ()
       (ja :group! precurbridge-idle-ja :num! min)
       (transform-post)
-      (loop (when (and *target*
-                       (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
-                       (< (-> self activation-point y) (-> *target* control trans y))
-                       (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
-                       (not (-> self child)))
-              (cond
-                ((send-event *target* 'query 'powerup (pickup-type eco-blue))
-                 (logclear! (-> self mask) (process-mask actor-pause))
-                 (logclear! (-> self mask) (process-mask platform))
-                 (let ((gp-1 (entity-by-name "junglecam-1")))
-                   (cond
-                     (gp-1
-                      (process-spawn precurbridgecam
-                                     :init
-                                     pov-camera-init-by-other
-                                     (-> gp-1 extra trans)
-                                     *junglecam-sg*
-                                     "precurbridgecam"
-                                     0
-                                     #f
-                                     ()
-                                     :to
-                                     self))
-                     (else (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%") (go precurbridge-activate)))))
-                (else
-                 (level-hint-spawn (text-id sidekick-hint-precurbridge) "sksp0039" (the-as entity #f) *entity-pool* (game-task none)))))
+      (loop
+        (when (and *target*
+                   (< (vector-vector-xz-distance (-> self activation-point) (-> *target* control trans)) 49152.0)
+                   (< (-> self activation-point y) (-> *target* control trans y))
+                   (< (-> *target* control trans y) (+ 20480.0 (-> self activation-point y)))
+                   (not (-> self child)))
+          (cond
+            ((send-event *target* 'query 'powerup (pickup-type eco-blue))
+             (logclear! (-> self mask) (process-mask actor-pause))
+             (logclear! (-> self mask) (process-mask platform))
+             (let ((gp-1 (entity-by-name "junglecam-1")))
+               (cond
+                 (gp-1
+                  (process-spawn precurbridgecam
+                                 :init
+                                 pov-camera-init-by-other
+                                 (-> gp-1 extra trans)
+                                 *junglecam-sg*
+                                 "precurbridgecam"
+                                 0
+                                 #f
+                                 ()
+                                 :to
+                                 self))
+                 (else (format #t "ERROR<GMJ>: position for precursor bridge camera not found~%") (go precurbridge-activate)))))
+            (else
+             (level-hint-spawn (text-id sidekick-hint-precurbridge) "sksp0039" (the-as entity #f) *entity-pool* (game-task none)))))
         (suspend)))
   :post ja-post)
 
@@ -508,7 +515,8 @@
       (ja-post)
       (update-transforms! (-> self root))
       (logior! (-> self mask) (process-mask actor-pause))
-      (loop (if (not (movie?)) (logior! (-> self mask) (process-mask platform)))
+      (loop
+        (if (not (movie?)) (logior! (-> self mask) (process-mask platform)))
         (cond
           ((and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
            (when (not (ja-group? precurbridge-static-ja))
@@ -705,11 +713,12 @@
       (if arg0 (ja :num-func num-func-identity :frame-num 0.0))
       (suspend)
       (update-transforms! (-> self root))
-      (loop (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                      (and (and *target* (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                           (send-event *target* 'query 'powerup (pickup-type eco-blue))))
-              (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
-              (go maindoor-open #f))
+      (loop
+        (when (or (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                  (and (and *target* (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                       (send-event *target* 'query 'powerup (pickup-type eco-blue))))
+          (sound-play "blue-eco-on" :position (the-as symbol (-> self root trans)))
+          (go maindoor-open #f))
         (if (and *target* (>= (-> self thresh w) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
           (level-hint-spawn (text-id sidekick-hint-rounddoor) "sksp0038" (the-as entity #f) *entity-pool* (game-task none)))
         (when (ja-min? 0)
@@ -733,7 +742,8 @@
         (if (and (not arg0) (rand-vu-percent? 0.2)) (spawn-projectile-blue *target*))
         (suspend))
       (logior! (-> self draw status) (draw-status hidden))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post ja-post)
 
 (defmethod init-from-entity! ((this maindoor) (arg0 entity-actor))
@@ -816,7 +826,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (ja :num-func num-func-identity :frame-num (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0))))
+      (loop
+        (ja :num-func num-func-identity :frame-num (get-current-value-with-mirror (-> self sync) (the float (ja-num-frames 0))))
         (cond
           ((< (ja-frame-num 0) (the float (/ (ja-num-frames 0) 3)))
            (set! (-> self back-prim prim-core collide-as) (collide-kind))

@@ -116,7 +116,8 @@
       (send-event *target* 'attack-invinc #f (static-attack-info ((mode 'instant-death))))
       (cleanup-for-death self)
       (deactivate self)
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post ja-post)
 
 (defstate plunger-lurker-flee (plunger-lurker)
@@ -153,7 +154,8 @@
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!)))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post ja-post)
 
 (defstate plunger-lurker-idle (plunger-lurker)
@@ -169,7 +171,8 @@
         (go plunger-lurker-flee)))
   :code
     (behavior ()
-      (loop (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! plunger-lurker-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))))
@@ -324,7 +327,8 @@
     (behavior ()
       (process-entity-status! self (entity-perm-status bit-3) #f)
       (logior! (-> self draw status) (draw-status hidden))
-      (loop (suspend))))
+      (loop
+        (suspend))))
 
 (defbehavior first? flying-lurker ()
   (not (-> self link prev)))
@@ -496,9 +500,10 @@
               (t9-10 (if v1-13 (-> v1-13 extra process)) a1-4))))))
   :code
     (behavior ()
-      (loop (when (not (ja-group? flying-lurker-fly-ja))
-              (ja-channel-push! 1 (seconds 0.2))
-              (ja :group! flying-lurker-fly-ja))
+      (loop
+        (when (not (ja-group? flying-lurker-fly-ja))
+          (ja-channel-push! 1 (seconds 0.2))
+          (ja :group! flying-lurker-fly-ja))
         (ja :num! (loop! (flying-lurker-calc-anim-speed)))
         (suspend)
         (when (time-elapsed? (-> self last-look-time) (-> self time-to-next-look))
@@ -753,26 +758,27 @@
         ((not (-> self link next)) (set! f30-0 0.9) (set! gp-0 0))
         ((not (-> self link prev)) (set! f30-0 1.0) (set! gp-0 5))
         (else (set! f30-0 1.2) (set! gp-0 11)))
-      (loop (cond
-              ((play-movie?)
-               (ja-channel-set! 0)
-               (if (= (get-task-status (game-task plunger-lurker-hit)) (task-status invalid)) (go flying-lurker-die))
-               (when (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
-                 (process-grab? *target*)
-                 (let ((s5-0 (current-time))) (until (time-elapsed? s5-0 (seconds 1)) (suspend)))
-                 (process-release? *target*)
-                 (send-event self 'saw-player))
-               (suspend)
-               0)
-              (else
-               (ja :group! flying-lurker-fly-ja)
-               (ja-no-eval :group! flying-lurker-fly-ja :num! (seek! max f30-0) :frame-num (the float gp-0))
-               (until (ja-done? 0)
-                 (if (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
-                   (send-event self 'saw-player))
-                 (suspend)
-                 (ja :num! (seek! max f30-0)))
-               (set! gp-0 0)))))
+      (loop
+        (cond
+          ((play-movie?)
+           (ja-channel-set! 0)
+           (if (= (get-task-status (game-task plunger-lurker-hit)) (task-status invalid)) (go flying-lurker-die))
+           (when (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
+             (process-grab? *target*)
+             (let ((s5-0 (current-time))) (until (time-elapsed? s5-0 (seconds 1)) (suspend)))
+             (process-release? *target*)
+             (send-event self 'saw-player))
+           (suspend)
+           0)
+          (else
+           (ja :group! flying-lurker-fly-ja)
+           (ja-no-eval :group! flying-lurker-fly-ja :num! (seek! max f30-0) :frame-num (the float gp-0))
+           (until (ja-done? 0)
+             (if (and *target* (>= 172032.0 (vector-vector-xz-distance (-> self root trans) (-> *target* control trans))))
+               (send-event self 'saw-player))
+             (suspend)
+             (ja :num! (seek! max f30-0)))
+           (set! gp-0 0)))))
   :post ja-post)
 
 (defmethod init-from-entity! ((this flying-lurker) (arg0 entity-actor))

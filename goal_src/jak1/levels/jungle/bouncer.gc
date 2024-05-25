@@ -47,7 +47,8 @@
     (behavior ()
       (ja :group! bounceytarp-idle-ja :num! min)
       (transform-post)
-      (loop (logior! (-> self mask) (process-mask sleep))
+      (loop
+        (logior! (-> self mask) (process-mask sleep))
         (suspend))))
 
 (defstate bouncer-smush (springbox)
@@ -60,15 +61,16 @@
     (behavior ()
       (set-time! (-> self state-time))
       (set! (-> self smush) 0.0)
-      (loop (if (time-elapsed? (-> self state-time) (seconds 0.2))
-              (ja :num! (seek! 0.0 0.1))
-              (ja :num!
-                  (seek! (lerp-scale (ja-aframe 6.0 0)
-                                     (ja-aframe 2.0 0)
-                                     (vector-vector-xz-distance (target-pos 0) (-> self root trans))
-                                     0.0
-                                     4096.0)
-                         0.2)))
+      (loop
+        (if (time-elapsed? (-> self state-time) (seconds 0.2))
+          (ja :num! (seek! 0.0 0.1))
+          (ja :num!
+              (seek! (lerp-scale (ja-aframe 6.0 0)
+                                 (ja-aframe 2.0 0)
+                                 (vector-vector-xz-distance (target-pos 0) (-> self root trans))
+                                 0.0
+                                 4096.0)
+                     0.2)))
         (suspend)
         (if (ja-min? 0) (go bouncer-wait))))
   :post transform-post)

@@ -31,13 +31,14 @@
         0))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (let ((gp-0 (new 'stack-no-clear 'vector)))
-                (set! (-> self trans quad) (-> self saved-pt quad))
-                (cam-curve-pos (-> self trans) gp-0 (the-as curve #f) #f)
-                (when (!= (-> gp-0 w) 0.0)
-                  (vector-normalize! gp-0 (the-as float 1.0))
-                  (forward-down->inv-matrix (the-as matrix (-> self tracking)) gp-0 (-> *camera* local-down)))))
+      (loop
+        (when (not (paused?))
+          (let ((gp-0 (new 'stack-no-clear 'vector)))
+            (set! (-> self trans quad) (-> self saved-pt quad))
+            (cam-curve-pos (-> self trans) gp-0 (the-as curve #f) #f)
+            (when (!= (-> gp-0 w) 0.0)
+              (vector-normalize! gp-0 (the-as float 1.0))
+              (forward-down->inv-matrix (the-as matrix (-> self tracking)) gp-0 (-> *camera* local-down)))))
         (suspend))))
 
 (defstate cam-fixed-read-entity (camera-slave)
@@ -63,7 +64,8 @@
       (go cam-fixed))
   :code
     (behavior ()
-      (loop (format *stdcon* "ERROR <GMJ>: stayed in cam-fixed-read-entity~%")
+      (loop
+        (format *stdcon* "ERROR <GMJ>: stayed in cam-fixed-read-entity~%")
         (suspend))))
 
 (defstate cam-pov (camera-slave)
@@ -84,20 +86,21 @@
         (cam-slave-go cam-fixed)))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (vector<-cspace! (-> self trans)
-                               (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
-              (let* ((v1-5 (-> self tracking))
-                     (a3-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
-                     (a0-8 (-> a3-0 vector 0 quad))
-                     (a1-9 (-> a3-0 vector 1 quad))
-                     (a2-0 (-> a3-0 vector 2 quad))
-                     (a3-1 (-> a3-0 vector 3 quad)))
-                (set! (-> v1-5 inv-mat vector 0 quad) a0-8)
-                (set! (-> v1-5 inv-mat vector 1 quad) a1-9)
-                (set! (-> v1-5 inv-mat vector 2 quad) a2-0)
-                (set! (-> v1-5 inv-mat vector 3 quad) a3-1))
-              (vector-reset! (-> self tracking inv-mat vector 3)))
+      (loop
+        (when (not (paused?))
+          (vector<-cspace! (-> self trans)
+                           (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
+          (let* ((v1-5 (-> self tracking))
+                 (a3-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
+                 (a0-8 (-> a3-0 vector 0 quad))
+                 (a1-9 (-> a3-0 vector 1 quad))
+                 (a2-0 (-> a3-0 vector 2 quad))
+                 (a3-1 (-> a3-0 vector 3 quad)))
+            (set! (-> v1-5 inv-mat vector 0 quad) a0-8)
+            (set! (-> v1-5 inv-mat vector 1 quad) a1-9)
+            (set! (-> v1-5 inv-mat vector 2 quad) a2-0)
+            (set! (-> v1-5 inv-mat vector 3 quad) a3-1))
+          (vector-reset! (-> self tracking inv-mat vector 3)))
         (suspend))))
 
 (defstate cam-pov180 (camera-slave)
@@ -124,28 +127,29 @@
         (vector<-cspace! gp-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
         (let ((v1-11 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform)))
           (vector-normalize-copy! s5-0 (-> v1-11 vector 2) (the-as float 1.0)))
-        (loop (when (not (paused?))
-                (let ((s0-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
-                      (s1-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone scale))
-                      (s3-0 (new 'stack-no-clear 'vector)))
-                  (let ((s2-0 (new 'stack-no-clear 'vector)))
-                    (vector<-cspace! s2-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
-                    (vector-normalize-copy! s3-0 (-> s0-0 vector 2) (the-as float 1.0))
-                    (set! s4-0
-                          (cond
-                            ((and (< (vector-vector-distance s2-0 gp-0) 40960.0) (< (cos (the-as float 3640.889)) (vector-dot s5-0 s3-0)))
-                             (set! (-> self trans quad) (-> s2-0 quad))
-                             (vector-negate! (the-as vector (-> self tracking)) (the-as vector (-> s0-0 vector)))
-                             (set! (-> self tracking inv-mat vector 1 quad) (-> s0-0 vector 1 quad))
-                             (vector-negate! (-> self tracking inv-mat vector 2) (-> s0-0 vector 2))
-                             (set! (-> self fov) (* 2.0 (atan (/ 12.700255 (* 20.3 (-> s1-0 x))) (the-as float 1.0))))
-                             (vector-float*! (the-as vector (-> self tracking)) (the-as vector (-> self tracking)) (/ 1.0 (-> s1-0 x)))
-                             (vector-reset! (-> self tracking inv-mat vector 3))
-                             (if s4-0 (set! s4-0 #f))
-                             s4-0)
-                            (else #t)))
-                    (set! (-> gp-0 quad) (-> s2-0 quad)))
-                  (set! (-> s5-0 quad) (-> s3-0 quad))))
+        (loop
+          (when (not (paused?))
+            (let ((s0-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone transform))
+                  (s1-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone) bone scale))
+                  (s3-0 (new 'stack-no-clear 'vector)))
+              (let ((s2-0 (new 'stack-no-clear 'vector)))
+                (vector<-cspace! s2-0 (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone)))
+                (vector-normalize-copy! s3-0 (-> s0-0 vector 2) (the-as float 1.0))
+                (set! s4-0
+                      (cond
+                        ((and (< (vector-vector-distance s2-0 gp-0) 40960.0) (< (cos (the-as float 3640.889)) (vector-dot s5-0 s3-0)))
+                         (set! (-> self trans quad) (-> s2-0 quad))
+                         (vector-negate! (the-as vector (-> self tracking)) (the-as vector (-> s0-0 vector)))
+                         (set! (-> self tracking inv-mat vector 1 quad) (-> s0-0 vector 1 quad))
+                         (vector-negate! (-> self tracking inv-mat vector 2) (-> s0-0 vector 2))
+                         (set! (-> self fov) (* 2.0 (atan (/ 12.700255 (* 20.3 (-> s1-0 x))) (the-as float 1.0))))
+                         (vector-float*! (the-as vector (-> self tracking)) (the-as vector (-> self tracking)) (/ 1.0 (-> s1-0 x)))
+                         (vector-reset! (-> self tracking inv-mat vector 3))
+                         (if s4-0 (set! s4-0 #f))
+                         s4-0)
+                        (else #t)))
+                (set! (-> gp-0 quad) (-> s2-0 quad)))
+              (set! (-> s5-0 quad) (-> s3-0 quad))))
           (suspend)))))
 
 (defstate cam-pov-track (camera-slave)
@@ -164,9 +168,10 @@
         (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (if (not (paused?))
-              (vector<-cspace! (-> self trans)
-                               (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone))))
+      (loop
+        (if (not (paused?))
+          (vector<-cspace! (-> self trans)
+                           (-> (the-as pov-camera (-> *camera* pov-handle process 0)) node-list data (-> *camera* pov-bone))))
         (suspend))))
 
 (defbehavior cam-standoff-calc-trans camera-slave ()
@@ -200,9 +205,10 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (cam-calc-follow! (-> self tracking) (-> self trans) #t)
-              (cam-standoff-calc-trans))
+      (loop
+        (when (not (paused?))
+          (cam-calc-follow! (-> self tracking) (-> self trans) #t)
+          (cam-standoff-calc-trans))
         (suspend))))
 
 (defstate cam-standoff-read-entity (camera-slave)
@@ -232,7 +238,8 @@
       (go cam-standoff))
   :code
     (behavior ()
-      (loop (format *stdcon* "ERROR <GMJ>: stayed in cam-standoff-read-entity~%")
+      (loop
+        (format *stdcon* "ERROR <GMJ>: stayed in cam-standoff-read-entity~%")
         (suspend))))
 
 (deftype cam-eye-bank (basic)
@@ -273,73 +280,74 @@
   :code
     (behavior ()
       (let ((gp-0 (current-time)))
-        (loop (when (not (paused?))
-                (let ((s4-0 (vector-reset! (new-stack-vector0)))
-                      (s5-0 (new-stack-matrix0)))
-                  (when *camera-read-analog*
-                    (let ((f30-0 (analog-input-horizontal-first ;; og:preserve-this changed for pc port
-                                   (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
-                                   (the-as float 0.0)
-                                   (the-as float 48.0)
-                                   (the-as float 110.0)
-                                   (the-as float -1.0)))
-                          (f0-0 (analog-input-vertical-first ;; og:preserve-this changed for pc port
-                                  (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
-                                  (the-as float 0.0)
-                                  (the-as float 48.0)
-                                  (the-as float 110.0)
-                                  (the-as float -1.0))))
-                      (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; og:preserve-this changed for high fps
-                      (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; og:preserve-this changed for high fps
-                      ))
-                  (cond
-                    ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x)) ;; og:preserve-this changed for high fps
-                     (set! (-> s4-0 x) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; og:preserve-this changed for high fps
-                     )
-                    ((< (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-                     (set! (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-                     ))
-                  (cond
-                    ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y)) ;; og:preserve-this changed for high fps
-                     (set! (-> s4-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; og:preserve-this changed for high fps
-                     )
-                    ((< (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-                     (set! (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-                     ))
-                  (cond
-                    ((and (= (-> s4-0 x) 0.0) (= (-> s4-0 y) 0.0)) (set! gp-0 (current-time)))
-                    (else (let ((v1-44 (min 10 (max 1 (- (current-time) gp-0))))) (vector-float*! s4-0 s4-0 (* 0.1 (the float v1-44))))))
-                  (matrix-axis-angle! s5-0 (-> *camera* local-down) (-> s4-0 y))
-                  (matrix*! (the-as matrix (-> self tracking)) (the-as matrix (-> self tracking)) s5-0)
-                  (when (not (logtest? (-> self options) 8))
-                    (if (< (vector-dot (-> self tracking inv-mat vector 1) (-> *camera* local-down)) 0.0)
-                      (forward-down->inv-matrix (the-as matrix (-> self tracking))
-                                                (-> self tracking inv-mat vector 2)
-                                                (-> *camera* local-down))
-                      (forward-down->inv-matrix (the-as matrix (-> self tracking))
-                                                (-> self tracking inv-mat vector 2)
-                                                (vector-negate! (new-stack-vector0) (-> *camera* local-down)))))
-                  (matrix-axis-angle! s5-0 (the-as vector (-> self tracking)) (- (-> s4-0 x)))
-                  (matrix*! (the-as matrix (-> self tracking)) (the-as matrix (-> self tracking)) s5-0))
-                (when (not (logtest? (-> self options) 8))
-                  (let ((f30-1 (vector-dot (-> *camera* local-down) (-> self tracking inv-mat vector 2))))
-                    (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
-                    (when (< (sin (-> *CAM_EYE-bank* max-degrees)) (fabs f30-1))
-                      (vector--float*! (-> self tracking inv-mat vector 2) (-> self tracking inv-mat vector 2) (-> *camera* local-down) f30-1)
-                      (vector-normalize! (-> self tracking inv-mat vector 2) (cos (-> *CAM_EYE-bank* max-degrees)))
-                      (if (< f30-1 0.0)
-                        (vector--float*! (-> self tracking inv-mat vector 2)
-                                         (-> self tracking inv-mat vector 2)
-                                         (-> *camera* local-down)
-                                         (sin (-> *CAM_EYE-bank* max-degrees)))
-                        (vector+float*! (-> self tracking inv-mat vector 2)
-                                        (-> self tracking inv-mat vector 2)
-                                        (-> *camera* local-down)
-                                        (sin (-> *CAM_EYE-bank* max-degrees))))
-                      (vector-cross! (-> self tracking inv-mat vector 1)
+        (loop
+          (when (not (paused?))
+            (let ((s4-0 (vector-reset! (new-stack-vector0)))
+                  (s5-0 (new-stack-matrix0)))
+              (when *camera-read-analog*
+                (let ((f30-0 (analog-input-horizontal-first ;; og:preserve-this changed for pc port
+                               (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
+                               (the-as float 0.0)
+                               (the-as float 48.0)
+                               (the-as float 110.0)
+                               (the-as float -1.0)))
+                      (f0-0 (analog-input-vertical-first ;; og:preserve-this changed for pc port
+                              (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
+                              (the-as float 0.0)
+                              (the-as float 48.0)
+                              (the-as float 110.0)
+                              (the-as float -1.0))))
+                  (set! (-> s4-0 y) (- (-> s4-0 y) (* (- f30-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; og:preserve-this changed for high fps
+                  (set! (-> s4-0 x) (- (-> s4-0 x) (* (- f0-0) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))))) ;; og:preserve-this changed for high fps
+                  ))
+              (cond
+                ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 x)) ;; og:preserve-this changed for high fps
+                 (set! (-> s4-0 x) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; og:preserve-this changed for high fps
+                 )
+                ((< (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
+                 (set! (-> s4-0 x) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
+                 ))
+              (cond
+                ((< (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)) (-> s4-0 y)) ;; og:preserve-this changed for high fps
+                 (set! (-> s4-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed))) ;; og:preserve-this changed for high fps
+                 )
+                ((< (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
+                 (set! (-> s4-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_EYE-bank* rot-speed)))) ;; og:preserve-this changed for high fps
+                 ))
+              (cond
+                ((and (= (-> s4-0 x) 0.0) (= (-> s4-0 y) 0.0)) (set! gp-0 (current-time)))
+                (else (let ((v1-44 (min 10 (max 1 (- (current-time) gp-0))))) (vector-float*! s4-0 s4-0 (* 0.1 (the float v1-44))))))
+              (matrix-axis-angle! s5-0 (-> *camera* local-down) (-> s4-0 y))
+              (matrix*! (the-as matrix (-> self tracking)) (the-as matrix (-> self tracking)) s5-0)
+              (when (not (logtest? (-> self options) 8))
+                (if (< (vector-dot (-> self tracking inv-mat vector 1) (-> *camera* local-down)) 0.0)
+                  (forward-down->inv-matrix (the-as matrix (-> self tracking))
+                                            (-> self tracking inv-mat vector 2)
+                                            (-> *camera* local-down))
+                  (forward-down->inv-matrix (the-as matrix (-> self tracking))
+                                            (-> self tracking inv-mat vector 2)
+                                            (vector-negate! (new-stack-vector0) (-> *camera* local-down)))))
+              (matrix-axis-angle! s5-0 (the-as vector (-> self tracking)) (- (-> s4-0 x)))
+              (matrix*! (the-as matrix (-> self tracking)) (the-as matrix (-> self tracking)) s5-0))
+            (when (not (logtest? (-> self options) 8))
+              (let ((f30-1 (vector-dot (-> *camera* local-down) (-> self tracking inv-mat vector 2))))
+                (set! (-> (new 'stack-no-clear 'vector) quad) (the-as uint128 0))
+                (when (< (sin (-> *CAM_EYE-bank* max-degrees)) (fabs f30-1))
+                  (vector--float*! (-> self tracking inv-mat vector 2) (-> self tracking inv-mat vector 2) (-> *camera* local-down) f30-1)
+                  (vector-normalize! (-> self tracking inv-mat vector 2) (cos (-> *CAM_EYE-bank* max-degrees)))
+                  (if (< f30-1 0.0)
+                    (vector--float*! (-> self tracking inv-mat vector 2)
                                      (-> self tracking inv-mat vector 2)
-                                     (the-as vector (-> self tracking)))
-                      (set! (-> self tracking inv-mat vector 1 w) 0.0)))))
+                                     (-> *camera* local-down)
+                                     (sin (-> *CAM_EYE-bank* max-degrees)))
+                    (vector+float*! (-> self tracking inv-mat vector 2)
+                                    (-> self tracking inv-mat vector 2)
+                                    (-> *camera* local-down)
+                                    (sin (-> *CAM_EYE-bank* max-degrees))))
+                  (vector-cross! (-> self tracking inv-mat vector 1)
+                                 (-> self tracking inv-mat vector 2)
+                                 (the-as vector (-> self tracking)))
+                  (set! (-> self tracking inv-mat vector 1 w) 0.0)))))
           (let ((v1-76 (vector-float*! (new-stack-vector0) (-> *camera* local-down) (+ 1024.0 (-> *camera* target-height)))))
             (vector-! (-> self trans) (-> *camera* tpos-curr) v1-76))
           (suspend)))))
@@ -374,51 +382,52 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (go cam-free-floating)))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (let ((s5-0 (vector-reset! (new-stack-vector0)))
-                    (s4-0 (vector-reset! (new-stack-vector0)))
-                    (s3-0 (vector-reset! (new-stack-vector0)))
-                    (s2-0 (new-stack-vector0))
-                    (gp-0 (new-stack-matrix0)))
-                0.0
-                (when *camera-read-analog*
-                  (let ((f1-0 (analog-input-horizontal-first ;; og:preserve-this changed for pc port
-                                (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
-                                (the-as float 0.0)
-                                (the-as float 48.0)
-                                (the-as float 110.0)
-                                (the-as float -1.0))))
-                    (set! (-> s5-0 y) (- (-> s5-0 y) (* (- f1-0) (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed))))) ;; og:preserve-this changed for high fps
-                    ))
-                (cond
-                  ((< (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)) (-> s5-0 y)) ;; og:preserve-this changed for high fps
-                   (set! (-> s5-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed))) ;; og:preserve-this changed for high fps
-                   )
-                  ((< (-> s5-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-                   (set! (-> s5-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))) ;; og:preserve-this changed for high fps
-                   ))
-                (set! (-> s3-0 x) (sin (the-as float 37319.11)))
-                (set! (-> s3-0 z) (cos (the-as float 37319.11)))
-                (set! (-> s4-0 x) (-> s3-0 z))
-                (set! (-> s4-0 z) (- (-> s3-0 x)))
-                (vector-flatten! s2-0 (-> self tracking inv-mat vector 2) (-> *camera* local-down))
-                (vector-normalize! s2-0 (the-as float 1.0))
-                (let ((f0-14 (acos (vector-dot (-> self tracking inv-mat vector 2) s3-0))))
-                  (if (< (vector-dot (-> self tracking inv-mat vector 2) s4-0) 0.0) (set! f0-14 (- f0-14)))
-                  (let ((f0-18 (cond
-                                 ((and (< 0.0 f0-14) (< 0.0 (-> s5-0 y))) (fmin (-> s5-0 y) (fmax 0.0 (* 0.5 (- 10922.667 f0-14)))))
-                                 ((and (< f0-14 0.0) (< (-> s5-0 y) 0.0)) (fmax (-> s5-0 y) (fmin 0.0 (* 0.5 (- -10922.667 f0-14)))))
-                                 (else (-> s5-0 y)))))
-                    (matrix-axis-angle! gp-0 (-> *camera* local-down) f0-18)))
-                (vector-matrix*! (-> self tracking inv-mat vector 2) (-> self tracking inv-mat vector 2) gp-0))
-              (set! (-> self tracking inv-mat vector 2 y) 0.0)
-              (vector-normalize! (-> self tracking inv-mat vector 2) (cos (-> *CAM_BILLY-bank* tilt-degrees)))
-              (set! (-> self tracking inv-mat vector 2 y) (sin (-> *CAM_BILLY-bank* tilt-degrees)))
-              (vector-cross! (the-as vector (-> self tracking)) (-> self tracking inv-mat vector 2) (-> *camera* local-down))
-              (vector-normalize! (the-as vector (-> self tracking)) (the-as float 1.0))
-              (vector-cross! (-> self tracking inv-mat vector 1)
-                             (-> self tracking inv-mat vector 2)
-                             (the-as vector (-> self tracking))))
+      (loop
+        (when (not (paused?))
+          (let ((s5-0 (vector-reset! (new-stack-vector0)))
+                (s4-0 (vector-reset! (new-stack-vector0)))
+                (s3-0 (vector-reset! (new-stack-vector0)))
+                (s2-0 (new-stack-vector0))
+                (gp-0 (new-stack-matrix0)))
+            0.0
+            (when *camera-read-analog*
+              (let ((f1-0 (analog-input-horizontal-first ;; og:preserve-this changed for pc port
+                            (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
+                            (the-as float 0.0)
+                            (the-as float 48.0)
+                            (the-as float 110.0)
+                            (the-as float -1.0))))
+                (set! (-> s5-0 y) (- (-> s5-0 y) (* (- f1-0) (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed))))) ;; og:preserve-this changed for high fps
+                ))
+            (cond
+              ((< (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)) (-> s5-0 y)) ;; og:preserve-this changed for high fps
+               (set! (-> s5-0 y) (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed))) ;; og:preserve-this changed for high fps
+               )
+              ((< (-> s5-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))) ;; og:preserve-this changed for high fps
+               (set! (-> s5-0 y) (- (* (-> *display* time-adjust-ratio) (-> *CAM_BILLY-bank* rot-speed)))) ;; og:preserve-this changed for high fps
+               ))
+            (set! (-> s3-0 x) (sin (the-as float 37319.11)))
+            (set! (-> s3-0 z) (cos (the-as float 37319.11)))
+            (set! (-> s4-0 x) (-> s3-0 z))
+            (set! (-> s4-0 z) (- (-> s3-0 x)))
+            (vector-flatten! s2-0 (-> self tracking inv-mat vector 2) (-> *camera* local-down))
+            (vector-normalize! s2-0 (the-as float 1.0))
+            (let ((f0-14 (acos (vector-dot (-> self tracking inv-mat vector 2) s3-0))))
+              (if (< (vector-dot (-> self tracking inv-mat vector 2) s4-0) 0.0) (set! f0-14 (- f0-14)))
+              (let ((f0-18 (cond
+                             ((and (< 0.0 f0-14) (< 0.0 (-> s5-0 y))) (fmin (-> s5-0 y) (fmax 0.0 (* 0.5 (- 10922.667 f0-14)))))
+                             ((and (< f0-14 0.0) (< (-> s5-0 y) 0.0)) (fmax (-> s5-0 y) (fmin 0.0 (* 0.5 (- -10922.667 f0-14)))))
+                             (else (-> s5-0 y)))))
+                (matrix-axis-angle! gp-0 (-> *camera* local-down) f0-18)))
+            (vector-matrix*! (-> self tracking inv-mat vector 2) (-> self tracking inv-mat vector 2) gp-0))
+          (set! (-> self tracking inv-mat vector 2 y) 0.0)
+          (vector-normalize! (-> self tracking inv-mat vector 2) (cos (-> *CAM_BILLY-bank* tilt-degrees)))
+          (set! (-> self tracking inv-mat vector 2 y) (sin (-> *CAM_BILLY-bank* tilt-degrees)))
+          (vector-cross! (the-as vector (-> self tracking)) (-> self tracking inv-mat vector 2) (-> *camera* local-down))
+          (vector-normalize! (the-as vector (-> self tracking)) (the-as float 1.0))
+          (vector-cross! (-> self tracking inv-mat vector 1)
+                         (-> self tracking inv-mat vector 2)
+                         (the-as vector (-> self tracking))))
         (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) (-> *camera* target-height))
         (suspend))))
 
@@ -477,11 +486,12 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (cam-calc-follow! (-> self tracking) (-> self trans) #t)
-              (new 'stack 'curve)
-              (set! (-> self trans quad) (-> self saved-pt quad))
-              (cam-curve-pos (-> self trans) (the-as vector #f) (the-as curve #f) #t))
+      (loop
+        (when (not (paused?))
+          (cam-calc-follow! (-> self tracking) (-> self trans) #t)
+          (new 'stack 'curve)
+          (set! (-> self trans quad) (-> self saved-pt quad))
+          (cam-curve-pos (-> self trans) (the-as vector #f) (the-as curve #f) #t))
         (suspend))))
 
 (defstate cam-decel (camera-slave)
@@ -495,24 +505,25 @@
       (if (not (-> self enter-has-run)) (set! (-> self saved-pt quad) (-> self trans quad))))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (let ((s5-0 (new-stack-vector0))
-                    (gp-0 (new-stack-vector0)))
-                (when (!= (-> *camera* outro-t-step) 0.0)
-                  (curve-get-pos! s5-0 (parameter-ease-sin-clamp (-> *camera* outro-t)) (-> *camera* outro-curve))
-                  (+! (-> *camera* outro-t) (* (-> *camera* outro-t-step) (-> *display* time-adjust-ratio)))
-                  (curve-get-pos! gp-0 (parameter-ease-sin-clamp (-> *camera* outro-t)) (-> *camera* outro-curve))
-                  (vector-! gp-0 gp-0 s5-0)
-                  (cond
-                    ((or (and (< (-> *camera* outro-t-step) 0.0) (>= (-> *camera* outro-exit-value) (-> *camera* outro-t)))
-                         (and (< 0.0 (-> *camera* outro-t-step)) (>= (-> *camera* outro-t) (-> *camera* outro-exit-value))))
-                     (set! (-> *camera* outro-t) (-> *camera* outro-exit-value))
-                     (set! (-> *camera* outro-t-step) 0.0)
-                     (vector+! (-> self velocity) (-> self velocity) gp-0)
-                     (send-event *camera* 'outro-done))
-                    (else (vector+! (-> self trans) (-> self trans) gp-0)))))
-              (vector-float*! (-> self velocity) (-> self velocity) 0.9)
-              (vector+! (-> self trans) (-> self trans) (-> self velocity)))
+      (loop
+        (when (not (paused?))
+          (let ((s5-0 (new-stack-vector0))
+                (gp-0 (new-stack-vector0)))
+            (when (!= (-> *camera* outro-t-step) 0.0)
+              (curve-get-pos! s5-0 (parameter-ease-sin-clamp (-> *camera* outro-t)) (-> *camera* outro-curve))
+              (+! (-> *camera* outro-t) (* (-> *camera* outro-t-step) (-> *display* time-adjust-ratio)))
+              (curve-get-pos! gp-0 (parameter-ease-sin-clamp (-> *camera* outro-t)) (-> *camera* outro-curve))
+              (vector-! gp-0 gp-0 s5-0)
+              (cond
+                ((or (and (< (-> *camera* outro-t-step) 0.0) (>= (-> *camera* outro-exit-value) (-> *camera* outro-t)))
+                     (and (< 0.0 (-> *camera* outro-t-step)) (>= (-> *camera* outro-t) (-> *camera* outro-exit-value))))
+                 (set! (-> *camera* outro-t) (-> *camera* outro-exit-value))
+                 (set! (-> *camera* outro-t-step) 0.0)
+                 (vector+! (-> self velocity) (-> self velocity) gp-0)
+                 (send-event *camera* 'outro-done))
+                (else (vector+! (-> self trans) (-> self trans) gp-0)))))
+          (vector-float*! (-> self velocity) (-> self velocity) 0.9)
+          (vector+! (-> self trans) (-> self trans) (-> self velocity)))
         (suspend))))
 
 (defstate cam-endlessfall (camera-slave)
@@ -538,17 +549,18 @@
           (set! (-> s5-0 y) 0.0)
           (init! gp-0 s4-0 (the-as float 81.92) (fmax 819.2 (vector-length s5-0)) (the-as float 0.75))
           (set! (-> gp-0 vel quad) (-> s5-0 quad)))
-        (loop (when (not (paused?))
-                (set! (-> gp-0 target x) (-> (target-pos 0) x))
-                (set! (-> gp-0 target z) (-> (target-pos 0) z))
-                (update! gp-0 (the-as vector #f))
-                (when (< 819.2 (-> gp-0 max-vel))
-                  (set! (-> gp-0 max-vel) (* 0.9 (-> gp-0 max-vel)))
-                  (if (< (-> gp-0 max-vel) 819.2) (set! (-> gp-0 max-vel) 819.2)))
-                (set! f30-0 (* 0.9 f30-0))
-                (+! (-> self trans y) f30-0)
-                (set! (-> self trans x) (-> gp-0 value x))
-                (set! (-> self trans z) (-> gp-0 value z)))
+        (loop
+          (when (not (paused?))
+            (set! (-> gp-0 target x) (-> (target-pos 0) x))
+            (set! (-> gp-0 target z) (-> (target-pos 0) z))
+            (update! gp-0 (the-as vector #f))
+            (when (< 819.2 (-> gp-0 max-vel))
+              (set! (-> gp-0 max-vel) (* 0.9 (-> gp-0 max-vel)))
+              (if (< (-> gp-0 max-vel) 819.2) (set! (-> gp-0 max-vel) 819.2)))
+            (set! f30-0 (* 0.9 f30-0))
+            (+! (-> self trans y) f30-0)
+            (set! (-> self trans x) (-> gp-0 value x))
+            (set! (-> self trans z) (-> gp-0 value z)))
           (suspend)))))
 
 (defbehavior cam-circular-position-into-max-angle camera-slave ((arg0 vector) (arg1 vector) (arg2 float))
@@ -716,7 +728,8 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (if (not (paused?)) (cam-circular-code))
+      (loop
+        (if (not (paused?)) (cam-circular-code))
         (suspend))))
 
 (defstate cam-lookat (camera-slave)
@@ -731,7 +744,8 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (suspend))))
+      (loop
+        (suspend))))
 
 (deftype cam-string-bank (basic)
   ((los-coll-rad  meters)
@@ -750,7 +764,8 @@
       (set! (-> s5-0 z) (+ 1024.0 (-> *CAMERA-bank* default-string-min-z))))
     (vector--float*! s5-0 s5-0 (-> *camera* local-down) (-> *CAMERA-bank* default-string-min-y))
     (set! (-> arg0 quad) (-> s5-0 quad))
-    (loop (vector--float*! s4-0 arg0 (-> *camera* local-down) (-> *camera* target-height))
+    (loop
+      (vector--float*! s4-0 arg0 (-> *camera* local-down) (-> *camera* target-height))
       (if (< (fill-and-probe-using-line-sphere *collide-cache*
                                                (-> *camera* tpos-curr-adj)
                                                arg0
@@ -1703,11 +1718,12 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (when (not (paused?))
-              (set-string-parms)
-              (cam-string-code)
-              (tracking-spline-method-9 (-> self position-spline))
-              (set! (-> self have-phony-joystick) #f))
+      (loop
+        (when (not (paused?))
+          (set-string-parms)
+          (cam-string-code)
+          (tracking-spline-method-9 (-> self position-spline))
+          (set! (-> self have-phony-joystick) #f))
         (suspend))))
 
 (deftype cam-stick-bank (basic)
@@ -1843,7 +1859,8 @@
                (vector-matrix*! (-> self view-flat) (-> self view-flat) gp-0)))))))
   :code
     (behavior ()
-      (loop (if (not (paused?)) (cam-stick-code))
+      (loop
+        (if (not (paused?)) (cam-stick-code))
         (suspend))))
 
 (deftype cam-bike-bank (basic)
@@ -1954,7 +1971,8 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (if (not (paused?)) (cam-bike-code))
+      (loop
+        (if (not (paused?)) (cam-bike-code))
         (suspend))))
 
 (define *camera-base-mode* cam-string)

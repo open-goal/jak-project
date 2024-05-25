@@ -288,7 +288,7 @@ const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config
     {"#when", new_flow_rule(2)},
     {"countdown", new_flow_rule(2)},
     {"until", new_flow_rule(2)},
-    {"loop", new_flow_rule(2)},
+    {"loop", new_flow_rule(0)},
     {"while", new_flow_rule(2)},
     {"begin", new_flow_rule(0)},
     {"seval", new_flow_rule(0)},

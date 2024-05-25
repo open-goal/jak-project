@@ -244,7 +244,8 @@
       (ja-channel-push! 1 0)
       (ja :group! snow-eggtop-idle-ja :num! min)
       (transform-post)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate snow-eggtop-activate (snow-eggtop)
@@ -307,7 +308,8 @@
       (process-entity-status! self (entity-perm-status complete) #t)
       (let ((a0-18 (-> self entity))) (if (and a0-18 (= self (-> a0-18 extra process))) (entity-task-complete-on a0-18)))
       (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'show)
-      (loop (if (-> self play-sound?) (update! (-> self sound)))
+      (loop
+        (if (-> self play-sound?) (update! (-> self sound)))
         (suspend)))
   :post rider-post)
 
@@ -387,16 +389,17 @@
   :code
     (behavior ()
       (let ((gp-0 #f))
-        (loop (let ((f0-0 (get-current-phase-with-mirror (-> self sync))))
-                (ja :num-func num-func-identity :frame-num (* f0-0 (-> self max-frame)))
-                (cond
-                  ((or (= f0-0 0.0) (= f0-0 1.0)) (set! gp-0 #f))
-                  (else
-                   (when (not gp-0)
-                     (set! gp-0 #t)
-                     (if (>= f0-0 0.5)
-                       (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
-                       (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t))))))
+        (loop
+          (let ((f0-0 (get-current-phase-with-mirror (-> self sync))))
+            (ja :num-func num-func-identity :frame-num (* f0-0 (-> self max-frame)))
+            (cond
+              ((or (= f0-0 0.0) (= f0-0 1.0)) (set! gp-0 #f))
+              (else
+               (when (not gp-0)
+                 (set! gp-0 #t)
+                 (if (>= f0-0 0.5)
+                   (sound-play-by-name (-> self close-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t)
+                   (sound-play-by-name (-> self open-sound) (new-sound-id) 1024 0 0 (sound-group sfx) #t))))))
           (suspend))))
   :post pusher-post)
 
@@ -470,20 +473,21 @@
     (behavior ()
       (let ((f28-0 0.0)
             (gp-0 1))
-        (loop (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
-                (when (!= f30-0 f28-0)
-                  (let ((v1-3 1))
-                    (if (< f30-0 f28-0) (set! v1-3 -1))
-                    (when (!= v1-3 gp-0)
-                      (set! gp-0 v1-3)
-                      (cond
-                        ((> v1-3 0) (sound-play "snow-spat-long" :pitch (rand-vu-float-range -0.2 0.2)))
-                        (1 (sound-play "snow-spat-short" :pitch (rand-vu-float-range -0.2 0.2))))))
-                  (set! f28-0 f30-0))
-                (let ((s5-2 (new 'stack-no-clear 'matrix)))
-                  (matrix-rotate-y! s5-2 (* 16384.0 f30-0))
-                  (matrix*! s5-2 s5-2 (-> self startmat))
-                  (matrix->quaternion (-> self root quat) s5-2)))
+        (loop
+          (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
+            (when (!= f30-0 f28-0)
+              (let ((v1-3 1))
+                (if (< f30-0 f28-0) (set! v1-3 -1))
+                (when (!= v1-3 gp-0)
+                  (set! gp-0 v1-3)
+                  (cond
+                    ((> v1-3 0) (sound-play "snow-spat-long" :pitch (rand-vu-float-range -0.2 0.2)))
+                    (1 (sound-play "snow-spat-short" :pitch (rand-vu-float-range -0.2 0.2))))))
+              (set! f28-0 f30-0))
+            (let ((s5-2 (new 'stack-no-clear 'matrix)))
+              (matrix-rotate-y! s5-2 (* 16384.0 f30-0))
+              (matrix*! s5-2 s5-2 (-> self startmat))
+              (matrix->quaternion (-> self root quat) s5-2)))
           (suspend))))
   :post plat-post)
 
@@ -703,7 +707,8 @@
       (set! (-> self root trans quad) (-> self closed-trans quad))
       (transform-post)
       (suspend)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate snow-fort-gate-activate (snow-fort-gate)
@@ -717,11 +722,12 @@
   :code
     (behavior ()
       (let ((gp-0 #f))
-        (loop (let ((a1-0 (new 'stack-no-clear 'vector)))
-                (set! (-> a1-0 quad) (-> self closed-trans quad))
-                (+! (-> a1-0 y) -12288.0)
-                (+! (-> a1-0 z) -12288.0)
-                (spawn (-> self part) a1-0))
+        (loop
+          (let ((a1-0 (new 'stack-no-clear 'vector)))
+            (set! (-> a1-0 quad) (-> self closed-trans quad))
+            (+! (-> a1-0 y) -12288.0)
+            (+! (-> a1-0 z) -12288.0)
+            (spawn (-> self part) a1-0))
           (let ((s5-0 (new 'stack-no-clear 'vector)))
             (set! (-> s5-0 quad) (-> self root trans quad))
             (let ((f30-0 (vector-vector-distance-squared s5-0 (-> self open-trans))))
@@ -756,7 +762,8 @@
       (transform-post)
       (suspend)
       (transform-post)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defmethod deactivate ((this snow-fort-gate))
@@ -899,7 +906,8 @@
     (behavior ()
       (ja :group! snow-gears-idle-ja :num! min)
       (ja-post)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate snow-gears-activate (snow-gears)
@@ -954,7 +962,8 @@
     (behavior ()
       (logior! (-> self mask) (process-mask actor-pause))
       (process-entity-status! self (entity-perm-status bit-3) #f)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defmethod init-from-entity! ((this snow-gears) (arg0 entity-actor))
@@ -1001,7 +1010,8 @@
   :event snow-switch-event-handler
   :code
     (behavior ()
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate snow-switch-activate (snow-switch)
@@ -1036,14 +1046,15 @@
               (the-as uint 0)))
       0
       (let ((gp-2 #f))
-        (loop (let ((s5-1 (new 'stack-no-clear 'vector))
-                    (f0-1 (+ -1433.6 (-> self orig-trans y))))
-                (set! (-> s5-1 quad) (-> self root trans quad))
-                (cond
-                  ((= (-> s5-1 y) f0-1) (when (not gp-2) (set! gp-2 #t) (send-to-all (-> self link) 'notice)))
-                  (else
-                   (set! (-> s5-1 y) (seek-with-smooth (-> self root trans y) f0-1 (* 6144.0 (seconds-per-frame)) 0.2 204.8))
-                   (move-to-point! (-> self root) s5-1))))
+        (loop
+          (let ((s5-1 (new 'stack-no-clear 'vector))
+                (f0-1 (+ -1433.6 (-> self orig-trans y))))
+            (set! (-> s5-1 quad) (-> self root trans quad))
+            (cond
+              ((= (-> s5-1 y) f0-1) (when (not gp-2) (set! gp-2 #t) (send-to-all (-> self link) 'notice)))
+              (else
+               (set! (-> s5-1 y) (seek-with-smooth (-> self root trans y) f0-1 (* 6144.0 (seconds-per-frame)) 0.2 204.8))
+               (move-to-point! (-> self root) s5-1))))
           (suspend))))
   :post rider-post)
 
@@ -1055,7 +1066,8 @@
       (set! (-> self root trans quad) (-> self orig-trans quad))
       (+! (-> self root trans y) -1433.6)
       (transform-post)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defmethod init-from-entity! ((this snow-switch) (arg0 entity-actor))
@@ -1126,8 +1138,9 @@
         (('trigger) (go snow-log-activate))))
   :code
     (behavior ()
-      (loop (while (let ((v1-0 (-> self master))) (not (if v1-0 (-> v1-0 extra process))))
-              (suspend))
+      (loop
+        (while (let ((v1-0 (-> self master))) (not (if v1-0 (-> v1-0 extra process))))
+          (suspend))
         (suspend)
         (let* ((v1-3 (-> self master))
                (a0-1 (if v1-3 (-> v1-3 extra process))))
@@ -1193,7 +1206,8 @@
       (ja-channel-push! 1 (seconds 0.075))
       (let ((gp-0 #t)
             (s5-0 #t))
-        (loop (ja-no-eval :group! snow-log-active-loop-ja :num! (seek! max 0.25) :frame-num 0.0)
+        (loop
+          (ja-no-eval :group! snow-log-active-loop-ja :num! (seek! max 0.25) :frame-num 0.0)
           (until (ja-done? 0)
             (let ((f0-4 (ja-aframe-num 0)))
               (cond
@@ -1270,7 +1284,8 @@
   :event snow-log-button-event-handler
   :code
     (behavior ()
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate snow-log-button-activate (snow-log-button)
@@ -1283,17 +1298,18 @@
   :code
     (behavior ()
       (sound-play "prec-button1")
-      (loop (let ((f30-0 (+ -1433.6 (-> self orig-trans y))))
-              (when (= (-> self root trans y) f30-0)
-                (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
-                  (set! (-> a1-1 from) self)
-                  (set! (-> a1-1 num-params) 0)
-                  (set! (-> a1-1 message) 'trigger)
-                  (let ((t9-2 send-event-function)
-                        (v1-4 (-> self log)))
-                    (t9-2 (if v1-4 (-> v1-4 extra process)) a1-1)))
-                (go snow-log-button-idle-down))
-              (set! (-> self root trans y) (seek-with-smooth (-> self root trans y) f30-0 (* 12288.0 (seconds-per-frame)) 0.2 204.8)))
+      (loop
+        (let ((f30-0 (+ -1433.6 (-> self orig-trans y))))
+          (when (= (-> self root trans y) f30-0)
+            (let ((a1-1 (new 'stack-no-clear 'event-message-block)))
+              (set! (-> a1-1 from) self)
+              (set! (-> a1-1 num-params) 0)
+              (set! (-> a1-1 message) 'trigger)
+              (let ((t9-2 send-event-function)
+                    (v1-4 (-> self log)))
+                (t9-2 (if v1-4 (-> v1-4 extra process)) a1-1)))
+            (go snow-log-button-idle-down))
+          (set! (-> self root trans y) (seek-with-smooth (-> self root trans y) f30-0 (* 12288.0 (seconds-per-frame)) 0.2 204.8)))
         (suspend)))
   :post rider-post)
 
@@ -1304,7 +1320,8 @@
       (set! (-> self root trans quad) (-> self orig-trans quad))
       (+! (-> self root trans y) -1433.6)
       (transform-post)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defmethod init-from-entity! ((this snow-log-button) (arg0 entity-actor))

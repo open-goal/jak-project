@@ -89,10 +89,14 @@ std::vector<std::string> format_block_comment(const std::string& comment) {
   comment_contents = str_util::rtrim(comment_contents);
   std::vector<std::string> lines = {new_comment};
   const auto contents_as_lines = str_util::split_string(comment_contents, "\n");
-  for (const auto& line : contents_as_lines) {
-    lines.push_back(line);
+  if (contents_as_lines.size() > 1) {
+    for (const auto& line : contents_as_lines) {
+      lines.push_back(line);
+    }
+    lines.push_back("|#");
+  } else {
+    lines.at(0) = fmt::format("{} {} |#", new_comment, str_util::trim(contents_as_lines.at(0)));
   }
-  lines.push_back("|#");
   return lines;
 }
 }  // namespace comments

@@ -85,11 +85,12 @@
 (defstate swingpole-stance (swingpole)
   :code
     (behavior ()
-      (loop (when (and *target*
-                       (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
-                       (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-possible))
-                       (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range)))))
-              (if (send-event *target* 'pole-grab self) (go swingpole-active)))
+      (loop
+        (when (and *target*
+                   (< (vector-vector-distance (-> self root trans) (-> *target* control unknown-vector90)) (-> self range))
+                   (logtest? (-> *target* control root-prim prim-core action) (collide-action edgegrab-possible))
+                   (< (-> *target* control unknown-vector90 y) (+ (-> self root trans y) (* 0.5 (-> self range)))))
+          (if (send-event *target* 'pole-grab self) (go swingpole-active)))
         (suspend))))
 
 (defstate swingpole-active (swingpole)
@@ -255,7 +256,8 @@
   :code
     (behavior ()
       (logclear! (-> self mask) (process-mask heap-shrunk))
-      (loop ((-> self cur-post-hook))
+      (loop
+        ((-> self cur-post-hook))
         (if (!= (-> self anim-mode) 'clone-anim) (ja-post))
         (suspend)
         (case (-> self anim-mode)
@@ -697,19 +699,20 @@
              (vf16 :class vf)
              (vf17 :class vf))
         (init-vf0-vector)
-        (loop (let ((a0-1 (level-get *level* (-> self level)))
-                    (v1-3 (-> *game-info* current-continue level)))
-                (cond
-                  ((and a0-1 (or (= (-> a0-1 display?) 'special) (= (-> a0-1 display?) 'special-vis)))
-                   (logclear! (-> self draw status) (draw-status hidden))
-                   (if (nonzero? (-> self skel)) (ja :num! (loop!))))
-                  ((or (and a0-1 (= (-> a0-1 status) 'active)) (= v1-3 'firecanyon)) (logior! (-> self draw status) (draw-status hidden)))
-                  ((and (= (-> self level) 'firecanyon) (< (-> (camera-pos) y) 327680.0))
-                   (logior! (-> self draw status) (draw-status hidden)))
-                  (else
-                   (logclear! (-> self draw status) (draw-status hidden))
-                   (if (nonzero? (-> self part)) (spawn (-> self part) (-> self root trans)))
-                   (if (nonzero? (-> self skel)) (ja :num! (loop!))))))
+        (loop
+          (let ((a0-1 (level-get *level* (-> self level)))
+                (v1-3 (-> *game-info* current-continue level)))
+            (cond
+              ((and a0-1 (or (= (-> a0-1 display?) 'special) (= (-> a0-1 display?) 'special-vis)))
+               (logclear! (-> self draw status) (draw-status hidden))
+               (if (nonzero? (-> self skel)) (ja :num! (loop!))))
+              ((or (and a0-1 (= (-> a0-1 status) 'active)) (= v1-3 'firecanyon)) (logior! (-> self draw status) (draw-status hidden)))
+              ((and (= (-> self level) 'firecanyon) (< (-> (camera-pos) y) 327680.0))
+               (logior! (-> self draw status) (draw-status hidden)))
+              (else
+               (logclear! (-> self draw status) (draw-status hidden))
+               (if (nonzero? (-> self part)) (spawn (-> self part) (-> self root trans)))
+               (if (nonzero? (-> self skel)) (ja :num! (loop!))))))
           (when (not (logtest? (-> self draw status) (draw-status hidden)))
             (let ((v1-36 (-> self draw))
                   (a0-18 (new 'stack-no-clear 'vector)))
@@ -777,9 +780,10 @@
            v0-1))))
   :code
     (behavior ()
-      (loop (when (-> self enable)
-              (spawn (-> self part) (-> self root trans))
-              (if (nonzero? (-> self sound)) (update! (-> self sound))))
+      (loop
+        (when (-> self enable)
+          (spawn (-> self part) (-> self root trans))
+          (if (nonzero? (-> self sound)) (update! (-> self sound))))
         (suspend))))
 
 (defmethod init-from-entity! ((this part-spawner) (arg0 entity-actor))
@@ -1100,11 +1104,12 @@
   :code
     (behavior ()
       (let ((gp-0 (current-time)))
-        (loop (when (not (paused?))
-                (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
-                (send-event *camera* 'teleport)
-                (if (and (-> *camera* on-ground) (time-elapsed? gp-0 (seconds 1)))
-                  (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))))
+        (loop
+          (when (not (paused?))
+            (vector--float*! (-> self trans) (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
+            (send-event *camera* 'teleport)
+            (if (and (-> *camera* on-ground) (time-elapsed? gp-0 (seconds 1)))
+              (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))))
           (suspend)))))
 
 ;; og:preserve-this
@@ -1146,32 +1151,33 @@
   :code
     (behavior ()
       (let ((gp-0 (current-time)))
-        (loop (when (not (paused?))
-                (let ((s4-0 (new 'stack-no-clear 'vector))
-                      (s5-0 (new 'stack-no-clear 'vector)))
-                  0.0
-                  0.0
-                  0.0
-                  (send-event *camera* 'teleport)
-                  (let* ((f0-4 (vector-dot (-> self velocity) (-> *camera* local-down)))
-                         (f30-0 (* 0.975 f0-4)))
-                    (vector--float*! s4-0 (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
-                    (vector-! s4-0 s4-0 (-> self trans))
-                    (let ((f28-0 (vector-dot s4-0 (-> *camera* local-down))))
-                      (vector--float*! s5-0 s4-0 (-> *camera* local-down) f28-0)
-                      (cond
-                        ((< f28-0 f30-0) (set! f30-0 f28-0))
-                        ((< 20480.0 f28-0)
-                         (let ((f28-1 (+ -20480.0 f28-0)))
-                           (let ((f0-8 (lerp f30-0 f28-1 0.005))) (if (< f30-0 f0-8) (set! f30-0 f0-8)))
-                           (if (< (* 0.09 f28-1) f30-0) (set! f30-0 (* 0.09 f28-1)))))))
-                    (vector+float*! (-> self velocity) s5-0 (-> *camera* local-down) f30-0)))
-                (vector+! (-> self trans) (-> self trans) (-> self velocity))
-                (set! (-> self trans x) (-> *camera* tpos-curr x))
-                (set! (-> self trans z) (-> *camera* tpos-curr z))
-                (vector+! (-> self trans) (-> self trans) (-> self view-flat))
-                (if (and (-> *camera* on-ground) (time-elapsed? gp-0 (seconds 1)))
-                  (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))))
+        (loop
+          (when (not (paused?))
+            (let ((s4-0 (new 'stack-no-clear 'vector))
+                  (s5-0 (new 'stack-no-clear 'vector)))
+              0.0
+              0.0
+              0.0
+              (send-event *camera* 'teleport)
+              (let* ((f0-4 (vector-dot (-> self velocity) (-> *camera* local-down)))
+                     (f30-0 (* 0.975 f0-4)))
+                (vector--float*! s4-0 (-> *camera* tpos-curr) (-> *camera* local-down) 28672.0)
+                (vector-! s4-0 s4-0 (-> self trans))
+                (let ((f28-0 (vector-dot s4-0 (-> *camera* local-down))))
+                  (vector--float*! s5-0 s4-0 (-> *camera* local-down) f28-0)
+                  (cond
+                    ((< f28-0 f30-0) (set! f30-0 f28-0))
+                    ((< 20480.0 f28-0)
+                     (let ((f28-1 (+ -20480.0 f28-0)))
+                       (let ((f0-8 (lerp f30-0 f28-1 0.005))) (if (< f30-0 f0-8) (set! f30-0 f0-8)))
+                       (if (< (* 0.09 f28-1) f30-0) (set! f30-0 (* 0.09 f28-1)))))))
+                (vector+float*! (-> self velocity) s5-0 (-> *camera* local-down) f30-0)))
+            (vector+! (-> self trans) (-> self trans) (-> self velocity))
+            (set! (-> self trans x) (-> *camera* tpos-curr x))
+            (set! (-> self trans z) (-> *camera* tpos-curr z))
+            (vector+! (-> self trans) (-> self trans) (-> self view-flat))
+            (if (and (-> *camera* on-ground) (time-elapsed? gp-0 (seconds 1)))
+              (send-event *camera* 'change-state *camera-base-mode* (seconds 0.5))))
           (vector-reset! (-> self tracking follow-off))
           (vector+! (-> self tracking follow-pt) (-> *camera* tpos-curr-adj) (-> self tracking follow-off))
           (vector--float*! (-> self tracking follow-pt)

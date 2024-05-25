@@ -46,10 +46,11 @@
         (ja :num-func num-func-identity :frame-num 0.0)
         (set! (-> self draw force-lod) 1))
       (suspend)
-      (loop (if (and *target*
-                     (= (-> *target* control unknown-surface00 name) 'launch-jump)
-                     (< (-> *target* control trans y) (-> self thresh-y)))
-              (go launcherdoor-open #f))
+      (loop
+        (if (and *target*
+                 (= (-> *target* control unknown-surface00 name) 'launch-jump)
+                 (< (-> *target* control trans y) (-> self thresh-y)))
+          (go launcherdoor-open #f))
         (ja :num! (seek! 0.0 (-> self close-speed)))
         (suspend)
         (when (ja-done? 0)
@@ -73,15 +74,16 @@
       (clear-collide-with-as (-> self root))
       (ja-no-eval :num! (seek!))
       (if arg0 (ja :num-func num-func-identity :frame-num max))
-      (loop (when (or (not *target*)
-                      (!= (-> *target* control unknown-surface00 name) 'launch-jump)
-                      (< (+ 4096.0 (-> self root trans y)) (-> *target* control trans y)))
-              (when (and *target* (< (-> self thresh-y) (-> *target* control trans y)))
-                (let ((a1-3 (res-lump-struct (-> self entity) 'continue-name structure)))
-                  (when a1-3
-                    (let ((v1-36 (set-continue! *game-info* (the-as basic a1-3)))) (load-commands-set! *level* (-> v1-36 load-commands)))))
-                (set! (-> self notify-player-passed-thru?) #t))
-              (go launcherdoor-closed #f))
+      (loop
+        (when (or (not *target*)
+                  (!= (-> *target* control unknown-surface00 name) 'launch-jump)
+                  (< (+ 4096.0 (-> self root trans y)) (-> *target* control trans y)))
+          (when (and *target* (< (-> self thresh-y) (-> *target* control trans y)))
+            (let ((a1-3 (res-lump-struct (-> self entity) 'continue-name structure)))
+              (when a1-3
+                (let ((v1-36 (set-continue! *game-info* (the-as basic a1-3)))) (load-commands-set! *level* (-> v1-36 load-commands)))))
+            (set! (-> self notify-player-passed-thru?) #t))
+          (go launcherdoor-closed #f))
         (ja :num! (seek! max (-> self open-speed)))
         (suspend)))
   :post ja-post)

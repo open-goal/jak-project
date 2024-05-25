@@ -583,50 +583,52 @@
              (f28-0 (the-as float (-> (the-as periscope (-> gp-0 0)) tilt)))
              (f30-0 (the-as float (-> (the-as periscope (-> gp-0 0)) turn)))
              (s5-0 (new 'stack-no-clear 'vector)))
-        (loop (when (not (or (paused?) (-> (the-as periscope (-> self change-event-from 0)) aligned?)))
-                (vector-reset! s5-0)
-                (when *camera-read-analog*
-                  ;; og:preserve-this Mirror controls changed to respect PC Port settings
-                  (let ((f26-0 (analog-input-horizontal-first (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
-                                                              0.0
-                                                              48.0
-                                                              110.0
-                                                              -1.0))
-                        (f0-0 (analog-input-vertical-first (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
-                                                           0.0
-                                                           48.0
-                                                           110.0
-                                                           -1.0)))
-                    (set! (-> s5-0 y) (- (-> s5-0 y) (* 136.53334 (- f26-0))))
-                    (set! (-> s5-0 x) (- (-> s5-0 x) (* 136.53334 (- f0-0))))
-                    (cond
-                      ((and (= f26-0 0.0) (= f0-0 0.0)) (sound-stop (-> (the-as periscope (-> gp-0 0)) sound-id)))
-                      (else
-                       (let ((s4-0 sound-play-by-name)
-                             (s3-0 (make-u128 101 (the-as uint #x706f6373656c6574)))
-                             (s2-0 (-> (the-as periscope (-> gp-0 0)) sound-id))
-                             (s1-0 1024)
-                             (s0-0 0))
-                         (set! sv-32 0)
-                         (set! sv-48 1)
-                         (let ((t2-0 (target-pos 0)))
-                           (the-as int (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-32 (the-as sound-group sv-48) (the-as symbol t2-0)))))))))
+        (loop
+          (when (not (or (paused?) (-> (the-as periscope (-> self change-event-from 0)) aligned?)))
+            (vector-reset! s5-0)
+            (when *camera-read-analog*
+              ;; og:preserve-this Mirror controls changed to respect PC Port settings
+              (let ((f26-0 (analog-input-horizontal-first (the-as int (+ (-> *cpad-list* cpads 0 rightx) -256 (-> *cpad-list* cpads 0 leftx)))
+                                                          0.0
+                                                          48.0
+                                                          110.0
+                                                          -1.0))
+                    (f0-0 (analog-input-vertical-first (the-as int (+ (-> *cpad-list* cpads 0 righty) -256 (-> *cpad-list* cpads 0 lefty)))
+                                                       0.0
+                                                       48.0
+                                                       110.0
+                                                       -1.0)))
+                (set! (-> s5-0 y) (- (-> s5-0 y) (* 136.53334 (- f26-0))))
+                (set! (-> s5-0 x) (- (-> s5-0 x) (* 136.53334 (- f0-0))))
                 (cond
-                  ((< 136.53334 (-> s5-0 x)) (set! (-> s5-0 x) 136.53334))
-                  ((< (-> s5-0 x) -136.53334) (set! (-> s5-0 x) -136.53334)))
-                (cond
-                  ((< 136.53334 (-> s5-0 y)) (set! (-> s5-0 y) 136.53334))
-                  ((< (-> s5-0 y) -136.53334) (set! (-> s5-0 y) -136.53334)))
-                (+! f30-0 (* (-> s5-0 y) (-> *display* time-adjust-ratio)))
-                (set! f28-0 (fmax -12743.111 (fmin 12743.111 (+ f28-0 (* (-> s5-0 x) (-> *display* time-adjust-ratio))))))
-                (matrix-rotate-yx! (the-as matrix (-> self tracking)) f30-0 f28-0))
+                  ((and (= f26-0 0.0) (= f0-0 0.0)) (sound-stop (-> (the-as periscope (-> gp-0 0)) sound-id)))
+                  (else
+                   (let ((s4-0 sound-play-by-name)
+                         (s3-0 (make-u128 101 (the-as uint #x706f6373656c6574)))
+                         (s2-0 (-> (the-as periscope (-> gp-0 0)) sound-id))
+                         (s1-0 1024)
+                         (s0-0 0))
+                     (set! sv-32 0)
+                     (set! sv-48 1)
+                     (let ((t2-0 (target-pos 0)))
+                       (the-as int (s4-0 (the-as sound-name s3-0) s2-0 s1-0 s0-0 sv-32 (the-as sound-group sv-48) (the-as symbol t2-0)))))))))
+            (cond
+              ((< 136.53334 (-> s5-0 x)) (set! (-> s5-0 x) 136.53334))
+              ((< (-> s5-0 x) -136.53334) (set! (-> s5-0 x) -136.53334)))
+            (cond
+              ((< 136.53334 (-> s5-0 y)) (set! (-> s5-0 y) 136.53334))
+              ((< (-> s5-0 y) -136.53334) (set! (-> s5-0 y) -136.53334)))
+            (+! f30-0 (* (-> s5-0 y) (-> *display* time-adjust-ratio)))
+            (set! f28-0 (fmax -12743.111 (fmin 12743.111 (+ f28-0 (* (-> s5-0 x) (-> *display* time-adjust-ratio))))))
+            (matrix-rotate-yx! (the-as matrix (-> self tracking)) f30-0 f28-0))
           (suspend)))))
 
 (defstate reflector-idle (reflector)
   :code
     (behavior ()
       (let ((gp-0 (new 'stack-no-clear 'vector)))
-        (loop (set! (-> gp-0 x) (-> self parent-override 0 tilt))
+        (loop
+          (set! (-> gp-0 x) (-> self parent-override 0 tilt))
           (set! (-> gp-0 y) (-> self parent-override 0 turn))
           (set! (-> gp-0 z) 0.0)
           (set! (-> gp-0 w) 1.0)
@@ -948,7 +950,8 @@
       (suspend)
       (update-transforms! (-> self root))
       (logior! (-> self draw status) (draw-status hidden))
-      (loop (suspend))))
+      (loop
+        (suspend))))
 
 (defstate periscope-activate (periscope)
   :exit
@@ -992,7 +995,8 @@
           (suspend)))
       (update-transforms! (-> self root))
       (set! (-> self y-offset) (-> self height))
-      (loop (if (periscope-has-power-input?) (go periscope-wait-for-player))
+      (loop
+        (if (periscope-has-power-input?) (go periscope-wait-for-player))
         (suspend)))
   :post ja-post)
 
@@ -1038,7 +1042,8 @@
             (s5-0 (new 'stack-no-clear 'vector))
             (s4-0 (new 'stack-no-clear 'vector))
             (s3-0 (new 'stack-no-clear 'vector)))
-        (loop (set! (-> s5-0 quad) (-> self node-list data 4 bone transform vector 3 quad))
+        (loop
+          (set! (-> s5-0 quad) (-> self node-list data 4 bone transform vector 3 quad))
           (let ((a0-10 s5-0)
                 (f30-1 81920.0))
             (when (and *target* (>= f30-1 (vector-vector-distance a0-10 (-> *target* control trans))))
@@ -1068,7 +1073,8 @@
                     (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) s2-2 #f 128 22))
                   (when (cpad-pressed? 0 circle)
                     (set! (-> self grips-moving?) #f)
-                    (loop (send-event *target* 'change-mode 'periscope self)
+                    (loop
+                      (send-event *target* 'change-mode 'periscope self)
                       (hide-hud)
                       (suspend)
                       (hide-hud)
@@ -1186,50 +1192,52 @@
       (send-event *camera* 'change-state cam-periscope 0)
       (logior! (-> self reflector 0 draw status) (draw-status hidden))
       (suspend)
-      (loop (if (not (-> self aligned?)) (set-time! (-> self lock-time)))
+      (loop
+        (if (not (-> self aligned?)) (set-time! (-> self lock-time)))
         (periscope-crosshair)
         (when (or (cpad-pressed? 0 triangle x) (and (-> self aligned?) (time-elapsed? (-> self lock-time) (seconds 3))))
           (sound-stop (-> self sound-id))
           (if (periscope-test-task-complete?) (close-specific-task! (game-task jungle-lurkerm) (task-status need-reminder)))
-          (loop (when (send-event *target* 'end-mode)
-                  (cond
-                    ((and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                     (let ((gp-1 (ppointer->handle (peri-beamcam-init-by-other (the-as string (-> self name))))))
-                       (suspend)
-                       (while (and *target* (= (-> *target* next-state name) 'target-periscope))
-                         (periscope-crosshair)
-                         (suspend))
-                       (logclear! (-> self reflector 0 draw status) (draw-status hidden))
-                       (periscope-find-reflection-angles)
-                       (set! (-> self turn) (-> self target-turn))
-                       (set! (-> self tilt) (-> self target-tilt))
-                       (set! *camera-init-mat* (-> self old-camera-matrix))
-                       (send-event *camera* 'change-state *camera-base-mode* 0)
-                       (set! *camera-init-mat* #f)
-                       (while (handle->process (the-as handle gp-1))
-                         (suspend)))
-                     (process-spawn-function process
-                       (lambda ((arg0 string))
-                         (while (or (-> *setting-control* current ambient) (-> *setting-control* current movie) (-> *setting-control* current hint))
-                           (suspend))
-                         (cond
-                           ((name= arg0 "periscope-11")
-                            (level-hint-spawn (text-id sidekick-hint-periscope3) "sksp0053" (the-as entity #f) *entity-pool* (game-task none)))
-                           ((name= arg0 "periscope-12")
-                            (level-hint-spawn (text-id sidekick-hint-periscope2) "sksp0052" (the-as entity #f) *entity-pool* (game-task none)))
-                           ((name= arg0 "periscope-15")
-                            (level-hint-spawn (text-id jungle-lurkerm-resolution) "sksp0018" (the-as entity #f) *entity-pool* (game-task none))))
-                         (none))
-                       (-> self name)
-                       :to
-                       self))
-                    (else
-                     (set! *camera-init-mat* (-> self old-camera-matrix))
-                     (send-event *camera* 'change-state *camera-base-mode* 0)
-                     (set! *camera-init-mat* #f)))
-                  (if (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
-                    (go periscope-power-on)
-                    (go periscope-wait-for-player)))
+          (loop
+            (when (send-event *target* 'end-mode)
+              (cond
+                ((and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                 (let ((gp-1 (ppointer->handle (peri-beamcam-init-by-other (the-as string (-> self name))))))
+                   (suspend)
+                   (while (and *target* (= (-> *target* next-state name) 'target-periscope))
+                     (periscope-crosshair)
+                     (suspend))
+                   (logclear! (-> self reflector 0 draw status) (draw-status hidden))
+                   (periscope-find-reflection-angles)
+                   (set! (-> self turn) (-> self target-turn))
+                   (set! (-> self tilt) (-> self target-tilt))
+                   (set! *camera-init-mat* (-> self old-camera-matrix))
+                   (send-event *camera* 'change-state *camera-base-mode* 0)
+                   (set! *camera-init-mat* #f)
+                   (while (handle->process (the-as handle gp-1))
+                     (suspend)))
+                 (process-spawn-function process
+                   (lambda ((arg0 string))
+                     (while (or (-> *setting-control* current ambient) (-> *setting-control* current movie) (-> *setting-control* current hint))
+                       (suspend))
+                     (cond
+                       ((name= arg0 "periscope-11")
+                        (level-hint-spawn (text-id sidekick-hint-periscope3) "sksp0053" (the-as entity #f) *entity-pool* (game-task none)))
+                       ((name= arg0 "periscope-12")
+                        (level-hint-spawn (text-id sidekick-hint-periscope2) "sksp0052" (the-as entity #f) *entity-pool* (game-task none)))
+                       ((name= arg0 "periscope-15")
+                        (level-hint-spawn (text-id jungle-lurkerm-resolution) "sksp0018" (the-as entity #f) *entity-pool* (game-task none))))
+                     (none))
+                   (-> self name)
+                   :to
+                   self))
+                (else
+                 (set! *camera-init-mat* (-> self old-camera-matrix))
+                 (send-event *camera* 'change-state *camera-base-mode* 0)
+                 (set! *camera-init-mat* #f)))
+              (if (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete)))
+                (go periscope-power-on)
+                (go periscope-wait-for-player)))
             (suspend)))
         (suspend)))
   :post
@@ -1256,7 +1264,8 @@
           (suspend)))
       (sound-stop (-> self grips-sound-id))
       (ja-post)
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post periscope-post)
 
 (defmethod init-from-entity! ((this periscope) (arg0 entity-actor))
@@ -1362,7 +1371,8 @@
           (suspend)))
       (process-entity-status! self (entity-perm-status complete) #t)
       (reflector-origin-update (-> self link next))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post
     (behavior ()
       (draw-power-beam (-> self reflector-trans) (-> self next-reflector-trans))))
@@ -1390,7 +1400,8 @@
       (let ((gp-0 (new-stack-vector0)))
         (set! (-> gp-0 quad) (-> self root trans quad))
         (+! (-> gp-0 y) 49152.0)
-        (loop (draw-power-beam gp-0 (-> self beam-end))
+        (loop
+          (draw-power-beam gp-0 (-> self beam-end))
           (update! (-> self sound))
           (when (logtest? (-> self draw status) (draw-status was-drawn))
             (launch-particles (-> *part-id-table* 825) (-> self beam-end))
@@ -1431,7 +1442,8 @@
         (while (-> self child)
           (suspend)))
       (logior! (-> self mask) (process-mask actor-pause))
-      (loop (suspend))))
+      (loop
+        (suspend))))
 
 (defmethod init-from-entity! ((this reflector-mirror) (arg0 entity-actor))
   (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))

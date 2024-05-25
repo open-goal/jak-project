@@ -246,10 +246,11 @@ lurkerworm-default-post-behavior
       (set-time! (-> self state-time)))
   :code
     (behavior ()
-      (loop (if (and (time-elapsed? (-> self state-time) (seconds 1))
-                     *target*
-                     (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-              (go lurkerworm-spot))
+      (loop
+        (if (and (time-elapsed? (-> self state-time) (seconds 1))
+                 *target*
+                 (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+          (go lurkerworm-spot))
         (suspend)))
   :post lurkerworm-default-post-behavior)
 
@@ -262,7 +263,8 @@ lurkerworm-default-post-behavior
   :code
     (behavior ()
       (set! (-> self part local-clock) 0)
-      (loop (spawn (-> self part) (-> self root trans))
+      (loop
+        (spawn (-> self part) (-> self root trans))
         (particle-effect self)
         (when (time-elapsed? (-> self state-time) (seconds 1))
           (if (and *target* (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))

@@ -30,35 +30,36 @@
         (set! (-> self blend-to-type) (the-as uint 1))))
   :code
     (behavior ()
-      (loop (let ((s5-0 (new-stack-vector0))
-                  (gp-0 (new-stack-vector0)))
-              (when *camera-read-analog*
-                (let ((f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
-                      (f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
-                      (f26-0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 -1.0))
-                      (f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 48.0 110.0 -1.0)))
-                  (cond
-                    ((cpad-hold? (-> *CAMERA-bank* joypad) r2)
-                     (set! (-> s5-0 y) (- (-> s5-0 y) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
-                     (set! (-> s5-0 x) (- (-> s5-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
-                     (+! (-> gp-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
-                     (+! (-> gp-0 z) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f30-0)))
-                    (else
-                     (set! (-> s5-0 y) (- (-> s5-0 y) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
-                     (set! (-> s5-0 x) (- (-> s5-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
-                     (+! (-> gp-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
-                     (+! (-> gp-0 z) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f30-0)))))
-                (let ((s4-0 (new-stack-vector0)))
-                  (let ((s3-0 (new-stack-matrix0)))
-                    (matrix-axis-angle! s3-0 (the-as vector (-> self tracking)) (- (-> s5-0 x)))
-                    (vector-matrix*! s4-0 (-> self tracking inv-mat vector 2) s3-0)
-                    (matrix-axis-angle! s3-0 (-> *camera* local-down) (- (-> s5-0 y)))
-                    (vector-matrix*! s4-0 s4-0 s3-0))
-                  (forward-down->inv-matrix (the-as matrix (-> self tracking)) s4-0 (-> *camera* local-down)))
-                (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> gp-0 z)))
-                (if (< (-> self pivot-rad) 4096.0) (set! (-> self pivot-rad) 4096.0))
-                (set-vector! gp-0 0.0 0.0 (- (-> self pivot-rad)) 1.0)
-                (vector-matrix*! (-> self trans) gp-0 (the-as matrix (-> self tracking)))))
+      (loop
+        (let ((s5-0 (new-stack-vector0))
+              (gp-0 (new-stack-vector0)))
+          (when *camera-read-analog*
+            (let ((f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
+                  (f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0))
+                  (f26-0 (analog-input (the-as int (-> *cpad-list* cpads 0 rightx)) 128.0 48.0 110.0 -1.0))
+                  (f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 48.0 110.0 -1.0)))
+              (cond
+                ((cpad-hold? (-> *CAMERA-bank* joypad) r2)
+                 (set! (-> s5-0 y) (- (-> s5-0 y) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
+                 (set! (-> s5-0 x) (- (-> s5-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
+                 (+! (-> gp-0 x) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
+                 (+! (-> gp-0 z) (* 0.2 (-> *CAM_POINT_WATCH-bank* speed) f30-0)))
+                (else
+                 (set! (-> s5-0 y) (- (-> s5-0 y) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f26-0))))
+                 (set! (-> s5-0 x) (- (-> s5-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* rot-speed) (- f0-0))))
+                 (+! (-> gp-0 x) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f28-0))
+                 (+! (-> gp-0 z) (* 2.0 (-> *CAM_POINT_WATCH-bank* speed) f30-0)))))
+            (let ((s4-0 (new-stack-vector0)))
+              (let ((s3-0 (new-stack-matrix0)))
+                (matrix-axis-angle! s3-0 (the-as vector (-> self tracking)) (- (-> s5-0 x)))
+                (vector-matrix*! s4-0 (-> self tracking inv-mat vector 2) s3-0)
+                (matrix-axis-angle! s3-0 (-> *camera* local-down) (- (-> s5-0 y)))
+                (vector-matrix*! s4-0 s4-0 s3-0))
+              (forward-down->inv-matrix (the-as matrix (-> self tracking)) s4-0 (-> *camera* local-down)))
+            (set! (-> self pivot-rad) (- (-> self pivot-rad) (-> gp-0 z)))
+            (if (< (-> self pivot-rad) 4096.0) (set! (-> self pivot-rad) 4096.0))
+            (set-vector! gp-0 0.0 0.0 (- (-> self pivot-rad)) 1.0)
+            (vector-matrix*! (-> self trans) gp-0 (the-as matrix (-> self tracking)))))
         (suspend)
         0)))
 
@@ -232,9 +233,10 @@
         (send-event *camera-combiner* 'stop-tracking)))
   :code
     (behavior ()
-      (loop (let ((a2-0 (-> *camera* local-down)))
-              (if (logtest? (-> self options) 8) (set! a2-0 (the-as vector #f)))
-              (cam-free-floating-move (the-as matrix (-> self tracking)) (-> self trans) a2-0 (the-as int (-> *CAMERA-bank* joypad))))
+      (loop
+        (let ((a2-0 (-> *camera* local-down)))
+          (if (logtest? (-> self options) 8) (set! a2-0 (the-as vector #f)))
+          (cam-free-floating-move (the-as matrix (-> self tracking)) (-> self trans) a2-0 (the-as int (-> *CAMERA-bank* joypad))))
         (suspend))))
 
 (deftype camera-orbit-info (structure)
@@ -281,7 +283,8 @@
       ())
   :code
     (behavior ()
-      (loop (if (not *camera-orbit-target*) (cam-slave-go cam-free-floating))
+      (loop
+        (if (not *camera-orbit-target*) (cam-slave-go cam-free-floating))
         (when *camera-read-analog*
           (let ((f0-0 (analog-input (the-as int (-> *cpad-list* cpads 0 righty)) 128.0 32.0 110.0 0.05)))
             (cond

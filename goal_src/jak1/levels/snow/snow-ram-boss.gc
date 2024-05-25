@@ -552,25 +552,26 @@
   :code
     (behavior ()
       (set! (-> self charge-sound-id) (sound-play "ramboss-charge"))
-      (loop (let ((gp-1 (-> self parent-override)))
-              (when (-> gp-1 0 dead?)
-                (set! (-> gp-1 0 proj-stoked) #f)
-                (set! (-> gp-1 0 proj-status) (the-as uint 0))
-                (sound-stop (-> self charge-sound-id))
-                (go-virtual projectile-dissipate))
-              (nav-enemy-method-54 (-> gp-1 0) (-> self root trans))
-              (update-transforms! (-> self root))
-              (cond
-                ((-> gp-1 0 proj-stoked)
-                 (set! (-> gp-1 0 proj-stoked) #f)
-                 (set! (-> self growth) (seek-with-smooth (-> self growth) 1.0 (* 1.25 (seconds-per-frame)) 0.8 0.01))
-                 (if (>= (-> self growth) 1.0) (set! (-> gp-1 0 proj-status) (the-as uint 2)) (set! (-> gp-1 0 proj-status) (the-as uint 1))))
-                (else
-                 (set! (-> self growth) 0.0)
-                 (set! (-> gp-1 0 proj-stoked) #f)
-                 (set! (-> gp-1 0 proj-status) (the-as uint 0))
-                 (sound-stop (-> self charge-sound-id))
-                 (go-virtual projectile-dissipate))))
+      (loop
+        (let ((gp-1 (-> self parent-override)))
+          (when (-> gp-1 0 dead?)
+            (set! (-> gp-1 0 proj-stoked) #f)
+            (set! (-> gp-1 0 proj-status) (the-as uint 0))
+            (sound-stop (-> self charge-sound-id))
+            (go-virtual projectile-dissipate))
+          (nav-enemy-method-54 (-> gp-1 0) (-> self root trans))
+          (update-transforms! (-> self root))
+          (cond
+            ((-> gp-1 0 proj-stoked)
+             (set! (-> gp-1 0 proj-stoked) #f)
+             (set! (-> self growth) (seek-with-smooth (-> self growth) 1.0 (* 1.25 (seconds-per-frame)) 0.8 0.01))
+             (if (>= (-> self growth) 1.0) (set! (-> gp-1 0 proj-status) (the-as uint 2)) (set! (-> gp-1 0 proj-status) (the-as uint 1))))
+            (else
+             (set! (-> self growth) 0.0)
+             (set! (-> gp-1 0 proj-stoked) #f)
+             (set! (-> gp-1 0 proj-status) (the-as uint 0))
+             (sound-stop (-> self charge-sound-id))
+             (go-virtual projectile-dissipate))))
         (let ((f0-6 (-> self growth))) (set-vector! (-> self root scale) f0-6 f0-6 f0-6 1.0))
         (spawn (-> self part) (-> self root trans))
         (suspend))))
@@ -1012,7 +1013,8 @@
   :code
     (behavior ()
       (logior! (-> self nav-enemy-flags) (nav-enemy-flags navenmf2))
-      (loop (clone-anim-once (ppointer->handle (-> self parent-override)) (the-as int (-> self draw origin-joint-index)) #t "")
+      (loop
+        (clone-anim-once (ppointer->handle (-> self parent-override)) (the-as int (-> self draw origin-joint-index)) #t "")
         (let ((a0-4 (-> self parent-override 0 node-list data 9 bone transform)))
           (set! (-> self collide-info trans quad) (-> a0-4 vector 3 quad)))
         (transform-post)
@@ -1071,7 +1073,8 @@
           (seek-toward-heading-vec! (-> self collide-info) gp-0 182044.44 (seconds 0.01)))
         (suspend)
         (ja :num! (seek!)))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post nav-enemy-simple-post)
 
 (defstate ram-boss-jump-down-hit-ground (ram-boss)
@@ -1234,7 +1237,8 @@
   :code
     (behavior ()
       (let ((f30-0 -1.0))
-        (loop (set! f30-0 (ram-boss-method-57 self f30-0))
+        (loop
+          (set! f30-0 (ram-boss-method-57 self f30-0))
           (cond
             ((< 5461.3335 (-> self last-turn-speed))
              (cond

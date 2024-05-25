@@ -475,8 +475,9 @@
     (behavior ()
       (clear-collide-with-as (-> self root))
       (logior! (-> self draw status) (draw-status hidden))
-      (loop (when (= (get-task-status (-> self entity extra perm task)) (task-status invalid))
-              (if (not (-> self child)) (go swamp-tetherrock-die)))
+      (loop
+        (when (= (get-task-status (-> self entity extra perm task)) (task-status invalid))
+          (if (not (-> self child)) (go swamp-tetherrock-die)))
         (suspend))))
 
 (defstate swamp-tetherrock-break (swamp-tetherrock)
@@ -615,18 +616,19 @@
                                *entity-pool*))))))))
   :code
     (behavior ()
-      (loop (let ((s4-0 (new 'static 'vector :y 1.0 :w 1.0))
-                  (s3-0 (new 'stack-no-clear 'vector))
-                  (s5-0 (new 'stack-no-clear 'vector))
-                  (gp-0 (new 'stack-no-clear 'quaternion)))
-              0.0
-              (vector-! s3-0 (-> self tension-pt) (-> self root trans))
-              (vector-normalize! s3-0 1.0)
-              (vector-cross! s5-0 s4-0 s3-0)
-              (let ((f30-0 (asin (vector-normalize-ret-len! s5-0 1.0))))
-                (vector-normalize! s5-0 1.0)
-                (quaternion-vector-angle! gp-0 s5-0 (* (fmin 1820.4445 f30-0) (- 1.0 (-> self tension)))))
-              (quaternion*! (-> self root quat) gp-0 (-> self rot-at-init)))
+      (loop
+        (let ((s4-0 (new 'static 'vector :y 1.0 :w 1.0))
+              (s3-0 (new 'stack-no-clear 'vector))
+              (s5-0 (new 'stack-no-clear 'vector))
+              (gp-0 (new 'stack-no-clear 'quaternion)))
+          0.0
+          (vector-! s3-0 (-> self tension-pt) (-> self root trans))
+          (vector-normalize! s3-0 1.0)
+          (vector-cross! s5-0 s4-0 s3-0)
+          (let ((f30-0 (asin (vector-normalize-ret-len! s5-0 1.0))))
+            (vector-normalize! s5-0 1.0)
+            (quaternion-vector-angle! gp-0 s5-0 (* (fmin 1820.4445 f30-0) (- 1.0 (-> self tension)))))
+          (quaternion*! (-> self root quat) gp-0 (-> self rot-at-init)))
         (if (and *target* (>= 49152.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
           (level-hint-spawn (text-id swamp-tetherrock-eco-yellow-hint)
                             "sksp0138"
@@ -681,7 +683,8 @@
     (behavior ()
       (cleanup-for-death self)
       (deactivate self)
-      (loop (suspend))))
+      (loop
+        (suspend))))
 
 (defstate precursor-arm-sink (precursor-arm)
   :code
@@ -691,10 +694,11 @@
         (suspend))
       (close-specific-task! (-> self entity extra perm task) (task-status need-reminder))
       (close-specific-task! (-> self entity extra perm task) (task-status need-resolution))
-      (loop (cond
-              ((< -40960.0 (-> self y-offset))
-               (set! (-> self y-offset) (- (-> self y-offset) (* 409.6 (-> *display* time-adjust-ratio)))))
-              (else (set! (-> self y-offset) -40960.0) (cleanup-for-death self) (deactivate self)))
+      (loop
+        (cond
+          ((< -40960.0 (-> self y-offset))
+           (set! (-> self y-offset) (- (-> self y-offset) (* 409.6 (-> *display* time-adjust-ratio)))))
+          (else (set! (-> self y-offset) -40960.0) (cleanup-for-death self) (deactivate self)))
         (set! (-> self root trans y) (+ (-> self y-offset) (-> self y-init)))
         (suspend)))
   :post transform-post)
@@ -732,7 +736,8 @@
           (launch-particles :system *sp-particle-system-3d* (-> *part-id-table* 2017) a2-1))))
   :code
     (behavior ()
-      (loop (set! (-> self tension) 1.5)
+      (loop
+        (set! (-> self tension) 1.5)
         (let* ((f26-0 (+ 225.0 (* 150.0 (sin (rand-vu-float-range 0.0 16384.0)))))
                (f0-5 (+ 4096.0 (* 8192.0 (sin (rand-vu-float-range 0.0 16384.0)))))
                (f30-2 (-> self y-offset))
@@ -859,16 +864,17 @@
              (v1-6 (the-as number (logior #x3f800000 v1-5))))
         (set! (-> self state-time) (the-as time-frame (the int (* f30-1 (+ -1.0 (the-as float v1-6)))))))
       (ja-channel-push! 1 (seconds 0.5))
-      (loop (let* ((f30-2 0.3)
-                   (f28-1 0.25)
-                   (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
-                   (v1-11 (the-as number (logior #x3f800000 v1-10)))
-                   (f30-3 (+ f30-2 (* f28-1 (+ -1.0 (the-as float v1-11))))))
-              (ja-no-eval :group! swamp-rope-swing-ja :num! (seek! max f30-3) :frame-num 0.0)
-              (until (ja-done? 0)
-                (swamp-rope-break-code)
-                (suspend)
-                (ja :num! (seek! max f30-3))))))
+      (loop
+        (let* ((f30-2 0.3)
+               (f28-1 0.25)
+               (v1-10 (/ (the-as int (rand-uint31-gen *random-generator*)) 256))
+               (v1-11 (the-as number (logior #x3f800000 v1-10)))
+               (f30-3 (+ f30-2 (* f28-1 (+ -1.0 (the-as float v1-11))))))
+          (ja-no-eval :group! swamp-rope-swing-ja :num! (seek! max f30-3) :frame-num 0.0)
+          (until (ja-done? 0)
+            (swamp-rope-break-code)
+            (suspend)
+            (ja :num! (seek! max f30-3))))))
   :post
     (behavior ()
       (set! (-> self other-pos quad) (-> self root trans quad))
@@ -907,9 +913,10 @@
   :code
     (behavior ()
       (ja :group! swamp-rope-slack-ja)
-      (loop (let* ((f0-1 (* 2000.0 (- (-> self old-scale) (-> self root scale y))))
-                   (f1-3 (+ 0.5 f0-1)))
-              (set! (-> self frame target) (fmin 1.0 (fmax 0.0 f1-3))))
+      (loop
+        (let* ((f0-1 (* 2000.0 (- (-> self old-scale) (-> self root scale y))))
+               (f1-3 (+ 0.5 f0-1)))
+          (set! (-> self frame target) (fmin 1.0 (fmax 0.0 f1-3))))
         (swamp-rope-oscillator-method-10 (-> self frame) 0.0)
         (let* ((v1-6 (-> self other-entity))
                (a0-4 (if v1-6 (-> v1-6 extra process))))
@@ -925,9 +932,10 @@
   :code
     (behavior ()
       (ja :group! swamp-rope-slack-ja)
-      (loop (let* ((a0-3 (-> self other-entity))
-                   (v1-3 (if a0-3 (-> a0-3 extra process))))
-              (if v1-3 (set! (-> self frame target) (- 1.0 (-> (the-as swamp-rope v1-3) scale-t)))))
+      (loop
+        (let* ((a0-3 (-> self other-entity))
+               (v1-3 (if a0-3 (-> a0-3 extra process))))
+          (if v1-3 (set! (-> self frame target) (- 1.0 (-> (the-as swamp-rope v1-3) scale-t)))))
         (swamp-rope-oscillator-method-10 (-> self frame) 0.0)
         (ja :num-func num-func-identity :frame-num (* (-> self frame value) (the float (ja-num-frames 0))))
         (suspend)))
@@ -1007,9 +1015,10 @@
       (set-time! (-> self state-time))
       (let ((gp-0 (new 'stack-no-clear 'quaternion)))
         (quaternion-copy! gp-0 (-> self rot-at-init))
-        (loop (quaternion-vector-angle! (-> self rot-at-init)
-                                        (new 'static 'vector :y 1.0 :w 1.0)
-                                        (* 18.204445 (the float (- (current-time) (-> self state-time)))))
+        (loop
+          (quaternion-vector-angle! (-> self rot-at-init)
+                                    (new 'static 'vector :y 1.0 :w 1.0)
+                                    (* 18.204445 (the float (- (current-time) (-> self state-time)))))
           (quaternion*! (-> self rot-at-init) (-> self rot-at-init) gp-0)
           (if (< (-> self pos-oscillator target x) 409600.0) (+! (-> self pos-oscillator target x) 40.96))
           (if (< (-> self pos-oscillator target y) 4096000.0) (+! (-> self pos-oscillator target y) 819.2))
@@ -1075,10 +1084,11 @@
   :code
     (behavior ()
       (ja :group! swamp-blimp-idle-ja)
-      (loop (when (< 300 (-> self arm-timer))
-              (set! (-> self arm-timer)
-                    (- (the-as time-frame (-> self arm-timer)) (- (current-time) (-> *display* old-base-frame-counter))))
-              (if (>= 300 (-> self arm-timer)) (+! (-> self pos-oscillator target y) (* 16384.0 (-> *display* time-adjust-ratio)))))
+      (loop
+        (when (< 300 (-> self arm-timer))
+          (set! (-> self arm-timer)
+                (- (the-as time-frame (-> self arm-timer)) (- (current-time) (-> *display* old-base-frame-counter))))
+          (if (>= 300 (-> self arm-timer)) (+! (-> self pos-oscillator target y) (* 16384.0 (-> *display* time-adjust-ratio)))))
         (when (< 240 (-> self arm-timer))
           (set! (-> self arm-timer)
                 (- (the-as time-frame (-> self arm-timer)) (- (current-time) (-> *display* old-base-frame-counter))))

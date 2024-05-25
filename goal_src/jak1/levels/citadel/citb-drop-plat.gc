@@ -78,7 +78,8 @@
       (update-transforms! (-> self root))
       (set-time! (-> self state-time))
       (logior! (-> self mask) (process-mask actor-pause))
-      (loop (if (time-elapsed? (-> self state-time) (-> self duration)) (go drop-plat-drop))
+      (loop
+        (if (time-elapsed? (-> self state-time) (-> self duration)) (go drop-plat-drop))
         (suspend)))
   :post ja-post)
 
@@ -101,11 +102,12 @@
       (logior! (-> self draw status) (draw-status hidden))
       (ja-post)
       (set-time! (-> self state-time))
-      (loop (when (time-elapsed? (-> self state-time) (-> self delay))
-              (let ((v1-14 (logclear (-> self draw status) (draw-status hidden)))
-                    (a0-5 (-> self draw)))
-                (set! (-> a0-5 status) v1-14)
-                (go drop-plat-rise a0-5)))
+      (loop
+        (when (time-elapsed? (-> self state-time) (-> self delay))
+          (let ((v1-14 (logclear (-> self draw status) (draw-status hidden)))
+                (a0-5 (-> self draw)))
+            (set! (-> a0-5 status) v1-14)
+            (go drop-plat-rise a0-5)))
         (suspend))))
 
 (defstate drop-plat-rise (drop-plat)
@@ -123,8 +125,9 @@
             (s5-0 #f))
         (set! (-> gp-0 quad) (-> self root trans quad))
         (set! (-> gp-0 y) (-> (the-as process-drawable (-> self parent 0)) root trans y))
-        (loop (let ((f0-6 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
-                (set! (-> self interp) (* f0-6 f0-6)))
+        (loop
+          (let ((f0-6 (fmax 0.0 (- 1.0 (* 0.0033333334 (the float (- (current-time) (-> self state-time))))))))
+            (set! (-> self interp) (* f0-6 f0-6)))
           (set! (-> self root trans y)
                 (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (* 204800.0 (-> self interp))))
           (when (and (not s5-0) (< (-> self interp) 0.05))
@@ -152,7 +155,8 @@
             (set! (-> self interp) (/ (the float (- (current-time) (-> self state-time))) (the float gp-1)))
             (set! (-> self spin-angle) (* 910.2222 (sin (* 196608.0 (-> self interp)))))
             (suspend))))
-      (loop (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
+      (loop
+        (vector-v++! (-> self root transv) (compute-acc-due-to-gravity (-> self root) (new-stack-vector0) 0.0))
         (vector-v++! (-> self root trans) (-> self root transv))
         (if (< 204800.0 (- (-> (the-as process-drawable (-> self parent 0)) root trans y) (-> self root trans y)))
           (go drop-plat-die))
@@ -318,7 +322,8 @@
   :code
     (behavior ()
       (citb-drop-plat-drop-all-children)
-      (loop (suspend))))
+      (loop
+        (suspend))))
 
 (defstate citb-drop-plat-active (citb-drop-plat)
   :event
@@ -333,11 +338,12 @@
     (behavior ()
       (set-time! (-> self state-time))
       (citb-drop-plat-spawn-children)
-      (loop (if (or (time-elapsed? (-> self state-time) (+ (-> self duration) (seconds 2)))
-                    (or (not *target*)
-                        (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                    (not (-> self child)))
-              (go citb-drop-plat-idle))
+      (loop
+        (if (or (time-elapsed? (-> self state-time) (+ (-> self duration) (seconds 2)))
+                (or (not *target*)
+                    (< (-> self idle-distance) (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                (not (-> self child)))
+          (go citb-drop-plat-idle))
         (suspend))))
 
 (defmethod init-from-entity! ((this citb-drop-plat) (arg0 entity-actor))

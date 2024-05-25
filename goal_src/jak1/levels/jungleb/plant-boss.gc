@@ -191,7 +191,8 @@
       (ja-channel-set! 2)
       (ja :group! plant-boss-arms-idle-ja :num! min)
       (ja :chan 1 :group! plant-boss-arms-still-ja :num! min)
-      (loop (ja :num! (loop!))
+      (loop
+        (ja :num! (loop!))
         (ja :chan 1 :frame-interp (- 1.0 (-> self parent-override 0 energy)))
         (suspend)))
   :post ja-post)
@@ -254,7 +255,8 @@
       (set! (-> (find-prim-by-id (-> self root) (the-as uint 2)) prim-core action) (collide-action))
       0
       (update-transforms! (-> self root))
-      (loop (logior! (-> self mask) (process-mask sleep))
+      (loop
+        (logior! (-> self mask) (process-mask sleep))
         (suspend)))
   :post ja-post)
 
@@ -267,7 +269,8 @@
         ((= message 'die) (go plant-boss-back-arms-die (the-as symbol (-> block param 0))))))
   :code
     (behavior ()
-      (loop (ja-no-eval :group! plant-boss-back-arms-idle-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! plant-boss-back-arms-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))))
@@ -314,7 +317,8 @@
            (ja :num! (seek!)))))
       (clear-collide-with-as (-> self root))
       (ja :group! plant-boss-back-arms-die-ja :num! max)
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post ja-post)
 
 (defstate plant-boss-vine-idle (plant-boss-arm)
@@ -326,7 +330,8 @@
   :code
     (behavior ()
       (let ((f30-0 (rand-vu-float-range (the-as float 0.9) (the-as float 1.1))))
-        (loop (ja-no-eval :group! plant-boss-vine-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (loop
+          (ja-no-eval :group! plant-boss-vine-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-0))))))
@@ -377,7 +382,8 @@
   :code
     (behavior ()
       (let ((f30-0 (rand-vu-float-range (the-as float 0.9) (the-as float 1.1))))
-        (loop (ja-no-eval :group! plant-boss-root-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
+        (loop
+          (ja-no-eval :group! plant-boss-root-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! max f30-0))))))
@@ -501,19 +507,20 @@
         (('die) (go plant-boss-leaf-die (the-as basic (-> block param 0))))))
   :code
     (behavior ((arg0 symbol))
-      (loop (case (-> self side)
-              ((1)
-               (dotimes (gp-0 4)
-                 (ja-no-eval :group! plant-boss-leaf-stubby-right-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!)))))
-              (else
-               (dotimes (gp-1 5)
-                 (ja-no-eval :group! plant-boss-leaf-stubby-left-ja :num! (seek!) :frame-num 0.0)
-                 (until (ja-done? 0)
-                   (suspend)
-                   (ja :num! (seek!))))))))
+      (loop
+        (case (-> self side)
+          ((1)
+           (dotimes (gp-0 4)
+             (ja-no-eval :group! plant-boss-leaf-stubby-right-ja :num! (seek!) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!)))))
+          (else
+           (dotimes (gp-1 5)
+             (ja-no-eval :group! plant-boss-leaf-stubby-left-ja :num! (seek!) :frame-num 0.0)
+             (until (ja-done? 0)
+               (suspend)
+               (ja :num! (seek!))))))))
   :post ja-post)
 
 (defstate plant-boss-leaf-open (plant-boss-leaf)
@@ -638,7 +645,8 @@
 (defstate plant-boss-leaf-die (plant-boss-leaf)
   :code
     (behavior ((arg0 basic))
-      (loop (logior! (-> self mask) (process-mask sleep))
+      (loop
+        (logior! (-> self mask) (process-mask sleep))
         (suspend)))
   :post ja-post)
 
@@ -684,7 +692,8 @@
       (set-mode! (-> self body) (joint-mod-handler-mode flex-blend))
       (set! (-> self body flex-blend) 0.0)
       (ja-channel-set! 1)
-      (loop (ja-no-eval :group! plant-boss-main-initial-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! plant-boss-main-initial-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (seek! (-> self energy) (the-as float 0.25) (seconds-per-frame))
           (if (and (and *target* (>= 245760.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
@@ -810,9 +819,10 @@
            (ja :num! (seek!))))
         ((ja-group? plant-boss-main-intro-ja))
         (else (ja-channel-push! 1 (seconds 0.25))))
-      (loop (when (or (and *cheat-mode* (cpad-hold? 1 r3)) (zero? (-> self aphid-count)))
-              (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num 0.0)
-              (go plant-boss-vulnerable))
+      (loop
+        (when (or (and *cheat-mode* (cpad-hold? 1 r3)) (zero? (-> self aphid-count)))
+          (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num 0.0)
+          (go plant-boss-vulnerable))
         (ja-no-eval :group! plant-boss-main-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
@@ -1203,7 +1213,8 @@
           (transform-post)
           (do-push-aways! (-> self root))
           (suspend)))
-      (loop (logior! (-> self mask) (process-mask sleep))
+      (loop
+        (logior! (-> self mask) (process-mask sleep))
         (suspend))))
 
 (defstate plant-boss-dead-bounce (plant-boss)

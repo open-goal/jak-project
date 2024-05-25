@@ -76,14 +76,15 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (let ((f0-0 -1.0))
-              (when (and *target* *camera*)
-                (let ((gp-0 (new 'stack-no-clear 'vector)))
-                  (vector-! gp-0 (target-pos 0) (camera-pos))
-                  (set! f0-0 (ray-capsule-intersect (-> self cyl) (camera-pos) gp-0))))
-              (if (< f0-0 0.0)
-                (ja :num! (seek! (get-current-value-with-mirror (-> self sync) (-> self max-frame))))
-                (ja :num! (seek! 0.0))))
+      (loop
+        (let ((f0-0 -1.0))
+          (when (and *target* *camera*)
+            (let ((gp-0 (new 'stack-no-clear 'vector)))
+              (vector-! gp-0 (target-pos 0) (camera-pos))
+              (set! f0-0 (ray-capsule-intersect (-> self cyl) (camera-pos) gp-0))))
+          (if (< f0-0 0.0)
+            (ja :num! (seek! (get-current-value-with-mirror (-> self sync) (-> self max-frame))))
+            (ja :num! (seek! 0.0))))
         (suspend)))
   :post rider-post)
 
@@ -105,9 +106,10 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (if (task-closed? (game-task rolling-race) (task-status need-introduction))
-              (ja :num! (seek! (-> self min-frame)))
-              (ja :num! (seek! (-> self max-frame))))
+      (loop
+        (if (task-closed? (game-task rolling-race) (task-status need-introduction))
+          (ja :num! (seek! (-> self min-frame)))
+          (ja :num! (seek! (-> self max-frame))))
         (suspend)))
   :post rider-post)
 
@@ -161,7 +163,8 @@
     (vector+! (-> arg0 root trans) (-> arg0 entity extra trans) s5-1)))
 
 (defun dark-plants-all-done ((arg0 dark-plant))
-  (loop (if (!= (-> arg0 state) dark-plant-gone) (return #f))
+  (loop
+    (if (!= (-> arg0 state) dark-plant-gone) (return #f))
     (if (zero? (-> arg0 num-alts)) (return #t))
     (let ((v1-9 (-> arg0 alts 0 extra process)))
       (if (not v1-9) (return #t))
@@ -201,13 +204,14 @@
              (v1-5 (the-as number (logior #x3f800000 v1-4)))
              (gp-0 (+ (the int (* f30-0 (+ -1.0 (the-as float v1-5)))) 3000)))
         (set-time! (-> self state-time))
-        (loop (when (and (!= (get-task-status (game-task rolling-plants)) (task-status invalid))
-                         (!= (get-task-status (game-task rolling-plants)) 7))
-                (cond
-                  ((time-elapsed? (-> self state-time) gp-0) (go dark-plant-sprout))
-                  ((dark-plant-check-target self) (set-time! (-> self state-time)))
-                  ((not (dark-plant-has-bad-neighbor self)) (set-time! (-> self state-time)))
-                  (else)))
+        (loop
+          (when (and (!= (get-task-status (game-task rolling-plants)) (task-status invalid))
+                     (!= (get-task-status (game-task rolling-plants)) 7))
+            (cond
+              ((time-elapsed? (-> self state-time) gp-0) (go dark-plant-sprout))
+              ((dark-plant-check-target self) (set-time! (-> self state-time)))
+              ((not (dark-plant-has-bad-neighbor self)) (set-time! (-> self state-time)))
+              (else)))
           (suspend))))
   :post ja-post)
 
@@ -228,14 +232,15 @@
   :trans dark-plant-trans
   :code
     (behavior ()
-      (loop (when (and (logtest? (-> self draw status) (draw-status was-drawn))
-                       *target*
-                       (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-              (if (rand-vu-percent? 0.3) (sound-play "darkvine-move"))
-              (when (task-closed? (game-task rolling-plants) (task-status need-hint))
-                (level-hint-spawn (text-id rolling-plants-hint) "sksp0113" (the-as entity #f) *entity-pool* (game-task none))
-                (if (not (send-event *target* 'query 'powerup (pickup-type eco-green)))
-                  (level-hint-spawn (text-id rolling-plants-hint-eco-green) "sksp0114" (the-as entity #f) *entity-pool* (game-task none)))))
+      (loop
+        (when (and (logtest? (-> self draw status) (draw-status was-drawn))
+                   *target*
+                   (>= 81920.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+          (if (rand-vu-percent? 0.3) (sound-play "darkvine-move"))
+          (when (task-closed? (game-task rolling-plants) (task-status need-hint))
+            (level-hint-spawn (text-id rolling-plants-hint) "sksp0113" (the-as entity #f) *entity-pool* (game-task none))
+            (if (not (send-event *target* 'query 'powerup (pickup-type eco-green)))
+              (level-hint-spawn (text-id rolling-plants-hint-eco-green) "sksp0114" (the-as entity #f) *entity-pool* (game-task none)))))
         (let ((gp-1 (-> self skel root-channel 0)))
           (set! (-> gp-1 frame-group) (the-as art-joint-anim dark-plant-idle-ja))
           (set! (-> gp-1 param 0) (the float (+ (-> (the-as art-joint-anim dark-plant-idle-ja) data 0 length) -1)))
@@ -350,7 +355,8 @@
 (defstate happy-plant-opened (happy-plant)
   :code
     (behavior ()
-      (loop (ja-no-eval :group! happy-plant-idle-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! happy-plant-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))))
@@ -415,7 +421,8 @@
   :code
     (behavior ()
       (clear-collide-with-as (-> self root))
-      (loop (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! (ja-group) :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))))
@@ -541,7 +548,8 @@
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!)))
-      (loop (ja-no-eval :group! rolling-start-broken-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! rolling-start-broken-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))
@@ -557,7 +565,8 @@
   :code
     (behavior ()
       (lods-assign! (-> self draw) (-> self whole-look))
-      (loop (ja-no-eval :group! rolling-start-idle-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! rolling-start-idle-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))))
@@ -636,7 +645,8 @@
   :trans gorge-trans
   :code
     (behavior ()
-      (loop (suspend)
+      (loop
+        (suspend)
         (if (gorge-behind self) (send-event (ppointer->process (-> self parent)) 'aborted)))))
 
 (defbehavior gorge-abort-init-by-other gorge-abort ((arg0 vector) (arg1 vector) (arg2 float))
@@ -650,7 +660,8 @@
   :trans gorge-trans
   :code
     (behavior ()
-      (loop (suspend)
+      (loop
+        (suspend)
         (if (gorge-in-front self) (send-event (ppointer->process (-> self parent)) 'finished)))))
 
 (defbehavior gorge-finish-init-by-other gorge-finish ((arg0 vector) (arg1 vector) (arg2 float))
@@ -835,7 +846,8 @@
   :code
     (behavior ()
       (set! (-> self state-time) (-> *display* game-frame-counter))
-      (loop (seconds->race-time (-> self this-time) (- (-> *display* game-frame-counter) (-> self state-time)))
+      (loop
+        (seconds->race-time (-> self this-time) (- (-> *display* game-frame-counter) (-> self state-time)))
         (seekl! (-> self timer-pos-offset) 0 (the int (* 5.0 (-> *display* time-adjust-ratio))))
         (completed? (-> self ticker))
         (gorge-start-draw-time #f #f)
@@ -846,7 +858,8 @@
   :trans gorge-trans
   :code
     (behavior ()
-      (loop (suspend)
+      (loop
+        (suspend)
         (seekl! (-> self timer-pos-offset) 100 (the int (* 5.0 (-> *display* time-adjust-ratio))))
         (when (= (-> self timer-pos-offset) 100)
           (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'enable)
@@ -872,7 +885,8 @@
       (gorge-trans))
   :code
     (behavior ()
-      (loop (suspend)
+      (loop
+        (suspend)
         (seekl! (-> self timer-pos-offset) 100 (the int (* 5.0 (-> *display* time-adjust-ratio))))
         (when (= (-> self timer-pos-offset) 100)
           (send-event (ppointer->process (-> *hud-parts* fuel-cell)) 'enable)

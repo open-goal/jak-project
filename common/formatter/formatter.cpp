@@ -380,7 +380,9 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
   // Consolidate any lines if the configuration requires it
   // TODO there is a hack here so that multi-line forms that are consolidated still line up properly
   // i have to make consolidate a more first-class feature of the config
-  if (curr_node.formatting_config.inline_until_index(form_lines)) {
+  // TODO - hacky, but prevents a bad situation, clean up
+  if (curr_node.formatting_config.inline_until_index(form_lines) &&
+      !str_util::contains(form_lines.at(0), ";")) {
     std::vector<std::string> new_form_lines = {};
     const auto original_form_head_width = str_util::split(form_lines.at(0), '\n').at(0).length();
     bool consolidating_lines = true;
@@ -436,14 +438,21 @@ std::vector<std::string> apply_formatting(const FormatterTreeNode& curr_node,
     }
     form_lines = {fmt::format("{}", fmt::join(new_form_lines, " "))};
   } else {
+    bool currently_in_block_comment = false;
     for (int i = 0; i < (int)form_lines.size(); i++) {
-      if (i > 0) {
-        auto& line = form_lines.at(i);
+      auto& line = form_lines.at(i);
+      if (str_util::contains(line, "|#")) {
+        currently_in_block_comment = false;
+      }
+      if (i > 0 && !currently_in_block_comment) {
         line = fmt::format("{}{}",
                            str_util::repeat(curr_node.formatting_config.indentation_width_for_index(
                                                 curr_node.formatting_config, i),
                                             " "),
                            line);
+      }
+      if (str_util::contains(line, "#|") && !str_util::contains(line, "|#")) {
+        currently_in_block_comment = true;
       }
     }
   }

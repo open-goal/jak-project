@@ -122,17 +122,18 @@
   :code
     (behavior ()
       (ja-post)
-      (loop (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-                     (and (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
-                          (and (>= (-> *game-info* fuel) 100.0)
-                               (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
-                               (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
-                               (send-event *target*
-                                           'change-mode
-                                           'final-door
-                                           (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-right)))
-                                           (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-left)))))))
-              (process-entity-status! self (entity-perm-status complete) #t))
+      (loop
+        (if (and (and *target* (>= 61440.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+                 (and (not (logtest? (-> *target* state-flags) (state-flags grabbed)))
+                      (and (>= (-> *game-info* fuel) 100.0)
+                           (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status complete))))
+                           (= (get-task-status (game-task finalboss-movies)) (task-status need-reward-speech))
+                           (send-event *target*
+                                       'change-mode
+                                       'final-door
+                                       (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-right)))
+                                       (search-process-tree *active-pool* (lambda ((arg0 final-door)) (= (-> arg0 type) power-left)))))))
+          (process-entity-status! self (entity-perm-status complete) #t))
         (suspend))))
 
 (defmethod final-door-method-21 ((this power-left))
@@ -191,7 +192,8 @@
   :virtual #t
   :code
     (behavior ()
-      (loop (vector<-cspace! (-> self root trans) (-> (the-as process-drawable (-> self parent 0)) node-list data (-> self index)))
+      (loop
+        (vector<-cspace! (-> self root trans) (-> (the-as process-drawable (-> self parent 0)) node-list data (-> self index)))
         (transform-post)
         (suspend))))
 

@@ -44,7 +44,8 @@
       (move-to-point! (-> self root) (-> self in-trans))
       (transform-post)
       (clear-collide-with-as (-> self root))
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate wall-plat-extending (wall-plat)
@@ -60,7 +61,8 @@
     (behavior ()
       (restore-collide-with-as (-> self root))
       (set-time! (-> self state-time))
-      (loop (seek! (-> self extended-amount) 1.0 (* 2.5 (seconds-per-frame)))
+      (loop
+        (seek! (-> self extended-amount) 1.0 (* 2.5 (seconds-per-frame)))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
           (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
           (move-to-point! (-> self root) gp-0))
@@ -78,7 +80,8 @@
       (set! (-> self extended-amount) 1.0)
       (move-to-point! (-> self root) (-> self out-trans))
       (transform-post)
-      (loop (logior! (-> self mask) (process-mask sleep-code))
+      (loop
+        (logior! (-> self mask) (process-mask sleep-code))
         (suspend))))
 
 (defstate wall-plat-retracting (wall-plat)
@@ -93,7 +96,8 @@
   :code
     (behavior ()
       (set-time! (-> self state-time))
-      (loop (seek! (-> self extended-amount) 0.0 (* 2.5 (seconds-per-frame)))
+      (loop
+        (seek! (-> self extended-amount) 0.0 (* 2.5 (seconds-per-frame)))
         (let ((gp-0 (new 'stack-no-clear 'vector)))
           (vector-lerp! gp-0 (-> self in-trans) (-> self out-trans) (-> self extended-amount))
           (move-to-point! (-> self root) gp-0))
@@ -116,14 +120,15 @@
   :code
     (behavior ()
       (let ((gp-0 #f))
-        (loop (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
-                (let ((s5-0 (new 'stack-no-clear 'vector)))
-                  (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
-                  (move-to-point! (-> self root) s5-0))
-                (cond
-                  ((= f30-0 0.0) (set! gp-0 #f) (clear-collide-with-as (-> self root)))
-                  ((= f30-0 1.0) (set! gp-0 #f) (restore-collide-with-as (-> self root)))
-                  (else (when (not gp-0) (sound-play "wall-plat") (set! gp-0 #t)) (restore-collide-with-as (-> self root)))))
+        (loop
+          (let ((f30-0 (get-current-phase-with-mirror (-> self sync))))
+            (let ((s5-0 (new 'stack-no-clear 'vector)))
+              (vector-lerp! s5-0 (-> self in-trans) (-> self out-trans) f30-0)
+              (move-to-point! (-> self root) s5-0))
+            (cond
+              ((= f30-0 0.0) (set! gp-0 #f) (clear-collide-with-as (-> self root)))
+              ((= f30-0 1.0) (set! gp-0 #f) (restore-collide-with-as (-> self root)))
+              (else (when (not gp-0) (sound-play "wall-plat") (set! gp-0 #t)) (restore-collide-with-as (-> self root)))))
           (suspend))))
   :post rider-post)
 

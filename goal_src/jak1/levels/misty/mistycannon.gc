@@ -960,7 +960,8 @@
       (rider-trans))
   :code
     (behavior ()
-      (loop (mistycannon-method-23 self)
+      (loop
+        (mistycannon-method-23 self)
         (suspend)))
   :post rider-post)
 
@@ -1074,9 +1075,10 @@
       (rider-trans))
   :code
     (behavior ()
-      (loop (if (< (vector-vector-xz-distance (target-pos 0) (-> self center-point)) (-> self center-point w))
-              (mistycannon-do-aim (-> *target* control trans) (-> *target* control transv))
-              (mistycannon-do-aim (-> self at-point) (new-stack-vector0)))
+      (loop
+        (if (< (vector-vector-xz-distance (target-pos 0) (-> self center-point)) (-> self center-point w))
+          (mistycannon-do-aim (-> *target* control trans) (-> *target* control transv))
+          (mistycannon-do-aim (-> self at-point) (new-stack-vector0)))
         (mistycannon-method-23 self)
         (suspend)))
   :post rider-post)
@@ -1100,10 +1102,11 @@
   :code
     (behavior ()
       (set! (-> self player-touching-grips?) #f)
-      (loop (let ((f0-0 2730.6667)
-                  (v1-0 (-> self tilt)))
-              (if (< f0-0 (the float (sar (shl (the int (+ (-> v1-0 min) (-> v1-0 value))) 48) 48)))
-                (angle-tracker-seek! (-> self tilt) 2730.6667)))
+      (loop
+        (let ((f0-0 2730.6667)
+              (v1-0 (-> self tilt)))
+          (if (< f0-0 (the float (sar (shl (the int (+ (-> v1-0 min) (-> v1-0 value))) 48) 48)))
+            (angle-tracker-seek! (-> self tilt) 2730.6667)))
         (mistycannon-method-23 self)
         (when (and (-> self player-touching-grips?) (not (level-hint-displayed?)))
           (set! (-> self player-touching-grips?) #f)
@@ -1117,7 +1120,8 @@
               (set! (-> gp-0 flags) (font-flags shadow kerning large))
               (print-game-text (lookup-text! *common-text* (text-id press-to-use) #f) gp-0 #f 128 22))
             (when (cpad-pressed? 0 circle)
-              (loop (send-event *target* 'change-mode 'periscope self)
+              (loop
+                (send-event *target* 'change-mode 'periscope self)
                 (suspend)
                 (suspend)))))
         (suspend)))
@@ -1135,12 +1139,13 @@
       (if (not (logtest? (-> *camera* master-options) 2)) (cam-slave-go cam-free-floating)))
   :code
     (behavior ()
-      (loop (let ((v1-0 (-> self change-event-from)))
-              (set! (-> self trans quad) (-> (the-as mistycannon (-> v1-0 0)) goggles quad))
-              (let ((t9-0 matrix-rotate-yx!)
-                    (a0-1 (-> self tracking))
-                    (v1-2 (-> (the-as mistycannon (-> v1-0 0)) rotate)))
-                (t9-0 (the-as matrix a0-1) (the float (sar (shl (the int (+ (-> v1-2 min) (-> v1-2 value))) 48) 48)) 3640.889)))
+      (loop
+        (let ((v1-0 (-> self change-event-from)))
+          (set! (-> self trans quad) (-> (the-as mistycannon (-> v1-0 0)) goggles quad))
+          (let ((t9-0 matrix-rotate-yx!)
+                (a0-1 (-> self tracking))
+                (v1-2 (-> (the-as mistycannon (-> v1-0 0)) rotate)))
+            (t9-0 (the-as matrix a0-1) (the float (sar (shl (the int (+ (-> v1-2 min) (-> v1-2 value))) 48) 48)) 3640.889)))
         (suspend))))
 
 (defstate mistycannon-player-control (mistycannon)
@@ -1163,23 +1168,25 @@
       (set-time! (-> self state-time))
       (let ((gp-0 0)
             (s5-0 0))
-        (loop (when *camera-read-analog*
-                (let ((f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
-                      (f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0)))
-                  (rotate! self f30-0)
-                  (tilt! self (- f28-0))
-                  (if (or (!= f30-0 0.0) (!= f28-0 0.0))
-                    (sound-play "telescope" :id (-> self aim-sound-id))
-                    (sound-stop (-> self aim-sound-id)))))
+        (loop
+          (when *camera-read-analog*
+            (let ((f30-0 (analog-input (the-as int (-> *cpad-list* cpads 0 leftx)) 128.0 48.0 110.0 -1.0))
+                  (f28-0 (analog-input (the-as int (-> *cpad-list* cpads 0 lefty)) 128.0 48.0 110.0 -1.0)))
+              (rotate! self f30-0)
+              (tilt! self (- f28-0))
+              (if (or (!= f30-0 0.0) (!= f28-0 0.0))
+                (sound-play "telescope" :id (-> self aim-sound-id))
+                (sound-stop (-> self aim-sound-id)))))
           (when (cpad-pressed? 0 triangle)
             (process-entity-status! self (entity-perm-status bit-3) #t)
             (sound-stop (-> self sound-id))
             (send-event *camera* 'change-to-entity-by-name "camera-111")
             (suspend)
-            (loop (when (send-event *target* 'end-mode)
-                    (send-event *camera* 'change-state *camera-base-mode* 0)
-                    (process-entity-status! self (entity-perm-status bit-3) #f)
-                    (go mistycannon-waiting-for-player-to-fuck-off))
+            (loop
+              (when (send-event *target* 'end-mode)
+                (send-event *camera* 'change-state *camera-base-mode* 0)
+                (process-entity-status! self (entity-perm-status bit-3) #f)
+                (go mistycannon-waiting-for-player-to-fuck-off))
               (suspend)))
           (let ((v1-45 (and (cpad-hold? 0 x) (time-elapsed? (-> self state-time) (seconds 1)))))
             (when (zero? s5-0)
@@ -1216,7 +1223,8 @@
   :trans rider-trans
   :code
     (behavior ()
-      (loop (suspend)
+      (loop
+        (suspend)
         (mistycannon-method-23 self)
         (if (time-elapsed? (-> self state-time) (seconds 1)) (go mistycannon-waiting-for-player))))
   :post rider-post)

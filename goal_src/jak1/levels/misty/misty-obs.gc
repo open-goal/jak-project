@@ -973,7 +973,8 @@
   :code
     (behavior ()
       (local-vars (s4-0 int))
-      (loop (quaternion-rotate-local-x! (-> self root quat) (-> self root quat) (* -5461.3335 (seconds-per-frame)))
+      (loop
+        (quaternion-rotate-local-x! (-> self root quat) (-> self root quat) (* -5461.3335 (seconds-per-frame)))
         (let ((gp-0 (-> self part))
               (s5-0 (-> self root trans)))
           (let ((f30-0 1274.3112)
@@ -1012,10 +1013,11 @@
 (defstate windturbine-idle (windturbine)
   :code
     (behavior ()
-      (loop (let* ((a0-0 (-> self root trans))
-                   (f2-0 (-> *wind-work* wind-force (logand (+ (the int (-> a0-0 x)) (the int (-> a0-0 z)) (-> *wind-work* wind-time)) 63)))
-                   (f0-5 (* 0.992 (+ (-> self angle-speed) (* 3.6408892 f2-0)))))
-              (set! (-> self angle-speed) (fmin 65536.0 f0-5)))
+      (loop
+        (let* ((a0-0 (-> self root trans))
+               (f2-0 (-> *wind-work* wind-force (logand (+ (the int (-> a0-0 x)) (the int (-> a0-0 z)) (-> *wind-work* wind-time)) 63)))
+               (f0-5 (* 0.992 (+ (-> self angle-speed) (* 3.6408892 f2-0)))))
+          (set! (-> self angle-speed) (fmin 65536.0 f0-5)))
         (quaternion-rotate-local-y! (-> self root quat) (-> self root quat) (* -1.0 (seconds-per-frame) (-> self angle-speed)))
         (if (-> self spawn-particle-enable) (spawn (-> self part) (-> self root trans)))
         (suspend)))
@@ -1074,8 +1076,9 @@
   :code
     (behavior ()
       (ja :num-func num-func-identity :frame-num 0.0)
-      (loop (if (and *target* (>= 32768.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
-              (level-hint-spawn (text-id misty-bone-bridge-hint) "sksp0435" (the-as entity #f) *entity-pool* (game-task none)))
+      (loop
+        (if (and *target* (>= 32768.0 (vector-vector-distance (-> self root trans) (-> *target* control trans))))
+          (level-hint-spawn (text-id misty-bone-bridge-hint) "sksp0435" (the-as entity #f) *entity-pool* (game-task none)))
         (suspend)))
   :post transform-post)
 
@@ -1130,7 +1133,8 @@
           (-> self draw art-group data (-> self fall-anim-index))
           :num!
           (identity (the float (+ (-> (ja-group) data 0 length) -1))))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post rider-post)
 
 (defmethod init-from-entity! ((this mis-bone-bridge) (arg0 entity-actor))
@@ -1219,7 +1223,8 @@
       (launch-particles (-> *part-id-table* 281) (-> self root trans))
       (let ((gp-1 #f)
             (s5-1 (current-time)))
-        (loop (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 15.0 0)) :frame-num (ja-aframe 1.0 0))
+        (loop
+          (ja-no-eval :group! (ja-group) :num! (seek! (ja-aframe 15.0 0)) :frame-num (ja-aframe 1.0 0))
           (until (ja-done? 0)
             (when (and (not gp-1) (time-elapsed? s5-1 (seconds 0.15)))
               (set! gp-1 #t)
@@ -1378,7 +1383,8 @@
       (ja-channel-set! 0))
   :code
     (behavior ()
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post ja-post)
 
 (defstate rigid-body-platform-float (bone-platform)
@@ -1399,7 +1405,8 @@
       (ja-channel-push! 1 (seconds 0.1))
       (ja :group! mis-bone-platform-idle-ja)
       (ja :num-func num-func-identity :frame-num 0.0)
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post rigid-body-platform-post)
 
 (defmethod rigid-body-platform-method-30 ((this bone-platform))

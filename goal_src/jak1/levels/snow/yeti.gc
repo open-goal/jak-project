@@ -220,7 +220,8 @@
       (until (ja-done? 0)
         (suspend)
         (ja :num! (seek!)))
-      (loop (suspend)))
+      (loop
+        (suspend)))
   :post nav-enemy-falling-post)
 
 (defstate yeti-slave-appear-land (yeti-slave)
@@ -256,7 +257,8 @@
            (suspend)
            (ja :num! (seek!))))
         (else (ja-channel-push! 1 (seconds 0.2))))
-      (loop (ja-no-eval :group! yeti-walk-ja :num! (seek!) :frame-num 0.0)
+      (loop
+        (ja-no-eval :group! yeti-walk-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
           (suspend)
           (ja :num! (seek!)))
@@ -298,7 +300,8 @@
            (ja-channel-push! 1 (seconds 0.2))
            (ja :group! (-> self draw art-group data (-> self nav-info run-anim)))
            (ja :num-func num-func-identity :frame-num 0.0)))
-        (loop (suspend)
+        (loop
+          (suspend)
           (ja :num! (loop! f30-0))))))
 
 (defstate nav-enemy-stare (yeti-slave)
@@ -314,17 +317,18 @@
           (until (ja-done? 0)
             (suspend)
             (ja :num! (seek! (ja-aframe 68.0 0) f30-0))))
-        (loop (when (not (nav-enemy-facing-player? 2730.6667))
-                (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
-                (ja-no-eval :num! (loop!))
-                (ja-channel-push! 1 (seconds 0.2))
-                (ja :group! yeti-turn-ja)
-                (ja :num-func num-func-identity :frame-num 0.0)
-                (until (nav-enemy-facing-player? 1820.4445)
-                  (ja-blend-eval)
-                  (suspend)
-                  (ja :num! (loop! 0.75)))
-                (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
+        (loop
+          (when (not (nav-enemy-facing-player? 2730.6667))
+            (logior! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel))
+            (ja-no-eval :num! (loop!))
+            (ja-channel-push! 1 (seconds 0.2))
+            (ja :group! yeti-turn-ja)
+            (ja :num-func num-func-identity :frame-num 0.0)
+            (until (nav-enemy-facing-player? 1820.4445)
+              (ja-blend-eval)
+              (suspend)
+              (ja :num! (loop! 0.75)))
+            (logclear! (-> self nav-enemy-flags) (nav-enemy-flags enable-travel)))
           (if (not (ja-group? yeti-idle-ja)) (ja-channel-push! 1 (seconds 0.2)))
           (ja-no-eval :group! yeti-idle-ja :num! (seek! max f30-0) :frame-num 0.0)
           (until (ja-done? 0)
@@ -483,10 +487,11 @@
 (defstate yeti-first-time-start (yeti)
   :code
     (behavior ()
-      (loop (when *target*
-              (when (>= (-> self first-time-spawn-dist) (vector-vector-xz-distance (target-pos 0) (-> self root trans)))
-                (process-entity-status! self (entity-perm-status complete) #t)
-                (go yeti-idle)))
+      (loop
+        (when *target*
+          (when (>= (-> self first-time-spawn-dist) (vector-vector-xz-distance (target-pos 0) (-> self root trans)))
+            (process-entity-status! self (entity-perm-status complete) #t)
+            (go yeti-idle)))
         (suspend))))
 
 (defstate yeti-resuming-start (yeti)
@@ -510,26 +515,27 @@
 (defstate yeti-idle (yeti)
   :code
     (behavior ()
-      (loop (cond
-              ((zero? (-> self spawn-delay))
-               (let ((v1-1 0))
-                 (let ((a0-0 (the-as (pointer process-tree) (-> self child-process))))
-                   (while a0-0
-                     (+! v1-1 1)
-                     (set! a0-0 (-> a0-0 0 brother))
-                     (nop!)
-                     (nop!)))
-                 (when (< v1-1 (-> self desired-num-children))
-                   (set! (-> self spawn-delay) (rand-vu-int-range 150 1200))
-                   (set-time! (-> self state-time)))))
-              (else
-               (when (time-elapsed? (-> self state-time) (-> self spawn-delay))
-                 (let ((gp-0 (new 'stack-no-clear 'vector))
-                       (s5-0 (new 'stack-no-clear 'vector)))
-                   (when (yeti-method-20 self gp-0 s5-0)
-                     (process-spawn yeti-slave (-> self entity) self gp-0 s5-0 #f :to self)
-                     (set! (-> self spawn-delay) 0)
-                     0)))))
+      (loop
+        (cond
+          ((zero? (-> self spawn-delay))
+           (let ((v1-1 0))
+             (let ((a0-0 (the-as (pointer process-tree) (-> self child-process))))
+               (while a0-0
+                 (+! v1-1 1)
+                 (set! a0-0 (-> a0-0 0 brother))
+                 (nop!)
+                 (nop!)))
+             (when (< v1-1 (-> self desired-num-children))
+               (set! (-> self spawn-delay) (rand-vu-int-range 150 1200))
+               (set-time! (-> self state-time)))))
+          (else
+           (when (time-elapsed? (-> self state-time) (-> self spawn-delay))
+             (let ((gp-0 (new 'stack-no-clear 'vector))
+                   (s5-0 (new 'stack-no-clear 'vector)))
+               (when (yeti-method-20 self gp-0 s5-0)
+                 (process-spawn yeti-slave (-> self entity) self gp-0 s5-0 #f :to self)
+                 (set! (-> self spawn-delay) 0)
+                 0)))))
         (suspend))))
 
 (defmethod init-from-entity! ((this yeti) (arg0 entity-actor))

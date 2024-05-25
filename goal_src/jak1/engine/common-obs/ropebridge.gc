@@ -593,7 +593,8 @@
               (set-vel-from-impact self (+ s5-1 1) gp-1 1 f30-0))))))
   :code
     (behavior ()
-      (loop (suspend)
+      (loop
+        (suspend)
         (detect-riders! (-> self root))
         (when (-> self do-physics?)
           (clear-spring-forces self)
@@ -621,12 +622,13 @@
 
 ;; WARN: Function (method 20 ropebridge) has a return type of none, but the expression builder found a return statement.
 (defmethod set-vel-from-impact ((this ropebridge) (arg0 uint) (arg1 vector) (arg2 int) (arg3 float))
-  (loop (let ((f0-2 (fabs (- (-> arg1 z) (-> this spring-point (the-as int arg0) local-pos z)))))
-          (if (< (-> this tuning max-bonk-influence-dist) f0-2) (return #f))
-          (let* ((f0-4 (/ (* 8.0 f0-2) (-> this tuning max-bonk-influence-dist)))
-                 (f0-5 (+ 1.0 f0-4))
-                 (f0-6 (/ 1.0 f0-5)))
-            (set! (-> this spring-point (the-as int arg0) vel y) (- (-> this spring-point (the-as int arg0) vel y) (* f0-6 arg3)))))
+  (loop
+    (let ((f0-2 (fabs (- (-> arg1 z) (-> this spring-point (the-as int arg0) local-pos z)))))
+      (if (< (-> this tuning max-bonk-influence-dist) f0-2) (return #f))
+      (let* ((f0-4 (/ (* 8.0 f0-2) (-> this tuning max-bonk-influence-dist)))
+             (f0-5 (+ 1.0 f0-4))
+             (f0-6 (/ 1.0 f0-5)))
+        (set! (-> this spring-point (the-as int arg0) vel y) (- (-> this spring-point (the-as int arg0) vel y) (* f0-6 arg3)))))
     (set! arg0 (+ arg0 arg2))
     (if (or (< (the-as int arg0) 0) (>= (the-as int arg0) (-> this tuning num-spring-points))) (return #f)))
   (none))
@@ -659,12 +661,13 @@
 
 ;; WARN: Function (method 22 ropebridge) has a return type of none, but the expression builder found a return statement.
 (defmethod set-vel-from-rider ((this ropebridge) (arg0 uint) (arg1 vector) (arg2 int))
-  (loop (let ((f0-0 (vector-vector-distance arg1 (the-as vector (-> this spring-point (the-as int arg0))))))
-          (if (< (-> this tuning max-influence-dist) f0-0) (return #f))
-          (let* ((f0-2 (/ (* 8.0 f0-0) (-> this tuning max-influence-dist)))
-                 (f0-3 (+ 1.0 f0-2))
-                 (f0-4 (/ 1.0 f0-3)))
-            (+! (-> this spring-point (the-as int arg0) extra-force y) (* f0-4 (-> this tuning rider-max-gravity)))))
+  (loop
+    (let ((f0-0 (vector-vector-distance arg1 (the-as vector (-> this spring-point (the-as int arg0))))))
+      (if (< (-> this tuning max-influence-dist) f0-0) (return #f))
+      (let* ((f0-2 (/ (* 8.0 f0-0) (-> this tuning max-influence-dist)))
+             (f0-3 (+ 1.0 f0-2))
+             (f0-4 (/ 1.0 f0-3)))
+        (+! (-> this spring-point (the-as int arg0) extra-force y) (* f0-4 (-> this tuning rider-max-gravity)))))
     (+! arg0 arg2)
     (if (or (< (the-as int arg0) 0) (>= (the-as int arg0) (-> this tuning num-spring-points))) (return #f)))
   (none))
