@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
   // or because it's portable mode)
   if (enable_portable) {
     lg::info("Portable mod enabled");
-    user_config_dir_override = file_util::get_current_executable_path();
+    user_config_dir_override = fs::path(file_util::get_current_executable_path()).parent_path();
   }
   if (!user_config_dir_override.empty()) {
     lg::info("Overriding config directory with: {}", user_config_dir_override.string());
