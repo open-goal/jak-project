@@ -432,8 +432,8 @@ bool run_build_actor(const std::string& mdl_name,
     tinygltf::TinyGLTF loader;
     tinygltf::Model model;
     std::string err, warn;
-    bool res =
-        loader.LoadBinaryFromFile(&model, &err, &warn, file_util::get_jak_project_dir() / mdl_name);
+    std::string path = (file_util::get_jak_project_dir() / mdl_name).string();
+    bool res = loader.LoadBinaryFromFile(&model, &err, &warn, path);
     ASSERT_MSG(warn.empty(), warn.c_str());
     ASSERT_MSG(err.empty(), err.c_str());
     ASSERT_MSG(res, "Failed to load GLTF file!");
