@@ -442,17 +442,17 @@ bool run_build_actor(const std::string& mdl_name,
   }
   ArtJointGeo jgeo(ag.name, joints);
   ArtJointAnim ja(ag.name, joints);
-  std::function write_cmesh_func = [](CollideMesh mesh, DataObjectGenerator& gen, bool packed) {
+  std::function write_cmesh_func = [](CollideMesh cmesh, DataObjectGenerator& gen, bool packed) {
     size_t result = gen.current_offset_bytes();
     // gen.add_word(0xffffffff - mesh.joint_id);  // 4 (joint-id)
-    gen.add_word(mesh.joint_id);           // 4 (joint-id)
-    gen.add_word(mesh.num_tris);           // 8 (num-tris)
-    gen.add_word(mesh.num_verts);          // 12 (num-verts)
+    gen.add_word(cmesh.joint_id);          // 4 (joint-id)
+    gen.add_word(cmesh.num_tris);          // 8 (num-tris)
+    gen.add_word(cmesh.num_verts);         // 12 (num-verts)
     auto vertices_slot = gen.add_word(0);  // 16 (vertex-data)
     gen.add_word(0);                       // 20 (pad)
     gen.add_word(0);                       // 24 (pad)
     gen.add_word(0);                       // 28 (pad)
-    for (auto& tri : mesh.tris) {
+    for (auto& tri : cmesh.tris) {
       u32 word = (tri.vert_idx[0] & 0xff) + ((tri.vert_idx[1] << 8) & 0xff00) +
                  ((tri.vert_idx[2] << 16) & 0xff0000);
       gen.add_word(word);         // 0 (tris | vertex-index | unused)
@@ -460,7 +460,7 @@ bool run_build_actor(const std::string& mdl_name,
     }
     // vertex data start
     gen.link_word_to_byte(vertices_slot, gen.current_offset_bytes());
-    for (auto& vert : mesh.vertices) {
+    for (auto& vert : cmesh.vertices) {
       gen.add_word_float(vert.x());
       gen.add_word_float(vert.y());
       gen.add_word_float(vert.z());

@@ -142,7 +142,8 @@ struct CollideMesh {
   std::vector<CollideMeshTri> tris;
 
   size_t calc_data_size() const {
-    return 40 + 16 * vertices.size() + sizeof(CollideMeshTri) * tris.size();
+    // (size-of collide-mesh) + type ptr = 36
+    return 36 + 16 * vertices.size() + sizeof(CollideMeshTri) * tris.size();
   }
 };
 

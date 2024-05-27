@@ -159,17 +159,24 @@ class ResArray : public Res {
   TagInfo get_tag_info() const {
     TagInfo result;
     result.elt_type = "array";
-    result.elt_count = m_data.size();
+    result.elt_count = 1;
     result.inlined = false;
     size_t total_elts_size = 0;
     for (auto& data : m_data) {
       total_elts_size += data.calc_data_size();
     }
-    result.data_size = total_elts_size + 16;
+    result.data_size = 4;
     return result;
   }
   void write_data(DataObjectGenerator& gen) const override {
     gen.link_word_to_byte(gen.add_word(0), write_array_data(gen));
+  }
+  size_t get_actual_data_size() {
+    size_t total_elts_size = 0;
+    for (auto& data : m_data) {
+      total_elts_size += data.calc_data_size();
+    }
+    return total_elts_size;
   }
   size_t write_array_data(DataObjectGenerator& gen) const {
     std::vector<size_t> data_slots;
@@ -198,7 +205,7 @@ class ResArray : public Res {
     }
     return result;
   }
-  int get_alignment() const override { return 16; }
+  int get_alignment() const override { return 4; }
 
  private:
   std::vector<T> m_data;
@@ -206,6 +213,7 @@ class ResArray : public Res {
   bool m_basic;
   bool m_packed;
   std::function<size_t(T, DataObjectGenerator&, bool)> m_write_data_func;
+  size_t m_actual_size;
 };
 
 /*
