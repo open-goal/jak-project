@@ -239,6 +239,10 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                                BucketId::TEX_LCOM_SHRUB, m_texture_animator);
     init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-shrub", BucketCategory::MERC,
                                               BucketId::MERC_LCOM_SHRUB, m_merc2);
+
+    // 350
+    init_bucket_renderer<Shadow2>("shadow", BucketCategory::OTHER, BucketId::SHADOW);
+
     // 351
     for (int i = 0; i < LEVEL_MAX; i++) {
 #define GET_BUCKET_ID_FOR_LIST(bkt1, bkt2, idx) ((int)(bkt1) + ((int)(bkt2) - (int)(bkt1)) * (idx))
@@ -317,6 +321,9 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<Generic2BucketRenderer>("generic-sprite-3", BucketCategory::OTHER,
                                                  BucketId::GENERIC_SPRITE_3, m_generic2,
                                                  Generic2::Mode::LIGHTNING);
+
+    init_bucket_renderer<Shadow2>("shadow2", BucketCategory::OTHER, BucketId::SHADOW2);
+    init_bucket_renderer<Shadow2>("shadow3", BucketCategory::OTHER, BucketId::SHADOW3);
     // 575
     init_bucket_renderer<TextureUploadHandler>("tex-warp", BucketCategory::TEX, BucketId::TEX_WARP,
                                                m_texture_animator);
