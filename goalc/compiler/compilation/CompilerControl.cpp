@@ -824,7 +824,8 @@ Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, 
   auto args = get_va(form, rest);
   va_check(form, args, {goos::ObjectType::STRING},
            {{"force", {false, {goos::ObjectType::SYMBOL}}},
-            {"verbose", {false, {goos::ObjectType::SYMBOL}}}});
+            {"verbose", {false, {goos::ObjectType::SYMBOL}}},
+            {"report", {false, {goos::ObjectType::SYMBOL}}}});
   bool force = false;
   if (args.has_named("force")) {
     force = get_true_or_false(form, args.get_named("force"));
@@ -835,7 +836,12 @@ Val* Compiler::compile_make(const goos::Object& form, const goos::Object& rest, 
     verbose = get_true_or_false(form, args.get_named("verbose"));
   }
 
-  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose);
+  bool report = false;
+  if (args.has_named("report")) {
+    report = get_true_or_false(form, args.get_named("report"));
+  }
+
+  m_make.make(args.unnamed.at(0).as_string()->data, force, verbose, report);
   return get_none();
 }
 

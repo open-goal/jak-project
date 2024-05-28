@@ -11,7 +11,7 @@
 - This file generates no code.
 
 ## `gkernel-h`: **Done**
-- The types `cpu-thread` and `catch-frame` have a slightly different layout in OpenGOAL to back up x86-64 registers
+- The types `cpu-thread` and `catch-frame` have a slightly different layout in OpenGOAL to back up x86-64 registers.
 
 ## `gkernel`:
 - Many changes for x86-64/OpenGOAL
@@ -57,7 +57,7 @@
 - No comments
 
 ## `euler-h`: **Done**
-- Uses boxed arrays
+- Uses boxed arrays.
 
 ## `transform-h`: **Done**
 - No comments
@@ -69,7 +69,7 @@
 - Empty
 
 ## `transformq-h`: waiting on stack stuff
-- Needs stack stuff
+- Needs stack stuff.
 
 ## `bounding-box`: asm
 
@@ -84,7 +84,7 @@
 ## `geometry`: asm
 
 ## `trigonometry`: **Done**
-- `sincos!` and `sincos-rad!` have a bug where cosine is slightly off
+- `sincos!` and `sincos-rad!` have a bug where cosine is slightly off.
 
 ## `gsound-h`: **Done**
 
@@ -116,19 +116,19 @@
 
 ## `dma-disasm`: In progress
 - Unused, but possibly useful debugging utilities for printing DMA chains.
-- Needs stack stuff to do the last two functions
+- Needs stack stuff to do the last two functions.
 - Needs static data disassembler for a lookup table.
 
 ## `pad`: **Done**
 
 ## `gs`: **Done**
-- Missing bitfields
+- Missing bitfields.
 
 ## `display-h`: **Done**
 
 ## `vector`: asm
 - Largely decompiled successfully and compiles!
-  - Functions are currently undocumented and still with rough variable names
+  - Functions are currently undocumented and still with rough variable names.
 - Some functions are currently failing to decompile:
   - `rand-vu-sphere-point!`
   - `vector-deg-lerp-clamp!`

@@ -322,7 +322,8 @@ int main(int argc, char** argv) {
     tex_db.merge_textures(texture_merge_path);
   }
 
-  auto replacements_path = file_util::get_jak_project_dir() / "texture_replacements";
+  auto replacements_path = file_util::get_jak_project_dir() / "custom_assets" /
+                           game_version_names[config.game_version] / "texture_replacements";
   if (fs::exists(replacements_path)) {
     tex_db.replace_textures(replacements_path);
   }

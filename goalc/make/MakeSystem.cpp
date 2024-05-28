@@ -6,6 +6,7 @@
 #include "common/util/Timer.h"
 #include "common/util/string_util.h"
 
+#include "goalc/make/CompilerReport.h"
 #include "goalc/make/Tools.h"
 
 #include "fmt/color.h"
@@ -103,6 +104,8 @@ MakeSystem::MakeSystem(const std::optional<REPL::Config> repl_config, const std:
   add_tool<SubtitleV2Tool>();
   add_tool<BuildLevelTool>();
   add_tool<BuildLevel2Tool>();
+  add_tool<BuildLevel3Tool>();
+  add_tool<BuildActorTool>();
 }
 
 /*!
@@ -438,7 +441,7 @@ void print_input(const std::vector<std::string>& in, char end) {
 }
 }  // namespace
 
-bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
+bool MakeSystem::make(const std::string& target_in, bool force, bool verbose, bool gen_report) {
   std::string target = m_path_map.apply_remaps(target_in);
   auto deps = get_dependencies(target);
   //  lg::print("All deps:\n");
@@ -453,6 +456,22 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
   //  for (auto& dep : filtered_deps) {
   //    lg::print("{}\n", dep);
   //  }
+
+  fs::path report_path;
+  std::string report_output;
+  std::string report_contents;
+  if (gen_report) {
+    report_path = file_util::get_jak_project_dir() / "goalc-report.html";
+    lg::print("Will save compiler report to - {}", report_path.string());
+    // Check if a report is already there, if it is, we'll append to it instead of overwriting it
+    if (file_util::file_exists(report_path.string())) {
+      report_output = file_util::read_text_file(report_path);
+    } else {
+      report_output = compiler_report_base;
+    }
+    report_contents += fmt::format("tests.push({{'name': \"Test - {}\",'files': {{",
+                                   str_util::current_isotimestamp());
+  }
 
   Timer make_timer;
   lg::print("Building {} targets...\n", deps.size());
@@ -483,25 +502,39 @@ bool MakeSystem::make(const std::string& target_in, bool force, bool verbose) {
       return false;
     }
 
+    const auto seconds = step_timer.getSeconds();
     if (verbose) {
-      if (step_timer.getSeconds() > 0.05) {
-        lg::print(fg(fmt::color::yellow), " {:.3f}\n", step_timer.getSeconds());
+      if (seconds > 0.05) {
+        lg::print(fg(fmt::color::yellow), " {:.3f}\n", seconds);
       } else {
-        lg::print(" {:.3f}\n", step_timer.getSeconds());
+        lg::print(" {:.3f}\n", seconds);
       }
     } else {
-      if (step_timer.getSeconds() > 0.05) {
+      if (seconds > 0.05) {
         lg::print("[{:3d}%] [{:8s}] ", percent, tool->name());
-        lg::print(fg(fmt::color::yellow), "{:.3f} ", step_timer.getSeconds());
+        lg::print(fg(fmt::color::yellow), "{:.3f} ", seconds);
         print_input(rule->input, '\n');
       } else {
-        lg::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), step_timer.getSeconds());
+        lg::print("[{:3d}%] [{:8s}] {:.3f} ", percent, tool->name(), seconds);
         print_input(rule->input, '\n');
       }
+    }
+
+    if (gen_report) {
+      report_contents +=
+          fmt::format("\"{}\": {}{}", str_util::split_string(rule->input.at(0), "/").back(),
+                      seconds, i == deps.size() ? "" : ",");
     }
   }
   lg::print("\nSuccessfully built all {} targets in {:.3f}s\n", deps.size(),
             make_timer.getSeconds());
+  if (gen_report) {
+    report_contents += fmt::format("}}, 'total': {}}});", make_timer.getSeconds());
+    str_util::replace(report_output, "// DATA ENDS\n",
+                      fmt::format("{}\n// DATA ENDS\n", report_contents));
+    file_util::write_text_file(report_path, report_output);
+    lg::print("Saved report to: {}\n", report_path.string());
+  }
   return true;
 }
 

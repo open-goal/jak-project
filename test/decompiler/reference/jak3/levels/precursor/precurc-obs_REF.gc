@@ -1,0 +1,495 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition of type precur-elevator
+(deftype precur-elevator (elevator)
+  ()
+  )
+
+;; definition for method 3 of type precur-elevator
+(defmethod inspect ((this precur-elevator))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type elevator inspect)))
+    (t9-0 this)
+    )
+  (label cfg-4)
+  this
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-precur-elevator precur-elevator precur-elevator-lod0-jg precur-elevator-idle-ja
+              ((precur-elevator-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 0 16)
+              )
+
+;; definition for method 31 of type precur-elevator
+(defmethod get-art-group ((this precur-elevator))
+  (art-group-get-by-name *level* "skel-precur-elevator" (the-as (pointer level) #f))
+  )
+
+;; definition for method 47 of type precur-elevator
+(defmethod elevator-method-47 ((this precur-elevator))
+  (if *target*
+      (< (vector-vector-xz-distance (target-pos 0) (-> this root trans))
+         (* 0.4 (-> this root root-prim prim-core world-sphere w))
+         )
+      #f
+      )
+  )
+
+;; definition for method 32 of type precur-elevator
+;; WARN: Return type mismatch collide-shape-moving vs none.
+(defmethod init-collision! ((this precur-elevator))
+  (let ((s5-0 (new 'process 'collide-shape-moving this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s5-0 dynam) (copy *standard-dynamics* 'process))
+    (set! (-> s5-0 reaction) cshape-reaction-default)
+    (set! (-> s5-0 no-reaction)
+          (the-as (function collide-shape-moving collide-query vector vector object) nothing)
+          )
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 1) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 2))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec pusher))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list))
+      (set! (-> s4-0 prim-core action) (collide-action solid rideable))
+      (set! (-> s4-0 transform-index) 3)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 0.0 65536.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (pusher-init s5-0)
+    (let ((v1-15 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-15 prim-core collide-as) (collide-spec pusher))
+      (set! (-> v1-15 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-15 prim-core action) (collide-action solid rideable))
+      (set! (-> v1-15 transform-index) 3)
+      (set-vector! (-> v1-15 local-sphere) 0.0 0.0 0.0 65536.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-18 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-18 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-18 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  (none)
+  )
+
+;; definition for method 34 of type precur-elevator
+;; WARN: Return type mismatch sound-spec vs none.
+(defmethod base-plat-method-34 ((this precur-elevator))
+  (set! (-> this sound-running-loop) (static-sound-spec "prec-elev-loop" :group 0))
+  (set! (-> this sound-arrived) (static-sound-spec "prec-elev-stop" :group 0))
+  (none)
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-precur-door-a precur-door-a precur-door-a-lod0-jg precur-door-a-idle-ja
+              ((precur-door-a-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 6 0 10)
+              )
+
+;; definition of type precur-door-a
+(deftype precur-door-a (process-drawable)
+  ((open-test     pair)
+   (open-started  time-frame)
+   (do-camera?    symbol)
+   (open-frame    float)
+   )
+  (:state-methods
+    open
+    close
+    )
+  (:methods
+    (precur-door-a-method-22 () none)
+    )
+  )
+
+;; definition for method 3 of type precur-door-a
+(defmethod inspect ((this precur-door-a))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type process-drawable inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Topen-test: ~A~%" (-> this open-test))
+  (format #t "~2Topen-started: ~D~%" (-> this open-started))
+  (format #t "~2Tdo-camera?: ~A~%" (-> this do-camera?))
+  (format #t "~2Topen-frame: ~f~%" (-> this open-frame))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 11 of type precur-door-a
+(defmethod init-from-entity! ((this precur-door-a) (arg0 entity-actor))
+  (set! (-> this open-started) 0)
+  (set! (-> this open-frame) 45.0)
+  (let ((s4-0 (new 'process 'collide-shape this (collide-list-enum usually-hit-by-player))))
+    (set! (-> s4-0 penetrated-by) (penetrate))
+    (let ((s3-0 (new 'process 'collide-shape-prim-group s4-0 (the-as uint 2) 0)))
+      (set! (-> s4-0 total-prims) (the-as uint 3))
+      (set! (-> s3-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s3-0 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> s3-0 prim-core action) (collide-action solid))
+      (set-vector! (-> s3-0 local-sphere) 0.0 24576.0 0.0 40960.0)
+      (set! (-> s4-0 root-prim) s3-0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-9 prim-core action) (collide-action solid))
+      (set! (-> v1-9 transform-index) 3)
+      (set-vector! (-> v1-9 local-sphere) 0.0 0.0 0.0 40960.0)
+      )
+    (let ((v1-11 (new 'process 'collide-shape-prim-mesh s4-0 (the-as uint 1) (the-as uint 0))))
+      (set! (-> v1-11 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-11 prim-core collide-with) (collide-spec jak bot player-list))
+      (set! (-> v1-11 prim-core action) (collide-action solid))
+      (set! (-> v1-11 transform-index) 4)
+      (set-vector! (-> v1-11 local-sphere) 0.0 24576.0 0.0 40960.0)
+      )
+    (set! (-> s4-0 nav-radius) (* 0.75 (-> s4-0 root-prim local-sphere w)))
+    (let ((v1-14 (-> s4-0 root-prim)))
+      (set! (-> s4-0 backup-collide-as) (-> v1-14 prim-core collide-as))
+      (set! (-> s4-0 backup-collide-with) (-> v1-14 prim-core collide-with))
+      )
+    (set! (-> this root) s4-0)
+    )
+  (process-drawable-from-entity! this arg0)
+  (set! (-> this open-test)
+        (the-as
+          pair
+          ((method-of-type res-lump get-property-struct)
+           (-> this entity)
+           'open-test
+           'interp
+           -1000000000.0
+           (the-as structure '(not (or (scene-player?) (focus-test? *target* grabbed))))
+           (the-as (pointer res-tag) #f)
+           *res-static-buf*
+           )
+          )
+        )
+  (set! (-> this do-camera?)
+        (the-as
+          symbol
+          (and (res-lump-struct (-> this entity) 'camera-name structure)
+               (and (not (script-eval (-> this open-test))) (task-node-closed? (game-task-node precursor-tour-resolution)))
+               )
+          )
+        )
+  (initialize-skeleton
+    this
+    (the-as skeleton-group (art-group-get-by-name *level* "skel-precur-door-a" (the-as (pointer level) #f)))
+    (the-as pair 0)
+    )
+  (go (method-of-object this close))
+  )
+
+;; failed to figure out what this is:
+(defstate close (precur-door-a)
+  :virtual #t
+  :enter (behavior ()
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (until #f
+      (if (script-eval (-> self open-test))
+          (go-virtual open)
+          )
+      (suspend)
+      )
+    #f
+    )
+  :post transform-post
+  )
+
+;; failed to figure out what this is:
+(defstate open (precur-door-a)
+  :virtual #t
+  :enter (behavior ()
+    (cond
+      ((and (time-elapsed? (-> self state-time) (seconds 0.5)) (-> self do-camera?) (zero? (-> self open-started)))
+       (if (res-lump-struct (-> self entity) 'camera-name structure)
+           (process-spawn
+             external-camera-controller
+             (-> self entity)
+             900
+             #f
+             :name "external-camera-controller"
+             :to *entity-pool*
+             )
+           )
+       (let* ((v1-14 (-> *game-info* sub-task-list (game-task-node precursor-destroy-ship-escape)))
+              (v1-16 (if (-> v1-14 manager)
+                         (-> v1-14 manager manager)
+                         (the-as handle #f)
+                         )
+                     )
+              )
+         (if v1-16
+             (send-event (handle->process v1-16) 'extra-time 900)
+             )
+         )
+       (set-time! (-> self open-started))
+       )
+      (else
+        (ja :num-func num-func-identity :frame-num (ja-aframe (-> self open-frame) 0))
+        )
+      )
+    (set-time! (-> self state-time))
+    )
+  :code (behavior ()
+    (sleep-code)
+    )
+  :post (behavior ()
+    (when (time-elapsed? (-> self state-time) (seconds 2))
+      (if (>= 0.0 (ja-frame-num 0))
+          (sound-play "prec-door-open")
+          )
+      (ja :num! (seek! (ja-aframe (-> self open-frame) 0) 0.5))
+      )
+    (transform-post)
+    )
+  )
+
+;; failed to figure out what this is:
+(defskelgroup skel-precur-swingpole-pop precur-swingpole-pop precur-swingpole-pop-lod0-jg precur-swingpole-pop-idle-ja
+              ((precur-swingpole-pop-lod0-mg (meters 999999)))
+              :bounds (static-spherem 0 0 6 8)
+              )
+
+;; definition of type precur-swingpole-pop
+(deftype precur-swingpole-pop (swingpole)
+  ((root             collide-shape :override)
+   (moving?          symbol)
+   (player-grabbed?  symbol)
+   (halfway?         symbol)
+   (stopped-time     time-frame)
+   (movedist         float)
+   (tt               float)
+   (paused-time      time-frame)
+   (direction        uint8)
+   )
+  )
+
+;; definition for method 3 of type precur-swingpole-pop
+(defmethod inspect ((this precur-swingpole-pop))
+  (when (not this)
+    (set! this this)
+    (goto cfg-4)
+    )
+  (let ((t9-0 (method-of-type swingpole inspect)))
+    (t9-0 this)
+    )
+  (format #t "~2Tmoving?: ~A~%" (-> this moving?))
+  (format #t "~2Tplayer-grabbed?: ~A~%" (-> this player-grabbed?))
+  (format #t "~2Thalfway?: ~A~%" (-> this halfway?))
+  (format #t "~2Tstopped-time: ~D~%" (-> this stopped-time))
+  (format #t "~2Tmovedist: ~f~%" (-> this movedist))
+  (format #t "~2Ttt: ~f~%" (-> this tt))
+  (format #t "~2Tpaused-time: ~D~%" (-> this paused-time))
+  (format #t "~2Tdirection: ~D~%" (-> this direction))
+  (label cfg-4)
+  this
+  )
+
+;; definition for method 22 of type precur-swingpole-pop
+;; INFO: Used lq/sq
+(defmethod swingpole-method-22 ((this precur-swingpole-pop))
+  (rlet ((acc :class vf)
+         (vf0 :class vf)
+         (vf4 :class vf)
+         (vf5 :class vf)
+         (vf6 :class vf)
+         (vf7 :class vf)
+         )
+    (init-vf0-vector)
+    (when (-> this moving?)
+      (let ((s5-0 (new 'stack-no-clear 'vector)))
+        (let ((s4-0 (-> this node-list data 3)))
+          0.0
+          (cond
+            ((zero? (-> this paused-time))
+             (+! (-> this tt) (* 0.5 (seconds-per-frame)))
+             (when (< 1.0 (-> this tt))
+               (let ((f0-4 (-> this tt)))
+                 (set! (-> this tt) (- f0-4 (* (the float (the int (/ f0-4 1.0))) 1.0)))
+                 )
+               (set-time! (-> this paused-time))
+               )
+             )
+            (else
+              (when (time-elapsed? (-> this paused-time) (seconds 1))
+                (set! (-> this paused-time) 0)
+                (sound-play "spike-retract")
+                (set! (-> this halfway?) #f)
+                )
+              )
+            )
+          (when (and (not (-> this halfway?)) (< 0.5 (-> this tt)))
+            (set! (-> this halfway?) #t)
+            (sound-play "spike-reveal")
+            )
+          (let ((f0-9 (cos (* 65536.0 (-> this tt)))))
+            (set! (-> this movedist) (* 20480.0 (+ -1.0 f0-9)))
+            )
+          (set! (-> s5-0 quad) (-> this entity extra trans quad))
+          (vector-normalize-copy! (-> this dir) (-> s4-0 bone transform fvec) 1.0)
+          )
+        (let ((a1-3 s5-0))
+          (let ((v1-30 s5-0))
+            (let ((a0-12 (-> this dir)))
+              (let ((a2-3 (-> this movedist)))
+                (.mov vf7 a2-3)
+                )
+              (.lvf vf5 (&-> a0-12 quad))
+              )
+            (.lvf vf4 (&-> v1-30 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a1-3 quad) vf6)
+          )
+        (move-to-point! (-> this root) s5-0)
+        )
+      (when (and (-> this moving?)
+                 (< (fabs (-> this movedist)) 1228.8)
+                 (< 122880.0 (vector-vector-distance (target-pos 0) (-> this entity extra trans)))
+                 )
+        (set! (-> this moving?) #f)
+        (set! (-> this player-grabbed?) #f)
+        (set-time! (-> this stopped-time))
+        )
+      )
+    (when (-> this player-grabbed?)
+      (let ((s5-2 (new 'stack-no-clear 'vector)))
+        (set! (-> s5-2 quad) (-> this entity extra trans quad))
+        (seek! (-> this movedist) 0.0 (* 36864.0 (seconds-per-frame)))
+        (let ((a1-7 s5-2))
+          (let ((v1-48 s5-2))
+            (let ((a0-21 (-> this dir)))
+              (let ((a2-5 (-> this movedist)))
+                (.mov vf7 a2-5)
+                )
+              (.lvf vf5 (&-> a0-21 quad))
+              )
+            (.lvf vf4 (&-> v1-48 quad))
+            )
+          (.add.x.vf vf6 vf0 vf0 :mask #b1000)
+          (.mul.x.vf acc vf5 vf7 :mask #b111)
+          (.add.mul.w.vf vf6 vf4 vf0 acc :mask #b111)
+          (.svf (&-> a1-7 quad) vf6)
+          )
+        (move-to-point! (-> this root) s5-2)
+        )
+      )
+    (when (and (not (-> this moving?)) (and (not (-> this player-grabbed?))
+                                            (time-elapsed? (-> this stopped-time) (seconds 0.5))
+                                            (< (vector-vector-distance (target-pos 0) (-> this root trans)) 122880.0)
+                                            )
+               )
+      (set! (-> this moving?) #t)
+      (set! (-> this player-grabbed?) #f)
+      (set-time! (-> this stopped-time))
+      )
+    (call-parent-method this)
+    (none)
+    )
+  )
+
+;; failed to figure out what this is:
+(defstate idle (precur-swingpole-pop)
+  :virtual #t
+  :event (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
+    (case message
+      (('touch 'attack)
+       (when (send-event proc 'pole-grab (-> block param 0))
+         (go-virtual active (process->handle proc))
+         (set! (-> self moving?) #f)
+         (set! (-> self player-grabbed?) #t)
+         (set-time! (-> self stopped-time))
+         )
+       #f
+       )
+      )
+    )
+  :enter (behavior ()
+    (set! (-> self player-grabbed?) #f)
+    (set! (-> self tt) 0.0)
+    (set! (-> self direction) (the-as uint 0))
+    0
+    )
+  :code (behavior ()
+    (if (nonzero? (-> self draw))
+        (ja-post)
+        )
+    (update-transforms (-> self root))
+    (until #f
+      (swingpole-method-22 self)
+      (suspend)
+      )
+    #f
+    )
+  )
+
+;; definition for method 23 of type precur-swingpole-pop
+;; WARN: Return type mismatch int vs none.
+(defmethod init-collision! ((this precur-swingpole-pop))
+  (let ((s5-0 (new 'process 'collide-shape this (collide-list-enum hit-by-player))))
+    (let ((s4-0 (new 'process 'collide-shape-prim-group s5-0 (the-as uint 2) 0)))
+      (set! (-> s5-0 total-prims) (the-as uint 3))
+      (set! (-> s4-0 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> s4-0 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> s4-0 transform-index) 0)
+      (set-vector! (-> s4-0 local-sphere) 0.0 0.0 24576.0 32768.0)
+      (set! (-> s5-0 root-prim) s4-0)
+      )
+    (let ((v1-7 (new 'process 'collide-shape-prim-mesh s5-0 (the-as uint 0) (the-as uint 0))))
+      (set! (-> v1-7 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-7 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-7 prim-core action) (collide-action solid))
+      (set! (-> v1-7 transform-index) 0)
+      (set-vector! (-> v1-7 local-sphere) 0.0 0.0 24576.0 32768.0)
+      )
+    (let ((v1-9 (new 'process 'collide-shape-prim-sphere s5-0 (the-as uint 0))))
+      (set! (-> v1-9 prim-core collide-as) (collide-spec obstacle))
+      (set! (-> v1-9 prim-core collide-with) (collide-spec jak player-list tobot))
+      (set! (-> v1-9 transform-index) 0)
+      (set-vector! (-> v1-9 local-sphere) 0.0 0.0 24576.0 12288.0)
+      )
+    (set! (-> s5-0 nav-radius) (* 0.75 (-> s5-0 root-prim local-sphere w)))
+    (let ((v1-12 (-> s5-0 root-prim)))
+      (set! (-> s5-0 backup-collide-as) (-> v1-12 prim-core collide-as))
+      (set! (-> s5-0 backup-collide-with) (-> v1-12 prim-core collide-with))
+      )
+    (set! (-> this root) s5-0)
+    )
+  0
+  (none)
+  )
+
+;; definition for method 11 of type precur-swingpole-pop
+;; WARN: Return type mismatch symbol vs object.
+(defmethod init-from-entity! ((this precur-swingpole-pop) (arg0 entity-actor))
+  (call-parent-method this arg0)
+  (set! (-> this player-grabbed?) #f)
+  (set! (-> this moving?) #f)
+  (set-time! (-> this stopped-time))
+  (set! (-> this halfway?) #f)
+  #f
+  )
+
+;; definition for method 24 of type precur-swingpole-pop
+;; WARN: Return type mismatch collide-prim-core vs vector.
+(defmethod get-trans ((this precur-swingpole-pop))
+  (the-as vector (-> this root root-prim prim-core))
+  )
+
+
+
+

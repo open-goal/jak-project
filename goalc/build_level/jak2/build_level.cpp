@@ -1,5 +1,7 @@
 #include "build_level.h"
 
+#include "common/util/gltf_util.h"
+
 #include "decompiler/extractor/extractor_util.h"
 #include "decompiler/level_extractor/extract_merc.h"
 #include "goalc/build_level/collide/jak2/collide.h"
@@ -14,9 +16,9 @@ bool run_build_level(const std::string& input_file,
                      const std::string& output_prefix) {
   auto level_json = parse_commented_json(
       file_util::read_text_file(file_util::get_file_path({input_file})), input_file);
-  LevelFile file;          // GOAL level file
-  tfrag3::Level pc_level;  // PC level file
-  TexturePool tex_pool;    // pc level texture pool
+  LevelFile file;                   // GOAL level file
+  tfrag3::Level pc_level;           // PC level file
+  gltf_util::TexturePool tex_pool;  // pc level texture pool
 
   // process input mesh from blender
   gltf_mesh_extract::Input mesh_extract_in;

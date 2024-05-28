@@ -10,6 +10,7 @@
 
 #include "goalc/data_compiler/DataObjectGenerator.h"
 
+namespace jak2 {
 /*!
  * An axis-aligned bounding box
  */
@@ -1156,3 +1157,4 @@ size_t add_to_object_file(const CollideHash& hash, DataObjectGenerator& gen) {
 
   return result;
 }
+}  // namespace jak2

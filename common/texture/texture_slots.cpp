@@ -42,7 +42,9 @@ std::vector<std::string> jak2_slots = {
     "cas-toxic-slime-scroll-dest",
 };
 
-std::vector<std::string> jak3_slots = {};
+std::vector<std::string> jak3_slots = {
+    "skull-gem-dest", "jakc-arm", "jakc-eyebrow", "jakc-face", "jakc-finger", "jakc-hair",
+};
 
 }  // namespace
 

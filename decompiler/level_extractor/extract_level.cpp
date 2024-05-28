@@ -19,6 +19,7 @@
 #include "decompiler/level_extractor/extract_tfrag.h"
 #include "decompiler/level_extractor/extract_tie.h"
 #include "decompiler/level_extractor/fr3_to_gltf.h"
+#include "goalc/build_actor/jak1/build_actor.h"
 
 namespace decompiler {
 
@@ -201,7 +202,7 @@ level_tools::BspHeader extract_bsp_from_level(const ObjectFileDB& db,
         expected_missing_textures = it->second;
       }
       bool atest_disable_flag = false;
-      if (db.version() == GameVersion::Jak2) {
+      if (db.version() >= GameVersion::Jak2) {
         if (bsp_header.texture_flags[0] & 1) {
           atest_disable_flag = true;
         }

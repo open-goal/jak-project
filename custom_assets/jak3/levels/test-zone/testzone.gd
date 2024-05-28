@@ -3,7 +3,6 @@
 
 ;; the actual file name still needs to be 8.3
 ("TSZ.DGO"
- ("static-screen.o"
-  "test-zone.go"
-  "plat-ag.go"
- ))
+ ("test-zone.go"
+  )
+ )
