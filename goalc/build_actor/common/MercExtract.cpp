@@ -60,6 +60,7 @@ void extract(const std::string& name,
         draw.mode = gltf_util::make_default_draw_mode();  // todo rm
         draw.tree_tex_id = 0;                             // todo rm
         draw.num_triangles += prim_indices.size() / 3;
+        draw.no_strip = true;
         //        if (draw.vis_groups.empty()) {
         //          auto& grp = draw.vis_groups.emplace_back();
         //          grp.num_inds += prim_indices.size();

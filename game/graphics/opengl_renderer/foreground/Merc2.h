@@ -190,6 +190,8 @@ class Merc2 {
     u8 flags;
     ModBuffers mod_vtx_buffer;
     u8 fade[4];
+    // no strip hack for custom models
+    u8 no_strip;
   };
 
   struct LevelDrawBucket {
