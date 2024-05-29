@@ -18,7 +18,7 @@ namespace tfrag3 {
 // - if changing any large things (vertices, vis, bvh, colors, textures) update get_memory_usage
 // - if adding a new category to the memory usage, update extract_level to print it.
 
-constexpr int TFRAG3_VERSION = 40;
+constexpr int TFRAG3_VERSION = 41;
 
 enum MemoryUsageCategory {
   TEXTURE,
@@ -530,6 +530,8 @@ struct MercDraw {
   u32 first_index;
   u32 index_count;
   u32 num_triangles;
+  // no strip hack for custom models
+  bool no_strip = false;
   void serialize(Serializer& ser);
 };
 

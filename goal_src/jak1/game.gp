@@ -224,9 +224,9 @@
               :tool 'build-level
               :out '(,(string-append "$OUT/obj/" name ".go")))))
 
-(defmacro build-actor (name)
+(defmacro build-actor (name &key (gen-mesh #f))
   (let* ((path (string-append "custom_assets/jak1/models/" name ".glb")))
-    `(defstep :in ,path
+    `(defstep :in '(,path ,(symbol->string gen-mesh))
               :tool 'build-actor
               :out '(,(string-append "$OUT/obj/" name "-ag.go")))))
 
@@ -1660,7 +1660,8 @@
 
 ;; generate the art group for a custom actor.
 ;; requires a .glb model file in custom_assets/jak1/models
-(build-actor "test-actor")
+;; to also generate a collide-mesh, add :gen-mesh #t
+(build-actor "test-actor" :gen-mesh #t)
 
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Game Engine Code

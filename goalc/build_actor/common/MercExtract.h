@@ -2,6 +2,8 @@
 
 #include "common/util/gltf_util.h"
 
+#include <goalc/build_actor/jak1/build_actor.h>
+
 struct MercExtractData {
   gltf_util::TexturePool tex_pool;
   std::vector<u32> new_indices;
@@ -33,3 +35,7 @@ MercSwapData load_merc_model(u32 current_idx_count,
                              u32 current_tex_count,
                              const std::string& path,
                              const std::string& name);
+std::vector<jak1::CollideMesh> gen_collide_mesh_from_model(
+    const tinygltf::Model& model,
+    const std::vector<gltf_util::NodeWithTransform>& all_nodes,
+    int joint_idx);

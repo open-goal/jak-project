@@ -1093,6 +1093,7 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
   draw->first_bone = first_bone;
   draw->light_idx = lights;
   draw->num_triangles = mdraw.num_triangles;
+  draw->no_strip = mdraw.no_strip;
   if (ignore_alpha) {
     draw->flags |= IGNORE_ALPHA;
   }
@@ -1283,8 +1284,8 @@ void Merc2::do_draws(const Draw* draw_array,
     prof.add_tri(draw.num_triangles);
     glBindBufferRange(GL_UNIFORM_BUFFER, 1, m_bones_buffer,
                       sizeof(math::Vector4f) * draw.first_bone, 128 * sizeof(ShaderMercMat));
-    glDrawElements(GL_TRIANGLE_STRIP, draw.index_count, GL_UNSIGNED_INT,
-                   (void*)(sizeof(u32) * draw.first_index));
+    glDrawElements(draw.no_strip ? GL_TRIANGLES : GL_TRIANGLE_STRIP, draw.index_count,
+                   GL_UNSIGNED_INT, (void*)(sizeof(u32) * draw.first_index));
   }
 
   if (!normal_vtx_buffer_bound) {
