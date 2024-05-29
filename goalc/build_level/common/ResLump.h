@@ -1,14 +1,11 @@
 #pragma once
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "common/common_types.h"
 #include "common/math/Vector.h"
-
-#include "goalc/data_compiler/DataObjectGenerator.h"
 
 /*
  (deftype res-tag (uint128)
@@ -22,6 +19,8 @@
   :flag-assert #x900000010
   )
  */
+
+class DataObjectGenerator;
 
 struct TagInfo {
   std::string elt_type;
@@ -137,83 +136,6 @@ class ResType : public Res {
 
  private:
   std::vector<std::string> m_str;
-};
-
-template <typename T>
-class ResArray : public Res {
- public:
-  ResArray(const std::string& name,
-           const std::string& content_type,
-           bool basic,
-           bool packed,
-           const std::vector<T>& data,
-           std::function<size_t(T, DataObjectGenerator&, bool)> write_data_func,
-           float key_frame)
-      : Res(name, key_frame), m_data(data) {
-    m_content_type = content_type;
-    m_basic = basic;
-    m_packed = packed;
-    m_write_data_func = write_data_func;
-  }
-
-  TagInfo get_tag_info() const {
-    TagInfo result;
-    result.elt_type = "array";
-    result.elt_count = 1;
-    result.inlined = false;
-    size_t total_elts_size = 0;
-    for (auto& data : m_data) {
-      total_elts_size += data.calc_data_size();
-    }
-    result.data_size = 4;
-    return result;
-  }
-  void write_data(DataObjectGenerator& gen) const override {
-    gen.link_word_to_byte(gen.add_word(0), write_array_data(gen));
-  }
-  size_t get_actual_data_size() {
-    size_t total_elts_size = 0;
-    for (auto& data : m_data) {
-      total_elts_size += data.calc_data_size();
-    }
-    return total_elts_size;
-  }
-  size_t write_array_data(DataObjectGenerator& gen) const {
-    std::vector<size_t> data_slots;
-    std::vector<size_t> content_slots;
-    gen.align_to_basic();
-    gen.add_type_tag("array");
-    size_t result = gen.current_offset_bytes();
-    gen.add_word(m_data.size());       // 0 (length)
-    gen.add_word(m_data.size());       // 4 (allocated-length)
-    gen.add_type_tag(m_content_type);  // 8 (content-type)
-    for (auto& data : m_data) {
-      content_slots.push_back(gen.add_word(0));
-    }
-    gen.align(4);
-    for (size_t i = 0; i < content_slots.size(); i++) {
-      auto data = m_data.at(i);
-      if (m_basic) {
-        gen.align_to_basic();
-        gen.add_type_tag(m_content_type);
-      }
-      data_slots.push_back(gen.current_offset_bytes());
-      m_write_data_func(data, gen, m_packed);
-    }
-    for (size_t i = 0; i < content_slots.size(); i++) {
-      gen.link_word_to_byte(content_slots.at(i), data_slots.at(i));
-    }
-    return result;
-  }
-  int get_alignment() const override { return 4; }
-
- private:
-  std::vector<T> m_data;
-  std::string m_content_type;
-  bool m_basic;
-  bool m_packed;
-  std::function<size_t(T, DataObjectGenerator&, bool)> m_write_data_func;
-  size_t m_actual_size;
 };
 
 class ResRef : public Res {
