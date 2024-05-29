@@ -103,14 +103,77 @@ size_t JointAnimCompressedControl::generate(DataObjectGenerator& gen) const {
   return result;
 }
 
-size_t ArtJointGeo::generate_res_lump(DataObjectGenerator& gen) const {
+size_t CollideMesh::generate(DataObjectGenerator& gen) const {
   gen.align_to_basic();
-  gen.add_type_tag("res-lump");
+  gen.add_type_tag("collide-mesh");
   size_t result = gen.current_offset_bytes();
+  // gen.add_word(0xffffffff - joint_id);  // 4 (joint-id)
+  gen.add_word(joint_id);                // 4 (joint-id)
+  gen.add_word(num_tris);                // 8 (num-tris)
+  gen.add_word(num_verts);               // 12 (num-verts)
+  auto vertices_slot = gen.add_word(0);  // 16 (vertex-data)
+  gen.add_word(0);                       // 20 (pad)
+  gen.add_word(0);                       // 24 (pad)
+  gen.add_word(0);                       // 28 (pad)
+  for (auto& tri : tris) {
+    u32 word = (tri.vert_idx[0] & 0xff) + ((tri.vert_idx[1] << 8) & 0xff00) +
+               ((tri.vert_idx[2] << 16) & 0xff0000);
+    gen.add_word(word);         // 0 (tris | vertex-index | unused)
+    gen.add_word(tri.pat.val);  // 4 (pat)
+  }
+  // vertex data start
+  gen.link_word_to_byte(vertices_slot, gen.current_offset_bytes());
+  for (auto& vert : vertices) {
+    gen.add_word_float(vert.x());
+    gen.add_word_float(vert.y());
+    gen.add_word_float(vert.z());
+    gen.add_word_float(vert.w());
+  }
+  return result;
+};
+
+void ArtJointGeo::add_res() {
+  if (!cmeshes.empty()) {
+    lump.add_res(
+        std::make_unique<ResRef>("collide-mesh-group", "array", mesh_slot, DEFAULT_RES_TIME));
+  }
+  // jgeo.lump.add_res(
+  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
+  // jgeo.lump.add_res(std::make_unique<ResVector>(
+  //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
+  //     DEFAULT_RES_TIME));
+  // jgeo.lump.add_res(
+  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
+  // jgeo.lump.add_res(std::make_unique<ResFloat>(
+  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
+  //     DEFAULT_RES_TIME));
+  lump.sort_res();
+}
+
+size_t ArtJointGeo::generate_mesh(DataObjectGenerator& gen) const {
+  std::vector<size_t> data_slots;
+  std::vector<size_t> content_slots;
+  gen.align_to_basic();
+  gen.add_type_tag("array");
+  size_t result = gen.current_offset_bytes();
+  gen.add_word(cmeshes.size());      // 0 (length)
+  gen.add_word(cmeshes.size());      // 4 (allocated-length)
+  gen.add_type_tag("collide-mesh");  // 8 (content-type)
+  content_slots.reserve(cmeshes.size());
+  for (auto& data : cmeshes) {
+    content_slots.push_back(gen.add_word(0));  // 12 (data)
+  }
+  gen.align(4);
+  for (size_t i = 0; i < content_slots.size(); i++) {
+    data_slots.push_back(cmeshes.at(i).generate(gen));
+  }
+  for (size_t i = 0; i < content_slots.size(); i++) {
+    gen.link_word_to_byte(content_slots.at(i), data_slots.at(i));
+  }
   return result;
 }
 
-size_t ArtJointGeo::generate(DataObjectGenerator& gen) const {
+size_t ArtJointGeo::generate(DataObjectGenerator& gen) {
   gen.align_to_basic();
   gen.add_type_tag("art-joint-geo");
   size_t result = gen.current_offset_bytes();
@@ -131,6 +194,8 @@ size_t ArtJointGeo::generate(DataObjectGenerator& gen) const {
     gen.link_word_to_byte(joint_slots.at(i), joint);
     g_joint_map[data.at(i).number] = joint;
   }
+  mesh_slot = generate_mesh(gen);
+  add_res();
   auto res_header = lump.generate_header(gen, "res-lump");
   gen.link_word_to_byte(res_slot, res_header);
   lump.generate_tag_list_and_data(gen, res_header);
@@ -440,50 +505,8 @@ bool run_build_actor(const std::string& mdl_name,
     auto all_nodes = flatten_nodes_from_all_scenes(model);
     mesh = gen_collide_mesh_from_model(model, all_nodes, 3);
   }
-  ArtJointGeo jgeo(ag.name, joints);
+  ArtJointGeo jgeo(ag.name, mesh, joints);
   ArtJointAnim ja(ag.name, joints);
-  std::function write_cmesh_func = [](CollideMesh cmesh, DataObjectGenerator& gen, bool packed) {
-    size_t result = gen.current_offset_bytes();
-    // gen.add_word(0xffffffff - mesh.joint_id);  // 4 (joint-id)
-    gen.add_word(cmesh.joint_id);          // 4 (joint-id)
-    gen.add_word(cmesh.num_tris);          // 8 (num-tris)
-    gen.add_word(cmesh.num_verts);         // 12 (num-verts)
-    auto vertices_slot = gen.add_word(0);  // 16 (vertex-data)
-    gen.add_word(0);                       // 20 (pad)
-    gen.add_word(0);                       // 24 (pad)
-    gen.add_word(0);                       // 28 (pad)
-    for (auto& tri : cmesh.tris) {
-      u32 word = (tri.vert_idx[0] & 0xff) + ((tri.vert_idx[1] << 8) & 0xff00) +
-                 ((tri.vert_idx[2] << 16) & 0xff0000);
-      gen.add_word(word);         // 0 (tris | vertex-index | unused)
-      gen.add_word(tri.pat.val);  // 4 (pat)
-    }
-    // vertex data start
-    gen.link_word_to_byte(vertices_slot, gen.current_offset_bytes());
-    for (auto& vert : cmesh.vertices) {
-      gen.add_word_float(vert.x());
-      gen.add_word_float(vert.y());
-      gen.add_word_float(vert.z());
-      gen.add_word_float(vert.w());
-    }
-    return result;
-  };
-  if (!mesh.empty()) {
-    jgeo.lump.add_res(std::make_unique<ResArray<CollideMesh>>("collide-mesh-group", "collide-mesh",
-                                                              true, true, mesh, write_cmesh_func,
-                                                              DEFAULT_RES_TIME));
-  }
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("texture-level", std::vector<s32>{2}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResVector>(
-  //     "trans-offset", std::vector<math::Vector4f>{{0.0f, 2048.0f, 0.0f, 1.0f}},
-  //     DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(
-  //     std::make_unique<ResInt32>("joint-channel", std::vector<s32>{0}, DEFAULT_RES_TIME));
-  // jgeo.lump.add_res(std::make_unique<ResFloat>(
-  //     "lod-dist", std::vector<float>{5000.0f * METER_LENGTH, 6000.0f * METER_LENGTH},
-  //     DEFAULT_RES_TIME));
-  jgeo.lump.sort_res();
 
   ag.elts.emplace_back(&jgeo);
   // dummy merc-ctrl

@@ -240,6 +240,26 @@ int ResType::get_alignment() const {
   return 4;
 }
 
+ResRef::ResRef(const std::string& name, const std::string& type, size_t ref, float key_frame)
+    : Res(name, key_frame), m_ref(ref), m_type(type) {}
+
+TagInfo ResRef::get_tag_info() const {
+  TagInfo result;
+  result.elt_type = m_type;
+  result.elt_count = 1;
+  result.inlined = false;
+  result.data_size = 4;
+  return result;
+}
+
+void ResRef::write_data(DataObjectGenerator& gen) const {
+  gen.link_word_to_byte(gen.add_word(0), m_ref);
+}
+
+int ResRef::get_alignment() const {
+  return 4;
+}
+
 void ResLump::add_res(std::unique_ptr<Res> res) {
   m_sorted = false;
   m_res.emplace_back(std::move(res));
@@ -277,8 +297,6 @@ size_t ResLump::generate_header(DataObjectGenerator& gen,
 }
 
 void ResLump::generate_tag_list_and_data(DataObjectGenerator& gen, size_t header_to_update) const {
-  // TODO figure out how to deal with arrays
-  auto array_hack = false;
   ASSERT(m_sorted);
   gen.align_to_basic();
   // first is the tag array.
@@ -347,25 +365,16 @@ void ResLump::generate_tag_list_and_data(DataObjectGenerator& gen, size_t header
       current_data_ptr += 4;
       gen.add_word(0);
     }
-    auto current = current_data_ptr;
     res->write_data(gen);
-    if (res.get()->get_tag_info().elt_type == "array") {
-      // HACK: if we are an array, fake our size
-      current_data_ptr = current;
-      array_hack = true;
-    } else {
-      ASSERT_MSG(gen.current_offset_bytes() - current_data_ptr == rec.reported_size,
-                 fmt::format("reported size of {} does not match actual size of {}",
-                             rec.reported_size, gen.current_offset_bytes() - current_data_ptr));
-    }
+    ASSERT_MSG(gen.current_offset_bytes() - current_data_ptr == rec.reported_size,
+               fmt::format("reported size of {} does not match actual size of {}",
+                           rec.reported_size, gen.current_offset_bytes() - current_data_ptr));
     current_data_ptr = gen.current_offset_bytes();
   }
-  if (!array_hack) {
-    ASSERT_MSG(gen.current_offset_bytes() == data_end,
-               fmt::format("mismatch between current offset ({}) and data end ({})",
-                           gen.current_offset_bytes(), data_end));
-    ASSERT(data_end == current_data_ptr);
-  }
+  ASSERT_MSG(gen.current_offset_bytes() == data_end,
+             fmt::format("mismatch between current offset ({}) and data end ({})",
+                         gen.current_offset_bytes(), data_end));
+  ASSERT(data_end == current_data_ptr);
 
   // update header
   gen.link_word_to_byte((header_to_update + 2 * 4) / 4, data_start);
