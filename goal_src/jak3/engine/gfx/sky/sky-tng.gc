@@ -265,11 +265,6 @@
 
 (defmethod draw-clouds ((this sky-work) (arg0 dma-buffer))
   (local-vars (v1-19 float) (sv-16 cloud-vert-array) (sv-20 (inline-array sky-vertex)) (sv-32 int))
-
-  (when (zero? *sky-texture-anim-array*) ;; added
-    (return #f)
-    )
-
   (rlet ((vf23 :class vf)
          (vf27 :class vf)
          )
@@ -549,40 +544,36 @@
   )
 
 (defmethod draw-fog ((this sky-work) (arg0 dma-buffer))
-  (when (zero? *sky-texture-anim-array*) ;; added
-    (return #f)
-    )
   (let ((s4-0 (-> *sky-texture-anim-array* array-data 8 tex)))
     (if s4-0
         (dma-buffer-add-gs-set arg0
                                (tex0-1 (new 'static 'gs-tex0
-                                            :tcc #x1
-                                            :cld #x1
-                                            :psm (the-as int (-> s4-0 psm))
-                                            :cpsm (-> s4-0 clutpsm)
-                                            :cbp (-> s4-0 clutdest)
-                                            :th (log2 (-> s4-0 h))
-                                            :tw (log2 (-> s4-0 w))
-                                            :tbw (-> s4-0 width 0)
-                                            :tbp0 (-> s4-0 dest 0)
-                                            )
+                                         :tcc #x1
+                                         :cld #x1
+                                         :psm (the-as int (-> s4-0 psm))
+                                         :cpsm (-> s4-0 clutpsm)
+                                         :cbp (-> s4-0 clutdest)
+                                         :th (log2 (-> s4-0 h))
+                                         :tw (log2 (-> s4-0 w))
+                                         :tbw (-> s4-0 width 0)
+                                         :tbp0 (-> s4-0 dest 0)
+                                         )
                                        )
                                (tex1-1 (new 'static 'gs-tex1 :mmag #x1 :mmin #x1))
                                (test-1 (new 'static 'gs-test
-                                            :ate #x1
-                                            :atst (gs-atest greater-equal)
-                                            :aref #x70
-                                            :afail #x3
-                                            :zte #x1
-                                            :ztst (gs-ztest greater-equal)
-                                            )
+                                         :ate #x1
+                                         :atst (gs-atest greater-equal)
+                                         :aref #x70
+                                         :afail #x3
+                                         :zte #x1
+                                         :ztst (gs-ztest greater-equal)
+                                         )
                                        )
                                (clamp-1 (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp)))
                                (alpha-1 (new 'static 'gs-alpha :b #x1 :d #x1))
                                )
         )
     )
-
   (let* ((v1-26 (the-as (inline-array qword) (-> arg0 base)))
          (a0-22 *fog-texture-work*)
          (f0-0 (-> a0-22 min-corner y))
@@ -651,7 +642,7 @@
     (dotimes (a0-1 (-> *level* length))
       (let ((a1-3 (-> *level* level a0-1)))
         (when (= (-> a1-3 status) 'active)
-          (if (and (= (-> a1-3 display?) 'display) (logtest? (-> a1-3 info level-flags) (level-flags lf9)))
+          (if (and (= (-> a1-3 display?) 'display) (logtest? (-> a1-3 info level-flags) (level-flags sky)))
               (set! v1-0 #t)
               )
           )
@@ -677,7 +668,7 @@
          (let ((s4-1 (the-as sky-work *fake-scratchpad-data*)))
            (mem-copy! (the-as pointer s4-1) (the-as pointer this) #x2814)
            (setup-stars s4-1 (-> s4-1 star-mat) (-> this upload-data))
-           (when (nonzero? (-> s4-1 star-colors 0 x))
+           (if (nonzero? (-> s4-1 star-colors 0 x))
                (stars-transform-asm s4-1)
                )
            (cond
