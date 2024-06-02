@@ -18,7 +18,7 @@
 
 #include "common/goos/Object.h"
 #include "common/goos/TextDB.h"
-#include "common/repl/util.h"
+#include "common/repl/repl_wrapper.h"
 #include "common/util/Assert.h"
 
 namespace goos {
