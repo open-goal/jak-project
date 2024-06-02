@@ -906,7 +906,7 @@
   :virtual #t
   :enter (behavior ((arg0 symbol))
     (format 0 "scene-player: skipping scene~%")
-    (go-virtual release)
+    (set! (-> self aborted?) #t)
     (set-time! (-> self state-time))
     (if (= (-> *game-info* demo-state) 101)
         (set-setting! 'audio-language #f 0.0 5)
@@ -1158,6 +1158,7 @@
                           )
                         )
                     )
+                  (not (-> self aborted?))
                   )
         (set-blackout-frames (seconds 0.1))
         (suspend)
@@ -1234,7 +1235,8 @@
       (disable *screen-filter*)
       (deactivate self)
       )
-    (when (< (-> self scene-index) (+ (-> self scene-list length) -1))
+    ;; og:preserve-this there is a bug here. scene-index has already been advanced by this point, so we need to backtrack when checking things
+    (when (< (#if PC_PORT (1- (-> self scene-index)) (-> self scene-index)) (+ (-> self scene-list length) -1))
       (set! (-> self scene-index) (+ (-> self scene-list length) -1))
       (scene-player-method-24 self (-> self scene-list (-> self scene-index)) #t)
       )
@@ -1574,6 +1576,10 @@
             )
           )
         )
+      )
+    (#when PC_PORT ;; og:preserve-this until overlord2 is done
+      (backup-load-state-and-set-cmds *load-state* (-> self anim command-list))
+      (restore-load-state-and-cleanup *load-state*)
       )
     (if (and (-> self wait) *target* (focus-test? *target* grabbed))
         (go-virtual release)
