@@ -163,7 +163,7 @@ void set_file(const std::string& filename,
         file_util::find_files_in_dir(fs::path(complete_filename).parent_path(),
                                      std::regex(fmt::format("{}\\.(\\d\\.)?log", filename)));
     for (const auto& file : old_log_files) {
-      lg::info("removing {}", file.string());
+      lg::debug("removing {}", file.string());
       fs::remove(file);
     }
     // remove the oldest log file if there are more than LOG_ROTATE_MAX
@@ -172,9 +172,9 @@ void set_file(const std::string& filename,
     // sort the names and remove them
     existing_log_files = file_util::sort_filepaths(existing_log_files, true);
     if (existing_log_files.size() > (LOG_ROTATE_MAX - 1)) {
-      lg::info("removing {} log files", existing_log_files.size() - (LOG_ROTATE_MAX - 1));
+      lg::debug("removing {} log files", existing_log_files.size() - (LOG_ROTATE_MAX - 1));
       for (int i = 0; i < (int)existing_log_files.size() - (LOG_ROTATE_MAX - 1); i++) {
-        lg::info("removing {}", existing_log_files.at(i).string());
+        lg::debug("removing {}", existing_log_files.at(i).string());
         fs::remove(existing_log_files.at(i));
       }
     }

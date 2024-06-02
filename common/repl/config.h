@@ -26,11 +26,14 @@ struct KeyBind {
 void to_json(json& j, const KeyBind& obj);
 void from_json(const json& j, KeyBind& obj);
 
+// TODO - per-game config
 struct Config {
   GameVersion game_version;
   Config(GameVersion _game_version) : game_version(_game_version){};
 
   // this is the default REPL configuration
+  int nrepl_port = 8181;
+  int temp_nrepl_port = -1;
   std::string game_version_folder;
   int target_connect_attempts = 30;
   std::vector<std::string> asm_file_search_dirs = {};
@@ -45,6 +48,14 @@ struct Config {
       {KeyBind::Modifier::CTRL, "B", "Displays the most recently caught backtrace", "(:di)"},
       {KeyBind::Modifier::CTRL, "N", "Full build of the game", "(mi)"}};
   bool per_game_history = true;
+  bool permissive_redefinitions = false;
+
+  int get_nrepl_port() {
+    if (temp_nrepl_port != -1) {
+      return temp_nrepl_port;
+    }
+    return nrepl_port;
+  }
 };
 void to_json(json& j, const Config& obj);
 void from_json(const json& j, Config& obj);

@@ -65,7 +65,7 @@ Compiler::Compiler(GameVersion version,
   if (m_repl) {
     m_repl->load_history();
     // init repl
-    m_repl->print_welcome_message();
+    m_repl->print_welcome_message(m_make.get_loaded_projects());
     auto& examples = m_repl->examples;
     auto& regex_colors = m_repl->regex_colors;
     m_repl->init_settings();

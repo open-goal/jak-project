@@ -35,7 +35,7 @@ void XSocketServer::shutdown_server() {
   close_server_socket();
 }
 
-bool XSocketServer::init_server() {
+bool XSocketServer::init_server(bool failure_may_occur) {
   listening_socket = open_socket(AF_INET, SOCK_STREAM, 0);
   if (listening_socket < 0) {
     listening_socket = -1;
@@ -76,19 +76,27 @@ bool XSocketServer::init_server() {
   addr.sin_port = htons(tcp_port);
 
   if (bind(listening_socket, (sockaddr*)&addr, sizeof(addr)) < 0) {
-    lg::error("[XSocketServer:{}] failed to bind", tcp_port);
+    if (failure_may_occur) {
+      lg::debug("[XSocketServer:{}] failed to bind", tcp_port);
+    } else {
+      lg::error("[XSocketServer:{}] failed to bind", tcp_port);
+    }
     close_server_socket();
     return false;
   }
 
   if (listen(listening_socket, 0) < 0) {
-    lg::error("[XSocketServer:{}] failed to listen", tcp_port);
+    if (failure_may_occur) {
+      lg::debug("[XSocketServer:{}] failed to listen", tcp_port);
+    } else {
+      lg::error("[XSocketServer:{}] failed to listen", tcp_port);
+    }
     close_server_socket();
     return false;
   }
 
   server_initialized = true;
-  lg::info("[XSocketServer:{}] initialized", tcp_port);
+  lg::debug("[XSocketServer:{}] initialized", tcp_port);
   post_init();
   return true;
 }
