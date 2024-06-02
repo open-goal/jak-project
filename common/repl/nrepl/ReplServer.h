@@ -27,5 +27,6 @@ class ReplServer : public XSocketServer {
   fd_set read_sockets;
   std::set<int> client_sockets = {};
 
+  void error_response(int socket, const std::string& error);
   void ping_response(int socket);
 };
