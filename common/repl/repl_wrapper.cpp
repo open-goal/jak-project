@@ -14,7 +14,7 @@ void Wrapper::clear_screen() {
   repl.clear_screen();
 }
 
-void Wrapper::print_welcome_message(const std::vector<std::string> loaded_projects) {
+void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_projects) {
   std::string message;
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "        ..:::::..\n");
   message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "     .:-----------:.\n");

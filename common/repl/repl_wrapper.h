@@ -38,7 +38,7 @@ class Wrapper {
   // Functionality / Commands
   void clear_screen();
   void print_to_repl(const std::string& str);
-  void print_welcome_message(const std::vector<std::string> loaded_projects);
+  void print_welcome_message(const std::vector<std::string>& loaded_projects);
   void set_history_max_size(size_t len);
   const char* readline(const std::string& prompt);
   void add_to_history(const std::string& line);
