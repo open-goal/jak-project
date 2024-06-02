@@ -2,7 +2,7 @@
 
 #include "common/util/gltf_util.h"
 
-#include <goalc/build_actor/jak1/build_actor.h>
+#include "goalc/build_actor/jak1/build_actor.h"
 
 struct MercExtractData {
   gltf_util::TexturePool tex_pool;
