@@ -1,4 +1,4 @@
-#include "util.h"
+#include "repl_wrapper.h"
 
 #include "common/util/FileUtil.h"
 #include "common/util/json_util.h"
@@ -8,36 +8,66 @@
 #include "fmt/color.h"
 #include "fmt/core.h"
 #include "third-party/replxx/include/replxx.hxx"
-// TODO - expand a list of hints (ie. a hint for defun to show at a glance how to write a function,
-// or perhaps, show the docstring for the current function being used?)
 
 namespace REPL {
 void Wrapper::clear_screen() {
   repl.clear_screen();
 }
 
-void Wrapper::print_welcome_message() {
-  // TODO - dont print on std-out
-  // Welcome message / brief intro for documentation
-  std::string ascii;
-  ascii += " _____             _____ _____ _____ __    \n";
-  ascii += "|     |___ ___ ___|   __|     |  _  |  |   \n";
-  ascii += "|  |  | . | -_|   |  |  |  |  |     |  |__ \n";
-  ascii += "|_____|  _|___|_|_|_____|_____|__|__|_____|\n";
-  ascii += "      |_|                                  \n";
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::orange), ascii);
-
-  fmt::print("Welcome to OpenGOAL {}.{}!\n", versions::GOAL_VERSION_MAJOR,
-             versions::GOAL_VERSION_MINOR);
-  fmt::print("Run {} or {} for help with common commands and REPL usage.\n",
-             fmt::styled("(repl-help)", fmt::emphasis::bold | fg(fmt::color::cyan)),
-             fmt::styled("(repl-keybinds)", fmt::emphasis::bold | fg(fmt::color::cyan)));
-  fmt::print("Run ");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(lt)");
-  fmt::print(" to connect to the local target.\n");
-  fmt::print("Run ");
-  fmt::print(fmt::emphasis::bold | fg(fmt::color::cyan), "(mi)");
-  fmt::print(" to rebuild the entire game.\n\n");
+void Wrapper::print_welcome_message(const std::vector<std::string>& loaded_projects) {
+  std::string message;
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "        ..:::::..\n");
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "     .:-----------:.\n");
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "         .-----.");
+  message += fmt::format(fmt::emphasis::bold, "         Welcome to OpenGOAL {}.{} [{}]",
+                         versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR,
+                         fmt::format(fg(fmt::color::gray), "{}", build_revision()));
+  if (!username.empty() && username != "#f" && username != "unknown") {
+    message += fmt::format(fg(fmt::color::light_green), " {}", username);
+  }
+  message += "!\n";
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "          .---.");
+  if (repl_config.game_version == GameVersion::Jak1) {
+    message += fmt::format("          [{}]: ", fmt::format(fg(fmt::color::orange), "jak1"));
+  } else if (repl_config.game_version == GameVersion::Jak2) {
+    message += fmt::format("          [{}]: ", fmt::format(fg(fmt::color::purple), "jak2"));
+  } else if (repl_config.game_version == GameVersion::Jak3) {
+    message += fmt::format("          [{}]: ", fmt::format(fg(fmt::color::gold), "jak3"));
+  } else {
+    message += fmt::format("          [{}]: ", fmt::format(fg(fmt::color::magenta), "jakx"));
+  }
+  const auto loaded_projects_str = fmt::format("{}", fmt::join(loaded_projects, ","));
+  message += fmt::format(fg(fmt::color::gray), "{}\n", loaded_projects_str);
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  .        ---        .");
+  message +=
+      fmt::format("  Project Path: {}\n",
+                  fmt::format(fg(fmt::color::gray), file_util::get_jak_project_dir().string()));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  -       :===:       -");
+  message += "  nREPL:";
+  if (!nrepl_alive) {
+    message += fmt::format(fg(fmt::color::red), "DISABLED\n");
+  } else {
+    message += fmt::format(fg(fmt::color::light_green), " Listening on {}\n",
+                           repl_config.get_nrepl_port());
+  }
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  --.   .--: :--.   .--");
+  message += "  Source File Search Dirs: ";
+  const auto search_dir_string =
+      fmt::format("{}", fmt::join(repl_config.asm_file_search_dirs, ","));
+  message += fmt::format("[{}]\n", fmt::format(fg(fmt::color::gray), search_dir_string));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "  .=======.    =======.");
+  message += fmt::format("  {} or {} for basic help and usage\n",
+                         fmt::format(fg(fmt::color::cyan), "(repl-help)"),
+                         fmt::format(fg(fmt::color::cyan), "(repl-keybinds)"));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "   .-=====-. .-=====-");
+  message +=
+      fmt::format("    {} to connect to the game\n", fmt::format(fg(fmt::color::cyan), "(lt)"));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "     .-===========-.");
+  message += fmt::format("     {} to recompile the active project.\n",
+                         fmt::format(fg(fmt::color::cyan), "(mi)"));
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "         .-===-.\n");
+  message += fmt::format(fmt::emphasis::bold | fg(fmt::color::orange), "            .\n");
+  fmt::print("{}", message);
 }
 
 void Wrapper::print_to_repl(const std::string& str) {
@@ -242,20 +272,24 @@ StartupFile load_user_startup_file(const std::string& username, const GameVersio
   return startup_file;
 }
 
-REPL::Config load_repl_config(const std::string& username, const GameVersion game_version) {
+REPL::Config load_repl_config(const std::string& username,
+                              const GameVersion game_version,
+                              const int nrepl_port) {
   auto repl_config_path =
       file_util::get_jak_project_dir() / "goal_src" / "user" / username / "repl-config.json";
+  REPL::Config loaded_config(game_version);
   if (file_util::file_exists(repl_config_path.string())) {
     try {
-      REPL::Config config(game_version);
       auto repl_config_data =
           parse_commented_json(file_util::read_text_file(repl_config_path), "repl-config.json");
-      from_json(repl_config_data, config);
-      return config;
+      from_json(repl_config_data, loaded_config);
+      loaded_config.temp_nrepl_port = nrepl_port;
+      return loaded_config;
     } catch (std::exception& e) {
-      REPL::Config config(game_version);
+      // do nothing
     }
   }
-  return REPL::Config(game_version);
+  loaded_config.temp_nrepl_port = nrepl_port;
+  return loaded_config;
 }
 }  // namespace REPL

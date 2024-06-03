@@ -185,9 +185,11 @@ std::optional<std::string> try_get_jak_project_path() {
   return try_get_project_path_from_path(get_current_executable_path());
 }
 
-std::optional<fs::path> try_get_data_dir() {
+std::optional<fs::path> try_get_data_dir(bool skip_logs) {
   fs::path my_path = get_current_executable_path();
-  lg::info("Current executable directory - {}", my_path.string());
+  if (!skip_logs) {
+    lg::debug("Current executable directory - {}", my_path.string());
+  }
   auto data_dir = my_path.parent_path() / "data";
   if (fs::exists(data_dir) && fs::is_directory(data_dir)) {
     return std::make_optional(data_dir);
@@ -196,7 +198,7 @@ std::optional<fs::path> try_get_data_dir() {
   }
 }
 
-bool setup_project_path(std::optional<fs::path> project_path_override) {
+bool setup_project_path(std::optional<fs::path> project_path_override, bool skip_logs) {
   if (g_file_path_info.initialized) {
     return true;
   }
@@ -204,16 +206,20 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (project_path_override) {
     g_file_path_info.path_to_data_folder = fs::absolute(project_path_override.value());
     g_file_path_info.initialized = true;
-    lg::info("Using explicitly set project path: {}",
-             g_file_path_info.path_to_data_folder.string());
+    if (!skip_logs) {
+      lg::debug("Using explicitly set project path: {}",
+                g_file_path_info.path_to_data_folder.string());
+    }
     return true;
   }
 
-  auto data_path = try_get_data_dir();
+  auto data_path = try_get_data_dir(skip_logs);
   if (data_path) {
     g_file_path_info.path_to_data_folder = *data_path;
     g_file_path_info.initialized = true;
-    lg::info("Using data path: {}", data_path->string());
+    if (!skip_logs) {
+      lg::debug("Using data path: {}", data_path->string());
+    }
     return true;
   }
 
@@ -221,7 +227,9 @@ bool setup_project_path(std::optional<fs::path> project_path_override) {
   if (development_repo_path) {
     g_file_path_info.path_to_data_folder = *development_repo_path;
     g_file_path_info.initialized = true;
-    lg::info("Using development repo path: {}", *development_repo_path);
+    if (!skip_logs) {
+      lg::debug("Using development repo path: {}", *development_repo_path);
+    }
     return true;
   }
 

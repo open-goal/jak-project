@@ -5,7 +5,7 @@
 #include <optional>
 
 #include "common/goos/Interpreter.h"
-#include "common/repl/util.h"
+#include "common/repl/repl_wrapper.h"
 #include "common/type_system/TypeSystem.h"
 
 #include "goalc/compiler/CompilerException.h"
