@@ -47,7 +47,7 @@ def compare_directories(base_dir, compare_dir):
                 print(f" - {file}")
 
 # Usage example
-base_directory = './out/jak1/obj_before'
-compare_directory = './out/jak1/obj'
+base_directory = './out/jak1/obj'
+compare_directory = './out/jak1/obj_master'
 print(f'Comparing {base_directory} with {compare_directory}')
 compare_directories(base_directory, compare_directory)
