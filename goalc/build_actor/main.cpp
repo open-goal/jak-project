@@ -13,7 +13,8 @@ int main(int argc, char** argv) {
   lg::initialize();
 
   // game version
-  std::string game, input_model, output_file;
+  std::string game, mdl_name, output_file;
+  bool gen_collide_mesh;
   fs::path project_path_override;
 
   // path
@@ -24,7 +25,7 @@ int main(int argc, char** argv) {
   lg::info("Build Actor Tool", versions::GOAL_VERSION_MAJOR, versions::GOAL_VERSION_MINOR);
 
   CLI::App app{"OpenGOAL Compiler / REPL"};
-  app.add_option("input-model", input_model,
+  app.add_option("input-model", mdl_name,
                  "Input model file (for example: custom_assets/jak1/models/test.glb)")
       ->required();
   app.add_option("output-file", output_file,
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
   app.add_option("-g,--game", game, "Game version (only jak1 for now)")->required();
   app.add_option("--proj-path", project_path_override,
                  "Specify the location of the 'data/' folder");
+  app.add_flag("-m,--mesh", gen_collide_mesh, "Whether to generate a collide-mesh for this model");
   app.validate_positionals();
   CLI11_PARSE(app, argc, argv)
 
@@ -53,7 +55,7 @@ int main(int argc, char** argv) {
 
   switch (game_version) {
     case GameVersion::Jak1:
-      jak1::run_build_actor(input_model, output_file, "jak1/");
+      jak1::run_build_actor(mdl_name, output_file, gen_collide_mesh);
       break;
     default:
       ASSERT_NOT_REACHED_MSG("unsupported game version");

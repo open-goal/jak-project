@@ -139,23 +139,33 @@ struct CollideMesh {
   u32 num_tris;
   u32 num_verts;
   std::vector<math::Vector4f> vertices;
-  CollideMeshTri tris;
+  std::vector<CollideMeshTri> tris;
+
+  size_t generate(DataObjectGenerator& gen) const;
+  size_t calc_data_size() const {
+    // (size-of collide-mesh) + type ptr = 36
+    return 36 + 16 * vertices.size() + sizeof(CollideMeshTri) * tris.size();
+  }
 };
 
 struct ArtJointGeo : ArtElement {
   std::vector<Joint> data;
-  CollideMesh mesh;
+  std::vector<CollideMesh> cmeshes;
   ResLump lump;
+  size_t mesh_slot;
 
-  explicit ArtJointGeo(const std::string& name, const std::vector<Joint>& joints) {
+  explicit ArtJointGeo(const std::string& name,
+                       std::vector<CollideMesh> cmeshes,
+                       std::vector<Joint>& joints) {
     this->name = name + "-lod0";
     length = joints.size();
     for (auto& joint : joints) {
       data.push_back(joint);
     }
+    this->cmeshes = std::move(cmeshes);
   }
-  size_t generate(DataObjectGenerator& gen) const;
-  size_t generate_res_lump(DataObjectGenerator& gen) const;
+  void add_res();
+  size_t generate(DataObjectGenerator& gen);
   size_t generate_mesh(DataObjectGenerator& gen) const;
 };
 
@@ -202,9 +212,10 @@ struct ArtGroup : Art {
     info.maya_file_name = "Unknown";
   }
   std::vector<u8> save_object_file() const;
+  int get_joint_idx(const std::string& name);
 };
 
 bool run_build_actor(const std::string& input_model,
                      const std::string& output_file,
-                     const std::string& output_prefix);
+                     bool gen_collide_mesh);
 }  // namespace jak1

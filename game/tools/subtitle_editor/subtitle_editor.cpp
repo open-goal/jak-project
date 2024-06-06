@@ -197,7 +197,7 @@ void SubtitleEditor::draw_repl_options() {
       ImGui::Text("REPL Connected, should be good to go!");
       ImGui::PopStyleColor();
     } else {
-      if (ImGui::Button("Connect to REPL")) {
+      if (ImGui::Button("Connect to REPL on Port 8181")) {
         m_repl.connect();
         if (!m_repl.is_connected()) {
           ImGui::PushStyleColor(ImGuiCol_Text, m_error_text_color);

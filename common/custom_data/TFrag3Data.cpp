@@ -492,6 +492,7 @@ void MercDraw::serialize(Serializer& ser) {
   ser.from_ptr(&first_index);
   ser.from_ptr(&index_count);
   ser.from_ptr(&num_triangles);
+  ser.from_ptr(&no_strip);
 }
 
 void Blerc::serialize(Serializer& ser) {

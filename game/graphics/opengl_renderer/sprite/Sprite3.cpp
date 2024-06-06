@@ -846,7 +846,13 @@ void Sprite3::do_block_common(SpriteMode mode,
 
     vert1.xyz_sx = m_vec_data_2d[sprite_idx].xyz_sx;
     vert1.quat_sy = m_vec_data_2d[sprite_idx].flag_rot_sy;
-    vert1.rgba = m_vec_data_2d[sprite_idx].rgba / 255;
+    // ftoi'd in the original game, and I believe the VIF would discard the upper bits on pack
+    vert1.rgba = m_vec_data_2d[sprite_idx].rgba;
+    vert1.rgba.x() = (int)vert1.rgba.x() & 0xff;
+    vert1.rgba.y() = (int)vert1.rgba.y() & 0xff;
+    vert1.rgba.z() = (int)vert1.rgba.z() & 0xff;
+    vert1.rgba.w() = (int)vert1.rgba.w() & 0xff;
+    vert1.rgba /= 255;
     vert1.flags_matrix[0] = m_vec_data_2d[sprite_idx].flag();
     vert1.flags_matrix[1] = m_vec_data_2d[sprite_idx].matrix();
     vert1.info[0] = 0;  // hack
