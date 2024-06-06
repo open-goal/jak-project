@@ -111,6 +111,7 @@ struct Config {
 
   bool disassemble_code = false;
   bool decompile_code = false;
+  bool format_code = false;
   bool write_scripts = false;
   bool disassemble_data = false;
   bool process_tpages = false;

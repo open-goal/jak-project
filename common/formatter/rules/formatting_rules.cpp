@@ -12,11 +12,15 @@ namespace formatter_rules {
 // differentiate between a quoted symbol and a quoted form
 const std::set<std::string> constant_types = {"kwd_lit",  "num_lit",  "str_lit",
                                               "char_lit", "null_lit", "bool_lit"};
+const std::set<std::string> constant_type_forms = {"meters", "seconds", "degrees"};
 
 namespace constant_list {
 bool is_constant_list(const FormatterTreeNode& node) {
   if (!node.is_list() || node.refs.empty()) {
     return false;
+  }
+  if (!node.refs.at(0).token) {
+    return true;
   }
   const auto& type = node.refs.at(0).metadata.node_type;
   return constant_types.find(type) != constant_types.end();
@@ -36,21 +40,28 @@ bool should_insert_blank_line(const FormatterTreeNode& containing_node,
   if (node.metadata.is_comment && node.metadata.num_blank_lines_following == 0) {
     return false;
   }
-  // If the next form is a comment and is inline, don't insert a comment
+  // If the next form is a comment and is inline, don't insert a new line
   if ((index + 1) < (int)containing_node.refs.size() &&
       containing_node.refs.at(index + 1).metadata.is_comment &&
       containing_node.refs.at(index + 1).metadata.is_inline) {
     return false;
   }
 
-  // TODO - only if the form doesn't fit on a single line
+  if (node.formatting_config.elide_top_level_newline) {
+    if ((index + 1) < (int)containing_node.refs.size() &&
+        containing_node.refs.at(index + 1).metadata.is_comment) {
+      return true;
+    }
+    return false;
+  }
+
   return true;
 }
 
 }  // namespace blank_lines
 
 namespace comments {
-std::string format_block_comment(const std::string& comment) {
+std::vector<std::string> format_block_comment(const std::string& comment) {
   // Normalize block comments, remove any trailing or leading whitespace
   // Only allow annotations on the first line, like #|@file
   // Don't mess with internal indentation as the user might intend it to be a certain way.
@@ -71,12 +82,22 @@ std::string format_block_comment(const std::string& comment) {
   // Remove trailing whitespace
   comment_contents = str_util::rtrim(comment_contents);
   // remove |#
-  // TODO - check suffix
-  comment_contents.pop_back();
-  comment_contents.pop_back();
+  if (str_util::ends_with(comment_contents, "|#")) {
+    comment_contents.pop_back();
+    comment_contents.pop_back();
+  }
   comment_contents = str_util::rtrim(comment_contents);
-  new_comment += fmt::format("\n{}\n|#", comment_contents);
-  return new_comment;
+  std::vector<std::string> lines = {new_comment};
+  const auto contents_as_lines = str_util::split_string(comment_contents, "\n");
+  if (contents_as_lines.size() > 1) {
+    for (const auto& line : contents_as_lines) {
+      lines.push_back(line);
+    }
+    lines.push_back("|#");
+  } else {
+    lines.at(0) = fmt::format("{} {} |#", new_comment, str_util::trim(contents_as_lines.at(0)));
+  }
+  return lines;
 }
 }  // namespace comments
 
@@ -99,6 +120,46 @@ bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node
     return false;
   }
   return true;
+}
+
+// TODO - potentially remove the above
+bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
+                                            const FormatterTreeNode& curr_node) {
+  if (prev_node.metadata.node_type == "kwd_lit") {
+    // Handle standard constant types
+    // TODO - pair up sym_names as well
+    if (constant_types.find(curr_node.metadata.node_type) != constant_types.end()) {
+      if (curr_node.metadata.node_type != "kwd_lit") {
+        // NOTE - there is ambiugity here which cannot be totally solved (i think?)
+        // if the element itself is also a keyword, assume this is two adjacent keywords and they
+        // should not be paired
+        return true;
+      }
+    }
+    // Quoted symbols
+    if (curr_node.metadata.node_type == "sym_name" && curr_node.node_prefix &&
+        (curr_node.node_prefix.value() == "'" || curr_node.node_prefix.value() == ",")) {
+      return true;
+    }
+    if (!curr_node.refs.empty()) {
+      // Constant forms special cases (ie. meters)
+      if (constant_type_forms.find(curr_node.refs.at(0).token_str()) != constant_type_forms.end()) {
+        return true;
+      }
+      // If they are just a list of symbol names (enum or simple method call)
+      bool all_symbols = true;
+      for (const auto& ref : curr_node.refs) {
+        if (ref.metadata.node_type != "sym_name") {
+          all_symbols = false;
+          break;
+        }
+      }
+      if (all_symbols) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 bool form_should_be_constant_paired(const FormatterTreeNode& node) {
