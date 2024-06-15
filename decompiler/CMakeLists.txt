@@ -89,7 +89,8 @@ add_library(
         VuDisasm/VuDisassembler.cpp
         VuDisasm/VuInstruction.cpp
 
-        config.cpp)
+        config.cpp
+        decompilation_process.cpp)
 
 target_link_libraries(decomp
         lzokay
