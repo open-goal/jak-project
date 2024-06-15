@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <string>
 
-// Note: these are not implemented on windows and will return zero.
 size_t get_peak_rss();
 void setup_cpu_info();
 
