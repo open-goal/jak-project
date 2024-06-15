@@ -6,9 +6,9 @@
 #include "common/util/unicode_util.h"
 
 #include "decompiler/config.h"
+#include "decompiler/decompilation_process.h"
 #include "decompiler/extractor/extractor_util.h"
 #include "goalc/compiler/Compiler.h"
-#include <decompiler/decompilation_process.h>
 
 #include "third-party/CLI11.hpp"
 

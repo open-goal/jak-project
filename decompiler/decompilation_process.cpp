@@ -5,9 +5,9 @@
 
 #include "config.h"
 
-#include <common/log/log.h>
-#include <common/util/Timer.h>
-#include <common/util/os.h>
+#include "common/log/log.h"
+#include "common/util/Timer.h"
+#include "common/util/os.h"
 
 #include "Disasm/OpcodeInfo.h"
 #include "ObjectFile/ObjectFileDB.h"
