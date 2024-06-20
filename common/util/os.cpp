@@ -26,9 +26,6 @@ size_t get_peak_rss() {
   getrusage(RUSAGE_SELF, &x);
   return x.ru_maxrss * 1024;
 }
-size_t get_peak_rss() {
-  return 0;
-}
 #endif
 
 #ifdef _WIN32

@@ -272,9 +272,9 @@ int run_decompilation_process(decompiler::Config config,
 
   lg::info("[Mem] After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
-  if (!config.audio_dir_file_name.empty()) {
+  if (config.rip_streamed_audio) {
     auto streaming_audio_in = in_folder / "VAG";
-    auto streaming_audio_out = out_folder / "assets" / "streaming_audio";
+    auto streaming_audio_out = out_folder / "audio";
     file_util::create_dir_if_needed(streaming_audio_out);
     process_streamed_audio(config, streaming_audio_out, in_folder,
                            config.streamed_audio_file_names);
