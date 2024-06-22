@@ -17,7 +17,7 @@ struct ProfNode {
 class GlobalProfiler {
  public:
   GlobalProfiler();
-  void set_max_events(size_t event_count);
+  void update_event_buffer_size();
   void set_waiting_for_event(const std::string& event_name);
   void instant_event(const char* name);
   void begin_event(const char* name);
@@ -25,8 +25,12 @@ class GlobalProfiler {
   void end_event();
   void clear();
   void set_enable(bool en);
-  void dump_to_json(const std::string& path);
+  void dump_to_json();
   void root_event();
+  bool is_enabled() { return m_enabled; }
+
+  int m_max_events = 65536;
+  bool m_enable_compression = false;
 
  private:
   std::atomic_bool m_enabled = false;
