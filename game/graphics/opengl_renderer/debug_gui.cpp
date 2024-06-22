@@ -165,9 +165,14 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
       if (ImGui::Checkbox("Record Events", &record_events)) {
         prof().set_enable(record_events);
       }
-      ImGui::InputInt("Event Buffer Size", &prof().m_max_events);
+      ImGui::SameLine();
+      ImGui::Text(fmt::format("({}/{})", prof().get_next_idx(), prof().get_max_events()).c_str());
+      ImGui::InputInt("Event Buffer Size", &max_event_buffer_size);
       if (ImGui::Button("Resize")) {
-        prof().update_event_buffer_size();
+        prof().update_event_buffer_size(max_event_buffer_size);
+      }
+      if (ImGui::Button("Reset Events")) {
+        prof().clear();
       }
       ImGui::Separator();
       ImGui::Checkbox("Enable Compression", &prof().m_enable_compression);

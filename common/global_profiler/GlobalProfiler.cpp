@@ -39,7 +39,8 @@ GlobalProfiler::GlobalProfiler() {
   m_nodes.resize(m_max_events);
 }
 
-void GlobalProfiler::update_event_buffer_size() {
+void GlobalProfiler::update_event_buffer_size(size_t new_size) {
+  m_max_events = new_size;
   m_nodes.resize(m_max_events);
 }
 
@@ -71,6 +72,10 @@ void GlobalProfiler::instant_event(const char* name) {
 
 void GlobalProfiler::root_event() {
   instant_event("ROOT");
+}
+
+size_t GlobalProfiler::get_next_idx() {
+  return (m_next_idx % m_nodes.size());
 }
 
 void GlobalProfiler::begin_event(const char* name) {
