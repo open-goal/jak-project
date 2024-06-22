@@ -140,7 +140,7 @@ void printstd(const char* format, va_list arg_list) {
   internal::log_vprintf(format, arg_list);
 }
 
-// how many extra log files for a single program should be kept?
+// how many extra log files for a single program should be kept
 constexpr int LOG_ROTATE_MAX = 10;
 
 void set_file(const std::string& filename,
