@@ -101,8 +101,8 @@ int run_decompilation_process(decompiler::Config config,
 
   lg::info("[Mem] After DB setup: {} MB", get_peak_rss() / (1024 * 1024));
 
-  // TODO - extractor skips these, probably doesnt matter
   // write out DGO file info
+  file_util::create_dir_if_needed(out_folder);
   file_util::write_text_file(out_folder / "dgo.txt", db.generate_dgo_listing());
   // write out object file map (used for future decompilations, if desired)
   file_util::write_text_file(out_folder / "obj.txt",
@@ -273,7 +273,6 @@ int run_decompilation_process(decompiler::Config config,
   lg::info("[Mem] After extraction: {} MB", get_peak_rss() / (1024 * 1024));
 
   if (config.rip_streamed_audio) {
-    auto streaming_audio_in = in_folder / "VAG";
     auto streaming_audio_out = out_folder / "audio";
     file_util::create_dir_if_needed(streaming_audio_out);
     process_streamed_audio(config, streaming_audio_out, in_folder,
