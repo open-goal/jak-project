@@ -5,13 +5,13 @@
 
 #include "ObjectFileDB.h"
 
+#include "common/formatter/formatter.h"
 #include "common/goos/PrettyPrinter.h"
 #include "common/link_types.h"
 #include "common/log/log.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"
 #include "common/util/string_util.h"
-#include <common/formatter/formatter.h>
 
 #include "decompiler/IR2/Form.h"
 #include "decompiler/analysis/analyze_inspect_method.h"
