@@ -145,6 +145,11 @@ s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
 s32 PollSema(s32 sema);
 
+s32 CreateEventFlag();
+s32 ClearEventFlag(u32 a, u32 b);
+s32 SetEventFlag(u32 a, u32 b);
+s32 WaitEventFlag(u32 a, u32 b, u32);
+
 s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* userdata);
 
 void FlushDcache();
