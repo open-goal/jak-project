@@ -123,7 +123,7 @@ void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler handler, void* 
   userdata[channel] = data;
 }
 
-u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size) {
+u32 sceSdVoiceTrans(s32 channel, s32 mode, const void* iop_addr, u32 spu_addr, u32 size) {
   memcpy(&spu_memory[spu_addr], iop_addr, size);
   if (trans_handler[channel] != nullptr) {
     trans_handler[channel](channel, userdata);

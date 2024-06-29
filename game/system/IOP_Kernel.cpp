@@ -27,11 +27,26 @@ void IopThread::functionWrapper() {
   }
 }
 
+IOP_Kernel::IOP_Kernel() {
+  // this ugly hack
+  threads.reserve(16);
+  CreateThread("null-thread", nullptr, 0);
+  CreateMbx();
+  CreateSema(0, 0, 0, 0);
+  kernel_thread = co_active();
+  m_start_time = time_point_cast<microseconds>(steady_clock::now());
+}
+
 /*
 ** -----------------------------------------------------------------------------
 ** Functions callable by threads
 ** -----------------------------------------------------------------------------
 */
+
+u32 IOP_Kernel::GetSystemTimeLow() {
+  auto delta_time = time_point_cast<microseconds>(steady_clock::now()) - m_start_time;
+  return delta_time.count() * 36.864;
+}
 
 /*!
  * Create a new thread.  Will not run the thread.
@@ -116,6 +131,38 @@ s32 IOP_Kernel::WaitSema(s32 id) {
   leaveThread();
 
   return KE_OK;
+}
+
+s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
+  auto& box = mbxs.at(id);
+  if (!box.messages.empty()) {
+    auto ret = PollMbx(msg, id);
+    ASSERT(ret == KE_OK);
+    return KE_OK;
+  }
+
+  ASSERT(!box.wait_thread);  // don't know how to deal with this, hopefully doesn't come up.
+
+  box.wait_thread = _currentThread;
+  _currentThread->state = IopThread::State::Wait;
+  _currentThread->waitType = IopThread::Wait::Messagebox;
+  leaveThread();
+
+  return KE_OK;
+}
+
+s32 IOP_Kernel::SendMbx(s32 mbx, void* value) {
+  ASSERT(mbx < (s32)mbxs.size());
+  auto& box = mbxs[mbx];
+  box.messages.push(value);
+  auto* to_run = box.wait_thread;
+
+  if (to_run) {
+    box.wait_thread = nullptr;
+    to_run->waitType = IopThread::Wait::None;
+    to_run->state = IopThread::State::Ready;
+  }
+  return 0;
 }
 
 s32 IOP_Kernel::SignalSema(s32 id) {

@@ -23,7 +23,7 @@ enum class EIsoStatus {
  */
 struct CBaseFile {
   CBaseFile();
-  CBaseFile(ISOFileDef* file, int semaphore);
+  CBaseFile(const ISOFileDef* file, int semaphore);
 
   uint8_t* CheckPageBoundary();
   int InitBuffer(CBuffer::BufferType type, ISO_Hdr* msg);
@@ -38,7 +38,7 @@ struct CBaseFile {
   u32 m_nNumPages;
 
   // Metadata about the file
-  ISOFileDef* m_FileDef;
+  const ISOFileDef* m_FileDef;
 
   // The compression format used on the file
   enum class Kind {

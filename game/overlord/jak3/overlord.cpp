@@ -22,13 +22,11 @@ bool g_bOverlordInitialized = false;
 int g_nServerThreadID = 0;
 int g_nPlayerThreadID = 0;
 int g_nLoaderThreadID = 0;
-int g_nISOThreadID = 0;
 
 void jak3_overlord_init_globals_overlord() {
   g_nServerThreadID = 0;
   g_nPlayerThreadID = 0;
   g_nLoaderThreadID = 0;
-  g_nISOThreadID = 0;
 }
 
 namespace {
@@ -61,7 +59,7 @@ int start_overlord() {
   ThreadParam thread_param;
   thread_param.initPriority = 0x3b;
   thread_param.stackSize = 0x800;
-  thread_param.entry = Thread_LoadToEE;
+  thread_param.entry = LoadToEE_RPC_Thread;
   thread_param.attr = TH_C;
   thread_param.option = 0;
   strcpy(thread_param.name, "load_to_ee");

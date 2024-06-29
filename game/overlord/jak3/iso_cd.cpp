@@ -6,6 +6,7 @@
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
 
+#include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/isocommon.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/spustreams.h"
@@ -14,13 +15,14 @@
 using namespace iop;
 
 namespace jak3 {
+VagDir g_VagDir;
+MusicTweaks gMusicTweakInfo;
 
 namespace {
-constexpr int kMaxOpenFiles = 16;
 CISOCDFile* g_pReadInfo = nullptr;
 CISOCDFile g_CISOCDFiles[kMaxOpenFiles];
 std::vector<ISOFileDef> g_FileDefs;
-std::vector<VagDirEntry> g_VagDir;
+std::unique_ptr<CISOCDFileSystem> g_ISOCDFileSystem;
 }  // namespace
 
 void jak3_overlord_init_globals_iso_cd() {
@@ -29,7 +31,13 @@ void jak3_overlord_init_globals_iso_cd() {
     f = CISOCDFile();
   }
   g_FileDefs.clear();
-  g_VagDir.clear();
+  g_VagDir = {};
+  g_ISOCDFileSystem = std::make_unique<CISOCDFileSystem>();
+  gMusicTweakInfo = {};
+}
+
+CBaseFileSystem* get_file_system() {
+  return g_ISOCDFileSystem.get();
 }
 
 CISOCDFile::CISOCDFile() {
@@ -44,7 +52,8 @@ void ReadPagesCallbackF(CISOCDFile* file, Block* block, s32 error) {
 }
 }  // namespace
 
-CISOCDFile::CISOCDFile(jak3::ISOFileDef* filedef, s32 process_data_semaphore) {
+CISOCDFile::CISOCDFile(const jak3::ISOFileDef* filedef, s32 process_data_semaphore)
+    : CBaseFile(filedef, process_data_semaphore) {
   m_nSector = -1;
   m_nLoaded = 0;
   m_nLength = 0;
@@ -310,7 +319,10 @@ void CISOCDFile::ReadPagesCallback(jak3::Block* block, int error) {
 
 // DecompressBlock - not ported
 
-void CISOCDFileSystem::Init() {
+/*!
+ * Initialize the file system - find all files and set up their definitions.
+ */
+int CISOCDFileSystem::Init() {
   // drive ready event flag - not ported
   // get disc type - not ported
 
@@ -326,16 +338,23 @@ void CISOCDFileSystem::Init() {
   for (auto& f : g_CISOCDFiles) {
     f.m_FileDef = nullptr;
   }
+  return 0;
 }
 
 // PollDrive - not ported
 
+/*!
+ * Find a file definition by name.
+ */
 ISOFileDef* CISOCDFileSystem::Find(const char* name) {
   ISOName iname;
   file_util::MakeISOName(iname.data, name);
   return FindIN(&iname);
 }
 
+/*!
+ * Find a file definition by its "ISO Name", a 12-byte name.
+ */
 ISOFileDef* CISOCDFileSystem::FindIN(const jak3::ISOName* name) {
   for (auto& def : g_FileDefs) {
     if (def.name == *name) {
@@ -345,10 +364,16 @@ ISOFileDef* CISOCDFileSystem::FindIN(const jak3::ISOName* name) {
   return nullptr;
 }
 
+/*!
+ * Get the length of a file, in bytes.
+ */
 int CISOCDFileSystem::GetLength(const jak3::ISOFileDef* file) {
   return file->length;
 }
 
+/*!
+ * Open a file for reading.
+ */
 CBaseFile* CISOCDFileSystem::Open(const jak3::ISOFileDef* file_def,
                                   int file_kind,
                                   int sector_offset) {
@@ -376,6 +401,9 @@ CBaseFile* CISOCDFileSystem::Open(const jak3::ISOFileDef* file_def,
   return file;
 }
 
+/*!
+ * Open a WAD file for reading, given the offset of the data to read, in pages.
+ */
 CBaseFile* CISOCDFileSystem::OpenWAD(const jak3::ISOFileDef* file_def, int page_offset) {
   auto* file = AllocateFile(file_def);
   ASSERT(file);
@@ -389,6 +417,87 @@ CBaseFile* CISOCDFileSystem::OpenWAD(const jak3::ISOFileDef* file_def, int page_
   return file;
 }
 
-// TODO FindVAGFIle
+/*!
+ * Locate the entry for a VAG file in the VAG directory.
+ */
+VagDirEntry* CISOCDFileSystem::FindVAGFile(const char* name) {
+  u32 packed_name[2];
+  PackVAGFileName(packed_name, name);
+  for (int i = 0; i < g_VagDir.num_entries; i++) {
+    auto& entry = g_VagDir.entries[i];
+    if (packed_name[0] == entry.words[0] && packed_name[1] == (entry.words[1] & 0x3ff)) {
+      return &entry;
+    }
+  }
+  return nullptr;
+}
+
+/*!
+ * Get a CISOCDFile* for a newly opened file.
+ */
+CISOCDFile* CISOCDFileSystem::AllocateFile(const jak3::ISOFileDef* file_def) {
+  for (int i = 0; i < kMaxOpenFiles; i++) {
+    auto* file = &g_CISOCDFiles[i];
+    if (!file->m_FileDef) {
+      *file = CISOCDFile(file_def, m_Sema[i]);
+      return file;
+    }
+  }
+  ASSERT_NOT_REACHED();
+}
+
+/*!
+ * Callback from the DVD driver itself into the filesystem. This was originally used for notifying
+ * when the tray is opened or closed.
+ */
+void CISOCDFileSystem::DvdDriverCallback(int a) {
+  // the only callbacks that do anything are tray open/close, which we don't care about
+  ASSERT_NOT_REACHED();
+}
+
+// CheckDiscID - not ported
+// LoadDiscID - not ported
+// ReadSectorsNow - not ported
+
+/*!
+ * Find all the files on the disc and set up their information. This is modified for the PC port to
+ * just search for files in the appropriate out folder.
+ */
+void CISOCDFileSystem::ReadDirectory() {
+  for (const auto& f :
+       fs::directory_iterator(file_util::get_jak_project_dir() / "out" / "jak3" / "iso")) {
+    if (f.is_regular_file()) {
+      auto& e = g_FileDefs.emplace_back();
+      std::string file_name = f.path().filename().string();
+      ASSERT(file_name.length() < 16);  // should be 8.3.
+      MakeISOName(&e.name, file_name.c_str());
+      e.full_path =
+          fmt::format("{}/out/jak3/iso/{}", file_util::get_jak_project_dir().string(), file_name);
+    }
+  }
+}
+
+/*!
+ * Load the "Music Tweaks" file, which contains a volume setting per music track.
+ */
+void CISOCDFileSystem::LoadMusicTweaks() {
+  ISOName tweakname;
+  MakeISOName(&tweakname, "TWEAKVAL.MUS");
+  auto file = g_ISOCDFileSystem->FindIN(&tweakname);
+  if (file) {
+    auto fp = file_util::open_file(file->full_path, "rb");
+    ASSERT(fp);
+    ASSERT(file->length <= sizeof(gMusicTweakInfo));
+    auto ret = fread(&gMusicTweakInfo, file->length, 1, fp);
+    ASSERT(ret == 1);
+    fclose(fp);
+  } else {
+    gMusicTweakInfo.TweakCount = 0;
+    ASSERT_NOT_REACHED();
+  }
+}
+
+// Crc32 - not ported
+// ReadU32 - not ported
 
 }  // namespace jak3

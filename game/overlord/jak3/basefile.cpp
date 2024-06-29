@@ -36,7 +36,7 @@ CBaseFile::CBaseFile() {
  * Construct a CBaseFile for a given file, but keep it in the "idle" state, with no buffer
  * allocated.
  */
-CBaseFile::CBaseFile(jak3::ISOFileDef* file, int semaphore) {
+CBaseFile::CBaseFile(const jak3::ISOFileDef* file, int semaphore) {
   m_Buffer.m_pCurrentData = nullptr;
   m_Buffer.m_nMaxNumPages = kDefaultBufferPageCount;
   m_Buffer.m_nDataLength = 0;
