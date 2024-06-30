@@ -44,7 +44,7 @@ struct CISOCDFileSystem : public CBaseFileSystem {
   ISOFileDef* Find(const char* name) override;
   ISOFileDef* FindIN(const ISOName* name) override;
   int GetLength(const ISOFileDef* file) override;
-  CBaseFile* Open(const ISOFileDef* file_def, int file_kind, int sector_offset) override;
+  CBaseFile* Open(const ISOFileDef* file_def, int sector_offset, int file_kind) override;
   CBaseFile* OpenWAD(const ISOFileDef* file_def, int page_offset) override;
   VagDirEntry* FindVAGFile(const char* name) override;
 

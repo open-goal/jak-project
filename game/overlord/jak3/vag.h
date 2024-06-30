@@ -4,6 +4,9 @@
 namespace jak3 {
 void jak3_overlord_init_globals_vag();
 
+extern bool g_bExtPause;
+extern bool g_bExtResume;
+
 struct ISO_VAGCommand : ISO_Hdr {
   ISOFileDef* vag_file_def = nullptr;        // 44
   VagDirEntry* vag_dir_entry = nullptr;      // 48
@@ -61,25 +64,45 @@ struct ISO_VAGCommand : ISO_Hdr {
     u8 clocks_set = 0;  // 221, set by SetVagClock if it succeeds.
 
     u8 file_disappeared = 0;  // 222, set if SetVagClock notices that bBaseFile is gone!
+    u8 scanned = 0;           // 223, set shortly after internal command is created.
+
+    u8 stop = 0;  // 225, set if this is a non-plugin stream, and was stopped by StopVagStream.
+    u8 art = 0;   // 226, set if this has art_flag set
 
     // set if we are the non-main stereo command.
-    u8 stereo_secondary = 0; // 227
+    u8 stereo_secondary = 0;  // 227
 
     // set if SPU DMA has completed for an even or odd number of chunks of non-stereo audio.
     u8 dma_complete_even_chunk_count = 0;  // 234
     u8 dma_complete_odd_chunk_count = 0;   // 235
+
+    u8 movie = 0;  //
 
   } flags;
 
   int play_volume = 0;  // 284
   int id = 0;           // 288
   int plugin_id = 0;    // 292
-
-  int art_flag = 0;    // 300
-  int music_flag = 0;  // 304
+  int priority_pq = 0;  // 296
+  int art_flag = 0;     // 300
+  int music_flag = 0;   // 304
 
   int movie_flag = 0;  // 340
 };
+
+struct VagStreamData {
+  VagStreamData* next = nullptr;
+  VagStreamData* prev = nullptr;
+  char name[0x30];
+  int id;
+  int plugin_id;
+  int sound_handler;
+  int art_load;
+  int movie_art_load;
+  int priority;
+};
+
+extern ISO_VAGCommand g_aVagCmds[6];
 
 int CalculateVAGPitch(int a, int b);
 void BlockUntilVoiceSafe(int, int);
@@ -89,4 +112,20 @@ void UnPauseVAG(ISO_VAGCommand* cmd);
 ISO_VAGCommand* FindMusicStreamName(const char* name);
 ISO_VAGCommand* SmartAllocMusicVagCommand(const ISO_VAGCommand* user_command, int flag);
 void InitVAGCmd(ISO_VAGCommand* cmd, int flag);
+int HowManyBelowThisPriority(int pri);
+ISO_VAGCommand* FindThisVagStream(const char* name, int id);
+ISO_VAGCommand* SmartAllocVagCmd(ISO_VAGCommand* user_command);
+void RemoveVagCmd(ISO_VAGCommand* cmd);
+void SetNewVagCmdPri(ISO_VAGCommand* cmd, int pri);
+void TerminateVAG(ISO_VAGCommand* cmd);
+ISO_VAGCommand* FindThisMusicStream(const char* name, int id);
+ISO_VAGCommand* FindVagStreamName(const char* name);
+int AnyVagRunning();
+void PauseVAG(ISO_VAGCommand* cmd);
+void InitVagCmds();
+void PauseVagStreams(int);
+void UnPauseVagStreams(int);
+void SetVagStreamsNoStart(int);
+ISO_VAGCommand* FindVagStreamId(int);
+void SetVAGVol(ISO_VAGCommand* cmd);
 }  // namespace jak3

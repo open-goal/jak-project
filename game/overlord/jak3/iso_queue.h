@@ -7,4 +7,7 @@ struct ISO_VAGCommand;
 void ReleaseMessage(ISO_Hdr* msg);
 void FreeVagCmd(ISO_VAGCommand* msg);
 int QueueMessage(ISO_Hdr* msg, int);
+int UnqueueMessage(ISO_Hdr* msg);
+int ReturnMessage(ISO_Hdr* msg);
+void InitBuffers();
 }  // namespace jak3

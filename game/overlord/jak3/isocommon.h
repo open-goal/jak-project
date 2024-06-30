@@ -20,21 +20,51 @@ struct ISO_Hdr {
   int8_t active_c;
   int8_t pad;
 
-  enum class MsgType {
+  enum class MsgType : u32 {
     MSG_0 = 0,
-    MSG_0x100 = 0x100,
-    MSG_0x101 = 0x101,
-    MSG_0x102 = 0x102,
-    MSG_0x103 = 0x103,
+    LOAD_EE = 0x100,
+    LOAD_IOP = 0x101,
+    LOAD_EE_CHUNK = 0x102,
+    LOAD_SOUNDBANK = 0x103,
+    DGO_LOAD = 0x200,
+    VAG_PAUSE = 0x403,
+    VAG_UNPAUSE = 0x404,
+    VAG_SET_PITCH_VOL = 0x406,
+    ABADBABE = 0xabadbabe,
+    ADEADBEE = 0xadeadbee,
   } msg_type = MsgType::MSG_0;
 
   int mbox_reply;
   int thread_to_wake;
 
-  void (*callback)(ISO_Hdr*) = nullptr;
+  u32 (*callback)(ISO_Hdr*) = nullptr;
   CBaseFile* m_pBaseFile = nullptr;
   int unkc;
   ISOFileDef* file_def = nullptr;
+};
+
+struct ISO_LoadCommon : public ISO_Hdr {
+  u8* addr = 0;      // 44
+  int maxlen = 0;
+  int length_to_copy = 0;    // 52
+  u8* dest_ptr = 0;  // 68 (not truly common??) what are they doing here.
+  int progress_bytes = 0;    // 72
+};
+
+struct ISO_LoadSingle : public ISO_LoadCommon {
+  // addr
+  // maxlen
+  // maybe size
+  int sector_offset = 0;  // 56
+  // 60
+  // 64
+  // dest_ptr
+  // maybe ofset
+};
+
+struct ISO_LoadSoundbank : public ISO_LoadCommon {
+  const char* name = nullptr;  // 60
+  int priority;                // 64
 };
 
 struct CPage;

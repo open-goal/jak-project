@@ -375,8 +375,8 @@ int CISOCDFileSystem::GetLength(const jak3::ISOFileDef* file) {
  * Open a file for reading.
  */
 CBaseFile* CISOCDFileSystem::Open(const jak3::ISOFileDef* file_def,
-                                  int file_kind,
-                                  int sector_offset) {
+                                  int sector_offset,
+                                  int file_kind) {
   auto* file = AllocateFile(file_def);
   ASSERT(file);
 

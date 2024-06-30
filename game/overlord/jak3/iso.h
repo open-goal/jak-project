@@ -10,6 +10,7 @@ const ISOFileDef* FindISOFile(const char*);
 struct ISO_VAGCommand;
 
 struct ISO_DGOCommand : public ISO_Hdr {
+  int state = 0;                      // 204
   int selected_id = 0;                // 220
   int last_id = 0;                    // 224
   int acked_cancel_id = 0;            // 228
@@ -24,10 +25,15 @@ struct ISO_DGOCommand : public ISO_Hdr {
   int sync_mbox_wait_count = 0;  // 248
 };
 
-void set_active_a(ISO_VAGCommand* cmd, int val);
-void set_active_b(ISO_VAGCommand* cmd, int val);
-void set_active_c(ISO_VAGCommand* cmd, int val);
+void set_active_a(ISO_Hdr* cmd, int val);
+void set_active_b(ISO_Hdr* cmd, int val);
+void set_active_c(ISO_Hdr* cmd, int val);
 void IsoStopVagStream(ISO_VAGCommand* cmd);
+u32 NullCallback(ISO_Hdr* msg);
+u32 CopyDataToIOP(ISO_Hdr* msg);
+u32 CopyDataSbkLoad(ISO_Hdr* msg);
+u32 CopyDataToEE(ISO_Hdr* msg);
+u32 RunDGOStateMachine(ISO_Hdr* msg);
 
 
 extern int g_nISOThreadID;
