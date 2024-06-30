@@ -4,15 +4,20 @@
 
 #include "common/util/Assert.h"
 
+#include "game/overlord/jak3/dma.h"
 #include "game/overlord/jak3/iso_api.h"
 #include "game/overlord/jak3/iso_cd.h"
 #include "game/overlord/jak3/iso_queue.h"
 #include "game/overlord/jak3/overlord.h"
+#include "game/overlord/jak3/rpc_interface.h"
 #include "game/overlord/jak3/spustreams.h"
 #include "game/overlord/jak3/srpc.h"
+#include "game/overlord/jak3/ssound.h"
 #include "game/overlord/jak3/stream.h"
+#include "game/overlord/jak3/streamlist.h"
 #include "game/overlord/jak3/vag.h"
 #include "game/sce/iop.h"
+#include "game/sound/sndshim.h"
 
 using namespace iop;
 
@@ -37,7 +42,10 @@ char g_szCurrentMusicName[0x30];
 char g_szTargetMusicName[0x30];
 int g_nActiveMusicStreams = 0;
 bool g_bVagCmdsInitialized = false;
+u32 time_of_last_unknown_rate_drive_op = 0;
 ISO_DGOCommand sLoadDGO;
+RPC_Dgo_Cmd sRPCBuff[1];
+constexpr int kRpcBuffSize = sizeof(RPC_Dgo_Cmd);
 
 void jak3_overlord_init_globals_iso() {
   g_nISOInitFlag = 0;
@@ -60,6 +68,8 @@ void jak3_overlord_init_globals_iso() {
   sLoadDGO = {};
   g_nActiveMusicStreams = 0;
   g_bVagCmdsInitialized = false;
+  time_of_last_unknown_rate_drive_op = 0;
+  sRPCBuff[0] = {};
 }
 
 /*!
@@ -216,6 +226,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
   ISO_VAGCommand* stereo_internal_cmd = nullptr;
 
   if (!internal_cmd) {
+    ovrld_log(LogCategory::VAG_SETUP, "IsoPlayMusicStream({}), creating new command", name);
     // no existing command, so allocate one.
     internal_cmd = SmartAllocMusicVagCommand(user_cmd, 0);
 
@@ -258,7 +269,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
     internal_cmd->callback = user_cmd->callback;
 
     internal_cmd->m_pBaseFile = user_cmd->m_pBaseFile;
-    internal_cmd->unkc = user_cmd->unkc;
+    internal_cmd->priority = user_cmd->priority;
     internal_cmd->file_def = user_cmd->file_def;
 
     // copy part of the command set by the user
@@ -371,7 +382,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
       }
 
       internal_cmd->callback = ProcessVAGData;
-      internal_cmd->status = 2;
+      internal_cmd->status = EIsoStatus::OK_2;
       internal_cmd->flags.paused = 0;
 
       if (stereo_internal_cmd) {
@@ -381,7 +392,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
       if (stereo_internal_cmd) {
         stereo_internal_cmd->flags.running = 1;
       }
-      internal_cmd->status = 2;
+      internal_cmd->status = EIsoStatus::OK_2;
       set_active_a(internal_cmd, 1);
       set_active_b(internal_cmd, 1);
 
@@ -415,6 +426,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
   // mysterious case to reject a command
   if (user_cmd->vag_dir_entry && (user_cmd->vag_dir_entry->words[1] & 0x400U) != 0 &&
       HowManyBelowThisPriority(user_cmd->priority_pq) < 2) {
+    ovrld_log(LogCategory::WARN, "mysterious rejection of a queued vag stream");
     return;
   }
 
@@ -428,6 +440,8 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
       return;
     }
 
+    ovrld_log(LogCategory::VAG_SETUP, "IsoQueueVagStream allocating for {} {}", user_cmd->name,
+              user_cmd->id);
     // clear active flags
     set_active_a(internal_cmd, 0);
     set_active_b(internal_cmd, 0);
@@ -458,7 +472,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
     internal_cmd->callback = user_cmd->callback;
 
     internal_cmd->m_pBaseFile = user_cmd->m_pBaseFile;
-    internal_cmd->unkc = user_cmd->unkc;
+    internal_cmd->priority = user_cmd->priority;
     internal_cmd->file_def = user_cmd->file_def;
 
     internal_cmd->vag_file_def = user_cmd->vag_file_def;
@@ -573,7 +587,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
       if (internal_stereo_cmd) {
         SetVagStreamName(internal_stereo_cmd, 0x30);
       }
-      internal_cmd->status = 2;
+      internal_cmd->status = EIsoStatus::OK_2;
       internal_cmd->callback = ProcessVAGData;
     }
     if (!internal_cmd) {
@@ -605,6 +619,7 @@ void IsoPlayVagStream(ISO_VAGCommand* user_cmd) {
           stereo_cmd->flags.paused = 0;
         }
       } else {
+        ovrld_log(LogCategory::VAG_SETUP, "IsoPlayVagStream is unpausing {}", internal_cmd->name);
         UnPauseVAG(internal_cmd);
       }
       if (user_cmd->priority_pq < 3) {
@@ -636,6 +651,8 @@ void IsoStopVagStream(ISO_VAGCommand* cmd) {
 
       // terminate all with this name.
       while (internal_cmd = FindMusicStreamName(cmd->name), internal_cmd) {
+        ovrld_log(LogCategory::VAG_SETUP, "IsoStopVagStream is terminating {} (1)",
+                  internal_cmd->name);
         TerminateVAG(internal_cmd);
       }
       return;
@@ -646,6 +663,7 @@ void IsoStopVagStream(ISO_VAGCommand* cmd) {
     if (!internal_cmd) {
       return;
     }
+    ovrld_log(LogCategory::VAG_SETUP, "IsoStopVagStream is terminating {} (2)", internal_cmd->name);
     TerminateVAG(internal_cmd);
     return;
   }
@@ -660,6 +678,8 @@ void IsoStopVagStream(ISO_VAGCommand* cmd) {
     }
     while (internal_cmd = FindVagStreamName(cmd->name), internal_cmd) {
       flag = true;
+      ovrld_log(LogCategory::VAG_SETUP, "IsoStopVagStream is terminating {} (3)",
+                internal_cmd->name);
       TerminateVAG(internal_cmd);
     }
 
@@ -671,6 +691,7 @@ void IsoStopVagStream(ISO_VAGCommand* cmd) {
     if (!internal_cmd) {
       return;
     }
+    ovrld_log(LogCategory::VAG_SETUP, "IsoStopVagStream is terminating {} (4)", internal_cmd->name);
     TerminateVAG(internal_cmd);
   }
 
@@ -751,6 +772,7 @@ void ProcessMusic() {
       vsd.art_load = 0;
       vsd.movie_art_load = 0;
       vsd.sound_handler = 0;
+      ovrld_log(LogCategory::VAG_SETUP, "ProcessMusic is changing the music to {}", vsd.name);
       PlayMusicStream(&vsd);
     }
   }
@@ -764,9 +786,9 @@ u32 ISOThread() {
   g_szTargetMusicName[0] = 0;
   g_bMusicIsPaused = false;
 
-  pCVar12 = (CISOCDFile*)0x0;
+  // file = (CISOCDFile*)0x0;
   InitBuffers();
-  bVar1 = false;
+  // bVar1 = false;
   InitVagCmds();
   g_bVagCmdsInitialized = true;
   InitDriver();
@@ -783,6 +805,8 @@ u32 ISOThread() {
   int sector_offset = 0;
 
   while (true) {
+    // Part 1: Handle incoming messages from the user:
+
     int poll_result = PollMbx((MsgPacket**)&mbx_cmd, g_nISOMbx);
     if (poll_result == KE_OK) {
       if (mbx_cmd->msg_type == ISO_Hdr::MsgType::ABADBABE) {
@@ -798,6 +822,9 @@ u32 ISOThread() {
         mbx_cmd->callback = NullCallback;
         mbx_cmd->m_pBaseFile = nullptr;
         auto msg_kind = mbx_cmd->msg_type;
+
+        ovrld_log(LogCategory::ISO_QUEUE, "Incoming message to the ISO Queue: 0x{:x}",
+                  (int)msg_kind);
 
         // if we're a simple file loading command:
         if (msg_kind == ISO_Hdr::MsgType::LOAD_EE || msg_kind == ISO_Hdr::MsgType::LOAD_EE_CHUNK ||
@@ -819,21 +846,30 @@ u32 ISOThread() {
             }
           }
 
-          if (QueueMessage(mbx_cmd, priority) == 0)
+          if (QueueMessage(mbx_cmd, priority) == 0) {
+            ovrld_log(LogCategory::WARN, "Failed to queue incoming iso message");
             goto LAB_00006b18;
+          }
 
           // iVar3 = (cmd->header).kind;
           // handle opening the file:
           switch (msg_kind) {
             case ISO_Hdr::MsgType::LOAD_EE_CHUNK: {
+              ovrld_log(LogCategory::ISO_QUEUE, "Opening File {} for EE Chunk Load offset {}",
+                        mbx_cmd->file_def->name.data, ((ISO_LoadSingle*)mbx_cmd)->sector_offset);
               mbx_cmd->m_pBaseFile = get_file_system()->Open(
                   mbx_cmd->file_def, ((ISO_LoadSingle*)mbx_cmd)->sector_offset, 1);
             } break;
             case ISO_Hdr::MsgType::LOAD_IOP:
             case ISO_Hdr::MsgType::LOAD_EE:
+              ovrld_log(LogCategory::ISO_QUEUE, "Opening File {} for Load {}",
+                        msg_kind == ISO_Hdr::MsgType::LOAD_EE ? "EE" : "IOP",
+                        mbx_cmd->file_def->name.data);
               mbx_cmd->m_pBaseFile = get_file_system()->Open(mbx_cmd->file_def, -1, 1);
               break;
             case ISO_Hdr::MsgType::LOAD_SOUNDBANK: {
+              ovrld_log(LogCategory::ISO_QUEUE, "Opening for LOAD_SOUNDBANK {} ",
+                        load_sbk_cmd->name);
               // build name
               ASSERT(load_sbk_cmd->name);
               strncpy(local_name, load_sbk_cmd->name, 0xc);
@@ -850,7 +886,7 @@ u32 ISOThread() {
           // if we failed to open, bail
           if (!mbx_cmd->m_pBaseFile) {
             ASSERT_NOT_REACHED();
-            mbx_cmd->status = 8;
+            mbx_cmd->status = EIsoStatus::ERROR_OPENING_FILE_8;
             UnqueueMessage(mbx_cmd);
             ReturnMessage(mbx_cmd);
             // this goes somewhere else...
@@ -887,18 +923,20 @@ u32 ISOThread() {
               ASSERT_NOT_REACHED();
           }
 
-          mbx_cmd->status = 2;
+          mbx_cmd->status = EIsoStatus::OK_2;
           set_active_a(mbx_cmd, 1);
         } else {
           switch (msg_kind) {
             case ISO_Hdr::MsgType::DGO_LOAD:
               if (QueueMessage(mbx_cmd, 1) != 0) {
                 // modified for non compressed dgos
+                ovrld_log(LogCategory::ISO_QUEUE, "Opening {} for DGO Load",
+                          mbx_cmd->file_def->name.data);
                 mbx_cmd->m_pBaseFile = get_file_system()->Open(mbx_cmd->file_def, -1, 1);
                 if (mbx_cmd->m_pBaseFile) {
                   mbx_cmd->callback = RunDGOStateMachine;
-                  mbx_cmd->status = 2;
-                  ((ISO_DGOCommand*)mbx_cmd)->state = 0;
+                  mbx_cmd->status = EIsoStatus::OK_2;
+                  ((ISO_DGOCommand*)mbx_cmd)->state = ISO_DGOCommand::State::INIT;
                   set_active_a(mbx_cmd, 1);
                 } else {
                   ASSERT_NOT_REACHED();
@@ -908,6 +946,7 @@ u32 ISOThread() {
               }
               break;
             case ISO_Hdr::MsgType::VAG_PAUSE:
+              ovrld_log(LogCategory::ISO_QUEUE, "VagPause (all of them)");
               if (g_bExtPause == 0) {
                 SetVagStreamsNoStart(1);
                 int iVar3 = AnyVagRunning();
@@ -920,6 +959,7 @@ u32 ISOThread() {
               ReturnMessage(mbx_cmd);
               break;
             case ISO_Hdr::MsgType::VAG_UNPAUSE:
+              ovrld_log(LogCategory::ISO_QUEUE, "VagUnPause (all of them)");
               if (g_bExtPause != 0) {
                 if (g_bExtResume != false) {
                   UnPauseVagStreams(0);
@@ -931,9 +971,12 @@ u32 ISOThread() {
               ReturnMessage(mbx_cmd);
               break;
             case ISO_Hdr::MsgType::VAG_SET_PITCH_VOL:
+              ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL (id {})", vag_cmd->id);
               vag_cmd = (ISO_VAGCommand*)mbx_cmd;
               internal_vag_cmd = FindVagStreamId(vag_cmd->id);
               if (internal_vag_cmd) {
+                ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL lookup ok, got {}",
+                          internal_vag_cmd->name);
                 internal_vag_cmd->pitch_cmd = vag_cmd->pitch_cmd;
                 SetVAGVol(internal_vag_cmd);
               }
@@ -951,120 +994,767 @@ u32 ISOThread() {
       }
     } else {
       if (poll_result == -0x1a9) {
+        // messagebox was deleted - this means we're shutting down
         return 0;
       }
       if (poll_result != -0x1a8) {
+        // unknown messagebox error
         ASSERT_NOT_REACHED();
       }
     }
   LAB_00006b18:
-    uVar11 = 0;
+    // Part 2: music update
     // Poll is called here... but we don't use it.
     // (**(code**)(*g_pFileSystem + 4))();
     ProcessMusic();
-    cmd = (ISO_VAGCommand*)FUN_00008054();
-    if (cmd != (ISO_VAGCommand*)0x0) {
-      pCVar12 = (cmd->header).pBaseFile;
-      if ((pCVar12 == (CISOCDFile*)0x0) ||
-          (bVar1 = (pCVar12->base).m_Buffer.m_eBufferType != 0, uVar11 = (uint)bVar1, !bVar1)) {
-        uVar11 = CBaseFile_InitBuffer((CBaseFile*)(cmd->header).pBaseFile,
-                                      4 - (uint)((code*)(cmd->header).callback != ProcessVAGData),
-                                      (ISO_Msg*)cmd);
+
+    // Part 3: service in-progress messages
+    // get the top priority message
+    bool buffer_ok = false;
+    auto* cmd = GetMessage();
+    CBaseFile* file = nullptr;
+    bool known_read_rate = false;
+
+    if (cmd) {
+      // handle the buffering
+      ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - allocating buffer\n",
+                (int)cmd->msg_type);
+
+      // check if we need to initialize a buffer, or if we just need to realloc pages
+      file = cmd->m_pBaseFile;
+      bool needs_buffer_init = false;
+      if (!file) {
+        needs_buffer_init = true;
+        // we'd need to set buffer_ok = false later on if this is the case,
+        // but I dont think this can happen.
+        ASSERT_NOT_REACHED();
       } else {
-        CBaseFile_AllocPages((CBaseFile*)pCVar12);
-      }
-      pCVar12 = (CISOCDFile*)0x0;
-      if (uVar11 == 0) {
-        cmd = (ISO_VAGCommand*)0x0;
-        bVar1 = false;
-      } else {
-        pCVar12 = (cmd->header).pBaseFile;
-        bVar1 = false;
-        if ((pCVar12 != (CISOCDFile*)0x0) && ((pCVar12->base).m_ReadRate != 0)) {
-          bVar1 = true;
+        if (file->m_Buffer.m_eBufferType == CBuffer::BufferType::EBT_FREE) {
+          needs_buffer_init = true;
         }
-        iVar3 = (**(code**)(pCVar12->base).vtable)(pCVar12);
-        (cmd->header).status = iVar3;
-        if (iVar3 != 2) {
-          pCVar12 = (cmd->header).pBaseFile;
-          uVar11 = 0;
-          if (pCVar12 != (CISOCDFile*)0x0) {
-            CBaseFile_TerminateBuffer((CBaseFile*)pCVar12);
+      }
+
+      // set up buffer
+      if (needs_buffer_init) {
+        buffer_ok =
+            file->InitBuffer(cmd->callback == ProcessVAGData ? CBuffer::BufferType::REQUEST_VAG
+                                                             : CBuffer::BufferType::REQUEST_NORMAL,
+                             cmd);
+      } else {
+        file->AllocPages();
+        buffer_ok = true;
+      }
+
+      file = nullptr;
+      if (buffer_ok == 0) {
+        cmd = nullptr;
+        known_read_rate = false;
+      } else {
+        file = cmd->m_pBaseFile;
+        known_read_rate = false;
+        if (file && file->m_ReadRate) {
+          known_read_rate = true;
+        }
+        // iVar3 = (**(code**)(file->base).vtable)(file);
+        ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - starting read!\n",
+                  (int)cmd->msg_type);
+
+        cmd->status = file->BeginRead();
+        if (cmd->status != EIsoStatus::OK_2) {
+          buffer_ok = false;
+          if (cmd->m_pBaseFile) {
+            cmd->m_pBaseFile->TerminateBuffer();
           }
-          cmd = (ISO_VAGCommand*)0x0;
-          pCVar12 = (CISOCDFile*)0x0;
+          cmd = nullptr;
+          file = nullptr;
         }
-        if (!bVar1) {
-          _DAT_0001bb80 = GetSystemTimeLow();
+        if (!known_read_rate) {
+          time_of_last_unknown_rate_drive_op = GetSystemTimeLow();
         }
       }
     }
-    iVar3 = ProcessMessageData(cmd);
-    if (iVar3 == 0) {
-      cmd = (ISO_VAGCommand*)0x0;
+
+    ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - handling message data\n",
+              (int)cmd->msg_type);
+
+    if (ProcessMessageData(cmd) == 0) {
+      cmd = nullptr;
     }
-    if ((uVar11 != 0) && (cmd != (ISO_VAGCommand*)0x0)) {
-      iVar3 = 0xb;
-      if (pCVar12 != (CISOCDFile*)0x0) {
-        iVar3 = (**(code**)((int)(pCVar12->base).vtable + 4))(pCVar12);
+
+    if (buffer_ok && cmd) {
+      EIsoStatus status = EIsoStatus::ERROR_b;
+      if (file) {
+        status = file->SyncRead();
       }
-      if (!bVar1) {
-        _DAT_0001bb80 = GetSystemTimeLow();
+      if (!known_read_rate) {
+        time_of_last_unknown_rate_drive_op = GetSystemTimeLow();
       }
-      if (iVar3 == 0xb) {
-        pCVar6 = (cmd->header).pBaseFile;
-        if ((pCVar6 != (CISOCDFile*)0x0) && ((pCVar6->base).m_Status != 0)) {
-          (cmd->header).status = 2;
+      if (status == EIsoStatus::ERROR_b) {
+        if (cmd->m_pBaseFile && cmd->m_pBaseFile->m_Status != EIsoStatus::NONE_0) {
+          cmd->m_pBaseFile->m_Status = EIsoStatus::OK_2;
         }
       } else {
-        (cmd->header).status = iVar3;
-        if ((cmd->header).active_c == 0) {
+        cmd->m_pBaseFile->m_Status = status;
+        if (!cmd->active_c) {
           set_active_c(cmd, 1);
         }
       }
     }
+
     WaitSema(g_RequestedStreamsList.sema);
-    if (g_RequestedStreamsList.field_0x18 == 1) {
-      iVar3 = 3;
+    if (g_RequestedStreamsList.pending_data == 1) {
       QueueNewStreamsFromList(&g_RequestedStreamsList);
-      pVVar10 = g_NewStreamsList.next;
-      do {
-        iVar3 = iVar3 + -1;
-        if (pVVar10->id != 0) {
-          QueueVAGStream(pVVar10);
+      auto* vag_info = g_NewStreamsList.next;
+      for (int i = 0; i < 4; i++) {
+        if (vag_info->id) {
+          ovrld_log(LogCategory::ISO_QUEUE, "ISO Queue: Streams list, new queue: {}\n",
+                    vag_info->name);
+          QueueVAGStream(vag_info);
         }
-        pVVar10 = pVVar10->next;
-      } while (-1 < iVar3);
-    }
-    cmd = g_aVagCmds;
-    iVar3 = 3;
-    do {
-      iVar3 = iVar3 + -1;
-      if ((((cmd->music_flag == 0) && (cmd->bit_stereo_secondary == 0)) &&
-           (cmd->bit_scanned == 0)) &&
-          (cmd->id != 0)) {
-        IsoStopVagStream(cmd);
+        vag_info = vag_info->next;
       }
-      cmd = cmd + 1;
-    } while (-1 < iVar3);
-    cmd = g_aVagCmds + 4;
-    iVar3 = 1;
+    }
+
+    for (int i = 0; i < 4; i++) {
+      ISO_VAGCommand* vc = &g_aVagCmds[i];
+      if (!vc->music_flag && !vc->flags.stereo_secondary && !vc->flags.scanned && vc->id) {
+        ovrld_log(LogCategory::ISO_QUEUE, "ISO Queue: pausing {}\n", vc->name);
+        IsoStopVagStream(vc);
+      }
+    }
+
     SignalSema(g_RequestedStreamsList.sema);
-    g_RequestedStreamsList.field_0x18 = 0;
-    do {
-      iVar3 = iVar3 + -1;
-      if (((cmd->music_flag != 0) && (cmd->bit_stereo_secondary == 0)) &&
-          ((cmd->id != 0 && (cmd->bit_stop != 0)))) {
-        IsoStopVagStream(cmd);
+    g_RequestedStreamsList.pending_data = 0;
+
+    for (int i = 4; i < 6; i++) {
+      ISO_VAGCommand* vc = &g_aVagCmds[i];
+      if (vc->music_flag && !vc->flags.stereo_secondary && vc->flags.stop && vc->id) {
+        ovrld_log(LogCategory::ISO_QUEUE, "ISO Queue: pausing music {}\n", vc->name);
+        IsoStopVagStream(vc);
       }
-      cmd = cmd + 1;
-    } while (-1 < iVar3);
-    uVar7 = 4000;
-    if (uVar11 != 0) {
-      uVar7 = 200;
     }
-    DelayThread(uVar7);
+
+    if (buffer_ok) {
+      DelayThread(4000);
+    } else {
+      DelayThread(200);
+    }
   }
+}
+
+/*!
+ * This function runs the state machine for the double-buffered DGO loading system.
+ * There are a few tricks here:
+ * - Each DGO file contains a number of objects.
+ * - The object loading is double buffered - this state machine toggles between loading to two
+ *   different buffers. While one buffer is being written, the GOAL linker is processing the other.
+ * - The final object is not double buffered. Instead, it is loaded directly to the top of the heap.
+ * - New! for jak 2, there is an option to not use the double buffering.
+ * - New! for jak 3, there is a very complicated load cancel system
+ */
+EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
+  auto* cmd = (ISO_DGOCommand*)m;
+
+  int send_count, receive_count;
+
+  CBaseFile* file = cmd->m_pBaseFile;
+  EIsoStatus ret_status = EIsoStatus::OK_2;
+  if (!file) {
+    return EIsoStatus::OK_2;
+  }
+  ASSERT(file->m_Buffer.m_pPageList);
+
+  // handle page boundary crossings - after this call, our CBuffer will be set up properly for
+  // processing.
+  file->CheckPageBoundary();
+  CBuffer* buffer = &file->m_Buffer;
+
+  int buffer_len = (file->m_Buffer).m_nDataLength;
+  ASSERT(buffer_len >= 0);
+
+  if (cmd->state == ISO_DGOCommand::State::INIT) {
+    // these counters are used for debugging the DGO sync stuff.
+    cmd->sync_mbox_wait_count = 1;
+    cmd->sync_ret_count = 0;
+  }
+  // CpuSuspendIntr(local_30);
+
+  // process this DGO as normal, unless we've been asked to cancel this.
+  if (cmd->nosync_cancel_pending_flag == 0 || cmd->selected_id != cmd->request_cancel_id) {
+    // CpuResumeIntr();
+    if (buffer_len == 0) {
+      // nothing we can do with no data...
+      goto out_of_data;
+    }
+    do {
+      switch (cmd->state) {
+        case ISO_DGOCommand::State::INIT:
+          ovrld_log(LogCategory::DGO, "DGO: Starting state machine");
+          cmd->state = ISO_DGOCommand::State::READ_DGO_HEADER;
+          cmd->bytes_processed = 0;
+          cmd->finished_first_object = 0;
+          cmd->want_abort = 0;
+          break;
+        case ISO_DGOCommand::State::READ_DGO_HEADER: {
+          // here, we work on reading the DGO file's header into our command.
+          // first, compute how many bytes we want to read right now, as the max of
+          // the remaining header size, and what's buffered
+          int bytes_needed = sizeof(DgoHeader) - cmd->bytes_processed;
+          if (buffer_len < bytes_needed) {
+            bytes_needed = buffer_len;
+          }
+
+          // loop over pages - the header may span multiple pages that aren't adjacent in memory.
+          while (bytes_needed) {
+            // determine how many bytes to copy from this page
+            int bytes_from_this_page = buffer->m_pPageList->m_pCurrentActivePage->m_pPageMemEnd -
+                                       file->m_Buffer.m_pCurrentData + 1;
+            if (bytes_needed <= bytes_from_this_page) {
+              bytes_from_this_page = bytes_needed;
+            }
+            ovrld_log(LogCategory::DGO, "DGO: reading {} bytes of dgo header",
+                      bytes_from_this_page);
+            // copy data from buffer into command
+            memcpy(((u8*)&cmd->dgo_header) + cmd->bytes_processed, file->m_Buffer.m_pCurrentData,
+                   bytes_from_this_page);
+
+            // advance buffer and page
+            buffer->AdvanceCurrentData(bytes_from_this_page);
+            file->CheckPageBoundary();
+
+            // advance progress
+            cmd->bytes_processed = bytes_from_this_page + cmd->bytes_processed;
+            buffer_len = buffer_len - bytes_from_this_page;
+            bytes_needed = bytes_needed - bytes_from_this_page;
+          }
+
+          // check if we got the whole header
+          if (cmd->bytes_processed == sizeof(DgoHeader)) {
+            ovrld_log(LogCategory::DGO, "DGO: got dgo header: {} with {} objects",
+                      cmd->dgo_header.name, cmd->dgo_header.object_count);
+            cmd->bytes_processed = 0;
+            cmd->objects_loaded = 0;
+            if (cmd->dgo_header.object_count == 1) {
+              // if we have only 1 object, go directly to loading to the top buffer
+              cmd->ee_dest_buffer = cmd->buffer_top;
+              cmd->state = ISO_DGOCommand::State::READ_OBJ_HEADER;
+              cmd->buffer_toggle = 0;
+            } else {
+              // otherwise, start with buffer!
+              cmd->buffer_toggle = 1;
+              cmd->ee_dest_buffer = cmd->buffer1;
+            LAB_000073cc:
+              cmd->state = ISO_DGOCommand::State::READ_OBJ_HEADER;
+            }
+          }
+        } break;
+        case ISO_DGOCommand::State::FINISH_OBJ:
+
+          // sync with EE - if we're loading double-buffered, wait on the EE
+          // note that we don't wait on the first object, since both buffers start empty,
+          // and we can safely fill both with no syncs.
+          // the order of synchronization is a little bit strange. The EE must tell us that it's
+          // finished processing buffer A before we tell the EE the location of buffer B.
+          // This is needed to get the sync right for the last object - we want the EE to run
+          // through all the buffers, then we load the final object, then we notify it. If the EE
+          // wouldn't tell us it was done until it got the next object, we'd be unable to do this.
+          if (cmd->finished_first_object != 0 && cmd->buffer1 != cmd->buffer2) {
+            if (LookSyncMbx() == 0)
+              goto exit_no_sync;
+
+            ovrld_log(LogCategory::DGO,
+                      "DGO: finished object (2buffer), and got sync message from EE or cancel");
+            // iVar3 = 6;
+            if (cmd->want_abort != 0) {
+              ovrld_log(LogCategory::DGO, "DGO: cancel!! (1)");
+              cmd->state = ISO_DGOCommand::State::FINISH_DGO;
+              break;
+            }
+          }
+
+          // for double buffer, notify the EE that we've finished loading.
+          if (cmd->buffer1 != cmd->buffer2) {
+            cmd->status = EIsoStatus::OK_2;
+            cmd->selected_buffer = cmd->buffer_toggle != 1 ? cmd->buffer2 : cmd->buffer1;
+            ovrld_log(LogCategory::DGO,
+                      "DGO: finished object (2buffer) - notifying EE of location");
+            ReturnMessage(cmd);
+            sLoadDGO.sync_ret_count = sLoadDGO.sync_ret_count + 1;
+          }
+
+          // for single buffer, sync with EE so we know the next location to load.
+          // note that we've already returned the message for the single buffer case
+          if ((cmd->buffer1 == cmd->buffer2) &&
+              (cmd->objects_loaded + 1 < cmd->dgo_header.object_count)) {
+            if (LookSyncMbx() == 0)
+              goto exit_no_sync;
+            ovrld_log(LogCategory::DGO,
+                      "DGO: finished object (1buffer), and got sync message from EE or cancel");
+            if (cmd->want_abort != 0) {
+              ovrld_log(LogCategory::DGO, "DGO: cancel!! (2)");
+              cmd->state = ISO_DGOCommand::State::FINISH_DGO;
+              break;
+            }
+          }
+          cmd->finished_first_object = 1;
+          if (cmd->buffer_toggle == 1) {
+            cmd->ee_dest_buffer = cmd->buffer2;
+            cmd->buffer_toggle = 2;
+          } else {
+            cmd->buffer_toggle = 1;
+            cmd->ee_dest_buffer = cmd->buffer1;
+          }
+
+          if (cmd->objects_loaded + 1 == (int)cmd->dgo_header.object_count) {
+            cmd->state = ISO_DGOCommand::State::READ_LAST_OBJ;
+          } else {
+            cmd->state = ISO_DGOCommand::State::READ_OBJ_HEADER;
+          }
+          //        LAB_000073f8:
+          //          cmd->state = iVar3;
+          break;
+        case ISO_DGOCommand::State::READ_LAST_OBJ:
+          // do an extra sync here to wait for the EE to finish processing both temporary buffers.
+          // the next load will be to the heap top, which may overlap the temp buffers.
+          if (LookSyncMbx() == 0)
+            goto exit_no_sync;
+          ovrld_log(LogCategory::DGO,
+                    "DGO: got final object sync message - can start running that now");
+          if (cmd->want_abort != 0) {
+            cmd->state = ISO_DGOCommand::State::FINISH_DGO;
+            ovrld_log(LogCategory::DGO, "DGO: cancel!! (3)");
+          } else {
+            cmd->ee_dest_buffer = cmd->buffer_top;
+            cmd->state = ISO_DGOCommand::State::READ_OBJ_HEADER;
+            cmd->buffer_toggle = 0;
+          }
+
+          break;
+        case ISO_DGOCommand::State::READ_OBJ_HEADER: {
+          int bytes_needed = sizeof(ObjectHeader) - cmd->bytes_processed;
+          if (buffer_len < bytes_needed) {
+            bytes_needed = buffer_len;
+          }
+          while (bytes_needed) {
+            int bytes_from_this_page = buffer->m_pPageList->m_pCurrentActivePage->m_pPageMemEnd -
+                                       file->m_Buffer.m_pCurrentData + 1;
+            if (bytes_needed <= bytes_from_this_page) {
+              bytes_from_this_page = bytes_needed;
+            }
+            ovrld_log(LogCategory::DGO, "DGO: reading {} bytes of object header",
+                      bytes_from_this_page);
+            memcpy(((u8*)&cmd->obj_header) + cmd->bytes_processed, (file->m_Buffer).m_pCurrentData,
+                   bytes_from_this_page);
+            buffer->AdvanceCurrentData(bytes_from_this_page);
+            file->CheckPageBoundary();
+            cmd->bytes_processed = bytes_from_this_page + cmd->bytes_processed;
+            buffer_len = buffer_len - bytes_from_this_page;
+            bytes_needed = bytes_needed - bytes_from_this_page;
+          }
+          if (cmd->bytes_processed == sizeof(ObjectHeader)) {
+            ovrld_log(LogCategory::DGO, "DGO: got object header {} {}", cmd->obj_header.name,
+                      cmd->obj_header.size);
+            cmd->obj_header.size = (cmd->obj_header.size + 0xf) & 0xfffffff0;
+            DMA_SendToEE(cmd->ee_dest_buffer, &cmd->obj_header, sizeof(ObjectHeader), nullptr,
+                         nullptr);
+            cmd->ee_dest_buffer = cmd->ee_dest_buffer + sizeof(ObjectHeader);
+            cmd->state = ISO_DGOCommand::State::READ_OBJ_DATA;
+          LAB_00007260:
+            cmd->bytes_processed = 0;
+          }
+        } break;
+        case ISO_DGOCommand::State::READ_OBJ_DATA: {
+          int bytes_needed = cmd->obj_header.size - cmd->bytes_processed;
+          if (buffer_len < bytes_needed) {
+            bytes_needed = buffer_len;
+          }
+
+          while (bytes_needed) {
+            auto* page = buffer->m_pPageList->m_pCurrentActivePage;
+            int bytes_from_this_page = page->m_pPageMemEnd - file->m_Buffer.m_pCurrentData + 1;
+            if (bytes_needed <= bytes_from_this_page) {
+              bytes_from_this_page = bytes_needed;
+            }
+            int ret = page->AddDmaRef();
+            ASSERT(ret >= 0);
+
+            DMA_SendToEE(cmd->ee_dest_buffer, (file->m_Buffer).m_pCurrentData,
+                         (uint)bytes_from_this_page, CopyDataDmaCallback, page);
+            buffer->AdvanceCurrentData(bytes_from_this_page);
+            file->CheckPageBoundary();
+            cmd->ee_dest_buffer = bytes_from_this_page + cmd->ee_dest_buffer;
+            cmd->bytes_processed = bytes_from_this_page + cmd->bytes_processed;
+            buffer_len = buffer_len - bytes_from_this_page;
+            bytes_needed = bytes_needed - bytes_from_this_page;
+
+            if (!file->m_Buffer.m_pCurrentData) {
+              buffer_len = 0;
+              break;
+            }
+          }
+
+          if (cmd->bytes_processed == (int)cmd->obj_header.size) {
+            cmd->objects_loaded = cmd->objects_loaded + 1;
+            if (cmd->objects_loaded < (int)cmd->dgo_header.object_count) {
+              if (cmd->buffer1 == cmd->buffer2) {
+                cmd->state = ISO_DGOCommand::State::FINISH_OBJ_SINGLE_BUFFER;
+              } else {
+                cmd->state = ISO_DGOCommand::State::FINISH_OBJ;
+              }
+              cmd->bytes_processed = 0;
+            } else {
+              ret_status = EIsoStatus::NONE_0;
+              cmd->state = ISO_DGOCommand::State::FINISH_OBJ;
+            }
+          }
+        } break;
+        case ISO_DGOCommand::State::FINISH_DGO:
+          ret_status = EIsoStatus::NONE_0;
+          file->m_Buffer.m_pCurrentData = nullptr;
+          file->m_Buffer.m_pCurrentPageStart = nullptr;
+          goto out_of_data;
+        case ISO_DGOCommand::State::FINISH_OBJ_SINGLE_BUFFER:
+          cmd->status = EIsoStatus::OK_2;
+          if (cmd->buffer_toggle == 1) {
+            cmd->selected_buffer = cmd->buffer1;
+          } else {
+            cmd->selected_buffer = cmd->buffer2;
+          }
+          ReturnMessage((ISO_VAGCommand*)cmd);
+          sLoadDGO.sync_ret_count = sLoadDGO.sync_ret_count + 1;
+          cmd->state = ISO_DGOCommand::State::FINISH_OBJ;
+      }
+    } while (buffer_len);
+  exit_no_sync:
+    if (ret_status != EIsoStatus::NONE_0)
+      goto LAB_0000743c;
+  } else {
+    cmd->nosync_cancel_ack = 1;
+    cmd->nosync_cancel_pending_flag = 0;
+    cmd->acked_cancel_id = cmd->request_cancel_id;
+    send_count = sLoadDGO.sync_sent_count - sLoadDGO.sync_mbox_wait_count;
+    receive_count = sLoadDGO.sync_ret_count - sLoadDGO.sync_mbox_wait_count;
+    // CpuResumeIntr(local_30[0]);
+    if (0 < send_count) {
+      receive_count = receive_count + -1;
+      WaitMbx(g_nSyncMbx);
+      sLoadDGO.sync_mbox_wait_count = sLoadDGO.sync_mbox_wait_count + 1;
+    }
+    ret_status = EIsoStatus::IDLE_1;
+    if (-1 < receive_count) {
+    LAB_0000743c:
+      if (buffer_len) {
+        file->m_Buffer.m_nDataLength = buffer_len;
+        return ret_status;
+      }
+      goto out_of_data;
+    }
+    ret_status = EIsoStatus::NONE_0;
+  }
+  (file->m_Buffer).m_pCurrentData = nullptr;
+  (file->m_Buffer).m_pCurrentPageStart = nullptr;
+out_of_data:
+  (file->m_Buffer).m_nDataLength = 0;
+  return ret_status;
+}
+
+u32 DGOThread() {
+  sceSifQueueData dq;
+  sceSifServeData serve;
+
+  // setup RPC.
+  CpuDisableIntr();
+  sceSifInitRpc(0);
+  sceSifSetRpcQueue(&dq, GetThreadId());
+  sceSifRegisterRpc(&serve, RpcId::DGO, RPC_DGO, sRPCBuff, kRpcBuffSize, nullptr, nullptr, &dq);
+  CpuEnableIntr();
+  sceSifRpcLoop(&dq);
+  return 0;
+}
+
+void* RPC_DGO(unsigned int fno, void* msg_ptr, int) {
+  RPC_Dgo_Cmd* cmd = (RPC_Dgo_Cmd*)msg_ptr;
+  switch (fno) {
+    case DgoFno::LOAD:
+      LoadDGO(cmd);
+      break;
+    case DgoFno::LOAD_NEXT:
+      LoadNextDGO(cmd);
+      break;
+    case DgoFno::CANCEL:
+      CancelDGO(cmd);
+      break;
+    default:
+      cmd->status = 1;
+      ASSERT_NOT_REACHED();
+  }
+  return msg_ptr;
+}
+
+void* foo = 0;
+
+/*!
+ * Send a sync message to unblock the DGO thread when doing an async cancel.
+ */
+bool NotifyDGO() {
+  // CpuSuspendIntr(local_10);
+  bool pending_cancel = sLoadDGO.nosync_cancel_ack == 0;
+  if (pending_cancel) {
+    sLoadDGO.sync_sent_count = sLoadDGO.sync_sent_count + 1;
+  }
+  // CpuResumeIntr(local_10[0]);
+  if (pending_cancel) {
+    SendMbx(g_nSyncMbx, &foo);
+  }
+  return pending_cancel;
+}
+
+void LoadDGO(RPC_Dgo_Cmd* cmd) {
+  ISOFileDef* file = get_file_system()->Find(cmd->name);
+
+  if (!file) {
+    ovrld_log(LogCategory::WARN, "DGO RPC: LoadDGO {} file not found\n", cmd->name);
+    cmd->status = 1;
+    return;
+  }
+  if (sLoadDGO.last_id < cmd->cgo_id) {
+    ovrld_log(LogCategory::RPC, "DGO RPC: new command ID, starting a load for {}\n", cmd->name);
+    CancelDGO(nullptr);
+    sLoadDGO.msg_type = ISO_Hdr::MsgType::DGO_LOAD;
+    sLoadDGO.selected_id = cmd->cgo_id;
+    sLoadDGO.mbox_reply = g_nDGOMbx;
+    sLoadDGO.thread_to_wake = 0;
+    sLoadDGO.buffer1 = (u8*)(u64)cmd->buffer1;
+    sLoadDGO.buffer2 = (u8*)(u64)cmd->buffer2;
+    sLoadDGO.buffer_top = (u8*)(u64)cmd->buffer_heap_top;
+    sLoadDGO.file_def = file;
+    // CpuSuspendIntr(local_18);
+    if (0 < cmd->cgo_id - sLoadDGO.last_id) {
+      sLoadDGO.last_id = cmd->cgo_id;
+    }
+    sLoadDGO.sync_sent_count = 1;
+    sLoadDGO.nosync_cancel_ack = 0;
+    // CpuResumeIntr(local_18[0]);
+    SendMbx(g_nISOMbx, &sLoadDGO);
+    WaitMbx(g_nDGOMbx);
+    if (sLoadDGO.status == EIsoStatus::OK_2) {
+      cmd->status = 2;
+      return;
+    }
+    if (sLoadDGO.status != EIsoStatus::NONE_0) {
+      cmd->status = 1;
+      sLoadDGO.msg_type = ISO_Hdr::MsgType::MSG_0;
+      sLoadDGO.selected_id = -1;
+      return;
+    }
+  } else {
+    ovrld_log(LogCategory::WARN, "DGO RPC: old command ID seen for {}, ignoring\n", cmd->name);
+  }
+  cmd->buffer1 = cmd->buffer_heap_top;
+  cmd->status = 0;
+  sLoadDGO.msg_type = ISO_Hdr::MsgType::MSG_0;
+  sLoadDGO.selected_id = -1;
+}
+
+void LoadNextDGO(RPC_Dgo_Cmd* cmd) {
+  if (sLoadDGO.msg_type == ISO_Hdr::MsgType::MSG_0) {
+    ovrld_log(LogCategory::WARN, "DGO RPC: LoadNextDGO {} load not running! Ignoring\n", cmd->name);
+    cmd->status = 1;
+    return;
+  }
+
+  sLoadDGO.buffer_top = (u8*)(u64)cmd->buffer_heap_top;
+  sLoadDGO.buffer1 = (u8*)(u64)cmd->buffer1;
+  sLoadDGO.buffer2 = (u8*)(u64)cmd->buffer2;
+  bool unblocked = NotifyDGO();  // tell dgo state machine to run
+  int status = 3;
+  if (unblocked != 0) {
+    WaitMbx(g_nDGOMbx);  // wait for it to finish, and return to EE
+    if (sLoadDGO.status == EIsoStatus::OK_2) {
+      cmd->status = 2;
+      cmd->buffer1 = (u32)(u64)sLoadDGO.selected_buffer;
+      return;
+    }
+    status = 11;
+    if (sLoadDGO.status == EIsoStatus::NONE_0) {
+      cmd->status = 0;
+      cmd->buffer1 = cmd->buffer_heap_top;
+      sLoadDGO.msg_type = ISO_Hdr::MsgType::MSG_0;
+      sLoadDGO.selected_id = -1;
+      return;
+    }
+  } else {
+    ovrld_log(LogCategory::WARN, "DGO RPC: LoadNextDGO {} already cancelled! Ignoring\n",
+              cmd->name);
+  }
+  cmd->status = status;
+  sLoadDGO.msg_type = ISO_Hdr::MsgType::MSG_0;
+  sLoadDGO.selected_id = -1;
+}
+
+void CancelDGO(RPC_Dgo_Cmd* param_1) {
+  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGO {}\n", param_1->name);
+  if (sLoadDGO.msg_type != ISO_Hdr::MsgType::MSG_0) {
+    sLoadDGO.want_abort = 1;
+    if (NotifyDGO()) {
+      WaitMbx(g_nDGOMbx);
+    }
+    if (param_1) {
+      param_1->status = 3;
+    }
+    sLoadDGO.selected_id = -1;
+    sLoadDGO.msg_type = ISO_Hdr::MsgType::MSG_0;
+  }
+}
+
+void CancelDGONoSync(int id) {
+  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGONoSync {}\n", id);
+  // CpuSuspendIntr(local_10);
+  sLoadDGO.nosync_cancel_pending_flag = 1;
+  if (0 < id - sLoadDGO.last_id) {
+    sLoadDGO.last_id = id;
+  }
+  sLoadDGO.request_cancel_id = id;
+  // CpuResumeIntr(local_10[0]);
+}
+
+EIsoStatus CopyDataToEE(ISO_Hdr* msg) {
+  return CopyData((ISO_LoadSingle*)msg, CopyKind::EE);
+}
+
+EIsoStatus CopyDataToIOP(ISO_Hdr* msg) {
+  return CopyData((ISO_LoadSingle*)msg, CopyKind::IOP);
+}
+
+EIsoStatus CopyDataSbkLoad(ISO_Hdr* msg) {
+  return CopyData((ISO_LoadSingle*)msg, CopyKind::SBK);
+}
+
+void CopyDataDmaCallback(void* in) {
+  ((CPage*)in)->ReleaseDmaRef();
+}
+
+EIsoStatus CopyData(ISO_LoadCommon* cmd, CopyKind kind) {
+  ASSERT(cmd);
+  auto* file = cmd->m_pBaseFile;
+  if (file == (CISOCDFile*)0x0) {
+    return EIsoStatus::ERROR_NO_FILE;
+  }
+
+  EIsoStatus status = EIsoStatus::OK_2;
+  if (file->m_Buffer.m_eBufferType != CBuffer::BufferType::NORMAL) {
+    CBuffer* buffer = &file->m_Buffer;
+    CPage* page = nullptr;
+    if (buffer->m_pPageList && buffer->m_nDataLength) {
+      if (file->CheckPageBoundary()) {
+        page = file->m_Buffer.m_pPageList->m_pCurrentActivePage;
+      }
+      if (page && cmd->progress_bytes < cmd->length_to_copy) {
+        int len;
+        do {
+          // length we want
+          len = cmd->length_to_copy - cmd->progress_bytes;
+
+          // trim to buffered
+          if (buffer->m_nDataLength < len) {
+            len = buffer->m_nDataLength;
+          }
+
+          // trim to page
+          if (page->m_pPageMemEnd - buffer->m_pCurrentData + 1 < len) {
+            len = page->m_pPageMemEnd - buffer->m_pCurrentData + 1;
+          }
+
+          if (0 < len) {
+            switch (kind) {
+              case CopyKind::IOP: {
+                if (page->AddRef() < 1) {
+                  ASSERT_NOT_REACHED();
+                }
+                memcpy(cmd->dest_ptr, buffer->m_pCurrentData, len);
+                if (page->ReleaseRef() < 0)
+                  ASSERT_NOT_REACHED();
+              } break;
+              case CopyKind::EE: {
+                if (page->AddDmaRef() < 1) {
+                  ASSERT_NOT_REACHED();
+                }
+                DMA_SendToEE(cmd->dest_ptr, buffer->m_pCurrentData, (uint)len, CopyDataDmaCallback,
+                             page);
+              } break;
+              case CopyKind::SBK: {
+                WaitSema(g_n989Semaphore);
+                if (g_bSoundEnable == 0) {
+                  SignalSema(g_n989Semaphore);
+                  return EIsoStatus::ERROR_NO_SOUND;
+                }
+                if (page->AddRef() < 1) {
+                  ASSERT_NOT_REACHED();
+                  SignalSema(g_n989Semaphore);
+                  return EIsoStatus::OK_2;
+                }
+                auto* bank_info = ((ISO_LoadSoundbank*)cmd)->bank_info;
+
+                // hack: added
+                if (cmd->progress_bytes == 0) {
+                  snd_BankLoadFromIOPPartialEx_Start();
+                }
+                snd_BankLoadFromIOPPartialEx(buffer->m_pCurrentData, len, bank_info->m_nSpuMemLoc,
+                                             bank_info->m_nSpuMemSize);
+                if (cmd->progress_bytes + len == cmd->length_to_copy) {
+                  snd_BankLoadFromIOPPartialEx_Completion();
+                  snd_ResolveBankXREFS();
+                  // TODO: this also set field_0x28... is that needed??
+                }
+
+                if (page->ReleaseRef() < 0) {
+                  ASSERT_NOT_REACHED();
+                }
+                SignalSema(g_n989Semaphore);
+              } break;
+              default:
+                ASSERT_NOT_REACHED();
+            }
+
+            cmd->dest_ptr = cmd->dest_ptr + len;
+            cmd->progress_bytes = len + cmd->progress_bytes;
+            buffer->AdvanceCurrentData(len);
+            if (!file->CheckPageBoundary())
+              break;
+            page = buffer->m_pPageList->m_pCurrentActivePage;
+          }
+
+          if (!page || len < 1)
+            break;
+        } while (true);
+      }
+    }
+    if ((uint)cmd->progress_bytes < (uint)cmd->length_to_copy) {
+      return status;
+    }
+    buffer->m_pPageList->CancelActivePages();
+    if (status != EIsoStatus::OK_2) {
+      return status;
+    }
+    return EIsoStatus::NONE_0;
+  }
+  return EIsoStatus::ERROR_NO_FILE;
+}
+
+EIsoStatus NullCallback(ISO_Hdr*) {
+  return EIsoStatus::NULL_CALLBACK;
+}
+
+void set_active_a(ISO_Hdr* cmd, int val) {
+  cmd->active_a = val;
+}
+
+void set_active_b(ISO_Hdr* cmd, int val) {
+  cmd->active_b = val;
+}
+
+void set_active_c(ISO_Hdr* cmd, int val) {
+  cmd->active_c = val;
 }
 
 }  // namespace jak3

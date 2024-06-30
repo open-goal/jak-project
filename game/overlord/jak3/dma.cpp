@@ -4,6 +4,7 @@
 #include "common/util/Assert.h"
 
 #include "game/overlord/jak3/basefile.h"
+#include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/vag.h"
 #include "game/sce/iop.h"
 #include "game/sound/sdshim.h"
@@ -102,13 +103,17 @@ u32 read_rate_calc(u32 pitch) {
  * The worst function of all time - the SPU DMA completion interrupt.
  */
 int SPUDmaIntr(int channel, void* userdata) {
+  ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr enter!");
+
   if (!g_bSpuDmaBusy) {
     // we got an interrupt, but weren't expecting it, or no longer have the need for the data.
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr exit - not busy");
     return 0;
   }
 
   if (channel != g_nSpuDmaChannel) {
     // interrupt was for the wrong channel, somehow.
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr exit - not our channel (??)");
     return 0;
   }
 
@@ -151,6 +156,7 @@ int SPUDmaIntr(int channel, void* userdata) {
         g_pDmaStereoVagCmd->dma_iop_mem_ptr = nullptr;
 
         // start next transfer
+        ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr starting stereo sibling transfer");
         voice_trans_wrapper(chan, 0, iop_addr, spu_addr, size);
         return 0;
       }
@@ -167,6 +173,8 @@ int SPUDmaIntr(int channel, void* userdata) {
 
     // if this is the first chunk, we'll start the actual audio here:
     lg::warn("----------> interrupt with chunks {}\n", g_nSpuDmaChunks);
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr chunks count {}", g_nSpuDmaChunks);
+
     if (g_nSpuDmaChunks == 0) {
       // compute pitch/playback rate
       int pitch = CalculateVAGPitch(g_pDmaVagCmd->pitch1, g_pDmaVagCmd->pitch_cmd);
@@ -234,9 +242,11 @@ int SPUDmaIntr(int channel, void* userdata) {
 
       // do key-on or key-off
       if (g_pDmaVagCmd->flags.paused) {
+        ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr chunks 0, key off");
         BlockUntilAllVoicesSafe();
         sceSdSetSwitch(SD_S_KOFF | (g_pDmaVagCmd->voice & 1), voice_mask);
       } else {
+        ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr chunks 0, key on");
         BlockUntilAllVoicesSafe();
         sceSdSetSwitch(SD_S_KON | (g_pDmaVagCmd->voice & 1), voice_mask);
       }
@@ -255,6 +265,7 @@ int SPUDmaIntr(int channel, void* userdata) {
       }
 
       if (g_pDmaVagCmd->flags.paused) {
+        ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr chunks 1, pausing");
         u32 voice_mask = 0;
         if (!g_pDmaStereoVagCmd) {
           // pause by setting pitches to 0
@@ -278,6 +289,7 @@ int SPUDmaIntr(int channel, void* userdata) {
           MarkVoiceKeyedOnOff(g_pDmaStereoVagCmd->voice, sys_time);
         }
       } else {
+        ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr chunks 1, unpausing by call to UnPauseVAG");
         g_pDmaVagCmd->flags.paused = 1;
         UnPauseVAG(g_pDmaVagCmd);
       }
@@ -291,6 +303,7 @@ int SPUDmaIntr(int channel, void* userdata) {
     // and forget it!
     g_pDmaVagCmd = nullptr;
     g_pDmaStereoVagCmd = nullptr;
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr dma handling of VAG cmd is complete");
   }
 
   // release ref on this page. (interestingly, not a dma ref...)
@@ -303,12 +316,16 @@ int SPUDmaIntr(int channel, void* userdata) {
   // now - see if we have another queued dma transfer
   ASSERT(g_nSpuDmaQueueCount >= 0);
   if (g_nSpuDmaQueueCount == 0) {
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr dma queue is empty, disabling interrupt");
     // we're done!
     sceSdSetTransIntrHandler(channel, nullptr, nullptr);
     //  if (-1 < channel) {
     //    snd_FreeSPUDMA(channel);
     //  }
   } else {
+    ovrld_log(LogCategory::SPU_DMA_STR,
+              "SPUDmaIntr dma queue is not empty, preparing to run {} ({} pending)",
+              g_nSpuDmaQueueHead, g_nSpuDmaQueueCount);
     // nope, more dma to run
     auto* next_xfer = &g_aSpuDmaQueue[g_nSpuDmaQueueHead];
 
@@ -340,6 +357,8 @@ int SPUDmaIntr(int channel, void* userdata) {
     // start the next one!
     voice_trans_wrapper(next_chan, next_mode, next_iop, next_spu, next_length);
   }
+
+  ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr exit - end of function");
 }
 
 /*!
@@ -364,6 +383,7 @@ void DMA_SendToEE(void* ee_dest,
   cmd.size = length;
 
   // instant DMA
+  ovrld_log(LogCategory::EE_DMA, "DMA_SendToEE: 0x{:x}, size {}", (u64)ee_dest, length);
   sceSifSetDma(&cmd, 1);
 
   // for now, we'll do the callback here, but I bet it will cause problems
@@ -389,6 +409,9 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   bool defer = false;
   ASSERT(cmd);
 
+  ovrld_log(LogCategory::SPU_DMA_STR,
+            "DMA to SPU requested for {}, {} bytes to 0x{:x}, currently busy? {}", cmd->name,
+            length, spu_addr, g_bSpuDmaBusy);
   if (g_bSpuDmaBusy == 0) {
     // not busy, we can actually start dma now.
     g_nSpuDmaChannel = snd_GetFreeSPUDMA();
@@ -444,6 +467,7 @@ void RunDeferredVoiceTrans() {
   // only if there's a currently happening transfer.
   if (g_voiceTransRunning) {
     if (GetSystemTimeLow() - g_voiceTransTime > 0x384000) {
+      ovrld_log(LogCategory::WARN, "DeferredVoiceTrans has detected hung dma... expect problems.");
       // original game also check sceSdVoiceTransStatus here, we'll possibly need to mess with this
       // if we delay dma completion interrupts...
       g_voiceTransRunning = false;

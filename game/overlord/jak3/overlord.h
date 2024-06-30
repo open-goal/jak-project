@@ -1,7 +1,9 @@
 #pragma once
 
-#include "common/common_types.h"
 #include <cstdlib>
+
+#include "common/common_types.h"
+#include "common/log/log.h"
 
 namespace jak3 {
 
@@ -18,5 +20,36 @@ extern int g_nServerThreadID;
 extern int g_nPlayerThreadID;
 extern int g_nLoaderThreadID;
 
+enum class LogCategory {
+  PAGING,
+  FILESYSTEM,
+  WARN,
+  SPU_DMA_STR,
+  EE_DMA,
+  ISO_QUEUE,
+  VAG_SETUP,
+  DGO,
+  RPC,
+  NUM_CATETORIES
+};
+
+constexpr bool g_OverlordLogEnable[(int)LogCategory::NUM_CATETORIES] = {
+    true,  // paging: cpage's, page manager, page crossing, etc
+    true,  // filesystem: opening/finding files
+    true,  // warning: something weird
+    true,  // spu dma streaming: vag streaming, clocks, spu, dma
+    true,  // ee dma: sending stuff to the ee (dgo, etc)
+    true,  // iso queue: message queuing
+    true,  // vag setup: creation of vag commands (lists, etc)
+    true,
+    true,
+};
+
+template <typename... Args>
+void ovrld_log(LogCategory category, const std::string& format, Args&&... args) {
+  if (g_OverlordLogEnable[(int)category]) {
+    lg::info(format, std::forward<Args>(args)...);
+  }
+}
 
 }  // namespace jak3

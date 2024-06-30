@@ -11,10 +11,24 @@ struct CBaseFile;
 
 struct ISOFileDef;
 
+enum class EIsoStatus {
+  NONE_0 = 0,
+  IDLE_1 = 0x1,
+  OK_2 = 0x2,  // already reading, or no need to read, or no mem to read.
+  FAILED_TO_QUEUE_4 = 0x4,
+  ERROR_OPENING_FILE_8 = 0x8,
+  NULL_CALLBACK = 9,
+  ERROR_NO_FILE = 0xa,
+  ERROR_b = 0xb,  // tried to do BeginRead on a file that's not allocated.
+  ERROR_NO_SOUND = 0xc,
+};
+
+struct SoundBankInfo;
+
 struct ISO_Hdr {
   int unka;
   int unkb;
-  int status;
+  EIsoStatus status;
   int8_t active_a;
   int8_t active_b;
   int8_t active_c;
@@ -37,18 +51,18 @@ struct ISO_Hdr {
   int mbox_reply;
   int thread_to_wake;
 
-  u32 (*callback)(ISO_Hdr*) = nullptr;
+  EIsoStatus (*callback)(ISO_Hdr*) = nullptr;
   CBaseFile* m_pBaseFile = nullptr;
-  int unkc;
+  int priority = 0;
   ISOFileDef* file_def = nullptr;
 };
 
 struct ISO_LoadCommon : public ISO_Hdr {
-  u8* addr = 0;      // 44
+  u8* addr = 0;  // 44
   int maxlen = 0;
-  int length_to_copy = 0;    // 52
-  u8* dest_ptr = 0;  // 68 (not truly common??) what are they doing here.
-  int progress_bytes = 0;    // 72
+  int length_to_copy = 0;  // 52
+  u8* dest_ptr = 0;        // 68 (not truly common??) what are they doing here.
+  int progress_bytes = 0;  // 72
 };
 
 struct ISO_LoadSingle : public ISO_LoadCommon {
@@ -65,6 +79,7 @@ struct ISO_LoadSingle : public ISO_LoadCommon {
 struct ISO_LoadSoundbank : public ISO_LoadCommon {
   const char* name = nullptr;  // 60
   int priority;                // 64
+  SoundBankInfo* bank_info = nullptr;
 };
 
 struct CPage;

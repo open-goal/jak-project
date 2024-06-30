@@ -23,6 +23,7 @@ int g_nServerThreadID = 0;
 int g_nPlayerThreadID = 0;
 int g_nLoaderThreadID = 0;
 
+
 void jak3_overlord_init_globals_overlord() {
   g_nServerThreadID = 0;
   g_nPlayerThreadID = 0;

@@ -31,19 +31,3 @@ struct RPC_Dgo_Cmd {
   // a buffer.
   uint8_t pad[32];
 };
-
-namespace jak3 {
-struct RPC_Dgo_Cmd {
-  uint16_t rsvd;
-  uint16_t result;
-  uint32_t buffer1;
-  uint32_t buffer2;
-  uint32_t buffer_heap_top;
-  char name[16];
-  uint16_t cgo_id;
-  uint8_t pad[30];
-};
-static_assert(sizeof(RPC_Dgo_Cmd) == 0x40);
-}  // namespace jak3
-
-static_assert(sizeof(RPC_Dgo_Cmd) == sizeof(jak3::RPC_Dgo_Cmd));

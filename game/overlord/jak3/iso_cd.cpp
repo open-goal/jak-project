@@ -70,15 +70,15 @@ EIsoStatus CISOCDFile::BeginRead() {
   ASSERT(m_Buffer.m_pPageList);
   ASSERT(m_Buffer.m_eBufferType != CBuffer::BufferType::EBT_FREE);
 
-  if (m_Status == CBaseFile::Status::UNUSED) {
-    return EIsoStatus::ERROR;
+  if (m_Status == EIsoStatus::NONE_0) {
+    return EIsoStatus::ERROR_b;
   }
 
-  if (m_Status == CBaseFile::Status::READING) {
-    return EIsoStatus::COMPLETE;
+  if (m_Status == EIsoStatus::OK_2) {
+    return EIsoStatus::OK_2;
   }
 
-  ASSERT(m_Status == CBaseFile::Status::IDLE);
+  ASSERT(m_Status == EIsoStatus::IDLE_1);
 
   auto* plist = m_Buffer.m_pPageList;
 
@@ -87,7 +87,7 @@ EIsoStatus CISOCDFile::BeginRead() {
 
   if (num_pages_desired) {
     // no space to read
-    return EIsoStatus::COMPLETE;
+    return EIsoStatus::OK_2;
   }
 
   // convert pages to active, indicating that a read will attempt to fill them:
@@ -108,7 +108,7 @@ EIsoStatus CISOCDFile::BeginRead() {
       break;
   }
 
-  m_Status = CBaseFile::Status::READING;
+  m_Status = EIsoStatus::OK_2;
 
   // remember this as our currently reading file
   g_pReadInfo = this;
@@ -124,21 +124,21 @@ EIsoStatus CISOCDFile::BeginRead() {
     ASSERT_NOT_REACHED();
   }
 
-  return EIsoStatus::COMPLETE;
+  return EIsoStatus::OK_2;
 }
 
 /*!
  * Called by ?? to indicate that the read is done.
  */
 EIsoStatus CISOCDFile::SyncRead() {
-  if (m_Status != CBaseFile::Status::IDLE && g_pReadInfo) {
-    if (m_Status == CBaseFile::Status::READING) {
-      m_Status = CBaseFile::Status::IDLE;
+  if (m_Status != EIsoStatus::IDLE_1 && g_pReadInfo) {
+    if (m_Status == EIsoStatus::OK_2) {
+      m_Status = EIsoStatus::IDLE_1;
     }
     g_pReadInfo = nullptr;
-    return EIsoStatus::COMPLETE;
+    return EIsoStatus::OK_2;
   }
-  return EIsoStatus::ERROR;
+  return EIsoStatus::ERROR_b;
 }
 
 /*!
@@ -385,8 +385,8 @@ CBaseFile* CISOCDFileSystem::Open(const jak3::ISOFileDef* file_def,
 
   file->m_FileKind = CBaseFile::Kind::NORMAL;
   file->m_nLength = file_def->length;
-  file->m_NumSectors = (0x7fff + file->m_nLength) >> 0xf;
-  if (file->m_NumSectors < 1) {
+  file->m_LengthPages = (0x7fff + file->m_nLength) >> 0xf;
+  if (file->m_LengthPages < 1) {
     ASSERT_NOT_REACHED();
   }
   file->m_nLoaded = 0;
@@ -408,7 +408,7 @@ CBaseFile* CISOCDFileSystem::OpenWAD(const jak3::ISOFileDef* file_def, int page_
   auto* file = AllocateFile(file_def);
   ASSERT(file);
 
-  file->m_NumSectors = 1;  // this is not really true..
+  file->m_LengthPages = 1;  // this is not really true..
   file->m_FileKind = CBaseFile::Kind::NORMAL;
   file->m_PageOffset = 0;
   file->m_nSector = page_offset * 0x10;

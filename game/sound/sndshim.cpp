@@ -220,6 +220,26 @@ snd::BankHandle snd_BankLoadEx(const char* filename,
   }
 }
 
+namespace {
+bool started = false;
+std::vector<u8> sbk_data;
+}  // namespace
+
+void snd_BankLoadFromIOPPartialEx_Start() {
+  started = true;
+  sbk_data.clear();
+}
+
+void snd_BankLoadFromIOPPartialEx(const u8* data, u32 length, u32 spu_mem_loc, u32 spu_mem_size) {
+  sbk_data.insert(sbk_data.end(), data, data + length);
+}
+void snd_BankLoadFromIOPPartialEx_Completion() {
+  ASSERT(started);
+  started = false;
+  player->LoadBank(std::span(sbk_data));
+  sbk_data.clear();
+}
+
 s32 snd_GetVoiceStatus(s32 voice) {
   // hacky thincg to say that voice 0 is uses allocated
   if (voice == 0) {

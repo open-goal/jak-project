@@ -3,6 +3,7 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/pagemanager.h"
 #include "game/overlord/jak3/vag.h"
 
@@ -27,7 +28,7 @@ CBaseFile::CBaseFile() {
   m_FileKind = Kind::UNKNOWN;
   m_Status = Status::UNUSED;
   m_ReadRate = 0;
-  m_NumSectors = 0;
+  m_LengthPages = 0;
   m_PageOffset = 0;
   m_nNumPages = kDefaultBufferPageCount;
 }
@@ -52,7 +53,7 @@ CBaseFile::CBaseFile(const jak3::ISOFileDef* file, int semaphore) {
   m_FileKind = Kind::UNKNOWN;
   m_Status = Status::IDLE;
   m_ReadRate = 0;
-  m_NumSectors = 0;
+  m_LengthPages = 0;
   m_PageOffset = 0;
 }
 
@@ -91,6 +92,8 @@ uint8_t* CBaseFile::CheckPageBoundary() {
         // no more active pages, no data to process
         m_Buffer.m_pCurrentPageStart = nullptr;
         m_Buffer.m_pCurrentData = nullptr;
+        ovrld_log(LogCategory::PAGING, "File {} ran out of pages in CheckPageBoundary",
+                  m_FileDef->name.data);
       } else {
         // this is a little weird, but if we went past the end of the previous page, we actually
         // start at an offset into the next page - perhaps the user could know that pages are
@@ -98,6 +101,8 @@ uint8_t* CBaseFile::CheckPageBoundary() {
         uint8_t* new_page_mem = next_page->m_pPageMemStart;
         m_Buffer.m_pCurrentData = new_page_mem + (end_ptr + 1 - past_boundary_ptr);
         m_Buffer.m_pCurrentPageStart = new_page_mem;
+        ovrld_log(LogCategory::PAGING, "File {} advanced to next page (wrapped {} bytes)",
+                  m_FileDef->name.data, (end_ptr + 1 - past_boundary_ptr));
       }
     }
   }
@@ -132,14 +137,14 @@ int CBaseFile::InitBuffer(CBuffer::BufferType type, jak3::ISO_Hdr* msg) {
 
       // and the iso msg request.
       switch (msg->msg_type) {
-        case ISO_Hdr::MsgType::MSG_0x100:
-        case ISO_Hdr::MsgType::MSG_0x101:
-        case ISO_Hdr::MsgType::MSG_0x102:
+        case ISO_Hdr::MsgType::LOAD_EE:
+        case ISO_Hdr::MsgType::LOAD_IOP:
+        case ISO_Hdr::MsgType::LOAD_EE_CHUNK:
           m_Buffer.m_nMinNumPages = 1;
           m_nNumPages = 4;
           m_Buffer.m_nMaxNumPages = 4;
           break;
-        case ISO_Hdr::MsgType::MSG_0x103:
+        case ISO_Hdr::MsgType::LOAD_SOUNDBANK:
           m_Buffer.m_nMinNumPages = 1;
           m_Buffer.m_nMaxNumPages = 2;
           break;
@@ -161,6 +166,9 @@ int CBaseFile::InitBuffer(CBuffer::BufferType type, jak3::ISO_Hdr* msg) {
       ASSERT_NOT_REACHED();  // bad buffer type
   }
 
+  ovrld_log(LogCategory::PAGING, "File {} initializing buffer ({} pages {} min {} max)",
+            m_FileDef->name.data, m_nNumPages, m_Buffer.m_nMinNumPages, m_Buffer.m_nMaxNumPages);
+
   // Actual allocation of page data
   CPageList* page_list = AllocPages();
   if (page_list) {
@@ -169,6 +177,7 @@ int CBaseFile::InitBuffer(CBuffer::BufferType type, jak3::ISO_Hdr* msg) {
     m_Buffer.m_pCurrentData = m_Buffer.m_pCurrentPageStart;
     return 1;
   } else {
+    ovrld_log(LogCategory::WARN, "File {} failed to allocate a page list.", m_FileDef->name.data);
     // if it failed, terminate the buffer
     TerminateBuffer();
     return 0;
@@ -179,6 +188,8 @@ int CBaseFile::InitBuffer(CBuffer::BufferType type, jak3::ISO_Hdr* msg) {
  * Free page memory, clear event flags for cpages.
  */
 void CBaseFile::TerminateBuffer() {
+  ovrld_log(LogCategory::PAGING, "File {} terminating buffer.", m_FileDef->name.data);
+
   auto buffer_type = m_Buffer.m_eBufferType;
   if (buffer_type != CBuffer::BufferType::EBT_FREE) {
     // clean up our pages
@@ -270,6 +281,8 @@ CPageList* CBaseFile::AllocPages() {
         ASSERT(dma_xfer_size > 0);
         int limit = (dma_xfer_size + 0x7fff) >> 0xf;
         if (page_alloc_count > limit) {
+          ovrld_log(LogCategory::WARN, "File {} wants {} pages, but VAG DMA sizes limit us to ",
+                    m_FileDef->name.data, page_alloc_count, limit);
           lg::info("page count dma limit {} -> {}\n", page_alloc_count, limit);
           page_alloc_count = limit;
         }
@@ -282,6 +295,9 @@ CPageList* CBaseFile::AllocPages() {
   if (page_alloc_count == 0) {
     return ret_plist;
   }
+
+  ovrld_log(LogCategory::PAGING, "File {} wants {} more pages in AllocPages.", m_FileDef->name.data,
+            page_alloc_count);
   if (have_plist) {
     ret_plist = get_page_manager()->GrowPageList(m_Buffer.m_pPageList, page_alloc_count);
   } else {

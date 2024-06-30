@@ -2,6 +2,7 @@
 
 #include "common/common_types.h"
 
+#include "game/overlord/jak3/isocommon.h"
 #include "game/overlord/jak3/pagemanager.h"
 
 namespace jak3 {
@@ -12,11 +13,6 @@ struct ISOFileDef;
 struct ISO_Hdr;
 
 constexpr int kDefaultBufferPageCount = 4;
-
-enum class EIsoStatus {
-  COMPLETE = 0x2, // already reading, or no need to read, or no mem to read.
-  ERROR = 0xb,  // tried to do BeginRead on a file that's not allocated.
-};
 
 /*!
  * Base class for a file that the ISO system is processing.
@@ -47,11 +43,7 @@ struct CBaseFile {
     LZO_COMPRESSED = 2,
   } m_FileKind = Kind::UNKNOWN;
 
-  enum class Status {
-    UNUSED = 0,  // not in use, doesn't point to a file.
-    IDLE = 1,    // this is a valid file, but no active read ongoing.
-    READING = 2,
-  } m_Status = Status::UNUSED;
+  EIsoStatus m_Status = EIsoStatus::NONE_0;
 
   // The expected read rate for streaming, used to prioritize CD reads. Can be 0 if unknown/not
   // applicable.
@@ -59,7 +51,7 @@ struct CBaseFile {
 
   // Number of sectors that we should read in total, decided based on the file size and request from
   // user when they opened this file.
-  int m_NumSectors = 0;
+  int m_LengthPages = 0; // really, in pages...
 
   // The current offset. (todo: is this for data we read, processed?)
   int m_PageOffset = 0;
