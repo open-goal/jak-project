@@ -57,6 +57,7 @@ struct IopThread {
     None,
     Semaphore,
     Delay,
+    MsgBox,
   };
 
   IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
@@ -91,6 +92,11 @@ struct Semaphore {
   std::list<IopThread*> wait_list;
 };
 
+struct MsgBox {
+  std::queue<void*> messages;
+  std::list<IopThread*> wait_list;
+};
+
 class IOP_Kernel {
  public:
   IOP_Kernel() {
@@ -122,52 +128,13 @@ class IOP_Kernel {
     return _currentThread->thID;
   }
 
-  /*!
-   * Create a message box
-   */
-  s32 CreateMbx() {
-    s32 id = mbxs.size();
-    mbxs.emplace_back();
-    return id;
-  }
+  s32 CreateMbx();
+  s32 ReceiveMbx(void** msg, s32 mbx);
+  s32 PollMbx(void** msg, s32 mbx);
+  s32 PeekMbx(s32 mbx);
+  s32 SendMbx(s32 mbx, void* value);
 
-  /*!
-   * Set msg to thing if its there and pop it.
-   * Returns if it got something.
-   */
-  s32 PollMbx(void** msg, s32 mbx) {
-    ASSERT(mbx < (s32)mbxs.size());
-    s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
-    if (gotSomething) {
-      void* thing = mbxs[mbx].front();
-
-      if (msg) {
-        *msg = thing;
-      }
-
-      mbxs[mbx].pop();
-    }
-
-    return gotSomething ? KE_OK : KE_MBOX_NOMSG;
-  }
-
-  s32 PeekMbx(s32 mbx) { return !mbxs[mbx].empty(); }
-
-  /*!
-   * Push something into a mbx
-   */
-  s32 SendMbx(s32 mbx, void* value) {
-    ASSERT(mbx < (s32)mbxs.size());
-    mbxs[mbx].push(value);
-    return 0;
-  }
-
-  s32 CreateSema(s32 attr, s32 option, s32 init_count, s32 max_count) {
-    s32 id = semas.size();
-    semas.emplace_back((Semaphore::attribute)attr, option, init_count, max_count);
-    return id;
-  }
-
+  s32 CreateSema(s32 attr, s32 option, s32 init_count, s32 max_count);
   s32 WaitSema(s32 id);
   s32 SignalSema(s32 id);
   s32 PollSema(s32 id);
@@ -205,7 +172,7 @@ class IOP_Kernel {
   s32 _nextThID = 0;
   IopThread* _currentThread = nullptr;
   std::vector<IopThread> threads;
-  std::vector<std::queue<void*>> mbxs;
+  std::vector<MsgBox> mbxs;
   std::vector<SifRecord> sif_records;
   std::vector<Semaphore> semas;
   std::queue<int> wakeup_queue;

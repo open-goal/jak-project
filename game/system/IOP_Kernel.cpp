@@ -103,6 +103,12 @@ void IOP_Kernel::iWakeupThread(s32 id) {
   wakeup_queue.push(id);
 }
 
+s32 IOP_Kernel::CreateSema(s32 attr, s32 option, s32 init_count, s32 max_count) {
+  s32 id = semas.size();
+  semas.emplace_back((Semaphore::attribute)attr, option, init_count, max_count);
+  return id;
+}
+
 s32 IOP_Kernel::WaitSema(s32 id) {
   auto& sema = semas.at(id);
   if (sema.count > 0) {
@@ -157,6 +163,81 @@ s32 IOP_Kernel::PollSema(s32 id) {
   }
 
   return KE_SEMA_ZERO;
+}
+
+/*!
+ * Create a message box
+ */
+s32 IOP_Kernel::CreateMbx() {
+  s32 id = mbxs.size();
+  mbxs.emplace_back();
+  return id;
+}
+
+s32 IOP_Kernel::ReceiveMbx(void** msg, s32 mbx) {
+  ASSERT(mbx < (s32)mbxs.size());
+  s32 gotSomething = mbxs[mbx].messages.empty() ? 0 : 1;
+  if (!gotSomething) {
+    /* Was empty, wait until there's messages */
+    mbxs[mbx].wait_list.push_back(_currentThread);
+    _currentThread->state = IopThread::State::Wait;
+    _currentThread->waitType = IopThread::Wait::MsgBox;
+    leaveThread();
+  }
+
+  ASSERT(mbxs[mbx].messages.empty() == false);
+
+  void* thing = mbxs[mbx].messages.front();
+  if (msg) {
+    *msg = thing;
+  }
+
+  mbxs[mbx].messages.pop();
+
+  return KE_OK;
+}
+
+/*!
+ * Set msg to thing if its there and pop it.
+ * Returns if it got something.
+ */
+s32 IOP_Kernel::PollMbx(void** msg, s32 mbx) {
+  ASSERT(mbx < (s32)mbxs.size());
+  s32 gotSomething = mbxs[mbx].messages.empty() ? 0 : 1;
+  if (gotSomething) {
+    void* thing = mbxs[mbx].messages.front();
+
+    if (msg) {
+      *msg = thing;
+    }
+
+    mbxs[mbx].messages.pop();
+  }
+
+  return gotSomething ? KE_OK : KE_MBOX_NOMSG;
+}
+
+s32 IOP_Kernel::PeekMbx(s32 mbx) {
+  return !mbxs[mbx].messages.empty();
+}
+
+/*!
+ * Push something into a mbx
+ */
+s32 IOP_Kernel::SendMbx(s32 mbx, void* value) {
+  ASSERT(mbx < (s32)mbxs.size());
+  mbxs[mbx].messages.push(value);
+
+  IopThread* to_run = nullptr;
+  if (!mbxs[mbx].wait_list.empty()) {
+    to_run = mbxs[mbx].wait_list.front();
+    mbxs[mbx].wait_list.pop_front();
+
+    to_run->waitType = IopThread::Wait::None;
+    to_run->state = IopThread::State::Ready;
+  }
+
+  return KE_OK;
 }
 
 /*!

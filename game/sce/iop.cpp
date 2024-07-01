@@ -195,6 +195,10 @@ s32 SendMbx(s32 mbxid, void* sendmsg) {
   return iop->kernel.SendMbx(mbxid, sendmsg);
 }
 
+s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid) {
+  return iop->kernel.ReceiveMbx((void**)recvmsg, mbxid);
+}
+
 s32 PollMbx(MsgPacket** recvmsg, int mbxid) {
   return iop->kernel.PollMbx((void**)recvmsg, mbxid);
 }
@@ -245,6 +249,16 @@ s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* /
   (void)edge;
   (void)priority;
   return iop->kernel.RegisterVblankHandler(handler);
+}
+
+s32 CpuSuspendIntr(int* old_state) {
+  (void)old_state;
+  return KE_OK;
+}
+
+s32 CpuResumeIntr(int old_state) {
+  (void)old_state;
+  return KE_OK;
 }
 
 }  // namespace iop

@@ -4,6 +4,7 @@
  */
 
 #include "common/common_types.h"
+
 #ifdef OS_POSIX
 #include <unistd.h>
 
@@ -78,6 +79,7 @@
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
+#include "game/overlord/jak3/overlord.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
 #include "sce/deci2.h"
@@ -323,8 +325,10 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
         jak1::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
         break;
       case GameVersion::Jak2:
-      case GameVersion::Jak3:  // TODO: jak3 using jak2's overlord.
         jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
+        break;
+      case GameVersion::Jak3:
+        jak3::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
         break;
       default:
         ASSERT_NOT_REACHED();
