@@ -30,6 +30,7 @@ enum class LogCategory {
   VAG_SETUP,
   DGO,
   RPC,
+  STR_RPC,
   NUM_CATETORIES
 };
 
@@ -41,8 +42,9 @@ constexpr bool g_OverlordLogEnable[(int)LogCategory::NUM_CATETORIES] = {
     true,  // ee dma: sending stuff to the ee (dgo, etc)
     true,  // iso queue: message queuing
     true,  // vag setup: creation of vag commands (lists, etc)
-    true,
-    true,
+    true,  // dgo
+    true,  // rpc in general
+    true,  // str rpc
 };
 
 template <typename... Args>

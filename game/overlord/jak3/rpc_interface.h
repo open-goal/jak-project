@@ -7,6 +7,8 @@ namespace jak3 {
 enum RpcId {
   LoadToEE = 0xfab2,
   DGO = 0xfab3,
+  STR = 0xfab4,
+  PLAY = 0xfab5,
 };
 
 // RAMDISK RPC (renamed to LoadToEE for jak 3, kinda)
@@ -39,5 +41,30 @@ enum DgoFno {
   LOAD = 0,
   LOAD_NEXT = 1,
   CANCEL = 2,
+};
+
+struct RPC_Str_Cmd {
+  u16 rsvd;
+  u16 result;  // 2
+  u32 address;
+  s32 section;  // 8
+  u32 maxlen;
+  u32 dummy[4];
+  char basename[48];  // 32
+};
+
+struct SoundStreamName {
+  char chars[48];
+};
+
+struct RPC_Play_Cmd {
+  u16 rsvd;
+  u16 result;
+  u32 address;
+  u32 section;
+  u32 maxlen;
+  u32 id[4];
+  SoundStreamName names[4];
+  u32 pad[8];
 };
 }  // namespace jak3

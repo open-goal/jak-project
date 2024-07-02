@@ -87,6 +87,8 @@ struct ISO_VAGCommand : ISO_Hdr {
   int art_flag = 0;     // 300
   int music_flag = 0;   // 304
 
+  int play_group = 0;  // 336
+
   int movie_flag = 0;  // 340
 };
 
@@ -100,6 +102,10 @@ struct VagStreamData {
   int art_load;
   int movie_art_load;
   int priority;
+  int unk1;
+  int volume2;
+  int maybe_volume_3;
+  int group;
 };
 
 extern ISO_VAGCommand g_aVagCmds[6];

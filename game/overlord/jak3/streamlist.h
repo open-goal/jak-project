@@ -5,9 +5,16 @@
 namespace jak3 {
 void jak3_overlord_init_globals_streamlist();
 
+struct ISO_VAGCommand;
+
 extern List g_RequestedStreamsList;
 extern List g_NewStreamsList;
-
+extern List g_EEStreamsList;
+extern List g_EEPlayList;
 
 void QueueNewStreamsFromList(List* list);
-}
+void RemoveVagStreamFromList(VagStreamData* entry, List* list);
+void EmptyVagStreamList(List* list);
+VagStreamData* InsertVagStreamInList(VagStreamData* entry, List* list);
+VagStreamData* FindVagStreamInList(VagStreamData* entry, List* list);
+}  // namespace jak3

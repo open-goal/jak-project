@@ -679,7 +679,6 @@ void FreeVAGCommand(ISO_VAGCommand* param_1) {
     vag_cmd_used = vag_cmd_used & ~(1 << (uVar1 & 0x1f));
     SignalSema(g_VagCmdSema);
   }
-  return;
 }
 
 }  // namespace jak3
