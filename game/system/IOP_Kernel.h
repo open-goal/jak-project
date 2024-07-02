@@ -57,6 +57,7 @@ struct IopThread {
     None,
     Semaphore,
     Delay,
+    Messagebox,
   };
 
   IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
@@ -91,17 +92,14 @@ struct Semaphore {
   std::list<IopThread*> wait_list;
 };
 
+struct Messagebox {
+  std::queue<void*> messages;
+  IopThread* wait_thread = nullptr;
+};
+
 class IOP_Kernel {
  public:
-  IOP_Kernel() {
-    // this ugly hack
-    threads.reserve(16);
-    CreateThread("null-thread", nullptr, 0);
-    CreateMbx();
-    CreateSema(0, 0, 0, 0);
-    kernel_thread = co_active();
-  }
-
+  IOP_Kernel();
   s32 CreateThread(std::string n, void (*f)(), u32 priority);
   s32 ExitThread();
   void StartThread(s32 id);
@@ -137,30 +135,27 @@ class IOP_Kernel {
    */
   s32 PollMbx(void** msg, s32 mbx) {
     ASSERT(mbx < (s32)mbxs.size());
-    s32 gotSomething = mbxs[mbx].empty() ? 0 : 1;
+    s32 gotSomething = mbxs[mbx].messages.empty() ? 0 : 1;
     if (gotSomething) {
-      void* thing = mbxs[mbx].front();
+      void* thing = mbxs[mbx].messages.front();
 
       if (msg) {
         *msg = thing;
       }
 
-      mbxs[mbx].pop();
+      mbxs[mbx].messages.pop();
     }
 
     return gotSomething ? KE_OK : KE_MBOX_NOMSG;
   }
 
-  s32 PeekMbx(s32 mbx) { return !mbxs[mbx].empty(); }
+  s32 PeekMbx(s32 mbx) { return !mbxs[mbx].messages.empty(); }
+  s32 ReceiveMbx(void** msg, s32 id);
 
   /*!
    * Push something into a mbx
    */
-  s32 SendMbx(s32 mbx, void* value) {
-    ASSERT(mbx < (s32)mbxs.size());
-    mbxs[mbx].push(value);
-    return 0;
-  }
+  s32 SendMbx(s32 mbx, void* value);
 
   s32 CreateSema(s32 attr, s32 option, s32 init_count, s32 max_count) {
     s32 id = semas.size();
@@ -176,6 +171,8 @@ class IOP_Kernel {
     vblank_handler = handler;
     return 0;
   }
+
+  u32 GetSystemTimeLow();
 
   void signal_vblank() { vblank_recieved = true; };
 
@@ -205,10 +202,12 @@ class IOP_Kernel {
   s32 _nextThID = 0;
   IopThread* _currentThread = nullptr;
   std::vector<IopThread> threads;
-  std::vector<std::queue<void*>> mbxs;
+  std::vector<Messagebox> mbxs;
   std::vector<SifRecord> sif_records;
   std::vector<Semaphore> semas;
   std::queue<int> wakeup_queue;
   bool mainThreadSleep = false;
   std::mutex sif_mtx, wakeup_mtx;
+
+  time_stamp m_start_time;
 };

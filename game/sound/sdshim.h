@@ -30,4 +30,4 @@ void sceSdSetSwitch(u32 entry, u32 value);
 void sceSdSetAddr(u32 entry, u32 value);
 void sceSdSetParam(u32 entry, u32 value);
 void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler, void* data);
-u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size);
+u32 sceSdVoiceTrans(s32 channel, s32 mode, const void* iop_addr, u32 spu_addr, u32 size);
