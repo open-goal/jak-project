@@ -41,6 +41,7 @@ struct ISO_Hdr {
     LOAD_EE_CHUNK = 0x102,
     LOAD_SOUNDBANK = 0x103,
     DGO_LOAD = 0x200,
+    VAG_STOP = 0x402,
     VAG_PAUSE = 0x403,
     VAG_UNPAUSE = 0x404,
     VAG_SET_PITCH_VOL = 0x406,

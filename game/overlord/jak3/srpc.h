@@ -8,5 +8,8 @@ u32 Thread_Player();
 u32 Thread_Loader();
 struct ISO_VAGCommand;
 void SetVagStreamName(ISO_VAGCommand* cmd, int len);
+void* RPC_Player(unsigned int fno, void* msg, int size);
+void* RPC_Loader(unsigned int fno, void* msg, int size);
+
 
 }  // namespace jak3

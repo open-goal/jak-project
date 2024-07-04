@@ -31,6 +31,7 @@ enum class LogCategory {
   DGO,
   RPC,
   STR_RPC,
+  PLAYER_RPC,
   NUM_CATETORIES
 };
 
@@ -45,6 +46,7 @@ constexpr bool g_OverlordLogEnable[(int)LogCategory::NUM_CATETORIES] = {
     true,  // dgo
     true,  // rpc in general
     true,  // str rpc
+    true,  // PLAYER
 };
 
 template <typename... Args>

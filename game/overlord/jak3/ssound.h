@@ -2,6 +2,8 @@
 
 #include "common/common_types.h"
 
+#include "game/overlord/jak3/rpc_interface.h"
+
 namespace jak3 {
 void jak3_overlord_init_globals_ssound();
 void InitSound();
@@ -14,6 +16,29 @@ struct SoundBankInfo {
   char m_name2[16];
   int m_nSpuMemLoc;
   int m_nSpuMemSize;
-
 };
-}
+
+struct SoundInfo {
+  SoundName name;
+  s32 id;
+  s32 sound_handle;
+  s32 new_volume;
+  s32 auto_time;
+  SoundPlayParams params;
+};
+
+SoundInfo* LookupSound(s32 id);
+SoundInfo* AllocateSound();
+s8 GetFalloffCurve(int fo_curve);
+s32 GetVolume(SoundInfo* sound);
+s32 GetPan(SoundInfo* sound);
+void UpdateVolume(SoundInfo* sound);
+void KillSoundsInGroup(u32 group);
+void SetEarTrans(const s32* ear_trans0,
+                 const s32* ear_trans1,
+                 const s32* ear_trans,
+                 const s32* cam_forward,
+                 const s32* cam_left,
+                 s32 cam_scale,
+                 bool cam_inverted);
+}  // namespace jak3

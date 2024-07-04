@@ -84,6 +84,9 @@ void CancelDGO(RPC_Dgo_Cmd* cmd);
 void LoadNextDGO(RPC_Dgo_Cmd* cmd);
 EIsoStatus CopyData(ISO_LoadSingle* msg, CopyKind kind);
 EIsoStatus RunDGOStateMachine(ISO_Hdr* m);
+void CancelDGONoSync(int id);
 extern int g_nISOThreadID;
 extern int g_nISOMbx;
+extern bool g_bMusicPause;
+
 }  // namespace jak3

@@ -80,15 +80,18 @@ struct ISO_VAGCommand : ISO_Hdr {
 
   } flags;
 
-  int play_volume = 0;  // 284
-  int id = 0;           // 288
-  int plugin_id = 0;    // 292
-  int priority_pq = 0;  // 296
-  int art_flag = 0;     // 300
-  int music_flag = 0;   // 304
-
+  int play_volume = 0;    // 284
+  int id = 0;             // 288
+  int plugin_id = 0;      // 292
+  int priority_pq = 0;    // 296
+  int art_flag = 0;       // 300
+  int music_flag = 0;     // 304
+  int updated_trans = 0;  // 308
+  int trans[3];           // 312
+  int fo_min;             // 324
+  int fo_max;             // 328
+  int fo_curve;           // 332
   int play_group = 0;  // 336
-
   int movie_flag = 0;  // 340
 };
 
@@ -109,6 +112,7 @@ struct VagStreamData {
 };
 
 extern ISO_VAGCommand g_aVagCmds[6];
+extern int g_anMasterVolume[32];
 
 int CalculateVAGPitch(int a, int b);
 void BlockUntilVoiceSafe(int, int);
@@ -134,4 +138,6 @@ void UnPauseVagStreams(int);
 void SetVagStreamsNoStart(int);
 ISO_VAGCommand* FindVagStreamId(int);
 void SetVAGVol(ISO_VAGCommand* cmd);
+void SetAllVagsVol(int);
+void PauseVAGStreams();
 }  // namespace jak3

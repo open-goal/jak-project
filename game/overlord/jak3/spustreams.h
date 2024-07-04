@@ -5,6 +5,8 @@
 
 namespace jak3 {
 struct ISO_Hdr;
+struct ISO_VAGCommand;
 void jak3_overlord_init_globals_spustreams();
 EIsoStatus ProcessVAGData(ISO_Hdr* msg);
+void StopVagStream(ISO_VAGCommand* cmd);
 }
