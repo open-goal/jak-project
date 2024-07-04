@@ -9,4 +9,5 @@ struct ISO_VAGCommand;
 void jak3_overlord_init_globals_spustreams();
 EIsoStatus ProcessVAGData(ISO_Hdr* msg);
 void StopVagStream(ISO_VAGCommand* cmd);
+u32 GetSpuRamAddress(ISO_VAGCommand* cmd);
 }

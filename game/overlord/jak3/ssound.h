@@ -11,13 +11,6 @@ void InitSound();
 extern s32 g_n989Semaphore;
 extern bool g_bSoundEnable;
 
-struct SoundBankInfo {
-  int m_name1[4];
-  char m_name2[16];
-  int m_nSpuMemLoc;
-  int m_nSpuMemSize;
-};
-
 struct SoundInfo {
   SoundName name;
   s32 id;
@@ -25,6 +18,11 @@ struct SoundInfo {
   s32 new_volume;
   s32 auto_time;
   SoundPlayParams params;
+};
+
+struct VolumePair {
+  s16 left;
+  s16 right;
 };
 
 SoundInfo* LookupSound(s32 id);
@@ -41,4 +39,8 @@ void SetEarTrans(const s32* ear_trans0,
                  const s32* cam_left,
                  s32 cam_scale,
                  bool cam_inverted);
+void SetPlaybackMode(s32 mode);
+
+extern u32 g_anStreamVoice[6];
+extern VolumePair g_aPanTable[361];
 }  // namespace jak3

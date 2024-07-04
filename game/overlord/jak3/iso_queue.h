@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/common_types.h"
+
 namespace jak3 {
 void jak3_overlord_init_globals_iso_queue();
 struct ISO_Hdr;
@@ -18,4 +20,7 @@ struct PriStackEntry {
   ISO_Hdr* cmds[8];
   int count = 0;
 };
+
+extern u32 g_auTrapSRAM[6];
+extern u32 g_auStrmSRAM[6];
 }  // namespace jak3

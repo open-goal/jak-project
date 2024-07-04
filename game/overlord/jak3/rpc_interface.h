@@ -4,6 +4,56 @@
 
 namespace jak3 {
 
+struct SoundStreamName {
+  char chars[48];
+};
+
+// vblank message
+
+struct SoundIOPInfo {
+  u32 frame;         // 0
+  s32 strpos;        // 4
+  u32 str_id;        // 8
+  u32 freemem;       // 12
+  u8 chinfo[48];     // 16
+  u32 freemem2;      // 64
+  u32 nocd;          // 68
+  u32 dirtycd;       // 72
+  u32 diskspeed[2];  // 76
+  u32 lastspeed;     // 84
+  s32 dupseg;        // 88
+  s32 times[41];     // 92
+  u32 times_seq;     // 256
+  u32 iop_ticks;     // 260
+  u32 pad0[2];
+  u32 stream_position[4];  // 272
+  u32 stream_status[4];    // 288
+  SoundStreamName stream_name[4];
+  u32 stream_id[4];
+  u8 music_register[17];
+  // s8 music_excite;
+  char ramdisk_name[16];
+  u32 pad[11];
+  u8 sound_bank0[16];
+  u8 sound_bank1[16];
+  u8 sound_bank2[16];
+  u8 sound_bank3[16];
+  u8 sound_bank4[16];
+  u8 sound_bank5[16];
+  u8 sound_bank6[16];
+  u8 sound_bank7[16];
+};
+static_assert(offsetof(SoundIOPInfo, stream_name) == 304);
+static_assert(offsetof(SoundIOPInfo, stream_id) == 496);
+static_assert(offsetof(SoundIOPInfo, music_register) == 512);
+static_assert(offsetof(SoundIOPInfo, ramdisk_name) == 529);
+static_assert(offsetof(SoundIOPInfo, sound_bank0) == 592);
+static_assert(sizeof(SoundIOPInfo) == 0x2d0);
+
+// static_assert(sizeof(SoundIOPInfo) == 288);
+
+// Common
+
 enum RpcId {
   Player = 0xfab0,    // sound effects playback
   Loader = 0xfab1,    // sound effects loading.
@@ -27,6 +77,8 @@ enum LoadToEEFno {
   LOAD_FILE = 4,
 };
 
+// DGO RPC
+
 struct RPC_Dgo_Cmd {
   uint16_t rsvd;
   uint16_t status;
@@ -45,6 +97,7 @@ enum DgoFno {
   CANCEL = 2,
 };
 
+// STR RPC
 struct RPC_Str_Cmd {
   u16 rsvd;
   u16 result;  // 2
@@ -55,9 +108,7 @@ struct RPC_Str_Cmd {
   char basename[48];  // 32
 };
 
-struct SoundStreamName {
-  char chars[48];
-};
+// PLAYER/LOADER RPCS
 
 struct RPC_Play_Cmd {
   u16 rsvd;
@@ -77,11 +128,11 @@ struct SoundName {
 enum class SoundCommand : u16 {
   // IOP_STORE = 0,
   // IOP_FREE = 1,
-  // LOAD_BANK = 2,
+  LOAD_BANK = 2,
   // LOAD_BANK_FROM_IOP = 3,
   // LOAD_BANK_FROM_EE = 4,
-  // LOAD_MUSIC = 5,
-  // UNLOAD_BANK = 6,
+  LOAD_MUSIC = 5,
+  UNLOAD_BANK = 6,
   PLAY = 7,
   PAUSE_SOUND = 8,
   STOP_SOUND = 9,
@@ -91,18 +142,18 @@ enum class SoundCommand : u16 {
   PAUSE_GROUP = 13,
   STOP_GROUP = 14,
   CONTINUE_GROUP = 15,
-  // GET_IRX_VERSION = 16,
+  GET_IRX_VERSION = 16,
   // SET_FALLOFF_CURVE = 17,
   // SET_SOUND_FALLOFF = 18,
   // RELOAD_INFO = 19,
-  // SET_LANGUAGE = 20,
+  SET_LANGUAGE = 20,
   // SET_FLAVA = 21,
   // SET_MIDI_REG = 22,
   SET_REVERB = 23,
   SET_EAR_TRANS = 24,
   SHUTDOWN = 25,
   // LIST_SOUNDS = 26,
-  // UNLOAD_MUSIC = 27,
+  UNLOAD_MUSIC = 27,
   SET_FPS = 28,
   // BOOT_LOAD = 29,
   // GAME_LOAD = 30,
@@ -114,7 +165,7 @@ enum class SoundCommand : u16 {
   // TRACK_PITCH = 36,
   // LINVEL_NOM = 37,
   CANCEL_DGO = 49,
-
+  SET_STEREO_MODE = 50,
 };
 
 struct SoundPlayParams {
@@ -188,5 +239,37 @@ struct Rpc_Player_Cancel_Dgo_Cmd : public Rpc_Player_Group_Cmd {
 };
 static_assert(sizeof(Rpc_Player_Cancel_Dgo_Cmd) == 12);
 
+struct Rpc_Loader_Bank_Cmd : public Rpc_Player_Base_Cmd {
+  u32 pad[3];
+  SoundName bank_name;
+};
+static_assert(sizeof(Rpc_Loader_Bank_Cmd) == 32);
+
+struct Rpc_Loader_Load_Bank_Cmd : public Rpc_Loader_Bank_Cmd {
+  u32 ee_addr;
+  u32 mode;
+  u32 priority;
+};
+static_assert(sizeof(Rpc_Loader_Load_Bank_Cmd) == 0x2c);
+
+struct Rpc_Loader_Get_Irx_Version : public Rpc_Player_Base_Cmd {
+  u32 major;
+  u32 minor;
+  u32 ee_addr;
+};
+static_assert(sizeof(Rpc_Loader_Get_Irx_Version) == 16);
+
+struct Rpc_Loader_Set_Language : public Rpc_Player_Base_Cmd {
+  u32 lang;
+};
+static_assert(sizeof(Rpc_Loader_Set_Language) == 8);
+
+struct Rpc_Loader_Set_Stereo_Mode : public Rpc_Player_Base_Cmd {
+  s32 mode;
+};
+static_assert(sizeof(Rpc_Loader_Set_Stereo_Mode) == 8);
+
 constexpr int kPlayerCommandStride = 0x50;
+constexpr int kLoaderCommandStride = 0x50;
+
 }  // namespace jak3

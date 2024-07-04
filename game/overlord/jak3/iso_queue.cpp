@@ -17,8 +17,8 @@ using namespace iop;
 namespace jak3 {
 s32 g_nPriQueueSema = 0;
 s32 g_VagCmdSema = 0;
+u32 g_auStrmSRAM[6];
 u32 g_auTrapSRAM[6];
-u32 g_auStreamSRAM[6];
 PriStackEntry gPriStack[2];
 extern u32 time_of_last_unknown_rate_drive_op;
 u32 g_cmds_with_speed_total = 0;
@@ -74,27 +74,27 @@ void InitBuffers() {
   ASSERT(g_nPriQueueSema >= 0);
   get_page_manager()->Initialize();
 
-  g_auTrapSRAM[0] = 0x5040;
-  g_auStreamSRAM[0] = 0x9040;
+  g_auStrmSRAM[0] = 0x5040;
+  g_auTrapSRAM[0] = 0x9040;
   snd_SRAMMarkUsed(0x5040, 0x4040);
-  g_auTrapSRAM[1] = 0x9080;
-  g_auStreamSRAM[1] = 0xd080;
+  g_auStrmSRAM[1] = 0x9080;
+  g_auTrapSRAM[1] = 0xd080;
   snd_SRAMMarkUsed(0x9080, 0x4040);
-  g_auTrapSRAM[2] = 0xd0c0;
-  g_auStreamSRAM[2] = 0x110c0;
+  g_auStrmSRAM[2] = 0xd0c0;
+  g_auTrapSRAM[2] = 0x110c0;
   snd_SRAMMarkUsed(0xd0c0, 0x4040);
-  g_auTrapSRAM[3] = 0x11100;
-  g_auStreamSRAM[3] = 0x15100;
+  g_auStrmSRAM[3] = 0x11100;
+  g_auTrapSRAM[3] = 0x15100;
   snd_SRAMMarkUsed(0x11100, 0x4040);
-  g_auTrapSRAM[4] = 0x15140;
-  g_auStreamSRAM[4] = 0x19140;
+  g_auStrmSRAM[4] = 0x15140;
+  g_auTrapSRAM[4] = 0x19140;
   snd_SRAMMarkUsed(0x15140, 0x4040);
-  g_auTrapSRAM[5] = 0x019180;
-  g_auStreamSRAM[5] = 0x001d180;
+  g_auStrmSRAM[5] = 0x019180;
+  g_auTrapSRAM[5] = 0x001d180;
   snd_SRAMMarkUsed(0x19180, 0x4040);
 
   for (int i = 0; i < 6; i++) {
-    if (DMA_SendToSPUAndSync(VAG_SilentLoop, 0x30, g_auStreamSRAM[i], nullptr, nullptr)) {
+    if (DMA_SendToSPUAndSync(VAG_SilentLoop, 0x30, g_auTrapSRAM[i], nullptr, nullptr)) {
       ASSERT_NOT_REACHED();
       break;
     }

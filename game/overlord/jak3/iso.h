@@ -88,5 +88,11 @@ void CancelDGONoSync(int id);
 extern int g_nISOThreadID;
 extern int g_nISOMbx;
 extern bool g_bMusicPause;
-
+extern int g_nMusicSemaphore;
+extern char g_szTargetMusicName[0x30];
+extern int g_nActiveMusicStreams;
+extern bool g_bMusicIsPaused;
+extern bool g_bAnotherMusicPauseFlag;
+extern int g_nMusicFade;
+extern int g_nMusicTweak;
 }  // namespace jak3

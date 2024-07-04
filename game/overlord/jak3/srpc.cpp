@@ -6,25 +6,45 @@
 #include "game/overlord/jak3/iso_api.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/rpc_interface.h"
+#include "game/overlord/jak3/sbank.h"
 #include "game/overlord/jak3/soundcommon.h"
 #include "game/overlord/jak3/spustreams.h"
 #include "game/overlord/jak3/ssound.h"
 #include "game/overlord/jak3/vag.h"
+#include "game/overlord/jak3/vblank_handler.h"
 #include "game/sce/iop.h"
 #include "game/sound/sndshim.h"
 
 namespace jak3 {
-u8 g_nFPS = 60;
-void jak3_overlord_init_globals_srpc() {
-  g_nFPS = 60;
-}
+
 using namespace iop;
+
+// This file has two RPCs: PLAYER and LOADER
+// Generally, PLAYER receives commands to play/pause sound effects or streams, which complete
+// quickly.
+
+// LOADER will load soundbanks, and can take some time to complete - likely why it is moved
+// into its own RPC, to avoid having soundbank loads block playback of other sounds.
 
 constexpr int kPlayerBufSize = 0x50 * 128;
 static uint8_t s_anRPC_PlayerBuf[kPlayerBufSize];
 
 constexpr int kLoaderBufSize = 0x50;
 static uint8_t s_anRPC_LoaderBuf[kLoaderBufSize];
+
+constexpr u32 kNumLanguages = 12;
+static const char* languages[kNumLanguages] = {"ENG", "FRE", "GER", "SPA", "ITA", "COM",
+                                               "JAP", "KOR", "RUS", "POR", "DUT", "UKE"};
+
+const char* g_pszLanguage = languages[0];
+u8 g_nFPS = 60;
+SoundBankInfo* g_LoadingSoundBank = nullptr;
+
+void jak3_overlord_init_globals_srpc() {
+  g_nFPS = 60;
+  g_LoadingSoundBank = nullptr;
+  g_pszLanguage = languages[0];
+}
 
 u32 Thread_Player() {
   sceSifQueueData dq;
@@ -418,6 +438,8 @@ void* RPC_Player(unsigned int, void* msg, int size) {
       } break;
 
       default:
+        ovrld_log(LogCategory::WARN, "[RPC Player] Unsupported Player {}",
+                  (int)((const Rpc_Player_Base_Cmd*)m_ptr)->command);
         ASSERT_NOT_REACHED();
     }
   }
@@ -425,6 +447,151 @@ void* RPC_Player(unsigned int, void* msg, int size) {
   return nullptr;
 }
 
-void* RPC_Loader(unsigned int fno, void* msg, int size);
+void* RPC_Loader(unsigned int, void* msg, int size) {
+  if (!g_bSoundEnable) {
+    return nullptr;
+  }
+
+  // const auto* cmd = (RPC_Player_Cmd*)msg;
+  ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got Loader RPC with {} cmds",
+            size / kLoaderCommandStride);
+  u8* m_ptr = (u8*)msg;
+  const u8* end = m_ptr + size;
+
+  for (; m_ptr < end; m_ptr += kLoaderCommandStride) {
+    switch (((const Rpc_Player_Base_Cmd*)m_ptr)->command) {
+      case SoundCommand::LOAD_BANK: {
+        auto* cmd = (const Rpc_Loader_Load_Bank_Cmd*)m_ptr;
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got sound bank load command: {}",
+                  cmd->bank_name.data);
+        // src = &cmd->bank_name;
+        if (!LookupBank(cmd->bank_name.data)) {
+          auto* info = AllocateBankName(cmd->bank_name.data, cmd->mode);
+          if (info) {
+            strncpyz(info->m_name1, cmd->bank_name.data, 0x10);
+            info->in_use = 1;
+            info->unk0 = 0;
+            g_LoadingSoundBank = info;
+            if (LoadSoundBankToIOP(cmd->bank_name.data, info, cmd->priority) == 0) {
+              info->loaded = 1;
+            } else {
+              info->loaded = 0;
+              info->in_use = 0;
+            }
+            g_LoadingSoundBank = nullptr;
+          }
+        }
+      } break;
+      case SoundCommand::LOAD_MUSIC: {
+        auto* cmd = (const Rpc_Loader_Bank_Cmd*)m_ptr;
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got music load command: {}",
+                  cmd->bank_name.data);
+
+        // lock
+        u32 wait_status = 1;
+        while (wait_status) {
+          wait_status = WaitSema(g_nMusicSemaphore);
+        }
+
+        // set music name
+        if ((cmd->bank_name).data[0] == 0) {
+          g_szTargetMusicName[0] = 0;
+        } else {
+          strcpy(g_szTargetMusicName, cmd->bank_name.data);
+        }
+
+        // release
+        SignalSema(g_nMusicSemaphore);
+      } break;
+
+      case SoundCommand::UNLOAD_BANK: {
+        auto* cmd = (const Rpc_Loader_Bank_Cmd*)m_ptr;
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got bank load unload command: {}",
+                  cmd->bank_name.data);
+        SoundBankInfo* ifno = LookupBank(cmd->bank_name.data);
+        if (ifno) {
+          auto snd_handle = ifno->snd_handle;
+          ifno->snd_handle = nullptr;
+          if (ifno->unk0 == 0) {
+            ifno->in_use = 0;
+          }
+          ifno->mode = 0;
+          ifno->loaded = 0;
+          snd_UnloadBank(snd_handle);
+          snd_ResolveBankXREFS();
+        }
+      } break;
+
+      case SoundCommand::GET_IRX_VERSION: {
+        auto* cmd = (Rpc_Loader_Get_Irx_Version*)m_ptr;
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got IRX version command");
+        g_nInfoEE = cmd->ee_addr;
+        cmd->major = 4;
+        cmd->minor = 0;
+        return cmd;
+      } break;
+
+      case SoundCommand::SET_LANGUAGE: {
+        auto* cmd = (Rpc_Loader_Set_Language*)m_ptr;
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got set language command {}", cmd->lang);
+        ASSERT(cmd->lang < kNumLanguages);
+        g_pszLanguage = languages[cmd->lang];
+      } break;
+
+      case SoundCommand::UNLOAD_MUSIC: {
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got unload music command");
+
+        // lock
+        u32 wait_status = 1;
+        while (wait_status) {
+          wait_status = WaitSema(g_nMusicSemaphore);
+        }
+
+        // set music name
+        g_szTargetMusicName[0] = 0;
+
+        // release
+        SignalSema(g_nMusicSemaphore);
+      } break;
+
+      case SoundCommand::SET_STEREO_MODE: {
+        auto* cmd = (Rpc_Loader_Set_Stereo_Mode*)m_ptr;
+        ovrld_log(LogCategory::PLAYER_RPC, "[RPC Loader] Got set stereo command {}", cmd->mode);
+
+        switch (cmd->mode) {
+          case 0:
+            SetPlaybackMode(1);
+          case 1:
+            SetPlaybackMode(2);
+            break;
+          case 2:
+            SetPlaybackMode(0);
+            break;
+          default:
+            ASSERT_NOT_REACHED();
+        }
+      } break;
+
+      default:
+        ovrld_log(LogCategory::WARN, "[RPC Loader] Unsupported Loader {}",
+                  (int)((const Rpc_Player_Base_Cmd*)m_ptr)->command);
+        ASSERT_NOT_REACHED();
+        break;
+    }
+  }
+}
+
+void SetVagStreamName(ISO_VAGCommand* cmd, int len) {
+  ASSERT(cmd);
+  if (!cmd->music_flag && cmd->info_idx < 4) {
+    if (!len) {
+      g_SRPCSoundIOPInfo.stream_name[cmd->info_idx].chars[0] = 0;
+    } else {
+      strncpy(g_SRPCSoundIOPInfo.stream_name[cmd->info_idx].chars, cmd->name, 0x30);
+    }
+  } else {
+    ASSERT_NOT_REACHED();
+  }
+}
 
 }  // namespace jak3

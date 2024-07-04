@@ -281,7 +281,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
     internal_cmd->plugin_id = user_cmd->plugin_id;
     internal_cmd->maybe_sound_handler = user_cmd->maybe_sound_handler;
     internal_cmd->oog = user_cmd->oog;
-    internal_cmd->some_pan_thing = user_cmd->some_pan_thing;
+    internal_cmd->dolby_pan_angle = user_cmd->dolby_pan_angle;
     internal_cmd->art_flag = user_cmd->art_flag;
     internal_cmd->movie_flag = user_cmd->movie_flag;
 
@@ -483,7 +483,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
     internal_cmd->plugin_id = user_cmd->plugin_id;
     internal_cmd->maybe_sound_handler = user_cmd->maybe_sound_handler;
     internal_cmd->oog = user_cmd->oog;
-    internal_cmd->some_pan_thing = user_cmd->some_pan_thing;
+    internal_cmd->dolby_pan_angle = user_cmd->dolby_pan_angle;
     internal_cmd->art_flag = user_cmd->art_flag;
     internal_cmd->movie_flag = user_cmd->movie_flag;
 
