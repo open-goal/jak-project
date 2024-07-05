@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 #include "game/overlord/jak3/basefile.h"
 #include "game/overlord/jak3/dma.h"
@@ -199,6 +200,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
     // we're starting the vag file! check the header:
     piVar4 = (int*)file->m_Buffer.m_pCurrentData;
     if ((*piVar4 != 0x70474156) && (*piVar4 != 0x56414770)) {
+      lg::error("Invalid VAG data is 0x{:x}", *piVar4);
       ASSERT_NOT_REACHED();  // invalid data
       msg->error = 1;
       file->m_Buffer.m_nDataLength = 0;
@@ -445,8 +447,8 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
           BlockUntilVoiceSafe(cmd->voice, 0xf00);
           BlockUntilVoiceSafe(sibling->voice, 0xf00);
           // CpuSuspendIntr(local_20);
-          sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram);
-          sceSdSetAddr(sibling->voice | 0x40, sibling->stream_sram);
+          sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
+          sceSdSetAddr(sibling->voice | 0x2140, sibling->stream_sram);
           iVar2 = 3;
           cmd->flags.bit15 = 1;
           cmd->flags.bit14 = 0;
@@ -477,8 +479,8 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
         BlockUntilVoiceSafe(sibling->voice, 0xf00);
         // CpuSuspendIntr(local_20);
-        sceSdSetAddr(cmd->voice | 0x40, cmd->trap_sram);
-        sceSdSetAddr(sibling->voice | 0x40, sibling->trap_sram);
+        sceSdSetAddr(cmd->voice | 0x2140, cmd->trap_sram);
+        sceSdSetAddr(sibling->voice | 0x2140, sibling->trap_sram);
         iVar2 = 5;
         cmd->flags.bit13 = 1;
         cmd->flags.bit14 = 0;
@@ -517,8 +519,8 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
         BlockUntilVoiceSafe(sibling->voice, 0xf00);
         // CpuSuspendIntr(local_20);
-        sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram);
-        sceSdSetAddr(sibling->voice | 0x40, sibling->stream_sram);
+        sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
+        sceSdSetAddr(sibling->voice | 0x2140, sibling->stream_sram);
         iVar2 = 6;
         cmd->flags.bit14 = 1;
         cmd->flags.bit15 = 0;
@@ -533,8 +535,8 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
           BlockUntilVoiceSafe(cmd->voice, 0xf00);
           BlockUntilVoiceSafe(sibling->voice, 0xf00);
           // CpuSuspendIntr(local_20);
-          sceSdSetAddr(cmd->voice | 0x40, cmd->trap_sram);
-          sceSdSetAddr(sibling->voice | 0x40, sibling->trap_sram);
+          sceSdSetAddr(cmd->voice | 0x2140, cmd->trap_sram);
+          sceSdSetAddr(sibling->voice | 0x2140, sibling->trap_sram);
           cmd->flags.bit13 = 1;
           cmd->flags.bit14 = 0;
           cmd->flags.bit15 = 0;
@@ -676,7 +678,7 @@ LAB_00011010:
         if (cmd->flags.bit20 == 0) {
           BlockUntilVoiceSafe(cmd->voice, 0xf00);
           // CpuSuspendIntr(local_20);
-          sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram);
+          sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
           cmd->flags.bit15 = 1;
           cmd->unk_gvsp_state2 = 3;
           cmd->flags.bit14 = 0;
@@ -729,7 +731,7 @@ LAB_00011010:
         goto switchD_000110d0_caseD_1;
       BlockUntilVoiceSafe(cmd->voice, 0xf00);
       // CpuSuspendIntr(local_20);
-      sceSdSetAddr(cmd->voice | 0x40, cmd->trap_sram);
+      sceSdSetAddr(cmd->voice | 0x2140, cmd->trap_sram);
       cmd->flags.bit13 = 1;
       cmd->unk_gvsp_state2 = 5;
       cmd->flags.bit14 = 0;
@@ -766,7 +768,7 @@ LAB_00011010:
           goto switchD_000110d0_caseD_1;
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
         // CpuSuspendIntr(local_20);
-        sceSdSetAddr(cmd->voice | 0x40, cmd->trap_sram);
+        sceSdSetAddr(cmd->voice | 0x2140, cmd->trap_sram);
         cmd->flags.bit13 = 1;
         cmd->unk_gvsp_state2 = 2;
         cmd->flags.bit14 = 0;
@@ -810,6 +812,8 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
   uint uVar2;
   ISO_VAGCommand* pIVar3;
 
+  lg::info("check stream progress on {}", cmd->name);
+
   if (cmd->flags.file_disappeared == 0) {
     if (cmd->flags.stereo_secondary != 0) {
       return 1;
@@ -829,6 +833,7 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
     uVar1 = cmd->unk_spu_mem_offset;
     pIVar3 = cmd->stereo_sibling;
     uVar2 = cmd->unk_gvsp_len;
+    lg::info("got {} {}", cmd->unk_spu_mem_offset, cmd->unk_gvsp_len);
     if ((uVar1 < 0x4000) &&
         (((uVar2 < 0x2001 && (uVar1 < 0x2001)) || ((0x1fff < uVar2 && (0x1fff < uVar1)))))) {
       if (uVar1 <= (uVar2 & 0xfffffff0)) {

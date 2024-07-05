@@ -161,6 +161,8 @@ class IOP_Kernel {
   }
 
   s32 PeekMbx(s32 mbx) { return !mbxs[mbx].messages.empty(); }
+  s32 MbxSize(s32 mbx) { return mbxs[mbx].messages.size(); }
+
   s32 ReceiveMbx(void** msg, s32 id);
 
   /*!

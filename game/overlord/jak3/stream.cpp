@@ -136,6 +136,7 @@ void* RPC_STR(unsigned int, void* msg_in, int size) {
         // successful load!
         msg->maxlen = sCache[cache_entry].header.sizes[msg->section];
         msg->result = 0;
+        return msg;
       }
     }
   }

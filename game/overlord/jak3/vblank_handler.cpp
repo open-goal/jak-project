@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/sbank.h"
@@ -50,7 +51,7 @@ void VBlank_Initialize() {
     strcpy(thread_param.name, "vblank");
     g_nVBlankThreadID = CreateThread(&thread_param);
     ASSERT(g_nVBlankThreadID >= 0);
-    sema_param.max_count = 2;
+    sema_param.max_count = 200; // hack
     sema_param.attr = 0;
     sema_param.init_count = 0;
     sema_param.option = 0;

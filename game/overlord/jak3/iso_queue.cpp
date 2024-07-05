@@ -1,5 +1,6 @@
 #include "iso_queue.h"
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 
 #include "game/overlord/jak3/basefile.h"
@@ -288,6 +289,8 @@ LAB_000080e4:
           s32 n_remaining_pages = 4;
           if (cmd->callback != RunDGOStateMachine) {
             n_remaining_pages = n_untepped_pages + file->m_LengthPages - file->m_PageOffset;
+            // lg::warn("remaining pages is {} = {} + {} - {}", n_remaining_pages, n_untepped_pages,
+            // file->m_LengthPages, file->m_PageOffset);
           }
           remaining_pages_array[cmds_total] = n_remaining_pages;
 
@@ -447,6 +450,7 @@ LAB_000080e4:
           if ((int)uVar7 < (int)uVar15) {
             uVar7 = uVar15;
           }
+
           tfile->m_nNumPages = uVar7;
           if ((int)uVar11 < (int)uVar7) {
             uVar7 = uVar11;
@@ -456,30 +460,39 @@ LAB_000080e4:
             uVar7 = remaining_pages_array[iVar9];
           }
           tfile->m_nNumPages = uVar7;
+          // lg::warn("num pages mod {}", uVar7);
           iVar13 = iVar13 - uVar7;
         } else {
           s32 uVar11 = (tfile->m_Buffer).m_nMinNumPages;
           s32 uVar7 = (tfile->m_Buffer).m_nMaxNumPages;
+          // lg::warn("taking else case: {} {} {}", uVar11, uVar7, tfile->m_nNumPages);
+
           s32 uVar15 = -1;
           if (read_rate_total == 0) {
           LAB_000085e4:
+            // lg::warn("going to min! (rrt is {})", read_rate_total);
             uVar15 = uVar11;
           } else {
             if (read_rate_total == 0) {
               ASSERT_NOT_REACHED();
             }
             uVar15 = (read_rates_array[iVar9] * pages_total) / read_rate_total;
+            // lg::warn("read rate math is {}", uVar15);
             if ((int)uVar15 < (int)uVar11)
               goto LAB_000085e4;
           }
+
+          // lg::warn("vals {} {}", uVar7, uVar15);
           if ((int)uVar7 < (int)uVar15) {
             uVar15 = uVar7;
           }
+          // lg::warn("vals 2 {} {}", remaining_pages_array[iVar9], uVar15);
           if (remaining_pages_array[iVar9] < (int)uVar15) {
             uVar15 = remaining_pages_array[iVar9];
           }
           iVar8 = iVar8 - uVar15;
           tfile->m_nNumPages = uVar15;
+          // lg::warn("num pages mod 2 {}", uVar15);
         }
         iVar9 = iVar9 + 1;
         // iVar14 = iVar9 * 4;
@@ -548,6 +561,10 @@ LAB_000080e4:
 
         iVar13 = iVar13 + 1;
         s32 uVar11 = tfile3->m_nNumPages;
+        //        lg::warn("mystery values: {} - {} = {} (from {})", num_pages_array[iVar8 / 4],
+        //        uVar11,
+        //                 num_pages_array[iVar8 / 4] - uVar11,
+        //                 cmds_array[iVar8 / 4]->m_pBaseFile->m_FileDef->name.data);
         if (((int)uVar11 < num_pages_array[iVar8 / 4]) &&
             (iVar8 = tfile3->RecoverPages(num_pages_array[iVar8 / 4] - uVar11), 0 < iVar8)) {
           get_page_manager()->GarbageCollectPageList(tfile3->m_Buffer.m_pPageList);

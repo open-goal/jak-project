@@ -147,6 +147,7 @@ s32 SendMbx(int mbxid, void* sendmsg);
 s32 PollMbx(MsgPacket** recvmsg, int mbxid);
 s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid);
 s32 PeekMbx(s32 mbx);
+s32 MbxSize(s32 mbx);
 s32 CreateMbx(MbxParam* param);
 
 u32 GetSystemTimeLow();

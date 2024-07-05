@@ -81,6 +81,7 @@ void InitDriver() {
   if (get_file_system()->Init() == 0) {
     g_nISOInitFlag = 0;
   }
+  lg::info("sending mbox for init driver");
   SendMbx(g_nSyncMbx, &s_MsgPacket_NotOnStackSync);
 }
 
@@ -179,7 +180,9 @@ void InitISOFS() {
   StartThread(g_nDGOThread, 0);
   StartThread(g_nSTRThreadID, 0);
   StartThread(g_nPlayThreadID, 0);
+  lg::info("init iso FS waiting on sync mbx...");
   WaitMbx(g_nSyncMbx);
+  lg::info("init iso FS got sync mbx");
 
   const ISOFileDef* vagdir_file = FindISOFile("VAGDIR.AYB");
   ASSERT(vagdir_file);
@@ -363,6 +366,8 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
         }
 
         // open the file!!
+        ovrld_log(LogCategory::VAG_SETUP, "vag dir entry offset is {}",
+                  vag_dir_entry->words[1] >> 16);
         auto* base_file = get_file_system()->OpenWAD(filedef, vag_dir_entry->words[1] >> 16);
         internal_cmd->m_pBaseFile = base_file;
 
@@ -549,7 +554,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
       if (!vag_dir_entry) {
         // not really sure how this can happen...
         internal_cmd->m_pBaseFile = nullptr;
-        ASSERT_NOT_REACHED();  // just so I can learn when this happens.
+        // ASSERT_NOT_REACHED();  // just so I can learn when this happens.
       } else {
         // need to understand this better, but it seems like we can pick between two different files
         // to actually load from...
@@ -794,6 +799,8 @@ u32 ISOThread() {
   g_szTargetMusicName[0] = 0;
   g_bMusicIsPaused = false;
 
+  lg::info("top of ISO Thread");
+
   // file = (CISOCDFile*)0x0;
   InitBuffers();
   // bVar1 = false;
@@ -811,6 +818,7 @@ u32 ISOThread() {
   // ISOFileDef* file_def = nullptr;
 
   while (true) {
+    dma_intr_hack();
     // Part 1: Handle incoming messages from the user:
 
     int poll_result = PollMbx((MsgPacket**)&mbx_cmd, g_nISOMbx);
@@ -829,8 +837,9 @@ u32 ISOThread() {
         mbx_cmd->m_pBaseFile = nullptr;
         auto msg_kind = mbx_cmd->msg_type;
 
-        ovrld_log(LogCategory::ISO_QUEUE, "Incoming message to the ISO Queue: 0x{:x}",
-                  (int)msg_kind);
+        ovrld_log(LogCategory::ISO_QUEUE,
+                  "Incoming message to the ISO Queue: 0x{:x} addr 0x{:x}, dgo is 0x{:x}",
+                  (int)msg_kind, (u64)mbx_cmd, (u64)&sLoadDGO);
 
         // if we're a simple file loading command:
         if (msg_kind == ISO_Hdr::MsgType::LOAD_EE || msg_kind == ISO_Hdr::MsgType::LOAD_EE_CHUNK ||
@@ -948,6 +957,7 @@ u32 ISOThread() {
                 } else {
                   ASSERT_NOT_REACHED();
                   UnqueueMessage(mbx_cmd);
+                  ASSERT(sLoadDGO.msg_type != ISO_Hdr::MsgType::MSG_0);
                   SendMbx(g_nISOMbx, &sLoadDGO);
                 }
               }
@@ -1024,8 +1034,8 @@ u32 ISOThread() {
 
     if (cmd) {
       // handle the buffering
-      ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - allocating buffer\n",
-                (int)cmd->msg_type);
+//      ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - allocating buffer\n",
+//                (int)cmd->msg_type);
 
       // check if we need to initialize a buffer, or if we just need to realloc pages
       file = cmd->m_pBaseFile;
@@ -1063,8 +1073,8 @@ u32 ISOThread() {
           known_read_rate = true;
         }
         // iVar3 = (**(code**)(file->base).vtable)(file);
-        ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - starting read!\n",
-                  (int)cmd->msg_type);
+//        ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - starting read!\n",
+//                  (int)cmd->msg_type);
 
         cmd->status = file->BeginRead();
         if (cmd->status != EIsoStatus::OK_2) {
@@ -1322,6 +1332,7 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
         case ISO_DGOCommand::State::READ_LAST_OBJ:
           // do an extra sync here to wait for the EE to finish processing both temporary buffers.
           // the next load will be to the heap top, which may overlap the temp buffers.
+          lg::warn("in read last obj!");
           if (LookSyncMbx() == 0)
             goto exit_no_sync;
           ovrld_log(LogCategory::DGO,
@@ -1347,6 +1358,7 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
             if (bytes_needed <= bytes_from_this_page) {
               bytes_from_this_page = bytes_needed;
             }
+            ASSERT(bytes_from_this_page >= 0);
             ovrld_log(LogCategory::DGO, "DGO: reading {} bytes of object header",
                       bytes_from_this_page);
             memcpy(((u8*)&cmd->obj_header) + cmd->bytes_processed, (file->m_Buffer).m_pCurrentData,
@@ -1409,7 +1421,7 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
               cmd->bytes_processed = 0;
             } else {
               ret_status = EIsoStatus::NONE_0;
-              cmd->state = ISO_DGOCommand::State::FINISH_OBJ;
+              cmd->state = ISO_DGOCommand::State::FINISH_DGO;
             }
           }
         } break;
@@ -1540,8 +1552,13 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
     sLoadDGO.sync_sent_count = 1;
     sLoadDGO.nosync_cancel_ack = 0;
     // CpuResumeIntr(local_18[0]);
+    ASSERT(sLoadDGO.msg_type != ISO_Hdr::MsgType::MSG_0);
+    ovrld_log(LogCategory::RPC, "------------------DGO: RPC sending mbox (reply size is {})",
+              MbxSize(g_nDGOMbx));
     SendMbx(g_nISOMbx, &sLoadDGO);
+    ovrld_log(LogCategory::RPC, "DGO: RPC waiting mbox (now has {})", MbxSize(g_nDGOMbx));
     WaitMbx(g_nDGOMbx);
+    ovrld_log(LogCategory::RPC, "DGO: RPC recv mbox: {}", int(sLoadDGO.status));
     if (sLoadDGO.status == EIsoStatus::OK_2) {
       cmd->status = 2;
       return;

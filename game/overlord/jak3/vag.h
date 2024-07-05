@@ -136,7 +136,7 @@ extern u32 voice_key_times[0x30];
 extern u32 g_nTimeOfLastVoiceKey;
 extern bool g_bRecentlyKeyedVoice;
 
-int CalculateVAGPitch(u32 a, int b);
+int CalculateVAGPitch(int a, int b);
 void BlockUntilVoiceSafe(int, u32);
 void BlockUntilAllVoicesSafe();
 void CheckVagStreamsProgress();

@@ -96,6 +96,7 @@ void* AllocScratchPad(int mode) {
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
+  ASSERT(strlen(param->name));
   return iop->kernel.CreateThread(param->name, (void (*)())param->entry, param->initPriority);
 }
 
@@ -207,6 +208,10 @@ s32 PeekMbx(s32 mbx) {
   return iop->kernel.PeekMbx(mbx);
 }
 
+s32 MbxSize(s32 mbx) {
+  return iop->kernel.MbxSize(mbx);
+}
+
 u32 GetSystemTimeLow() {
   return iop->kernel.GetSystemTimeLow();
 }
@@ -216,7 +221,7 @@ void SleepThread() {
 }
 
 s32 CreateSema(SemaParam* param) {
-  return iop->kernel.CreateSema(param->attr, param->option, param->max_count, param->init_count);
+  return iop->kernel.CreateSema(param->attr, param->option, param->init_count, param->max_count);
 }
 
 s32 WaitSema(s32 sema) {

@@ -28,4 +28,5 @@ struct DmaQueueEntry {
   void* user_data = nullptr;
   u32 num_isobuffered_chunks = 0;
 };
+void dma_intr_hack();
 }  // namespace jak3

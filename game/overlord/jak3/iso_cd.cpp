@@ -227,7 +227,7 @@ void CISOCDFile::ReadPages(int sector,
   ASSERT(destination_page);
   ASSERT(num_pages >= 1);
 
-  constexpr int kMaxPages = 10;
+  constexpr int kMaxPages = 24;
   // I _think_ this might have been an alloca...
   BlockParams params_array[kMaxPages];
   ASSERT(num_pages <= kMaxPages);
@@ -281,7 +281,10 @@ void CISOCDFile::ReadPages(int sector,
         return;
       }
       // put us to sleep...
+      ovrld_log(LogCategory::PAGING, "[paging] Sleeping, waiting for driver to read {}",
+                pages_actually_read);
       SleepThread();
+      ovrld_log(LogCategory::PAGING, "[paging] Driver woke us up!");
       return;
     }
     ASSERT_NOT_REACHED();  // unexpected failure to issue read
@@ -436,6 +439,7 @@ VagDirEntry* CISOCDFileSystem::FindVAGFile(const char* name) {
   for (int i = 0; i < g_VagDir.num_entries; i++) {
     auto& entry = g_VagDir.entries[i];
     if (packed_name[0] == entry.words[0] && packed_name[1] == (entry.words[1] & 0x3ff)) {
+      lg::error("entry is index {}\n", i);
       return &entry;
     }
   }

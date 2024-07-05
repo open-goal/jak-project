@@ -37,18 +37,18 @@ enum class LogCategory {
 };
 
 constexpr bool g_OverlordLogEnable[(int)LogCategory::NUM_CATETORIES] = {
-    true,  // paging: cpage's, page manager, page crossing, etc
-    true,  // filesystem: opening/finding files
-    true,  // warning: something weird
-    true,  // spu dma streaming: vag streaming, clocks, spu, dma
-    true,  // ee dma: sending stuff to the ee (dgo, etc)
-    true,  // iso queue: message queuing
-    true,  // vag setup: creation of vag commands (lists, etc)
-    true,  // dgo
-    true,  // rpc in general
-    true,  // str rpc
-    true,  // PLAYER
-    true,
+    false,  // paging: cpage's, page manager, page crossing, etc
+    true,   // filesystem: opening/finding files
+    true,   // warning: something weird
+    true,   // spu dma streaming: vag streaming, clocks, spu, dma
+    true,   // ee dma: sending stuff to the ee (dgo, etc)
+    true,   // iso queue: message queuing
+    true,   // vag setup: creation of vag commands (lists, etc)
+    false,   // dgo
+    true,   // rpc in general
+    true,   // str rpc
+    false,   // PLAYER
+    false,  // driver
 };
 
 template <typename... Args>

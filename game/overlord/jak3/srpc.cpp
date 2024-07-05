@@ -90,11 +90,14 @@ void* RPC_Player(unsigned int, void* msg, int size) {
     switch (((const Rpc_Player_Base_Cmd*)m_ptr)->command) {
       case SoundCommand::PLAY: {
         const auto* cmd = (const Rpc_Player_Play_Cmd*)m_ptr;
-        ovrld_log(LogCategory::PLAYER_RPC, "[Player RPC] command PLAY {}", cmd->name.data);
+        ovrld_log(LogCategory::PLAYER_RPC, "[Player RPC] command PLAY {} id {}", cmd->name.data,
+                  cmd->sound_id);
+        break; // temp remove
         s32 id = cmd->sound_id;
         if (id) {
           auto* sound = LookupSound(id);
           if (!sound) {
+            ovrld_log(LogCategory::PLAYER_RPC, "[Player RPC] allocating a new one");
             sound = AllocateSound();
             if (sound) {
               SFXUserData user_val;
@@ -132,6 +135,7 @@ void* RPC_Player(unsigned int, void* msg, int size) {
               auto handle = snd_PlaySoundByNameVolPanPMPB(
                   0, 0, sound->name.data, GetVolume(sound), GetPan(sound),
                   (int)(sound->params).pitch_mod, (int)(sound->params).bend);
+              sound->id = id;
               sound->sound_handle = handle;
               if (handle != 0) {
                 if ((sound->params.mask & 0x800) != 0) {
@@ -592,7 +596,7 @@ void SetVagStreamName(ISO_VAGCommand* cmd, int len) {
       strncpy(g_SRPCSoundIOPInfo.stream_name[cmd->info_idx].chars, cmd->name, 0x30);
     }
   } else {
-    ASSERT_NOT_REACHED();
+    //    ASSERT_NOT_REACHED();
   }
 }
 

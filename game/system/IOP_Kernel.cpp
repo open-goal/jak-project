@@ -212,7 +212,6 @@ s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
   box.wait_thread = _currentThread;
   _currentThread->state = IopThread::State::Wait;
   _currentThread->waitType = IopThread::Wait::Messagebox;
-  lg::info("leaving thread because of rcvmbx");
   g_Debug = true;
   leaveThread();
 
@@ -236,6 +235,7 @@ s32 IOP_Kernel::SendMbx(s32 mbx, void* value) {
 }
 
 s32 IOP_Kernel::SignalSema(s32 id) {
+  // bool debug = id == 24;
   auto& sema = semas.at(id);
 
   if (sema.count >= sema.maxCount) {
@@ -300,7 +300,6 @@ void IOP_Kernel::runThread(IopThread* thread) {
   ASSERT(_currentThread == nullptr);  // should run in the kernel thread
   _currentThread = thread;
   thread->state = IopThread::State::Run;
-  lg::info("going to thread {}", thread->name);
   co_switch(thread->thread);
   _currentThread = nullptr;
 }
@@ -389,12 +388,12 @@ std::optional<time_stamp> IOP_Kernel::dispatch() {
       vblank_handler(nullptr);
       vblank_recieved = false;
     }
-    printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
     runThread(next);
     updateDelay();
     processWakeups();
     next = schedNext();
-    printf("[IOP Kernel] back to kernel!\n");
+    // printf("[IOP Kernel] back to kernel!\n");
   }
 
   // printf("[IOP Kernel] No runnable threads\n");

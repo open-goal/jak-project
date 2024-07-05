@@ -254,6 +254,10 @@ CPageList* CBaseFile::AllocPages() {
 
   // to increase unstepped pages to the target m_nNumPages, we need to allocate this many more.
   page_alloc_count = m_nNumPages - old_unstepped_pages;
+  // lg::warn("page counts in AllocPages: {} {}", m_nNumPages, old_unstepped_pages);
+  if (old_plist) {
+    // lg::warn("     {} {}", old_plist->m_nNumPages, old_plist->m_nNumActivePages);
+  }
 
   if (old_unstepped_pages < (int)m_nNumPages) {
     // alloc count will be positive.

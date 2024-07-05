@@ -43,6 +43,13 @@ int g_nSpuDmaQueueHead = 0;
 int g_nSpuDmaQueueTail = 0;
 int g_nSpuDmaQueueCount = 0;
 
+struct DmaInterruptHandlerHack {
+  s32 chan = 0;
+  sceSdTransIntrHandler cb;
+  void* data;
+  int countdown = 0;
+} g_DmaInterruptHack;
+
 // }  // namespace
 
 void jak3_overlord_init_globals_dma() {
@@ -62,6 +69,29 @@ void jak3_overlord_init_globals_dma() {
   g_nSpuDmaQueueHead = 0;
   g_nSpuDmaQueueCount = 0;
   g_nSpuDmaQueueTail = 0;
+  g_DmaInterruptHack = {};
+}
+
+void set_dma_intr_handler_hack(s32 chan, sceSdTransIntrHandler cb, void* data) {
+  g_DmaInterruptHack.chan = chan;
+  g_DmaInterruptHack.cb = cb;
+  g_DmaInterruptHack.data = data;
+  g_DmaInterruptHack.countdown = 10;
+}
+
+int SPUDmaIntr(int channel, void* userdata);
+
+void dma_intr_hack() {
+  if (g_DmaInterruptHack.countdown) {
+    g_DmaInterruptHack.countdown--;
+    if (g_DmaInterruptHack.countdown == 0) {
+      int chan = g_DmaInterruptHack.chan;
+      void* data = g_DmaInterruptHack.data;
+      g_DmaInterruptHack = {};
+
+      SPUDmaIntr(chan, data);
+    }
+  }
 }
 
 /*!
@@ -157,6 +187,7 @@ int SPUDmaIntr(int channel, void* userdata) {
 
         // start next transfer
         ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr starting stereo sibling transfer");
+        set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, userdata);
         voice_trans_wrapper(chan, 0, iop_addr, spu_addr, size);
         return 0;
       }
@@ -318,7 +349,7 @@ int SPUDmaIntr(int channel, void* userdata) {
   if (g_nSpuDmaQueueCount == 0) {
     ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr dma queue is empty, disabling interrupt");
     // we're done!
-    sceSdSetTransIntrHandler(channel, nullptr, nullptr);
+    set_dma_intr_handler_hack(channel, nullptr, nullptr);
     //  if (-1 < channel) {
     //    snd_FreeSPUDMA(channel);
     //  }
@@ -331,7 +362,7 @@ int SPUDmaIntr(int channel, void* userdata) {
     auto* next_xfer = &g_aSpuDmaQueue[g_nSpuDmaQueueHead];
 
     // set up the next interrupt handler
-    sceSdSetTransIntrHandler(channel, SPUDmaIntr, next_xfer->user_data);
+    set_dma_intr_handler_hack(channel, SPUDmaIntr, next_xfer->user_data);
 
     // args for the dma transfer
     int next_chan = channel;
@@ -356,6 +387,7 @@ int SPUDmaIntr(int channel, void* userdata) {
     }
 
     // start the next one!
+    set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, userdata);
     voice_trans_wrapper(next_chan, next_mode, next_iop, next_spu, next_length);
   }
 
@@ -385,7 +417,7 @@ void DMA_SendToEE(void* ee_dest,
   cmd.size = length;
 
   // instant DMA
-  ovrld_log(LogCategory::EE_DMA, "DMA_SendToEE: 0x{:x}, size {}", (u64)ee_dest, length);
+  // ovrld_log(LogCategory::EE_DMA, "DMA_SendToEE: 0x{:x}, size {}", (u64)ee_dest, length);
   sceSifSetDma(&cmd, 1);
 
   // for now, we'll do the callback here, but I bet it will cause problems
@@ -427,7 +459,6 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
     }
 
   } else {
-    ASSERT(cmd);
     // busy, need to queue the dma
     ASSERT(g_nSpuDmaQueueCount <= (int)g_aSpuDmaQueue.size());
 
@@ -435,7 +466,8 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
     g_aSpuDmaQueue[g_nSpuDmaQueueTail].length = length;
     g_aSpuDmaQueue[g_nSpuDmaQueueTail].spu_addr = spu_addr;
     g_aSpuDmaQueue[g_nSpuDmaQueueTail].user_data = user_data;
-    g_aSpuDmaQueue[g_nSpuDmaQueueTail].num_isobuffered_chunks = cmd->num_isobuffered_chunks;
+    g_aSpuDmaQueue[g_nSpuDmaQueueTail].num_isobuffered_chunks =
+        cmd ? cmd->num_isobuffered_chunks : 0;
     g_aSpuDmaQueue[g_nSpuDmaQueueTail].command = cmd;
     g_aSpuDmaQueue[g_nSpuDmaQueueTail].iop_mem = iop_mem;
     g_nSpuDmaQueueCount = g_nSpuDmaQueueCount + 1;
@@ -461,7 +493,8 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   // kick off dma, if we decided not to queue.
   if (!defer) {
     g_bSpuDmaBusy = true;
-    sceSdSetTransIntrHandler(g_nSpuDmaChannel, SPUDmaIntr, user_data);
+    lg::info("calling settransintrhandler: 0x{:x}", (u64)user_data);
+    set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, user_data);
     voice_trans_wrapper(g_nSpuDmaChannel, 0, iop_mem, spu_addr, length);
   }
   return ret;

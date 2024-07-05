@@ -751,7 +751,7 @@ void UpdateLocation(SoundInfo* sound) {
       snd_StopSound(sound->sound_handle);
     } else {
       auto pan = GetPan(sound);
-      ovrld_log(LogCategory::WARN, "HACK: falling back to old version of setting vol/pan");
+      // ovrld_log(LogCategory::WARN, "HACK: falling back to old version of setting vol/pan");
       snd_SetSoundVolPan(handle, vol, pan);
 
       //      FUN_00013e0c(handle,4,0,pan,0,0);

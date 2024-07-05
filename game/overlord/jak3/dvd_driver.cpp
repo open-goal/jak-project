@@ -383,7 +383,6 @@ void read_block(const Block* block) {
     printf("err: %s\n", strerror(errno));
     ASSERT_MSG(false, "Failed to fread");
   }
-
   fclose(fp);
 }
 
