@@ -92,6 +92,17 @@ struct Semaphore {
   std::list<IopThread*> wait_list;
 };
 
+struct EventFlagWaiter {
+  IopThread* thread = nullptr;
+  u32 value = 0;
+};
+
+struct EventFlag {
+  bool multiple_waiters_allowed = false;
+  u32 value = 0;
+  std::list<EventFlagWaiter> wait_list;
+};
+
 struct Messagebox {
   std::queue<void*> messages;
   IopThread* wait_thread = nullptr;
@@ -167,6 +178,16 @@ class IOP_Kernel {
   s32 SignalSema(s32 id);
   s32 PollSema(s32 id);
 
+  s32 CreateEventFlag(s32 attr, s32 option, u32 init_pattern) {
+    ASSERT(option == 0);
+    s32 id = event_flags.size();
+    auto& flag = event_flags.emplace_back();
+    flag.value = init_pattern;
+    flag.multiple_waiters_allowed = attr == 2;
+  }
+
+  s32 ClearEventFlag(s32 id, u32 pattern);
+
   s32 RegisterVblankHandler(int (*handler)(void*)) {
     vblank_handler = handler;
     return 0;
@@ -205,6 +226,7 @@ class IOP_Kernel {
   std::vector<Messagebox> mbxs;
   std::vector<SifRecord> sif_records;
   std::vector<Semaphore> semas;
+  std::vector<EventFlag> event_flags;
   std::queue<int> wakeup_queue;
   bool mainThreadSleep = false;
   std::mutex sif_mtx, wakeup_mtx;

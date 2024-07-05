@@ -17,4 +17,6 @@ void RemoveVagStreamFromList(VagStreamData* entry, List* list);
 void EmptyVagStreamList(List* list);
 VagStreamData* InsertVagStreamInList(VagStreamData* entry, List* list);
 VagStreamData* FindVagStreamInList(VagStreamData* entry, List* list);
+void InitVagStreamList(List* list, int size, const char* name);
+void StreamListThread();
 }  // namespace jak3

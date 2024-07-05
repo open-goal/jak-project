@@ -15,6 +15,7 @@ void InitBuffers();
 ISO_Hdr* GetMessage();
 int ProcessMessageData(ISO_Hdr* msg);
 void FreeVAGCommand(ISO_Hdr* msg);
+ISO_VAGCommand* GetVAGCommand();
 
 struct PriStackEntry {
   ISO_Hdr* cmds[8];
@@ -23,4 +24,6 @@ struct PriStackEntry {
 
 extern u32 g_auTrapSRAM[6];
 extern u32 g_auStrmSRAM[6];
+extern s32 g_nPriQueueSema;
+extern PriStackEntry gPriStack[2];
 }  // namespace jak3

@@ -8,7 +8,7 @@ extern bool g_bExtPause;
 extern bool g_bExtResume;
 
 struct ISO_VAGCommand : ISO_Hdr {
-  ISOFileDef* vag_file_def = nullptr;        // 44
+  ISOFileDef* vag_file_def = nullptr;        // 44 (actually INT file def?)
   VagDirEntry* vag_dir_entry = nullptr;      // 48
   ISO_VAGCommand* stereo_sibling = nullptr;  // 52
 
@@ -80,6 +80,8 @@ struct ISO_VAGCommand : ISO_Hdr {
     u8 bit25 = 0;
   } flags;
 
+  u32 pack_flags();
+
   void set_all_flags_zero();
   int unk_gvsp_state2 = 0;         // 244
   int num_isobuffered_chunks = 0;  // 248
@@ -112,6 +114,7 @@ struct ISO_VAGCommand : ISO_Hdr {
 struct VagStreamData {
   VagStreamData* next = nullptr;
   VagStreamData* prev = nullptr;
+  int in_use;
   char name[0x30];
   int id;
   int plugin_id;
@@ -119,6 +122,7 @@ struct VagStreamData {
   int art_load;
   int movie_art_load;
   int priority;
+  int unk2;
   int unk1;
   int volume2;
   int maybe_volume_3;
@@ -127,10 +131,15 @@ struct VagStreamData {
 
 extern ISO_VAGCommand g_aVagCmds[6];
 extern int g_anMasterVolume[32];
+extern bool voice_key_flags[0x30];
+extern u32 voice_key_times[0x30];
+extern u32 g_nTimeOfLastVoiceKey;
+extern bool g_bRecentlyKeyedVoice;
 
 int CalculateVAGPitch(u32 a, int b);
 void BlockUntilVoiceSafe(int, int);
 void BlockUntilAllVoicesSafe();
+void CheckVagStreamsProgress();
 void MarkVoiceKeyedOnOff(int voice, u32 systime);
 void UnPauseVAG(ISO_VAGCommand* cmd);
 ISO_VAGCommand* FindMusicStreamName(const char* name);
@@ -156,6 +165,9 @@ void SetAllVagsVol(int);
 void PauseVAGStreams();
 ISO_VAGCommand* FindNotQueuedVagCmd();
 void CalculateVAGVolumes(ISO_VAGCommand* cmd, int* l, int* r);
-u32 CalculateFalloffVolume(s32* trans, u32 vol, u32 fo_curve, u32 fo_min, u32 fo_max, u32, u32);
-s32 CalculateAngle(s32* trans, u32 fo_curve, u32);
+void SetVagStreamsNotScanned();
+void VAG_MarkLoopEnd(uint8_t* data, int offset);
+void VAG_MarkLoopStart(uint8_t* data);
+void RestartVag(ISO_VAGCommand* cmd, int p);
+extern u32 g_nPlaybackMode;
 }  // namespace jak3

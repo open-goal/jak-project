@@ -29,7 +29,6 @@ u32 g_nTimeOfLastVoiceKey = 0;
 bool g_bRecentlyKeyedVoice = false;
 u32 g_nActiveVagStreams = 0;
 u32 g_nPlaybackMode = 2;
-bool g_CameraInvert = false;
 
 struct VagCmdPriListEntry {
   ISO_VAGCommand* cmds[6];
@@ -49,7 +48,6 @@ void jak3_overlord_init_globals_vag() {
   }
   g_nActiveVagStreams = 0;
   g_nPlaybackMode = 2;
-  g_CameraInvert = false;
 }
 
 void ISO_VAGCommand::set_all_flags_zero() {
@@ -79,6 +77,18 @@ void ISO_VAGCommand::set_all_flags_zero() {
   flags.nostart = 0;
   flags.movie = 0;
   flags.bit25 = 0;
+}
+
+u32 ISO_VAGCommand::pack_flags() {
+  u32 ret = 0;
+  u8* ptr = &flags.bit0;
+  u32 mask = 1;
+  for (; ptr <= &flags.bit25; ptr++) {
+    if (*ptr) {
+      ret |= mask;
+      mask <<= 1;
+    }
+  }
 }
 
 void InitVAGCmd(ISO_VAGCommand* cmd, int paused) {
@@ -660,7 +670,8 @@ void UnPauseVAG(ISO_VAGCommand* cmd) {
 }
 
 // TODO: needs some cleanup
-void RestartVag(ISO_VAGCommand* cmd) {
+void RestartVag(ISO_VAGCommand* cmd, int p) {
+  (void)p;
   // CpuSuspendIntr(&local_28);
   int lvol, rvol;
   CalculateVAGVolumes(cmd, &lvol, &rvol);

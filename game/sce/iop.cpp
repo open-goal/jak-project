@@ -231,6 +231,14 @@ s32 PollSema(s32 sema) {
   return iop->kernel.PollSema(sema);
 }
 
+s32 CreateEventFlag(const EventFlagParam* param) {
+  return iop->kernel.CreateEventFlag(param->attr, param->option, param->init_pattern);
+}
+
+s32 ClearEventFlag(s32 flag, u32 pattern) {
+  return iop->kernel.ClearEventFlag(flag, pattern);
+}
+
 s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
   return 0;

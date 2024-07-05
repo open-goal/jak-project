@@ -95,6 +95,12 @@ struct SemaParam {
   int32_t max_count;
 };
 
+struct EventFlagParam {
+  u32 attr;
+  u32 option;
+  u32 init_pattern;
+};
+
 // void PS2_RegisterIOP(IOP *iop);
 int QueryTotalFreeMemSize();
 void* AllocSysMemory(int type, unsigned long size, void* addr);
@@ -146,8 +152,8 @@ s32 WaitSema(s32 sema);
 s32 SignalSema(s32 sema);
 s32 PollSema(s32 sema);
 
-s32 CreateEventFlag();
-s32 ClearEventFlag(u32 a, u32 b);
+s32 CreateEventFlag(const EventFlagParam* param);
+s32 ClearEventFlag(s32 flag, u32 pattern);
 s32 SetEventFlag(u32 a, u32 b);
 s32 WaitEventFlag(u32 a, u32 b, u32);
 

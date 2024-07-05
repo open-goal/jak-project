@@ -510,7 +510,12 @@ void CCache::Initialize() {
 
   m_nAllocatedMask = 0;
   m_nPagelistAllocatedMask = 0;
-  m_PagesFilledEventFlag = CreateEventFlag();  // TODO args here
+
+  EventFlagParam param;
+  param.attr = 2;
+  param.option = 0;
+  param.init_pattern = 0;
+  m_PagesFilledEventFlag = CreateEventFlag(&param);  // TODO args here
   ASSERT(m_PagesFilledEventFlag >= 0);
 }
 

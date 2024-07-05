@@ -17,6 +17,7 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
                          int spu_addr,
                          ISO_VAGCommand* cmd,
                          void* user_data);
+void RunDeferredVoiceTrans();
 struct ISO_VAGCommand;
 
 struct DmaQueueEntry {

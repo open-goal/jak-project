@@ -245,6 +245,7 @@ void CISOCDFile::ReadPages(int sector,
     params->destination = page->m_pPageMemStart;
     params->num_sectors = 0x10;
     params->sector_num = sector;
+    params->file_def = m_FileDef;
     params->page = page;
 
     params->flag = nullptr;

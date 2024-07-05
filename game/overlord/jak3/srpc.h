@@ -10,6 +10,7 @@ struct ISO_VAGCommand;
 void SetVagStreamName(ISO_VAGCommand* cmd, int len);
 void* RPC_Player(unsigned int fno, void* msg, int size);
 void* RPC_Loader(unsigned int fno, void* msg, int size);
-
+extern const char* g_pszLanguage;
+extern u8 g_nFPS;
 
 }  // namespace jak3

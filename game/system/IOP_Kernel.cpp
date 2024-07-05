@@ -133,6 +133,13 @@ s32 IOP_Kernel::WaitSema(s32 id) {
   return KE_OK;
 }
 
+s32 IOP_Kernel::ClearEventFlag(s32 id, u32 pattern) {
+  auto& ef = event_flags.at(id);
+  // yes, this seems backward, but the manual says this is how it works.
+  ef.value &= pattern;
+  return 0;
+}
+
 s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
   auto& box = mbxs.at(id);
   if (!box.messages.empty()) {

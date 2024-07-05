@@ -24,4 +24,5 @@ void jak3_overlord_init_globals_sbank();
 void InitBanks();
 SoundBankInfo* LookupBank(const char* name);
 SoundBankInfo* AllocateBankName(const char* name, u32 mode);
+extern SoundBankInfo* gBanks[8];
 }  // namespace jak3
