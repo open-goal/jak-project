@@ -1024,7 +1024,7 @@ void BlockUntilVoiceSafe(int voice, u32 delay) {
   }
 }
 
-void MarkVoiceKeyedOnOff(int voice, int time) {
+void MarkVoiceKeyedOnOff(int voice, u32 time) {
   g_nTimeOfLastVoiceKey = time;
   voice_key_times[voice] = time;
   voice_key_flags[voice] = 1;

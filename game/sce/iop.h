@@ -30,6 +30,10 @@
 #define SA_THFIFO 0
 #define SA_THPRI 1
 
+#define EW_AND 0
+#define EW_OR 1
+#define EW_CLEAR 0x10
+
 class IOP;
 
 namespace iop {
@@ -85,7 +89,7 @@ struct ThreadParam {
   int initPriority;
 
   // added!
-  char name[64];
+  char name[64] = "";
 };
 
 struct SemaParam {
@@ -154,8 +158,8 @@ s32 PollSema(s32 sema);
 
 s32 CreateEventFlag(const EventFlagParam* param);
 s32 ClearEventFlag(s32 flag, u32 pattern);
-s32 SetEventFlag(u32 a, u32 b);
-s32 WaitEventFlag(u32 a, u32 b, u32);
+s32 SetEventFlag(s32 flag, u32 pattern);
+s32 WaitEventFlag(s32 flag, u32 pattern, u32 mode);
 
 s32 RegisterVblankHandler(int edge, int priority, int (*handler)(void*), void* userdata);
 

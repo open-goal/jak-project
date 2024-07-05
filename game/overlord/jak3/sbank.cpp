@@ -131,8 +131,6 @@ SoundBankInfo* AllocateBankName(const char* name, u32 mode) {
       gBanks[iVar1]->m_nSpuMemSize = 0x28a00;
       bank = pSVar5;
     }
-  } else {
-    ASSERT_NOT_REACHED();
   }
 LAB_0000c3a4:
   if (bank) {

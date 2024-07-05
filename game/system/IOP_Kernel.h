@@ -53,15 +53,10 @@ struct IopThread {
     Dormant,
   };
 
-  enum class Wait {
-    None,
-    Semaphore,
-    Delay,
-    Messagebox,
-  };
+  enum class Wait { None, Semaphore, Delay, Messagebox, EventFlag };
 
-  IopThread(std::string n, void (*f)(), s32 ID, u32 priority)
-      : name(std::move(n)), function(f), priority(priority), thID(ID) {
+  IopThread(std::string n, void (*f)(), s32 ID, u32 pri)
+      : name(std::move(n)), function(f), priority(pri), thID(ID) {
     thread = co_create(0x300000, functionWrapper);
   }
 
@@ -80,8 +75,12 @@ struct IopThread {
 
 struct Semaphore {
   enum class attribute { fifo, prio };
-  Semaphore(attribute attr, s32 option, s32 init_count, s32 max_count)
-      : attr(attr), option(option), count(init_count), initCount(init_count), maxCount(max_count) {}
+  Semaphore(attribute _attr, s32 _option, s32 init_count, s32 max_count)
+      : attr(_attr),
+        option(_option),
+        count(init_count),
+        initCount(init_count),
+        maxCount(max_count) {}
 
   attribute attr{attribute::fifo};
   u32 option{0};
@@ -94,7 +93,8 @@ struct Semaphore {
 
 struct EventFlagWaiter {
   IopThread* thread = nullptr;
-  u32 value = 0;
+  u32 pattern = 0;
+  u32 mode = 0;
 };
 
 struct EventFlag {
@@ -184,7 +184,11 @@ class IOP_Kernel {
     auto& flag = event_flags.emplace_back();
     flag.value = init_pattern;
     flag.multiple_waiters_allowed = attr == 2;
+    return id;
   }
+
+  s32 WaitEventFlag(s32 flag, u32 pattern, u32 mode);
+  s32 SetEventFlag(s32 flag, u32 pattern);
 
   s32 ClearEventFlag(s32 id, u32 pattern);
 
@@ -216,7 +220,7 @@ class IOP_Kernel {
   IopThread* schedNext();
   std::optional<time_stamp> nextWakeup();
 
-  s32 (*vblank_handler)(void*);
+  s32 (*vblank_handler)(void*) = nullptr;
   std::atomic_bool vblank_recieved = false;
 
   cothread_t kernel_thread;

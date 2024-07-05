@@ -6,6 +6,7 @@
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 
+#include "game/overlord/jak3/overlord.h"
 #include "game/sce/iop.h"
 
 using namespace iop;
@@ -236,6 +237,15 @@ CPage* CPageList::StepActivePage() {
  * Remove pages that are no longer needed. They will be sent back to the Page Manager.
  */
 void CPageList::GarbageCollect() {
+  ovrld_log(LogCategory::PAGING, "[paging] Garbage collecting, currently have {} pages, {} active",
+            m_nNumPages, m_nNumActivePages);
+
+  for (auto* p = m_pFirstPage; p; p = p->m_pNextPage) {
+    ovrld_log(LogCategory::PAGING,
+              "page 0x{:x}, first active? {} last active? {} current active? {} last? {}",
+              p->m_nPageIdx, p == m_pFirstActivePage, p == m_pLastActivePage,
+              p == m_pCurrentActivePage, p == m_pLastPage);
+  }
   // trim pages at the front. Anything unreferenced before the current active page is ok to clean.
   CPage* page = m_pFirstPage;
   if (page && page != m_pCurrentActivePage) {
@@ -275,6 +285,7 @@ void CPageList::GarbageCollect() {
       // CpuResumeIntr(local_18);
 
       // now clean the page itself
+      ovrld_log(LogCategory::PAGING, "[paging] GC took page 0x{:x} (fwd)", page->m_nPageIdx);
       page->m_pPageList = nullptr;
       page->m_pPrevPage = nullptr;
       page->m_pNextPage = nullptr;
@@ -304,6 +315,7 @@ void CPageList::GarbageCollect() {
   if (page && page != m_pLastActivePage && page != m_pCurrentActivePage) {
     ASSERT(page->m_nAllocState == 1);
     while ((page->m_nPageRefCount == 0 && (page->m_nDmaRefCount == 0))) {
+      ovrld_log(LogCategory::PAGING, "[paging] GC took page 0x{:x} (bwd)", page->m_nPageIdx);
       ASSERT(page->m_nAllocState == 1);
       CPage* prev = page->m_pPrevPage;
       // CpuSuspendIntr(&local_14);
@@ -311,10 +323,10 @@ void CPageList::GarbageCollect() {
       m_pLastPage = prev;
       if (m_pFirstPage == page) {
         m_pFirstPage = nullptr;
+        ASSERT(m_nNumPages == 0);
       }
       if (prev != (CPage*)0x0) {
         prev->m_pNextPage = (CPage*)0x0;
-        ASSERT(m_nNumPages == 0);
       }
       // CpuResumeIntr(local_14);
       page->m_pPageList = nullptr;
@@ -659,6 +671,7 @@ CPageList* CPageManager::AllocPageList(int count, bool consecutive_pages) {
   plist->m_nNumPages = count;
   plist->m_pLastPage = page;
   plist->m_pFirstPage = pages[0];
+  return plist;
 }
 
 /*!
@@ -764,6 +777,7 @@ void CPageManager::FreePageList(jak3::CPageList* list) {
     ASSERT(page_slot < CCache::kNumPages);
     pages[pages_count] = page_slot;
     pages_count++;
+    auto* next = page->m_pNextPage;
     page->m_pPageList = nullptr;
     page->m_pPrevPage = nullptr;
     page->m_pNextPage = nullptr;
@@ -772,10 +786,14 @@ void CPageManager::FreePageList(jak3::CPageList* list) {
     ASSERT(!page->m_nPageRefCount);
     ASSERT(!page->m_nDmaRefCount);
     ClearEventFlag(get_page_manager()->m_CCache.m_PagesFilledEventFlag, ~page->mask);
-    page = page->m_pNextPage;
+    page = next;
   }
 
   // clear list
+  if (pages_count != list->m_nNumPages) {
+    lg::die("Paging error: found {} pages out of {} in FreePageList", pages_count,
+            list->m_nNumPages);
+  }
   ASSERT(pages_count == list->m_nNumPages);
   list->m_pFirstActivePage = nullptr;
   list->m_nNumPages = 0;
@@ -799,7 +817,7 @@ void CPageManager::FreePageList(jak3::CPageList* list) {
   m_CCache.m_nPagelistAllocatedMask &= ~(1 << plist_idx);
 }
 
-int CPageManager::RecoverPages(int k) {
+int CPageManager::RecoverPages(int) {
   ASSERT_NOT_REACHED();  // TODO, this looks at pristack
 }
 

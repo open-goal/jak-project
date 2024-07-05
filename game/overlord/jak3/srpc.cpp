@@ -561,6 +561,7 @@ void* RPC_Loader(unsigned int, void* msg, int size) {
         switch (cmd->mode) {
           case 0:
             SetPlaybackMode(1);
+            break;
           case 1:
             SetPlaybackMode(2);
             break;
@@ -579,6 +580,7 @@ void* RPC_Loader(unsigned int, void* msg, int size) {
         break;
     }
   }
+  return nullptr;
 }
 
 void SetVagStreamName(ISO_VAGCommand* cmd, int len) {

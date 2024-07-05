@@ -15,14 +15,9 @@
 namespace jak3 {
 using namespace iop;
 
-namespace {
-bool g_bOverlordInitialized = false;
-}
-
 int g_nServerThreadID = 0;
 int g_nPlayerThreadID = 0;
 int g_nLoaderThreadID = 0;
-
 
 void jak3_overlord_init_globals_overlord() {
   g_nServerThreadID = 0;
@@ -52,9 +47,20 @@ int start_overlord() {
   // do_global_ctors();
   jak3_overlord_init_globals_all();
 
+  lg::info("globals init");
+
   InitBanks();
+
+  lg::info("banks init");
+
   InitSound();
+
+  lg::info("sound init");
+
   VBlank_Initialize();
+
+  lg::info("vblank init");
+
 
   // RPC thread to load data from game files to the game memory.
   ThreadParam thread_param;
@@ -94,10 +100,13 @@ int start_overlord() {
   }
 
   // Initialize the dvd driver that will be used to implement the "ISO FS" system
+  lg::info("about to init driver");
   get_driver()->Initialize();
 
   // then, initialize ISO FS itself
+  lg::info("about to initISOFS");
   InitISOFS();
+  lg::info("about to start threads");
 
   // start up RPC threads!
   StartThread(g_nServerThreadID, 0);
@@ -127,7 +136,7 @@ u32 call_start() {
 }
 }  // namespace
 
-int start_overlord_wrapper(int, const char* const*, bool* signal) {
+int start_overlord_wrapper(bool* signal) {
   ThreadParam param = {};
   init_complete = signal;
   param.attr = TH_C;

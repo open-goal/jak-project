@@ -47,6 +47,7 @@ void VBlank_Initialize() {
     thread_param.initPriority = 0x34;
     thread_param.option = 0;
     thread_param.entry = VBlankThread;
+    strcpy(thread_param.name, "vblank");
     g_nVBlankThreadID = CreateThread(&thread_param);
     ASSERT(g_nVBlankThreadID >= 0);
     sema_param.max_count = 2;
@@ -194,7 +195,7 @@ u32 VBlankThread() {
 
       }
     }
-    runDeferredVoiceTrans();
+    RunDeferredVoiceTrans();
     // Poll(&g_DvdDriver);
   } while (true);
 }

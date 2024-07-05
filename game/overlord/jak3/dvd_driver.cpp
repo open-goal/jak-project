@@ -8,6 +8,7 @@
 #include "common/util/FileUtil.h"
 
 #include "game/overlord/jak3/isocommon.h"
+#include "game/overlord/jak3/overlord.h"
 #include "game/sce/iop.h"
 
 namespace jak3 {
@@ -99,6 +100,7 @@ void CDvdDriver::Initialize() {
     thread_param.stackSize = 0x800;
     thread_param.initPriority = 0x13;
     thread_param.option = 0;
+    strcpy(thread_param.name, "dvd");
     // mbox_param.attr = (int)PTR_DvdThread_00015c98; // ???
     g_nDvdDriverThread = CreateThread(&thread_param);
     ASSERT(g_nDvdDriverThread >= 0);
@@ -175,6 +177,9 @@ int CDvdDriver::ReadMultiple(CDescriptor* descriptor,
       ASSERT_NOT_REACHED();
     }
 
+    ovrld_log(LogCategory::DRIVER, "[driver] ReadMultiple (from our thread? {}) num_blocks {}",
+              from_dvd_thread, num_blocks);
+
     ret = 0;
     if (0 < num_blocks) {
       // loop, until we've done all the requested reads.
@@ -189,9 +194,12 @@ int CDvdDriver::ReadMultiple(CDescriptor* descriptor,
             acquired_slots = acquired_slots + 1;
           } while (acquired_slots < num_blocks);
         }
+        ovrld_log(LogCategory::DRIVER, "[driver] ReadMultiple acquired {} slots in ring",
+                  acquired_slots);
 
         // if we are blocking, and we acquired no slots, then we'll wait here until we get one slot.
         if ((block_if_queue_full != 0) && (acquired_slots < 1)) {
+          ovrld_log(LogCategory::DRIVER, "[driver] ring is full, blocking!");
           acquired_slots = 1;  // the one we'll get from the WaitSema below
           do {
           } while (WaitSema(fifo_entry_sema) != 0);
@@ -203,6 +211,7 @@ int CDvdDriver::ReadMultiple(CDescriptor* descriptor,
 
         // if we didn't get any slots, bail.
         if (acquired_slots < 1) {
+          ovrld_log(LogCategory::DRIVER, "[driver] ring is full, bailing!");
           ReleaseFIFOSema(from_dvd_thread);
           if (0 < *pages_read_out) {
             KickDvdThread();
@@ -213,6 +222,8 @@ int CDvdDriver::ReadMultiple(CDescriptor* descriptor,
         // loop, updating the ring for each slot we aquired
         do {
           auto* slot = ring + ring_tail;
+          ovrld_log(LogCategory::DRIVER, "[driver] inserting in ring slot {}", ring_tail);
+
           ring_tail++;
           if (0xf < ring_tail) {
             ring_tail = 0;
@@ -280,24 +291,31 @@ void CDvdDriver::CancelRead(jak3::CDescriptor* desc) {
 
 s32 CDvdDriver::ValidateBlockParams(jak3::BlockParams* params, int num_params) {
   if (!params) {
+    lg::die("Invalid BlockParams: nullptr");
     return 0;
   }
   if (num_params < 1) {
+    lg::die("Invalid BlockParams: size == 0");
     return 0;
   }
 
   for (int i = 0; i < num_params; i++) {
     auto& p = params[i];
     if (p.destination == nullptr) {
+      lg::die("Invalid BlockParams: {} had nullptr dest", i);
       return 0;
     }
-    if (p.sector_num > 0x1d0) {
+    int kMaxFileSize = 1024 * 1024 * 1024;
+    if (p.sector_num > kMaxFileSize / 0x800) {
+      lg::die("Invalid BlockParams: {} had sector num {}", i, p.sector_num);
       return 0;
     }
     if (p.num_sectors > 0x1d0) {
+      lg::die("Invalid BlockParams: {} had sector count {}", i, p.num_sectors);
       return 0;
     }
     if (!p.file_def) {
+      lg::die("Invalid BlockParams: {} had no file", i);
       return 0;
     }
   }
@@ -418,6 +436,7 @@ u32 DvdThread() {
         driver->needs_break = 1;
 
         // for now, inefficient
+        ovrld_log(LogCategory::DRIVER, "[driver thread] Reading for slot {}", block - driver->ring);
         read_block(block);
 
       } else {
@@ -426,6 +445,8 @@ u32 DvdThread() {
       }
       if (completed != 0) {
         auto* last_block = &driver->ring[driver->ring_head];
+        ovrld_log(LogCategory::DRIVER, "[driver thread] Completion handler for {}",
+                  driver->ring_head);
         sblock = *last_block;
 
         if (sblock.descriptor && sblock.descriptor->m_pHead) {
@@ -448,18 +469,24 @@ u32 DvdThread() {
       driver->ReleaseFIFOSema(true);
     }
 
-    s32 status;
-    if ((((driver->locked != false)) ||
-         ((driver->needs_break == 0 && (driver->m_nNumFifoEntries == 0)))) &&
-        ((status = WaitEventFlag(driver->event_flag, 1, 0x11),
-          status != 0 && (status != -0x1a2)))) {
-      if (status == -0x1a9) {
-        do {
-          SleepThread();
-        } while (true);
-      }
-      DelayThread(8000);
+    if (driver->m_nNumFifoEntries == 0) {
+      ovrld_log(LogCategory::DRIVER, "[driver thread] No work, waiting.");
+      WaitEventFlag(driver->event_flag, 1, 0x11);
+      ovrld_log(LogCategory::DRIVER, "[driver thread] Woken up!");
     }
+
+    //    s32 status;
+    //    if ((((driver->locked != false)) ||
+    //         ((driver->needs_break == 0 && (driver->m_nNumFifoEntries == 0)))) &&
+    //        ((status = WaitEventFlag(driver->event_flag, 1, 0x11),
+    //          status != 0 && (status != -0x1a2)))) {
+    //      if (status == -0x1a9) {
+    //        do {
+    //          SleepThread();
+    //        } while (true);
+    //      }
+    //      DelayThread(8000);
+    //    }
   }
 }
 

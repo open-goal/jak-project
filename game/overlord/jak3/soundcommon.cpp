@@ -1,5 +1,6 @@
 #include "soundcommon.h"
 
+#include <algorithm>
 #include <cstring>
 #include <string>
 

@@ -89,6 +89,7 @@ u32 ISO_VAGCommand::pack_flags() {
       mask <<= 1;
     }
   }
+  return ret;
 }
 
 void InitVAGCmd(ISO_VAGCommand* cmd, int paused) {
@@ -455,7 +456,7 @@ void StopVAG(ISO_VAGCommand* cmd) {
     }
     BlockUntilAllVoicesSafe();
 
-    sceSdSetSwitch(cmd->voice & 1 | SD_S_KOFF, voice_mask);
+    sceSdSetSwitch((cmd->voice & 1) | SD_S_KOFF, voice_mask);
 
     auto now = GetSystemTimeLow();
     MarkVoiceKeyedOnOff(cmd->voice, now);
@@ -832,7 +833,7 @@ void CalculateVAGVolumes(ISO_VAGCommand* cmd, int* lvol, int* rvol) {
                                      (cmd->play_volume * g_anMasterVolume[cmd->play_group]) >> 10,
                                      cmd->fo_curve, cmd->fo_min, cmd->fo_max, 0, 0);
       iVar3 = CalculateAngle(cmd->trans, cmd->fo_curve, 0);
-      angle = iVar3 + 0x5aU + (u32)((u64)(iVar3 + 0x5aU >> 3) * 0x16c16c17 >> 0x22) * -0x168;
+      angle = iVar3 + 0x5aU + (u32)((u64)((iVar3 + 0x5aU) >> 3) * 0x16c16c17 >> 0x22) * -0x168;
       if (0x400 < uVar7) {
         uVar7 = 0x400;
       }
@@ -1000,9 +1001,18 @@ void SetVAGVol(ISO_VAGCommand* cmd) {
 }
 
 void SetAllVagsVol(int x) {
-  ASSERT(x < 0);  // otherwise, lfo stuff
-  for (int i = 0; i < 4; i++) {
-    SetVAGVol(&g_aVagCmds[i]);
+  if (x < 0) {
+    for (int i = 0; i < 4; i++) {
+      SetVAGVol(&g_aVagCmds[i]);
+    }
+  } else {
+    for (int i = 0; i < 4; i++) {
+      if (g_aVagCmds[i].maybe_sound_handler) {
+        ASSERT_NOT_REACHED();
+        // there's more check before this...
+        SetVAGVol(&g_aVagCmds[i]);
+      }
+    }
   }
 }
 

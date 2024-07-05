@@ -14,7 +14,7 @@ void ReturnMessage(ISO_Hdr* msg);
 void InitBuffers();
 ISO_Hdr* GetMessage();
 int ProcessMessageData(ISO_Hdr* msg);
-void FreeVAGCommand(ISO_Hdr* msg);
+void FreeVAGCommand(ISO_VAGCommand* msg);
 ISO_VAGCommand* GetVAGCommand();
 
 struct PriStackEntry {

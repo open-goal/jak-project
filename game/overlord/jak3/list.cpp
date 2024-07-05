@@ -36,7 +36,7 @@ void InitList(List* list, int count, int element_size) {
           iter->prev = (VagStreamData*)((u8*)iter - element_size);
         }
         iVar1 = iVar1 + 1;
-        iter = (VagStreamData*)((u8*)iter->next + element_size);
+        iter = (VagStreamData*)((u8*)iter + element_size);
       } while (iVar1 < count);
     }
     list->unk_flag = 0;

@@ -94,11 +94,11 @@ void InitBuffers() {
   snd_SRAMMarkUsed(0x19180, 0x4040);
 
   for (int i = 0; i < 6; i++) {
-    if (DMA_SendToSPUAndSync(VAG_SilentLoop, 0x30, g_auTrapSRAM[i], nullptr, nullptr)) {
+    if (!DMA_SendToSPUAndSync(VAG_SilentLoop, 0x30, g_auTrapSRAM[i], nullptr, nullptr)) {
+      DelayThread(1000);
       ASSERT_NOT_REACHED();
       break;
     }
-    DelayThread(1000);
   }
 
   sema_param.max_count = 1;
@@ -609,7 +609,7 @@ LAB_000088a4:
 void ReturnMessage(ISO_Hdr* msg) {
   if (msg->mbox_reply == 0) {
     if (msg->thread_to_wake == 0) {
-      FreeVAGCommand(msg);
+      FreeVAGCommand((ISO_VAGCommand*)msg);
     } else {
       WakeupThread(msg->thread_to_wake);
     }
@@ -653,7 +653,7 @@ ISO_VAGCommand* GetVAGCommand() {
       if (((vag_cmd_used >> (uVar2 & 0x1f) ^ 1U) & 1) != 0) {
         vag_cmd_cnt = vag_cmd_cnt + 1;
         vag_cmd_used = vag_cmd_used | 1 << (uVar2 & 0x1f);
-        if (max_vag_cmd_cnt < (int)vag_cmd_cnt) {
+        if (max_vag_cmd_cnt < vag_cmd_cnt) {
           max_vag_cmd_cnt = vag_cmd_cnt;
         }
         SignalSema(g_VagCmdSema);

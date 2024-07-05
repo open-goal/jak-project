@@ -9,6 +9,7 @@
 #include "game/sce/iop.h"
 
 using namespace std::chrono;
+bool g_Debug = false;
 
 /*
 ** wrap thread entry points to ensure they don't return into libco
@@ -140,6 +141,64 @@ s32 IOP_Kernel::ClearEventFlag(s32 id, u32 pattern) {
   return 0;
 }
 
+namespace {
+bool event_flag_check(u32 pattern, u32 check_pattern, u32 mode) {
+  if (mode & 1) {
+    // or
+    return (pattern & check_pattern);
+  } else {
+    // and
+    return (pattern & check_pattern) == check_pattern;
+  }
+}
+}  // namespace
+
+s32 IOP_Kernel::WaitEventFlag(s32 flag, u32 pattern, u32 mode) {
+  auto& ef = event_flags.at(flag);
+  // check to see if we already match
+  if (event_flag_check(ef.value, pattern, mode)) {
+    if (mode & 0x10) {
+      ef.value = 0;
+    }
+    return KE_OK;
+  } else {
+    if (!ef.multiple_waiters_allowed && !ef.wait_list.empty()) {
+      lg::die("Multiple thread trying to wait on an event flag, but this option was not enabled.");
+    }
+
+    auto& wait_entry = ef.wait_list.emplace_back();
+    wait_entry.pattern = pattern;
+    wait_entry.mode = mode;
+    wait_entry.thread = _currentThread;
+
+    _currentThread->state = IopThread::State::Wait;
+    _currentThread->waitType = IopThread::Wait::EventFlag;
+    leaveThread();
+
+    return KE_OK;
+  }
+}
+
+s32 IOP_Kernel::SetEventFlag(s32 flag, u32 pattern) {
+  auto& ef = event_flags.at(flag);
+  ef.value |= pattern;
+
+  for (auto it = ef.wait_list.begin(); it != ef.wait_list.end();) {
+    if (event_flag_check(ef.value, it->pattern, it->mode)) {
+      if (it->mode & 0x10) {
+        ef.value = 0;
+      }
+      it->thread->waitType = IopThread::Wait::None;
+      it->thread->state = IopThread::State::Ready;
+      it = ef.wait_list.erase(it);
+    } else {
+      ++it;
+    }
+  }
+
+  return KE_OK;
+}
+
 s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
   auto& box = mbxs.at(id);
   if (!box.messages.empty()) {
@@ -153,8 +212,12 @@ s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
   box.wait_thread = _currentThread;
   _currentThread->state = IopThread::State::Wait;
   _currentThread->waitType = IopThread::Wait::Messagebox;
+  lg::info("leaving thread because of rcvmbx");
+  g_Debug = true;
   leaveThread();
 
+  auto ret = PollMbx(msg, id);
+  ASSERT(ret == KE_OK);
   return KE_OK;
 }
 
@@ -237,6 +300,7 @@ void IOP_Kernel::runThread(IopThread* thread) {
   ASSERT(_currentThread == nullptr);  // should run in the kernel thread
   _currentThread = thread;
   thread->state = IopThread::State::Run;
+  lg::info("going to thread {}", thread->name);
   co_switch(thread->thread);
   _currentThread = nullptr;
 }
@@ -325,12 +389,12 @@ std::optional<time_stamp> IOP_Kernel::dispatch() {
       vblank_handler(nullptr);
       vblank_recieved = false;
     }
-    // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
     runThread(next);
     updateDelay();
     processWakeups();
     next = schedNext();
-    // printf("[IOP Kernel] back to kernel!\n");
+    printf("[IOP Kernel] back to kernel!\n");
   }
 
   // printf("[IOP Kernel] No runnable threads\n");

@@ -21,7 +21,7 @@ struct Curve {
 
 using namespace iop;
 s32 g_n989Semaphore = -1;
-u32 g_EarTransSema = -1;
+s32 g_EarTransSema = -1;
 bool g_bSoundEnable = true;
 u32 g_anStreamVoice[6];
 VolumePair g_aPanTable[361];
@@ -32,7 +32,7 @@ s32 gCamForward[3];
 s32 gCamLeft[3];
 s32 gCamScale;
 Curve gCurves[0x29];
-std::array<u8, 200> unktable;
+std::array<u8, 1024> unktable;
 bool g_CameraInvert = false;
 u32 gLastTick = 0;
 
@@ -652,7 +652,7 @@ constexpr s16 unk_table_2[2056] = {
     0xE1,  0x13B,
 };
 
-s32 CalculateAngle(int* trans, int fo_curve, int param_3) {
+s32 CalculateAngle(s32* trans, u32 fo_curve, u32 param_3) {
   uint uVar2;
   int iVar3;
   uint uVar4;
@@ -861,7 +861,7 @@ void SetEarTrans(const s32* ear_trans0,
   }
 
   auto* cmd = g_aVagCmds;
-  u32 iVar2 = 5;
+  s32 iVar2 = 5;
   do {
     if ((cmd->music_flag == 0) && (cmd->maybe_sound_handler != 0)) {
       if ((cmd->flags.scanned == 0) || (cmd->flags.bit8 != 0)) {

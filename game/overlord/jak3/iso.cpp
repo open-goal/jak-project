@@ -10,6 +10,7 @@
 #include "game/overlord/jak3/iso_queue.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/rpc_interface.h"
+#include "game/overlord/jak3/sbank.h"
 #include "game/overlord/jak3/spustreams.h"
 #include "game/overlord/jak3/srpc.h"
 #include "game/overlord/jak3/ssound.h"
@@ -101,7 +102,7 @@ u32 LookSyncMbx() {
  */
 u32 WaitMbx(s32 box) {
   MsgPacket* msg_packet;
-  ReceiveMbx(&msg_packet, box);
+  return ReceiveMbx(&msg_packet, box);
 }
 
 u32 ISOThread();
@@ -143,6 +144,7 @@ void InitISOFS() {
   thread_param.initPriority = 0x37;
   thread_param.attr = TH_C;
   thread_param.option = 0;
+  strcpy(thread_param.name, "ISO");
   g_nISOThreadID = CreateThread(&thread_param);
   ASSERT(g_nISOThreadID >= 0);
 
@@ -151,6 +153,7 @@ void InitISOFS() {
   thread_param.attr = TH_C;
   thread_param.stackSize = 0x900;
   thread_param.option = 0;
+  strcpy(thread_param.name, "DGO");
   g_nDGOThread = CreateThread(&thread_param);
   ASSERT(g_nDGOThread >= 0);
 
@@ -159,6 +162,7 @@ void InitISOFS() {
   thread_param.attr = TH_C;
   thread_param.stackSize = 0x900;
   thread_param.option = 0;
+  strcpy(thread_param.name, "STR");
   g_nSTRThreadID = CreateThread(&thread_param);
   ASSERT(g_nSTRThreadID >= 0);
 
@@ -167,6 +171,7 @@ void InitISOFS() {
   thread_param.initPriority = 0x35;
   thread_param.stackSize = 0x900;
   thread_param.option = 0;
+  strcpy(thread_param.name, "Play");
   g_nPlayThreadID = CreateThread(&thread_param);
   ASSERT(g_nPlayThreadID >= 0);
 
@@ -178,8 +183,10 @@ void InitISOFS() {
 
   const ISOFileDef* vagdir_file = FindISOFile("VAGDIR.AYB");
   ASSERT(vagdir_file);
+  lg::info("about to load VAGDIR");
   int load_status = LoadISOFileToIOP(vagdir_file, &g_VagDir, sizeof(g_VagDir));
-  ASSERT(load_status == 0);
+  lg::info("done loading VAGDIR");
+  ASSERT(load_status != 0);
 
   // vgwaddir
   ASSERT(g_VagDir.vag_magic_1 == 0x41574756);
@@ -190,7 +197,7 @@ void InitISOFS() {
 }
 
 const ISOFileDef* FindISOFile(const char* name) {
-  get_file_system()->Find(name);
+  return get_file_system()->Find(name);
 }
 
 s32 GetISOFileLength(const ISOFileDef* def) {
@@ -275,6 +282,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
     // copy part of the command set by the user
     internal_cmd->vag_file_def = user_cmd->vag_file_def;
     internal_cmd->vag_dir_entry = user_cmd->vag_dir_entry;
+    ASSERT(strlen(name) < 0x30);
     strncpy(internal_cmd->name, name, 0x30);
     internal_cmd->play_volume = user_cmd->play_volume;
     internal_cmd->id = user_cmd->id;
@@ -795,14 +803,12 @@ u32 ISOThread() {
 
   ISO_Hdr* mbx_cmd = nullptr;
   ISO_LoadSoundbank* load_sbk_cmd = nullptr;
-  ISO_LoadSingle* load_single_cmd = nullptr;
   ISO_LoadCommon* load_cmd = nullptr;
   char local_name[32];
   ISO_VAGCommand* vag_cmd = nullptr;
   ISO_VAGCommand* internal_vag_cmd = nullptr;
 
   // ISOFileDef* file_def = nullptr;
-  int sector_offset = 0;
 
   while (true) {
     // Part 1: Handle incoming messages from the user:
@@ -875,9 +881,10 @@ u32 ISOThread() {
               strncpy(local_name, load_sbk_cmd->name, 0xc);
               local_name[8] = 0;
               strcat(local_name, ".sbk");
-              auto* file_def = get_file_system()->Find(local_name);
-              ASSERT(file_def);
-              mbx_cmd->m_pBaseFile = get_file_system()->Open(file_def, -1, 1);
+              mbx_cmd->file_def = get_file_system()->Find(local_name);
+              ASSERT(mbx_cmd->file_def);
+              mbx_cmd->m_pBaseFile = get_file_system()->Open(mbx_cmd->file_def, -1, 1);
+              ASSERT(mbx_cmd->m_pBaseFile);
             } break;
             default:
               ASSERT_NOT_REACHED();
@@ -1074,8 +1081,8 @@ u32 ISOThread() {
       }
     }
 
-    ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - handling message data\n",
-              (int)cmd->msg_type);
+    //    ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - handling message data\n",
+    //              (int)cmd->msg_type);
 
     if (ProcessMessageData(cmd) == 0) {
       cmd = nullptr;
@@ -1091,10 +1098,10 @@ u32 ISOThread() {
       }
       if (status == EIsoStatus::ERROR_b) {
         if (cmd->m_pBaseFile && cmd->m_pBaseFile->m_Status != EIsoStatus::NONE_0) {
-          cmd->m_pBaseFile->m_Status = EIsoStatus::OK_2;
+          cmd->status = EIsoStatus::OK_2;
         }
       } else {
-        cmd->m_pBaseFile->m_Status = status;
+        cmd->status = status;
         if (!cmd->active_c) {
           set_active_c(cmd, 1);
         }
@@ -1243,7 +1250,6 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
               // otherwise, start with buffer!
               cmd->buffer_toggle = 1;
               cmd->ee_dest_buffer = cmd->buffer1;
-            LAB_000073cc:
               cmd->state = ISO_DGOCommand::State::READ_OBJ_HEADER;
             }
           }
@@ -1285,7 +1291,7 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
           // for single buffer, sync with EE so we know the next location to load.
           // note that we've already returned the message for the single buffer case
           if ((cmd->buffer1 == cmd->buffer2) &&
-              (cmd->objects_loaded + 1 < cmd->dgo_header.object_count)) {
+              (cmd->objects_loaded + 1 < (s32)cmd->dgo_header.object_count)) {
             if (LookSyncMbx() == 0)
               goto exit_no_sync;
             ovrld_log(LogCategory::DGO,
@@ -1359,7 +1365,6 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
                          nullptr);
             cmd->ee_dest_buffer = cmd->ee_dest_buffer + sizeof(ObjectHeader);
             cmd->state = ISO_DGOCommand::State::READ_OBJ_DATA;
-          LAB_00007260:
             cmd->bytes_processed = 0;
           }
         } break;
@@ -1548,7 +1553,8 @@ void LoadDGO(RPC_Dgo_Cmd* cmd) {
       return;
     }
   } else {
-    ovrld_log(LogCategory::WARN, "DGO RPC: old command ID seen for {}, ignoring\n", cmd->name);
+    ovrld_log(LogCategory::WARN, "DGO RPC: old command ID seen for {} (got {}, saw {}), ignoring\n",
+              cmd->name, cmd->cgo_id, sLoadDGO.last_id);
   }
   cmd->buffer1 = cmd->buffer_heap_top;
   cmd->status = 0;
@@ -1593,7 +1599,7 @@ void LoadNextDGO(RPC_Dgo_Cmd* cmd) {
 }
 
 void CancelDGO(RPC_Dgo_Cmd* param_1) {
-  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGO {}\n", param_1->name);
+  ovrld_log(LogCategory::WARN, "DGO RPC: CancelDGO {}\n", param_1 ? param_1->name : "NO CMD");
   if (sLoadDGO.msg_type != ISO_Hdr::MsgType::MSG_0) {
     sLoadDGO.want_abort = 1;
     if (NotifyDGO()) {

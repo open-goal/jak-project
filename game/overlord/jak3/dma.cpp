@@ -103,7 +103,7 @@ u32 read_rate_calc(u32 pitch) {
  * The worst function of all time - the SPU DMA completion interrupt.
  */
 int SPUDmaIntr(int channel, void* userdata) {
-  ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr enter!");
+  ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr enter! {} 0x{:x}", channel, (u64)userdata);
 
   if (!g_bSpuDmaBusy) {
     // we got an interrupt, but weren't expecting it, or no longer have the need for the data.
@@ -113,7 +113,7 @@ int SPUDmaIntr(int channel, void* userdata) {
 
   if (channel != g_nSpuDmaChannel) {
     // interrupt was for the wrong channel, somehow.
-    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr exit - not our channel (??)");
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr exit - not our channel ??");
     return 0;
   }
 
@@ -322,6 +322,7 @@ int SPUDmaIntr(int channel, void* userdata) {
     //  if (-1 < channel) {
     //    snd_FreeSPUDMA(channel);
     //  }
+    g_bSpuDmaBusy = false;
   } else {
     ovrld_log(LogCategory::SPU_DMA_STR,
               "SPUDmaIntr dma queue is not empty, preparing to run {} ({} pending)",
@@ -359,6 +360,7 @@ int SPUDmaIntr(int channel, void* userdata) {
   }
 
   ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr exit - end of function");
+  return 0;
 }
 
 /*!
@@ -407,11 +409,10 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   // CpuSuspendIntr(local_28);
   int ret = 1;
   bool defer = false;
-  ASSERT(cmd);
 
   ovrld_log(LogCategory::SPU_DMA_STR,
-            "DMA to SPU requested for {}, {} bytes to 0x{:x}, currently busy? {}", cmd->name,
-            length, spu_addr, g_bSpuDmaBusy);
+            "DMA to SPU requested for {}, {} bytes to 0x{:x}, currently busy? {}",
+            cmd ? cmd->name : "NO-CMD", length, spu_addr, g_bSpuDmaBusy);
   if (g_bSpuDmaBusy == 0) {
     // not busy, we can actually start dma now.
     g_nSpuDmaChannel = snd_GetFreeSPUDMA();
@@ -419,10 +420,14 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
       return 0;
     }
     // set globals for DMA processing
-    g_nSpuDmaChunks = cmd->num_isobuffered_chunks;
-    g_pDmaStereoVagCmd = cmd->stereo_sibling;
-    g_pDmaVagCmd = cmd;
+    if (cmd) {
+      g_nSpuDmaChunks = cmd->num_isobuffered_chunks;
+      g_pDmaStereoVagCmd = cmd->stereo_sibling;
+      g_pDmaVagCmd = cmd;
+    }
+
   } else {
+    ASSERT(cmd);
     // busy, need to queue the dma
     ASSERT(g_nSpuDmaQueueCount <= (int)g_aSpuDmaQueue.size());
 
@@ -442,13 +447,15 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   }
 
   // set up the stereo command
-  cmd->safe_to_modify_dma = 0;
-  auto* stereo = cmd->stereo_sibling;
-  if (stereo) {
-    stereo->num_isobuffered_chunks = cmd->num_isobuffered_chunks;
-    stereo->dma_iop_mem_ptr = iop_mem + length;
-    cmd->dma_chan = g_nSpuDmaChannel;
-    stereo->xfer_size = length;
+  if (cmd) {
+    cmd->safe_to_modify_dma = 0;
+    auto* stereo = cmd->stereo_sibling;
+    if (stereo) {
+      stereo->num_isobuffered_chunks = cmd->num_isobuffered_chunks;
+      stereo->dma_iop_mem_ptr = iop_mem + length;
+      cmd->dma_chan = g_nSpuDmaChannel;
+      stereo->xfer_size = length;
+    }
   }
 
   // kick off dma, if we decided not to queue.

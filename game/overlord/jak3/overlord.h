@@ -12,7 +12,7 @@ namespace jak3 {
  * is at least initialized, then sets up all overlord threads/RPCs. Once this returns,
  * it's safe to call overlord functions.
  */
-int start_overlord_wrapper(int argc, const char* const* argv, bool* signal);
+int start_overlord_wrapper(bool* signal);
 void jak3_overlord_init_globals_overlord();
 char* strncpyz(char* dst, const char* src, size_t n);
 
@@ -32,6 +32,7 @@ enum class LogCategory {
   RPC,
   STR_RPC,
   PLAYER_RPC,
+  DRIVER,
   NUM_CATETORIES
 };
 
@@ -47,6 +48,7 @@ constexpr bool g_OverlordLogEnable[(int)LogCategory::NUM_CATETORIES] = {
     true,  // rpc in general
     true,  // str rpc
     true,  // PLAYER
+    true,
 };
 
 template <typename... Args>

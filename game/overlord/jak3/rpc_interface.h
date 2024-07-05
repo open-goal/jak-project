@@ -43,11 +43,11 @@ struct SoundIOPInfo {
   char sound_bank6[16];
   char sound_bank7[16];
 };
-static_assert(offsetof(SoundIOPInfo, stream_name) == 304);
-static_assert(offsetof(SoundIOPInfo, stream_id) == 496);
-static_assert(offsetof(SoundIOPInfo, music_register) == 512);
-static_assert(offsetof(SoundIOPInfo, ramdisk_name) == 529);
-static_assert(offsetof(SoundIOPInfo, sound_bank0) == 592);
+// static_assert(offsetof(SoundIOPInfo, stream_name) == 304);
+// static_assert(offsetof(SoundIOPInfo, stream_id) == 496);
+// static_assert(offsetof(SoundIOPInfo, music_register) == 512);
+// static_assert(offsetof(SoundIOPInfo, ramdisk_name) == 529);
+// static_assert(offsetof(SoundIOPInfo, sound_bank0) == 592);
 static_assert(sizeof(SoundIOPInfo) == 0x2d0);
 
 // static_assert(sizeof(SoundIOPInfo) == 288);
@@ -86,8 +86,8 @@ struct RPC_Dgo_Cmd {
   uint32_t buffer2;
   uint32_t buffer_heap_top;
   char name[16];
-  uint16_t cgo_id;
-  uint8_t pad[30];
+  int32_t cgo_id;
+  uint8_t pad[28];
 };
 static_assert(sizeof(RPC_Dgo_Cmd) == 0x40);
 

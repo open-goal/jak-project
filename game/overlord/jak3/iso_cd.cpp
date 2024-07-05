@@ -17,10 +17,10 @@ using namespace iop;
 namespace jak3 {
 VagDir g_VagDir;
 MusicTweaks gMusicTweakInfo;
+CISOCDFile g_CISOCDFiles[kMaxOpenFiles];
 
 namespace {
 CISOCDFile* g_pReadInfo = nullptr;
-CISOCDFile g_CISOCDFiles[kMaxOpenFiles];
 std::vector<ISOFileDef> g_FileDefs;
 std::unique_ptr<CISOCDFileSystem> g_ISOCDFileSystem;
 }  // namespace
@@ -85,7 +85,7 @@ EIsoStatus CISOCDFile::BeginRead() {
   // how many pages are in our list, but not filled?
   int num_pages_desired = plist->m_nNumPages - plist->m_nNumActivePages;
 
-  if (num_pages_desired) {
+  if (!num_pages_desired) {
     // no space to read
     return EIsoStatus::OK_2;
   }
@@ -106,6 +106,9 @@ EIsoStatus CISOCDFile::BeginRead() {
     case CBuffer::BufferType::VAG:
       m_Buffer.m_eBufferType = CBuffer::BufferType::REQUEST_VAG;
       break;
+    case CBuffer::BufferType::REQUEST_NORMAL:
+    case CBuffer::BufferType::REQUEST_VAG:
+      break;
   }
 
   m_Status = EIsoStatus::OK_2;
@@ -114,6 +117,8 @@ EIsoStatus CISOCDFile::BeginRead() {
   g_pReadInfo = this;
   if (m_FileKind != CBaseFile::Kind::LZO_COMPRESSED) {
     if (m_nLength == 0 || m_nLoaded < m_nLength) {
+      ovrld_log(LogCategory::PAGING, "Calling ReadPages: sector {}, pages {}", m_nSector,
+                num_pages_desired);
       ReadPages(m_nSector, first_page, num_pages_desired, nullptr, true);
       int bytes = 0x8000 * num_pages_desired;
       m_nLoaded += bytes;
@@ -255,6 +260,9 @@ void CISOCDFile::ReadPages(int sector,
         params->flag = done_flag_ptr;
       }
     }
+    ovrld_log(LogCategory::PAGING, "[paging] building block for driver: 0x{:x}, {}, {}, flag: {}",
+              (u64)params->destination, params->sector_num, params->file_def->name.data,
+              (u64)params->flag);
     page = page->m_pNextPage;
     pg_remaining = pg_remaining + -1;
     sector += 0x10;
@@ -265,6 +273,7 @@ void CISOCDFile::ReadPages(int sector,
     // we set up block params for all the requested pages.
     int pages_actually_read = -1;
 
+    ovrld_log(LogCategory::PAGING, "[paging] Submitting {} blocks to driver.\n", num_pages);
     int status = get_driver()->ReadMultiple(&m_Descriptor, &pages_actually_read, params_array,
                                             num_pages, true);
     if ((status == 0) && pages_actually_read == num_pages) {
@@ -301,19 +310,19 @@ void CISOCDFile::ReadPages(int sector,
  */
 void CISOCDFile::ReadPagesCallback(jak3::Block* block, int error) {
   if (error == 0) {
-    ASSERT(block->page->m_nAllocState == 1);
+    ASSERT(block->params.page->m_nAllocState == 1);
     // flag page as done
-    block->page->input_state = CPage::State::READ_DONE;
+    block->params.page->input_state = CPage::State::READ_DONE;
     // set flag
-    SetEventFlag(get_page_manager()->m_CCache.m_PagesFilledEventFlag, block->page->mask);
+    SetEventFlag(get_page_manager()->m_CCache.m_PagesFilledEventFlag, block->params.page->mask);
 
     // if this block has a notification, process it:
-    if (block->done_flag == (char*)0xffffffff) {  // indicates we should wake caller
+    if (block->params.flag == (char*)0xffffffff) {  // indicates we should wake caller
       // we assume the caller is the iso thread
       WakeupThread(g_nISOThreadID);
-    } else if (block->done_flag) {
+    } else if (block->params.flag) {
       // in this case, it's a pointer.
-      *block->done_flag = 1;
+      *block->params.flag = 1;
     }
   }
 }
@@ -451,7 +460,7 @@ CISOCDFile* CISOCDFileSystem::AllocateFile(const jak3::ISOFileDef* file_def) {
  * Callback from the DVD driver itself into the filesystem. This was originally used for notifying
  * when the tray is opened or closed.
  */
-void CISOCDFileSystem::DvdDriverCallback(int a) {
+void CISOCDFileSystem::DvdDriverCallback(int) {
   // the only callbacks that do anything are tray open/close, which we don't care about
   ASSERT_NOT_REACHED();
 }
@@ -474,6 +483,11 @@ void CISOCDFileSystem::ReadDirectory() {
       MakeISOName(&e.name, file_name.c_str());
       e.full_path =
           fmt::format("{}/out/jak3/iso/{}", file_util::get_jak_project_dir().string(), file_name);
+      auto* fp = file_util::open_file(e.full_path, "rb");
+      ASSERT(fp);
+      fseek(fp, 0, SEEK_END);
+      e.length = ftell(fp);
+      fclose(fp);
     }
   }
 }

@@ -12,6 +12,7 @@ constexpr int kMaxOpenFiles = 16;
 
 struct CBaseFileSystem {
   CBaseFileSystem();
+  virtual ~CBaseFileSystem() = default;
 
   // semaphores for processing open files
   int m_Sema[kMaxOpenFiles];

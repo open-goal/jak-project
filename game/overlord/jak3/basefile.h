@@ -20,6 +20,7 @@ constexpr int kDefaultBufferPageCount = 4;
 struct CBaseFile {
   CBaseFile();
   CBaseFile(const ISOFileDef* file, int semaphore);
+  virtual ~CBaseFile() = default;
 
   uint8_t* CheckPageBoundary();
   int InitBuffer(CBuffer::BufferType type, ISO_Hdr* msg);

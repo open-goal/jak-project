@@ -26,7 +26,7 @@ CBaseFile::CBaseFile() {
   m_ProcessDataSemaphore = -1;
   m_FileDef = nullptr;
   m_FileKind = Kind::UNKNOWN;
-  m_Status = Status::UNUSED;
+  m_Status = EIsoStatus::NONE_0;
   m_ReadRate = 0;
   m_LengthPages = 0;
   m_PageOffset = 0;
@@ -51,7 +51,7 @@ CBaseFile::CBaseFile(const jak3::ISOFileDef* file, int semaphore) {
   m_FileDef = file;
   m_ProcessDataSemaphore = semaphore;
   m_FileKind = Kind::UNKNOWN;
-  m_Status = Status::IDLE;
+  m_Status = EIsoStatus::IDLE_1;
   m_ReadRate = 0;
   m_LengthPages = 0;
   m_PageOffset = 0;
@@ -312,6 +312,7 @@ CPageList* CBaseFile::AllocPages() {
   } else {
     ASSERT_NOT_REACHED();  // might be ok.
   }
+  return ret_plist;
 }
 
 /*!

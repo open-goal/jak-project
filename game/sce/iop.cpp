@@ -239,6 +239,14 @@ s32 ClearEventFlag(s32 flag, u32 pattern) {
   return iop->kernel.ClearEventFlag(flag, pattern);
 }
 
+s32 WaitEventFlag(s32 flag, u32 pattern, u32 mode) {
+  return iop->kernel.WaitEventFlag(flag, pattern, mode);
+}
+
+s32 SetEventFlag(s32 flag, u32 pattern) {
+  return iop->kernel.SetEventFlag(flag, pattern);
+}
+
 s32 WakeupThread(s32 thid) {
   iop->kernel.WakeupThread(thid);
   return 0;
