@@ -706,7 +706,7 @@ void RestartVag(ISO_VAGCommand* cmd, int p) {
     } else {
       sceSdSetParam(sibling->voice, 0);
       sceSdSetParam(sibling->voice | 0x100, 0);
-      sceSdSetAddr(cmd->voice | 0x40, (char)cmd->stream_sram);
+      sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram);
       bVar1 = sibling->voice;
       uVar4 = sibling->stream_sram;
     }

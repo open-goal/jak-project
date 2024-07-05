@@ -96,7 +96,7 @@ void* AllocScratchPad(int mode) {
  * Create a new thread
  */
 s32 CreateThread(ThreadParam* param) {
-  ASSERT(strlen(param->name));
+  // ASSERT(strlen(param->name));
   return iop->kernel.CreateThread(param->name, (void (*)())param->entry, param->initPriority);
 }
 

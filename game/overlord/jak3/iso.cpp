@@ -988,8 +988,8 @@ u32 ISOThread() {
               ReturnMessage(mbx_cmd);
               break;
             case ISO_Hdr::MsgType::VAG_SET_PITCH_VOL:
-              ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL (id {})", vag_cmd->id);
               vag_cmd = (ISO_VAGCommand*)mbx_cmd;
+              ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL (id {})", vag_cmd->id);
               internal_vag_cmd = FindVagStreamId(vag_cmd->id);
               if (internal_vag_cmd) {
                 ovrld_log(LogCategory::ISO_QUEUE, "VAG_SET_PITCH_VOL lookup ok, got {}",
@@ -1332,7 +1332,7 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
         case ISO_DGOCommand::State::READ_LAST_OBJ:
           // do an extra sync here to wait for the EE to finish processing both temporary buffers.
           // the next load will be to the heap top, which may overlap the temp buffers.
-          lg::warn("in read last obj!");
+          // lg::warn("in read last obj!");
           if (LookSyncMbx() == 0)
             goto exit_no_sync;
           ovrld_log(LogCategory::DGO,

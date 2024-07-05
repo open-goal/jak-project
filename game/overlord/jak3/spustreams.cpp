@@ -2,8 +2,8 @@
 
 #include <cstring>
 
-#include "common/util/Assert.h"
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 
 #include "game/overlord/jak3/basefile.h"
 #include "game/overlord/jak3/dma.h"
@@ -41,7 +41,7 @@ void UpdateIsoBuffer(ISO_VAGCommand* cmd, int length) {
   if (transfer_size < length) {
     tranferred_already = -transfer_size;
     length = transfer_size;
-    ASSERT_NOT_REACHED();  // for now...
+    // ASSERT_NOT_REACHED();  // for now...
   }
   cmd->xfer_size = transfer_size + tranferred_already;
   file->m_Buffer.AddData(-length);
@@ -76,8 +76,13 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
   ASSERT(file->m_ProcessDataSemaphore != -1);
 
   // lock the semaphore
+  lg::error("--------------- proces vag!!!\n");
   WaitSema(file->m_ProcessDataSemaphore);
   buffer = &file->m_Buffer;
+
+  if (msg->unk_gvsp_flag) {
+    lg::error("unk gvsp flag set in process data - no more needed??");
+  }
 
   // reject if errored/stopped - in this case no more data is needed.
   if (msg->unk_gvsp_flag || msg->flags.stop || msg->flags.file_disappeared ||
@@ -110,8 +115,10 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
     if (msg->xfer_size < length) {
       desired_length = msg->xfer_size;
     }
-    if ((int)file->m_Buffer.m_nDataLength < desired_length)
+    if ((int)file->m_Buffer.m_nDataLength < desired_length) {
+      lg::warn("ProcessVAG data is starved.");
       goto exit;
+    }
   }
 
   // reject if no buffer
@@ -161,7 +168,8 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
       spu_addr = msg->stream_sram + 0x2000;
     } else {
       int vag_transfer_size = msg->xfer_size;
-
+      lg::warn("decision about marking a loop: {} {} {}\n", length, msg->xfer_size,
+               msg->unk_spu_mem_offset);
       if ((length < (int)vag_transfer_size) || ((uint)msg->unk_spu_mem_offset < 0x4000)) {
         VAG_MarkLoopEnd(file->m_Buffer.m_pCurrentData, 0x2000);
         VAG_MarkLoopStart(file->m_Buffer.m_pCurrentData);
@@ -222,6 +230,8 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
       msg->xfer_size = uVar1;
     }
 
+    // lg::die("xfer size is {}", msg->xfer_size);
+
     // set sibling properties
     if (sibling) {
       spu_addr = msg->xfer_size;
@@ -278,7 +288,9 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
       goto LAB_0001067c;
     msg->position_for_ee = 0;
     msg->unk_gvsp_len = 0;
-    sibling->position_for_ee = 0;
+    if (sibling) { // added.
+      sibling->position_for_ee = 0;
+    }
   LAB_000106a0:
     UpdateIsoBuffer(msg, length);
   }
@@ -289,11 +301,15 @@ exit:
 }
 
 u32 GetSpuRamAddress(ISO_VAGCommand* cmd) {
+  return sceSdGetAddr(SD_VA_NAX | cmd->voice);
+
   u32 voice = cmd->voice;
   u32 current_addr = cmd->stream_sram;
   BlockUntilVoiceSafe(voice, 0xf00);
   u32 sce_addr = sceSdGetAddr(voice | 0x2240);
+  // lg::info("sce addr {}", sce_addr);
   if ((sce_addr < current_addr) || (current_addr + 0x4040 <= sce_addr)) {
+    ASSERT_NOT_REACHED();
     sce_addr = current_addr + 0x4040;
   }
   return sce_addr;
@@ -340,6 +356,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
   // CpuSuspendIntr(local_20);
   uVar1 = GetSpuRamAddress(cmd);
   uVar5 = 0;
+  // lg::info("offset is {}, {} - {}\n", uVar1 - cmd->stream_sram, uVar1, cmd->stream_sram);
   uVar1 = uVar1 - cmd->stream_sram;
   if (sibling != (ISO_VAGCommand*)0x0) {
     uVar5 = GetSpuRamAddress(sibling);
@@ -363,6 +380,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
     if (sibling == (ISO_VAGCommand*)0x0)
       goto LAB_00011010;
     // CpuSuspendIntr(local_20);
+    // lg::info("inner values are: {} {}", uVar1, uVar5);
     if ((0x4000 < uVar1) && (cmd->flags.bit20 == 0)) {
       cmd->flags.bit20 = 1;
       cmd->flags.bit21 = 0;
@@ -414,9 +432,12 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
         sibling->flags.bit22 = 0;
       }
     }
+    // lg::info("bits are {} {} {}\n", cmd->flags.bit20, cmd->flags.bit21, cmd->flags.bit22);
     // CpuResumeIntr(local_20[0]);
     if (cmd->unk_gvsp_flag != 0)
       goto switchD_00010a60_caseD_1;
+
+    // lg::info("switching {}", cmd->unk_gvsp_state2);
     switch (cmd->unk_gvsp_state2) {
       case 0:
         if ((((cmd->flags.dma_complete_even_chunk_count == 0) || (cmd->flags.bit21 == 0)) ||
@@ -447,8 +468,9 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
           BlockUntilVoiceSafe(cmd->voice, 0xf00);
           BlockUntilVoiceSafe(sibling->voice, 0xf00);
           // CpuSuspendIntr(local_20);
-          sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
-          sceSdSetAddr(sibling->voice | 0x2140, sibling->stream_sram);
+          // lg::info("sax case 1 (stream)");
+          sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram + 0x2000);
+          sceSdSetAddr(sibling->voice | 0x2140, sibling->stream_sram + 0x2000);
           iVar2 = 3;
           cmd->flags.bit15 = 1;
           cmd->flags.bit14 = 0;
@@ -472,6 +494,8 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
       default:
         goto switchD_00010a60_caseD_1;
       case 3:
+        //        lg::info("case 3 bits: ({} {}) ({} {})\n", cmd->flags.bit20, cmd->flags.bit22,
+        //                 sibling->flags.bit20, sibling->flags.bit22);
         if ((cmd->flags.bit20 != 0) || (sibling->flags.bit20 != 0))
           goto LAB_00010bc4;
         if ((cmd->flags.bit22 == 0) || (sibling->flags.bit22 == 0))
@@ -479,6 +503,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
         BlockUntilVoiceSafe(sibling->voice, 0xf00);
         // CpuSuspendIntr(local_20);
+        // lg::info("sax case 2 (trap)");
         sceSdSetAddr(cmd->voice | 0x2140, cmd->trap_sram);
         sceSdSetAddr(sibling->voice | 0x2140, sibling->trap_sram);
         iVar2 = 5;
@@ -519,6 +544,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
         BlockUntilVoiceSafe(sibling->voice, 0xf00);
         // CpuSuspendIntr(local_20);
+        // lg::info("sax case 3 (stream)");
         sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
         sceSdSetAddr(sibling->voice | 0x2140, sibling->stream_sram);
         iVar2 = 6;
@@ -535,6 +561,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
           BlockUntilVoiceSafe(cmd->voice, 0xf00);
           BlockUntilVoiceSafe(sibling->voice, 0xf00);
           // CpuSuspendIntr(local_20);
+          // lg::info("sax case 4 (trap)");
           sceSdSetAddr(cmd->voice | 0x2140, cmd->trap_sram);
           sceSdSetAddr(sibling->voice | 0x2140, sibling->trap_sram);
           cmd->flags.bit13 = 1;
@@ -678,7 +705,7 @@ LAB_00011010:
         if (cmd->flags.bit20 == 0) {
           BlockUntilVoiceSafe(cmd->voice, 0xf00);
           // CpuSuspendIntr(local_20);
-          sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
+          sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram + 0x2000);
           cmd->flags.bit15 = 1;
           cmd->unk_gvsp_state2 = 3;
           cmd->flags.bit14 = 0;
@@ -809,39 +836,53 @@ LAB_00011010:
 
 u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
   uint uVar1;
-  uint uVar2;
+  uint last_offset_in_stream_sram;
   ISO_VAGCommand* pIVar3;
 
-  lg::info("check stream progress on {}", cmd->name);
+  // lg::info("check stream progress on {}", cmd->name);
 
   if (cmd->flags.file_disappeared == 0) {
     if (cmd->flags.stereo_secondary != 0) {
+      // lg::info("fail 1");
       return 1;
     }
     if (cmd->error != 0) {
+      //  lg::info("fail 2");
+
       return 0;
     }
     if ((cmd->flags.bit20 != 0) && (cmd->unk_gvsp_flag != 0)) {
+      // lg::info("fail 3");
+
       return 0;
     }
     if (cmd->flags.saw_chunks1 == 0) {
+      // lg::info("fail 4");
+
       return 1;
     }
     if (cmd->flags.paused != 0) {
+      // lg::info("fail 5");
+
       return 1;
     }
     uVar1 = cmd->unk_spu_mem_offset;
     pIVar3 = cmd->stereo_sibling;
-    uVar2 = cmd->unk_gvsp_len;
-    lg::info("got {} {}", cmd->unk_spu_mem_offset, cmd->unk_gvsp_len);
-    if ((uVar1 < 0x4000) &&
-        (((uVar2 < 0x2001 && (uVar1 < 0x2001)) || ((0x1fff < uVar2 && (0x1fff < uVar1)))))) {
-      if (uVar1 <= (uVar2 & 0xfffffff0)) {
+    last_offset_in_stream_sram = cmd->unk_gvsp_len;
+    // lg::info("got {} {}", cmd->unk_spu_mem_offset, cmd->unk_gvsp_len);
+    if ((uVar1 < 0x4000) && (((last_offset_in_stream_sram < 0x2001 && (uVar1 < 0x2001)) ||
+                              ((0x1fff < last_offset_in_stream_sram && (0x1fff < uVar1)))))) {
+      if (uVar1 <= (last_offset_in_stream_sram & 0xfffffff0)) {
+        // lg::info("early out case");
+        // lg::info("fail 6");
+
         return 0;
       }
       // CpuSuspendIntr(local_18);
-      if ((cmd->unk_gvsp_flag == 0) && (uVar2 < (uint)cmd->unk_spu_mem_offset)) {
+      if ((cmd->unk_gvsp_flag == 0) &&
+          (last_offset_in_stream_sram < (uint)cmd->unk_spu_mem_offset)) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
+        lg::info("sax case weird");
         sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram + cmd->unk_spu_mem_offset);
         cmd->unk_gvsp_flag = 1;
         if (pIVar3 != (ISO_VAGCommand*)0x0) {
@@ -850,31 +891,46 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
           pIVar3->unk_gvsp_flag = 1;
         }
       }
+      // lg::info("fail 7");
+
       set_active_a(cmd, 0);
       set_active_b(cmd, 0);
       // CpuResumeIntr(local_18[0]);
       return 1;
+    } else {
+      // lg::info("else case");
     }
     if (cmd->flags.saw_chunks1 == 0) {
+      // lg::info("fail 8");
+
       return 1;
     }
     if (cmd->active_b != 0) {
+      // lg::info("fail 9");
+
       return 1;
     }
     if (cmd->safe_to_modify_dma == 0) {
+      // lg::info("fail 10");
+
       return 1;
     }
     if (cmd->unk_gvsp_flag != 0) {
+      // lg::info("fail 11");
+
       return 1;
     }
-    if (uVar2 < 0x2000) {
+    if (last_offset_in_stream_sram < 0x2000) {
       uVar1 = cmd->num_isobuffered_chunks;
     } else {
       uVar1 = cmd->num_isobuffered_chunks ^ 1;
     }
     if ((uVar1 & 1) == 0) {
+      // lg::info("fail 12");
       return 1;
     }
+
+    // lg::warn("activating b in CheckVAGStreamProgress");
     set_active_b(cmd, 1);
   }
   return 1;
@@ -929,6 +985,9 @@ void ProcessStreamData() {
       do {
         msg = ppIVar6[9];
         if (msg != (ISO_VAGCommand*)0x0) {
+          //          lg::warn("process stream data for {}, {} {} {}\n", msg->name,
+          //                   (msg->status == EIsoStatus::OK_2), (msg->active_b != 0),
+          //                   (msg->active_c != 0));
           if (((msg->status == EIsoStatus::OK_2) && (msg->active_b != 0)) && (msg->active_c != 0)) {
             auto* file = msg->m_pBaseFile;
             pCVar3 = &file->m_Buffer;

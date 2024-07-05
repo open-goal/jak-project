@@ -66,7 +66,6 @@ void sceSdSetSwitch(u32 entry, u32 value) {
 void sceSdSetAddr(u32 entry, u32 value) {
   [[maybe_unused]] u32 core = entry & 1;
   [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
-
   auto* voice = voice_from_entry(voice_id);
   if (!voice) {
     return;
@@ -75,9 +74,12 @@ void sceSdSetAddr(u32 entry, u32 value) {
 
   switch (reg) {
     case SD_VA_SSA: {
+      printf("call to set ssa %d\n", value);
       voice->SetSsa(value >> 1);
     } break;
     case SD_VA_LSAX: {
+      printf("call to set sax %d (%d %d), current pos is %d, lsa is %d\n", value, core, voice_id,
+             voice->GetNax() * 2, voice->GetLsa() * 2);
       voice->SetLsa(value >> 1);
     } break;
     default:

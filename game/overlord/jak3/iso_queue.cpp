@@ -87,7 +87,7 @@ void InitBuffers() {
   g_auStrmSRAM[3] = 0x11100;
   g_auTrapSRAM[3] = 0x15100;
   snd_SRAMMarkUsed(0x11100, 0x4040);
-  g_auStrmSRAM[4] = 0x15140;
+  g_auStrmSRAM[4] = 0x15140; // 86384 - 48
   g_auTrapSRAM[4] = 0x19140;
   snd_SRAMMarkUsed(0x15140, 0x4040);
   g_auStrmSRAM[5] = 0x019180;

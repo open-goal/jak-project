@@ -92,7 +92,6 @@ void* RPC_Player(unsigned int, void* msg, int size) {
         const auto* cmd = (const Rpc_Player_Play_Cmd*)m_ptr;
         ovrld_log(LogCategory::PLAYER_RPC, "[Player RPC] command PLAY {} id {}", cmd->name.data,
                   cmd->sound_id);
-        break; // temp remove
         s32 id = cmd->sound_id;
         if (id) {
           auto* sound = LookupSound(id);

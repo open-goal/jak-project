@@ -45,7 +45,7 @@ int g_nSpuDmaQueueCount = 0;
 
 struct DmaInterruptHandlerHack {
   s32 chan = 0;
-  sceSdTransIntrHandler cb;
+  sceSdTransIntrHandler cb = nullptr;
   void* data;
   int countdown = 0;
 } g_DmaInterruptHack;
@@ -72,11 +72,17 @@ void jak3_overlord_init_globals_dma() {
   g_DmaInterruptHack = {};
 }
 
+void uninstall_dma_intr() {
+  g_DmaInterruptHack = {};
+}
+
 void set_dma_intr_handler_hack(s32 chan, sceSdTransIntrHandler cb, void* data) {
+  ASSERT(!g_DmaInterruptHack.cb);
+  lg::error("install cb");
   g_DmaInterruptHack.chan = chan;
   g_DmaInterruptHack.cb = cb;
   g_DmaInterruptHack.data = data;
-  g_DmaInterruptHack.countdown = 10;
+  g_DmaInterruptHack.countdown = 1;
 }
 
 int SPUDmaIntr(int channel, void* userdata);
@@ -88,7 +94,7 @@ void dma_intr_hack() {
       int chan = g_DmaInterruptHack.chan;
       void* data = g_DmaInterruptHack.data;
       g_DmaInterruptHack = {};
-
+      lg::error("entering spu: {}\n", !!g_DmaInterruptHack.cb);
       SPUDmaIntr(chan, data);
     }
   }
@@ -111,6 +117,8 @@ int voice_trans_wrapper(s16 chan, u32 mode, const void* iop_addr, u32 spu_addr, 
   g_voiceTransChannel = chan;
   g_voiceTransAddr = iop_addr;
   g_voiceTransSpuAddr = spu_addr;
+
+  lg::warn("-------------------------------> voice trans {} {}, chan {}\n", spu_addr, size, chan);
 
   if (g_voiceTransRunning) {
     // I claim this should never happen, and this is their workaround for a bug.
@@ -239,6 +247,7 @@ int SPUDmaIntr(int channel, void* userdata) {
         BlockUntilVoiceSafe(g_pDmaVagCmd->voice, 0x900);
 
         // set address and ADSR settings
+        lg::warn("setting ssa to stream sram + 30 in chunks0 startup interrupt");
         sceSdSetAddr(g_pDmaVagCmd->voice | SD_VA_SSA, g_pDmaVagCmd->stream_sram + 0x30);
         sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_ADSR1, 0xff);
         sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_ADSR2, 0x1fc0);
@@ -257,6 +266,7 @@ int SPUDmaIntr(int channel, void* userdata) {
         BlockUntilVoiceSafe(g_pDmaStereoVagCmd->voice, 0x900);
 
         // set voice params
+        lg::warn("setting ssa to stream sram + 30 in chunks0 startup interrupt (stereo)");
         sceSdSetAddr(g_pDmaVagCmd->voice | SD_VA_SSA, g_pDmaVagCmd->stream_sram + 0x30);
         sceSdSetAddr(g_pDmaStereoVagCmd->voice | SD_VA_SSA, g_pDmaStereoVagCmd->stream_sram + 0x30);
         sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_ADSR1, 0xff);
@@ -349,7 +359,8 @@ int SPUDmaIntr(int channel, void* userdata) {
   if (g_nSpuDmaQueueCount == 0) {
     ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr dma queue is empty, disabling interrupt");
     // we're done!
-    set_dma_intr_handler_hack(channel, nullptr, nullptr);
+    // set_dma_intr_handler_hack(channel, nullptr, nullptr);
+    uninstall_dma_intr();
     //  if (-1 < channel) {
     //    snd_FreeSPUDMA(channel);
     //  }
@@ -387,7 +398,7 @@ int SPUDmaIntr(int channel, void* userdata) {
     }
 
     // start the next one!
-    set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, userdata);
+    // set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, userdata);
     voice_trans_wrapper(next_chan, next_mode, next_iop, next_spu, next_length);
   }
 

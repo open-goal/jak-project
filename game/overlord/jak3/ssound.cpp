@@ -318,7 +318,7 @@ u32 CalculateFalloffVolume(s32* trans,
                            u32 fo_max,
                            u32* outa,
                            u32* outb) {
-  ASSERT(fo_curve < 0x28);
+  ASSERT(fo_curve < 0x29);
   // undefined4 uVar1;
   u32 uVar2;
   int iVar3;
@@ -660,7 +660,7 @@ s32 CalculateAngle(s32* trans, u32 fo_curve, u32 param_3) {
   int iVar6;
   int iVar7;
   uint uVar8;
-  ASSERT(fo_curve < 0x28);
+  ASSERT(fo_curve < 0x29);
   WaitSema(g_EarTransSema);
   if (unktable[fo_curve] != 0) {
     if (unktable[fo_curve + 0x2c] == 0) {

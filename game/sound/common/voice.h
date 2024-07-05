@@ -63,6 +63,7 @@ class Voice {
   }
 
   u32 GetNax() { return mNAX; }
+  u32 GetLsa() { return mLSA; }
 
   void SetSsa(u32 addr) { mSSA = addr; }
 
