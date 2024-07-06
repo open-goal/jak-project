@@ -2,9 +2,9 @@
 
 #include <cstring>
 
+#include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
-#include "common/log/log.h"
 
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/iso_cd.h"
@@ -197,7 +197,6 @@ void PauseVAGStreams() {
   cmd->msg_type = ISO_Hdr::MsgType::VAG_PAUSE;
   cmd->mbox_reply = 0;
   cmd->thread_to_wake = 0;
-  lg::warn("--------------- PauseVAGStreams");
   SendMbx(g_nISOMbx, cmd);
 }
 
@@ -206,19 +205,17 @@ void UnpauseVAGStreams() {
   cmd->msg_type = ISO_Hdr::MsgType::VAG_UNPAUSE;
   cmd->mbox_reply = 0;
   cmd->thread_to_wake = 0;
-  lg::warn("--------------- UnpauseVAGStreams");
   SendMbx(g_nISOMbx, cmd);
 }
 
-void SetVAGStreamPitch(int id,int pitch){
+void SetVAGStreamPitch(int id, int pitch) {
   auto* cmd = GetVAGCommand();
   cmd->msg_type = ISO_Hdr::MsgType::VAG_SET_PITCH_VOL;
   cmd->id = id;
   cmd->pitch_cmd = pitch;
   cmd->mbox_reply = 0;
   cmd->thread_to_wake = 0;
-  lg::warn("--------------- SetVAGStreamPitch");
-  SendMbx(g_nISOMbx,cmd);
+  SendMbx(g_nISOMbx, cmd);
 }
 
 }  // namespace jak3

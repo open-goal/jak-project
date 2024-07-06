@@ -142,7 +142,7 @@ void InitISOFS() {
 
   thread_param.stackSize = 0x1100;
   thread_param.entry = ISOThread;
-  thread_param.initPriority = 0x80; // changed to be lower priority
+  thread_param.initPriority = 0x80;  // changed to be lower priority
   thread_param.attr = TH_C;
   thread_param.option = 0;
   strcpy(thread_param.name, "ISO");
@@ -794,7 +794,6 @@ void ProcessMusic() {
 
   SignalSema(g_nMusicSemaphore);
 }
-
 
 u32 ISOThread() {
   int priority = -1;

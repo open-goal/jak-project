@@ -286,7 +286,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
       goto LAB_0001067c;
     msg->position_for_ee = 0;
     msg->unk_gvsp_len = 0;
-    if (sibling) { // added.
+    if (sibling) {  // added.
       sibling->position_for_ee = 0;
     }
   LAB_000106a0:

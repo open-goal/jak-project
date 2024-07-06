@@ -2,15 +2,15 @@
 
 #include <cstring>
 
-#include "common/util/Assert.h"
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 
+#include "game/overlord/jak3/dma.h"
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/sbank.h"
 #include "game/overlord/jak3/srpc.h"
 #include "game/overlord/jak3/ssound.h"
 #include "game/overlord/jak3/streamlist.h"
-#include "game/overlord/jak3/dma.h"
 #include "game/overlord/jak3/vag.h"
 #include "game/sce/iop.h"
 
@@ -51,7 +51,7 @@ void VBlank_Initialize() {
     strcpy(thread_param.name, "vblank");
     g_nVBlankThreadID = CreateThread(&thread_param);
     ASSERT(g_nVBlankThreadID >= 0);
-    sema_param.max_count = 200; // hack
+    sema_param.max_count = 200;  // hack
     sema_param.attr = 0;
     sema_param.init_count = 0;
     sema_param.option = 0;
@@ -184,7 +184,6 @@ u32 VBlankThread() {
           g_SRPCSoundIOPInfo.chinfo[i] = (snd_GetVoiceStatus(i) != 1) - 1;
         }
 
-
         sceSifDmaData dma;
         dma.data = &g_SRPCSoundIOPInfo;
         dma.addr = (void*)(u64)g_nInfoEE;
@@ -192,8 +191,6 @@ u32 VBlankThread() {
         static_assert(sizeof(g_SRPCSoundIOPInfo) == 0x2d0);
         dma.mode = 0;
         /*dmaid =*/sceSifSetDma(&dma, 1);
-
-
       }
     }
     RunDeferredVoiceTrans();

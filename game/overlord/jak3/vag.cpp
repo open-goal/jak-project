@@ -2,8 +2,8 @@
 
 #include <cstring>
 
-#include "common/util/Assert.h"
 #include "common/log/log.h"
+#include "common/util/Assert.h"
 
 #include "game/overlord/jak3/basefile.h"
 #include "game/overlord/jak3/iso.h"
@@ -853,7 +853,7 @@ void CalculateVAGVolumes(ISO_VAGCommand* cmd, int* lvol, int* rvol) {
       if (iVar9 < 2) {
         iVar3 = 0x2d41;
         if (iVar9 == 0) {
-          //ASSERT_NOT_REACHED();  // dolby crap
+          // ASSERT_NOT_REACHED();  // dolby crap
           // TODO:
           iVar4 = 0x2d41;
           //  uVar8 = CalculateDolbyPanAngle(cmd, angle);
@@ -950,13 +950,13 @@ s32 CalculateVAGPitch(int param_1, int param_2) {
   }
 
   return param_1;
-//  if (b != 0) {
-//    if (0 < b) {
-//      return (a * (b + 0x5f4)) / 0x5f4;
-//    }
-//    a = (a * 0x5f4) / (0x5f4U - b);
-//  }
-//  return a;
+  //  if (b != 0) {
+  //    if (0 < b) {
+  //      return (a * (b + 0x5f4)) / 0x5f4;
+  //    }
+  //    a = (a * 0x5f4) / (0x5f4U - b);
+  //  }
+  //  return a;
 }
 
 void SetVAGVol(ISO_VAGCommand* cmd) {

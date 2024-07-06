@@ -7,4 +7,4 @@ void jak3_overlord_init_globals_ramdisk();
 
 u32 LoadToEE_RPC_Thread();
 
-}
+}  // namespace jak3

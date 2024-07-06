@@ -241,12 +241,12 @@ void CPageList::GarbageCollect() {
   ovrld_log(LogCategory::PAGING, "[paging] Garbage collecting, currently have {} pages, {} active",
             m_nNumPages, m_nNumActivePages);
 
-//  for (auto* p = m_pFirstPage; p; p = p->m_pNextPage) {
-//    ovrld_log(LogCategory::PAGING,
-//              "page 0x{:x}, first active? {} last active? {} current active? {} last? {}",
-//              p->m_nPageIdx, p == m_pFirstActivePage, p == m_pLastActivePage,
-//              p == m_pCurrentActivePage, p == m_pLastPage);
-//  }
+  //  for (auto* p = m_pFirstPage; p; p = p->m_pNextPage) {
+  //    ovrld_log(LogCategory::PAGING,
+  //              "page 0x{:x}, first active? {} last active? {} current active? {} last? {}",
+  //              p->m_nPageIdx, p == m_pFirstActivePage, p == m_pLastActivePage,
+  //              p == m_pCurrentActivePage, p == m_pLastPage);
+  //  }
   // trim pages at the front. Anything unreferenced before the current active page is ok to clean.
   CPage* page = m_pFirstPage;
   if (page && page != m_pCurrentActivePage) {
@@ -357,7 +357,8 @@ void CPageList::GarbageCollect() {
     }
   }
 
-  ovrld_log(LogCategory::PAGING, "[paging] Done Garbage collecting, currently have {} pages, {} active in 0x{:x}",
+  ovrld_log(LogCategory::PAGING,
+            "[paging] Done Garbage collecting, currently have {} pages, {} active in 0x{:x}",
             m_nNumPages, m_nNumActivePages, (u64)this);
 }
 

@@ -1,7 +1,8 @@
 #include "basefilesystem.h"
 
-#include "game/sce/iop.h"
 #include "common/util/Assert.h"
+
+#include "game/sce/iop.h"
 
 using namespace iop;
 namespace jak3 {
@@ -22,4 +23,4 @@ CBaseFileSystem::CBaseFileSystem() {
     }
   }
 }
-}
+}  // namespace jak3

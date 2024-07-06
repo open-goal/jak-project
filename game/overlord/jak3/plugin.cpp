@@ -7,4 +7,4 @@ void jak3_overlord_init_globals_plugin() {}
 // ??
 // ??
 
-}
+}  // namespace jak3

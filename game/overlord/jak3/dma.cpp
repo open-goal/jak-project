@@ -116,8 +116,6 @@ int voice_trans_wrapper(s16 chan, u32 mode, const void* iop_addr, u32 spu_addr, 
   g_voiceTransAddr = iop_addr;
   g_voiceTransSpuAddr = spu_addr;
 
-  // lg::warn("-------------------------------> voice trans {} {}, chan {}\n", spu_addr, size, chan);
-
   if (g_voiceTransRunning) {
     // I claim this should never happen, and this is their workaround for a bug.
     ASSERT_NOT_REACHED();

@@ -61,7 +61,6 @@ int start_overlord() {
 
   lg::info("vblank init");
 
-
   // RPC thread to load data from game files to the game memory.
   ThreadParam thread_param;
   thread_param.initPriority = 0x3b;

@@ -55,7 +55,6 @@ void Voice::DecodeSamples() {
 
   if ((mNAX & 0x7) == 0) {
     if (mCurHeader.LoopEnd.get()) {
-      // printf("-------------------------------> voice looping from %d to %d\n", mNAX * 2, mLSA * 2);
       mNAX = mLSA;
       mENDX = true;
 

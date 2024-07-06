@@ -52,7 +52,7 @@ struct CBaseFile {
 
   // Number of sectors that we should read in total, decided based on the file size and request from
   // user when they opened this file.
-  int m_LengthPages = 0; // really, in pages...
+  int m_LengthPages = 0;  // really, in pages...
 
   // The current offset. (todo: is this for data we read, processed?)
   int m_PageOffset = 0;

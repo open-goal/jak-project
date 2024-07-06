@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common/common_types.h"
+
 #include "game/sound/sndshim.h"
 
 namespace jak3 {
