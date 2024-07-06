@@ -448,23 +448,6 @@ void render_game_frame(int game_width,
   }
 }
 
-void update_global_profiler() {
-  if (g_gfx_data->debug_gui.dump_events) {
-    prof().set_enable(false);
-    g_gfx_data->debug_gui.dump_events = false;
-
-    // TODO - the file rotation code had an infinite loop here if it couldn't find anything
-    // matching the format
-    //
-    // Does the existing log rotation code have that problem?
-
-    auto file_path = file_util::get_jak_project_dir() / "profile_data" /
-                     fmt::format("prof-{}.json", str_util::current_local_timestamp_no_colons());
-    file_util::create_dir_if_needed_for_file(file_path);
-    prof().dump_to_json(file_path.string());
-  }
-}
-
 void GLDisplay::process_sdl_events() {
   SDL_Event evt;
   while (SDL_PollEvent(&evt) != 0) {
@@ -603,7 +586,6 @@ void GLDisplay::render() {
   // Start timing for the next frame.
   g_gfx_data->debug_gui.start_frame();
   prof().instant_event("ROOT");
-  update_global_profiler();
 
   // toggle even odd and wake up engine waiting on vsync.
   // TODO: we could play with moving this earlier, right after the final bucket renderer.

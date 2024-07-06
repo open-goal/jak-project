@@ -3,19 +3,28 @@
 #include "common/common_types.h"
 #include "common/log/log.h"
 
-#ifdef __linux__
-
+#ifdef _WIN32
+// clang-format off
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <psapi.h>
+// clang-format on
+size_t get_peak_rss() {
+  HANDLE hProcess = GetCurrentProcess();
+  PROCESS_MEMORY_COUNTERS pmc;
+  if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc))) {
+    return pmc.PeakWorkingSetSize;
+  } else {
+    return 0;
+  }
+}
+#else
 #include <sys/resource.h>
-
 size_t get_peak_rss() {
   rusage x;
   getrusage(RUSAGE_SELF, &x);
   return x.ru_maxrss * 1024;
-}
-
-#else
-size_t get_peak_rss() {
-  return 0;
 }
 #endif
 
