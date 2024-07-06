@@ -175,6 +175,10 @@ void DelayThread(u32 usec) {
   iop->kernel.DelayThread(usec);
 }
 
+void YieldThread() {
+  iop->kernel.YieldThread();
+}
+
 int sceCdBreak() {
   return 1;
 }

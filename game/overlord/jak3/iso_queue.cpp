@@ -64,6 +64,24 @@ void jak3_overlord_init_globals_iso_queue() {
   }
 }
 
+bool DgoCmdWaiting() {
+  for (auto& level : gPriStack) {
+    for (int i = 0; i < level.count; i++) {
+      auto* cmd = level.cmds[i];
+
+      if (cmd && cmd->msg_type == ISO_Hdr::MsgType::DGO_LOAD) {
+        if (cmd->m_pBaseFile) {
+          auto* file = cmd->m_pBaseFile;
+          if (file->m_Buffer.m_nDataLength) {
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return false;
+}
+
 void InitBuffers() {
   SemaParam sema_param;
   sema_param.max_count = 1;
@@ -87,7 +105,7 @@ void InitBuffers() {
   g_auStrmSRAM[3] = 0x11100;
   g_auTrapSRAM[3] = 0x15100;
   snd_SRAMMarkUsed(0x11100, 0x4040);
-  g_auStrmSRAM[4] = 0x15140; // 86384 - 48
+  g_auStrmSRAM[4] = 0x15140;  // 86384 - 48
   g_auTrapSRAM[4] = 0x19140;
   snd_SRAMMarkUsed(0x15140, 0x4040);
   g_auStrmSRAM[5] = 0x019180;

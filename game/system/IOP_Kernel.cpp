@@ -2,6 +2,7 @@
 
 #include <cstring>
 
+#include "common/global_profiler/GlobalProfiler.h"
 #include "common/log/log.h"
 #include "common/util/Assert.h"
 #include "common/util/FileUtil.h"
@@ -102,6 +103,12 @@ void IOP_Kernel::SleepThread() {
   ASSERT(_currentThread);
 
   _currentThread->state = IopThread::State::Suspend;
+  leaveThread();
+}
+
+void IOP_Kernel::YieldThread() {
+  ASSERT(_currentThread);
+  _currentThread->state = IopThread::State::Ready;
   leaveThread();
 }
 
@@ -382,6 +389,9 @@ std::optional<time_stamp> IOP_Kernel::dispatch() {
 
   // Run until all threads are idle
   IopThread* next = schedNext();
+  if (next) {
+    prof().root_event();
+  }
   while (next != nullptr) {
     // Check vblank interrupt
     if (vblank_handler != nullptr && vblank_recieved) {
@@ -389,6 +399,7 @@ std::optional<time_stamp> IOP_Kernel::dispatch() {
       vblank_recieved = false;
     }
     // printf("[IOP Kernel] Dispatch %s (%d)\n", next->name.c_str(), next->thID);
+    auto p = scoped_prof(next->name.c_str());
     runThread(next);
     updateDelay();
     processWakeups();

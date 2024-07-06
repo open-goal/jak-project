@@ -439,7 +439,6 @@ VagDirEntry* CISOCDFileSystem::FindVAGFile(const char* name) {
   for (int i = 0; i < g_VagDir.num_entries; i++) {
     auto& entry = g_VagDir.entries[i];
     if (packed_name[0] == entry.words[0] && packed_name[1] == (entry.words[1] & 0x3ff)) {
-      lg::error("entry is index {}\n", i);
       return &entry;
     }
   }

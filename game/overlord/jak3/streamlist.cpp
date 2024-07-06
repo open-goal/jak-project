@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "common/util/Assert.h"
+#include "common/log/log.h"
 
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/vag.h"

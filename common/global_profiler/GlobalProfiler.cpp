@@ -34,7 +34,7 @@ u64 get_current_ts() {
 
 GlobalProfiler::GlobalProfiler() {
   m_t0 = get_current_ts();
-  set_max_events(65536);
+  set_max_events(65536 * 4);
 }
 
 void GlobalProfiler::set_max_events(size_t event_count) {

@@ -142,7 +142,7 @@ void InitISOFS() {
 
   thread_param.stackSize = 0x1100;
   thread_param.entry = ISOThread;
-  thread_param.initPriority = 0x37;
+  thread_param.initPriority = 0x80; // changed to be lower priority
   thread_param.attr = TH_C;
   thread_param.option = 0;
   strcpy(thread_param.name, "ISO");
@@ -795,6 +795,7 @@ void ProcessMusic() {
   SignalSema(g_nMusicSemaphore);
 }
 
+
 u32 ISOThread() {
   int priority = -1;
   g_szCurrentMusicName[0] = 0;
@@ -1036,8 +1037,8 @@ u32 ISOThread() {
 
     if (cmd) {
       // handle the buffering
-//      ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - allocating buffer\n",
-//                (int)cmd->msg_type);
+      //      ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - allocating buffer\n",
+      //                (int)cmd->msg_type);
 
       // check if we need to initialize a buffer, or if we just need to realloc pages
       file = cmd->m_pBaseFile;
@@ -1075,9 +1076,10 @@ u32 ISOThread() {
           known_read_rate = true;
         }
         // iVar3 = (**(code**)(file->base).vtable)(file);
-//        ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - starting read!\n",
-//                  (int)cmd->msg_type);
+        //        ovrld_log(LogCategory::ISO_QUEUE, "Processing Command 0x{:x} - starting read!\n",
+        //                  (int)cmd->msg_type);
 
+        // lg::info("ISO - BeginRead");
         cmd->status = file->BeginRead();
         if (cmd->status != EIsoStatus::OK_2) {
           buffer_ok = false;
@@ -1153,10 +1155,21 @@ u32 ISOThread() {
       }
     }
 
-    if (buffer_ok) {
-      DelayThread(4000);
+    // this logic was changed so that the iso thread doesn't sleep when loading a DGO: otherwise
+    // we'd spent most of our time letting the thread sleep.
+    // instead, if there's an in progress DGO command, we yield.
+    // this yield allows DGO RPCs to run. Additionally, the priority of the ISO thread was lowered
+    // to allow the RPCs to run during this time.
+    bool sleep = !DgoCmdWaiting();
+    if (sleep) {
+      if (buffer_ok) {
+        DelayThread(4000);
+      } else {
+        // DelayThread(200);
+        DelayThread(2000);
+      }
     } else {
-      DelayThread(200);
+      YieldThread();
     }
   }
 }
@@ -1173,7 +1186,7 @@ u32 ISOThread() {
  */
 EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
   auto* cmd = (ISO_DGOCommand*)m;
-
+  // lg::info("ISO - DGO state machine");
   int send_count, receive_count;
 
   CBaseFile* file = cmd->m_pBaseFile;

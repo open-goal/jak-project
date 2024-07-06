@@ -184,7 +184,6 @@ int CPageList::RemoveActivePages(int count) {
  * Remove all active pages.
  */
 void CPageList::CancelActivePages() {
-  lg::error("CancelActivePages");
   ASSERT(m_nAllocState == AllocState::EPLAS_ALLOCATED);
   // CpuSuspendIntr(local_18);
   CPage* last_active = m_pLastActivePage;

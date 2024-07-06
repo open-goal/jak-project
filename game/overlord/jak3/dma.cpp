@@ -78,7 +78,6 @@ void uninstall_dma_intr() {
 
 void set_dma_intr_handler_hack(s32 chan, sceSdTransIntrHandler cb, void* data) {
   ASSERT(!g_DmaInterruptHack.cb);
-  lg::error("install cb");
   g_DmaInterruptHack.chan = chan;
   g_DmaInterruptHack.cb = cb;
   g_DmaInterruptHack.data = data;
@@ -94,7 +93,6 @@ void dma_intr_hack() {
       int chan = g_DmaInterruptHack.chan;
       void* data = g_DmaInterruptHack.data;
       g_DmaInterruptHack = {};
-      lg::error("entering spu: {}\n", !!g_DmaInterruptHack.cb);
       SPUDmaIntr(chan, data);
     }
   }
@@ -118,7 +116,7 @@ int voice_trans_wrapper(s16 chan, u32 mode, const void* iop_addr, u32 spu_addr, 
   g_voiceTransAddr = iop_addr;
   g_voiceTransSpuAddr = spu_addr;
 
-  lg::warn("-------------------------------> voice trans {} {}, chan {}\n", spu_addr, size, chan);
+  // lg::warn("-------------------------------> voice trans {} {}, chan {}\n", spu_addr, size, chan);
 
   if (g_voiceTransRunning) {
     // I claim this should never happen, and this is their workaround for a bug.
@@ -212,7 +210,7 @@ int SPUDmaIntr(int channel, void* userdata) {
     }
 
     // if this is the first chunk, we'll start the actual audio here:
-    lg::warn("----------> interrupt with chunks {}\n", g_nSpuDmaChunks);
+    // lg::warn("----------> interrupt with chunks {}\n", g_nSpuDmaChunks);
     ovrld_log(LogCategory::SPU_DMA_STR, "SPUDmaIntr chunks count {}", g_nSpuDmaChunks);
 
     if (g_nSpuDmaChunks == 0) {
@@ -248,7 +246,6 @@ int SPUDmaIntr(int channel, void* userdata) {
         BlockUntilVoiceSafe(g_pDmaVagCmd->voice, 0x900);
 
         // set address and ADSR settings
-        lg::warn("setting ssa to stream sram + 30 in chunks0 startup interrupt");
         sceSdSetAddr(g_pDmaVagCmd->voice | SD_VA_SSA, g_pDmaVagCmd->stream_sram + 0x30);
         sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_ADSR1, 0xff);
         sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_ADSR2, 0x1fc0);
@@ -267,7 +264,6 @@ int SPUDmaIntr(int channel, void* userdata) {
         BlockUntilVoiceSafe(g_pDmaStereoVagCmd->voice, 0x900);
 
         // set voice params
-        lg::warn("setting ssa to stream sram + 30 in chunks0 startup interrupt (stereo)");
         sceSdSetAddr(g_pDmaVagCmd->voice | SD_VA_SSA, g_pDmaVagCmd->stream_sram + 0x30);
         sceSdSetAddr(g_pDmaStereoVagCmd->voice | SD_VA_SSA, g_pDmaStereoVagCmd->stream_sram + 0x30);
         sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_ADSR1, 0xff);
@@ -505,7 +501,6 @@ int DMA_SendToSPUAndSync(const u8* iop_mem,
   // kick off dma, if we decided not to queue.
   if (!defer) {
     g_bSpuDmaBusy = true;
-    lg::info("calling settransintrhandler: 0x{:x}", (u64)user_data);
     set_dma_intr_handler_hack(g_nSpuDmaChannel, SPUDmaIntr, user_data);
     voice_trans_wrapper(g_nSpuDmaChannel, 0, iop_mem, spu_addr, length);
   }

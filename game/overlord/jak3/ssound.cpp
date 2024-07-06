@@ -19,13 +19,15 @@ struct Curve {
   s32 a, b, c, d;
 };
 
+constexpr int kNumSounds = 0x40;
+
 using namespace iop;
 s32 g_n989Semaphore = -1;
 s32 g_EarTransSema = -1;
 bool g_bSoundEnable = true;
 u32 g_anStreamVoice[6];
 VolumePair g_aPanTable[361];
-SoundInfo gSounds[0x40];
+SoundInfo gSounds[kNumSounds];
 s32 gEarTrans[6];
 s32 gCamTrans[3];
 s32 gCamForward[3];
@@ -293,6 +295,62 @@ void KillSoundsInGroup(u32 group) {
   }
 }
 
+void KillLeastUsefulSound() {
+  int unique_sounds = 0;
+  struct Entry {
+    u32 id;
+    u32 count;
+    SoundInfo* info;
+  };
+  Entry entries[kNumSounds];
+  Entry* best_entry = nullptr;
+
+  for (auto& sound : gSounds) {
+    if (sound.id) {
+      Entry* existing_entry = nullptr;
+      u32 uid = snd_GetSoundID(sound.sound_handle);
+
+      // look for entry:
+      for (int i = 0; i < unique_sounds; i++) {
+        if (entries[i].id == uid) {
+          existing_entry = &entries[i];
+          break;
+        }
+      }
+
+      // if none found, create
+      if (!existing_entry) {
+        existing_entry = &entries[unique_sounds];
+        unique_sounds++;
+        existing_entry->id = uid;
+        existing_entry->count = 0;
+        existing_entry->info = &sound;
+      }
+
+      // update
+      existing_entry->count++;
+
+      // se if we're best
+      if (!best_entry) {
+        best_entry = existing_entry;
+      } else {
+        if (best_entry->count < existing_entry->count) {
+          best_entry = existing_entry;
+        }
+      }
+
+      // update entry:
+
+      // update best:
+    }
+  }
+
+  if (best_entry) {
+    snd_StopSound(best_entry->info->sound_handle);
+    best_entry->info->id = 0;
+  }
+}
+
 SoundInfo* AllocateSound() {
   for (auto& sound : gSounds) {
     if (!sound.id) {
@@ -307,7 +365,15 @@ SoundInfo* AllocateSound() {
     }
   }
 
-  ovrld_log(LogCategory::WARN, "Failed to allocate sound - full!");
+  KillLeastUsefulSound();
+
+  for (auto& sound : gSounds) {
+    if (!sound.id) {
+      return &sound;
+    }
+  }
+
+  ASSERT_NOT_REACHED();
   return nullptr;
 }
 
@@ -813,7 +879,9 @@ void UpdateVolume(SoundInfo* sound) {
     sound->id = 0;
   } else {
     if ((s16)(sound->params).mask < 0) {
-      ASSERT_NOT_REACHED();
+      // idk
+      snd_SetSoundVolPan(handle, GetVolume(sound), -2);
+
       // FUN_00013d6c(handle, GetVolume(sound), 0x40, 4);
     } else {
       snd_SetSoundVolPan(handle, GetVolume(sound), -2);

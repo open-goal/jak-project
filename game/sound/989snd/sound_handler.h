@@ -24,5 +24,6 @@ class SoundHandler {
   virtual void SetPMod(s32 mod) = 0;
   virtual void SetPBend(s32 /*mod*/){};
   virtual void SetRegister(u8 /*reg*/, u8 /*value*/) {}
+  virtual u32 SoundID() const { return -1; }
 };
 }  // namespace snd

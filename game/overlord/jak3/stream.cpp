@@ -163,6 +163,7 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
         for (int s = 0; s < 4; s++) {
           VagStreamData vsd;
           if (msg->names[s].chars[0] != 0) {
+            // lg::warn("RPC PLAY remove {}", msg->names[s].chars);
             strncpy(vsd.name, msg->names[s].chars, 0x30);
             vsd.id = msg->id[s];
             WaitSema(g_EEStreamsList.sema);
@@ -183,6 +184,8 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
         int priority = 9;
         for (int s = 0; s < 4; s++) {
           if (msg->names[s].chars[0] && msg->id[s]) {
+            // lg::warn("RPC PLAY queue {}", msg->names[s].chars);
+
             // set up list entry for this stream
             VagStreamData vsd;
             strncpy(vsd.name, msg->names[s].chars, 0x30);
@@ -225,6 +228,8 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
         int priority = 9;
         for (int s = 0; s < 4; s++) {
           if (msg->names[s].chars[0] && msg->id[s]) {
+            // lg::warn("RPC PLAY play {}", msg->names[s].chars);
+
             VagStreamData vsd;
             strncpy(vsd.name, msg->names[s].chars, 0x30);
             vsd.id = msg->id[s];
@@ -234,7 +239,7 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
             vsd.sound_handler = 0;
             vsd.maybe_volume_3 = 0;
             vsd.priority = priority;
-            auto* existing_vag  = FindThisVagStream(msg->names[s].chars, vsd.id);
+            auto* existing_vag = FindThisVagStream(msg->names[s].chars, vsd.id);
             if (existing_vag != (ISO_VAGCommand*)0x0) {
               existing_vag->play_volume = vsd.volume2;
               existing_vag->play_group = vsd.group;
@@ -255,6 +260,8 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
               already_playing->movie_art_load = 0;
             }
             SignalSema(g_EEPlayList.sema);
+          } else {
+            // lg::warn("RPC PLAY play (NONE)");
           }
         LAB_000092a4:
           if (priority == 8) {

@@ -35,6 +35,7 @@ void snd_SetPanTable(s16* table);
 void snd_SetPlayBackMode(s32 mode);
 s32 snd_SoundIsStillPlaying(s32 sound_handle);
 void snd_StopSound(s32 sound_handle);
+u32 snd_GetSoundID(s32 sound_handle);
 void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan);
 void snd_SetMasterVolume(s32 which, s32 volume);
 void snd_UnloadBank(snd::BankHandle bank_handle);

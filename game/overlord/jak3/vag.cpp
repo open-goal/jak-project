@@ -608,11 +608,9 @@ u32 read_rate_calc(u32 pitch) {
  */
 void UnPauseVAG(ISO_VAGCommand* cmd) {
   if (cmd->flags.paused) {
-    lg::error("Unpausing {}", cmd->name);
     // CpuSuspendIntr(&local_28);
     if (cmd->flags.stereo_secondary == 0) {
       auto* sibling = cmd->stereo_sibling;
-      lg::warn(" has sibling? {}", !!sibling);
       auto pitch = CalculateVAGPitch(cmd->pitch1, cmd->pitch_cmd);
 
       // calculate read rate
@@ -640,7 +638,7 @@ void UnPauseVAG(ISO_VAGCommand* cmd) {
           }
           sceSdSetParam(cmd->voice | SD_VP_PITCH, pitch & 0xffff);
           BlockUntilAllVoicesSafe();
-          lg::error("keying on 1!");
+          // lg::error("keying on 1!");
           sceSdSetSwitch((cmd->voice & 1) | SD_S_KON, VOICE_BIT(cmd->voice));
           MarkVoiceKeyedOnOff(cmd->voice, GetSystemTimeLow());
           sceSdSetParam(cmd->voice | SD_VP_VOLL, lvol);
@@ -658,8 +656,6 @@ void UnPauseVAG(ISO_VAGCommand* cmd) {
             sceSdSetAddr(sibling->voice | SD_VA_SSA, sibling->current_spu_address);
           }
           BlockUntilAllVoicesSafe();
-          lg::error("keying on 2! voices (voices {} {}) (vol {} {}) (pitch {})",
-                    cmd->voice, sibling->voice, lvol, rvol, pitch);
           sceSdSetSwitch((cmd->voice & 1) | SD_S_KON,
                          (VOICE_BIT(cmd->voice)) | (VOICE_BIT(sibling->voice)));
           auto now = GetSystemTimeLow();

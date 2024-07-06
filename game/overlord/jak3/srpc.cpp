@@ -439,7 +439,9 @@ void* RPC_Player(unsigned int, void* msg, int size) {
         ovrld_log(LogCategory::PLAYER_RPC, "[RPC Player] cancel dgo {}", cmd->id);
         CancelDGONoSync(cmd->id);
       } break;
-
+      case SoundCommand::SET_MIDI_REG:
+        // this is what the real overlord does - just ignore it!
+        break;
       default:
         ovrld_log(LogCategory::WARN, "[RPC Player] Unsupported Player {}",
                   (int)((const Rpc_Player_Base_Cmd*)m_ptr)->command);

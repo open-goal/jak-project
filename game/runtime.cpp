@@ -343,7 +343,6 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   {
     auto p = scoped_prof("overlord-wait-for-init");
     while (complete == false) {
-      prof().root_event();
       iop.kernel.dispatch();
     }
   }
@@ -353,7 +352,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   // IOP Kernel loop
   while (!iface.get_want_exit() && !iop.want_exit) {
-    prof().root_event();
+    // prof().root_event();
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
     auto wait_duration = iop.kernel.dispatch();

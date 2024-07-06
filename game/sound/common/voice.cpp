@@ -55,7 +55,7 @@ void Voice::DecodeSamples() {
 
   if ((mNAX & 0x7) == 0) {
     if (mCurHeader.LoopEnd.get()) {
-      printf("-------------------------------> voice looping from %d to %d\n", mNAX * 2, mLSA * 2);
+      // printf("-------------------------------> voice looping from %d to %d\n", mNAX * 2, mLSA * 2);
       mNAX = mLSA;
       mENDX = true;
 
@@ -84,7 +84,6 @@ static s16 ApplyVolume(s16 sample, s32 volume) {
 }
 
 void Voice::KeyOn() {
-  printf("key on!!! %d\n", mSSA * 2);
   mNAX = mSSA;
   mNAX++;
 

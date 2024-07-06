@@ -12,6 +12,7 @@ int QueueMessage(ISO_Hdr* msg, int pri);
 int UnqueueMessage(ISO_Hdr* msg);
 void ReturnMessage(ISO_Hdr* msg);
 void InitBuffers();
+bool DgoCmdWaiting();
 ISO_Hdr* GetMessage();
 int ProcessMessageData(ISO_Hdr* msg);
 void FreeVAGCommand(ISO_VAGCommand* msg);

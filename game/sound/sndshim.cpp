@@ -105,6 +105,14 @@ void snd_StopSound(s32 sound_handle) {
   }
 }
 
+u32 snd_GetSoundID(s32 sound_handle) {
+  if (player) {
+    return player->GetSoundID(sound_handle);
+  } else {
+    return -1;
+  }
+}
+
 void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan) {
   if (player) {
     player->SetSoundVolPan(sound_handle, vol, pan);

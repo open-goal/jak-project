@@ -148,7 +148,7 @@ enum class SoundCommand : u16 {
   // RELOAD_INFO = 19,
   SET_LANGUAGE = 20,
   // SET_FLAVA = 21,
-  // SET_MIDI_REG = 22,
+  SET_MIDI_REG = 22,
   SET_REVERB = 23,
   SET_EAR_TRANS = 24,
   SHUTDOWN = 25,

@@ -76,7 +76,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
   ASSERT(file->m_ProcessDataSemaphore != -1);
 
   // lock the semaphore
-  lg::error("--------------- proces vag!!! {}\n", msg->name);
+  // lg::error("--------------- proces vag!!! {}\n", msg->name);
   WaitSema(file->m_ProcessDataSemaphore);
   buffer = &file->m_Buffer;
 
@@ -168,8 +168,6 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
       spu_addr = msg->stream_sram + 0x2000;
     } else {
       int vag_transfer_size = msg->xfer_size;
-      lg::warn("decision about marking a loop: {} {} {}\n", length, msg->xfer_size,
-               msg->unk_spu_mem_offset);
       if ((length < (int)vag_transfer_size) || ((uint)msg->unk_spu_mem_offset < 0x4000)) {
         VAG_MarkLoopEnd(file->m_Buffer.m_pCurrentData, 0x2000);
         VAG_MarkLoopStart(file->m_Buffer.m_pCurrentData);
@@ -882,7 +880,7 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
       if ((cmd->unk_gvsp_flag == 0) &&
           (last_offset_in_stream_sram < (uint)cmd->unk_spu_mem_offset)) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
-        lg::info("sax case weird");
+        // lg::info("sax case weird");
         sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram + cmd->unk_spu_mem_offset);
         cmd->unk_gvsp_flag = 1;
         if (pIVar3 != (ISO_VAGCommand*)0x0) {
