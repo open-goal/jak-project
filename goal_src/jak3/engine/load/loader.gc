@@ -811,7 +811,6 @@
       (set! (-> s5-0 sid) (new-sound-id))
       (set! (-> s5-0 paused?) #f)
       )
-    (format #t "playing spoled anim!!~%")
     (let ((v1-7
             (lookup-gui-connection *gui-control* self (gui-channel art-load) (-> gp-0 anim name) (new 'static 'sound-id))
             )
@@ -855,8 +854,7 @@
                  (!= *master-mode* 'game)
                  )
         (format #t "WARNING: ---------------------> loader stall on lock~%")
-        (when ((-> gp-0 break-func) self)
-          (format #t " loader aborting~%")
+        (if ((-> gp-0 break-func) self)
             (goto cfg-139)
             )
         (gui-control-method-12
@@ -880,13 +878,11 @@
     (apply-settings *setting-control*)
     (set-time! (-> gp-0 old-time))
     (while (< (-> gp-0 part) (-> gp-0 anim parts))
-      (format #t "anim part ~D~%" (-> gp-0 part))
       (when (> (-> gp-0 part) 0)
         (while (let ((v1-103 (file-status *art-control* (-> gp-0 anim name) (-> gp-0 part))))
                  (not (or (= v1-103 'active) (= v1-103 'locked)))
                  )
-          (when ((-> gp-0 break-func) self)
-            (format #t "break 2~")
+          (if ((-> gp-0 break-func) self)
               (goto cfg-139)
               )
           (gui-control-method-12
@@ -928,7 +924,6 @@
           (suspend)
           )
         )
-      (format #t "part2~%")
       (gui-control-method-12
         *gui-control*
         self
@@ -951,7 +946,6 @@
         -20.0
         (-> gp-0 sid)
         )
-      (format #t "part3~%")
 
       (when (!= (file-status *art-control* (-> gp-0 anim name) (-> gp-0 part)) 'active)
         (cond
@@ -1001,7 +995,6 @@
               )
           )
         )
-      (format #t "part4~%")
 
       (when (-> gp-0 paused?)
         (set! (-> gp-0 paused?) #f)
@@ -1014,8 +1007,6 @@
           (file-status *art-control* (-> gp-0 anim name) (-> gp-0 part))
           )
         )
-
-      (format #t "part5~%")
 
       (gui-control-method-12
         *gui-control*
@@ -1041,19 +1032,14 @@
                    )
               (set! sv-176 (current-str-pos (-> gp-0 sid)))
               (set-time! (-> gp-0 good-time))
-              (format #t "times ~f ~f~%" (the float v0-62) f28-0)
               (until (>= (the float v0-62) f28-0)
                 (if (= (-> self skel root-channel 0) (-> self skel channel))
                     (logior! (-> self skel status) (joint-control-status valid-spooled-frame))
                     )
-                (when (or ((-> gp-0 break-func) self)
+                (if (or ((-> gp-0 break-func) self)
                         (and (<= sv-176 0) (time-elapsed? (-> gp-0 good-time) (seconds 4)))
                         (and (< 300 (-> gp-0 good-count)) (<= sv-176 0))
                         )
-                  (format #t "aborting!! ~A ~A~%"
-                          (and (<= sv-176 0) (time-elapsed? (-> gp-0 good-time) (seconds 4)))
-                          (and (< 300 (-> gp-0 good-count)) (<= sv-176 0))
-                          )
                     (goto cfg-139)
                     )
                 (gui-control-method-12

@@ -82,7 +82,7 @@ void set_dma_intr_handler_hack(s32 chan, sceSdTransIntrHandler cb, void* data) {
   g_DmaInterruptHack.chan = chan;
   g_DmaInterruptHack.cb = cb;
   g_DmaInterruptHack.data = data;
-  g_DmaInterruptHack.countdown = 1;
+  g_DmaInterruptHack.countdown = 10;
 }
 
 int SPUDmaIntr(int channel, void* userdata);
@@ -160,6 +160,7 @@ int SPUDmaIntr(int channel, void* userdata) {
 
   // This next block will handle updating the playback command that triggered this dma:
   if (g_pDmaVagCmd) {
+    ovrld_log(LogCategory::SPU_DMA_STR, "SPUDma for cmd {}", g_pDmaVagCmd->name);
     if (!g_pDmaStereoVagCmd) {
       // non-stereo audio
 

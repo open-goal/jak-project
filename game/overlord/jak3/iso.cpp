@@ -510,6 +510,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
       if (!internal_stereo_cmd) {
         // allocating stereo failed, give up.
         internal_cmd->flags.scanned = 0;
+        ASSERT_NOT_REACHED();
         ReleaseMessage(internal_cmd);
         RemoveVagCmd(internal_cmd);
         FreeVagCmd(internal_cmd);
@@ -541,6 +542,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
     if (QueueMessage(internal_cmd, 5) == 0) {
       // queueing failed.
       internal_cmd->flags.scanned = 0;
+      ASSERT_NOT_REACHED();
       RemoveVagCmd(internal_cmd);
       FreeVagCmd(internal_cmd);
       if ((internal_cmd->vag_dir_entry->words[1] & 0x400U) != 0) {

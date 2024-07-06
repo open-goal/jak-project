@@ -99,10 +99,10 @@ struct CPageList {
   int m_nDmaRefCnt = 0;
 
   enum class AllocState {
-    UNKNOWN = 0,
+    EPLAS_FREE = 0,
     EPLAS_ALLOCATED = 1,
     FREE_PENDING = 2,  // FreePageList called, but no
-  } m_nAllocState = AllocState::UNKNOWN;
+  } m_nAllocState = AllocState::EPLAS_FREE;
 
   CPage* StepActivePage();
   CPage* AddActivePages(int num_pages);

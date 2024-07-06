@@ -9,7 +9,7 @@
 
 #include "fmt/core.h"
 
-std::shared_ptr<snd::Voice> voices[4];
+std::shared_ptr<snd::Voice> voices[kNVoices];
 u8 spu_memory[0x15160 * 10];
 
 static sceSdTransIntrHandler trans_handler[2] = {nullptr, nullptr};
@@ -21,7 +21,7 @@ u32 sceSdGetSwitch(u32 entry) {
 }
 
 snd::Voice* voice_from_entry(u32 entry) {
-  u32 it = entry & 3;
+  u32 it = entry % kNVoices;
   return voices[it].get();
 }
 

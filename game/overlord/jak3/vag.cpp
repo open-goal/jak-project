@@ -56,10 +56,12 @@ void ISO_VAGCommand::set_all_flags_zero() {
   flags.saw_chunks1 = 0;
   flags.paused = 0;
   flags.bit3 = 0;
+
   flags.running = 0;
   flags.clocks_set = 0;
   flags.file_disappeared = 0;
   flags.scanned = 0;
+
   flags.bit8 = 0;
   flags.stop = 0;
   flags.art = 0;
@@ -87,8 +89,8 @@ u32 ISO_VAGCommand::pack_flags() {
   for (; ptr <= &flags.bit25; ptr++) {
     if (*ptr) {
       ret |= mask;
-      mask <<= 1;
     }
+    mask <<= 1;
   }
   return ret;
 }
@@ -706,11 +708,11 @@ void RestartVag(ISO_VAGCommand* cmd, int p) {
     } else {
       sceSdSetParam(sibling->voice, 0);
       sceSdSetParam(sibling->voice | 0x100, 0);
-      sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram);
+      sceSdSetAddr(cmd->voice | 0x2040, cmd->stream_sram);
       bVar1 = sibling->voice;
       uVar4 = sibling->stream_sram;
     }
-    sceSdSetAddr(bVar1 | 0x40, uVar4);
+    sceSdSetAddr(bVar1 | 0x2040, uVar4);
     BlockUntilAllVoicesSafe();
     sceSdSetSwitch((cmd->voice & 1) | 0x1500, voice_mask);
     auto uVar3 = GetSystemTimeLow();
@@ -855,7 +857,9 @@ void CalculateVAGVolumes(ISO_VAGCommand* cmd, int* lvol, int* rvol) {
       if (iVar9 < 2) {
         iVar3 = 0x2d41;
         if (iVar9 == 0) {
-          ASSERT_NOT_REACHED();  // dolby crap
+          //ASSERT_NOT_REACHED();  // dolby crap
+          // TODO:
+          iVar4 = 0x2d41;
           //  uVar8 = CalculateDolbyPanAngle(cmd, angle);
           //  iVar9 = (uint)((u64)(uVar8 >> 1) * 0xb60b60b7 >> 0x25) * 4;
           //  if (0x167 < uVar8) {

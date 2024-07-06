@@ -76,7 +76,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
   ASSERT(file->m_ProcessDataSemaphore != -1);
 
   // lock the semaphore
-  lg::error("--------------- proces vag!!!\n");
+  lg::error("--------------- proces vag!!! {}\n", msg->name);
   WaitSema(file->m_ProcessDataSemaphore);
   buffer = &file->m_Buffer;
 
@@ -784,7 +784,7 @@ LAB_00011010:
         goto LAB_000112bc;
       BlockUntilVoiceSafe(cmd->voice, 0xf00);
       // CpuSuspendIntr(local_20);
-      sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram);
+      sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram);
       cmd->flags.bit14 = 1;
       cmd->unk_gvsp_state2 = 6;
       cmd->flags.bit15 = 0;
@@ -883,11 +883,11 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
           (last_offset_in_stream_sram < (uint)cmd->unk_spu_mem_offset)) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
         lg::info("sax case weird");
-        sceSdSetAddr(cmd->voice | 0x40, cmd->stream_sram + cmd->unk_spu_mem_offset);
+        sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram + cmd->unk_spu_mem_offset);
         cmd->unk_gvsp_flag = 1;
         if (pIVar3 != (ISO_VAGCommand*)0x0) {
           BlockUntilVoiceSafe(pIVar3->voice, 0xf00);
-          sceSdSetAddr(pIVar3->voice | 0x40, pIVar3->stream_sram + cmd->unk_spu_mem_offset);
+          sceSdSetAddr(pIVar3->voice | 0x2140, pIVar3->stream_sram + cmd->unk_spu_mem_offset);
           pIVar3->unk_gvsp_flag = 1;
         }
       }

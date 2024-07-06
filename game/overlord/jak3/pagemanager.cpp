@@ -515,7 +515,7 @@ void CCache::Initialize() {
     page_list.m_nNumUnsteppedPages = 0;
     page_list.m_nPageRefCnt = 0;
     page_list.m_nDmaRefCnt = 0;
-    page_list.m_nAllocState = CPageList::AllocState::UNKNOWN;
+    page_list.m_nAllocState = CPageList::AllocState::EPLAS_FREE;
   }
 
   u8* mem = (u8*)m_paCache;
@@ -762,7 +762,7 @@ CPageList* CPageManager::GrowPageList(jak3::CPageList* in, int page_count) {
  */
 void CPageManager::FreePageList(jak3::CPageList* list) {
   ASSERT(list);
-  ASSERT(list->m_nAllocState == CPageList::AllocState::EPLAS_ALLOCATED);
+  ASSERT(list->m_nAllocState != CPageList::AllocState::EPLAS_FREE);
   // suspend itr
   list->m_nAllocState = CPageList::AllocState::FREE_PENDING;
   // resume intr
@@ -806,7 +806,7 @@ void CPageManager::FreePageList(jak3::CPageList* list) {
   list->m_pCurrentActivePage = nullptr;
   list->m_nNumActivePages = 0;
   list->m_nNumUnsteppedPages = 0;
-  list->m_nAllocState = CPageList::AllocState::UNKNOWN;
+  list->m_nAllocState = CPageList::AllocState::EPLAS_FREE;
   m_CCache.m_nNumFreePages += pages_count;
   ASSERT(m_CCache.m_nNumFreePages <= CCache::kNumPages);
   list->m_pFirstPage = nullptr;
