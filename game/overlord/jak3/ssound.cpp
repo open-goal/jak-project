@@ -514,7 +514,7 @@ LAB_0000d0a4:
         uVar10 = uVar10 << 2;
         uVar5 = uVar5 + 1;
       }
-      iVar8 = (int)(uint)sqrt_table[uVar10 >> 0x18] >> (uVar5 & 0x1f);
+      iVar8 = (int)(u32)sqrt_table[uVar10 >> 0x18] >> (uVar5 & 0x1f);
     }
     if (outb) {
       *outb = iVar8 << (uVar9 & 0x1f);
@@ -934,7 +934,7 @@ void SetEarTrans(const s32* ear_trans0,
     if ((cmd->music_flag == 0) && (cmd->maybe_sound_handler != 0)) {
       if ((cmd->flags.scanned == 0) || (cmd->flags.bit8 != 0)) {
         if (cmd->flags.bit20 == 0) {
-          if ((uint)cmd->play_volume < 0x11) {
+          if ((u32)cmd->play_volume < 0x11) {
             cmd->play_volume = 0;
           } else {
             cmd->play_volume = cmd->play_volume - 0x10;

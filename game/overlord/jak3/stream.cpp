@@ -198,9 +198,9 @@ void* RPC_PLAY(unsigned int, void* msg_in, int size) {
             // if we have an existing one, make sure it has the appropriate flags
             auto* existing_vag = FindThisVagStream(vsd.name, vsd.id);
             if (existing_vag) {
-              existing_vag->art_flag = (uint)(vsd.art_load != 0);
+              existing_vag->art_flag = (u32)(vsd.art_load != 0);
               existing_vag->music_flag = 0;
-              existing_vag->movie_flag = (uint)(vsd.movie_art_load != 0);
+              existing_vag->movie_flag = (u32)(vsd.movie_art_load != 0);
               if (vsd.art_load != 0) {
                 existing_vag->flags.art = 1;
               }

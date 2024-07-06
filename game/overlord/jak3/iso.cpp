@@ -359,7 +359,7 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
         // need to understand this better, but it seems like we can pick between two different files
         // to actually load from...
         const ISOFileDef* filedef = nullptr;
-        if (((uint)vag_dir_entry->words[1] >> 0xb & 1) == 0) {
+        if (((u32)vag_dir_entry->words[1] >> 0xb & 1) == 0) {
           filedef = internal_cmd->file_def;
         } else {
           filedef = internal_cmd->vag_file_def;
@@ -561,7 +561,7 @@ void IsoQueueVagStream(ISO_VAGCommand* user_cmd) {
         // need to understand this better, but it seems like we can pick between two different files
         // to actually load from...
         const ISOFileDef* filedef = nullptr;
-        if (((uint)vag_dir_entry->words[1] >> 0xb & 1) == 0) {
+        if (((u32)vag_dir_entry->words[1] >> 0xb & 1) == 0) {
           filedef = internal_cmd->file_def;
         } else {
           filedef = internal_cmd->vag_file_def;
@@ -1409,8 +1409,8 @@ EIsoStatus RunDGOStateMachine(ISO_Hdr* m) {
             int ret = page->AddDmaRef();
             ASSERT(ret >= 0);
 
-            DMA_SendToEE(cmd->ee_dest_buffer, (file->m_Buffer).m_pCurrentData,
-                         (uint)bytes_from_this_page, CopyDataDmaCallback, page);
+            DMA_SendToEE(cmd->ee_dest_buffer, (file->m_Buffer).m_pCurrentData, bytes_from_this_page,
+                         CopyDataDmaCallback, page);
             buffer->AdvanceCurrentData(bytes_from_this_page);
             file->CheckPageBoundary();
             cmd->ee_dest_buffer = bytes_from_this_page + cmd->ee_dest_buffer;
@@ -1716,8 +1716,7 @@ EIsoStatus CopyData(ISO_LoadCommon* cmd, CopyKind kind) {
                 if (page->AddDmaRef() < 1) {
                   ASSERT_NOT_REACHED();
                 }
-                DMA_SendToEE(cmd->dest_ptr, buffer->m_pCurrentData, (uint)len, CopyDataDmaCallback,
-                             page);
+                DMA_SendToEE(cmd->dest_ptr, buffer->m_pCurrentData, len, CopyDataDmaCallback, page);
               } break;
               case CopyKind::SBK: {
                 WaitSema(g_n989Semaphore);
@@ -1766,7 +1765,7 @@ EIsoStatus CopyData(ISO_LoadCommon* cmd, CopyKind kind) {
         } while (true);
       }
     }
-    if ((uint)cmd->progress_bytes < (uint)cmd->length_to_copy) {
+    if ((u32)cmd->progress_bytes < (u32)cmd->length_to_copy) {
       return status;
     }
     buffer->m_pPageList->CancelActivePages();

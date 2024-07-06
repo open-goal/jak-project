@@ -145,7 +145,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
   if (got_chunks) {  // if we've already started streaming, all way have to do is update.
     if (msg->num_isobuffered_chunks & 1u) {
       int vag_transfer_size = msg->xfer_size;
-      if ((length < vag_transfer_size) || ((uint)msg->unk_spu_mem_offset < 0x4000)) {
+      if ((length < vag_transfer_size) || ((u32)msg->unk_spu_mem_offset < 0x4000)) {
         VAG_MarkLoopEnd(file->m_Buffer.m_pCurrentData, 0x2000);
         VAG_MarkLoopStart(file->m_Buffer.m_pCurrentData);
         if (sibling) {
@@ -168,7 +168,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
       spu_addr = msg->stream_sram + 0x2000;
     } else {
       int vag_transfer_size = msg->xfer_size;
-      if ((length < (int)vag_transfer_size) || ((uint)msg->unk_spu_mem_offset < 0x4000)) {
+      if ((length < (int)vag_transfer_size) || ((u32)msg->unk_spu_mem_offset < 0x4000)) {
         VAG_MarkLoopEnd(file->m_Buffer.m_pCurrentData, 0x2000);
         VAG_MarkLoopStart(file->m_Buffer.m_pCurrentData);
         if (sibling) {
@@ -259,7 +259,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
     spu_addr = iVar5 + 0x30;
     msg->unk_spu_mem_offset = 0x4000;
     msg->xfer_size = spu_addr;
-    uVar1 = (uint)(iVar6 << 0xc) / 48000;
+    uVar1 = (u32)(iVar6 << 0xc) / 48000;
     msg->pitch1_file = uVar1;
     msg->pitch1 = uVar1;
     if (spu_addr < 0x2001) {
@@ -633,7 +633,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
     if (uVar4 == 0) {
       uVar3 = 0;
     } else {
-      uVar3 = (uint)(cmd->clockc * 0x1c0) / uVar4;
+      uVar3 = (u32)(cmd->clockc * 0x1c0) / uVar4;
       if (uVar4 == 0) {
         ASSERT_NOT_REACHED();
       }
@@ -646,7 +646,7 @@ u32 GetVAGStreamPos(ISO_VAGCommand* cmd) {
     if (uVar4 == 0) {
       uVar1 = 0;
     } else {
-      uVar1 = (uint)(iVar2 * 0x1c0) / uVar4;
+      uVar1 = (u32)(iVar2 * 0x1c0) / uVar4;
       if (uVar4 == 0) {
         ASSERT_NOT_REACHED();
       }
@@ -735,7 +735,7 @@ LAB_00011010:
       if (uVar5 == 0) {
         uVar4 = 0;
       } else {
-        uVar4 = (uint)(cmd->clockc * 0x1c0) / uVar5;
+        uVar4 = (u32)(cmd->clockc * 0x1c0) / uVar5;
         if (uVar5 == 0) {
           // trap(0x1c00);
           ASSERT_NOT_REACHED();
@@ -837,50 +837,34 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
   uint last_offset_in_stream_sram;
   ISO_VAGCommand* pIVar3;
 
-  // lg::info("check stream progress on {}", cmd->name);
-
   if (cmd->flags.file_disappeared == 0) {
     if (cmd->flags.stereo_secondary != 0) {
-      // lg::info("fail 1");
       return 1;
     }
     if (cmd->error != 0) {
-      //  lg::info("fail 2");
-
       return 0;
     }
     if ((cmd->flags.bit20 != 0) && (cmd->unk_gvsp_flag != 0)) {
-      // lg::info("fail 3");
-
       return 0;
     }
     if (cmd->flags.saw_chunks1 == 0) {
-      // lg::info("fail 4");
-
       return 1;
     }
     if (cmd->flags.paused != 0) {
-      // lg::info("fail 5");
-
       return 1;
     }
     uVar1 = cmd->unk_spu_mem_offset;
     pIVar3 = cmd->stereo_sibling;
     last_offset_in_stream_sram = cmd->unk_gvsp_len;
-    // lg::info("got {} {}", cmd->unk_spu_mem_offset, cmd->unk_gvsp_len);
     if ((uVar1 < 0x4000) && (((last_offset_in_stream_sram < 0x2001 && (uVar1 < 0x2001)) ||
                               ((0x1fff < last_offset_in_stream_sram && (0x1fff < uVar1)))))) {
       if (uVar1 <= (last_offset_in_stream_sram & 0xfffffff0)) {
-        // lg::info("early out case");
-        // lg::info("fail 6");
-
         return 0;
       }
       // CpuSuspendIntr(local_18);
       if ((cmd->unk_gvsp_flag == 0) &&
-          (last_offset_in_stream_sram < (uint)cmd->unk_spu_mem_offset)) {
+          (last_offset_in_stream_sram < (u32)cmd->unk_spu_mem_offset)) {
         BlockUntilVoiceSafe(cmd->voice, 0xf00);
-        // lg::info("sax case weird");
         sceSdSetAddr(cmd->voice | 0x2140, cmd->stream_sram + cmd->unk_spu_mem_offset);
         cmd->unk_gvsp_flag = 1;
         if (pIVar3 != (ISO_VAGCommand*)0x0) {
@@ -889,33 +873,21 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
           pIVar3->unk_gvsp_flag = 1;
         }
       }
-      // lg::info("fail 7");
-
       set_active_a(cmd, 0);
       set_active_b(cmd, 0);
       // CpuResumeIntr(local_18[0]);
       return 1;
-    } else {
-      // lg::info("else case");
     }
     if (cmd->flags.saw_chunks1 == 0) {
-      // lg::info("fail 8");
-
       return 1;
     }
     if (cmd->active_b != 0) {
-      // lg::info("fail 9");
-
       return 1;
     }
     if (cmd->safe_to_modify_dma == 0) {
-      // lg::info("fail 10");
-
       return 1;
     }
     if (cmd->unk_gvsp_flag != 0) {
-      // lg::info("fail 11");
-
       return 1;
     }
     if (last_offset_in_stream_sram < 0x2000) {
@@ -924,11 +896,9 @@ u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
       uVar1 = cmd->num_isobuffered_chunks ^ 1;
     }
     if ((uVar1 & 1) == 0) {
-      // lg::info("fail 12");
       return 1;
     }
 
-    // lg::warn("activating b in CheckVAGStreamProgress");
     set_active_b(cmd, 1);
   }
   return 1;
@@ -1029,13 +999,13 @@ void CheckVagStreamsProgress() {
     iVar2 = 0x2f;
     do {
       iVar2 = iVar2 + -1;
-      if ((*flags != 0) && (0x17ff < (uint)(*times - now))) {
+      if ((*flags != 0) && (0x17ff < (u32)(*times - now))) {
         *flags = 0;
       }
       flags = flags + 1;
       times = times + 1;
     } while (-1 < iVar2);
-    if ((g_bRecentlyKeyedVoice != 0) && (0x17ff < (uint)(g_nTimeOfLastVoiceKey - now))) {
+    if ((g_bRecentlyKeyedVoice != 0) && (0x17ff < (u32)(g_nTimeOfLastVoiceKey - now))) {
       g_bRecentlyKeyedVoice = 0;
     }
     iVar2 = 5;
@@ -1070,7 +1040,7 @@ void BlockUntilAllVoicesSafe() {
   if (g_bRecentlyKeyedVoice != 0) {
     do {
       now = GetSystemTimeLow();
-    } while ((uint)(now - last_time) < 0x900);
+    } while ((u32)(now - last_time) < 0x900);
   }
 }
 

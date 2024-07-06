@@ -81,7 +81,7 @@ VagStreamData* FindVagStreamInList(VagStreamData* stream, List* list) {
 
 VagStreamData* GetVagStreamInList(u32 idx, List* list) {
   VagStreamData* iter = nullptr;
-  if ((idx < (uint)list->count) && (iter = list->next, idx != 0)) {
+  if ((idx < (u32)list->count) && (iter = list->next, idx != 0)) {
     do {
       idx = idx - 1;
       iter = iter->next;

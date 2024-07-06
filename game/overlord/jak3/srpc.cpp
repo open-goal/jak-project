@@ -343,7 +343,7 @@ void* RPC_Player(unsigned int, void* msg, int size) {
                 vag->updated_trans = 1;
               }
               if ((mask & 8) != 0) {
-                vag->play_group = (uint)params.group;
+                vag->play_group = params.group;
               }
               if ((mask & 0x40) != 0) {
                 vag->fo_min = (int)params.fo_min;
@@ -418,7 +418,7 @@ void* RPC_Player(unsigned int, void* msg, int size) {
         const auto* cmd = (const Rpc_Player_Set_Ear_Trans_Cmd*)m_ptr;
         ovrld_log(LogCategory::PLAYER_RPC, "[RPC Player] set ear trans");
         SetEarTrans(cmd->ear_trans0, cmd->ear_trans1, cmd->ear_trans, cmd->cam_forward,
-                    cmd->cam_left, cmd->cam_scale, (uint)(cmd->cam_inverted != 0));
+                    cmd->cam_left, cmd->cam_scale, (cmd->cam_inverted != 0));
       } break;
       case SoundCommand::SHUTDOWN: {
         ovrld_log(LogCategory::PLAYER_RPC, "[RPC Player] Shutdown!");

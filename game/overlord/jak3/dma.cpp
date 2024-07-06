@@ -271,8 +271,8 @@ int SPUDmaIntr(int channel, void* userdata) {
         if (g_pDmaVagCmd->flags.paused) {
           pitch = 0;
         }
-        sceSdSetParam((uint)g_pDmaVagCmd->voice | SD_VP_PITCH, pitch);
-        sceSdSetParam((uint)g_pDmaStereoVagCmd->voice | SD_VP_PITCH, pitch);
+        sceSdSetParam(g_pDmaVagCmd->voice | SD_VP_PITCH, pitch);
+        sceSdSetParam(g_pDmaStereoVagCmd->voice | SD_VP_PITCH, pitch);
         voice_mask = VOICE_BIT(g_pDmaVagCmd->voice) | VOICE_BIT(g_pDmaStereoVagCmd->voice);
       }
 
