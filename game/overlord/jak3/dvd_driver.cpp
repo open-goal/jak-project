@@ -386,6 +386,78 @@ void read_block(const Block* block) {
   fclose(fp);
 }
 
+void CDvdDriver::read_from_file(const jak3::Block* block) {
+  const auto* fd = block->params.file_def;
+  ASSERT(fd);
+  FileCacheEntry* selected_entry = nullptr;
+
+  // get a cache entry
+  for (auto& entry : m_file_cache) {
+    // if we already opened this file, use that
+    if (entry.def == fd) {
+      selected_entry = &entry;
+      break;
+    }
+
+    // otherwise pick the least recently used
+    if (!selected_entry) {
+      selected_entry = &entry;
+    } else {
+      if (selected_entry->last_use_count > entry.last_use_count) {
+        selected_entry = &entry;
+      }
+    }
+  }
+
+  // open a new file if needed
+  if (selected_entry->def != fd) {
+    lg::debug("CDvdDriver swapping files {} - > {}",
+              selected_entry->def ? selected_entry->def->name.data : "NONE", fd->name.data);
+    if (selected_entry->def) {
+      fclose(selected_entry->fp);
+    }
+
+    selected_entry->def = fd;
+    selected_entry->fp = file_util::open_file(fd->full_path, "rb");
+    if (!selected_entry->fp) {
+      lg::die("Failed to open {} {}", fd->full_path, strerror(errno));
+    }
+    selected_entry->offset_in_file = 0;
+  }
+
+  // increment use counter
+  selected_entry->last_use_count = m_file_cache_counter++;
+
+  const u64 desired_offset = block->params.sector_num * 0x800;
+
+  // see if we're reading entirely past the end of the file
+  if (desired_offset >= fd->length) {
+    return;
+  }
+
+  if (selected_entry->offset_in_file != desired_offset) {
+    lg::debug("CDvdDriver jumping in file {}: {} -> {}", fd->name.data,
+              selected_entry->offset_in_file, desired_offset);
+    if (fseek(selected_entry->fp, desired_offset, SEEK_SET)) {
+      ASSERT_NOT_REACHED_MSG("Failed to fseek");
+    }
+    selected_entry->offset_in_file = desired_offset;
+  }
+
+  // read
+  s64 read_length = block->params.num_sectors * 0x800;
+  s64 extra_length = read_length + desired_offset - fd->length;
+  if (extra_length > 0) {
+    read_length -= extra_length;
+  }
+  auto ret = fread(block->params.destination, read_length, 1, selected_entry->fp);
+  if (ret != 1) {
+    lg::die("Failed to read {} {}, size {} of {} (ret {})", fd->full_path, strerror(errno),
+            read_length, fd->length, ret);
+  }
+  selected_entry->offset_in_file += read_length;
+}
+
 u32 DvdThread() {
   auto* driver = get_driver();
 
@@ -436,7 +508,7 @@ u32 DvdThread() {
 
         // for now, inefficient
         ovrld_log(LogCategory::DRIVER, "[driver thread] Reading for slot {}", block - driver->ring);
-        read_block(block);
+        driver->read_from_file(block);
 
       } else {
       LAB_000134a4:
@@ -510,6 +582,14 @@ void CDvdDriver::CompletionHandler(jak3::Block* block, int code) {
   block->next = nullptr;
   block->descriptor = nullptr;
   // PopPri(this, local_20[0]);
+}
+
+CDvdDriver::~CDvdDriver() {
+  for (auto& entry : m_file_cache) {
+    if (entry.fp) {
+      fclose(entry.fp);
+    }
+  }
 }
 
 }  // namespace jak3

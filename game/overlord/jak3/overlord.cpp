@@ -46,20 +46,9 @@ int start_overlord() {
   // take care of resetting all the global/static variables and constructing C++ objects.
   // do_global_ctors();
   jak3_overlord_init_globals_all();
-
-  lg::info("globals init");
-
   InitBanks();
-
-  lg::info("banks init");
-
   InitSound();
-
-  lg::info("sound init");
-
   VBlank_Initialize();
-
-  lg::info("vblank init");
 
   // RPC thread to load data from game files to the game memory.
   ThreadParam thread_param;
@@ -99,13 +88,10 @@ int start_overlord() {
   }
 
   // Initialize the dvd driver that will be used to implement the "ISO FS" system
-  lg::info("about to init driver");
   get_driver()->Initialize();
 
   // then, initialize ISO FS itself
-  lg::info("about to initISOFS");
   InitISOFS();
-  lg::info("about to start threads");
 
   // start up RPC threads!
   StartThread(g_nServerThreadID, 0);

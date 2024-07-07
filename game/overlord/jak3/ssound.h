@@ -27,7 +27,7 @@ struct VolumePair {
 
 SoundInfo* LookupSound(s32 id);
 SoundInfo* AllocateSound();
-s8 GetFalloffCurve(int fo_curve);
+int GetFalloffCurve(int fo_curve);
 s32 GetVolume(SoundInfo* sound);
 s32 GetPan(SoundInfo* sound);
 void UpdateVolume(SoundInfo* sound);

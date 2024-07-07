@@ -110,7 +110,7 @@ CPage* CPageList::AddActivePages(int num_pages) {
  * leaves at least 1 active page to avoid removing a page that's currently being used.
  */
 int CPageList::RemoveActivePages(int count) {
-  lg::error("Remove Active Pages {}", count);
+  // lg::error("Remove Active Pages {}", count);
   int num_removed = 0;
   ASSERT(m_nAllocState == AllocState::EPLAS_ALLOCATED);
 

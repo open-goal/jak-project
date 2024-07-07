@@ -180,20 +180,18 @@ void InitISOFS() {
   StartThread(g_nDGOThread, 0);
   StartThread(g_nSTRThreadID, 0);
   StartThread(g_nPlayThreadID, 0);
-  lg::info("init iso FS waiting on sync mbx...");
   WaitMbx(g_nSyncMbx);
-  lg::info("init iso FS got sync mbx");
 
   const ISOFileDef* vagdir_file = FindISOFile("VAGDIR.AYB");
   ASSERT(vagdir_file);
-  lg::info("about to load VAGDIR");
   int load_status = LoadISOFileToIOP(vagdir_file, &g_VagDir, sizeof(g_VagDir));
-  lg::info("done loading VAGDIR");
-  ASSERT(load_status != 0);
-
-  // vgwaddir
-  ASSERT(g_VagDir.vag_magic_1 == 0x41574756);
-  ASSERT(g_VagDir.vag_magic_2 == 0x52494444);
+  if (load_status) {
+    ASSERT(g_VagDir.vag_magic_1 == 0x41574756);
+    ASSERT(g_VagDir.vag_magic_2 == 0x52494444);
+  } else {
+    lg::warn("Failed to load vagdir file");
+    g_VagDir.num_entries = 0;
+  }
 
   // splash screen load was here...
   ASSERT(g_nISOInitFlag == 0);
@@ -236,7 +234,6 @@ void IsoPlayMusicStream(ISO_VAGCommand* user_cmd) {
   ISO_VAGCommand* stereo_internal_cmd = nullptr;
 
   if (!internal_cmd) {
-    ovrld_log(LogCategory::VAG_SETUP, "IsoPlayMusicStream({}), creating new command", name);
     // no existing command, so allocate one.
     internal_cmd = SmartAllocMusicVagCommand(user_cmd, 0);
 
@@ -839,9 +836,8 @@ u32 ISOThread() {
         mbx_cmd->m_pBaseFile = nullptr;
         auto msg_kind = mbx_cmd->msg_type;
 
-        ovrld_log(LogCategory::ISO_QUEUE,
-                  "Incoming message to the ISO Queue: 0x{:x} addr 0x{:x}, dgo is 0x{:x}",
-                  (int)msg_kind, (u64)mbx_cmd, (u64)&sLoadDGO);
+        ovrld_log(LogCategory::ISO_QUEUE, "Incoming message to the ISO Queue with type 0x{:x}",
+                  (int)msg_kind);
 
         // if we're a simple file loading command:
         if (msg_kind == ISO_Hdr::MsgType::LOAD_EE || msg_kind == ISO_Hdr::MsgType::LOAD_EE_CHUNK ||
@@ -1127,8 +1123,7 @@ u32 ISOThread() {
       auto* vag_info = g_NewStreamsList.next;
       for (int i = 0; i < 4; i++) {
         if (vag_info->id) {
-          ovrld_log(LogCategory::ISO_QUEUE, "ISO Queue: Streams list, new queue: {}\n",
-                    vag_info->name);
+          ovrld_log(LogCategory::ISO_QUEUE, "ISO thread: queueing VAG {}", vag_info->name);
           QueueVAGStream(vag_info);
         }
         vag_info = vag_info->next;
@@ -1138,7 +1133,8 @@ u32 ISOThread() {
     for (int i = 0; i < 4; i++) {
       ISO_VAGCommand* vc = &g_aVagCmds[i];
       if (!vc->music_flag && !vc->flags.stereo_secondary && !vc->flags.scanned && vc->id) {
-        ovrld_log(LogCategory::ISO_QUEUE, "ISO Queue: pausing {}\n", vc->name);
+        ovrld_log(LogCategory::ISO_QUEUE, "ISO thread: stopping {} since it is no longer requested",
+                  vc->name);
         IsoStopVagStream(vc);
       }
     }
@@ -1149,7 +1145,7 @@ u32 ISOThread() {
     for (int i = 4; i < 6; i++) {
       ISO_VAGCommand* vc = &g_aVagCmds[i];
       if (vc->music_flag && !vc->flags.stereo_secondary && vc->flags.stop && vc->id) {
-        ovrld_log(LogCategory::ISO_QUEUE, "ISO Queue: pausing music {}\n", vc->name);
+        ovrld_log(LogCategory::ISO_QUEUE, "ISO thread: stopping music {}", vc->name);
         IsoStopVagStream(vc);
       }
     }

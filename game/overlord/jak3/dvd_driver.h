@@ -60,8 +60,8 @@ struct CDescriptor {
 
 class CDvdDriver {
  public:
-  // todo CTOR
   CDvdDriver();
+  ~CDvdDriver();
   void Initialize();
   void CancelRead(CDescriptor* descriptor);
   int ReadMultiple(CDescriptor* descriptor,
@@ -77,6 +77,7 @@ class CDvdDriver {
   s32 ValidateBlockParams(BlockParams* params, int num_params);
   int ReleaseFIFOSema(bool from_dvd_thread);
   int AcquireFIFOSema(bool from_dvd_thread);
+  void read_from_file(const Block* block);
   void CompletionHandler(Block* block, int code);
 
   u8 initialized = 0;
@@ -99,6 +100,17 @@ class CDvdDriver {
   u8 trayflag3;
   u8 tray_flag;
   s32 m_nDvdThreadAccessSemaCount = 0;
+
+ private:
+  struct FileCacheEntry {
+    const ISOFileDef* def = nullptr;
+    FILE* fp = nullptr;
+    u32 last_use_count = 0;
+    u64 offset_in_file = 0;
+  };
+  u32 m_file_cache_counter = 0;
+  static constexpr int kNumFileCacheEntries = 6;
+  FileCacheEntry m_file_cache[kNumFileCacheEntries];
 };
 
 // replacement for g_DvdDriver
