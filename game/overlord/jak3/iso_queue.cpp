@@ -64,6 +64,12 @@ void jak3_overlord_init_globals_iso_queue() {
   }
 }
 
+/*!
+ * Added function to check if there is a pending DGO load command.
+ * On PC, DOG loads are really the only loading time that users see. If there is a pending
+ * DGO load, we can modify logic to take advantage of PCs being dramatically faster than PS2 and
+ * get much better load times.
+ */
 bool DgoCmdWaiting() {
   for (auto& level : gPriStack) {
     for (int i = 0; i < level.count; i++) {
@@ -182,6 +188,13 @@ int UnqueueMessage(ISO_Hdr* msg) {
   } while (true);
 }
 
+/*!
+ * Select which command to read for next
+ * This function considers things like seeking time, reading rates of streamed files,
+ * and buffer sizing. To be entirely honest, I don't understand it almost at all, and it's not
+ * clear that it works as expected. It seems to work good enough, and no commands get entirely
+ * starved of data while there are multiple streams.
+ */
 ISO_Hdr* GetMessage() {
   //  bool been_a_while;
   //  bool bVar2;

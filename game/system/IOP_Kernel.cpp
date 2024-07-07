@@ -10,7 +10,6 @@
 #include "game/sce/iop.h"
 
 using namespace std::chrono;
-bool g_Debug = false;
 
 /*
 ** wrap thread entry points to ensure they don't return into libco
@@ -219,7 +218,6 @@ s32 IOP_Kernel::ReceiveMbx(void** msg, s32 id) {
   box.wait_thread = _currentThread;
   _currentThread->state = IopThread::State::Wait;
   _currentThread->waitType = IopThread::Wait::Messagebox;
-  g_Debug = true;
   leaveThread();
 
   auto ret = PollMbx(msg, id);
@@ -242,7 +240,6 @@ s32 IOP_Kernel::SendMbx(s32 mbx, void* value) {
 }
 
 s32 IOP_Kernel::SignalSema(s32 id) {
-  // bool debug = id == 24;
   auto& sema = semas.at(id);
 
   if (sema.count >= sema.maxCount) {

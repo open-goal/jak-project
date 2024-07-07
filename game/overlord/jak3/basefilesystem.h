@@ -10,6 +10,10 @@ struct VagDirEntry;
 
 constexpr int kMaxOpenFiles = 16;
 
+/*!
+ * Base class for "FileSystem", which supports finding and opening files.
+ * The only implementation we have is CISOCDFileSystem
+ */
 struct CBaseFileSystem {
   CBaseFileSystem();
   virtual ~CBaseFileSystem() = default;
@@ -17,7 +21,6 @@ struct CBaseFileSystem {
   // semaphores for processing open files
   int m_Sema[kMaxOpenFiles];
 
-  // todo
   virtual int Init() = 0;
   // polldrive
   virtual ISOFileDef* Find(const char* name) = 0;

@@ -43,12 +43,12 @@ int CMsg::send() {
   return ret;
 }
 
-CMsgLock::CMsgLock() : CMsg(CMsg::MsgKind::LOCK) {}
-
-void CMsgLock::handler() {
-  get_driver()->Lock();
-  m_ret = 0;
-}
+// CMsgLock::CMsgLock() : CMsg(CMsg::MsgKind::LOCK) {}
+//
+// void CMsgLock::handler() {
+//   get_driver()->Lock();
+//   m_ret = 0;
+// }
 
 // CMsgReadRaw::CMsgReadRaw(jak3::BlockParams* params) : CMsg(CMsg::MsgKind::READ_RAW) {
 //   m_block_params = *params;
@@ -74,7 +74,7 @@ CDvdDriver::CDvdDriver() {
   current_thread_priority = 0x13;
   disk_type = 5;
   tray_flag = 1;
-  m_nLockCount = 0;
+  // m_nLockCount = 0;
   event_flag = -1;
   fifo_access_sema = -1;
   tray_flag2 = 1;
@@ -82,9 +82,9 @@ CDvdDriver::CDvdDriver() {
   m_nNumFifoEntries = 0;
   ring_head = 0;
   ring_tail = 0;
-  needs_break = 0;
+  read_in_progress = 0;
   callback = nullptr;
-  locked = false;
+  // locked = false;
   trayflag3 = 0;
   m_nDvdThreadAccessSemaCount = 0;
   memset(ring, 0, sizeof(Block) * 16);
@@ -143,18 +143,18 @@ void CDvdDriver::SetDriverCallback(std::function<void(int)> f) {
 
 // Poll - would kick the thread...
 
-void CDvdDriver::Lock() {
-  ASSERT_NOT_REACHED();
-  if (GetThreadId() == g_nDvdDriverThread) {
-    m_nLockCount++;
-    locked = true;
-    // needs break HACK
-    needs_break = false;
-  } else {
-    CMsgLock lock;
-    lock.send();
-  }
-}
+// void CDvdDriver::Lock() {
+//   ASSERT_NOT_REACHED();
+//   if (GetThreadId() == g_nDvdDriverThread) {
+//     m_nLockCount++;
+//     locked = true;
+//     // needs break HACK
+//     needs_break = false;
+//   } else {
+//     CMsgLock lock;
+//     lock.send();
+//   }
+// }
 
 // Read
 
@@ -166,7 +166,7 @@ int CDvdDriver::ReadMultiple(CDescriptor* descriptor,
   *pages_read_out = 0;
   s32 ret = 1;
 
-  // check block paramters are reasonable
+  // check block parameters are reasonable
   if (ValidateBlockParams(params, num_blocks) != 0) {
     bool from_dvd_thread = GetThreadId() == g_nDvdDriverThread;
     if (from_dvd_thread) {
@@ -257,13 +257,13 @@ int CDvdDriver::ReadMultiple(CDescriptor* descriptor,
 void CDvdDriver::CancelRead(jak3::CDescriptor* desc) {
   if (GetThreadId() == g_nDvdDriverThread) {
     AcquireFIFOSema(true);
-    if ((needs_break != 0) && (ring[ring_head].descriptor == desc)) {
+    if ((read_in_progress != 0) && (ring[ring_head].descriptor == desc)) {
       //      while (iVar1 = sceCdBreak(), iVar1 == 0) {
       //        DelayThread(8000);
       //        sceCdSync(0);
       //      }
       //      sceCdSync(0);
-      needs_break = 0;
+      read_in_progress = 0;
     }
 
     Block* iter = desc->m_pHead;
@@ -368,24 +368,9 @@ int CDvdDriver::ReleaseFIFOSema(bool from_dvd_thread) {
   return iVar2;
 }
 
-void read_block(const Block* block) {
-  ASSERT(block->params.file_def);
-  FILE* fp = file_util::open_file(block->params.file_def->full_path, "rb");
-  if (!fp) {
-    lg::die("failed to open {}", block->params.file_def->full_path);
-  }
-  if (fseek(fp, block->params.sector_num * 0x800, SEEK_SET)) {
-    ASSERT_MSG(false, "Failed to fseek");
-  }
-  if (fread(block->params.destination, block->params.num_sectors * 0x800, 1, fp) < 0) {
-    printf("dest is %p, num_sectors %d, lsn %d\n", block->params.destination,
-           block->params.num_sectors, block->params.sector_num);
-    printf("err: %s\n", strerror(errno));
-    ASSERT_MSG(false, "Failed to fread");
-  }
-  fclose(fp);
-}
-
+/*!
+ * PC port added function to actually do a read of a block.
+ */
 void CDvdDriver::read_from_file(const jak3::Block* block) {
   const auto* fd = block->params.file_def;
   ASSERT(fd);
@@ -475,71 +460,70 @@ u32 DvdThread() {
       WakeupThread(msg->m_thread);
     }
 
-    if (true) {
-      bool completed = false;
-      if (driver->needs_break) {
-        // sceCdSync(0);
-        completed = true;
-        // error checking
-      }
+    bool completed = false;
 
-      driver->AcquireFIFOSema(true);
-      // error handling
-
-      s32 fifo_slots_freed = -(completed == 0);
-      s32 fifo_entries = driver->m_nNumFifoEntries + (completed == 0);
-      s32 ring_entry = driver->ring_head + fifo_slots_freed;
-      Block* block = nullptr;
-      Block sblock;
-      do {
-        ring_entry = ring_entry + 1;
-        fifo_entries = fifo_entries + -1;
-        fifo_slots_freed = fifo_slots_freed + 1;
-        if (0xf < ring_entry) {
-          ring_entry = 0;
-        }
-        block = driver->ring + ring_entry;
-        if (fifo_entries < 1)
-          goto LAB_000134a4;
-      } while (!block->descriptor);
-      if (!driver->locked) {
-        // READ!!!
-        driver->needs_break = 1;
-
-        // for now, inefficient
-        ovrld_log(LogCategory::DRIVER, "[driver thread] Reading for slot {}", block - driver->ring);
-        driver->read_from_file(block);
-
-      } else {
-      LAB_000134a4:
-        driver->needs_break = 0;
-      }
-      if (completed != 0) {
-        auto* last_block = &driver->ring[driver->ring_head];
-        ovrld_log(LogCategory::DRIVER, "[driver thread] Completion handler for {}",
-                  driver->ring_head);
-        sblock = *last_block;
-
-        if (sblock.descriptor && sblock.descriptor->m_pHead) {
-          ASSERT(sblock.descriptor->m_pHead == last_block);
-        }
-        if (((sblock.descriptor)->m_pHead == last_block) &&
-            ((sblock.descriptor)->m_pHead = &sblock, (sblock.descriptor)->m_pTail == last_block)) {
-          (sblock.descriptor)->m_pTail = &sblock;
-        }
-      }
-      driver->ring_head = ring_entry;
-      driver->m_nNumFifoEntries = fifo_entries;
-      while (0 < fifo_slots_freed) {
-        fifo_slots_freed = fifo_slots_freed + -1;
-        SignalSema(driver->fifo_entry_sema);
-      }
-      if (completed != 0) {
-        driver->CompletionHandler(&sblock, 0);
-      }
-      driver->ReleaseFIFOSema(true);
+    // if a read is in progress, wait for it to finish.
+    if (driver->read_in_progress) {
+      // TODO: if we switch to async reads, this is where we'd want to sync.
+      // sceCdSync(0);
+      completed = true;
+      // error checking
     }
 
+    driver->AcquireFIFOSema(true);
+    // error handling
+
+    // handle ring book-keeping.
+    // note that these are somewhat double-buffered - we'll sync on read i-1, start read i, then
+    // run the completion handler for read i - 1.
+    // the completion is what actually removes stuff from the ring.
+
+    s32 fifo_slots_freed = completed ? 1 : 0;
+    s32 ring_entry = driver->ring_head + (completed ? 1 : 0);
+    if (ring_entry > 15) {
+      ring_entry = 0;
+    }
+    Block* block = driver->ring + ring_entry;
+    s32 fifo_entries = driver->m_nNumFifoEntries - fifo_slots_freed;
+
+    if (fifo_entries) {
+      // start a new read.
+      driver->read_in_progress = 1;
+      ovrld_log(LogCategory::DRIVER, "[driver thread] Reading for slot {}", block - driver->ring);
+      driver->read_from_file(block);
+
+    } else {
+      driver->read_in_progress = 0;
+    }
+
+    // run completion handler for the previous read - not the one we just started!
+    Block sblock;
+    if (completed) {
+      auto* last_block = &driver->ring[driver->ring_head];
+      ovrld_log(LogCategory::DRIVER, "[driver thread] Completion handler for {}",
+                driver->ring_head);
+      sblock = *last_block;
+
+      if (sblock.descriptor && sblock.descriptor->m_pHead) {
+        ASSERT(sblock.descriptor->m_pHead == last_block);
+      }
+      if (((sblock.descriptor)->m_pHead == last_block) &&
+          ((sblock.descriptor)->m_pHead = &sblock, (sblock.descriptor)->m_pTail == last_block)) {
+        (sblock.descriptor)->m_pTail = &sblock;
+      }
+    }
+    driver->ring_head = ring_entry;
+    driver->m_nNumFifoEntries = fifo_entries;
+    while (0 < fifo_slots_freed) {
+      fifo_slots_freed = fifo_slots_freed + -1;
+      SignalSema(driver->fifo_entry_sema);
+    }
+    if (completed != 0) {
+      driver->CompletionHandler(&sblock, 0);
+    }
+    driver->ReleaseFIFOSema(true);
+
+    // this logic here was modified - we go to waiting if we have no more reads.
     if (driver->m_nNumFifoEntries == 0) {
       ovrld_log(LogCategory::DRIVER, "[driver thread] No work, waiting.");
       WaitEventFlag(driver->event_flag, 1, 0x11);
@@ -562,6 +546,9 @@ u32 DvdThread() {
 }
 
 void CDvdDriver::CompletionHandler(jak3::Block* block, int code) {
+  // there is some janky thread priority changes here,
+  // but they do not seem to be needed with the changes to the ISO thread.
+
   // PushPri(this,local_20,0x35);
   auto* desc = block->descriptor;
   if (desc && desc->m_pHead) {

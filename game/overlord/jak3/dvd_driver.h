@@ -9,14 +9,32 @@
 namespace jak3 {
 void jak3_overlord_init_globals_dvd_driver();
 
+/*!
+ * The DVD Driver is what actually called the Sony CD library functions.
+ * It also had many special cases for handling errors, open trays, retries, etc that are not
+ * recreated in this port.
+ *
+ * The original DVD driver thread didn't run the actual reads - the Sony CD library had its own
+ * threads for async reads. However, they would call sceCdSync() to wait until a read finished.
+ * It's not clear if sceCdSync would allow other threads to run while waiting on the read to finish.
+ * but if it did, this is a bit of a difference in the blocking behavior.
+ *
+ * This is something that could be revisited, as freads will now essentially block the entire
+ * overlord, including refilling sound RAM.
+ */
+
 struct CDescriptor;
 struct BlockParams;
 struct CPage;
 struct ISOFileDef;
 
+// The CMSG system is used to pass messages from external threads to the driver. It's mostly used
+// internally by the driver, when functions are called on it from outside threads. In these cases
+// the Cmsg will get send to the driver thread and handler will run on it here.
+
 struct CMsg {
   enum class MsgKind {
-    LOCK = 0,
+    // LOCK = 0,
     READ_RAW = 1,
     CANCEL_READ = 2,
   };
@@ -30,10 +48,10 @@ struct CMsg {
   int m_ret;
 };
 
-struct CMsgLock : public CMsg {
-  CMsgLock();
-  void handler() override;
-};
+// struct CMsgLock : public CMsg {
+//   CMsgLock();
+//   void handler() override;
+// };
 
 // struct CMsgReadRaw : public CMsg {
 //   explicit CMsgReadRaw(BlockParams* params);
@@ -46,7 +64,14 @@ struct CMsgCancelRead : public CMsg {
   void handler() override;
   CDescriptor* m_desc;
 };
+
 struct CISOCDFile;
+
+/*!
+ * Reference to an ongoing or requested read at the driver level, possibly made up of multiple
+ * blocks. In this case, the head/tail pointers point to Blocks stored inside the CDvdDriver's
+ * internal FIFO.
+ */
 struct CDescriptor {
   CDescriptor() = default;
   int m_unk0 = 0;
@@ -72,7 +97,7 @@ class CDvdDriver {
   void SetDriverCallback(std::function<void(int)> f);
   // int ReadDirect(BlockParams* params);
   void KickDvdThread();
-  void Lock();
+  // void Lock();
   int GetDiskType() const { return disk_type; }
   s32 ValidateBlockParams(BlockParams* params, int num_params);
   int ReleaseFIFOSema(bool from_dvd_thread);
@@ -89,11 +114,11 @@ class CDvdDriver {
   s32 ring_head = 0;
   s32 ring_tail = 0;
   Block ring[16];
-  u8 needs_break;
+  u8 read_in_progress;  // more likely: read in progress
   std::function<void(int)> callback;
   s32 current_thread_priority = 0;
-  s32 m_nLockCount = 0;
-  bool locked = false;
+  // s32 m_nLockCount = 0;
+  // bool locked = false;
   //
   s32 disk_type;
   u8 tray_flag2;

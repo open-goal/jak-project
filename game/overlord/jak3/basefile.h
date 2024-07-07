@@ -16,6 +16,7 @@ constexpr int kDefaultBufferPageCount = 4;
 
 /*!
  * Base class for a file that the ISO system is processing.
+ * This represents an "open" file, and contains references to the buffer holding this file's data
  */
 struct CBaseFile {
   CBaseFile();
@@ -62,7 +63,6 @@ struct CBaseFile {
   // (this is a bit of hack, only used for VAG streaming).
   int m_ProcessDataSemaphore = 0;
 
-  // todo
   // virtual methods
   virtual EIsoStatus BeginRead() = 0;
   virtual EIsoStatus SyncRead() = 0;

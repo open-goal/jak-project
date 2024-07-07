@@ -264,23 +264,18 @@ set(RUNTIME_SOURCE
         overlord/jak3/vag.cpp
         overlord/jak3/ssound.cpp
         overlord/jak3/iso_api.cpp
-        overlord/jak3/plugin.cpp
         overlord/jak3/spustreams.cpp
         overlord/jak3/list.cpp
         overlord/jak3/vblank_handler.cpp
         overlord/jak3/dvd_driver.cpp
-        overlord/jak3/start.cpp
         overlord/jak3/basefile.cpp
         overlord/jak3/basefilesystem.cpp
-        overlord/jak3/fakeiso.cpp
         overlord/jak3/ramdisk.cpp
         overlord/jak3/isocommon.cpp
         overlord/jak3/init.cpp
-        overlord/jak3/isodesc.cpp
         overlord/jak3/stream.cpp
         overlord/jak3/sbank.cpp
         overlord/jak3/soundcommon.cpp
-        overlord/jak3/streamlfo.cpp
         overlord/jak3/streamlist.cpp
         runtime.cpp
         sce/deci2.cpp

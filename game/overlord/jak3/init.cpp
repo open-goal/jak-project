@@ -3,26 +3,21 @@
 #include "game/overlord/jak3/basefilesystem.h"
 #include "game/overlord/jak3/dma.h"
 #include "game/overlord/jak3/dvd_driver.h"
-#include "game/overlord/jak3/fakeiso.h"
 #include "game/overlord/jak3/iso.h"
 #include "game/overlord/jak3/iso_api.h"
 #include "game/overlord/jak3/iso_cd.h"
 #include "game/overlord/jak3/iso_queue.h"
 #include "game/overlord/jak3/isocommon.h"
-#include "game/overlord/jak3/isodesc.h"
 #include "game/overlord/jak3/list.h"
 #include "game/overlord/jak3/overlord.h"
 #include "game/overlord/jak3/pagemanager.h"
-#include "game/overlord/jak3/plugin.h"
 #include "game/overlord/jak3/ramdisk.h"
 #include "game/overlord/jak3/sbank.h"
 #include "game/overlord/jak3/soundcommon.h"
 #include "game/overlord/jak3/spustreams.h"
 #include "game/overlord/jak3/srpc.h"
 #include "game/overlord/jak3/ssound.h"
-#include "game/overlord/jak3/start.h"
 #include "game/overlord/jak3/stream.h"
-#include "game/overlord/jak3/streamlfo.h"
 #include "game/overlord/jak3/streamlist.h"
 #include "game/overlord/jak3/vag.h"
 #include "game/overlord/jak3/vblank_handler.h"
@@ -39,22 +34,17 @@ void jak3_overlord_init_globals_all() {
   jak3_overlord_init_globals_vag();
   jak3_overlord_init_globals_ssound();
   jak3_overlord_init_globals_iso_api();
-  jak3_overlord_init_globals_plugin();
   jak3_overlord_init_globals_spustreams();
   jak3_overlord_init_globals_list();
   jak3_overlord_init_globals_vblank_handler();
   jak3_overlord_init_globals_dvd_driver();
-  jak3_overlord_init_globals_start();
   jak3_overlord_init_globals_basefile();
   jak3_overlord_init_globals_basefilesystem();
-  jak3_overlord_init_globals_fakeiso();
   jak3_overlord_init_globals_ramdisk();
   jak3_overlord_init_globals_isocommon();
-  jak3_overlord_init_globals_isodesc();
   jak3_overlord_init_globals_stream();
   jak3_overlord_init_globals_sbank();
   jak3_overlord_init_globals_soundcommon();
-  jak3_overlord_init_globals_streamlfo();
   jak3_overlord_init_globals_streamlist();
 }
 }  // namespace jak3

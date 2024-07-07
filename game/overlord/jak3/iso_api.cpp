@@ -17,6 +17,15 @@ namespace jak3 {
 using namespace iop;
 void jak3_overlord_init_globals_iso_api() {}
 
+/*!
+ * This file is the "API" that implementations of RPCs or other code can use to submit things to the
+ * ISO thread. Note that not all RPCs use this API - for example the DGO RPC just manually submits
+ * messages.  Generally, these functions will not return until the actual action is complete, like a
+ * file is loaded.
+ * - except for messages to pause/play audio, those functions will return immediately, but there may
+ * be a delay until they are actually processed.
+ */
+
 // PluginVagAndVagWad not ported.
 
 u32 EEVagAndVagWad(ISO_VAGCommand* cmd, char* name) {
@@ -41,7 +50,6 @@ u32 EEVagAndVagWad(ISO_VAGCommand* cmd, char* name) {
     strncpy(name_buff.data + 8, "INT", 4);
 
     cmd->vag_file_def = get_file_system()->FindIN(&name_buff);
-    ;
     if (cmd->vag_dir_entry && cmd->file_def && cmd->vag_file_def) {
       return 1;
     }

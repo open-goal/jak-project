@@ -7,6 +7,12 @@ void jak3_overlord_init_globals_list();
 
 struct VagStreamData;
 
+/*!
+ * The List system is a linked list used to track requested and playing streams.
+ * Originally, it supported multiple element types.
+ * One of those types is related to plugin streams which are not supported in PC.
+ * So, this is just hard-coded to use VagStreamData as the element type.
+ */
 struct List {
   char name[8];
   int sema = 0;

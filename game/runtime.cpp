@@ -271,9 +271,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   iop::LIBRARY_register(&iop);
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
-  if (version == GameVersion::Jak3) {
-    // jak3::jak3_overlord_init_globals_all();
-  } else {
+  if (version != GameVersion::Jak3) {
     jak1::dma_init_globals();
     jak2::dma_init_globals();
 
@@ -390,8 +388,7 @@ RuntimeExitStatus exec_runtime(GameLaunchOptions game_options, int argc, const c
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("startup::exec_runtime::init_discord_rpc");
-    lg::error("disabled discord");
-    // init_discord_rpc();
+    init_discord_rpc();
   }
 
   // initialize graphics first - the EE code will upload textures during boot and we

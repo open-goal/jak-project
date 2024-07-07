@@ -31,16 +31,6 @@ struct ISO_DGOCommand : public ISO_Hdr {
     READ_OBJ_DATA = 5,
     FINISH_DGO = 6,
     FINISH_OBJ_SINGLE_BUFFER = 7,
-    /*
-     * Init = 0,
-Read_Header = 1,
-Finish_Obj = 2,
-Read_Last_Obj = 3,
-Read_Obj_Header = 4,
-Read_Obj_data = 5,
-Finish_Dgo = 6,
-Finish_Obj_NoDoubleBuffer = 7,  // jak 2 only
-     */
   } state = State::INIT;              // 204
   int finished_first_object = 0;      // 208
   int buffer_toggle = 0;              // 212

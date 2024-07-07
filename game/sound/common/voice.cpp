@@ -3,7 +3,6 @@
 #include "voice.h"
 
 #include <array>
-#include <cstdio>
 
 namespace snd {
 #include "interp_table.inc"
@@ -126,10 +125,7 @@ s16Output Voice::Run() {
     mDecodeBuf.Pop();
   }
 
-  // auto old_sample = sample;
   sample = ApplyVolume(sample, mADSR.Level());
-  // if (old_sample)
-  // printf("run: %d %d\n", old_sample, sample);
   s16 left = ApplyVolume(sample, mVolume.left.GetCurrent());
   s16 right = ApplyVolume(sample, mVolume.right.GetCurrent());
 

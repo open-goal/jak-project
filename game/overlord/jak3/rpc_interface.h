@@ -2,6 +2,11 @@
 
 #include "common/common_types.h"
 
+/*!
+ * This file has structs that are shared between GOAL and Overlord.
+ * The memory layout of these structs should not be changed.
+ */
+
 namespace jak3 {
 
 struct SoundStreamName {

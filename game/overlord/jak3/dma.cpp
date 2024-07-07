@@ -14,7 +14,7 @@
 
 namespace jak3 {
 using namespace iop;
-// namespace {
+namespace {
 
 // most recent call to voice_trans_wrapper's arguments
 u32 g_voiceTransMode = 0;
@@ -50,7 +50,7 @@ struct DmaInterruptHandlerHack {
   int countdown = 0;
 } g_DmaInterruptHack;
 
-// }  // namespace
+}  // namespace
 
 void jak3_overlord_init_globals_dma() {
   g_voiceTransMode = 0;
@@ -71,6 +71,11 @@ void jak3_overlord_init_globals_dma() {
   g_nSpuDmaQueueTail = 0;
   g_DmaInterruptHack = {};
 }
+
+// The DMA callback hack below is used to defer dma completion "interrupts" until the next run
+// of the ISO Thread. This avoids re-entry type problems where the original design would set off
+// a dma transfer in the completion handler of the previous transfer, and expect a few instructions
+// to run after.
 
 void uninstall_dma_intr() {
   g_DmaInterruptHack = {};
@@ -432,18 +437,15 @@ void DMA_SendToEE(void* ee_dest,
   }
 }
 
+/*!
+ * Start DMA transfer to SPU. Despite the name, this does not actually "sync" - the transfer will
+ * be ongoing. If there is an ongoing transfer when this is called, the transfer will be queued.
+ */
 int DMA_SendToSPUAndSync(const u8* iop_mem,
                          int length,
                          int spu_addr,
                          ISO_VAGCommand* cmd,
                          void* user_data) {
-  //  bool bVar1;
-  //  ISO_VAGCommand* pIVar2;
-  //  DmaQueueEntry* pDVar3;
-  //  undefined4 ret;
-  //  undefined4 local_28[2];
-  //  int qi;
-
   // CpuSuspendIntr(local_28);
   int ret = 1;
   bool defer = false;

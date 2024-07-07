@@ -20,6 +20,8 @@ void jak3_overlord_init_globals_pagemanager();
  * By default, each active page will have a ref count of 1.
  *
  * The CBuffer object owned by CBaseFile uses memory managed by this CPage system.
+ *
+ * The pages are preallocated by the CPageManager, which gives out pages as needed.
  */
 
 struct CPage;
