@@ -53,19 +53,19 @@ void UpdateIsoBuffer(ISO_VAGCommand* cmd, int length) {
  */
 EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
   int spu_addr;
-  uint uVar1;
+  u32 uVar1;
   int iVar2;
-  uint val;
+  u32 val;
   uint8_t* iop_mem;
   int* piVar4;
   int iVar5;
   int iVar6;
   ISO_VAGCommand* sibling;
-  uint val2;
+  u32 val2;
   CBuffer* buffer;
   CBaseFile* file;
   int length;
-  int iVar9;
+  // int iVar9;
   // undefined4 local_28[2];
   bool got_chunks;
 
@@ -249,7 +249,7 @@ EIsoStatus ProcessVAGData(ISO_Hdr* _msg) {
     if (sibling != (ISO_VAGCommand*)0x0) {
       uVar1 = uVar1 * 2;
     }
-    uVar1 = uVar1 + 0x7fff >> 0xf;
+    uVar1 = (uVar1 + 0x7fff) >> 0xf;
     if (uVar1 == 0) {
       uVar1 = 1;
     }
@@ -833,8 +833,8 @@ LAB_00011010:
 }
 
 u32 CheckVAGStreamProgress(ISO_VAGCommand* cmd) {
-  uint uVar1;
-  uint last_offset_in_stream_sram;
+  u32 uVar1;
+  u32 last_offset_in_stream_sram;
   ISO_VAGCommand* pIVar3;
 
   if (cmd->flags.file_disappeared == 0) {

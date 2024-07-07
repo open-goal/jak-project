@@ -211,7 +211,7 @@ ISO_Hdr* GetMessage() {
   //  int iVar14;
   //  uint uVar15;
   ISO_Hdr* cmds_array[16];
-  uint read_rates_array[16];
+  u32 read_rates_array[16];
   int num_pages_array[16];
   int unstepped_pages_array[16];
   int remaining_pages_array[16];
@@ -672,8 +672,8 @@ void ReleaseMessage(ISO_Hdr* msg) {
 
 ISO_VAGCommand* GetVAGCommand() {
   int iVar1;
-  uint uVar2;
-  uint uVar3;
+  u32 uVar2;
+  u32 uVar3;
 
   do {
     while (vag_cmd_cnt == 0x1f) {
@@ -701,7 +701,7 @@ ISO_VAGCommand* GetVAGCommand() {
 }
 
 void FreeVAGCommand(ISO_VAGCommand* param_1) {
-  uint uVar1;
+  u32 uVar1;
   int iVar2;
 
   uVar1 = param_1 - vag_cmds;

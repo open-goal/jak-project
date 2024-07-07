@@ -510,8 +510,8 @@ void CISOCDFileSystem::LoadMusicTweaks() {
     ASSERT(ret == 1);
     fclose(fp);
   } else {
+    lg::warn("Failed to open music tweak file.");
     gMusicTweakInfo.TweakCount = 0;
-    ASSERT_NOT_REACHED();
   }
 }
 

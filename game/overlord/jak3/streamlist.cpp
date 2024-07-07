@@ -53,9 +53,9 @@ void InitVagStreamList(List* list, int size, const char* name) {
 VagStreamData* FindVagStreamInList(VagStreamData* stream, List* list) {
   int iVar1;
   VagStreamData* iter;
-  uint max_idx;
-  uint idx;
-  uint uVar2;
+  u32 max_idx;
+  u32 idx;
+  u32 uVar2;
   VagStreamData* ret;
   VagStreamData* pVVar3;
 
@@ -92,8 +92,8 @@ VagStreamData* GetVagStreamInList(u32 idx, List* list) {
 
 void EmptyVagStreamList(List* list) {
   VagStreamData* elt;
-  uint i;
-  uint cnt;
+  u32 i;
+  u32 cnt;
 
   cnt = list->count;
   elt = (VagStreamData*)list->buffer;
@@ -139,7 +139,7 @@ void RemoveVagStreamFromList(VagStreamData* stream, List* list) {
 }
 
 VagStreamData* InsertVagStreamInList(VagStreamData* user_stream, List* list) {
-  uint uVar1;
+  u32 uVar1;
   VagStreamData* pVVar10;
   VagStreamData* pVVar11;
   VagStreamData* pVVar12;
@@ -215,8 +215,8 @@ VagStreamData* InsertVagStreamInList(VagStreamData* user_stream, List* list) {
 void MergeVagStreamLists(List* list_a, List* list_b) {
   VagStreamData* stream;
   VagStreamData* pVVar1;
-  uint uVar2;
-  uint idx;
+  u32 uVar2;
+  u32 idx;
 
   idx = 0;
   uVar2 = 0;
@@ -242,8 +242,8 @@ LAB_0000fde8:
 void QueueNewStreamsFromList(List* list) {
   VagStreamData* stream;
   ISO_VAGCommand* pIVar1;
-  uint uVar2;
-  uint idx;
+  u32 uVar2;
+  u32 idx;
 
   SetVagStreamsNotScanned();
   idx = 0;

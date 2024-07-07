@@ -389,12 +389,12 @@ u32 CalculateFalloffVolume(s32* trans,
   u32 uVar2;
   int iVar3;
   int iVar4;
-  uint uVar5;
+  u32 uVar5;
   int iVar6;
   int iVar7;
   int iVar8;
-  uint uVar9;
-  uint uVar10;
+  u32 uVar9;
+  u32 uVar10;
 
   uVar10 = 0;
   WaitSema(g_EarTransSema);
@@ -719,13 +719,13 @@ constexpr s16 unk_table_2[2056] = {
 };
 
 s32 CalculateAngle(s32* trans, u32 fo_curve, u32 param_3) {
-  uint uVar2;
+  u32 uVar2;
   int iVar3;
-  uint uVar4;
-  uint uVar5;
+  u32 uVar4;
+  u32 uVar5;
   int iVar6;
   int iVar7;
-  uint uVar8;
+  u32 uVar8;
   ASSERT(fo_curve < 0x29);
   WaitSema(g_EarTransSema);
   if (unktable[fo_curve] != 0) {
