@@ -8,7 +8,7 @@
 #include "fmt/format.h"
 
 DisplayManager::DisplayManager(SDL_Window* window)
-    : m_window(window), m_selected_fullscreen_display_id(0) {
+    : m_window(window) {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("display_manager::init");
@@ -24,6 +24,7 @@ DisplayManager::DisplayManager(SDL_Window* window)
     m_display_settings = game_settings::DisplaySettings();
     // Adjust window / monitor position
     initialize_window_position_from_settings();
+    set_display_mode(m_display_settings.display_mode);
   }
 }
 
@@ -31,8 +32,7 @@ DisplayManager::~DisplayManager() {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("display_manager::destroy");
-    if (m_window_display_mode == WindowDisplayMode::Windowed) {
-      m_display_settings.display_id = m_active_display_id;
+    if (m_display_settings.display_mode == game_settings::DisplaySettings::DisplayMode::Windowed) {
       m_display_settings.window_xpos = m_window_xpos;
       m_display_settings.window_ypos = m_window_ypos;
     }
@@ -133,11 +133,11 @@ void DisplayManager::process_ee_events() {
       case EEDisplayEventType::SET_WINDOW_SIZE:
         set_window_size(std::get<int>(evt.param1), std::get<int>(evt.param2));
         break;
-      case EEDisplayEventType::SET_WINDOW_DISPLAY_MODE:
-        set_window_display_mode(std::get<WindowDisplayMode>(evt.param1));
+      case EEDisplayEventType::SET_DISPLAY_MODE:
+        set_display_mode(std::get<game_settings::DisplaySettings::DisplayMode>(evt.param1));
         break;
-      case EEDisplayEventType::SET_FULLSCREEN_DISPLAY_ID:
-        set_fullscreen_display_id(std::get<int>(evt.param1));
+      case EEDisplayEventType::SET_DISPLAY_ID:
+        set_display_id(std::get<int>(evt.param1));
         break;
     }
     ee_event_queue.pop();
@@ -152,25 +152,25 @@ std::string DisplayManager::get_connected_display_name(int id) {
 }
 
 int DisplayManager::get_active_display_refresh_rate() {
-  if (m_active_display_id >= 0 &&
-      m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
-    return m_current_display_modes.at(m_active_display_id).refresh_rate;
+  if (get_active_display_id() >= 0 &&
+      m_current_display_modes.find(get_active_display_id()) != m_current_display_modes.end()) {
+    return m_current_display_modes.at(get_active_display_id()).refresh_rate;
   }
   return 0;
 }
 
 int DisplayManager::get_screen_width() {
-  if (m_active_display_id >= 0 &&
-      m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
-    return m_current_display_modes.at(m_active_display_id).screen_width;
+  if (get_active_display_id() >= 0 &&
+      m_current_display_modes.find(get_active_display_id()) != m_current_display_modes.end()) {
+    return m_current_display_modes.at(get_active_display_id()).screen_width;
   }
   return 640;
 }
 
 int DisplayManager::get_screen_height() {
-  if (m_active_display_id >= 0 &&
-      m_current_display_modes.find(m_active_display_id) != m_current_display_modes.end()) {
-    return m_current_display_modes.at(m_active_display_id).screen_height;
+  if (get_active_display_id() >= 0 &&
+      m_current_display_modes.find(get_active_display_id()) != m_current_display_modes.end()) {
+    return m_current_display_modes.at(get_active_display_id()).screen_height;
   }
   return 480;
 }
@@ -191,16 +191,16 @@ void DisplayManager::set_window_size(int width, int height) {
   SDL_SetWindowSize(m_window, width, height);
 }
 
-void DisplayManager::enqueue_set_window_display_mode(WindowDisplayMode mode) {
+void DisplayManager::enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode mode) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_WINDOW_DISPLAY_MODE, mode, {}});
+  ee_event_queue.push({EEDisplayEventType::SET_DISPLAY_MODE, mode, {}});
 }
 
-void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
+void DisplayManager::set_display_mode(game_settings::DisplaySettings::DisplayMode mode) {
   // https://wiki.libsdl.org/SDL2/SDL_SetWindowFullscreen
   int result = 0;
   switch (mode) {
-    case WindowDisplayMode::Windowed:
+    case game_settings::DisplaySettings::DisplayMode::Windowed:
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
         lg::info("windowed mode - resizing window to {}x{}", m_window_width, m_window_height);
@@ -209,36 +209,37 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
         sdl_util::log_error("unable to change window to windowed mode");
       }
       break;
-    case WindowDisplayMode::Fullscreen:
-    case WindowDisplayMode::Borderless:
+    case game_settings::DisplaySettings::DisplayMode::Fullscreen:
+    case game_settings::DisplaySettings::DisplayMode::Borderless:
       // 1. exit fullscreen
       result = SDL_SetWindowFullscreen(m_window, 0);
       if (result == 0) {
         SDL_Rect display_bounds;
-        result = SDL_GetDisplayBounds(m_selected_fullscreen_display_id, &display_bounds);
+        result = SDL_GetDisplayBounds(get_active_display_id(), &display_bounds);
         if (result < 0) {
           sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
-                                          m_selected_fullscreen_display_id));
+                                          get_active_display_id()));
         } else {
           // 2. move it to the right monitor
           lg::info("preparing fullscreen - moving window to {},{} on display id {}",
-                   display_bounds.x + 50, display_bounds.y + 50, m_selected_fullscreen_display_id);
+                   display_bounds.x + 50, display_bounds.y + 50, get_active_display_id());
           SDL_SetWindowPosition(m_window, display_bounds.x + 50, display_bounds.y + 50);
-          if (mode == WindowDisplayMode::Fullscreen) {
+          if (mode == game_settings::DisplaySettings::DisplayMode::Fullscreen) {
             update_video_modes();
             // If fullscreen, we have to resize the window to take up the full resolution
             //
             // Some people are weird and don't use the monitor's maximum supported resolution
             // in which case, we use what the user actually has selected.
-            const auto& display_res = m_current_display_modes.at(m_selected_fullscreen_display_id);
+            const auto& display_res = m_current_display_modes.at(get_active_display_id());
             lg::info("preparing fullscreen - setting window resolution to {}x{}",
                      display_res.screen_width, display_res.screen_height);
             set_window_size(display_res.screen_width, display_res.screen_height);
           }
           // 3. fullscreen it!
-          result = SDL_SetWindowFullscreen(m_window, mode == WindowDisplayMode::Fullscreen
-                                                         ? SDL_WINDOW_FULLSCREEN
-                                                         : SDL_WINDOW_FULLSCREEN_DESKTOP);
+          result = SDL_SetWindowFullscreen(
+              m_window, mode == game_settings::DisplaySettings::DisplayMode::Fullscreen
+                            ? SDL_WINDOW_FULLSCREEN
+                            : SDL_WINDOW_FULLSCREEN_DESKTOP);
           if (result < 0) {
             sdl_util::log_error("unable to switch window fullscreen or borderless fullscreen");
           }
@@ -254,30 +255,30 @@ void DisplayManager::set_window_display_mode(WindowDisplayMode mode) {
         fmt::format("unable to change window display mode to {}", fmt::underlying(mode)));
   } else {
     // Set the mode, now that we've been successful
-    m_window_display_mode = mode;
+    m_display_settings.display_mode = mode;
+    m_display_settings.save_settings();
   }
 }
 
-void DisplayManager::enqueue_set_fullscreen_display_id(int display_id) {
+void DisplayManager::enqueue_set_display_id(int display_id) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
-  ee_event_queue.push({EEDisplayEventType::SET_FULLSCREEN_DISPLAY_ID, display_id, {}});
+  ee_event_queue.push({EEDisplayEventType::SET_DISPLAY_ID, display_id, {}});
 }
 
-void DisplayManager::set_fullscreen_display_id(int display_id) {
+void DisplayManager::set_display_id(int display_id) {
   if (display_id >= (int)m_current_display_modes.size()) {
     display_id = 0;
   }
-  bool update_fullscreen = m_window_display_mode != WindowDisplayMode::Windowed &&
-                           m_selected_fullscreen_display_id != display_id;
-  m_selected_fullscreen_display_id = display_id;
-  if (update_fullscreen) {
-    set_window_display_mode(m_window_display_mode);
+  m_display_settings.display_id = display_id;
+  if (get_display_mode() != game_settings::DisplaySettings::DisplayMode::Windowed) {
+    set_display_mode((game_settings::DisplaySettings::DisplayMode)m_display_settings.display_mode);
   }
+  m_display_settings.save_settings();
 }
 
 void DisplayManager::update_curr_display_info() {
-  m_active_display_id = SDL_GetWindowDisplayIndex(m_window);
-  if (m_active_display_id < 0) {
+  m_display_settings.display_id = SDL_GetWindowDisplayIndex(m_window);
+  if (get_active_display_id() < 0) {
     sdl_util::log_error("could not retrieve current window's display index");
   }
   SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
@@ -342,13 +343,13 @@ void DisplayManager::update_video_modes() {
 
 void DisplayManager::update_resolutions() {
   // Enumerate display's display modes to get the resolutions
-  auto num_display_modes = SDL_GetNumDisplayModes(m_active_display_id);
+  auto num_display_modes = SDL_GetNumDisplayModes(get_active_display_id());
   SDL_DisplayMode curr_mode;
   for (int i = 0; i < num_display_modes; i++) {
-    auto ok = SDL_GetDisplayMode(m_active_display_id, i, &curr_mode);
+    auto ok = SDL_GetDisplayMode(get_active_display_id(), i, &curr_mode);
     if (ok != 0) {
       sdl_util::log_error(fmt::format("unable to get display mode for display {}, index {}",
-                                      m_active_display_id, i));
+                                      get_active_display_id(), i));
       continue;
     }
     Resolution new_res = {curr_mode.w, curr_mode.h,

@@ -32,13 +32,16 @@ void to_json(json& j, const DebugSettings& obj);
 void from_json(const json& j, DebugSettings& obj);
 
 struct DisplaySettings {
+  enum class DisplayMode { Windowed = 0, Fullscreen = 1, Borderless = 2 };
+
   DisplaySettings();
 
-  std::string version = "1.1";
+  std::string version = "1.2";
 
   int window_xpos = 50;
   int window_ypos = 50;
   int display_id = 0;
+  DisplayMode display_mode = DisplayMode::Borderless;
 
   void load_settings();
   void save_settings();

@@ -65,12 +65,14 @@ void to_json(json& j, const DisplaySettings& obj) {
   json_serialize(display_id);
   json_serialize(window_xpos);
   json_serialize(window_ypos);
+  json_serialize(display_mode);
 }
 void from_json(const json& j, DisplaySettings& obj) {
   json_deserialize_if_exists(version);
   json_deserialize_if_exists(display_id);
   json_deserialize_if_exists(window_xpos);
   json_deserialize_if_exists(window_ypos);
+  json_deserialize_if_exists(display_mode);
 }
 
 DisplaySettings::DisplaySettings() {}
