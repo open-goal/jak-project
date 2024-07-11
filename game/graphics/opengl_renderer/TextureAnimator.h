@@ -59,7 +59,7 @@ struct ShaderContext {
 };
 
 struct OpenGLTexturePool {
-  OpenGLTexturePool();
+  OpenGLTexturePool(GameVersion version);
   ~OpenGLTexturePool();
   GLuint allocate(u64 w, u64 h);
   void free(GLuint texture, u64 w, u64 h);
@@ -148,6 +148,18 @@ struct FixedLayerDef {
   GsAlpha::BlendMode blend_modes[4];  // abcd
   u8 blend_fix = 0;
 
+  void set_blend(GsAlpha::BlendMode a,
+                 GsAlpha::BlendMode b,
+                 GsAlpha::BlendMode c,
+                 GsAlpha::BlendMode d,
+                 u8 fix) {
+    blend_modes[0] = a;
+    blend_modes[1] = b;
+    blend_modes[2] = c;
+    blend_modes[3] = d;
+    blend_fix = fix;
+  }
+
   void set_blend_b2_d1() {
     blend_modes[0] = GsAlpha::BlendMode::SOURCE;
     blend_modes[1] = GsAlpha::BlendMode::ZERO_OR_FIXED;
@@ -181,6 +193,15 @@ struct FixedAnimDef {
   // alpha blend off, so alpha doesn't matter i think.
   std::vector<FixedLayerDef> layers;
   bool move_to_pool = false;
+  bool set_alpha = false;
+  void set_times(std::vector<std::pair<float, float>> times) {
+    ASSERT(layers.size() >= times.size());
+    for (size_t i = 0; i < layers.size(); i++) {
+      auto& layer = layers.at(i);
+      layer.start_time = times.at(i).first;
+      layer.end_time = times.at(i).second;
+    }
+  }
 };
 
 struct DynamicLayerData {
@@ -343,6 +364,7 @@ class TextureAnimator {
     GLuint tcc;
     GLuint alpha_multiply;
     GLuint minimum, maximum;
+    GLuint set_alpha;
   } m_uniforms;
 
   struct {
@@ -396,6 +418,8 @@ class TextureAnimator {
       m_psm32_to_psm8_64_64;
   ClutReader m_clut_table;
 
+ public:
+  // jak 2
   int m_skull_gem_fixed_anim_array_idx = -1;
   int m_bomb_fixed_anim_array_idx = -1;
   int m_cas_conveyor_anim_array_idx = -1;
@@ -411,9 +435,58 @@ class TextureAnimator {
   int m_shield_anim_array_idx = -1;
   int m_krew_holo_anim_array_idx = -1;
 
+  // jak 3
+  int m_default_water_anim_array_idx = -1;
+  int m_default_warp_anim_array_idx = -1;
+  int m_templea_water_anim_array_idx = -1;
+  int m_templea_warp_anim_array_idx = -1;
+  int m_templeb_warp_anim_array_idx = -1;
+  int m_templec_water_anim_array_idx = -1;
+  int m_sewc_water_anim_array_idx = -1;
+  int m_sewd_water_anim_array_idx = -1;
+  int m_sewe_water_anim_array_idx = -1;
+  int m_sewg_water_anim_array_idx = -1;
+  int m_sewh_water_anim_array_idx = -1;
+  int m_sewi_water_anim_array_idx = -1;
+  int m_sewj_water_anim_array_idx = -1;
+  int m_sewl_water_anim_array_idx = -1;
+  int m_sewm_water_anim_array_idx = -1;
+  int m_sewn_water_anim_array_idx = -1;
+  int m_desresc_warp_anim_array_idx = -1;
+  int m_ctyslumb_water_anim_array_idx = -1;
+  int m_nstb_quicksand_anim_array_idx = -1;
+  int m_ctyslumc_water_anim_array_idx = -1;
+  int m_factoryc_alpha_anim_array_idx = -1;
+  int m_hfrag_anim_array_idx = -1;
+  int m_hanga_sprite_anim_array_idx = -1;
+  int m_hanga_water_anim_array_idx = -1;
+  int m_desertd_water_anim_array_idx = -1;
+  int m_lmhcityb_tfrag_anim_array_idx = -1;
+  int m_towerb_water_anim_array_idx = -1;
+  int m_comb_field_anim_array_idx = -1;
+  int m_wasstada_alpha_anim_array_idx = -1;
+  int m_factoryb_water_anim_array_idx = -1;
+  int m_lmhcitya_tfrag_anim_array_idx = -1;
+  int m_mhcitya_pris_anim_array_idx = -1;
+  int m_rubblea_water_anim_array_idx = -1;
+  int m_rubblea2_water_anim_array_idx = -1;
+  int m_rubbleb_water_anim_array_idx = -1;
+  int m_rubblec_water_anim_array_idx = -1;
+  int m_foresta_water_anim_array_idx = -1;
+  int m_forestb_water_anim_array_idx = -1;
+  int m_lforplnt_pris_anim_array_idx = -1;
+  int m_ltnfxhip_anim_array_idx = -1;
+  int m_lgunnorm_water_anim_array_idx = -1;
+  int m_ljkdxvin_anim_array_idx = -1;
+  int m_waspal_water_anim_array_idx = -1;
+  int m_mined_tfrag_anim_array_idx = -1;
+  int m_volcanox_warp_anim_array_idx = -1;
+  int m_templex_water_anim_array_idx = -1;
+  int m_volcanoa_anim_array_idx = -1;
+  int m_deshover_anim_array_idx = -1;
+
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 
- public:
   // note: for now these can't be easily changed because each layer has its own hand-tuned
   // parameters from the original game. If you want to change it, you'll need to make up parameters
   // for those new layers.
