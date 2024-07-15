@@ -59,7 +59,7 @@ void main() {
     color = (rgba / 128.);
   }
   if (set_alpha == 1) {
-    color.a = rgba.a;
+    color.a = 0.5;
   } else {
     color.a *= alpha_multiply;
   }
