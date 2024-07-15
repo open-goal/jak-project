@@ -2531,6 +2531,7 @@ void TextureAnimator::run_fixed_animation(FixedAnim& anim, float time) {
       if (true) {  // todo
         glColorMask(true, true, true, false);
         glUniform1f(m_uniforms.alpha_multiply, 2.f);
+        glUniform1i(m_uniforms.set_alpha, 0);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
         glColorMask(false, false, false, true);
         if (anim.def.set_alpha) {
