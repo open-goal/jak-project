@@ -1,0 +1,214 @@
+;;-*-Lisp-*-
+(in-package goal)
+
+;; definition for function wang-texture-anim-init
+;; INFO: Used lq/sq
+;; WARN: Return type mismatch int vs none.
+(defun wang-texture-anim-init ((arg0 texture-anim))
+  (let ((v1-1 (new 'loading-level 'texture)))
+    (let ((a0-2 122))
+      (set! (-> arg0 tex) v1-1)
+      (set! (-> v1-1 w) 16)
+      (set! (-> v1-1 h) 16)
+      (set! (-> v1-1 num-mips) (the-as uint 1))
+      (set! (-> v1-1 psm) (gs-psm mt8))
+      (set! (-> v1-1 clutpsm) (the-as uint 0))
+      (set! (-> v1-1 dest 0) (the-as uint (* a0-2 32)))
+      (set! (-> v1-1 clutdest) (the-as uint (* a0-2 32)))
+      )
+    (set! (-> v1-1 width 0) (the-as uint 1))
+    (set! (-> v1-1 masks data 0 mask quad) (the-as uint128 0))
+    (set! (-> v1-1 masks data 1 mask quad) (the-as uint128 0))
+    (set! (-> v1-1 masks data 2 mask quad) (the-as uint128 0))
+    )
+  0
+  0
+  (none)
+  )
+
+;; definition for function real-wang-texture-anim-func
+;; WARN: Return type mismatch float vs none.
+(defun real-wang-texture-anim-func ((arg0 texture-anim) (arg1 texture-anim))
+  (let ((v1-1 (-> *level* level-default mood-context))
+        (f0-0 0.0)
+        )
+    (let* ((f1-2 (* 0.75 (fmax (-> v1-1 times 0 x) (fmax (-> v1-1 times 0 y) (-> v1-1 times 0 z))) (-> v1-1 times 0 w)))
+           (f1-3 (- 1.0 f1-2))
+           (a0-4 1)
+           (a2-0 4)
+           )
+      (while (>= a2-0 a0-4)
+        (let* ((f2-6 (* (-> v1-1 times a0-4 w)
+                        (fmax (-> v1-1 times a0-4 x) (fmax (-> v1-1 times a0-4 y) (-> v1-1 times a0-4 z)))
+                        f1-3
+                        )
+                     )
+               (f2-7 (fmax 0.0 f2-6))
+               (f2-8 (fmin 1.0 f2-7))
+               )
+          (set! (-> arg1 data a0-4 start-color w) f2-8)
+          (set! (-> arg1 data a0-4 end-color w) f2-8)
+          (+! f0-0 f2-8)
+          )
+        (+! a0-4 1)
+        )
+      )
+    (let ((f0-1 (if (= f0-0 0.0)
+                    0.0
+                    (/ 0.75 f0-0)
+                    )
+                )
+          (v1-7 1)
+          (a0-5 4)
+          )
+      (while (>= a0-5 v1-7)
+        (set! (-> arg1 data v1-7 start-color w) (* (-> arg1 data v1-7 start-color w) f0-1))
+        (set! (-> arg1 data v1-7 end-color w) (* (-> arg1 data v1-7 end-color w) f0-1))
+        (+! v1-7 1)
+        )
+      )
+    )
+  (set! (-> arg1 data 0 start-color w) 0.7)
+  (set! (-> arg1 data 0 end-color w) 0.7)
+  (set! (-> arg1 data 2 start-color w) (* 0.65 (-> arg1 data 2 start-color w)))
+  (set! (-> arg1 data 2 end-color w) (* 0.65 (-> arg1 data 2 end-color w)))
+  (set! (-> arg1 data 3 start-color w) (* 0.65 (-> arg1 data 3 start-color w)))
+  (set! (-> arg1 data 3 end-color w) (* 0.65 (-> arg1 data 3 end-color w)))
+  (none)
+  )
+
+;; definition for function wang-texture-anim-func
+(defun wang-texture-anim-func ((arg0 texture-anim) (arg1 texture-anim))
+  (real-wang-texture-anim-func arg0 arg1)
+  (none)
+  )
+
+;; definition for symbol *hfrag-texture-anim-array*, type (texture-anim-array texture-anim)
+(define *hfrag-texture-anim-array*
+  (the-as (texture-anim-array texture-anim)
+    (new 'static 'texture-anim-array :type texture-anim
+      (new 'static 'texture-anim
+        :num-layers #x5
+        :func-id 'wang-texture-anim-func
+        :init-func-id 'wang-texture-anim-init
+        :tex #f
+        :tex-name #f
+        :color (new 'static 'rgba :a #x80)
+        :test (new 'static 'gs-test :ate #x1 :afail #x1 :zte #x1 :ztst (gs-ztest always))
+        :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+        :data (new 'static 'array texture-anim-layer 6
+          (new 'static 'texture-anim-layer
+            :func-id 'blend-clut-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 1.0
+            :tex-name "wang_0"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+            :clamp (new 'static 'gs-clamp :wms (gs-tex-wrap-mode clamp) :wmt (gs-tex-wrap-mode clamp))
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'add-clut-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 1.0
+            :tex-name "wang_1"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'add-clut-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 1.0
+            :tex-name "wang_2"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'add-clut-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 1.0
+            :tex-name "wang_3"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          (new 'static 'texture-anim-layer
+            :func-id 'add-clut-texture-anim-layer-func
+            :init-func #f
+            :tex #f
+            :end-time 1.0
+            :tex-name "wang_4"
+            :test (new 'static 'gs-test :ate #x1 :afail #x3 :zte #x1 :ztst (gs-ztest always))
+            :alpha (new 'static 'gs-alpha :b #x1 :d #x1)
+            :start-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :start-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :start-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :start-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-color (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            :end-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-st-scale (new 'static 'vector2 :data (new 'static 'array float 2 1.0 1.0))
+            :end-st-offset (new 'static 'vector2 :data (new 'static 'array float 2 0.5 0.5))
+            :end-qs (new 'static 'vector :x 1.0 :y 1.0 :z 1.0 :w 1.0)
+            )
+          )
+        )
+      )
+    )
+  )
+
+
+
+

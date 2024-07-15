@@ -272,7 +272,7 @@
 (cgo-file "preca.gd" common-dep)
 (cgo-file "precb.gd" common-dep)
 (cgo-file "precc.gd" common-dep)
-(cgo-file "precd.gd" common-dep)
+; (cgo-file "precd.gd" common-dep)
 ; ;; title/intro
 (cgo-file "win.gd" common-dep) ;; wasintro
 (cgo-file "title.gd" common-dep)
