@@ -446,6 +446,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
   m_shader_id = shader.id();
   m_uniforms.rgba = glGetUniformLocation(shader.id(), "rgba");
   m_uniforms.enable_tex = glGetUniformLocation(shader.id(), "enable_tex");
+  m_uniforms.set_alpha = glGetUniformLocation(shader.id(), "set_alpha");
   m_uniforms.positions = glGetUniformLocation(shader.id(), "positions");
   m_uniforms.uvs = glGetUniformLocation(shader.id(), "uvs");
   m_uniforms.channel_scramble = glGetUniformLocation(shader.id(), "channel_scramble");
