@@ -84,7 +84,11 @@ OpenGLRenderer::OpenGLRenderer(std::shared_ptr<TexturePool> texture_pool,
                         &gl_error_ignores_api_other[0], GL_FALSE);
 #endif
 
-  lg::debug("OpenGL context information: {}", (const char*)glGetString(GL_VERSION));
+  lg::info("OpenGL context version: {}", (const char*)glGetString(GL_VERSION));
+  lg::info("OpenGL context renderer: {}", (const char*)glGetString(GL_RENDERER));
+  lg::info("OpenGL context vendor: {}", (const char*)glGetString(GL_VENDOR));
+  lg::info("OpenGL context shading language version: {}",
+           (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
   const tfrag3::Level* common_level = nullptr;
   {
