@@ -190,6 +190,7 @@ class SimpleAtom {
     ASSERT(is_sym_ptr() || is_sym_val() || is_sym_val_ptr());
     return m_string;
   }
+  void mark_as_no_hex();
   void mark_as_float();
   bool is_integer_promoted_to_float() const;
   float get_integer_promoted_to_float() const;
@@ -200,6 +201,7 @@ class SimpleAtom {
   s64 m_int = -1;        // for integer constant and static address label id
   RegisterAccess m_variable;
   bool m_display_int_as_float = false;
+  bool m_no_display_int_as_hex = false;
 };
 
 /*!

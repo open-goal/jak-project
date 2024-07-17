@@ -127,6 +127,13 @@ Matcher Matcher::single(std::optional<float> value) {
   return m;
 }
 
+Matcher Matcher::any_single(int match_id) {
+  Matcher m;
+  m.m_kind = Kind::ANY_FLOAT;
+  m.m_float_out_id = match_id;
+  return m;
+}
+
 Matcher Matcher::any_quoted_symbol(int match_id) {
   Matcher m;
   m.m_kind = Kind::ANY_QUOTED_SYMBOL;
@@ -469,6 +476,30 @@ bool Matcher::do_match(Form* input, MatchResult::Maps* maps_out, const Env* cons
         if (atom.is_int()) {
           if (m_int_out_id != -1) {
             maps_out->ints[m_int_out_id] = atom.get_int();
+          }
+          return true;
+        }
+      }
+
+      return false;
+    } break;
+
+    case Kind::ANY_FLOAT: {
+      auto as_const_float =
+          dynamic_cast<ConstantFloatElement*>(input->try_as_single_active_element());
+      if (as_const_float) {
+        if (m_float_out_id != -1) {
+          maps_out->floats[m_float_out_id] = as_const_float->value();
+        }
+        return true;
+      }
+
+      auto as_expr = dynamic_cast<SimpleExpressionElement*>(input->try_as_single_active_element());
+      if (as_expr && as_expr->expr().is_identity()) {
+        const auto& atom = as_expr->expr().get_arg(0);
+        if (atom.is_integer_promoted_to_float()) {
+          if (m_float_out_id != -1) {
+            maps_out->floats[m_float_out_id] = atom.get_integer_promoted_to_float();
           }
           return true;
         }
