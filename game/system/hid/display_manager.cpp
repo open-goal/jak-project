@@ -11,6 +11,8 @@ DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("display_manager::init");
+    // Load display settings from a file
+    m_display_settings = game_settings::DisplaySettings();
     m_display_settings.load_settings();
 #ifdef _WIN32
     // Windows hint to disable OS level forced scaling and allow native resolution at non 100%
@@ -19,8 +21,6 @@ DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
 #endif
     update_curr_display_info();
     update_video_modes();
-    // Load display settings from a file
-    m_display_settings = game_settings::DisplaySettings();
     // Adjust window / monitor position
     initialize_window_position_from_settings();
     set_display_mode(m_display_settings.display_mode);

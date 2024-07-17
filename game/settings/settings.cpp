@@ -72,7 +72,10 @@ void from_json(const json& j, DisplaySettings& obj) {
   json_deserialize_if_exists(display_id);
   json_deserialize_if_exists(window_xpos);
   json_deserialize_if_exists(window_ypos);
-  json_deserialize_if_exists(display_mode);
+  if (j.contains("display_mode")) {
+    int mode = j.at("display_mode");
+    obj.display_mode = static_cast<DisplaySettings::DisplayMode>(mode);
+  }
 }
 
 DisplaySettings::DisplaySettings() {}
