@@ -31,12 +31,12 @@
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod set-window-size! ((obj pc-settings) (width int) (height int) (call-handlers symbol))
+(defmethod set-window-size! ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
   (let ((display-mode (pc-get-display-mode)))
     (format 0 "Setting ~A size to ~D x ~D~%" display-mode width height)
     (cond
-      ((= 'windowed display-mode)
+      ((= display-mode 'windowed)
         (set! (-> obj window-width) width)
         (set! (-> obj window-height) height)
         (pc-set-window-size! (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
@@ -444,12 +444,28 @@
 
 (defmethod handle-input-settings ((obj pc-settings) (file file-stream))
   "handle the text parsing input for the 'settings' group"
+  (format 0 "~S~%" *pc-temp-string*)
   (case-str *pc-temp-string*
             (("fps") (set-frame-rate! obj (file-stream-read-int file) #t))
             (("window-size")
              (set! (-> obj window-width) (file-stream-read-int file))
              (set! (-> obj window-height) (file-stream-read-int file)))
-            (("game-size") (set! (-> obj width) (file-stream-read-int file)) (set! (-> obj height) (file-stream-read-int file)))
+            (("game-size") 
+             ;; Check to see if the game-size is a valid resolution on this persons device
+             ;; on some machines, this has been proven to cause the black-screen issue https://github.com/open-goal/jak-project/issues/3563
+             ;; Correlating with logs like:
+             ;; - OpenGL error 0x502 S8246 T824C: GL_INVALID_OPERATION error generated. Source and destination dimensions must be identical with the current filtering modes.
+             (let* ((saved-width (file-stream-read-int file))
+                    (saved-height (file-stream-read-int file))
+                    (supported-resolution? (pc-is-supported-resolution? saved-width saved-height)))
+              (cond
+               (supported-resolution?
+                (format 0 "[PC Settings]: Valid game-size resolution ~D x ~D~%" saved-width saved-height)
+                (set! (-> obj width) saved-width)
+                (set! (-> obj height) saved-height))
+               (else
+                (pc-get-active-display-size (&-> obj width) (&-> obj height))
+                (format 0 "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%" saved-width saved-height (-> obj width) (-> obj height))))))
             (("msaa") (set! (-> obj gfx-msaa) (file-stream-read-int file)))
             (("aspect-state")
              ;; game aspect

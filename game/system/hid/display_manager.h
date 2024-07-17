@@ -82,6 +82,7 @@ class DisplayManager {
   }
   int get_num_resolutions() { return m_available_resolutions.size(); }
   Resolution get_resolution(int id);
+  bool is_supported_resolution(int width, int height);
 
   // Mutators
   void enqueue_set_window_size(int width, int height);

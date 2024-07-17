@@ -7,8 +7,7 @@
 #include "fmt/core.h"
 #include "fmt/format.h"
 
-DisplayManager::DisplayManager(SDL_Window* window)
-    : m_window(window) {
+DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("display_manager::init");
@@ -182,6 +181,15 @@ Resolution DisplayManager::get_resolution(int id) {
   return {0, 0, 0.0};
 }
 
+bool DisplayManager::is_supported_resolution(int width, int height) {
+  for (const auto resolution : m_available_resolutions) {
+    if (resolution.width == width && resolution.height == height) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void DisplayManager::enqueue_set_window_size(int width, int height) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
   ee_event_queue.push({EEDisplayEventType::SET_WINDOW_SIZE, width, height});
@@ -191,7 +199,8 @@ void DisplayManager::set_window_size(int width, int height) {
   SDL_SetWindowSize(m_window, width, height);
 }
 
-void DisplayManager::enqueue_set_window_display_mode(game_settings::DisplaySettings::DisplayMode mode) {
+void DisplayManager::enqueue_set_window_display_mode(
+    game_settings::DisplaySettings::DisplayMode mode) {
   const std::lock_guard<std::mutex> lock(event_queue_mtx);
   ee_event_queue.push({EEDisplayEventType::SET_DISPLAY_MODE, mode, {}});
 }
