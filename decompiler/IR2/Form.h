@@ -309,6 +309,7 @@ class LoadSourceElement : public FormElement {
 class SimpleAtomElement : public FormElement {
  public:
   explicit SimpleAtomElement(const SimpleAtom& var, bool omit_var_cast = false);
+  SimpleAtomElement(int int_val, bool no_hex = false);
   goos::Object to_form_internal(const Env& env) const override;
   void apply(const std::function<void(FormElement*)>& f) override;
   void apply_form(const std::function<void(Form*)>& f) override;
@@ -324,6 +325,7 @@ class SimpleAtomElement : public FormElement {
  private:
   SimpleAtom m_atom;
   bool m_omit_var_cast;
+  bool m_no_hex;
 };
 
 /*!

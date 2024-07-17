@@ -281,9 +281,16 @@ void LoadSourceElement::get_modified_regs(RegSet& regs) const {
 /////////////////////////////
 
 SimpleAtomElement::SimpleAtomElement(const SimpleAtom& atom, bool omit_var_cast)
-    : m_atom(atom), m_omit_var_cast(omit_var_cast) {
+    : m_atom(atom), m_omit_var_cast(omit_var_cast), m_no_hex(false) {
   if (m_omit_var_cast) {
     ASSERT(atom.is_var());
+  }
+}
+
+SimpleAtomElement::SimpleAtomElement(int int_val, bool no_hex)
+    : m_atom(SimpleAtom::make_int_constant(int_val)), m_omit_var_cast(false), m_no_hex(no_hex) {
+  if (m_no_hex) {
+    m_atom.mark_as_no_hex();
   }
 }
 
