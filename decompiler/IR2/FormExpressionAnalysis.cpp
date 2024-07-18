@@ -2636,11 +2636,19 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
                                         {Matcher::any_single(0), Matcher::any(1)}),
                       m_src);
       if (mr.matched && std::abs(mr.maps.floats.at(0)) < 1 && mr.maps.floats.at(0) != 0) {
-        float divisor_num = 1.0f / mr.maps.floats.at(0);
+        auto inverse_mult = mr.maps.floats.at(0);
+        float divisor_num = 1.0f / inverse_mult;
+
+        // note: float inaccuracies lead to convergent values, so we can do this safely
+        if ((int)divisor_num != divisor_num && 1.0f / std::roundf(divisor_num) == inverse_mult) {
+          lg::debug("managed to round divisor - cool !! {} -> {} ({})", divisor_num,
+                    std::roundf(divisor_num), inverse_mult);
+          divisor_num = std::roundf(divisor_num);
+        }
+
         int divisor_int = (int)divisor_num;
-        // note: for some reason 0.016666668 shows up constantly where 1/60 should be. we won't
-        // force it to 60, but we will transform it anyway
-        if (divisor_int == divisor_num || mr.maps.floats.at(0) == 0.016666668f) {
+        bool integer = divisor_int == divisor_num;
+        if (integer) {
           auto elt = mr.maps.forms.at(1)->try_as_single_element();
           auto b_as_simple = dynamic_cast<SimpleExpressionElement*>(elt);
           // WARNING : there is an assumption here that derefs DO NOT have implicit casts!
@@ -2651,13 +2659,15 @@ void SetVarElement::push_to_stack(const Env& env, FormPool& pool, FormStack& sta
             Form* divisor = nullptr;
             if (divisor_num == 4096.0f) {
               divisor = pool.form<ConstantTokenElement>("METER_LENGTH");
-            } else if (divisor_num == (float)divisor_int && divisor_int % 2048 == 0) {
+            } else if (integer && divisor_int % 4096 == 0) {
               divisor = pool.form<GenericElement>(
                   GenericOperator::make_function(pool.form<ConstantTokenElement>("meters")),
-                  divisor_int % (int)METER_LENGTH
-                      ? pool.form<ConstantFloatElement>(divisor_num / (float)METER_LENGTH)
-                      : pool.form<SimpleAtomElement>(divisor_int / 4096, true));
-            } else if (divisor_num == divisor_int) {
+                  pool.form<SimpleAtomElement>(divisor_int / 4096, true));
+            } else if (integer && divisor_int % 2048 == 0) {
+              divisor = pool.form<GenericElement>(
+                  GenericOperator::make_function(pool.form<ConstantTokenElement>("meters")),
+                  pool.form<ConstantFloatElement>(divisor_num / (float)METER_LENGTH));
+            } else if (integer) {
               divisor = pool.form<SimpleAtomElement>(divisor_int, true);
             } else {
               // this shouldn't run because of the checks before.
