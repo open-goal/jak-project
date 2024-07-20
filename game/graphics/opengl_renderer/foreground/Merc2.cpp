@@ -535,11 +535,14 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   auto* flags = (const PcMercFlags*)input_data;
   int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
+  // hack for custom models to disable blerc/mod draws
+  bool is_custom_model = model->effects.at(0).all_draws.at(0).no_strip;
   u64 current_ignore_alpha_bits = flags->ignore_alpha_mask;  // shader settings
   u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
-  bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
+  bool model_uses_mod =
+      flags->bitflags & 1 && !is_custom_model;  // if we should update vertices from game.
   bool model_disables_fog = flags->bitflags & 2;
-  bool model_uses_pc_blerc = flags->bitflags & 4;
+  bool model_uses_pc_blerc = flags->bitflags & 4 && !is_custom_model;
   bool model_disables_envmap = flags->bitflags & 8;
   input_data += 32;
 
