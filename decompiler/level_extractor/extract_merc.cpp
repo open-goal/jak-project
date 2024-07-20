@@ -1619,7 +1619,7 @@ void replace_model(tfrag3::Level& lvl, tfrag3::MercModel& model, const fs::path&
 
     auto swap_info = load_replacement_merc_model(model.name, lvl.merc_data.indices.size(),
                                                  lvl.merc_data.vertices.size(), lvl.textures.size(),
-                                                 mdl_path, old_verts, false);
+                                                 mdl_path.string(), old_verts, false);
     model = swap_info.new_model;
     size_t old_start = lvl.merc_data.vertices.size();
     for (auto& ind : swap_info.new_indices) {
@@ -1641,7 +1641,7 @@ void add_custom_model_to_level(tfrag3::Level& lvl,
   lg::info("Adding custom model {} to {}", name, lvl_name);
   auto merc_data =
       load_replacement_merc_model(name, lvl.merc_data.indices.size(), lvl.merc_data.vertices.size(),
-                                  lvl.textures.size(), mdl_path, {}, true);
+                                  lvl.textures.size(), mdl_path.string(), {}, true);
   for (auto& idx : merc_data.new_indices) {
     lvl.merc_data.indices.push_back(idx);
   }
