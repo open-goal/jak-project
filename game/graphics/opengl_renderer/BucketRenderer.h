@@ -98,6 +98,7 @@ class BucketRenderer {
   virtual void render(DmaFollower& dma,
                       SharedRenderState* render_state,
                       ScopedProfilerNode& prof) = 0;
+  std::string name() const;
   std::string name_and_id() const;
   virtual ~BucketRenderer() = default;
   bool& enabled() { return m_enabled; }
