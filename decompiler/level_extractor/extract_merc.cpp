@@ -1791,7 +1791,7 @@ void extract_merc(const ObjectFileData& ag_data,
   // do model replacements if present
   auto merc_replacement_folder = file_util::get_jak_project_dir() / "custom_assets" /
                                  game_version_names[version] / "merc_replacements";
-  if (file_util::file_exists(merc_replacement_folder)) {
+  if (file_util::file_exists(merc_replacement_folder.string())) {
     auto merc_replacements =
         file_util::find_files_in_dir(merc_replacement_folder, std::regex(".*\\.glb"));
     for (auto& path : merc_replacements) {
@@ -1809,7 +1809,7 @@ void extract_merc(const ObjectFileData& ag_data,
   auto lvl_name = out.level_name == "" ? "common" : out.level_name;
   auto models_folder = file_util::get_jak_project_dir() / "custom_assets" /
                        game_version_names[version] / "models" / lvl_name;
-  if (file_util::file_exists(models_folder)) {
+  if (file_util::file_exists(models_folder.string())) {
     auto custom_models = file_util::find_files_in_dir(models_folder, std::regex(".*\\.glb"));
     for (auto& mdl : custom_models) {
       add_custom_model_to_level(out, mdl.stem().string(), mdl);
