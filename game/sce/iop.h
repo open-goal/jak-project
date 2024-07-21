@@ -30,6 +30,12 @@
 #define SA_THFIFO 0
 #define SA_THPRI 1
 
+// Message box attributes
+#define MBA_THFIFO 0x000
+#define MBA_THPRI 0x001
+#define MBA_MSFIFO 0x000
+#define MBA_MSPRI 0x004
+
 class IOP;
 
 namespace iop {
@@ -134,6 +140,7 @@ int sceCdDiskReady(int mode);
 u32 sceSifSetDma(sceSifDmaData* sdd, int len);
 
 s32 SendMbx(int mbxid, void* sendmsg);
+s32 ReceiveMbx(MsgPacket** recvmsg, int mbxid);
 s32 PollMbx(MsgPacket** recvmsg, int mbxid);
 s32 PeekMbx(s32 mbx);
 s32 CreateMbx(MbxParam* param);
@@ -151,6 +158,9 @@ void FlushDcache();
 
 u32 sceSifCheckInit();
 void sceSifInit();
+
+s32 CpuSuspendIntr(int* old_state);
+s32 CpuResumeIntr(int old_state);
 
 void LIBRARY_INIT();
 void LIBRARY_register(::IOP* i);
