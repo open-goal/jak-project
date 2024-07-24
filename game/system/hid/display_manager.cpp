@@ -7,17 +7,12 @@
 #include "fmt/core.h"
 #include "fmt/format.h"
 
-// TODO NOW - test with old settings files off master
-// TODO NOW - ensure monitor changing / bad resolutions / resolution changing / display mode
-// changing all works
-
 DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
   prof().instant_event("ROOT");
   {
     auto p = scoped_prof("display_manager::init");
-    // Load display settings from a file
+    // initialize settings
     m_display_settings = game_settings::DisplaySettings();
-    m_display_settings.load_settings();
 #ifdef _WIN32
     // Windows hint to disable OS level forced scaling and allow native resolution at non 100%
     // scales
@@ -25,6 +20,8 @@ DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
 #endif
     update_curr_display_info();
     update_video_modes();
+    // Load from file now (after initializing current window settings)
+    m_display_settings.load_settings();
     // Adjust window / monitor position
     initialize_window_position_from_settings();
     set_display_mode(m_display_settings.display_mode);
@@ -286,7 +283,7 @@ void DisplayManager::enqueue_set_display_id(int display_id) {
 }
 
 void DisplayManager::set_display_id(int display_id) {
-  lg::info("[DISPLAY] Setting to display id: {}", display_id);
+  lg::info("[DISPLAY] Setting display id to: {}", display_id);
   if (display_id >= (int)m_current_display_modes.size()) {
     display_id = 0;
   }
@@ -303,6 +300,7 @@ void DisplayManager::update_curr_display_info() {
   if (get_active_display_id() < 0) {
     sdl_util::log_error("could not retrieve current window's display index");
   }
+  lg::info("[DISPLAY] current display id is {}", m_display_settings.display_id);
   SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
   SDL_GetWindowPosition(m_window, &m_window_xpos, &m_window_ypos);
   // Update the scale of the display as well
