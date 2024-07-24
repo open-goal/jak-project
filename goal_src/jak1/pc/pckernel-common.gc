@@ -548,6 +548,11 @@
             (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
             (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
             (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
+            (("memcard-volume-sfx") (set! (-> obj memcard-volume-sfx) (file-stream-read-float file)))
+            (("memcard-volume-music") (set! (-> obj memcard-volume-music) (file-stream-read-float file)))
+            (("memcard-volume-dialog") (set! (-> obj memcard-volume-dialog) (file-stream-read-float file)))
+            (("memcard-vibration") (set! (-> obj memcard-vibration) (file-stream-read-symbol file)))
+            (("memcard-play-hints") (set! (-> obj memcard-play-hints) (file-stream-read-symbol file)))
             ;; debug
             (("debug-font-scale") (set! (-> obj debug-font-scale) (file-stream-read-float file)))
             (("debug-font-scale-auto?") (set! (-> obj debug-font-scale-auto?) (file-stream-read-symbol file)))
@@ -622,6 +627,11 @@
   (format file "  (game-language ~D)~%" (get-game-language obj))
   (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
   (format file "  (territory ~D)~%" (-> obj territory))
+  (format file "  (memcard-volume-sfx ~f)~%" (-> obj memcard-volume-sfx))
+  (format file "  (memcard-volume-music ~f)~%" (-> obj memcard-volume-music))
+  (format file "  (memcard-volume-dialog ~f)~%" (-> obj memcard-volume-dialog))
+  (format file "  (memcard-vibration ~A)~%" (-> obj memcard-vibration))
+  (format file "  (memcard-play-hints ~A)~%" (-> obj memcard-play-hints))
   0)
 
 (defmethod write-to-file ((obj pc-settings) (filename string))
@@ -657,6 +667,11 @@
   ;; any post-operations that need to be done after loading
   (set! (-> obj keyboard-enabled?) (pc-get-keyboard-enabled?))
   (update-mouse-controls! obj)
+  (set! (-> *setting-control* default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* default vibration) (-> obj memcard-vibration))
+  (set! (-> *setting-control* default play-hints) (-> obj memcard-play-hints))
   obj)
 
 (defmethod new pc-settings ((allocation symbol) (type-to-make type))
