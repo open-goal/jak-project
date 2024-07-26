@@ -768,8 +768,12 @@ void Merc2::switch_to_emerc(SharedRenderState* render_state) {
 void Merc2::render(DmaFollower& dma,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof,
-                   MercDebugStats* stats) {
+                   MercDebugStats* stats,
+                   bool debug) {
+  m_debug = true;
+  bool hack = stats->collect_debug_model_list;
   *stats = {};
+  stats->collect_debug_model_list = hack;
   if (stats->collect_debug_model_list) {
     stats->model_list.clear();
   }
@@ -1216,7 +1220,7 @@ void Merc2::do_draws(const Draw* draw_array,
                      bool set_fade,
                      SharedRenderState* render_state) {
   glBindVertexArray(m_vao);
-  int last_tex = -1;
+  s32 last_tex = INT32_MIN;
   int last_light = -1;
   bool normal_vtx_buffer_bound = true;
 

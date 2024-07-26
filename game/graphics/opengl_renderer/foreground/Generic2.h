@@ -19,6 +19,7 @@ class Generic2 {
                       Mode mode);
 
   void draw_debug_window();
+  bool empty() { return m_empty; }
 
   struct Vertex {
     math::Vector<float, 3> xyz;
@@ -202,4 +203,6 @@ class Generic2 {
     GLuint gfx_hack_no_tex;
     GLuint warp_sample_mode;
   } m_ogl;
+
+  bool m_empty = false;
 };

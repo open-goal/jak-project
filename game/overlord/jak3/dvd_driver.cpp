@@ -305,8 +305,9 @@ s32 CDvdDriver::ValidateBlockParams(jak3::BlockParams* params, int num_params) {
       lg::die("Invalid BlockParams: {} had nullptr dest", i);
       return 0;
     }
-    int kMaxFileSize = 1024 * 1024 * 1024;
-    if (p.sector_num > kMaxFileSize / 0x800) {
+    int kMaxSector = 1000000;
+    if (p.sector_num > kMaxSector) {
+      // this is just a sanity check - if we ever have larger files this is okay to increase.
       lg::die("Invalid BlockParams: {} had sector num {}", i, p.sector_num);
       return 0;
     }
