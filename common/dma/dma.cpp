@@ -4,7 +4,7 @@
 
 #include "fmt/core.h"
 
-std::string DmaTag::print() {
+std::string DmaTag::print() const {
   std::string result;
   const char* mode_names[8] = {"refe", "cnt", "next", "ref", "refs", "call", "ret", "end"};
   result += fmt::format("TAG: 0x{:08x} {:4s} qwc 0x{:04x}", addr, mode_names[(int)kind], qwc);
@@ -15,7 +15,7 @@ std::string DmaTag::print() {
   return result;
 }
 
-std::string VifCode::print() {
+std::string VifCode::print() const {
   std::string result;
 
   switch (kind) {

@@ -201,6 +201,7 @@ set(RUNTIME_SOURCE
         mips2c/jak3_functions/sky.cpp
         mips2c/jak3_functions/texture.cpp
         mips2c/jak3_functions/particle_curves.cpp
+        mips2c/jak3_functions/cloth.cpp
         mips2c/jak3_functions/collide_cache.cpp
         mips2c/jak3_functions/collide_hash.cpp
         mips2c/jak3_functions/collide_edge_grab.cpp

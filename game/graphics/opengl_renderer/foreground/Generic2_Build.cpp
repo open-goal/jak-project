@@ -271,6 +271,10 @@ void Generic2::process_matrices() {
   bool found_proj_matrix = false;
   std::array<math::Vector4f, 4> projection_matrix, hud_matrix;
   for (u32 i = 0; i < m_next_free_frag; i++) {
+    if (m_drawing_config.uses_full_matrix) {
+      memcpy(&m_drawing_config.full_matrix, m_fragments[i].header, 64);
+      break;
+    }
     float mat_33;
     memcpy(&mat_33, m_fragments[i].header + 15 * sizeof(float), sizeof(float));
     if (mat_33 == 0) {

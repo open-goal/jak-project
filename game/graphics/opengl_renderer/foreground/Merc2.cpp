@@ -768,9 +768,7 @@ void Merc2::switch_to_emerc(SharedRenderState* render_state) {
 void Merc2::render(DmaFollower& dma,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof,
-                   MercDebugStats* stats,
-                   bool debug) {
-  m_debug = true;
+                   MercDebugStats* stats) {
   bool hack = stats->collect_debug_model_list;
   *stats = {};
   stats->collect_debug_model_list = hack;
