@@ -22,4 +22,9 @@ void Generic2BucketRenderer::render(DmaFollower& dma,
     return;
   }
   m_generic->render_in_mode(dma, render_state, prof, m_mode);
+  m_empty = m_generic->empty();
+}
+
+bool Generic2BucketRenderer::empty() const {
+  return m_empty;
 }

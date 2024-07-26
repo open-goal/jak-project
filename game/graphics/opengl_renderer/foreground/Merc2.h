@@ -46,7 +46,8 @@ class Merc2 {
   void render(DmaFollower& dma,
               SharedRenderState* render_state,
               ScopedProfilerNode& prof,
-              MercDebugStats* stats);
+              MercDebugStats* stats,
+              bool debug);
   static constexpr int kMaxBlerc = 40;
 
  private:
@@ -138,6 +139,7 @@ class Merc2 {
   };
 
   Uniforms m_merc_uniforms, m_emerc_uniforms;
+  bool m_debug = false;
 
   void init_shader_common(Shader& shader, Uniforms* uniforms, bool include_lights);
   void handle_setup_dma(DmaFollower& dma, SharedRenderState* render_state);

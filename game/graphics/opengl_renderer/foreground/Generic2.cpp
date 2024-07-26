@@ -75,6 +75,8 @@ void Generic2::render_in_mode(DmaFollower& dma,
     }
   }
 
+  m_empty = m_next_free_vert == 0;
+
   {
     // the next pass is to look at all of that data, and figure out the best order to draw it
     // using OpenGL
