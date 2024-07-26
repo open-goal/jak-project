@@ -192,6 +192,7 @@ class Merc2 {
     u8 fade[4];
     // no strip hack for custom models
     u8 no_strip;
+    u64 hash;
   };
 
   struct LevelDrawBucket {
@@ -213,7 +214,8 @@ class Merc2 {
                           u32 first_bone,
                           u32 lights,
                           bool jak1_water_mode,
-                          bool disable_fog);
+                          bool disable_fog,
+                          u64 hash);
 
   Draw* try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
                               const DrawMode& envmap_mode,
