@@ -9,7 +9,7 @@
 
 #include "fmt/core.h"
 
-std::shared_ptr<snd::Voice> voices[4];
+std::shared_ptr<snd::Voice> voices[kNVoices];
 u8 spu_memory[0x15160 * 10];
 
 static sceSdTransIntrHandler trans_handler[2] = {nullptr, nullptr};
@@ -21,7 +21,7 @@ u32 sceSdGetSwitch(u32 entry) {
 }
 
 snd::Voice* voice_from_entry(u32 entry) {
-  u32 it = entry & 3;
+  u32 it = entry % kNVoices;
   return voices[it].get();
 }
 
@@ -66,7 +66,6 @@ void sceSdSetSwitch(u32 entry, u32 value) {
 void sceSdSetAddr(u32 entry, u32 value) {
   [[maybe_unused]] u32 core = entry & 1;
   [[maybe_unused]] u32 voice_id = (entry >> 1) & 0x1f;
-
   auto* voice = voice_from_entry(voice_id);
   if (!voice) {
     return;
@@ -123,10 +122,10 @@ void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler handler, void* 
   userdata[channel] = data;
 }
 
-u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size) {
+u32 sceSdVoiceTrans(s32 channel, s32 mode, const void* iop_addr, u32 spu_addr, u32 size) {
   memcpy(&spu_memory[spu_addr], iop_addr, size);
   if (trans_handler[channel] != nullptr) {
-    trans_handler[channel](channel, userdata);
+    trans_handler[channel](channel, userdata[channel]);
   }
   return size;
 }

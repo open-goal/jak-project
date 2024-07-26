@@ -48,6 +48,7 @@ class Player {
   void SetMasterVolume(u32 group, s32 volume);
   void UnloadBank(BankHandle bank_handle);
   void StopSound(u32 sound_handle);
+  u32 GetSoundID(u32 sound_handle);
   void SetPanTable(VolPair* pantable);
   void SetPlaybackMode(s32 mode);
   void PauseSound(s32 sound_handle);

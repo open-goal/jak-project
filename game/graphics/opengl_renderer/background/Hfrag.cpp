@@ -129,8 +129,8 @@ Hfrag::HfragLevel* Hfrag::get_hfrag_level(const std::string& name,
   // first, see if this level is loaded. If not, there's nothing we can do.
   auto lev_data = render_state->loader->get_tfrag3_level(name);
   if (!lev_data) {
-    printf("[hfrag] can't display %s because it's not loaded.\n", name.c_str());
-    render_state->loader->debug_print_loaded_levels();
+    // printf("[hfrag] can't display %s because it's not loaded.\n", name.c_str());
+    // render_state->loader->debug_print_loaded_levels();
     return nullptr;
   }
 

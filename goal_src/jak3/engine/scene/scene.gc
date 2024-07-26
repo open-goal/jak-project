@@ -905,8 +905,6 @@
 (defstate wait (scene-player)
   :virtual #t
   :enter (behavior ((arg0 symbol))
-    (format 0 "scene-player: skipping scene~%")
-    (set! (-> self aborted?) #t)
     (set-time! (-> self state-time))
     (if (= (-> *game-info* demo-state) 101)
         (set-setting! 'audio-language #f 0.0 5)
@@ -1158,7 +1156,6 @@
                           )
                         )
                     )
-                  (not (-> self aborted?))
                   )
         (set-blackout-frames (seconds 0.1))
         (suspend)
@@ -1549,7 +1546,6 @@
                   (logclear! (-> *cpad-list* cpads 0 button0-rel 0) (pad-buttons triangle))
                   #t
                   )
-                (none)
                 )
               false-func
               )
@@ -1576,10 +1572,6 @@
             )
           )
         )
-      )
-    (#when PC_PORT ;; og:preserve-this until overlord2 is done
-      (backup-load-state-and-set-cmds *load-state* (-> self anim command-list))
-      (restore-load-state-and-cleanup *load-state*)
       )
     (if (and (-> self wait) *target* (focus-test? *target* grabbed))
         (go-virtual release)

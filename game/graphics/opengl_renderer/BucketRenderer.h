@@ -26,8 +26,8 @@ class EyeRenderer;
 struct SharedRenderState {
   explicit SharedRenderState(std::shared_ptr<TexturePool> _texture_pool,
                              std::shared_ptr<Loader> _loader,
-                             GameVersion version)
-      : shaders(version), texture_pool(_texture_pool), loader(_loader) {}
+                             GameVersion _version)
+      : shaders(_version), texture_pool(_texture_pool), loader(_loader), version(_version) {}
   ShaderLibrary shaders;
   std::shared_ptr<TexturePool> texture_pool;
   std::shared_ptr<Loader> loader;

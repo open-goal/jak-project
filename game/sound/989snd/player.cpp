@@ -193,6 +193,14 @@ void Player::StopSound(u32 sound_id) {
   // m_handlers.erase(sound_id);
 }
 
+u32 Player::GetSoundID(u32 sound_handle) {
+  std::scoped_lock lock(mTickLock);
+  auto handler = mHandlers.find(sound_handle);
+  if (handler == mHandlers.end())
+    return -1;
+  return handler->second->SoundID();
+}
+
 void Player::SetSoundReg(u32 sound_id, u8 reg, u8 value) {
   std::scoped_lock lock(mTickLock);
   if (mHandlers.find(sound_id) == mHandlers.end()) {

@@ -254,6 +254,29 @@ set(RUNTIME_SOURCE
         overlord/jak2/streamlfo.cpp
         overlord/jak2/streamlist.cpp
         overlord/jak2/vag.cpp
+        overlord/jak3/overlord.cpp
+        overlord/jak3/pagemanager.cpp
+        overlord/jak3/iso_cd.cpp
+        overlord/jak3/dma.cpp
+        overlord/jak3/iso.cpp
+        overlord/jak3/iso_queue.cpp
+        overlord/jak3/srpc.cpp
+        overlord/jak3/vag.cpp
+        overlord/jak3/ssound.cpp
+        overlord/jak3/iso_api.cpp
+        overlord/jak3/spustreams.cpp
+        overlord/jak3/list.cpp
+        overlord/jak3/vblank_handler.cpp
+        overlord/jak3/dvd_driver.cpp
+        overlord/jak3/basefile.cpp
+        overlord/jak3/basefilesystem.cpp
+        overlord/jak3/ramdisk.cpp
+        overlord/jak3/isocommon.cpp
+        overlord/jak3/init.cpp
+        overlord/jak3/stream.cpp
+        overlord/jak3/sbank.cpp
+        overlord/jak3/soundcommon.cpp
+        overlord/jak3/streamlist.cpp
         runtime.cpp
         sce/deci2.cpp
         sce/iop.cpp
