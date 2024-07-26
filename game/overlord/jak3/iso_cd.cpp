@@ -381,7 +381,15 @@ ISOFileDef* CISOCDFileSystem::FindIN(const jak3::ISOName* name) {
  * Get the length of a file, in bytes.
  */
 int CISOCDFileSystem::GetLength(const jak3::ISOFileDef* file) {
-  return file->length;
+  // return file->length;
+  lg::info("getlength");
+  file_util::assert_file_exists(file->full_path.c_str(), "CISOCDFileSystem GetLength");
+  FILE* fp = file_util::open_file(file->full_path.c_str(), "rb");
+  ASSERT(fp);
+  fseek(fp, 0, SEEK_END);
+  uint32_t len = ftell(fp);
+  fclose(fp);
+  return len;
 }
 
 /*!
