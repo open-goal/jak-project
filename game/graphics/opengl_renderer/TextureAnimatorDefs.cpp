@@ -2,7 +2,26 @@
 
 void TextureAnimator::setup_texture_anims_jak3() {
   m_darkjak_clut_blender_idx = create_clut_blender_group(
-      {"jakc-arm", "jakc-eyebrow", "jakc-face", "jakc-finger", "jakc-hair"}, "-norm", "-dark", {});
+      {
+          "jakc-arm",
+          "jakc-eyebrow",
+          "jakc-face",
+          "jakc-finger",
+          "jakc-hair",
+      },
+      "-norm", "-dark", {});
+
+  m_darkjak_highres_clut_blender_idx = create_clut_blender_group(
+      {
+          "jakchires-arm",
+          "jakchires-eye",
+          "jakchires-eyebrow",
+          "jakchires-eyelid",
+          "jakchires-facelft",
+          "jakchires-facert",
+          "jakchires-hair",
+      },
+      "-norm", "-dark", "MHCTYCST.DGO");
 
   // default-water
   {

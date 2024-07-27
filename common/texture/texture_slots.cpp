@@ -49,6 +49,13 @@ std::vector<std::string> jak3_slots = {
     "jakc-face",
     "jakc-finger",
     "jakc-hair",
+    "jakchires-arm",
+    "jakchires-eye",
+    "jakchires-eyebrow",
+    "jakchires-eyelid",
+    "jakchires-facelft",
+    "jakchires-facert",
+    "jakchires-hair",
     // default-water
     "bomb-gradient",
     "blue-beam-dest",
