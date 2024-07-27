@@ -86,10 +86,10 @@ void Generic2::render_in_mode(DmaFollower& dma,
     auto p = prof.make_scoped_child("setup");
     switch (mode) {
       case Mode::NORMAL:
-      case Mode::PRIM:
         setup_draws(true, true);
         break;
       case Mode::LIGHTNING:
+      case Mode::PRIM:
         setup_draws(false, true);
         break;
       case Mode::WARP:

@@ -190,6 +190,16 @@ void Generic2::determine_draw_modes(bool enable_at, bool default_fog) {
       current_mode.set_alpha_fail(reg.afail());
       current_mode.set_zt(reg.zte());
       current_mode.set_depth_test(reg.ztest());
+
+      // detect a strange way of disabling z writes by light-trail.
+      // we don't actually handle alpha_fail later on in Direct - it doesn't map well to modern
+      // graphics and would require a draw call per primitive.
+      if (current_mode.get_alpha_fail() == GsTest::AlphaFail::FB_ONLY &&
+          current_mode.get_aref() == 0x80 &&
+          current_mode.get_alpha_test() == DrawMode::AlphaTest::GEQUAL) {
+        current_mode.set_alpha_test(DrawMode::AlphaTest::ALWAYS);
+        current_mode.disable_depth_write();
+      }
     }
 
     m_adgifs[i].mode = current_mode;
