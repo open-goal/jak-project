@@ -52,7 +52,7 @@ struct DmaTag {
 
   bool operator!=(const DmaTag& other) const { return !((*this) == other); }
 
-  std::string print();
+  std::string print() const;
 };
 
 inline void emulate_dma(const void* source_base, void* dest_base, u32 tadr, u32 dadr) {
@@ -148,7 +148,7 @@ struct VifCode {
   u16 num;
   u16 immediate;
 
-  std::string print();
+  std::string print() const;
 };
 
 struct VifCodeStcycl {

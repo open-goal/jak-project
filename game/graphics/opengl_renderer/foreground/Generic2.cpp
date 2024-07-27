@@ -70,6 +70,9 @@ void Generic2::render_in_mode(DmaFollower& dma,
       case Mode::LIGHTNING:
         process_dma_lightning(dma, render_state->next_bucket);
         break;
+      case Mode::PRIM:
+        process_dma_prim(dma, render_state->next_bucket);
+        break;
       default:
         ASSERT_NOT_REACHED();
     }
@@ -83,6 +86,7 @@ void Generic2::render_in_mode(DmaFollower& dma,
     auto p = prof.make_scoped_child("setup");
     switch (mode) {
       case Mode::NORMAL:
+      case Mode::PRIM:
         setup_draws(true, true);
         break;
       case Mode::LIGHTNING:

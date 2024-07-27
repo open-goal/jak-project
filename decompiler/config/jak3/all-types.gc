@@ -15147,8 +15147,8 @@
   :size-assert         #x4
   :flag-assert         #xb00000004
   (:methods
-    (init! (_type_) int) ;; 9
-    (cloth-base-method-10 (_type_ cloth-params handle) int) ;; 10
+    (update! (_type_) int) ;; 9
+    (setup-from-params! (_type_ cloth-params handle) int) ;; 10
     )
   )
 
@@ -33950,7 +33950,7 @@
   )
 
 (deftype particle-array (inline-array-class)
-  ((data verlet-particle :dynamic :inline :offset-assert 16)
+  ((data verlet-particle :dynamic :inline :offset-assert 16 :score 1)
    )
   :method-count-assert 14
   :size-assert         #x10
@@ -34017,12 +34017,12 @@
   :size-assert         #x40
   :flag-assert         #x1000000040
   (:methods
-    (calculate-wind!
+    (accumulate-external-forces!
       "If this cloth system has the wind flag, calculate the wind force."
       (_type_) none) ;; 11
-    (verlet-particle-system-method-12 (_type_ float) none) ;; 12
-    (verlet-particle-system-method-13 (_type_) none) ;; 13
-    (verlet-particle-system-method-14 (_type_) none) ;; 14
+    (compute-verlet-step (_type_ float) none) ;; 12
+    (run-one-iteration "Run one iteration of the system." (_type_) none) ;; 13
+    (reset! "Reset to stationary/default state." (_type_) none) ;; 14
     (debug-draw (_type_) none) ;; 15
     )
   )
@@ -34082,9 +34082,9 @@
       "Set up this cloth system with the given [[cloth-params]]."
       (_type_ cloth-params) none) ;; 16
     (debug-draw-spheres (_type_) none) ;; 17
-    (cloth-system-method-18 (_type_) int) ;; 18
-    (cloth-system-method-19 (_type_) none) ;; 19
-    (cloth-system-method-20 (_type_) none) ;; 20
+    (post-physics-update (_type_) int) ;; 18
+    (enforce-constraints-1 (_type_) none) ;; 19
+    (enforce-constraints-2 (_type_) none) ;; 20
     (cloth-system-method-21 (_type_) none) ;; 21
     (cloth-system-method-22 (_type_) none) ;; 22
     (cloth-system-method-23 (_type_) none) ;; 23
@@ -34098,9 +34098,9 @@
     (cloth-system-method-31 (_type_ current-position-info) none) ;; 31
     (cloth-system-method-32 (_type_ vector int int current-position-info) none) ;; 32
     (cloth-system-method-33 (_type_ vu-lights) none) ;; 33
-    (cloth-system-method-34 (_type_) none) ;; 34
-    (cloth-system-method-35 (_type_) none) ;; 35
-    (cloth-system-method-36 (_type_) none) ;; 36
+    (hide! (_type_) none) ;; 34
+    (reset-locations (_type_) none) ;; 35
+    (pre-physics-update "Callback to update prior to running verlet integration. Can handle movement of the entire system in the world, for example" (_type_) none) ;; 36
     (cloth-system-cmd-handler (_type_ pair) none) ;; 37
     )
   )
@@ -34122,8 +34122,8 @@
 ;; cloth                          ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define-extern get-neighboring-faces (function vector int int int int int))
-(define-extern *normal-array* (pointer vector))
+(define-extern get-neighboring-faces (function vector4w int int int int int))
+(define-extern *normal-array* (inline-array vector))
 (define-extern light-vertex (function current-position-info vector rgba))
 (define-extern *once* symbol)
 (define-extern *cloth-fade-alpha* gs-alpha)

@@ -16,7 +16,7 @@ void Merc2BucketRenderer::render(DmaFollower& dma,
     return;
   }
 
-  m_renderer->render(dma, render_state, prof, &m_debug_stats, m_my_id == 362);
+  m_renderer->render(dma, render_state, prof, &m_debug_stats);
 
   m_empty = m_debug_stats.num_predicted_draws == 0;
 }
