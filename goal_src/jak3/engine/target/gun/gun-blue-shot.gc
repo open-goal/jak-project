@@ -321,7 +321,7 @@
   )
 
 
-(defmethod light-trail-tracker-method-17 ((this light-trail-tracker-blue-3) (arg0 process-focusable))
+(defmethod should-track? ((this light-trail-tracker-blue-3) (arg0 process-focusable))
   #f
   )
 
@@ -351,15 +351,13 @@
 
 (set! (-> *blue-shot-trail* uv-repeat-dist) 163840.0)
 
-(set! (-> *blue-shot-trail* lie-mode) (the-as uint 0))
+(set! (-> *blue-shot-trail* lie-mode) (lie-mode appearance0))
 
 (set! (-> *blue-shot-trail* max-age) (seconds 0.5))
 
 (if #f
-    (set! (-> *blue-shot-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *blue-shot-trail* tex-id) (the-as uint #x500f00))
+    (set! (-> *blue-shot-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *blue-shot-trail* tex-id) (new 'static 'texture-id :index #xf :page #x5))
     )
 
 (set! (-> *blue-shot-trail* width-curve) (the-as curve2d-piecewise *curve-linear-up*))
@@ -407,7 +405,7 @@
     (set! (-> s5-0 track-immediately?) #t)
     (let* ((v1-30 (estimate-light-trail-mem-usage
                     (the-as uint (-> s5-0 max-num-crumbs))
-                    (the-as uint (= (-> s5-0 appearance lie-mode) 3))
+                    (the-as uint (= (-> s5-0 appearance lie-mode) (lie-mode use-two-strips)))
                     )
                   )
            (s4-0 (get-process *default-dead-pool* light-trail-tracker-blue-3 (+ v1-30 8192) 1))
@@ -670,7 +668,6 @@
   (spawn-projectile gun-blue-shot-3 sv-148 (ppointer->process (-> sv-144 gun)) *default-dead-pool*)
   )
 
-;; WARN: Return type mismatch symbol vs none.
 (defun draw-beam-segment ()
   #f
   )
@@ -1005,7 +1002,7 @@
 
 (when (or (zero? *uv-loop-curve*) (!= loading-level global))
   (set! *uv-loop-curve* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *uv-loop-curve* 2 'loading-level (the-as int #t))
+  (allocate! *uv-loop-curve* 2 'loading-level #t)
   )
 
 (set! (-> *uv-loop-curve* pts data 0 first) 0.0)
