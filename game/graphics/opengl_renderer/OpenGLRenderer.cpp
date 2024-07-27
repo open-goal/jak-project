@@ -28,6 +28,7 @@
 #include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
+#include "third-party/imgui/imgui_stdlib.h"
 
 // for the vif callback
 #include "game/kernel/common/kmachine.h"
@@ -36,6 +37,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+#include "common/util/string_util.h"
 
 namespace {
 std::string g_current_renderer;
@@ -1104,8 +1106,13 @@ void OpenGLRenderer::draw_renderer_selection_window() {
     ImGui::TreePop();
   }
 
+  ImGui::InputText("Renderer Filter", &m_renderer_filter);
+
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
+    if (!m_renderer_filter.empty() && !str_util::contains(renderer->name(), m_renderer_filter)) {
+      continue;
+    }
     if (renderer && !renderer->empty()) {
       ImGui::PushID(i);
       if (ImGui::TreeNode(renderer->name_and_id().c_str())) {
