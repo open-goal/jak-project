@@ -34196,7 +34196,17 @@
 ;; curves                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defenum loop-behavior
+  :type uint64
+  :bitfield #f
+  (wrap)
+  (clamp)
+  (b2)
+  (use-default)
+  )
+
 (deftype float-pair (structure)
+  "Two floats. Specifies one point on a piecewise linear curve."
   ((first  float  :offset-assert 0)
    (second float  :offset-assert 4)
    (x      float  :offset 0)
@@ -34208,6 +34218,7 @@
   )
 
 (deftype float-pair-array (inline-array-class)
+  "Array of points used to make a piecewise linear curve."
   ((data float-pair :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
@@ -34216,39 +34227,50 @@
   )
 
 (deftype curve2d (basic)
+  "Interface for evaluating a 2d curve.
+   The input is a float (x-position) and the output is a float (y-position).
+   The curve is over (0, 1). Values outside of the range are either clamped
+   or wrapped depending on the loop-behavior flag."
   ()
   :method-count-assert 10
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (curve2d-method-9 (_type_ float int) float) ;; 9
+    (evaluate "Compute value of curve at the given position." (_type_ float loop-behavior) float) ;; 9
     )
   )
 
 (deftype curve-color (basic)
+  "Interface for evaluating a color curve. The input is a float, representing
+   progress through the curve, and the result is a floating point rgba color."
   ()
   :method-count-assert 10
   :size-assert         #x4
   :flag-assert         #xa00000004
   (:methods
-    (curve-color-method-9 (_type_ float rgbaf int) rgbaf) ;; 9
+    (evaluate "Compute value of curve at the given position." (_type_ float rgbaf loop-behavior) rgbaf) ;; 9
     )
   )
 
 (deftype curve2d-piecewise (curve2d)
+  "Implementation of 2d-curve for a piecewise linear curve.
+   Not particularly efficient - each evaluation needs to check each point."
   ((pts                   float-pair-array :offset-assert 4)
-   (default-loop-behavior uint64  :offset-assert 8)
+   (default-loop-behavior loop-behavior  :offset-assert 8)
    )
   :method-count-assert 12
   :size-assert         #x10
   :flag-assert         #xc00000010
   (:methods
-    (curve2d-piecewise-method-10 (_type_ int symbol int) none) ;; 10
+    (allocate! "Allocate memory for points." (_type_ int symbol symbol) none) ;; 10
     (curve2d-piecewise-method-11 (_type_) none) ;; 11
     )
   )
 
 (deftype curve2d-fast (curve2d)
+  "Implementation of 2d piecewise linear curve which tries to be faster.
+   While it is faster, it places the huge restriction that you can only have 4 points.
+   Note that the xs should be negative here."
   ((xs                vector :inline :offset-assert 16)
    (ys                vector :inline :offset-assert 32)
    (one-over-x-deltas vector :inline :offset-assert 48)
@@ -34259,6 +34281,9 @@
   )
 
 (deftype curve-color-fast (curve-color)
+  "Implementation of color curve which tries to be faster.
+   While it is faster, it again has the restriction that you only
+   get 4 piecewise sections."
   ((xs                vector  :inline :offset-assert 16)
    (ys                vector 4 :inline :offset-assert 32)
    (one-over-x-deltas vector  :inline :offset-assert 96)
@@ -34269,6 +34294,8 @@
   )
 
 (deftype color-pair (structure)
+  "Single section of a piecewise linear color curve.
+   Unlike the fast version, this stores x values exactly like you'd expect."
   ((first  float         :offset-assert 0)
    (second rgbaf :inline :offset-assert 16)
    (x      float         :offset 0)
@@ -34280,6 +34307,7 @@
   )
 
 (deftype color-pair-array (inline-array-class)
+  "Array of points for piecewise linear color curve."
   ((data color-pair :dynamic :inline :offset-assert 16)
    )
   :method-count-assert 14
@@ -34288,21 +34316,22 @@
   )
 
 (deftype curve-color-piecewise (curve-color)
+  "Implementation of curve-color."
   ((pts                   color-pair-array :offset-assert 4)
-   (default-loop-behavior uint64  :offset-assert 8)
+   (default-loop-behavior loop-behavior  :offset-assert 8)
    )
   :method-count-assert 11
   :size-assert         #x10
   :flag-assert         #xb00000010
   (:methods
-    (curve-color-piecewise-method-10 (_type_ int symbol uint) none) ;; 10
+    (allocate! "Allocate memory for points." (_type_ int symbol symbol) none) ;; 10
     )
   )
 
-(define-extern rgbaf-lerp! (function rgbaf rgbaf rgbaf float rgbaf))
-(define-extern evaluate-curve-fast (function curve2d-fast rgbaf rgbaf float))
-(define-extern evaluate-color-curve-fast (function curve-color-fast rgbaf rgbaf rgbaf))
-(define-extern rgba<-rgbaf (function rgba rgbaf int))
+(define-extern rgbaf-lerp! "Lerp all four components of rgba." (function rgbaf rgbaf rgbaf float rgbaf))
+(define-extern evaluate-curve-fast "Evaluate a curve2d-fast at the given value." (function curve2d-fast float float))
+(define-extern evaluate-color-curve-fast "Evaluate a color-curve-fast at the given value." (function curve-color-fast float rgbaf rgbaf))
+(define-extern rgba<-rgbaf "Convert rgbaf to rgba. Seems like the input rgba's value is not used in any way." (function rgba rgbaf rgba))
 (define-extern *curve-unity* curve2d-fast)
 (define-extern *curve-linear-up* curve2d-fast)
 (define-extern *curve-linear-down* curve2d-fast)
@@ -34679,6 +34708,14 @@
   :flag-assert         #xe00000010
   )
 
+(defenum lie-mode
+  :type uint64
+  (appearance0)
+  (appearance1)
+  (appearance2)
+  (use-two-strips 3)
+  )
+
 (deftype light-trail-composition (structure)
   ((color-mode        uint64         :offset-assert 0)
    (color-curve       curve-color-piecewise :offset-assert 8)
@@ -34696,8 +34733,8 @@
    (uv-mode           uint64         :offset-assert 72)
    (uv-repeat-dist    float          :offset-assert 80)
    (max-age           time-frame     :offset-assert 88)
-   (tex-id            uint32         :offset-assert 96)
-   (lie-mode          uint64         :offset-assert 104)
+   (tex-id            texture-id     :offset-assert 96)
+   (lie-mode          lie-mode       :offset-assert 104)
    (lie-vector        vector :inline :offset-assert 112)
    (zbuffer?          symbol         :offset-assert 128)
    (use-tape-mode?    symbol         :offset-assert 132)
@@ -34711,7 +34748,7 @@
 
 (deftype light-trail-breadcrumb (structure)
   ((pos        vector :inline :offset-assert 0)
-   (birth-time uint32         :offset 12 :decomp-as time-frame)
+   (birth-time uint32         :offset 12 :decomp-as time-frame :score 1)
    )
   :method-count-assert 9
   :size-assert         #x10
@@ -34726,15 +34763,22 @@
   :flag-assert         #xe00000010
   )
 
+(defenum light-trail-decision
+  :type uint64
+  (added 0)
+  (not-added 1)
+  (reset 2)
+  )
+
 (deftype light-trail (basic)
-  ((crumb-array             (array light-trail-breadcrumb)          :offset-assert 4)
+  ((crumb-array             (array uint8)          :offset-assert 4)
    (crumb-size              uint8                     :offset-assert 8)
    (crumb-count             int16                     :offset-assert 10)
    (max-crumb-count         int16                     :offset-assert 12)
    (appearance              light-trail-composition   :offset-assert 16)
    (start-marker            uint64                    :offset-assert 24)
    (end-marker              uint64                    :offset-assert 32)
-   (decision                uint64                    :offset-assert 40)
+   (decision                light-trail-decision      :offset-assert 40)
    (total-distance-traveled float                     :offset-assert 48)
    (strip                   prim-strip                :offset-assert 52)
    (strip2                  prim-strip                :offset-assert 56)
@@ -34744,19 +34788,19 @@
   :size-assert         #x80
   :flag-assert         #x1600000080
   (:methods
-    (light-trail-method-9 (_type_ light-trail-composition int) none) ;; 9
-    (light-trail-method-10 (_type_) none) ;; 10
-    (light-trail-method-11 (_type_ vector time-frame) int) ;; 11
-    (light-trail-method-12 (_type_) none) ;; 12
-    (light-trail-method-13 (_type_) int) ;; 13
-    (light-trail-method-14 (_type_) none) ;; 14
+    (setup! "Initialize, including allocation of crumbs and strips on the process heap." (_type_ light-trail-composition int) none) ;; 9
+    (reset! "Clear all tracked crumbs." (_type_) none) ;; 10
+    (add-crumb! "Try adding a crumb, kicking out the oldest if there's not enough room. This may reject if it's too close to the previous." (_type_ vector time-frame) int) ;; 11
+    (build-prim-strip! "Build the mesh for this light trail." (_type_) none) ;; 12
+    (common-trans! "Call this on each frame to handle max-age." (_type_) int) ;; 13
+    (expire-old-points! "Internal function to kill off points that are too old." (_type_) none) ;; 14
     (light-trail-method-15 (_type_) none) ;; 15
-    (add-vert! (_type_ prim-strip vector float float float) none) ;; 16
-    (light-trail-method-17 (_type_ vector float float vector float) symbol) ;; 17
-    (light-trail-method-18 (_type_ light-trail-breadcrumb int vector vector) none) ;; 18
-    (light-trail-method-19 (_type_ float int) none) ;; 19
+    (add-vert-to-prim-strip! "Add a single vertex to the prim." (_type_ prim-strip vector rgba float float) none) ;; 16
+    (add-tri-pair-to-prim! "Add two vertices to the prim strip to add two triangles" (_type_ vector rgba float vector float) symbol) ;; 17
+    (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none) ;; 18
+    (crumb-age-out-callback "To be implemented by the user to smoothly interpolate out non-default entries in their crumb type." (_type_ float int) none) ;; 19
     (reset-crumbs! (_type_) none) ;; 20
-    (light-trail-method-21 (_type_ vector) none) ;; 21
+    (replace-last-crumb! "Similar to add-crumb, but will modify the last crumb instead of advancing." (_type_ vector) none) ;; 21
     )
   )
 
@@ -34774,7 +34818,7 @@
   :size-assert         #x80
   :flag-assert         #x1800000080
   (:methods
-    (weapon-trail-method-22 (_type_ vector vector) light-trail-breadcrumb) ;; 22
+    (add-crumb-with-offset "Given two points, add the first and offset to a crumb." (_type_ vector vector) light-trail-breadcrumb) ;; 22
     (weapon-trail-method-23 (_type_ vector vector) none) ;; 23
     )
   )
@@ -34793,8 +34837,8 @@
   :size-assert         #x80
   :flag-assert         #x1800000080
   (:methods
-    (tread-trail-method-22 (_type_ vector vector) light-trail-breadcrumb) ;; 22
-    (tread-trail-method-23 (_type_ vector vector) light-trail-breadcrumb) ;; 23
+    (add-crumb-with-offset (_type_ vector vector) none) ;; 22
+    (tread-trail-method-23 (_type_ vector vector) none) ;; 23
     )
   )
 
@@ -34834,11 +34878,11 @@
     die ;; 15
     )
   (:methods
-    (light-trail-tracker-method-16 (_type_ process-focusable vector) vector) ;; 16
-    (light-trail-tracker-method-17 (_type_ process-focusable) symbol) ;; 17
-    (light-trail-tracker-method-18 (_type_ process-focusable) symbol) ;; 18
-    (light-trail-tracker-method-19 (_type_) symbol) ;; 19
-    (light-trail-tracker-method-20 (_type_ vector) none) ;; 20
+    (get-tracked-object-pos (_type_ process-focusable vector) vector) ;; 16
+    (should-track? (_type_ process-focusable) symbol) ;; 17
+    (should-end? (_type_ process-focusable) symbol) ;; 18
+    (should-draw? (_type_) symbol) ;; 19
+    (add-crumb! (_type_ vector) none) ;; 20
     )
   )
 
@@ -57861,7 +57905,7 @@
 
 (deftype tire-trail-crumb (light-trail-breadcrumb)
   ((offset vector :inline :offset-assert 16)
-   (uu     float          :offset 28)
+   (uu     float          :offset 28 :score 1)
    )
   :method-count-assert 9
   :size-assert         #x20
@@ -57874,13 +57918,13 @@
   :size-assert         #x80
   :flag-assert         #x1800000080
   (:methods
-    (tire-trail-method-22 (_type_) none) ;; 22
-    (tire-trail-method-23 (_type_) none) ;; 23
+    (add-crumb-with-offset-and-uu (_type_ vector vector float) none) ;; 22
+    (tire-trail-method-23 (_type_ vector vector float) none) ;; 23
     )
   )
 
 (deftype tire-trail-tracker (light-trail-tracker)
-  ()
+  ((trail tire-trail :override))
   :method-count-assert 21
   :size-assert         #xac
   :flag-assert         #x15003000ac

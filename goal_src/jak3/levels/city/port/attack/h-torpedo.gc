@@ -56,7 +56,7 @@
 
 (when (or (zero? *growing-curve-torpedo*) (!= loading-level global))
   (set! *growing-curve-torpedo* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *growing-curve-torpedo* 2 'loading-level (the-as int #f))
+  (allocate! *growing-curve-torpedo* 2 'loading-level #f)
   )
 
 (set! (-> *growing-curve-torpedo* pts data 0 first) 0.0)
@@ -69,7 +69,7 @@
 
 (when (or (zero? *water-simple-alpha-curve-fade-out-torpedo*) (!= loading-level global))
   (set! *water-simple-alpha-curve-fade-out-torpedo* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *water-simple-alpha-curve-fade-out-torpedo* 2 'loading-level (the-as int #f))
+  (allocate! *water-simple-alpha-curve-fade-out-torpedo* 2 'loading-level #f)
   )
 
 (set! (-> *water-simple-alpha-curve-fade-out-torpedo* pts data 0 first) 0.0)
@@ -82,7 +82,7 @@
 
 (when (or (zero? *color-curve-tan-brown-torpedo*) (!= loading-level global))
   (set! *color-curve-tan-brown-torpedo* (new 'loading-level 'curve-color-piecewise))
-  (curve-color-piecewise-method-10 *color-curve-tan-brown-torpedo* 2 'loading-level (the-as uint #f))
+  (allocate! *color-curve-tan-brown-torpedo* 2 'loading-level #f)
   )
 
 (set! (-> *color-curve-tan-brown-torpedo* pts data 0 first) 0.0)
@@ -107,7 +107,7 @@
 
 (when (or (zero? *water-simple-alpha-curve-in-torpedo*) (!= loading-level global))
   (set! *water-simple-alpha-curve-in-torpedo* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *water-simple-alpha-curve-in-torpedo* 2 'loading-level (the-as int #f))
+  (allocate! *water-simple-alpha-curve-in-torpedo* 2 'loading-level #f)
   )
 
 (set! (-> *water-simple-alpha-curve-in-torpedo* pts data 0 first) 0.0)
@@ -144,15 +144,13 @@
 
 (set! (-> *torpedo-wake-trail* uv-repeat-dist) 81920.0)
 
-(set! (-> *torpedo-wake-trail* lie-mode) (the-as uint 1))
+(set! (-> *torpedo-wake-trail* lie-mode) (lie-mode appearance1))
 
 (set! (-> *torpedo-wake-trail* max-age) (seconds 0.3))
 
 (if #f
-    (set! (-> *torpedo-wake-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *torpedo-wake-trail* tex-id) (the-as uint #x500800))
+    (set! (-> *torpedo-wake-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *torpedo-wake-trail* tex-id) (new 'static 'texture-id :index #x8 :page #x5))
     )
 
 (set! (-> *torpedo-wake-trail* width-curve) *growing-curve-torpedo*)
@@ -1468,13 +1466,13 @@
   )
 
 
-(defmethod light-trail-tracker-method-17 ((this light-trail-tracker-torpedo) (arg0 process-focusable))
+(defmethod should-track? ((this light-trail-tracker-torpedo) (arg0 process-focusable))
   (let ((v1-0 arg0))
     (and (-> (the-as htorpedo v1-0) on-water?) (< (-> v1-0 root trans y) 20480.0))
     )
   )
 
-(defmethod light-trail-tracker-method-16 ((this light-trail-tracker-torpedo) (arg0 process-focusable) (arg1 vector))
+(defmethod get-tracked-object-pos ((this light-trail-tracker-torpedo) (arg0 process-focusable) (arg1 vector))
   (let ((v1-0 arg0))
     (when v1-0
       (set! (-> arg1 quad) (-> v1-0 root trans quad))
@@ -1525,7 +1523,7 @@
       (set! (-> s5-2 track-immediately?) #t)
       (let* ((v1-34 (estimate-light-trail-mem-usage
                       (the-as uint (-> s5-2 max-num-crumbs))
-                      (the-as uint (= (-> s5-2 appearance lie-mode) 3))
+                      (the-as uint (= (-> s5-2 appearance lie-mode) (lie-mode use-two-strips)))
                       )
                     )
              (s4-2 (get-process *default-dead-pool* light-trail-tracker-torpedo (+ v1-34 8192) 1))

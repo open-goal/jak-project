@@ -5,6 +5,21 @@
 ;; name in dgo: light-trails-h
 ;; dgos: GAME
 
+(defenum lie-mode
+  :type uint64
+  (appearance0)
+  (appearance1)
+  (appearance2)
+  (use-two-strips 3)
+  )
+
+(defenum light-trail-decision
+  :type uint64
+  (added 0)
+  (not-added 1)
+  (reset 2)
+  )
+
 ;; DECOMP BEGINS
 
 (deftype color-array (inline-array-class)
@@ -32,8 +47,8 @@
    (uv-mode            uint64)
    (uv-repeat-dist     float)
    (max-age            time-frame)
-   (tex-id             uint32)
-   (lie-mode           uint64)
+   (tex-id             texture-id)
+   (lie-mode           lie-mode)
    (lie-vector         vector  :inline)
    (zbuffer?           symbol)
    (use-tape-mode?     symbol)
@@ -59,33 +74,33 @@
 (set! (-> breadcrumb-array heap-base) (the-as uint 16))
 
 (deftype light-trail (basic)
-  ((crumb-array              (array light-trail-breadcrumb))
+  ((crumb-array              (array uint8))
    (crumb-size               uint8)
    (crumb-count              int16)
    (max-crumb-count          int16)
    (appearance               light-trail-composition)
    (start-marker             uint64)
    (end-marker               uint64)
-   (decision                 uint64)
+   (decision                 light-trail-decision)
    (total-distance-traveled  float)
    (strip                    prim-strip)
    (strip2                   prim-strip)
    (cache-vector             vector  4 :inline)
    )
   (:methods
-    (light-trail-method-9 (_type_ light-trail-composition int) none)
-    (light-trail-method-10 (_type_) none)
-    (light-trail-method-11 (_type_ vector time-frame) int)
-    (light-trail-method-12 (_type_) none)
-    (light-trail-method-13 (_type_) int)
-    (light-trail-method-14 (_type_) none)
+    (setup! (_type_ light-trail-composition int) none)
+    (reset! (_type_) none)
+    (add-crumb! (_type_ vector time-frame) int)
+    (build-prim-strip! (_type_) none)
+    (common-trans! (_type_) int)
+    (expire-old-points! (_type_) none)
     (light-trail-method-15 (_type_) none)
-    (add-vert! (_type_ prim-strip vector float float float) none)
-    (light-trail-method-17 (_type_ vector float float vector float) symbol)
-    (light-trail-method-18 (_type_ light-trail-breadcrumb int vector vector) none)
-    (light-trail-method-19 (_type_ float int) none)
+    (add-vert-to-prim-strip! (_type_ prim-strip vector rgba float float) none)
+    (add-tri-pair-to-prim! (_type_ vector rgba float vector float) symbol)
+    (calc-vertex-pos! (_type_ light-trail-breadcrumb int vector vector) none)
+    (crumb-age-out-callback (_type_ float int) none)
     (reset-crumbs! (_type_) none)
-    (light-trail-method-21 (_type_ vector) none)
+    (replace-last-crumb! (_type_ vector) none)
     )
   )
 
@@ -99,7 +114,7 @@
 (deftype weapon-trail (light-trail)
   ()
   (:methods
-    (weapon-trail-method-22 (_type_ vector vector) light-trail-breadcrumb)
+    (add-crumb-with-offset (_type_ vector vector) light-trail-breadcrumb)
     (weapon-trail-method-23 (_type_ vector vector) none)
     )
   )
@@ -114,8 +129,8 @@
 (deftype tread-trail (light-trail)
   ()
   (:methods
-    (tread-trail-method-22 (_type_ vector vector) light-trail-breadcrumb)
-    (tread-trail-method-23 (_type_ vector vector) light-trail-breadcrumb)
+    (add-crumb-with-offset (_type_ vector vector) none)
+    (tread-trail-method-23 (_type_ vector vector) none)
     )
   )
 
@@ -149,11 +164,11 @@
     die
     )
   (:methods
-    (light-trail-tracker-method-16 (_type_ process-focusable vector) vector)
-    (light-trail-tracker-method-17 (_type_ process-focusable) symbol)
-    (light-trail-tracker-method-18 (_type_ process-focusable) symbol)
-    (light-trail-tracker-method-19 (_type_) symbol)
-    (light-trail-tracker-method-20 (_type_ vector) none)
+    (get-tracked-object-pos (_type_ process-focusable vector) vector)
+    (should-track? (_type_ process-focusable) symbol)
+    (should-end? (_type_ process-focusable) symbol)
+    (should-draw? (_type_) symbol)
+    (add-crumb! (_type_ vector) none)
     )
   )
 
@@ -183,13 +198,13 @@
   (set! (-> self next-line-check-time) 0)
   (set! (-> self last-add-frame-val) (the-as uint 0))
   (set! (-> self offscreen?) #f)
-  (light-trail-method-9 (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
   (when (-> arg0 track-immediately?)
     (let ((gp-1 (handle->process (-> self tracked-object))))
-      (if (light-trail-tracker-method-17 self (the-as process-focusable gp-1))
-          (light-trail-method-11
+      (if (should-track? self (the-as process-focusable gp-1))
+          (add-crumb!
             (-> self trail)
-            (light-trail-tracker-method-16 self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
+            (get-tracked-object-pos self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
             (seconds 10000)
             )
           )
@@ -206,7 +221,7 @@
   (set! (-> self joint0) (-> arg0 joint0))
   (set! (-> self joint1) (-> arg0 joint1))
   (set! (-> self offscreen?) #f)
-  (light-trail-method-9 (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
   (go-virtual tracking)
   )
 
@@ -216,7 +231,7 @@
   (set! (-> self offscreen?) #f)
   (set! (-> self next-line-check-time) 0)
   (set! (-> self last-add-frame-val) (the-as uint 0))
-  (light-trail-method-9 (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
+  (setup! (-> self trail) (-> arg0 appearance) (-> arg0 max-num-crumbs))
   (go-virtual tracking)
   )
 

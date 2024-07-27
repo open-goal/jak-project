@@ -305,15 +305,13 @@
 
 (set! (-> *bb-timer-chase-trail* uv-repeat-dist) 163840.0)
 
-(set! (-> *bb-timer-chase-trail* lie-mode) (the-as uint 0))
+(set! (-> *bb-timer-chase-trail* lie-mode) (lie-mode appearance0))
 
 (set! (-> *bb-timer-chase-trail* max-age) (seconds 4))
 
 (if #f
-    (set! (-> *bb-timer-chase-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *bb-timer-chase-trail* tex-id) (the-as uint #x100300))
+    (set! (-> *bb-timer-chase-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *bb-timer-chase-trail* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *bb-timer-chase-trail* width-curve) (the-as curve2d-piecewise *curve-linear-up*))
@@ -404,12 +402,12 @@
         ((-> self start-tracking?)
          (when (time-elapsed? (-> self time-offset) (seconds 0.05))
            (set-time! (-> self time-offset))
-           (when (light-trail-tracker-method-17 self (the-as process-focusable gp-1))
+           (when (should-track? self (the-as process-focusable gp-1))
              (set! (-> self trail start-marker) (the-as uint 0))
              (set! (-> self trail end-marker) (the-as uint 0))
-             (light-trail-method-11
+             (add-crumb!
                (-> self trail)
-               (light-trail-tracker-method-16 self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
+               (get-tracked-object-pos self (the-as process-focusable gp-1) (new 'stack-no-clear 'vector))
                0
                )
              )
@@ -432,7 +430,7 @@
   :post light-trail-tracker-common-post
   )
 
-(defmethod light-trail-tracker-method-19 ((this timer-chase-trail))
+(defmethod should-draw? ((this timer-chase-trail))
   #t
   )
 
@@ -445,13 +443,13 @@
     (set! (-> gp-1 tracked-obj) (process->handle self))
     (set! (-> gp-1 appearance) *bb-timer-chase-trail*)
     (set! (-> *bb-timer-chase-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name "des-bush-timer-chase-trail" (the-as string #f)))
+          (lookup-texture-id-by-name "des-bush-timer-chase-trail" (the-as string #f))
           )
     (set! (-> gp-1 max-num-crumbs) 500)
     (set! (-> gp-1 track-immediately?) #f)
     (let* ((v1-18 (estimate-light-trail-mem-usage
                     (the-as uint (-> gp-1 max-num-crumbs))
-                    (the-as uint (= (-> gp-1 appearance lie-mode) 3))
+                    (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
                     )
                   )
            (s5-0 (get-process *default-dead-pool* timer-chase-trail (+ v1-18 8192) 1))
