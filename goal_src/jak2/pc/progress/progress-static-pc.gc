@@ -6,9 +6,6 @@ Additional PC port specific file for overriding/expanding the progress menu
 This gives us more freedom to write code how we want.
 |#
 
-;; in jak 2, the options dont have to be all-caps anymore!
-;; encode controller/display names - current bug waiting to happen
-
 (define *title-pc*
   (new 'static 'menu-option-list
     :y-center #xc6
@@ -138,7 +135,10 @@ This gives us more freedom to write code how we want.
         :truthy-text (text-id progress-on)
         :falsey-text (text-id progress-off)
         :get-value-fn (lambda () (-> *setting-control* user-default vibration))
-        :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default vibration) val)))
+        :on-confirm (lambda ((val symbol))
+          (set! (-> *pc-settings* memcard-vibration?) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default vibration) val)))
       (new 'static 'menu-generic-slider-option
         :name (text-id progress-controller-options-analog-deadzone)
         :min-value 0.0
@@ -285,7 +285,10 @@ This gives us more freedom to write code how we want.
       :truthy-text (text-id progress-on)
       :falsey-text (text-id progress-off)
       :get-value-fn (lambda () (-> *setting-control* user-default subtitle))
-      :on-confirm (lambda ((val symbol)) (set! (-> *setting-control* user-default subtitle) val))))
+      :on-confirm (lambda ((val symbol))
+        (set! (-> *pc-settings* memcard-subtitles?) val)
+        (pc-settings-save)
+        (set! (-> *setting-control* user-default subtitle) val))))
 
 (defmacro game-options-pc-subtitle-language ()
   `(new 'static 'menu-generic-carousel-option
@@ -334,7 +337,6 @@ This gives us more freedom to write code how we want.
       :on-confirm (lambda ((index int) (the-progress progress))
           (set! (-> *pc-settings* text-language) (the-as pc-language index))
           ;; NOTE - this doesn't actually work (naughty dog tried it too in their progress code)
-          ;; fix it eventually
           (load-level-text-files (the-as int (-> *pc-settings* text-language)))
           (pc-settings-save))))
 
@@ -427,7 +429,7 @@ This gives us more freedom to write code how we want.
 
 (define *graphic-options-pc*
   (progress-new-generic-scrolling-page (text-id progress-root-graphic-options)
-    ;; NOTE/TODO - this doesn't following the established generic menu pattern
+    ;; NOTE/TODO - this doesn't follow the established generic menu pattern
     ;; a generic scrolling list menu component should be created (similar to menu-generic-details-page)
     ;; so the code can be localized to functions instead of scattered around in a bunch of switch statements
     (new 'static 'menu-generic-to-resolutions-option
