@@ -448,6 +448,19 @@ u64 pc_get_mips2c(u32 name) {
   return Mips2C::gLinkedFunctionTable.get(n);
 }
 
+u64 pc_get_display_id() {
+  if (Display::GetMainDisplay()) {
+    return Display::GetMainDisplay()->get_display_manager()->get_active_display_id();
+  }
+  return 0;
+}
+
+void pc_set_display_id(u64 display_id) {
+  if (Display::GetMainDisplay()) {
+    Display::GetMainDisplay()->get_display_manager()->enqueue_set_display_id(display_id);
+  }
+}
+
 u64 pc_get_display_name(u32 id, u32 str_dest_ptr) {
   std::string name = "";
   if (Display::GetMainDisplay()) {
@@ -469,17 +482,16 @@ u64 pc_get_display_name(u32 id, u32 str_dest_ptr) {
 }
 
 u32 pc_get_display_mode() {
-  auto display_mode = WindowDisplayMode::Windowed;
+  auto display_mode = game_settings::DisplaySettings::DisplayMode::Windowed;
   if (Display::GetMainDisplay()) {
-    display_mode = Display::GetMainDisplay()->get_display_manager()->get_window_display_mode();
+    display_mode = Display::GetMainDisplay()->get_display_manager()->get_display_mode();
   }
   switch (display_mode) {
-    case WindowDisplayMode::Borderless:
+    case game_settings::DisplaySettings::DisplayMode::Borderless:
       return g_pc_port_funcs.intern_from_c("borderless").offset;
-    case WindowDisplayMode::Fullscreen:
+    case game_settings::DisplaySettings::DisplayMode::Fullscreen:
       return g_pc_port_funcs.intern_from_c("fullscreen").offset;
     default:
-    case WindowDisplayMode::Windowed:
       return g_pc_port_funcs.intern_from_c("windowed").offset;
   }
 }
@@ -490,13 +502,13 @@ void pc_set_display_mode(u32 symptr) {
   }
   if (symptr == g_pc_port_funcs.intern_from_c("windowed").offset || symptr == s7.offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        WindowDisplayMode::Windowed);
+        game_settings::DisplaySettings::DisplayMode::Windowed);
   } else if (symptr == g_pc_port_funcs.intern_from_c("borderless").offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        WindowDisplayMode::Borderless);
+        game_settings::DisplaySettings::DisplayMode::Borderless);
   } else if (symptr == g_pc_port_funcs.intern_from_c("fullscreen").offset) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_display_mode(
-        WindowDisplayMode::Fullscreen);
+        game_settings::DisplaySettings::DisplayMode::Fullscreen);
   }
 }
 
@@ -568,12 +580,6 @@ void pc_get_window_scale(u32 x_ptr, u32 y_ptr) {
   }
 }
 
-void pc_get_fullscreen_display(u64 display_id) {
-  if (Display::GetMainDisplay()) {
-    Display::GetMainDisplay()->get_display_manager()->enqueue_set_fullscreen_display_id(display_id);
-  }
-}
-
 void pc_set_window_size(u64 width, u64 height) {
   if (Display::GetMainDisplay()) {
     Display::GetMainDisplay()->get_display_manager()->enqueue_set_window_size(width, height);
@@ -599,6 +605,14 @@ void pc_get_resolution(u32 id, u32 w_ptr, u32 h_ptr) {
       *h = res.height;
     }
   }
+}
+
+u64 pc_is_supported_resolution(u64 width, u64 height) {
+  if (Display::GetMainDisplay()) {
+    return bool_to_symbol(
+        Display::GetMainDisplay()->get_display_manager()->is_supported_resolution(width, height));
+  }
+  return bool_to_symbol(false);
 }
 
 u64 pc_get_controller_name(u32 id, u32 str_dest_ptr) {
@@ -912,9 +926,11 @@ void init_common_pc_port_functions(
 
   // -- DISPLAY RELATED --
   // Returns the name of the display with the given id or #f if not found / empty
+  make_func_symbol_func("pc-get-display-id", (void*)pc_get_display_id);
+  make_func_symbol_func("pc-set-display-id!", (void*)pc_set_display_id);
   make_func_symbol_func("pc-get-display-name", (void*)pc_get_display_name);
   make_func_symbol_func("pc-get-display-mode", (void*)pc_get_display_mode);
-  make_func_symbol_func("pc-set-display-mode", (void*)pc_set_display_mode);
+  make_func_symbol_func("pc-set-display-mode!", (void*)pc_set_display_mode);
   make_func_symbol_func("pc-get-display-count", (void*)pc_get_display_count);
   // Returns resolution of the monitor's current display mode
   make_func_symbol_func("pc-get-active-display-size", (void*)pc_get_active_display_size);
@@ -925,10 +941,10 @@ void init_common_pc_port_functions(
   make_func_symbol_func("pc-get-window-size", (void*)pc_get_window_size);
   // Returns scale of window. This is for DPI stuff.
   make_func_symbol_func("pc-get-window-scale", (void*)pc_get_window_scale);
-  make_func_symbol_func("pc-set-fullscreen-display", (void*)pc_get_fullscreen_display);
-  make_func_symbol_func("pc-set-window-size", (void*)pc_set_window_size);
+  make_func_symbol_func("pc-set-window-size!", (void*)pc_set_window_size);
   make_func_symbol_func("pc-get-num-resolutions", (void*)pc_get_num_resolutions);
   make_func_symbol_func("pc-get-resolution", (void*)pc_get_resolution);
+  make_func_symbol_func("pc-is-supported-resolution?", (void*)pc_is_supported_resolution);
 
   // -- INPUT RELATED --
   // Returns the name of the display with the given id or #f if not found / empty

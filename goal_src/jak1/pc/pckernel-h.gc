@@ -123,11 +123,9 @@
    (aspect-ratio-reciprocal          float) ;; reciprocal of that
    (aspect-custom-x                  int)
    (aspect-custom-y                  int)
-   (display-mode                     symbol) ;; display mode. can be windowed, fullscreen or borderless
    (letterbox?                       symbol) ;; letterbox. #f = stretched
    (vsync?                           symbol) ;; vsync.
    (font-scale                       float) ;; font scaling.
-   (monitor                          int32) ;; index of which monitor to use when fullscreen or borderless
    ;; debug settings
    (os                               symbol) ;; windows, linux, macos
    (user                             symbol) ;; username. not system username, just debug thing.
@@ -215,12 +213,10 @@
    (print-debug-misc (_type_) object)
    (draw (_type_ dma-buffer) object)
    (draw-memory (_type_ dma-buffer) symbol)
-   (set-display-mode! (_type_ symbol symbol) int)
-   (set-size! (_type_ int int symbol) none)
+   (set-window-size! (_type_ int int) none)
    (set-aspect! (_type_ int int) none)
    (set-aspect-ratio! (_type_ float) none)
    (set-frame-rate! (_type_ int symbol) int)
-   (set-monitor! (_type_ int) none)
    (set-game-setting! (_type_ symbol symbol) object)
    (get-game-setting (_type_ symbol) symbol)
    (set-game-language! (_type_ language-enum) language-enum)
@@ -308,10 +304,7 @@
 
 (defmethod reset-gfx ((obj pc-settings) (call-handlers symbol))
   "Set the default graphics settings"
-  ;; temporarily "set" to windowed so we can change window size
-  ;; we set our actual target display mode later.
-  (set! (-> obj display-mode) 'windowed)
-  (set-size! obj PC_BASE_WIDTH PC_BASE_HEIGHT #f)
+  (set-window-size! obj PC_BASE_WIDTH PC_BASE_HEIGHT)
   (set-aspect! obj 4 3)
   (set-frame-rate! obj 60 call-handlers)
   (set! (-> obj use-vis?) #f)
@@ -330,7 +323,6 @@
      (max! (-> obj height) PC_MIN_HEIGHT)
      (format 0 "!!!! failed to get any screen resolutions !!!!")))
   (format 0 "fullscreen resolution defaulted to ~D x ~D~%" (-> obj width) (-> obj height))
-  (if (not *debug-segment*) (set-display-mode! obj 'borderless call-handlers) (set-display-mode! obj 'windowed call-handlers))
   (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA) ;; default msaa
   0)
 
@@ -420,7 +412,8 @@
   `(debug-font-scale-factor *pc-settings*))
 
 (defmacro fullscreen? ()
-  `(symbol-member? (-> *pc-settings* display-mode) '(fullscreen borderless)))
+  `(or (= (pc-get-display-mode) 'fullscreen)
+       (= (pc-get-display-mode) 'borderless)))
 
 (defun bcd->dec ((bcd uint))
   "Convert a number encoded in BCD to its decimal equivalent"

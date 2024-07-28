@@ -436,7 +436,7 @@ This gives us more freedom to write code how we want.
         (push-and-set-state the-progress 'resolutions)))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-graphics-display)
-      :get-item-index-fn (lambda () (-> *pc-settings* monitor))
+      :get-item-index-fn (lambda () (pc-get-display-id))
       :get-max-size-fn (lambda () (pc-get-display-count))
       :get-item-label-fn (lambda ((index int))
         (let ((name (pc-get-display-name index *pc-cpp-temp-string*)))
@@ -445,9 +445,8 @@ This gives us more freedom to write code how we want.
               (string-format "Display ~D" index))
           ))
       :on-confirm (lambda ((index int) (the-progress progress))
-        (set-monitor! *pc-settings* index)
-        (pc-settings-save))
-      :should-disable? (lambda () (nmember (the basic (-> *pc-settings* display-mode)) '(windowed #f))))
+        (pc-set-display-id! index))
+      :should-disable? (lambda () (or (= (pc-get-display-mode) 'windowed) (<= (pc-get-display-count) 1))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-display-mode)
       :items (new 'static 'boxed-array :type text-id
@@ -455,16 +454,15 @@ This gives us more freedom to write code how we want.
         (text-id progress-fullscreen)
         (text-id progress-borderless))
       :get-item-index-fn (lambda ()
-        (case (-> *pc-settings* display-mode)
-          (('windowed #f) 0)
+        (case (pc-get-display-mode)
+          (('windowed) 0)
           (('fullscreen) 1)
-          (('borderless) 2)) )
+          (('borderless) 2)))
       :on-confirm (lambda ((index int) (the-progress progress))
         (case index
-          ((0) (set-display-mode! *pc-settings* 'windowed #t))
-          ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
-          ((2) (set-display-mode! *pc-settings* 'borderless #t)))
-        (pc-settings-save)))
+          ((0) (pc-set-display-mode! 'windowed))
+          ((1) (pc-set-display-mode! 'fullscreen))
+          ((2) (pc-set-display-mode! 'borderless)))))
     (new 'static 'menu-generic-carousel-option
       :name (text-id progress-aspect-ratio)
       :items (new 'static 'boxed-array :type text-id

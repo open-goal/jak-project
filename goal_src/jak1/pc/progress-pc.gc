@@ -260,7 +260,7 @@
             :param3 (game-option-menu monitor)
             :option-disabled-func
             (lambda ()
-              (= (-> *pc-settings* display-mode) 'windowed)))
+              (= (pc-get-display-mode) 'windowed)))
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id vsync) :scale #t)
        (new 'static
             'game-option
@@ -2045,7 +2045,6 @@
   (set! (-> *game-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *game-options-pc* 7 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 1 value-to-modify) (&-> *progress-carousell* int-backup))
-  (set! (-> *graphic-options-pc* 2 value-to-modify) (&-> *pc-settings* monitor))
   (set! (-> *graphic-options-pc* 3 value-to-modify) (&-> *pc-settings* vsync?))
   (set! (-> *graphic-options-pc* 5 value-to-modify) (&-> *progress-carousell* int-backup))
   (set! (-> *graphic-options-pc* 6 value-to-modify) (&-> *progress-carousell* int-backup))
@@ -2486,7 +2485,7 @@
                ;; resolution button. change resolution!
                (let ((newx (the int (-> options (-> obj option-index) param1)))
                      (newy (the int (-> options (-> obj option-index) param2))))
-                 (set-size! *pc-settings* newx newy #t))
+                 (set-window-size! *pc-settings* newx newy))
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
                (sound-play "cursor-options")
@@ -2504,7 +2503,7 @@
                (commit-to-file *pc-settings*))
               ((= (-> options (-> obj option-index) option-type) (game-option-type monitor))
                ;; monitor button
-               (let ((monitor (the int (-> options (-> obj option-index) param1)))) (set-monitor! *pc-settings* monitor))
+               (let ((monitor (the int (-> options (-> obj option-index) param1)))) (pc-set-display-id! monitor))
                (cpad-clear! 0 x)
                (cpad-clear! 0 circle)
                (sound-play "cursor-options")
@@ -2659,9 +2658,9 @@
               (((game-option-type display-mode))
                ;; same thing.
                (case (-> *progress-carousell* int-backup)
-                 ((0) (set-display-mode! *pc-settings* 'windowed #t))
-                 ((1) (set-display-mode! *pc-settings* 'fullscreen #t))
-                 ((2) (set-display-mode! *pc-settings* 'borderless #t))))
+                 ((0) (pc-set-display-mode! 'windowed))
+                 ((1) (pc-set-display-mode! 'fullscreen))
+                 ((2) (pc-set-display-mode! 'borderless))))
               (((game-option-type msaa))
                (case (-> *progress-carousell* int-backup)
                  ((0) (set! (-> *pc-settings* gfx-msaa) 1))

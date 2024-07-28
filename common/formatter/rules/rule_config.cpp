@@ -240,6 +240,7 @@ static FormFormattingConfig new_top_level_inline_form(bool elide_new_line) {
 
 const std::unordered_map<std::string, FormFormattingConfig> opengoal_form_config = {
     {"case", new_pair_rule(true)},
+    {"case-str", new_pair_rule(true)},
     {"cond", new_pair_rule(false)},
     {"#cond", new_pair_rule(false)},
     {"in-package", new_top_level_inline_form(true)},
