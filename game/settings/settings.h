@@ -11,7 +11,8 @@ namespace game_settings {
 struct DebugSettings {
   DebugSettings();
 
-  std::string version = "1.2";
+  std::string current_version = "1.2";
+  std::string version = current_version;
 
   bool show_imgui = false;
   int imgui_font_size = 16;
@@ -36,7 +37,8 @@ struct DisplaySettings {
 
   DisplaySettings();
 
-  std::string version = "1.2";
+  std::string current_version = "1.2";
+  std::string version = current_version;
 
   int window_xpos = 50;
   int window_ypos = 50;
@@ -53,7 +55,8 @@ void from_json(const json& j, DisplaySettings& obj);
 struct InputSettings {
   InputSettings();
 
-  std::string version = "1.0";
+  std::string current_version = "1.0";
+  std::string version = current_version;
 
   // NOTE - assumes only port 0
   std::string last_selected_controller_guid = "";
