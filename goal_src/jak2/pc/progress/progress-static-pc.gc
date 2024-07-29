@@ -36,6 +36,52 @@ This gives us more freedom to write code how we want.
     )
   )
 
+(define *sound-options-pc*
+  (progress-new-generic-scrolling-page (text-id progress-root-sound-options)
+    (new 'static 'menu-generic-slider-option
+        :name (text-id progress-sound-sfx-volume)
+        :min-value 0.0
+        :max-value 1.0
+        :step 0.01
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* memcard-volume-sfx))
+        :on-confirm (lambda ((val float))
+          (set! (-> *pc-settings* memcard-volume-sfx) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default sfx-volume) val)))
+    (new 'static 'menu-generic-slider-option
+        :name (text-id progress-sound-music-volume)
+        :min-value 0.0
+        :max-value 1.0
+        :step 0.01
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* memcard-volume-music))
+        :on-confirm (lambda ((val float))
+          (set! (-> *pc-settings* memcard-volume-music) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default music-volume) val)))
+    (new 'static 'menu-generic-slider-option
+        :name (text-id progress-sound-speech-volume)
+        :min-value 0.0
+        :max-value 1.0
+        :step 0.01
+        :show-decimal? #t
+        :get-value-fn (lambda () (-> *pc-settings* memcard-volume-dialog))
+        :on-confirm (lambda ((val float))
+          (set! (-> *pc-settings* memcard-volume-dialog) val)
+          (pc-settings-save)
+          (set! (-> *setting-control* user-default dialog-volume) val)))
+    (new 'static 'menu-generic-carousel-option
+        :name (text-id progress-sound-format)
+        :get-max-size-fn (lambda () 3)
+        :get-item-label-fn (lambda ((index int))
+          (case index
+            ((0) (lookup-text! *common-text* (text-id progress-sound-mono) #f))
+            ((1) (lookup-text! *common-text* (text-id progress-sound-stereo) #f))
+            ((2) (lookup-text! *common-text* (text-id progress-sound-surround) #f))))
+        :get-item-index-fn (lambda () (-> *setting-control* user-default stereo-mode))
+        :on-confirm (lambda ((index int) (the-progress progress)) (set! (-> *setting-control* user-default stereo-mode) index)))))
+
 (define *options-pc* (new 'static 'menu-option-list
                     :y-center #xc6
                     :y-space 30
