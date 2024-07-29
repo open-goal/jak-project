@@ -594,6 +594,9 @@
 (defmethod update-cheats ((obj pc-settings-jak2))
   "run cheats."
 
+  ;; sync mirror mode cheat
+  (set! *PC-MIRROR-MODE-SET* (logtest? (-> *game-info* secrets) (game-secrets hflip-screen)))
+
   ;; run cheats here.
   ;;;;;;;;;;;;;;;;;;;
 
@@ -634,6 +637,11 @@
     )
 
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (pc-cheats? (-> obj cheats) no-textures))
+
+  (if (or (logtest? (-> *game-info* secrets) (game-secrets hflip-screen))
+          *PC-MIRROR-MODE-SET*)
+    (sound-set-mirror-mode (sound-mirror-mode mirrored))
+    (sound-set-mirror-mode (sound-mirror-mode normal)))
 
   ;; run cheats end!!!
   ;;;;;;;;;;;;;;;;;;;;

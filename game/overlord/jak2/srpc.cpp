@@ -460,6 +460,9 @@ void* RPC_Loader(unsigned int /*fno*/, void* data, int size) {
           snd_SetPlayBackMode(0);
         }
       } break;
+      case Jak2SoundCommand::mirror_mode: {
+        gMirrorMode = cmd->mirror.value;
+      } break;
       default:
         ASSERT_MSG(false, fmt::format("Unhandled RPC Loader command {}", int(cmd->j2command)));
     }
