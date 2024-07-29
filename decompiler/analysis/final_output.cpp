@@ -54,12 +54,8 @@ void append_body_to_function_definition(goos::Object* top_form,
   body_elements.insert(body_elements.end(), inline_body.begin(), inline_body.end());
   // If the first element in the body is a docstring, add it first
   if (body_elements.size() > 0 && body_elements.at(0).is_string()) {
-    if (version > GameVersion::Jak2) {
-      initial_top_level_forms.push_back(
-          goos::StringObject::make_new(fix_docstring_indent(inline_body.at(0).as_string()->data)));
-    } else {
-      initial_top_level_forms.push_back(inline_body.at(0));
-    }
+    initial_top_level_forms.push_back(
+        goos::StringObject::make_new(fix_docstring_indent(inline_body.at(0).as_string()->data)));
     body_elements.erase(body_elements.begin());
   }
 
