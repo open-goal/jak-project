@@ -325,6 +325,10 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tfrag-l{}-water", i), BucketCategory::TFRAG,
           GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_WATER, BucketId::TFRAG_L1_WATER, i),
           std::vector{tfrag3::TFragmentTreeKind::WATER}, false, i, anim_slot_array());
+      init_bucket_renderer<Generic2BucketRenderer>(
+          fmt::format("gmerc2-l{}-water", i), BucketCategory::GENERIC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::GMERC2_L0_WATER, BucketId::GMERC2_L1_WATER, i),
+          m_generic2, Generic2::Mode::PRIM);
     }
 
     // 563
