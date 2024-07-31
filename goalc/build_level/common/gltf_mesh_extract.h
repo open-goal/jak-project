@@ -6,6 +6,8 @@
 
 #include "goalc/build_level/collide/common/collide_common.h"
 
+#include "third-party/tiny_gltf/tiny_gltf.h"
+
 namespace gltf_util {
 struct TexturePool;
 }
@@ -36,6 +38,13 @@ struct Output {
   CollideOutput collide;
 };
 
+struct PatResult {
+  bool set = false;
+  bool ignore = false;
+  jak1::PatSurface pat;
+};
+
+PatResult custom_props_to_pat(const tinygltf::Value& val, const std::string& /*debug_name*/);
 void extract(const Input& in, Output& out);
 
 }  // namespace gltf_mesh_extract

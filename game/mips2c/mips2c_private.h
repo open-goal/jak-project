@@ -905,6 +905,16 @@ struct ExecutionContext {
     }
   }
 
+  void vmula_q(DEST mask, int src0) {
+    auto s0 = vf_src(src0);
+
+    for (int i = 0; i < 4; i++) {
+      if ((u64)mask & (1 << i)) {
+        acc.f[i] = s0.f[i] * Q;
+      }
+    }
+  }
+
   void vadda_bc(DEST mask, BC bc, int src0, int src1) {
     auto s0 = vf_src(src0);
     auto s1 = vf_src(src1);

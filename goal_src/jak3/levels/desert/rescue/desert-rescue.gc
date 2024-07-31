@@ -1071,15 +1071,13 @@
 
 (set! (-> *transport-tread-settings* uv-repeat-dist) 20480.0)
 
-(set! (-> *transport-tread-settings* lie-mode) (the-as uint 0))
+(set! (-> *transport-tread-settings* lie-mode) (lie-mode appearance0))
 
 (set! (-> *transport-tread-settings* max-age) (seconds 20))
 
 (if "tread-marks"
-    (set! (-> *transport-tread-settings* tex-id)
-          (the-as uint (lookup-texture-id-by-name "tread-marks" (the-as string #f)))
-          )
-    (set! (-> *transport-tread-settings* tex-id) (the-as uint #x100300))
+    (set! (-> *transport-tread-settings* tex-id) (lookup-texture-id-by-name "tread-marks" (the-as string #f)))
+    (set! (-> *transport-tread-settings* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *transport-tread-settings* width-curve) (the-as curve2d-piecewise *curve-unity*))
@@ -1170,14 +1168,12 @@
       (vector+float*! s2-0 s2-0 (-> v1-4 fvec) -27852.8)
       (vector+float*! s3-0 s2-0 (-> v1-4 rvec) -14131.2)
       (vector+float*! s5-0 s2-0 (-> v1-4 rvec) 14131.2)
-      (set! (-> *transport-tread-settings* tex-id)
-            (the-as uint (lookup-texture-id-by-name "tread-marks" (the-as string #f)))
-            )
+      (set! (-> *transport-tread-settings* tex-id) (lookup-texture-id-by-name "tread-marks" (the-as string #f)))
       (set! (-> s3-0 y) (probe-ground2 this s3-0 s4-0))
       (+! (-> s3-0 y) 409.6)
       (let ((v1-11 (the-as tread-trail-tracker (handle->process (-> this tread1)))))
         (if (zero? (mod (-> this tread-last-spawn-index) (-> this tread-frequency)))
-            (tread-trail-method-22 (-> v1-11 trail) s3-0 s4-0)
+            (add-crumb-with-offset (-> v1-11 trail) s3-0 s4-0)
             (tread-trail-method-23 (-> v1-11 trail) s3-0 s4-0)
             )
         )
@@ -1185,7 +1181,7 @@
       (+! (-> s5-0 y) 409.6)
       (let ((v1-21 (the-as tread-trail-tracker (handle->process (-> this tread2)))))
         (if (zero? (mod (-> this tread-last-spawn-index) (-> this tread-frequency)))
-            (tread-trail-method-22 (-> v1-21 trail) s5-0 s4-0)
+            (add-crumb-with-offset (-> v1-21 trail) s5-0 s4-0)
             (tread-trail-method-23 (-> v1-21 trail) s5-0 s4-0)
             )
         )
@@ -1389,7 +1385,7 @@
     (let* ((v1-64
              (estimate-light-trail-mem-usage
                (the-as uint (-> gp-1 max-num-crumbs))
-               (the-as uint (= (-> gp-1 appearance lie-mode) 3))
+               (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
                )
              )
            (s5-2 (get-process *default-dead-pool* tread-trail-tracker (+ v1-64 8192) 1))
@@ -1410,7 +1406,7 @@
     (let* ((v1-73
              (estimate-light-trail-mem-usage
                (the-as uint (-> gp-1 max-num-crumbs))
-               (the-as uint (= (-> gp-1 appearance lie-mode) 3))
+               (the-as uint (= (-> gp-1 appearance lie-mode) (lie-mode use-two-strips)))
                )
              )
            (s5-3 (get-process *default-dead-pool* tread-trail-tracker (+ v1-73 8192) 1))
@@ -2477,11 +2473,11 @@
   :code sleep-code
   )
 
-(defmethod task-manager-method-25 ((this task-manager-desert-rescue))
-  (send-event (handle->process (-> this current-passenger)) 'die-fast)
-  (call-parent-method this)
-  (none)
-  )
+; (defmethod task-manager-method-25 ((this task-manager-desert-rescue))
+;   (send-event (handle->process (-> this current-passenger)) 'die-fast)
+;   (call-parent-method this)
+;   (none)
+;   )
 
 (defstate finish-task (task-manager-desert-rescue)
   :virtual #t
@@ -2525,11 +2521,10 @@
   (none)
   )
 
-;; og:preserve-this duplicate
-; (defmethod task-manager-method-25 ((this task-manager-desert-rescue))
-;   (call-parent-method this)
-;   (none)
-;   )
+(defmethod task-manager-method-25 ((this task-manager-desert-rescue))
+  (call-parent-method this)
+  (none)
+  )
 
 (defmethod task-manager-desert-rescue-method-45 ((this task-manager-desert-rescue) (arg0 int))
   (let ((v1-0 arg0))

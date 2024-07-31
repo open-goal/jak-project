@@ -6,7 +6,7 @@
 #include <regex>
 #include <stack>
 
-#include "common/repl/util.h"
+#include "common/repl/repl_wrapper.h"
 #include "common/util/DgoWriter.h"
 #include "common/util/FileUtil.h"
 #include "common/util/Timer.h"

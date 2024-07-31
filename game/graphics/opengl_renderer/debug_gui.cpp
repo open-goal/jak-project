@@ -1,9 +1,7 @@
-
 #include "debug_gui.h"
 
-#include <algorithm>
-
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/util/string_util.h"
 
 #include "game/graphics/display.h"
 #include "game/graphics/gfx.h"
@@ -164,10 +162,27 @@ void OpenGlDebugGui::draw(const DmaStats& dma_stats) {
     }
 
     if (ImGui::BeginMenu("Event Profiler")) {
-      if (ImGui::Checkbox("Record", &record_events)) {
+      if (ImGui::Checkbox("Record Events", &record_events)) {
         prof().set_enable(record_events);
       }
-      ImGui::MenuItem("Dump to file", nullptr, &dump_events);
+      ImGui::SameLine();
+      ImGui::Text(fmt::format("({}/{})", prof().get_next_idx(), prof().get_max_events()).c_str());
+      ImGui::InputInt("Event Buffer Size", &max_event_buffer_size);
+      if (ImGui::Button("Resize")) {
+        prof().update_event_buffer_size(max_event_buffer_size);
+      }
+      if (ImGui::Button("Reset Events")) {
+        prof().clear();
+      }
+      ImGui::Separator();
+      ImGui::Checkbox("Enable Compression", &prof().m_enable_compression);
+      if (ImGui::Button("Dump to File")) {
+        record_events = false;
+        prof().dump_to_json();
+      }
+      // if (ImGui::Button("Open dump folder")) {
+      //  // TODO - https://github.com/mlabbe/nativefiledialog
+      // }
       ImGui::EndMenu();
     }
 

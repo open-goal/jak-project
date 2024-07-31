@@ -8,6 +8,7 @@
 #include "game/kernel/common/kdgo.h"
 #include "game/kernel/common/kmalloc.h"
 #include "game/kernel/jak3/klink.h"
+#include "game/overlord/jak3/rpc_interface.h"
 
 namespace jak3 {
 
@@ -39,7 +40,7 @@ void BeginLoadingDGO(const char* name, Ptr<u8> buffer1, Ptr<u8> buffer2, Ptr<u8>
   RpcSync(DGO_RPC_CHANNEL);  // make sure old RPC is finished
 
   // put a dummy value here just to make sure the IOP overwrites it.
-  sMsg[msgID].result = DGO_RPC_RESULT_INIT;  // !! this is 666
+  sMsg[msgID].status = DGO_RPC_RESULT_INIT;  // !! this is 666
 
   // inform IOP of buffers
   sMsg[msgID].buffer1 = buffer1.offset;
@@ -78,13 +79,13 @@ Ptr<u8> GetNextDGO(u32* lastObjectFlag) {
   Ptr<u8> buffer(0);
   if (sLastMsg) {
     // if we got a good result, get pointer to object
-    if ((sLastMsg->result == DGO_RPC_RESULT_MORE) || (sLastMsg->result == DGO_RPC_RESULT_DONE)) {
+    if ((sLastMsg->status == DGO_RPC_RESULT_MORE) || (sLastMsg->status == DGO_RPC_RESULT_DONE)) {
       buffer.offset =
           sLastMsg->buffer1;  // buffer 1 always contains location of most recently loaded object.
     }
 
     // not the last one, so don't set the flag.
-    if (sLastMsg->result == DGO_RPC_RESULT_MORE) {
+    if (sLastMsg->status == DGO_RPC_RESULT_MORE) {
       *lastObjectFlag = 0;
     }
 
@@ -111,7 +112,7 @@ void ContinueLoadingDGO(Ptr<u8> b1, Ptr<u8> b2, Ptr<u8> heapPtr) {
   u32 msgID = sMsgNum;
   jak3::RPC_Dgo_Cmd* sendBuff = sMsg + sMsgNum;
   sMsgNum = sMsgNum ^ 1;
-  sendBuff->result = DGO_RPC_RESULT_INIT;
+  sendBuff->status = DGO_RPC_RESULT_INIT;
   sMsg[msgID].buffer1 = b1.offset;
   sMsg[msgID].buffer2 = b2.offset;
   sMsg[msgID].buffer_heap_top = heapPtr.offset;

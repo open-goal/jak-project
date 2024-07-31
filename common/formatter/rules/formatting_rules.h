@@ -36,7 +36,7 @@ bool should_insert_blank_line(const FormatterTreeNode& containing_node,
 //
 // Reference - https://github.com/kkinnear/zprint/blob/main/doc/options/comments.md
 namespace comments {
-std::string format_block_comment(const std::string& comment);
+std::vector<std::string> format_block_comment(const std::string& comment);
 }
 
 // Paired elements in a list will be kept in-line rather than the default new-line indentation
@@ -72,6 +72,8 @@ const static int min_pair_amount = 4;
 bool is_element_second_in_constant_pair(const FormatterTreeNode& containing_node,
                                         const FormatterTreeNode& node,
                                         const int index);
+bool is_element_second_in_constant_pair_new(const FormatterTreeNode& prev_node,
+                                            const FormatterTreeNode& curr_node);
 bool form_should_be_constant_paired(const FormatterTreeNode& node);
 }  // namespace constant_pairs
 

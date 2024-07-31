@@ -1,12 +1,7 @@
 ;;-*-Lisp-*-
 (in-package goal)
 (bundles "ENGINE.CGO" "GAME.CGO")
-
 (require "kernel-defs.gc")
-
-;; name: gsound-h.gc
-;; name in dgo: gsound-h
-;; dgos: GAME, ENGINE
 
 ;; Type definitions for sound.
 ;; Sound is handled on the IOP, a separate processor.
@@ -25,49 +20,32 @@
   (ambient)
   (sog5)
   (sog6)
-  (sog7)
-  )
+  (sog7))
 
-(deftype sound-id (uint32)
-  ()
+(deftype sound-id (uint32) ()
   (:methods
-    (unused-9 () none)
-    )
-  )
+   (unused-9 () none)))
 
-(deftype sound-bank-id (uint32)
-  ()
-  )
+(deftype sound-bank-id (uint32) ())
 
 ;; Sound names were sometimes packed into a uint128
 ;; this is also used for dgo names sent to the IOP.
 ;; fields added by us
 (deftype sound-name (uint128)
-  ((lo uint64 :offset   0 :size  64)
-   (hi uint64 :offset  64 :size  64)
-   )
-  )
+  ((lo uint64 :offset 0 :size 64)
+   (hi uint64 :offset 64 :size 64)))
 
 (defmacro static-sound-name (str)
   "Convert a string constant to a static sound-name."
-
   ;; all this is done at compile-time so we can come up with 2
   ;; 64-bit constants to use
   (when (> (string-length str) 16)
-    (error "static-sound-name got a string that is too long")
-    )
+    (error "static-sound-name got a string that is too long"))
   (let ((lo-val 0)
-        (hi-val 0)
-        )
+        (hi-val 0))
     (dotimes (i (string-length str))
-      (if (>= i 8)
-          (+! hi-val (ash (string-ref str i) (* 8 (- i 8))))
-          (+! lo-val (ash (string-ref str i) (* 8 i)))
-          )
-      )
-    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)
-    )
-  )
+      (if (>= i 8) (+! hi-val (ash (string-ref str i) (* 8 (- i 8)))) (+! lo-val (ash (string-ref str i) (* 8 i)))))
+    `(new 'static 'sound-name :lo ,lo-val :hi ,hi-val)))
 
 ;; command types that can be sent to the IOP.
 (defenum sound-command
@@ -96,8 +74,8 @@
   (list-sounds)
   (unload-music)
   (set-fps)
-  (set-mirror 201)
-  )
+  ;; og:preserve-this mirror mode
+  (set-mirror 201))
 
 ;; flavors for music
 (defenum music-flava
@@ -150,8 +128,7 @@
   (lavatube-end 46)
   (finalboss-middle 47)
   (finalboss-end 48)
-  (default 49)
-  )
+  (default 49))
 
 (defenum sound-mask
   :bitfield #t
@@ -164,326 +141,228 @@
   (trans)
   (fo-min)
   (fo-max)
-  (fo-curve)
-  )
+  (fo-curve))
 
 (defenum sound-mirror-mode
   :type uint8
   (normal)
-  (mirrored)
-  )
+  (mirrored))
 
 ;; like should match the sound type in OVERLORD
 ;; This is shared between all sound RPCs and acts like the header for the sound messages
 (deftype sound-rpc-cmd (structure)
-  ((rsvd1    uint16)
-   (command  sound-command)
-   )
-  )
-
+  ((rsvd1   uint16)
+   (command sound-command)))
 
 (deftype sound-play-parms (structure)
-  ((mask       sound-mask)
-   (pitch-mod  int16)
-   (bend       int16)
-   (fo-min     int16)
-   (fo-max     int16)
-   (fo-curve   int8)
-   (priority   int8)
-   (volume     int32)
-   (trans      vector3w  :inline)
-   (group      sound-group)
-   )
-  :pack-me
-  )
-
+  ((mask      sound-mask)
+   (pitch-mod int16)
+   (bend      int16)
+   (fo-min    int16)
+   (fo-max    int16)
+   (fo-curve  int8)
+   (priority  int8)
+   (volume    int32)
+   (trans     vector3w :inline)
+   (group     sound-group))
+  :pack-me)
 
 (deftype sound-rpc-bank-cmd (sound-rpc-cmd)
-  ((bank-name  sound-name)
-   )
-  )
-
+  ((bank-name sound-name)))
 
 (deftype sound-rpc-sound-cmd (sound-rpc-cmd)
-  ((id  sound-id)
-   )
-  )
-
+  ((id sound-id)))
 
 (deftype sound-rpc-group-cmd (sound-rpc-cmd)
-  ((group  sound-group)
-   )
-  )
+  ((group sound-group)))
 
+(deftype sound-rpc-load-bank (sound-rpc-bank-cmd) ())
 
-(deftype sound-rpc-load-bank (sound-rpc-bank-cmd)
-  ()
-  )
+(deftype sound-rpc-load-music (sound-rpc-bank-cmd) ())
 
-
-(deftype sound-rpc-load-music (sound-rpc-bank-cmd)
-  ()
-  )
-
-
-(deftype sound-rpc-unload-bank (sound-rpc-bank-cmd)
-  ()
-  )
-
+(deftype sound-rpc-unload-bank (sound-rpc-bank-cmd) ())
 
 (deftype sound-rpc-play (sound-rpc-sound-cmd)
-  ((name   sound-name)
-   (parms  sound-play-parms  :inline)
-   )
-  )
+  ((name  sound-name)
+   (parms sound-play-parms :inline)))
 
+(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd) ())
 
-(deftype sound-rpc-pause-sound (sound-rpc-sound-cmd)
-  ()
-  )
+(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd) ())
 
-
-(deftype sound-rpc-stop-sound (sound-rpc-sound-cmd)
-  ()
-  )
-
-
-(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd)
-  ()
-  )
-
+(deftype sound-rpc-continue-sound (sound-rpc-sound-cmd) ())
 
 (deftype sound-rpc-set-param (sound-rpc-sound-cmd)
-  ((parms      sound-play-parms  :inline)
-   (auto-time  int32)
-   (auto-from  int32)
-   )
-  )
-
+  ((parms     sound-play-parms :inline)
+   (auto-time int32)
+   (auto-from int32)))
 
 (deftype sound-rpc-set-master-volume (sound-rpc-group-cmd)
-  ((volume  int32)
-   )
-  )
+  ((volume int32)))
 
+(deftype sound-rpc-pause-group (sound-rpc-group-cmd) ())
 
-(deftype sound-rpc-pause-group (sound-rpc-group-cmd)
-  ()
-  )
+(deftype sound-rpc-stop-group (sound-rpc-group-cmd) ())
 
-
-(deftype sound-rpc-stop-group (sound-rpc-group-cmd)
-  ()
-  )
-
-
-(deftype sound-rpc-continue-group (sound-rpc-group-cmd)
-  ()
-  )
-
+(deftype sound-rpc-continue-group (sound-rpc-group-cmd) ())
 
 (deftype sound-rpc-get-irx-version (sound-rpc-cmd)
-  ((major    uint32)
-   (minor    uint32)
-   (ee-addr  pointer)
-   )
-  )
-
+  ((major   uint32)
+   (minor   uint32)
+   (ee-addr pointer)))
 
 (deftype sound-rpc-set-language (sound-rpc-cmd)
-  ((lang  uint32)
-   )
-  )
-
+  ((lang uint32)))
 
 (deftype sound-rpc-set-falloff-curve (sound-rpc-cmd)
-  ((curve    int32)
-   (falloff  int32)
-   (ease     int32)
-   )
-  )
-
+  ((curve   int32)
+   (falloff int32)
+   (ease    int32)))
 
 (deftype sound-rpc-set-sound-falloff (sound-rpc-cmd)
-  ((name   sound-name)
-   (curve  int32)
-   (min    int32)
-   (max    int32)
-   )
-  )
+  ((name  sound-name)
+   (curve int32)
+   (min   int32)
+   (max   int32)))
 
-
-(deftype sound-rpc-reload-info (sound-rpc-cmd)
-  ()
-  )
-
+(deftype sound-rpc-reload-info (sound-rpc-cmd) ())
 
 (deftype sound-rpc-set-reverb (sound-rpc-cmd)
-  ((core    uint8)
-   (reverb  int32)
-   (left    uint32)
-   (right   uint32)
-   )
-  )
-
+  ((core   uint8)
+   (reverb int32)
+   (left   uint32)
+   (right  uint32)))
 
 (deftype sound-rpc-set-ear-trans (sound-rpc-cmd)
-  ((ear-trans  vector3w  :inline)
-   (cam-trans  vector3w  :inline)
-   (cam-angle  int32)
-   )
-  )
-
+  ((ear-trans vector3w :inline)
+   (cam-trans vector3w :inline)
+   (cam-angle int32)))
 
 (deftype sound-rpc-set-flava (sound-rpc-cmd)
-  ((flava  uint8)
-   )
-  )
+  ((flava uint8)))
 
-
-(deftype sound-rpc-shutdown (sound-rpc-cmd)
-  ()
-  )
-
+(deftype sound-rpc-shutdown (sound-rpc-cmd) ())
 
 (deftype sound-rpc-set-fps (sound-rpc-cmd)
-  ((fps  uint8)
-   )
-  )
+  ((fps uint8)))
 
+(deftype sound-rpc-list-sounds (sound-rpc-cmd) ())
 
-(deftype sound-rpc-list-sounds (sound-rpc-cmd)
-  ()
-  )
-
-
-(deftype sound-rpc-unload-music (sound-rpc-cmd)
-  ()
-  )
-
+(deftype sound-rpc-unload-music (sound-rpc-cmd) ())
 
 ;; og:preserve-this added for mirror mode
 (deftype sound-rpc-set-mirror-mode (sound-rpc-cmd)
   ((mirror sound-mirror-mode)))
 
-
 ;; union of all the possible sound commands.
 (deftype sound-rpc-union (structure)
-  ((data               uint32                       20)
-   (load-bank          sound-rpc-load-bank          :overlay-at (-> data 0))
-   (unload-bank        sound-rpc-unload-bank        :overlay-at (-> data 0))
-   (play               sound-rpc-play               :overlay-at (-> data 0))
-   (pause-sound        sound-rpc-pause-sound        :overlay-at (-> data 0))
-   (stop-sound         sound-rpc-stop-sound         :overlay-at (-> data 0))
-   (continue-sound     sound-rpc-continue-sound     :overlay-at (-> data 0))
-   (set-param          sound-rpc-set-param          :overlay-at (-> data 0))
-   (set-master-volume  sound-rpc-set-master-volume  :overlay-at (-> data 0))
-   (pause-group        sound-rpc-pause-group        :overlay-at (-> data 0))
-   (stop-group         sound-rpc-stop-group         :overlay-at (-> data 0))
-   (continue-group     sound-rpc-continue-group     :overlay-at (-> data 0))
-   (get-irx-version    sound-rpc-get-irx-version    :overlay-at (-> data 0))
-   (set-falloff-curve  sound-rpc-set-falloff-curve  :overlay-at (-> data 0))
-   (set-sound-falloff  sound-rpc-set-sound-falloff  :overlay-at (-> data 0))
-   (reload-info        sound-rpc-reload-info        :overlay-at (-> data 0))
-   (set-language       sound-rpc-set-language       :overlay-at (-> data 0))
-   (set-reverb         sound-rpc-set-reverb         :overlay-at (-> data 0))
-   (set-ear-trans      sound-rpc-set-ear-trans      :overlay-at (-> data 0))
-   (set-flava          sound-rpc-set-flava          :overlay-at (-> data 0))
-   (set-fps            sound-rpc-set-fps            :overlay-at (-> data 0))
-   (shutdown           sound-rpc-shutdown           :overlay-at (-> data 0))
-   (list-sounds        sound-rpc-list-sounds        :overlay-at (-> data 0))
-   (unload-music       sound-rpc-unload-music       :overlay-at (-> data 0))
-   (mirror-mode        sound-rpc-set-mirror-mode    :overlay-at (-> data 0))
-   )
-  )
+  ((data              uint32 20)
+   (load-bank         sound-rpc-load-bank :overlay-at (-> data 0))
+   (unload-bank       sound-rpc-unload-bank :overlay-at (-> data 0))
+   (play              sound-rpc-play :overlay-at (-> data 0))
+   (pause-sound       sound-rpc-pause-sound :overlay-at (-> data 0))
+   (stop-sound        sound-rpc-stop-sound :overlay-at (-> data 0))
+   (continue-sound    sound-rpc-continue-sound :overlay-at (-> data 0))
+   (set-param         sound-rpc-set-param :overlay-at (-> data 0))
+   (set-master-volume sound-rpc-set-master-volume :overlay-at (-> data 0))
+   (pause-group       sound-rpc-pause-group :overlay-at (-> data 0))
+   (stop-group        sound-rpc-stop-group :overlay-at (-> data 0))
+   (continue-group    sound-rpc-continue-group :overlay-at (-> data 0))
+   (get-irx-version   sound-rpc-get-irx-version :overlay-at (-> data 0))
+   (set-falloff-curve sound-rpc-set-falloff-curve :overlay-at (-> data 0))
+   (set-sound-falloff sound-rpc-set-sound-falloff :overlay-at (-> data 0))
+   (reload-info       sound-rpc-reload-info :overlay-at (-> data 0))
+   (set-language      sound-rpc-set-language :overlay-at (-> data 0))
+   (set-reverb        sound-rpc-set-reverb :overlay-at (-> data 0))
+   (set-ear-trans     sound-rpc-set-ear-trans :overlay-at (-> data 0))
+   (set-flava         sound-rpc-set-flava :overlay-at (-> data 0))
+   (set-fps           sound-rpc-set-fps :overlay-at (-> data 0))
+   (shutdown          sound-rpc-shutdown :overlay-at (-> data 0))
+   (list-sounds       sound-rpc-list-sounds :overlay-at (-> data 0))
+   (unload-music      sound-rpc-unload-music :overlay-at (-> data 0))
+   ;; og:preserve-this mirror mode
+   (mirror-mode       sound-rpc-set-mirror-mode :overlay-at (-> data 0))))
 
 ;; GOAL-side sound specification.
 (deftype sound-spec (basic)
-  ((mask             sound-mask)
-   (num              float)
-   (group            sound-group)
-   (sound-name-char  uint8       16 :offset  16)
-   (sound-name       sound-name     :overlay-at (-> sound-name-char 0))
-   (trans            float       4)
-   (volume           int32)
-   (pitch-mod        int32)
-   (bend             int32)
-   (fo-min           int16)
-   (fo-max           int16)
-   (fo-curve         int8)
-   (priority         int8)
-   (auto-time        int32)
-   (auto-from        int32)
-   )
-  )
+  ((mask            sound-mask)
+   (num             float)
+   (group           sound-group)
+   (sound-name-char uint8 16 :offset 16)
+   (sound-name      sound-name :overlay-at (-> sound-name-char 0))
+   (trans           float 4)
+   (volume          int32)
+   (pitch-mod       int32)
+   (bend            int32)
+   (fo-min          int16)
+   (fo-max          int16)
+   (fo-curve        int8)
+   (priority        int8)
+   (auto-time       int32)
+   (auto-from       int32)))
 
 (defmacro sound-vol (vol)
   "convert to sound volume units"
-  (if (number? vol)
-      (* 1 (/ (* vol 1024) 100))
-      `(the int (/ (* ,vol 1024) 100))
-      )
-  )
+  (if (number? vol) (* 1 (/ (* vol 1024) 100)) `(the int (/ (* ,vol 1024) 100))))
 
-(defmacro static-sound-spec (name &key (num 1.0) &key (group 1)
-                                  &key (volume #f)
-                                  &key (pitch-mod 0)
-                                  &key (fo-min 0) &key (fo-max 0)
-                                  &key (mask ()))
+(defmacro static-sound-spec (name &key (num 1.0) &key (group 1) &key (volume #f) &key (pitch-mod 0) &key (fo-min 0) &key (fo-max 0) &key (mask ()))
   (let ((snd-mask mask)
         (snd-volume 100.0))
-    (when (nonzero? fo-max) (cons! snd-mask 'fo-max))
-    (when (nonzero? fo-min) (cons! snd-mask 'fo-min))
-    (when (nonzero? pitch-mod) (cons! snd-mask 'pitch))
-    (when volume (cons! snd-mask 'volume) (set! snd-volume volume))
-    `(new 'static 'sound-spec
-          :sound-name (static-sound-name ,name)
-          :num ,num
-          :group ,group
-          :volume (sound-vol ,snd-volume)
-          :pitch-mod ,pitch-mod
-          :fo-min ,fo-min
-          :fo-max ,fo-max
-          :mask (sound-mask ,@snd-mask)
-          ))
-  )
+    (when (nonzero? fo-max)
+      (cons! snd-mask 'fo-max))
+    (when (nonzero? fo-min)
+      (cons! snd-mask 'fo-min))
+    (when (nonzero? pitch-mod)
+      (cons! snd-mask 'pitch))
+    (when volume
+      (cons! snd-mask 'volume)
+      (set! snd-volume volume))
+    `(new 'static
+         'sound-spec
+         :sound-name (static-sound-name ,name)
+         :num ,num
+         :group ,group
+         :volume (sound-vol ,snd-volume)
+         :pitch-mod ,pitch-mod
+         :fo-min ,fo-min
+         :fo-max ,fo-max
+         :mask (sound-mask ,@snd-mask))))
 
 ;; each sound command gets a unique ID.
 (define *current-sound-id* (the sound-id #x10000))
 
 ;; a in-game background sound.
 (declare-type entity basic)
+
 (deftype ambient-sound (basic)
-  ((spec          sound-spec)
-   (playing-id    sound-id)
-   (trans         vector  :inline)
-   (name          sound-name)
-   (play-time     time-frame)
-   (time-base     time-frame)
-   (time-random   time-frame)
-   (volume        int32)
-   (pitch         int32)
-   (falloff-near  int32)
-   (falloff-far   int32)
-   (falloff-mode  int32)
-   (params        (pointer float))
-   (param-count   int32)
-   (entity        entity)
-   (sound-count   int32)
-   )
+  ((spec         sound-spec)
+   (playing-id   sound-id)
+   (trans        vector :inline)
+   (name         sound-name)
+   (play-time    time-frame)
+   (time-base    time-frame)
+   (time-random  time-frame)
+   (volume       int32)
+   (pitch        int32)
+   (falloff-near int32)
+   (falloff-far  int32)
+   (falloff-mode int32)
+   (params       (pointer float))
+   (param-count  int32)
+   (entity       entity)
+   (sound-count  int32))
   (:methods
-    (new (symbol type basic vector) _type_)
-    (update! (_type_) int)
-    (change-sound! (_type_ sound-name) int)
-    (update-trans! (_type_ vector) int)
-    (update-vol! (_type_ int) int)
-    (stop! (_type_) int)
-    )
-  )
+   (new (symbol type basic vector) _type_)
+   (update! (_type_) int)
+   (change-sound! (_type_ sound-name) int)
+   (update-trans! (_type_ vector) int)
+   (update-vol! (_type_ int) int)
+   (stop! (_type_) int)))
 
 ;; currently loaded sound effect banks.
 ;; there is an always-loaded common bank and two level-specific banks.
 (define *sound-bank-1* #f)
+
 (define *sound-bank-2* #f)
 
 ;; added for PC port
@@ -492,5 +371,7 @@
   (enum->string music-flava f))
 
 (defun-extern string->sound-name string sound-name)
+
 (defun-extern sound-set-ear-trans vector vector float int)
+
 (defun-extern ear-trans vector)

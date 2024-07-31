@@ -35,6 +35,7 @@ void snd_SetPanTable(s16* table);
 void snd_SetPlayBackMode(s32 mode);
 s32 snd_SoundIsStillPlaying(s32 sound_handle);
 void snd_StopSound(s32 sound_handle);
+u32 snd_GetSoundID(s32 sound_handle);
 void snd_SetSoundVolPan(s32 sound_handle, s32 vol, s32 pan);
 void snd_SetMasterVolume(s32 which, s32 volume);
 void snd_UnloadBank(snd::BankHandle bank_handle);
@@ -69,6 +70,11 @@ snd::BankHandle snd_BankLoadEx(const char* filepath,
                                s32 data_offset,
                                u32 spu_mem_loc,
                                u32 spu_mem_size);
+
+void snd_BankLoadFromIOPPartialEx_Start();
+void snd_BankLoadFromIOPPartialEx(const u8* data, u32 length, u32 spu_mem_loc, u32 spu_mem_size);
+void snd_BankLoadFromIOPPartialEx_Completion();
+
 s32 snd_GetVoiceStatus(s32 voice);
 s32 snd_GetFreeSPUDMA();
 void snd_FreeSPUDMA(s32 channel);

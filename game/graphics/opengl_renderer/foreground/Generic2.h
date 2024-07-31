@@ -11,7 +11,7 @@ class Generic2 {
            u32 num_buckets = 800);
   ~Generic2();
 
-  enum class Mode { NORMAL, LIGHTNING, WARP };
+  enum class Mode { NORMAL, LIGHTNING, WARP, PRIM };
 
   void render_in_mode(DmaFollower& dma,
                       SharedRenderState* render_state,
@@ -19,6 +19,7 @@ class Generic2 {
                       Mode mode);
 
   void draw_debug_window();
+  bool empty() { return m_empty; }
 
   struct Vertex {
     math::Vector<float, 3> xyz;
@@ -42,6 +43,7 @@ class Generic2 {
   void process_dma_jak1(DmaFollower& dma, u32 next_bucket);
   void process_dma_lightning(DmaFollower& dma, u32 next_bucket);
   void process_dma_jak2(DmaFollower& dma, u32 next_bucket);
+  void process_dma_prim(DmaFollower& dma, u32 next_bucket);
   void setup_draws(bool enable_at, bool default_fog);
   void do_draws(SharedRenderState* render_state, ScopedProfilerNode& prof);
   void do_draws_for_alpha(SharedRenderState* render_state,
@@ -84,6 +86,8 @@ class Generic2 {
     float hud_mat_23, hud_mat_32, hud_mat_33;
 
     bool uses_hud = false;
+    bool uses_full_matrix = false;
+    math::Vector4f full_matrix[4];
   } m_drawing_config;
 
   struct GsState {
@@ -198,8 +202,10 @@ class Generic2 {
     GLuint vertex_buffer;
     GLuint index_buffer;
     GLuint alpha_reject, color_mult, fog_color, scale, mat_23, mat_32, mat_33, fog_consts,
-        hvdf_offset;
+        hvdf_offset, use_full_matrix, full_matrix;
     GLuint gfx_hack_no_tex;
     GLuint warp_sample_mode;
   } m_ogl;
+
+  bool m_empty = false;
 };

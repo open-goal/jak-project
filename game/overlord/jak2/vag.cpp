@@ -30,7 +30,7 @@ void StopVAG(VagCmd* cmd, int /*param_2*/);
 enum VolumeCategory {
   DIALOGUE = 2,  // VAG streams. Copied "dialogue" name from jak 1.
 };
-int MasterVolume[17];
+int MasterVolume[32];
 
 void vag_init_globals() {
   memset(VagCmds, 0, sizeof(VagCmds));

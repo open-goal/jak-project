@@ -985,6 +985,8 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"o~Y~-26H~-4V'~Z", "ó"},
     {"U~Y~-24H~-3V'~Z", "Ú"},
     {"u~Y~-24H~-3V'~Z", "ú"},
+    {"Z~Y~-24H~-3V'~Z", "Ź"},
+    {"z~Y~-24H~-3V'~Z", "ź"},
 
     // circumflex
     {"A~Y~-20H~-4V^~Z", "Â"},
@@ -1015,6 +1017,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
     {"a~Y~-25H~-5V¨~Z", "ä"},
     {"E~Y~-20H~-5V¨~Z", "Ë"},
     {"I~Y~-19H~-5V¨~Z", "Ï"},
+    {"i~Y~-26H~-4V¨~Z", "ï"},
     {"O~Y~-26H~-8V¨~Z", "Ö"},
     {"o~Y~-26H~-4V¨~Z", "ö"},
     {"U~Y~-25H~-8V¨~Z", "Ü"},
