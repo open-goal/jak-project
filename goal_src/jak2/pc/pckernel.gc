@@ -314,12 +314,14 @@
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
 (defmethod initialize ((obj pc-settings-jak2))
   "initial initialize method to be run after allocating"
-
   (set! (-> obj music-unlocked) (new 'global 'bit-array (-> *music-player-tracks* length)))
   ((method-of-type pc-settings initialize) obj)
+  (set! (-> *setting-control* user-default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* user-default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* user-default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* user-default vibration) (-> obj memcard-vibration?))
   obj)
 
 (defmethod set-game-setting! ((obj pc-settings-jak2) (setting symbol) (value symbol))
@@ -764,6 +766,7 @@
     (("cheats-purchased") (set! (-> obj cheats-purchased) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-unlocked") (set! (-> obj cheats-unlocked) (the-as pc-cheats (file-stream-read-int file))))
     (("cheats-backup") (file-stream-read-int file)) ;; TODO - Don't remove this, parsing code can't handle unexpected keys
+    (("memcard-subtitles?") (set! (-> obj memcard-subtitles?) (file-stream-read-symbol file)))
     (("music-unlocked")
       (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
         (bit-array<-int64 (-> obj music-unlocked) (* i 64) (file-stream-read-int file))
@@ -815,6 +818,7 @@
   (format file "  (cheats-revealed #x~x)~%" (-> obj cheats-revealed))
   (format file "  (cheats-purchased #x~x)~%" (-> obj cheats-purchased))
   (format file "  (cheats-unlocked #x~x)~%" (-> obj cheats-unlocked))
+  (format file "  (memcard-subtitles? ~A)~%" (-> obj memcard-subtitles?))
 
   (format file "  (music-unlocked")
   (dotimes (i (/ (align64 (-> obj music-unlocked length)) 64))
