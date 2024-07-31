@@ -347,10 +347,23 @@ This gives us more freedom to write code how we want.
                   (text-id language-name-italian)
                   (text-id language-name-japanese)
                   (text-id language-name-korean)
-                  (text-id language-name-english-uk))
-      :get-item-index-fn (lambda () (-> *setting-control* user-default subtitle-language))
+                  (text-id language-name-english-uk)
+                  (text-id language-name-finnish))
+      :get-item-index-fn (lambda ()
+        ;; workaround until all languages are added
+        (if (<= (-> *setting-control* user-default subtitle-language) (text-id language-name-english-uk))
+          (-> *setting-control* user-default subtitle-language)
+          (case (-> *setting-control* user-default subtitle-language)
+            (((text-id language-name-finnish)) 8)
+            (else (text-id language-name-english)))))
       :on-confirm (lambda ((index int) (the-progress progress))
-          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index)))))
+        ;; workaround until all languages are added
+        (if (<= (-> *setting-control* user-default subtitle-language) (text-id language-name-english-uk))
+          (set! (-> *setting-control* user-default subtitle-language) (the-as language-enum index))
+          (set! (-> *setting-control* user-default subtitle-language)
+                (case (-> *setting-control* user-default subtitle-language)
+                  (((text-id language-name-finnish)) (the-as language-enum (pc-language finnish)))
+                  (else (the-as language-enum (pc-language english)))))))))
 
 (defmacro game-options-pc-sound-language ()
   `(new 'static 'menu-generic-carousel-option
