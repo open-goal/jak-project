@@ -12,6 +12,7 @@
 
 (deftype training-water (water-anim) ())
 
+
 (define ripple-for-training-water
   (new 'static
        'ripple-wave-set
@@ -54,9 +55,10 @@
   (:state-methods
    idle))
 
-(defmethod relocate ((this training-cam) (arg0 int))
-  (if (nonzero? (-> this root)) (&+! (-> this root) arg0))
-  (the-as training-cam ((method-of-type process relocate) this arg0)))
+
+(defmethod relocate ((this training-cam) (offset int))
+  (if (nonzero? (-> this root)) (&+! (-> this root) offset))
+  (the-as training-cam ((method-of-type process relocate) this offset)))
 
 (defstate idle (training-cam)
   :virtual #t
@@ -125,7 +127,7 @@
                  (when (not (task-complete? *game-info* (game-task training-climb)))
                    (clear-text-seen! *game-info* (text-id training-double-jump))
                    (level-hint-spawn (text-id training-double-jump) "sagevb27" (the-as entity #f) *entity-pool* (game-task none))
-                   (let ((gp-8 (current-time))) (until (time-elapsed? gp-8 (seconds 30)) (suspend)))
+                   (suspend-for (seconds 30))
                    (process-entity-status! self (entity-perm-status bit-3) #f)
                    (go-virtual idle)))))
             (while (-> self child)
@@ -153,6 +155,7 @@
 
 (deftype tra-pontoon (rigid-body-platform)
   ((anchor-point vector :inline)))
+
 
 (defmethod init-from-entity! ((this tra-pontoon) (arg0 entity-actor))
   (logior! (-> this mask) (process-mask platform))
@@ -253,6 +256,7 @@
   (none))
 
 (deftype tra-iris-door (eco-door) ())
+
 
 (defskelgroup *tra-iris-door-sg*
   jng-iris-door
@@ -440,6 +444,7 @@
    idle
    (hit float vector symbol)))
 
+
 (deftype scarecrow-b (process-drawable)
   ((root                collide-shape :override)
    (incomming-attack-id uint64)
@@ -447,6 +452,7 @@
   (:state-methods
    idle
    (hit float vector symbol)))
+
 
 (defskelgroup *scarecrow-a-sg*
   scarecrow-a
