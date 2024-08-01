@@ -28,10 +28,10 @@
 
 (defmethod move-between-points ((this cpad-elevator) (vec vector) (point-a float) (point-b float))
   "Move between two points on the elevator's path
-@param vec TODO not sure
-@param point-a The first point fetched from the elevator's path
-@param point-b The second point fetched from the path
-@see [[path-control]] and [[elevator]]"
+   @param vec TODO not sure
+   @param point-a The first point fetched from the elevator's path
+   @param point-b The second point fetched from the path
+   @see [[path-control]] and [[elevator]]"
   (let ((path-point-a (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-a 'interp))
         (path-point-b (get-point-in-path! (-> this path) (new 'stack-no-clear 'vector) point-b 'interp))
         (elevator-trans (-> this root trans))
@@ -66,7 +66,7 @@
 
 (defmethod configure-collision ((this cpad-elevator) (collide-with-jak? symbol))
   "Appropriately sets the collision on the elevator
-@param collide-with-jak? If set, the elevator will collide with Jak"
+   @param collide-with-jak? If set, the elevator will collide with Jak"
   (let ((prim (-> (the-as collide-shape-prim-group (-> this root root-prim)) child 1)))
     (cond
       (collide-with-jak?
@@ -106,11 +106,7 @@
       )
     )
   :code (behavior ()
-    (let ((frame-counter (current-time)))
-      (until (time-elapsed? frame-counter (seconds 1))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 1))
     (logior! (-> self elevator-status) (elevator-status waiting-to-ascend))
     (until #f
       (sound-play "dig-elevate" :id (-> self sound-id))
@@ -147,6 +143,7 @@
   )
 
 (defmethod deactivate ((this cpad-elevator))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (sound-stop (-> this sound-id))
   (call-parent-method this)
   (none)
@@ -164,7 +161,7 @@
 ;; WARN: Return type mismatch sound-id vs none.
 (defmethod init-plat! ((this cpad-elevator))
   "Does any necessary initial platform setup.
-For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
+   For example for an elevator pre-compute the distance between the first and last points (both ways) and clear the sound."
   (let ((last-path-index (+ (-> this path curve num-cverts) -1)))
     (calc-dist-between-points! this 0 last-path-index)
     (calc-dist-between-points! this last-path-index 0)
