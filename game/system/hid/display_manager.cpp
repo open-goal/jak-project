@@ -187,7 +187,7 @@ Resolution DisplayManager::get_resolution(int id) {
 }
 
 bool DisplayManager::is_supported_resolution(int width, int height) {
-  for (const auto resolution : m_available_resolutions) {
+  for (const auto& resolution : m_available_resolutions) {
     if (resolution.width == width && resolution.height == height) {
       return true;
     }
@@ -358,6 +358,10 @@ void DisplayManager::update_video_modes() {
     DisplayMode new_mode = {display_name_str, curr_mode.format,       curr_mode.w,
                             curr_mode.h,      curr_mode.refresh_rate, orient};
     m_current_display_modes[display_id] = new_mode;
+    lg::info(
+        "[DISPLAY]: Found monitor {}, currently set to {}x{}@{}hz. Format: {}, Orientation: {}",
+        new_mode.display_name, new_mode.screen_width, new_mode.screen_height, new_mode.refresh_rate,
+        new_mode.sdl_pixel_format, static_cast<int>(new_mode.orientation));
   }
   update_resolutions();
 }
@@ -365,17 +369,29 @@ void DisplayManager::update_video_modes() {
 void DisplayManager::update_resolutions() {
   lg::info("[DISPLAY] Enumerating resolutions");
   // Enumerate display's display modes to get the resolutions
-  auto num_display_modes = SDL_GetNumDisplayModes(get_active_display_id());
+  const auto active_display_id = get_active_display_id();
+  const auto active_refresh_rate = m_current_display_modes[active_display_id].refresh_rate;
+  auto num_display_modes = SDL_GetNumDisplayModes(active_display_id);
   SDL_DisplayMode curr_mode;
   for (int i = 0; i < num_display_modes; i++) {
-    auto ok = SDL_GetDisplayMode(get_active_display_id(), i, &curr_mode);
+    auto ok = SDL_GetDisplayMode(active_display_id, i, &curr_mode);
     if (ok != 0) {
-      sdl_util::log_error(fmt::format("unable to get display mode for display {}, index {}",
-                                      get_active_display_id(), i));
+      sdl_util::log_error(
+          fmt::format("unable to get display mode for display {}, index {}", active_display_id, i));
+      continue;
+    }
+    // Skip resolutions that aren't using the current refresh rate, they won't work.
+    // For example if your monitor is currently set to `60hz` and the monitor _could_ support
+    // resolution X but only at `30hz`...then there's no reason for us to consider it as an option.
+    if (curr_mode.refresh_rate != active_refresh_rate) {
+      lg::debug(
+          "[DISPLAY]: Skipping {}x{} as it requires {}hz but the monitor is currently set to {}hz",
+          curr_mode.w, curr_mode.h, curr_mode.refresh_rate, active_refresh_rate);
       continue;
     }
     Resolution new_res = {curr_mode.w, curr_mode.h,
                           static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
+    lg::info("[DISPLAY]: {}x{} is supported", new_res.width, new_res.height);
     m_available_resolutions.push_back(new_res);
   }
 
