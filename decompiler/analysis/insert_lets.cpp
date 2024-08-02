@@ -1735,7 +1735,7 @@ FormElement* rewrite_suspend_for(LetElement* in, const Env& env, FormPool& pool)
     auto op = dynamic_cast<AtomicOpElement*>(elt);
     auto suspend = op && op->op() && dynamic_cast<SpecialOp*>(op->op()) &&
                    dynamic_cast<SpecialOp*>(op->op())->kind() == SpecialOp::Kind::SUSPEND;
-    if (!suspend || (suspend && elt != body->elts().back())) {
+    if (!suspend || elt != body->elts().back()) {
       elt->apply_form([&](Form* form) {
         for (auto& e : form->elts()) {
           auto as_expr = dynamic_cast<SimpleExpressionElement*>(e);
