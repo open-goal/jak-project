@@ -283,6 +283,19 @@
   0
   )
 
+;; og:preserve-this mirror mode
+(define *sound-current-mirror* (sound-mirror-mode normal))
+
+;; og:preserve-this mirror mode
+(defun sound-set-mirror-mode ((mode sound-mirror-mode))
+  (when (!= mode *sound-current-mirror*)
+    (let ((cmd (the sound-rpc-set-mirror-mode (add-element *sound-loader-rpc*))))
+      (set! (-> cmd command) (sound-command set-mirror))
+      (set! (-> cmd mirror) mode))
+    (call *sound-loader-rpc* (the-as uint 0) (the-as pointer 0) (the-as uint 0))
+    (set! *sound-current-mirror* mode))
+  (none))
+
 (define *sound-player-enable* #t)
 
 (defun swap-sound-buffers ((arg0 vector) (arg1 vector) (arg2 vector) (arg3 float))

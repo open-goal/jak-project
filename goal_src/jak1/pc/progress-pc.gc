@@ -225,7 +225,10 @@
             :name (text-id input-options)
             :scale #t
             :param3 (game-option-menu input-options))
-       (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id play-hints) :scale #t)
+       (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id play-hints) :scale #t
+        :on-confirm
+        (lambda ()
+          (set! (-> *setting-control* default play-hints) (-> *pc-settings* memcard-play-hints?))))
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id subtitles) :scale #t)
        (new 'static 'game-option :option-type (game-option-type on-off) :name (text-id hinttitles) :scale #t)
        (new 'static 'game-option :option-type (game-option-type language) :name (text-id language) :scale #t)
@@ -297,7 +300,11 @@
             :scale #t
             :param1 0.0
             :param2 100.0
-            :slider-step-size 1.0)
+            :slider-step-size 1.0
+            :on-confirm
+            (lambda ((val object))
+              (set! (-> *setting-control* default sfx-volume) (-> *pc-settings* memcard-volume-sfx))
+              (none)))
        (new 'static
             'game-option
             :option-type (game-option-type slider)
@@ -305,7 +312,11 @@
             :scale #t
             :param1 0.0
             :param2 100.0
-            :slider-step-size 1.0)
+            :slider-step-size 1.0
+            :on-confirm
+            (lambda ((val object))
+              (set! (-> *setting-control* default music-volume) (-> *pc-settings* memcard-volume-music))
+              (none)))
        (new 'static
             'game-option
             :option-type (game-option-type slider)
@@ -313,7 +324,11 @@
             :scale #t
             :param1 0.0
             :param2 100.0
-            :slider-step-size 1.0)
+            :slider-step-size 1.0
+            :on-confirm
+            (lambda ((val object))
+              (set! (-> *setting-control* default dialog-volume) (-> *pc-settings* memcard-volume-dialog))
+              (none)))
        ;(new 'static 'game-option :option-type (game-option-type on-off) :name (text-id music-fadein) :scale #t)
        (new 'static 'game-option :option-type (game-option-type button) :name (text-id back) :scale #t)))
 
@@ -371,7 +386,10 @@
             :scale #t
             :option-disabled-func
             (lambda ()
-              (not (pc-current-controller-has-rumble?))))
+              (not (pc-current-controller-has-rumble?)))
+            :on-confirm
+            (lambda ()
+              (set! (-> *setting-control* default vibration) (-> *pc-settings* memcard-vibration?))))
        (new 'static
             'game-option
             :option-type (game-option-type slider)
@@ -2025,19 +2043,19 @@
   (set! (-> *progress-state* video-mode-choice) (get-video-mode))
   (set! (-> *progress-state* yes-no-choice) #f)
   ;; set variable pointers
-  (set! (-> *game-options* 1 value-to-modify) (&-> *setting-control* default play-hints))
+  (set! (-> *game-options* 1 value-to-modify) (&-> *pc-settings* memcard-play-hints?))
   (set! (-> *game-options* 2 value-to-modify) (&-> *setting-control* default language))
-  (set! (-> *game-options-japan* 0 value-to-modify) (&-> *setting-control* default vibration))
-  (set! (-> *game-options-japan* 1 value-to-modify) (&-> *setting-control* default play-hints))
-  (set! (-> *game-options-demo* 0 value-to-modify) (&-> *setting-control* default vibration))
-  (set! (-> *game-options-demo* 1 value-to-modify) (&-> *setting-control* default play-hints))
+  (set! (-> *game-options-japan* 0 value-to-modify) (&-> *pc-settings* memcard-vibration?))
+  (set! (-> *game-options-japan* 1 value-to-modify) (&-> *pc-settings* memcard-play-hints?))
+  (set! (-> *game-options-demo* 0 value-to-modify) (&-> *pc-settings* memcard-vibration?))
+  (set! (-> *game-options-demo* 1 value-to-modify) (&-> *pc-settings* memcard-play-hints?))
   (set! (-> *graphic-options* 1 value-to-modify) (&-> *progress-state* aspect-ratio-choice))
   (set! (-> *sound-options* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
   (set! (-> *sound-options* 1 value-to-modify) (&-> *setting-control* default music-volume))
   (set! (-> *sound-options* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
   (set! (-> *yes-no-options* 0 value-to-modify) (&-> *progress-state* yes-no-choice))
   ;; our options!
-  (set! (-> *game-options-pc* 1 value-to-modify) (&-> *setting-control* default play-hints))
+  (set! (-> *game-options-pc* 1 value-to-modify) (&-> *pc-settings* memcard-play-hints?))
   (set! (-> *game-options-pc* 2 value-to-modify) (&-> *pc-settings* subtitles?))
   (set! (-> *game-options-pc* 3 value-to-modify) (&-> *pc-settings* hinttitles?))
   (set! (-> *game-options-pc* 4 value-to-modify) (&-> *setting-control* default language))
@@ -2057,7 +2075,7 @@
   (set! (-> *camera-options* 2 value-to-modify) (&-> *pc-settings* third-camera-h-inverted?))
   (set! (-> *camera-options* 3 value-to-modify) (&-> *pc-settings* third-camera-v-inverted?))
   ;; input options
-  (set! (-> *controller-options* 1 value-to-modify) (&-> *setting-control* default vibration))
+  (set! (-> *controller-options* 1 value-to-modify) (&-> *pc-settings* memcard-vibration?))
   (set! (-> *controller-options* 2 value-to-modify) (&-> *pc-settings* stick-deadzone))
   (set! (-> *controller-options* 3 value-to-modify) (&-> *pc-settings* ignore-controller-win-unfocused?))
   (set! (-> *controller-options* 4 value-to-modify) (&-> *pc-settings* controller-led-hp?))
@@ -2075,9 +2093,9 @@
   (set! (-> *gfx-ps2-options* 2 value-to-modify) (&-> *pc-settings* ps2-parts?))
   (set! (-> *gfx-ps2-options* 3 value-to-modify) (&-> *pc-settings* force-envmap?))
   (set! (-> *gfx-ps2-options* 4 value-to-modify) (&-> *pc-settings* ps2-actor-vis?))
-  (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *setting-control* default sfx-volume))
-  (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *setting-control* default music-volume))
-  (set! (-> *sound-options-pc* 2 value-to-modify) (&-> *setting-control* default dialog-volume))
+  (set! (-> *sound-options-pc* 0 value-to-modify) (&-> *pc-settings* memcard-volume-sfx))
+  (set! (-> *sound-options-pc* 1 value-to-modify) (&-> *pc-settings* memcard-volume-music))
+  (set! (-> *sound-options-pc* 2 value-to-modify) (&-> *pc-settings* memcard-volume-dialog))
   (dotimes (i (1- (-> *cheats* length)))
     (set! (-> *cheats* i value-to-modify) (&-> *progress-carousell* symbol-backup)))
   ;(set! (-> *sound-options-pc* 3 value-to-modify) (&-> *pc-settings* music-fadein?))
