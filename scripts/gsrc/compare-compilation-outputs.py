@@ -16,10 +16,6 @@ to_markdown_file = False
 if args.markdown:
     to_markdown_file = True
 
-# Usage example
-base_directory = args.base
-compare_directory = args.compare
-
 markdown_lines = []
 
 def hash_file(filepath):
@@ -39,7 +35,7 @@ def compare_directories(base_dir, compare_dir):
     total_files = 0
     for root, _, files in os.walk(base_dir):
         for file in files:
-            if file is ".gitignore":
+            if file == ".gitignore":
                 continue
             total_files = total_files + 1
 
@@ -56,46 +52,53 @@ def compare_directories(base_dir, compare_dir):
                 missing_files.append(relative_path)
 
     # Report results
-    print(f'Comparing {base_directory} with {compare_directory}')
-    markdown_lines.append(f'### Comparing `{base_directory}` with `{compare_directory}`')
+    print(f'Comparing {base_dir} with {compare_dir}')
+    markdown_lines.append(f'### Comparing `{base_dir}` with `{compare_dir}`\n\n')
     if not mismatched_files and not missing_files:
         print("All files matched successfully.")
-        markdown_lines.append(f'All `{total_files}` files matched successfully ✅')
+        markdown_lines.append(f'All `{total_files}` files matched successfully ✅\n\n')
         return 0
     else:
-        markdown_lines.append(f'### Comparing `{base_directory}` with `{compare_directory}`')
-        markdown_lines.append(f'Found potential problems ❌')
-        markdown_lines.append(f'- {len(mismatched_files)} different files:')
-        markdown_lines.append(f'- {len(missing_files)} missing files:')
-        markdown_lines.append("| file | result |")
-        markdown_lines.append("|------|--------|")
+        markdown_lines.append(f'Found potential problems ❌\n')
+        markdown_lines.append(f'- {len(mismatched_files)} different files:\n')
+        markdown_lines.append(f'- {len(missing_files)} missing files:\n\n')
+        markdown_lines.append("| file | result |\n")
+        markdown_lines.append("|------|--------|\n")
         if mismatched_files:
             print("Mismatched files:")
             markdown_printed_already = 0
             for file in mismatched_files:
                 print(f" - {file}")
                 if markdown_printed_already < 25:
-                    markdown_lines.append(f"| {file} | different |")
+                    markdown_lines.append(f"| `{file}` | different |\n")
                     markdown_printed_already = markdown_printed_already + 1
             if len(mismatched_files) > 25:
-                markdown_lines.append(f"| ...and {len(mismatched_files) - 25} other files | different |")
+                markdown_lines.append(f"| ...and {len(mismatched_files) - 25} other files | different |\n")
         if missing_files:
             print("Missing files:")
             markdown_printed_already = 0
             for file in missing_files:
                 print(f" - {file}")
                 if markdown_printed_already < 25:
-                    markdown_lines.append(f"| {file} | missing |")
+                    markdown_lines.append(f"| `{file}` | missing |\n")
                     markdown_printed_already = markdown_printed_already + 1
             if len(missing_files) > 25:
-                markdown_lines.append(f"| ...and {len(missing_files) - 25} other files | missing |")
+                markdown_lines.append(f"| ...and {len(missing_files) - 25} other files | missing |\n")
+            markdown_lines.append("\n")
         return 1
 
-
-result = compare_directories(base_directory, compare_directory)
+print(f"base: {args.base}")
+print(f"compare: {args.compare}")
+base_directory_list = args.base.split(",")
+compare_directory_list = args.compare.split(",")
+result = 0
+for base_dir, comp_dir in zip(base_directory_list, compare_directory_list):
+    latest_result = compare_directories(base_dir, comp_dir)
+    if latest_result != 0:
+        result = latest_result
 
 if to_markdown_file:
-    with open('./comp-diff-report.md', 'w') as md_file:
+    with open('./comp-diff-report.md', 'w', encoding='utf-8') as md_file:
         md_file.writelines(markdown_lines)
         print("Wrote results to ./comp-diff-report.md")
 
