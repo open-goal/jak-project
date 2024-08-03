@@ -1,14 +1,9 @@
 name: Compiler Output Check
 
 on:
-  workflow_call:
-    inputs:
-      cmakePreset:
-        required: true
-        type: string
-      cachePrefix:
-        required: true
-        type: string
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
@@ -32,8 +27,8 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2.13
         with:
           variant: sccache
-          key: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
-          restore-keys: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          key: linux-ubuntu-20.04--Release-linux-clang-asan-${{ github.sha }}
+          restore-keys: linux-ubuntu-20.04--Release-linux-clang-asan
           max-size: 1000M
 
       - name: CMake Generation (PR)
@@ -41,7 +36,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          cmake -B build --preset=${{ inputs.cmakePreset }} \
+          cmake -B build --preset=Release-linux-clang-asan \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
@@ -67,7 +62,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          cmake -B build --preset=${{ inputs.cmakePreset }} \
+          cmake -B build --preset=Release-linux-clang-asan \
             -DCMAKE_C_COMPILER_LAUNCHER=sccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
