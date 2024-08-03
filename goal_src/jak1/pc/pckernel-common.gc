@@ -34,13 +34,14 @@
 (defmethod set-window-size! ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
   (let ((display-mode (pc-get-display-mode)))
-    (format 0 "Setting ~A size to ~D x ~D~%" display-mode width height)
     (cond
       ((= display-mode 'windowed)
         (set! (-> obj window-width) width)
         (set! (-> obj window-height) height)
+        (format 0 "Setting window size to ~D x ~D~%" width height)
         (pc-set-window-size! (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
       (else
+        (format 0 "Setting borderless/fullscreen size to ~D x ~D~%" width height)
         (set! (-> obj width) width)
         (set! (-> obj height) height))))
   (none))
@@ -642,7 +643,11 @@
      (unless (read-from-file obj *pc-temp-string-1*)
        (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
        (reset obj #t)))
-    (else (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*) (reset obj #t)))
+    (else
+      (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
+      (reset obj #t)
+      ;; save the file so users aren't confused, and so we can debug what the game is producing for them
+      (commit-to-file obj)))
   0)
 
 (defmethod initialize ((obj pc-settings))
