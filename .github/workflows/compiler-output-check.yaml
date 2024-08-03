@@ -1,0 +1,95 @@
+name: Compiler Output Check
+
+on:
+  workflow_call:
+    inputs:
+      cmakePreset:
+        required: true
+        type: string
+      cachePrefix:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Clang
+    runs-on: ubuntu-20.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Package Dependencies
+        run: |
+          sudo apt update
+          sudo apt install build-essential cmake \
+            clang gcc g++ lcov make nasm libxrandr-dev \
+            libxinerama-dev libxcursor-dev libpulse-dev \
+            libxi-dev zip ninja-build libgl1-mesa-dev libssl-dev
+
+      - name: Setup sccache
+        uses: hendrikmuhs/ccache-action@v1.2.13
+        with:
+          variant: sccache
+          key: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}-${{ github.sha }}
+          restore-keys: linux-ubuntu-20.04-${{ inputs.cachePrefix }}-${{ inputs.cmakePreset }}
+          max-size: 1000M
+
+      - name: CMake Generation (PR)
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build --preset=${{ inputs.cmakePreset }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+      - name: Build goalc (PR)
+        run: cmake --build build --parallel $((`nproc`)) --target goalc
+
+      - name: Compile and preserve (PR)
+        run: |
+          ./build/goalc/goalc --game jak1 --cmd "(make-group \"all-code\")"
+          ./build/goalc/goalc --game jak2 --cmd "(make-group \"all-code\")"
+          ./build/goalc/goalc --game jak3 --cmd "(make-group \"all-code\")"
+          mv ./out/jak1/obj ./out/jak1/obj.pr
+          mv ./out/jak2/obj ./out/jak2/obj.pr
+          mv ./out/jak3/obj ./out/jak3/obj.pr
+
+      - name: Checkout Master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: CMake Generation (master)
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build --preset=${{ inputs.cmakePreset }} \
+            -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+      - name: Build goalc (master)
+        run: cmake --build build --parallel $((`nproc`)) --target goalc
+
+      - name: Compile and preserve (master)
+        run: |
+          ./build/goalc/goalc --game jak1 --cmd "(make-group \"all-code\")"
+          ./build/goalc/goalc --game jak2 --cmd "(make-group \"all-code\")"
+          ./build/goalc/goalc --game jak3 --cmd "(make-group \"all-code\")"
+          mv ./out/jak1/obj ./out/jak1/obj.master
+          mv ./out/jak2/obj ./out/jak2/obj.master
+          mv ./out/jak3/obj ./out/jak3/obj.master
+
+      - name: Compare Results and Produce Report
+        run: |
+          python ./scripts/gsrc/compare-compilation-outputs.py --base "./out/jak1/obj.master,./out/jak2/obj.master,./out/jak3/obj.master" --compare "./out/jak1/obj.pr,./out/jak2/obj.pr,./out/jak3/obj.pr" --markdown
+          SCRIPT_EXIT_CODE=$?
+          cat ./comp-diff-report.md >> $GITHUB_STEP_SUMMARY
+          if [ "$SCRIPT_EXIT_CODE" -ne 0 ]; then
+            exit 1
+          fi
+
+
