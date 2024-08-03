@@ -60,8 +60,8 @@ def compare_directories(base_dir, compare_dir):
         return 0
     else:
         markdown_lines.append(f'Found potential problems ❌\n')
-        markdown_lines.append(f'- {len(mismatched_files)} different files:\n')
-        markdown_lines.append(f'- {len(missing_files)} missing files:\n\n')
+        markdown_lines.append(f'- {len(mismatched_files)} different file(s)\n')
+        markdown_lines.append(f'- {len(missing_files)} missing file(s)\n\n')
         markdown_lines.append("| file | result |\n")
         markdown_lines.append("|------|--------|\n")
         if mismatched_files:
