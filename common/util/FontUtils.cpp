@@ -1156,6 +1156,9 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "<FLAG_KOREA>"},
     {"~Y~1L<FLAG_PART_FILL>~]~-1H~Y~1L<FLAG_PART_FILL>~Z~-11H~3L<FLAG_PART_JAPAN_SUN>~Z~+26H",
      "<FLAG_JAPAN>"},
+    {"~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~7L<FLAG_PART_VERT_STRIPE_RIGHT>~]"
+     "~-1H~Y~1L<FLAG_PART_FILL>~Z~7L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~+26H",
+     "<FLAG_FINLAND>"},
 
     // weird stuff
     // - descenders
