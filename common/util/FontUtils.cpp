@@ -1174,7 +1174,7 @@ static std::vector<ReplaceInfo> s_replace_info_jak2 = {
      "PART_TOP_BOTTOM_STRIPE>~Z~-19H~1L<FLAG_PART_VERT_STRIPE_MIDDLE>~Z~-23H~3L<FLAG_PART_VERT_"
      "STRIPE_RIGHT>~Z~-23H~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~3L<FLAG_PART_HORZ_STRIPE_MIDDLE>~Z~"
      "+26H",
-    "<FLAG_ICELAND>"},
+     "<FLAG_ICELAND>"},
 
     // weird stuff
     // - descenders
