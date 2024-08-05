@@ -239,17 +239,15 @@
 (set! (-> *eco-green-trail* uv-repeat-dist) 102399.99)
 
 ;; failed to figure out what this is:
-(set! (-> *eco-green-trail* lie-mode) (the-as uint 3))
+(set! (-> *eco-green-trail* lie-mode) (lie-mode use-two-strips))
 
 ;; failed to figure out what this is:
 (set! (-> *eco-green-trail* max-age) (seconds 2))
 
 ;; failed to figure out what this is:
 (if #f
-    (set! (-> *eco-green-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *eco-green-trail* tex-id) (the-as uint #x500800))
+    (set! (-> *eco-green-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *eco-green-trail* tex-id) (new 'static 'texture-id :index #x8 :page #x5))
     )
 
 ;; failed to figure out what this is:
@@ -299,12 +297,12 @@
 
 ;; definition for method 17 of type eco-green-trail-tracker
 ;; WARN: Return type mismatch object vs symbol.
-(defmethod light-trail-tracker-method-17 ((this eco-green-trail-tracker) (arg0 process-focusable))
+(defmethod should-track? ((this eco-green-trail-tracker) (arg0 process-focusable))
   (the-as symbol (and *target* (focus-test? *target* board) (< 0.0 (-> *target* fact eco-green))))
   )
 
 ;; definition for method 16 of type eco-green-trail-tracker
-(defmethod light-trail-tracker-method-16 ((this eco-green-trail-tracker) (arg0 process-focusable) (arg1 vector))
+(defmethod get-tracked-object-pos ((this eco-green-trail-tracker) (arg0 process-focusable) (arg1 vector))
   (if *target*
       (vector<-cspace! arg1 (-> *target* node-list data 37))
       )
@@ -455,7 +453,7 @@
             (let* ((v1-62
                      (estimate-light-trail-mem-usage
                        (the-as uint (-> s5-2 max-num-crumbs))
-                       (the-as uint (= (-> s5-2 appearance lie-mode) 3))
+                       (the-as uint (= (-> s5-2 appearance lie-mode) (lie-mode use-two-strips)))
                        )
                      )
                    (s4-2 (get-process *default-dead-pool* eco-green-trail-tracker (+ v1-62 8192) 1))

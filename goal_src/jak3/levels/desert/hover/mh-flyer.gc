@@ -33,7 +33,7 @@
 
 (when (or (zero? *mh-flyer-curve-linear-up-red*) (!= loading-level global))
   (set! *mh-flyer-curve-linear-up-red* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *mh-flyer-curve-linear-up-red* 2 'loading-level (the-as int #f))
+  (allocate! *mh-flyer-curve-linear-up-red* 2 'loading-level #f)
   )
 
 (set! (-> *mh-flyer-curve-linear-up-red* pts data 0 first) 0.0)
@@ -93,15 +93,13 @@
 
 (set! (-> *mh-flyer-missile-trail* uv-repeat-dist) 16384000.0)
 
-(set! (-> *mh-flyer-missile-trail* lie-mode) (the-as uint 0))
+(set! (-> *mh-flyer-missile-trail* lie-mode) (lie-mode appearance0))
 
 (set! (-> *mh-flyer-missile-trail* max-age) (seconds 1))
 
 (if #f
-    (set! (-> *mh-flyer-missile-trail* tex-id)
-          (the-as uint (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
-          )
-    (set! (-> *mh-flyer-missile-trail* tex-id) (the-as uint #x100300))
+    (set! (-> *mh-flyer-missile-trail* tex-id) (lookup-texture-id-by-name (the-as string #f) (the-as string #f)))
+    (set! (-> *mh-flyer-missile-trail* tex-id) (new 'static 'texture-id :index #x3 :page #x1))
     )
 
 (set! (-> *mh-flyer-missile-trail* width-curve)
@@ -476,7 +474,7 @@
       (set! (-> s5-5 track-immediately?) #t)
       (let* ((v0-8 (estimate-light-trail-mem-usage
                      (the-as uint (-> s5-5 max-num-crumbs))
-                     (the-as uint (= (-> s5-5 appearance lie-mode) 3))
+                     (the-as uint (= (-> s5-5 appearance lie-mode) (lie-mode use-two-strips)))
                      )
                    )
              (s4-2 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v0-8 8192) 1))

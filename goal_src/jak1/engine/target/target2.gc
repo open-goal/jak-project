@@ -109,7 +109,7 @@
    (sides-y-scale       float)
    (x-offset            int32))
   (:methods
-   (dumb-15 (_type_) none))
+   (spawn-particles! (_type_) none))
   (:states
    hud-coming-in
    hud-going-out
@@ -172,7 +172,7 @@
       (if (nonzero? (-> this particles v1-0 part)) (&+! (-> this particles v1-0 part) arg0))))
   (the-as first-person-hud ((method-of-type process relocate) this arg0)))
 
-(defmethod dumb-15 ((this first-person-hud))
+(defmethod spawn-particles! ((this first-person-hud))
   (dotimes (s5-0 (-> this nb-of-particles))
     (set! (-> this particles s5-0 pos x) (+ -256.0 (-> this particles s5-0 init-pos x)))
     (set! (-> this particles s5-0 pos y)
@@ -185,7 +185,9 @@
                    (the float (+ (the int (-> this particles s5-0 pos y)) 2048))
                    (- (-> *math-camera* hvdf-off z) (* 1024.0 (-> this particles s5-0 pos z)))
                    (-> *math-camera* hvdf-off w)))
-    (spawn (-> this particles s5-0 part) *null-vector*))
+    ;; og:preserve-this Positioning of first person hud sprites
+    (when (or (-> *pc-settings* use-vis?) (= s5-0 2))
+      (spawn (-> this particles s5-0 part) *null-vector*)))
   0
   (none))
 
@@ -219,7 +221,7 @@
         (suspend)))
   :post
     (behavior ()
-      (dumb-15 self)))
+      (spawn-particles! self)))
 
 (defstate hud-normal (first-person-hud)
   :event
@@ -244,7 +246,7 @@
         (suspend)))
   :post
     (behavior ()
-      (dumb-15 self)))
+      (spawn-particles! self)))
 
 (defun part-first-person-hud-left-func ((arg0 sparticle-system) (arg1 sparticle-cpuinfo) (arg2 matrix))
   (let ((s5-0 (handle->process (-> *target* fp-hud))))

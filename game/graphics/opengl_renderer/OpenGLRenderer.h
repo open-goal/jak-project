@@ -123,6 +123,7 @@ class OpenGLRenderer {
 
   float m_last_pmode_alp = 1.;
   bool m_enable_fast_blackout_loads = true;
+  std::string m_renderer_filter = "";
 
   struct FboState {
     struct {

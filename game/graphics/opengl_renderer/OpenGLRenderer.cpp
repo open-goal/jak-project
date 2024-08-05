@@ -28,6 +28,7 @@
 #include "game/graphics/pipelines/opengl.h"
 
 #include "third-party/imgui/imgui.h"
+#include "third-party/imgui/imgui_stdlib.h"
 
 // for the vif callback
 #include "game/kernel/common/kmachine.h"
@@ -36,6 +37,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+#include "common/util/string_util.h"
 
 namespace {
 std::string g_current_renderer;
@@ -267,6 +269,11 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS, BucketId::GMERC_L1_PRIS, i), m_generic2,
           Generic2::Mode::NORMAL);
 
+      init_bucket_renderer<Generic2BucketRenderer>(
+          fmt::format("gmerc2-l{}-pris", i), BucketCategory::GENERIC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::GMERC2_L0_PRIS, BucketId::GMERC2_L1_PRIS, i), m_generic2,
+          Generic2::Mode::PRIM);
+
       init_bucket_renderer<Merc2BucketRenderer>(
           fmt::format("merc-l{}-pris2", i), BucketCategory::MERC,
           GET_BUCKET_ID_FOR_LIST(BucketId::MERC_L0_PRIS2, BucketId::MERC_L1_PRIS2, i), m_merc2);
@@ -274,6 +281,10 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("gmerc-l{}-pris2", i), BucketCategory::GENERIC,
           GET_BUCKET_ID_FOR_LIST(BucketId::GMERC_L0_PRIS2, BucketId::GMERC_L1_PRIS2, i), m_generic2,
           Generic2::Mode::NORMAL);
+      init_bucket_renderer<Generic2BucketRenderer>(
+          fmt::format("gmerc2-l{}-pris2", i), BucketCategory::GENERIC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::GMERC2_L0_PRIS2, BucketId::GMERC2_L1_PRIS2, i),
+          m_generic2, Generic2::Mode::PRIM);
     }
 
     // 401
@@ -284,6 +295,10 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
     init_bucket_renderer<Generic2BucketRenderer>("gmerc-lcom-pris", BucketCategory::GENERIC,
                                                  BucketId::GMERC_LCOM_PRIS, m_generic2,
                                                  Generic2::Mode::NORMAL);
+
+    init_bucket_renderer<Generic2BucketRenderer>("gmerc2-lcom-pris", BucketCategory::GENERIC,
+                                                 BucketId::GMERC2_LCOM_PRIS, m_generic2,
+                                                 Generic2::Mode::PRIM);
 
     // 461
     init_bucket_renderer<TextureUploadHandler>("tex-lcom-sky-post", BucketCategory::TEX,
@@ -310,6 +325,10 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
           fmt::format("tfrag-l{}-water", i), BucketCategory::TFRAG,
           GET_BUCKET_ID_FOR_LIST(BucketId::TFRAG_L0_WATER, BucketId::TFRAG_L1_WATER, i),
           std::vector{tfrag3::TFragmentTreeKind::WATER}, false, i, anim_slot_array());
+      init_bucket_renderer<Generic2BucketRenderer>(
+          fmt::format("gmerc2-l{}-water", i), BucketCategory::GENERIC,
+          GET_BUCKET_ID_FOR_LIST(BucketId::GMERC2_L0_WATER, BucketId::GMERC2_L1_WATER, i),
+          m_generic2, Generic2::Mode::PRIM);
     }
 
     // 563
@@ -317,11 +336,20 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                                BucketId::TEX_LCOM_WATER, m_texture_animator);
     init_bucket_renderer<Merc2BucketRenderer>("merc-lcom-water", BucketCategory::MERC,
                                               BucketId::MERC_LCOM_WATER, m_merc2);
+    init_bucket_renderer<Generic2BucketRenderer>("generic2-lcom-water", BucketCategory::GENERIC,
+                                                 BucketId::GMERC2_LCOM_WATER, m_generic2,
+                                                 Generic2::Mode::PRIM);
 
     // 568
     init_bucket_renderer<TextureUploadHandler>("tex-sprite", BucketCategory::TEX,
                                                BucketId::TEX_SPRITE, m_texture_animator);
+    init_bucket_renderer<Generic2BucketRenderer>("generic-sprite-1", BucketCategory::GENERIC,
+                                                 BucketId::GENERIC_SPRITE_1, m_generic2,
+                                                 Generic2::Mode::PRIM);
     init_bucket_renderer<Sprite3>("particles", BucketCategory::SPRITE, BucketId::PARTICLES);
+    init_bucket_renderer<Generic2BucketRenderer>("generic-sprite-2", BucketCategory::GENERIC,
+                                                 BucketId::GENERIC_SPRITE_2, m_generic2,
+                                                 Generic2::Mode::PRIM);
     init_bucket_renderer<Generic2BucketRenderer>("generic-sprite-3", BucketCategory::OTHER,
                                                  BucketId::GENERIC_SPRITE_3, m_generic2,
                                                  Generic2::Mode::LIGHTNING);
@@ -1082,8 +1110,13 @@ void OpenGLRenderer::draw_renderer_selection_window() {
     ImGui::TreePop();
   }
 
+  ImGui::InputText("Renderer Filter", &m_renderer_filter);
+
   for (size_t i = 0; i < m_bucket_renderers.size(); i++) {
     auto renderer = m_bucket_renderers[i].get();
+    if (!m_renderer_filter.empty() && !str_util::contains(renderer->name(), m_renderer_filter)) {
+      continue;
+    }
     if (renderer && !renderer->empty()) {
       ImGui::PushID(i);
       if (ImGui::TreeNode(renderer->name_and_id().c_str())) {

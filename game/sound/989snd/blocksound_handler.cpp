@@ -15,8 +15,9 @@ BlockSoundHandler::BlockSoundHandler(SoundBank& bank,
                                      VoiceManager& vm,
                                      s32 sfx_vol,
                                      s32 sfx_pan,
-                                     SndPlayParams& params)
-    : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank) {
+                                     SndPlayParams& params,
+                                     u32 sound_id)
+    : m_group(sfx.VolGroup), m_sfx(sfx), m_vm(vm), m_bank(bank), m_sound_id(sound_id) {
   s32 vol, pan, pitch_mod, pitch_bend;
   if (sfx_vol == -1) {
     sfx_vol = sfx.Vol;

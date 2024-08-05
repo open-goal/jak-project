@@ -42,7 +42,12 @@ JAK1_AUTO_REPLACEMENTS = {
     "–": "-",
     "​": "",
     "„": ",,",
-    "”": "\""
+    "”": "\"",
+    "　": " ",
+    "！": "!",
+    "（": "(",
+    "）": ")",
+    "。": "."
 }
 
 # TODO - check for korean text
@@ -83,7 +88,13 @@ JAK2_AUTO_REPLACEMENTS = {
     "–": "-",
     "​": "",
     "„": ",,",
-    "”": "\""
+    "”": "\"",
+    "　": " ",
+    "！": "!",
+    "（": "(",
+    "）": ")",
+    "〜": "~",
+    "。": "."
 }
 # fmt: on
 
@@ -145,6 +156,7 @@ def lint_jak1_characters(text):
                             character, text
                         )
                     )
+                    # text = jak1_replace_character(text, pos, "?")
                     invalid_characters_found = True
                 pos = pos + 1
             else:
@@ -258,6 +270,7 @@ def lint_jak2_characters(text):
                             character, text
                         )
                     )
+                    # text = jak2_replace_character(text, pos, "?")
                     invalid_characters_found = True
                 pos = pos + 1
             else:

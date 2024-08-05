@@ -19,7 +19,8 @@
 #define SD_S_KOFF (0x16 << 8)
 #define SD_VOICE(_core, _v) ((_core) | ((_v) << 1))
 
-extern std::shared_ptr<snd::Voice> voices[4];
+constexpr int kNVoices = 8;
+extern std::shared_ptr<snd::Voice> voices[kNVoices];
 extern u8 spu_memory[0x15160 * 10];
 
 using sceSdTransIntrHandler = int (*)(int, void*);
@@ -30,4 +31,4 @@ void sceSdSetSwitch(u32 entry, u32 value);
 void sceSdSetAddr(u32 entry, u32 value);
 void sceSdSetParam(u32 entry, u32 value);
 void sceSdSetTransIntrHandler(s32 channel, sceSdTransIntrHandler, void* data);
-u32 sceSdVoiceTrans(s32 channel, s32 mode, void* iop_addr, u32 spu_addr, u32 size);
+u32 sceSdVoiceTrans(s32 channel, s32 mode, const void* iop_addr, u32 spu_addr, u32 size);

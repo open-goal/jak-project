@@ -7,6 +7,7 @@
 #endif
 
 #include "common/global_profiler/GlobalProfiler.h"
+#include "common/util/fnv.h"
 
 #include "game/graphics/opengl_renderer/EyeRenderer.h"
 #include "game/graphics/opengl_renderer/background/background_common.h"
@@ -54,6 +55,8 @@ std::mutex g_merc_data_mutex;
 
 Merc2::Merc2(ShaderLibrary& shaders, const std::vector<GLuint>* anim_slot_array)
     : m_anim_slot_array(anim_slot_array) {
+  ASSERT(fnv64("the quick brown fox jumps over the lazy dog") == 0x7404cea13ff89bb0);
+
   // Set up main vertex array. This will point to the data stored in the .FR3 level file, and will
   // be uploaded to the GPU by the Loader.
   glGenVertexArrays(1, &m_vao);
@@ -535,11 +538,14 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   auto* flags = (const PcMercFlags*)input_data;
   int num_effects = flags->effect_count;  // mostly just a sanity check
   ASSERT(num_effects < kMaxEffect);
+  // hack for custom models to disable blerc/mod draws
+  bool is_custom_model = model->effects.at(0).all_draws.at(0).no_strip;
   u64 current_ignore_alpha_bits = flags->ignore_alpha_mask;  // shader settings
   u64 current_effect_enable_bits = flags->enable_mask;       // mask for game to disable an effect
-  bool model_uses_mod = flags->bitflags & 1;  // if we should update vertices from game.
+  bool model_uses_mod =
+      flags->bitflags & 1 && !is_custom_model;  // if we should update vertices from game.
   bool model_disables_fog = flags->bitflags & 2;
-  bool model_uses_pc_blerc = flags->bitflags & 4;
+  bool model_uses_pc_blerc = flags->bitflags & 4 && !is_custom_model;
   bool model_disables_envmap = flags->bitflags & 8;
   input_data += 32;
 
@@ -609,6 +615,8 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
   u32 lights = alloc_lights(current_lights);
   stats->num_lights++;
 
+  u64 hash = fnv64(model->name);
+
   // loop over effects, creating draws for each
   for (size_t ei = 0; ei < model->effects.size(); ei++) {
     // game has disabled it?
@@ -633,7 +641,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       // do fixed draws:
       for (auto& fdraw : effect.mod.fix_draw) {
         alloc_normal_draw(fdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
-                          model_disables_fog);
+                          model_disables_fog, hash);
         if (should_envmap) {
           try_alloc_envmap_draw(fdraw, effect.envmap_mode, effect.envmap_texture, lev_bucket,
                                 fade_buffer + 4 * ei, first_bone, lights, uses_water);
@@ -643,7 +651,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
       // do mod draws
       for (auto& mdraw : effect.mod.mod_draw) {
         auto n = alloc_normal_draw(mdraw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
-                                   model_disables_fog);
+                                   model_disables_fog, hash);
         // modify the draw, set the mod flag and point it to the opengl buffer
         n->flags |= MOD_VTX;
         n->mod_vtx_buffer = mod_opengl_buffers[ei];
@@ -665,7 +673,7 @@ void Merc2::handle_pc_model(const DmaTransfer& setup,
                                 fade_buffer + 4 * ei, first_bone, lights, uses_water);
         }
         alloc_normal_draw(draw, ignore_alpha, lev_bucket, first_bone, lights, uses_water,
-                          model_disables_fog);
+                          model_disables_fog, hash);
       }
     }
   }
@@ -761,7 +769,9 @@ void Merc2::render(DmaFollower& dma,
                    SharedRenderState* render_state,
                    ScopedProfilerNode& prof,
                    MercDebugStats* stats) {
+  bool hack = stats->collect_debug_model_list;
   *stats = {};
+  stats->collect_debug_model_list = hack;
   if (stats->collect_debug_model_list) {
     stats->model_list.clear();
   }
@@ -1053,6 +1063,7 @@ Merc2::Draw* Merc2::try_alloc_envmap_draw(const tfrag3::MercDraw& mdraw,
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = envmap_mode;
+  draw->hash = 0;
   if (jak1_water_mode) {
     draw->mode.enable_ab();
     draw->mode.disable_depth_write();
@@ -1073,12 +1084,14 @@ Merc2::Draw* Merc2::alloc_normal_draw(const tfrag3::MercDraw& mdraw,
                                       u32 first_bone,
                                       u32 lights,
                                       bool jak1_water_mode,
-                                      bool disable_fog) {
+                                      bool disable_fog,
+                                      u64 hash) {
   Draw* draw = &lev_bucket->draws[lev_bucket->next_free_draw++];
   draw->flags = 0;
   draw->first_index = mdraw.first_index;
   draw->index_count = mdraw.index_count;
   draw->mode = mdraw.mode;
+  draw->hash = hash;
   if (jak1_water_mode) {
     draw->mode.set_ab(true);
     draw->mode.disable_depth_write();
@@ -1205,7 +1218,7 @@ void Merc2::do_draws(const Draw* draw_array,
                      bool set_fade,
                      SharedRenderState* render_state) {
   glBindVertexArray(m_vao);
-  int last_tex = -1;
+  s32 last_tex = INT32_MIN;
   int last_light = -1;
   bool normal_vtx_buffer_bound = true;
 
@@ -1244,10 +1257,19 @@ void Merc2::do_draws(const Draw* draw_array,
       if (draw.texture < (int)lev->textures.size() && draw.texture >= 0) {
         glBindTexture(GL_TEXTURE_2D, lev->textures.at(draw.texture));
       } else if ((draw.texture & 0xffffff00) == 0xefffff00) {
-        auto maybe_eye = render_state->eye_renderer->lookup_eye_texture(draw.texture & 0xff);
-        if (maybe_eye) {
-          glBindTexture(GL_TEXTURE_2D, *maybe_eye);
+        if (render_state->version >= GameVersion::Jak3) {
+          auto maybe_eye =
+              render_state->eye_renderer->lookup_eye_texture_hash(draw.hash, (draw.texture & 1));
+          if (maybe_eye) {
+            glBindTexture(GL_TEXTURE_2D, *maybe_eye);
+          }
+        } else {
+          auto maybe_eye = render_state->eye_renderer->lookup_eye_texture(draw.texture & 0xff);
+          if (maybe_eye) {
+            glBindTexture(GL_TEXTURE_2D, *maybe_eye);
+          }
         }
+
         use_mipmaps_for_filtering = false;
       } else if (draw.texture < 0) {
         int slot = -(draw.texture + 1);

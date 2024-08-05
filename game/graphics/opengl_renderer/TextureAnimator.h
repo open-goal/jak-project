@@ -484,6 +484,7 @@ class TextureAnimator {
   int m_templex_water_anim_array_idx = -1;
   int m_volcanoa_anim_array_idx = -1;
   int m_deshover_anim_array_idx = -1;
+  int m_darkjak_highres_clut_blender_idx = -1;
 
   std::vector<FixedAnimArray> m_fixed_anim_arrays;
 

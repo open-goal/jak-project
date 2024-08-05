@@ -492,8 +492,9 @@
   "WASSTAD4" "WASSTAD5" "WASSTAD6" "WASTOAD" "WASTURT")
 
 ;; Jak 3 has no MUS files
-;; (copy-mus-files "" "TWEAKVAL")
-
+(defstep :in "$ISO/RES/TWEAKVAL.MUS"
+  :tool 'copy
+  :out '("$OUT/iso/TWEAKVAL.MUS"))
 ;;;;;;;;;;;;;;;;;;;;;
 ;; Text
 ;;;;;;;;;;;;;;;;;;;;;
@@ -531,6 +532,7 @@
    "$OUT/iso/7COMMON.TXT"
    "$OUT/iso/0SUBTI2.TXT"
    "$OUT/iso/VAGDIR.AYB"
+   "$OUT/iso/TWEAKVAL.MUS"
    ,@(reverse *all-vis*)
    ,@(reverse *all-str*)
    ,@(reverse *all-sbk*)

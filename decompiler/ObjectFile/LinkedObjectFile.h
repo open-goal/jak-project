@@ -25,7 +25,7 @@ namespace decompiler {
  */
 class LinkedObjectFile {
  public:
-  LinkedObjectFile(GameVersion version) : version(version){};
+  LinkedObjectFile(GameVersion _version) : version(_version) {}
   void set_segment_count(int n_segs);
   void push_back_word_to_segment(uint32_t word, int segment);
   int get_label_id_for(int seg, int offset);

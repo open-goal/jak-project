@@ -29,8 +29,11 @@ class Wrapper {
   Wrapper(const std::string& _username,
           const Config& config,
           const StartupFile& startup,
-          bool nrepl_alive)
-      : username(_username), repl_config(config), startup_file(startup), nrepl_alive(nrepl_alive) {}
+          bool _nrepl_alive)
+      : username(_username),
+        repl_config(config),
+        startup_file(startup),
+        nrepl_alive(_nrepl_alive) {}
   replxx::Replxx& get_repl() { return repl; }
   void init_settings();
   void reload_startup_file();

@@ -78,6 +78,8 @@
 #include "game/overlord/jak2/stream.h"
 #include "game/overlord/jak2/streamlist.h"
 #include "game/overlord/jak2/vag.h"
+#include "game/overlord/jak3/init.h"
+#include "game/overlord/jak3/overlord.h"
 #include "game/system/Deci2Server.h"
 #include "game/system/iop_thread.h"
 #include "sce/deci2.h"
@@ -269,33 +271,36 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   iop::LIBRARY_register(&iop);
   Gfx::register_vsync_callback([&iop]() { iop.kernel.signal_vblank(); });
 
-  jak1::dma_init_globals();
-  jak2::dma_init_globals();
+  if (version != GameVersion::Jak3) {
+    jak1::dma_init_globals();
+    jak2::dma_init_globals();
 
-  iso_init_globals();
-  jak1::iso_init_globals();
-  jak2::iso_init_globals();
+    iso_init_globals();
+    jak1::iso_init_globals();
+    jak2::iso_init_globals();
 
-  fake_iso_init_globals();
-  jak1::fake_iso_init_globals();
-  jak2::iso_cd_init_globals();
+    fake_iso_init_globals();
+    jak1::fake_iso_init_globals();
+    jak2::iso_cd_init_globals();
 
-  jak1::iso_queue_init_globals();
-  jak2::iso_queue_init_globals();
+    jak1::iso_queue_init_globals();
+    jak2::iso_queue_init_globals();
 
-  jak2::spusstreams_init_globals();
-  jak1::ramdisk_init_globals();
-  sbank_init_globals();
+    jak2::spusstreams_init_globals();
+    jak1::ramdisk_init_globals();
+    sbank_init_globals();
 
-  // soundcommon
-  jak1::srpc_init_globals();
-  jak2::srpc_init_globals();
-  srpc_init_globals();
-  ssound_init_globals();
-  jak2::ssound_init_globals();
+    // soundcommon
+    jak1::srpc_init_globals();
+    jak2::srpc_init_globals();
+    srpc_init_globals();
+    ssound_init_globals();
+    jak2::ssound_init_globals();
 
-  jak1::stream_init_globals();
-  jak2::stream_init_globals();
+    jak1::stream_init_globals();
+    jak2::stream_init_globals();
+  }
+
   prof().end_event();
   iface.initialization_complete();
 
@@ -323,8 +328,10 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
         jak1::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
         break;
       case GameVersion::Jak2:
-      case GameVersion::Jak3:  // TODO: jak3 using jak2's overlord.
         jak2::start_overlord_wrapper(iop.overlord_argc, iop.overlord_argv, &complete);
+        break;
+      case GameVersion::Jak3:
+        jak3::start_overlord_wrapper(&complete);
         break;
       default:
         ASSERT_NOT_REACHED();
@@ -334,7 +341,6 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
   {
     auto p = scoped_prof("overlord-wait-for-init");
     while (complete == false) {
-      prof().root_event();
       iop.kernel.dispatch();
     }
   }
@@ -344,7 +350,7 @@ void iop_runner(SystemThreadInterface& iface, GameVersion version) {
 
   // IOP Kernel loop
   while (!iface.get_want_exit() && !iop.want_exit) {
-    prof().root_event();
+    // prof().root_event();
     // The IOP scheduler informs us of how many microseconds are left until it has something to do.
     // So we can wait for that long or until something else needs it to wake up.
     auto wait_duration = iop.kernel.dispatch();

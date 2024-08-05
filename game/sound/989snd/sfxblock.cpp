@@ -18,7 +18,7 @@ std::optional<std::unique_ptr<SoundHandler>> SFXBlock::MakeHandler(VoiceManager&
     return std::nullopt;
   }
 
-  auto handler = std::make_unique<BlockSoundHandler>(*this, SFX, vm, vol, pan, params);
+  auto handler = std::make_unique<BlockSoundHandler>(*this, SFX, vm, vol, pan, params, sound_id);
   return handler;
 }
 

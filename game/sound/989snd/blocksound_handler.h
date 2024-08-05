@@ -25,7 +25,8 @@ class BlockSoundHandler : public SoundHandler {
                     VoiceManager& vm,
                     s32 sfx_vol,
                     s32 sfx_pan,
-                    SndPlayParams& params);
+                    SndPlayParams& params,
+                    u32 sound_id);
 
   ~BlockSoundHandler() override;
   bool Tick() override;
@@ -39,6 +40,7 @@ class BlockSoundHandler : public SoundHandler {
   void SetPMod(s32 mod) override;
   void SetRegister(u8 reg, u8 value) override { m_registers.at(reg) = value; };
   void SetPBend(s32 bend) override;
+  u32 SoundID() const override { return m_sound_id; }
 
   void DoGrain();
 
@@ -86,5 +88,7 @@ class BlockSoundHandler : public SoundHandler {
 
   s32 m_countdown{0};
   u32 m_next_grain{0};
+
+  u32 m_sound_id{0};
 };
 }  // namespace snd

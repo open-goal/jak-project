@@ -536,7 +536,7 @@
 
 (when (or (zero? *bt-height-adjust*) (!= loading-level global))
   (set! *bt-height-adjust* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *bt-height-adjust* 4 'loading-level (the-as int #t))
+  (allocate! *bt-height-adjust* 4 'loading-level #t)
   )
 
 (set! (-> *bt-height-adjust* pts data 0 first) 0.0)
@@ -574,7 +574,7 @@
           (set! f0-7 (* f0-7 f0-7))
           )
         )
-      (let* ((f0-8 (curve2d-method-9 *bt-height-adjust* f0-7 3))
+      (let* ((f0-8 (evaluate *bt-height-adjust* f0-7 (loop-behavior use-default)))
              (f0-9 (lerp (-> this start-path-height-offset) (-> this dest-path-height-offset) f0-8))
              )
         (set! (-> this path-height-vel) (* (- f0-9 (-> this path-height-offset)) (-> pp clock frames-per-second)))
@@ -1770,7 +1770,7 @@
 
 (when (or (zero? *bt-clamp-curve-x*) (!= loading-level global))
   (set! *bt-clamp-curve-x* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *bt-clamp-curve-x* 7 'loading-level (the-as int #t))
+  (allocate! *bt-clamp-curve-x* 7 'loading-level #t)
   )
 
 (set! (-> *bt-clamp-curve-x* pts data 0 first) 0.0)
@@ -1803,7 +1803,7 @@
 
 (when (or (zero? *bt-accel-curve*) (!= loading-level global))
   (set! *bt-accel-curve* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *bt-accel-curve* 4 'loading-level (the-as int #t))
+  (allocate! *bt-accel-curve* 4 'loading-level #t)
   )
 
 (set! (-> *bt-accel-curve* pts data 0 first) 0.0)
@@ -1935,8 +1935,12 @@
     )
   (set! (-> this y-boost-scalar) (fmax 0.0 (fmin 2.5 (-> this y-boost-scalar))))
   (set! (-> this x-boost-scalar) (fmax 0.0 (fmin 2.5 (-> this x-boost-scalar))))
-  (set! (-> this rotyv) (* (-> this rotyv) (curve2d-method-9 *bt-accel-curve* (-> this y-boost-scalar) 2)))
-  (set! (-> this rotxv) (* (-> this rotxv) (curve2d-method-9 *bt-accel-curve* (-> this x-boost-scalar) 2)))
+  (set! (-> this rotyv)
+        (* (-> this rotyv) (evaluate *bt-accel-curve* (-> this y-boost-scalar) (loop-behavior b2)))
+        )
+  (set! (-> this rotxv)
+        (* (-> this rotxv) (evaluate *bt-accel-curve* (-> this x-boost-scalar) (loop-behavior b2)))
+        )
   (set! (-> this rotxv) (* 0.8 (-> this rotxv)))
   (+! (-> this roty) (* (-> this rotyv) (seconds-per-frame)))
   (+! (-> this rotx) (* (-> this rotxv) (seconds-per-frame)))

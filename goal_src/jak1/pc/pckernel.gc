@@ -14,6 +14,16 @@
 ;;;; methods
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defmethod initialize ((obj pc-settings-jak1))
+  "initial initialize method to be run after allocating"
+  ((method-of-type pc-settings initialize) obj)
+  (set! (-> *setting-control* default sfx-volume) (-> obj memcard-volume-sfx))
+  (set! (-> *setting-control* default music-volume) (-> obj memcard-volume-music))
+  (set! (-> *setting-control* default dialog-volume) (-> obj memcard-volume-dialog))
+  (set! (-> *setting-control* default vibration) (-> obj memcard-vibration?))
+  (set! (-> *setting-control* default play-hints) (-> obj memcard-play-hints?))
+  obj)
+
 (defmethod set-game-setting! ((obj pc-settings-jak1) (setting symbol) (value symbol))
   (case setting
     (('video-mode)
@@ -129,7 +139,8 @@
       (when (zero? (-> date stat))
         (set-time-of-day (+ (the float (bcd->dec (-> date hour))) (/ (the float (bcd->dec (-> date minute))) 60))))))
   (pc-set-gfx-hack (pc-gfx-hack no-tex) (logtest? (-> obj cheats) (pc-cheats no-tex)))
-  (if (pc-cheats? (-> obj cheats) mirror)
+  (if (or (pc-cheats? (-> obj cheats) mirror)
+          *PC-MIRROR-MODE-SET*)
     (sound-set-mirror-mode (sound-mirror-mode mirrored))
     (sound-set-mirror-mode (sound-mirror-mode normal)))
   ;; run cheats end!!!
@@ -433,6 +444,7 @@
             (("subtitle-language") (set! (-> obj subtitle-language) (the-as pc-language (file-stream-read-int file))))
             (("text-language") (set! (-> obj text-language) (the-as pc-language (file-stream-read-int file))))
             (("scenes-seen") (dotimes (i PC_SPOOL_LOG_LENGTH) (set! (-> obj scenes-seen i) (file-stream-read-int file))))
+            (("memcard-play-hints?") (set! (-> obj memcard-play-hints?) (file-stream-read-symbol file)))
             (("secrets")
              (dosettings (file)
                          (case-str *pc-temp-string*
@@ -466,6 +478,7 @@
   (format file "  (subtitles? ~A)~%" (-> obj subtitles?))
   (format file "  (subtitle-language ~D)~%" (-> obj subtitle-language))
   (format file "  (text-language ~D)~%" (-> obj text-language))
+  (format file "  (memcard-play-hints? ~A)~%" (-> obj memcard-play-hints?))
   #|
   (format file "  (scenes-seen")
   (dotimes (i PC_SPOOL_LOG_LENGTH)

@@ -782,6 +782,7 @@ enum class PcTextureAnimCodesJak3 : u16 {
   SET_SHADER = 17,
   DRAW = 18,
   DARKJAK = 22,
+  DARKJAK_HIGHRES = 23,
   SKULL_GEM = 27,
   DEFAULT_WATER = 28,
   DEFAULT_WARP = 29,
@@ -1217,6 +1218,10 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
             case PcTextureAnimCodesJak3::DARKJAK: {
               auto p = scoped_prof("darkjak");
               run_clut_blender_group(tf, m_darkjak_clut_blender_idx, frame_idx);
+            } break;
+            case PcTextureAnimCodesJak3::DARKJAK_HIGHRES: {
+              auto p = scoped_prof("darkjak-highres");
+              run_clut_blender_group(tf, m_darkjak_highres_clut_blender_idx, frame_idx);
             } break;
             case PcTextureAnimCodesJak3::SKULL_GEM:
             case PcTextureAnimCodesJak3::DEFAULT_WATER:

@@ -187,7 +187,7 @@
     (set! (-> s5-2 track-immediately?) #t)
     (let* ((v1-28 (estimate-light-trail-mem-usage
                     (the-as uint (-> s5-2 max-num-crumbs))
-                    (the-as uint (= (-> s5-2 appearance lie-mode) 3))
+                    (the-as uint (= (-> s5-2 appearance lie-mode) (lie-mode use-two-strips)))
                     )
                   )
            (s4-2 (get-process *default-dead-pool* light-trail-tracker-projectile (+ v1-28 8192) 1))
@@ -1619,7 +1619,7 @@
 ;; failed to figure out what this is:
 (when (or (zero? *impact-blur*) (!= loading-level global))
   (set! *impact-blur* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *impact-blur* 3 'loading-level (the-as int #f))
+  (allocate! *impact-blur* 3 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -1643,7 +1643,7 @@
 ;; failed to figure out what this is:
 (when (or (zero? *shockwave-blur-red-2*) (!= loading-level global))
   (set! *shockwave-blur-red-2* (new 'loading-level 'curve2d-piecewise))
-  (curve2d-piecewise-method-10 *shockwave-blur-red-2* 5 'loading-level (the-as int #f))
+  (allocate! *shockwave-blur-red-2* 5 'loading-level #f)
   )
 
 ;; failed to figure out what this is:
@@ -1773,7 +1773,7 @@
     (adjust-warp-radius-and-alpha self)
     (let ((f0-14 (-> self current-stage-t)))
       0.0
-      (let* ((f0-16 (- 1.0 (curve2d-method-9 *impact-blur* f0-14 3)))
+      (let* ((f0-16 (- 1.0 (evaluate *impact-blur* f0-14 (loop-behavior use-default))))
              (f0-19 (lerp f0-16 1.0 (fmax 0.0 (- 0.5 (-> self strength)))))
              )
         (blit-displays-work-method-17 *blit-displays-work* (-> self origin) 2 (fmin 1.0 f0-19) #f)
@@ -2322,7 +2322,7 @@
           (while (-> self child)
             (let ((f0-11 (* 0.0044444446 (the float (- (current-time) (-> self state-time))))))
               0.0
-              (let* ((f0-13 (- 1.0 (curve2d-method-9 *impact-blur* f0-11 1)))
+              (let* ((f0-13 (- 1.0 (evaluate *impact-blur* f0-11 (loop-behavior clamp))))
                      (f0-14 (lerp f0-13 1.0 f30-1))
                      )
                 (set! (-> *display* force-sync) (the-as uint 2))

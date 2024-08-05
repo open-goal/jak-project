@@ -31,30 +31,19 @@
 ;;;; updates
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defmethod set-display-mode! ((obj pc-settings) (mode symbol) (call-handlers symbol))
-  "sets the game's display mode"
-  ;; no-op if the display mode hasn't actually changed
-  (when (!= mode (-> obj display-mode))
-    ;; change the display mode.
-    (set! (-> obj display-mode) mode)
-    (when call-handlers
-      ;; set fullscreen to what we want
-      (pc-set-display-mode (-> obj display-mode))
-      ;; if windowed mode, set the size properly
-      (when (= (-> obj display-mode) 'windowed)
-        ;; TODO - this means the user can never have a window smaller than MIN_WIDTH/HEIGHT
-        (pc-set-window-size (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))))
-  0)
-
-(defmethod set-size! ((obj pc-settings) (width int) (height int) (call-handlers symbol))
+(defmethod set-window-size! ((obj pc-settings) (width int) (height int))
   "sets the size of the display window"
-  (format 0 "Setting ~A size to ~D x ~D~%" (-> obj display-mode) width height)
-  (cond
-    ((= 'windowed (-> obj display-mode))
-     (set! (-> obj window-width) width)
-     (set! (-> obj window-height) height)
-     (if call-handlers (pc-set-window-size (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height)))))
-    (else (set! (-> obj width) width) (set! (-> obj height) height)))
+  (let ((display-mode (pc-get-display-mode)))
+    (cond
+      ((= display-mode 'windowed)
+        (set! (-> obj window-width) width)
+        (set! (-> obj window-height) height)
+        (format 0 "Setting window size to ~D x ~D~%" width height)
+        (pc-set-window-size! (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
+      (else
+        (format 0 "Setting borderless/fullscreen size to ~D x ~D~%" width height)
+        (set! (-> obj width) width)
+        (set! (-> obj height) height))))
   (none))
 
 (defmethod set-aspect! ((obj pc-settings) (aw int) (ah int))
@@ -77,25 +66,13 @@
 (defmethod set-frame-rate! ((obj pc-settings) (rate int) (call-handlers symbol))
   "set the target framerate."
   (if call-handlers (pc-set-frame-rate rate))
-  (if (and (!= 'fullscreen (-> obj display-mode)) (!= (pc-get-active-display-refresh-rate) rate)) (set! (-> obj vsync?) #f))
+  (if (and (!= 'fullscreen (pc-get-display-mode)) (!= (pc-get-active-display-refresh-rate) rate)) (set! (-> obj vsync?) #f))
   (set! (-> obj target-fps) rate)
   (case rate
     ((50) (set-game-setting! obj 'video-mode 'pal))
     ((60) (set-game-setting! obj 'video-mode 'ntsc))
     (else (set-game-setting! obj 'video-mode 'custom)))
   rate)
-
-(defmethod set-monitor! ((obj pc-settings) (monitor int))
-  "set the monitor to use when in fullscreen/borderless"
-  ;; if monitor selection is out of bounds (e.g. if a monitor got disconnected),
-  ;; then default to the primary monitor
-  (cond
-    ((>= (-> obj monitor) (pc-get-display-count))
-     (format 0 "Monitor selection out of bounds, defaulting to primary monitor.~%")
-     (set! (-> obj monitor) 0))
-    (else (set! (-> obj monitor) monitor)))
-  (pc-set-fullscreen-display (-> obj monitor))
-  (none))
 
 (defmethod commit-to-file ((obj pc-settings))
   "commits the current settings to the file"
@@ -141,11 +118,11 @@
     ((-> obj letterbox?) (pc-set-letterbox (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height)))
     (else (pc-set-letterbox (-> obj framebuffer-width) (-> obj framebuffer-height))))
   (pc-set-vsync (and (-> obj vsync?)
-                     (or (= 'fullscreen (-> obj display-mode)) (>= (pc-get-active-display-refresh-rate) (-> obj target-fps)))))
-  (when (!= 'fullscreen (-> obj display-mode))
+                     (or (= 'fullscreen (pc-get-display-mode)) (>= (pc-get-active-display-refresh-rate) (-> obj target-fps)))))
+  (when (!= 'fullscreen (pc-get-display-mode))
     (pc-set-frame-rate (-> obj target-fps)))
   ;; do game resolution
-  (if (= (-> obj display-mode) 'windowed)
+  (if (= (pc-get-display-mode) 'windowed)
     (pc-set-game-resolution (-> obj framebuffer-scissor-width) (-> obj framebuffer-scissor-height))
     (pc-set-game-resolution (-> obj width) (-> obj height)))
   ;; set msaa sample rate. if invalid, just reset to 2.
@@ -253,14 +230,14 @@
 (defmethod get-current-game-width ((obj pc-settings))
   "return the current width in pixels of the visible portion of the game"
   (cond
-    ((= (-> obj display-mode) 'windowed)
+    ((= (pc-get-display-mode) 'windowed)
      (if (-> obj letterbox?) (-> obj framebuffer-scissor-width) (-> obj framebuffer-width)))
     (else (-> obj width))))
 
 (defmethod get-current-game-height ((obj pc-settings))
   "return the current height in pixels of the visible portion of the game"
   (cond
-    ((= (-> obj display-mode) 'windowed)
+    ((= (pc-get-display-mode) 'windowed)
      (if (-> obj letterbox?) (-> obj framebuffer-scissor-height) (-> obj framebuffer-height)))
     (else (-> obj height))))
 
@@ -288,7 +265,6 @@
               (-> obj aspect-ratio-auto?)
               (-> obj use-vis?)
               (-> obj letterbox?))
-      (format *stdcon* "display-mode: ~A vsync? ~A~%" (-> obj display-mode) (-> obj vsync?))
       (clear *pc-temp-string*))
     (when *display-actor-bank*
       (draw-string-xy (string-format "Actor Bank: ~,,1m/~,,1m (~D)"
@@ -463,8 +439,8 @@
     (file-stream-close file))
   (format 0 "pc settings file read: ~A~%" filename)
   ;; restore the windowed mode resolution properly
-  (when (= (-> obj display-mode) 'windowed)
-    (pc-set-window-size (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
+  (when (= (pc-get-display-mode) 'windowed)
+    (pc-set-window-size! (max PC_MIN_WIDTH (-> obj window-width)) (max PC_MIN_HEIGHT (-> obj window-height))))
   #t)
 
 (defmethod handle-input-settings ((obj pc-settings) (file file-stream))
@@ -474,7 +450,22 @@
             (("window-size")
              (set! (-> obj window-width) (file-stream-read-int file))
              (set! (-> obj window-height) (file-stream-read-int file)))
-            (("game-size") (set! (-> obj width) (file-stream-read-int file)) (set! (-> obj height) (file-stream-read-int file)))
+            (("game-size")
+             ;; Check to see if the game-size is a valid resolution on this persons device
+             ;; on some machines, this has been proven to cause the black-screen issue https://github.com/open-goal/jak-project/issues/3563
+             ;; Correlating with logs like:
+             ;; - OpenGL error 0x502 S8246 T824C: GL_INVALID_OPERATION error generated. Source and destination dimensions must be identical with the current filtering modes.
+             (let* ((saved-width (file-stream-read-int file))
+                    (saved-height (file-stream-read-int file))
+                    (supported-resolution? (pc-is-supported-resolution? saved-width saved-height)))
+              (cond
+               (supported-resolution?
+                (format 0 "[PC Settings]: Valid game-size resolution ~D x ~D~%" saved-width saved-height)
+                (set! (-> obj width) saved-width)
+                (set! (-> obj height) saved-height))
+               (else
+                (pc-get-active-display-size (&-> obj width) (&-> obj height))
+                (format 0 "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%" saved-width saved-height (-> obj width) (-> obj height))))))
             (("msaa") (set! (-> obj gfx-msaa) (file-stream-read-int file)))
             (("aspect-state")
              ;; game aspect
@@ -486,11 +477,12 @@
              (set! (-> obj aspect-ratio-auto?) (file-stream-read-symbol file))
              (unless (-> obj aspect-ratio-auto?)
                (set-aspect! obj (-> obj aspect-custom-x) (-> obj aspect-custom-y))))
-            (("display-mode")
-             ;; force a display mode update
-             (set! (-> obj display-mode) #f)
-             (set-display-mode! obj (file-stream-read-symbol file) #t))
-            (("monitor") (set-monitor! obj (file-stream-read-int file)))
+            ;; TODO - moved to C++, has to remain because settings parsing can't handle
+            ;; unexpected keys
+            (("display-mode") (file-stream-read-symbol file))
+            ;; TODO - moved to C++, has to remain because settings parsing can't handle
+            ;; unexpected keys
+            (("monitor") (file-stream-read-int file))
             (("letterbox") (set! (-> obj letterbox?) (file-stream-read-symbol file)))
             (("vsync") (set! (-> obj vsync?) (file-stream-read-symbol file)))
             (("font-scale") (set! (-> obj font-scale) (file-stream-read-float file)))
@@ -548,6 +540,10 @@
             (("controller-led-brightness") (set! (-> obj controller-led-brightness) (file-stream-read-float file)))
             (("controller-led-min-brightness") (set! (-> obj controller-led-min-brightness) (file-stream-read-float file)))
             (("controller-led-max-brightness") (set! (-> obj controller-led-max-brightness) (file-stream-read-float file)))
+            (("memcard-volume-sfx") (set! (-> obj memcard-volume-sfx) (file-stream-read-float file)))
+            (("memcard-volume-music") (set! (-> obj memcard-volume-music) (file-stream-read-float file)))
+            (("memcard-volume-dialog") (set! (-> obj memcard-volume-dialog) (file-stream-read-float file)))
+            (("memcard-vibration?") (set! (-> obj memcard-vibration?) (file-stream-read-symbol file)))
             ;; debug
             (("debug-font-scale") (set! (-> obj debug-font-scale) (file-stream-read-float file)))
             (("debug-font-scale-auto?") (set! (-> obj debug-font-scale-auto?) (file-stream-read-symbol file)))
@@ -564,10 +560,8 @@
           (-> obj aspect-custom-x)
           (-> obj aspect-custom-y)
           (-> obj aspect-ratio-auto?))
-  (format file "  (display-mode ~A)~%" (-> obj display-mode))
   (format file "  (window-size ~D ~D)~%" (-> obj window-width) (-> obj window-height))
   (format file "  (game-size ~D ~D)~%" (-> obj width) (-> obj height))
-  (format file "  (monitor ~D)~%" (-> obj monitor))
   (format file "  (letterbox ~A)~%" (-> obj letterbox?))
   (format file "  (vsync ~A)~%" (-> obj vsync?))
   ;(format file "  (font-scale ~f)~%" (-> obj font-scale))
@@ -622,6 +616,10 @@
   (format file "  (game-language ~D)~%" (get-game-language obj))
   (format file "  (subtitle-speaker ~A)~%" (-> obj subtitle-speaker?))
   (format file "  (territory ~D)~%" (-> obj territory))
+  (format file "  (memcard-volume-sfx ~f)~%" (-> obj memcard-volume-sfx))
+  (format file "  (memcard-volume-music ~f)~%" (-> obj memcard-volume-music))
+  (format file "  (memcard-volume-dialog ~f)~%" (-> obj memcard-volume-dialog))
+  (format file "  (memcard-vibration? ~A)~%" (-> obj memcard-vibration?))
   0)
 
 (defmethod write-to-file ((obj pc-settings) (filename string))
@@ -645,7 +643,11 @@
      (unless (read-from-file obj *pc-temp-string-1*)
        (format 0 "[PC] PC Settings found at '~S' but could not be loaded, using defaults!~%" *pc-temp-string-1*)
        (reset obj #t)))
-    (else (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*) (reset obj #t)))
+    (else
+      (format 0 "[PC] PC Settings not found at '~S'...initializing with defaults!~%" *pc-temp-string-1*)
+      (reset obj #t)
+      ;; save the file so users aren't confused, and so we can debug what the game is producing for them
+      (commit-to-file obj)))
   0)
 
 (defmethod initialize ((obj pc-settings))
