@@ -53,7 +53,7 @@ void DebugSettings::load_settings() {
 }
 
 void DebugSettings::save_settings() {
-  // Update the version string as we are now saving it back ground
+  // Update the version string as we are now saving it back
   version = current_version;
   json data = *this;
   auto debug_settings_filename =
@@ -99,7 +99,7 @@ void DisplaySettings::load_settings() {
 }
 
 void DisplaySettings::save_settings() {
-  // Update the version string as we are now saving it back ground
+  // Update the version string as we are now saving it back
   version = current_version;
   json data = *this;
   auto file_path = file_util::get_user_settings_dir(g_game_version) / "display-settings.json";
@@ -148,7 +148,7 @@ void InputSettings::load_settings() {
 }
 
 void InputSettings::save_settings() {
-  // Update the version string as we are now saving it back ground
+  // Update the version string as we are now saving it back
   version = current_version;
   json data = *this;
   auto file_path = file_util::get_user_settings_dir(g_game_version) / "input-settings.json";

@@ -18,12 +18,14 @@ DisplayManager::DisplayManager(SDL_Window* window) : m_window(window) {
     // scales
     SetProcessDPIAware();
 #endif
+    // First, load the settings
+    m_display_settings.load_settings();
+    // then potentially move the window to a different display
+    initialize_window_position_from_settings();
+    // now that we are on that monitor, get the info and video modes for it
     update_curr_display_info();
     update_video_modes();
-    // Load from file now (after initializing current window settings)
-    m_display_settings.load_settings();
-    // Adjust window / monitor position
-    initialize_window_position_from_settings();
+    // finally, potentially change the display mode
     set_display_mode(m_display_settings.display_mode);
   }
 }
@@ -42,9 +44,12 @@ DisplayManager::~DisplayManager() {
 
 void DisplayManager::initialize_window_position_from_settings() {
   // Check that the display id is still valid
-  if (m_current_display_modes.find(m_display_settings.display_id) ==
-      m_current_display_modes.end()) {
-    lg::warn("[DISPLAY] Saved display ID is no longer valid, resetting to display 0");
+  const auto num_displays = SDL_GetNumVideoDisplays();
+  if (m_display_settings.display_id >= num_displays) {
+    lg::warn(
+        "[DISPLAY] Saved display ID: {} is no longer valid as only {} displays were detected, "
+        "resetting to display 0",
+        num_displays);
     m_display_settings.display_id = 0;
     m_display_settings.window_xpos = 50;
     m_display_settings.window_ypos = 50;
@@ -300,7 +305,7 @@ void DisplayManager::update_curr_display_info() {
   if (get_active_display_id() < 0) {
     sdl_util::log_error("could not retrieve current window's display index");
   }
-  lg::info("[DISPLAY] current display id is {}", m_display_settings.display_id);
+  lg::info("[DISPLAY] current display id is {}", get_active_display_id());
   SDL_GL_GetDrawableSize(m_window, &m_window_width, &m_window_height);
   SDL_GetWindowPosition(m_window, &m_window_xpos, &m_window_ypos);
   // Update the scale of the display as well
@@ -391,7 +396,8 @@ void DisplayManager::update_resolutions() {
     }
     Resolution new_res = {curr_mode.w, curr_mode.h,
                           static_cast<float>(curr_mode.w) / static_cast<float>(curr_mode.h)};
-    lg::info("[DISPLAY]: {}x{} is supported", new_res.width, new_res.height);
+    lg::info("[DISPLAY]: {}x{}@{}hz is supported", new_res.width, new_res.height,
+             curr_mode.refresh_rate);
     m_available_resolutions.push_back(new_res);
   }
 

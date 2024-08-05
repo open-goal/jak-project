@@ -80,7 +80,9 @@ class DisplayManager {
   game_settings::DisplaySettings::DisplayMode get_display_mode() {
     return m_display_settings.display_mode;
   }
-  int get_num_resolutions() { return m_available_resolutions.size(); }
+  int get_num_resolutions() {
+    return m_available_resolutions.size();
+  }
   Resolution get_resolution(int id);
   bool is_supported_resolution(int width, int height);
 
