@@ -62,6 +62,8 @@ void DisplayManager::initialize_window_position_from_settings() {
     sdl_util::log_error(fmt::format("unable to get display bounds for display id {}",
                                     m_display_settings.display_id));
   } else {
+    lg::debug("[DISPLAY]: display bounds for {} is ({}, {}) | {}x{}", m_display_settings.display_id,
+              rect.x, rect.y, rect.w, rect.h);
     // Adjust the settings if they are out of bounds
     if (m_display_settings.window_xpos <= rect.x ||
         m_display_settings.window_xpos + 50 >= rect.x + rect.w) {
