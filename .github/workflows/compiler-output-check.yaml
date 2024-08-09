@@ -43,16 +43,9 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
 
       - name: Build goalc (master)
-        run: cmake --build build --parallel $((`nproc`)) --target goalc
-
-      - name: Compile and preserve (master)
         run: |
-          ./build/goalc/goalc --game jak1 --cmd "(make-group \"all-code\")"
-          ./build/goalc/goalc --game jak2 --cmd "(make-group \"all-code\")"
-          ./build/goalc/goalc --game jak3 --cmd "(make-group \"all-code\")"
-          mv ./out/jak1/obj ./out/jak1/obj.master
-          mv ./out/jak2/obj ./out/jak2/obj.master
-          mv ./out/jak3/obj ./out/jak3/obj.master
+          cmake --build build --parallel $((`nproc`)) --target goalc
+          mv ./build ./build.master
 
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -70,6 +63,15 @@ jobs:
 
       - name: Build goalc (PR)
         run: cmake --build build --parallel $((`nproc`)) --target goalc
+
+      - name: Compile and preserve (master)
+        run: |
+          ./build.master/goalc/goalc --game jak1 --cmd "(make-group \"all-code\")"
+          ./build.master/goalc/goalc --game jak2 --cmd "(make-group \"all-code\")"
+          ./build.master/goalc/goalc --game jak3 --cmd "(make-group \"all-code\")"
+          mv ./out/jak1/obj ./out/jak1/obj.master
+          mv ./out/jak2/obj ./out/jak2/obj.master
+          mv ./out/jak3/obj ./out/jak3/obj.master
 
       - name: Compile and preserve (PR)
         run: |
