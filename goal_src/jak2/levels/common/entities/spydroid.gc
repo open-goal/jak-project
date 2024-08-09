@@ -622,9 +622,9 @@
 
 (defmethod common-post ((this spydroid))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
@@ -720,7 +720,7 @@
 
 (defmethod general-event-handler ((this spydroid) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (local-vars (v1-6 vector) (sv-144 vector))
   (rlet ((vf0 :class vf)
          (vf4 :class vf)
@@ -868,11 +868,7 @@
      )
     (suspend)
     (ja-channel-set! 0)
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 1))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 1))
     (send-event self 'death-end)
     (while (-> self child)
       (suspend)
@@ -1299,6 +1295,7 @@
   )
 
 (defmethod deactivate ((this spydroid))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (nonzero? (-> this explode-part))
       (kill-and-free-particles (-> this explode-part))
       )
@@ -1307,18 +1304,18 @@
   )
 
 ;; WARN: Return type mismatch nav-enemy vs spydroid.
-(defmethod relocate ((this spydroid) (arg0 int))
+(defmethod relocate ((this spydroid) (offset int))
   (dotimes (v1-0 4)
     (if (nonzero? (-> this lightning v1-0))
-        (&+! (-> this lightning v1-0) arg0)
+        (&+! (-> this lightning v1-0) offset)
         )
     )
   (when (nonzero? (-> this explode-part))
     (if (nonzero? (-> this explode-part))
-        (&+! (-> this explode-part) arg0)
+        (&+! (-> this explode-part) offset)
         )
     )
-  (the-as spydroid ((method-of-type nav-enemy relocate) this arg0))
+  (the-as spydroid ((method-of-type nav-enemy relocate) this offset))
   )
 
 (defmethod init-enemy! ((this spydroid))

@@ -714,13 +714,13 @@
 
 
 ;; WARN: Return type mismatch process-drawable vs base-turret.
-(defmethod relocate ((this base-turret) (arg0 int))
+(defmethod relocate ((this base-turret) (offset int))
   (countdown (v1-0 4)
     (if (-> this gun-recoil-jmod v1-0)
-        (&+! (-> this gun-recoil-jmod v1-0) arg0)
+        (&+! (-> this gun-recoil-jmod v1-0) offset)
         )
     )
-  (the-as base-turret ((method-of-type process-drawable relocate) this arg0))
+  (the-as base-turret ((method-of-type process-drawable relocate) this offset))
   )
 
 (defmethod base-turret-method-34 ((this base-turret) (arg0 process))
@@ -1457,11 +1457,7 @@
     (sound-stop (-> self sound-id 1))
     (sound-stop (-> self sound-id 2))
     (set! (-> self focus-status) (focus-status disable ignore inactive))
-    (let ((gp-0 (current-time)))
-      (until (time-elapsed? gp-0 (seconds 0.8))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 0.8))
     (send-event
       (handle->process (-> self rider))
       'attack
@@ -1979,6 +1975,7 @@
   )
 
 (defmethod deactivate ((this base-turret))
+  "Make a process dead, clean it up, remove it from the active pool, and return to dead pool."
   (if (valid? (-> this hud) (the-as type #f) "" #t 0)
       (send-event (handle->process (-> this hud)) 'hide-and-die)
       )
@@ -1992,11 +1989,11 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod init-from-entity! ((this base-turret) (arg0 entity-actor))
   "Typically the method that does the initial setup on the process, potentially using the [[entity-actor]] provided as part of that.
-This commonly includes things such as:
-- stack size
-- collision information
-- loading the skeleton group / bones
-- sounds"
+   This commonly includes things such as:
+   - stack size
+   - collision information
+   - loading the skeleton group / bones
+   - sounds"
   (turret-init! this arg0 (the-as matrix #f))
   (go (method-of-object this idle))
   (none)

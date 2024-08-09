@@ -505,9 +505,9 @@
 
 (defmethod common-post ((this fort-turret))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type enemy common-post)))
     (t9-0 this)
     )
@@ -732,11 +732,7 @@
       (suspend)
       (ja :num! (seek!))
       )
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 0.5))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 0.5))
     (until #f
       (let ((gp-2 7))
         (sound-play "gturret")
@@ -753,11 +749,7 @@
             (suspend)
             (ja :num! (seek!))
             )
-          (let ((s4-1 (current-time)))
-            (until (time-elapsed? s4-1 (seconds 0.33))
-              (suspend)
-              )
-            )
+          (suspend-for (seconds 0.33))
           (if (= gp-2 7)
               (set! gp-2 8)
               (set! gp-2 9)
@@ -765,11 +757,7 @@
           )
         )
       (set! (-> self flash-state) #f)
-      (let ((gp-3 (current-time)))
-        (until (time-elapsed? gp-3 (seconds 1.5))
-          (suspend)
-          )
-        )
+      (suspend-for (seconds 1.5))
       )
     #f
     )
@@ -855,7 +843,7 @@
 
 (defmethod general-event-handler ((this fort-turret) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (if (and (= arg2 'notify) (< 1 arg1) (= (-> arg3 param 0) 'attack) (= (-> arg3 param 1) *target*))
       (set-time! (-> this last-hit-time))
       )
@@ -916,19 +904,10 @@
     (sound-play "turret-explode")
     (suspend)
     (ja-channel-set! 0)
-    (let ((gp-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fort-turret-lod0-jg headrotate)))
-          (s5-2 (current-time))
-          )
-      (until (time-elapsed? s5-2 (seconds 2))
-        (spawn (-> self part) gp-2)
-        (suspend)
-        )
+    (let ((gp-2 (vector<-cspace! (new 'stack-no-clear 'vector) (joint-node fort-turret-lod0-jg headrotate))))
+      (suspend-for (seconds 2) (spawn (-> self part) gp-2))
       )
-    (let ((gp-3 (current-time)))
-      (until (time-elapsed? gp-3 (seconds 1))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 1))
     (send-event self 'death-end)
     (while (-> self child)
       (suspend)
@@ -948,7 +927,7 @@
 ;; WARN: Return type mismatch int vs penetrate.
 (defmethod get-penetrate-info ((this fort-turret))
   "@returns the allowed way(s) this enemy can take damage
-@see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
+   @see [[penetrate]] and [[penetrated-by-all&hit-points->penetrated-by]]"
   (the-as penetrate 0)
   )
 
@@ -1011,14 +990,14 @@
 ;;   )
 
 ;; WARN: Return type mismatch enemy vs fort-turret.
-(defmethod relocate ((this fort-turret) (arg0 int))
+(defmethod relocate ((this fort-turret) (offset int))
   (if (nonzero? (-> this gun-tilt-jm))
-      (&+! (-> this gun-tilt-jm) arg0)
+      (&+! (-> this gun-tilt-jm) offset)
       )
   (if (nonzero? (-> this gun-shadow-jm))
-      (&+! (-> this gun-shadow-jm) arg0)
+      (&+! (-> this gun-shadow-jm) offset)
       )
-  (the-as fort-turret ((method-of-type enemy relocate) this arg0))
+  (the-as fort-turret ((method-of-type enemy relocate) this offset))
   )
 
 (defmethod init-enemy! ((this fort-turret))

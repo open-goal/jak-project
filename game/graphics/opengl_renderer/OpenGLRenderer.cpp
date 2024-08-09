@@ -374,8 +374,8 @@ void OpenGLRenderer::init_bucket_renderers_jak3() {
                                            BucketId::HUD_DRAW_HUD_ALPHA, 0x8000);
     init_bucket_renderer<TextureUploadHandler>("tex-hud-pris2", BucketCategory::TEX,
                                                BucketId::TEX_HUD_PRIS2, m_texture_animator);
-    init_bucket_renderer<TextureUploadHandler>("hud-draw-pris2", BucketCategory::TEX,
-                                               BucketId::HUD_DRAW_PRIS2, m_texture_animator);
+    init_bucket_renderer<ProgressRenderer>("hud-draw-pris2", BucketCategory::OTHER,
+                                           BucketId::HUD_DRAW_PRIS2, 0x8000);
     init_bucket_renderer<ProgressRenderer>("progress", BucketCategory::OTHER, BucketId::BUCKET582,
                                            0x8000);
 

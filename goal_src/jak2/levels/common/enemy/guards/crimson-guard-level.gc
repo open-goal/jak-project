@@ -1105,7 +1105,7 @@
 
 (defmethod general-event-handler ((this crimson-guard-level) (arg0 process) (arg1 int) (arg2 symbol) (arg3 event-message-block))
   "Handles various events for the enemy
-@TODO - unsure if there is a pattern for the events and this should have a more specific name"
+   @TODO - unsure if there is a pattern for the events and this should have a more specific name"
   (case arg2
     (('event-death)
      (when (<= (-> this hit-points) 0)
@@ -1459,9 +1459,9 @@
 ;; WARN: Return type mismatch object vs none.
 (defmethod common-post ((this crimson-guard-level))
   "Does a lot of various things relating to interacting with the target
-- tracks when the enemy was last drawn
-- looks at the target and handles attacking
-@TODO Not extremely well understood yet"
+   - tracks when the enemy was last drawn
+   - looks at the target and handles attacking
+   @TODO Not extremely well understood yet"
   (let ((t9-0 (method-of-type nav-enemy common-post)))
     (t9-0 this)
     )
@@ -2131,11 +2131,7 @@
             (suspend)
             )
           (when (logtest? (-> self flags) 4)
-            (let ((s5-1 (current-time)))
-              (until (time-elapsed? s5-1 (seconds 1))
-                (suspend)
-                )
-              )
+            (suspend-for (seconds 1))
             (until (crimson-guard-level-method-194 self)
               (suspend)
               )
@@ -2705,22 +2701,21 @@
       (suspend)
       (ja :num! (seek! (ja-aframe 12.0 0)))
       )
-    (let ((gp-2 (current-time)))
-      (until (time-elapsed? gp-2 (the int (* 900.0 (you-suck-scale *game-info* #f))))
-        (ja-no-eval :group! crimson-guard-grenade-attack-ja
-                    :num! (seek! (ja-aframe 12.0 0))
-                    :frame-num (ja-aframe 12.0 0)
-                    )
-        (until (ja-done? 0)
-          (seek-toward-heading-vec! (-> self root) (-> self target-self-xz) 65536.0 (seconds 0.02))
-          (suspend)
-          (ja :num! (seek! (ja-aframe 12.0 0)))
-          )
-        (if (and (< (-> self target-self-xz-dist) 81920.0) (= (-> self focus aware) (enemy-aware enemy-aware-3)))
-            (go-hostile self)
-            )
+    (suspend-for
+      (the int (* 900.0 (you-suck-scale *game-info* #f)))
+      (ja-no-eval :group! crimson-guard-grenade-attack-ja
+                  :num! (seek! (ja-aframe 12.0 0))
+                  :frame-num (ja-aframe 12.0 0)
+                  )
+      (until (ja-done? 0)
+        (seek-toward-heading-vec! (-> self root) (-> self target-self-xz) 65536.0 (seconds 0.02))
         (suspend)
+        (ja :num! (seek! (ja-aframe 12.0 0)))
         )
+      (empty-form)
+      (if (and (< (-> self target-self-xz-dist) 81920.0) (= (-> self focus aware) (enemy-aware enemy-aware-3)))
+          (go-hostile self)
+          )
       )
     (crimson-guard-level-method-192 self)
     (ja-no-eval :group! crimson-guard-grenade-attack-ja
@@ -4118,14 +4113,14 @@
   (none)
   )
 
-(defmethod relocate ((this crimson-guard-level) (arg0 int))
+(defmethod relocate ((this crimson-guard-level) (offset int))
   (if (nonzero? (-> this joint))
-      (&+! (-> this joint) arg0)
+      (&+! (-> this joint) offset)
       )
   (if (nonzero? (-> this l-control))
-      (&+! (-> this l-control) arg0)
+      (&+! (-> this l-control) offset)
       )
-  (call-parent-method this arg0)
+  (call-parent-method this offset)
   )
 
 ;; WARN: Return type mismatch float vs none.

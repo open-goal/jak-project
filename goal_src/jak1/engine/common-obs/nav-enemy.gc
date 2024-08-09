@@ -35,11 +35,11 @@
   (+! (-> result y) (* 0.5 time time (-> this gravity)))
   result)
 
-(defmethod relocate ((this nav-enemy) (arg0 int))
-  (if (nonzero? (-> this neck)) (set! (-> this neck) (the-as joint-mod (+ (the-as int (-> this neck)) arg0))))
+(defmethod relocate ((this nav-enemy) (offset int))
+  (if (nonzero? (-> this neck)) (set! (-> this neck) (the-as joint-mod (+ (the-as int (-> this neck)) offset))))
   (if (nonzero? (-> this rand-gen))
-    (set! (-> this rand-gen) (the-as random-generator (+ (the-as int (-> this rand-gen)) arg0))))
-  (call-parent-method this arg0))
+    (set! (-> this rand-gen) (the-as random-generator (+ (the-as int (-> this rand-gen)) offset))))
+  (call-parent-method this offset))
 
 (defmethod new-patrol-point! ((this nav-enemy))
   (local-vars (v1-11 symbol))
@@ -1060,11 +1060,7 @@ nav-enemy-default-event-handler
           (ja :num! (loop! f30-0)))
         (ja-channel-push! 1 (seconds 0.1))
         (nav-enemy-turn-to-face-point (-> self event-param-point) 910.2222)
-        (let ((gp-0 (nav-enemy-rnd-int-range 0 150))
-              (s5-0 (current-time)))
-          (until (time-elapsed? s5-0 gp-0)
-            (ja :num! (loop! f30-0))
-            (suspend))))
+        (let ((gp-0 (nav-enemy-rnd-int-range 0 150))) (suspend-for gp-0 (ja :num! (loop! f30-0)))))
       (go-virtual nav-enemy-jump-to-point))
   :post nav-enemy-simple-post)
 

@@ -96,7 +96,7 @@
       (suspend)
       (while (and *target* (= (handle->process (-> *target* control unknown-handle10)) self))
         (suspend))
-      (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 0.5)) (suspend)))
+      (suspend-for (seconds 0.5))
       (go swingpole-stance)))
 
 (defmethod init-from-entity! ((this swingpole) (arg0 entity-actor))
@@ -127,7 +127,9 @@
 
 (deftype target-start (process-hidden) ())
 
+
 (deftype camera-start (process-hidden) ())
+
 
 (defstate manipy-idle (manipy)
   :event
@@ -365,10 +367,7 @@
               (vector+! (-> self root trans) (-> (the-as process-drawable gp-0) root trans) (-> self offset)))))
         (let ((gp-1 (-> self root trans))) (if (-> self callback) ((-> self callback) self)) (spawn (-> self part) gp-1))
         (suspend))
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (-> self linger-duration))
-          (if (-> self linger-callback) ((-> self linger-callback) self))
-          (suspend)))
+      (suspend-for (-> self linger-duration) (if (-> self linger-callback) ((-> self linger-callback) self)))
       (if (-> self linger-callback) ((-> self linger-callback) self))
       (part-tracker-notify)
       (suspend)
@@ -551,11 +550,7 @@
                       (set! s2-1 (cdr s2-1))
                       (set! a1-5 (car s2-1)))))))
              (('not) (set! gp-0 (not (eval this (the-as pair (car s4-0))))))
-             (('wait-for 'wait 'suspend)
-              (let ((s5-1 (command-get-time (car s4-0) 1))
-                    (s4-1 (current-time)))
-                (until (time-elapsed? s4-1 s5-1)
-                  (suspend))))
+             (('wait-for 'wait 'suspend) (let ((s5-1 (command-get-time (car s4-0) 1))) (suspend-for s5-1)))
              (('message?) (when (= (-> this message) (car s4-0)) (set! gp-0 (-> this message)) (set! (-> this message) #f)))
              (('send-event)
               (let ((s5-2 (command-get-process (car s4-0) *target*))
@@ -687,6 +682,7 @@
    (index     int32))
   (:states
    med-res-level-idle))
+
 
 (defstate med-res-level-idle (med-res-level)
   :code
@@ -835,6 +831,7 @@
    launcher-active
    launcher-deactivated
    launcher-idle))
+
 
 (defpartgroup group-beach-launcher
   :id 37

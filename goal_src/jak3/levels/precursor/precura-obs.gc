@@ -22,24 +22,20 @@
     process
     (lambda :behavior process
       ()
-      (let ((gp-0 (current-time))
-            (s5-0 (current-time))
-            )
-        (until (time-elapsed? s5-0 (seconds 1))
-          (when (time-elapsed? gp-0 (seconds 0.03))
-            (set! gp-0 (current-time))
-            (process-drawable-shock-effect
-              *target*
-              (-> *lightning-spec-id-table* 1)
-              lightning-probe-callback
-              (-> *part-id-table* 160)
-              0
-              0
-              40960.0
-              )
-            )
-          (suspend)
-          )
+      (let ((gp-0 (current-time)))
+        (suspend-for (seconds 1) (when (time-elapsed? gp-0 (seconds 0.03))
+                                   (set! gp-0 (current-time))
+                                   (process-drawable-shock-effect
+                                     *target*
+                                     (-> *lightning-spec-id-table* 1)
+                                     lightning-probe-callback
+                                     (-> *part-id-table* 160)
+                                     0
+                                     0
+                                     40960.0
+                                     )
+                                   )
+                     )
         )
       #f
       )
@@ -1046,27 +1042,15 @@
       )
     (logior! (-> self draw status) (draw-control-status no-draw))
     (transform-post)
-    (let ((gp-1 (current-time)))
-      (until (time-elapsed? gp-1 (seconds 1.2))
-        (suspend)
-        )
-      )
+    (suspend-for (seconds 1.2))
     (when (res-lump-struct (-> self entity) 'art-name structure)
       (logclear! (-> self mask) (process-mask actor-pause))
       (process-grab? *target* #f)
       (set-setting! 'entity-name "camera-359" 0.0 0)
-      (let ((gp-2 (current-time)))
-        (until (time-elapsed? gp-2 (seconds 2))
-          (suspend)
-          )
-        )
+      (suspend-for (seconds 2))
       (task-close! "precursor-tour-generator-trigger")
       (send-event (process-by-name "precur-door-b-4" *active-pool*) 'open)
-      (let ((gp-4 (current-time)))
-        (until (time-elapsed? gp-4 (seconds 1))
-          (suspend)
-          )
-        )
+      (suspend-for (seconds 1))
       (set-setting! 'interp-time 'abs 450.0 0)
       (remove-setting! 'entity-name)
       (process-release? *target*)
@@ -2510,11 +2494,7 @@
                    (not (and (-> self entity) (logtest? (-> self entity extra perm status) (entity-perm-status subtask-complete)))
                         )
                    )
-          (let ((gp-0 (current-time)))
-            (until (time-elapsed? gp-0 (seconds 1.5))
-              (suspend)
-              )
-            )
+          (suspend-for (seconds 1.5))
           (set-setting! 'entity-name "camera-420" 0.0 0)
           (process-grab? *target* #f)
           (process-entity-status! self (entity-perm-status subtask-complete) #t)
@@ -2588,11 +2568,7 @@
     )
   :code (behavior ()
     (when (-> self precur-tour?)
-      (let ((gp-0 (current-time)))
-        (until (time-elapsed? gp-0 (seconds 2.5))
-          (suspend)
-          )
-        )
+      (suspend-for (seconds 2.5))
       (remove-setting! 'entity-name)
       (process-release? *target*)
       )

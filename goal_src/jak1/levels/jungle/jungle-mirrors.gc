@@ -493,10 +493,11 @@
    periscope-wait-for-player
    periscope-wait-for-power-input))
 
-(defmethod relocate ((this periscope) (arg0 int))
-  (if (nonzero? (-> this grips)) (&+! (-> this grips) arg0))
-  (if (nonzero? (-> this part-aligned)) (&+! (-> this part-aligned) arg0))
-  (the-as periscope ((method-of-type process-drawable relocate) this arg0)))
+
+(defmethod relocate ((this periscope) (offset int))
+  (if (nonzero? (-> this grips)) (&+! (-> this grips) offset))
+  (if (nonzero? (-> this part-aligned)) (&+! (-> this part-aligned) offset))
+  (the-as periscope ((method-of-type process-drawable relocate) this offset)))
 
 (defmethod deactivate ((this periscope))
   (if (nonzero? (-> this part-aligned)) (kill-and-free-particles (-> this part-aligned)))
@@ -509,6 +510,7 @@
   (:states
    reflector-idle))
 
+
 (deftype reflector-origin (process-drawable)
   ((reflector-trans      vector :inline)
    (next-reflector-trans vector :inline)
@@ -518,11 +520,13 @@
   (:states
    reflector-origin-idle))
 
+
 (deftype reflector-mirror (process-drawable)
   ((root     collide-shape :override)
    (beam-end vector :inline))
   (:states (reflector-mirror-broken symbol)
    reflector-mirror-idle))
+
 
 (defskelgroup *periscope-base-sg*
   periscope
@@ -1436,7 +1440,7 @@
         (ambient-hint-spawn "gamcam21" (the-as vector #f) *entity-pool* 'camera)
         (let ((v1-11 (manipy-spawn (-> self root trans) (-> self entity) *reflector-mirror-break-sg* #f :to self)))
           (send-event (ppointer->process v1-11) 'anim-mode 'play1))
-        (let ((gp-2 (current-time))) (until (time-elapsed? gp-2 (seconds 0.5)) (suspend)))
+        (suspend-for (seconds 0.5))
         (process-grab? *target*)
         (while (or (-> self child) (-> *setting-control* current ambient))
           (suspend))

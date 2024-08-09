@@ -13,6 +13,7 @@
    (state         int8)
    (enabled       symbol)))
 
+
 (deftype battlecontroller-creature-type (structure)
   ((type2            type)
    (percent          float)
@@ -21,6 +22,7 @@
    (max-pickup-count int8)
    (pickup-count     int8))
   :allow-misaligned)
+
 
 (deftype battlecontroller (process-drawable)
   ((final-pickup-spawn-point    vector :inline)
@@ -53,6 +55,7 @@
    (battlecontroller-die () _type_ :state)
    (battlecontroller-method-27 (_type_) none)
    (cleanup-if-finished! (_type_) none)))
+
 
 (defbehavior battlecontroller-spawners-full? battlecontroller ()
   (dotimes (v1-0 (-> self spawner-count))
@@ -301,7 +304,7 @@ battlecontroller-default-event-handler
             (let ((v1-8 (-> self child))) (while v1-8 (+! gp-0 1) (set! v1-8 (-> v1-8 0 brother)) (nop!) (nop!)))
             (if (and (zero? gp-0) (= (-> self spawn-count) (-> self max-spawn-count))) (go-virtual battlecontroller-die))
             (when (< gp-0 (-> self target-count))
-              (let ((gp-1 (current-time))) (until (time-elapsed? gp-1 (-> self spawn-period)) (suspend)))
+              (suspend-for (-> self spawn-period))
               (battlecontroller-spawn-creature-random-spawner))))
         (suspend)))
   :post #f)
@@ -373,11 +376,11 @@ battlecontroller-default-event-handler
       (process-entity-status! self (entity-perm-status dead) #t))
   :post #f)
 
-(defmethod relocate ((this battlecontroller) (arg0 int))
+(defmethod relocate ((this battlecontroller) (offset int))
   (dotimes (v1-0 (-> this spawner-count))
-    (let ((a0-3 (-> this spawner-array v1-0))) (if (nonzero? (-> a0-3 path)) (&+! (-> a0-3 path) arg0))))
-  (if (nonzero? (-> this path-spawn)) (&+! (-> this path-spawn) arg0))
-  (call-parent-method this arg0))
+    (let ((a0-3 (-> this spawner-array v1-0))) (if (nonzero? (-> a0-3 path)) (&+! (-> a0-3 path) offset))))
+  (if (nonzero? (-> this path-spawn)) (&+! (-> this path-spawn) offset))
+  (call-parent-method this offset))
 
 (defmethod deactivate ((this battlecontroller))
   (with-pp

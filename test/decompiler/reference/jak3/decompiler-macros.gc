@@ -263,6 +263,13 @@
     )
   )
 
+(defmacro call-parent-state-handler (handler &key (type (function none)) &rest args)
+  "Call the parent handler for this state."
+  `(let ((handler (-> (find-parent-state) ,handler)))
+     (if handler ((the ,type handler) ,@args))
+     )
+  )
+
 (defmacro call-parent-method (&rest args)
   "Find the first different implementation of the current method in a parent type and call it with these arguments."
   `((the (current-method-function-type) (find-parent-method (current-method-type) (current-method-id)))
@@ -944,6 +951,9 @@
 (defmacro set-time! (time)
   `(set! ,time (current-time))
   )
+
+(defmacro suspend-for (time &rest body)
+  `(let ((time (current-time))) (until (time-elapsed? time ,time) ,@body (suspend))))
 
 (defconstant *scratch-memory-top* (the pointer #x70004000))
 (defconstant DPROCESS_STACK_SIZE #x8000)

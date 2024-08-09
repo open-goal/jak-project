@@ -40,13 +40,14 @@
    plant-boss-spawn
    plant-boss-vulnerable))
 
-(defmethod relocate ((this plant-boss) (arg0 int))
-  (if (nonzero? (-> this neck)) (&+! (-> this neck) arg0))
-  (if (nonzero? (-> this body)) (&+! (-> this body) arg0))
+
+(defmethod relocate ((this plant-boss) (offset int))
+  (if (nonzero? (-> this neck)) (&+! (-> this neck) offset))
+  (if (nonzero? (-> this body)) (&+! (-> this body) offset))
   (dotimes (v1-8 3)
-    (if (nonzero? (-> this attack-prim v1-8)) (&+! (-> this attack-prim v1-8) arg0))
-    (if (nonzero? (-> this death-prim v1-8)) (&+! (-> this death-prim v1-8) arg0)))
-  (call-parent-method this arg0))
+    (if (nonzero? (-> this attack-prim v1-8)) (&+! (-> this attack-prim v1-8) offset))
+    (if (nonzero? (-> this death-prim v1-8)) (&+! (-> this death-prim v1-8) offset)))
+  (call-parent-method this offset))
 
 (deftype plant-boss-arm (process-drawable)
   ((root            collide-shape :override)
@@ -64,6 +65,7 @@
    (plant-boss-vine-hit basic)
    plant-boss-vine-idle))
 
+
 (deftype plant-boss-leaf (process-drawable)
   ((root             collide-shape-moving :override)
    (side             int32)
@@ -76,6 +78,7 @@
    (plant-boss-leaf-idle symbol)
    (plant-boss-leaf-open symbol)
    (plant-boss-leaf-open-idle symbol)))
+
 
 (defskelgroup *plant-boss-sg*
   plant-boss
@@ -356,11 +359,8 @@
   :code
     (behavior ((arg0 symbol))
       (when (not arg0)
-        (let ((f30-0 (rand-vu-float-range (the-as float 0.0) (the-as float 1.0)))
-              (gp-0 (current-time)))
-          (until (time-elapsed? gp-0 (the int (* 300.0 f30-0)))
-            (ja :num! (loop!))
-            (suspend)))
+        (let ((f30-0 (rand-vu-float-range (the-as float 0.0) (the-as float 1.0))))
+          (suspend-for (the int (* 300.0 f30-0)) (ja :num! (loop!))))
         (ja-channel-push! 1 (seconds 0.25))
         (ja-no-eval :group! plant-boss-vine-die-ja :num! (seek!) :frame-num 0.0)
         (until (ja-done? 0)
@@ -387,11 +387,7 @@
 (defstate plant-boss-root-die (plant-boss-arm)
   :code
     (behavior ((arg0 symbol))
-      (when (not arg0)
-        (let ((gp-0 (current-time)))
-          (until (time-elapsed? gp-0 (seconds 4))
-            (+! (-> self root trans z) (* -4096.0 (seconds-per-frame)))
-            (suspend)))))
+      (if (not arg0) (suspend-for (seconds 4) (+! (-> self root trans z) (* -4096.0 (seconds-per-frame))))))
   :post ja-post)
 
 (defbehavior plant-boss-arm-init plant-boss-arm ((arg0 vector) (arg1 float) (arg2 int))
@@ -733,7 +729,7 @@
                                                  (while (not (send-event *camera* 'intro-done?))
                                                    (suspend))
                                                  (camera-change-to "camera-222" 600 #f)
-                                                 (let ((gp-0 (current-time))) (until (time-elapsed? gp-0 (seconds 2)) (suspend)))
+                                                 (suspend-for (seconds 2))
                                                  (while (not (process-release? (handle->process (-> self grab-target))))
                                                    (suspend))
                                                  (send-event *camera* 'blend-from-as-fixed)
@@ -1203,11 +1199,7 @@
     (behavior ()
       (ja-channel-set! 1)
       (ja :group! plant-boss-main-die-ja :num! max)
-      (let ((gp-1 (current-time)))
-        (until (time-elapsed? gp-1 (seconds 5))
-          (transform-post)
-          (do-push-aways! (-> self root))
-          (suspend)))
+      (suspend-for (seconds 5) (transform-post) (do-push-aways! (-> self root)))
       (loop
         (logior! (-> self mask) (process-mask sleep))
         (suspend))))

@@ -59,6 +59,7 @@
    (drop-plat-rise draw-control)
    drop-plat-spawn))
 
+
 (defstate drop-plat-idle (drop-plat)
   :event
     (behavior ((proc process) (argc int) (message symbol) (block event-message-block))
@@ -231,6 +232,7 @@
 (deftype handle-inline-array (inline-array-class)
   ((data handle :dynamic)))
 
+
 (set! (-> handle-inline-array heap-base) (the-as uint 8))
 
 (deftype citb-drop-plat (process-drawable)
@@ -251,9 +253,10 @@
    citb-drop-plat-active
    citb-drop-plat-idle))
 
-(defmethod relocate ((this citb-drop-plat) (arg0 int))
-  (if (nonzero? (-> this child-array)) (&+! (-> this child-array) arg0))
-  (the-as citb-drop-plat ((method-of-type process-drawable relocate) this arg0)))
+
+(defmethod relocate ((this citb-drop-plat) (offset int))
+  (if (nonzero? (-> this child-array)) (&+! (-> this child-array) offset))
+  (the-as citb-drop-plat ((method-of-type process-drawable relocate) this offset)))
 
 (defbehavior citb-drop-plat-spawn-children citb-drop-plat ()
   (local-vars (s0-0 int) (sv-48 process) (sv-64 int))
@@ -286,7 +289,7 @@
                                               (t0-0 (-> self duration)))
                                           ((the-as (function process function vector int int int none) t9-7) a0-8 a1-5 a2-4 sv-64 (the-as int t0-0) s0-0))
                                         (-> sv-48 ppointer)))))))
-        (let ((s2-1 (current-time))) (until (time-elapsed? s2-1 (seconds 0.12)) (suspend)))
+        (suspend-for (seconds 0.12))
         (+! s5-0 s4-0))))
   (set-time! (-> self drop-time))
   0
