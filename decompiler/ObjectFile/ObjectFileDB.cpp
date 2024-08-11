@@ -749,6 +749,8 @@ std::string ObjectFileDB::process_tpages(TextureDB& tex_db,
     case GameVersion::Jak3:
       animated_slots = jak3_animated_texture_slots();
       break;
+    case GameVersion::JakX:
+      break;
     default:
       ASSERT_NOT_REACHED();
   }
@@ -923,7 +925,7 @@ void get_joint_info(ObjectFileDB& db, ObjectFileData& obj, JointGeo jg) {
   const auto& words = obj.linked_data.words_by_seg.at(MAIN_SEGMENT);
   for (size_t i = 0; i < jg.length; ++i) {
     u32 label = 0x0;
-    if (db.version() == GameVersion::Jak3) {
+    if (db.version() >= GameVersion::Jak3) {
       label = words.at((jg.offset / 4) + 11 + i).label_id();
     } else {
       label = words.at((jg.offset / 4) + 7 + i).label_id();

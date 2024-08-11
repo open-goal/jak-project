@@ -100,6 +100,18 @@ OpenGLTexturePool::OpenGLTexturePool(GameVersion version) {
                                                  {64, 128, 4},
                                                  {128, 128, 185},
                                                  {256, 1, 2},
+                                                 {256, 256, 7}},
+                                                {{4, 4, 3},
+                                                 {4, 64, 6},
+                                                 {16, 16, 5},
+                                                 {32, 16, 1},
+                                                 {32, 32, 20},
+                                                 {32, 64, 1},
+                                                 {64, 32, 15},
+                                                 {64, 64, 85},
+                                                 {64, 128, 4},
+                                                 {128, 128, 185},
+                                                 {256, 1, 2},
                                                  {256, 256, 7}}};
   for (const auto& a : tex_allocs[version]) {
     auto& l = textures[(a.w << 32) | a.h];
@@ -234,6 +246,7 @@ int output_slot_by_idx(GameVersion version, const std::string& name) {
       v = &jak2_animated_texture_slots();
       break;
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       v = &jak3_animated_texture_slots();
       break;
     default:
@@ -385,6 +398,7 @@ const std::vector<std::string>& animated_texture_slots(GameVersion version) {
     case GameVersion::Jak2:
       return jak2_animated_texture_slots();
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       return jak3_animated_texture_slots();
     default:
       ASSERT_NOT_REACHED();
@@ -517,6 +531,7 @@ TextureAnimator::TextureAnimator(ShaderLibrary& shaders,
       setup_texture_anims_jak2();
       break;
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       setup_texture_anims_jak3();
       break;
     default:
@@ -1191,6 +1206,7 @@ void TextureAnimator::handle_texture_anim_data(DmaFollower& dma,
           }
           break;
         case GameVersion::Jak3:
+        case GameVersion::JakX:
           switch (static_cast<PcTextureAnimCodesJak3>(vif0.immediate)) {
             case PcTextureAnimCodesJak3::UPLOAD_CLUT_16_16: {
               auto p = scoped_prof("clut-16-16");

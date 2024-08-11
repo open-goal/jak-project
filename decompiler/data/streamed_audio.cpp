@@ -153,7 +153,7 @@ AudioDir read_audio_dir(const decompiler::Config& config, const fs::path& path) 
       e.start_byte = AUDIO_PAGE_SIZE * entries[i].value;
       result.entries.push_back(e);
     }
-  } else if (config.game_version == GameVersion::Jak3) {
+  } else if (config.game_version >= GameVersion::Jak3) {
     struct VagDirJak3 {
       u32 id[2];
       u32 version;

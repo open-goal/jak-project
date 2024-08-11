@@ -1821,6 +1821,7 @@ class DefpartElement : public FormElement {
             return field_id == 67;
           case GameVersion::Jak2:
           case GameVersion::Jak3:
+          case GameVersion::JakX:
             return field_id == 72;
           default:
             ASSERT_MSG(false, fmt::format("unknown version for is_sp_end"));

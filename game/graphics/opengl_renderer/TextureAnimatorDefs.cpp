@@ -1761,7 +1761,7 @@ void TextureAnimator::setup_texture_anims_common() {
     }
 
     m_security_anim_array_idx = create_fixed_anim_array({env, dot});
-    if (this->m_version == GameVersion::Jak3) {
+    if (this->m_version >= GameVersion::Jak3) {
       m_comb_field_anim_array_idx = create_fixed_anim_array({env, dot});
     }
   }

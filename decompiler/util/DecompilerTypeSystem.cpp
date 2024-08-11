@@ -218,13 +218,23 @@ std::string DecompilerTypeSystem::lookup_parent_from_inspects(const std::string&
 }
 
 bool DecompilerTypeSystem::lookup_flags(const std::string& type, u64* dest) const {
-  if (type == "process-tree") {
-    *dest = ((u64)0xe << 32) + (0 << 16) + 0x24;
-    return true;
-  }
-  if (type == "process") {
-    *dest = ((u64)0xe << 32) + (0 << 16) + 0x80;
-    return true;
+  if (m_version == GameVersion::JakX) {
+    if (type == "process-tree") {
+      *dest = ((u64)0xe << 32) + (0 << 16) + 0x2c;
+      return true;
+    }
+    if (type == "process") {
+      *dest = ((u64)0xe << 32) + (0 << 16) + 0x90;
+    }
+  } else {
+    if (type == "process-tree") {
+      *dest = ((u64)0xe << 32) + (0 << 16) + 0x24;
+      return true;
+    }
+    if (type == "process") {
+      *dest = ((u64)0xe << 32) + (0 << 16) + 0x80;
+      return true;
+    }
   }
 
   auto kv = type_flags.find(type);

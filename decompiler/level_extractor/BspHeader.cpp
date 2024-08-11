@@ -458,7 +458,8 @@ void TieFragment::read_from_file(TypedRef ref,
       num_dverts = read_plain_data_field<u16>(ref, "num-dverts", dts);
       break;
     case GameVersion::Jak2:
-    case GameVersion::Jak3: {
+    case GameVersion::Jak3:
+    case GameVersion::JakX: {
       auto debug_data_ref = TypedRef(deref_label(get_field_ref(ref, "debug", dts)),
                                      dts.ts.lookup_type("tie-fragment-debug"));
       num_tris = read_plain_data_field<u16>(debug_data_ref, "num-tris", dts);
@@ -922,6 +923,7 @@ void PrototypeBucketTie::read_from_file(TypedRef ref,
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
       break;
     default:
@@ -1569,6 +1571,7 @@ void PrototypeBucketShrub::read_from_file(TypedRef ref,
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       flags = read_plain_data_field<u16>(ref, "flags", dts);
       break;
     default:
@@ -2025,6 +2028,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
       break;
     case GameVersion::Jak2:
     case GameVersion::Jak3:
+    case GameVersion::JakX:
       visible_list_length = read_plain_data_field<s16>(ref, "visible-list-length", dts);
       extra_vis_list_length = read_plain_data_field<s16>(ref, "extra-vis-list-length", dts);
       break;
@@ -2052,7 +2056,7 @@ void BspHeader::read_from_file(const decompiler::LinkedObjectFile& file,
         get_and_check_ref_to_basic(ref, "collide-hash", "collide-hash", dts), dts, version);
   }
 
-  if (version == GameVersion::Jak3) {
+  if (version >= GameVersion::Jak3) {
     if (get_word_kind_for_field(ref, "hfrag-drawable", dts) == decompiler::LinkedWord::PTR) {
       hfrag.emplace();
       hfrag->read_from_file(get_and_check_ref_to_basic(ref, "hfrag-drawable", "hfragment", dts),

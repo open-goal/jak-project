@@ -28,6 +28,7 @@ void EyeRenderer::init_textures(TexturePool& texture_pool, GameVersion version) 
           tbp += EYE_BASE_BLOCK_JAK1;
           break;
         case GameVersion::Jak3:
+        case GameVersion::JakX:
           // for jak 3, go back to using the right TBP.
           tbp += EYE_BASE_BLOCK_JAK3;
           break;
