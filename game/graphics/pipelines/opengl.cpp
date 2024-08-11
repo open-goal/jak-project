@@ -283,23 +283,38 @@ static std::shared_ptr<GfxDisplay> gl_make_display(int width,
 
   {
     auto p = scoped_prof("startup::sdl::window_extras");
+    float dpi = 1.0f;
+    int window_display_idx = SDL_GetWindowDisplayIndex(window);
+    if (window_display_idx >= 0) {
+      SDL_GetDisplayDPI(window_display_idx, &dpi, NULL, NULL);
+      dpi /= 96.0f;
+
+      if (dpi <= 0.0f) {
+        dpi = 1.0f;
+      }
+    }
+
     // Setup Window Icon
-    // TODO - hiDPI icon
-    // https://sourcegraph.com/github.com/dfranx/SHADERed/-/blob/main.cpp?L422:24&subtree=true
-    int icon_width;
-    int icon_height;
-    std::string image_path =
-        (file_util::get_jak_project_dir() / "game" / "assets" / "appicon.png").string();
-    auto icon_data =
-        stbi_load(image_path.c_str(), &icon_width, &icon_height, nullptr, STBI_rgb_alpha);
-    if (icon_data) {
-      SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
-          (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
-      SDL_SetWindowIcon(window, icon_surf);
-      SDL_FreeSurface(icon_surf);
-      stbi_image_free(icon_data);
+    const auto image_path = file_util::get_jak_project_dir() / "game" / "assets" /
+                            version_to_game_name(game_version) /
+                            (dpi == 1.0f ? "app64.png" : "app256.png");
+    if (fs::exists(image_path)) {
+      int icon_width;
+      int icon_height;
+
+      auto icon_data = stbi_load(image_path.string().c_str(), &icon_width, &icon_height, nullptr,
+                                 STBI_rgb_alpha);
+      if (icon_data) {
+        SDL_Surface* icon_surf = SDL_CreateRGBSurfaceWithFormatFrom(
+            (void*)icon_data, icon_width, icon_height, 32, 4 * icon_width, SDL_PIXELFORMAT_RGBA32);
+        SDL_SetWindowIcon(window, icon_surf);
+        SDL_FreeSurface(icon_surf);
+        stbi_image_free(icon_data);
+      } else {
+        lg::error("Could not load icon for OpenGL window, couldn't load image data");
+      }
     } else {
-      lg::error("Could not load icon for OpenGL window");
+      lg::error("Could not load icon for OpenGL window, {} does not exist", image_path.string());
     }
   }
 
