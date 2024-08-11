@@ -276,4 +276,3 @@ for adjust in adjustments:
         function_string += f"   ((fequal-epsilon? aspect-ratio {aspect_ratio} 0.01) {value:.1f})\n"
     function_string += f"   (else\n    (+ {coefficients[0]}\n     (* {coefficients[1]} aspect-ratio)\n     (* {coefficients[2]} aspect-ratio aspect-ratio)\n     (* {coefficients[3]} aspect-ratio aspect-ratio aspect-ratio)))))\n"
     print(function_string)
-       

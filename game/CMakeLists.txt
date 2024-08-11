@@ -322,3 +322,6 @@ endif()
 
 add_executable(gk main.cpp)
 target_link_libraries(gk runtime)
+if(WIN32)
+    set_target_properties(gk PROPERTIES VS_DPI_AWARE "PerMonitor")
+endif()
