@@ -14,7 +14,7 @@ int main(int argc, char** argv) {
 
   // game version
   std::string game, mdl_name, output_file;
-  bool gen_collide_mesh;
+  bool gen_collide_mesh = false;
   fs::path project_path_override;
 
   // path

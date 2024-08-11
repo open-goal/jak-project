@@ -55,26 +55,29 @@ void extract(const std::string& name,
         out.normals.insert(out.normals.end(), verts.normals.begin(), verts.normals.end());
         ASSERT(out.new_colors.size() == out.new_vertices.size());
 
-        // TODO: just putting it all in one material
+        if (prim.attributes.count("JOINTS_0") && prim.attributes.count("WEIGHTS_0")) {
+          auto joints_and_weights = gltf_util::extract_and_flatten_joints_and_weights(model, prim);
+          ASSERT(joints_and_weights.size() == verts.vtx.size());
+          out.joints_and_weights.insert(out.joints_and_weights.end(), joints_and_weights.begin(),
+                                        joints_and_weights.end());
+        } else {
+          // add fake data for vertices without this data
+          gltf_util::JointsAndWeights dummy;
+          dummy.joints[0] = 3;
+          dummy.weights[0] = 1.f;
+          for (size_t i = 0; i < out.new_vertices.size(); i++) {
+            out.joints_and_weights.push_back(dummy);
+          }
+        }
+
+        // real draw details will be filled out in the next loop.
         auto& draw = draw_by_material[prim.material];
         draw.mode = gltf_util::make_default_draw_mode();  // todo rm
         draw.tree_tex_id = 0;                             // todo rm
         draw.num_triangles += prim_indices.size() / 3;
         draw.no_strip = true;
-        //        if (draw.vis_groups.empty()) {
-        //          auto& grp = draw.vis_groups.emplace_back();
-        //          grp.num_inds += prim_indices.size();
-        //          grp.num_tris += draw.num_triangles;
-        //          grp.vis_idx_in_pc_bvh = UINT32_MAX;
-        //        } else {
-        //          auto& grp = draw.vis_groups.back();
-        //          grp.num_inds += prim_indices.size();
-        //          grp.num_tris += draw.num_triangles;
-        //          grp.vis_idx_in_pc_bvh = UINT32_MAX;
-        //        }
         draw.index_count = prim_indices.size();
         draw.first_index = index_offset + out.new_indices.size();
-
         out.new_indices.insert(out.new_indices.end(), prim_indices.begin(), prim_indices.end());
       }
     }
@@ -136,18 +139,18 @@ void merc_convert(MercSwapData& out, const MercExtractData& in) {
     x.normal[0] = in.normals.at(i).x();
     x.normal[1] = in.normals.at(i).y();
     x.normal[2] = in.normals.at(i).z();
-    x.weights[0] = 1.0f;
-    x.weights[1] = 0.0f;
-    x.weights[2] = 0.0f;
+    x.weights[0] = in.joints_and_weights.at(i).weights[0];
+    x.weights[1] = in.joints_and_weights.at(i).weights[1];
+    x.weights[2] = in.joints_and_weights.at(i).weights[2];
     x.st[0] = y.s;
     x.st[1] = y.t;
     x.rgba[0] = in.new_colors[i][0];
     x.rgba[1] = in.new_colors[i][1];
     x.rgba[2] = in.new_colors[i][2];
     x.rgba[3] = in.new_colors[i][3];
-    x.mats[0] = 3;
-    x.mats[1] = 0;
-    x.mats[2] = 0;
+    x.mats[0] = in.joints_and_weights.at(i).joints[0];
+    x.mats[1] = in.joints_and_weights.at(i).joints[1];
+    x.mats[2] = in.joints_and_weights.at(i).joints[2];
   }
 }
 
