@@ -61,7 +61,7 @@ UncompressedJointAnim extract_anim_from_gltf(const tinygltf::Model& model,
                                              const std::map<int, int>& node_to_joint,
                                              float framerate) {
   UncompressedJointAnim out;
-
+  out.name = anim.name;
   lg::info("Processing animation {}", anim.name);
   const int max_joint = find_max_joint(anim, node_to_joint);
   lg::info("Max joint is {}", max_joint);
@@ -170,9 +170,6 @@ void compress_frame_to_matrix(CompressedFrame* frame,
                               const math::Vector4f& quat,
                               const math::Vector3f& scale) {
   auto mat = gltf_util::matrix_from_trs(trans * 4096, quat, scale);
-  lg::warn("trs\n{}\n{}\n{}\n", trans.to_string_aligned(), quat.to_string_aligned(),
-           scale.to_string_aligned());
-  lg::warn("compress to mat\n{}\n", mat.to_string_aligned());
   constexpr int n = 4 * 4 * sizeof(float) / sizeof(u64);
   u64 data[n];
   memcpy(data, mat.data(), 4 * 4 * sizeof(float));
@@ -228,6 +225,7 @@ void compress_scale(CompressedFrame* frame, const math::Vector3f& scale) {
 CompressedAnim compress_animation(const UncompressedJointAnim& in) {
   ASSERT(in.joints.size() >= 2);  // need two matrix joints.
   CompressedAnim out;
+  out.name = in.name;
   out.framerate = in.framerate;
   out.frames.resize(in.frames);
   for (int matrix = 0; matrix < 2; matrix++) {
@@ -259,9 +257,6 @@ CompressedAnim compress_animation(const UncompressedJointAnim& in) {
     //   lg::error("huge hack to reduce animation size");
     //   metadata.animated_scale = false;
     // }
-
-    lg::info("joint {}, t {} q {} s {}", joint, metadata.animated_trans, metadata.animated_quat,
-             metadata.animated_scale);
 
     if (metadata.animated_trans) {
       for (int i = 0; i < in.frames; i++) {

@@ -124,11 +124,9 @@ JointAnimCompressedControl::JointAnimCompressedControl(const anim::CompressedAni
   frame_qwc = frame.at(0).num_data_qw_used;
 }
 
-ArtJointAnim::ArtJointAnim(const std::string& name,
-                           const anim::CompressedAnim& anim,
-                           const std::vector<Joint>& joints)
+ArtJointAnim::ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<Joint>& joints)
     : frames(anim) {
-  this->name = name + "-idle";
+  this->name = anim.name;
   length = joints.size();
   speed = 1.0f;
   artist_base = 0.0f;
@@ -606,9 +604,10 @@ std::vector<u8> ArtGroup::save_object_file() const {
     if (!elts.at(1)) {
       gen.link_word_to_byte(36 / 4, generate_dummy_merc_ctrl(gen, *this));
     }
-    if (elts.at(2)) {
-      auto ja = (ArtJointAnim*)elts.at(2).get();
-      gen.link_word_to_byte(40 / 4, ja->generate(gen));
+
+    for (size_t i = 2; i < elts.size(); i++) {
+      auto ja = (ArtJointAnim*)elts.at(i).get();
+      gen.link_word_to_byte((32 + i * 4) / 4, ja->generate(gen));
     }
   }
 
@@ -732,7 +731,6 @@ Joint convert_joint(const GltfJoint& joint,
   for (int i = 0; i < 3; i++) {
     fixed_matrix(i, 3) *= 4096;
   }
-  lg::info("bind matrix:\n{}\n", fixed_matrix.to_string_aligned());
 
   return Joint(joint.name, joint_index + prefix_joint_count, parent, fixed_matrix.transposed());
 }
@@ -756,13 +754,11 @@ std::vector<Joint> convert_joints(const std::vector<GltfJoint>& gjoints) {
   return joints;
 }
 
-std::optional<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
-                                                 const std::vector<GltfJoint>& gjoints) {
+std::vector<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
+                                               const std::vector<GltfJoint>& gjoints) {
   if (model.animations.empty()) {
     lg::warn("no animations detected!");  // TODO: make up a dummy one
     return {};
-  } else if (model.animations.size() > 1) {
-    lg::warn("more than one animation detected. Ignoring all after the first.");
   }
 
   std::map<int, int> node_to_joint;
@@ -770,9 +766,13 @@ std::optional<anim::CompressedAnim> process_anim(const tinygltf::Model& model,
     node_to_joint[gjoints[i].gltf_node_index] = i + kGltfToGameJointOffset;
   }
 
-  const auto& anim = model.animations.at(0);
-  auto uncompressed = anim::extract_anim_from_gltf(model, anim, node_to_joint, 60);
-  return anim::compress_animation(uncompressed);
+  std::vector<anim::CompressedAnim> ret;
+  for (auto& anim : model.animations) {
+    lg::info("Processing animation {}", anim.name);
+    ret.push_back(
+        anim::compress_animation(anim::extract_anim_from_gltf(model, anim, node_to_joint, 60)));
+  }
+  return ret;
 }
 
 /*!
@@ -795,7 +795,7 @@ bool run_build_actor(const std::string& mdl_name,
   if (skin_idx) {
     lg::info("GLTF file contained a skin, this actor will have a real skeleton");
   }
-  std::optional<anim::CompressedAnim> user_anim;
+  std::vector<anim::CompressedAnim> user_anims;
 
   ArtGroup ag(ag_name);
   std::vector<Joint> joints;
@@ -810,7 +810,7 @@ bool run_build_actor(const std::string& mdl_name,
     // convert to game format
     joints = convert_joints(skeleton_joints);
     // get animation from user.
-    user_anim = process_anim(model, skeleton_joints);
+    user_anims = process_anim(model, skeleton_joints);
 
   } else {
     auto identity = math::Matrix4f::identity();
@@ -834,8 +834,10 @@ bool run_build_actor(const std::string& mdl_name,
   // dummy merc-ctrl
   ag.elts.emplace_back(nullptr);
 
-  if (user_anim) {
-    ag.elts.emplace_back(std::make_shared<ArtJointAnim>(ag.name, *user_anim, joints));
+  if (!user_anims.empty()) {
+    for (auto& anim : user_anims) {
+      ag.elts.emplace_back(std::make_shared<ArtJointAnim>(anim, joints));
+    }
   } else {
     ag.elts.emplace_back(std::make_shared<ArtJointAnim>(ag.name, joints));
   }

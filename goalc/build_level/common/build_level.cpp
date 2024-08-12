@@ -57,6 +57,7 @@ void add_model_to_level(GameVersion version, const std::string& name, tfrag3::Le
   for (auto& vert : merc_data.new_vertices) {
     lvl.merc_data.vertices.push_back(vert);
   }
+
   lvl.merc_data.models.push_back(merc_data.new_model);
   lvl.textures.insert(lvl.textures.end(), merc_data.new_textures.begin(),
                       merc_data.new_textures.end());

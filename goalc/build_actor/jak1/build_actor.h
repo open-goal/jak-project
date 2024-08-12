@@ -198,7 +198,7 @@ struct ArtJointAnim : ArtElement {
     }
   }
 
-  ArtJointAnim(const std::string& name, const anim::CompressedAnim& anim, const std::vector<Joint>& joints);
+  ArtJointAnim(const anim::CompressedAnim& anim, const std::vector<Joint>& joints);
 
   size_t generate(DataObjectGenerator& gen) const;
 };

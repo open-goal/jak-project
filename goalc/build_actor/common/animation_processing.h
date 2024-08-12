@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "common/common_types.h"
@@ -16,6 +17,7 @@ struct UncompressedSingleJointAnim {
 };
 
 struct UncompressedJointAnim {
+  std::string name;
   std::vector<UncompressedSingleJointAnim> joints;
   float framerate = 60;
   int frames = 0;
@@ -30,9 +32,7 @@ struct CompressedFrame {
   std::vector<u32> data32;
   std::vector<u64> data64;
 
-  int size_bytes() const {
-    return data16.size() * 2 + data32.size() * 4 + data64.size() * 8;
-  }
+  int size_bytes() const { return data16.size() * 2 + data32.size() * 4 + data64.size() * 8; }
 };
 
 struct CompressedJointMetadata {
@@ -43,6 +43,7 @@ struct CompressedJointMetadata {
 };
 
 struct CompressedAnim {
+  std::string name;
   CompressedFrame fixed;
   std::vector<CompressedFrame> frames;
   bool matrix_animated[2] = {false, false};
