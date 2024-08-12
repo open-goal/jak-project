@@ -318,18 +318,21 @@
   (set! (-> obj aspect-ratio-auto?) #t)
   (set! (-> obj vsync?) #t)
   (set! (-> obj letterbox?) #t)
-  ;; get screen size and set to borderless at screen res (if retail)
-  (cond
-    ((> (pc-get-num-resolutions) 0)
-     ;; pick first available resolution by default
-     (pc-get-resolution 0 (&-> obj width) (&-> obj height)))
-    (else
-     ;; somehow didn't get a single resolution. this is pretty bad.
-     (pc-get-active-display-size (&-> obj width) (&-> obj height))
-     (max! (-> obj width) PC_MIN_WIDTH)
-     (max! (-> obj height) PC_MIN_HEIGHT)
-     (format 0 "!!!! failed to get any screen resolutions !!!!")))
-  (format 0 "fullscreen resolution defaulted to ~D x ~D~%" (-> obj width) (-> obj height))
+  ;; default to the displays currently chosen resolution
+  (pc-get-active-display-size (&-> obj width) (&-> obj height))
+  (max! (-> obj width) PC_MIN_WIDTH)
+  (max! (-> obj height) PC_MIN_HEIGHT)
+  ;; ensure the default resolution was a valid choice
+  (let* ((saved-width (-> obj width))
+         (saved-height (-> obj height))
+         (supported-resolution? (pc-is-supported-resolution? saved-width saved-height)))
+   (cond
+     (supported-resolution?
+      (format 0 "[PC Settings]: Valid default game-size resolution set ~D x ~D~%" saved-width saved-height))
+     (else
+      (pc-get-active-display-size (&-> obj width) (&-> obj height))
+      (format 0 "[PC Settings]: Invalid game-size resolution ~D x ~D, defaulting to ~D x ~D~%" saved-width saved-height (-> obj width) (-> obj height)))))
+  (format 0 "[PC Settings]: fullscreen resolution defaulted to ~D x ~D~%" (-> obj width) (-> obj height))
   (set! (-> obj gfx-msaa) PC_DEFAULT_MSAA) ;; default msaa
   0)
 
